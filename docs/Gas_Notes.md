@@ -18,14 +18,22 @@ Based on Uni pool for liquidity, and contracts to manage the insurance.
 
 ### Pools 
 Uniswap pool with LPs providing liquidity for different gas prices ranges. 
+
+questions:
 - do we need to provide different pools for each period? (most likely not, just one pool for all periods / price ranges)
 
 ### Oracle 
 Average gas price for a period.
 
+questions:
+- how to get the average gas price for a period? (oracle)
+- how to get the average gas price for a period in the past? (oracle)
+- do we need different oracles for each period duration? i.e. 30d, 60d, 90d, 180d, 360d 
+  
+
 ### Contracts 
 Futures. Settled at the end of the period with the prices from the oracle.
-The contract holds a list of open positions (insurance subscriptions) and their values, amount and end time.
+The contract holds a list of open positions (insurance subscriptions) and their values, amount start and end time.
 The settlement can only be done at the end of the period.
 
 
