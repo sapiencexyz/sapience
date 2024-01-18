@@ -96,3 +96,11 @@ Token 1 = Real Price average at end of period
 - 3ETH * 0.8 = 2.4ETH 
 - User B gets 3 - 2.4 = 0.6ETH + Collateral back
 #### CASE Average gas price for the period was 30 gwei
+
+
+Notes: 
+- stake stETH
+- network: L1 
+- traditional futures. End of period fixed (i.e. 4 per year)
+- perps: average price for (today - 90 days)
+- 
