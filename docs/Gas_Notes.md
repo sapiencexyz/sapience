@@ -22,6 +22,9 @@ Uniswap pool with LPs providing liquidity for different gas prices ranges.
 questions:
 - do we need to provide different pools for each period? (most likely not, just one pool for all periods / price ranges)
 
+#### Pair
+- GasETH / FoilFuture
+
 ### Oracle 
 Average gas price for a period.
 
@@ -69,4 +72,27 @@ https://support.perp.com/hc/en-us/articles/5748372509081-Perpetual-Uniswap
 
 - https://github.com/perpetual-protocol/perp-curie-contract
 - https://github.com/perpetual-protocol/sdk-curie
-- 
+
+
+
+# Questions
+
+- what type of collaterals do we need? (ETH, DAI, USDC, USDT, etc.)
+
+
+## Use case
+Time 0
+- User A (Staker) deposits x collateral at 40 gwei tick
+- User B (L2 Hedger) buys 3ETH of insureance for next 90 days at 40 gwei tick. Deposits some collateral.
+
+
+
+Time passes - 90 days
+#### CASE Average gas price for the period was 50 gwei
+Token 0 = Insured price average at end of period
+
+Token 1 = Real Price average at end of period
+- (perpsProtocol idea): Price = 40/50 = 0.8
+- 3ETH * 0.8 = 2.4ETH 
+- User B gets 3 - 2.4 = 0.6ETH + Collateral back
+#### CASE Average gas price for the period was 30 gwei
