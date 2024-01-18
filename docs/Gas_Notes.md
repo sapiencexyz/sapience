@@ -83,7 +83,7 @@ https://support.perp.com/hc/en-us/articles/5748372509081-Perpetual-Uniswap
 ## Use case
 Time 0
 - User A (Staker) deposits x collateral at 40 gwei tick
-- User B (L2 Hedger) buys 3ETH of insureance for next 90 days at 40 gwei tick. Deposits some collateral.
+- User B (L2 Hedger) buys 3ETH of insureance for next 90 days at 40 gwei tick. Deposits some collateral. (escrow)
 
 
 
