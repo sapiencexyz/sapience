@@ -25,7 +25,7 @@ Opinionated definitions and assumptions.
 - Hardhat / Anvil
 - OpenZeppelin Contracts as dependencies (Yes/No)
 - Cannon / Scripts
-- Networks ?
+- Networks -> Ethernet mainnet
 - ethers.js version (if solidity, v5 or v6?)
 - JS/TS ([LEO] JS for MVP can work, but then absolutely TS)
 - Node version ([LEO] latest)
