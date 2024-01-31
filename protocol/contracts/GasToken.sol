@@ -1,4 +1,4 @@
-// contracts/MyNFT.sol
+// contracts/GasToken.sol
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 

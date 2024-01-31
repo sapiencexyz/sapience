@@ -1,14 +1,13 @@
-// contracts/MyNFT.sol
+// contracts/GGFactory.sol
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 import "./GasToken.sol";
 import "./GasWeiToken.sol";
-import "./GGNFT.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
-contract GGMain {
+contract GGFactory {
     struct Epoch {
         GasToken gasToken;
         GasWeiToken gasWeiToken;
@@ -19,12 +18,10 @@ contract GGMain {
 
     Epoch[] public epochs;
     IUniswapV3Factory public factory;
-    GGNFT public ggNft;
 
-    constructor(IUniswapV3Factory _uniswapFactoryAddress, GGNFT _ggNft) {
+    constructor(IUniswapV3Factory _uniswapFactoryAddress) {
         //address _uniswapFactoryAddress = 0x1F98431c8aD98523631AE4a59f267346ea31F984
         factory = IUniswapV3Factory(_uniswapFactoryAddress);
-        ggNft = GGNFT(_ggNft);
     }
 
     function startEpoch(
