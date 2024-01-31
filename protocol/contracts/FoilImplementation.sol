@@ -4,19 +4,19 @@ pragma solidity ^0.8.20;
 
 import "./GasToken.sol";
 import "./GasWeiToken.sol";
-import "./GGNFT.sol";
+import "./FoilNFT.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
 contract FoilImplementation {
-    // ggNFT represents the account of an user. It is a NFT that can be transferred to other users.
-    GGNFT public ggNft;
+    // FoilNFT represents the account of an user. It is a NFT that can be transferred to other users.
+    FoilNFT public foilNFT;
 
     uint256 private constant GAS_TOKEN = 1;
     uint256 private constant WEI_TOKEN = 2;
 
-    constructor(address _ggNft) {
-        ggNft = GGNFT(_ggNft);
+    constructor(address _foilNFT) {
+        foilNFT = FoilNFT(_foilNFT);
     }
 
     function settleEpoch(uint256 epochId) external {
