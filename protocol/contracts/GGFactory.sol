@@ -2,15 +2,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "./GasToken.sol";
-import "./GasWeiToken.sol";
+import "./VirtualGasToken.sol";
+import "./VirtualEthToken.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
 contract GGFactory {
     struct Epoch {
-        GasToken gasToken;
-        GasWeiToken gasWeiToken;
+        VirtualGasToken vGas;
+        VirtualEthToken vEth;
         IUniswapV3Pool pool;
         uint256 startTime;
         uint256 endTime;
@@ -33,16 +33,39 @@ contract GGFactory {
         Epoch memory epoch;
         epoch.startTime = _startTime;
         epoch.endTime = _endTime;
-        epoch.gasToken = new GasToken(address(this));
-        epoch.gasWeiToken = new GasWeiToken(address(this));
+        epoch.vGas = new VirtualGasToken(
+            address(this),
+            integerToString(epochs.length)
+        );
+        epoch.vEth = new VirtualEthToken(
+            address(this),
+            integerToString(epochs.length)
+        );
         epoch.pool = IUniswapV3Pool(
-            factory.createPool(
-                address(epoch.gasToken),
-                address(epoch.gasWeiToken),
-                fee
-            )
+            factory.createPool(address(epoch.vGas), address(epoch.vEth), fee)
         );
         epochs.push(epoch);
+    }
+
+    function integerToString(uint _i) internal pure returns (string memory) {
+        if (_i == 0) {
+            return "0";
+        }
+        uint j = _i;
+        uint len;
+
+        while (j != 0) {
+            len++;
+            j /= 10;
+        }
+        bytes memory bstr = new bytes(len);
+        uint k = len - 1;
+
+        while (_i != 0) {
+            bstr[k--] = bytes1(uint8(48 + (_i % 10)));
+            _i /= 10;
+        }
+        return string(bstr);
     }
 
     modifier onlyIfNotCurrentEpoch() {

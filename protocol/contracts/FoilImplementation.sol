@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "./GasToken.sol";
-import "./GasWeiToken.sol";
+import "./VirtualGasToken.sol";
+import "./VirtualEthToken.sol";
 import "./FoilNFT.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";

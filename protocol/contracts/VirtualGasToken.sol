@@ -6,8 +6,17 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC20Pausable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-contract GasToken is ERC20Pausable, Ownable {
-    constructor(address _owner) ERC20("GasToken", "GGG") Ownable(_owner) {}
+contract VirtualGasToken is ERC20Pausable, Ownable {
+    constructor(
+        address _owner,
+        string memory epochId
+    )
+        ERC20(
+            string.concat("virtual Gas Token - ", epochId),
+            string.concat("VGT", epochId)
+        )
+        Ownable(_owner)
+    {}
 
     function mint(address to, uint256 amount) public onlyOwner {
         _mint(to, amount);
