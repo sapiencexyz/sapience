@@ -17,7 +17,16 @@ contract PocFh {
         uint ggasAmount;
     }
 
+    struct positionData {
+        uint id;
+        uint amountGwei;
+        uint amountGGas;
+        uint priceMin;
+        uint priceMax;
+    }
+
     mapping(uint => accountData) public accounts;
+    mapping(uint => positionData) public positions;
 
     // ------ Administrative (in fact external) -------
     function setEpochTargetPrice(uint _epochTargetPrice) external {
@@ -72,7 +81,94 @@ contract PocFh {
         a.credit += amount / GWEI_PER_ETHER;
     }
 
+    function convertCreditToGGas(
+        uint id,
+        uint creditAmount,
+        uint price
+    ) external {
+        accountData storage a = accounts[id];
+        require(a.id == id, "invalid account");
+
+        require(a.credit >= creditAmount, "not enough credit");
+
+        a.credit -= creditAmount;
+        a.ggasAmount += creditAmount * price;
+    }
+
+    function convertGGasToCredit(uint id, uint amount, uint price) external {
+        accountData storage a = accounts[id];
+        require(a.id == id, "invalid account");
+
+        require(a.ggasAmount >= amount, "not enough gwei");
+
+        a.ggasAmount -= amount;
+        a.credit += amount / price;
+    }
+
     // ------- Pool operations ------
+    function supply(
+        uint id,
+        uint amountGwei,
+        uint amountGGas,
+        uint priceMin,
+        uint priceMax
+    ) external {
+        accountData storage a = accounts[id];
+        require(a.id == id, "invalid account");
+
+        positionData storage p = positions[id];
+
+        require(a.gweiAmount >= amountGwei, "not enough gwei");
+        require(a.ggasAmount >= amountGGas, "not enough ggas");
+
+        a.gweiAmount -= amountGwei;
+        a.ggasAmount -= amountGGas;
+
+        p.id = id;
+        p.amountGwei += amountGwei;
+        p.amountGGas += amountGGas;
+
+        p.priceMin = priceMin;
+        p.priceMax = priceMax;
+    }
+
+    function closePosition(uint id) external {
+        accountData storage a = accounts[id];
+        require(a.id == id, "invalid account");
+
+        positionData storage p = positions[id];
+
+        if (epochSettlementPrice >= p.priceMax) {
+            uint midRange = (p.priceMin + p.priceMax) / 2;
+            // Passing through range means user sold all GAS tokens for GWEI tokens (@GAS/GWEI = mid range price)
+            a.ggasAmount += p.amountGwei * midRange;
+            a.gweiAmount += 0;
+            p.amountGGas = 0;
+            p.amountGwei = 0;
+        } else if (epochSettlementPrice <= p.priceMin) {
+            uint midRange = (p.priceMin + p.priceMax) / 2;
+            // Passing through range means user sold all GWEI tokens for GAS tokens (@GWEI/GAS = mid range price)
+            a.gweiAmount += p.amountGGas * midRange;
+            a.ggasAmount += 0;
+
+            a.ggasAmount += p.amountGwei / (p.priceMin + p.priceMax) / 2;
+            a.gweiAmount -= p.amountGwei;
+            p.amountGGas = 0;
+            p.amountGwei = 0;
+        } else {
+            // In price range, it means user has sold some based on the price
+            uint amountGwei = (epochSettlementPrice - p.priceMin) *
+                p.amountGGas;
+            uint amountGGas = (p.priceMax - epochSettlementPrice) *
+                p.amountGGas;
+            a.gweiAmount += amountGwei;
+            a.ggasAmount += amountGGas;
+
+            p.amountGGas = 0;
+            p.amountGwei = 0;
+        }
+    }
+
     function buyGasExactIn(uint id, uint amountGwei) external {
         accountData storage a = accounts[id];
         require(a.id == id, "invalid account");
