@@ -1,23 +1,11 @@
 const { ethers } = require("hardhat");
-const { assert } = require("chai");
 import { Contract } from "ethers";
 
-const assertStatus = async (
-  fepoh: Contract,
-  accountId: number,
-  credit: string,
-  gweiAmount: string,
-  ggasAmount: string
-) => {
-  const status = await fepoh.accounts(accountId);
-  assert.equal(status[1].toString(), credit);
-  assert.equal(status[2].toString(), gweiAmount);
-  assert.equal(status[3].toString(), ggasAmount);
-};
+import { assertStatus, GWEI_PER_ETHER } from "./helpers";
 
 describe("FEpoch - rollup user", function () {
-  const GWEI_PER_ETHER = 1000000000;
   let fepoch: Contract;
+  let gweiAmount: number, ggasAmount: number;
   before("deploy contracts", async () => {
     fepoch = await ethers.deployContract("PocFh");
     console.log("fepoch deployed at:", fepoch.address);
@@ -36,26 +24,29 @@ describe("FEpoch - rollup user", function () {
 
     it("convertCreditToGWei", async () => {
       await fepoch.convertCreditToGWei(1, 1050);
-      await assertStatus(fepoch, 1, "0", "1050000000000", "0");
+      gweiAmount = 1050 * GWEI_PER_ETHER;
+      await assertStatus(fepoch, 1, "0", gweiAmount.toString(), "0");
     });
 
     it("buyGasExactIn", async () => {
-      await fepoch.buyGasExactIn(1, 1050 * GWEI_PER_ETHER);
-      await assertStatus(fepoch, 1, "0", "0", "30000000000");
+      await fepoch.buyGasExactIn(1, gweiAmount);
+      ggasAmount = gweiAmount / 35;
+      await assertStatus(fepoch, 1, "0", "0", ggasAmount.toString());
     });
 
     it("closePeriod", async () => {
       await fepoch.closePeriod(50);
-      await assertStatus(fepoch, 1, "0", "0", "30000000000");
+      await assertStatus(fepoch, 1, "0", "0", ggasAmount.toString());
     });
 
     it("sellGasExactIn", async () => {
-      await fepoch.sellGasExactIn(1, 30000000000);
-      await assertStatus(fepoch, 1, "0", "1500000000000", "0");
+      await fepoch.sellGasExactIn(1, ggasAmount);
+      gweiAmount = ggasAmount * 50;
+      await assertStatus(fepoch, 1, "0", gweiAmount.toString(), "0");
     });
 
     it("convertGWeiToCredit", async () => {
-      await fepoch.convertGWeiToCredit(1, 1500000000000);
+      await fepoch.convertGWeiToCredit(1, gweiAmount);
       await assertStatus(fepoch, 1, "1500", "0", "0");
     });
 

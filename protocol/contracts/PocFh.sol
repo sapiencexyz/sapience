@@ -3,7 +3,8 @@
 pragma solidity >=0.8.2 <0.9.0;
 
 contract PocFh {
-    uint private constant GWEI_PER_ETHER = 1000000000;
+    uint private constant GWEI_MULTIPLIER = 1e9;
+    uint private constant DECIMAL = 1e18;
 
     uint public epochTargetPrice; // Price at end of period (in gwei/gas)
     uint public epochSettlementPrice; // Price at end of period (in gwei/gas)
@@ -15,6 +16,8 @@ contract PocFh {
         uint credit;
         uint gweiAmount;
         uint ggasAmount;
+        uint ggasDebt;
+        uint lockedCredit;
     }
 
     struct positionData {
@@ -58,6 +61,8 @@ contract PocFh {
 
         require(a.credit >= amount, "not enough credit");
 
+        require(a.ggasDebt == 0, "cannot withdraw with debt");
+
         a.credit -= amount;
     }
 
@@ -68,7 +73,7 @@ contract PocFh {
         require(a.credit >= amount, "not enough credit");
 
         a.credit -= amount;
-        a.gweiAmount += amount * GWEI_PER_ETHER;
+        a.gweiAmount += upscaleGwei(amount);
     }
 
     function convertGWeiToCredit(uint id, uint amount) external {
@@ -78,31 +83,39 @@ contract PocFh {
         require(a.gweiAmount >= amount, "not enough gwei");
 
         a.gweiAmount -= amount;
-        a.credit += amount / GWEI_PER_ETHER;
+        a.credit += downscaleGwei(amount);
     }
 
-    function convertCreditToGGas(
-        uint id,
-        uint creditAmount,
-        uint price
-    ) external {
+    function convertCreditToGGas(uint id, uint gGasAmount) external {
+        accountData storage a = accounts[id];
+        require(a.id == id, "invalid account");
+        uint requiredCredit = downscaleGwei(gGasAmount * currentMarketPrice);
+
+        require(a.credit >= requiredCredit, "not enough credit");
+
+        a.credit -= requiredCredit;
+        a.ggasAmount += gGasAmount;
+    }
+
+    function mintGGas(uint id, uint mintedGGasAmount) external {
         accountData storage a = accounts[id];
         require(a.id == id, "invalid account");
 
-        require(a.credit >= creditAmount, "not enough credit");
+        // TODO check it can mint that amount
 
-        a.credit -= creditAmount;
-        a.ggasAmount += creditAmount * price;
+        a.ggasAmount += mintedGGasAmount;
+        a.ggasDebt += mintedGGasAmount;
     }
 
-    function convertGGasToCredit(uint id, uint amount, uint price) external {
+    function payDebt(uint id, uint amount) external {
         accountData storage a = accounts[id];
         require(a.id == id, "invalid account");
 
-        require(a.ggasAmount >= amount, "not enough gwei");
+        require(a.ggasAmount >= amount, "not enough ggas");
+        require(a.ggasDebt >= amount, "not enough ggas to pay debt");
 
         a.ggasAmount -= amount;
-        a.credit += amount / price;
+        a.ggasDebt -= amount;
     }
 
     // ------- Pool operations ------
@@ -138,17 +151,18 @@ contract PocFh {
 
         positionData storage p = positions[id];
 
+        uint midRangePrice = (p.priceMin + p.priceMax) / 2;
         if (epochSettlementPrice >= p.priceMax) {
-            uint midRange = (p.priceMin + p.priceMax) / 2;
             // Passing through range means user sold all GAS tokens for GWEI tokens (@GAS/GWEI = mid range price)
-            a.ggasAmount += p.amountGwei * midRange;
-            a.gweiAmount += 0;
+            a.gweiAmount += p.amountGGas * midRangePrice;
+            a.ggasAmount += 0;
             p.amountGGas = 0;
             p.amountGwei = 0;
         } else if (epochSettlementPrice <= p.priceMin) {
-            uint midRange = (p.priceMin + p.priceMax) / 2;
             // Passing through range means user sold all GWEI tokens for GAS tokens (@GWEI/GAS = mid range price)
-            a.gweiAmount += p.amountGGas * midRange;
+
+            // wrong formula. Just autopilot suggestion.
+            a.gweiAmount += p.amountGGas * midRangePrice;
             a.ggasAmount += 0;
 
             a.ggasAmount += p.amountGwei / (p.priceMin + p.priceMax) / 2;
@@ -157,6 +171,8 @@ contract PocFh {
             p.amountGwei = 0;
         } else {
             // In price range, it means user has sold some based on the price
+
+            // wrong formula. Just autopilot suggestion.
             uint amountGwei = (epochSettlementPrice - p.priceMin) *
                 p.amountGGas;
             uint amountGGas = (p.priceMax - epochSettlementPrice) *
@@ -197,5 +213,39 @@ contract PocFh {
 
     function sellGasExactOut(uint id, uint amountGwei) external {
         // TODO
+    }
+
+    // INTERNAL DECIMAL OPERATIONS
+    function divDecimal(uint a, uint b) internal pure returns (uint) {
+        return (a * DECIMAL) / b;
+    }
+
+    function mulDecimal(uint a, uint b) internal pure returns (uint) {
+        return (a * b) / DECIMAL;
+    }
+
+    function upscale(uint a) internal pure returns (uint) {
+        return a * DECIMAL;
+    }
+
+    function downscale(uint a) internal pure returns (uint) {
+        return a / DECIMAL;
+    }
+
+    // INTERNAL GWEI OPERATIONS
+    function divGwei(uint a, uint b) internal pure returns (uint) {
+        return (a * GWEI_MULTIPLIER) / b;
+    }
+
+    function mulGwei(uint a, uint b) internal pure returns (uint) {
+        return (a * b) / GWEI_MULTIPLIER;
+    }
+
+    function upscaleGwei(uint a) internal pure returns (uint) {
+        return a * GWEI_MULTIPLIER;
+    }
+
+    function downscaleGwei(uint a) internal pure returns (uint) {
+        return a / GWEI_MULTIPLIER;
     }
 }
