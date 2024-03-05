@@ -12,8 +12,8 @@ contract FoilImplementation {
     // FoilNFT represents the account of an user. It is a NFT that can be transferred to other users.
     FoilNFT public foilNFT;
 
-    uint256 private constant GAS_TOKEN = 1;
-    uint256 private constant WEI_TOKEN = 2;
+    uint256 private constant WEI_TOKEN = 1;
+    uint256 private constant GAS_TOKEN = 2;
 
     constructor(address _foilNFT) {
         foilNFT = FoilNFT(_foilNFT);

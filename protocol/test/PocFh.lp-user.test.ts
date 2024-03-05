@@ -1,6 +1,6 @@
 const { ethers } = require("hardhat");
 import { Contract } from "ethers";
-import { assertStatus, GWEI_PER_ETHER, assertPosition } from "./helpers";
+import { assertStatus, GWEI_PER_ETHER, assertPosition } from "./PocFhHelpers";
 import { assert } from "chai";
 
 describe("FEpoch - lp user", function () {

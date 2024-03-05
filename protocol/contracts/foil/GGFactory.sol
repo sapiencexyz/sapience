@@ -37,6 +37,7 @@ contract GGFactory {
             address(this),
             integerToString(epochs.length)
         );
+        // is it necessary to create both virtual tokens every time?
         epoch.vEth = new VirtualEthToken(
             address(this),
             integerToString(epochs.length)

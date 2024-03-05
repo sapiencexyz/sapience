@@ -1,7 +1,7 @@
 const { ethers } = require("hardhat");
 import { Contract } from "ethers";
 
-import { assertStatus, GWEI_PER_ETHER } from "./helpers";
+import { assertStatus, GWEI_PER_ETHER } from "./PocFhHelpers";
 
 describe("FEpoch - rollup user", function () {
   let fepoch: Contract;
