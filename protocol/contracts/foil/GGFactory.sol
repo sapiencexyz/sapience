@@ -2,46 +2,59 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "./VirtualGasToken.sol";
-import "./VirtualEthToken.sol";
+import "./VirtualToken.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
+// It should be a library and used from main contract, otherwise it should be limited to be called only by the main contract
 contract GGFactory {
     struct Epoch {
-        VirtualGasToken vGas;
-        VirtualEthToken vEth;
+        VirtualToken vGas;
+        VirtualToken vEth;
         IUniswapV3Pool pool;
         uint256 startTime;
         uint256 endTime;
+        bool isSettled;
+        uint256 settlementPrice;
     }
 
     Epoch[] public epochs;
     IUniswapV3Factory public factory;
 
+    // VirtualToken private vEth;
+
     constructor(IUniswapV3Factory _uniswapFactoryAddress) {
         //address _uniswapFactoryAddress = 0x1F98431c8aD98523631AE4a59f267346ea31F984
         factory = IUniswapV3Factory(_uniswapFactoryAddress);
+        // vEth = new VirtualToken(address(this), "virtual ETH Token", "vETH");
     }
 
     function startEpoch(
         uint256 _startTime,
         uint256 _endTime,
-        uint24 fee
+        uint24 fee,
+        address tokenOwner
     ) public onlyIfNotCurrentEpoch {
         //uint24 fee = 3000
         Epoch memory epoch;
         epoch.startTime = _startTime;
         epoch.endTime = _endTime;
-        epoch.vGas = new VirtualGasToken(
+        string memory epochId = integerToString(epochs.length);
+        epoch.vGas = new VirtualToken(
             address(this),
-            integerToString(epochs.length)
+            string.concat("virtual Gas Token - ", epochId),
+            string.concat("vGT", epochId)
         );
+        epoch.vGas.mint(tokenOwner, type(uint256).max);
+
         // is it necessary to create both virtual tokens every time?
-        epoch.vEth = new VirtualEthToken(
+        epoch.vEth = new VirtualToken(
             address(this),
-            integerToString(epochs.length)
+            string.concat("virtual ETH Token - ", epochId),
+            string.concat("vETH", epochId)
         );
+        epoch.vEth.mint(tokenOwner, type(uint256).max);
+        // epoch.vEth = vEth;
         epoch.pool = IUniswapV3Pool(
             factory.createPool(address(epoch.vGas), address(epoch.vEth), fee)
         );
