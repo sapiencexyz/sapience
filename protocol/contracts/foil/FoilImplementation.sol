@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 
 import "./VirtualToken.sol";
 import "./FoilNFT.sol";
+import "../storage/EpochFactory.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
@@ -14,8 +15,10 @@ contract FoilImplementation {
     uint256 private constant WEI_TOKEN = 1;
     uint256 private constant GAS_TOKEN = 2;
 
-    constructor(address _foilNFT) {
+    constructor(address _foilNFT, IUniswapV3Factory _uniswapFactoryAddress) {
         foilNFT = FoilNFT(_foilNFT);
+        EpochFactory.Data storage ef = EpochFactory.load();
+        ef.uniFactory = IUniswapV3Factory(_uniswapFactoryAddress);
     }
 
     function settleEpoch(uint256 epochId) external {
