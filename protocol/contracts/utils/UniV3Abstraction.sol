@@ -3,21 +3,27 @@
 pragma solidity >=0.8.2 <0.9.0;
 
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
+import "../external/univ3/TickMath.sol";
+import "../external/univ3/LiquidityAmounts.sol";
+import "../external/univ3/MigrationMathUtils.sol";
 
 library UniV3Abstraction {
+    using MigrationMathUtils for uint256;
+    using MigrationMathUtils for int256;
+
+    uint256 internal constant _DUST = 10;
+
     function addLiquidity(
         address pool,
-        uint256 lowerTick,
-        uint256 upperTick,
+        int24 lowerTick,
+        int24 upperTick,
         uint256 vEthAmount,
         uint256 vGasAmount,
         uint256 epochId
-    ) external returns (uint256 amount0, uint256 amount1, uint256 liquidity) {
+    ) external returns (uint256 amount0, uint256 amount1, uint128 liquidity) {
         (uint160 sqrtRatioX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
 
-        uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
+        liquidity = LiquidityAmounts.getLiquidityForAmounts(
             sqrtRatioX96,
             TickMath.getSqrtRatioAtTick(lowerTick),
             TickMath.getSqrtRatioAtTick(upperTick),
@@ -25,7 +31,7 @@ library UniV3Abstraction {
             vGasAmount
         );
 
-        (amount0, amount1, liquidity) = IUniswapV3Pool(pool).mint(
+        (amount0, amount1) = IUniswapV3Pool(pool).mint(
             address(this),
             lowerTick,
             upperTick,
@@ -38,9 +44,9 @@ library UniV3Abstraction {
 
     function removeLiquidity(
         address pool,
-        uint256 lowerTick,
-        uint256 upperTick,
-        uint256 liquidity
+        int24 lowerTick,
+        int24 upperTick,
+        uint128 liquidity
     ) external returns (uint256 amount0, uint256 amount1) {
         // first we need to burn the liquidity to update the pool's state (tokensOwed)
         (uint256 amount0Burned, uint256 amount1Burned) = IUniswapV3Pool(pool)
@@ -63,12 +69,13 @@ library UniV3Abstraction {
         bool isExactInput,
         bool isVEthToVGas,
         uint256 amount,
-        uint160 sqrtPriceLimitX96
+        uint160 sqrtPriceLimitX96,
+        uint256 epochId
     ) external returns (uint256 amountVEth, uint256 amountVGas) {
         // sign of amount determines if it's exact input or not
         int256 amountSpecified = isExactInput
             ? int256(amount)
-            : int256(-1 * amount);
+            : int256(-1 * amount.toInt());
 
         // returned amounts are delta amounts, as seen by the pool, not the user
         // > 0: pool gets; user pays
@@ -89,8 +96,8 @@ library UniV3Abstraction {
             );
 
         (uint256 amount0, uint256 amount1) = (
-            signedAmount0.abs(),
-            signedAmount1.abs()
+            signedAmountVEth.abs(),
+            signedAmountVGas.abs()
         );
 
         // TODO Understand from that point onwards... just copied
@@ -106,8 +113,8 @@ library UniV3Abstraction {
             require(
                 (
                     exactAmount > amount
-                        ? exactAmount.sub(amount)
-                        : amount.sub(exactAmount)
+                        ? exactAmount - amount
+                        : amount - exactAmount
                 ) < _DUST,
                 "???"
             );
