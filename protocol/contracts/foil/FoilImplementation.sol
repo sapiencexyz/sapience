@@ -11,8 +11,10 @@ import "../storage/Account.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IUniswapV3MintCallback} from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
+import {IUniswapV3SwapCallback} from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
 
-contract FoilImplementation {
+contract FoilImplementation is IUniswapV3MintCallback, IUniswapV3SwapCallback {
     using EpochFactory for EpochFactory.Data;
     using Epoch for Epoch.Data;
     using Position for Position.Data;
@@ -174,5 +176,51 @@ contract FoilImplementation {
         // TODO transfer amount of gas token from msg.sender
         // TODO burn amount of gas token
         // TODO adjust balances
+    }
+
+    // --- Uniswap V3 Callbacks ---
+    function uniswapV3MintCallback(
+        uint256 amount0Owed,
+        uint256 amount1Owed,
+        bytes calldata data
+    ) external override {
+        // check sender
+        uint256 epochId = abi.decode(data, (uint256));
+
+        Epoch.Data storage epoch = Epoch.loadValid(epochId);
+
+        if (amount0Owed > 0) {
+            address token = IUniswapV3Pool(epoch.pool).token0();
+            if (token != address(epoch.vGas)) {
+                revert Errors.InvalidVirtualToken(token);
+            }
+            IERC20(token).transfer(address(epoch.pool), amount0Owed);
+        }
+        if (amount1Owed > 0) {
+            address token = IUniswapV3Pool(epoch.pool).token1();
+            if (token != address(epoch.vEth)) {
+                revert Errors.InvalidVirtualToken(token);
+            }
+            IERC20(token).transfer(address(epoch.pool), amount1Owed);
+        }
+    }
+
+    function uniswapV3SwapCallback(
+        int256 amount0Delta,
+        int256 amount1Delta,
+        bytes calldata data
+    ) external override {
+        // TODO check sender
+
+        uint256 epochId = abi.decode(data, (uint256));
+
+        Epoch.Data storage epoch = Epoch.loadValid(epochId);
+        IUniswapV3Pool pool = IUniswapV3Pool(epoch.pool);
+
+        (address token, uint256 amountToPay) = amount0Delta > 0
+            ? (pool.token0(), uint256(amount0Delta))
+            : (pool.token1(), uint256(amount1Delta));
+
+        IERC20(token).transfer(address(epoch.pool), amountToPay);
     }
 }

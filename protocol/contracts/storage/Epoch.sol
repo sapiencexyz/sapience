@@ -9,8 +9,8 @@ import "./Errors.sol";
 library Epoch {
     struct Data {
         uint256 id;
-        VirtualToken vGas;
         VirtualToken vEth;
+        VirtualToken vGas;
         IUniswapV3Pool pool;
         uint256 startTime;
         uint256 endTime;
