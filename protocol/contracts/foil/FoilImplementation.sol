@@ -5,31 +5,70 @@ pragma solidity ^0.8.20;
 import "./VirtualToken.sol";
 import "./FoilNFT.sol";
 import "../storage/EpochFactory.sol";
+import "../storage/Epoch.sol";
+import "../storage/Position.sol";
+import "../storage/Account.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract FoilImplementation {
+    using EpochFactory for EpochFactory.Data;
+    using Epoch for Epoch.Data;
+    using Position for Position.Data;
+    using Account for Account.Data;
     // FoilNFT represents the account of an user. It is a NFT that can be transferred to other users.
     FoilNFT public foilNFT;
+    IERC20 public collateralToken;
 
     uint256 private constant WEI_TOKEN = 1;
     uint256 private constant GAS_TOKEN = 2;
 
-    constructor(address _foilNFT, IUniswapV3Factory _uniswapFactoryAddress) {
+    constructor(
+        address _foilNFT,
+        IUniswapV3Factory _uniswapFactoryAddress,
+        IERC20 _collateralToken
+    ) {
         foilNFT = FoilNFT(_foilNFT);
+        collateralToken = _collateralToken;
         EpochFactory.Data storage ef = EpochFactory.load();
         ef.uniFactory = IUniswapV3Factory(_uniswapFactoryAddress);
     }
 
-    function settleEpoch(uint256 epochId) external {
-        // TODO check if epoch is valid
-        // TODO check if epoch is over
-        // TODO check if epoch is not settled
-        // TODO settle epoch
-        // notice: settling an epoch involves setting the epoch as settled, pausing the two tokens and fixing the price of the gas
-        // TODO pay fee to settler
+    // --- Margin deposit and withdraw ---
+    function deposit(uint256 accountId, uint256 amount) external {
+        Account.Data storage account = Account.loadValid(accountId);
+        account.isAuthorized(foilNFT, msg.sender);
+        collateralToken.transferFrom(msg.sender, address(this), amount);
+        account.deposit(amount);
     }
 
+    function withdraw(uint256 accountId, uint256 amount) external {
+        Account.Data storage account = Account.loadValid(accountId);
+        account.isAuthorized(foilNFT, msg.sender);
+        account.withdraw(amount);
+        collateralToken.transfer(msg.sender, amount);
+    }
+
+    // --- Epochs ---
+    function findCurrentEpoch() external view returns (uint256) {
+        EpochFactory.Data storage ef = EpochFactory.load();
+        return ef.findCurrentEpoch();
+    }
+
+    function startEpoch(uint256 _startTime, uint256 _endTime) external {
+        uint24 fee = 3000;
+        EpochFactory.Data storage ef = EpochFactory.load();
+        ef.startEpoch(_startTime, _endTime, fee, address(this));
+        // Should we set the settlementPRice here?
+    }
+
+    function settleEpoch(uint256 epochId) external {
+        Epoch.Data storage epoch = Epoch.load(epochId);
+        epoch.settle();
+    }
+
+    // --- Debt ---
     function payDebt(uint256 accountId, uint256 epochId) external {
         // TODO check if account is valid
         // TODO check msg.sender is approved by the account
@@ -78,23 +117,7 @@ contract FoilImplementation {
         // TODO adjust balances
     }
 
-    function deposit(uint256 accountId, uint256 amount) external {
-        // TODO check if account is valid
-        // TODO check msg.sender is approved by the account
-        // TODO check if account is not paused
-        // TODO transfer amount from msg.sender to this contract
-        // TODO adjust balances
-    }
-
-    function withdraw(uint256 accountId, uint256 amount) external {
-        // TODO check if account is valid
-        // TODO check msg.sender is approved by the account
-        // TODO check if account is not paused
-        // TODO check if can withdraw that amount
-        // TODO transfer amount from this contract to msg.sender
-        // TODO adjust balances
-    }
-
+    // --- Token mint and burn ---
     function mintGasToken(
         uint256 accountId,
         uint256 amount,

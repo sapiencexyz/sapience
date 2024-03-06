@@ -3,12 +3,12 @@
 pragma solidity >=0.8.2 <0.9.0;
 
 import "./Position.sol";
+import "../foil/FoilNFT.sol";
 
 library Account {
     struct Data {
         uint256 id;
         uint256 credit;
-        uint256 lockedCredit;
         uint256 freeGweiAmount;
         uint256 freeGasAmount;
         Position.Data[] positions;
@@ -19,7 +19,7 @@ library Account {
      * @param accountId The ID of the account to load
      */
     function load(
-        uint128 accountId
+        uint256 accountId
     ) internal pure returns (Data storage account) {
         bytes32 s = keccak256(abi.encode("foil.gas.account", accountId));
 
@@ -33,12 +33,44 @@ library Account {
      * @param accountId The ID of the account to load
      */
     function loadValid(
-        uint128 accountId
+        uint256 accountId
     ) internal view returns (Data storage account) {
         account = load(accountId);
 
         if (accountId == 0 || account.id == 0) {
-            revert CommonErrors.InvalidId(accountId);
+            revert Errors.InvalidId(accountId);
         }
+    }
+
+    function isAuthorized(
+        Data storage self,
+        FoilNFT foilNFT,
+        address sender
+    ) internal view {
+        address accountOwner = foilNFT.ownerOf(self.id);
+        if (accountOwner == address(0)) {
+            revert Errors.InvalidId(self.id);
+        }
+
+        if (
+            accountOwner != sender &&
+            foilNFT.getApproved(self.id) != sender &&
+            !foilNFT.isApprovedForAll(accountOwner, sender)
+        ) {
+            revert Errors.NotAccountOwnerOrAuthorized(self.id, sender);
+        }
+    }
+
+    function deposit(Data storage self, uint256 amount) internal {
+        self.credit += amount;
+    }
+
+    function withdraw(Data storage self, uint256 amount) internal {
+        if (self.credit < amount) {
+            revert Errors.NotEnoughCredit(amount, self.credit);
+        }
+
+        // TODO check locked credit and revert accordingly
+        self.credit -= amount;
     }
 }

@@ -25,15 +25,37 @@ library EpochFactory {
         }
     }
 
+    function findCurrentEpoch(
+        Data storage self
+    ) internal view returns (uint256) {
+        if (self.epochIds.length == 0) {
+            revert Errors.NoEpochs();
+        }
+
+        uint index = self.epochIds.length - 1;
+        uint256 currentEpochId = self.epochIds[index];
+        Epoch.Data storage epoch = Epoch.load(currentEpochId);
+        while (block.timestamp < epoch.startTime) {
+            if (self.epochIds.length == 1) {
+                revert Errors.NoEpochs();
+            }
+            index -= 1;
+            if (index < 0) {
+                revert Errors.NoEpochs();
+            }
+            currentEpochId = self.epochIds[index];
+            epoch = Epoch.load(currentEpochId);
+        }
+        return currentEpochId;
+    }
+
     function startEpoch(
+        Data storage self,
         uint256 _startTime,
         uint256 _endTime,
         uint24 fee,
         address tokenOwner
-    ) public {
-        //uint24 fee = 3000
-        Data storage self = load();
-
+    ) internal {
         validateEpoch(self, _startTime, _endTime);
 
         uint256 epochId = self.epochIds.length + 1;
@@ -67,6 +89,29 @@ library EpochFactory {
         self.epochIds.push(epochId);
     }
 
+    function validateEpoch(
+        Data storage self,
+        uint256 _startTime,
+        uint256 _endTime
+    ) internal {
+        if (_startTime < block.timestamp) {
+            revert Errors.InvalidStartTime(_startTime);
+        }
+
+        if (_endTime < block.timestamp || _endTime < _startTime) {
+            revert Errors.InvalidEndTime(_endTime);
+        }
+
+        if (self.epochIds.length > 0) {
+            if (self.latestEndTime > _startTime) {
+                revert Errors.OverlappingEpochs(_startTime);
+            }
+        }
+
+        self.latestEndTime = _endTime;
+        self.latestStartTime = _startTime;
+    }
+
     function integerToString(uint _i) internal pure returns (string memory) {
         if (_i == 0) {
             return "0";
@@ -86,28 +131,5 @@ library EpochFactory {
             _i /= 10;
         }
         return string(bstr);
-    }
-
-    function validateEpoch(
-        Data storage self,
-        uint256 _startTime,
-        uint256 _endTime
-    ) internal {
-        if (_startTime < block.timestamp) {
-            revert CommonErrors.InvalidStartTime(_startTime);
-        }
-
-        if (_endTime < block.timestamp || _endTime < _startTime) {
-            revert CommonErrors.InvalidEndTime(_endTime);
-        }
-
-        if (self.epochIds.length > 0) {
-            if (self.latestEndTime > _startTime) {
-                revert CommonErrors.OverlappingEpochs(_startTime);
-            }
-        }
-
-        self.latestEndTime = _endTime;
-        self.latestStartTime = _startTime;
     }
 }

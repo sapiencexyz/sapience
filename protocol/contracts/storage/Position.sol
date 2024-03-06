@@ -19,7 +19,7 @@ library Position {
      * @param positionId The ID of the position to load
      */
     function load(
-        uint128 positionId
+        uint256 positionId
     ) internal pure returns (Data storage position) {
         bytes32 s = keccak256(abi.encode("foil.gas.position", positionId));
 
@@ -33,12 +33,12 @@ library Position {
      * @param positionId The ID of the position to load
      */
     function loadValid(
-        uint128 positionId
+        uint256 positionId
     ) internal view returns (Data storage position) {
         position = load(positionId);
 
         if (positionId == 0 || position.id == 0) {
-            revert CommonErrors.InvalidId(positionId);
+            revert Errors.InvalidId(positionId);
         }
     }
 }

@@ -29,6 +29,22 @@ contract FoilProxy {
         _owner = initialOwner;
     }
 
+    function upgrade(address newImplementation) public {
+        if (msg.sender != _owner) {
+            revert Unauthorized(msg.sender);
+        }
+
+        if (newImplementation == address(0)) {
+            revert ZeroAddress();
+        }
+
+        if (!isContract(newImplementation)) {
+            revert NotAContract(newImplementation);
+        }
+
+        _implementation = newImplementation;
+    }
+
     function getImplementation() internal view virtual returns (address) {
         return _implementation;
     }

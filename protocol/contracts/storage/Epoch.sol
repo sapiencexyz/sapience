@@ -4,7 +4,7 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "../foil/VirtualToken.sol";
-import "./CommonErrors.sol";
+import "./Errors.sol";
 
 library Epoch {
     struct Data {
@@ -15,7 +15,7 @@ library Epoch {
         uint256 startTime;
         uint256 endTime;
         uint256 settlementPrice;
-        bool isSettled;
+        bool settled;
     }
 
     /**
@@ -40,7 +40,39 @@ library Epoch {
         epoch = load(epochId);
 
         if (epochId == 0 || epoch.id == 0) {
-            revert CommonErrors.InvalidId(epochId);
+            revert Errors.InvalidId(epochId);
         }
+    }
+
+    function settle(Data storage self) internal {
+        if (self.settled) {
+            revert Errors.EpochAlreadySettled(self.id);
+        }
+
+        if (block.timestamp < self.endTime) {
+            revert Errors.EpochNotOver(self.id);
+        }
+
+        self.settled = true;
+        self.vGas.pause();
+        self.vEth.pause();
+    }
+
+    function getCurrentPrice(
+        Data storage self
+    ) internal view returns (uint256) {
+        if (block.timestamp < self.startTime) {
+            revert Errors.EpochNotStarted(self.id);
+        }
+
+        if (self.settled || block.timestamp > self.endTime) {
+            return self.settlementPrice;
+        }
+
+        (uint160 sqrtPriceX96, , , , , , ) = self.pool.slot0();
+        // double check formula
+        return
+            (uint256(sqrtPriceX96) * uint256(sqrtPriceX96) * (1e18)) >>
+            (96 * 2);
     }
 }
