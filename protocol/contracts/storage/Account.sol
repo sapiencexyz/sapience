@@ -11,7 +11,10 @@ library Account {
         uint256 credit;
         uint256 freeGweiAmount;
         uint256 freeGasAmount;
-        Position.Data[] positions;
+        mapping(uint256 => uint256) epochPosition; // position id by epoch id
+        mapping(uint256 => uint256) openPositionIndex; // all currently open positions of the account
+        mapping(uint256 => uint256) positionIndex; // all (historical and currently open) positions of the account
+        Position.Data[] positions; // position data
     }
 
     /**

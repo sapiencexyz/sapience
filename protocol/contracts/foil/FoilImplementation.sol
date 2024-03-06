@@ -70,9 +70,8 @@ contract FoilImplementation {
 
     // --- Debt ---
     function payDebt(uint256 accountId, uint256 epochId) external {
-        // TODO check if account is valid
-        // TODO check msg.sender is approved by the account
-        // TODO check if account is not paused
+        Account.Data storage account = Account.loadValid(accountId);
+        account.isAuthorized(foilNFT, msg.sender);
         // TODO check if can pay that amount
         // notice: using the epoch rate, calculate the amount of gas tokens and wei tokens to burn, the user holding and swap them to pay. If needed it will mint more from the deposited collateral
         // TODO adjust balances
@@ -82,34 +81,30 @@ contract FoilImplementation {
         uint256 accountId,
         uint256 epochId
     ) external view returns (uint256) {
-        // TODO check if account is valid
-        // TODO check msg.sender is approved by the account
-        // TODO check if account is not paused
+        Account.Data storage account = Account.loadValid(accountId);
+        account.isAuthorized(foilNFT, msg.sender);
+
         // TODO calculate current debt
     }
 
     function accountGlobalDebt(
         uint256 accountId
     ) external view returns (uint256) {
-        // TODO check if account is valid
-        // TODO check msg.sender is approved by the account
-        // TODO check if account is not paused
+        Account.Data storage account = Account.loadValid(accountId);
+        account.isAuthorized(foilNFT, msg.sender);
         // TODO calculate current debt
     }
 
     function accountLiquidatable(
         uint256 accountId
     ) external view returns (bool) {
-        // TODO check if account is valid
-        // TODO check msg.sender is approved by the account
-        // TODO check if account is not paused
+        Account.Data storage account = Account.loadValid(accountId);
+        account.isAuthorized(foilNFT, msg.sender);
         // TODO check if account is liquidatable
     }
 
     function liquidateAccount(uint256 accountId) external {
-        // TODO check if account is valid
-        // TODO check msg.sender is approved by the account
-        // TODO check if account is not paused
+        Account.Data storage account = Account.loadValid(accountId);
         // TODO check if account is liquidatable
         // TODO liquidate account
         // notice: liquidating an account involves burning all the gas tokens and wei tokens, adjust balances (remaining colalteral stay here to pay other LPs)
@@ -156,9 +151,8 @@ contract FoilImplementation {
         uint256 epochId,
         uint256 tokenType
     ) internal {
-        // TODO check if account is valid
-        // TODO check msg.sender is approved by the account
-        // TODO check if account is not paused
+        Account.Data storage account = Account.loadValid(accountId);
+        account.isAuthorized(foilNFT, msg.sender);
         // TODO check if epoch is valid
         // TODO check if epoch is not over and can mint
         // TODO check if can mint that amount
@@ -173,9 +167,8 @@ contract FoilImplementation {
         uint256 epochId,
         uint256 tokenType
     ) internal {
-        // TODO check if account is valid
-        // TODO check msg.sender is approved by the account
-        // TODO check if account is not paused
+        Account.Data storage account = Account.loadValid(accountId);
+        account.isAuthorized(foilNFT, msg.sender);
         // TODO check if epoch is valid
         // TODO check if can burn that amount
         // TODO transfer amount of gas token from msg.sender
