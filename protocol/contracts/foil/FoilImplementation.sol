@@ -114,69 +114,93 @@ contract FoilImplementation is IUniswapV3MintCallback, IUniswapV3SwapCallback {
         // TODO adjust balances
     }
 
+    // --- Position operations ---
+    function supply(
+        uint256 accountId,
+        uint256 epochId,
+        uint256 amountGwei,
+        uint256 amountGGas,
+        uint256 priceMin,
+        uint256 priceMax
+    ) external {
+        Account.Data storage account = Account.loadValid(accountId);
+        account.isAuthorized(foilNFT, msg.sender);
+        // TODO check if can supply that amount
+        // notice: using the epoch rate, calculate the amount of gas tokens and wei tokens to mint, the user holding and swap them to supply
+        // TODO adjust balances
+    }
+
+    function closePosition(uint256 accountId, uint256 epochId) external {
+        Account.Data storage account = Account.loadValid(accountId);
+        account.isAuthorized(foilNFT, msg.sender);
+        // TODO close position
+        // notice: closing a position involves burning all the gas tokens and wei tokens, adjust balances
+        // TODO adjust balances
+    }
+
     // --- Token mint and burn ---
-    function mintGasToken(
-        uint256 accountId,
-        uint256 amount,
-        uint256 epochId
-    ) external {
-        _mintToken(accountId, amount, epochId, GAS_TOKEN);
-    }
+    // function mintGasToken(
+    //     uint256 accountId,
+    //     uint256 amount,
+    //     uint256 epochId
+    // ) external {
+    //     _mintToken(accountId, amount, epochId, GAS_TOKEN);
+    // }
 
-    function burnGasToken(
-        uint256 accountId,
-        uint256 amount,
-        uint256 epochId
-    ) external {
-        _burnToken(accountId, amount, epochId, GAS_TOKEN);
-    }
+    // function burnGasToken(
+    //     uint256 accountId,
+    //     uint256 amount,
+    //     uint256 epochId
+    // ) external {
+    //     _burnToken(accountId, amount, epochId, GAS_TOKEN);
+    // }
 
-    function mintWeiToken(
-        uint256 accountId,
-        uint256 amount,
-        uint256 epochId
-    ) external {
-        _mintToken(accountId, amount, epochId, WEI_TOKEN);
-    }
+    // function mintWeiToken(
+    //     uint256 accountId,
+    //     uint256 amount,
+    //     uint256 epochId
+    // ) external {
+    //     _mintToken(accountId, amount, epochId, WEI_TOKEN);
+    // }
 
-    function burnWeiToken(
-        uint256 accountId,
-        uint256 amount,
-        uint256 epochId
-    ) external {
-        _burnToken(accountId, amount, epochId, WEI_TOKEN);
-    }
+    // function burnWeiToken(
+    //     uint256 accountId,
+    //     uint256 amount,
+    //     uint256 epochId
+    // ) external {
+    //     _burnToken(accountId, amount, epochId, WEI_TOKEN);
+    // }
 
-    function _mintToken(
-        uint256 accountId,
-        uint256 amount,
-        uint256 epochId,
-        uint256 tokenType
-    ) internal {
-        Account.Data storage account = Account.loadValid(accountId);
-        account.isAuthorized(foilNFT, msg.sender);
-        // TODO check if epoch is valid
-        // TODO check if epoch is not over and can mint
-        // TODO check if can mint that amount
-        // TODO mint amount of gas token
-        // TODO transfer amount of gas token to msg.sender
-        // TODO adjust balances
-    }
+    // function _mintToken(
+    //     uint256 accountId,
+    //     uint256 amount,
+    //     uint256 epochId,
+    //     uint256 tokenType
+    // ) internal {
+    //     Account.Data storage account = Account.loadValid(accountId);
+    //     account.isAuthorized(foilNFT, msg.sender);
+    //     // TODO check if epoch is valid
+    //     // TODO check if epoch is not over and can mint
+    //     // TODO check if can mint that amount
+    //     // TODO mint amount of gas token
+    //     // TODO transfer amount of gas token to msg.sender
+    //     // TODO adjust balances
+    // }
 
-    function _burnToken(
-        uint256 accountId,
-        uint256 amount,
-        uint256 epochId,
-        uint256 tokenType
-    ) internal {
-        Account.Data storage account = Account.loadValid(accountId);
-        account.isAuthorized(foilNFT, msg.sender);
-        // TODO check if epoch is valid
-        // TODO check if can burn that amount
-        // TODO transfer amount of gas token from msg.sender
-        // TODO burn amount of gas token
-        // TODO adjust balances
-    }
+    // function _burnToken(
+    //     uint256 accountId,
+    //     uint256 amount,
+    //     uint256 epochId,
+    //     uint256 tokenType
+    // ) internal {
+    //     Account.Data storage account = Account.loadValid(accountId);
+    //     account.isAuthorized(foilNFT, msg.sender);
+    //     // TODO check if epoch is valid
+    //     // TODO check if can burn that amount
+    //     // TODO transfer amount of gas token from msg.sender
+    //     // TODO burn amount of gas token
+    //     // TODO adjust balances
+    // }
 
     // --- Uniswap V3 Callbacks ---
     function uniswapV3MintCallback(
