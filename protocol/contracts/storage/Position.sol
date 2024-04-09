@@ -7,7 +7,7 @@ import "./Epoch.sol";
 library Position {
     struct Data {
         uint256 id;
-        Epoch.Data epoch;
+        uint256 epochId;
         uint256 amountGwei;
         uint256 amountGas;
         uint256 priceMin;

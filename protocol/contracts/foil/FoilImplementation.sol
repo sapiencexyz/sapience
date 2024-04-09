@@ -11,10 +11,15 @@ import "../storage/Account.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IUniswapV3MintCallback} from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
 import {IUniswapV3SwapCallback} from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
 
-contract FoilImplementation is IUniswapV3MintCallback, IUniswapV3SwapCallback {
+contract FoilImplementation is
+    IUniswapV3MintCallback,
+    IUniswapV3SwapCallback,
+    ReentrancyGuard
+{
     using EpochFactory for EpochFactory.Data;
     using Epoch for Epoch.Data;
     using Position for Position.Data;
@@ -45,7 +50,7 @@ contract FoilImplementation is IUniswapV3MintCallback, IUniswapV3SwapCallback {
         account.deposit(amount);
     }
 
-    function withdraw(uint256 accountId, uint256 amount) external {
+    function withdraw(uint256 accountId, uint256 amount) external nonReentrant {
         Account.Data storage account = Account.loadValid(accountId);
         account.isAuthorized(foilNFT, msg.sender);
         account.withdraw(amount);
@@ -76,6 +81,7 @@ contract FoilImplementation is IUniswapV3MintCallback, IUniswapV3SwapCallback {
         account.isAuthorized(foilNFT, msg.sender);
         // TODO check if can pay that amount
         // notice: using the epoch rate, calculate the amount of gas tokens and wei tokens to burn, the user holding and swap them to pay. If needed it will mint more from the deposited collateral
+
         // TODO adjust balances
     }
 
@@ -97,6 +103,7 @@ contract FoilImplementation is IUniswapV3MintCallback, IUniswapV3SwapCallback {
         // TODO calculate current debt
     }
 
+    // --- Liquidation ---
     function accountLiquidatable(
         uint256 accountId
     ) external view returns (bool) {
@@ -126,15 +133,49 @@ contract FoilImplementation is IUniswapV3MintCallback, IUniswapV3SwapCallback {
         Account.Data storage account = Account.loadValid(accountId);
         account.isAuthorized(foilNFT, msg.sender);
         // TODO check if can supply that amount
-        // notice: using the epoch rate, calculate the amount of gas tokens and wei tokens to mint, the user holding and swap them to supply
+        // notice: using the epoch rate, calculate the amount of gas tokens and wei tokens to mint,
+        uint rate = Epoch.loadValid(epochId).getCurrentPrice();
+
+        // calculate the user holding and swap them to supply to the pool
         // TODO adjust balances
     }
 
     function closePosition(uint256 accountId, uint256 epochId) external {
         Account.Data storage account = Account.loadValid(accountId);
         account.isAuthorized(foilNFT, msg.sender);
-        // TODO close position
-        // notice: closing a position involves burning all the gas tokens and wei tokens, adjust balances
+
+        // TODO check epoch is closed
+
+        Epoch.Data storage epoch = Epoch.loadValid(epochId);
+        Position.Data storage position = Position.loadValid(
+            account.epochPosition[epochId]
+        );
+
+        uint midRangePrice = (position.priceMin + position.priceMax) / 2;
+        if (epoch.settlementPrice >= position.priceMax) {
+            // Passing through range means user sold all GAS tokens for GWEI tokens (@GAS/GWEI = mid range price)
+            account.freeGweiAmount +=
+                position.amountGwei +
+                position.amountGas *
+                midRangePrice;
+            account.freeGasAmount += 0;
+            position.amountGas = 0;
+            position.amountGwei = 0;
+        } else if (epoch.settlementPrice <= position.priceMin) {
+            account.freeGweiAmount += 0;
+            account.freeGasAmount +=
+                position.amountGas +
+                position.amountGwei /
+                midRangePrice;
+            position.amountGas = 0;
+            position.amountGwei = 0;
+        } else {
+            // in range
+            // TODO do the maths
+        }
+        // TODO burn gas and wei tokens if needed
+        // Notice: don't need to do anything on the pool side since epoch is settled
+
         // TODO adjust balances
     }
 
