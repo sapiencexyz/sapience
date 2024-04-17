@@ -5,7 +5,7 @@ import { RiContrastDrop2Line } from 'react-icons/ri';
 
 const Header = () => {
   return (
-    <Flex as="header" width="full" align="center">
+    <Flex as="header" width="full" align="center" py={4}>
       <Box display="inline-block" as={Link} href="/">
         <Heading fontWeight={900}>
           <Box float="left" mr={1} transform="translateY(5px)">
