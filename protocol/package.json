@@ -6,7 +6,7 @@
   "scripts": {
     "test": "",
     "node": "anvil --fork-url https://mainnet.base.org",
-    "cannon": "cannon build cannonfile.toml --wipe --keep-alive --provider-url http://127.0.0.1:8545 --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+    "deploy": "cannon build cannonfile.toml --wipe --provider-url http://127.0.0.1:8545 --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
     "abis": "cannon inspect foil --write-deployments ./deployments --chain-id 8453"
   },
   "devDependencies": {
