@@ -7,15 +7,7 @@ import "../foil/FoilNFT.sol";
 
 library Account {
     struct Data {
-        uint256 id;
-        uint256 credit;
-        uint256 freeGweiAmount;
-        uint256 freeGasAmount;
-        // TODO re think positions (open, by epoch, historical, etc.)
-        mapping(uint256 => uint256) epochPosition; // position id by epoch id : only one position per epoch (why?)
-        mapping(uint256 => uint256) openPositionIndex; // all currently open positions of the account
-        mapping(uint256 => uint256) positionIndex; // all (historical and currently open) positions of the account
-        Position.Data[] positions; // position data
+        uint160 id;
     }
 
     /**
@@ -23,13 +15,26 @@ library Account {
      * @param accountId The ID of the account to load
      */
     function load(
-        uint256 accountId
+        uint160 accountId
     ) internal pure returns (Data storage account) {
         bytes32 s = keccak256(abi.encode("foil.gas.account", accountId));
 
         assembly {
             account.slot := s
         }
+    }
+
+    function createValid(
+        uint256 accountId
+    ) internal returns (Data storage account) {
+        account = load(accountId);
+
+        if (account.id != 0) {
+            revert Errors.AccountAlreadyCreated();
+        }
+
+        account.id = accountId;
+        return account;
     }
 
     /**
@@ -46,35 +51,26 @@ library Account {
         }
     }
 
-    function isAuthorized(
-        Data storage self,
-        FoilNFT foilNFT,
-        address sender
-    ) internal view {
-        address accountOwner = foilNFT.ownerOf(self.id);
-        if (accountOwner == address(0)) {
-            revert Errors.InvalidId(self.id);
-        }
-
-        if (
-            accountOwner != sender &&
-            foilNFT.getApproved(self.id) != sender &&
-            !foilNFT.isApprovedForAll(accountOwner, sender)
-        ) {
-            revert Errors.NotAccountOwnerOrAuthorized(self.id, sender);
-        }
+    function getAddress(Data storage self) internal view returns (address) {
+        return address(self.id);
     }
 
-    function deposit(Data storage self, uint256 amount) internal {
-        self.credit += amount;
-    }
+    // function isAuthorized(
+    //     Data storage self,
+    //     FoilNFT foilNFT,
+    //     address sender
+    // ) internal view {
+    //     address accountOwner = foilNFT.ownerOf(self.id);
+    //     if (accountOwner == address(0)) {
+    //         revert Errors.InvalidId(self.id);
+    //     }
 
-    function withdraw(Data storage self, uint256 amount) internal {
-        if (self.credit < amount) {
-            revert Errors.NotEnoughCredit(amount, self.credit);
-        }
-
-        // TODO check locked credit and revert accordingly
-        self.credit -= amount;
-    }
+    //     if (
+    //         accountOwner != sender &&
+    //         foilNFT.getApproved(self.id) != sender &&
+    //         !foilNFT.isApprovedForAll(accountOwner, sender)
+    //     ) {
+    //         revert Errors.NotAccountOwnerOrAuthorized(self.id, sender);
+    //     }
+    // }
 }
