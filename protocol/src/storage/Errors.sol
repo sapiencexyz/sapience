@@ -3,6 +3,8 @@
 pragma solidity >=0.8.2 <0.9.0;
 
 library Errors {
+    error AccountAlreadyCreated();
+    error InvalidAccountId(uint160);
     error InvalidEpoch();
     error InvalidAmount(uint256 amount);
     error InvalidStartTime(uint256 time);

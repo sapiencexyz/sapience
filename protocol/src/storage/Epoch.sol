@@ -30,6 +30,14 @@ library Epoch {
         }
     }
 
+    function validateInRange(
+        Data storage self,
+        int24 lowerTick,
+        int24 upperTick
+    ) internal {
+        lowerTick;
+    }
+
     function createValid(
         uint endTime,
         address uniswap,

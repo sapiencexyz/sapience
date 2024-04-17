@@ -6,8 +6,10 @@ import {IUniswapV3MintCallback} from "@uniswap/v3-core/contracts/interfaces/call
 import {IUniswapV3SwapCallback} from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
 import "./VirtualToken.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../storage/Epoch.sol";
 import "../storage/Account.sol";
+import "../storage/Position.sol";
 
 contract Foil is
     IUniswapV3MintCallback,
@@ -16,6 +18,7 @@ contract Foil is
 {
     using Epoch for Epoch.Data;
     using Account for Account.Data;
+    using Position for Position.Data;
 
     constructor(
         uint endTime,
@@ -26,7 +29,7 @@ contract Foil is
         uint baseAssetMaxPrice,
         uint24 feeRate
     ) {
-        Epoch.createValid(
+        Epoch.Data storage epoch = Epoch.createValid(
             endTime,
             uniswap,
             resolver,
@@ -34,11 +37,11 @@ contract Foil is
             baseAssetMinPrice,
             baseAssetMaxPrice
         );
-        Epoch.Data storage epoch = Epoch.createTokens();
+
         epoch.createPool(feeRate);
     }
 
-    function createAccount(uint256 accountId) external {
+    function createAccount(uint160 accountId) external {
         // create NFT
         Account.createValid(accountId);
     }
@@ -62,7 +65,7 @@ contract Foil is
 
         UniV3Abstraction.addLiquidity(
             account.getAddress(),
-            epoch.pool,
+            address(epoch.pool),
             lowerTick,
             upperTick,
             amount,
@@ -71,34 +74,38 @@ contract Foil is
     }
 
     function removeLiquidity(
-        uint256 accountId,
+        uint160 accountId,
         uint128 liquidity,
         int24 lowerTick,
         int24 upperTick
     ) external {
         Epoch.Data storage epoch = Epoch.load();
 
-        (uint128 amount0Received, uint128 amount1Received) = UniV3Abstraction
-            .removeLiquidity(
+        (
+            ,
+            ,
+            uint128 amount0Received,
+            uint128 amount1Received
+        ) = UniV3Abstraction.removeLiquidity(
                 Account.loadValid(accountId).getAddress(),
-                epoch.pool,
+                address(epoch.pool),
                 lowerTick,
                 upperTick,
                 liquidity
             );
 
         Position.load(accountId).updateBalance(
-            amount0Received,
-            amount1Received
+            int256(uint256(amount0Received)),
+            int256(uint256(amount1Received))
         );
     }
 
-    function openLong(uint256 accountId, uint256 collateralAmount) external {
+    function openLong(uint160 accountId, uint256 collateralAmount) external {
         // check within time range
         Account.Data storage account = Account.loadValid(accountId);
         Epoch.Data storage epoch = Epoch.load();
 
-        epoch.collateralAsset.transferFrom(
+        IERC20(epoch.collateralAsset).transferFrom(
             msg.sender,
             address(this),
             collateralAmount
@@ -107,18 +114,18 @@ contract Foil is
         Position.load(accountId).openLong(collateralAmount);
     }
 
-    function reduceLong(uint256 accountId, uint256 vGasAmount) external {
+    function reduceLong(uint160 accountId, uint256 vGasAmount) external {
         Position.Data storage position = Position.loadValid(accountId);
 
         Position.load(accountId).reduceLong(vGasAmount);
     }
 
-    function openShort(uint256 accountId, uint256 collateralAmount) external {
+    function openShort(uint160 accountId, uint256 collateralAmount) external {
         // check within time range
         Account.Data storage account = Account.loadValid(accountId);
         Epoch.Data storage epoch = Epoch.load();
 
-        epoch.collateralAsset.transferFrom(
+        IERC20(epoch.collateralAsset).transferFrom(
             msg.sender,
             address(this),
             collateralAmount
@@ -127,7 +134,7 @@ contract Foil is
         Position.load(accountId).openShort(collateralAmount);
     }
 
-    function reduceShort(uint256 accountId, uint256 vEthAmount) external {
+    function reduceShort(uint160 accountId, uint256 vEthAmount) external {
         Position.Data storage position = Position.loadValid(accountId);
 
         Position.load(accountId).reduceShort(vEthAmount);
@@ -175,7 +182,7 @@ contract Foil is
         IUniswapV3Pool pool = IUniswapV3Pool(epoch.pool);
 
         (address token, uint256 amountToPay) = amount0Delta > 0
-            ? (pool.token0(), uint256(amount0Delta), )
+            ? (pool.token0(), uint256(amount0Delta))
             : (pool.token1(), uint256(amount1Delta));
 
         if (shouldMint) {

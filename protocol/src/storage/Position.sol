@@ -14,7 +14,7 @@ library Position {
     }
 
     function load(
-        uint256 accountId
+        uint160 accountId
     ) internal pure returns (Data storage position) {
         bytes32 s = keccak256(abi.encode("foil.gas.position", accountId));
 
@@ -24,7 +24,7 @@ library Position {
     }
 
     function loadValid(
-        uint256 accountId
+        uint160 accountId
     ) internal view returns (Data storage position) {
         Account.loadValid(accountId);
         position = load(accountId);
@@ -35,7 +35,7 @@ library Position {
 
         UniV3Abstraction.swap(
             self.accountId,
-            epoch.pool,
+            address(epoch.pool),
             true,
             true,
             collateralAmount,
@@ -51,7 +51,7 @@ library Position {
 
         UniV3Abstraction.swap(
             self.accountId,
-            epoch.pool,
+            address(epoch.pool),
             true,
             false,
             vGasAmount,
@@ -69,7 +69,7 @@ library Position {
 
         UniV3Abstraction.swap(
             self.accountId,
-            epoch.pool,
+            address(epoch.pool),
             false,
             true,
             collateralAmount,
@@ -87,7 +87,7 @@ library Position {
 
         UniV3Abstraction.swap(
             self.accountId,
-            epoch.pool,
+            address(epoch.pool),
             true,
             true,
             vEthAmount,
@@ -102,9 +102,9 @@ library Position {
         int256 amount1Delta
     ) internal {
         if (amount0Delta < 0) {
-            self.vEthAmount += amount0Delta * -1;
+            self.vEthAmount += uint256(amount0Delta * -1);
         } else {
-            self.vGasAmount += amount1Delta * -1;
+            self.vGasAmount += uint256(amount1Delta * -1);
         }
     }
 }

@@ -25,7 +25,7 @@ library Account {
     }
 
     function createValid(
-        uint256 accountId
+        uint160 accountId
     ) internal returns (Data storage account) {
         account = load(accountId);
 
@@ -42,12 +42,12 @@ library Account {
      * @param accountId The ID of the account to load
      */
     function loadValid(
-        uint256 accountId
+        uint160 accountId
     ) internal view returns (Data storage account) {
         account = load(accountId);
 
         if (accountId == 0 || account.id == 0) {
-            revert Errors.InvalidId(accountId);
+            revert Errors.InvalidAccountId(accountId);
         }
     }
 
