@@ -7,7 +7,7 @@ uniswap = "0x33128a8fC17869897dcE68Ed026d694621f6FDfD" # Base, lets use base for
 resolver = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" # Default anvil signer
 baseAssetMinPrice = "<%= parseEther('5') %>"
 baseAssetMaxPrice = "<%= parseEther('200') %>"
-feeRate = "<%= parseEther('0.01') %>"
+feeRate = "10000" # 1%
 depends = []
 
 [clone.CollateralAsset]
