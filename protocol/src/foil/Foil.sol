@@ -41,7 +41,7 @@ contract Foil is
         epoch.createPool(feeRate);
     }
 
-    function createAccount(uint160 accountId) external {
+    function createAccount(uint256 accountId) external {
         // create NFT
         Account.createValid(accountId);
     }
@@ -52,7 +52,7 @@ contract Foil is
 
     */
     function addLiquidity(
-        uint160 accountId,
+        uint256 accountId,
         uint256 amount,
         int24 lowerTick,
         int24 upperTick
@@ -74,7 +74,7 @@ contract Foil is
     }
 
     function removeLiquidity(
-        uint160 accountId,
+        uint256 accountId,
         uint128 liquidity,
         int24 lowerTick,
         int24 upperTick
@@ -100,7 +100,7 @@ contract Foil is
         );
     }
 
-    function openLong(uint160 accountId, uint256 collateralAmount) external {
+    function openLong(uint256 accountId, uint256 collateralAmount) external {
         // check within time range
         Account.Data storage account = Account.loadValid(accountId);
         Epoch.Data storage epoch = Epoch.load();
@@ -114,13 +114,13 @@ contract Foil is
         Position.load(accountId).openLong(collateralAmount);
     }
 
-    function reduceLong(uint160 accountId, uint256 vGasAmount) external {
+    function reduceLong(uint256 accountId, uint256 vGasAmount) external {
         Position.Data storage position = Position.loadValid(accountId);
 
         Position.load(accountId).reduceLong(vGasAmount);
     }
 
-    function openShort(uint160 accountId, uint256 collateralAmount) external {
+    function openShort(uint256 accountId, uint256 collateralAmount) external {
         // check within time range
         Account.Data storage account = Account.loadValid(accountId);
         Epoch.Data storage epoch = Epoch.load();
@@ -134,7 +134,7 @@ contract Foil is
         Position.load(accountId).openShort(collateralAmount);
     }
 
-    function reduceShort(uint160 accountId, uint256 vEthAmount) external {
+    function reduceShort(uint256 accountId, uint256 vEthAmount) external {
         Position.Data storage position = Position.loadValid(accountId);
 
         Position.load(accountId).reduceShort(vEthAmount);
@@ -172,11 +172,10 @@ contract Foil is
         int256 amount1Delta, // vwstGas -50
         bytes calldata data
     ) external override {
-        (uint160 accountId, bool shouldMint) = abi.decode(
+        (uint256 accountId, bool shouldMint) = abi.decode(
             data,
             (uint160, bool)
         );
-        Account.Data storage account = Account.loadValid(accountId);
         Epoch.Data storage epoch = Epoch.load();
 
         IUniswapV3Pool pool = IUniswapV3Pool(epoch.pool);

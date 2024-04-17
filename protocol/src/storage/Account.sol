@@ -7,7 +7,7 @@ import "../foil/FoilNFT.sol";
 
 library Account {
     struct Data {
-        uint160 id;
+        uint256 id;
     }
 
     /**
@@ -15,7 +15,7 @@ library Account {
      * @param accountId The ID of the account to load
      */
     function load(
-        uint160 accountId
+        uint256 accountId
     ) internal pure returns (Data storage account) {
         bytes32 s = keccak256(abi.encode("foil.gas.account", accountId));
 
@@ -25,7 +25,7 @@ library Account {
     }
 
     function createValid(
-        uint160 accountId
+        uint256 accountId
     ) internal returns (Data storage account) {
         account = load(accountId);
 
@@ -42,7 +42,7 @@ library Account {
      * @param accountId The ID of the account to load
      */
     function loadValid(
-        uint160 accountId
+        uint256 accountId
     ) internal view returns (Data storage account) {
         account = load(accountId);
 
@@ -52,7 +52,7 @@ library Account {
     }
 
     function getAddress(Data storage self) internal view returns (address) {
-        return address(self.id);
+        return address(uint160(self.id));
     }
 
     // function isAuthorized(

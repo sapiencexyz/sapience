@@ -8,13 +8,13 @@ import "../utils/UniV3Abstraction.sol";
 
 library Position {
     struct Data {
-        uint160 accountId;
+        uint256 accountId;
         uint256 vEthAmount;
         uint256 vGasAmount;
     }
 
     function load(
-        uint160 accountId
+        uint256 accountId
     ) internal pure returns (Data storage position) {
         bytes32 s = keccak256(abi.encode("foil.gas.position", accountId));
 
@@ -24,7 +24,7 @@ library Position {
     }
 
     function loadValid(
-        uint160 accountId
+        uint256 accountId
     ) internal view returns (Data storage position) {
         Account.loadValid(accountId);
         position = load(accountId);
