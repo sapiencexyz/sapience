@@ -63,82 +63,84 @@ contract Foil is
         Epoch.Data storage epoch = Epoch.load();
         epoch.validateInRange(lowerTick, upperTick);
 
-        UniV3Abstraction.addLiquidity(
-            account.getAddress(),
-            address(epoch.pool),
-            lowerTick,
-            upperTick,
-            amount,
-            Epoch.load()
-        );
+        UniV3Abstraction.RuntimeAddLiquidityParams
+            memory params = UniV3Abstraction.RuntimeAddLiquidityParams({
+                recipient: account.getAddress(),
+                pool: address(epoch.pool),
+                lowerTick: lowerTick,
+                upperTick: upperTick,
+                collateralAmount: amount
+            });
+
+        UniV3Abstraction.addLiquidity(params);
     }
 
-    function removeLiquidity(
-        uint256 accountId,
-        uint128 liquidity,
-        int24 lowerTick,
-        int24 upperTick
-    ) external {
-        Epoch.Data storage epoch = Epoch.load();
+    // function removeLiquidity(
+    //     uint256 accountId,
+    //     uint128 liquidity,
+    //     int24 lowerTick,
+    //     int24 upperTick
+    // ) external {
+    //     Epoch.Data storage epoch = Epoch.load();
 
-        (
-            ,
-            ,
-            uint128 amount0Received,
-            uint128 amount1Received
-        ) = UniV3Abstraction.removeLiquidity(
-                Account.loadValid(accountId).getAddress(),
-                address(epoch.pool),
-                lowerTick,
-                upperTick,
-                liquidity
-            );
+    //     (
+    //         ,
+    //         ,
+    //         uint128 amount0Received,
+    //         uint128 amount1Received
+    //     ) = UniV3Abstraction.removeLiquidity(
+    //             Account.loadValid(accountId).getAddress(),
+    //             address(epoch.pool),
+    //             lowerTick,
+    //             upperTick,
+    //             liquidity
+    //         );
 
-        Position.load(accountId).updateBalance(
-            int256(uint256(amount0Received)),
-            int256(uint256(amount1Received))
-        );
-    }
+    //     Position.load(accountId).updateBalance(
+    //         int256(uint256(amount0Received)),
+    //         int256(uint256(amount1Received))
+    //     );
+    // }
 
-    function openLong(uint256 accountId, uint256 collateralAmount) external {
-        // check within time range
-        Account.Data storage account = Account.loadValid(accountId);
-        Epoch.Data storage epoch = Epoch.load();
+    // function openLong(uint256 accountId, uint256 collateralAmount) external {
+    //     // check within time range
+    //     Account.Data storage account = Account.loadValid(accountId);
+    //     Epoch.Data storage epoch = Epoch.load();
 
-        IERC20(epoch.collateralAsset).transferFrom(
-            msg.sender,
-            address(this),
-            collateralAmount
-        );
+    //     IERC20(epoch.collateralAsset).transferFrom(
+    //         msg.sender,
+    //         address(this),
+    //         collateralAmount
+    //     );
 
-        Position.load(accountId).openLong(collateralAmount);
-    }
+    //     Position.load(accountId).openLong(collateralAmount);
+    // }
 
-    function reduceLong(uint256 accountId, uint256 vGasAmount) external {
-        Position.Data storage position = Position.loadValid(accountId);
+    // function reduceLong(uint256 accountId, uint256 vGasAmount) external {
+    //     Position.Data storage position = Position.loadValid(accountId);
 
-        Position.load(accountId).reduceLong(vGasAmount);
-    }
+    //     Position.load(accountId).reduceLong(vGasAmount);
+    // }
 
-    function openShort(uint256 accountId, uint256 collateralAmount) external {
-        // check within time range
-        Account.Data storage account = Account.loadValid(accountId);
-        Epoch.Data storage epoch = Epoch.load();
+    // function openShort(uint256 accountId, uint256 collateralAmount) external {
+    //     // check within time range
+    //     Account.Data storage account = Account.loadValid(accountId);
+    //     Epoch.Data storage epoch = Epoch.load();
 
-        IERC20(epoch.collateralAsset).transferFrom(
-            msg.sender,
-            address(this),
-            collateralAmount
-        );
+    //     IERC20(epoch.collateralAsset).transferFrom(
+    //         msg.sender,
+    //         address(this),
+    //         collateralAmount
+    //     );
 
-        Position.load(accountId).openShort(collateralAmount);
-    }
+    //     Position.load(accountId).openShort(collateralAmount);
+    // }
 
-    function reduceShort(uint256 accountId, uint256 vEthAmount) external {
-        Position.Data storage position = Position.loadValid(accountId);
+    // function reduceShort(uint256 accountId, uint256 vEthAmount) external {
+    //     Position.Data storage position = Position.loadValid(accountId);
 
-        Position.load(accountId).reduceShort(vEthAmount);
-    }
+    //     Position.load(accountId).reduceShort(vEthAmount);
+    // }
 
     // --- Uniswap V3 Callbacks ---
     function uniswapV3MintCallback(

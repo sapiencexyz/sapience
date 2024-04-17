@@ -33,15 +33,18 @@ library Position {
     function openLong(Data storage self, uint256 collateralAmount) internal {
         Epoch.Data storage epoch = Epoch.load();
 
-        UniV3Abstraction.swap(
-            self.accountId,
-            address(epoch.pool),
-            true,
-            true,
-            collateralAmount,
-            type(uint160).max,
-            true
-        );
+        UniV3Abstraction.RuntimeSwapParameters memory params = UniV3Abstraction
+            .RuntimeSwapParameters({
+                accountId: self.accountId,
+                pool: address(epoch.pool),
+                amountIsInput: true,
+                isVEthToVGas: true,
+                amount: collateralAmount,
+                sqrtPriceLimitX96: type(uint160).max,
+                shouldMint: true
+            });
+
+        UniV3Abstraction.swap(params);
     }
 
     function reduceLong(Data storage self, uint256 vGasAmount) internal {
@@ -49,15 +52,18 @@ library Position {
 
         // vGas -> vwstETH
 
-        UniV3Abstraction.swap(
-            self.accountId,
-            address(epoch.pool),
-            true,
-            false,
-            vGasAmount,
-            type(uint160).max,
-            false
-        );
+        UniV3Abstraction.RuntimeSwapParameters memory params = UniV3Abstraction
+            .RuntimeSwapParameters({
+                accountId: self.accountId,
+                pool: address(epoch.pool),
+                amountIsInput: true,
+                isVEthToVGas: false,
+                amount: vGasAmount,
+                sqrtPriceLimitX96: type(uint160).max,
+                shouldMint: false
+            });
+
+        UniV3Abstraction.swap(params);
     }
 
     function openShort(Data storage self, uint256 collateralAmount) internal {
@@ -67,15 +73,18 @@ library Position {
             wstETH -> vGas -> uniswap -> vwstETH
         */
 
-        UniV3Abstraction.swap(
-            self.accountId,
-            address(epoch.pool),
-            false,
-            true,
-            collateralAmount,
-            type(uint160).max,
-            true
-        );
+        UniV3Abstraction.RuntimeSwapParameters memory params = UniV3Abstraction
+            .RuntimeSwapParameters({
+                accountId: self.accountId,
+                pool: address(epoch.pool),
+                amountIsInput: false,
+                isVEthToVGas: true,
+                amount: collateralAmount,
+                sqrtPriceLimitX96: type(uint160).max,
+                shouldMint: true
+            });
+
+        UniV3Abstraction.swap(params);
     }
 
     function reduceShort(Data storage self, uint256 vEthAmount) internal {
@@ -85,15 +94,18 @@ library Position {
             vEth -> vGas
         */
 
-        UniV3Abstraction.swap(
-            self.accountId,
-            address(epoch.pool),
-            true,
-            true,
-            vEthAmount,
-            type(uint160).max,
-            false
-        );
+        UniV3Abstraction.RuntimeSwapParameters memory params = UniV3Abstraction
+            .RuntimeSwapParameters({
+                accountId: self.accountId,
+                pool: address(epoch.pool),
+                amountIsInput: true,
+                isVEthToVGas: true,
+                amount: vEthAmount,
+                sqrtPriceLimitX96: type(uint160).max,
+                shouldMint: false
+            });
+
+        UniV3Abstraction.swap(params);
     }
 
     function updateBalance(
