@@ -3,7 +3,7 @@
 pragma solidity >=0.8.2 <0.9.0;
 
 library Errors {
-    error InvalidId(uint256 id);
+    error InvalidEpoch();
     error InvalidAmount(uint256 amount);
     error InvalidStartTime(uint256 time);
     error InvalidEndTime(uint256 time);
@@ -13,6 +13,9 @@ library Errors {
     error EpochAlreadySettled(uint256 epochId);
     error EpochNotOver(uint256 epochId);
     error EpochNotStarted(uint256 epochId);
+    error EpochAlreadyStarted();
+    error TokensAlreadyCreated();
+    error PoolAlreadyCreated();
     error NoEpochs();
     error NotAccountOwnerOrAuthorized(uint256 accountId, address sender);
     error NotEnoughCredit(uint256 amount, uint256 credit);
