@@ -1,11 +1,9 @@
 'use client';
 
 import {
-  Flex,
   Box,
-  Heading,
   FormControl,
-  FormHelperText,
+  Text,
   FormLabel,
   Input,
   InputGroup,
@@ -48,50 +46,44 @@ const AddLiquidity = () => {
 
   return (
     <Box>
-      <Heading size="md" mb={3}>
-        Add Liquidity
-      </Heading>
       <form onSubmit={submit}>
-        <Flex gap={4} mb={6}>
-          <FormControl>
-            <FormLabel>Deposit Amount</FormLabel>
-            <InputGroup>
-              <Input
-                type="number"
-                value={depositAmount}
-                onChange={(e) => setDepositAmount(Number(e.target.value))}
-              />
-              <InputRightAddon>cbETH</InputRightAddon>
-            </InputGroup>
-            <FormHelperText>Something here</FormHelperText>
-          </FormControl>
-
-          <FormControl>
-            <FormLabel>Low Price</FormLabel>
-            <InputGroup>
-              <Input
-                type="number"
-                value={lowPrice}
-                onChange={(e) => setLowPrice(Number(e.target.value))}
-              />
-              <InputRightAddon>Gigagas</InputRightAddon>
-            </InputGroup>
-            <FormHelperText>Something here</FormHelperText>
-          </FormControl>
-
-          <FormControl>
-            <FormLabel>High Price</FormLabel>
-            <InputGroup>
-              <Input
-                type="number" // Ensures only numeric input
-                value={highPrice}
-                onChange={(e) => setHighPrice(Number(e.target.value))}
-              />
-              <InputRightAddon>Gigagas</InputRightAddon>
-            </InputGroup>
-            <FormHelperText>Something here</FormHelperText>
-          </FormControl>
-        </Flex>
+        <FormControl mb={4}>
+          <FormLabel>Collateral Amount</FormLabel>
+          <InputGroup>
+            <Input
+              type="number"
+              value={depositAmount}
+              onChange={(e) => setDepositAmount(Number(e.target.value))}
+            />
+            <InputRightAddon>cbETH</InputRightAddon>
+          </InputGroup>
+        </FormControl>
+        <FormControl mb={4}>
+          <FormLabel>Low Price</FormLabel>
+          <InputGroup>
+            <Input
+              type="number"
+              value={lowPrice}
+              onChange={(e) => setLowPrice(Number(e.target.value))}
+            />
+            <InputRightAddon>cbETH/Ggas</InputRightAddon>
+          </InputGroup>
+        </FormControl>
+        <FormControl mb={4}>
+          <FormLabel>High Price</FormLabel>
+          <InputGroup>
+            <Input
+              type="number" // Ensures only numeric input
+              value={highPrice}
+              onChange={(e) => setHighPrice(Number(e.target.value))}
+            />
+            <InputRightAddon>cbETH/Ggas</InputRightAddon>
+          </InputGroup>
+        </FormControl>
+      <Box mb="4">
+        <Text fontSize="sm" color="gray.500" mb="1">Net Position: X Ggas -> X Ggas</Text>
+        <Text fontSize="sm" color="gray.500" mb="1">Wallet Balance: X cbETH -> x cbETH</Text>
+      </Box>
         <Button disabled={isPending} width="full" colorScheme="green">
           {isPending ? 'Confirming...' : 'Add Liquidity'}
         </Button>{' '}

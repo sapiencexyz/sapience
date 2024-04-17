@@ -2,7 +2,7 @@
 
 import { Flex, Heading } from '@chakra-ui/react';
 
-import LiquidityPositions from '~/lib/components/foil/liquidityPositions';
+import TraderPositions from '~/lib/components/foil/traderPositions';
 
 const Market = ({ params }: { params: { id: string } }) => {
   return (
@@ -15,8 +15,8 @@ const Market = ({ params }: { params: { id: string } }) => {
       w="full"
       py={8}
     >
-      <Heading mb={4}>LP {params.id} Market</Heading>
-      <LiquidityPositions />
+      <Heading mb={4}>Trade {params.id} Market</Heading>
+      <TraderPositions />
     </Flex>
   );
 };

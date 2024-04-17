@@ -1,4 +1,4 @@
-import { AddIcon, EditIcon, CloseIcon } from '@chakra-ui/icons';
+import { AddIcon, CloseIcon, EditIcon } from '@chakra-ui/icons';
 import {
   TableContainer,
   Table,
@@ -16,14 +16,13 @@ import {
   ModalHeader,
   ModalOverlay,
   useDisclosure,
-  Text,
 } from '@chakra-ui/react';
 import { useState } from 'react';
 import { type BaseError, useReadContract } from 'wagmi';
 
-import LiquidityPosition from './liquidityPosition';
+import TraderPosition from './traderPosition';
 
-export default function LiquidityPositions() {
+export default function TraderPositions() {
   const {
     data: balance,
     error,
@@ -36,7 +35,6 @@ export default function LiquidityPositions() {
   });
 
   /*
-
   if (isPending) return <div>Loading...</div>;
 
   if (error)
@@ -50,14 +48,9 @@ export default function LiquidityPositions() {
   const [selectedData, setSelectedData] = useState(null);
 
   const tableData = [
-    {
-      id: 1,
-      collateral: '12',
-      lowPrice: '50',
-      highPrice: '50',
-      netPosition: '+50',
-    },
-    // Add more entries as needed
+    { id: 1, collateral: '12 cbETH', position: '-300 gGas' },
+    { id: 2, collateral: '5 cbETH', position: '-150 gGas' },
+    // Add more data as needed
   ];
 
   const handleCreateClick = () => {
@@ -67,23 +60,21 @@ export default function LiquidityPositions() {
   };
 
   const handleEditClick = (id) => {
-    const data = tableData.find((item) => item.id === id);
+    const data = tableData.find(item => item.id === id);
     setMode('edit');
     setSelectedData(data);
     onOpen();
   };
 
   return (
-    <>
+    <Box>
       <TableContainer mb={4}>
         <Table variant="simple">
           <Thead>
             <Tr>
               <Th>ID</Th>
               <Th>Collateral</Th>
-              <Th>Low Price</Th>
-              <Th>High Price</Th>
-              <Th>Net Position</Th>
+              <Th>Position</Th>
               <Th isNumeric />
             </Tr>
           </Thead>
@@ -91,36 +82,13 @@ export default function LiquidityPositions() {
             {tableData.map((row) => (
               <Tr key={row.id}>
                 <Td>{row.id}</Td>
-                <Td>{row.collateral}{' '}
-                  <Text fontSize="sm" color="gray.500">
-                    cbETH
-                  </Text></Td>
+                <Td>{row.collateral}</Td>
+                <Td>{row.position}</Td>
                 <Td>
-                  {row.lowPrice}{' '}
-                  <Text fontSize="sm" color="gray.500">
-                    cbETH/Ggas
-                  </Text>
-                </Td>
-                <Td>{row.highPrice}{' '}
-                  <Text fontSize="sm" color="gray.500">
-                    cbETH/Ggas
-                  </Text>
-                </Td>
-                <Td>{row.netPosition}
-                  <Text fontSize="sm" color="gray.500">
-                    Gigagas
-                  </Text></Td>
-                <Td>
-                  <Button
-                    onClick={() => handleEditClick(row.id)}
-                    variant="ghost"
-                  >
+                  <Button onClick={() => handleEditClick(row.id)} variant="ghost">
                     <EditIcon />
                   </Button>
-                  <Button
-                    onClick={() => handleEditClick(row.id)}
-                    variant="ghost"
-                  >
+                  <Button onClick={() => handleEditClick(row.id)} variant="ghost">
                     <CloseIcon />
                   </Button>
                 </Td>
@@ -130,28 +98,20 @@ export default function LiquidityPositions() {
         </Table>
       </TableContainer>
       <Box>
-        <Button
-          colorScheme="green"
-          leftIcon={<AddIcon />}
-          onClick={handleCreateClick}
-        >
+        <Button colorScheme="green" leftIcon={<AddIcon />} onClick={handleCreateClick}>
           Create
         </Button>
       </Box>
       <Modal isOpen={isOpen} onClose={onClose} size="sm">
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>
-            {mode === 'create'
-              ? 'Create New Liquidity Position'
-              : 'Edit Liquidity Position'}
-          </ModalHeader>
+          <ModalHeader>{mode === 'create' ? 'Create New Position' : 'Edit Position'}</ModalHeader>
           <ModalCloseButton />
           <ModalBody pb={6}>
-            <LiquidityPosition mode={mode} data={selectedData} />
+            <TraderPosition mode={mode} data={selectedData} />
           </ModalBody>
         </ModalContent>
       </Modal>
-    </>
+    </Box>
   );
 }
