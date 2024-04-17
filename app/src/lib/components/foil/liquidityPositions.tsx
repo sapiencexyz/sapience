@@ -91,26 +91,31 @@ export default function LiquidityPositions() {
             {tableData.map((row) => (
               <Tr key={row.id}>
                 <Td>{row.id}</Td>
-                <Td>{row.collateral}{' '}
+                <Td>
+                  {row.collateral}{' '}
                   <Text fontSize="sm" color="gray.500">
                     cbETH
-                  </Text></Td>
+                  </Text>
+                </Td>
                 <Td>
                   {row.lowPrice}{' '}
                   <Text fontSize="sm" color="gray.500">
                     cbETH/Ggas
                   </Text>
                 </Td>
-                <Td>{row.highPrice}{' '}
+                <Td>
+                  {row.highPrice}{' '}
                   <Text fontSize="sm" color="gray.500">
                     cbETH/Ggas
                   </Text>
                 </Td>
-                <Td>{row.netPosition}
+                <Td>
+                  {row.netPosition}
                   <Text fontSize="sm" color="gray.500">
                     Gigagas
-                  </Text></Td>
-                <Td>
+                  </Text>
+                </Td>
+                <Td isNumeric>
                   <Button
                     onClick={() => handleEditClick(row.id)}
                     variant="ghost"

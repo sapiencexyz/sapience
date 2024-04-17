@@ -60,7 +60,7 @@ export default function TraderPositions() {
   };
 
   const handleEditClick = (id) => {
-    const data = tableData.find(item => item.id === id);
+    const data = tableData.find((item) => item.id === id);
     setMode('edit');
     setSelectedData(data);
     onOpen();
@@ -84,11 +84,17 @@ export default function TraderPositions() {
                 <Td>{row.id}</Td>
                 <Td>{row.collateral}</Td>
                 <Td>{row.position}</Td>
-                <Td>
-                  <Button onClick={() => handleEditClick(row.id)} variant="ghost">
+                <Td isNumeric>
+                  <Button
+                    onClick={() => handleEditClick(row.id)}
+                    variant="ghost"
+                  >
                     <EditIcon />
                   </Button>
-                  <Button onClick={() => handleEditClick(row.id)} variant="ghost">
+                  <Button
+                    onClick={() => handleEditClick(row.id)}
+                    variant="ghost"
+                  >
                     <CloseIcon />
                   </Button>
                 </Td>
@@ -98,14 +104,20 @@ export default function TraderPositions() {
         </Table>
       </TableContainer>
       <Box>
-        <Button colorScheme="green" leftIcon={<AddIcon />} onClick={handleCreateClick}>
+        <Button
+          colorScheme="green"
+          leftIcon={<AddIcon />}
+          onClick={handleCreateClick}
+        >
           Create
         </Button>
       </Box>
       <Modal isOpen={isOpen} onClose={onClose} size="sm">
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>{mode === 'create' ? 'Create New Position' : 'Edit Position'}</ModalHeader>
+          <ModalHeader>
+            {mode === 'create' ? 'Create New Position' : 'Edit Position'}
+          </ModalHeader>
           <ModalCloseButton />
           <ModalBody pb={6}>
             <TraderPosition mode={mode} data={selectedData} />
