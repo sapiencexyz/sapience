@@ -1,0 +1,18 @@
+{
+  "address": "0x4C4a2f8c81640e47606d3fd77B353E87Ba015584",
+  "abi": [
+    {
+      "type": "error",
+      "name": "ReentrancyGuardReentrantCall",
+      "inputs": []
+    }
+  ],
+  "constructorArgs": [],
+  "linkedLibraries": {},
+  "deployTxnHash": "0xfb10b7cb87a48cf6bce2a3dbe55f90bed3c055eaf510bbd81dec53751e8c6f8f",
+  "sourceName": "node_modules/@openzeppelin/contracts/utils/ReentrancyGuard.sol",
+  "contractName": "ReentrancyGuard",
+  "deployedOn": "deploy.ReentrancyGuard",
+  "gasUsed": 53000,
+  "gasCost": "1001537372"
+}

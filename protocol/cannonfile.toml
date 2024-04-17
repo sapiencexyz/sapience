@@ -1,0 +1,36 @@
+name="foil"
+version="0.1"
+
+[var.settings]
+endTime = "1720051200" # 4th of july, 2024
+uniswap = "0x33128a8fC17869897dcE68Ed026d694621f6FDfD" # Base, lets use base fork for now
+resolver = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" # Default anvil signer
+baseAssetMinPrice = "<%= parseEther('5') %>"
+baseAssetMaxPrice = "<%= parseEther('200') %>"
+feeRate = "<%= parseEther('0.01') %>"
+depends = []
+
+[clone.CollateralAsset]
+source="mintable-token@permissionless-mint"
+target="foil@test-collateral-asset"
+
+[deploy.ReentrancyGuard]
+artifact = "ReentrancyGuard"
+
+[deploy.UniV3Abstraction]
+artifact = "UniV3Abstraction"
+
+[deploy.Foil]
+artifact="Foil"
+libraries.ReentrancyGuard="<%= contracts.ReentrancyGuard.address %>"
+libraries.UniV3Abstraction="<%= contracts.UniV3Abstraction.address %>"
+args=[
+  "<%= settings.endTime %>",
+  "<%= settings.uniswap %>",
+  "<%= settings.resolver %>",
+  "<%= imports.CollateralAsset.contracts.MintableToken.address %>",
+  "<%= settings.baseAssetMinPrice %>",
+  "<%= settings.baseAssetMaxPrice %>",
+  "<%= settings.feeRate %>",
+]
+depends = ['var.settings', 'deploy.ReentrancyGuard', 'deploy.UniV3Abstraction']

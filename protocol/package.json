@@ -4,22 +4,16 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "test": "hardhat test"
+    "test": "",
+    "node": "anvil --fork-url https://mainnet.base.org",
+    "cannon": "cannon build cannonfile.toml --wipe --keep-alive --provider-url http://127.0.0.1:8545 --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+    "abis": "cannon inspect foil --write-deployments ./deployments --chain-id 8453"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
-    "@nomicfoundation/hardhat-ethers": "^3.0.0",
-    "@nomicfoundation/hardhat-network-helpers": "^1.0.0",
-    "@nomicfoundation/hardhat-verify": "^1.0.0",
-    "@typechain/ethers-v6": "^0.4.0",
-    "@typechain/hardhat": "^8.0.0",
     "@types/chai": "^4.2.0",
     "@types/mocha": "^10.0.6",
     "@types/node": "^20.11.17",
     "chai": "^4.2.0",
-    "ethers": "^6.4.0",
-    "hardhat": "^2.20.1",
-    "hardhat-gas-reporter": "^1.0.8",
     "mocha": "^10.3.0",
     "mocha-junit-reporter": "^2.2.1",
     "solidity-coverage": "^0.8.1",
@@ -28,7 +22,6 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^3.0.0",
     "@openzeppelin/contracts": "^5.0.2npm ",
     "@uniswap/v3-core": "^1.0.1",
     "@uniswap/v3-periphery": "^1.4.4",
