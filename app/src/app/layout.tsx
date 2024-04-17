@@ -2,15 +2,16 @@ import type { Metadata, Viewport } from 'next';
 
 import Providers from '~/app/providers';
 import Layout from '~/lib/layout';
+import '@rainbow-me/rainbowkit/styles.css';
 
 type RootLayoutProps = {
   children: React.ReactNode;
 };
 
-const APP_NAME = 'nextarter-chakra';
+const APP_NAME = 'Foil';
 
 export const metadata: Metadata = {
-  title: { default: APP_NAME, template: '%s | nextarter-chakra' },
+  title: { default: APP_NAME, template: '%s | Foil' },
   description: 'Next.js + chakra-ui + TypeScript template',
   applicationName: APP_NAME,
   appleWebApp: {

@@ -1,5 +1,5 @@
 {
-  "name": "nextarter-chakra",
+  "name": "foil",
   "version": "0.1.0",
   "private": true,
   "author": "sozonome",
@@ -27,12 +27,16 @@
     "@emotion/react": "^11.11.3",
     "@emotion/styled": "^11.11.0",
     "@nivo/boxplot": "^0.84.0",
+    "@rainbow-me/rainbowkit": "^2.0.5",
+    "@tanstack/react-query": "^5.29.2",
     "framer-motion": "^10.17.9",
     "next": "^14.0.4",
     "next-pwa": "^5.6.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-icons": "^4.12.0"
+    "react-icons": "^4.12.0",
+    "viem": "~2.9.20",
+    "wagmi": "^2.5.20"
   },
   "devDependencies": {
     "@commitlint/cli": "^18.4.4",
