@@ -26,10 +26,10 @@ export function middleware(request: NextRequest) {
   // Call our authentication function to check the request
   if (!isAuthenticated(request)) {
     // Respond with JSON indicating an error message
-    return Response.json(
-      { success: false, message: 'authentication failed' },
-      { status: 401 }
-    );
+    return new NextResponse('Authentication required', {
+      status: 401,
+      headers: { 'WWW-Authenticate': 'Basic' },
+    });
   }
   return NextResponse.next();
 }
