@@ -1,9 +1,6 @@
-// contracts/FoilImplementation.sol
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
-import {IUniswapV3MintCallback} from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
-import {IUniswapV3SwapCallback} from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
 import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePositionManager.sol";
 import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "./VirtualToken.sol";
@@ -11,6 +8,8 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../storage/Epoch.sol";
 import "../storage/Account.sol";
 import "../storage/Position.sol";
+
+import "forge-std/console2.sol";
 
 contract Foil is ReentrancyGuard {
     using Epoch for Epoch.Data;
@@ -90,6 +89,17 @@ contract Foil is ReentrancyGuard {
         VirtualToken(epoch.ethToken).mint(address(this), amountTokenA);
         VirtualToken(epoch.gasToken).mint(address(this), amountTokenB);
 
+        TransferHelper.safeApprove(
+            address(epoch.ethToken),
+            address(epoch.uniswapPositionManager),
+            amountTokenA
+        );
+        TransferHelper.safeApprove(
+            address(epoch.gasToken),
+            address(epoch.uniswapPositionManager),
+            amountTokenB
+        );
+
         INonfungiblePositionManager.MintParams
             memory mintParams = INonfungiblePositionManager.MintParams({
                 token0: address(epoch.ethToken),
@@ -105,9 +115,16 @@ contract Foil is ReentrancyGuard {
                 deadline: block.timestamp
             });
 
-        (tokenId, liquidity, amount0, amount1) = epoch
-            .uniswapPositionManager
-            .mint(mintParams);
+        try epoch.uniswapPositionManager.mint(mintParams) returns (
+            uint256 tokenId,
+            uint128 liquidity,
+            uint256 amount0,
+            uint256 amount1
+        ) {
+            tokenId;
+        } catch (bytes memory reason) {
+            console2.logBytes(reason);
+        }
 
         // Create a deposit
         Position.load(accountId).createDeposit(tokenId);

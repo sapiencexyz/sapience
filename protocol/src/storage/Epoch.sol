@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: GPL-3.0
-
+// SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import "../external/univ3/TickMath.sol";
 import "../interfaces/external/INonfungiblePositionManager.sol";
 import "../contracts/VirtualToken.sol";
 import "./Debt.sol";
@@ -115,9 +115,12 @@ library Epoch {
                 )
         );
 
-        console2.logAddress(address(epoch.pool));
+        IUniswapV3Pool(epoch.pool).initialize(25 ether);
+        (uint160 sqrtPriceX96, int24 tick, , , , , ) = IUniswapV3Pool(
+            epoch.pool
+        ).slot0();
 
-        IUniswapV3Pool(epoch.pool).initialize(0.1414213562 ether);
+        console2.log(TickMath.getTickAtSqrtRatio(sqrtPriceX96));
     }
 
     function loadValid() internal view returns (Data storage epoch) {

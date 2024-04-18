@@ -24,6 +24,6 @@ contract FoilTest is Test {
     }
 
     function test_addLiquidity() public {
-        foil.addLiquidity(1, 10 ether, 10 ether, 10 ether, 10, 40);
+        foil.addLiquidity(1, 10 ether, 10 ether, 10 ether, -442020, -433910);
     }
 }
