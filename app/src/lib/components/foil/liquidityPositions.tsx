@@ -19,11 +19,12 @@ import {
   Text,
 } from '@chakra-ui/react';
 import { useState } from 'react';
-import { type BaseError, useReadContract } from 'wagmi';
+// import { type BaseError, useReadContract } from 'wagmi';
 
 import LiquidityPosition from './liquidityPosition';
 
 export default function LiquidityPositions() {
+  /*
   const {
     data: balance,
     error,
@@ -35,7 +36,6 @@ export default function LiquidityPositions() {
     args: ['0x03A71968491d55603FFe1b11A9e23eF013f75bCF'],
   });
 
-  /*
 
   if (isPending) return <div>Loading...</div>;
 
@@ -46,8 +46,9 @@ export default function LiquidityPositions() {
 */
 
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [mode, setMode] = useState(null);
-  const [selectedData, setSelectedData] = useState(null);
+  const [mode, setMode] = useState('create');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [selectedData, setSelectedData] = useState({} as any);
 
   const tableData = [
     {
@@ -66,7 +67,7 @@ export default function LiquidityPositions() {
     onOpen();
   };
 
-  const handleEditClick = (id) => {
+  const handleEditClick = (id: number) => {
     const data = tableData.find((item) => item.id === id);
     setMode('edit');
     setSelectedData(data);
@@ -153,7 +154,7 @@ export default function LiquidityPositions() {
           </ModalHeader>
           <ModalCloseButton />
           <ModalBody pb={6}>
-            <LiquidityPosition mode={mode} data={selectedData} />
+            <LiquidityPosition params={{ mode, selectedData }} />
           </ModalBody>
         </ModalContent>
       </Modal>

@@ -14,7 +14,8 @@ import {
 } from '@chakra-ui/react';
 import { useState } from 'react';
 
-function RadioCard(props) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function RadioCard(props: any) {
   const { getInputProps, getRadioProps } = useRadio(props);
 
   const input = getInputProps();
@@ -40,27 +41,40 @@ function RadioCard(props) {
         px={5}
         py={3}
       >
-        {props.children}
+        {
+          // eslint-disable-next-line react/destructuring-assignment
+          props.children
+        }
       </Box>
     </Box>
   );
 }
 
-export default function TraderPosition() {
+export default function TraderPosition({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  params,
+}: {
+  params: { mode: string; selectedData: JSON };
+}) {
   const options = ['LONG', 'SHORT'];
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [option, setOption] = useState('long');
 
   const { getRootProps, getRadioProps } = useRadioGroup({
     name: 'positionType',
-    defaultValue: 'react',
-    onChange: console.log,
+    defaultValue: 'long',
+    onChange: setOption,
   });
+
+  const group = getRootProps();
 
   const [show, setShow] = useState(false);
   const handleClick = () => setShow(!show);
 
   return (
     <form>
-      <Flex gap={4} mb={4}>
+      <Flex {...group} gap={4} mb={4}>
         {options.map((value) => {
           const radio = getRadioProps({ value });
           return (
@@ -88,8 +102,12 @@ export default function TraderPosition() {
         </InputGroup>
       </FormControl>
       <Box mb="4">
-        <Text fontSize="sm" color="gray.500" mb="1">Position: X Ggas -> X Ggas</Text>
-        <Text fontSize="sm" color="gray.500" mb="1">Wallet Balance: X cbETH -> x cbETH</Text>
+        <Text fontSize="sm" color="gray.500" mb="1">
+          Position: X Ggas to X Ggas
+        </Text>
+        <Text fontSize="sm" color="gray.500" mb="1">
+          Wallet Balance: X cbETH to x cbETH
+        </Text>
       </Box>
       <Button width="full" colorScheme="green">
         Trade

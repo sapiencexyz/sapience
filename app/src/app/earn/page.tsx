@@ -43,7 +43,7 @@ const Market = () => {
           </Heading>
           <Text>
             Provide liquidity at current price to current price x 2. Maybe has
-            some "auto roll" feature.
+            some auto roll feature.
           </Text>
         </Box>
         <Box

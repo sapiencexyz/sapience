@@ -18,7 +18,12 @@ import {
   useWaitForTransactionReceipt,
 } from 'wagmi';
 
-const AddLiquidity = () => {
+const AddLiquidity = ({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  params,
+}: {
+  params: { mode: string; selectedData: JSON };
+}) => {
   const [depositAmount, setDepositAmount] = useState(0);
   const [lowPrice, setLowPrice] = useState(0);
   const [highPrice, setHighPrice] = useState(0);
@@ -80,10 +85,14 @@ const AddLiquidity = () => {
             <InputRightAddon>cbETH/Ggas</InputRightAddon>
           </InputGroup>
         </FormControl>
-      <Box mb="4">
-        <Text fontSize="sm" color="gray.500" mb="1">Net Position: X Ggas -> X Ggas</Text>
-        <Text fontSize="sm" color="gray.500" mb="1">Wallet Balance: X cbETH -> x cbETH</Text>
-      </Box>
+        <Box mb="4">
+          <Text fontSize="sm" color="gray.500" mb="1">
+            Net Position: X Ggas to X Ggas
+          </Text>
+          <Text fontSize="sm" color="gray.500" mb="1">
+            Wallet Balance: X cbETH to x cbETH
+          </Text>
+        </Box>
         <Button disabled={isPending} width="full" colorScheme="green">
           {isPending ? 'Confirming...' : 'Add Liquidity'}
         </Button>{' '}

@@ -18,11 +18,12 @@ import {
   useDisclosure,
 } from '@chakra-ui/react';
 import { useState } from 'react';
-import { type BaseError, useReadContract } from 'wagmi';
+// import { type BaseError, useReadContract } from 'wagmi';
 
 import TraderPosition from './traderPosition';
 
 export default function TraderPositions() {
+  /*
   const {
     data: balance,
     error,
@@ -34,7 +35,6 @@ export default function TraderPositions() {
     args: ['0x03A71968491d55603FFe1b11A9e23eF013f75bCF'],
   });
 
-  /*
   if (isPending) return <div>Loading...</div>;
 
   if (error)
@@ -44,8 +44,9 @@ export default function TraderPositions() {
 */
 
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [mode, setMode] = useState(null);
-  const [selectedData, setSelectedData] = useState(null);
+  const [mode, setMode] = useState('create');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [selectedData, setSelectedData] = useState({} as any);
 
   const tableData = [
     { id: 1, collateral: '12 cbETH', position: '-300 gGas' },
@@ -59,7 +60,7 @@ export default function TraderPositions() {
     onOpen();
   };
 
-  const handleEditClick = (id) => {
+  const handleEditClick = (id: number) => {
     const data = tableData.find((item) => item.id === id);
     setMode('edit');
     setSelectedData(data);
@@ -120,7 +121,7 @@ export default function TraderPositions() {
           </ModalHeader>
           <ModalCloseButton />
           <ModalBody pb={6}>
-            <TraderPosition mode={mode} data={selectedData} />
+            <TraderPosition params={{ mode, selectedData }} />
           </ModalBody>
         </ModalContent>
       </Modal>
