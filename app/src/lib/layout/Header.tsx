@@ -20,12 +20,9 @@ const Header = () => {
         <Button
           aria-label="view"
           as={Link}
-          href={`/trade/8453:${Foil.address}`}
+          href={`/8453:${Foil.address}`}
         >
-          Trade
-        </Button>
-        <Button aria-label="view" as={Link} href={`/lp/8453:${Foil.address}`}>
-          LP
+          Base Gas Market
         </Button>
         {/*
         <Button aria-label="view" as={Link} href="/subscribe">

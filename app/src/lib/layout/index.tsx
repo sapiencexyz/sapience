@@ -1,6 +1,6 @@
 'use client';
 
-import { Container, Flex } from '@chakra-ui/react';
+import { Flex } from '@chakra-ui/react';
 import type { ReactNode } from 'react';
 
 import Footer from './Footer';
@@ -20,9 +20,9 @@ const Layout = ({ children }: LayoutProps) => {
       transition="0.5s ease-out"
     >
       <Header />
-      <Container flex="1" as="main" maxW="container.xl">
+      <Flex flex="1" as="main">
         {children}
-      </Container>
+      </Flex>
       <Footer />
     </Flex>
   );

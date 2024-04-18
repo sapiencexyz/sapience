@@ -89,6 +89,8 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     }
   }, [collateralTickerFunctionResult.data]);
 
+  console.log(state)
+
   return (
     <MarketContext.Provider value={state}>{children}</MarketContext.Provider>
   );
