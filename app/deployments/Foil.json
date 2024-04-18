@@ -1,0 +1,200 @@
+{
+  "address": "0x7bc06c482DEAd17c0e297aFbC32f6e63d3846650",
+  "abi": [
+    {
+      "type": "constructor",
+      "inputs": [
+        {
+          "name": "endTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "uniswap",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "resolver",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "collateralAsset",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "baseAssetMinPrice",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "baseAssetMaxPrice",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "feeRate",
+          "type": "uint24",
+          "internalType": "uint24"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "addLiquidity",
+      "inputs": [
+        {
+          "name": "accountId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "lowerTick",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "upperTick",
+          "type": "int24",
+          "internalType": "int24"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "createAccount",
+      "inputs": [
+        {
+          "name": "accountId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "uniswapV3MintCallback",
+      "inputs": [
+        {
+          "name": "amount0Owed",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "amount1Owed",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "data",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "uniswapV3SwapCallback",
+      "inputs": [
+        {
+          "name": "amount0Delta",
+          "type": "int256",
+          "internalType": "int256"
+        },
+        {
+          "name": "amount1Delta",
+          "type": "int256",
+          "internalType": "int256"
+        },
+        {
+          "name": "data",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "error",
+      "name": "AccountAlreadyCreated",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "EpochAlreadyStarted",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidAccountId",
+      "inputs": [
+        {
+          "name": "accountId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidVirtualToken",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "PoolAlreadyCreated",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ReentrancyGuardReentrantCall",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "TokensAlreadyCreated",
+      "inputs": []
+    }
+  ],
+  "constructorArgs": [
+    "1720051200",
+    "0x33128a8fC17869897dcE68Ed026d694621f6FDfD",
+    "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "0x101b9758583F47C63236D831db79247B6eEAdb57",
+    "5000000000000000000",
+    "200000000000000000000",
+    "10000"
+  ],
+  "linkedLibraries": {
+    "src/utils/UniV3Abstraction.sol": {
+      "UniV3Abstraction": "0x7969c5eD335650692Bc04293B07F5BF2e7A673C0"
+    }
+  },
+  "deployTxnHash": "0x5ad28ce743b9f0c91e448eb48c4d3ba3e1eddd68a5befef975f50aa6c8e6060d",
+  "sourceName": "src/foil/Foil.sol",
+  "contractName": "Foil",
+  "deployedOn": "deploy.Foil",
+  "gasUsed": 6740081,
+  "gasCost": "1006645887"
+}

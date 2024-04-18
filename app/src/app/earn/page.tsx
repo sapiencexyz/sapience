@@ -1,4 +1,12 @@
-import { Flex, FormControl, Box, Text, Heading, FormLabel, Select, } from '@chakra-ui/react';
+import {
+  Flex,
+  FormControl,
+  Box,
+  Text,
+  Heading,
+  FormLabel,
+  Select,
+} from '@chakra-ui/react';
 
 const Market = () => {
   return (
@@ -11,35 +19,43 @@ const Market = () => {
             <option value="option1" selected>
               wstETH
             </option>
-            <option value="option2">
-              TIA
-            </option>
+            <option value="option2">TIA</option>
           </Select>
         </FormControl>
-
 
         <Heading size="sm" mb={1}>
           Estimated APY
         </Heading>
         <Box mb={6}>
-        <Text display="inline" fontSize="2xl" mr={2}>
-          X%
-        </Text>
-        <Text display="inline" color="gray.500">
-          (wstETH denominated)
-        </Text>
+          <Text display="inline" fontSize="2xl" mr={2}>
+            X%
+          </Text>
+          <Text display="inline" color="gray.500">
+            (wstETH denominated)
+          </Text>
         </Box>
-        </Box>
+      </Box>
 
-        <Flex>
+      <Flex>
         <Box>
-        <Heading size="md" mb={2}>About</Heading>
-        <Text>Provide liquidity at current price to current price x 2. Maybe has some "auto roll" feature.</Text>
+          <Heading size="md" mb={2}>
+            About
+          </Heading>
+          <Text>
+            Provide liquidity at current price to current price x 2. Maybe has
+            some "auto roll" feature.
+          </Text>
         </Box>
-        <Box padding={6} mb={4} border="1px solid" borderColor="gray.200" borderRadius="md">
+        <Box
+          padding={6}
+          mb={4}
+          border="1px solid"
+          borderColor="gray.200"
+          borderRadius="md"
+        >
           input for adding/removing liquidity
         </Box>
-        </Flex>
+      </Flex>
     </Flex>
   );
 };

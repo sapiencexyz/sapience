@@ -1,0 +1,28 @@
+{
+  "address": "0x7969c5eD335650692Bc04293B07F5BF2e7A673C0",
+  "abi": [
+    {
+      "type": "error",
+      "name": "OverflowInt24ToUint256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowInt256ToUint256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowUint256ToInt256",
+      "inputs": []
+    }
+  ],
+  "constructorArgs": [],
+  "linkedLibraries": {},
+  "deployTxnHash": "0x1754ab5e1ef6f276e0d2d1fa0e6b2f29d6697b26a9f950ed5e031d7a95e9e678",
+  "sourceName": "src/utils/UniV3Abstraction.sol",
+  "contractName": "UniV3Abstraction",
+  "deployedOn": "deploy.UniV3Abstraction",
+  "gasUsed": 1127047,
+  "gasCost": "1007554753"
+}

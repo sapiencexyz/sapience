@@ -15,10 +15,18 @@ const Header = () => {
         </Heading>
       </Box>
       <Flex marginLeft="auto" gap={4}>
-        <Button aria-label="view" as={Link} href="/trade/Gas">
+        <Button
+          aria-label="view"
+          as={Link}
+          href="/trade/8453:0x7bc06c482DEAd17c0e297aFbC32f6e63d3846650"
+        >
           Trade
         </Button>
-        <Button aria-label="view" as={Link} href="/lp/Gas">
+        <Button
+          aria-label="view"
+          as={Link}
+          href="/lp/8453:0x7bc06c482DEAd17c0e297aFbC32f6e63d3846650"
+        >
           LP
         </Button>
         {/*

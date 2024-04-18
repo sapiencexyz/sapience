@@ -1614,7 +1614,7 @@ const Chart = () => {
       maxValue={10}
       subGroupBy="subgroup"
       padding={0.12}
-      enableGridX={true}
+      enableGridX
       axisTop={{
         tickSize: 5,
         tickPadding: 5,

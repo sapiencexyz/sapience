@@ -1,7 +1,4 @@
-import {
-  Flex,
-  Heading,
-} from '@chakra-ui/react';
+import { Flex, Heading } from '@chakra-ui/react';
 
 const Home = () => {
   return (
@@ -13,7 +10,9 @@ const Home = () => {
       mb={8}
       w="full"
     >
-      <Heading size="xl" m="auto" px={24} textAlign="center">Put on your foil hat and start trading gas futures, bitches</Heading>
+      <Heading size="xl" m="auto" px={24} textAlign="center">
+        Put on your foil hat and start trading gas futures, bitches
+      </Heading>
     </Flex>
   );
 };
