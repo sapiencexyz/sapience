@@ -60,8 +60,6 @@ library Epoch {
             revert Errors.TokensAlreadyCreated();
         }
 
-        Data storage config = load();
-
         epoch.endTime = endTime;
         epoch.uniswap = uniswap;
         epoch.resolver = resolver;
@@ -96,13 +94,7 @@ library Epoch {
         );
     }
 
-    /**
-     * @notice Loads an epoch from storage and checks that it is valid
-     * @param epochId The ID of the epoch to load
-     */
-    function loadValid(
-        uint256 epochId
-    ) internal view returns (Data storage epoch) {
+    function loadValid() internal view returns (Data storage epoch) {
         epoch = load();
 
         if (epoch.endTime == 0) {
