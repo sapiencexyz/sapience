@@ -14,7 +14,7 @@ const LiquidityPositionHeader = () => {
         Provide {collateralAssetTicker} Liquidity for {chain.name} Gas
       </Heading>
       <Heading mb={5} fontWeight="normal" size="sm" color="gray.500">
-        Contract Address:{' '}
+        Market Address:{' '}
         <Link
           isExternal
           borderBottom="1px dotted"
