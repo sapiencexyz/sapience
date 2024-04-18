@@ -23,8 +23,8 @@ interface MarketProviderProps {
 
 export const MarketContext = createContext<MarketContextType>({
   chain: {},
-  address: '0x0000',
-  collateralAsset: '0x0000',
+  address: '',
+  collateralAsset: '',
   collateralAssetTicker: '',
 });
 
@@ -35,11 +35,12 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
 }) => {
   const [state, setState] = useState<MarketContextType>({
     chain: {},
-    address: '0x0000',
-    collateralAsset: '0x0000',
+    address: '',
+    collateralAsset: '',
     collateralAssetTicker: '',
   });
 
+  // Set chainId and address from the URL
   useEffect(() => {
     const chain = Object.entries(Chains).find(
       (chainOption) => chainOption[1].id === chainId
@@ -53,11 +54,12 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       chain: chain[1] as any,
       address,
-      collateralAsset: '0x0000',
+      collateralAsset: '',
       collateralAssetTicker: '',
     });
   }, [chainId, address]);
 
+  // Get data about the market from Foil
   const marketViewFunctionResult = useReadContract({
     abi: Foil.abi,
     address: Foil.address as `0x${string}`,
@@ -73,6 +75,26 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     }
   }, [marketViewFunctionResult.data]);
 
+  // Get data about the market from Uniswap
+  // TODO
+  /*
+  const uniswapTickFunction = useReadContract({
+    abi: Foil.abi,
+    address: Foil.address as `0x${string}`,
+    functionName: 'getEpoch',
+  });
+
+  useEffect(() => {
+    if (uniswapTickFunction.data !== undefined) {
+      setState((currentState) => ({
+        ...currentState,
+        ...Object(uniswapTickFunction.data),
+      }));
+    }
+  }, [uniswapTickFunction.data]);
+  */
+
+  // Fetch Collateral Ticker
   const collateralTickerFunctionResult = useReadContract({
     abi: CollateralAsset.abi,
     address: state.collateralAsset as `0x${string}`,

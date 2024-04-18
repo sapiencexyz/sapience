@@ -44,6 +44,14 @@ const AddLiquidity = ({
     });
   }
 
+  // get tickSpacing from context
+  function priceToTick(price: number, tickSpacing: number): number {
+    const tick: number = Math.log(price) / Math.log(1.0001);
+    // Round to the nearest valid tick that is a multiple of tickSpacing
+    const roundedTick: number = Math.round(tick / tickSpacing) * tickSpacing;
+    return roundedTick;
+}
+
   const { isLoading: isConfirming, isSuccess: isConfirmed } =
     useWaitForTransactionReceipt({
       hash,

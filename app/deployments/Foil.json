@@ -10,7 +10,7 @@
           "internalType": "uint256"
         },
         {
-          "name": "uniswap",
+          "name": "uniswapPositionManager",
           "type": "address",
           "internalType": "address"
         },
@@ -52,7 +52,17 @@
           "internalType": "uint256"
         },
         {
-          "name": "amount",
+          "name": "amountTokenA",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "amountTokenB",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateralAmount",
           "type": "uint256",
           "internalType": "uint256"
         },
@@ -67,7 +77,28 @@
           "internalType": "int24"
         }
       ],
-      "outputs": [],
+      "outputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "liquidity",
+          "type": "uint128",
+          "internalType": "uint128"
+        },
+        {
+          "name": "amount0",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "amount1",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
       "stateMutability": "nonpayable"
     },
     {
@@ -78,122 +109,6 @@
           "name": "accountId",
           "type": "uint256",
           "internalType": "uint256"
-        }
-      ],
-      "outputs": [],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
-      "name": "getEpoch",
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "",
-          "type": "tuple",
-          "internalType": "struct Epoch.Data",
-          "components": [
-            {
-              "name": "endTime",
-              "type": "uint256",
-              "internalType": "uint256"
-            },
-            {
-              "name": "uniswap",
-              "type": "address",
-              "internalType": "address"
-            },
-            {
-              "name": "resolver",
-              "type": "address",
-              "internalType": "address"
-            },
-            {
-              "name": "collateralAsset",
-              "type": "address",
-              "internalType": "address"
-            },
-            {
-              "name": "baseAssetMinPrice",
-              "type": "uint256",
-              "internalType": "uint256"
-            },
-            {
-              "name": "baseAssetMaxPrice",
-              "type": "uint256",
-              "internalType": "uint256"
-            },
-            {
-              "name": "vEth",
-              "type": "address",
-              "internalType": "contract VirtualToken"
-            },
-            {
-              "name": "vGas",
-              "type": "address",
-              "internalType": "contract VirtualToken"
-            },
-            {
-              "name": "pool",
-              "type": "address",
-              "internalType": "contract IUniswapV3Pool"
-            },
-            {
-              "name": "settlementPrice",
-              "type": "uint256",
-              "internalType": "uint256"
-            },
-            {
-              "name": "settled",
-              "type": "bool",
-              "internalType": "bool"
-            }
-          ]
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
-      "name": "uniswapV3MintCallback",
-      "inputs": [
-        {
-          "name": "amount0Owed",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "amount1Owed",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "data",
-          "type": "bytes",
-          "internalType": "bytes"
-        }
-      ],
-      "outputs": [],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
-      "name": "uniswapV3SwapCallback",
-      "inputs": [
-        {
-          "name": "amount0Delta",
-          "type": "int256",
-          "internalType": "int256"
-        },
-        {
-          "name": "amount1Delta",
-          "type": "int256",
-          "internalType": "int256"
-        },
-        {
-          "name": "data",
-          "type": "bytes",
-          "internalType": "bytes"
         }
       ],
       "outputs": [],
@@ -222,22 +137,6 @@
     },
     {
       "type": "error",
-      "name": "InvalidVirtualToken",
-      "inputs": [
-        {
-          "name": "token",
-          "type": "address",
-          "internalType": "address"
-        }
-      ]
-    },
-    {
-      "type": "error",
-      "name": "PoolAlreadyCreated",
-      "inputs": []
-    },
-    {
-      "type": "error",
       "name": "ReentrancyGuardReentrantCall",
       "inputs": []
     },
@@ -249,22 +148,18 @@
   ],
   "constructorArgs": [
     "1720051200",
-    "0x33128a8fC17869897dcE68Ed026d694621f6FDfD",
+    "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
     "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
     "0x101b9758583F47C63236D831db79247B6eEAdb57",
     "5000000000000000000",
     "200000000000000000000",
     "10000"
   ],
-  "linkedLibraries": {
-    "src/utils/UniV3Abstraction.sol": {
-      "UniV3Abstraction": "0x7bc06c482DEAd17c0e297aFbC32f6e63d3846650"
-    }
-  },
-  "deployTxnHash": "0x301c81c28fb0ab75748bccfd9fd48685d8de9db5d033cdec6599e0db3d92fa28",
-  "sourceName": "src/foil/Foil.sol",
+  "linkedLibraries": {},
+  "deployTxnHash": "0x1112bdacaf4beccc06eee4e566c95cec6097f7935a64b11a5ab8c56f167c98bd",
+  "sourceName": "src/contracts/Foil.sol",
   "contractName": "Foil",
   "deployedOn": "deploy.Foil",
-  "gasUsed": 6849596,
-  "gasCost": "1030713056"
+  "gasUsed": 6773623,
+  "gasCost": "1022565415"
 }

@@ -3,15 +3,24 @@
 import { Box, Heading, Link } from '@chakra-ui/react';
 import { formatDistanceToNow } from 'date-fns';
 import { useContext } from 'react';
+import { parseEther } from 'viem';
 
 import { MarketContext } from '~/lib/context/MarketProvider';
 
 const PositionsHeader = () => {
-  const { chain, address, collateralAssetTicker, endTime, resolver, collateralAsset, baseAssetMinPrice, baseAssetMaxPrice } =
-    useContext(MarketContext);
+  const {
+    chain,
+    address,
+    collateralAssetTicker,
+    endTime,
+    resolver,
+    collateralAsset,
+    baseAssetMinPrice,
+    baseAssetMaxPrice,
+  } = useContext(MarketContext);
 
-    let relativeTime = '';
-    let formattedTime = '';
+  let relativeTime = '';
+  let formattedTime = '';
   if (endTime) {
     const dateMilliseconds = Number(endTime * 1000n);
     const date = new Date(dateMilliseconds);
@@ -21,11 +30,11 @@ const PositionsHeader = () => {
 
   return (
     <Box>
-      <Heading mb={2}>
-        {chain.name} Gas Market
+      <Heading mb={2}>{chain.name} Gas Market</Heading>
+      <Heading size="md" mb={5}>
+        Expiring in {relativeTime} with {collateralAssetTicker} collateral
       </Heading>
-      <Heading size="md" mb={5}>Expiring in {relativeTime} with {collateralAssetTicker} collateral</Heading>
-        <Heading mb={2} fontWeight="normal" size="sm" color="gray.500">
+      <Heading mb={2} fontWeight="normal" size="sm" color="gray.500">
         Contract:{' '}
         <Link
           isExternal
@@ -36,7 +45,7 @@ const PositionsHeader = () => {
           {address}
         </Link>
       </Heading>
-        <Heading mb={2} fontWeight="normal" size="sm" color="gray.500">
+      <Heading mb={2} fontWeight="normal" size="sm" color="gray.500">
         Collateral:{' '}
         <Link
           isExternal
@@ -57,12 +66,13 @@ const PositionsHeader = () => {
         >
           {resolver}
         </Link>
-        </Heading>
-        <Heading mb={2} fontWeight="normal" size="sm" color="gray.500">
+      </Heading>
+      <Heading mb={2} fontWeight="normal" size="sm" color="gray.500">
         Expiration: {formattedTime}
       </Heading>
-        <Heading mb={5} fontWeight="normal" size="sm" color="gray.500">
-        Allowed Range: {Number(baseAssetMinPrice)} - {Number(baseAssetMaxPrice)}
+      <Heading mb={5} fontWeight="normal" size="sm" color="gray.500">
+        Allowed Range: {baseAssetMinPrice && parseEther(baseAssetMinPrice).toString()} -{' '}
+        {baseAssetMaxPrice && parseEther(baseAssetMaxPrice).toString()}
       </Heading>
     </Box>
   );
