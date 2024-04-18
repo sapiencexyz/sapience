@@ -3,7 +3,7 @@ version="0.1"
 
 [var.settings]
 endTime = "1720051200" # 4th of july, 2024
-uniswap = "0x33128a8fC17869897dcE68Ed026d694621f6FDfD" # Base, lets use base fork for now
+uniswapPositionManager = "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1" # Base, lets use base fork for now
 resolver = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" # Default anvil signer
 baseAssetMinPrice = "<%= parseEther('5') %>"
 baseAssetMaxPrice = "<%= parseEther('200') %>"
@@ -26,7 +26,7 @@ libraries.ReentrancyGuard="<%= contracts.ReentrancyGuard.address %>"
 libraries.UniV3Abstraction="<%= contracts.UniV3Abstraction.address %>"
 args=[
   "<%= settings.endTime %>",
-  "<%= settings.uniswap %>",
+  "<%= settings.uniswapPositionManager %>",
   "<%= settings.resolver %>",
   "<%= imports.CollateralAsset.contracts.MintableToken.address %>",
   "<%= settings.baseAssetMinPrice %>",

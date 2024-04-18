@@ -3,7 +3,7 @@
 pragma solidity >=0.8.2 <0.9.0;
 
 import "./Position.sol";
-import "../foil/FoilNFT.sol";
+import "../contracts/FoilNFT.sol";
 
 library Account {
     struct Data {

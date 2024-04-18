@@ -4,22 +4,26 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
-import "../foil/VirtualToken.sol";
+import "../interfaces/external/INonfungiblePositionManager.sol";
+import "../contracts/VirtualToken.sol";
+import "./Debt.sol";
 import "./Errors.sol";
 
 library Epoch {
     struct Data {
         uint endTime;
-        address uniswap;
+        INonfungiblePositionManager uniswapPositionManager;
         address resolver;
         address collateralAsset;
         uint baseAssetMinPrice;
         uint baseAssetMaxPrice;
-        VirtualToken vEth;
-        VirtualToken vGas;
+        VirtualToken ethToken;
+        VirtualToken gasToken;
         IUniswapV3Pool pool;
         uint256 settlementPrice;
+        uint24 feeRate;
         bool settled;
+        mapping(uint256 => Debt.Data) lpDebtPositions;
     }
 
     function load() internal pure returns (Data storage epoch) {
@@ -38,59 +42,75 @@ library Epoch {
         lowerTick;
     }
 
+    function updateDebtPosition(
+        Data storage self,
+        uint256 tokenId,
+        uint256 tokenAmount0,
+        uint256 tokenAmount1,
+        uint128 liquidity
+    ) internal {
+        self.lpDebtPositions[tokenId] = Debt.Data({
+            tokenAmount0: tokenAmount0,
+            tokenAmount1: tokenAmount1,
+            liquidity: liquidity
+        });
+    }
+
     function createValid(
         uint endTime,
-        address uniswap,
+        address uniswapPositionManager,
         address resolver,
         address collateralAsset,
         uint baseAssetMinPrice,
-        uint baseAssetMaxPrice
+        uint baseAssetMaxPrice,
+        uint24 feeRate
     ) internal returns (Data storage epoch) {
         epoch = load();
 
         // can only be called once
-        if (epoch.endTime != 0) {
+        if (
+            epoch.endTime != 0 ||
+            address(epoch.uniswapPositionManager) != address(0)
+        ) {
             revert Errors.EpochAlreadyStarted();
         }
 
         if (
-            address(epoch.vEth) != address(0) ||
-            address(epoch.vGas) != address(0)
+            address(epoch.ethToken) != address(0) ||
+            address(epoch.gasToken) != address(0)
         ) {
             revert Errors.TokensAlreadyCreated();
         }
 
         epoch.endTime = endTime;
-        epoch.uniswap = uniswap;
+        epoch.uniswapPositionManager = INonfungiblePositionManager(
+            uniswapPositionManager
+        );
         epoch.resolver = resolver;
         epoch.collateralAsset = collateralAsset;
         epoch.baseAssetMinPrice = baseAssetMinPrice;
         epoch.baseAssetMaxPrice = baseAssetMaxPrice;
+        epoch.feeRate = feeRate;
 
-        epoch.vEth = new VirtualToken(
+        epoch.ethToken = new VirtualToken(
             address(this),
             "virtual ETH Token",
             "vETH"
         );
 
-        epoch.vGas = new VirtualToken(
+        epoch.gasToken = new VirtualToken(
             address(this),
             "virtual GAS token",
             "vGAS"
         );
-    }
 
-    function createPool(Data storage self, uint24 feeRate) internal {
-        if (address(self.pool) != address(0)) {
-            revert Errors.PoolAlreadyCreated();
-        }
-
-        self.pool = IUniswapV3Pool(
-            IUniswapV3Factory(self.uniswap).createPool(
-                address(self.vGas),
-                address(self.vEth),
-                feeRate
-            )
+        epoch.pool = IUniswapV3Pool(
+            IUniswapV3Factory(epoch.uniswapPositionManager.factory())
+                .createPool(
+                    address(epoch.gasToken),
+                    address(epoch.ethToken),
+                    feeRate
+                )
         );
     }
 

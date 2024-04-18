@@ -4,13 +4,16 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import "./Epoch.sol";
 import "./Account.sol";
+import "./Debt.sol";
 import "../utils/UniV3Abstraction.sol";
 
 library Position {
     struct Data {
+        uint256 initialEthDeposit;
         uint256 accountId;
         uint256 vEthAmount;
         uint256 vGasAmount;
+        uint256 lpNftId;
     }
 
     function load(
@@ -28,6 +31,10 @@ library Position {
     ) internal view returns (Data storage position) {
         Account.loadValid(accountId);
         position = load(accountId);
+    }
+
+    function createDeposit(Data storage self, uint256 tokenId) internal {
+        self.lpNftId = tokenId;
     }
 
     function openLong(Data storage self, uint256 collateralAmount) internal {
