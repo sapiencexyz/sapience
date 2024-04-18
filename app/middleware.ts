@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const [AUTH_USER, AUTH_PASS] = (process.env.HTTP_BASIC_AUTH || ':').split(':');
+//const [AUTH_USER, AUTH_PASS] = (process.env.HTTP_BASIC_AUTH || ':').split(':');
+const [AUTH_USER, AUTH_PASS] = ['cz', '4'];
 
 // Step 1. HTTP Basic Auth Middleware for Challenge
 export function middleware(req: NextRequest) {
