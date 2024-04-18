@@ -1,5 +1,5 @@
 {
-  "address": "0x7969c5eD335650692Bc04293B07F5BF2e7A673C0",
+  "address": "0x7bc06c482DEAd17c0e297aFbC32f6e63d3846650",
   "abi": [
     {
       "type": "error",
@@ -19,10 +19,10 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x1754ab5e1ef6f276e0d2d1fa0e6b2f29d6697b26a9f950ed5e031d7a95e9e678",
+  "deployTxnHash": "0xcfd73da15bbe1ab68edb697b3fd4d6e51497db2ebcab469964363001d33b1083",
   "sourceName": "src/utils/UniV3Abstraction.sol",
   "contractName": "UniV3Abstraction",
   "deployedOn": "deploy.UniV3Abstraction",
   "gasUsed": 1127047,
-  "gasCost": "1007554753"
+  "gasCost": "1034913259"
 }

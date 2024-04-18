@@ -1,5 +1,5 @@
 {
-  "address": "0x7bc06c482DEAd17c0e297aFbC32f6e63d3846650",
+  "address": "0xc351628EB244ec633d5f21fBD6621e1a683B1181",
   "abi": [
     {
       "type": "constructor",
@@ -82,6 +82,76 @@
       ],
       "outputs": [],
       "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "getEpoch",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct Epoch.Data",
+          "components": [
+            {
+              "name": "endTime",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "uniswap",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "resolver",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "collateralAsset",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "baseAssetMinPrice",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "baseAssetMaxPrice",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "vEth",
+              "type": "address",
+              "internalType": "contract VirtualToken"
+            },
+            {
+              "name": "vGas",
+              "type": "address",
+              "internalType": "contract VirtualToken"
+            },
+            {
+              "name": "pool",
+              "type": "address",
+              "internalType": "contract IUniswapV3Pool"
+            },
+            {
+              "name": "settlementPrice",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "settled",
+              "type": "bool",
+              "internalType": "bool"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
     },
     {
       "type": "function",
@@ -188,13 +258,13 @@
   ],
   "linkedLibraries": {
     "src/utils/UniV3Abstraction.sol": {
-      "UniV3Abstraction": "0x7969c5eD335650692Bc04293B07F5BF2e7A673C0"
+      "UniV3Abstraction": "0x7bc06c482DEAd17c0e297aFbC32f6e63d3846650"
     }
   },
-  "deployTxnHash": "0x5ad28ce743b9f0c91e448eb48c4d3ba3e1eddd68a5befef975f50aa6c8e6060d",
+  "deployTxnHash": "0x301c81c28fb0ab75748bccfd9fd48685d8de9db5d033cdec6599e0db3d92fa28",
   "sourceName": "src/foil/Foil.sol",
   "contractName": "Foil",
   "deployedOn": "deploy.Foil",
-  "gasUsed": 6740081,
-  "gasCost": "1006645887"
+  "gasUsed": 6849596,
+  "gasCost": "1030713056"
 }

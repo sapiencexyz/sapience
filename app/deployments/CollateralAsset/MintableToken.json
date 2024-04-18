@@ -317,11 +317,11 @@
     "18"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x2345c7298e8d3ea49367fc396144e1226c5024cea496ae1da4cd84176bc118a3",
+  "deployTxnHash": "0xde2dfce219d8448e06f574cd594a99d472e7ec7cc58051ef54cb2e6f63a34b9c",
   "sourceName": "src/MintableTokenPermissionlessMint.sol",
   "contractName": "MintableTokenPermissionlessMint",
   "deployedOn": "contract.MintableToken",
   "highlight": true,
   "gasUsed": 639824,
-  "gasCost": "1009834976"
+  "gasCost": "1045451005"
 }

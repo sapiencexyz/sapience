@@ -1,23 +1,27 @@
 'use client';
 
-import { Flex, Heading } from '@chakra-ui/react';
+import { Flex } from '@chakra-ui/react';
 
 import TraderPositions from '~/lib/components/foil/traderPositions';
+import { MarketProvider } from '~/lib/context/MarketProvider';
 
 const Market = ({ params }: { params: { id: string } }) => {
+  const [chainId, marketAddress] = params.id.split('%3A');
+
   return (
-    <Flex
-      direction="column"
-      alignItems="left"
-      minHeight="70vh"
-      gap={4}
-      mb={8}
-      w="full"
-      py={8}
-    >
-      <Heading mb={4}>Trade {params.id} Market</Heading>
-      <TraderPositions />
-    </Flex>
+    <MarketProvider chainId={Number(chainId)} address={marketAddress}>
+      <Flex
+        direction="column"
+        alignItems="left"
+        minHeight="70vh"
+        gap={4}
+        mb={8}
+        w="full"
+        py={8}
+      >
+        <TraderPositions />
+      </Flex>
+    </MarketProvider>
   );
 };
 

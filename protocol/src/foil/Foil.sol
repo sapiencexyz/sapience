@@ -41,6 +41,10 @@ contract Foil is
         epoch.createPool(feeRate);
     }
 
+    function getEpoch() external view returns (Epoch.Data memory) {
+        return Epoch.load();
+    }
+
     function createAccount(uint256 accountId) external {
         // create NFT
         Account.createValid(accountId);

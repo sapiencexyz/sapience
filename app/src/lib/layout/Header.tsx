@@ -3,6 +3,8 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import Link from 'next/link';
 import { RiContrastDrop2Line } from 'react-icons/ri';
 
+import Foil from '../../../deployments/Foil.json';
+
 const Header = () => {
   return (
     <Flex as="header" width="full" align="center" py={4}>
@@ -18,15 +20,11 @@ const Header = () => {
         <Button
           aria-label="view"
           as={Link}
-          href="/trade/8453:0x7bc06c482DEAd17c0e297aFbC32f6e63d3846650"
+          href={`/trade/8453:${Foil.address}`}
         >
           Trade
         </Button>
-        <Button
-          aria-label="view"
-          as={Link}
-          href="/lp/8453:0x7bc06c482DEAd17c0e297aFbC32f6e63d3846650"
-        >
+        <Button aria-label="view" as={Link} href={`/lp/8453:${Foil.address}`}>
           LP
         </Button>
         {/*

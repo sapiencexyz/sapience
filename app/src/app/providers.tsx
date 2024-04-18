@@ -1,21 +1,27 @@
 'use client';
 
 import { CacheProvider } from '@chakra-ui/next-js';
-import { getDefaultConfig, RainbowKitProvider } from '@rainbow-me/rainbowkit';
+import { RainbowKitProvider } from '@rainbow-me/rainbowkit';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
-import { WagmiProvider } from 'wagmi';
-import { mainnet, polygon, optimism, arbitrum, base } from 'wagmi/chains';
+import { createConfig, http, WagmiProvider } from 'wagmi';
+import { base } from 'wagmi/chains';
+import { injected } from 'wagmi/connectors';
 
 import { Chakra as ChakraProvider } from '~/lib/components/Chakra';
 
-const config = getDefaultConfig({
-  appName: 'My RainbowKit App',
-  projectId: 'YOUR_PROJECT_ID',
-  chains: [mainnet, polygon, optimism, arbitrum, base],
-  ssr: true, // If your dApp uses server side rendering (SSR)
-});
-
 const queryClient = new QueryClient();
+
+const config = createConfig({
+  ssr: true,
+  chains: [base],
+  connectors: [injected()],
+  transports: {
+    [base.id]:
+      process.env.NODE_ENV === 'development'
+        ? http('http://127.0.0.1:8545')
+        : http('https://mainnet.base.org'),
+  },
+});
 
 const Providers = ({ children }: { children: React.ReactNode }) => {
   return (
