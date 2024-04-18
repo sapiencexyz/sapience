@@ -7,7 +7,7 @@ import { useContext } from 'react';
 import { MarketContext } from '~/lib/context/MarketProvider';
 
 const PositionsHeader = () => {
-  const { chain, address, collateralAssetTicker, endTime, resolver, collateralAsset } =
+  const { chain, address, collateralAssetTicker, endTime, resolver, collateralAsset, baseAssetMinPrice, baseAssetMaxPrice } =
     useContext(MarketContext);
 
     let relativeTime = '';
@@ -58,8 +58,11 @@ const PositionsHeader = () => {
           {resolver}
         </Link>
         </Heading>
-        <Heading mb={5} fontWeight="normal" size="sm" color="gray.500">
+        <Heading mb={2} fontWeight="normal" size="sm" color="gray.500">
         Expiration: {formattedTime}
+      </Heading>
+        <Heading mb={5} fontWeight="normal" size="sm" color="gray.500">
+        Allowed Range: {Number(baseAssetMinPrice)} - {Number(baseAssetMaxPrice)}
       </Heading>
     </Box>
   );
