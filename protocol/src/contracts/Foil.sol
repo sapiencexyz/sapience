@@ -8,7 +8,6 @@ import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePo
 import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "./VirtualToken.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../storage/Epoch.sol";
 import "../storage/Account.sol";
 import "../storage/Position.sol";
@@ -57,9 +56,9 @@ contract Foil is ReentrancyGuard {
         Account.createValid(accountId);
     }
 
-    function getEpoch() external view returns (Epoch.Data memory) {
-        return Epoch.load();
-    }
+    // function getEpoch() external view returns (Epoch.Data memory) {
+    //     return Epoch.load();
+    // }
 
     /*
         1. LP providers call this function to add liquidity to uniswap pool
@@ -88,10 +87,13 @@ contract Foil is ReentrancyGuard {
         Epoch.Data storage epoch = Epoch.load();
         epoch.validateInRange(lowerTick, upperTick);
 
+        VirtualToken(epoch.ethToken).mint(address(this), amountTokenA);
+        VirtualToken(epoch.gasToken).mint(address(this), amountTokenB);
+
         INonfungiblePositionManager.MintParams
             memory mintParams = INonfungiblePositionManager.MintParams({
-                token0: address(epoch.gasToken),
-                token1: address(epoch.ethToken),
+                token0: address(epoch.ethToken),
+                token1: address(epoch.gasToken),
                 fee: epoch.feeRate,
                 tickLower: lowerTick,
                 tickUpper: upperTick,

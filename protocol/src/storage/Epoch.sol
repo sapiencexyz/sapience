@@ -9,6 +9,8 @@ import "../contracts/VirtualToken.sol";
 import "./Debt.sol";
 import "./Errors.sol";
 
+import "forge-std/console2.sol";
+
 library Epoch {
     struct Data {
         uint endTime;
@@ -112,6 +114,10 @@ library Epoch {
                     feeRate
                 )
         );
+
+        console2.logAddress(address(epoch.pool));
+
+        IUniswapV3Pool(epoch.pool).initialize(0.1414213562 ether);
     }
 
     function loadValid() internal view returns (Data storage epoch) {
