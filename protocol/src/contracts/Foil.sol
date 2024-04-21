@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePositionManager.sol";
 import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "./VirtualToken.sol";
@@ -36,28 +37,37 @@ contract Foil is ReentrancyGuard {
         );
     }
 
-    // function onERC721Received(
-    //     address operator,
-    //     address,
-    //     uint256 tokenId,
-    //     bytes calldata
-    // ) external override returns (bytes4) {
-    //     // get position information
-    //     Position.load()
+    function onERC721Received(
+        address operator,
+        address,
+        uint256 tokenId,
+        bytes calldata
+    ) external returns (bytes4) {
+        // get position information
+        // Position.load()
 
-    //     epoch.updateDebtPosition(tokenId);
+        // epoch.updateDebtPosition(tokenId);
 
-    //     return this.onERC721Received.selector;
-    // }
+        return this.onERC721Received.selector;
+    }
 
     function createAccount(uint256 accountId) external {
         // create NFT
         Account.createValid(accountId);
     }
 
-    // function getEpoch() external view returns (Epoch.Data memory) {
-    //     return Epoch.load();
-    // }
+    function getEpoch()
+        external
+        view
+        returns (address pool, address ethToken, address gasToken)
+    {
+        Epoch.Data storage epoch = Epoch.load();
+        return (
+            address(epoch.pool),
+            address(epoch.ethToken),
+            address(epoch.gasToken)
+        );
+    }
 
     /*
         1. LP providers call this function to add liquidity to uniswap pool
@@ -73,6 +83,7 @@ contract Foil is ReentrancyGuard {
         int24 upperTick
     )
         external
+        payable
         returns (
             uint256 tokenId,
             uint128 liquidity,
@@ -92,13 +103,19 @@ contract Foil is ReentrancyGuard {
         TransferHelper.safeApprove(
             address(epoch.ethToken),
             address(epoch.uniswapPositionManager),
-            amountTokenA
+            type(uint256).max
         );
         TransferHelper.safeApprove(
             address(epoch.gasToken),
             address(epoch.uniswapPositionManager),
-            amountTokenB
+            type(uint256).max
         );
+
+        uint256 ethAllowance = VirtualToken(epoch.ethToken).allowance(
+            address(this),
+            address(epoch.uniswapPositionManager)
+        );
+        console2.log("ethAllowance", ethAllowance);
 
         INonfungiblePositionManager.MintParams
             memory mintParams = INonfungiblePositionManager.MintParams({
@@ -112,52 +129,45 @@ contract Foil is ReentrancyGuard {
                 amount0Min: 0, // TODO
                 amount1Min: 0, // TODO
                 recipient: address(this),
-                deadline: block.timestamp
+                deadline: block.timestamp + 10 minutes
             });
 
-        try epoch.uniswapPositionManager.mint(mintParams) returns (
-            uint256 tokenId,
-            uint128 liquidity,
-            uint256 amount0,
-            uint256 amount1
-        ) {
-            tokenId;
-        } catch (bytes memory reason) {
-            console2.logBytes(reason);
-        }
+        (tokenId, liquidity, amount0, amount1) = epoch
+            .uniswapPositionManager
+            .mint(mintParams);
 
         // Create a deposit
-        Position.load(accountId).createDeposit(tokenId);
-        epoch.updateDebtPosition(tokenId, amount0, amount1, liquidity);
+        // Position.load(accountId).createDeposit(tokenId);
+        // epoch.updateDebtPosition(tokenId, amount0, amount1, liquidity);
 
         // Remove allowance and refund in both assets.
-        if (amount0 < amountTokenA) {
-            TransferHelper.safeApprove(
-                address(epoch.ethToken),
-                address(epoch.uniswapPositionManager),
-                0
-            );
-            uint256 refund0 = amountTokenA - amount0;
-            TransferHelper.safeTransfer(
-                address(epoch.ethToken),
-                msg.sender,
-                refund0
-            );
-        }
+        // if (amount0 < amountTokenA) {
+        //     TransferHelper.safeApprove(
+        //         address(epoch.ethToken),
+        //         address(epoch.uniswapPositionManager),
+        //         0
+        //     );
+        //     uint256 refund0 = amountTokenA - amount0;
+        //     TransferHelper.safeTransfer(
+        //         address(epoch.ethToken),
+        //         msg.sender,
+        //         refund0
+        //     );
+        // }
 
-        if (amount1 < amountTokenB) {
-            TransferHelper.safeApprove(
-                address(epoch.gasToken),
-                address(epoch.uniswapPositionManager),
-                0
-            );
-            uint256 refund1 = amountTokenB - amount1;
-            TransferHelper.safeTransfer(
-                address(epoch.gasToken),
-                msg.sender,
-                refund1
-            );
-        }
+        // if (amount1 < amountTokenB) {
+        //     TransferHelper.safeApprove(
+        //         address(epoch.gasToken),
+        //         address(epoch.uniswapPositionManager),
+        //         0
+        //     );
+        //     uint256 refund1 = amountTokenB - amount1;
+        //     TransferHelper.safeTransfer(
+        //         address(epoch.gasToken),
+        //         msg.sender,
+        //         refund1
+        //     );
+        // }
     }
 
     // function removeLiquidity(
