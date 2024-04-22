@@ -16,9 +16,11 @@ import CreateAccount from './createAccount';
 // import { type BaseError, useReadContract } from 'wagmi';
 
 export default function Positions() {
-  // LOAD ALL POSITIONS HERE
-
+  
   const ids = [1, 2, 420];
+
+  // totalSupply
+  // tokenByIndex
 
   return (
     <Box>
