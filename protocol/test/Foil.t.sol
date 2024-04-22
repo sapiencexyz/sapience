@@ -20,7 +20,7 @@ contract FoilTest is Test {
             10000 // fee rate
         );
 
-        foil.createAccount(1);
+        foil.mint(1);
     }
 
     function test_addLiquidity() public {

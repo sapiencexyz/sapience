@@ -8,10 +8,11 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../storage/Epoch.sol";
 import "../storage/Account.sol";
 import "../storage/Position.sol";
+import {ERC721Enumerable} from "../synthetix/token/ERC721Enumerable.sol";
 
 import "forge-std/console2.sol";
 
-contract Foil is ReentrancyGuard {
+contract Foil is ReentrancyGuard, ERC721Enumerable {
     using Epoch for Epoch.Data;
     using Account for Account.Data;
     using Position for Position.Data;
@@ -50,9 +51,14 @@ contract Foil is ReentrancyGuard {
     //     return this.onERC721Received.selector;
     // }
 
+    // deprecated for mint
     function createAccount(uint256 accountId) external {
-        // create NFT
         Account.createValid(accountId);
+    }
+
+    function mint(uint256 accountId) external {
+        Account.createValid(accountId);
+        _mint(msg.sender, accountId);
     }
 
     // function getEpoch() external view returns (Epoch.Data memory) {
@@ -80,6 +86,7 @@ contract Foil is ReentrancyGuard {
             uint256 amount1
         )
     {
+        require(ownerOf(tokenId) == msg.sender, "Not NFT owner");
         Account.Data storage account = Account.loadValid(accountId);
         // check within configured range
 

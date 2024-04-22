@@ -19,10 +19,10 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x2be79dc78ec8d9271d7205e4b14501ae0bf6b0258de3b253015ac354b3505137",
+  "deployTxnHash": "0x79866694645d4761eabefcef57c96de6603e2b2d161438553aeed8fb19210397",
   "sourceName": "src/utils/UniV3Abstraction.sol",
   "contractName": "UniV3Abstraction",
   "deployedOn": "deploy.UniV3Abstraction",
   "gasUsed": 1127047,
-  "gasCost": "1025651377"
+  "gasCost": "1044360836"
 }
