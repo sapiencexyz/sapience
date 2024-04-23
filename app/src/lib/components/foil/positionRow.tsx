@@ -5,7 +5,7 @@ import PositionEdit from './positionEdit';
 export default function PositionRow(row: any) {
   return (
     <Tr>
-      <Td>{row.id}</Td>
+      <Td>{row.id.toString()}</Td>
       <Td>
         {row.collateral}{' '}
         <Text fontSize="sm" color="gray.500">

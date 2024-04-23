@@ -1,5 +1,5 @@
 {
-  "address": "0xc351628EB244ec633d5f21fBD6621e1a683B1181",
+  "address": "0xFD471836031dc5108809D173A067e8486B9047A3",
   "abi": [
     {
       "type": "constructor",
@@ -663,10 +663,10 @@
     "10000"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x57a9d876fd45af7ec3df9f98f55df03d6ed0954041bda87145d84c91e3610de7",
+  "deployTxnHash": "0x606b02275bee05db449289441691edee8e128de3e2c76d54d9a1facff78966cf",
   "sourceName": "src/contracts/Foil.sol",
   "contractName": "Foil",
   "deployedOn": "deploy.Foil",
   "gasUsed": 8094196,
-  "gasCost": "1039024052"
+  "gasCost": "1092172265"
 }
