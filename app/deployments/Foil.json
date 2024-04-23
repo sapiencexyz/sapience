@@ -172,6 +172,49 @@
     },
     {
       "type": "function",
+      "name": "getMarket",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "endTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "uniswapPositionManager",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "resolver",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "collateralAsset",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "baseAssetMinPrice",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "baseAssetMaxPrice",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "feeRate",
+          "type": "uint24",
+          "internalType": "uint24"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "isApprovedForAll",
       "inputs": [
         {
@@ -663,10 +706,10 @@
     "10000"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x606b02275bee05db449289441691edee8e128de3e2c76d54d9a1facff78966cf",
+  "deployTxnHash": "0x571dfb1fef542616df3b04d7e6676c21ba0fe9860017f74a782895249f7d03a0",
   "sourceName": "src/contracts/Foil.sol",
   "contractName": "Foil",
   "deployedOn": "deploy.Foil",
-  "gasUsed": 8094196,
-  "gasCost": "1092172265"
+  "gasUsed": 8134582,
+  "gasCost": "1090671450"
 }

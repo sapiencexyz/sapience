@@ -19,6 +19,8 @@ const PositionsHeader = () => {
     baseAssetMaxPrice,
   } = useContext(MarketContext);
 
+  console.log('context', useContext(MarketContext))
+
   let relativeTime = '';
   let formattedTime = '';
   if (endTime) {

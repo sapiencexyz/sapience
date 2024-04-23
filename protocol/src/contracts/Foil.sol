@@ -37,6 +37,25 @@ contract Foil is ReentrancyGuard, ERC721Enumerable {
         );
     }
 
+    function getMarket() external view returns (uint endTime,
+        address uniswapPositionManager,
+        address resolver,
+        address collateralAsset,
+        uint baseAssetMinPrice,
+        uint baseAssetMaxPrice,
+        uint24 feeRate) {
+        Epoch.Data storage epoch = Epoch.load();
+        return (
+            epoch.endTime,
+            address(epoch.uniswapPositionManager),
+            address(epoch.resolver),
+            address(epoch.collateralAsset),
+            epoch.baseAssetMinPrice,
+            epoch.baseAssetMaxPrice,
+            epoch.feeRate
+        );
+    }
+
     // function onERC721Received(
     //     address operator,
     //     address,
