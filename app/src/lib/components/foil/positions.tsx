@@ -1,4 +1,3 @@
-import { AddIcon, EditIcon, CloseIcon } from '@chakra-ui/icons';
 import {
   TableContainer,
   Table,
@@ -9,20 +8,47 @@ import {
   Box,
   Heading,
 } from '@chakra-ui/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useReadContract, useReadContracts } from 'wagmi';
+import { times } from 'lodash';
 
-import PositionRow from './positionRow';
+import Foil from '../../../../deployments/Foil.json';
+
 import CreateAccount from './createAccount';
-// import { type BaseError, useReadContract } from 'wagmi';
+import PositionRow from './positionRow';
 
 export default function Positions() {
-  // LOAD ALL POSITIONS HERE
+  
+  const totalSupplyResult = useReadContract({
+    abi: Foil.abi,
+    address: Foil.address as `0x${string}`,
+    functionName: 'totalSupply',
+    args: [],
+  });
+  const [totalSupply, setTotalSupply] = useState(0);
 
-  const ids = [1, 2, 420];
+  useEffect(() => {
+    if (totalSupplyResult.data) {
+      setTotalSupply(parseInt(totalSupplyResult.data.toString(), 10));
+    }
+  }, [totalSupplyResult.data]); // Effect to update totalSupply when data changes
+
+  const tokens = useReadContracts({
+    contracts: times(totalSupply).map(i => {
+      return {
+        abi: Foil.abi,
+        address: Foil.address as `0x${string}`,
+        functionName: 'tokenByIndex',
+        args: [i],
+      }
+    })
+  })
 
   return (
     <Box>
-      <Heading size="md" mb="2">Positions</Heading>
+      <Heading size="md" mb="2">
+        Positions
+      </Heading>
       <TableContainer mb={6}>
         <Table variant="simple" size="sm">
           <Thead>
@@ -37,8 +63,8 @@ export default function Positions() {
             </Tr>
           </Thead>
           <Tbody>
-            {ids.map((id) => (
-              <PositionRow key={id} id={id} />
+            {tokens?.data?.map((i) => (
+              <PositionRow key={i.result} id={i.result} />
             ))}
           </Tbody>
         </Table>

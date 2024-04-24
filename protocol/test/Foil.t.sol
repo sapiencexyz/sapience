@@ -33,8 +33,8 @@ contract FoilTest is Test {
         );
 
         (pool, tokenA, tokenB) = foil.getEpoch();
-        foil.createAccount(1);
-        foil.createAccount(2);
+        foil.mint(1);
+        foil.mint(2);
     }
 
     function test_addLiquidity() public {

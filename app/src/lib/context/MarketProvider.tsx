@@ -63,36 +63,25 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
   const marketViewFunctionResult = useReadContract({
     abi: Foil.abi,
     address: Foil.address as `0x${string}`,
-    functionName: 'getEpoch',
+    functionName: 'getMarket',
   });
 
   useEffect(() => {
     if (marketViewFunctionResult.data !== undefined) {
       setState((currentState) => ({
         ...currentState,
-        ...Object(marketViewFunctionResult.data),
+        endTime: marketViewFunctionResult?.data[0],
+        uniswapPositionManager: marketViewFunctionResult?.data[1],
+        resolver: marketViewFunctionResult?.data[2],
+        collateralAsset: marketViewFunctionResult?.data[3],
+        baseAssetMinPrice: marketViewFunctionResult?.data[4].toString(),
+        baseAssetMaxPrice: marketViewFunctionResult?.data[5].toString(),
+        feeRate: marketViewFunctionResult?.data[6],
       }));
     }
   }, [marketViewFunctionResult.data]);
 
   // Get data about the market from Uniswap
-  // TODO
-  /*
-  const uniswapTickFunction = useReadContract({
-    abi: Foil.abi,
-    address: Foil.address as `0x${string}`,
-    functionName: 'getEpoch',
-  });
-
-  useEffect(() => {
-    if (uniswapTickFunction.data !== undefined) {
-      setState((currentState) => ({
-        ...currentState,
-        ...Object(uniswapTickFunction.data),
-      }));
-    }
-  }, [uniswapTickFunction.data]);
-  */
 
   // Fetch Collateral Ticker
   const collateralTickerFunctionResult = useReadContract({

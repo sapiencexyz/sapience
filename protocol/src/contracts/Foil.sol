@@ -12,13 +12,14 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../storage/Epoch.sol";
 import "../storage/Account.sol";
 import "../storage/Position.sol";
+import {ERC721Enumerable} from "../synthetix/token/ERC721Enumerable.sol";
 
 // possibly remove
 import {LiquidityAmounts} from "../external/univ3/LiquidityAmounts.sol";
 
 import "forge-std/console2.sol";
 
-contract Foil is ReentrancyGuard, IFoil, IUniswapV3MintCallback {
+contract Foil is ReentrancyGuard, IFoil, IUniswapV3MintCallback, ERC721Enumerable {
     using Epoch for Epoch.Data;
     using Account for Account.Data;
     using Position for Position.Data;
@@ -43,6 +44,25 @@ contract Foil is ReentrancyGuard, IFoil, IUniswapV3MintCallback {
         );
     }
 
+    function getMarket() external view returns (uint endTime,
+        address uniswapPositionManager,
+        address resolver,
+        address collateralAsset,
+        uint baseAssetMinPrice,
+        uint baseAssetMaxPrice,
+        uint24 feeRate) {
+        Epoch.Data storage epoch = Epoch.load();
+        return (
+            epoch.endTime,
+            address(epoch.uniswapPositionManager),
+            address(epoch.resolver),
+            address(epoch.collateralAsset),
+            epoch.baseAssetMinPrice,
+            epoch.baseAssetMaxPrice,
+            epoch.feeRate
+        );
+    }
+    
     function onERC721Received(
         address operator,
         address,
@@ -57,8 +77,8 @@ contract Foil is ReentrancyGuard, IFoil, IUniswapV3MintCallback {
         return this.onERC721Received.selector;
     }
 
+    // deprecated for mint
     function createAccount(uint256 accountId) external {
-        // create NFT
         Account.createValid(accountId);
     }
 
@@ -74,6 +94,12 @@ contract Foil is ReentrancyGuard, IFoil, IUniswapV3MintCallback {
             address(epoch.gasToken)
         );
     }
+
+    function mint(uint256 accountId) external {
+        Account.createValid(accountId);
+        _mint(msg.sender, accountId);
+    }
+
 
     /*
         1. LP providers call this function to add liquidity to uniswap pool
@@ -93,8 +119,9 @@ contract Foil is ReentrancyGuard, IFoil, IUniswapV3MintCallback {
             uint256 amount1
         )
     {
+        require(ownerOf(tokenId) == msg.sender, "Not NFT owner");
         Account.Data storage account = Account.loadValid(params.accountId);
-        // // check within configured range
+        // check within configured range
 
         Epoch.Data storage epoch = Epoch.load();
 
