@@ -109,18 +109,18 @@ library Epoch {
         epoch.pool = IUniswapV3Pool(
             IUniswapV3Factory(epoch.uniswapPositionManager.factory())
                 .createPool(
-                    address(epoch.gasToken),
                     address(epoch.ethToken),
+                    address(epoch.gasToken),
                     feeRate
                 )
         );
 
-        IUniswapV3Pool(epoch.pool).initialize(25 ether);
+        IUniswapV3Pool(epoch.pool).initialize(250541448375047931186413801569);
         (uint160 sqrtPriceX96, int24 tick, , , , , ) = IUniswapV3Pool(
             epoch.pool
         ).slot0();
-
-        console2.log(TickMath.getTickAtSqrtRatio(sqrtPriceX96));
+        int24 spacing = IUniswapV3Pool(epoch.pool).tickSpacing();
+        console2.log(spacing);
     }
 
     function loadValid() internal view returns (Data storage epoch) {

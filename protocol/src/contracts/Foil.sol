@@ -1,18 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePositionManager.sol";
 import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
+import {IUniswapV3MintCallback} from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
+import {TickMath} from "../external/univ3/TickMath.sol";
 import "./VirtualToken.sol";
+import "../interfaces/IFoil.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../storage/Epoch.sol";
 import "../storage/Account.sol";
 import "../storage/Position.sol";
 import {ERC721Enumerable} from "../synthetix/token/ERC721Enumerable.sol";
 
+// possibly remove
+import {LiquidityAmounts} from "../external/univ3/LiquidityAmounts.sol";
+
 import "forge-std/console2.sol";
 
-contract Foil is ReentrancyGuard, ERC721Enumerable {
+contract Foil is ReentrancyGuard, IFoil, IUniswapV3MintCallback, ERC721Enumerable {
     using Epoch for Epoch.Data;
     using Account for Account.Data;
     using Position for Position.Data;
@@ -55,24 +62,37 @@ contract Foil is ReentrancyGuard, ERC721Enumerable {
             epoch.feeRate
         );
     }
+    
+    function onERC721Received(
+        address operator,
+        address,
+        uint256 tokenId,
+        bytes calldata
+    ) external returns (bytes4) {
+        // get position information
+        // Position.load()
 
-    // function onERC721Received(
-    //     address operator,
-    //     address,
-    //     uint256 tokenId,
-    //     bytes calldata
-    // ) external override returns (bytes4) {
-    //     // get position information
-    //     Position.load()
+        // epoch.updateDebtPosition(tokenId);
 
-    //     epoch.updateDebtPosition(tokenId);
-
-    //     return this.onERC721Received.selector;
-    // }
+        return this.onERC721Received.selector;
+    }
 
     // deprecated for mint
     function createAccount(uint256 accountId) external {
         Account.createValid(accountId);
+    }
+
+    function getEpoch()
+        external
+        view
+        returns (address pool, address ethToken, address gasToken)
+    {
+        Epoch.Data storage epoch = Epoch.load();
+        return (
+            address(epoch.pool),
+            address(epoch.ethToken),
+            address(epoch.gasToken)
+        );
     }
 
     function mint(uint256 accountId) external {
@@ -80,24 +100,18 @@ contract Foil is ReentrancyGuard, ERC721Enumerable {
         _mint(msg.sender, accountId);
     }
 
-    // function getEpoch() external view returns (Epoch.Data memory) {
-    //     return Epoch.load();
-    // }
 
     /*
         1. LP providers call this function to add liquidity to uniswap pool
         2. Specify the range of liquidity to add (i.e from 10 - 50 GWEI)
 
     */
+
     function addLiquidity(
-        uint256 accountId,
-        uint256 amountTokenA,
-        uint256 amountTokenB,
-        uint256 collateralAmount,
-        int24 lowerTick,
-        int24 upperTick
+        AddLiquidityRuntimeParams memory params
     )
         external
+        payable
         returns (
             uint256 tokenId,
             uint128 liquidity,
@@ -106,84 +120,105 @@ contract Foil is ReentrancyGuard, ERC721Enumerable {
         )
     {
         require(ownerOf(tokenId) == msg.sender, "Not NFT owner");
-        Account.Data storage account = Account.loadValid(accountId);
+        Account.Data storage account = Account.loadValid(params.accountId);
         // check within configured range
 
         Epoch.Data storage epoch = Epoch.load();
-        epoch.validateInRange(lowerTick, upperTick);
 
-        VirtualToken(epoch.ethToken).mint(address(this), amountTokenA);
-        VirtualToken(epoch.gasToken).mint(address(this), amountTokenB);
+        (uint160 sqrtMarkPrice, , , , , , ) = epoch.pool.slot0();
 
-        TransferHelper.safeApprove(
-            address(epoch.ethToken),
-            address(epoch.uniswapPositionManager),
-            amountTokenA
+        // VirtualToken(epoch.ethToken).mint(address(this), amountTokenA);
+        // VirtualToken(epoch.gasToken).mint(address(this), amountTokenB);
+
+        // TransferHelper.safeApprove(
+        //     address(epoch.ethToken),
+        //     address(epoch.uniswapPositionManager),
+        //     type(uint256).max
+        // );
+        // TransferHelper.safeApprove(
+        //     address(epoch.gasToken),
+        //     address(epoch.uniswapPositionManager),
+        //     type(uint256).max
+        // );
+
+        // get the equivalent amount of liquidity from amount0 & amount1 with current price
+        liquidity = LiquidityAmounts.getLiquidityForAmounts(
+            sqrtMarkPrice,
+            TickMath.getSqrtRatioAtTick(params.lowerTick),
+            TickMath.getSqrtRatioAtTick(params.upperTick),
+            params.amountTokenA,
+            params.amountTokenB
         );
-        TransferHelper.safeApprove(
-            address(epoch.gasToken),
-            address(epoch.uniswapPositionManager),
-            amountTokenB
+
+        (uint256 addedAmount0, uint256 addedAmount1) = epoch.pool.mint(
+            address(this),
+            params.lowerTick,
+            params.upperTick,
+            liquidity,
+            abi.encode(params.accountId)
         );
 
-        INonfungiblePositionManager.MintParams
-            memory mintParams = INonfungiblePositionManager.MintParams({
-                token0: address(epoch.ethToken),
-                token1: address(epoch.gasToken),
-                fee: epoch.feeRate,
-                tickLower: lowerTick,
-                tickUpper: upperTick,
-                amount0Desired: amountTokenA,
-                amount1Desired: amountTokenB,
-                amount0Min: 0, // TODO
-                amount1Min: 0, // TODO
-                recipient: address(this),
-                deadline: block.timestamp
-            });
+        Position.load(params.accountId).vEthAmount += addedAmount0;
+        Position.load(params.accountId).vGasAmount += addedAmount1;
+        // epoch.validateInRange(lowerTick, upperTick);
 
-        try epoch.uniswapPositionManager.mint(mintParams) returns (
-            uint256 tokenId,
-            uint128 liquidity,
-            uint256 amount0,
-            uint256 amount1
-        ) {
-            tokenId;
-        } catch (bytes memory reason) {
-            console2.logBytes(reason);
-        }
+        // uint256 ethAllowance = VirtualToken(epoch.ethToken).allowance(
+        //     address(this),
+        //     address(epoch.uniswapPositionManager)
+        // );
+        // console2.log("ethAllowance", ethAllowance);
+
+        // INonfungiblePositionManager.MintParams
+        //     memory mintParams = INonfungiblePositionManager.MintParams({
+        //         token0: address(epoch.ethToken),
+        //         token1: address(epoch.gasToken),
+        //         fee: epoch.feeRate,
+        //         tickLower: lowerTick,
+        //         tickUpper: upperTick,
+        //         amount0Desired: amountTokenA,
+        //         amount1Desired: amountTokenB,
+        //         amount0Min: 0, // TODO
+        //         amount1Min: 0, // TODO
+        //         recipient: address(this),
+        //         deadline: block.timestamp + 10 minutes
+        //     });
+
+        // (tokenId, liquidity, amount0, amount1) = epoch
+        //     .uniswapPositionManager
+        //     .mint(mintParams);
 
         // Create a deposit
-        Position.load(accountId).createDeposit(tokenId);
-        epoch.updateDebtPosition(tokenId, amount0, amount1, liquidity);
+        // Position.load(accountId).createDeposit(tokenId);
+        // epoch.updateDebtPosition(tokenId, amount0, amount1, liquidity);
 
         // Remove allowance and refund in both assets.
-        if (amount0 < amountTokenA) {
-            TransferHelper.safeApprove(
-                address(epoch.ethToken),
-                address(epoch.uniswapPositionManager),
-                0
-            );
-            uint256 refund0 = amountTokenA - amount0;
-            TransferHelper.safeTransfer(
-                address(epoch.ethToken),
-                msg.sender,
-                refund0
-            );
-        }
+        // if (amount0 < amountTokenA) {
+        //     TransferHelper.safeApprove(
+        //         address(epoch.ethToken),
+        //         address(epoch.uniswapPositionManager),
+        //         0
+        //     );
+        //     uint256 refund0 = amountTokenA - amount0;
+        //     TransferHelper.safeTransfer(
+        //         address(epoch.ethToken),
+        //         msg.sender,
+        //         refund0
+        //     );
+        // }
 
-        if (amount1 < amountTokenB) {
-            TransferHelper.safeApprove(
-                address(epoch.gasToken),
-                address(epoch.uniswapPositionManager),
-                0
-            );
-            uint256 refund1 = amountTokenB - amount1;
-            TransferHelper.safeTransfer(
-                address(epoch.gasToken),
-                msg.sender,
-                refund1
-            );
-        }
+        // if (amount1 < amountTokenB) {
+        //     TransferHelper.safeApprove(
+        //         address(epoch.gasToken),
+        //         address(epoch.uniswapPositionManager),
+        //         0
+        //     );
+        //     uint256 refund1 = amountTokenB - amount1;
+        //     TransferHelper.safeTransfer(
+        //         address(epoch.gasToken),
+        //         msg.sender,
+        //         refund1
+        //     );
+        // }
     }
 
     // function removeLiquidity(
@@ -254,31 +289,70 @@ contract Foil is ReentrancyGuard, ERC721Enumerable {
     // }
 
     // --- Uniswap V3 Callbacks ---
-    // function uniswapV3MintCallback(
-    //     uint256 amount0Owed,
-    //     uint256 amount1Owed,
-    //     bytes calldata data
-    // ) external override {
-    //     // check sender
-    //     address sender = abi.decode(data, (address));
+    function uniswapV3MintCallback(
+        uint256 amount0Owed,
+        uint256 amount1Owed,
+        bytes calldata data
+    ) external override {
+        // TODO: check sender is uniswap
+        uint256 accountId = abi.decode(data, (uint256));
 
-    //     Epoch.Data storage epoch = Epoch.load();
+        Epoch.Data storage epoch = Epoch.load();
+        Position.Data storage position = Position.loadValid(accountId);
 
-    //     if (amount0Owed > 0) {
-    //         address token = IUniswapV3Pool(epoch.pool).token0();
-    //         if (token != address(epoch.gasToken)) {
-    //             revert Errors.InvalidVirtualToken(token);
-    //         }
-    //         VirtualToken(token).transfer(address(epoch.pool), amount0Owed);
-    //     }
-    //     if (amount1Owed > 0) {
-    //         address token = IUniswapV3Pool(epoch.pool).token1();
-    //         if (token != address(epoch.ethToken)) {
-    //             revert Errors.InvalidVirtualToken(token);
-    //         }
-    //         VirtualToken(token).transfer(address(epoch.pool), amount1Owed);
-    //     }
-    // }
+        // VirtualToken(epoch.gasToken).mint(address(this), amountTokenB);
+
+        // TransferHelper.safeApprove(
+        //     address(epoch.ethToken),
+        //     address(epoch.uniswapPositionManager),
+        //     type(uint256).max
+        // );
+        // TransferHelper.safeApprove(
+        //     address(epoch.gasToken),
+        //     address(epoch.uniswapPositionManager),
+        //     type(uint256).max
+        // );
+
+        if (amount0Owed > 0) {
+            address token = IUniswapV3Pool(epoch.pool).token0();
+            if (token != address(epoch.gasToken)) {
+                revert Errors.InvalidVirtualToken(token);
+            }
+
+            VirtualToken(epoch.gasToken).mint(address(this), amount0Owed);
+            VirtualToken(epoch.gasToken).transfer(
+                address(epoch.pool),
+                amount0Owed
+            );
+
+            position.vEthAmount += amount0Owed;
+        }
+        if (amount1Owed > 0) {
+            address token = IUniswapV3Pool(epoch.pool).token1();
+            if (token != address(epoch.ethToken)) {
+                revert Errors.InvalidVirtualToken(token);
+            }
+            VirtualToken(epoch.ethToken).mint(address(this), amount1Owed);
+            VirtualToken(epoch.ethToken).transfer(
+                address(epoch.pool),
+                amount1Owed
+            );
+
+            position.vGasAmount += amount1Owed;
+        }
+    }
+
+    function getPosition(
+        uint256 accountId
+    )
+        external
+        view
+        override
+        returns (uint256 tokenAmount0, uint256 tokenAmount1)
+    {
+        Position.Data storage position = Position.loadValid(accountId);
+        return (position.vEthAmount, position.vGasAmount);
+    }
 
     // function uniswapV3SwapCallback(
     //     int256 amount0Delta, // vwstEth 1
