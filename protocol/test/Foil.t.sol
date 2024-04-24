@@ -4,7 +4,9 @@ pragma solidity >=0.8.2 <0.9.0;
 import "forge-std/Test.sol";
 
 import {Foil} from "../src/contracts/Foil.sol";
+import {IFoil} from "../src/interfaces/IFoil.sol";
 import {VirtualToken} from "../src/contracts/VirtualToken.sol";
+import {TickMath} from "../src/external/univ3/TickMath.sol";
 import "../src/interfaces/external/INonfungiblePositionManager.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
@@ -32,12 +34,44 @@ contract FoilTest is Test {
 
         (pool, tokenA, tokenB) = foil.getEpoch();
         foil.createAccount(1);
+        foil.createAccount(2);
     }
 
     function test_addLiquidity() public {
         int24 tickSpacing = IUniswapV3Pool(pool).tickSpacing();
+        // int24 lowerTick = TickMath.getTickAtSqrtRatio(
+        //     177159557114295710296101716160
+        // ); // 5
+        // int24 upperTick = TickMath.getTickAtSqrtRatio(
+        //     306849353968360525628702781967
+        // ); // 15
+        IFoil.AddLiquidityRuntimeParams memory params = IFoil
+            .AddLiquidityRuntimeParams({
+                accountId: 1,
+                amountTokenA: 10 ether,
+                amountTokenB: 100 ether,
+                collateralAmount: 10 ether,
+                lowerTick: 27000, // 5
+                upperTick: 30000 // 15
+            });
+        foil.addLiquidity(params);
 
-        console2.logInt(tickSpacing);
-        foil.addLiquidity(1, 100 ether, 0, 10 ether, 50400, 50600);
+        (uint256 tokenAmount0, uint256 tokenAmount1) = foil.getPosition(1);
+
+        console2.log(tokenAmount0, tokenAmount1);
+
+        // new account!
+        params = IFoil.AddLiquidityRuntimeParams({
+            accountId: 2,
+            amountTokenA: 100 ether,
+            amountTokenB: 10 ether,
+            collateralAmount: 10 ether,
+            lowerTick: -887200, // minTick
+            upperTick: 887200 // maxTick
+        });
+        foil.addLiquidity(params);
+
+        (uint256 tokenAmount3, uint256 tokenAmount4) = foil.getPosition(2);
+        console2.log(tokenAmount3, tokenAmount4);
     }
 }

@@ -115,10 +115,12 @@ library Epoch {
                 )
         );
 
-        IUniswapV3Pool(epoch.pool).initialize(974774664819573627711176820911);
+        IUniswapV3Pool(epoch.pool).initialize(250541448375047931186413801569);
         (uint160 sqrtPriceX96, int24 tick, , , , , ) = IUniswapV3Pool(
             epoch.pool
         ).slot0();
+        int24 spacing = IUniswapV3Pool(epoch.pool).tickSpacing();
+        console2.log(spacing);
     }
 
     function loadValid() internal view returns (Data storage epoch) {
