@@ -1,8 +1,19 @@
-import { EditIcon } from '@chakra-ui/icons';
-import { Tr, Td, IconButton, Text } from '@chakra-ui/react';
+import { Tr, Td, Text } from '@chakra-ui/react';
 import PositionEdit from './positionEdit';
+import { useReadContract } from 'wagmi';
+import Foil from '../../../../deployments/Foil.json';
 
 export default function PositionRow(row: any) {
+
+  const positionResult = useReadContract({
+    abi: Foil.abi,
+    address: Foil.address as `0x${string}`,
+    functionName: 'getPosition',
+    args: [row.id],
+  });
+
+  console.log(positionResult);
+
   return (
     <Tr>
       <Td>{row.id.toString()}</Td>
