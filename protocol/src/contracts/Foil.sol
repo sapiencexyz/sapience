@@ -50,7 +50,10 @@ contract Foil is ReentrancyGuard, IFoil, IUniswapV3MintCallback, ERC721Enumerabl
         address collateralAsset,
         uint baseAssetMinPrice,
         uint baseAssetMaxPrice,
-        uint24 feeRate) {
+        uint24 feeRate,
+        address ethToken,
+        address gasToken,
+        address pool) {
         Epoch.Data storage epoch = Epoch.load();
         return (
             epoch.endTime,
@@ -59,7 +62,10 @@ contract Foil is ReentrancyGuard, IFoil, IUniswapV3MintCallback, ERC721Enumerabl
             address(epoch.collateralAsset),
             epoch.baseAssetMinPrice,
             epoch.baseAssetMaxPrice,
-            epoch.feeRate
+            epoch.feeRate,
+            address(epoch.ethToken),
+            address(epoch.gasToken),
+            address(epoch.pool)
         );
     }
     
@@ -119,6 +125,7 @@ contract Foil is ReentrancyGuard, IFoil, IUniswapV3MintCallback, ERC721Enumerabl
             uint256 amount1
         )
     {
+        tokenId = params.accountId;
         require(ownerOf(tokenId) == msg.sender, "Not NFT owner");
         Account.Data storage account = Account.loadValid(params.accountId);
         // check within configured range
@@ -315,9 +322,9 @@ contract Foil is ReentrancyGuard, IFoil, IUniswapV3MintCallback, ERC721Enumerabl
 
         if (amount0Owed > 0) {
             address token = IUniswapV3Pool(epoch.pool).token0();
-            if (token != address(epoch.gasToken)) {
-                revert Errors.InvalidVirtualToken(token);
-            }
+            //if (token != address(epoch.gasToken)) {
+            //    revert Errors.InvalidVirtualToken(token);
+            //}
 
             VirtualToken(epoch.gasToken).mint(address(this), amount0Owed);
             VirtualToken(epoch.gasToken).transfer(
@@ -329,9 +336,9 @@ contract Foil is ReentrancyGuard, IFoil, IUniswapV3MintCallback, ERC721Enumerabl
         }
         if (amount1Owed > 0) {
             address token = IUniswapV3Pool(epoch.pool).token1();
-            if (token != address(epoch.ethToken)) {
-                revert Errors.InvalidVirtualToken(token);
-            }
+            //if (token != address(epoch.ethToken)) {
+            //    revert Errors.InvalidVirtualToken(token);
+            //}
             VirtualToken(epoch.ethToken).mint(address(this), amount1Owed);
             VirtualToken(epoch.ethToken).transfer(
                 address(epoch.pool),

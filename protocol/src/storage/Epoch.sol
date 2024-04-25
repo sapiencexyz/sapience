@@ -94,17 +94,25 @@ library Epoch {
         epoch.baseAssetMaxPrice = baseAssetMaxPrice;
         epoch.feeRate = feeRate;
 
-        epoch.ethToken = new VirtualToken(
+        VirtualToken tokenA = new VirtualToken(
             address(this),
-            "virtual ETH Token",
-            "vETH"
+            "Token A",
+            "tknA"
         );
 
-        epoch.gasToken = new VirtualToken(
+        VirtualToken tokenB = new VirtualToken(
             address(this),
-            "virtual GAS token",
-            "vGAS"
+            "Token B",
+            "tknB"
         );
+
+        if(address(tokenA) < address(tokenB)){
+            epoch.ethToken = tokenA;
+            epoch.gasToken = tokenB;
+        } else {
+            epoch.ethToken = tokenB;
+            epoch.gasToken = tokenA;
+        }
 
         epoch.pool = IUniswapV3Pool(
             IUniswapV3Factory(epoch.uniswapPositionManager.factory())
