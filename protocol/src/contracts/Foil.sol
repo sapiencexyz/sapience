@@ -322,29 +322,25 @@ contract Foil is ReentrancyGuard, IFoil, IUniswapV3MintCallback, ERC721Enumerabl
 
         if (amount0Owed > 0) {
             address token = IUniswapV3Pool(epoch.pool).token0();
-            //if (token != address(epoch.gasToken)) {
-            //    revert Errors.InvalidVirtualToken(token);
-            //}
+            // if (token != address(epoch.gasToken)) {
+            //     revert Errors.InvalidVirtualToken(token);
+            // }
 
-            VirtualToken(epoch.gasToken).mint(address(this), amount0Owed);
-            VirtualToken(epoch.gasToken).transfer(
-                address(epoch.pool),
-                amount0Owed
-            );
+            VirtualToken(token).mint(address(this), amount0Owed);
+            VirtualToken(token).transfer(address(epoch.pool), amount0Owed);
 
+            // we need to confirm is the right token here for our accounting
             position.vEthAmount += amount0Owed;
         }
         if (amount1Owed > 0) {
             address token = IUniswapV3Pool(epoch.pool).token1();
-            //if (token != address(epoch.ethToken)) {
-            //    revert Errors.InvalidVirtualToken(token);
-            //}
-            VirtualToken(epoch.ethToken).mint(address(this), amount1Owed);
-            VirtualToken(epoch.ethToken).transfer(
-                address(epoch.pool),
-                amount1Owed
-            );
+            // if (token != address(epoch.ethToken)) {
+            //     revert Errors.InvalidVirtualToken(token);
+            // }
+            VirtualToken(token).mint(address(this), amount1Owed);
+            VirtualToken(token).transfer(address(epoch.pool), amount1Owed);
 
+            // we need to confirm is the right token here for our accounting
             position.vGasAmount += amount1Owed;
         }
     }

@@ -842,10 +842,10 @@
     "10000"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0xa07b56b4482d4d06a36791f07d6d9f86ee2e1e01516e41da5d4183b446c10c35",
+  "deployTxnHash": "0x6396f2db40ff35d8bff4d78b9951daff33fbd80be2d1c5faef96b390a1a3c24a",
   "sourceName": "src/contracts/Foil.sol",
   "contractName": "Foil",
   "deployedOn": "deploy.Foil",
-  "gasUsed": 8753404,
-  "gasCost": "1141542596"
+  "gasUsed": 8749936,
+  "gasCost": "1112730788"
 }

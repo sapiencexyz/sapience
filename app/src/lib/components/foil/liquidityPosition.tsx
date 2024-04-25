@@ -54,36 +54,17 @@ const AddLiquidity = ({
   const { data: approveHash, writeContract: approveWrite } = useWriteContract();
   const { data: addLiquidityHash, writeContract: addLiquidityWrite } =
     useWriteContract();
-    const l =
-    useWriteContract();
+    
   const { isSuccess: approveSuccess } = useWaitForTransactionReceipt({
     hash: approveHash,
   });
   const { isSuccess: addLiquiditySuccess } = useWaitForTransactionReceipt({
     hash: addLiquidityHash,
   });
-  console.log(l) // Returning M0
 
   const handleFormSubmit = (e) => {
     e.preventDefault();
 
-    l.writeContract({
-      address: Foil.address,
-      abi: Foil.abi,
-      functionName: 'addLiquidity',
-      args: [
-        {
-          accountId: BigInt(420),
-          amountTokenA: parseEther('10'),
-          amountTokenB: parseEther('100'),
-          collateralAmount: parseEther('10'),
-          lowerTick: 27000,
-          upperTick: 30000,
-        },
-      ],
-    });
-
-    /*
     approveWrite({
       abi: CollateralAsset.abi,
       address: CollateralAsset.address,
@@ -91,7 +72,7 @@ const AddLiquidity = ({
       args: [CollateralAsset.address, BigInt(depositAmount)],
     }); // Start the transaction sequence
     setTransactionStep(1);
-*/
+
   };
 
   useEffect(() => {
