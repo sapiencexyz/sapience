@@ -47,34 +47,41 @@
       "name": "addLiquidity",
       "inputs": [
         {
-          "name": "accountId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "amountTokenA",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "amountTokenB",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "collateralAmount",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "lowerTick",
-          "type": "int24",
-          "internalType": "int24"
-        },
-        {
-          "name": "upperTick",
-          "type": "int24",
-          "internalType": "int24"
+          "name": "params",
+          "type": "tuple",
+          "internalType": "struct IFoil.AddLiquidityRuntimeParams",
+          "components": [
+            {
+              "name": "accountId",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "amountTokenA",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "amountTokenB",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "collateralAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "lowerTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "upperTick",
+              "type": "int24",
+              "internalType": "int24"
+            }
+          ]
         }
       ],
       "outputs": [
@@ -99,7 +106,7 @@
           "internalType": "uint256"
         }
       ],
-      "stateMutability": "nonpayable"
+      "stateMutability": "payable"
     },
     {
       "type": "function",
@@ -172,6 +179,29 @@
     },
     {
       "type": "function",
+      "name": "getEpoch",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "pool",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "ethToken",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "gasToken",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "getMarket",
       "inputs": [],
       "outputs": [
@@ -209,6 +239,45 @@
           "name": "feeRate",
           "type": "uint24",
           "internalType": "uint24"
+        },
+        {
+          "name": "ethToken",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "gasToken",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "pool",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getPosition",
+      "inputs": [
+        {
+          "name": "accountId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "tokenAmount0",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "tokenAmount1",
+          "type": "uint256",
+          "internalType": "uint256"
         }
       ],
       "stateMutability": "view"
@@ -262,6 +331,40 @@
         }
       ],
       "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "onERC721Received",
+      "inputs": [
+        {
+          "name": "operator",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ],
+      "stateMutability": "nonpayable"
     },
     {
       "type": "function",
@@ -482,6 +585,29 @@
       "stateMutability": "nonpayable"
     },
     {
+      "type": "function",
+      "name": "uniswapV3MintCallback",
+      "inputs": [
+        {
+          "name": "amount0Owed",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "amount1Owed",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "data",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
       "type": "event",
       "name": "Approval",
       "inputs": [
@@ -649,6 +775,16 @@
     },
     {
       "type": "error",
+      "name": "OverflowInt256ToUint256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowUint256ToInt256",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "ReentrancyGuardReentrantCall",
       "inputs": []
     },
@@ -706,10 +842,10 @@
     "10000"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x571dfb1fef542616df3b04d7e6676c21ba0fe9860017f74a782895249f7d03a0",
+  "deployTxnHash": "0xa07b56b4482d4d06a36791f07d6d9f86ee2e1e01516e41da5d4183b446c10c35",
   "sourceName": "src/contracts/Foil.sol",
   "contractName": "Foil",
   "deployedOn": "deploy.Foil",
-  "gasUsed": 8134582,
-  "gasCost": "1090671450"
+  "gasUsed": 8753404,
+  "gasCost": "1141542596"
 }

@@ -77,6 +77,9 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
         baseAssetMinPrice: marketViewFunctionResult?.data[4].toString(),
         baseAssetMaxPrice: marketViewFunctionResult?.data[5].toString(),
         feeRate: marketViewFunctionResult?.data[6],
+        ethToken: marketViewFunctionResult?.data[7],
+        gasToken: marketViewFunctionResult?.data[8],
+        pool: marketViewFunctionResult?.data[9],
       }));
     }
   }, [marketViewFunctionResult.data]);
@@ -100,7 +103,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     }
   }, [collateralTickerFunctionResult.data]);
 
-  console.log(state)
+  console.log('state', state)
 
   return (
     <MarketContext.Provider value={state}>{children}</MarketContext.Provider>

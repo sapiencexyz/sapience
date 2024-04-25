@@ -10,13 +10,27 @@ import {
   InputRightAddon,
   Button,
 } from '@chakra-ui/react';
-import { useState } from 'react';
-import { parseEther } from 'viem';
+import { useEffect, useState } from 'react';
+import { encodeAbiParameters, numberToHex, parseEther, toHex } from 'viem';
 import {
   type BaseError,
   useWriteContract,
   useWaitForTransactionReceipt,
+  useAccount,
+  useReadContract,
+  prepareTransactionRequest,
 } from 'wagmi';
+
+import CollateralAsset from '../../../../deployments/CollateralAsset/MintableToken.json';
+import Foil from '../../../../deployments/Foil.json';
+
+const tickSpacing = 200; // Hardcoded for now, should be retrieved with pool.tickSpacing()
+function priceToTick(price: number, tickSpacing: number): number {
+  const tick: number = Math.log(price) / Math.log(1.0001);
+  // Round to the nearest valid tick that is a multiple of tickSpacing
+  const roundedTick: number = Math.round(tick / tickSpacing) * tickSpacing;
+  return roundedTick;
+}
 
 const AddLiquidity = ({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -24,42 +38,99 @@ const AddLiquidity = ({
 }: {
   params: { mode: string; selectedData: JSON };
 }) => {
+  const account = useAccount();
   const [depositAmount, setDepositAmount] = useState(0);
-  const [lowPrice, setLowPrice] = useState(0);
-  const [highPrice, setHighPrice] = useState(0);
+  const [lowPrice, setLowPrice] = useState(20);
+  const [highPrice, setHighPrice] = useState(200);
 
-  const { data: hash, error, isPending, writeContract } = useWriteContract();
+  const collateralAmountFunctionResult = useReadContract({
+    abi: CollateralAsset.abi,
+    address: CollateralAsset.address as `0x${string}`,
+    functionName: 'balanceOf',
+    args: [account.address],
+  });
+  const [transactionStep, setTransactionStep] = useState(0); // 0: none, 1: approve sent, 2: approve confirmed, 3: addLiquidity sent
 
-  async function submit(e: React.FormEvent<HTMLFormElement>) {
+  const { data: approveHash, writeContract: approveWrite } = useWriteContract();
+  const { data: addLiquidityHash, writeContract: addLiquidityWrite } =
+    useWriteContract();
+    const l =
+    useWriteContract();
+  const { isSuccess: approveSuccess } = useWaitForTransactionReceipt({
+    hash: approveHash,
+  });
+  const { isSuccess: addLiquiditySuccess } = useWaitForTransactionReceipt({
+    hash: addLiquidityHash,
+  });
+  console.log(l) // Returning M0
+
+  const handleFormSubmit = (e) => {
     e.preventDefault();
-    writeContract({
-      address: '0xFBA3912Ca04dd458c843e2EE08967fC04f3579c2',
-      abi: [],
-      functionName: 'addLiqudiity',
+
+    l.writeContract({
+      address: Foil.address,
+      abi: Foil.abi,
+      functionName: 'addLiquidity',
       args: [
-        BigInt(depositAmount),
-        BigInt(parseEther(lowPrice.toString())),
-        BigInt(parseEther(highPrice.toString())),
+        {
+          accountId: BigInt(420),
+          amountTokenA: parseEther('10'),
+          amountTokenB: parseEther('100'),
+          collateralAmount: parseEther('10'),
+          lowerTick: 27000,
+          upperTick: 30000,
+        },
       ],
     });
-  }
 
-  // get tickSpacing from context
-  function priceToTick(price: number, tickSpacing: number): number {
-    const tick: number = Math.log(price) / Math.log(1.0001);
-    // Round to the nearest valid tick that is a multiple of tickSpacing
-    const roundedTick: number = Math.round(tick / tickSpacing) * tickSpacing;
-    return roundedTick;
-}
+    /*
+    approveWrite({
+      abi: CollateralAsset.abi,
+      address: CollateralAsset.address,
+      functionName: 'approve',
+      args: [CollateralAsset.address, BigInt(depositAmount)],
+    }); // Start the transaction sequence
+    setTransactionStep(1);
+*/
+  };
 
-  const { isLoading: isConfirming, isSuccess: isConfirmed } =
-    useWaitForTransactionReceipt({
-      hash,
-    });
+  useEffect(() => {
+    console.log(
+      'Approve Success:',
+      approveSuccess,
+      'Transaction Step:',
+      transactionStep
+    );
+    if (approveSuccess && transactionStep === 1) {
+      setTransactionStep(2); // Move to the next step once approve is confirmed
+    }
+  }, [approveSuccess, transactionStep]);
+
+  useEffect(() => {
+    console.log('almost there', transactionStep);
+    if (transactionStep === 2) {
+      console.log('heyyyyy');
+      addLiquidityWrite({
+        address: Foil.address,
+        abi: Foil.abi,
+        functionName: 'addLiquidity',
+        args: [
+          {
+            accountId: BigInt(420), // TODO, dont hardcode
+            amountTokenA: BigInt(1), // TODO, dont hardcode
+            amountTokenB: BigInt(1), // TODO, dont hardcode
+            collateralAmount: BigInt(depositAmount),
+            lowerTick: BigInt(priceToTick(lowPrice, tickSpacing)),
+            upperTick: BigInt(priceToTick(highPrice, tickSpacing)),
+          },
+        ],
+      });
+    }
+  }, [transactionStep, addLiquidityWrite]);
 
   return (
     <Box>
-      <form onSubmit={submit}>
+      <form onSubmit={handleFormSubmit}>
         <FormControl mb={4}>
           <FormLabel>Collateral Amount</FormLabel>
           <InputGroup>
@@ -98,18 +169,13 @@ const AddLiquidity = ({
             Net Position: X Ggas to X Ggas
           </Text>
           <Text fontSize="sm" color="gray.500" mb="1">
-            Wallet Balance: X cbETH to x cbETH
+            Wallet Balance: {collateralAmountFunctionResult?.data?.toString()}{' '}
+            cbETH to x cbETH
           </Text>
         </Box>
-        <Button disabled={isPending} width="full" colorScheme="green">
-          {isPending ? 'Confirming...' : 'Add Liquidity'}
-        </Button>{' '}
-        {hash && <div>Transaction Hash: {hash}</div>}
-        {isConfirming && <div>Waiting for confirmation...</div>}
-        {isConfirmed && <div>Transaction confirmed.</div>}
-        {error && (
-          <div>Error: {(error as BaseError).shortMessage || error.message}</div>
-        )}
+        <Button width="full" colorScheme="green" onClick={handleFormSubmit}>
+          Add Liquidity
+        </Button>
       </form>
     </Box>
   );
