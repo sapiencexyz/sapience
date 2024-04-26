@@ -19,13 +19,15 @@ import {
 import LiquidityPosition from './liquidityPosition';
 import PositionEdit from './positionEdit';
 import TraderPosition from './traderPosition';
+import { MdKeyboardDoubleArrowRight } from "react-icons/md";
+
 
 export default function PositionEdit(row: any) {
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   return (
     <>
-      <IconButton icon={<EditIcon />} onClick={onOpen} variant="ghost" />
+      <IconButton size="lg" bg="#f5f7ff" color="#0053ff" icon={<MdKeyboardDoubleArrowRight />} onClick={onOpen} variant="ghost" />
       <Modal isOpen={isOpen} onClose={onClose} size="sm">
         <ModalOverlay />
         <ModalContent>

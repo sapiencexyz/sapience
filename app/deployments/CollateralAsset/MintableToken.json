@@ -1,5 +1,5 @@
 {
-  "address": "0x101b9758583F47C63236D831db79247B6eEAdb57",
+  "address": "0x92b385dAA0a482Dd7f1b1f151B5f16662cc0a1A6",
   "abi": [
     {
       "type": "constructor",
@@ -313,15 +313,15 @@
   ],
   "constructorArgs": [
     "Token",
-    "TKN",
+    "cbETH",
     "18"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0xbda497678c5bd012402df8b942a541d5c8e00a9a17d5ab39bab66cdab10ac962",
+  "deployTxnHash": "0x7bc5f7eddefcfe04059030badcd8f12e09b8ddb430d27154e8107b68b0440c59",
   "sourceName": "src/MintableTokenPermissionlessMint.sol",
   "contractName": "MintableTokenPermissionlessMint",
   "deployedOn": "contract.MintableToken",
   "highlight": true,
-  "gasUsed": 639824,
-  "gasCost": "1166825723"
+  "gasUsed": 639848,
+  "gasCost": "1151809128"
 }

@@ -1,9 +1,26 @@
 'use client';
 
-import { Box, Heading, Link } from '@chakra-ui/react';
-import { formatDistanceToNow } from 'date-fns';
+import { InfoOutlineIcon } from '@chakra-ui/icons';
+import {
+  Box,
+  Heading,
+  Link,
+  Image,
+  Flex,
+  Text,
+  Stat,
+  StatArrow,
+  StatGroup,
+  StatHelpText,
+  StatLabel,
+  StatNumber,
+  Divider,
+} from '@chakra-ui/react';
+import { format, formatDistanceToNow } from 'date-fns';
 import { useContext } from 'react';
-import { parseEther } from 'viem';
+import { FaRegEye, FaRegChartBar, FaCubes } from 'react-icons/fa';
+import { IoDocumentTextOutline } from 'react-icons/io5';
+import { formatEther } from 'viem';
 
 import { MarketContext } from '~/lib/context/MarketProvider';
 
@@ -19,7 +36,7 @@ const PositionsHeader = () => {
     baseAssetMaxPrice,
   } = useContext(MarketContext);
 
-  console.log('context', useContext(MarketContext))
+  console.log('context', useContext(MarketContext));
 
   let relativeTime = '';
   let formattedTime = '';
@@ -27,55 +44,174 @@ const PositionsHeader = () => {
     const dateMilliseconds = Number(endTime * 1000n);
     const date = new Date(dateMilliseconds);
     relativeTime = formatDistanceToNow(date);
-    formattedTime = date.toLocaleString();
+    formattedTime = format(date, 'PPpp');
   }
 
   return (
-    <Box>
-      <Heading mb={2}>{chain.name} Gas Market</Heading>
-      <Heading size="md" mb={5}>
-        Expiring in {relativeTime} with {collateralAssetTicker} collateral
-      </Heading>
-      <Heading mb={2} fontWeight="normal" size="sm" color="gray.500">
-        Contract:{' '}
+    <Box mb={6} pt={4}>
+      <Flex gap={8} mb={9} alignItems="center">
+        <Image src="/assets/base-art.svg" width="160px" />
+        <Box w="100%">
+          <Heading mb={3}>{chain.name} Gas Market</Heading>
+          <Divider mb={5} borderColor="gray.300" />
+          <StatGroup gap={0}>
+            <Stat>
+              <StatLabel>
+                Current Price{' '}
+                <InfoOutlineIcon
+                  transform="translateY(-1px)"
+                  color="gray.600"
+                  height="3"
+                />
+              </StatLabel>
+              <StatNumber>
+                45{' '}
+                <Text as="span" fontSize="sm" color="gray.700">
+                  gwei
+                </Text>
+              </StatNumber>
+              <StatHelpText>
+                <StatArrow type="decrease" />
+                9.36% (24hr)
+              </StatHelpText>
+            </Stat>
+
+            <Stat>
+              <StatLabel>
+                Market Price{' '}
+                <InfoOutlineIcon
+                  transform="translateY(-1px)"
+                  color="gray.600"
+                  height="3"
+                />
+              </StatLabel>
+              <StatNumber>
+                25{' '}
+                <Text as="span" fontSize="sm" color="gray.700">
+                  gwei
+                </Text>
+              </StatNumber>
+              <StatHelpText>
+                <StatArrow type="decrease" />
+                3.36% (24hr)
+              </StatHelpText>
+            </Stat>
+
+            <Stat>
+              <StatLabel>Liquidity</StatLabel>
+              <StatNumber>
+                250{' '}
+                <Text as="span" fontSize="sm" color="gray.700">
+                  {collateralAssetTicker}
+                </Text>
+              </StatNumber>
+              <StatHelpText>
+                <StatArrow type="increase" />
+                23.36%
+              </StatHelpText>
+            </Stat>
+
+            <Stat>
+              <StatLabel>Expiring In</StatLabel>
+              <StatNumber>{relativeTime}</StatNumber>
+              <StatHelpText>{formattedTime} UTC</StatHelpText>
+            </Stat>
+          </StatGroup>
+        </Box>
+      </Flex>
+
+      <Box mb={6}>
         <Link
+          fontSize="sm"
+          color="gray.600"
           isExternal
-          borderBottom="1px dotted"
           _hover={{ textDecoration: 'none' }}
+          mr={9}
+          mb={4}
           href={`${chain.blockExplorers?.default.url}/address/${address}`}
         >
-          {address}
+          <Flex display="inline-flex" alignItems="center">
+            <Box display="inline-block" mr="1.5">
+              <IoDocumentTextOutline />
+            </Box>
+            <Text
+              borderBottom="1px dotted"
+              borderRadius="1px"
+              fontWeight="500"
+              as="span"
+              sx={{ fontFamily: 'var(--font-spacemono-heavy)' }}
+            >
+              Contract
+            </Text>
+          </Flex>
         </Link>
-      </Heading>
-      <Heading mb={2} fontWeight="normal" size="sm" color="gray.500">
-        Collateral:{' '}
+
         <Link
+          fontSize="sm"
+          color="gray.600"
           isExternal
-          borderBottom="1px dotted"
           _hover={{ textDecoration: 'none' }}
+          mr={9}
+          mb={4}
           href={`${chain.blockExplorers?.default.url}/address/${collateralAsset}`}
         >
-          {collateralAsset}
+          <Flex display="inline-flex" alignItems="center">
+            <Box display="inline-block" mr="1.5">
+              <FaCubes />
+            </Box>
+            <Text
+              borderBottom="1px dotted"
+              borderRadius="1px"
+              fontWeight="500"
+              as="span"
+              sx={{ fontFamily: 'var(--font-spacemono-heavy)' }}
+            >
+              Collateral
+            </Text>
+          </Flex>
         </Link>
-      </Heading>
-      <Heading mb={2} fontWeight="normal" size="sm" color="gray.500">
-        Resolver:{' '}
+
         <Link
+          fontSize="sm"
+          color="gray.600"
           isExternal
-          borderBottom="1px dotted"
           _hover={{ textDecoration: 'none' }}
+          mr={9}
+          mb={4}
           href={`${chain.blockExplorers?.default.url}/address/${resolver}`}
         >
-          {resolver}
+          <Flex display="inline-flex" alignItems="center">
+            <Box display="inline-block" mr="1.5">
+              <FaRegEye />
+            </Box>
+
+            <Text
+              borderBottom="1px dotted"
+              borderRadius="1px"
+              fontWeight="500"
+              as="span"
+              sx={{ fontFamily: 'var(--font-spacemono-heavy)' }}
+            >
+              Resolver
+            </Text>
+          </Flex>
         </Link>
-      </Heading>
-      <Heading mb={2} fontWeight="normal" size="sm" color="gray.500">
-        Expiration: {formattedTime}
-      </Heading>
-      <Heading mb={5} fontWeight="normal" size="sm" color="gray.500">
-        Allowed Range: {baseAssetMinPrice && parseEther(baseAssetMinPrice).toString()} -{' '}
-        {baseAssetMaxPrice && parseEther(baseAssetMaxPrice).toString()}
-      </Heading>
+
+        <Text display="inline" fontSize="sm" color="gray.600" mr={6} mb={4}>
+          <Flex display="inline-flex" alignItems="center">
+            <Box display="inline-block" mr="1.5">
+              <FaRegChartBar />
+            </Box>
+            <Text as="span" fontWeight="500" mr={1}>
+              Allowed Range:
+            </Text>{' '}
+            {baseAssetMinPrice && formatEther(baseAssetMinPrice).toString()}{' '}
+            cbETH/gigagas -{' '}
+            {baseAssetMaxPrice && formatEther(baseAssetMaxPrice).toString()}{' '}
+            cbETH/gigagas
+          </Flex>
+        </Text>
+      </Box>
     </Box>
   );
 };

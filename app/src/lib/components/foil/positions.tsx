@@ -46,10 +46,10 @@ export default function Positions() {
 
   return (
     <Box>
-      <Heading size="md" mb="2">
+      <Heading size="md" mb="4">
         Positions
       </Heading>
-      <TableContainer mb={6}>
+      <TableContainer mb={4}>
         <Table variant="simple" size="sm">
           <Thead>
             <Tr>
@@ -69,7 +69,7 @@ export default function Positions() {
           </Tbody>
         </Table>
       </TableContainer>
-      <Box mb={4} maxW="270px">
+      <Box maxW="190px">
         <CreateAccount />
       </Box>
     </Box>

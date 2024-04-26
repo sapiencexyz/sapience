@@ -1,10 +1,11 @@
-import { Tr, Td, Text } from '@chakra-ui/react';
-import PositionEdit from './positionEdit';
+import { Tr, Td, Text, StatNumber, Stat } from '@chakra-ui/react';
 import { useReadContract } from 'wagmi';
+
 import Foil from '../../../../deployments/Foil.json';
 
-export default function PositionRow(row: any) {
+import PositionEdit from './positionEdit';
 
+export default function PositionRow(row: any) {
   const positionResult = useReadContract({
     abi: Foil.abi,
     address: Foil.address as `0x${string}`,
@@ -12,40 +13,70 @@ export default function PositionRow(row: any) {
     args: [row.id],
   });
 
-  console.log(positionResult);
-
   return (
-    <Tr>
-      <Td>{row.id.toString()}</Td>
+    <Tr height="80px">
       <Td>
-        {row.collateral}{' '}
-        <Text fontSize="sm" color="gray.500">
-          cbETH
-        </Text>
+        <Stat my={2} pt={1}>
+          <StatNumber>{row.id.toString()}
+          <Text as="span" fontSize="sm" color="gray.700">
+              
+            </Text>
+          </StatNumber>
+        </Stat>
       </Td>
       <Td>
-        {row.lowPrice}{' '}
-        <Text fontSize="sm" color="gray.500">
-          cbETH/Ggas
-        </Text>
+        <Stat my={2} pt={1}>
+          <StatNumber>
+            100{row.collateral}{' '}
+            <Text as="span" fontSize="sm" color="gray.700">
+              cbETH
+            </Text>
+          </StatNumber>
+        </Stat>
       </Td>
       <Td>
-        {row.highPrice}{' '}
-        <Text fontSize="sm" color="gray.500">
-          cbETH/Ggas
-        </Text>
+        <Stat my={2} pt={1}>
+        <StatNumber>
+            100{row.lowPrice}{' '}
+            <Text as="span" fontSize="sm" color="gray.700">
+            cbETH/Ggas
+            </Text>
+          </StatNumber>
+          </Stat>
       </Td>
       <Td>
-        {row.netPosition}
-        <Text fontSize="sm" color="gray.500">
-          Gigagas
-        </Text>
+        <Stat my={2} pt={1}>
+        <StatNumber>
+            100{row.highPrice}{' '}
+            <Text as="span" fontSize="sm" color="gray.700">
+            cbETH/Ggas
+            </Text>
+          </StatNumber>
+          </Stat>
+
+
       </Td>
       <Td>
-        {row.gainLoss}
-        <Text fontSize="sm" color="gray.500">
-          cbETH
-        </Text>
+
+      <Stat my={2} pt={1}>
+        <StatNumber>
+            100{row.netPosition}{' '}
+            <Text as="span" fontSize="sm" color="gray.700">
+            Gigagas
+            </Text>
+          </StatNumber>
+          </Stat>
+      </Td>
+      <Td>
+
+      <Stat my={2} pt={1}>
+        <StatNumber>
+            +4{row.gainLoss}{' '}
+            <Text as="span" fontSize="sm" color="gray.700">
+            cbETH
+            </Text>
+          </StatNumber>
+          </Stat>
       </Td>
       <Td isNumeric>
         <PositionEdit id={row.id} />

@@ -13,7 +13,7 @@ depends = []
 [clone.CollateralAsset]
 source="mintable-token@permissionless-mint"
 target="foil@test-collateral-asset"
-vars.symbol="cbETH"
+var.symbol="cbETH"
 
 [deploy.ReentrancyGuard]
 artifact = "ReentrancyGuard"

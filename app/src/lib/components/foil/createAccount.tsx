@@ -1,4 +1,5 @@
-import { InputGroup, Input, Button, InputRightElement, FormControl, FormHelperText } from '@chakra-ui/react';
+import { InputGroup, Input, IconButton, InputRightElement, FormControl, FormHelperText, FormLabel } from '@chakra-ui/react';
+import {AddIcon} from '@chakra-ui/icons';
 import type * as React from 'react';
 import {
   type BaseError,
@@ -30,12 +31,11 @@ export default function createAccount() {
   return (
     <form onSubmit={submit}>
       <FormControl>
+        <FormLabel color="gray.700">Create Position</FormLabel>
       <InputGroup size="md">
-        <Input pr="8rem" type="number" placeholder="Account ID" required onChange={(event) => setId(event.target.value)} />
-        <InputRightElement width="8.5rem">
-          <Button rounded="md" h="1.75rem" size="sm" type="submit" colorScheme="blue">
-          {isPending ? 'Confirming...' : 'Create Account'}
-          </Button>
+        <Input pr="2.75rem" type="number" placeholder="Position ID" required onChange={(event) => setId(event.target.value)} />
+        <InputRightElement width="2.75rem">
+          <IconButton rounded="md" h="1.75rem" size="sm" type="submit" colorScheme="blue" bg="#0053ff" isLoading={isPending} icon={<AddIcon color="white" />} />
         </InputRightElement>
       </InputGroup>
 

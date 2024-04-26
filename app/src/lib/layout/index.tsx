@@ -16,7 +16,7 @@ const Layout = ({ children }: LayoutProps) => {
       direction="column"
       minHeight="100dvh"
       margin="0 auto"
-      maxWidth={800}
+      maxWidth='container.lg'
       transition="0.5s ease-out"
     >
       <Header />
