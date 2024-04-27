@@ -1,5 +1,6 @@
 'use client';
 
+import { InfoOutlineIcon } from '@chakra-ui/icons';
 import {
   Flex,
   Select,
@@ -14,8 +15,131 @@ import {
   FormHelperText,
   Link,
   Text,
+  Divider,
+  Stat,
+  StatArrow,
+  StatGroup,
+  StatHelpText,
+  StatLabel,
+  StatNumber,
+  Image,
+  Slider,
+  SliderFilledTrack,
+  SliderMark,
+  SliderThumb,
+  SliderTrack,
 } from '@chakra-ui/react';
+import { FaCubes, FaRegEye, FaRegChartBar } from 'react-icons/fa';
+import { IoDocumentTextOutline } from 'react-icons/io5';
+import { formatEther } from 'viem';
 
+const labelStyles = {
+  mt: '2',
+  transform: 'translateX(-50%)',
+  fontSize: 'sm',
+  color: 'gray.700'
+};
+
+const Market = () => {
+  return (
+    <Box
+      border="1px solid"
+      borderColor="gray.200"
+      maxW="container.sm"
+      m="auto"
+      borderRadius="md"
+      boxShadow="md"
+      p={8}
+    >
+      <Box mb={6}>
+        <Flex gap={8} mb={8} alignItems="center">
+          <Image src="/assets/base-art.svg" width="160px" />
+          <Box w="100%">
+            <Heading mb={4}>Base Gas Subscription</Heading>
+            <Divider mb={4} borderColor="gray.300" />
+            <Text fontSize="md" color="gray.600">
+              Use Foil to lock in a gas price. You can redeem a rebate of cbETH
+              if average gas costs exceed what you’re quoted over the duration
+              of your subscription.
+            </Text>
+          </Box>
+        </Flex>
+      </Box>
+      <form>
+        <FormControl mb={8}>
+          <FormLabel>Duration</FormLabel>
+          <Box pb={4}>
+            <Slider
+              step="25"
+              aria-label="slider-ex-6"
+              onChange={(val) => setSliderValue(val)}
+            >
+              <SliderMark value={0} {...labelStyles}>
+                May
+              </SliderMark>
+              <SliderMark value={25} {...labelStyles}>
+                June
+              </SliderMark>
+              <SliderMark value={50} {...labelStyles}>
+                July
+              </SliderMark>
+              <SliderMark value={75} {...labelStyles}>
+                August
+              </SliderMark>
+              <SliderMark value={100} {...labelStyles}>
+                Sept.
+              </SliderMark>
+              <SliderTrack>
+                <SliderFilledTrack />
+              </SliderTrack>
+              <SliderThumb />
+            </Slider>
+          </Box>
+        </FormControl>
+
+        <FormControl mb={8}>
+          <Flex>
+            <FormLabel>Quantity</FormLabel>
+            <Box ml="auto">
+              <Link
+                borderBottom="1px dotted"
+                height="auto"
+                fontSize="xs"
+                color="gray.500"
+              >
+                Estimate based on wallet usage
+              </Link>
+            </Box>
+          </Flex>
+          <InputGroup>
+            <Input />
+            <InputRightAddon>GigaGas per month</InputRightAddon>
+          </InputGroup>
+          <FormHelperText>
+            <strong>Total:</strong> 420,420,420,420.00 gas units
+          </FormHelperText>
+        </FormControl>
+
+        <Box borderLeft="4px solid" borderLeftColor="#0053ff" bg="#f5f7ff" mb={8} p={6}>
+          <Heading size="sm" color="gray.700" mb={1.5}>Quote</Heading>
+
+          <Text display="inline" fontSize="2xl" mr={2}>
+            31 cbETH
+          </Text>
+          <Text display="inline" color="gray.500">
+            (20 gwei per gas unit)
+          </Text>
+        </Box>
+
+        <Button size="lg" rounded="md" w="100%" bg="#0053ff" color="white">
+          Subscribe
+        </Button>
+      </form>
+    </Box>
+  );
+};
+
+/*
 const Market = () => {
   return (
     <Flex direction="column" minHeight="70vh" my={8} gap={8} w="full">
@@ -173,5 +297,6 @@ const Market = () => {
     </Flex>
   );
 };
+*/
 
 export default Market;

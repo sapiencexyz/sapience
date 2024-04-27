@@ -52,7 +52,7 @@ const PositionsHeader = () => {
       <Flex gap={8} mb={9} alignItems="center">
         <Image src="/assets/base-art.svg" width="160px" />
         <Box w="100%">
-          <Heading mb={3}>{chain.name} Gas Market</Heading>
+          <Heading mb={3}>{chain.name} Gas Market  <Text ml={1.5} as="span" fontWeight="100" color="gray.600">Q2 2024</Text></Heading>
           <Divider mb={5} borderColor="gray.300" />
           <StatGroup gap={0}>
             <Stat>
@@ -131,7 +131,7 @@ const PositionsHeader = () => {
           href={`${chain.blockExplorers?.default.url}/address/${address}`}
         >
           <Flex display="inline-flex" alignItems="center">
-            <Box display="inline-block" mr="1.5">
+            <Box display="inline-block" mr="1">
               <IoDocumentTextOutline />
             </Box>
             <Text
@@ -156,7 +156,7 @@ const PositionsHeader = () => {
           href={`${chain.blockExplorers?.default.url}/address/${collateralAsset}`}
         >
           <Flex display="inline-flex" alignItems="center">
-            <Box display="inline-block" mr="1.5">
+            <Box display="inline-block" mr="1">
               <FaCubes />
             </Box>
             <Text
@@ -181,7 +181,7 @@ const PositionsHeader = () => {
           href={`${chain.blockExplorers?.default.url}/address/${resolver}`}
         >
           <Flex display="inline-flex" alignItems="center">
-            <Box display="inline-block" mr="1.5">
+            <Box display="inline-block" mr="1">
               <FaRegEye />
             </Box>
 
@@ -199,7 +199,7 @@ const PositionsHeader = () => {
 
         <Text display="inline" fontSize="sm" color="gray.600" mr={6} mb={4}>
           <Flex display="inline-flex" alignItems="center">
-            <Box display="inline-block" mr="1.5">
+            <Box display="inline-block" mr="1">
               <FaRegChartBar />
             </Box>
             <Text as="span" fontWeight="500" mr={1}>
