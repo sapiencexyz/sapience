@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 
 import {Foil} from "../src/contracts/Foil.sol";
 import {IFoil} from "../src/interfaces/IFoil.sol";
+import {IFoilStructs} from "../src/interfaces/IFoilStructs.sol";
 import {VirtualToken} from "../src/contracts/VirtualToken.sol";
 import {TickMath} from "../src/external/univ3/TickMath.sol";
 import "../src/interfaces/external/INonfungiblePositionManager.sol";
@@ -49,8 +50,8 @@ contract FoilSwappedTokensTest is Test {
             // int24 upperTick = TickMath.getTickAtSqrtRatio(
             //     306849353968360525628702781967
             // ); // 15
-            IFoil.AddLiquidityRuntimeParams memory params = IFoil
-                .AddLiquidityRuntimeParams({
+            IFoilStructs.AddLiquidityParams memory params = IFoilStructs
+                .AddLiquidityParams({
                     accountId: 1,
                     amountTokenA: 10 ether,
                     amountTokenB: 100 ether,
@@ -64,10 +65,8 @@ contract FoilSwappedTokensTest is Test {
                 1
             );
 
-            console2.log(tokenAmount0, tokenAmount1);
-
             // new account!
-            params = IFoil.AddLiquidityRuntimeParams({
+            params = IFoilStructs.AddLiquidityParams({
                 accountId: 2,
                 amountTokenA: 100 ether,
                 amountTokenB: 10 ether,
@@ -80,7 +79,6 @@ contract FoilSwappedTokensTest is Test {
             (uint256 tokenAmount3, uint256 tokenAmount4) = foils[i].getPosition(
                 2
             );
-            console2.log(tokenAmount3, tokenAmount4);
         }
     }
 }

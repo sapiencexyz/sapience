@@ -7,29 +7,24 @@ import "../external/univ3/TickMath.sol";
 import "../external/univ3/LiquidityAmounts.sol";
 import "../external/univ3/MigrationMathUtils.sol";
 
-library UniV3Abstraction {
+library UniV3AbstractionOld {
     using MigrationMathUtils for uint256;
     using MigrationMathUtils for int256;
     using Epoch for Epoch.Data;
 
     struct RuntimeAddLiquidityParams {
-        uint256 accountId;
         address recipient;
         address pool;
         int24 lowerTick;
         int24 upperTick;
-        uint256 amountTokenA;
-        uint256 amountTokenB;
+        uint256 collateralAmount;
     }
 
     uint256 internal constant _DUST = 10;
 
     function addLiquidity(
         RuntimeAddLiquidityParams memory params
-    )
-        external
-        returns (uint256 addedAmount0, uint256 addedAmount1, uint128 liquidity)
-    {
+    ) external returns (uint256 amount0, uint256 amount1, uint128 liquidity) {
         (uint160 sqrtRatioX96, , , , , , ) = IUniswapV3Pool(params.pool)
             .slot0();
 
@@ -38,19 +33,19 @@ library UniV3Abstraction {
             sqrtRatioX96,
             TickMath.getSqrtRatioAtTick(params.lowerTick),
             TickMath.getSqrtRatioAtTick(params.upperTick),
-            params.amountTokenA,
-            params.amountTokenB
+            params.collateralAmount,
+            0
         );
 
-        (addedAmount0, addedAmount1) = IUniswapV3Pool(params.pool).mint(
+        (amount0, amount1) = IUniswapV3Pool(params.pool).mint(
             params.recipient,
             params.lowerTick,
             params.upperTick,
             liquidity,
-            abi.encode(params.accountId)
+            abi.encodePacked(msg.sender)
         );
 
-        return (addedAmount0, addedAmount1, liquidity);
+        return (amount0, amount1, liquidity);
     }
 
     struct RuntimeRemoveLiquidityParams {
@@ -115,12 +110,6 @@ library UniV3Abstraction {
             ? int256(params.amount)
             : int256(-1 * params.amount.toInt());
 
-        // address recipient,
-        // bool zeroForOne,
-        // int256 amountSpecified,
-        // uint160 sqrtPriceLimitX96,
-        // bytes calldata data
-
         // returned amounts are delta amounts, as seen by the pool, not the user
         // > 0: pool gets; user pays
         (int256 signedAmountVEth, int256 signedAmountVGas) = IUniswapV3Pool(
@@ -136,7 +125,7 @@ library UniV3Abstraction {
                             : TickMath.MAX_SQRT_RATIO - 1
                     )
                     : params.sqrtPriceLimitX96,
-                abi.encode(params.accountId, params.shouldMint)
+                abi.encodePacked(params.accountId, params.shouldMint)
             );
 
         (uint256 amount0, uint256 amount1) = (
@@ -144,8 +133,6 @@ library UniV3Abstraction {
             signedAmountVGas.abs()
         );
 
-        console2.log("swap - amount0 :", amount0);
-        console2.log("swap - amount1 :", amount1);
         // TODO Understand from that point onwards... just copied
 
         // amountIsInput = true, isVEthToVGas = true => exact vETH

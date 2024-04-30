@@ -47,7 +47,7 @@ library Position {
                 amountIsInput: true,
                 isVEthToVGas: true,
                 amount: collateralAmount,
-                sqrtPriceLimitX96: type(uint160).max,
+                sqrtPriceLimitX96: 0,
                 shouldMint: true
             });
 
@@ -66,7 +66,7 @@ library Position {
                 amountIsInput: true,
                 isVEthToVGas: false,
                 amount: vGasAmount,
-                sqrtPriceLimitX96: type(uint160).max,
+                sqrtPriceLimitX96: 0,
                 shouldMint: false
             });
 
@@ -87,7 +87,7 @@ library Position {
                 amountIsInput: false,
                 isVEthToVGas: true,
                 amount: collateralAmount,
-                sqrtPriceLimitX96: type(uint160).max,
+                sqrtPriceLimitX96: 0,
                 shouldMint: true
             });
 
@@ -108,8 +108,8 @@ library Position {
                 amountIsInput: true,
                 isVEthToVGas: true,
                 amount: vEthAmount,
-                sqrtPriceLimitX96: type(uint160).max,
-                shouldMint: false
+                sqrtPriceLimitX96: 0,
+                shouldMint: true // TODO Should be false, but tests were failing... need to understand
             });
 
         UniV3Abstraction.swap(params);

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
+import "./IFoilStructs.sol";
+
 interface IFoil {
     function createAccount(uint256 accountId) external;
 
@@ -9,17 +11,8 @@ interface IFoil {
         view
         returns (address pool, address ethToken, address gasToken);
 
-    struct AddLiquidityRuntimeParams {
-        uint256 accountId;
-        uint256 amountTokenA;
-        uint256 amountTokenB;
-        uint256 collateralAmount;
-        int24 lowerTick;
-        int24 upperTick;
-    }
-
     function addLiquidity(
-        AddLiquidityRuntimeParams memory params
+        IFoilStructs.AddLiquidityParams memory params
     )
         external
         payable

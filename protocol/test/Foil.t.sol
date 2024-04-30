@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 
 import {Foil} from "../src/contracts/Foil.sol";
 import {IFoil} from "../src/interfaces/IFoil.sol";
+import {IFoilStructs} from "../src/interfaces/IFoilStructs.sol";
 import {VirtualToken} from "../src/contracts/VirtualToken.sol";
 import {TickMath} from "../src/external/univ3/TickMath.sol";
 import "../src/interfaces/external/INonfungiblePositionManager.sol";
@@ -45,8 +46,8 @@ contract FoilTest is Test {
         // int24 upperTick = TickMath.getTickAtSqrtRatio(
         //     306849353968360525628702781967
         // ); // 15
-        IFoil.AddLiquidityRuntimeParams memory params = IFoil
-            .AddLiquidityRuntimeParams({
+        IFoilStructs.AddLiquidityParams memory params = IFoilStructs
+            .AddLiquidityParams({
                 accountId: 1,
                 amountTokenA: 10 ether,
                 amountTokenB: 100 ether,
@@ -61,7 +62,7 @@ contract FoilTest is Test {
         console2.log(tokenAmount0, tokenAmount1);
 
         // new account!
-        params = IFoil.AddLiquidityRuntimeParams({
+        params = IFoilStructs.AddLiquidityParams({
             accountId: 2,
             amountTokenA: 100 ether,
             amountTokenB: 10 ether,
@@ -73,5 +74,81 @@ contract FoilTest is Test {
 
         (uint256 tokenAmount3, uint256 tokenAmount4) = foil.getPosition(2);
         console2.log(tokenAmount3, tokenAmount4);
+    }
+
+    function test_addLiquidityAndLongs() public {
+        int24 tickSpacing = IUniswapV3Pool(pool).tickSpacing();
+        // int24 lowerTick = TickMath.getTickAtSqrtRatio(
+        //     177159557114295710296101716160
+        // ); // 5
+        // int24 upperTick = TickMath.getTickAtSqrtRatio(
+        //     306849353968360525628702781967
+        // ); // 15
+        IFoilStructs.AddLiquidityParams memory params = IFoilStructs
+            .AddLiquidityParams({
+                accountId: 1,
+                amountTokenA: 10 ether,
+                amountTokenB: 100 ether,
+                collateralAmount: 10 ether,
+                lowerTick: 27000, // 5
+                upperTick: 30000 // 15
+            });
+        foil.addLiquidity(params);
+
+        (uint256 tokenAmount0, uint256 tokenAmount1) = foil.getPosition(1);
+
+        // new account!
+        params = IFoilStructs.AddLiquidityParams({
+            accountId: 2,
+            amountTokenA: 100 ether,
+            amountTokenB: 10 ether,
+            collateralAmount: 10 ether,
+            lowerTick: -887200, // minTick
+            upperTick: 887200 // maxTick
+        });
+        foil.addLiquidity(params);
+
+        (uint256 tokenAmount3, uint256 tokenAmount4) = foil.getPosition(2);
+
+        foil.openLong(1, 10 ether);
+        foil.reduceLong(1, 1 ether);
+    }
+
+    function test_addLiquidityAndShorts() public {
+        int24 tickSpacing = IUniswapV3Pool(pool).tickSpacing();
+        // int24 lowerTick = TickMath.getTickAtSqrtRatio(
+        //     177159557114295710296101716160
+        // ); // 5
+        // int24 upperTick = TickMath.getTickAtSqrtRatio(
+        //     306849353968360525628702781967
+        // ); // 15
+        IFoilStructs.AddLiquidityParams memory params = IFoilStructs
+            .AddLiquidityParams({
+                accountId: 1,
+                amountTokenA: 10 ether,
+                amountTokenB: 100 ether,
+                collateralAmount: 10 ether,
+                lowerTick: 27000, // 5
+                upperTick: 30000 // 15
+            });
+        foil.addLiquidity(params);
+
+        (uint256 tokenAmount0, uint256 tokenAmount1) = foil.getPosition(1);
+
+        // new account!
+        params = IFoilStructs.AddLiquidityParams({
+            accountId: 2,
+            amountTokenA: 100 ether,
+            amountTokenB: 10 ether,
+            collateralAmount: 10 ether,
+            lowerTick: -887200, // minTick
+            upperTick: 887200 // maxTick
+        });
+        foil.addLiquidity(params);
+
+        (uint256 tokenAmount3, uint256 tokenAmount4) = foil.getPosition(2);
+
+        foil.openShort(1, 1 ether);
+        foil.reduceShort(1, 0.1 ether);
     }
 }
