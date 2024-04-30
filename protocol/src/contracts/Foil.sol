@@ -19,7 +19,12 @@ import {LiquidityAmounts} from "../external/univ3/LiquidityAmounts.sol";
 
 import "forge-std/console2.sol";
 
-contract Foil is ReentrancyGuard, IFoil, IUniswapV3MintCallback, ERC721Enumerable {
+contract Foil is
+    ReentrancyGuard,
+    IFoil,
+    IUniswapV3MintCallback,
+    ERC721Enumerable
+{
     using Epoch for Epoch.Data;
     using Account for Account.Data;
     using Position for Position.Data;
@@ -44,16 +49,22 @@ contract Foil is ReentrancyGuard, IFoil, IUniswapV3MintCallback, ERC721Enumerabl
         );
     }
 
-    function getMarket() external view returns (uint endTime,
-        address uniswapPositionManager,
-        address resolver,
-        address collateralAsset,
-        uint baseAssetMinPrice,
-        uint baseAssetMaxPrice,
-        uint24 feeRate,
-        address ethToken,
-        address gasToken,
-        address pool) {
+    function getMarket()
+        external
+        view
+        returns (
+            uint endTime,
+            address uniswapPositionManager,
+            address resolver,
+            address collateralAsset,
+            uint baseAssetMinPrice,
+            uint baseAssetMaxPrice,
+            uint24 feeRate,
+            address ethToken,
+            address gasToken,
+            address pool
+        )
+    {
         Epoch.Data storage epoch = Epoch.load();
         return (
             epoch.endTime,
@@ -68,7 +79,7 @@ contract Foil is ReentrancyGuard, IFoil, IUniswapV3MintCallback, ERC721Enumerabl
             address(epoch.pool)
         );
     }
-    
+
     function onERC721Received(
         address operator,
         address,
@@ -105,7 +116,6 @@ contract Foil is ReentrancyGuard, IFoil, IUniswapV3MintCallback, ERC721Enumerabl
         Account.createValid(accountId);
         _mint(msg.sender, accountId);
     }
-
 
     /*
         1. LP providers call this function to add liquidity to uniswap pool
@@ -322,25 +332,26 @@ contract Foil is ReentrancyGuard, IFoil, IUniswapV3MintCallback, ERC721Enumerabl
 
         if (amount0Owed > 0) {
             address token = IUniswapV3Pool(epoch.pool).token0();
-            // if (token != address(epoch.gasToken)) {
-            //     revert Errors.InvalidVirtualToken(token);
-            // }
+            // Check if the tokens are not swapped
+            if (token != address(epoch.ethToken)) {
+                revert Errors.InvalidVirtualToken(token);
+            }
 
-            VirtualToken(token).mint(address(this), amount0Owed);
-            VirtualToken(token).transfer(address(epoch.pool), amount0Owed);
+            epoch.ethToken.mint(address(this), amount0Owed);
+            epoch.ethToken.transfer(address(epoch.pool), amount0Owed);
 
-            // we need to confirm is the right token here for our accounting
             position.vEthAmount += amount0Owed;
         }
         if (amount1Owed > 0) {
             address token = IUniswapV3Pool(epoch.pool).token1();
-            // if (token != address(epoch.ethToken)) {
-            //     revert Errors.InvalidVirtualToken(token);
-            // }
-            VirtualToken(token).mint(address(this), amount1Owed);
-            VirtualToken(token).transfer(address(epoch.pool), amount1Owed);
+            // Check if the tokens are not swapped
+            if (token != address(epoch.gasToken)) {
+                revert Errors.InvalidVirtualToken(token);
+            }
 
-            // we need to confirm is the right token here for our accounting
+            epoch.gasToken.mint(address(this), amount1Owed);
+            epoch.gasToken.transfer(address(epoch.pool), amount1Owed);
+
             position.vGasAmount += amount1Owed;
         }
     }

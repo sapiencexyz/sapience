@@ -106,7 +106,7 @@ library Epoch {
             "tknB"
         );
 
-        if(address(tokenA) < address(tokenB)){
+        if (address(tokenA) < address(tokenB)) {
             epoch.ethToken = tokenA;
             epoch.gasToken = tokenB;
         } else {
@@ -128,7 +128,7 @@ library Epoch {
             epoch.pool
         ).slot0();
         int24 spacing = IUniswapV3Pool(epoch.pool).tickSpacing();
-        console2.log(spacing);
+        console2.log("Spacing : ", spacing);
     }
 
     function loadValid() internal view returns (Data storage epoch) {
