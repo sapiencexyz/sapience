@@ -1,0 +1,33 @@
+{
+  "name": "@foil/protocol",
+  "license": "UNLICENSED",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "test": "",
+    "dev": "cannon build --keep-alive --wipe --port 3001 --no-cors",
+    "update-abis": "cannon inspect foil --write-deployments ../app/deployments"
+  },
+  "devDependencies": {
+    "@types/chai": "^4.2.0",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.11.17",
+    "chai": "^4.2.0",
+    "mocha": "^10.3.0",
+    "mocha-junit-reporter": "^2.2.1",
+    "solidity-coverage": "^0.8.1",
+    "ts-node": "^10.9.1",
+    "typechain": "^8.2.0",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.2npm ",
+    "@uniswap/v3-core": "^1.0.1",
+    "@uniswap/v3-periphery": "^1.4.4",
+    "@usecannon/cli": "^2.12.4"
+  },
+  "engines": {
+    "node": ">=16.x.x",
+    "pnpm": ">=8"
+  }
+}

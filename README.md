@@ -1,8 +1,7 @@
 # Foil
 
-## Dev Env (WIP)
-
-* In `protocol`, run `yarn run node` to spin up a local fork of base
-* In `protocol`, run `yarn run deploy` to deploy
-* In `protocol`, run `yarn run abis` to deploy
-* In `app`, run `pnpm run dev` to start the app
+* Run `pnpm protocol-dev`
+* In a new tab, run `pnpm update-abis` to update ABIs and addresses for local app development, if necessary.
+* Run `pnpm app-dev`
+  * Connect your wallet application to http://localhost:3001 (Chain ID 13370)
+  * Remember to reset the nonce in the wallet after restarting the node.

@@ -1,0 +1,15 @@
+{
+  "name": "fh",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "pnpm run test --recursive",
+    "app-dev": "pnpm --filter app run dev",
+    "protocol-dev": "pnpm --filter protocol run dev",
+    "update-abis": "pnpm --filter protocol run update-abis"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
