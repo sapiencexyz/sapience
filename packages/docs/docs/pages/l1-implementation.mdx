@@ -1,0 +1,105 @@
+# Ethereum L1 Gas Implementation
+
+![Diagram](/images/foildiagram.png "Diagram")
+
+The Foil protocol’s backend architecture is structured as an expiring contract that utilizes Uniswap liquidity pools for price discovery. 
+
+Collateral and positions are managed by a protocol settlement contract that exclusively controls deposits and withdrawals of settlement assets into and out of the protocol vault as well as virtual base/quote tokens into and out of the liquidity pool. 
+
+Foil’s architecture is modular and can be implemented in any chain and for any on-chain resource with minimal changes.
+
+## Ethereum Mainnet Gas Implementation
+
+The Ethereum Ethereum Gas market is the generic implementation of Foil protocol. It’s main components are:
+
+- **The Foil settlement contract**: which holds collateral assets (which can be any flavor of ETH, like LST and LRTs), mints virtual asset tokens, and handles payouts on settlement. 
+
+* **Uniswap V3/V4**: Virtual asset tokens are traded on a concentrated liquidity AMM, where price discovery occurs. 
+
+- **Virtual asset tokens**: vGAS or vGWEI tokens are issued by the Foil settlement contract and represent long and short positions, respectively. There is a unique pool and pair of tokens for every expiry. Additionally, Virtual asset tokens can only be traded on the predetermined AMM pool and not elsewhere. 
+
+* **Decentralized Oracle:** Any decentralized offchain compute service (like Chainlink and Pyth) can be used for settlement. Upon settlement, the oracle provides a price at which a given market will expire, defining payouts due from the Foil settlement contract. 
+
+The process for opening a position consists of the following operations: 1) depositing collateral to a vault contract via a clearing contract, 2) issuance of virtual tokens (e.g. either vGAS or vGWEI) by the clearing contract on behalf of the user, and 3) transfer of issued virtual tokens into a concentrated liquidity pool by the clearing contract on behalf of the user. 
+
+To force convergence between the market and index prices, a mean gas price used for settlement is provided via trustless offchain computation using a permissionless function in the clearing contract. In the version of Foil described here, it will not be possible for users to open leveraged positions. This is enforced via strict overcollateralization requirements (e.g. 10x) for positions on the short side of the market and maximum leverage of 1x on the long side of the market. To eliminate potential tail risks from black swan scenarios where the index price has increased well beyond its normal range (e.g. >10x), Foil liquidity pools will enforce predefined trading ranges that mathematically eliminate any possibility of liquidation. 
+
+### Examples
+
+#### Resource Producer
+
+1. User wants to provide OTM short liquidity
+
+2. Deposits 100 ETH collateral to account
+
+   - Clearinghouse credits 100 ETH to User’s account
+
+   - (note that ETH is used here but Foil’s modular design enables support for any flavor of ETH to be trivially substituted)
+
+3. GAS market price at 10 GWEI (vGAS/vGWEI pool) \[Oracle price = avg(30days)]
+
+4. Wants to sell 1B vGAS from 10-30 vGWEI price range
+
+5. Mints 1B vGAS, supplies to 10-30 vGWEI tick ranges
+
+6. GAS market price moves to 40 GWEI at settlement 
+
+   - Passing through 10-30 vGWEI range means user sold all 1B GAS tokens for 20B vGWEI tokens (@vGAS/vGWEI = 20) - _could be more with fees_ 
+
+     - (took net short 1B vGAS position at 20 vGWEI)
+
+     - User has 20B vGWEI tokens and owes 1B vGAS tokens
+
+   - Settlement price is 40 vGWEI so user can close 1B short from 20 vGWEI at 40 GvWEI
+
+     - Net loss 20 vGWEI \* 1B vGAS = 20 ETH
+
+7. User settles position 
+
+   - Settlement = user can exchange vGWEI for vGAS at 40:1 exchange rate
+
+   - Swaps 20B vGWEI tokens for 500M vGAS tokens
+
+     - (owes 1B vGAS tokens)
+
+   - Needs to acquire another 500M vGAS tokens for 20B vGWEI tokens 
+
+   - 20B vGWEI = 20 ETH
+
+   - Clearinghouse deducts User’s account balance by 20 ETH
+
+8. User withdraws 80 ETH from account 
+
+#### Resource Consumer
+
+1. User is an exchange operator who regularly posts withdrawal txn batches to L1 (\~30B gas/month)
+
+2. Current 30D average gas price is \~25 Gwei
+
+3. User checks vGAS/vGWEI pool
+
+   1. 30B vGAS is available to buy for an average price of 35 vGWEI
+
+4. User deposits 30\*35 = 1050 ETH to buy 30B vGAS at average price of 35 vGWEI (1x long)
+
+   1. Clearinghouse credits 1050 ETH to User’s account
+
+5. 1.05T vGWEI minted and sent to pool to buy 30B vGAS 
+
+6. At settlement time GAS index price is 50 Gwei 
+
+   1. i.e. user can exchange 30B vGAS tokens for 1.5T vGWEI tokens
+
+   2. Net gain 15 vGWEI \* 30B vGAS = 450 ETH
+
+7. User settles position 
+
+   1. Redeems 30B vGAS for 1.5T vGWEI via clearing contract
+
+   2. 1.5T vGWEI = 1500 ETH
+
+8. User can either close or roll
+
+   1. Close - user withdraws 1500 ETH from clearinghouse
+
+   2. Roll - user withdraws and reopens position in n+1 or n+2 month (if staggered)
