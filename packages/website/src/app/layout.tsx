@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import type React from 'react';
 
 import Providers from '~/app/providers';
 import Layout from '~/lib/layout';

@@ -1,5 +1,5 @@
-import { Button, Flex, Image } from '@chakra-ui/react';
 import { ChatIcon } from '@chakra-ui/icons';
+import { Button, Flex, Image } from '@chakra-ui/react';
 
 const Header = () => {
   return (
