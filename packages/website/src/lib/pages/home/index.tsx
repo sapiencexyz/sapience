@@ -1,7 +1,6 @@
-import { Heading, Flex } from '@chakra-ui/react';
+import { Heading, Flex, Box } from '@chakra-ui/react';
 
 import Blob from '~/lib/components/Blob';
-import Box from '~/lib/components/motion/Box';
 
 const Home = () => {
   return (
@@ -12,7 +11,7 @@ const Home = () => {
         direction="column"
         alignItems="center"
         justifyContent="center"
-        minHeight="100dvh"
+        minHeight="100vh"
         gap={4}
         maxWidth="860px"
         m="0 auto"
@@ -25,7 +24,7 @@ const Home = () => {
           size={['xl', 'xl', '4xl']}
           color="white"
           textShadow="1px 1px 4px rgba(0,0,0,0.5)"
-          mb={[2, 2, 4]}
+          mb={[0, 0, 4]}
         >
           Decentralized Compute with Stable Pricing
         </Heading>

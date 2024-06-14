@@ -3,6 +3,7 @@ import type React from 'react';
 
 import Providers from '~/app/providers';
 import Layout from '~/lib/layout';
+import '../lib/styles/globals.css';
 
 type RootLayoutProps = {
   children: React.ReactNode;
@@ -28,7 +29,7 @@ export const metadata: Metadata = {
     description: '',
   },
   twitter: {
-    creator: '@sozonome',
+    creator: '',
     card: 'summary_large_image',
   },
 };
