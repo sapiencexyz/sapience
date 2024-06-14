@@ -13,7 +13,7 @@ const Home = () => {
         justifyContent="center"
         minHeight="100vh"
         gap={4}
-        maxWidth="860px"
+        maxWidth="900px"
         m="0 auto"
         textAlign="center"
         w="full"
