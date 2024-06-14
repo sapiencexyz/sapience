@@ -17,5 +17,9 @@
   "devDependencies": {
     "@types/react": "latest",
     "typescript": "latest"
+  },
+  "engines": {
+    "node": ">=20.14.x",
+    "pnpm": ">=9"
   }
 }
