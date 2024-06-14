@@ -12,7 +12,7 @@ const Home = () => {
         alignItems="center"
         justifyContent="center"
         minHeight="100vh"
-        gap={4}
+        gap={[2, 2, 6]}
         maxWidth="900px"
         m="0 auto"
         textAlign="center"
@@ -24,7 +24,6 @@ const Home = () => {
           size={['xl', 'xl', '4xl']}
           color="white"
           textShadow="1px 1px 4px rgba(0,0,0,0.5)"
-          mb={[0, 0, 4]}
         >
           Decentralized Compute with Stable Pricing
         </Heading>
@@ -33,7 +32,8 @@ const Home = () => {
           color="white"
           textShadow="1px 1px 4px rgba(0,0,0,0.5)"
           mb={0}
-          maxWidth="580px"
+          maxWidth="560px"
+          fontWeight={600}
         >
           Lock in onchain costs regardless of network congestion
         </Heading>
