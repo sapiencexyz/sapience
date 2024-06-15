@@ -1,4 +1,5 @@
 import type { DeepPartial, Theme } from '@chakra-ui/react';
+/*
 import { Figtree, Space_Mono } from 'next/font/google';
 
 export const spacemonoRegular = Space_Mono({
@@ -22,4 +23,10 @@ export const fonts: DeepPartial<Theme['fonts']> = {
   // heading: 'var(--font-spacemono-regular)',
   // body: 'var(--font-spacemono-regular)',
   // mono: 'var(--font-figtree)',
+};
+*/
+
+export const fonts: DeepPartial<Theme['fonts']> = {
+  heading: 'Avenir Next',
+  body: 'Avenir Next',
 };

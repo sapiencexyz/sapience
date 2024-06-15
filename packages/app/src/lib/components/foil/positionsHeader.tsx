@@ -48,9 +48,8 @@ const PositionsHeader = () => {
   }
 
   return (
-    <Box mb={6} pt={4}>
-      <Flex gap={8} mb={9} alignItems="center">
-        <Image src="/assets/base-art.svg" width="160px" />
+    <Box mb={2} pt={4}>
+      <Flex gap={8} mb={4} alignItems="center">
         <Box w="100%">
           <Heading mb={3}>
             {chain.name} Gas Market{' '}

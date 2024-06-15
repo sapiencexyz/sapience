@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import Providers from '~/app/providers';
 import Layout from '~/lib/layout';
 import '@rainbow-me/rainbowkit/styles.css';
+import '../lib/styles/globals.css';
 // import { spacemonoRegular, figtreeFont } from '~/lib/styles/theme/fonts';
 
 type RootLayoutProps = {
