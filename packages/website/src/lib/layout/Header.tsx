@@ -1,4 +1,3 @@
-import { ChatIcon } from '@chakra-ui/icons';
 import { Button, Flex, Image } from '@chakra-ui/react';
 
 const Header = () => {
@@ -23,11 +22,10 @@ const Header = () => {
         colorScheme="blackAlpha"
         bg="black"
         _hover={{ bg: 'blackAlpha.800' }}
-        href="mailto:rafa@foil.xyz"
+        href="https://twitter.com/foilxyz"
         letterSpacing="0.025rem"
-        leftIcon={<ChatIcon />}
       >
-        Let’s Chat
+        @foilxyz
       </Button>
     </Flex>
   );

@@ -13,7 +13,7 @@ const Home = () => {
         justifyContent="center"
         minHeight="100vh"
         gap={[2, 2, 6]}
-        maxWidth="900px"
+        maxWidth="820px"
         m="0 auto"
         textAlign="center"
         w="full"
@@ -25,7 +25,7 @@ const Home = () => {
           color="white"
           textShadow="1px 1px 4px rgba(0,0,0,0.5)"
         >
-          Decentralized Compute with Stable Pricing
+          Gas and Blobspace with Stable Pricing
         </Heading>
         <Heading
           size={['md', 'md', 'xl']}
@@ -35,22 +35,22 @@ const Home = () => {
           maxWidth="560px"
           fontWeight={600}
         >
-          Lock in onchain costs regardless of network congestion
+          Lock in your onchain costs regardless of network congestion
         </Heading>
       </Flex>{' '}
       <Box
         position="absolute"
         top="0"
         left="0"
-        width="100%"
-        height="100%"
+        width="100dvw"
+        height="100dvh"
         backgroundImage='url("/dotgrid.svg")'
         backgroundSize="45px 45px"
         backgroundRepeat="repeat"
         zIndex={2}
         opacity={0.5}
       />
-      <Box position="fixed" top="0" left="0" zIndex={1} w="100%" h="100%">
+      <Box position="fixed" top="0" left="0" zIndex={1} w="100dvw" h="100dvh">
         <Blob />
       </Box>
     </Box>
