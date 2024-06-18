@@ -17,7 +17,7 @@ const Home = () => {
         m="0 auto"
         textAlign="center"
         w="full"
-        pt={16}
+        pt={[0, 0, 16]}
         px={4}
       >
         <Heading
