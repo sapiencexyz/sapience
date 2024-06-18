@@ -4,7 +4,7 @@ import Blob from '~/lib/components/Blob';
 
 const Home = () => {
   return (
-    <Box position="relative">
+    <Box position="relative" overflow="hidden" height="100dvh">
       <Flex
         position="relative"
         zIndex={2}
