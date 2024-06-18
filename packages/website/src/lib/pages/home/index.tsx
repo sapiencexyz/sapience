@@ -11,7 +11,7 @@ const Home = () => {
         direction="column"
         alignItems="center"
         justifyContent="center"
-        minHeight="100vh"
+        minHeight="100dvh"
         gap={[2, 2, 6]}
         maxWidth="820px"
         m="0 auto"
