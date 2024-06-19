@@ -50,7 +50,7 @@ const Home = () => {
         backgroundSize="45px 45px"
         backgroundRepeat="repeat"
         zIndex={2}
-        opacity={0.25}
+        opacity={0.33}
       />
       <Box position="fixed" top="0" left="0" zIndex={1} w="100dvw" h="100dvh">
         <Blob />
