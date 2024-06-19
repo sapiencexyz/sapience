@@ -12,7 +12,7 @@ const Home = () => {
         alignItems="center"
         justifyContent="center"
         minHeight="100dvh"
-        gap={[2, 2, 7]}
+        gap={[4, 4, 7]}
         maxWidth="820px"
         m="0 auto"
         textAlign="center"
