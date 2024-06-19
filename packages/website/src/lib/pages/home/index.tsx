@@ -12,18 +12,19 @@ const Home = () => {
         alignItems="center"
         justifyContent="center"
         minHeight="100dvh"
-        gap={[2, 2, 6]}
+        gap={[2, 2, 7]}
         maxWidth="820px"
         m="0 auto"
         textAlign="center"
         w="full"
-        pt={[0, 0, 16]}
+        pt={[0, 0, 12]}
         px={4}
       >
         <Heading
           size={['xl', 'xl', '4xl']}
           color="white"
           textShadow="1px 1px 4px rgba(0,0,0,0.5)"
+          lineHeight="1.15 !important"
         >
           Gas and Blobspace with Stable Pricing
         </Heading>
