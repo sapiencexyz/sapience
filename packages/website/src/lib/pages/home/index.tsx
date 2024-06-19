@@ -12,7 +12,7 @@ const Home = () => {
         alignItems="center"
         justifyContent="center"
         minHeight="100dvh"
-        gap={[4, 4, 7]}
+        gap={[3, 3, 7]}
         maxWidth="820px"
         m="0 auto"
         textAlign="center"
@@ -21,7 +21,7 @@ const Home = () => {
         px={4}
       >
         <Heading
-          size={['xl', 'xl', '4xl']}
+          size={['2xl', '2xl', '4xl']}
           color="white"
           textShadow="1px 1px 3px #000000"
           lineHeight="1.15 !important"
