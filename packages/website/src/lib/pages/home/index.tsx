@@ -23,7 +23,7 @@ const Home = () => {
         <Heading
           size={['xl', 'xl', '4xl']}
           color="white"
-          textShadow="1px 1px 4px rgba(0,0,0,0.5)"
+          textShadow="1px 1px 3px #000000"
           lineHeight="1.15 !important"
         >
           Gas and Blobspace with Stable Pricing
@@ -31,7 +31,7 @@ const Home = () => {
         <Heading
           size={['md', 'md', 'xl']}
           color="white"
-          textShadow="1px 1px 4px rgba(0,0,0,0.5)"
+          textShadow="1px 1px 3px #000000"
           mb={0}
           maxWidth="560px"
           fontWeight={600}
@@ -49,7 +49,7 @@ const Home = () => {
         backgroundSize="45px 45px"
         backgroundRepeat="repeat"
         zIndex={2}
-        opacity={0.5}
+        opacity={0.25}
       />
       <Box position="fixed" top="0" left="0" zIndex={1} w="100dvw" h="100dvh">
         <Blob />
