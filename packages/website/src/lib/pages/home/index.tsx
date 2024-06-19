@@ -35,6 +35,7 @@ const Home = () => {
           mb={0}
           maxWidth="560px"
           fontWeight={600}
+          lineHeight="1.15 !important"
         >
           Lock in your onchain costs regardless of network congestion
         </Heading>
