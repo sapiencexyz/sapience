@@ -44,7 +44,7 @@ const lineData = [
 
 const CustomBarShape = (props: any) => {
   const { x, width, payload } = props;
-  const candleColor = payload.open > payload.close ? colors.red[500] : colors.green[400];
+  const candleColor = payload.open < payload.close ? colors.red[500] : colors.green[400];
   const barHeight = Math.abs(payload.close - payload.open);
   const wickHeight = Math.abs(payload.high - payload.low);
   const wickY = payload.low;
