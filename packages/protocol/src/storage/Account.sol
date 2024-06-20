@@ -60,7 +60,7 @@ library Account {
     }
 
     function validateProvidedLiquidity(
-        uint256 addedAmount0,
+        uint256 amount0Initial,
         uint128 liquidity,
         int24 lowerTick,
         int24 upperTick
@@ -68,8 +68,8 @@ library Account {
         uint160 sqrtPriceAX96 = TickMath.getSqrtRatioAtTick(lowerTick);
         uint160 sqrtPriceBX96 = TickMath.getSqrtRatioAtTick(upperTick);
 
-        uint160 sqrtPriceX96 = sqrtPriceBX96; // Price at $10
-        (uint256 amount0, uint256 amount1) = LiquidityAmounts
+        uint160 sqrtPriceX96 = sqrtPriceBX96; // set price to upper tick
+        (, uint256 amount1AtUpperTick) = LiquidityAmounts
             .getAmountsForLiquidity(
                 sqrtPriceX96,
                 sqrtPriceAX96,
@@ -77,13 +77,13 @@ library Account {
                 liquidity
             );
 
-        console2.log(amount0, amount1);
+        console2.log(amount0Initial, amount1AtUpperTick);
 
         // 1. get average entry price
 
         uint256 averageEntryPrice = calculateAverageEntryPrice(
-            addedAmount0,
-            amount1
+            amount0Initial,
+            amount1AtUpperTick
         );
         console2.log(averageEntryPrice);
 
