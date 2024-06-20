@@ -113,7 +113,6 @@ library Epoch {
             epoch.ethToken = tokenB;
             epoch.gasToken = tokenA;
         }
-
         epoch.pool = IUniswapV3Pool(
             IUniswapV3Factory(epoch.uniswapPositionManager.factory())
                 .createPool(
@@ -123,7 +122,7 @@ library Epoch {
                 )
         );
 
-        IUniswapV3Pool(epoch.pool).initialize(250541448375047931186413801569);
+        IUniswapV3Pool(epoch.pool).initialize(112045541949572279837463876454);
         (uint160 sqrtPriceX96, int24 tick, , , , , ) = IUniswapV3Pool(
             epoch.pool
         ).slot0();

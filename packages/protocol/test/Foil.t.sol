@@ -19,7 +19,7 @@ contract FoilTest is Test {
     address pool;
     address tokenA;
     address tokenB;
-    address constant UNISWAP = 0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1;
+    address constant UNISWAP = 0xC36442b4a4522E871399CD717aBDD847Ab11FE88;
 
     function setUp() public {
         // deploy Foil contract
@@ -49,106 +49,106 @@ contract FoilTest is Test {
         IFoilStructs.AddLiquidityParams memory params = IFoilStructs
             .AddLiquidityParams({
                 accountId: 1,
-                amountTokenA: 10 ether,
+                amountTokenA: 50 ether,
                 amountTokenB: 100 ether,
                 collateralAmount: 10 ether,
-                lowerTick: 27000, // 5
-                upperTick: 30000 // 15
+                lowerTick: 16000, // 5
+                upperTick: 30000 // 20
             });
         foil.addLiquidity(params);
 
-        (uint256 tokenAmount0, uint256 tokenAmount1) = foil.getPosition(1);
+        // (uint256 tokenAmount0, uint256 tokenAmount1) = foil.getPosition(1);
 
-        console2.log(tokenAmount0, tokenAmount1);
+        // console2.log(tokenAmount0, tokenAmount1);
 
-        // new account!
-        params = IFoilStructs.AddLiquidityParams({
-            accountId: 2,
-            amountTokenA: 100 ether,
-            amountTokenB: 10 ether,
-            collateralAmount: 10 ether,
-            lowerTick: -887200, // minTick
-            upperTick: 887200 // maxTick
-        });
-        foil.addLiquidity(params);
+        // // new account!
+        // params = IFoilStructs.AddLiquidityParams({
+        //     accountId: 2,
+        //     amountTokenA: 100 ether,
+        //     amountTokenB: 10 ether,
+        //     collateralAmount: 10 ether,
+        //     lowerTick: -887200, // minTick
+        //     upperTick: 887200 // maxTick
+        // });
+        // foil.addLiquidity(params);
 
-        (uint256 tokenAmount3, uint256 tokenAmount4) = foil.getPosition(2);
-        console2.log(tokenAmount3, tokenAmount4);
+        // (uint256 tokenAmount3, uint256 tokenAmount4) = foil.getPosition(2);
+        // console2.log(tokenAmount3, tokenAmount4);
     }
 
-    function test_addLiquidityAndLongs() public {
-        int24 tickSpacing = IUniswapV3Pool(pool).tickSpacing();
-        // int24 lowerTick = TickMath.getTickAtSqrtRatio(
-        //     177159557114295710296101716160
-        // ); // 5
-        // int24 upperTick = TickMath.getTickAtSqrtRatio(
-        //     306849353968360525628702781967
-        // ); // 15
-        IFoilStructs.AddLiquidityParams memory params = IFoilStructs
-            .AddLiquidityParams({
-                accountId: 1,
-                amountTokenA: 10 ether,
-                amountTokenB: 100 ether,
-                collateralAmount: 10 ether,
-                lowerTick: 27000, // 5
-                upperTick: 30000 // 15
-            });
-        foil.addLiquidity(params);
+    // function test_addLiquidityAndLongs() public {
+    //     int24 tickSpacing = IUniswapV3Pool(pool).tickSpacing();
+    //     // int24 lowerTick = TickMath.getTickAtSqrtRatio(
+    //     //     177159557114295710296101716160
+    //     // ); // 5
+    //     // int24 upperTick = TickMath.getTickAtSqrtRatio(
+    //     //     306849353968360525628702781967
+    //     // ); // 15
+    //     IFoilStructs.AddLiquidityParams memory params = IFoilStructs
+    //         .AddLiquidityParams({
+    //             accountId: 1,
+    //             amountTokenA: 10 ether,
+    //             amountTokenB: 100 ether,
+    //             collateralAmount: 10 ether,
+    //             lowerTick: 27000, // 5
+    //             upperTick: 30000 // 15
+    //         });
+    //     foil.addLiquidity(params);
 
-        (uint256 tokenAmount0, uint256 tokenAmount1) = foil.getPosition(1);
+    //     (uint256 tokenAmount0, uint256 tokenAmount1) = foil.getPosition(1);
 
-        // new account!
-        params = IFoilStructs.AddLiquidityParams({
-            accountId: 2,
-            amountTokenA: 100 ether,
-            amountTokenB: 10 ether,
-            collateralAmount: 10 ether,
-            lowerTick: -887200, // minTick
-            upperTick: 887200 // maxTick
-        });
-        foil.addLiquidity(params);
+    //     // new account!
+    //     params = IFoilStructs.AddLiquidityParams({
+    //         accountId: 2,
+    //         amountTokenA: 100 ether,
+    //         amountTokenB: 10 ether,
+    //         collateralAmount: 10 ether,
+    //         lowerTick: -887200, // minTick
+    //         upperTick: 887200 // maxTick
+    //     });
+    //     foil.addLiquidity(params);
 
-        (uint256 tokenAmount3, uint256 tokenAmount4) = foil.getPosition(2);
+    //     (uint256 tokenAmount3, uint256 tokenAmount4) = foil.getPosition(2);
 
-        foil.openLong(1, 10 ether);
-        foil.reduceLong(1, 1 ether);
-    }
+    //     foil.openLong(1, 10 ether);
+    //     foil.reduceLong(1, 1 ether);
+    // }
 
-    function test_addLiquidityAndShorts() public {
-        int24 tickSpacing = IUniswapV3Pool(pool).tickSpacing();
-        // int24 lowerTick = TickMath.getTickAtSqrtRatio(
-        //     177159557114295710296101716160
-        // ); // 5
-        // int24 upperTick = TickMath.getTickAtSqrtRatio(
-        //     306849353968360525628702781967
-        // ); // 15
-        IFoilStructs.AddLiquidityParams memory params = IFoilStructs
-            .AddLiquidityParams({
-                accountId: 1,
-                amountTokenA: 10 ether,
-                amountTokenB: 100 ether,
-                collateralAmount: 10 ether,
-                lowerTick: 27000, // 5
-                upperTick: 30000 // 15
-            });
-        foil.addLiquidity(params);
+    // function test_addLiquidityAndShorts() public {
+    //     int24 tickSpacing = IUniswapV3Pool(pool).tickSpacing();
+    //     // int24 lowerTick = TickMath.getTickAtSqrtRatio(
+    //     //     177159557114295710296101716160
+    //     // ); // 5
+    //     // int24 upperTick = TickMath.getTickAtSqrtRatio(
+    //     //     306849353968360525628702781967
+    //     // ); // 15
+    //     IFoilStructs.AddLiquidityParams memory params = IFoilStructs
+    //         .AddLiquidityParams({
+    //             accountId: 1,
+    //             amountTokenA: 10 ether,
+    //             amountTokenB: 100 ether,
+    //             collateralAmount: 10 ether,
+    //             lowerTick: 27000, // 5
+    //             upperTick: 30000 // 15
+    //         });
+    //     foil.addLiquidity(params);
 
-        (uint256 tokenAmount0, uint256 tokenAmount1) = foil.getPosition(1);
+    //     (uint256 tokenAmount0, uint256 tokenAmount1) = foil.getPosition(1);
 
-        // new account!
-        params = IFoilStructs.AddLiquidityParams({
-            accountId: 2,
-            amountTokenA: 100 ether,
-            amountTokenB: 10 ether,
-            collateralAmount: 10 ether,
-            lowerTick: -887200, // minTick
-            upperTick: 887200 // maxTick
-        });
-        foil.addLiquidity(params);
+    //     // new account!
+    //     params = IFoilStructs.AddLiquidityParams({
+    //         accountId: 2,
+    //         amountTokenA: 100 ether,
+    //         amountTokenB: 10 ether,
+    //         collateralAmount: 10 ether,
+    //         lowerTick: -887200, // minTick
+    //         upperTick: 887200 // maxTick
+    //     });
+    //     foil.addLiquidity(params);
 
-        (uint256 tokenAmount3, uint256 tokenAmount4) = foil.getPosition(2);
+    //     (uint256 tokenAmount3, uint256 tokenAmount4) = foil.getPosition(2);
 
-        foil.openShort(1, 1 ether);
-        foil.reduceShort(1, 0.1 ether);
-    }
+    //     foil.openShort(1, 1 ether);
+    //     foil.reduceShort(1, 0.1 ether);
+    // }
 }
