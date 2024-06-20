@@ -50,7 +50,7 @@ const Market = () => {
           padding={6}
           mb={4}
           border="1px solid"
-          borderColor="gray.200"
+          borderColor="gray.300"
           borderRadius="md"
         >
           input for adding/removing liquidity

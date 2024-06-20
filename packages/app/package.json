@@ -27,7 +27,6 @@
     "@chakra-ui/react": "^2.8.2",
     "@emotion/react": "^11.11.3",
     "@emotion/styled": "^11.11.0",
-    "@nivo/boxplot": "^0.84.0",
     "@rainbow-me/rainbowkit": "^2.0.5",
     "@tanstack/react-query": "^5.29.2",
     "date-fns": "^3.6.0",
@@ -38,6 +37,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-icons": "^4.12.0",
+    "recharts": "^2.12.7",
     "viem": "~2.9.20",
     "wagmi": "^2.5.20"
   },

@@ -24,17 +24,17 @@ const Market = ({ params }: { params: { id: string } }) => {
     <MarketProvider chainId={Number(chainId)} address={marketAddress}>
       <Flex direction="column" alignItems="left" mb={8} w="full" py={8}>
         <PositionsHeader />
-        <Flex width="100%">
-          <Box height="100%" width="66%">
+        <Flex width="100%" gap={12} mb={12}>
+          <Box height="100%" flex="2">
             <Chart />
           </Box>
           <Box
             border="1px solid"
-            borderColor="gray.200"
+            borderColor="gray.300"
             borderRadius="md"
-            p={4}
+            p={6}
           >
-            <Heading size="md" mb={4}>
+            <Heading size="md" mb={3}>
               Trade
             </Heading>
             <TraderPosition />
@@ -47,11 +47,11 @@ const Market = ({ params }: { params: { id: string } }) => {
             <Tab>Transactions</Tab>
           </TabList>
           <TabPanels>
-            <TabPanel>coming soon</TabPanel>
+            <TabPanel><Box py={6}>Coming soon.</Box></TabPanel>
             <TabPanel>
               <Positions />
             </TabPanel>
-            <TabPanel>coming soon</TabPanel>
+            <TabPanel><Box py={6}>Coming soon.</Box></TabPanel>
           </TabPanels>
         </Tabs>
       </Flex>

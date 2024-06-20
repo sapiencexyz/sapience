@@ -44,7 +44,7 @@ const Market = () => {
   return (
     <Box
       border="1px solid"
-      borderColor="gray.200"
+      borderColor="gray.300"
       maxW="container.sm"
       m="auto"
       borderRadius="md"
@@ -155,7 +155,7 @@ const Market = () => {
         padding={6}
         mb={4}
         border="1px solid"
-        borderColor="gray.200"
+        borderColor="gray.300"
         borderRadius="md"
       >
         <Heading size="md" mb={4}>
@@ -238,7 +238,7 @@ const Market = () => {
         padding={6}
         mb={4}
         border="1px solid"
-        borderColor="gray.200"
+        borderColor="gray.300"
         borderRadius="md"
       >
         <Heading size="md" mb={4}>
