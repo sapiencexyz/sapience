@@ -16,67 +16,43 @@ export default function PositionRow(row: any) {
   return (
     <Tr height="80px">
       <Td>
-        <Stat my={2} pt={1}>
-          <StatNumber>
-            {row.id.toString()}
-            <Text as="span" fontSize="sm" color="gray.700" />
-          </StatNumber>
-        </Stat>
+        {row.id.toString()}
+        <Text as="span" fontSize="sm" color="gray.700" />
       </Td>
       <Td>
-        <Stat my={2} pt={1}>
-          <StatNumber>
-            {row.id == '420' ? '500' : '100'}
-            {row.collateral}{' '}
-            <Text as="span" fontSize="sm" color="gray.700">
-              cbETH
-            </Text>
-          </StatNumber>
-        </Stat>
+        {row.id == '420' ? '500' : '100'}
+        {row.collateral}{' '}
+        <Text as="span" fontSize="sm" color="gray.700">
+          cbETH
+        </Text>
       </Td>
       <Td>
-        <Stat my={2} pt={1}>
-          <StatNumber>
-            {row.id == '420' ? '0.05' : '0.1'}
-            {row.lowPrice}{' '}
-            <Text as="span" fontSize="sm" color="gray.700">
-              cbETH/Ggas
-            </Text>
-          </StatNumber>
-        </Stat>
+        {row.id == '420' ? '0.05' : '0.1'}
+        {row.lowPrice}{' '}
+        <Text as="span" fontSize="sm" color="gray.700">
+          cbETH/Ggas
+        </Text>
       </Td>
       <Td>
-        <Stat my={2} pt={1}>
-          <StatNumber>
-            {row.id == '420' ? '0.5' : '0.1'}
-            {row.highPrice}{' '}
-            <Text as="span" fontSize="sm" color="gray.700">
-              cbETH/Ggas
-            </Text>
-          </StatNumber>
-        </Stat>
+        {row.id == '420' ? '0.5' : '0.1'}
+        {row.highPrice}{' '}
+        <Text as="span" fontSize="sm" color="gray.700">
+          cbETH/Ggas
+        </Text>
       </Td>
       <Td>
-        <Stat my={2} pt={1}>
-          <StatNumber>
-            {row.id == '420' ? '-250' : '+1000'}
-            {row.netPosition}{' '}
-            <Text as="span" fontSize="sm" color="gray.700">
-              Ggas
-            </Text>
-          </StatNumber>
-        </Stat>
+        {row.id == '420' ? '-250' : '+1000'}
+        {row.netPosition}{' '}
+        <Text as="span" fontSize="sm" color="gray.700">
+          Ggas
+        </Text>
       </Td>
       <Td>
-        <Stat my={2} pt={1}>
-          <StatNumber>
-            {row.id == '420' ? '-250' : '+100'}
-            {row.gainLoss}{' '}
-            <Text as="span" fontSize="sm" color="gray.700">
-              cbETH
-            </Text>
-          </StatNumber>
-        </Stat>
+        {row.id == '420' ? '-250' : '+100'}
+        {row.gainLoss}{' '}
+        <Text as="span" fontSize="sm" color="gray.700">
+          cbETH
+        </Text>
       </Td>
       <Td isNumeric>
         <PositionEdit id={row.id} />
