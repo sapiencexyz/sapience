@@ -11,7 +11,7 @@ const Header = () => {
       position="fixed"
       bg="white"
       borderBottom="1px solid"
-      borderColor="gray.100"
+      borderColor="gray.200"
     >
       <Image src="/logo.svg" alt="Foil" height="28px" />
       <Button

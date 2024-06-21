@@ -12,7 +12,6 @@ import { colors } from '~/lib/styles/theme/colors';
 
 const queryClient = new QueryClient();
 
-hardhat.id = 13370;
 const config =
   process.env.NODE_ENV === 'development'
     ? createConfig({
@@ -20,7 +19,7 @@ const config =
         chains: [hardhat],
         connectors: [injected()],
         transports: {
-          [hardhat.id]: http('http://localhost:3001'),
+          [hardhat.id]: http('http://localhost:8545'),
         },
       })
     : {};

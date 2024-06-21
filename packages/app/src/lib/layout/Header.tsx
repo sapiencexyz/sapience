@@ -1,4 +1,3 @@
-import { ChevronDownIcon } from '@chakra-ui/icons';
 import { Box, Flex, Image } from '@chakra-ui/react';
 import Link from 'next/link';
 
@@ -21,20 +20,10 @@ const Header = () => {
           <Image src="/logo.svg" alt="Foil" height="28px" />
         </Box>
         <Flex marginLeft="auto" gap={9} align="center" fontWeight="600">
-          <Link href={`markets/31337:${Foil.address}`}>Subscribe</Link>
-          <Link href={`markets/31337:${Foil.address}`}>Earn</Link>
-          <Link href={`markets/31337:${Foil.address}`}>Markets</Link>
-          {/*
-        <Button aria-label="view" as={Link} href="/subscribe">
-          Subscribe
-        </Button>
-        <Button aria-label="view" as={Link} href="/earn">
-          Earn
-        </Button>
-        <Button aria-label="view" as={Link} href="/pro">
-          Pro Mode
-        </Button>
-        */}
+          <Link href="/subscribe">Subscribe</Link>
+          <Link href="/earn">Earn</Link>
+          <Link href={`/markets/31337:${Foil.address}`}>Markets</Link>
+          <Link href={"https://docs.foil.xyz"} isExternal>Docs</Link>
           <ConnectButton />
         </Flex>
       </Flex>

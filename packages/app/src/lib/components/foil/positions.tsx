@@ -44,10 +44,7 @@ export default function Positions() {
   });
 
   return (
-    <Box>
-      <Heading size="md" mb="4">
-        Positions
-      </Heading>
+    <Box mt={4}>
       <TableContainer mb={4}>
         <Table variant="simple" size="sm">
           <Thead>
