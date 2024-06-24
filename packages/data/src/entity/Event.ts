@@ -101,11 +101,11 @@ export class Position {
     collateral: number;  // ETH
 
     @Column()
+    profitLoss: number; // ETH
+
+    @Column()
     isLP: boolean;
 
     @Column()
     unclaimedFees: number; // ETH
-
-    @Column()
-    profitLoss: number; // ETH
 }
