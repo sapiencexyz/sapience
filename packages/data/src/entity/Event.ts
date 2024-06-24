@@ -5,7 +5,7 @@ import { Log } from 'viem';
 
 @Entity()
 export class Event {
-    // has_many Transaction
+    // has_one Transaction
 
     @PrimaryGeneratedColumn()
     id: number;
