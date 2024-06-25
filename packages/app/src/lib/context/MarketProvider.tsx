@@ -16,6 +16,7 @@ interface MarketContextType {
   address: string;
   collateralAsset: string;
   collateralAssetTicker: string;
+  averagePrice: number;
   prices?: Array<{ timestamp: number; value: number }>;
 }
 
@@ -30,6 +31,7 @@ export const MarketContext = createContext<MarketContextType>({
   address: '',
   collateralAsset: '',
   collateralAssetTicker: '',
+  averagePrice: 0,
   prices: [],
 });
 
@@ -43,6 +45,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     address: '',
     collateralAsset: '',
     collateralAssetTicker: '',
+    averagePrice: 0,
     prices: [],
   });
 
@@ -62,6 +65,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
       address,
       collateralAsset: '',
       collateralAssetTicker: '',
+      averagePrice: 0,
       prices: [],
     });
   }, [chainId, address]);
@@ -69,11 +73,12 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
   const contractId = `${chainId}:${address}`;
 
   // Fetch prices using React Query
-  const { data: prices } = useQuery({
-    queryKey: ['prices', contractId],
+  // TODO: filter by start and end timestamps
+  const { data: price } = useQuery({
+    queryKey: ['averagePrice', contractId],
     queryFn: async () => {
       const response = await fetch(
-        `${API_BASE_URL}/prices?contractId=${contractId}`
+        `${API_BASE_URL}/prices/average?contractId=${contractId}`
       );
       if (!response.ok) {
         throw new Error('Network response was not ok');
@@ -84,13 +89,13 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
   });
 
   useEffect(() => {
-    if (prices) {
+    if (price) {
       setState((currentState) => ({
         ...currentState,
-        prices,
+        averagePrice: price.average,
       }));
     }
-  }, [prices]);
+  }, [price]);
 
   // Get data about the market from Foil
   const marketViewFunctionResult = useReadContract({

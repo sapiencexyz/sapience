@@ -97,11 +97,6 @@ contract Foil is
         return this.onERC721Received.selector;
     }
 
-    // deprecated for mint
-    function createAccount(uint256 accountId) external {
-        Account.createValid(accountId);
-    }
-
     function getEpoch()
         external
         view
