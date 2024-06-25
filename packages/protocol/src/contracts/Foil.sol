@@ -35,15 +35,17 @@ contract Foil is
     constructor(
         uint endTime,
         address uniswapPositionManager,
+        address uniswapQuoter,
         address resolver,
         address collateralAsset,
-        uint baseAssetMinPrice,
-        uint baseAssetMaxPrice,
+        int24 baseAssetMinPrice,
+        int24 baseAssetMaxPrice,
         uint24 feeRate
     ) {
         Epoch.Data storage epoch = Epoch.createValid(
             endTime,
             uniswapPositionManager,
+            uniswapQuoter,
             resolver,
             collateralAsset,
             baseAssetMinPrice,
@@ -60,8 +62,8 @@ contract Foil is
             address uniswapPositionManager,
             address resolver,
             address collateralAsset,
-            uint baseAssetMinPrice,
-            uint baseAssetMaxPrice,
+            int24 baseAssetMinPriceTick,
+            int24 baseAssetMaxPriceTick,
             uint24 feeRate,
             address ethToken,
             address gasToken,
@@ -74,8 +76,8 @@ contract Foil is
             address(epoch.uniswapPositionManager),
             address(epoch.resolver),
             address(epoch.collateralAsset),
-            epoch.baseAssetMinPrice,
-            epoch.baseAssetMaxPrice,
+            epoch.baseAssetMinPriceTick,
+            epoch.baseAssetMaxPriceTick,
             epoch.feeRate,
             address(epoch.ethToken),
             address(epoch.gasToken),
@@ -164,12 +166,17 @@ contract Foil is
         (addedAmount0, addedAmount1, liquidity) = UniV3Abstraction.addLiquidity(
             uniV3HelperAddLiquidityParams
         );
-        Account.validateProvidedLiquidity(
-            addedAmount0,
-            liquidity,
-            params.lowerTick,
-            params.upperTick
-        );
+        console2.log(addedAmount0, addedAmount1);
+
+        // todo: transfer collateral
+        // account.updateLoan(params.collateralAmount, addedAmount0, addedAmount1);
+
+        // account.validateProvidedLiquidity(
+        //     epoch,
+        //     liquidity,
+        //     params.lowerTick,
+        //     params.upperTick
+        // );
         /*
         (uint160 sqrtMarkPrice, , , , , , ) = epoch.pool.slot0();
 

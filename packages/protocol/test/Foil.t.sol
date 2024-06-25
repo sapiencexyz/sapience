@@ -20,16 +20,19 @@ contract FoilTest is Test {
     address tokenA;
     address tokenB;
     address constant UNISWAP = 0xC36442b4a4522E871399CD717aBDD847Ab11FE88;
+    address constant UNISWAP_QUOTER =
+        0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6;
 
     function setUp() public {
         // deploy Foil contract
         foil = new Foil(
             1720051200, // endtime
             UNISWAP, // uniswap
+            UNISWAP_QUOTER, // uniswap quoter
             0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266, // resolver
             0x101b9758583F47C63236D831db79247B6eEAdb57, // mintable asset
-            5 ether, // base asset min price
-            200 ether, // base asset max price
+            7000, // base asset min price
+            46000, // base asset max price
             10000 // fee rate
         );
 
@@ -50,7 +53,7 @@ contract FoilTest is Test {
             .AddLiquidityParams({
                 accountId: 1,
                 amountTokenA: 50 ether,
-                amountTokenB: 100 ether,
+                amountTokenB: 50 ether,
                 collateralAmount: 10 ether,
                 lowerTick: 16000, // 5
                 upperTick: 30000 // 20

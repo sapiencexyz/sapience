@@ -3,15 +3,20 @@
 pragma solidity >=0.8.2 <0.9.0;
 
 import "./Position.sol";
+import "./Epoch.sol";
 import "../contracts/FoilNFT.sol";
 import "../external/univ3/LiquidityAmounts.sol";
 
 import "forge-std/console2.sol";
 
 library Account {
+    using Epoch for Epoch.Data;
+
     struct Data {
-        uint256 id;
+        uint256 id; // nft id
         uint256 collateralAmount; // configured collateral
+        uint256 borrowedGwei; // Token A
+        uint256 borrowedGas; // Token B
     }
 
     /**
@@ -59,64 +64,109 @@ library Account {
         return address(uint160(self.id));
     }
 
+    function updateLoan(
+        Data storage self,
+        uint256 collateralAmount,
+        uint256 amount0,
+        uint256 amount1
+    ) internal {
+        self.collateralAmount += collateralAmount;
+        self.borrowedGwei += amount0;
+        self.borrowedGas += amount1;
+    }
+
     function validateProvidedLiquidity(
-        uint256 amount0Initial,
+        Data storage self,
+        Epoch.Data storage epoch,
         uint128 liquidity,
         int24 lowerTick,
         int24 upperTick
     ) internal {
-        uint160 sqrtPriceAX96 = TickMath.getSqrtRatioAtTick(lowerTick);
-        uint160 sqrtPriceBX96 = TickMath.getSqrtRatioAtTick(upperTick);
+        // checks that if price were at its min or max, the account has provided enough collateral
+        // to cover the loan amount
+        validateLoanAmount(
+            self,
+            epoch,
+            liquidity,
+            epoch.baseAssetMinPriceTick,
+            lowerTick,
+            upperTick
+        );
+        validateLoanAmount(
+            self,
+            epoch,
+            liquidity,
+            epoch.baseAssetMaxPriceTick,
+            lowerTick,
+            upperTick
+        );
+    }
 
-        uint160 sqrtPriceX96 = sqrtPriceBX96; // set price to upper tick
-        (, uint256 amount1AtUpperTick) = LiquidityAmounts
+    struct RuntimeValidateParams {
+        uint160 sqrtPriceX96;
+        uint160 sqrtPriceAX96;
+        uint160 sqrtPriceBX96;
+        uint256 gweiAmount;
+        uint256 gasAmount;
+        uint256 gweiFromGas;
+        uint256 totalGweiAmount;
+        uint256 leftoverGwei;
+        uint256 leftoverGas;
+    }
+
+    function validateLoanAmount(
+        Data storage self,
+        Epoch.Data storage epoch,
+        uint128 liquidity,
+        int24 priceTick, // 100 gwei
+        int24 lowerTick, // 5 gwei
+        int24 upperTick // 20 gwei
+    ) internal {
+        console2.log(
+            "sqrtRatioBX96:",
+            TickMath.getTickAtSqrtRatio(177159557114295710296101716160)
+        );
+        RuntimeValidateParams memory params;
+        params.sqrtPriceAX96 = TickMath.getSqrtRatioAtTick(lowerTick);
+        params.sqrtPriceBX96 = TickMath.getSqrtRatioAtTick(upperTick);
+
+        params.sqrtPriceX96 = TickMath.getSqrtRatioAtTick(priceTick);
+
+        console2.log(
+            "BEFORE",
+            params.sqrtPriceAX96,
+            params.sqrtPriceBX96,
+            liquidity
+        );
+
+        (params.gweiAmount, params.gasAmount) = LiquidityAmounts
             .getAmountsForLiquidity(
-                sqrtPriceX96,
-                sqrtPriceAX96,
-                sqrtPriceBX96,
+                params.sqrtPriceBX96,
+                params.sqrtPriceBX96,
+                params.sqrtPriceAX96,
                 liquidity
             );
+        console2.log("AFTER", params.gweiAmount, params.gasAmount);
 
-        console2.log(amount0Initial, amount1AtUpperTick);
+        params.gweiFromGas = epoch.quoteGasToGwei(params.gasAmount, priceTick);
 
-        // 1. get average entry price
+        params.totalGweiAmount =
+            params.gweiAmount +
+            params.gweiFromGas +
+            self.collateralAmount; // divide by 1e9
 
-        uint256 averageEntryPrice = calculateAverageEntryPrice(
-            amount0Initial,
-            amount1AtUpperTick
-        );
-        console2.log(averageEntryPrice);
-
-        // 2. based on provided collateral, check if there's enough to cover max epoch tick value
-    }
-
-    function calculateAverageEntryPrice(
-        uint256 amount0,
-        uint256 amount1
-    ) public pure returns (uint256 averageEntryPrice) {
-        if (amount0 == 0) {
-            return 0;
+        if (self.borrowedGwei > params.totalGweiAmount) {
+            revert Errors.InsufficientCollateral();
         }
 
-        averageEntryPrice = FullMath.mulDiv(amount1, 1e18, amount0);
+        params.leftoverGwei = params.totalGweiAmount - self.borrowedGwei;
+        params.leftoverGas = epoch.quoteGweiToGas(
+            params.leftoverGwei,
+            priceTick
+        );
+
+        if (self.borrowedGas > params.leftoverGas) {
+            revert Errors.InsufficientCollateral();
+        }
     }
-
-    // function isAuthorized(
-    //     Data storage self,
-    //     FoilNFT foilNFT,
-    //     address sender
-    // ) internal view {
-    //     address accountOwner = foilNFT.ownerOf(self.id);
-    //     if (accountOwner == address(0)) {
-    //         revert Errors.InvalidId(self.id);
-    //     }
-
-    //     if (
-    //         accountOwner != sender &&
-    //         foilNFT.getApproved(self.id) != sender &&
-    //         !foilNFT.isApprovedForAll(accountOwner, sender)
-    //     ) {
-    //         revert Errors.NotAccountOwnerOrAuthorized(self.id, sender);
-    //     }
-    // }
 }
