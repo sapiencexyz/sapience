@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, AfterInsert, AfterRemove, AfterUpdate,  } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, AfterInsert, AfterRemove, AfterUpdate, CreateDateColumn,  } from 'typeorm';
 import { Log } from 'viem';
 // Read contractIds (chainId:address) from foilconfig.json ?
 // Add timestamp if the ORM doesn't do it automatically
@@ -9,6 +9,9 @@ export class Event {
 
     @PrimaryGeneratedColumn()
     id: number;
+
+    @CreateDateColumn()
+    createdAt: Date;
 
     @Column()
     contractId: string;
@@ -61,6 +64,9 @@ export class Transaction {
     @PrimaryGeneratedColumn()
     id: number;
 
+    @CreateDateColumn()
+    createdAt: Date;
+
     @Column()
     nftId: number; // foreign key to NFT
 
@@ -87,6 +93,9 @@ export class Position {
     // has_many Transaction
     @PrimaryGeneratedColumn()
     id: number;
+
+    @CreateDateColumn()
+    createdAt: Date;
 
     @Column()
     nftId: number;

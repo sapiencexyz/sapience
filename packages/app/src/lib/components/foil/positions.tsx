@@ -6,7 +6,6 @@ import {
   Th,
   Tbody,
   Box,
-  Heading,
 } from '@chakra-ui/react';
 import { times } from 'lodash';
 import { useEffect, useState } from 'react';

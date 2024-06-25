@@ -42,14 +42,18 @@ const Market = ({ params }: { params: { id: string } }) => {
         </Flex>
         <Tabs>
           <TabList>
-            <Tab>Positions</Tab>
             <Tab>Transactions</Tab>
+            <Tab>Trader Positions</Tab>
+            <Tab>LP Positions</Tab>
           </TabList>
           <TabPanels>
+            <TabPanel><Box py={6}>Coming soon.</Box></TabPanel>
             <TabPanel>
               <Positions />
             </TabPanel>
-            <TabPanel><Box py={6}>Coming soon.</Box></TabPanel>
+            <TabPanel>
+              <Positions />
+            </TabPanel>
           </TabPanels>
         </Tabs>
       </Flex>

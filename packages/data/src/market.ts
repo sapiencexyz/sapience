@@ -24,7 +24,7 @@ const startBackgroundProcess = async () => {
         type: "sqlite",
         database: "./data/database.sqlite",
         synchronize: true,
-        logging: false,
+        logging: true,
         entities: [Event],
     });
     const eventRepository = connection.getRepository(Event);
@@ -38,8 +38,8 @@ const startBackgroundProcess = async () => {
               contractId: `${hardhat.id}:${Foil.address}`
             });
 
+            console.log('Creating event:', event);
             await eventRepository.save(event);
-            console.log('Event created:', event);
         }
     }
 
