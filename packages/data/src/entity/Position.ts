@@ -6,12 +6,15 @@ import { Transaction } from './Transaction';
 export class Position {
     @OneToMany(() => Transaction, (transaction) => transaction.position)
     transactions: Transaction[];
-    
+
     @PrimaryGeneratedColumn()
     id: number;
 
     @CreateDateColumn()
     createdAt: Date;
+
+    @Column()
+    contractId: string;
 
     @Column()
     nftId: number;
@@ -30,6 +33,12 @@ export class Position {
 
     @Column()
     isLP: boolean;
+
+    @Column()
+    highPrice: number;
+
+    @Column()
+    lowPrice: number;
 
     @Column()
     unclaimedFees: number; // ETH

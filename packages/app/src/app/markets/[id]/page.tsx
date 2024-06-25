@@ -12,9 +12,11 @@ import {
 } from '@chakra-ui/react';
 
 import Chart from '~/lib/components/chart';
-import Positions from '~/lib/components/foil/positions';
+import LiquidityPosition from '~/lib/components/foil/liquidityPosition';
 import PositionsHeader from '~/lib/components/foil/positionsHeader';
 import TraderPosition from '~/lib/components/foil/traderPosition';
+import TraderPositionsTable from '~/lib/components/foil/traderPositionsTable';
+import LiquidityPositionsTable from '~/lib/components/foil/liquidityPositionsTable';
 import { MarketProvider } from '~/lib/context/MarketProvider';
 
 const Market = ({ params }: { params: { id: string } }) => {
@@ -34,10 +36,20 @@ const Market = ({ params }: { params: { id: string } }) => {
             borderRadius="md"
             p={6}
           >
-            <Heading size="md" mb={3}>
-              Trade
-            </Heading>
-            <TraderPosition />
+            <Tabs isFitted>
+              <TabList>
+                <Tab>Trade</Tab>
+                <Tab>Provide&nbsp;Liquidity</Tab>
+              </TabList>
+              <TabPanels>
+                <TabPanel pt={6}>
+                  <TraderPosition />
+                </TabPanel>
+                <TabPanel pt={6}>
+                  <LiquidityPosition />
+                </TabPanel>
+              </TabPanels>
+            </Tabs>
           </Box>
         </Flex>
         <Tabs>
@@ -47,12 +59,14 @@ const Market = ({ params }: { params: { id: string } }) => {
             <Tab>LP Positions</Tab>
           </TabList>
           <TabPanels>
-            <TabPanel><Box py={6}>Coming soon.</Box></TabPanel>
             <TabPanel>
-              <Positions />
+              <Box py={6}>Coming soon.</Box>
             </TabPanel>
             <TabPanel>
-              <Positions />
+              <TraderPositionsTable />
+            </TabPanel>
+            <TabPanel>
+              <LiquidityPositionsTable />
             </TabPanel>
           </TabPanels>
         </Tabs>

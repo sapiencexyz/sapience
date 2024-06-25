@@ -42,6 +42,8 @@ const AddLiquidity = ({
   const [depositAmount, setDepositAmount] = useState(0);
   const [lowPrice, setLowPrice] = useState(20);
   const [highPrice, setHighPrice] = useState(200);
+  const [baseToken, setBaseToken] = useState(0);
+  const [quoteToken, setQuoteToken] = useState(0);
 
   const collateralAmountFunctionResult = useReadContract({
     abi: CollateralAsset.abi,
@@ -137,11 +139,33 @@ const AddLiquidity = ({
           <FormLabel>High Price</FormLabel>
           <InputGroup>
             <Input
-              type="number" // Ensures only numeric input
+              type="number"
               value={highPrice}
               onChange={(e) => setHighPrice(Number(e.target.value))}
             />
             <InputRightAddon>cbETH/Ggas</InputRightAddon>
+          </InputGroup>
+        </FormControl>
+        <FormControl mb={4}>
+          <FormLabel>vGwei</FormLabel>
+          <InputGroup>
+            <Input
+              type="number"
+              value={baseToken}
+              onChange={(e) => setBaseToken(Number(e.target.value))}
+            />
+            <InputRightAddon>vGwei</InputRightAddon>
+          </InputGroup>
+        </FormControl>
+        <FormControl mb={4}>
+          <FormLabel>vGas</FormLabel>
+          <InputGroup>
+            <Input
+              type="number"
+              value={quoteToken}
+              onChange={(e) => setQuoteToken(Number(e.target.value))}
+            />
+            <InputRightAddon>vGas</InputRightAddon>
           </InputGroup>
         </FormControl>
         <Box mb="4">
@@ -153,7 +177,7 @@ const AddLiquidity = ({
             cbETH to x cbETH
           </Text>
         </Box>
-        <Button width="full" colorScheme="green" onClick={handleFormSubmit}>
+        <Button width="full" variant="brand" onClick={handleFormSubmit}>
           Add Liquidity
         </Button>
       </form>

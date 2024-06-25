@@ -2,6 +2,7 @@ import "reflect-metadata";
 import { createConnection } from 'typeorm';
 import cors from 'cors';
 import { Price } from './entity/Price';
+import { Position } from './entity/Position';
 import express from 'express';
 import { Between } from 'typeorm';
 
@@ -17,6 +18,7 @@ createConnection({
     entities: [Price],
 }).then(async connection => {
     const priceRepository = connection.getRepository(Price);
+    const positionRepository = connection.getRepository(Position);
 
     // Get all price data points between specified timestamps and filtered by contractId
     app.get('/prices', async (req, res) => {
@@ -109,6 +111,20 @@ createConnection({
         }));
 
         res.json(chartData);
+    });
+    app.get('/positions', async (req, res) => {
+        const { contractId, isLP } = req.query;
+        const where: any = {};
+
+        if (contractId) {
+            where.contractId = contractId;
+        }
+        if (isLP !== undefined) {
+            where.isLP = isLP === 'true';
+        }
+
+        const positions = await positionRepository.find({ where });
+        res.json(positions);
     });
 
     app.listen(3000, () => {
