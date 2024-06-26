@@ -110,7 +110,8 @@ contract Foil is
         );
     }
 
-    function mint(uint256 accountId) external {
+    function createAccount() external {
+        uint accountId = totalSupply();
         Account.createValid(accountId);
         _mint(msg.sender, accountId);
 

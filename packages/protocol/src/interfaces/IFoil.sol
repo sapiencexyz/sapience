@@ -4,7 +4,7 @@ pragma solidity >=0.8.2 <0.9.0;
 import "./IFoilStructs.sol";
 
 interface IFoil {
-    function createAccount(uint256 accountId) external;
+    function createAccount() external;
 
     function getEpoch()
         external

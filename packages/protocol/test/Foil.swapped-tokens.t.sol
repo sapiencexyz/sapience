@@ -33,8 +33,8 @@ contract FoilSwappedTokensTest is Test {
                 10000 // fee rate
             );
             foils.push(newFoil);
-            newFoil.mint(1);
-            newFoil.mint(2);
+            newFoil.createAccount();
+            newFoil.createAccount();
 
             (pool, , ) = newFoil.getEpoch();
             pools.push(pool);
