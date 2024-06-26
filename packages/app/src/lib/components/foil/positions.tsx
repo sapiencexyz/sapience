@@ -13,7 +13,7 @@ import { useReadContract, useReadContracts } from 'wagmi';
 
 import Foil from '../../../../deployments/Foil.json';
 
-import CreateAccount from './createAccount';
+import CreateAccount from './createPosition';
 import PositionRow from './positionRow';
 
 export default function Positions() {

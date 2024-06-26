@@ -14,6 +14,8 @@ import {
 } from '@chakra-ui/react';
 import { useState } from 'react';
 
+import PositionSelector from './positionSelector';
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RadioCard(props: any) {
   const { getInputProps, getRadioProps } = useRadio(props);
@@ -62,6 +64,8 @@ export default function TraderPosition({
 }: {
   params: { mode: string; selectedData: JSON };
 }) {
+  const [nftId, setNftId] = useState(0);
+
   const options = ['Long', 'Short'];
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -78,8 +82,11 @@ export default function TraderPosition({
   const [show, setShow] = useState(false);
   const handleClick = () => setShow(!show);
 
+  // modifyMargin -> modifyPosition
+
   return (
     <form>
+      <PositionSelector isLP={false} onChange={setNftId} />
       <Flex {...group} gap={4} mb={4}>
         {options.map((value) => {
           const radio = getRadioProps({ value });
