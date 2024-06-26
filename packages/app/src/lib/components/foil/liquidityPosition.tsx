@@ -18,7 +18,7 @@ const LiquidityPosition = ({
   return (
     <Box>
       <Box mb={3}>
-      <PositionSelector isLP onChange={setNftId} />
+        <PositionSelector isLP onChange={setNftId} />
       </Box>
       {nftId === 0 ? <AddLiquidity /> : <EditLiquidity nftId={nftId} />}
     </Box>

@@ -53,12 +53,11 @@ const Market = () => {
     >
       <Box mb={6}>
         <Flex gap={8} mb={8} alignItems="center">
-          <Image src="/assets/base-art.svg" width="160px" />
           <Box w="100%">
-            <Heading mb={4}>Base Gas Subscription</Heading>
+            <Heading mb={4}>ETH Gas Subscription</Heading>
             <Divider mb={4} borderColor="gray.300" />
             <Text fontSize="md" color="gray.600">
-              Use Foil to lock in a gas price. You can redeem a rebate of cbETH
+              Use Foil to lock in a gas price. You can redeem a rebate of stETH
               if average gas costs exceed what you’re quoted over the duration
               of your subscription.
             </Text>
@@ -132,7 +131,7 @@ const Market = () => {
           </Heading>
 
           <Text display="inline" fontSize="2xl" mr={2}>
-            31 cbETH
+            31 stETH
           </Text>
           <Text display="inline" color="gray.500">
             (0.1 gwei per gas unit)
