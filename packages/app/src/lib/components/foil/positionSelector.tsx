@@ -106,9 +106,9 @@ const AccountSelector: React.FC<AccountSelectorProps> = ({
 
   return (
     <Box>
-      <FormControl mb={2}>
-        <FormLabel color="gray.700">Select Position</FormLabel>
-        <InputGroup gap={3}>
+      <FormControl mb={6}>
+        <InputGroup gap={3} alignItems="center">
+        <FormLabel color="gray.700" mb={0}>Position</FormLabel>
           <Select onChange={handleAccountChange}>
             {filteredNfts.map((id) => (
               <option key={id} value={id}>
@@ -122,7 +122,7 @@ const AccountSelector: React.FC<AccountSelectorProps> = ({
             )}
           </Select>
           {!isLP && (
-            <Box mb={2}>
+            <Box>
               <CreateAccount />
             </Box>
           )}

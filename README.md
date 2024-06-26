@@ -3,7 +3,7 @@
 ## Getting Started
 
 ### Start the protocol on a local node
-* Run `pnpm protocol-dev`
+* Run `pnpm dev`
 * In a new tab, run `pnpm update-abis` to update ABIs and addresses for local app development.
 
 ### Turn on the data API

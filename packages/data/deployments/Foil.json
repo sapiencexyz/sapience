@@ -1,5 +1,5 @@
 {
-  "address": "0xDC8F0e7011E6E83b8233762ABD737dbEA13F798f",
+  "address": "0xa7812208dc0424acb3cf6f776B577cb961b9B1CF",
   "abi": [
     {
       "type": "constructor",
@@ -148,13 +148,7 @@
     {
       "type": "function",
       "name": "createAccount",
-      "inputs": [
-        {
-          "name": "accountId",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
+      "inputs": [],
       "outputs": [],
       "stateMutability": "nonpayable"
     },
@@ -305,19 +299,6 @@
         }
       ],
       "stateMutability": "view"
-    },
-    {
-      "type": "function",
-      "name": "mint",
-      "inputs": [
-        {
-          "name": "accountId",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "outputs": [],
-      "stateMutability": "nonpayable"
     },
     {
       "type": "function",
@@ -937,10 +918,10 @@
       "UniV3Abstraction": "0x41B80b97fC5Fc52723aD86B076bBBcc9252c51a9"
     }
   },
-  "deployTxnHash": "0xaba4d681fb0e98e1d4706cc6be3ed8de96fe92754e193fa688b8c1bfa280dde4",
+  "deployTxnHash": "0x4d284d15c6276afbd1168765a5c8e350d1d2090f7a1d06d882851dff45386e97",
   "sourceName": "src/contracts/Foil.sol",
   "contractName": "Foil",
   "deployedOn": "deploy.Foil",
-  "gasUsed": 8907019,
+  "gasUsed": 8898383,
   "gasCost": "1011770224"
 }
