@@ -132,7 +132,7 @@ contract Foil is
     */
 
     function createLiquidityPosition(
-        IFoilStructs.AddLiquidityParams memory params
+        IFoilStructs.LiquidityPositionParams memory params
     )
         external
         payable
@@ -151,9 +151,9 @@ contract Foil is
 
         Epoch.Data storage epoch = Epoch.load();
 
-        UniV3Abstraction.RuntimeAddLiquidityParams
-            memory uniV3HelperAddLiquidityParams = UniV3Abstraction
-                .RuntimeAddLiquidityParams({
+        UniV3Abstraction.RuntimeLiquidityPositionParams
+            memory uniV3HelperLiquidityPositionParams = UniV3Abstraction
+                .RuntimeLiquidityPositionParams({
                     accountId: params.accountId,
                     recipient: address(this),
                     pool: address(epoch.pool),
@@ -164,7 +164,7 @@ contract Foil is
                 });
 
         (addedAmount0, addedAmount1, liquidity) = UniV3Abstraction.addLiquidity(
-            uniV3HelperAddLiquidityParams
+            uniV3HelperLiquidityPositionParams
         );
         console2.log(addedAmount0, addedAmount1);
 
@@ -473,4 +473,30 @@ contract Foil is
         //     Position.load(accountId).updateBalance(amount0Delta, amount1Delta);
         // }
     }
+
+
+    function createTraderPosition(uint collateral, int size) external returns ( uint256 tokenId){ 
+        tokenId = 0;
+    }
+
+    function updateTraderPosition(uint256 tokenId, uint collateral, int size) external {
+        return;
+    }
+
+    function updateLiquidityPosition(
+        uint256 tokenId,
+        uint256 collateral,
+        uint256 liquidityRatio
+    )
+        external
+        payable
+        returns (
+            uint128 liquidity,
+            uint256 amount0,
+            uint256 amount1
+        ){
+            liquidity = 0;
+            amount0 = 0;
+            amount1 = 0;
+        }
 }

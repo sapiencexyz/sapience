@@ -1,5 +1,5 @@
 {
-  "address": "0xC7baD6632742e84B33734a68599C2612E7D5184b",
+  "address": "0x4Ce3917B88813ee07A613221FFAe16eAB4B6Fb6E",
   "abi": [
     {
       "type": "constructor",
@@ -96,7 +96,7 @@
         {
           "name": "params",
           "type": "tuple",
-          "internalType": "struct IFoilStructs.AddLiquidityParams",
+          "internalType": "struct IFoilStructs.LiquidityPositionParams",
           "components": [
             {
               "name": "accountId",
@@ -154,6 +154,30 @@
         }
       ],
       "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "createTraderPosition",
+      "inputs": [
+        {
+          "name": "collateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "size",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
     },
     {
       "type": "function",
@@ -699,6 +723,68 @@
       "stateMutability": "nonpayable"
     },
     {
+      "type": "function",
+      "name": "updateLiquidityPosition",
+      "inputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "liquidityRatio",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "liquidity",
+          "type": "uint128",
+          "internalType": "uint128"
+        },
+        {
+          "name": "amount0",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "amount1",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "updateTraderPosition",
+      "inputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "size",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
       "type": "event",
       "name": "Approval",
       "inputs": [
@@ -932,13 +1018,13 @@
   ],
   "linkedLibraries": {
     "src/utils/UniV3Abstraction.sol": {
-      "UniV3Abstraction": "0x6c58Ac29A73eB8B43095e2FC03D91D9a94CE18e7"
+      "UniV3Abstraction": "0xa5Cd2f0141Bd821424eedBc5d8c632b063f5d5Fd"
     }
   },
-  "deployTxnHash": "0x126742c632710138e597a58ace85c57b6fff784f1a9f8fc979cf398046be50ce",
+  "deployTxnHash": "0x0cfe79550230898c190d111fdb7d040dcc222c267d7815e14075cacd4c757608",
   "sourceName": "src/contracts/Foil.sol",
   "contractName": "Foil",
   "deployedOn": "deploy.Foil",
-  "gasUsed": 8928445,
-  "gasCost": "1011770224"
+  "gasUsed": 8972036,
+  "gasCost": "1011770226"
 }

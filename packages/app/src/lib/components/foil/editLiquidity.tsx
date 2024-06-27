@@ -112,8 +112,6 @@ const EditLiquidity = ({
     }
   }, [transactionStep, addLiquidityWrite]);
 
-  // addLiquidity -> editLiquidity
-
   return (
     <form onSubmit={handleFormSubmit}>
       <FormControl mb={4}>
@@ -128,25 +126,13 @@ const EditLiquidity = ({
         </InputGroup>
       </FormControl>
       <FormControl mb={4}>
-        <FormLabel>vGwei</FormLabel>
-        <InputGroup>
-          <Input
-            type="number"
-            value={baseToken}
-            onChange={(e) => setBaseToken(Number(e.target.value))}
-          />
-          <InputRightAddon>vGwei</InputRightAddon>
-        </InputGroup>
-      </FormControl>
-      <FormControl mb={4}>
-        <FormLabel>vGas</FormLabel>
+        <FormLabel>Liquidity Ratio</FormLabel>
         <InputGroup>
           <Input
             type="number"
             value={quoteToken}
             onChange={(e) => setQuoteToken(Number(e.target.value))}
           />
-          <InputRightAddon>vGas</InputRightAddon>
         </InputGroup>
       </FormControl>
       <Box mb="4">

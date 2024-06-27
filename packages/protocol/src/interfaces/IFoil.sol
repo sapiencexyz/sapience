@@ -13,10 +13,12 @@ interface IFoil {
         uint256 accountId
     ) external view returns (uint256 tokenAmount0, uint256 tokenAmount1);
 
-    function createTraderPosition() external;
+    function createTraderPosition(uint collateral, int size) external returns ( uint256 tokenId);
+
+    function updateTraderPosition(uint256 tokenId, uint collateral, int size) external;
 
     function createLiquidityPosition(
-        IFoilStructs.AddLiquidityParams memory params
+        IFoilStructs.LiquidityPositionParams memory params
     )
         external
         payable
@@ -26,5 +28,18 @@ interface IFoil {
             uint256 amount0,
             uint256 amount1
         );
-        
+
+    function updateLiquidityPosition(
+        uint256 tokenId,
+        uint256 collateral,
+        uint256 liquidityRatio
+    )
+        external
+        payable
+        returns (
+            uint128 liquidity,
+            uint256 amount0,
+            uint256 amount1
+        );
+
 }

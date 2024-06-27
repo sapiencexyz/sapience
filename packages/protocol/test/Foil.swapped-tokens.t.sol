@@ -50,8 +50,8 @@
 //             // int24 upperTick = TickMath.getTickAtSqrtRatio(
 //             //     306849353968360525628702781967
 //             // ); // 15
-//             IFoilStructs.AddLiquidityParams memory params = IFoilStructs
-//                 .AddLiquidityParams({
+//             IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
+//                 .LiquidityPositionParams({
 //                     accountId: 1,
 //                     amountTokenA: 10 ether,
 //                     amountTokenB: 100 ether,
@@ -66,7 +66,7 @@
 //             );
 
 //             // new account!
-//             params = IFoilStructs.AddLiquidityParams({
+//             params = IFoilStructs.LiquidityPositionParams({
 //                 accountId: 2,
 //                 amountTokenA: 100 ether,
 //                 amountTokenB: 10 ether,

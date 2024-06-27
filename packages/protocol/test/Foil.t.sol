@@ -50,8 +50,8 @@ contract FoilTest is Test {
         // int24 upperTick = TickMath.getTickAtSqrtRatio(
         //     306849353968360525628702781967
         // ); // 15
-        IFoilStructs.AddLiquidityParams memory params = IFoilStructs
-            .AddLiquidityParams({
+        IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
+            .LiquidityPositionParams({
                 accountId: 1,
                 amountTokenA: 50 ether,
                 amountTokenB: 50 ether,
@@ -66,7 +66,7 @@ contract FoilTest is Test {
         // console2.log(tokenAmount0, tokenAmount1);
 
         // // new account!
-        // params = IFoilStructs.AddLiquidityParams({
+        // params = IFoilStructs.LiquidityPositionParams({
         //     accountId: 2,
         //     amountTokenA: 100 ether,
         //     amountTokenB: 10 ether,
@@ -88,8 +88,8 @@ contract FoilTest is Test {
     //     // int24 upperTick = TickMath.getTickAtSqrtRatio(
     //     //     306849353968360525628702781967
     //     // ); // 15
-    //     IFoilStructs.AddLiquidityParams memory params = IFoilStructs
-    //         .AddLiquidityParams({
+    //     IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
+    //         .LiquidityPositionParams({
     //             accountId: 1,
     //             amountTokenA: 10 ether,
     //             amountTokenB: 100 ether,
@@ -102,7 +102,7 @@ contract FoilTest is Test {
     //     (uint256 tokenAmount0, uint256 tokenAmount1) = foil.getPosition(1);
 
     //     // new account!
-    //     params = IFoilStructs.AddLiquidityParams({
+    //     params = IFoilStructs.LiquidityPositionParams({
     //         accountId: 2,
     //         amountTokenA: 100 ether,
     //         amountTokenB: 10 ether,
@@ -126,8 +126,8 @@ contract FoilTest is Test {
     //     // int24 upperTick = TickMath.getTickAtSqrtRatio(
     //     //     306849353968360525628702781967
     //     // ); // 15
-    //     IFoilStructs.AddLiquidityParams memory params = IFoilStructs
-    //         .AddLiquidityParams({
+    //     IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
+    //         .LiquidityPositionParams({
     //             accountId: 1,
     //             amountTokenA: 10 ether,
     //             amountTokenB: 100 ether,
@@ -140,7 +140,7 @@ contract FoilTest is Test {
     //     (uint256 tokenAmount0, uint256 tokenAmount1) = foil.getPosition(1);
 
     //     // new account!
-    //     params = IFoilStructs.AddLiquidityParams({
+    //     params = IFoilStructs.LiquidityPositionParams({
     //         accountId: 2,
     //         amountTokenA: 100 ether,
     //         amountTokenB: 10 ether,

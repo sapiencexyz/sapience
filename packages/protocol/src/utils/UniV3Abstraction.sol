@@ -12,7 +12,7 @@ library UniV3Abstraction {
     using MigrationMathUtils for int256;
     using Epoch for Epoch.Data;
 
-    struct RuntimeAddLiquidityParams {
+    struct RuntimeLiquidityPositionParams {
         uint256 accountId;
         address recipient;
         address pool;
@@ -25,7 +25,7 @@ library UniV3Abstraction {
     uint256 internal constant _DUST = 10;
 
     function addLiquidity(
-        RuntimeAddLiquidityParams memory params
+        RuntimeLiquidityPositionParams memory params
     )
         external
         returns (uint256 addedAmount0, uint256 addedAmount1, uint128 liquidity)
