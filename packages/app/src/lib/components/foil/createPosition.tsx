@@ -12,7 +12,7 @@ export default function CreatePosition() {
   React.useEffect(() => {
     if (error) {
       toast({
-        title: 'Error.',
+        title: 'Error',
         description: 'There was an issue creating your position.',
         status: 'error',
         duration: 9000,
@@ -20,9 +20,9 @@ export default function CreatePosition() {
       });
     } else if (hash) {
       toast({
-        title: 'Error.',
+        title: 'Submitted',
         description: 'Transaction submitted. Waiting for confirmation...',
-        status: 'success',
+        status: 'info',
         duration: 9000,
         isClosable: true,
       });
@@ -35,6 +35,7 @@ export default function CreatePosition() {
       abi: Foil.abi,
       address: Foil.address as `0x${string}`,
       functionName: 'createAccount',
+      args: [],
     });
   }
 
@@ -44,7 +45,7 @@ export default function CreatePosition() {
   React.useEffect(() => {
     if (isConfirmed) {
       toast({
-        title: 'Position created.',
+        title: 'Success',
         description: "We've created your position for you.",
         status: 'success',
         duration: 9000,
@@ -60,7 +61,7 @@ export default function CreatePosition() {
       type="submit"
       colorScheme="gray"
       bg="#0053ff"
-      isLoading={isPending}
+      isLoading={isPending || isConfirming}
       icon={<AddIcon color="white" />}
       onClick={() => submit}
     />

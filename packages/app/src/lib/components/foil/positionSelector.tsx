@@ -12,8 +12,6 @@ import { useAccount, useReadContract, useReadContracts } from 'wagmi';
 
 import Foil from '../../../../deployments/Foil.json';
 
-import CreateAccount from './createPosition';
-
 interface AccountSelectorProps {
   isLP: boolean;
   onChange: Dispatch<SetStateAction<number>>;
@@ -108,24 +106,19 @@ const AccountSelector: React.FC<AccountSelectorProps> = ({
     <Box>
       <FormControl mb={6}>
         <InputGroup gap={3} alignItems="center">
-        <FormLabel color="gray.700" mb={0}>Position</FormLabel>
+          <FormLabel color="gray.700" mb={0}>
+            Position
+          </FormLabel>
           <Select onChange={handleAccountChange}>
             {filteredNfts.map((id) => (
               <option key={id} value={id}>
                 {id}
               </option>
             ))}
-            {isLP && (
-              <option key="new" value={0}>
-                New Position
-              </option>
-            )}
+            <option key="new" value={0}>
+              New Position
+            </option>
           </Select>
-          {!isLP && (
-            <Box>
-              <CreateAccount />
-            </Box>
-          )}
         </InputGroup>
       </FormControl>
     </Box>

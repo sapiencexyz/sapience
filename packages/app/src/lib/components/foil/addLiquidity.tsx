@@ -11,20 +11,15 @@ import {
   Button,
 } from '@chakra-ui/react';
 import { useEffect, useState } from 'react';
-import { encodeAbiParameters, numberToHex, parseEther, toHex } from 'viem';
 import {
-  type BaseError,
   useWriteContract,
   useWaitForTransactionReceipt,
   useAccount,
   useReadContract,
-  prepareTransactionRequest,
 } from 'wagmi';
 
 import CollateralAsset from '../../../../deployments/CollateralAsset/MintableToken.json';
 import Foil from '../../../../deployments/Foil.json';
-
-import PositionSelector from './positionSelector';
 
 const tickSpacing = 200; // Hardcoded for now, should be retrieved with pool.tickSpacing()
 function priceToTick(price: number, tickSpacing: number): number {
@@ -35,7 +30,6 @@ function priceToTick(price: number, tickSpacing: number): number {
 }
 
 const AddLiquidity = ({
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   params,
 }: {
   params: { mode: string; selectedData: JSON };
@@ -92,28 +86,33 @@ const AddLiquidity = ({
   }, [approveSuccess, transactionStep]);
 
   useEffect(() => {
-    console.log('almost there', transactionStep);
     if (transactionStep === 2) {
-      console.log('heyyyyy');
       addLiquidityWrite({
         address: Foil.address,
         abi: Foil.abi,
-        functionName: 'addLiquidity',
+        functionName: 'createLiquidityPosition',
         args: [
           {
-            accountId: BigInt(420), // TODO, dont hardcode
-            amountTokenA: BigInt(1), // TODO, dont hardcode
-            amountTokenB: BigInt(1), // TODO, dont hardcode
+            accountId: BigInt(420), // Example accountId
+            amountTokenA: BigInt(baseToken),
+            amountTokenB: BigInt(quoteToken),
             collateralAmount: BigInt(depositAmount),
             lowerTick: BigInt(priceToTick(lowPrice, tickSpacing)),
             upperTick: BigInt(priceToTick(highPrice, tickSpacing)),
           },
         ],
       });
+      setTransactionStep(3);
     }
-  }, [transactionStep, addLiquidityWrite]);
-
-  // addLiquidity -> editLiquidity
+  }, [
+    transactionStep,
+    addLiquidityWrite,
+    baseToken,
+    quoteToken,
+    depositAmount,
+    lowPrice,
+    highPrice,
+  ]);
 
   return (
     <form onSubmit={handleFormSubmit}>
@@ -181,7 +180,12 @@ const AddLiquidity = ({
           cbETH to x cbETH
         </Text>
       </Box>
-      <Button width="full" variant="brand" onClick={handleFormSubmit}>
+      <Button
+        width="full"
+        variant="brand"
+        type="submit"
+        isLoading={transactionStep > 0 && transactionStep < 3}
+      >
         Add Liquidity
       </Button>
     </form>

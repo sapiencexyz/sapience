@@ -11,13 +11,23 @@ import {
   InputRightElement,
   FormLabel,
   Text,
+  useToast,
 } from '@chakra-ui/react';
+import * as React from 'react';
 import { useState } from 'react';
+import {
+  useWaitForTransactionReceipt,
+  useWriteContract,
+  useAccount,
+  useReadContract,
+} from 'wagmi';
+
+import CollateralAsset from '../../../../deployments/CollateralAsset/MintableToken.json';
+import Foil from '../../../../deployments/Foil.json';
 
 import PositionSelector from './positionSelector';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RadioCard(props: any) {
+function RadioCard(props) {
   const { getInputProps, getRadioProps } = useRadio(props);
 
   const input = getInputProps();
@@ -38,7 +48,7 @@ function RadioCard(props: any) {
           bg: 'gray.100',
         }}
         _checked={{
-          cusor: 'normal',
+          cursor: 'normal',
           bg: 'gray.800',
           color: 'white',
           borderColor: 'gray.800',
@@ -49,27 +59,20 @@ function RadioCard(props: any) {
         }}
         p={2}
       >
-        {
-          // eslint-disable-next-line react/destructuring-assignment
-          props.children
-        }
+        {props.children}
       </Box>
     </Box>
   );
 }
 
-export default function TraderPosition({
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  params,
-}: {
-  params: { mode: string; selectedData: JSON };
-}) {
+export default function TraderPosition({ params }) {
+  const account = useAccount();
   const [nftId, setNftId] = useState(0);
-
+  const [collateral, setCollateral] = useState(0);
+  const [size, setSize] = useState(0);
   const options = ['Long', 'Short'];
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [option, setOption] = useState('long');
+  const [option, setOption] = useState('Long');
+  const [transactionStep, setTransactionStep] = useState(0);
 
   const { getRootProps, getRadioProps } = useRadioGroup({
     name: 'positionType',
@@ -82,10 +85,93 @@ export default function TraderPosition({
   const [show, setShow] = useState(false);
   const handleClick = () => setShow(!show);
 
-  // modifyMargin -> modifyPosition
+  const toast = useToast();
+  const { data: hash, error, isPending, writeContract } = useWriteContract();
+  const { data: approveHash, writeContract: approveWrite } = useWriteContract();
+
+  const { isLoading: isConfirming, isSuccess: isConfirmed } =
+    useWaitForTransactionReceipt({ hash });
+  const { isSuccess: approveSuccess } = useWaitForTransactionReceipt({
+    hash: approveHash,
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    approveWrite({
+      abi: CollateralAsset.abi,
+      address: CollateralAsset.address,
+      functionName: 'approve',
+      args: [CollateralAsset.address, BigInt(collateral)],
+    }); // Start the transaction sequence
+    setTransactionStep(1);
+  };
+
+  React.useEffect(() => {
+    if (approveSuccess && transactionStep === 1) {
+      setTransactionStep(2); // Move to the next step once approve is confirmed
+    }
+  }, [approveSuccess, transactionStep]);
+
+  React.useEffect(() => {
+    if (transactionStep === 2) {
+      const finalSize = option === 'Short' ? -Math.abs(size) : size;
+
+      if (nftId === 0) {
+        writeContract({
+          abi: Foil.abi,
+          address: Foil.address as `0x${string}`,
+          functionName: 'createTraderPosition',
+          args: [collateral, finalSize],
+        });
+      } else {
+        writeContract({
+          abi: Foil.abi,
+          address: Foil.address as `0x${string}`,
+          functionName: 'updateTraderPosition',
+          args: [nftId, collateral, finalSize],
+        });
+      }
+      setTransactionStep(3);
+    }
+  }, [transactionStep, writeContract, nftId, collateral, size, option]);
+
+  React.useEffect(() => {
+    if (error) {
+      toast({
+        title: 'Error',
+        description: 'There was an issue creating/updating your position.',
+        status: 'error',
+        duration: 9000,
+        isClosable: true,
+      });
+    } else if (hash) {
+      toast({
+        title: 'Submitted',
+        description: 'Transaction submitted. Waiting for confirmation...',
+        status: 'info',
+        duration: 9000,
+        isClosable: true,
+      });
+    }
+  }, [toast, error, hash]);
+
+  React.useEffect(() => {
+    if (isConfirmed) {
+      toast({
+        title: 'Success',
+        description: `We've ${
+          nftId === 0 ? 'created' : 'updated'
+        } your position for you.`,
+        status: 'success',
+        duration: 9000,
+        isClosable: true,
+      });
+    }
+  }, [toast, isConfirmed]);
 
   return (
-    <form>
+    <form onSubmit={handleSubmit}>
       <PositionSelector isLP={false} onChange={setNftId} />
       <Flex {...group} gap={4} mb={4}>
         {options.map((value) => {
@@ -100,7 +186,11 @@ export default function TraderPosition({
       <FormControl mb={4}>
         <FormLabel>Size</FormLabel>
         <InputGroup>
-          <Input value="0" type="number" />
+          <Input
+            value={size}
+            type="number"
+            onChange={(e) => setSize(Number(e.target.value))}
+          />
           <InputRightElement width="4.5rem">
             <Button h="1.75rem" size="sm" onClick={handleClick}>
               {show ? 'cbETH' : 'Ggas'}
@@ -110,7 +200,11 @@ export default function TraderPosition({
       </FormControl>
       <FormControl mb={4}>
         <InputGroup>
-          <Input value="123" readOnly type="number" disabled />
+          <Input
+            value={collateral}
+            type="number"
+            onChange={(e) => setCollateral(Number(e.target.value))}
+          />
           <InputRightAddon>{show ? 'Ggas' : 'cbETH'}</InputRightAddon>
         </InputGroup>
       </FormControl>
@@ -122,9 +216,14 @@ export default function TraderPosition({
           Wallet Balance: X cbETH to x cbETH
         </Text>
       </Box>
-      <Button width="full" variant="brand">
+      <Button
+        width="full"
+        variant="brand"
+        type="submit"
+        isLoading={transactionStep > 0 && transactionStep < 3}
+      >
         Trade
-      </Button>{' '}
+      </Button>
     </form>
   );
 }
