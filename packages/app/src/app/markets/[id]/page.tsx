@@ -12,9 +12,11 @@ import {
 } from '@chakra-ui/react';
 
 import Chart from '~/lib/components/chart';
-import Positions from '~/lib/components/foil/positions';
+import LiquidityPosition from '~/lib/components/foil/liquidityPosition';
 import PositionsHeader from '~/lib/components/foil/positionsHeader';
 import TraderPosition from '~/lib/components/foil/traderPosition';
+import TraderPositionsTable from '~/lib/components/foil/traderPositionsTable';
+import LiquidityPositionsTable from '~/lib/components/foil/liquidityPositionsTable';
 import { MarketProvider } from '~/lib/context/MarketProvider';
 
 const Market = ({ params }: { params: { id: string } }) => {
@@ -24,34 +26,48 @@ const Market = ({ params }: { params: { id: string } }) => {
     <MarketProvider chainId={Number(chainId)} address={marketAddress}>
       <Flex direction="column" alignItems="left" mb={8} w="full" py={8}>
         <PositionsHeader />
-        <Flex width="100%">
-          <Box height="100%" width="66%">
+        <Flex width="100%" gap={12} mb={12}>
+          <Box height="100%" flex="2">
             <Chart />
           </Box>
           <Box
             border="1px solid"
-            borderColor="gray.200"
+            borderColor="gray.300"
             borderRadius="md"
-            p={4}
+            p={6}
           >
-            <Heading size="md" mb={4}>
-              Trade
-            </Heading>
-            <TraderPosition />
+            <Tabs isFitted>
+              <TabList>
+                <Tab>Trade</Tab>
+                <Tab>Provide&nbsp;Liquidity</Tab>
+              </TabList>
+              <TabPanels>
+                <TabPanel pt={6}>
+                  <TraderPosition />
+                </TabPanel>
+                <TabPanel pt={6}>
+                  <LiquidityPosition />
+                </TabPanel>
+              </TabPanels>
+            </Tabs>
           </Box>
         </Flex>
         <Tabs>
           <TabList>
-            <Tab>Overview</Tab>
-            <Tab>Positions</Tab>
             <Tab>Transactions</Tab>
+            <Tab>Trader Positions</Tab>
+            <Tab>LP Positions</Tab>
           </TabList>
           <TabPanels>
-            <TabPanel>coming soon</TabPanel>
             <TabPanel>
-              <Positions />
+              <Box py={6}>Coming soon.</Box>
             </TabPanel>
-            <TabPanel>coming soon</TabPanel>
+            <TabPanel>
+              <TraderPositionsTable />
+            </TabPanel>
+            <TabPanel>
+              <LiquidityPositionsTable />
+            </TabPanel>
           </TabPanels>
         </Tabs>
       </Flex>

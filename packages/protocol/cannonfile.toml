@@ -37,4 +37,5 @@ args=[
   "<%= settings.baseAssetMaxPrice %>",
   "<%= settings.feeRate %>",
 ]
+CREATE2="true"
 depends = ['var.settings', 'deploy.ReentrancyGuard', 'deploy.UniV3Abstraction']

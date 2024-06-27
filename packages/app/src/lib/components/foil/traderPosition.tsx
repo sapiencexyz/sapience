@@ -14,6 +14,8 @@ import {
 } from '@chakra-ui/react';
 import { useState } from 'react';
 
+import PositionSelector from './positionSelector';
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RadioCard(props: any) {
   const { getInputProps, getRadioProps } = useRadio(props);
@@ -22,24 +24,30 @@ function RadioCard(props: any) {
   const checkbox = getRadioProps();
 
   return (
-    <Box as="label">
+    <Box flex="1" as="label">
       <input {...input} />
       <Box
         {...checkbox}
+        textAlign="center"
         cursor="pointer"
         borderWidth="1px"
         borderRadius="md"
         boxShadow="md"
+        fontWeight={700}
+        _hover={{
+          bg: 'gray.100',
+        }}
         _checked={{
-          bg: 'teal.600',
+          cusor: 'normal',
+          bg: 'gray.800',
           color: 'white',
-          borderColor: 'teal.600',
+          borderColor: 'gray.800',
+          boxShadow: 'none',
         }}
         _focus={{
           boxShadow: 'outline',
         }}
-        px={5}
-        py={3}
+        p={2}
       >
         {
           // eslint-disable-next-line react/destructuring-assignment
@@ -56,14 +64,16 @@ export default function TraderPosition({
 }: {
   params: { mode: string; selectedData: JSON };
 }) {
-  const options = ['LONG', 'SHORT'];
+  const [nftId, setNftId] = useState(0);
+
+  const options = ['Long', 'Short'];
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [option, setOption] = useState('long');
 
   const { getRootProps, getRadioProps } = useRadioGroup({
     name: 'positionType',
-    defaultValue: 'long',
+    defaultValue: 'Long',
     onChange: setOption,
   });
 
@@ -72,8 +82,11 @@ export default function TraderPosition({
   const [show, setShow] = useState(false);
   const handleClick = () => setShow(!show);
 
+  // modifyMargin -> modifyPosition
+
   return (
     <form>
+      <PositionSelector isLP={false} onChange={setNftId} />
       <Flex {...group} gap={4} mb={4}>
         {options.map((value) => {
           const radio = getRadioProps({ value });
@@ -87,7 +100,7 @@ export default function TraderPosition({
       <FormControl mb={4}>
         <FormLabel>Size</FormLabel>
         <InputGroup>
-          <Input type="number" />
+          <Input value="0" type="number" />
           <InputRightElement width="4.5rem">
             <Button h="1.75rem" size="sm" onClick={handleClick}>
               {show ? 'cbETH' : 'Ggas'}
@@ -102,14 +115,14 @@ export default function TraderPosition({
         </InputGroup>
       </FormControl>
       <Box mb="4">
-        <Text fontSize="sm" color="gray.500" mb="1">
+        <Text fontSize="sm" color="gray.500" mb={0.5}>
           Position: X Ggas to X Ggas
         </Text>
-        <Text fontSize="sm" color="gray.500" mb="1">
+        <Text fontSize="sm" color="gray.500" mb={0.5}>
           Wallet Balance: X cbETH to x cbETH
         </Text>
       </Box>
-      <Button width="full" colorScheme="green">
+      <Button width="full" variant="brand">
         Trade
       </Button>{' '}
     </form>

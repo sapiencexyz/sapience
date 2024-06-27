@@ -5,27 +5,27 @@
   "version": "1.0.0",
   "scripts": {
     "test": "",
-    "dev": "cannon build --keep-alive --wipe --port 3001 --no-cors",
-    "update-abis": "cannon inspect foil --write-deployments ../app/deployments"
+    "dev": "cannon build --wipe --keep-alive --port 8545 --no-cors",
+    "update-abis": "cannon build --wipe && cannon inspect foil --write-deployments ../app/deployments && cannon inspect foil --write-deployments ../data/deployments"
   },
   "devDependencies": {
-    "@types/chai": "^4.2.0",
-    "@types/mocha": "^10.0.6",
-    "@types/node": "^20.11.17",
-    "chai": "^4.2.0",
+    "@types/chai": "^4.3.16",
+    "@types/mocha": "^10.0.7",
+    "@types/node": "^20.14.9",
+    "chai": "^4.4.1",
     "forge-std": "github:foundry-rs/forge-std#master",
-    "mocha": "^10.3.0",
+    "mocha": "^10.5.2",
     "mocha-junit-reporter": "^2.2.1",
-    "solidity-coverage": "^0.8.1",
-    "ts-node": "^10.9.1",
-    "typechain": "^8.2.0",
-    "typescript": "^5.3.3"
+    "solidity-coverage": "^0.8.12",
+    "ts-node": "^10.9.2",
+    "typechain": "^8.3.2",
+    "typescript": "^5.5.2"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^5.0.2npm ",
+    "@openzeppelin/contracts": "^5.0.2",
     "@uniswap/v3-core": "^1.0.1",
     "@uniswap/v3-periphery": "^1.4.4",
-    "@usecannon/cli": "^2.12.4"
+    "@usecannon/cli": "^2.15.3"
   },
   "engines": {
     "node": ">=16.x.x",

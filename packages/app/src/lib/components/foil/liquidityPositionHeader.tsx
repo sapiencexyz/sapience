@@ -23,7 +23,7 @@ const LiquidityPositionHeader = () => {
         Provide {collateralAssetTicker} Liquidity for {chain.name} Gas
       </Heading>
       <Heading size="md" mb={3}>
-        Expiring in {relativeTime}
+        Ends in {relativeTime}
       </Heading>
       <Heading mb={5} fontWeight="normal" size="sm" color="gray.500">
         Market Address:{' '}

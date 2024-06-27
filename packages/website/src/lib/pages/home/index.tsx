@@ -12,28 +12,30 @@ const Home = () => {
         alignItems="center"
         justifyContent="center"
         minHeight="100dvh"
-        gap={[2, 2, 6]}
+        gap={[3, 3, 7]}
         maxWidth="820px"
         m="0 auto"
         textAlign="center"
         w="full"
-        pt={[0, 0, 16]}
+        pt={[0, 0, 12]}
         px={4}
       >
         <Heading
-          size={['xl', 'xl', '4xl']}
+          size={['2xl', '2xl', '4xl']}
           color="white"
-          textShadow="1px 1px 4px rgba(0,0,0,0.5)"
+          textShadow="1px 1px 3px #000000"
+          lineHeight="1.15 !important"
         >
           Gas and Blobspace with Stable Pricing
         </Heading>
         <Heading
           size={['md', 'md', 'xl']}
           color="white"
-          textShadow="1px 1px 4px rgba(0,0,0,0.5)"
+          textShadow="1px 1px 3px #000000"
           mb={0}
           maxWidth="560px"
           fontWeight={600}
+          lineHeight="1.15 !important"
         >
           Lock in your onchain costs regardless of network congestion
         </Heading>
@@ -48,7 +50,7 @@ const Home = () => {
         backgroundSize="45px 45px"
         backgroundRepeat="repeat"
         zIndex={2}
-        opacity={0.5}
+        opacity={0.33}
       />
       <Box position="fixed" top="0" left="0" zIndex={1} w="100dvw" h="100dvh">
         <Blob />

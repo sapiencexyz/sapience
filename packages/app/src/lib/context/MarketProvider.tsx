@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import type React from 'react';
 import { createContext, useEffect, useState } from 'react';
@@ -7,12 +8,16 @@ import { useReadContract } from 'wagmi';
 import CollateralAsset from '../../../deployments/CollateralAsset/MintableToken.json';
 import Foil from '../../../deployments/Foil.json';
 
+const API_BASE_URL = 'http://localhost:3000';
+
 interface MarketContextType {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   chain?: any;
   address: string;
   collateralAsset: string;
   collateralAssetTicker: string;
+  averagePrice: number;
+  prices?: Array<{ timestamp: number; value: number }>;
 }
 
 interface MarketProviderProps {
@@ -26,6 +31,8 @@ export const MarketContext = createContext<MarketContextType>({
   address: '',
   collateralAsset: '',
   collateralAssetTicker: '',
+  averagePrice: 0,
+  prices: [],
 });
 
 export const MarketProvider: React.FC<MarketProviderProps> = ({
@@ -38,6 +45,8 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     address: '',
     collateralAsset: '',
     collateralAssetTicker: '',
+    averagePrice: 0,
+    prices: [],
   });
 
   // Set chainId and address from the URL
@@ -56,8 +65,37 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
       address,
       collateralAsset: '',
       collateralAssetTicker: '',
+      averagePrice: 0,
+      prices: [],
     });
   }, [chainId, address]);
+
+  const contractId = `${chainId}:${address}`;
+
+  // Fetch prices using React Query
+  // TODO: filter by start and end timestamps
+  const { data: price } = useQuery({
+    queryKey: ['averagePrice', contractId],
+    queryFn: async () => {
+      const response = await fetch(
+        `${API_BASE_URL}/prices/average?contractId=${contractId}`
+      );
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    },
+    refetchInterval: 60000, // Refetch every 60 seconds
+  });
+
+  useEffect(() => {
+    if (price) {
+      setState((currentState) => ({
+        ...currentState,
+        averagePrice: price.average,
+      }));
+    }
+  }, [price]);
 
   // Get data about the market from Foil
   const marketViewFunctionResult = useReadContract({
@@ -84,8 +122,6 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     }
   }, [marketViewFunctionResult.data]);
 
-  // Get data about the market from Uniswap
-
   // Fetch Collateral Ticker
   const collateralTickerFunctionResult = useReadContract({
     abi: CollateralAsset.abi,
@@ -102,8 +138,6 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
       }));
     }
   }, [collateralTickerFunctionResult.data]);
-
-  // console.log('state', state);
 
   return (
     <MarketContext.Provider value={state}>{children}</MarketContext.Provider>

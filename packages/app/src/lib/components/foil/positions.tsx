@@ -6,7 +6,6 @@ import {
   Th,
   Tbody,
   Box,
-  Heading,
 } from '@chakra-ui/react';
 import { times } from 'lodash';
 import { useEffect, useState } from 'react';
@@ -14,7 +13,7 @@ import { useReadContract, useReadContracts } from 'wagmi';
 
 import Foil from '../../../../deployments/Foil.json';
 
-import CreateAccount from './createAccount';
+import CreateAccount from './createPosition';
 import PositionRow from './positionRow';
 
 export default function Positions() {
@@ -44,10 +43,7 @@ export default function Positions() {
   });
 
   return (
-    <Box>
-      <Heading size="md" mb="4">
-        Positions
-      </Heading>
+    <Box mt={4}>
       <TableContainer mb={4}>
         <Table variant="simple" size="sm">
           <Thead>

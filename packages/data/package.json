@@ -1,0 +1,33 @@
+{
+  "name": "data",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start:api": "ts-node-dev src/index.ts",
+    "start:market": "ts-node-dev src/market.ts",
+    "start:chain": "ts-node-dev src/chain.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "reflect-metadata": "^0.2.2",
+    "sqlite3": "^5.1.7",
+    "ts-node-dev": "^2.0.0",
+    "typeorm": "^0.3.20",
+    "typescript": "^5.5.2",
+    "viem": "~2.9.20"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.17",
+    "@typescript-eslint/eslint-plugin": "^7.13.1",
+    "@typescript-eslint/parser": "^7.13.1",
+    "eslint": "^9.5.0"
+  }
+}

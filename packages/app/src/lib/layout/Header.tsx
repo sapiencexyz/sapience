@@ -1,40 +1,33 @@
-import { ChevronDownIcon } from '@chakra-ui/icons';
 import { Box, Flex, Image } from '@chakra-ui/react';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
 import Link from 'next/link';
 
 import Foil from '../../../deployments/Foil.json';
+import ConnectButton from '../components/ConnectButton';
 
 const Header = () => {
   return (
     <Box
       as="header"
       width="full"
-      p={3}
+      py={3}
       zIndex={3}
       bg="white"
       borderBottom="1px solid"
-      borderColor="gray.100"
+      borderColor="gray.300"
     >
-      <Flex margin="0 auto" maxWidth="container.lg" align="center">
+      <Flex margin="0 auto" maxWidth="container.lg" align="center" px={3}>
         <Box display="inline-block" as={Link} href="/">
           <Image src="/logo.svg" alt="Foil" height="28px" />
         </Box>
-        <Flex marginLeft="auto" gap={6} align="center">
-          <Link href={`markets/31337:${Foil.address}`}>
-            Markets <ChevronDownIcon />
+        <Flex marginLeft="auto" gap={9} align="center" fontWeight="600">
+          <Link href="/subscribe">Subscribe</Link>
+          <Link href="/earn">Earn</Link>
+          <Link href={`/markets/31337:${Foil.address}`}>
+            Market
           </Link>
-          {/*
-        <Button aria-label="view" as={Link} href="/subscribe">
-          Subscribe
-        </Button>
-        <Button aria-label="view" as={Link} href="/earn">
-          Earn
-        </Button>
-        <Button aria-label="view" as={Link} href="/pro">
-          Pro Mode
-        </Button>
-        */}
+          <Link href="https://docs.foil.xyz" isExternal>
+            Docs
+          </Link>
           <ConnectButton />
         </Flex>
       </Flex>
