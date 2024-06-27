@@ -13,7 +13,6 @@ import {
   StatHelpText,
   StatLabel,
   StatNumber,
-  Divider,
 } from '@chakra-ui/react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { useContext } from 'react';

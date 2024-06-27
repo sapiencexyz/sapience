@@ -3,7 +3,8 @@ import type { ReactNode } from 'react';
 import type React from 'react';
 import { createContext, useEffect, useState } from 'react';
 import * as Chains from 'viem/chains';
-import { useReadContract } from 'wagmi';
+import { useContractReads, useReadContract } from 'wagmi';
+import { Token, Pool } from '@uniswap/v3-sdk';
 
 import CollateralAsset from '../../../deployments/CollateralAsset/MintableToken.json';
 import Foil from '../../../deployments/Foil.json';
@@ -22,6 +23,8 @@ interface MarketContextType {
   baseAssetMinPriceTick: number;
   baseAssetMaxPriceTick: number;
   prices?: Array<{ timestamp: number; value: number }>;
+  poolAddress: `0x${string}`;
+  pool: Pool | null;
 }
 
 interface MarketProviderProps {
@@ -41,7 +44,72 @@ export const MarketContext = createContext<MarketContextType>({
   baseAssetMinPriceTick: 0,
   baseAssetMaxPriceTick: 0,
   prices: [],
+  pool: null,
+  poolAddress: '0x',
 });
+
+const poolAbi = [
+  'function token0() external view returns (address)',
+  'function token1() external view returns (address)',
+  'function fee() external view returns (uint24)',
+  'function liquidity() external view returns (uint128)',
+  'function slot0() external view returns (uint160 sqrtPriceX96, int24 tick, uint16 observationIndex, uint16 observationCardinality, uint16 observationCardinalityNext, uint8 feeProtocol, bool unlocked)',
+];
+
+export const useUniswapPool = (poolAddress: `0x${string}`) => {
+  const [pool, setPool] = useState<Pool | null>(null);
+
+  const { data, isError, isLoading } = useContractReads({
+    contracts: [
+      {
+        address: poolAddress,
+        abi: poolAbi,
+        functionName: 'token0',
+      },
+      {
+        address: poolAddress,
+        abi: poolAbi,
+        functionName: 'token1',
+      },
+      {
+        address: poolAddress,
+        abi: poolAbi,
+        functionName: 'fee',
+      },
+      {
+        address: poolAddress,
+        abi: poolAbi,
+        functionName: 'liquidity',
+      },
+      {
+        address: poolAddress,
+        abi: poolAbi,
+        functionName: 'slot0',
+      },
+    ],
+  });
+
+  useEffect(() => {
+    if (data && data[0] && data[1] && data[2] && data[3] && data[4]) {
+      const token0Address = data[0].result;
+      const token1Address = data[1].result;
+      const fee = data[2].result;
+      const liquidity = data[3].result;
+      const slot0 = data[4].result;
+
+      const token0 = new Token(1, token0Address, 18, 'TOKEN0', 'Token 0');
+      const token1 = new Token(1, token1Address, 18, 'TOKEN1', 'Token 1');
+
+      const sqrtRatioX96 = BigInt(slot0[0]);
+      const tickCurrent = slot0[1];
+
+      const poolInstance = new Pool(token0, token1, fee, sqrtRatioX96, BigInt(liquidity), tickCurrent);
+      setPool(poolInstance);
+    }
+  }, [data]);
+
+  return { pool, isError, isLoading };
+};
 
 export const MarketProvider: React.FC<MarketProviderProps> = ({
   chainId,
@@ -59,6 +127,8 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     baseAssetMinPriceTick: 0,
     baseAssetMaxPriceTick: 0,
     prices: [],
+    pool: null,
+    poolAddress: '0x',
   });
 
   // Set chainId and address from the URL
@@ -71,30 +141,21 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
       return;
     }
 
-    setState({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setState((currentState) => ({
+      ...currentState,
       chain: chain[1] as any,
       address,
-      collateralAsset: '',
-      collateralAssetTicker: '',
-      averagePrice: 0,
-      startTime: 0,
-      endTime: 0,
-      baseAssetMinPriceTick: 0,
-      baseAssetMaxPriceTick: 0,
-      prices: [],
-    });
+    }));
   }, [chainId, address]);
 
   const contractId = `${chainId}:${address}`;
 
   // Fetch prices using React Query
-  // TODO: filter by start and end timestamps
   const { data: price } = useQuery({
     queryKey: ['averagePrice', contractId],
     queryFn: async () => {
       const response = await fetch(
-        `${API_BASE_URL}/prices/average?contractId=${contractId}&startTime=${state.startTime}&endTime${state.endTime}`
+        `${API_BASE_URL}/prices/average?contractId=${contractId}&startTime=${state.startTime}&endTime=${state.endTime}`
       );
       if (!response.ok) {
         throw new Error('Network response was not ok');
@@ -135,10 +196,22 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
         feeRate: marketViewFunctionResult?.data[7],
         ethToken: marketViewFunctionResult?.data[8],
         gasToken: marketViewFunctionResult?.data[9],
-        pool: marketViewFunctionResult?.data[10],
+        poolAddress: marketViewFunctionResult?.data[10],
       }));
     }
   }, [marketViewFunctionResult.data]);
+
+  // Fetch pool data when poolAddress is updated
+  const { pool, isError, isLoading } = useUniswapPool(state.poolAddress);
+
+  useEffect(() => {
+    if (pool) {
+      setState((currentState) => ({
+        ...currentState,
+        pool,
+      }));
+    }
+  }, [pool]);
 
   // Fetch Collateral Ticker
   const collateralTickerFunctionResult = useReadContract({
@@ -150,8 +223,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
   useEffect(() => {
     if (collateralTickerFunctionResult.data !== undefined) {
       setState((currentState) => ({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ...(currentState as any),
+        ...currentState,
         collateralAssetTicker: collateralTickerFunctionResult.data,
       }));
     }

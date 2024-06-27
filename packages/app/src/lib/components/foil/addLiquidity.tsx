@@ -10,6 +10,8 @@ import {
   InputRightAddon,
   Button,
 } from '@chakra-ui/react';
+import { Position } from '@uniswap/v3-sdk';
+import JSBI from 'jsbi';
 import { useContext, useEffect, useState } from 'react';
 import {
   useWriteContract,
@@ -17,10 +19,11 @@ import {
   useAccount,
   useReadContract,
 } from 'wagmi';
-import { MarketContext } from '~/lib/context/MarketProvider';
 
 import CollateralAsset from '../../../../deployments/CollateralAsset/MintableToken.json';
 import Foil from '../../../../deployments/Foil.json';
+
+import { MarketContext } from '~/lib/context/MarketProvider';
 
 const tickSpacing = 200; // Hardcoded for now, should be retrieved with pool.tickSpacing()
 
@@ -30,19 +33,56 @@ function priceToTick(price: number, tickSpacing: number): number {
   return roundedTick;
 }
 
+function tickToPrice(tick: number): number {
+  const price: number = 1.0001 ** tick;
+  return price;
+}
+
 const AddLiquidity = ({
   params,
 }: {
   params: { mode: string; selectedData: JSON };
 }) => {
-  const { baseAssetMinPrice, baseAssetMaxPrice } = useContext(MarketContext);
-  console.log(baseAssetMinPrice, baseAssetMaxPrice)
+  const { pool, baseAssetMinPriceTick, baseAssetMaxPriceTick } =
+    useContext(MarketContext);
   const account = useAccount();
-  const [depositAmount, setDepositAmount] = useState(0);
-  const [lowPrice, setLowPrice] = useState(20);
-  const [highPrice, setHighPrice] = useState(200);
+  const [depositAmount, setDepositAmount] = useState(0); // need to account for decimals
+  const [lowPrice, setLowPrice] = useState(tickToPrice(baseAssetMinPriceTick));
+  const [highPrice, setHighPrice] = useState(
+    tickToPrice(baseAssetMaxPriceTick)
+  );
   const [baseToken, setBaseToken] = useState(0);
   const [quoteToken, setQuoteToken] = useState(0);
+  const [position, setPosition] = useState<Position | null>(null);
+
+  const liquidity: JSBI = JSBI.BigInt(depositAmount); // adjust decimals
+  const tickLower: number = priceToTick(lowPrice, tickSpacing);
+  const tickUpper: number = priceToTick(highPrice, tickSpacing);
+
+
+  console.log('context', useContext(MarketContext));
+
+  useEffect(() => {
+    if (pool) {
+      setPosition(
+        new Position({
+          pool,
+          liquidity,
+          tickLower,
+          tickUpper,
+        })
+      );
+    }
+  }, [pool, liquidity, tickLower, tickUpper]);
+
+  // Initialize values here
+  useEffect(() => {
+    setLowPrice(tickToPrice(baseAssetMinPriceTick));
+  }, [baseAssetMinPriceTick]);
+
+  useEffect(() => {
+    setHighPrice(tickToPrice(baseAssetMaxPriceTick));
+  }, [baseAssetMaxPriceTick]);
 
   const collateralAmountFunctionResult = useReadContract({
     abi: CollateralAsset.abi,
@@ -136,6 +176,8 @@ const AddLiquidity = ({
             type="number"
             value={lowPrice}
             onChange={(e) => setLowPrice(Number(e.target.value))}
+            min={tickToPrice(baseAssetMinPriceTick)}
+            max={tickToPrice(baseAssetMaxPriceTick)}
           />
           <InputRightAddon>cbETH/Ggas</InputRightAddon>
         </InputGroup>
@@ -147,6 +189,8 @@ const AddLiquidity = ({
             type="number"
             value={highPrice}
             onChange={(e) => setHighPrice(Number(e.target.value))}
+            min={tickToPrice(baseAssetMinPriceTick)}
+            max={tickToPrice(baseAssetMaxPriceTick)}
           />
           <InputRightAddon>cbETH/Ggas</InputRightAddon>
         </InputGroup>
