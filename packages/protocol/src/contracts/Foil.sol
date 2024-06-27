@@ -116,7 +116,7 @@ contract Foil is
         );
     }
 
-    function createAccount() external {
+    function createTraderPosition() external {
         uint accountId = totalSupply() + 1;
         Account.createValid(accountId);
         _mint(msg.sender, accountId);
@@ -131,7 +131,7 @@ contract Foil is
 
     */
 
-    function addLiquidity(
+    function createLiquidityPosition(
         IFoilStructs.AddLiquidityParams memory params
     )
         external

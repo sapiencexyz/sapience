@@ -1,5 +1,5 @@
 {
-  "address": "0x7ad5492EC19AC3Cd07A854D0BDe573b3c5B10eA1",
+  "address": "0xC7baD6632742e84B33734a68599C2612E7D5184b",
   "abi": [
     {
       "type": "constructor",
@@ -54,7 +54,44 @@
     },
     {
       "type": "function",
-      "name": "addLiquidity",
+      "name": "approve",
+      "inputs": [
+        {
+          "name": "to",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "balanceOf",
+      "inputs": [
+        {
+          "name": "holder",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "balance",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "createLiquidityPosition",
       "inputs": [
         {
           "name": "params",
@@ -120,44 +157,7 @@
     },
     {
       "type": "function",
-      "name": "approve",
-      "inputs": [
-        {
-          "name": "to",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "tokenId",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "outputs": [],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
-      "name": "balanceOf",
-      "inputs": [
-        {
-          "name": "holder",
-          "type": "address",
-          "internalType": "address"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "balance",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
-      "name": "createAccount",
+      "name": "createTraderPosition",
       "inputs": [],
       "outputs": [],
       "stateMutability": "nonpayable"
@@ -935,10 +935,10 @@
       "UniV3Abstraction": "0x6c58Ac29A73eB8B43095e2FC03D91D9a94CE18e7"
     }
   },
-  "deployTxnHash": "0x5bbed7e48bbdca5c07d7f515b97f1ee0cf3595fea3c8df714b9f453a350a295b",
+  "deployTxnHash": "0x126742c632710138e597a58ace85c57b6fff784f1a9f8fc979cf398046be50ce",
   "sourceName": "src/contracts/Foil.sol",
   "contractName": "Foil",
   "deployedOn": "deploy.Foil",
-  "gasUsed": 8928443,
+  "gasUsed": 8928445,
   "gasCost": "1011770224"
 }

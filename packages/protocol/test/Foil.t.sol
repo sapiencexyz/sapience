@@ -38,8 +38,8 @@ contract FoilTest is Test {
         );
 
         (pool, tokenA, tokenB) = foil.getEpoch();
-        foil.createAccount();
-        foil.createAccount();
+        foil.createTraderPosition();
+        foil.createTraderPosition();
     }
 
     function test_addLiquidity() public {
@@ -59,7 +59,7 @@ contract FoilTest is Test {
                 lowerTick: 16000, // 5
                 upperTick: 30000 // 20
             });
-        foil.addLiquidity(params);
+        foil.createLiquidityPosition(params);
 
         // (uint256 tokenAmount0, uint256 tokenAmount1) = foil.getPosition(1);
 
