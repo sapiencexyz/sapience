@@ -2,7 +2,8 @@ name="foil"
 version="0.1"
 
 [var.settings]
-endTime = "1720051200" # 4th of july, 2024
+startTime = "1727740800"
+endTime = "1735689599"
 resolver = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" # Default anvil signer
 baseAssetMinPrice = "7000" # 2
 baseAssetMaxPrice = "46000" # 100
@@ -29,8 +30,10 @@ artifact="Foil"
 libraries.ReentrancyGuard="<%= contracts.ReentrancyGuard.address %>"
 libraries.UniV3Abstraction="<%= contracts.UniV3Abstraction.address %>"
 args=[
+  "<%= settings.startTime %>",
   "<%= settings.endTime %>",
   "<%= imports.Uniswap.contracts.NonfungiblePositionManager.address %>",
+  "<%= imports.Uniswap.contracts.Quoter.address %>",
   "<%= settings.resolver %>",
   "<%= imports.CollateralAsset.contracts.MintableToken.address %>",
   "<%= settings.baseAssetMinPrice %>",

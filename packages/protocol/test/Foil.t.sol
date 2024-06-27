@@ -26,6 +26,7 @@ contract FoilTest is Test {
     function setUp() public {
         // deploy Foil contract
         foil = new Foil(
+            1712152320, // startime
             1720051200, // endtime
             UNISWAP, // uniswap
             UNISWAP_QUOTER, // uniswap quoter

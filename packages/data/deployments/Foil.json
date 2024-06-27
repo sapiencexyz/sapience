@@ -1,9 +1,14 @@
 {
-  "address": "0xa7812208dc0424acb3cf6f776B577cb961b9B1CF",
+  "address": "0x7ad5492EC19AC3Cd07A854D0BDe573b3c5B10eA1",
   "abi": [
     {
       "type": "constructor",
       "inputs": [
+        {
+          "name": "startTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
         {
           "name": "endTime",
           "type": "uint256",
@@ -11,6 +16,11 @@
         },
         {
           "name": "uniswapPositionManager",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapQuoter",
           "type": "address",
           "internalType": "address"
         },
@@ -26,13 +36,13 @@
         },
         {
           "name": "baseAssetMinPrice",
-          "type": "uint256",
-          "internalType": "uint256"
+          "type": "int24",
+          "internalType": "int24"
         },
         {
           "name": "baseAssetMaxPrice",
-          "type": "uint256",
-          "internalType": "uint256"
+          "type": "int24",
+          "internalType": "int24"
         },
         {
           "name": "feeRate",
@@ -200,6 +210,11 @@
       "inputs": [],
       "outputs": [
         {
+          "name": "startTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
           "name": "endTime",
           "type": "uint256",
           "internalType": "uint256"
@@ -220,14 +235,14 @@
           "internalType": "address"
         },
         {
-          "name": "baseAssetMinPrice",
-          "type": "uint256",
-          "internalType": "uint256"
+          "name": "baseAssetMinPriceTick",
+          "type": "int24",
+          "internalType": "int24"
         },
         {
-          "name": "baseAssetMaxPrice",
-          "type": "uint256",
-          "internalType": "uint256"
+          "name": "baseAssetMaxPriceTick",
+          "type": "int24",
+          "internalType": "int24"
         },
         {
           "name": "feeRate",
@@ -905,23 +920,25 @@
     }
   ],
   "constructorArgs": [
-    "1720051200",
+    "1727740800",
+    "1735689599",
     "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
+    "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6",
     "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
     "0x92b385dAA0a482Dd7f1b1f151B5f16662cc0a1A6",
-    "5000000000000000000",
-    "200000000000000000000",
+    "7000",
+    "46000",
     "10000"
   ],
   "linkedLibraries": {
     "src/utils/UniV3Abstraction.sol": {
-      "UniV3Abstraction": "0x41B80b97fC5Fc52723aD86B076bBBcc9252c51a9"
+      "UniV3Abstraction": "0x6c58Ac29A73eB8B43095e2FC03D91D9a94CE18e7"
     }
   },
-  "deployTxnHash": "0x4d284d15c6276afbd1168765a5c8e350d1d2090f7a1d06d882851dff45386e97",
+  "deployTxnHash": "0x5bbed7e48bbdca5c07d7f515b97f1ee0cf3595fea3c8df714b9f453a350a295b",
   "sourceName": "src/contracts/Foil.sol",
   "contractName": "Foil",
   "deployedOn": "deploy.Foil",
-  "gasUsed": 8898383,
+  "gasUsed": 8928443,
   "gasCost": "1011770224"
 }
