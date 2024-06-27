@@ -19,6 +19,8 @@ interface MarketContextType {
   averagePrice: number;
   startTime: number;
   endTime: number;
+  baseAssetMinPriceTick: number;
+  baseAssetMaxPriceTick: number;
   prices?: Array<{ timestamp: number; value: number }>;
 }
 
@@ -36,6 +38,8 @@ export const MarketContext = createContext<MarketContextType>({
   averagePrice: 0,
   startTime: 0,
   endTime: 0,
+  baseAssetMinPriceTick: 0,
+  baseAssetMaxPriceTick: 0,
   prices: [],
 });
 
@@ -52,6 +56,8 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     averagePrice: 0,
     startTime: 0,
     endTime: 0,
+    baseAssetMinPriceTick: 0,
+    baseAssetMaxPriceTick: 0,
     prices: [],
   });
 
@@ -74,6 +80,8 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
       averagePrice: 0,
       startTime: 0,
       endTime: 0,
+      baseAssetMinPriceTick: 0,
+      baseAssetMaxPriceTick: 0,
       prices: [],
     });
   }, [chainId, address]);
@@ -122,8 +130,8 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
         uniswapPositionManager: marketViewFunctionResult?.data[2],
         resolver: marketViewFunctionResult?.data[3],
         collateralAsset: marketViewFunctionResult?.data[4],
-        baseAssetMinPrice: marketViewFunctionResult?.data[5].toString(),
-        baseAssetMaxPrice: marketViewFunctionResult?.data[6].toString(),
+        baseAssetMinPriceTick: marketViewFunctionResult?.data[5].toString(),
+        baseAssetMaxPriceTick: marketViewFunctionResult?.data[6].toString(),
         feeRate: marketViewFunctionResult?.data[7],
         ethToken: marketViewFunctionResult?.data[8],
         gasToken: marketViewFunctionResult?.data[9],

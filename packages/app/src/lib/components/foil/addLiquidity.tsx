@@ -10,21 +10,22 @@ import {
   InputRightAddon,
   Button,
 } from '@chakra-ui/react';
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import {
   useWriteContract,
   useWaitForTransactionReceipt,
   useAccount,
   useReadContract,
 } from 'wagmi';
+import { MarketContext } from '~/lib/context/MarketProvider';
 
 import CollateralAsset from '../../../../deployments/CollateralAsset/MintableToken.json';
 import Foil from '../../../../deployments/Foil.json';
 
 const tickSpacing = 200; // Hardcoded for now, should be retrieved with pool.tickSpacing()
+
 function priceToTick(price: number, tickSpacing: number): number {
   const tick: number = Math.log(price) / Math.log(1.0001);
-  // Round to the nearest valid tick that is a multiple of tickSpacing
   const roundedTick: number = Math.round(tick / tickSpacing) * tickSpacing;
   return roundedTick;
 }
@@ -34,8 +35,9 @@ const AddLiquidity = ({
 }: {
   params: { mode: string; selectedData: JSON };
 }) => {
+  const { baseAssetMinPrice, baseAssetMaxPrice } = useContext(MarketContext);
+  console.log(baseAssetMinPrice, baseAssetMaxPrice)
   const account = useAccount();
-  const [nftId, setNftId] = useState(0);
   const [depositAmount, setDepositAmount] = useState(0);
   const [lowPrice, setLowPrice] = useState(20);
   const [highPrice, setHighPrice] = useState(200);

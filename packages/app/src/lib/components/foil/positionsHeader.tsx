@@ -22,6 +22,11 @@ import { IoDocumentTextOutline } from 'react-icons/io5';
 
 import { MarketContext } from '~/lib/context/MarketProvider';
 
+function tickToPrice(tick: number): number {
+  const price: number = 1.0001 ** tick;
+  return price;
+}
+
 const PositionsHeader = () => {
   const {
     chain,
@@ -30,8 +35,8 @@ const PositionsHeader = () => {
     endTime,
     resolver,
     collateralAsset,
-    // baseAssetMinPrice,
-    // baseAssetMaxPrice,
+    baseAssetMinPriceTick,
+    baseAssetMaxPriceTick,
   } = useContext(MarketContext);
 
   console.log('context', useContext(MarketContext));
@@ -133,10 +138,8 @@ const PositionsHeader = () => {
               <Text as="span" fontWeight="500" mr={1}>
                 Allowed Range:
               </Text>{' '}
-              {/* baseAssetMinPrice && formatEther(baseAssetMinPrice).toString() */}{' '}
-              0.025 -{' '}
-              {/* baseAssetMaxPrice && formatEther(baseAssetMaxPrice).toString() */}{' '}
-              0.5 cbETH/Ggas
+              {tickToPrice(baseAssetMinPriceTick).toFixed(2)} cbETH/gGas -{' '}
+              {tickToPrice(baseAssetMaxPriceTick).toFixed(2)} cbETH/gGas
             </Flex>
           </Text>
         </Box>
