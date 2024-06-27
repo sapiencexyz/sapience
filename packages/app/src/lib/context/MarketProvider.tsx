@@ -8,7 +8,7 @@ import { useReadContract } from 'wagmi';
 import CollateralAsset from '../../../deployments/CollateralAsset/MintableToken.json';
 import Foil from '../../../deployments/Foil.json';
 
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = 'http://localhost:3001';
 
 interface MarketContextType {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -17,6 +17,8 @@ interface MarketContextType {
   collateralAsset: string;
   collateralAssetTicker: string;
   averagePrice: number;
+  startTime: number;
+  endTime: number;
   prices?: Array<{ timestamp: number; value: number }>;
 }
 
@@ -32,6 +34,8 @@ export const MarketContext = createContext<MarketContextType>({
   collateralAsset: '',
   collateralAssetTicker: '',
   averagePrice: 0,
+  startTime: 0,
+  endTime: 0,
   prices: [],
 });
 
@@ -46,6 +50,8 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     collateralAsset: '',
     collateralAssetTicker: '',
     averagePrice: 0,
+    startTime: 0,
+    endTime: 0,
     prices: [],
   });
 
@@ -66,6 +72,8 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
       collateralAsset: '',
       collateralAssetTicker: '',
       averagePrice: 0,
+      startTime: 0,
+      endTime: 0,
       prices: [],
     });
   }, [chainId, address]);
@@ -99,25 +107,29 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
 
   // Get data about the market from Foil
   const marketViewFunctionResult = useReadContract({
+    chainId,
     abi: Foil.abi,
     address: Foil.address as `0x${string}`,
     functionName: 'getMarket',
   });
 
+  console.log("YOYOYO", marketViewFunctionResult.status, marketViewFunctionResult.data, marketViewFunctionResult.error, chainId)
+
   useEffect(() => {
     if (marketViewFunctionResult.data !== undefined) {
       setState((currentState) => ({
         ...currentState,
-        endTime: marketViewFunctionResult?.data[0],
-        uniswapPositionManager: marketViewFunctionResult?.data[1],
-        resolver: marketViewFunctionResult?.data[2],
-        collateralAsset: marketViewFunctionResult?.data[3],
-        baseAssetMinPrice: marketViewFunctionResult?.data[4].toString(),
-        baseAssetMaxPrice: marketViewFunctionResult?.data[5].toString(),
-        feeRate: marketViewFunctionResult?.data[6],
-        ethToken: marketViewFunctionResult?.data[7],
-        gasToken: marketViewFunctionResult?.data[8],
-        pool: marketViewFunctionResult?.data[9],
+        startTime: marketViewFunctionResult?.data[0],
+        endTime: marketViewFunctionResult?.data[1],
+        uniswapPositionManager: marketViewFunctionResult?.data[2],
+        resolver: marketViewFunctionResult?.data[3],
+        collateralAsset: marketViewFunctionResult?.data[4],
+        baseAssetMinPrice: marketViewFunctionResult?.data[5].toString(),
+        baseAssetMaxPrice: marketViewFunctionResult?.data[6].toString(),
+        feeRate: marketViewFunctionResult?.data[7],
+        ethToken: marketViewFunctionResult?.data[8],
+        gasToken: marketViewFunctionResult?.data[9],
+        pool: marketViewFunctionResult?.data[10],
       }));
     }
   }, [marketViewFunctionResult.data]);

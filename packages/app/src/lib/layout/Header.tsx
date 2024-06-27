@@ -22,7 +22,7 @@ const Header = () => {
         <Flex marginLeft="auto" gap={9} align="center" fontWeight="600">
           <Link href="/subscribe">Subscribe</Link>
           <Link href="/earn">Earn</Link>
-          <Link href={`/markets/31337:${Foil.address}`}>
+          <Link href={`/markets/13370:${Foil.address}`}>
             Market
           </Link>
           <Link href="https://docs.foil.xyz" isExternal>

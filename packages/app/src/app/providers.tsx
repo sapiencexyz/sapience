@@ -3,8 +3,8 @@
 import { CacheProvider } from '@chakra-ui/next-js';
 import { RainbowKitProvider, lightTheme } from '@rainbow-me/rainbowkit';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
+import { defineChain } from 'viem';
 import { createConfig, http, WagmiProvider } from 'wagmi';
-import { hardhat } from 'wagmi/chains';
 import { injected } from 'wagmi/connectors';
 
 import { Chakra as ChakraProvider } from '~/lib/components/Chakra';
@@ -12,19 +12,26 @@ import { colors } from '~/lib/styles/theme/colors';
 
 const queryClient = new QueryClient();
 
-hardhat.name = "Cannon";
-hardhat.id = 13_370 as any;
-const config =
-  process.env.NODE_ENV === 'development'
-    ? createConfig({
-        ssr: true,
-        chains: [hardhat],
-        connectors: [injected()],
-        transports: {
-          [hardhat.id]: http('http://localhost:8545'),
-        },
-      })
-    : {};
+export const cannon = defineChain({
+  id: 13370,
+  name: 'Cannon',
+  nativeCurrency: {
+    name: 'Ether',
+    symbol: 'ETH',
+    decimals: 18,
+  },
+  rpcUrls: { default: { http: ['http://localhost:8545'] } },
+});
+
+// Create the configuration
+const config = createConfig({
+  ssr: true,
+  chains: [cannon],
+  connectors: [injected()],
+  transports: {
+    [cannon.id]: http('http://localhost:8545'),
+  },
+});
 
 const Providers = ({ children }: { children: React.ReactNode }) => {
   return (

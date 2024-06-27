@@ -476,7 +476,7 @@ contract Foil is
 
 
     function createTraderPosition(uint collateral, int size) external returns ( uint256 tokenId){ 
-        tokenId = 0;
+        tokenId = 69;
     }
 
     function updateTraderPosition(uint256 tokenId, uint collateral, int size) external {
@@ -495,8 +495,8 @@ contract Foil is
             uint256 amount0,
             uint256 amount1
         ){
-            liquidity = 0;
-            amount0 = 0;
-            amount1 = 0;
+            liquidity = 1;
+            amount0 = 2;
+            amount1 = 3;
         }
 }
