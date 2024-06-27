@@ -15,6 +15,7 @@ import "forge-std/console2.sol";
 
 library Epoch {
     struct Data {
+        uint startTime;
         uint endTime;
         INonfungiblePositionManager uniswapPositionManager;
         IUniswapV3Quoter uniswapQuoter;
@@ -62,6 +63,7 @@ library Epoch {
     }
 
     function createValid(
+        uint startTime,
         uint endTime,
         address uniswapPositionManager,
         address uniswapQuoter,
@@ -88,6 +90,7 @@ library Epoch {
             revert Errors.TokensAlreadyCreated();
         }
 
+        epoch.startTime = startTime;
         epoch.endTime = endTime;
         epoch.uniswapPositionManager = INonfungiblePositionManager(
             uniswapPositionManager

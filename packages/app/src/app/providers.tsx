@@ -12,6 +12,8 @@ import { colors } from '~/lib/styles/theme/colors';
 
 const queryClient = new QueryClient();
 
+hardhat.name = "Cannon";
+hardhat.id = 13_370 as any;
 const config =
   process.env.NODE_ENV === 'development'
     ? createConfig({

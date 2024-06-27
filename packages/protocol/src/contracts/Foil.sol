@@ -33,6 +33,7 @@ contract Foil is
     using Position for Position.Data;
 
     constructor(
+        uint startTime,
         uint endTime,
         address uniswapPositionManager,
         address uniswapQuoter,
@@ -43,6 +44,7 @@ contract Foil is
         uint24 feeRate
     ) {
         Epoch.Data storage epoch = Epoch.createValid(
+            startTime,
             endTime,
             uniswapPositionManager,
             uniswapQuoter,
@@ -58,6 +60,7 @@ contract Foil is
         external
         view
         returns (
+            uint startTime,
             uint endTime,
             address uniswapPositionManager,
             address resolver,
@@ -72,6 +75,7 @@ contract Foil is
     {
         Epoch.Data storage epoch = Epoch.load();
         return (
+            epoch.startTime,
             epoch.endTime,
             address(epoch.uniswapPositionManager),
             address(epoch.resolver),
