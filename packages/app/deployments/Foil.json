@@ -1,5 +1,5 @@
 {
-  "address": "0x88e1dA38dA08267d1cc497277cecc2D50cBdCfAb",
+  "address": "0x498BF2C6e2A50BDbddfbf417d3cDB6B5d097DC57",
   "abi": [
     {
       "type": "constructor",
@@ -88,6 +88,19 @@
         }
       ],
       "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "collectFees",
+      "inputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
     },
     {
       "type": "function",
@@ -1016,10 +1029,10 @@
       "UniV3Abstraction": "0xa5Cd2f0141Bd821424eedBc5d8c632b063f5d5Fd"
     }
   },
-  "deployTxnHash": "0xcb759a6d5e7fa5d05ce600eb16061377b3495d22d2569ae9b17681115f65f097",
+  "deployTxnHash": "0x68d195fb336694af16ffd4a3cb7cf8a1c8661ebd494e0403bf10f9c198c62eb7",
   "sourceName": "src/contracts/Foil.sol",
   "contractName": "Foil",
   "deployedOn": "deploy.Foil",
-  "gasUsed": 8966435,
+  "gasUsed": 9018053,
   "gasCost": "1011770226"
 }

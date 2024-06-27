@@ -502,4 +502,22 @@ contract Foil is
             amount0 = 2;
             amount1 = 3;
         }
+
+    function collectFees(uint256 tokenId) external {
+        Epoch.Data storage epoch = Epoch.load();
+
+        // TODO: verify msg sender is owner of this tokenId
+
+        INonfungiblePositionManager.CollectParams memory params = 
+            INonfungiblePositionManager.CollectParams({
+                tokenId: tokenId,
+                recipient: msg.sender,
+                amount0Max: type(uint128).max,
+                amount1Max: type(uint128).max
+            });
+
+        epoch.uniswapPositionManager.collect(params);
+        
+        // TODO: emit event
+    }
 }

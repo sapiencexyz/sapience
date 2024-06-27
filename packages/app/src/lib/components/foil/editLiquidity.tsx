@@ -92,6 +92,17 @@ const EditLiquidity = ({
     depositAmount,
     liquidityRatio,
   ]);
+  
+  const { data: collectFeesHash, writeContract: collectFeesWrite } = useWriteContract();
+
+  const handleClaimRewards = () => {
+    collectFeesWrite({
+      address: Foil.address,
+      abi: Foil.abi,
+      functionName: 'collectFees',
+      args: [nftId],
+    });
+  };
 
   return (
     <form onSubmit={handleFormSubmit}>
@@ -134,7 +145,7 @@ const EditLiquidity = ({
         Edit Liquidity
       </Button>
       <Divider my={6} />
-      <Button width="full" variant="brand">
+      <Button width="full" variant="brand" onClick={handleClaimRewards}>
         Claim X stETH Rewards
       </Button>
     </form>
