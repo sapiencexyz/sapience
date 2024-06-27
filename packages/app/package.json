@@ -2,9 +2,9 @@
   "name": "@foil/app",
   "version": "0.1.0",
   "private": true,
-  "author": "sozonome",
+  "author": "",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --port 3000",
     "build": "next build",
     "build:turbo": "turbo run build",
     "postbuild": "next-sitemap --config next-sitemap.config.js",

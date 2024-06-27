@@ -143,10 +143,13 @@ contract Foil is
             uint256 addedAmount1
         )
     {
+        uint accountId = totalSupply() + 1;
+        Account.createValid(accountId);
+        _mint(msg.sender, accountId);
+
         // TODO: check collateral asset and receive collateral
-        tokenId = params.accountId;
-        require(ownerOf(tokenId) == msg.sender, "Not NFT owner");
-        Account.Data storage account = Account.loadValid(params.accountId);
+
+        Account.Data storage account = Account.loadValid(accountId);
         // check within configured range
 
         Epoch.Data storage epoch = Epoch.load();
@@ -154,7 +157,7 @@ contract Foil is
         UniV3Abstraction.RuntimeLiquidityPositionParams
             memory uniV3HelperLiquidityPositionParams = UniV3Abstraction
                 .RuntimeLiquidityPositionParams({
-                    accountId: params.accountId,
+                    accountId:accountId,
                     recipient: address(this),
                     pool: address(epoch.pool),
                     lowerTick: params.lowerTick,
@@ -212,8 +215,8 @@ contract Foil is
         );
         */
 
-        Position.load(params.accountId).vEthAmount += addedAmount0;
-        Position.load(params.accountId).vGasAmount += addedAmount1;
+        Position.load(accountId).vEthAmount += addedAmount0;
+        Position.load(accountId).vGasAmount += addedAmount1;
         // epoch.validateInRange(lowerTick, upperTick);
 
         // uint256 ethAllowance = VirtualToken(epoch.ethToken).allowance(

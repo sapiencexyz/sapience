@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start:api": "ts-node-dev src/index.ts",
+    "start:api": "ts-node-dev src/index.ts --port 3001",
     "start:market": "ts-node-dev src/market.ts",
     "start:chain": "ts-node-dev src/chain.ts",
     "test": "echo \"Error: no test specified\" && exit 1"

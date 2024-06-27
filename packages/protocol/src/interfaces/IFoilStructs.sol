@@ -3,7 +3,6 @@ pragma solidity >=0.8.2 <0.9.0;
 
 interface IFoilStructs {
     struct LiquidityPositionParams {
-        uint256 accountId;
         uint256 amountTokenA;
         uint256 amountTokenB;
         uint256 collateralAmount;

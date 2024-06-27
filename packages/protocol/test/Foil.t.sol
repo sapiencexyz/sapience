@@ -52,7 +52,6 @@ contract FoilTest is Test {
         // ); // 15
         IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
             .LiquidityPositionParams({
-                accountId: 1,
                 amountTokenA: 50 ether,
                 amountTokenB: 50 ether,
                 collateralAmount: 10 ether,

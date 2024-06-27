@@ -86,7 +86,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     queryKey: ['averagePrice', contractId],
     queryFn: async () => {
       const response = await fetch(
-        `${API_BASE_URL}/prices/average?contractId=${contractId}`
+        `${API_BASE_URL}/prices/average?contractId=${contractId}&startTime=${state.startTime}&endTime${state.endTime}`
       );
       if (!response.ok) {
         throw new Error('Network response was not ok');
@@ -112,8 +112,6 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     address: Foil.address as `0x${string}`,
     functionName: 'getMarket',
   });
-
-  console.log("YOYOYO", marketViewFunctionResult.status, marketViewFunctionResult.data, marketViewFunctionResult.error, chainId)
 
   useEffect(() => {
     if (marketViewFunctionResult.data !== undefined) {
