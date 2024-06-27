@@ -21,4 +21,5 @@ library Errors {
     error NoEpochs();
     error NotAccountOwnerOrAuthorized(uint256 accountId, address sender);
     error NotEnoughCredit(uint256 amount, uint256 credit);
+    error InsufficientCollateral();
 }

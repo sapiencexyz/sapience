@@ -6,6 +6,8 @@ pragma solidity >=0.8.2 <0.9.0;
 import "./FullMath.sol";
 import "./FixedPoint96.sol";
 
+import "forge-std/console2.sol";
+
 /// @title Liquidity amount functions
 /// @notice Provides functions for computing liquidity amounts from token amounts and prices
 library LiquidityAmounts {
@@ -123,15 +125,63 @@ library LiquidityAmounts {
         uint160 sqrtRatioBX96,
         uint128 liquidity
     ) internal pure returns (uint256 amount0) {
-        if (sqrtRatioAX96 > sqrtRatioBX96)
-            (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
+        // if (sqrtRatioAX96 > sqrtRatioBX96)
+        //     (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
 
-        return
-            FullMath.mulDiv(
-                uint256(liquidity) << FixedPoint96.RESOLUTION,
-                sqrtRatioBX96 - sqrtRatioAX96,
-                sqrtRatioBX96
-            ) / sqrtRatioAX96;
+        // console2.log("start");
+        // console2.log(uint256(liquidity) << FixedPoint96.RESOLUTION);
+        // console2.log(sqrtRatioBX96, sqrtRatioAX96);
+        // console2.log(
+        //     FullMath.mulDiv(
+        //         uint256(liquidity) << FixedPoint96.RESOLUTION,
+        //         sqrtRatioBX96 - sqrtRatioAX96,
+        //         sqrtRatioBX96
+        //     )
+        // );
+        // console2.log("end");
+        // return
+        //     FullMath.mulDiv(
+        //         uint256(liquidity) << FixedPoint96.RESOLUTION,
+        //         sqrtRatioBX96 - sqrtRatioAX96,
+        //         sqrtRatioBX96
+        //     ) / sqrtRatioAX96;
+
+        console2.log("start");
+
+        uint256 liquidityShifted = uint256(liquidity) <<
+            FixedPoint96.RESOLUTION;
+        console2.log("liquidityShifted:", liquidityShifted);
+
+        console2.log("sqrtRatioBX96:", sqrtRatioBX96);
+        console2.log("sqrtRatioAX96:", sqrtRatioAX96);
+
+        uint256 ratioDifference;
+        if (sqrtRatioBX96 > sqrtRatioAX96) {
+            ratioDifference = sqrtRatioBX96 - sqrtRatioAX96;
+        } else {
+            console2.log("Error: sqrtRatioBX96 is less than sqrtRatioAX96");
+            revert("sqrtRatioBX96 must be greater than sqrtRatioAX96");
+        }
+        console2.log("ratioDifference:", ratioDifference);
+
+        uint256 intermediateProduct = liquidityShifted * ratioDifference;
+        console2.log("intermediateProduct:", intermediateProduct);
+
+        if (sqrtRatioBX96 == 0) {
+            console2.log("Error: Division by zero");
+            revert("sqrtRatioBX96 cannot be zero");
+        }
+
+        uint256 result = FullMath.mulDiv(
+            liquidityShifted,
+            ratioDifference,
+            sqrtRatioBX96
+        );
+        console2.log("result:", result);
+
+        console2.log("end");
+
+        return result;
     }
 
     /// @notice Computes the amount of token1 for a given amount of liquidity and a price range

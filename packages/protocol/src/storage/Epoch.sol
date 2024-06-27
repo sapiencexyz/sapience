@@ -4,7 +4,9 @@ pragma solidity >=0.8.2 <0.9.0;
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "../external/univ3/TickMath.sol";
+import "../external/univ3/FullMath.sol";
 import "../interfaces/external/INonfungiblePositionManager.sol";
+import "../interfaces/external/IUniswapV3Quoter.sol";
 import "../contracts/VirtualToken.sol";
 import "./Debt.sol";
 import "./Errors.sol";
@@ -15,10 +17,11 @@ library Epoch {
     struct Data {
         uint endTime;
         INonfungiblePositionManager uniswapPositionManager;
+        IUniswapV3Quoter uniswapQuoter;
         address resolver;
         address collateralAsset;
-        uint baseAssetMinPrice;
-        uint baseAssetMaxPrice;
+        int24 baseAssetMinPriceTick;
+        int24 baseAssetMaxPriceTick;
         VirtualToken ethToken;
         VirtualToken gasToken;
         IUniswapV3Pool pool;
@@ -61,10 +64,11 @@ library Epoch {
     function createValid(
         uint endTime,
         address uniswapPositionManager,
+        address uniswapQuoter,
         address resolver,
         address collateralAsset,
-        uint baseAssetMinPrice,
-        uint baseAssetMaxPrice,
+        int24 baseAssetMinPrice,
+        int24 baseAssetMaxPrice,
         uint24 feeRate
     ) internal returns (Data storage epoch) {
         epoch = load();
@@ -88,10 +92,11 @@ library Epoch {
         epoch.uniswapPositionManager = INonfungiblePositionManager(
             uniswapPositionManager
         );
+        epoch.uniswapQuoter = IUniswapV3Quoter(uniswapQuoter);
         epoch.resolver = resolver;
         epoch.collateralAsset = collateralAsset;
-        epoch.baseAssetMinPrice = baseAssetMinPrice;
-        epoch.baseAssetMaxPrice = baseAssetMaxPrice;
+        epoch.baseAssetMinPriceTick = baseAssetMinPrice;
+        epoch.baseAssetMaxPriceTick = baseAssetMaxPrice;
         epoch.feeRate = feeRate;
 
         VirtualToken tokenA = new VirtualToken(
@@ -113,7 +118,6 @@ library Epoch {
             epoch.ethToken = tokenB;
             epoch.gasToken = tokenA;
         }
-
         epoch.pool = IUniswapV3Pool(
             IUniswapV3Factory(epoch.uniswapPositionManager.factory())
                 .createPool(
@@ -123,7 +127,7 @@ library Epoch {
                 )
         );
 
-        IUniswapV3Pool(epoch.pool).initialize(250541448375047931186413801569);
+        IUniswapV3Pool(epoch.pool).initialize(112045541949572279837463876454);
         (uint160 sqrtPriceX96, int24 tick, , , , , ) = IUniswapV3Pool(
             epoch.pool
         ).slot0();
@@ -137,6 +141,28 @@ library Epoch {
         if (epoch.endTime == 0) {
             revert Errors.InvalidEpoch();
         }
+    }
+
+    function quoteGweiToGas(
+        Data storage self,
+        uint256 gweiAmount,
+        int24 priceTick
+    ) internal returns (uint256) {
+        return FullMath.mulDiv(gweiAmount, 1e18, tickToPrice(priceTick));
+    }
+
+    function quoteGasToGwei(
+        Data storage self,
+        uint256 gasAmount,
+        int24 priceTick
+    ) internal returns (uint256) {
+        return FullMath.mulDiv(gasAmount, tickToPrice(priceTick), 1e18);
+    }
+
+    // should move to lib
+    function tickToPrice(int24 tick) internal pure returns (uint256) {
+        uint160 sqrtPriceX96 = TickMath.getSqrtRatioAtTick(tick);
+        return (uint256(sqrtPriceX96) * uint256(sqrtPriceX96) * (1e18)) >> 96;
     }
 
     // function settle(Data storage self) internal {
