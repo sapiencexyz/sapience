@@ -1,10 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
+import { Token } from '@uniswap/sdk-core';
+import { Pool } from '@uniswap/v3-sdk';
+import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import type { ReactNode } from 'react';
 import type React from 'react';
 import { createContext, useEffect, useState } from 'react';
 import * as Chains from 'viem/chains';
 import { useContractReads, useReadContract } from 'wagmi';
-import { Token, Pool } from '@uniswap/v3-sdk';
 
 import CollateralAsset from '../../../deployments/CollateralAsset/MintableToken.json';
 import Foil from '../../../deployments/Foil.json';
@@ -48,43 +50,42 @@ export const MarketContext = createContext<MarketContextType>({
   poolAddress: '0x',
 });
 
-const poolAbi = [
-  'function token0() external view returns (address)',
-  'function token1() external view returns (address)',
-  'function fee() external view returns (uint24)',
-  'function liquidity() external view returns (uint128)',
-  'function slot0() external view returns (uint160 sqrtPriceX96, int24 tick, uint16 observationIndex, uint16 observationCardinality, uint16 observationCardinalityNext, uint8 feeProtocol, bool unlocked)',
-];
-
-export const useUniswapPool = (poolAddress: `0x${string}`) => {
+export const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
   const [pool, setPool] = useState<Pool | null>(null);
 
-  const { data, isError, isLoading } = useContractReads({
+  // TODO: Should this refetch on chainId change? Every X seconds?
+  // Remember token a and token b can switch btwn base and quote
+  const { data, isError, isLoading, error } = useContractReads({
     contracts: [
       {
         address: poolAddress,
-        abi: poolAbi,
+        abi: IUniswapV3PoolABI.abi,
         functionName: 'token0',
+        chainId,
       },
       {
         address: poolAddress,
-        abi: poolAbi,
+        abi: IUniswapV3PoolABI.abi,
         functionName: 'token1',
+        chainId,
       },
       {
         address: poolAddress,
-        abi: poolAbi,
+        abi: IUniswapV3PoolABI.abi,
         functionName: 'fee',
+        chainId,
       },
       {
         address: poolAddress,
-        abi: poolAbi,
+        abi: IUniswapV3PoolABI.abi,
         functionName: 'liquidity',
+        chainId,
       },
       {
         address: poolAddress,
-        abi: poolAbi,
+        abi: IUniswapV3PoolABI.abi,
         functionName: 'slot0',
+        chainId,
       },
     ],
   });
@@ -97,18 +98,27 @@ export const useUniswapPool = (poolAddress: `0x${string}`) => {
       const liquidity = data[3].result;
       const slot0 = data[4].result;
 
-      const token0 = new Token(1, token0Address, 18, 'TOKEN0', 'Token 0');
-      const token1 = new Token(1, token1Address, 18, 'TOKEN1', 'Token 1');
+      if (token0Address && token1Address) {
+        const token0 = new Token(1, token0Address, 18, 'TOKEN0', 'Token 0');
+        const token1 = new Token(1, token1Address, 18, 'TOKEN1', 'Token 1');
 
-      const sqrtRatioX96 = BigInt(slot0[0]);
-      const tickCurrent = slot0[1];
+        const sqrtRatioX96 = slot0[0];
+        const tickCurrent = slot0[1];
 
-      const poolInstance = new Pool(token0, token1, fee, sqrtRatioX96, BigInt(liquidity), tickCurrent);
-      setPool(poolInstance);
+        const poolInstance = new Pool(
+          token0,
+          token1,
+          fee,
+          sqrtRatioX96.toString(),
+          liquidity.toString(),
+          tickCurrent
+        );
+        setPool(poolInstance);
+      }
     }
   }, [data]);
 
-  return { pool, isError, isLoading };
+  return { pool, isError, isLoading, error };
 };
 
 export const MarketProvider: React.FC<MarketProviderProps> = ({
@@ -202,7 +212,10 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
   }, [marketViewFunctionResult.data]);
 
   // Fetch pool data when poolAddress is updated
-  const { pool, isError, isLoading } = useUniswapPool(state.poolAddress);
+  const { pool, isError, isLoading, error } = useUniswapPool(
+    chainId,
+    state.poolAddress
+  );
 
   useEffect(() => {
     if (pool) {

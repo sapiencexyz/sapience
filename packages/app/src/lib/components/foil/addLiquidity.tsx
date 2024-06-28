@@ -9,9 +9,9 @@ import {
   InputGroup,
   InputRightAddon,
   Button,
+  useToast,
 } from '@chakra-ui/react';
 import { Position } from '@uniswap/v3-sdk';
-import JSBI from 'jsbi';
 import { useContext, useEffect, useState } from 'react';
 import {
   useWriteContract,
@@ -27,55 +27,42 @@ import { MarketContext } from '~/lib/context/MarketProvider';
 
 const tickSpacing = 200; // Hardcoded for now, should be retrieved with pool.tickSpacing()
 
-function priceToTick(price: number, tickSpacing: number): number {
-  const tick: number = Math.log(price) / Math.log(1.0001);
-  const roundedTick: number = Math.round(tick / tickSpacing) * tickSpacing;
-  return roundedTick;
-}
+const priceToTick = (price: number, tickSpacing: number): number => {
+  const tick = Math.log(price) / Math.log(1.0001);
+  return Math.round(tick / tickSpacing) * tickSpacing;
+};
 
-function tickToPrice(tick: number): number {
-  const price: number = 1.0001 ** tick;
-  return price;
-}
+const tickToPrice = (tick: number): number => 1.0001 ** tick;
 
-const AddLiquidity = ({
-  params,
-}: {
-  params: { mode: string; selectedData: JSON };
-}) => {
-  const { pool, baseAssetMinPriceTick, baseAssetMaxPriceTick } =
-    useContext(MarketContext);
+const AddLiquidity = ({ params }: { params: { mode: string; selectedData: JSON } }) => {
+  const { pool, baseAssetMinPriceTick, baseAssetMaxPriceTick } = useContext(MarketContext);
   const account = useAccount();
-  const [depositAmount, setDepositAmount] = useState(0); // need to account for decimals
+  const toast = useToast();
+
+  const [depositAmount, setDepositAmount] = useState(0);
   const [lowPrice, setLowPrice] = useState(tickToPrice(baseAssetMinPriceTick));
-  const [highPrice, setHighPrice] = useState(
-    tickToPrice(baseAssetMaxPriceTick)
-  );
+  const [highPrice, setHighPrice] = useState(tickToPrice(baseAssetMaxPriceTick));
   const [baseToken, setBaseToken] = useState(0);
   const [quoteToken, setQuoteToken] = useState(0);
-  const [position, setPosition] = useState<Position | null>(null);
 
-  const liquidity: JSBI = JSBI.BigInt(depositAmount); // adjust decimals
-  const tickLower: number = priceToTick(lowPrice, tickSpacing);
-  const tickUpper: number = priceToTick(highPrice, tickSpacing);
+  const tickLower = priceToTick(lowPrice, tickSpacing);
+  const tickUpper = priceToTick(highPrice, tickSpacing);
 
+  const collateralAmountFunctionResult = useReadContract({
+    abi: CollateralAsset.abi,
+    address: CollateralAsset.address as `0x${string}`,
+    functionName: 'balanceOf',
+    args: [account.address],
+  });
 
-  console.log('context', useContext(MarketContext));
+  const [transactionStep, setTransactionStep] = useState(0);
 
-  useEffect(() => {
-    if (pool) {
-      setPosition(
-        new Position({
-          pool,
-          liquidity,
-          tickLower,
-          tickUpper,
-        })
-      );
-    }
-  }, [pool, liquidity, tickLower, tickUpper]);
+  const { data: approveHash, writeContract: approveWrite } = useWriteContract();
+  const { data: addLiquidityHash, writeContract: addLiquidityWrite } = useWriteContract();
 
-  // Initialize values here
+  const { isSuccess: approveSuccess } = useWaitForTransactionReceipt({ hash: approveHash });
+  const { isSuccess: addLiquiditySuccess } = useWaitForTransactionReceipt({ hash: addLiquidityHash });
+
   useEffect(() => {
     setLowPrice(tickToPrice(baseAssetMinPriceTick));
   }, [baseAssetMinPriceTick]);
@@ -84,46 +71,20 @@ const AddLiquidity = ({
     setHighPrice(tickToPrice(baseAssetMaxPriceTick));
   }, [baseAssetMaxPriceTick]);
 
-  const collateralAmountFunctionResult = useReadContract({
-    abi: CollateralAsset.abi,
-    address: CollateralAsset.address as `0x${string}`,
-    functionName: 'balanceOf',
-    args: [account.address],
-  });
-  const [transactionStep, setTransactionStep] = useState(0); // 0: none, 1: approve sent, 2: approve confirmed, 3: addLiquidity sent
-
-  const { data: approveHash, writeContract: approveWrite } = useWriteContract();
-  const { data: addLiquidityHash, writeContract: addLiquidityWrite } =
-    useWriteContract();
-
-  const { isSuccess: approveSuccess } = useWaitForTransactionReceipt({
-    hash: approveHash,
-  });
-  const { isSuccess: addLiquiditySuccess } = useWaitForTransactionReceipt({
-    hash: addLiquidityHash,
-  });
-
   const handleFormSubmit = (e) => {
     e.preventDefault();
-
     approveWrite({
       abi: CollateralAsset.abi,
       address: CollateralAsset.address,
       functionName: 'approve',
       args: [CollateralAsset.address, BigInt(depositAmount)],
-    }); // Start the transaction sequence
+    });
     setTransactionStep(1);
   };
 
   useEffect(() => {
-    console.log(
-      'Approve Success:',
-      approveSuccess,
-      'Transaction Step:',
-      transactionStep
-    );
     if (approveSuccess && transactionStep === 1) {
-      setTransactionStep(2); // Move to the next step once approve is confirmed
+      setTransactionStep(2);
     }
   }, [approveSuccess, transactionStep]);
 
@@ -139,22 +100,40 @@ const AddLiquidity = ({
             amountTokenA: BigInt(baseToken),
             amountTokenB: BigInt(quoteToken),
             collateralAmount: BigInt(depositAmount),
-            lowerTick: BigInt(priceToTick(lowPrice, tickSpacing)),
-            upperTick: BigInt(priceToTick(highPrice, tickSpacing)),
+            lowerTick: BigInt(tickLower),
+            upperTick: BigInt(tickUpper),
           },
         ],
       });
       setTransactionStep(3);
     }
-  }, [
-    transactionStep,
-    addLiquidityWrite,
-    baseToken,
-    quoteToken,
-    depositAmount,
-    lowPrice,
-    highPrice,
-  ]);
+  }, [transactionStep, addLiquidityWrite, baseToken, quoteToken, depositAmount, lowPrice, highPrice, tickLower, tickUpper]);
+
+  useEffect(() => {
+    if (pool) {
+      const p = Position.fromAmount0({
+        pool,
+        tickLower,
+        tickUpper,
+        amount0: baseToken.toString(),
+        useFullPrecision: true,
+      });
+      setQuoteToken(p.amount1.toSignificant());
+    }
+  }, [pool, baseToken, tickLower, tickUpper]);
+
+  useEffect(() => {
+    if (pool) {
+      const p = Position.fromAmount1({
+        pool,
+        tickLower,
+        tickUpper,
+        amount1: quoteToken.toString(),
+        useFullPrecision: true,
+      });
+      setBaseToken(p.amount0.toSignificant());
+    }
+  }, [pool, quoteToken, tickLower, tickUpper]);
 
   return (
     <form onSubmit={handleFormSubmit}>
@@ -196,7 +175,7 @@ const AddLiquidity = ({
         </InputGroup>
       </FormControl>
       <FormControl mb={4}>
-        <FormLabel>vGwei</FormLabel>
+        <FormLabel>Base Token (vGwei)</FormLabel>
         <InputGroup>
           <Input
             type="number"
@@ -207,7 +186,7 @@ const AddLiquidity = ({
         </InputGroup>
       </FormControl>
       <FormControl mb={4}>
-        <FormLabel>vGas</FormLabel>
+        <FormLabel>Quote Token (vGas)</FormLabel>
         <InputGroup>
           <Input
             type="number"
@@ -219,11 +198,10 @@ const AddLiquidity = ({
       </FormControl>
       <Box mb="4">
         <Text fontSize="sm" color="gray.500" mb="1">
-          Net Position: X Ggas to X Ggas
+          Net Position: {lowPrice.toFixed(2)} Ggas to {highPrice.toFixed(2)} Ggas
         </Text>
         <Text fontSize="sm" color="gray.500" mb="1">
-          Wallet Balance: {collateralAmountFunctionResult?.data?.toString()}{' '}
-          cbETH to x cbETH
+          Wallet Balance: {collateralAmountFunctionResult?.data?.toString()} cbETH
         </Text>
       </Box>
       <Button
@@ -231,9 +209,15 @@ const AddLiquidity = ({
         variant="brand"
         type="submit"
         isLoading={transactionStep > 0 && transactionStep < 3}
+        isDisabled={transactionStep > 0 && transactionStep < 3}
       >
         Add Liquidity
       </Button>
+      {transactionStep === 3 && addLiquiditySuccess && (
+        <Text fontSize="sm" color="green.500" mt="2">
+          Liquidity added successfully!
+        </Text>
+      )}
     </form>
   );
 };
