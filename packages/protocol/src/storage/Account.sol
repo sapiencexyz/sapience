@@ -4,8 +4,6 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import "./Position.sol";
 import "./Epoch.sol";
-import "../contracts/FoilNFT.sol";
-import "../external/univ3/LiquidityAmounts.sol";
 
 import "forge-std/console2.sol";
 

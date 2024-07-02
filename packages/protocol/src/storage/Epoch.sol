@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
+import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "../external/univ3/TickMath.sol";
 import "../external/univ3/FullMath.sol";
 import "../interfaces/external/INonfungiblePositionManager.sol";
 import "../interfaces/external/IUniswapV3Quoter.sol";
-import "../contracts/VirtualToken.sol";
+import "../external/VirtualToken.sol";
 import "./Debt.sol";
 import "./Errors.sol";
 
@@ -19,7 +20,6 @@ library Epoch {
         uint endTime;
         INonfungiblePositionManager uniswapPositionManager;
         IUniswapV3Quoter uniswapQuoter;
-        address resolver;
         address collateralAsset;
         int24 baseAssetMinPriceTick;
         int24 baseAssetMaxPriceTick;
@@ -30,6 +30,7 @@ library Epoch {
         uint24 feeRate;
         bool settled;
         mapping(uint256 => Debt.Data) lpDebtPositions;
+        OptimisticOracleV3Interface optimisticOracleV3;
     }
 
     function load() internal pure returns (Data storage epoch) {
@@ -67,11 +68,11 @@ library Epoch {
         uint endTime,
         address uniswapPositionManager,
         address uniswapQuoter,
-        address resolver,
         address collateralAsset,
         int24 baseAssetMinPrice,
         int24 baseAssetMaxPrice,
-        uint24 feeRate
+        uint24 feeRate,
+        address optimisticOracleV3
     ) internal returns (Data storage epoch) {
         epoch = load();
 
@@ -96,11 +97,11 @@ library Epoch {
             uniswapPositionManager
         );
         epoch.uniswapQuoter = IUniswapV3Quoter(uniswapQuoter);
-        epoch.resolver = resolver;
         epoch.collateralAsset = collateralAsset;
         epoch.baseAssetMinPriceTick = baseAssetMinPrice;
         epoch.baseAssetMaxPriceTick = baseAssetMaxPrice;
         epoch.feeRate = feeRate;
+        epoch.optimisticOracleV3 = OptimisticOracleV3Interface(optimisticOracleV3);
 
         VirtualToken tokenA = new VirtualToken(
             address(this),

@@ -25,8 +25,8 @@ artifact = "ReentrancyGuard"
 [deploy.UniV3Abstraction]
 artifact = "UniV3Abstraction"
 
-[deploy.Foil]
-artifact="Foil"
+[deploy.FoilConfigurationModule]
+artifact="FoilConfigurationModule"
 libraries.ReentrancyGuard="<%= contracts.ReentrancyGuard.address %>"
 libraries.UniV3Abstraction="<%= contracts.UniV3Abstraction.address %>"
 args=[
@@ -34,11 +34,32 @@ args=[
   "<%= settings.endTime %>",
   "<%= imports.Uniswap.contracts.NonfungiblePositionManager.address %>",
   "<%= imports.Uniswap.contracts.Quoter.address %>",
-  "<%= settings.resolver %>",
   "<%= imports.CollateralAsset.contracts.MintableToken.address %>",
   "<%= settings.baseAssetMinPrice %>",
   "<%= settings.baseAssetMaxPrice %>",
   "<%= settings.feeRate %>",
+  "<%= settings.resolver %>",
+]
+depends = ['var.settings', 'deploy.ReentrancyGuard', 'deploy.UniV3Abstraction']
+
+[deploy.FoilLiquidityModule]
+artifact="FoilLiquidityModule"
+libraries.UniV3Abstraction="<%= contracts.UniV3Abstraction.address %>"
+
+[deploy.FoilSettlementModule]
+artifact="FoilSettlementModule"
+
+[deploy.FoilTradeModule]
+artifact="FoilTradeModule"
+
+[router.Foil]
+contracts=[
+  "FoilConfigurationModule",
+  "FoilLiquidityModule",
+  "FoilSettlementModule",
+  "FoilTradeModule",
 ]
 CREATE2="true"
-depends = ['var.settings', 'deploy.ReentrancyGuard', 'deploy.UniV3Abstraction']
+
+[deploy.FoilVault]
+artifact="FoilVault"

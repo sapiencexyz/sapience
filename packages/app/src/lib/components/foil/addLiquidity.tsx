@@ -34,14 +34,21 @@ const priceToTick = (price: number, tickSpacing: number): number => {
 
 const tickToPrice = (tick: number): number => 1.0001 ** tick;
 
-const AddLiquidity = ({ params }: { params: { mode: string; selectedData: JSON } }) => {
-  const { pool, baseAssetMinPriceTick, baseAssetMaxPriceTick } = useContext(MarketContext);
+const AddLiquidity = ({
+  params,
+}: {
+  params: { mode: string; selectedData: JSON };
+}) => {
+  const { pool, baseAssetMinPriceTick, baseAssetMaxPriceTick } =
+    useContext(MarketContext);
   const account = useAccount();
   const toast = useToast();
 
   const [depositAmount, setDepositAmount] = useState(0);
   const [lowPrice, setLowPrice] = useState(tickToPrice(baseAssetMinPriceTick));
-  const [highPrice, setHighPrice] = useState(tickToPrice(baseAssetMaxPriceTick));
+  const [highPrice, setHighPrice] = useState(
+    tickToPrice(baseAssetMaxPriceTick)
+  );
   const [baseToken, setBaseToken] = useState(0);
   const [quoteToken, setQuoteToken] = useState(0);
 
@@ -58,10 +65,15 @@ const AddLiquidity = ({ params }: { params: { mode: string; selectedData: JSON }
   const [transactionStep, setTransactionStep] = useState(0);
 
   const { data: approveHash, writeContract: approveWrite } = useWriteContract();
-  const { data: addLiquidityHash, writeContract: addLiquidityWrite } = useWriteContract();
+  const { data: addLiquidityHash, writeContract: addLiquidityWrite } =
+    useWriteContract();
 
-  const { isSuccess: approveSuccess } = useWaitForTransactionReceipt({ hash: approveHash });
-  const { isSuccess: addLiquiditySuccess } = useWaitForTransactionReceipt({ hash: addLiquidityHash });
+  const { isSuccess: approveSuccess } = useWaitForTransactionReceipt({
+    hash: approveHash,
+  });
+  const { isSuccess: addLiquiditySuccess } = useWaitForTransactionReceipt({
+    hash: addLiquidityHash,
+  });
 
   useEffect(() => {
     setLowPrice(tickToPrice(baseAssetMinPriceTick));
@@ -107,7 +119,17 @@ const AddLiquidity = ({ params }: { params: { mode: string; selectedData: JSON }
       });
       setTransactionStep(3);
     }
-  }, [transactionStep, addLiquidityWrite, baseToken, quoteToken, depositAmount, lowPrice, highPrice, tickLower, tickUpper]);
+  }, [
+    transactionStep,
+    addLiquidityWrite,
+    baseToken,
+    quoteToken,
+    depositAmount,
+    lowPrice,
+    highPrice,
+    tickLower,
+    tickUpper,
+  ]);
 
   useEffect(() => {
     if (pool) {
@@ -198,10 +220,12 @@ const AddLiquidity = ({ params }: { params: { mode: string; selectedData: JSON }
       </FormControl>
       <Box mb="4">
         <Text fontSize="sm" color="gray.500" mb="1">
-          Net Position: {lowPrice.toFixed(2)} Ggas to {highPrice.toFixed(2)} Ggas
+          Net Position: {lowPrice.toFixed(2)} Ggas to {highPrice.toFixed(2)}{' '}
+          Ggas
         </Text>
         <Text fontSize="sm" color="gray.500" mb="1">
-          Wallet Balance: {collateralAmountFunctionResult?.data?.toString()} cbETH
+          Wallet Balance: {collateralAmountFunctionResult?.data?.toString()}{' '}
+          cbETH
         </Text>
       </Box>
       <Button

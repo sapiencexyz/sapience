@@ -2,128 +2,30 @@
 pragma solidity >=0.8.2 <0.9.0;
 
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePositionManager.sol";
+import {INonfungiblePositionManager} from "../../interfaces/external/INonfungiblePositionManager.sol";
 import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import {IUniswapV3MintCallback} from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
 import {IUniswapV3SwapCallback} from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
-import {TickMath} from "../external/univ3/TickMath.sol";
-import "./VirtualToken.sol";
-import "../interfaces/IFoil.sol";
+import {TickMath} from "../../external/univ3/TickMath.sol";
+import "../../external/VirtualToken.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../storage/Epoch.sol";
-import "../storage/Account.sol";
-import "../storage/Position.sol";
-import {ERC721Enumerable} from "../synthetix/token/ERC721Enumerable.sol";
-
-// possibly remove
-import {LiquidityAmounts} from "../external/univ3/LiquidityAmounts.sol";
+import "../../storage/Epoch.sol";
+import "../../storage/Account.sol";
+import "../../storage/Position.sol";
+import {LiquidityAmounts} from "../../external/univ3/LiquidityAmounts.sol";
+import {IFoilStructs} from "../../interfaces/IFoilStructs.sol";
+import {ERC721Enumerable} from "../../synthetix/token/ERC721Enumerable.sol";
 
 import "forge-std/console2.sol";
 
-contract Foil is
-    ReentrancyGuard,
-    IFoil,
+contract FoilLiquidityModule is ReentrancyGuard,
     IUniswapV3MintCallback,
-    IUniswapV3SwapCallback,
-    ERC721Enumerable
+    IUniswapV3SwapCallback
 {
     using Epoch for Epoch.Data;
     using Account for Account.Data;
     using Position for Position.Data;
-
-    constructor(
-        uint startTime,
-        uint endTime,
-        address uniswapPositionManager,
-        address uniswapQuoter,
-        address resolver,
-        address collateralAsset,
-        int24 baseAssetMinPrice,
-        int24 baseAssetMaxPrice,
-        uint24 feeRate
-    ) {
-        Epoch.Data storage epoch = Epoch.createValid(
-            startTime,
-            endTime,
-            uniswapPositionManager,
-            uniswapQuoter,
-            resolver,
-            collateralAsset,
-            baseAssetMinPrice,
-            baseAssetMaxPrice,
-            feeRate
-        );
-    }
-
-    function getMarket()
-        external
-        view
-        returns (
-            uint startTime,
-            uint endTime,
-            address uniswapPositionManager,
-            address resolver,
-            address collateralAsset,
-            int24 baseAssetMinPriceTick,
-            int24 baseAssetMaxPriceTick,
-            uint24 feeRate,
-            address ethToken,
-            address gasToken,
-            address pool
-        )
-    {
-        Epoch.Data storage epoch = Epoch.load();
-        return (
-            epoch.startTime,
-            epoch.endTime,
-            address(epoch.uniswapPositionManager),
-            address(epoch.resolver),
-            address(epoch.collateralAsset),
-            epoch.baseAssetMinPriceTick,
-            epoch.baseAssetMaxPriceTick,
-            epoch.feeRate,
-            address(epoch.ethToken),
-            address(epoch.gasToken),
-            address(epoch.pool)
-        );
-    }
-
-    function onERC721Received(
-        address operator,
-        address,
-        uint256 tokenId,
-        bytes calldata
-    ) external returns (bytes4) {
-        // get position information
-        // Position.load()
-
-        // epoch.updateDebtPosition(tokenId);
-
-        return this.onERC721Received.selector;
-    }
-
-    function getEpoch()
-        external
-        view
-        returns (address pool, address ethToken, address gasToken)
-    {
-        Epoch.Data storage epoch = Epoch.load();
-        return (
-            address(epoch.pool),
-            address(epoch.ethToken),
-            address(epoch.gasToken)
-        );
-    }
-
-    function createTraderPosition() external {
-        uint accountId = totalSupply() + 1;
-        Account.createValid(accountId);
-        _mint(msg.sender, accountId);
-
-        // Create empty position
-        Position.load(accountId).accountId = accountId;
-    }
 
     /*
         1. LP providers call this function to add liquidity to uniswap pool
@@ -305,64 +207,40 @@ contract Foil is
     //     );
     // }
 
-    function openLong(uint256 accountId, uint256 collateralAmount) external {
-        uint tokenId = accountId;
-        require(ownerOf(tokenId) == msg.sender, "Not NFT owner");
-        // check within time range
-        Account.Data storage account = Account.loadValid(accountId);
-        Epoch.Data storage epoch = Epoch.load();
 
-        // IERC20(epoch.collateralAsset).transferFrom(
-        //     msg.sender,
-        //     address(this),
-        //     collateralAmount
-        // );
-
-        Position.load(accountId).openLong(collateralAmount);
-    }
-
-    function reduceLong(uint256 accountId, uint256 vGasAmount) external {
-        uint tokenId = accountId;
-        require(ownerOf(tokenId) == msg.sender, "Not NFT owner");
-        Position.Data storage position = Position.loadValid(accountId);
-
-        Position.load(accountId).reduceLong(vGasAmount);
-    }
-
-    function openShort(uint256 accountId, uint256 collateralAmount) external {
-        uint tokenId = accountId;
-        require(ownerOf(tokenId) == msg.sender, "Not NFT owner");
-        // check within time range
-        Account.Data storage account = Account.loadValid(accountId);
-        Epoch.Data storage epoch = Epoch.load();
-
-        // IERC20(epoch.collateralAsset).transferFrom(
-        //     msg.sender,
-        //     address(this),
-        //     collateralAmount
-        // );
-
-        Position.load(accountId).openShort(collateralAmount);
-    }
-
-    function reduceShort(uint256 accountId, uint256 vEthAmount) external {
-        uint tokenId = accountId;
-        require(ownerOf(tokenId) == msg.sender, "Not NFT owner");
-        Position.Data storage position = Position.loadValid(accountId);
-
-        Position.load(accountId).reduceShort(vEthAmount);
-    }
-
-    function getPosition(
-        uint256 accountId
+    function updateLiquidityPosition(
+        uint256 tokenId,
+        uint256 collateral,
+        uint256 liquidityRatio
     )
         external
-        view
-        override
-        returns (uint256 tokenAmount0, uint256 tokenAmount1)
-    {
-        Position.Data storage position = Position.loadValid(accountId);
-        return (position.vEthAmount, position.vGasAmount);
+        payable
+        returns (
+            uint128 liquidity,
+            uint256 amount0,
+            uint256 amount1
+        ){
+            liquidity = 1;
+            amount0 = 2;
+            amount1 = 3;
+        }
+
+    function collectFees(uint256 tokenId) external {
+        Epoch.Data storage epoch = Epoch.load();
+
+        // TODO: verify msg sender is owner of this tokenId
+
+        INonfungiblePositionManager.CollectParams memory params = 
+            INonfungiblePositionManager.CollectParams({
+                tokenId: tokenId,
+                recipient: msg.sender,
+                amount0Max: type(uint128).max,
+                amount1Max: type(uint128).max
+            });
+
+        epoch.uniswapPositionManager.collect(params);
+        
+        // TODO: emit event
     }
 
     // --- Uniswap V3 Callbacks ---
@@ -475,49 +353,5 @@ contract Foil is
 
         //     Position.load(accountId).updateBalance(amount0Delta, amount1Delta);
         // }
-    }
-
-
-    function createTraderPosition(uint collateral, int size) external returns ( uint256 tokenId){ 
-        tokenId = 69;
-    }
-
-    function updateTraderPosition(uint256 tokenId, uint collateral, int size) external {
-        return;
-    }
-
-    function updateLiquidityPosition(
-        uint256 tokenId,
-        uint256 collateral,
-        uint256 liquidityRatio
-    )
-        external
-        payable
-        returns (
-            uint128 liquidity,
-            uint256 amount0,
-            uint256 amount1
-        ){
-            liquidity = 1;
-            amount0 = 2;
-            amount1 = 3;
-        }
-
-    function collectFees(uint256 tokenId) external {
-        Epoch.Data storage epoch = Epoch.load();
-
-        // TODO: verify msg sender is owner of this tokenId
-
-        INonfungiblePositionManager.CollectParams memory params = 
-            INonfungiblePositionManager.CollectParams({
-                tokenId: tokenId,
-                recipient: msg.sender,
-                amount0Max: type(uint128).max,
-                amount1Max: type(uint128).max
-            });
-
-        epoch.uniswapPositionManager.collect(params);
-        
-        // TODO: emit event
     }
 }
