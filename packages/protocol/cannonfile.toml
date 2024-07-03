@@ -52,12 +52,16 @@ artifact="FoilSettlementModule"
 [deploy.FoilTradeModule]
 artifact="FoilTradeModule"
 
+[deploy.FoilNftModule]
+artifact="FoilNftModule"
+
 [router.Foil]
 contracts=[
   "FoilConfigurationModule",
   "FoilLiquidityModule",
   "FoilSettlementModule",
   "FoilTradeModule",
+  "FoilNftModule",
 ]
 CREATE2="true"
 

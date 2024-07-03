@@ -1,0 +1,231 @@
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.8.2 <0.9.0;
+
+import {ERC721Enumerable} from "../../synthetix/token/ERC721Enumerable.sol";
+
+import "forge-std/console2.sol";
+
+contract FoilNftModule is ERC721Enumerable {
+    constructor() {}
+
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view virtual override returns (bool) {
+        return
+            interfaceId == this.supportsInterface.selector || // ERC165
+            interfaceId == type(IERC721).interfaceId ||
+            interfaceId == type(IERC721Metadata).interfaceId;
+    }
+
+    /**
+     * @inheritdoc IERC721
+     */
+    function balanceOf(
+        address holder
+    ) public view virtual override returns (uint256 balance) {
+        if (holder == address(0)) {
+            revert InvalidOwner(holder);
+        }
+
+        return ERC721Storage.load().balanceOf[holder];
+    }
+
+    /**
+     * @inheritdoc IERC721
+     */
+    function ownerOf(
+        uint256 tokenId
+    ) public view virtual override returns (address) {
+        if (!_exists(tokenId)) {
+            revert TokenDoesNotExist(tokenId);
+        }
+
+        return ERC721Storage.load().ownerOf[tokenId];
+    }
+
+    /**
+     * @inheritdoc IERC721Metadata
+     */
+    function name() external view virtual override returns (string memory) {
+        return ERC721Storage.load().name;
+    }
+
+    /**
+     * @inheritdoc IERC721Metadata
+     */
+    function symbol() external view virtual override returns (string memory) {
+        return ERC721Storage.load().symbol;
+    }
+
+    /**
+     * @inheritdoc IERC721Metadata
+     */
+    function tokenURI(
+        uint256 tokenId
+    ) external view virtual override returns (string memory) {
+        if (!_exists(tokenId)) {
+            revert TokenDoesNotExist(tokenId);
+        }
+
+        string memory baseURI = ERC721Storage.load().baseTokenURI;
+
+        return
+            bytes(baseURI).length > 0
+                ? string(
+                    abi.encodePacked(baseURI, StringUtil.uintToString(tokenId))
+                )
+                : "";
+    }
+
+    /**
+     * @inheritdoc IERC721
+     */
+
+    function approve(address to, uint256 tokenId) public virtual override {
+        ERC721Storage.Data storage store = ERC721Storage.load();
+        address holder = store.ownerOf[tokenId];
+
+        if (to == holder) {
+            revert CannotSelfApprove(to);
+        }
+
+        if (
+            ERC2771Context._msgSender() != holder &&
+            !isApprovedForAll(holder, ERC2771Context._msgSender())
+        ) {
+            revert AccessError.Unauthorized(ERC2771Context._msgSender());
+        }
+
+        _approve(to, tokenId);
+    }
+
+    /**
+     * @inheritdoc IERC721
+     */
+    function getApproved(
+        uint256 tokenId
+    ) public view virtual override returns (address operator) {
+        if (!_exists(tokenId)) {
+            revert TokenDoesNotExist(tokenId);
+        }
+
+        return ERC721Storage.load().tokenApprovals[tokenId];
+    }
+
+    /**
+     * @inheritdoc IERC721
+     */
+
+    function setApprovalForAll(
+        address operator,
+        bool approved
+    ) public virtual override {
+        if (ERC2771Context._msgSender() == operator) {
+            revert CannotSelfApprove(operator);
+        }
+
+        ERC721Storage.load().operatorApprovals[ERC2771Context._msgSender()][
+                operator
+            ] = approved;
+
+        emit ApprovalForAll(ERC2771Context._msgSender(), operator, approved);
+    }
+
+    /**
+     * @inheritdoc IERC721
+     */
+    function isApprovedForAll(
+        address holder,
+        address operator
+    ) public view virtual override returns (bool) {
+        return ERC721Storage.load().operatorApprovals[holder][operator];
+    }
+
+    /**
+     * @inheritdoc IERC721
+     */
+
+    function transferFrom(
+        address from,
+        address to,
+        uint256 tokenId
+    ) public virtual override {
+        if (!_isApprovedOrOwner(ERC2771Context._msgSender(), tokenId)) {
+            revert AccessError.Unauthorized(ERC2771Context._msgSender());
+        }
+
+        _transfer(from, to, tokenId);
+    }
+
+    /**
+     * @inheritdoc IERC721
+     */
+
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 tokenId
+    ) public virtual override {
+        safeTransferFrom(from, to, tokenId, "");
+    }
+
+    /**
+     * @inheritdoc IERC721
+     */
+
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 tokenId,
+        bytes memory data
+    ) public virtual override {
+        if (!_isApprovedOrOwner(ERC2771Context._msgSender(), tokenId)) {
+            revert AccessError.Unauthorized(ERC2771Context._msgSender());
+        }
+
+        _transfer(from, to, tokenId);
+        if (!_checkOnERC721Received(from, to, tokenId, data)) {
+            revert InvalidTransferRecipient(to);
+        }
+    }
+
+    ///
+    ///
+    ///
+    /// ERC721Enumerable
+    ///
+    ///
+    ///
+
+    /**
+     * @inheritdoc IERC721Enumerable
+     */
+    function tokenOfOwnerByIndex(
+        address owner,
+        uint256 index
+    ) public view virtual override returns (uint256) {
+        if (ERC721.balanceOf(owner) <= index) {
+            revert IndexOverrun(index, ERC721.balanceOf(owner));
+        }
+        return ERC721EnumerableStorage.load().ownedTokens[owner][index];
+    }
+
+    /**
+     * @inheritdoc IERC721Enumerable
+     */
+    function totalSupply() public view virtual override returns (uint256) {
+        return ERC721EnumerableStorage.load().allTokens.length;
+    }
+
+    /**
+     * @dev Returns the total amount of tokens stored by the contract.
+     */
+    function tokenByIndex(
+        uint256 index
+    ) public view virtual override returns (uint256) {
+        if (index >= ERC721Enumerable.totalSupply()) {
+            revert IndexOverrun(index, ERC721Enumerable.totalSupply());
+        }
+        return ERC721EnumerableStorage.load().allTokens[index];
+    }
+}

@@ -7,14 +7,10 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../storage/Epoch.sol";
 import "../../storage/Account.sol";
 import "../../storage/Position.sol";
-import {ERC721Enumerable} from "../../synthetix/token/ERC721Enumerable.sol";
 
 import "forge-std/console2.sol";
 
-contract FoilConfigurationModule is
-    ReentrancyGuard,
-    ERC721Enumerable
-{
+contract FoilConfigurationModule is ReentrancyGuard {
     using Epoch for Epoch.Data;
     using Account for Account.Data;
     using Position for Position.Data;
