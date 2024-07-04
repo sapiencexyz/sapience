@@ -2,6 +2,7 @@
 pragma solidity >=0.8.2 <0.9.0;
 
 import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
+// TODO Reentrancy guard should be refactored as router compatible (uses local storage)
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../storage/Epoch.sol";
