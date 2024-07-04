@@ -2,24 +2,23 @@
 pragma solidity >=0.8.2 <0.9.0;
 
 import {ERC721Enumerable} from "../../synthetix/token/ERC721Enumerable.sol";
-
+import "../../storage/ERC721Storage.sol";
+import "../../storage/ERC721EnumerableStorage.sol";
 import "forge-std/console2.sol";
 
 contract FoilNftModule is ERC721Enumerable {
     constructor() {}
 
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view virtual override returns (bool) {
-        return
-            interfaceId == this.supportsInterface.selector || // ERC165
-            interfaceId == type(IERC721).interfaceId ||
-            interfaceId == type(IERC721Metadata).interfaceId;
-    }
+    // TODO Move to a module with just that function
+    // function supportsInterface(
+    //     bytes4 interfaceId
+    // ) public view virtual override returns (bool) {
+    //     return
+    //         interfaceId == this.supportsInterface.selector || // ERC165
+    //         interfaceId == type(IERC721).interfaceId ||
+    //         interfaceId == type(IERC721Metadata).interfaceId;
+    // }
 
-    /**
-     * @inheritdoc IERC721
-     */
     function balanceOf(
         address holder
     ) public view virtual override returns (uint256 balance) {
@@ -30,9 +29,6 @@ contract FoilNftModule is ERC721Enumerable {
         return ERC721Storage.load().balanceOf[holder];
     }
 
-    /**
-     * @inheritdoc IERC721
-     */
     function ownerOf(
         uint256 tokenId
     ) public view virtual override returns (address) {
@@ -43,23 +39,14 @@ contract FoilNftModule is ERC721Enumerable {
         return ERC721Storage.load().ownerOf[tokenId];
     }
 
-    /**
-     * @inheritdoc IERC721Metadata
-     */
     function name() external view virtual override returns (string memory) {
         return ERC721Storage.load().name;
     }
 
-    /**
-     * @inheritdoc IERC721Metadata
-     */
     function symbol() external view virtual override returns (string memory) {
         return ERC721Storage.load().symbol;
     }
 
-    /**
-     * @inheritdoc IERC721Metadata
-     */
     function tokenURI(
         uint256 tokenId
     ) external view virtual override returns (string memory) {
@@ -76,10 +63,6 @@ contract FoilNftModule is ERC721Enumerable {
                 )
                 : "";
     }
-
-    /**
-     * @inheritdoc IERC721
-     */
 
     function approve(address to, uint256 tokenId) public virtual override {
         ERC721Storage.Data storage store = ERC721Storage.load();
@@ -99,9 +82,6 @@ contract FoilNftModule is ERC721Enumerable {
         _approve(to, tokenId);
     }
 
-    /**
-     * @inheritdoc IERC721
-     */
     function getApproved(
         uint256 tokenId
     ) public view virtual override returns (address operator) {
@@ -111,10 +91,6 @@ contract FoilNftModule is ERC721Enumerable {
 
         return ERC721Storage.load().tokenApprovals[tokenId];
     }
-
-    /**
-     * @inheritdoc IERC721
-     */
 
     function setApprovalForAll(
         address operator,
@@ -131,19 +107,12 @@ contract FoilNftModule is ERC721Enumerable {
         emit ApprovalForAll(ERC2771Context._msgSender(), operator, approved);
     }
 
-    /**
-     * @inheritdoc IERC721
-     */
     function isApprovedForAll(
         address holder,
         address operator
     ) public view virtual override returns (bool) {
         return ERC721Storage.load().operatorApprovals[holder][operator];
     }
-
-    /**
-     * @inheritdoc IERC721
-     */
 
     function transferFrom(
         address from,
@@ -157,10 +126,6 @@ contract FoilNftModule is ERC721Enumerable {
         _transfer(from, to, tokenId);
     }
 
-    /**
-     * @inheritdoc IERC721
-     */
-
     function safeTransferFrom(
         address from,
         address to,
@@ -168,10 +133,6 @@ contract FoilNftModule is ERC721Enumerable {
     ) public virtual override {
         safeTransferFrom(from, to, tokenId, "");
     }
-
-    /**
-     * @inheritdoc IERC721
-     */
 
     function safeTransferFrom(
         address from,
@@ -197,9 +158,6 @@ contract FoilNftModule is ERC721Enumerable {
     ///
     ///
 
-    /**
-     * @inheritdoc IERC721Enumerable
-     */
     function tokenOfOwnerByIndex(
         address owner,
         uint256 index
@@ -210,9 +168,6 @@ contract FoilNftModule is ERC721Enumerable {
         return ERC721EnumerableStorage.load().ownedTokens[owner][index];
     }
 
-    /**
-     * @inheritdoc IERC721Enumerable
-     */
     function totalSupply() public view virtual override returns (uint256) {
         return ERC721EnumerableStorage.load().allTokens.length;
     }

@@ -1,5 +1,14 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.8.11 <0.9.0;
+import "../synthetix/utils/AddressUtil.sol";
+import "../synthetix/utils/StringUtil.sol";
+import "../synthetix/utils/ERC2771Context.sol";
+import "../synthetix/errors/AddressError.sol";
+import "../synthetix/errors/AccessError.sol";
+import "../synthetix/errors/InitError.sol";
+import "../synthetix/errors/ParameterError.sol";
+import "../synthetix/interfaces/IERC721.sol";
+import "../synthetix/interfaces/IERC721Receiver.sol";
 
 library ERC721Storage {
     bytes32 private constant _SLOT_ERC721_STORAGE =
@@ -22,24 +31,63 @@ library ERC721Storage {
         }
     }
 
-    function _exists(uint256 tokenId) internal view virtual returns (bool) {
+    function _exists(
+        Data storage self,
+        uint256 tokenId
+    ) internal view returns (bool) {
+        return self.ownerOf[tokenId] != address(0);
+    }
+
+    function _exists(uint256 tokenId) internal view returns (bool) {
         return ERC721Storage.load().ownerOf[tokenId] != address(0);
+    }
+
+    function _ownerOf(uint256 tokenId) internal view returns (address) {
+        return ERC721Storage.load().ownerOf[tokenId];
+    }
+
+    function _getApproved(
+        uint256 tokenId
+    ) internal view returns (address operator) {
+        return ERC721Storage.load().tokenApprovals[tokenId];
+    }
+
+    function _getApproved(
+        Data storage self,
+        uint256 tokenId
+    ) internal view returns (address operator) {
+        return self.tokenApprovals[tokenId];
+    }
+
+    function _isApprovedForAll(
+        address holder,
+        address operator
+    ) internal view returns (bool) {
+        return ERC721Storage.load().operatorApprovals[holder][operator];
+    }
+
+    function _isApprovedForAll(
+        Data storage self,
+        address holder,
+        address operator
+    ) internal view returns (bool) {
+        return self.operatorApprovals[holder][operator];
     }
 
     function _isApprovedOrOwner(
         address spender,
         uint256 tokenId
-    ) internal view virtual returns (bool) {
-        address holder = ownerOf(tokenId);
+    ) internal view returns (bool) {
+        address holder = _ownerOf(tokenId);
 
         // Not checking tokenId existence since it is checked in ownerOf() and getApproved()
 
         return (spender == holder ||
-            getApproved(tokenId) == spender ||
-            isApprovedForAll(holder, spender));
+            _getApproved(tokenId) == spender ||
+            _isApprovedForAll(holder, spender));
     }
 
-    function _mint(address to, uint256 tokenId) internal virtual {
+    function _mint(address to, uint256 tokenId) internal {
         ERC721Storage.Data storage store = ERC721Storage.load();
         if (to == address(0)) {
             revert AddressError.ZeroAddress();
@@ -50,7 +98,7 @@ library ERC721Storage {
         }
 
         if (_exists(tokenId)) {
-            revert TokenAlreadyMinted(tokenId);
+            revert IERC721.TokenAlreadyMinted(tokenId);
         }
 
         _beforeTransfer(address(0), to, tokenId);
@@ -60,10 +108,10 @@ library ERC721Storage {
 
         _postTransfer(address(0), to, tokenId);
 
-        emit Transfer(address(0), to, tokenId);
+        emit IERC721.Transfer(address(0), to, tokenId);
     }
 
-    function _burn(uint256 tokenId) internal virtual {
+    function _burn(uint256 tokenId) internal {
         ERC721Storage.Data storage store = ERC721Storage.load();
         address holder = store.ownerOf[tokenId];
 
@@ -76,17 +124,13 @@ library ERC721Storage {
 
         _postTransfer(holder, address(0), tokenId);
 
-        emit Transfer(holder, address(0), tokenId);
+        emit IERC721.Transfer(holder, address(0), tokenId);
     }
 
-    function _transfer(
-        address from,
-        address to,
-        uint256 tokenId
-    ) internal virtual {
+    function _transfer(address from, address to, uint256 tokenId) internal {
         ERC721Storage.Data storage store = ERC721Storage.load();
 
-        if (ownerOf(tokenId) != from) {
+        if (_ownerOf(tokenId) != from) {
             revert AccessError.Unauthorized(from);
         }
 
@@ -105,12 +149,12 @@ library ERC721Storage {
 
         _postTransfer(from, to, tokenId);
 
-        emit Transfer(from, to, tokenId);
+        emit IERC721.Transfer(from, to, tokenId);
     }
 
-    function _approve(address to, uint256 tokenId) internal virtual {
+    function _approve(address to, uint256 tokenId) internal {
         ERC721Storage.load().tokenApprovals[tokenId] = to;
-        emit Approval(ERC721.ownerOf(tokenId), to, tokenId);
+        emit IERC721.Approval(_ownerOf(tokenId), to, tokenId);
     }
 
     function _checkOnERC721Received(
@@ -141,19 +185,19 @@ library ERC721Storage {
         address from,
         address to,
         uint256 tokenId // solhint-disable-next-line no-empty-blocks
-    ) internal virtual {}
+    ) internal {}
 
     function _postTransfer(
         address from,
         address to,
         uint256 tokenId // solhint-disable-next-line no-empty-blocks
-    ) internal virtual {}
+    ) internal {}
 
     function _initialize(
         string memory tokenName,
         string memory tokenSymbol,
         string memory baseTokenURI
-    ) internal virtual {
+    ) internal {
         ERC721Storage.Data storage store = ERC721Storage.load();
         if (
             bytes(store.name).length > 0 ||
