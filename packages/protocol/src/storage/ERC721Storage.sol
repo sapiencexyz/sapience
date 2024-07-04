@@ -7,7 +7,7 @@ import "../synthetix/errors/AddressError.sol";
 import "../synthetix/errors/AccessError.sol";
 import "../synthetix/errors/InitError.sol";
 import "../synthetix/errors/ParameterError.sol";
-import "../synthetix/interfaces/IERC721.sol";
+import "../interfaces/IERC721.sol";
 import "../synthetix/interfaces/IERC721Receiver.sol";
 
 library ERC721Storage {

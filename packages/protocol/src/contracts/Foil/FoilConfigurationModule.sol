@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../storage/Epoch.sol";
 import "../../storage/Account.sol";
 import "../../storage/Position.sol";
-
+import "../../storage/ERC721Storage.sol";
 import "forge-std/console2.sol";
 
 contract FoilConfigurationModule is ReentrancyGuard {
@@ -84,9 +84,9 @@ contract FoilConfigurationModule is ReentrancyGuard {
     }
 
     function createTraderPosition() external {
-        uint accountId = totalSupply() + 1;
+        uint accountId = ERC721Storage.load().totalSupply() + 1;
         Account.createValid(accountId);
-        _mint(msg.sender, accountId);
+        ERC721Storage.load()._mint(msg.sender, accountId);
 
         // Create empty position
         Position.load(accountId).accountId = accountId;

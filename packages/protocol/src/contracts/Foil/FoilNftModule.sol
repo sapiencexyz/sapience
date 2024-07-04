@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
-import {ERC721Enumerable} from "../../synthetix/token/ERC721Enumerable.sol";
+import "../../interfaces/IERC721Enumerable.sol";
 import "../../storage/ERC721Storage.sol";
 import "../../storage/ERC721EnumerableStorage.sol";
 import "forge-std/console2.sol";
 
-contract FoilNftModule is ERC721Enumerable {
+contract FoilNftModule is IERC721Enumerable {
     constructor() {}
 
     // TODO Move to a module with just that function
@@ -32,7 +32,7 @@ contract FoilNftModule is ERC721Enumerable {
     function ownerOf(
         uint256 tokenId
     ) public view virtual override returns (address) {
-        if (!_exists(tokenId)) {
+        if (!ERC721Storage._exists(tokenId)) {
             revert TokenDoesNotExist(tokenId);
         }
 
@@ -50,7 +50,7 @@ contract FoilNftModule is ERC721Enumerable {
     function tokenURI(
         uint256 tokenId
     ) external view virtual override returns (string memory) {
-        if (!_exists(tokenId)) {
+        if (!ERC721Storage._exists(tokenId)) {
             revert TokenDoesNotExist(tokenId);
         }
 
@@ -79,13 +79,13 @@ contract FoilNftModule is ERC721Enumerable {
             revert AccessError.Unauthorized(ERC2771Context._msgSender());
         }
 
-        _approve(to, tokenId);
+        ERC721Storage._approve(to, tokenId);
     }
 
     function getApproved(
         uint256 tokenId
     ) public view virtual override returns (address operator) {
-        if (!_exists(tokenId)) {
+        if (!ERC721Storage._exists(tokenId)) {
             revert TokenDoesNotExist(tokenId);
         }
 
@@ -119,11 +119,16 @@ contract FoilNftModule is ERC721Enumerable {
         address to,
         uint256 tokenId
     ) public virtual override {
-        if (!_isApprovedOrOwner(ERC2771Context._msgSender(), tokenId)) {
+        if (
+            !ERC721Storage._isApprovedOrOwner(
+                ERC2771Context._msgSender(),
+                tokenId
+            )
+        ) {
             revert AccessError.Unauthorized(ERC2771Context._msgSender());
         }
 
-        _transfer(from, to, tokenId);
+        ERC721Storage._transfer(from, to, tokenId);
     }
 
     function safeTransferFrom(
@@ -140,12 +145,17 @@ contract FoilNftModule is ERC721Enumerable {
         uint256 tokenId,
         bytes memory data
     ) public virtual override {
-        if (!_isApprovedOrOwner(ERC2771Context._msgSender(), tokenId)) {
+        if (
+            !ERC721Storage._isApprovedOrOwner(
+                ERC2771Context._msgSender(),
+                tokenId
+            )
+        ) {
             revert AccessError.Unauthorized(ERC2771Context._msgSender());
         }
 
-        _transfer(from, to, tokenId);
-        if (!_checkOnERC721Received(from, to, tokenId, data)) {
+        ERC721Storage._transfer(from, to, tokenId);
+        if (!ERC721Storage._checkOnERC721Received(from, to, tokenId, data)) {
             revert InvalidTransferRecipient(to);
         }
     }
@@ -162,8 +172,8 @@ contract FoilNftModule is ERC721Enumerable {
         address owner,
         uint256 index
     ) public view virtual override returns (uint256) {
-        if (ERC721.balanceOf(owner) <= index) {
-            revert IndexOverrun(index, ERC721.balanceOf(owner));
+        if (balanceOf(owner) <= index) {
+            revert IndexOverrun(index, balanceOf(owner));
         }
         return ERC721EnumerableStorage.load().ownedTokens[owner][index];
     }
@@ -178,8 +188,8 @@ contract FoilNftModule is ERC721Enumerable {
     function tokenByIndex(
         uint256 index
     ) public view virtual override returns (uint256) {
-        if (index >= ERC721Enumerable.totalSupply()) {
-            revert IndexOverrun(index, ERC721Enumerable.totalSupply());
+        if (index >= totalSupply()) {
+            revert IndexOverrun(index, totalSupply());
         }
         return ERC721EnumerableStorage.load().allTokens[index];
     }

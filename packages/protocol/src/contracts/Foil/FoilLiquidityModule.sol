@@ -15,11 +15,13 @@ import "../../storage/Account.sol";
 import "../../storage/Position.sol";
 import {LiquidityAmounts} from "../../external/univ3/LiquidityAmounts.sol";
 import {IFoilStructs} from "../../interfaces/IFoilStructs.sol";
-import {ERC721Enumerable} from "../../synthetix/token/ERC721Enumerable.sol";
+import "../../storage/ERC721Storage.sol";
+import "../../storage/ERC721EnumerableStorage.sol";
 
 import "forge-std/console2.sol";
 
-contract FoilLiquidityModule is ReentrancyGuard,
+contract FoilLiquidityModule is
+    ReentrancyGuard,
     IUniswapV3MintCallback,
     IUniswapV3SwapCallback
 {
@@ -59,7 +61,7 @@ contract FoilLiquidityModule is ReentrancyGuard,
         UniV3Abstraction.RuntimeLiquidityPositionParams
             memory uniV3HelperLiquidityPositionParams = UniV3Abstraction
                 .RuntimeLiquidityPositionParams({
-                    accountId:accountId,
+                    accountId: accountId,
                     recipient: address(this),
                     pool: address(epoch.pool),
                     lowerTick: params.lowerTick,
@@ -207,7 +209,6 @@ contract FoilLiquidityModule is ReentrancyGuard,
     //     );
     // }
 
-
     function updateLiquidityPosition(
         uint256 tokenId,
         uint256 collateral,
@@ -215,23 +216,20 @@ contract FoilLiquidityModule is ReentrancyGuard,
     )
         external
         payable
-        returns (
-            uint128 liquidity,
-            uint256 amount0,
-            uint256 amount1
-        ){
-            liquidity = 1;
-            amount0 = 2;
-            amount1 = 3;
-        }
+        returns (uint128 liquidity, uint256 amount0, uint256 amount1)
+    {
+        liquidity = 1;
+        amount0 = 2;
+        amount1 = 3;
+    }
 
     function collectFees(uint256 tokenId) external {
         Epoch.Data storage epoch = Epoch.load();
 
         // TODO: verify msg sender is owner of this tokenId
 
-        INonfungiblePositionManager.CollectParams memory params = 
-            INonfungiblePositionManager.CollectParams({
+        INonfungiblePositionManager.CollectParams
+            memory params = INonfungiblePositionManager.CollectParams({
                 tokenId: tokenId,
                 recipient: msg.sender,
                 amount0Max: type(uint128).max,
@@ -239,7 +237,7 @@ contract FoilLiquidityModule is ReentrancyGuard,
             });
 
         epoch.uniswapPositionManager.collect(params);
-        
+
         // TODO: emit event
     }
 
