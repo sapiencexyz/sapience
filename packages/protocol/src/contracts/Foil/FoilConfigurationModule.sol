@@ -9,12 +9,14 @@ import "../../storage/Epoch.sol";
 import "../../storage/Account.sol";
 import "../../storage/Position.sol";
 import "../../storage/ERC721Storage.sol";
+import "../../storage/ERC721EnumerableStorage.sol";
 import "forge-std/console2.sol";
 
 contract FoilConfigurationModule is ReentrancyGuard {
     using Epoch for Epoch.Data;
     using Account for Account.Data;
     using Position for Position.Data;
+    using ERC721Storage for ERC721Storage.Data;
 
     constructor(
         uint startTime,
@@ -85,10 +87,9 @@ contract FoilConfigurationModule is ReentrancyGuard {
     }
 
     function createTraderPosition() external {
-        uint accountId = ERC721Storage.load().totalSupply() + 1;
+        uint accountId = ERC721EnumerableStorage.totalSupply() + 1;
         Account.createValid(accountId);
-        ERC721Storage.load()._mint(msg.sender, accountId);
-
+        ERC721Storage._mint(msg.sender, accountId);
         // Create empty position
         Position.load(accountId).accountId = accountId;
     }

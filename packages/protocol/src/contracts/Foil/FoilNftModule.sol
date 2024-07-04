@@ -179,7 +179,7 @@ contract FoilNftModule is IERC721Enumerable {
     }
 
     function totalSupply() public view virtual override returns (uint256) {
-        return ERC721EnumerableStorage.load().allTokens.length;
+        return ERC721EnumerableStorage.totalSupply();
     }
 
     /**

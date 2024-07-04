@@ -28,6 +28,7 @@ contract FoilLiquidityModule is
     using Epoch for Epoch.Data;
     using Account for Account.Data;
     using Position for Position.Data;
+    using ERC721Storage for ERC721Storage.Data;
 
     /*
         1. LP providers call this function to add liquidity to uniswap pool
@@ -47,9 +48,9 @@ contract FoilLiquidityModule is
             uint256 addedAmount1
         )
     {
-        uint accountId = totalSupply() + 1;
+        uint accountId = ERC721EnumerableStorage.totalSupply() + 1;
         Account.createValid(accountId);
-        _mint(msg.sender, accountId);
+        ERC721Storage._mint(msg.sender, accountId);
 
         // TODO: check collateral asset and receive collateral
 

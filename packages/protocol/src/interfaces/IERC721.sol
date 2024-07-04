@@ -4,7 +4,7 @@ pragma solidity >=0.8.11 <0.9.0;
 /**
  * @title ERC721 non-fungible token (NFT) contract.
  */
-interface IERC721 {
+interface IERC721Foil {
     /**
      * @notice Thrown when an address attempts to provide allowance to itself.
      * @param addr The address attempting to provide allowance.

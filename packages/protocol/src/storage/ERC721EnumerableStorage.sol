@@ -18,4 +18,8 @@ library ERC721EnumerableStorage {
             store.slot := s
         }
     }
+
+    function totalSupply() internal view returns (uint256) {
+        return load().allTokens.length;
+    }
 }

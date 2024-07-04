@@ -15,11 +15,12 @@ contract FoilTradeModule is ReentrancyGuard {
     using Epoch for Epoch.Data;
     using Account for Account.Data;
     using Position for Position.Data;
+    using ERC721Storage for ERC721Storage.Data;
 
     function createTraderPosition(uint collateral, int size) external {
-        uint accountId = totalSupply() + 1;
+        uint accountId = ERC721EnumerableStorage.totalSupply() + 1;
         Account.createValid(accountId);
-        _mint(msg.sender, accountId);
+        ERC721Storage._mint(msg.sender, accountId);
 
         // Create empty position
         Position.load(accountId).accountId = accountId;
