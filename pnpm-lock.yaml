@@ -204,8 +204,8 @@ importers:
         specifier: ^1.4.4
         version: 1.4.4
       '@usecannon/cli':
-        specifier: ^2.15.3
-        version: 2.15.3(bufferutil@4.0.8)(encoding@0.1.13)(hardhat@2.22.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@20.14.9)(typescript@5.5.2))(typescript@5.5.2)(utf-8-validate@5.0.10))(solc@0.8.25)(typescript@5.5.2)(utf-8-validate@5.0.10)
+        specifier: ^2.15.4
+        version: 2.15.6(bufferutil@4.0.8)(encoding@0.1.13)(hardhat@2.22.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@20.14.9)(typescript@5.5.2))(typescript@5.5.2)(utf-8-validate@5.0.10))(solc@0.8.25)(typescript@5.5.2)(utf-8-validate@5.0.10)
     devDependencies:
       '@types/chai':
         specifier: ^4.3.16
@@ -4602,12 +4602,12 @@ packages:
     engines: {node: '>=10'}
     deprecated: Please upgrade to 1.0.1
 
-  '@usecannon/builder@2.15.3':
-    resolution: {integrity: sha512-CJJvzZBhQT3GrbzL63sDeVQWNlvwgJcEU8yx1gcj8Oa/HEfJ595g0lZe/53cUbTZu6ekjvk5B35E19x/Fi3Qgg==}
+  '@usecannon/builder@2.15.6':
+    resolution: {integrity: sha512-/sGLk+1gVCXixK+elanAELwoxVy6Flz4AXJ11Gx7hzR6IHSWvY7eahIpy/nZWyXYo5t0wR3pFNmgZ01jfkLZoA==}
     engines: {node: '>=16.0.0'}
 
-  '@usecannon/cli@2.15.3':
-    resolution: {integrity: sha512-bGkAIUDPDITb3/X/RsmULgXk+ZIXgUcUnGfy1jNJwMQvy1gGVZljT3VGPMR2u2YM3dWZ2kKl6iPkUdLpVhZDog==}
+  '@usecannon/cli@2.15.6':
+    resolution: {integrity: sha512-cBpaNok/A6Xdq8w0xzNQ1sbpUzvv165x7+AO+0N3uFPgDjvlNoDYZSmbmOYfsl/v/PgUV7UB6E4iG8zYWo76Jw==}
     hasBin: true
 
   '@vanilla-extract/babel-plugin-debug-ids@1.0.6':
@@ -8628,11 +8628,6 @@ packages:
 
   isows@1.0.3:
     resolution: {integrity: sha512-2cKei4vlmg2cxEjm3wVSqn8pcoRF/LX/wpifuuNquFO4SQmPwarClT+SUCA2lt+l581tTeZIPIZuIDo2jWN1fg==}
-    peerDependencies:
-      ws: '*'
-
-  isows@1.0.4:
-    resolution: {integrity: sha512-hEzjY+x9u9hPmBom9IIAqdJCwNLax+xrPb51vEPpERoFlIxgmZcHzsT5jKG06nvInKOBGvReAVz80Umed5CczQ==}
     peerDependencies:
       ws: '*'
 
@@ -12820,14 +12815,6 @@ packages:
       typescript:
         optional: true
 
-  viem@2.16.2:
-    resolution: {integrity: sha512-qor3v1cJFR3jcPtcJxPbKfKURAH2agNf2IWZIaSReV6teNLERiu4Sr7kbqpkIeTAEpiDCVQwg336M+mub1m+pg==}
-    peerDependencies:
-      typescript: '>=5.0.4'
-    peerDependenciesMeta:
-      typescript:
-        optional: true
-
   viem@2.9.32:
     resolution: {integrity: sha512-V2K1kkR+L/JZ1be/3NTsqLhN7BsMXXTTFOH3/LyEALbL8gln7QCHvmI942VbY9l5eYYH1EQ90vwKh24TqDd9gw==}
     peerDependencies:
@@ -13525,18 +13512,6 @@ packages:
 
   ws@8.13.0:
     resolution: {integrity: sha512-x9vcZYTrFPC7aSIbj7sRCYo7L/Xb8Iy+pW0ng0wt2vCJv7M9HOMy0UoN3rr+IFC7hb7vXoqS+P9ktyLLLhO+LA==}
-    engines: {node: '>=10.0.0'}
-    peerDependencies:
-      bufferutil: ^4.0.1
-      utf-8-validate: '>=5.0.2'
-    peerDependenciesMeta:
-      bufferutil:
-        optional: true
-      utf-8-validate:
-        optional: true
-
-  ws@8.17.1:
-    resolution: {integrity: sha512-6XQFvXTkbfUOZOKKILFG1PDK2NDQs4azKQl26T0YS5CxqWLgXajbPZ+h4gZekJyRqFU8pvnbAbbs/3TgRPy+GQ==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
       bufferutil: ^4.0.1
@@ -16512,7 +16487,7 @@ snapshots:
 
   '@ethereumjs/tx@3.3.2':
     dependencies:
-      '@ethereumjs/common': 2.5.0
+      '@ethereumjs/common': 2.6.5
       ethereumjs-util: 7.1.5
 
   '@ethereumjs/tx@3.5.2':
@@ -17022,7 +16997,7 @@ snapshots:
     dependencies:
       '@ledgerhq/cryptoassets': 5.53.0
       '@ledgerhq/errors': 5.50.0
-      '@ledgerhq/hw-transport': 5.26.0
+      '@ledgerhq/hw-transport': 5.51.1
       bignumber.js: 9.1.2
       rlp: 2.2.7
 
@@ -17039,7 +17014,7 @@ snapshots:
     dependencies:
       '@ledgerhq/devices': 5.51.1
       '@ledgerhq/errors': 5.50.0
-      '@ledgerhq/hw-transport': 5.26.0
+      '@ledgerhq/hw-transport': 5.51.1
       '@ledgerhq/hw-transport-node-hid-noevents': 5.51.1
       '@ledgerhq/logs': 5.50.0
       lodash: 4.17.21
@@ -17050,7 +17025,7 @@ snapshots:
   '@ledgerhq/hw-transport-u2f@5.26.0':
     dependencies:
       '@ledgerhq/errors': 5.50.0
-      '@ledgerhq/hw-transport': 5.26.0
+      '@ledgerhq/hw-transport': 5.51.1
       '@ledgerhq/logs': 5.50.0
       u2f-api: 0.2.7
 
@@ -17065,7 +17040,6 @@ snapshots:
       '@ledgerhq/devices': 5.51.1
       '@ledgerhq/errors': 5.50.0
       events: 3.3.0
-    optional: true
 
   '@ledgerhq/logs@5.50.0': {}
 
@@ -19600,7 +19574,7 @@ snapshots:
       '@uniswap/v3-core': 1.0.0
       '@uniswap/v3-periphery': 1.4.4
 
-  '@usecannon/builder@2.15.3(bufferutil@4.0.8)(encoding@0.1.13)(hardhat@2.22.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@20.14.9)(typescript@5.5.2))(typescript@5.5.2)(utf-8-validate@5.0.10))(solc@0.8.25)(typescript@5.5.2)(utf-8-validate@5.0.10)':
+  '@usecannon/builder@2.15.6(bufferutil@4.0.8)(encoding@0.1.13)(hardhat@2.22.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@20.14.9)(typescript@5.5.2))(typescript@5.5.2)(utf-8-validate@5.0.10))(solc@0.8.25)(typescript@5.5.2)(utf-8-validate@5.0.10)':
     dependencies:
       '@synthetixio/router': 3.4.0(hardhat@2.22.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@20.14.9)(typescript@5.5.2))(typescript@5.5.2)(utf-8-validate@5.0.10))(solc@0.8.25)
       axios: 1.7.2(debug@4.3.5)
@@ -19613,7 +19587,7 @@ snapshots:
       pako: 2.1.0
       promise-events: 0.2.4
       typestub-ipfs-only-hash: 4.0.0(encoding@0.1.13)
-      viem: 2.16.2(bufferutil@4.0.8)(typescript@5.5.2)(utf-8-validate@5.0.10)(zod@3.23.8)
+      viem: 2.9.32(bufferutil@4.0.8)(typescript@5.5.2)(utf-8-validate@5.0.10)(zod@3.23.8)
       zod: 3.23.8
     transitivePeerDependencies:
       - bufferutil
@@ -19624,10 +19598,10 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@usecannon/cli@2.15.3(bufferutil@4.0.8)(encoding@0.1.13)(hardhat@2.22.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@20.14.9)(typescript@5.5.2))(typescript@5.5.2)(utf-8-validate@5.0.10))(solc@0.8.25)(typescript@5.5.2)(utf-8-validate@5.0.10)':
+  '@usecannon/cli@2.15.6(bufferutil@4.0.8)(encoding@0.1.13)(hardhat@2.22.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@20.14.9)(typescript@5.5.2))(typescript@5.5.2)(utf-8-validate@5.0.10))(solc@0.8.25)(typescript@5.5.2)(utf-8-validate@5.0.10)':
     dependencies:
       '@iarna/toml': 3.0.0
-      '@usecannon/builder': 2.15.3(bufferutil@4.0.8)(encoding@0.1.13)(hardhat@2.22.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@20.14.9)(typescript@5.5.2))(typescript@5.5.2)(utf-8-validate@5.0.10))(solc@0.8.25)(typescript@5.5.2)(utf-8-validate@5.0.10)
+      '@usecannon/builder': 2.15.6(bufferutil@4.0.8)(encoding@0.1.13)(hardhat@2.22.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@20.14.9)(typescript@5.5.2))(typescript@5.5.2)(utf-8-validate@5.0.10))(solc@0.8.25)(typescript@5.5.2)(utf-8-validate@5.0.10)
       abitype: 1.0.4(typescript@5.5.2)(zod@3.23.8)
       chalk: 4.1.2
       commander: 9.5.0
@@ -19641,7 +19615,7 @@ snapshots:
       table: 6.8.2
       tildify: 3.0.0
       untildify: 4.0.0
-      viem: 2.16.2(bufferutil@4.0.8)(typescript@5.5.2)(utf-8-validate@5.0.10)(zod@3.23.8)
+      viem: 2.9.32(bufferutil@4.0.8)(typescript@5.5.2)(utf-8-validate@5.0.10)(zod@3.23.8)
       znv: 0.4.0(zod@3.23.8)
       zod: 3.23.8
     transitivePeerDependencies:
@@ -25186,10 +25160,6 @@ snapshots:
     dependencies:
       ws: 8.13.0(bufferutil@4.0.8)(utf-8-validate@6.0.4)
 
-  isows@1.0.4(ws@8.17.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)):
-    dependencies:
-      ws: 8.17.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)
-
   isstream@0.1.2: {}
 
   it-all@1.0.6: {}
@@ -30553,23 +30523,6 @@ snapshots:
       - utf-8-validate
       - zod
 
-  viem@2.16.2(bufferutil@4.0.8)(typescript@5.5.2)(utf-8-validate@5.0.10)(zod@3.23.8):
-    dependencies:
-      '@adraffy/ens-normalize': 1.10.0
-      '@noble/curves': 1.2.0
-      '@noble/hashes': 1.3.2
-      '@scure/bip32': 1.3.2
-      '@scure/bip39': 1.2.1
-      abitype: 1.0.4(typescript@5.5.2)(zod@3.23.8)
-      isows: 1.0.4(ws@8.17.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
-      ws: 8.17.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)
-    optionalDependencies:
-      typescript: 5.5.2
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
-      - zod
-
   viem@2.9.32(bufferutil@4.0.8)(typescript@5.4.5)(utf-8-validate@5.0.10)(zod@3.23.8):
     dependencies:
       '@adraffy/ens-normalize': 1.10.0
@@ -30582,6 +30535,23 @@ snapshots:
       ws: 8.13.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
     optionalDependencies:
       typescript: 5.4.5
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+      - zod
+
+  viem@2.9.32(bufferutil@4.0.8)(typescript@5.5.2)(utf-8-validate@5.0.10)(zod@3.23.8):
+    dependencies:
+      '@adraffy/ens-normalize': 1.10.0
+      '@noble/curves': 1.2.0
+      '@noble/hashes': 1.3.2
+      '@scure/bip32': 1.3.2
+      '@scure/bip39': 1.2.1
+      abitype: 1.0.0(typescript@5.5.2)(zod@3.23.8)
+      isows: 1.0.3(ws@8.13.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))
+      ws: 8.13.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
+    optionalDependencies:
+      typescript: 5.5.2
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -31969,11 +31939,6 @@ snapshots:
     optionalDependencies:
       bufferutil: 4.0.8
       utf-8-validate: 6.0.4
-
-  ws@8.17.1(bufferutil@4.0.8)(utf-8-validate@5.0.10):
-    optionalDependencies:
-      bufferutil: 4.0.8
-      utf-8-validate: 5.0.10
 
   ws@8.9.0(bufferutil@4.0.8)(utf-8-validate@5.0.10):
     optionalDependencies:
