@@ -1,0 +1,121 @@
+{
+  "address": "0xaD3FCBB05b81fC60999820d7c6211d6A005f1D31",
+  "abi": [
+    {
+      "type": "function",
+      "name": "createTraderPosition",
+      "inputs": [
+        {
+          "name": "collateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "size",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "updateTraderPosition",
+      "inputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "size",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "Transfer",
+      "inputs": [
+        {
+          "name": "from",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "to",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccountAlreadyCreated",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidParameter",
+      "inputs": [
+        {
+          "name": "parameter",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "internalType": "string"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ReentrancyGuardReentrantCall",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "TokenAlreadyMinted",
+      "inputs": [
+        {
+          "name": "id",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ZeroAddress",
+      "inputs": []
+    }
+  ],
+  "constructorArgs": [],
+  "linkedLibraries": {},
+  "deployTxnHash": "0xb43f200d4397a2b795f7c34139afbdd0b4c64f7d18b7529cf65d8e4750e8e377",
+  "sourceName": "src/contracts/Foil/FoilTradeModule.sol",
+  "contractName": "FoilTradeModule",
+  "deployedOn": "deploy.FoilTradeModule",
+  "gasUsed": 321645,
+  "gasCost": "1007520230"
+}

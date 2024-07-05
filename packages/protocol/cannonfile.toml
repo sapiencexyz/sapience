@@ -4,10 +4,10 @@ version="0.1"
 [var.settings]
 startTime = "1727740800"
 endTime = "1735689599"
-resolver = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" # Default anvil signer
 baseAssetMinPrice = "7000" # 2
 baseAssetMaxPrice = "46000" # 100
 feeRate = "10000" # 1%
+resolver = "0x0000000000000000000000000000000000000000"
 depends = []
 
 [clone.Uniswap]
@@ -34,7 +34,7 @@ args=[
   "<%= settings.endTime %>",
   "<%= imports.Uniswap.contracts.NonfungiblePositionManager.address %>",
   "<%= imports.Uniswap.contracts.Quoter.address %>",
-  "<%= imports.CollateralAsset.contracts.MintableToken.address %>",
+  "<%= imports.CollateralAsset.contracts.Token.address %>",
   "<%= settings.baseAssetMinPrice %>",
   "<%= settings.baseAssetMaxPrice %>",
   "<%= settings.feeRate %>",
@@ -65,5 +65,5 @@ contracts=[
 ]
 CREATE2="true"
 
-[deploy.FoilVault]
-artifact="FoilVault"
+# [deploy.FoilVault]
+# artifact="FoilVault"
