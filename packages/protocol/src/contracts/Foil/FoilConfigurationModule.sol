@@ -2,22 +2,21 @@
 pragma solidity >=0.8.2 <0.9.0;
 
 import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
+// TODO Reentrancy guard should be refactored as router compatible (uses local storage)
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../storage/Epoch.sol";
 import "../../storage/Account.sol";
 import "../../storage/Position.sol";
-import {ERC721Enumerable} from "../../synthetix/token/ERC721Enumerable.sol";
-
+import "../../storage/ERC721Storage.sol";
+import "../../storage/ERC721EnumerableStorage.sol";
 import "forge-std/console2.sol";
 
-contract FoilConfigurationModule is
-    ReentrancyGuard,
-    ERC721Enumerable
-{
+contract FoilConfigurationModule is ReentrancyGuard {
     using Epoch for Epoch.Data;
     using Account for Account.Data;
     using Position for Position.Data;
+    using ERC721Storage for ERC721Storage.Data;
 
     constructor(
         uint startTime,
@@ -88,10 +87,9 @@ contract FoilConfigurationModule is
     }
 
     function createTraderPosition() external {
-        uint accountId = totalSupply() + 1;
+        uint accountId = ERC721EnumerableStorage.totalSupply() + 1;
         Account.createValid(accountId);
-        _mint(msg.sender, accountId);
-
+        ERC721Storage._mint(msg.sender, accountId);
         // Create empty position
         Position.load(accountId).accountId = accountId;
     }

@@ -6,31 +6,35 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../storage/Epoch.sol";
 import "../../storage/Account.sol";
 import "../../storage/Position.sol";
-import {ERC721Enumerable} from "../../synthetix/token/ERC721Enumerable.sol";
+import "../../storage/ERC721Storage.sol";
+import "../../storage/ERC721EnumerableStorage.sol";
 
 import "forge-std/console2.sol";
 
-contract FoilTradeModule is ReentrancyGuard
-{
+contract FoilTradeModule is ReentrancyGuard {
     using Epoch for Epoch.Data;
     using Account for Account.Data;
     using Position for Position.Data;
+    using ERC721Storage for ERC721Storage.Data;
 
     function createTraderPosition(uint collateral, int size) external {
-        uint accountId = totalSupply() + 1;
+        uint accountId = ERC721EnumerableStorage.totalSupply() + 1;
         Account.createValid(accountId);
-        _mint(msg.sender, accountId);
+        ERC721Storage._mint(msg.sender, accountId);
 
         // Create empty position
         Position.load(accountId).accountId = accountId;
     }
 
-    function updateTraderPosition(uint256 tokenId, uint collateral, int size) external {
+    function updateTraderPosition(
+        uint256 tokenId,
+        uint collateral,
+        int size
+    ) external {
         return;
     }
 
-
-/*
+    /*
 
     function openLong(uint256 accountId, uint256 collateralAmount) external {
         uint tokenId = accountId;
