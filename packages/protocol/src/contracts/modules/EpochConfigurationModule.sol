@@ -5,14 +5,14 @@ import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3In
 // TODO Reentrancy guard should be refactored as router compatible (uses local storage)
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../../storage/Epoch.sol";
-import "../../storage/Account.sol";
-import "../../storage/Position.sol";
-import "../../storage/ERC721Storage.sol";
-import "../../storage/ERC721EnumerableStorage.sol";
+import "../storage/Epoch.sol";
+import "../storage/Account.sol";
+import "../storage/Position.sol";
+import "../storage/ERC721Storage.sol";
+import "../storage/ERC721EnumerableStorage.sol";
 import "forge-std/console2.sol";
 
-contract FoilConfigurationModule is ReentrancyGuard {
+contract EpochConfigurationModule is ReentrancyGuard {
     using Epoch for Epoch.Data;
     using Account for Account.Data;
     using Position for Position.Data;

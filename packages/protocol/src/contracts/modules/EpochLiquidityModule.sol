@@ -2,33 +2,107 @@
 pragma solidity >=0.8.25 <0.9.0;
 
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import {INonfungiblePositionManager} from "../../interfaces/external/INonfungiblePositionManager.sol";
+import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePositionManager.sol";
 import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import {IUniswapV3MintCallback} from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
 import {IUniswapV3SwapCallback} from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
-import {TickMath} from "../../external/univ3/TickMath.sol";
-import "../../external/VirtualToken.sol";
+import {TickMath} from "../external/univ3/TickMath.sol";
+import "../external/VirtualToken.sol";
+import "../../synthetix/interfaces/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../../storage/Epoch.sol";
-import "../../storage/Account.sol";
-import "../../storage/Position.sol";
-import {LiquidityAmounts} from "../../external/univ3/LiquidityAmounts.sol";
-import {IFoilStructs} from "../../interfaces/IFoilStructs.sol";
-import "../../storage/ERC721Storage.sol";
-import "../../storage/ERC721EnumerableStorage.sol";
+import "../storage/Epoch.sol";
+import "../storage/Account.sol";
+import "../storage/Position.sol";
+import {LiquidityAmounts} from "../external/univ3/LiquidityAmounts.sol";
+import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
+// import "../storage/ERC721Storage.sol";
+import "../storage/ERC721EnumerableStorage.sol";
 
 import "forge-std/console2.sol";
 
-contract FoilLiquidityModule is
+contract EpochLiquidityModule is
     ReentrancyGuard,
     IUniswapV3MintCallback,
-    IUniswapV3SwapCallback
+    IERC721Receiver
+    // IUniswapV3SwapCallback
 {
     using Epoch for Epoch.Data;
     using Account for Account.Data;
     using Position for Position.Data;
-    using ERC721Storage for ERC721Storage.Data;
+    // using ERC721Storage for ERC721Storage.Data;
+
+    function createLiquidityPositionTwo(
+        IFoilStructs.LiquidityPositionParams memory params
+    )
+        external
+        payable
+        returns (
+            uint256 tokenId,
+            uint128 liquidity,
+            uint256 addedAmount0,
+            uint256 addedAmount1
+        )
+    {
+        console2.log("HELLO");
+        Epoch.Data storage epoch = Epoch.load();
+        console2.log(
+            "BEFORE MINTING TOKENS",
+            params.amountTokenA,
+            params.amountTokenB
+        );
+
+        epoch.ethToken.mint(address(this), params.amountTokenA);
+        epoch.gasToken.mint(address(this), params.amountTokenB);
+
+        console2.log("AFTER MINTING TOKENS");
+
+        epoch.ethToken.approve(
+            address(epoch.uniswapPositionManager),
+            params.amountTokenA
+        );
+        epoch.gasToken.approve(
+            address(epoch.uniswapPositionManager),
+            params.amountTokenB
+        );
+
+        INonfungiblePositionManager.MintParams
+            memory mintParams = INonfungiblePositionManager.MintParams({
+                token0: address(epoch.ethToken),
+                token1: address(epoch.gasToken),
+                fee: epoch.feeRate,
+                tickLower: params.lowerTick,
+                tickUpper: params.upperTick,
+                amount0Desired: params.amountTokenA,
+                amount1Desired: params.amountTokenB,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: address(this),
+                deadline: block.timestamp
+            });
+        console2.log("BEFORE MINT");
+
+        (tokenId, liquidity, addedAmount0, addedAmount1) = epoch
+            .uniswapPositionManager
+            .mint(mintParams);
+
+        console2.log("YAY", tokenId, addedAmount0);
+
+        // refund
+    }
+
+    function onERC721Received(
+        address operator,
+        address,
+        uint256 tokenId,
+        bytes calldata
+    ) external override returns (bytes4) {
+        // get position information
+
+        console2.log("onERC721Received", tokenId);
+
+        return this.onERC721Received.selector;
+    }
 
     /*
         1. LP providers call this function to add liquidity to uniswap pool
@@ -48,9 +122,10 @@ contract FoilLiquidityModule is
             uint256 addedAmount1
         )
     {
+        console2.log("OLD FUNC");
         uint accountId = ERC721EnumerableStorage.totalSupply() + 1;
         Account.createValid(accountId);
-        ERC721Storage._mint(msg.sender, accountId);
+        // ERC721Storage._mint(msg.sender, accountId);
 
         // TODO: check collateral asset and receive collateral
 
@@ -292,65 +367,5 @@ contract FoilLiquidityModule is
 
             position.vGasAmount += amount1Owed;
         }
-    }
-
-    function uniswapV3SwapCallback(
-        int256 amount0Delta, // vwstEth 1
-        int256 amount1Delta, // vwstGas -50
-        bytes calldata data
-    ) external override {
-        (uint256 accountId, bool shouldMint) = abi.decode(
-            data,
-            (uint256, bool)
-        );
-
-        console2.log("swap callback - accountId  :", accountId);
-        console2.log("swap callback - shouldMint :", shouldMint);
-
-        console2.log("swap callback - amount0Delta  :", amount0Delta);
-        console2.log("swap callback - amount1Delta  :", amount1Delta);
-        Epoch.Data storage epoch = Epoch.load();
-        Position.Data storage position = Position.loadValid(accountId);
-
-        if (amount0Delta > 0) {
-            address token = IUniswapV3Pool(epoch.pool).token0();
-            // Check if the tokens are not swapped
-            if (token != address(epoch.ethToken)) {
-                revert Errors.InvalidVirtualToken(token);
-            }
-
-            if (shouldMint) {
-                epoch.ethToken.mint(address(this), uint(amount0Delta));
-            }
-            epoch.ethToken.transfer(address(epoch.pool), uint(amount0Delta));
-        }
-
-        if (amount1Delta > 0) {
-            address token = IUniswapV3Pool(epoch.pool).token1();
-            // Check if the tokens are not swapped
-            if (token != address(epoch.gasToken)) {
-                revert Errors.InvalidVirtualToken(token);
-            }
-
-            if (shouldMint) {
-                epoch.gasToken.mint(address(this), uint(amount1Delta));
-            }
-            epoch.gasToken.transfer(address(epoch.pool), uint(amount1Delta));
-        }
-        Position.load(accountId).updateBalance(amount0Delta, amount1Delta);
-        //     IUniswapV3Pool pool = IUniswapV3Pool(epoch.pool);
-
-        //     (address token, uint256 amountToPay) = amount0Delta > 0
-        //         ? (pool.token0(), uint256(amount0Delta))
-        //         : (pool.token1(), uint256(amount1Delta));
-
-        //     if (shouldMint) {
-        //         VirtualToken(token).mint(address(this), amountToPay);
-        //     }
-
-        //     VirtualToken(token).transfer(address(epoch.pool), amountToPay);
-
-        //     Position.load(accountId).updateBalance(amount0Delta, amount1Delta);
-        // }
     }
 }

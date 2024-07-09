@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.25 <0.9.0;
 
-import "../../interfaces/IERC721Enumerable.sol";
-import "../../storage/ERC721Storage.sol";
-import "../../storage/ERC721EnumerableStorage.sol";
+import "../interfaces/IERC721Enumerable.sol";
+import "../storage/ERC721Storage.sol";
+import "../storage/ERC721EnumerableStorage.sol";
 import "forge-std/console2.sol";
 
-contract FoilNftModule is IERC721Enumerable {
+contract EpochNftModule is IERC721Enumerable {
     constructor() {}
 
     // TODO Move to a module with just that function
@@ -101,8 +101,8 @@ contract FoilNftModule is IERC721Enumerable {
         }
 
         ERC721Storage.load().operatorApprovals[ERC2771Context._msgSender()][
-                operator
-            ] = approved;
+            operator
+        ] = approved;
 
         emit ApprovalForAll(ERC2771Context._msgSender(), operator, approved);
     }

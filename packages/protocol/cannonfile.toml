@@ -25,8 +25,8 @@ artifact = "ReentrancyGuard"
 [deploy.UniV3Abstraction]
 artifact = "UniV3Abstraction"
 
-[deploy.FoilConfigurationModule]
-artifact="FoilConfigurationModule"
+[deploy.EpochConfigurationModule]
+artifact="EpochConfigurationModule"
 libraries.ReentrancyGuard="<%= contracts.ReentrancyGuard.address %>"
 libraries.UniV3Abstraction="<%= contracts.UniV3Abstraction.address %>"
 args=[
@@ -42,28 +42,27 @@ args=[
 ]
 depends = ['var.settings', 'deploy.ReentrancyGuard', 'deploy.UniV3Abstraction']
 
-[deploy.FoilLiquidityModule]
-artifact="FoilLiquidityModule"
+[deploy.EpochLiquidityModule]
+artifact="EpochLiquidityModule"
 libraries.UniV3Abstraction="<%= contracts.UniV3Abstraction.address %>"
 
-[deploy.FoilSettlementModule]
-artifact="FoilSettlementModule"
+[deploy.EpochSettlementModule]
+artifact="EpochSettlementModule"
 
-[deploy.FoilTradeModule]
-artifact="FoilTradeModule"
+[deploy.EpochTradeModule]
+artifact="EpochTradeModule"
 
-[deploy.FoilNftModule]
-artifact="FoilNftModule"
+[deploy.EpochNftModule]
+artifact="EpochNftModule"
 
 [router.Foil]
 contracts=[
-  "FoilConfigurationModule",
-  "FoilLiquidityModule",
-  "FoilSettlementModule",
-  "FoilTradeModule",
-  "FoilNftModule",
+  "EpochConfigurationModule",
+  "EpochLiquidityModule",
+  "EpochSettlementModule",
+  "EpochTradeModule",
+  "EpochNftModule",
 ]
-CREATE2="true"
 
 # [deploy.FoilVault]
 # artifact="FoilVault"

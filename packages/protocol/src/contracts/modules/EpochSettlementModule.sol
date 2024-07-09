@@ -3,13 +3,13 @@ pragma solidity >=0.8.25 <0.9.0;
 
 import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "../../storage/Epoch.sol";
-import "../../storage/Account.sol";
-import "../../storage/Position.sol";
+import "../storage/Epoch.sol";
+import "../storage/Account.sol";
+import "../storage/Position.sol";
 
 import "forge-std/console2.sol";
 
-contract FoilSettlementModule is ReentrancyGuard {
+contract EpochSettlementModule is ReentrancyGuard {
     using Epoch for Epoch.Data;
     using Account for Account.Data;
     using Position for Position.Data;

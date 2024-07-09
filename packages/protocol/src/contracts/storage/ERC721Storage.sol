@@ -1,14 +1,14 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.8.11 <0.9.0;
-import "../synthetix/utils/AddressUtil.sol";
-import "../synthetix/utils/StringUtil.sol";
-import "../synthetix/utils/ERC2771Context.sol";
-import "../synthetix/errors/AddressError.sol";
-import "../synthetix/errors/AccessError.sol";
-import "../synthetix/errors/InitError.sol";
-import "../synthetix/errors/ParameterError.sol";
+import "../../synthetix/utils/AddressUtil.sol";
+import "../../synthetix/utils/StringUtil.sol";
+import "../../synthetix/utils/ERC2771Context.sol";
+import "../../synthetix/errors/AddressError.sol";
+import "../../synthetix/errors/AccessError.sol";
+import "../../synthetix/errors/InitError.sol";
+import "../../synthetix/errors/ParameterError.sol";
 import "../interfaces/IERC721.sol";
-import "../synthetix/interfaces/IERC721Receiver.sol";
+import "../../synthetix/interfaces/IERC721Receiver.sol";
 
 library ERC721Storage {
     bytes32 private constant _SLOT_ERC721_STORAGE =
