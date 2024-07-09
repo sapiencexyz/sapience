@@ -1,5 +1,5 @@
 {
-  "address": "0xBa651E71B39c96eC9E77195A9C801E9D07E832c2",
+  "address": "0x4382f8659832080F9f270cB081602EE1f42Ba850",
   "abi": [
     {
       "type": "function",
@@ -100,12 +100,10 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xf5653a27cd58cee526ca52dda5b4bda58a681193e56f6deb87f18b6df17dc58e",
-  "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1720537491",
-  "sourceName": "src/contracts/Foil/FoilSettlementModule.sol",
-  "contractName": "FoilSettlementModule",
-  "deployedOn": "deploy.FoilSettlementModule",
+  "deployTxnHash": "0xc01cbf2a1fd19bcd5235a1f85296afca6f70d851e626233f6c5c0d3295c16ff7",
+  "sourceName": "src/contracts/modules/EpochSettlementModule.sol",
+  "contractName": "EpochSettlementModule",
+  "deployedOn": "deploy.EpochSettlementModule",
   "gasUsed": 412504,
-  "gasCost": "1008561192"
+  "gasCost": "1008556399"
 }

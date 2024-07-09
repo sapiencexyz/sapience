@@ -1,5 +1,5 @@
 {
-  "address": "0xE6d9DEa209F417573760acBa1299F614dF60fCd2",
+  "address": "0xf118A65BE7850c4B5c3033A94755469f4BED71Db",
   "abi": [
     {
       "type": "function",
@@ -77,6 +77,101 @@
     },
     {
       "type": "function",
+      "name": "createLiquidityPositionTwo",
+      "inputs": [
+        {
+          "name": "params",
+          "type": "tuple",
+          "internalType": "struct IFoilStructs.LiquidityPositionParams",
+          "components": [
+            {
+              "name": "amountTokenA",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "amountTokenB",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "collateralAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "lowerTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "upperTick",
+              "type": "int24",
+              "internalType": "int24"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "liquidity",
+          "type": "uint128",
+          "internalType": "uint128"
+        },
+        {
+          "name": "addedAmount0",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "addedAmount1",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "onERC721Received",
+      "inputs": [
+        {
+          "name": "operator",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
       "name": "uniswapV3MintCallback",
       "inputs": [
         {
@@ -88,29 +183,6 @@
           "name": "amount1Owed",
           "type": "uint256",
           "internalType": "uint256"
-        },
-        {
-          "name": "data",
-          "type": "bytes",
-          "internalType": "bytes"
-        }
-      ],
-      "outputs": [],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
-      "name": "uniswapV3SwapCallback",
-      "inputs": [
-        {
-          "name": "amount0Delta",
-          "type": "int256",
-          "internalType": "int256"
-        },
-        {
-          "name": "amount1Delta",
-          "type": "int256",
-          "internalType": "int256"
         },
         {
           "name": "data",
@@ -161,31 +233,6 @@
       "stateMutability": "payable"
     },
     {
-      "type": "event",
-      "name": "Transfer",
-      "inputs": [
-        {
-          "name": "from",
-          "type": "address",
-          "indexed": true,
-          "internalType": "address"
-        },
-        {
-          "name": "to",
-          "type": "address",
-          "indexed": true,
-          "internalType": "address"
-        },
-        {
-          "name": "tokenId",
-          "type": "uint256",
-          "indexed": true,
-          "internalType": "uint256"
-        }
-      ],
-      "anonymous": false
-    },
-    {
       "type": "error",
       "name": "AccountAlreadyCreated",
       "inputs": []
@@ -198,22 +245,6 @@
           "name": "accountId",
           "type": "uint256",
           "internalType": "uint256"
-        }
-      ]
-    },
-    {
-      "type": "error",
-      "name": "InvalidParameter",
-      "inputs": [
-        {
-          "name": "parameter",
-          "type": "string",
-          "internalType": "string"
-        },
-        {
-          "name": "reason",
-          "type": "string",
-          "internalType": "string"
         }
       ]
     },
@@ -232,36 +263,18 @@
       "type": "error",
       "name": "ReentrancyGuardReentrantCall",
       "inputs": []
-    },
-    {
-      "type": "error",
-      "name": "TokenAlreadyMinted",
-      "inputs": [
-        {
-          "name": "id",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ]
-    },
-    {
-      "type": "error",
-      "name": "ZeroAddress",
-      "inputs": []
     }
   ],
   "constructorArgs": [],
   "linkedLibraries": {
-    "src/utils/UniV3Abstraction.sol": {
-      "UniV3Abstraction": "0x6Fb1d885749aB14aE8fB9a32559bFD49931e00fD"
+    "src/contracts/utils/UniV3Abstraction.sol": {
+      "UniV3Abstraction": "0x7bf27D9243Abc699D96FcC6C13de05334b19C0c5"
     }
   },
-  "deployTxnHash": "0xffa5ea5e946e0e3e026cca3b9ca27ca9918ae9a7562b921f5e514a101ecd88f8",
-  "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1720537497",
-  "sourceName": "src/contracts/Foil/FoilLiquidityModule.sol",
-  "contractName": "FoilLiquidityModule",
-  "deployedOn": "deploy.FoilLiquidityModule",
-  "gasUsed": 1232866,
+  "deployTxnHash": "0x9eeb74846f039a34477c468ff1540df9dc89891f3dd2ea02cd0c0cf72e90f321",
+  "sourceName": "src/contracts/modules/EpochLiquidityModule.sol",
+  "contractName": "EpochLiquidityModule",
+  "deployedOn": "deploy.EpochLiquidityModule",
+  "gasUsed": 1173400,
   "gasCost": "1010944015"
 }

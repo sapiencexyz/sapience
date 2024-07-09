@@ -143,7 +143,7 @@
       "NFTDescriptor": "0x42B24A95702b9986e82d421cC3568932790A48Ec"
     }
   },
-  "deployTxnHash": "0x810f72a07218114ae7ca7f186446030594b20ae5fbd41f0f46c7b79707e7208d",
+  "deployTxnHash": "0x943181b256ed6905352bf1f77f88411f3f12018547135720f315da60b92e1385",
   "sourceName": "contracts/NonfungibleTokenPositionDescriptor.sol",
   "contractName": "NonfungibleTokenPositionDescriptor",
   "deployedOn": "deploy.NonfungibleTokenPositionDescriptor",

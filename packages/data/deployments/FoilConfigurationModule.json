@@ -1,5 +1,5 @@
 {
-  "address": "0xB905DdD2Bb9Feb07e40c0Ffc9aDe06b8ACb4C5c8",
+  "address": "0x76B0DEe4e12dc62343E5E40e75E046343Ec3C906",
   "abi": [
     {
       "type": "constructor",
@@ -230,10 +230,12 @@
     "0x0000000000000000000000000000000000000000"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x18b38f4ebd1f57718d1f8ce73a8f23c09e5c53fa7c7d5320bb98535400f959f1",
+  "deployTxnHash": "0xd644c34219cec4ce85f9da4d7976e045a5816ab7cebb8509d7e81d373ae63065",
+  "deployTxnBlockNumber": "2",
+  "deployTimestamp": "1720537496",
   "sourceName": "src/contracts/Foil/FoilConfigurationModule.sol",
   "contractName": "FoilConfigurationModule",
   "deployedOn": "deploy.FoilConfigurationModule",
-  "gasUsed": 6575915,
-  "gasCost": "1011770224"
+  "gasUsed": 6575233,
+  "gasCost": "1011770370"
 }

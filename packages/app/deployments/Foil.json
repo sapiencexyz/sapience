@@ -1,5 +1,5 @@
 {
-  "address": "0x2f0135105ac15ba63d9cbe00cc730e013e9a41c7",
+  "address": "0x1d58e7f7d081014bfa9484372ff44a5eecc21b54",
   "abi": [
     {
       "type": "constructor",
@@ -293,6 +293,101 @@
     },
     {
       "type": "function",
+      "name": "createLiquidityPositionTwo",
+      "inputs": [
+        {
+          "name": "params",
+          "type": "tuple",
+          "internalType": "struct IFoilStructs.LiquidityPositionParams",
+          "components": [
+            {
+              "name": "amountTokenA",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "amountTokenB",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "collateralAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "lowerTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "upperTick",
+              "type": "int24",
+              "internalType": "int24"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "liquidity",
+          "type": "uint128",
+          "internalType": "uint128"
+        },
+        {
+          "name": "addedAmount0",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "addedAmount1",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "onERC721Received",
+      "inputs": [
+        {
+          "name": "operator",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
       "name": "uniswapV3MintCallback",
       "inputs": [
         {
@@ -304,29 +399,6 @@
           "name": "amount1Owed",
           "type": "uint256",
           "internalType": "uint256"
-        },
-        {
-          "name": "data",
-          "type": "bytes",
-          "internalType": "bytes"
-        }
-      ],
-      "outputs": [],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
-      "name": "uniswapV3SwapCallback",
-      "inputs": [
-        {
-          "name": "amount0Delta",
-          "type": "int256",
-          "internalType": "int256"
-        },
-        {
-          "name": "amount1Delta",
-          "type": "int256",
-          "internalType": "int256"
         },
         {
           "name": "data",
@@ -502,6 +574,29 @@
           "name": "size",
           "type": "int256",
           "internalType": "int256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "uniswapV3SwapCallback",
+      "inputs": [
+        {
+          "name": "amount0Delta",
+          "type": "int256",
+          "internalType": "int256"
+        },
+        {
+          "name": "amount1Delta",
+          "type": "int256",
+          "internalType": "int256"
+        },
+        {
+          "name": "data",
+          "type": "bytes",
+          "internalType": "bytes"
         }
       ],
       "outputs": [],
@@ -950,9 +1045,9 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0xb2dd78467e3c16c3f5830d5f78dafb59129526bef5037e56db022a58237e0b63",
+  "deployTxnHash": "0xb4a64074e5d60adeddab57c0dfee2ce22e6d3653ac4a334855e78a9e1eeb9a82",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
-  "gasUsed": 414890,
-  "gasCost": "1003869011"
+  "gasUsed": 431778,
+  "gasCost": "1003884034"
 }
