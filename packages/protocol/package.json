@@ -6,7 +6,7 @@
   "scripts": {
     "test": "",
     "dev": "cannon build --wipe --keep-alive --port 8545 --no-cors",
-    "update-abis": "cannon build --wipe && cannon inspect foil --write-deployments ../app/deployments && cannon inspect foil --write-deployments ../data/deployments"
+    "update-abis": "cannon build --wipe && cannon inspect foil --write-deployments ../app/deployments && cannon inspect foil --write-deployments ./deployments"
   },
   "devDependencies": {
     "@types/chai": "^4.3.16",

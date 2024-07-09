@@ -23,8 +23,8 @@ import "forge-std/console2.sol";
 
 contract EpochLiquidityModule is
     ReentrancyGuard,
-    IUniswapV3MintCallback,
-    IERC721Receiver
+    IERC721Receiver,
+    IUniswapV3MintCallback
     // IUniswapV3SwapCallback
 {
     using Epoch for Epoch.Data;
@@ -51,8 +51,11 @@ contract EpochLiquidityModule is
             params.amountTokenA,
             params.amountTokenB
         );
+        console2.logAddress(address(this));
+        console2.logAddress(address(epoch.ethToken));
 
         epoch.ethToken.mint(address(this), params.amountTokenA);
+        console2.log("MIDDLE");
         epoch.gasToken.mint(address(this), params.amountTokenB);
 
         console2.log("AFTER MINTING TOKENS");
@@ -86,9 +89,16 @@ contract EpochLiquidityModule is
             .uniswapPositionManager
             .mint(mintParams);
 
-        console2.log("YAY", tokenId, addedAmount0);
+        console2.log("YAY", tokenId);
+        console2.log("ADDED AMTS", addedAmount0, addedAmount1);
 
-        // refund
+        (, , address token0, address token1, , , , uint128 liq, , , , ) = epoch
+            .uniswapPositionManager
+            .positions(tokenId);
+
+        console2.log("Liquidity", liq);
+
+        // TODO: refund
     }
 
     function onERC721Received(

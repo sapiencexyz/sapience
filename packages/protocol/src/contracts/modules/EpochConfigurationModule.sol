@@ -18,7 +18,7 @@ contract EpochConfigurationModule is ReentrancyGuard {
     using Position for Position.Data;
     using ERC721Storage for ERC721Storage.Data;
 
-    constructor(
+    function createEpoch(
         uint startTime,
         uint endTime,
         address uniswapPositionManager,
@@ -28,7 +28,7 @@ contract EpochConfigurationModule is ReentrancyGuard {
         int24 baseAssetMaxPrice,
         uint24 feeRate,
         address optimisticOracleV3
-    ) {
+    ) external {
         Epoch.Data storage epoch = Epoch.createValid(
             startTime,
             endTime,

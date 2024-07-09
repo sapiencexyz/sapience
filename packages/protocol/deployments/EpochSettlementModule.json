@@ -1,0 +1,111 @@
+{
+  "address": "0xF1cF5Dd9524f60B8Cafce8ECDea61a27F65b6345",
+  "abi": [
+    {
+      "type": "function",
+      "name": "assertedFinalPrice",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "asserter",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "assertionId",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "claim",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "finalPrice",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "settle",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "submitFinalPrice",
+      "inputs": [
+        {
+          "name": "finalPrice",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "assertionId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "error",
+      "name": "ReentrancyGuardReentrantCall",
+      "inputs": []
+    }
+  ],
+  "constructorArgs": [],
+  "linkedLibraries": {},
+  "deployTxnHash": "0x75176678b1cadb76c098e143ce5bc4e4405b7426243411abff8f2eab55d3d6af",
+  "deployTxnBlockNumber": "1",
+  "deployTimestamp": "1720546269",
+  "sourceName": "src/contracts/modules/EpochSettlementModule.sol",
+  "contractName": "EpochSettlementModule",
+  "deployedOn": "deploy.EpochSettlementModule",
+  "gasUsed": 412480,
+  "gasCost": "1012229023"
+}

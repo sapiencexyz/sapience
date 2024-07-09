@@ -29,18 +29,7 @@ artifact = "UniV3Abstraction"
 artifact="EpochConfigurationModule"
 libraries.ReentrancyGuard="<%= contracts.ReentrancyGuard.address %>"
 libraries.UniV3Abstraction="<%= contracts.UniV3Abstraction.address %>"
-args=[
-  "<%= settings.startTime %>",
-  "<%= settings.endTime %>",
-  "<%= imports.Uniswap.contracts.NonfungiblePositionManager.address %>",
-  "<%= imports.Uniswap.contracts.Quoter.address %>",
-  "<%= imports.CollateralAsset.contracts.Token.address %>",
-  "<%= settings.baseAssetMinPrice %>",
-  "<%= settings.baseAssetMaxPrice %>",
-  "<%= settings.feeRate %>",
-  "<%= settings.resolver %>",
-]
-depends = ['var.settings', 'deploy.ReentrancyGuard', 'deploy.UniV3Abstraction']
+depends = ['deploy.ReentrancyGuard', 'deploy.UniV3Abstraction']
 
 [deploy.EpochLiquidityModule]
 artifact="EpochLiquidityModule"
@@ -63,6 +52,22 @@ contracts=[
   "EpochTradeModule",
   "EpochNftModule",
 ]
+
+[invoke.createEpoch]
+target="Foil"
+func="createEpoch"
+args=[
+  "<%= settings.startTime %>",
+  "<%= settings.endTime %>",
+  "<%= imports.Uniswap.contracts.NonfungiblePositionManager.address %>",
+  "<%= imports.Uniswap.contracts.Quoter.address %>",
+  "<%= imports.CollateralAsset.contracts.Token.address %>",
+  "<%= settings.baseAssetMinPrice %>",
+  "<%= settings.baseAssetMaxPrice %>",
+  "<%= settings.feeRate %>",
+  "<%= settings.resolver %>"
+]
+depends = ['var.settings', 'router.Foil']
 
 # [deploy.FoilVault]
 # artifact="FoilVault"

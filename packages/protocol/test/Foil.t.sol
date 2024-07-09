@@ -40,7 +40,7 @@ contract FoilTest is Test {
         //     46000, // base asset max price
         //     10000 // fee rate
         // );
-        foil = IFoil(foilAddress);
+        foil = IFoil(vm.getAddress("Foil"));
 
         (pool, tokenA, tokenB) = foil.getEpoch();
         // foil.createTraderPosition();
