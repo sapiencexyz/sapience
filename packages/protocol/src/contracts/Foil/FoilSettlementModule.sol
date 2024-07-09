@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.2 <0.9.0;
+pragma solidity >=0.8.25 <0.9.0;
 
 import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -9,8 +9,7 @@ import "../../storage/Position.sol";
 
 import "forge-std/console2.sol";
 
-contract FoilSettlementModule is ReentrancyGuard
-{
+contract FoilSettlementModule is ReentrancyGuard {
     using Epoch for Epoch.Data;
     using Account for Account.Data;
     using Position for Position.Data;
@@ -21,7 +20,8 @@ contract FoilSettlementModule is ReentrancyGuard
     uint256 public finalPrice;
     OptimisticOracleV3Interface optimisticOracleV3;
 
-    bytes public claim = abi.encodePacked(
+    bytes public claim =
+        abi.encodePacked(
             "...",
             " between timestamps ",
             //ClaimData.toUtf8BytesUint(startTime),
@@ -31,16 +31,24 @@ contract FoilSettlementModule is ReentrancyGuard
             //ClaimData.toUtf8BytesUint(assertedFinalPrice)
         );
 
-    function submitFinalPrice(uint finalPrice) public returns (bytes32 assertionId) {
+    function submitFinalPrice(
+        uint finalPrice
+    ) public returns (bytes32 assertionId) {
         Epoch.Data storage epoch = Epoch.load();
         require(msg.sender == asserter, "Only asserter can submit final price");
-        require(block.timestamp >= epoch.endTime, "Cannot submit before end time");
+        require(
+            block.timestamp >= epoch.endTime,
+            "Cannot submit before end time"
+        );
         assertedFinalPrice = finalPrice;
-        assertionId = optimisticOracleV3.assertTruthWithDefaults(claim, msg.sender);
+        assertionId = optimisticOracleV3.assertTruthWithDefaults(
+            claim,
+            msg.sender
+        );
     }
 
     function settle() public {
-        if(optimisticOracleV3.settleAndGetAssertionResult(assertionId)){
+        if (optimisticOracleV3.settleAndGetAssertionResult(assertionId)) {
             finalPrice = assertedFinalPrice;
         }
     }

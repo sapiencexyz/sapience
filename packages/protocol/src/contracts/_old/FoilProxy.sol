@@ -1,6 +1,6 @@
 // // contracts/FoilProxy.sol
 // // SPDX-License-Identifier: MIT
-// pragma solidity >=0.8.2 <0.9.0;
+// pragma solidity >=0.8.25 <0.9.0;
 
 // contract FoilProxy {
 //     // TODO Do it properly.... this is just some code to make it compile

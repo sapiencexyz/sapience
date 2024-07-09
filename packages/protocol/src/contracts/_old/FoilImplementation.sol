@@ -1,6 +1,6 @@
 // // contracts/FoilImplementation.sol
 // // SPDX-License-Identifier: MIT
-// pragma solidity >=0.8.2 <0.9.0;
+// pragma solidity >=0.8.25 <0.9.0;
 
 // import "./VirtualToken.sol";
 // import "./FoilNFT.sol";
