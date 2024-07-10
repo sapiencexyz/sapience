@@ -23,8 +23,8 @@ import "forge-std/console2.sol";
 
 contract EpochLiquidityModule is
     ReentrancyGuard,
-    IERC721Receiver,
-    IUniswapV3MintCallback
+    IERC721Receiver
+    // IUniswapV3MintCallback
     // IUniswapV3SwapCallback
 {
     using Epoch for Epoch.Data;
@@ -113,6 +113,50 @@ contract EpochLiquidityModule is
         console2.log("onERC721Received", tokenId);
 
         return this.onERC721Received.selector;
+    }
+
+    function collectFees(
+        uint256 tokenId
+    ) external returns (uint256 amount0, uint256 amount1) {
+        Epoch.Data storage epoch = Epoch.load();
+
+        // TODO: verify msg sender is owner of this tokenId
+
+        INonfungiblePositionManager.CollectParams
+            memory params = INonfungiblePositionManager.CollectParams({
+                tokenId: tokenId,
+                recipient: address(this),
+                amount0Max: type(uint128).max,
+                amount1Max: type(uint128).max
+            });
+
+        (amount0, amount1) = epoch.uniswapPositionManager.collect(params);
+
+        // TODO: emit event
+    }
+
+    function getPosition(
+        uint256 positionId
+    )
+        external
+        view
+        returns (
+            uint96 nonce,
+            address operator,
+            address token0,
+            address token1,
+            uint24 fee,
+            int24 tickLower,
+            int24 tickUpper,
+            uint128 liquidity,
+            uint256 feeGrowthInside0LastX128,
+            uint256 feeGrowthInside1LastX128,
+            uint128 tokensOwed0,
+            uint128 tokensOwed1
+        )
+    {
+        Epoch.Data storage epoch = Epoch.load();
+        return epoch.uniswapPositionManager.positions(positionId);
     }
 
     /*
@@ -310,75 +354,55 @@ contract EpochLiquidityModule is
         amount1 = 3;
     }
 
-    function collectFees(
-        uint256 tokenId
-    ) external returns (uint256 amount0, uint256 amount1) {
-        Epoch.Data storage epoch = Epoch.load();
-
-        // TODO: verify msg sender is owner of this tokenId
-
-        INonfungiblePositionManager.CollectParams
-            memory params = INonfungiblePositionManager.CollectParams({
-                tokenId: tokenId,
-                recipient: address(this),
-                amount0Max: type(uint128).max,
-                amount1Max: type(uint128).max
-            });
-
-        (amount0, amount1) = epoch.uniswapPositionManager.collect(params);
-
-        // TODO: emit event
-    }
-
     // --- Uniswap V3 Callbacks ---
-    function uniswapV3MintCallback(
-        uint256 amount0Owed,
-        uint256 amount1Owed,
-        bytes calldata data
-    ) external override {
-        // TODO: check sender is uniswap
-        uint256 accountId = abi.decode(data, (uint256));
+    // function uniswapV3MintCallback(
+    //     uint256 amount0Owed,
+    //     uint256 amount1Owed,
+    //     bytes calldata data
+    // ) external override {
+    //     // TODO: check sender is uniswap
+    //     uint256 accountId = abi.decode(data, (uint256));
 
-        Epoch.Data storage epoch = Epoch.load();
-        Position.Data storage position = Position.loadValid(accountId);
+    //     Epoch.Data storage epoch = Epoch.load();
+    //     Position.Data storage position = Position.loadValid(accountId);
 
-        // VirtualToken(epoch.gasToken).mint(address(this), amountTokenB);
+    //     // VirtualToken(epoch.gasToken).mint(address(this), amountTokenB);
 
-        // TransferHelper.safeApprove(
-        //     address(epoch.ethToken),
-        //     address(epoch.uniswapPositionManager),
-        //     type(uint256).max
-        // );
-        // TransferHelper.safeApprove(
-        //     address(epoch.gasToken),
-        //     address(epoch.uniswapPositionManager),
-        //     type(uint256).max
-        // );
+    //     // TransferHelper.safeApprove(
+    //     //     address(epoch.ethToken),
+    //     //     address(epoch.uniswapPositionManager),
+    //     //     type(uint256).max
+    //     // );
+    //     // TransferHelper.safeApprove(
+    //     //     address(epoch.gasToken),
+    //     //     address(epoch.uniswapPositionManager),
+    //     //     type(uint256).max
+    //     // );
 
-        if (amount0Owed > 0) {
-            address token = IUniswapV3Pool(epoch.pool).token0();
-            // Check if the tokens are not swapped
-            if (token != address(epoch.ethToken)) {
-                revert Errors.InvalidVirtualToken(token);
-            }
+    //     if (amount0Owed > 0) {
+    //         address token = IUniswapV3Pool(epoch.pool).token0();
+    //         // Check if the tokens are not swapped
+    //         if (token != address(epoch.ethToken)) {
+    //             revert Errors.InvalidVirtualToken(token);
+    //         }
 
-            epoch.ethToken.mint(address(this), amount0Owed);
-            epoch.ethToken.transfer(address(epoch.pool), amount0Owed);
+    //         epoch.ethToken.mint(address(this), amount0Owed);
+    //         epoch.ethToken.transfer(address(epoch.pool), amount0Owed);
 
-            position.vEthAmount += amount0Owed;
-        }
+    //         position.vEthAmount += amount0Owed;
+    //     }
 
-        if (amount1Owed > 0) {
-            address token = IUniswapV3Pool(epoch.pool).token1();
-            // Check if the tokens are not swapped
-            if (token != address(epoch.gasToken)) {
-                revert Errors.InvalidVirtualToken(token);
-            }
+    //     if (amount1Owed > 0) {
+    //         address token = IUniswapV3Pool(epoch.pool).token1();
+    //         // Check if the tokens are not swapped
+    //         if (token != address(epoch.gasToken)) {
+    //             revert Errors.InvalidVirtualToken(token);
+    //         }
 
-            epoch.gasToken.mint(address(this), amount1Owed);
-            epoch.gasToken.transfer(address(epoch.pool), amount1Owed);
+    //         epoch.gasToken.mint(address(this), amount1Owed);
+    //         epoch.gasToken.transfer(address(epoch.pool), amount1Owed);
 
-            position.vGasAmount += amount1Owed;
-        }
-    }
+    //         position.vGasAmount += amount1Owed;
+    //     }
+    // }
 }

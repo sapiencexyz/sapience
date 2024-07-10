@@ -100,6 +100,8 @@ contract FoilTest is Test {
         params.amountTokenA = 100 ether;
         params.amountTokenB = 100 ether;
         (uint256 positionId2, , , ) = foil.createLiquidityPositionTwo(params);
+        getAndLogPosition(positionId);
+        getAndLogPosition(positionId2);
 
         (uint256 tradedAmoun0, uint256 tradedAmount2) = foil.trade(0, 1 ether);
 
@@ -108,11 +110,46 @@ contract FoilTest is Test {
         (uint256 tokenAmount0, uint256 tokenAmount1) = foil.collectFees(
             positionId
         );
+        getAndLogPosition(positionId);
+        getAndLogPosition(positionId2);
         console2.log("FEES COLLECTED", tokenAmount0, tokenAmount1);
         (tokenAmount0, tokenAmount1) = foil.collectFees(positionId2);
         console2.log("FEES COLLECTED 2", tokenAmount0, tokenAmount1);
+        getAndLogPosition(positionId);
+        getAndLogPosition(positionId2);
     }
 
+    function getAndLogPosition(uint256 positionId) public {
+        (
+            uint96 nonce,
+            address operator,
+            address token0,
+            address token1,
+            uint24 fee,
+            int24 tickLower,
+            int24 tickUpper,
+            uint128 liquidity,
+            uint256 feeGrowthInside0LastX128,
+            uint256 feeGrowthInside1LastX128,
+            uint128 tokensOwed0,
+            uint128 tokensOwed1
+        ) = foil.getPosition(positionId);
+
+        console2.log("START POSITION", positionId);
+        console2.log("  nonce                    : ", nonce);
+        console2.log("  operator                 : ", operator);
+        console2.log("  token0                   : ", token0);
+        console2.log("  token1                   : ", token1);
+        console2.log("  fee                      : ", fee);
+        console2.log("  tickLower                : ", tickLower);
+        console2.log("  tickUpper                : ", tickUpper);
+        console2.log("  liquidity                : ", liquidity);
+        console2.log("  feeGrowthInside0LastX128 : ", feeGrowthInside0LastX128);
+        console2.log("  feeGrowthInside1LastX128 : ", feeGrowthInside1LastX128);
+        console2.log("  tokensOwed0              : ", tokensOwed0);
+        console2.log("  tokensOwed1              : ", tokensOwed1);
+        console2.log("END   POSITION", positionId);
+    }
     // function test_addLiquidityAndLongs() public {
     //     int24 tickSpacing = IUniswapV3Pool(pool).tickSpacing();
     //     // int24 lowerTick = TickMath.getTickAtSqrtRatio(
