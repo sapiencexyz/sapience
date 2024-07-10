@@ -70,6 +70,9 @@ contract EpochLiquidityModule is
             params.amountTokenB
         );
 
+        console2.log("MINT, ADDRESS");
+        console2.logAddress(address(this));
+
         INonfungiblePositionManager.MintParams
             memory mintParams = INonfungiblePositionManager.MintParams({
                 token0: address(epoch.ethToken),
@@ -313,45 +316,30 @@ contract EpochLiquidityModule is
         // }
     }
 
-    // function removeLiquidity(
-    //     uint256 accountId,
-    //     uint128 liquidity,
-    //     int24 lowerTick,
-    //     int24 upperTick
-    // ) external {
-    //     Epoch.Data storage epoch = Epoch.load();
-
-    //     (
-    //         ,
-    //         ,
-    //         uint128 amount0Received,
-    //         uint128 amount1Received
-    //     ) = UniV3Abstraction.removeLiquidity(
-    //             Account.loadValid(accountId).getAddress(),
-    //             address(epoch.pool),
-    //             lowerTick,
-    //             upperTick,
-    //             liquidity
-    //         );
-
-    //     Position.load(accountId).updateBalance(
-    //         int256(uint256(amount0Received)),
-    //         int256(uint256(amount1Received))
-    //     );
-    // }
-
     function updateLiquidityPosition(
         uint256 tokenId,
         uint256 collateral,
-        uint256 liquidityRatio
-    )
-        external
-        payable
-        returns (uint128 liquidity, uint256 amount0, uint256 amount1)
-    {
-        liquidity = 1;
-        amount0 = 2;
-        amount1 = 3;
+        uint128 liquidity
+    ) external payable returns (uint256 amount0, uint256 amount1) {
+        console2.log("UPDATELIQPOSITION");
+        Epoch.Data storage epoch = Epoch.load();
+        console2.log("removing liquidity");
+        console2.logAddress(address(this));
+
+        INonfungiblePositionManager.DecreaseLiquidityParams
+            memory decreaseParams = INonfungiblePositionManager
+                .DecreaseLiquidityParams({
+                    tokenId: tokenId,
+                    liquidity: liquidity,
+                    amount0Min: 0,
+                    amount1Min: 0,
+                    deadline: block.timestamp
+                });
+
+        (amount0, amount1) = epoch.uniswapPositionManager.decreaseLiquidity(
+            decreaseParams
+        );
+        console2.log("REMOVED", amount0, amount1);
     }
 
     // --- Uniswap V3 Callbacks ---

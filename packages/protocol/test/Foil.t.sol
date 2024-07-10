@@ -64,6 +64,15 @@ contract FoilTest is Test {
                 upperTick: 30000 // 20
             });
         foil.createLiquidityPositionTwo(params);
+        (uint256 tokenId, uint128 liquidity, , ) = foil
+            .createLiquidityPositionTwo(params);
+
+        uint128 halfLiquidity = liquidity / 2;
+        uint256 coll = 10 ether;
+
+        console2.log(tokenId, halfLiquidity);
+        foil.updateLiquidityPosition(tokenId, coll, halfLiquidity);
+
         // (uint256 tokenAmount0, uint256 tokenAmount1) = foil.getPosition(1);
         // console2.log(tokenAmount0, tokenAmount1);
         // // new account!
