@@ -62,6 +62,11 @@ contract EpochTradeModule {
             });
         uint256 amountOut = epoch.uniswapSwapRouter.exactInputSingle(params);
 
+        if (amountInA > 0) {
+            amountOutB = amountOut;
+        } else {
+            amountOutA = amountOut;
+        }
         console2.log("Worked!!!", amountOut);
     }
 
