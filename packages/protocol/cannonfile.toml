@@ -61,6 +61,7 @@ args=[
   "<%= settings.endTime %>",
   "<%= imports.Uniswap.contracts.NonfungiblePositionManager.address %>",
   "<%= imports.Uniswap.contracts.Quoter.address %>",
+  "<%= imports.Uniswap.contracts.SwapRouter.address %>",
   "<%= imports.CollateralAsset.contracts.Token.address %>",
   "<%= settings.baseAssetMinPrice %>",
   "<%= settings.baseAssetMaxPrice %>",

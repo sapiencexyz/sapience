@@ -3,7 +3,8 @@ pragma solidity >=0.8.25 <0.9.0;
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IUniswapV3SwapCallback} from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
+import {ISwapRouter} from "../interfaces/external/ISwapRouter.sol";
+// import {IUniswapV3SwapCallback} from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
 import "../storage/Epoch.sol";
 import "../storage/Account.sol";
 import "../storage/Position.sol";
@@ -12,11 +13,57 @@ import "../storage/ERC721EnumerableStorage.sol";
 
 import "forge-std/console2.sol";
 
-contract EpochTradeModule is ReentrancyGuard, IUniswapV3SwapCallback {
+contract EpochTradeModule {
     using Epoch for Epoch.Data;
     using Account for Account.Data;
     using Position for Position.Data;
     using ERC721Storage for ERC721Storage.Data;
+
+    function trade(
+        uint256 amountInA,
+        uint256 amountInB
+    ) external returns (uint256 amountOutA, uint256 amountOutB) {
+        console2.log("trade");
+        if (amountInA > 0 && amountInB > 0) {
+            revert("Only one token can be traded at a time");
+        }
+
+        Epoch.Data storage epoch = Epoch.load();
+        address tokenIn;
+        address tokenOut;
+        uint256 amountIn;
+
+        if (amountInA > 0) {
+            epoch.ethToken.mint(address(this), amountInA);
+            epoch.ethToken.approve(address(epoch.uniswapSwapRouter), amountInA);
+            tokenIn = address(epoch.ethToken);
+            tokenOut = address(epoch.gasToken);
+            amountIn = amountInA;
+        } else {
+            epoch.gasToken.mint(address(this), amountInB);
+            epoch.gasToken.approve(address(epoch.uniswapSwapRouter), amountInB);
+            tokenIn = address(epoch.gasToken);
+            tokenOut = address(epoch.ethToken);
+            amountIn = amountInB;
+        }
+
+        // Naively set amountOutMinimum to 0. In production, use an oracle or other data source to choose a safer value for amountOutMinimum.
+        // We also set the sqrtPriceLimitx96 to be 0 to ensure we swap our exact input amount.
+        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
+            .ExactInputSingleParams({
+                tokenIn: tokenIn,
+                tokenOut: tokenOut,
+                fee: epoch.feeRate,
+                recipient: address(this),
+                deadline: block.timestamp,
+                amountIn: amountIn,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            });
+        uint256 amountOut = epoch.uniswapSwapRouter.exactInputSingle(params);
+
+        console2.log("Worked!!!", amountOut);
+    }
 
     function createTraderPosition(uint collateral, int size) external {
         uint accountId = ERC721EnumerableStorage.totalSupply() + 1;
@@ -87,63 +134,63 @@ contract EpochTradeModule is ReentrancyGuard, IUniswapV3SwapCallback {
 
 */
 
-    function uniswapV3SwapCallback(
-        int256 amount0Delta, // vwstEth 1
-        int256 amount1Delta, // vwstGas -50
-        bytes calldata data
-    ) external override {
-        (uint256 accountId, bool shouldMint) = abi.decode(
-            data,
-            (uint256, bool)
-        );
+    // function uniswapV3SwapCallback(
+    //     int256 amount0Delta, // vwstEth 1
+    //     int256 amount1Delta, // vwstGas -50
+    //     bytes calldata data
+    // ) external override {
+    //     (uint256 accountId, bool shouldMint) = abi.decode(
+    //         data,
+    //         (uint256, bool)
+    //     );
 
-        console2.log("swap callback - accountId  :", accountId);
-        console2.log("swap callback - shouldMint :", shouldMint);
+    //     console2.log("swap callback - accountId  :", accountId);
+    //     console2.log("swap callback - shouldMint :", shouldMint);
 
-        console2.log("swap callback - amount0Delta  :", amount0Delta);
-        console2.log("swap callback - amount1Delta  :", amount1Delta);
-        Epoch.Data storage epoch = Epoch.load();
-        Position.Data storage position = Position.loadValid(accountId);
+    //     console2.log("swap callback - amount0Delta  :", amount0Delta);
+    //     console2.log("swap callback - amount1Delta  :", amount1Delta);
+    //     Epoch.Data storage epoch = Epoch.load();
+    //     Position.Data storage position = Position.loadValid(accountId);
 
-        if (amount0Delta > 0) {
-            address token = IUniswapV3Pool(epoch.pool).token0();
-            // Check if the tokens are not swapped
-            if (token != address(epoch.ethToken)) {
-                revert Errors.InvalidVirtualToken(token);
-            }
+    //     if (amount0Delta > 0) {
+    //         address token = IUniswapV3Pool(epoch.pool).token0();
+    //         // Check if the tokens are not swapped
+    //         if (token != address(epoch.ethToken)) {
+    //             revert Errors.InvalidVirtualToken(token);
+    //         }
 
-            if (shouldMint) {
-                epoch.ethToken.mint(address(this), uint(amount0Delta));
-            }
-            epoch.ethToken.transfer(address(epoch.pool), uint(amount0Delta));
-        }
+    //         if (shouldMint) {
+    //             epoch.ethToken.mint(address(this), uint(amount0Delta));
+    //         }
+    //         epoch.ethToken.transfer(address(epoch.pool), uint(amount0Delta));
+    //     }
 
-        if (amount1Delta > 0) {
-            address token = IUniswapV3Pool(epoch.pool).token1();
-            // Check if the tokens are not swapped
-            if (token != address(epoch.gasToken)) {
-                revert Errors.InvalidVirtualToken(token);
-            }
+    //     if (amount1Delta > 0) {
+    //         address token = IUniswapV3Pool(epoch.pool).token1();
+    //         // Check if the tokens are not swapped
+    //         if (token != address(epoch.gasToken)) {
+    //             revert Errors.InvalidVirtualToken(token);
+    //         }
 
-            if (shouldMint) {
-                epoch.gasToken.mint(address(this), uint(amount1Delta));
-            }
-            epoch.gasToken.transfer(address(epoch.pool), uint(amount1Delta));
-        }
-        Position.load(accountId).updateBalance(amount0Delta, amount1Delta);
-        //     IUniswapV3Pool pool = IUniswapV3Pool(epoch.pool);
+    //         if (shouldMint) {
+    //             epoch.gasToken.mint(address(this), uint(amount1Delta));
+    //         }
+    //         epoch.gasToken.transfer(address(epoch.pool), uint(amount1Delta));
+    //     }
+    //     Position.load(accountId).updateBalance(amount0Delta, amount1Delta);
+    //     //     IUniswapV3Pool pool = IUniswapV3Pool(epoch.pool);
 
-        //     (address token, uint256 amountToPay) = amount0Delta > 0
-        //         ? (pool.token0(), uint256(amount0Delta))
-        //         : (pool.token1(), uint256(amount1Delta));
+    //     //     (address token, uint256 amountToPay) = amount0Delta > 0
+    //     //         ? (pool.token0(), uint256(amount0Delta))
+    //     //         : (pool.token1(), uint256(amount1Delta));
 
-        //     if (shouldMint) {
-        //         VirtualToken(token).mint(address(this), amountToPay);
-        //     }
+    //     //     if (shouldMint) {
+    //     //         VirtualToken(token).mint(address(this), amountToPay);
+    //     //     }
 
-        //     VirtualToken(token).transfer(address(epoch.pool), amountToPay);
+    //     //     VirtualToken(token).transfer(address(epoch.pool), amountToPay);
 
-        //     Position.load(accountId).updateBalance(amount0Delta, amount1Delta);
-        // }
-    }
+    //     //     Position.load(accountId).updateBalance(amount0Delta, amount1Delta);
+    //     // }
+    // }
 }

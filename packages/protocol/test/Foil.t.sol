@@ -64,11 +64,8 @@ contract FoilTest is Test {
                 upperTick: 30000 // 20
             });
         foil.createLiquidityPositionTwo(params);
-
         // (uint256 tokenAmount0, uint256 tokenAmount1) = foil.getPosition(1);
-
         // console2.log(tokenAmount0, tokenAmount1);
-
         // // new account!
         // params = IFoilStructs.LiquidityPositionParams({
         //     accountId: 2,
@@ -79,9 +76,22 @@ contract FoilTest is Test {
         //     upperTick: 887200 // maxTick
         // });
         // foil.addLiquidity(params);
-
         // (uint256 tokenAmount3, uint256 tokenAmount4) = foil.getPosition(2);
         // console2.log(tokenAmount3, tokenAmount4);
+    }
+
+    function test_trade() public {
+        IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
+            .LiquidityPositionParams({
+                amountTokenA: 50 ether,
+                amountTokenB: 50 ether,
+                collateralAmount: 10 ether,
+                lowerTick: 16000, // 5
+                upperTick: 30000 // 20
+            });
+        foil.createLiquidityPositionTwo(params);
+
+        foil.trade(0, 1 ether);
     }
 
     // function test_addLiquidityAndLongs() public {

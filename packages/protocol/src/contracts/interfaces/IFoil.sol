@@ -48,6 +48,11 @@ interface IFoil {
             uint256 amount1
         );
 
+    function trade(
+        uint256 amountInA,
+        uint256 amountInB
+    ) external returns (uint256 amountOutA, uint256 amountOutB);
+
     function updateLiquidityPosition(
         uint256 tokenId,
         uint256 collateral,

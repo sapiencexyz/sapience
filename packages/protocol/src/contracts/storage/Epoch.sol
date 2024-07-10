@@ -8,6 +8,7 @@ import "../external/univ3/TickMath.sol";
 import "../external/univ3/FullMath.sol";
 import "../interfaces/external/INonfungiblePositionManager.sol";
 import "../interfaces/external/IUniswapV3Quoter.sol";
+import "../interfaces/external/ISwapRouter.sol";
 import "../external/VirtualToken.sol";
 import "./Debt.sol";
 import "./Errors.sol";
@@ -20,6 +21,7 @@ library Epoch {
         uint endTime;
         INonfungiblePositionManager uniswapPositionManager;
         IUniswapV3Quoter uniswapQuoter;
+        ISwapRouter uniswapSwapRouter;
         address collateralAsset;
         int24 baseAssetMinPriceTick;
         int24 baseAssetMaxPriceTick;
@@ -68,6 +70,7 @@ library Epoch {
         uint endTime,
         address uniswapPositionManager,
         address uniswapQuoter,
+        address uniswapSwapRouter,
         address collateralAsset,
         int24 baseAssetMinPrice,
         int24 baseAssetMaxPrice,
@@ -97,11 +100,14 @@ library Epoch {
             uniswapPositionManager
         );
         epoch.uniswapQuoter = IUniswapV3Quoter(uniswapQuoter);
+        epoch.uniswapSwapRouter = ISwapRouter(uniswapSwapRouter);
         epoch.collateralAsset = collateralAsset;
         epoch.baseAssetMinPriceTick = baseAssetMinPrice;
         epoch.baseAssetMaxPriceTick = baseAssetMaxPrice;
         epoch.feeRate = feeRate;
-        epoch.optimisticOracleV3 = OptimisticOracleV3Interface(optimisticOracleV3);
+        epoch.optimisticOracleV3 = OptimisticOracleV3Interface(
+            optimisticOracleV3
+        );
 
         VirtualToken tokenA = new VirtualToken(
             address(this),
