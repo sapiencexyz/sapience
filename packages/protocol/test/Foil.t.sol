@@ -97,6 +97,9 @@ contract FoilTest is Test {
         ) = foil.createLiquidityPositionTwo(params);
         console2.log("LIQUIDITY POSITION CREATED", positionId, liquidity);
         console2.log("ADDED LIQUIDITY", addedAmount0, addedAmount1);
+        params.amountTokenA = 100 ether;
+        params.amountTokenB = 100 ether;
+        (uint256 positionId2, , , ) = foil.createLiquidityPositionTwo(params);
 
         (uint256 tradedAmoun0, uint256 tradedAmount2) = foil.trade(0, 1 ether);
 
@@ -106,6 +109,8 @@ contract FoilTest is Test {
             positionId
         );
         console2.log("FEES COLLECTED", tokenAmount0, tokenAmount1);
+        (tokenAmount0, tokenAmount1) = foil.collectFees(positionId2);
+        console2.log("FEES COLLECTED 2", tokenAmount0, tokenAmount1);
     }
 
     // function test_addLiquidityAndLongs() public {
