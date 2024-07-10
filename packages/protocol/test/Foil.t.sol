@@ -89,9 +89,23 @@ contract FoilTest is Test {
                 lowerTick: 16000, // 5
                 upperTick: 30000 // 20
             });
-        foil.createLiquidityPositionTwo(params);
+        (
+            uint256 positionId,
+            uint128 liquidity,
+            uint256 addedAmount0,
+            uint256 addedAmount1
+        ) = foil.createLiquidityPositionTwo(params);
+        console2.log("LIQUIDITY POSITION CREATED", positionId, liquidity);
+        console2.log("ADDED LIQUIDITY", addedAmount0, addedAmount1);
 
-        foil.trade(0, 1 ether);
+        (uint256 tradedAmoun0, uint256 tradedAmount2) = foil.trade(0, 1 ether);
+
+        console2.log("TRADED", tradedAmoun0, tradedAmount2);
+
+        (uint256 tokenAmount0, uint256 tokenAmount1) = foil.collectFees(
+            positionId
+        );
+        console2.log("FEES COLLECTED", tokenAmount0, tokenAmount1);
     }
 
     // function test_addLiquidityAndLongs() public {

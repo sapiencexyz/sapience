@@ -61,4 +61,8 @@ interface IFoil {
         external
         payable
         returns (uint128 liquidity, uint256 amount0, uint256 amount1);
+
+    function collectFees(
+        uint256 tokenId
+    ) external returns (uint256 amount0, uint256 amount1);
 }

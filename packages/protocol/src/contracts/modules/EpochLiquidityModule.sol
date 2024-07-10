@@ -30,6 +30,7 @@ contract EpochLiquidityModule is
     using Epoch for Epoch.Data;
     using Account for Account.Data;
     using Position for Position.Data;
+
     // using ERC721Storage for ERC721Storage.Data;
 
     function createLiquidityPositionTwo(
@@ -309,7 +310,9 @@ contract EpochLiquidityModule is
         amount1 = 3;
     }
 
-    function collectFees(uint256 tokenId) external {
+    function collectFees(
+        uint256 tokenId
+    ) external returns (uint256 amount0, uint256 amount1) {
         Epoch.Data storage epoch = Epoch.load();
 
         // TODO: verify msg sender is owner of this tokenId
@@ -317,12 +320,12 @@ contract EpochLiquidityModule is
         INonfungiblePositionManager.CollectParams
             memory params = INonfungiblePositionManager.CollectParams({
                 tokenId: tokenId,
-                recipient: msg.sender,
+                recipient: address(this),
                 amount0Max: type(uint128).max,
                 amount1Max: type(uint128).max
             });
 
-        epoch.uniswapPositionManager.collect(params);
+        (amount0, amount1) = epoch.uniswapPositionManager.collect(params);
 
         // TODO: emit event
     }
