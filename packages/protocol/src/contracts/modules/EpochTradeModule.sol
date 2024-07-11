@@ -10,6 +10,7 @@ import "../storage/Account.sol";
 import "../storage/Position.sol";
 import "../storage/ERC721Storage.sol";
 import "../storage/ERC721EnumerableStorage.sol";
+import "../../synthetix/utils/DecimalMath.sol";
 
 import "forge-std/console2.sol";
 
@@ -18,33 +19,71 @@ contract EpochTradeModule {
     using Account for Account.Data;
     using Position for Position.Data;
     using ERC721Storage for ERC721Storage.Data;
+    using DecimalMath for uint256;
 
-    function trade(
-        uint256 amountInA,
-        uint256 amountInB
-    ) external returns (uint256 amountOutA, uint256 amountOutB) {
-        console2.log("trade");
-        if (amountInA > 0 && amountInB > 0) {
+    function swapTokens(
+        uint256 amountInVEth,
+        uint256 amountInVGas
+    ) external returns (uint256 amountOutVEth, uint256 amountOutVGas) {
+        if (amountInVEth > 0 && amountInVGas > 0) {
             revert("Only one token can be traded at a time");
         }
 
         Epoch.Data storage epoch = Epoch.load();
+        epoch.validateSettlmentState();
+
+        if (epoch.settled) {
+            return _afterSettlementSwap(epoch, amountInVEth, amountInVGas);
+        }
+
+        return _preSettlementSwap(epoch, amountInVEth, amountInVGas);
+    }
+
+    function _afterSettlementSwap(
+        Epoch.Data storage epoch,
+        uint256 amountInVEth,
+        uint256 amountInVGas
+    ) internal returns (uint256 amountOutVEth, uint256 amountOutVGas) {
+        console2.log("_afterSettlementSwap");
+
+        if (amountInVEth > 0) {
+            amountOutVEth = 0;
+            amountOutVGas = amountInVEth.divDecimal(epoch.settlementPrice);
+        } else {
+            amountOutVEth = amountInVGas.mulDecimal(epoch.settlementPrice);
+            amountOutVGas = 0;
+        }
+    }
+
+    function _preSettlementSwap(
+        Epoch.Data storage epoch,
+        uint256 amountInVEth,
+        uint256 amountInVGas
+    ) internal returns (uint256 amountOutVEth, uint256 amountOutVGas) {
+        console2.log("_preSettlementSwap");
+
         address tokenIn;
         address tokenOut;
         uint256 amountIn;
 
-        if (amountInA > 0) {
-            epoch.ethToken.mint(address(this), amountInA);
-            epoch.ethToken.approve(address(epoch.uniswapSwapRouter), amountInA);
+        if (amountInVEth > 0) {
+            epoch.ethToken.mint(address(this), amountInVEth);
+            epoch.ethToken.approve(
+                address(epoch.uniswapSwapRouter),
+                amountInVEth
+            );
             tokenIn = address(epoch.ethToken);
             tokenOut = address(epoch.gasToken);
-            amountIn = amountInA;
+            amountIn = amountInVEth;
         } else {
-            epoch.gasToken.mint(address(this), amountInB);
-            epoch.gasToken.approve(address(epoch.uniswapSwapRouter), amountInB);
+            epoch.gasToken.mint(address(this), amountInVGas);
+            epoch.gasToken.approve(
+                address(epoch.uniswapSwapRouter),
+                amountInVGas
+            );
             tokenIn = address(epoch.gasToken);
             tokenOut = address(epoch.ethToken);
-            amountIn = amountInB;
+            amountIn = amountInVGas;
         }
 
         // Naively set amountOutMinimum to 0. In production, use an oracle or other data source to choose a safer value for amountOutMinimum.
@@ -62,12 +101,11 @@ contract EpochTradeModule {
             });
         uint256 amountOut = epoch.uniswapSwapRouter.exactInputSingle(params);
 
-        if (amountInA > 0) {
-            amountOutB = amountOut;
+        if (amountInVEth > 0) {
+            amountOutVGas = amountOut;
         } else {
-            amountOutA = amountOut;
+            amountOutVEth = amountOut;
         }
-        console2.log("Worked!!!", amountOut);
     }
 
     function createTraderPosition(uint collateral, int size) external {

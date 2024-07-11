@@ -1,5 +1,5 @@
 {
-  "address": "0xf118A65BE7850c4B5c3033A94755469f4BED71Db",
+  "address": "0xD438aa256D0D421C3A54B638193CA384B9Bb09F5",
   "abi": [
     {
       "type": "function",
@@ -11,7 +11,18 @@
           "internalType": "uint256"
         }
       ],
-      "outputs": [],
+      "outputs": [
+        {
+          "name": "amount0",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "amount1",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
       "stateMutability": "nonpayable"
     },
     {
@@ -138,6 +149,80 @@
     },
     {
       "type": "function",
+      "name": "getPosition",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "nonce",
+          "type": "uint96",
+          "internalType": "uint96"
+        },
+        {
+          "name": "operator",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "token0",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "token1",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "fee",
+          "type": "uint24",
+          "internalType": "uint24"
+        },
+        {
+          "name": "tickLower",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "tickUpper",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "liquidity",
+          "type": "uint128",
+          "internalType": "uint128"
+        },
+        {
+          "name": "feeGrowthInside0LastX128",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "feeGrowthInside1LastX128",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "tokensOwed0",
+          "type": "uint128",
+          "internalType": "uint128"
+        },
+        {
+          "name": "tokensOwed1",
+          "type": "uint128",
+          "internalType": "uint128"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "onERC721Received",
       "inputs": [
         {
@@ -172,29 +257,6 @@
     },
     {
       "type": "function",
-      "name": "uniswapV3MintCallback",
-      "inputs": [
-        {
-          "name": "amount0Owed",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "amount1Owed",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "data",
-          "type": "bytes",
-          "internalType": "bytes"
-        }
-      ],
-      "outputs": [],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
       "name": "updateLiquidityPosition",
       "inputs": [
         {
@@ -208,17 +270,12 @@
           "internalType": "uint256"
         },
         {
-          "name": "liquidityRatio",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "outputs": [
-        {
           "name": "liquidity",
           "type": "uint128",
           "internalType": "uint128"
-        },
+        }
+      ],
+      "outputs": [
         {
           "name": "amount0",
           "type": "uint256",
@@ -250,17 +307,6 @@
     },
     {
       "type": "error",
-      "name": "InvalidVirtualToken",
-      "inputs": [
-        {
-          "name": "token",
-          "type": "address",
-          "internalType": "address"
-        }
-      ]
-    },
-    {
-      "type": "error",
       "name": "ReentrancyGuardReentrantCall",
       "inputs": []
     }
@@ -268,15 +314,15 @@
   "constructorArgs": [],
   "linkedLibraries": {
     "src/contracts/utils/UniV3Abstraction.sol": {
-      "UniV3Abstraction": "0x7bf27D9243Abc699D96FcC6C13de05334b19C0c5"
+      "UniV3Abstraction": "0x237FD7fA0CE0EaC460b52ec145740b4fae74d8De"
     }
   },
-  "deployTxnHash": "0x9eeb74846f039a34477c468ff1540df9dc89891f3dd2ea02cd0c0cf72e90f321",
-  "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1720543387",
+  "deployTxnHash": "0x253da4eb6e967c6e4e318de19e12d9a1cd103091f4e906c9d16d235cdbf0972f",
+  "deployTxnBlockNumber": "4",
+  "deployTimestamp": "1720718333",
   "sourceName": "src/contracts/modules/EpochLiquidityModule.sol",
   "contractName": "EpochLiquidityModule",
   "deployedOn": "deploy.EpochLiquidityModule",
-  "gasUsed": 1173400,
-  "gasCost": "1010944015"
+  "gasUsed": 1256436,
+  "gasCost": "1015622291"
 }

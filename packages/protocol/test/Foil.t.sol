@@ -112,7 +112,10 @@ contract FoilTest is Test {
         getAndLogPosition(positionId);
         getAndLogPosition(positionId2);
 
-        (uint256 tradedAmoun0, uint256 tradedAmount2) = foil.trade(0, 1 ether);
+        (uint256 tradedAmoun0, uint256 tradedAmount2) = foil.swapTokens(
+            0,
+            1 ether
+        );
 
         console2.log("TRADED", tradedAmoun0, tradedAmount2);
 
@@ -126,6 +129,14 @@ contract FoilTest is Test {
         console2.log("FEES COLLECTED 2", tokenAmount0, tokenAmount1);
         getAndLogPosition(positionId);
         getAndLogPosition(positionId2);
+
+        foil.fakeSettle(5 ether);
+        (tradedAmoun0, tradedAmount2) = foil.swapTokens(0, 1 ether);
+
+        console2.log("TRADED after settle 1", tradedAmoun0, tradedAmount2);
+        (tradedAmoun0, tradedAmount2) = foil.swapTokens(1 ether, 0);
+
+        console2.log("TRADED after settle 2", tradedAmoun0, tradedAmount2);
     }
 
     function getAndLogPosition(uint256 positionId) public {

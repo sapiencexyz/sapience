@@ -22,15 +22,15 @@ library Epoch {
         INonfungiblePositionManager uniswapPositionManager;
         IUniswapV3Quoter uniswapQuoter;
         ISwapRouter uniswapSwapRouter;
-        address collateralAsset;
-        int24 baseAssetMinPriceTick;
-        int24 baseAssetMaxPriceTick;
         VirtualToken ethToken;
         VirtualToken gasToken;
         IUniswapV3Pool pool;
-        uint256 settlementPrice;
         uint24 feeRate;
+        int24 baseAssetMinPriceTick;
+        int24 baseAssetMaxPriceTick;
+        address collateralAsset;
         bool settled;
+        uint256 settlementPrice;
         mapping(uint256 => Debt.Data) lpDebtPositions;
         OptimisticOracleV3Interface optimisticOracleV3;
     }
@@ -173,6 +173,20 @@ library Epoch {
     function tickToPrice(int24 tick) internal pure returns (uint256) {
         uint160 sqrtPriceX96 = TickMath.getSqrtRatioAtTick(tick);
         return (uint256(sqrtPriceX96) * uint256(sqrtPriceX96) * (1e18)) >> 96;
+    }
+
+    function validateSettlmentState(Data storage self) internal {
+        if (block.timestamp < self.startTime) {
+            console2.log("IT SHOULD REVERT WITH EPOCH NOT STARTED");
+            return;
+            // revert Errors.EpochNotStarted(self.startTime);
+        }
+
+        if (block.timestamp >= self.endTime && !self.settled) {
+            console2.log("IT SHOULD REVERT WITH EPOCH NOT SETTLED");
+            return;
+            // revert Errors.EpochNotSettled(self.endTime);
+        }
     }
 
     // function settle(Data storage self) internal {

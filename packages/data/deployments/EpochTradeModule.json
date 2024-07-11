@@ -1,5 +1,5 @@
 {
-  "address": "0x549d4e9a4Ac2525435054699781e76B70FaE414F",
+  "address": "0xABa87707acD78D2d8aCd18207Ab64821488ee921",
   "abi": [
     {
       "type": "function",
@@ -21,25 +21,31 @@
     },
     {
       "type": "function",
-      "name": "uniswapV3SwapCallback",
+      "name": "swapTokens",
       "inputs": [
         {
-          "name": "amount0Delta",
-          "type": "int256",
-          "internalType": "int256"
+          "name": "amountInVEth",
+          "type": "uint256",
+          "internalType": "uint256"
         },
         {
-          "name": "amount1Delta",
-          "type": "int256",
-          "internalType": "int256"
-        },
-        {
-          "name": "data",
-          "type": "bytes",
-          "internalType": "bytes"
+          "name": "amountInVGas",
+          "type": "uint256",
+          "internalType": "uint256"
         }
       ],
-      "outputs": [],
+      "outputs": [
+        {
+          "name": "amountOutVEth",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "amountOutVGas",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
       "stateMutability": "nonpayable"
     },
     {
@@ -97,17 +103,6 @@
     },
     {
       "type": "error",
-      "name": "InvalidAccountId",
-      "inputs": [
-        {
-          "name": "accountId",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ]
-    },
-    {
-      "type": "error",
       "name": "InvalidParameter",
       "inputs": [
         {
@@ -121,22 +116,6 @@
           "internalType": "string"
         }
       ]
-    },
-    {
-      "type": "error",
-      "name": "InvalidVirtualToken",
-      "inputs": [
-        {
-          "name": "token",
-          "type": "address",
-          "internalType": "address"
-        }
-      ]
-    },
-    {
-      "type": "error",
-      "name": "ReentrancyGuardReentrantCall",
-      "inputs": []
     },
     {
       "type": "error",
@@ -157,12 +136,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x4809bc69414c6be2724f8b546dc16b966ab917817fa48794eb2b38915b497be5",
+  "deployTxnHash": "0x4711af84aab43c5e89d4a9cf0ca4afb860ef2ea6bff1fd0bcb82542c3fd3bdd5",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1720543381",
+  "deployTimestamp": "1720718311",
   "sourceName": "src/contracts/modules/EpochTradeModule.sol",
   "contractName": "EpochTradeModule",
   "deployedOn": "deploy.EpochTradeModule",
-  "gasUsed": 786429,
-  "gasCost": "1007516263"
+  "gasUsed": 712871,
+  "gasCost": "1010739136"
 }

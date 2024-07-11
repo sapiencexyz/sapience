@@ -52,4 +52,11 @@ contract EpochSettlementModule is ReentrancyGuard {
             finalPrice = assertedFinalPrice;
         }
     }
+
+    function fakeSettle(uint256 settlementPrice) external {
+        Epoch.Data storage epoch = Epoch.load();
+
+        epoch.settled = true;
+        epoch.settlementPrice = settlementPrice;
+    }
 }

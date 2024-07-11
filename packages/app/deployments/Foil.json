@@ -1,5 +1,5 @@
 {
-  "address": "0x0804183eebbf025bfee049c29288e0b24ac5db74",
+  "address": "0xd45fa6ec0266b1bbf9e3b64220d402d742253bd7",
   "abi": [
     {
       "type": "function",
@@ -22,6 +22,11 @@
         },
         {
           "name": "uniswapQuoter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapSwapRouter",
           "type": "address",
           "internalType": "address"
         },
@@ -229,7 +234,18 @@
           "internalType": "uint256"
         }
       ],
-      "outputs": [],
+      "outputs": [
+        {
+          "name": "amount0",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "amount1",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
       "stateMutability": "nonpayable"
     },
     {
@@ -356,6 +372,80 @@
     },
     {
       "type": "function",
+      "name": "getPosition",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "nonce",
+          "type": "uint96",
+          "internalType": "uint96"
+        },
+        {
+          "name": "operator",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "token0",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "token1",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "fee",
+          "type": "uint24",
+          "internalType": "uint24"
+        },
+        {
+          "name": "tickLower",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "tickUpper",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "liquidity",
+          "type": "uint128",
+          "internalType": "uint128"
+        },
+        {
+          "name": "feeGrowthInside0LastX128",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "feeGrowthInside1LastX128",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "tokensOwed0",
+          "type": "uint128",
+          "internalType": "uint128"
+        },
+        {
+          "name": "tokensOwed1",
+          "type": "uint128",
+          "internalType": "uint128"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "onERC721Received",
       "inputs": [
         {
@@ -386,29 +476,6 @@
           "internalType": "bytes4"
         }
       ],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
-      "name": "uniswapV3MintCallback",
-      "inputs": [
-        {
-          "name": "amount0Owed",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "amount1Owed",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "data",
-          "type": "bytes",
-          "internalType": "bytes"
-        }
-      ],
-      "outputs": [],
       "stateMutability": "nonpayable"
     },
     {
@@ -453,17 +520,6 @@
           "name": "accountId",
           "type": "uint256",
           "internalType": "uint256"
-        }
-      ]
-    },
-    {
-      "type": "error",
-      "name": "InvalidVirtualToken",
-      "inputs": [
-        {
-          "name": "token",
-          "type": "address",
-          "internalType": "address"
         }
       ]
     },
@@ -518,6 +574,19 @@
         }
       ],
       "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "fakeSettle",
+      "inputs": [
+        {
+          "name": "settlementPrice",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
     },
     {
       "type": "function",
@@ -578,25 +647,31 @@
     },
     {
       "type": "function",
-      "name": "uniswapV3SwapCallback",
+      "name": "swapTokens",
       "inputs": [
         {
-          "name": "amount0Delta",
-          "type": "int256",
-          "internalType": "int256"
+          "name": "amountInVEth",
+          "type": "uint256",
+          "internalType": "uint256"
         },
         {
-          "name": "amount1Delta",
-          "type": "int256",
-          "internalType": "int256"
-        },
-        {
-          "name": "data",
-          "type": "bytes",
-          "internalType": "bytes"
+          "name": "amountInVGas",
+          "type": "uint256",
+          "internalType": "uint256"
         }
       ],
-      "outputs": [],
+      "outputs": [
+        {
+          "name": "amountOutVEth",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "amountOutVGas",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
       "stateMutability": "nonpayable"
     },
     {
@@ -1042,11 +1117,11 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0x29e1ed5e197543076b51cda0664746ca248d390e3ea07ca61d152d554e4a07d8",
+  "deployTxnHash": "0x90265ee03c63851b6bc30e67ce7c0aebcad90407fab931f2b2715d0cd015dd10",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1720650663",
+  "deployTimestamp": "1720718308",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
-  "gasUsed": 440219,
-  "gasCost": "1005555929"
+  "gasUsed": 448651,
+  "gasCost": "1005545597"
 }

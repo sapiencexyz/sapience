@@ -48,10 +48,10 @@ interface IFoil {
             uint256 amount1
         );
 
-    function trade(
-        uint256 amountInA,
-        uint256 amountInB
-    ) external returns (uint256 amountOutA, uint256 amountOutB);
+    function swapTokens(
+        uint256 amountInVEth,
+        uint256 amountInVGas
+    ) external returns (uint256 amountOutVEth, uint256 amountOutVGas);
 
     function updateLiquidityPosition(
         uint256 tokenId,
@@ -82,4 +82,6 @@ interface IFoil {
             uint128 tokensOwed0,
             uint128 tokensOwed1
         );
+
+    function fakeSettle(uint256 settlementPrice) external;
 }

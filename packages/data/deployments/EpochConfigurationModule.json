@@ -1,8 +1,9 @@
 {
-  "address": "0x133A32A248C6d37C4039e798fD84F624746f4E9f",
+  "address": "0x5e5FAF60D9C21eeA4df9BF228587cd1D4A3ecF85",
   "abi": [
     {
-      "type": "constructor",
+      "type": "function",
+      "name": "createEpoch",
       "inputs": [
         {
           "name": "startTime",
@@ -21,6 +22,11 @@
         },
         {
           "name": "uniswapQuoter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapSwapRouter",
           "type": "address",
           "internalType": "address"
         },
@@ -50,6 +56,7 @@
           "internalType": "address"
         }
       ],
+      "outputs": [],
       "stateMutability": "nonpayable"
     },
     {
@@ -218,24 +225,14 @@
       "inputs": []
     }
   ],
-  "constructorArgs": [
-    "1727740800",
-    "1735689599",
-    "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
-    "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6",
-    "0x988dbbE1eF9543fceDFfAB2501Ca2EA626f7A848",
-    "7000",
-    "46000",
-    "10000",
-    "0x0000000000000000000000000000000000000000"
-  ],
+  "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xe968c37d5b0f0fb042c9f6e5a02e2500aeba6bf282272f21154adb923edd2cf0",
-  "deployTxnBlockNumber": "2",
-  "deployTimestamp": "1720543386",
+  "deployTxnHash": "0xd8891dc3d1023942b310336f50f881a072cbc2af862394d86976a841fc26cbf9",
+  "deployTxnBlockNumber": "3",
+  "deployTimestamp": "1720718313",
   "sourceName": "src/contracts/modules/EpochConfigurationModule.sol",
   "contractName": "EpochConfigurationModule",
   "deployedOn": "deploy.EpochConfigurationModule",
-  "gasUsed": 6575233,
-  "gasCost": "1011770370"
+  "gasUsed": 1700239,
+  "gasCost": "1017569547"
 }

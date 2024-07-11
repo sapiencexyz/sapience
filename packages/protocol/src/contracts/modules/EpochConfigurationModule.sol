@@ -30,7 +30,7 @@ contract EpochConfigurationModule is ReentrancyGuard {
         uint24 feeRate,
         address optimisticOracleV3
     ) external {
-        Epoch.Data storage epoch = Epoch.createValid(
+        Epoch.createValid(
             startTime,
             endTime,
             uniswapPositionManager,
