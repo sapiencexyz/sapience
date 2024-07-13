@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.25 <0.9.0;
 
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePositionManager.sol";
-import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
-import {IUniswapV3MintCallback} from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
-import {IUniswapV3SwapCallback} from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
-import {TickMath} from "../external/univ3/TickMath.sol";
-import "../external/VirtualToken.sol";
+// import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+// import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePositionManager.sol";
+// import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
+// import {IUniswapV3MintCallback} from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
+// import {IUniswapV3SwapCallback} from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
+// import {TickMath} from "../external/univ3/TickMath.sol";
+// import "../external/VirtualToken.sol";
 import "../../synthetix/interfaces/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../storage/Epoch.sol";
+// import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+// import "../storage/Epoch.sol";
 import "../storage/Account.sol";
-import "../storage/Position.sol";
-import {LiquidityAmounts} from "../external/univ3/LiquidityAmounts.sol";
+// import "../storage/Position.sol";
+// import {LiquidityAmounts} from "../external/univ3/LiquidityAmounts.sol";
 import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
 // import "../storage/ERC721Storage.sol";
 import "../storage/ERC721EnumerableStorage.sol";
@@ -27,9 +27,9 @@ contract EpochLiquidityModule is
     // IUniswapV3MintCallback
     // IUniswapV3SwapCallback
 {
-    using Epoch for Epoch.Data;
-    using Account for Account.Data;
-    using Position for Position.Data;
+    // using Epoch for Epoch.Data;
+    // using Account for Account.Data;
+    // using Position for Position.Data;
 
     // using ERC721Storage for ERC721Storage.Data;
 
