@@ -149,7 +149,6 @@ library Epoch {
         epoch.ethToken.mint(address(this), type(uint256).max);
         epoch.gasToken.mint(address(this), type(uint256).max);
 
-        console2.log("Minted ");
         // approve to uniswapPositionManager
         epoch.ethToken.approve(
             address(epoch.uniswapPositionManager),
@@ -160,7 +159,6 @@ library Epoch {
             type(uint256).max
         );
 
-        console2.log("Approved to uniswapPositionManager ");
         // approve to uniswapSwapRouter
         epoch.ethToken.approve(
             address(epoch.uniswapSwapRouter),
@@ -170,7 +168,6 @@ library Epoch {
             address(epoch.uniswapSwapRouter),
             type(uint256).max
         );
-        console2.log("Approved to uniswapSwapRouter ");
     }
 
     function loadValid() internal view returns (Data storage epoch) {

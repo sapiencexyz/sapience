@@ -125,6 +125,44 @@ contract EpochTradeModule {
         return;
     }
 
+    function openLong() external {
+        // check if epoch is not settled
+        // identify the account
+        // with the collateral get vEth (Loan)
+        // with the vEth get vGas (Swap)
+    }
+
+    function reduceLong() external {
+        // identify the account
+        // with the vGas get vEth (Swap)
+        // with the vEth reduce the debt (Loan)
+    }
+
+    function openShort() external {
+        // check if epoch is not settled
+        // identify the account
+        // with the collateral get vGas (Loan)
+        // with the vGas get vEth (Swap)
+    }
+
+    function reduceShort() external {
+        // identify the account
+        // with vEth get vGas (Swap)
+        // with the vGas reduce the debt (Loan)
+    }
+
+    function payDebtAndBurnVtokens() external {
+        // check if epoch is settled
+        // identify the account
+        // use available vGas to pay the debt
+        // if still vGas debt and enough available vEth => use vEth, swap to vGas to pay the rest of debt
+        // if still vGas debt or vEth debt and not enough vEth => use collateral to get vEth
+        // swap vEth to vGas to pay the rest of vGas debt
+        // swap the rest of vGas to vEth
+        // pay the rest of vEth debt
+        // transform the rest of vEth to Collateral
+    }
+
     /*
 
     function openLong(uint256 accountId, uint256 collateralAmount) external {
