@@ -67,20 +67,20 @@ contract EpochTradeModule {
         uint256 amountIn;
 
         if (amountInVEth > 0) {
-            epoch.ethToken.mint(address(this), amountInVEth);
-            epoch.ethToken.approve(
-                address(epoch.uniswapSwapRouter),
-                amountInVEth
-            );
+            // epoch.ethToken.mint(address(this), amountInVEth);
+            // epoch.ethToken.approve(
+            //     address(epoch.uniswapSwapRouter),
+            //     amountInVEth
+            // );
             tokenIn = address(epoch.ethToken);
             tokenOut = address(epoch.gasToken);
             amountIn = amountInVEth;
         } else {
-            epoch.gasToken.mint(address(this), amountInVGas);
-            epoch.gasToken.approve(
-                address(epoch.uniswapSwapRouter),
-                amountInVGas
-            );
+            // epoch.gasToken.mint(address(this), amountInVGas);
+            // epoch.gasToken.approve(
+            //     address(epoch.uniswapSwapRouter),
+            //     amountInVGas
+            // );
             tokenIn = address(epoch.gasToken);
             tokenOut = address(epoch.ethToken);
             amountIn = amountInVGas;

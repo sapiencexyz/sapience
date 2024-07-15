@@ -142,7 +142,35 @@ library Epoch {
             epoch.pool
         ).slot0();
         int24 spacing = IUniswapV3Pool(epoch.pool).tickSpacing();
+
         console2.log("Spacing : ", spacing);
+
+        // mint
+        epoch.ethToken.mint(address(this), type(uint256).max);
+        epoch.gasToken.mint(address(this), type(uint256).max);
+
+        console2.log("Minted ");
+        // approve to uniswapPositionManager
+        epoch.ethToken.approve(
+            address(epoch.uniswapPositionManager),
+            type(uint256).max
+        );
+        epoch.gasToken.approve(
+            address(epoch.uniswapPositionManager),
+            type(uint256).max
+        );
+
+        console2.log("Approved to uniswapPositionManager ");
+        // approve to uniswapSwapRouter
+        epoch.ethToken.approve(
+            address(epoch.uniswapSwapRouter),
+            type(uint256).max
+        );
+        epoch.gasToken.approve(
+            address(epoch.uniswapSwapRouter),
+            type(uint256).max
+        );
+        console2.log("Approved to uniswapSwapRouter ");
     }
 
     function loadValid() internal view returns (Data storage epoch) {

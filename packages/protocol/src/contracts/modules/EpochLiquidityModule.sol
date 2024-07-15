@@ -55,10 +55,6 @@ contract EpochLiquidityModule is
         console2.logAddress(address(this));
         console2.logAddress(address(epoch.ethToken));
 
-        epoch.ethToken.mint(address(this), params.amountTokenA);
-        console2.log("MIDDLE");
-        epoch.gasToken.mint(address(this), params.amountTokenB);
-
         console2.log("AFTER MINTING TOKENS");
 
         epoch.ethToken.approve(
