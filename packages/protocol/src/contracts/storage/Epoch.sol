@@ -214,6 +214,26 @@ library Epoch {
         }
     }
 
+    function validateNotSettled(Data storage self) internal {
+        if (block.timestamp < self.startTime) {
+            console2.log("IT SHOULD REVERT WITH EPOCH NOT STARTED");
+            return;
+            // revert Errors.EpochNotStarted(self.startTime);
+        }
+
+        if (block.timestamp >= self.endTime && !self.settled) {
+            console2.log("IT SHOULD REVERT WITH EPOCH NOT SETTLED");
+            return;
+            // revert Errors.EpochNotSettled(self.endTime);
+        }
+
+        if (self.settled) {
+            console2.log("IT SHOULD REVERT WITH EPOCH SETTLED");
+            return;
+            // revert Errors.EpochNotSettled(self.endTime);
+        }
+    }
+
     // function settle(Data storage self) internal {
     //     if (self.settled) {
     //         revert Errors.EpochAlreadySettled(self.id);

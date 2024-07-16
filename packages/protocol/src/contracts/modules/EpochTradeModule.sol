@@ -67,20 +67,10 @@ contract EpochTradeModule {
         uint256 amountIn;
 
         if (amountInVEth > 0) {
-            // epoch.ethToken.mint(address(this), amountInVEth);
-            // epoch.ethToken.approve(
-            //     address(epoch.uniswapSwapRouter),
-            //     amountInVEth
-            // );
             tokenIn = address(epoch.ethToken);
             tokenOut = address(epoch.gasToken);
             amountIn = amountInVEth;
         } else {
-            // epoch.gasToken.mint(address(this), amountInVGas);
-            // epoch.gasToken.approve(
-            //     address(epoch.uniswapSwapRouter),
-            //     amountInVGas
-            // );
             tokenIn = address(epoch.gasToken);
             tokenOut = address(epoch.ethToken);
             amountIn = amountInVGas;
@@ -125,30 +115,168 @@ contract EpochTradeModule {
         return;
     }
 
-    function openLong() external {
+    function createTraderPositionLeo() external {
+        uint accountId = ERC721EnumerableStorage.totalSupply() + 1;
+        Account.createValid(accountId);
+        ERC721Storage._mint(msg.sender, accountId);
+
+        // Create empty position
+        Position.load(accountId).accountId = accountId;
+    }
+
+    function openLong(uint256 accountId, uint256 collateralAmount) external {
+        Epoch.Data storage epoch = Epoch.load();
         // check if epoch is not settled
-        // identify the account
+        epoch.validateNotSettled();
+
+        // identify the account and position
+        // Notice: accountId is the tokenId
+        require(
+            ERC721Storage._ownerOf(accountId) == msg.sender,
+            "Not NFT owner"
+        );
+        Account.Data storage account = Account.loadValid(accountId);
+        Position.Data storage position = Position.loadValid(accountId);
+
         // with the collateral get vEth (Loan)
+        uint vEthLoan = collateralAmount; // 1:1
+        account.collateralAmount += collateralAmount;
+        account.borrowedGwei += vEthLoan;
+
         // with the vEth get vGas (Swap)
+        (uint256 amountOutVEth, uint256 amountOutVGas) = _preSettlementSwap(
+            epoch,
+            vEthLoan, // vEth to swap to vGas ()
+            0
+        );
+
+        position.vEthAmount += amountOutVEth;
+        position.vGasAmount += amountOutVGas;
     }
 
-    function reduceLong() external {
-        // identify the account
+    function reduceLong(uint256 accountId, uint256 newVGasSize) external {
+        Epoch.Data storage epoch = Epoch.load();
+
+        // identify the account and position
+        // Notice: accountId is the tokenId
+        require(
+            ERC721Storage._ownerOf(accountId) == msg.sender,
+            "Not NFT owner"
+        );
+        Account.Data storage account = Account.loadValid(accountId);
+        Position.Data storage position = Position.loadValid(accountId);
+
+        // check size is less than the current size
+        if (newVGasSize < position.vGasAmount) {
+            console2.log(
+                "IT SHOULD REVERT WITH NEW SIZE SHOULD BE LESS THAN CURRENT"
+            );
+
+            revert("New size is greater than current size");
+        }
+        uint reduction = position.vGasAmount - newVGasSize;
+
+        epoch.validateSettlmentState();
+
         // with the vGas get vEth (Swap)
+        uint swappedVGas;
+        uint swappedVEth;
+        if (epoch.settled) {
+            (swappedVEth, swappedVGas) = _afterSettlementSwap(
+                epoch,
+                0,
+                reduction
+            );
+        }
+
+        (swappedVEth, swappedVGas) = _preSettlementSwap(epoch, 0, reduction);
+
         // with the vEth reduce the debt (Loan)
+        position.vEthAmount += swappedVEth;
+        uint debtReduction = swappedVEth > account.borrowedGwei
+            ? account.borrowedGwei
+            : swappedVEth;
+        account.borrowedGwei -= debtReduction;
+        position.vEthAmount -= debtReduction;
+        position.vGasAmount -= reduction;
     }
 
-    function openShort() external {
+    function openShort(uint256 accountId, uint256 collateralAmount) external {
+        Epoch.Data storage epoch = Epoch.load();
         // check if epoch is not settled
-        // identify the account
+        epoch.validateNotSettled();
+
+        // identify the account and position
+        // Notice: accountId is the tokenId
+        require(
+            ERC721Storage._ownerOf(accountId) == msg.sender,
+            "Not NFT owner"
+        );
+        Account.Data storage account = Account.loadValid(accountId);
+        Position.Data storage position = Position.loadValid(accountId);
+
         // with the collateral get vGas (Loan)
-        // with the vGas get vEth (Swap)
+        uint vGasPrice = epoch.settlementPrice; // TODO: get the price from Uni
+        uint vGasLoan = collateralAmount.divDecimal(vGasPrice); // 1:1
+        account.collateralAmount += collateralAmount;
+        account.borrowedGas += vGasLoan;
+
+        // with the vEth get vGas (Swap)
+        (uint256 amountOutVEth, uint256 amountOutVGas) = _preSettlementSwap(
+            epoch,
+            0,
+            vGasLoan // with the vGas get vEth (Swap)
+        );
+
+        position.vEthAmount += amountOutVEth;
+        position.vGasAmount += amountOutVGas;
     }
 
-    function reduceShort() external {
-        // identify the account
+    function reduceShort(uint256 accountId, uint256 newVEthSize) external {
+        Epoch.Data storage epoch = Epoch.load();
+
+        // identify the account and position
+        // Notice: accountId is the tokenId
+        require(
+            ERC721Storage._ownerOf(accountId) == msg.sender,
+            "Not NFT owner"
+        );
+        Account.Data storage account = Account.loadValid(accountId);
+        Position.Data storage position = Position.loadValid(accountId);
+
+        // check size is less than the current size
+        if (newVEthSize < position.vEthAmount) {
+            console2.log(
+                "IT SHOULD REVERT WITH NEW SIZE SHOULD BE LESS THAN CURRENT"
+            );
+
+            revert("New size is greater than current size");
+        }
+        uint reduction = position.vEthAmount - newVEthSize;
+
+        epoch.validateSettlmentState();
+
         // with vEth get vGas (Swap)
+        uint swappedVGas;
+        uint swappedVEth;
+        if (epoch.settled) {
+            (swappedVEth, swappedVGas) = _afterSettlementSwap(
+                epoch,
+                reduction,
+                0
+            );
+        }
+
+        (swappedVEth, swappedVGas) = _preSettlementSwap(epoch, reduction, 0);
+
         // with the vGas reduce the debt (Loan)
+        position.vGasAmount += swappedVGas;
+        uint debtReduction = swappedVGas > account.borrowedGas
+            ? account.borrowedGas
+            : swappedVGas;
+        account.borrowedGas -= debtReduction;
+        position.vGasAmount -= debtReduction;
+        position.vEthAmount -= reduction;
     }
 
     function payDebtAndBurnVtokens() external {
