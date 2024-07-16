@@ -1,5 +1,5 @@
 {
-  "address": "0xD438aa256D0D421C3A54B638193CA384B9Bb09F5",
+  "address": "0x08231dbb6A246E80Af1713977971B30deE20C43e",
   "abi": [
     {
       "type": "function",
@@ -314,15 +314,15 @@
   "constructorArgs": [],
   "linkedLibraries": {
     "src/contracts/utils/UniV3Abstraction.sol": {
-      "UniV3Abstraction": "0x237FD7fA0CE0EaC460b52ec145740b4fae74d8De"
+      "UniV3Abstraction": "0x6B33c6851530EA1eC0addD37A67aB5E9c81280BE"
     }
   },
-  "deployTxnHash": "0x253da4eb6e967c6e4e318de19e12d9a1cd103091f4e906c9d16d235cdbf0972f",
+  "deployTxnHash": "0x535ad214d6dc3a43a3d2308c821d94213a76df6407df6be5a36fe9a869d42f5d",
   "deployTxnBlockNumber": "4",
-  "deployTimestamp": "1720718333",
+  "deployTimestamp": "1721152759",
   "sourceName": "src/contracts/modules/EpochLiquidityModule.sol",
   "contractName": "EpochLiquidityModule",
   "deployedOn": "deploy.EpochLiquidityModule",
-  "gasUsed": 1256436,
-  "gasCost": "1015622291"
+  "gasUsed": 1202068,
+  "gasCost": "1015659831"
 }

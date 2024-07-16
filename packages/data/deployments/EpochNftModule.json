@@ -1,5 +1,5 @@
 {
-  "address": "0xC79cE6Bd474034DBd2504fD04A2e05AdB2dD607E",
+  "address": "0xaAE3E977f52124616c6419659482f9ccF24D141B",
   "abi": [
     {
       "type": "constructor",
@@ -463,12 +463,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xb2d3e547002cce5f0b23570d8fc23add1a8ec209cb85b13c31a084128d41be7a",
+  "deployTxnHash": "0x37b6a569779a2557f838df12c1897b6b86d8be24c0a82a2f3d182a53cab9b64d",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1720718310",
+  "deployTimestamp": "1721152756",
   "sourceName": "src/contracts/modules/EpochNftModule.sol",
   "contractName": "EpochNftModule",
   "deployedOn": "deploy.EpochNftModule",
   "gasUsed": 1035948,
-  "gasCost": "1013833075"
+  "gasCost": "1013859221"
 }

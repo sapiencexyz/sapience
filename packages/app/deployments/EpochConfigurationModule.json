@@ -1,5 +1,5 @@
 {
-  "address": "0x5e5FAF60D9C21eeA4df9BF228587cd1D4A3ecF85",
+  "address": "0xdf462Eeb38a6472BaCEE2D7cE9Ff3210b737B4ac",
   "abi": [
     {
       "type": "function",
@@ -65,6 +65,47 @@
       "inputs": [],
       "outputs": [],
       "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "getAccountData",
+      "inputs": [
+        {
+          "name": "accountId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct Account.Data",
+          "components": [
+            {
+              "name": "id",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "collateralAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "borrowedGwei",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "borrowedGas",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "pure"
     },
     {
       "type": "function",
@@ -148,6 +189,52 @@
       "stateMutability": "view"
     },
     {
+      "type": "function",
+      "name": "getPositionData",
+      "inputs": [
+        {
+          "name": "accountId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct Position.Data",
+          "components": [
+            {
+              "name": "initialEthDeposit",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "accountId",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "vEthAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "vGasAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "lpNftId",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "pure"
+    },
+    {
       "type": "event",
       "name": "Transfer",
       "inputs": [
@@ -227,12 +314,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xd8891dc3d1023942b310336f50f881a072cbc2af862394d86976a841fc26cbf9",
+  "deployTxnHash": "0x68c406d412dd6d59fb72fae09499a8de520526a3aac8151968188b3aa0a42184",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1720718313",
+  "deployTimestamp": "1721152758",
   "sourceName": "src/contracts/modules/EpochConfigurationModule.sol",
   "contractName": "EpochConfigurationModule",
   "deployedOn": "deploy.EpochConfigurationModule",
-  "gasUsed": 1700239,
+  "gasUsed": 1956640,
   "gasCost": "1017569547"
 }

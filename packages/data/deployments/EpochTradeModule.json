@@ -1,5 +1,5 @@
 {
-  "address": "0xABa87707acD78D2d8aCd18207Ab64821488ee921",
+  "address": "0x3096a495361A5901863e6389A8c06c63654a8eD2",
   "abi": [
     {
       "type": "function",
@@ -14,6 +14,92 @@
           "name": "size",
           "type": "int256",
           "internalType": "int256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "createTraderPositionLeo",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "openLong",
+      "inputs": [
+        {
+          "name": "accountId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateralAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "openShort",
+      "inputs": [
+        {
+          "name": "accountId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateralAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "payDebtAndBurnVtokens",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "reduceLong",
+      "inputs": [
+        {
+          "name": "accountId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "newVGasSize",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "reduceShort",
+      "inputs": [
+        {
+          "name": "accountId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "newVEthSize",
+          "type": "uint256",
+          "internalType": "uint256"
         }
       ],
       "outputs": [],
@@ -103,6 +189,17 @@
     },
     {
       "type": "error",
+      "name": "InvalidAccountId",
+      "inputs": [
+        {
+          "name": "accountId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "InvalidParameter",
       "inputs": [
         {
@@ -136,12 +233,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x4711af84aab43c5e89d4a9cf0ca4afb860ef2ea6bff1fd0bcb82542c3fd3bdd5",
+  "deployTxnHash": "0xd1faa24ba1d0559f17dbdab55109f9be7c702daceb01db03a5c21b4e366178e9",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1720718311",
+  "deployTimestamp": "1721152756",
   "sourceName": "src/contracts/modules/EpochTradeModule.sol",
   "contractName": "EpochTradeModule",
   "deployedOn": "deploy.EpochTradeModule",
-  "gasUsed": 712871,
-  "gasCost": "1010739136"
+  "gasUsed": 1023607,
+  "gasCost": "1010759434"
 }
