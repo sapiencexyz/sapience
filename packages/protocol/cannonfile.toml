@@ -25,44 +25,50 @@ artifact = "ReentrancyGuard"
 [deploy.UniV3Abstraction]
 artifact = "UniV3Abstraction"
 
-[deploy.FoilConfigurationModule]
-artifact="FoilConfigurationModule"
+[deploy.EpochConfigurationModule]
+artifact="EpochConfigurationModule"
 libraries.ReentrancyGuard="<%= contracts.ReentrancyGuard.address %>"
 libraries.UniV3Abstraction="<%= contracts.UniV3Abstraction.address %>"
+depends = ['deploy.ReentrancyGuard', 'deploy.UniV3Abstraction']
+
+[deploy.EpochLiquidityModule]
+artifact="EpochLiquidityModule"
+libraries.UniV3Abstraction="<%= contracts.UniV3Abstraction.address %>"
+
+[deploy.EpochSettlementModule]
+artifact="EpochSettlementModule"
+
+[deploy.EpochTradeModule]
+artifact="EpochTradeModule"
+
+[deploy.EpochNftModule]
+artifact="EpochNftModule"
+
+[router.Foil]
+contracts=[
+  "EpochConfigurationModule",
+  "EpochLiquidityModule",
+  "EpochSettlementModule",
+  "EpochTradeModule",
+  "EpochNftModule",
+]
+
+[invoke.createEpoch]
+target="Foil"
+func="createEpoch"
 args=[
   "<%= settings.startTime %>",
   "<%= settings.endTime %>",
   "<%= imports.Uniswap.contracts.NonfungiblePositionManager.address %>",
   "<%= imports.Uniswap.contracts.Quoter.address %>",
+  "<%= imports.Uniswap.contracts.SwapRouter.address %>",
   "<%= imports.CollateralAsset.contracts.Token.address %>",
   "<%= settings.baseAssetMinPrice %>",
   "<%= settings.baseAssetMaxPrice %>",
   "<%= settings.feeRate %>",
-  "<%= settings.resolver %>",
+  "<%= settings.resolver %>"
 ]
-depends = ['var.settings', 'deploy.ReentrancyGuard', 'deploy.UniV3Abstraction']
-
-[deploy.FoilLiquidityModule]
-artifact="FoilLiquidityModule"
-libraries.UniV3Abstraction="<%= contracts.UniV3Abstraction.address %>"
-
-[deploy.FoilSettlementModule]
-artifact="FoilSettlementModule"
-
-[deploy.FoilTradeModule]
-artifact="FoilTradeModule"
-
-[deploy.FoilNftModule]
-artifact="FoilNftModule"
-
-[router.Foil]
-contracts=[
-  "FoilConfigurationModule",
-  "FoilLiquidityModule",
-  "FoilSettlementModule",
-  "FoilTradeModule",
-  "FoilNftModule",
-]
+depends = ['var.settings', 'router.Foil']
 
 # [deploy.FoilVault]
 # artifact="FoilVault"

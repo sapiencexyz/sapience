@@ -1,0 +1,3 @@
+[submodule "packages/protocol/lib/cannon-std"]
+	path = packages/protocol/lib/cannon-std
+	url = https://github.com/usecannon/cannon-std

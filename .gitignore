@@ -13,4 +13,7 @@ node_modules
 **/coverage
 **/coverage.json
 
+# Cannon deployment files
+**/deployments
+
 .DS_Store

@@ -1,0 +1,325 @@
+{
+  "address": "0xdf462Eeb38a6472BaCEE2D7cE9Ff3210b737B4ac",
+  "abi": [
+    {
+      "type": "function",
+      "name": "createEpoch",
+      "inputs": [
+        {
+          "name": "startTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "endTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "uniswapPositionManager",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapQuoter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapSwapRouter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "collateralAsset",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "baseAssetMinPrice",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "baseAssetMaxPrice",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "feeRate",
+          "type": "uint24",
+          "internalType": "uint24"
+        },
+        {
+          "name": "optimisticOracleV3",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "createTraderPosition",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "getAccountData",
+      "inputs": [
+        {
+          "name": "accountId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct Account.Data",
+          "components": [
+            {
+              "name": "id",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "collateralAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "borrowedGwei",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "borrowedGas",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "pure"
+    },
+    {
+      "type": "function",
+      "name": "getEpoch",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "pool",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "ethToken",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "gasToken",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getMarket",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "startTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "endTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "uniswapPositionManager",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "collateralAsset",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "baseAssetMinPriceTick",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "baseAssetMaxPriceTick",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "feeRate",
+          "type": "uint24",
+          "internalType": "uint24"
+        },
+        {
+          "name": "ethToken",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "gasToken",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "pool",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getPositionData",
+      "inputs": [
+        {
+          "name": "accountId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct Position.Data",
+          "components": [
+            {
+              "name": "initialEthDeposit",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "accountId",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "vEthAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "vGasAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "lpNftId",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "pure"
+    },
+    {
+      "type": "event",
+      "name": "Transfer",
+      "inputs": [
+        {
+          "name": "from",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "to",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccountAlreadyCreated",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "EpochAlreadyStarted",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidParameter",
+      "inputs": [
+        {
+          "name": "parameter",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "internalType": "string"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ReentrancyGuardReentrantCall",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "TokenAlreadyMinted",
+      "inputs": [
+        {
+          "name": "id",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "TokensAlreadyCreated",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ZeroAddress",
+      "inputs": []
+    }
+  ],
+  "constructorArgs": [],
+  "linkedLibraries": {},
+  "deployTxnHash": "0x68c406d412dd6d59fb72fae09499a8de520526a3aac8151968188b3aa0a42184",
+  "deployTxnBlockNumber": "3",
+  "deployTimestamp": "1721152881",
+  "sourceName": "src/contracts/modules/EpochConfigurationModule.sol",
+  "contractName": "EpochConfigurationModule",
+  "deployedOn": "deploy.EpochConfigurationModule",
+  "gasUsed": 1956640,
+  "gasCost": "1017569547"
+}
