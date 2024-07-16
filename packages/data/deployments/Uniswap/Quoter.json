@@ -199,6 +199,8 @@
   ],
   "linkedLibraries": {},
   "deployTxnHash": "0x34f0eb1ba2f7dddd5a7fbef4916a23d05848f03d707bd4231c390a677810e589",
+  "deployTxnBlockNumber": "3",
+  "deployTimestamp": "1721152170",
   "sourceName": "contracts/lens/Quoter.sol",
   "contractName": "Quoter",
   "deployedOn": "deploy.Quoter",

@@ -46,6 +46,8 @@
   "constructorArgs": [],
   "linkedLibraries": {},
   "deployTxnHash": "0xfb9b8f058082630416bf4f24e993ee213c87473701a32eaf89b3064c8356d39b",
+  "deployTxnBlockNumber": "6",
+  "deployTimestamp": "1721152173",
   "sourceName": "contracts/lens/TickLens.sol",
   "contractName": "TickLens",
   "deployedOn": "deploy.TickLens",

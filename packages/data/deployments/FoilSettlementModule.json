@@ -1,5 +1,5 @@
 {
-  "address": "0xba24761bC67835F7f59BFd7e355b178F76A1b9E7",
+  "address": "0xFd6235C751CA3c533570b106D2C51B260D7a5990",
   "abi": [
     {
       "type": "function",
@@ -100,10 +100,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x5d7c47401580ed810edc695dd84d291bc079a8c49a27060fa01f7d4e4c513cc9",
+  "deployTxnHash": "0x6fbe1b66801326a80d1c03c429e1252a19c444b2f1cb0e98173df696ae7a0968",
+  "deployTxnBlockNumber": "1",
+  "deployTimestamp": "1721152168",
   "sourceName": "src/contracts/Foil/FoilSettlementModule.sol",
   "contractName": "FoilSettlementModule",
   "deployedOn": "deploy.FoilSettlementModule",
   "gasUsed": 413625,
-  "gasCost": "1008560825"
+  "gasCost": "1008560781"
 }

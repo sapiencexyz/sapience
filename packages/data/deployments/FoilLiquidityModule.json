@@ -1,5 +1,5 @@
 {
-  "address": "0xa2A95160a47D28C38098C184795d836dE2E2a162",
+  "address": "0x70a78cE0dA6f32BdFB1406429b0774A1942DCA9E",
   "abi": [
     {
       "type": "function",
@@ -253,13 +253,15 @@
   "constructorArgs": [],
   "linkedLibraries": {
     "src/utils/UniV3Abstraction.sol": {
-      "UniV3Abstraction": "0xCF05855f6431b935b82b529F412C023008696d7b"
+      "UniV3Abstraction": "0x9889fB569791EDAE6315E6e1C660018ef06C8dA0"
     }
   },
-  "deployTxnHash": "0x4d0680723dd31c021aaaa2f8f14fbeb7a55aaf0a589b3c7a8111cd8517cec596",
+  "deployTxnHash": "0x036595c77f2a046cf0847fff2805a8a09ec937d8bff1ab626a2ec611694d47de",
+  "deployTxnBlockNumber": "3",
+  "deployTimestamp": "1721152174",
   "sourceName": "src/contracts/Foil/FoilLiquidityModule.sol",
   "contractName": "FoilLiquidityModule",
   "deployedOn": "deploy.FoilLiquidityModule",
-  "gasUsed": 1230926,
-  "gasCost": "1010943946"
+  "gasUsed": 1230922,
+  "gasCost": "1010943891"
 }

@@ -1228,6 +1228,8 @@
   ],
   "linkedLibraries": {},
   "deployTxnHash": "0xd4315cb348a2893a04794f56d8010e31bddb801a8833a660034893dd3285c4bc",
+  "deployTxnBlockNumber": "12",
+  "deployTimestamp": "1721152169",
   "sourceName": "contracts/NonfungiblePositionManager.sol",
   "contractName": "NonfungiblePositionManager",
   "deployedOn": "deploy.NonfungiblePositionManager",

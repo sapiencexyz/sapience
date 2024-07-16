@@ -1,5 +1,5 @@
 {
-  "address": "0xaD3FCBB05b81fC60999820d7c6211d6A005f1D31",
+  "address": "0x6537d15606E494555e0823a912AB928Fd9C7C7dC",
   "abi": [
     {
       "type": "function",
@@ -112,10 +112,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xb43f200d4397a2b795f7c34139afbdd0b4c64f7d18b7529cf65d8e4750e8e377",
+  "deployTxnHash": "0x28f17365dee8b05084ee877cbcc30b17a405497ea4c20cc371e48ed6b68456a6",
+  "deployTxnBlockNumber": "1",
+  "deployTimestamp": "1721152168",
   "sourceName": "src/contracts/Foil/FoilTradeModule.sol",
   "contractName": "FoilTradeModule",
   "deployedOn": "deploy.FoilTradeModule",
-  "gasUsed": 321645,
-  "gasCost": "1007520230"
+  "gasUsed": 321641,
+  "gasCost": "1007520192"
 }

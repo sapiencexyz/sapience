@@ -63,7 +63,6 @@ contracts=[
   "FoilTradeModule",
   "FoilNftModule",
 ]
-CREATE2="true"
 
 # [deploy.FoilVault]
 # artifact="FoilVault"
