@@ -465,7 +465,7 @@
   "linkedLibraries": {},
   "deployTxnHash": "0x37b6a569779a2557f838df12c1897b6b86d8be24c0a82a2f3d182a53cab9b64d",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1721152756",
+  "deployTimestamp": "1721152879",
   "sourceName": "src/contracts/modules/EpochNftModule.sol",
   "contractName": "EpochNftModule",
   "deployedOn": "deploy.EpochNftModule",

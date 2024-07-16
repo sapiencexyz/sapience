@@ -316,7 +316,7 @@
   "linkedLibraries": {},
   "deployTxnHash": "0x68c406d412dd6d59fb72fae09499a8de520526a3aac8151968188b3aa0a42184",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1721152758",
+  "deployTimestamp": "1721152881",
   "sourceName": "src/contracts/modules/EpochConfigurationModule.sol",
   "contractName": "EpochConfigurationModule",
   "deployedOn": "deploy.EpochConfigurationModule",
