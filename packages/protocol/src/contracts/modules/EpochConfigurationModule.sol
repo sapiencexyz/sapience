@@ -95,4 +95,16 @@ contract EpochConfigurationModule is ReentrancyGuard {
         // Create empty position
         Position.load(accountId).accountId = accountId;
     }
+
+    function getPositionData(
+        uint256 accountId
+    ) external pure returns (Position.Data memory) {
+        return Position.load(accountId);
+    }
+
+    function getAccountData(
+        uint256 accountId
+    ) external pure returns (Account.Data memory) {
+        return Account.load(accountId);
+    }
 }

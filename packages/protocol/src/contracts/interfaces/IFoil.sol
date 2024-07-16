@@ -2,6 +2,7 @@
 pragma solidity >=0.8.2 <0.9.0;
 
 import "./IFoilStructs.sol";
+import "../storage/Position.sol";
 
 interface IFoil {
     function getEpoch()
@@ -84,4 +85,12 @@ interface IFoil {
         );
 
     function fakeSettle(uint256 settlementPrice) external;
+
+    function getPositionData(
+        uint256 accountId
+    ) external view returns (Position.Data memory);
+
+    function getAccountData(
+        uint256 accountId
+    ) external view returns (Account.Data memory);
 }
