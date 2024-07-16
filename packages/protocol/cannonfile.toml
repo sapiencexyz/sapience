@@ -70,5 +70,8 @@ args=[
 ]
 depends = ['var.settings', 'router.Foil']
 
-# [deploy.FoilVault]
-# artifact="FoilVault"
+[invoke.gimmeTokens]
+target="CollateralAsset.Token"
+func="mint"
+args=["<%= parseEther('1000') %>", "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"]
+depends=["clone.CollateralAsset"]

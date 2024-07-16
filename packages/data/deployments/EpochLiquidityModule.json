@@ -1,5 +1,5 @@
 {
-  "address": "0x08231dbb6A246E80Af1713977971B30deE20C43e",
+  "address": "0xa275172CBDac5687A79d8ea3AF9C8e37f77E55cb",
   "abi": [
     {
       "type": "function",
@@ -28,67 +28,6 @@
     {
       "type": "function",
       "name": "createLiquidityPosition",
-      "inputs": [
-        {
-          "name": "params",
-          "type": "tuple",
-          "internalType": "struct IFoilStructs.LiquidityPositionParams",
-          "components": [
-            {
-              "name": "amountTokenA",
-              "type": "uint256",
-              "internalType": "uint256"
-            },
-            {
-              "name": "amountTokenB",
-              "type": "uint256",
-              "internalType": "uint256"
-            },
-            {
-              "name": "collateralAmount",
-              "type": "uint256",
-              "internalType": "uint256"
-            },
-            {
-              "name": "lowerTick",
-              "type": "int24",
-              "internalType": "int24"
-            },
-            {
-              "name": "upperTick",
-              "type": "int24",
-              "internalType": "int24"
-            }
-          ]
-        }
-      ],
-      "outputs": [
-        {
-          "name": "tokenId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "liquidity",
-          "type": "uint128",
-          "internalType": "uint128"
-        },
-        {
-          "name": "addedAmount0",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "addedAmount1",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "stateMutability": "payable"
-    },
-    {
-      "type": "function",
-      "name": "createLiquidityPositionTwo",
       "inputs": [
         {
           "name": "params",
@@ -291,38 +230,18 @@
     },
     {
       "type": "error",
-      "name": "AccountAlreadyCreated",
-      "inputs": []
-    },
-    {
-      "type": "error",
-      "name": "InvalidAccountId",
-      "inputs": [
-        {
-          "name": "accountId",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ]
-    },
-    {
-      "type": "error",
       "name": "ReentrancyGuardReentrantCall",
       "inputs": []
     }
   ],
   "constructorArgs": [],
-  "linkedLibraries": {
-    "src/contracts/utils/UniV3Abstraction.sol": {
-      "UniV3Abstraction": "0x6B33c6851530EA1eC0addD37A67aB5E9c81280BE"
-    }
-  },
-  "deployTxnHash": "0x535ad214d6dc3a43a3d2308c821d94213a76df6407df6be5a36fe9a869d42f5d",
+  "linkedLibraries": {},
+  "deployTxnHash": "0x626886d0d27115488d4d2ff56c88667c7c0fcc592ab54e7bab5856c0954fa4ec",
   "deployTxnBlockNumber": "4",
-  "deployTimestamp": "1721152882",
+  "deployTimestamp": "1721161304",
   "sourceName": "src/contracts/modules/EpochLiquidityModule.sol",
   "contractName": "EpochLiquidityModule",
   "deployedOn": "deploy.EpochLiquidityModule",
-  "gasUsed": 1202068,
+  "gasUsed": 972224,
   "gasCost": "1015659831"
 }

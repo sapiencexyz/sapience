@@ -8,7 +8,7 @@ import { createContext, useEffect, useState } from 'react';
 import * as Chains from 'viem/chains';
 import { useContractReads, useReadContract } from 'wagmi';
 
-import CollateralAsset from '../../../deployments/CollateralAsset/MintableToken.json';
+import CollateralAsset from '../../../deployments/CollateralAsset/Token.json';
 import Foil from '../../../deployments/Foil.json';
 
 const API_BASE_URL = 'http://localhost:3001';
@@ -27,6 +27,7 @@ interface MarketContextType {
   prices?: Array<{ timestamp: number; value: number }>;
   poolAddress: `0x${string}`;
   pool: Pool | null;
+  collateralAssetDecimals: number;
 }
 
 interface MarketProviderProps {
@@ -40,6 +41,7 @@ export const MarketContext = createContext<MarketContextType>({
   address: '',
   collateralAsset: '',
   collateralAssetTicker: '',
+  collateralAssetDecimals: 18,
   averagePrice: 0,
   startTime: 0,
   endTime: 0,
@@ -131,6 +133,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     address: '',
     collateralAsset: '',
     collateralAssetTicker: '',
+    collateralAssetDecimals: 18,
     averagePrice: 0,
     startTime: 0,
     endTime: 0,
@@ -193,20 +196,20 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
   });
 
   useEffect(() => {
+    console.log(marketViewFunctionResult?.data);
     if (marketViewFunctionResult.data !== undefined) {
       setState((currentState) => ({
         ...currentState,
         startTime: marketViewFunctionResult?.data[0],
         endTime: marketViewFunctionResult?.data[1],
         uniswapPositionManager: marketViewFunctionResult?.data[2],
-        resolver: marketViewFunctionResult?.data[3],
-        collateralAsset: marketViewFunctionResult?.data[4],
-        baseAssetMinPriceTick: marketViewFunctionResult?.data[5].toString(),
-        baseAssetMaxPriceTick: marketViewFunctionResult?.data[6].toString(),
-        feeRate: marketViewFunctionResult?.data[7],
-        ethToken: marketViewFunctionResult?.data[8],
-        gasToken: marketViewFunctionResult?.data[9],
-        poolAddress: marketViewFunctionResult?.data[10],
+        collateralAsset: marketViewFunctionResult?.data[3],
+        baseAssetMinPriceTick: marketViewFunctionResult?.data[4].toString(),
+        baseAssetMaxPriceTick: marketViewFunctionResult?.data[5].toString(),
+        feeRate: marketViewFunctionResult?.data[6],
+        ethToken: marketViewFunctionResult?.data[7],
+        gasToken: marketViewFunctionResult?.data[8],
+        poolAddress: marketViewFunctionResult?.data[9],
       }));
     }
   }, [marketViewFunctionResult.data]);
@@ -241,6 +244,22 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
       }));
     }
   }, [collateralTickerFunctionResult.data]);
+
+  // Fetch Collateral Decimals
+  const collateralDecimalsFunctionResult = useReadContract({
+    abi: CollateralAsset.abi,
+    address: state.collateralAsset as `0x${string}`,
+    functionName: 'decimals',
+  });
+
+  useEffect(() => {
+    if (collateralDecimalsFunctionResult.data !== undefined) {
+      setState((currentState) => ({
+        ...currentState,
+        collateralAssetDecimals: collateralDecimalsFunctionResult.data,
+      }));
+    }
+  }, [collateralDecimalsFunctionResult.data]);
 
   return (
     <MarketContext.Provider value={state}>{children}</MarketContext.Provider>

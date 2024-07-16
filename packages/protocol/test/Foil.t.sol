@@ -63,9 +63,9 @@ contract FoilTest is Test {
                 lowerTick: 16000, // 5
                 upperTick: 30000 // 20
             });
-        foil.createLiquidityPositionTwo(params);
+        foil.createLiquidityPosition(params);
         (uint256 tokenId, uint128 liquidity, , ) = foil
-            .createLiquidityPositionTwo(params);
+            .createLiquidityPosition(params);
 
         uint128 halfLiquidity = liquidity / 2;
         uint256 coll = 10 ether;
@@ -103,12 +103,12 @@ contract FoilTest is Test {
             uint128 liquidity,
             uint256 addedAmount0,
             uint256 addedAmount1
-        ) = foil.createLiquidityPositionTwo(params);
+        ) = foil.createLiquidityPosition(params);
         console2.log("LIQUIDITY POSITION CREATED", positionId, liquidity);
         console2.log("ADDED LIQUIDITY", addedAmount0, addedAmount1);
         params.amountTokenA = 100 ether;
         params.amountTokenB = 100 ether;
-        (uint256 positionId2, , , ) = foil.createLiquidityPositionTwo(params);
+        (uint256 positionId2, , , ) = foil.createLiquidityPosition(params);
         getAndLogPosition(positionId);
         getAndLogPosition(positionId2);
 

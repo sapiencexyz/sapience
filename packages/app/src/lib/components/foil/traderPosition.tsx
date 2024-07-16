@@ -22,7 +22,7 @@ import {
   useReadContract,
 } from 'wagmi';
 
-import CollateralAsset from '../../../../deployments/CollateralAsset/MintableToken.json';
+import CollateralAsset from '../../../../deployments/CollateralAsset/Token.json';
 import Foil from '../../../../deployments/Foil.json';
 
 import PositionSelector from './positionSelector';

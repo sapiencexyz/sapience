@@ -9,18 +9,19 @@ import {
   InputGroup,
   InputRightAddon,
   Button,
-  useToast,
 } from '@chakra-ui/react';
 import { Position } from '@uniswap/v3-sdk';
 import { useContext, useEffect, useState } from 'react';
+import { formatUnits, parseUnits } from 'viem';
 import {
   useWriteContract,
   useWaitForTransactionReceipt,
   useAccount,
   useReadContract,
+  useSimulateContract,
 } from 'wagmi';
 
-import CollateralAsset from '../../../../deployments/CollateralAsset/MintableToken.json';
+import CollateralAsset from '../../../../deployments/CollateralAsset/Token.json';
 import Foil from '../../../../deployments/Foil.json';
 
 import { MarketContext } from '~/lib/context/MarketProvider';
@@ -39,10 +40,16 @@ const AddLiquidity = ({
 }: {
   params: { mode: string; selectedData: JSON };
 }) => {
-  const { pool, baseAssetMinPriceTick, baseAssetMaxPriceTick } =
-    useContext(MarketContext);
+  const {
+    pool,
+    baseAssetMinPriceTick,
+    baseAssetMaxPriceTick,
+    collateralAssetTicker,
+    collateralAssetDecimals,
+  } = useContext(MarketContext);
   const account = useAccount();
-  const toast = useToast();
+  const chainId = 13370;
+  const { isConnected } = account;
 
   const [depositAmount, setDepositAmount] = useState(0);
   const [lowPrice, setLowPrice] = useState(tickToPrice(baseAssetMinPriceTick));
@@ -60,6 +67,7 @@ const AddLiquidity = ({
     address: CollateralAsset.address as `0x${string}`,
     functionName: 'balanceOf',
     args: [account.address],
+    chainId,
   });
 
   const [transactionStep, setTransactionStep] = useState(0);
@@ -71,6 +79,7 @@ const AddLiquidity = ({
   const { isSuccess: approveSuccess } = useWaitForTransactionReceipt({
     hash: approveHash,
   });
+
   const { isSuccess: addLiquiditySuccess } = useWaitForTransactionReceipt({
     hash: addLiquidityHash,
   });
@@ -87,9 +96,13 @@ const AddLiquidity = ({
     e.preventDefault();
     approveWrite({
       abi: CollateralAsset.abi,
-      address: CollateralAsset.address,
+      address: CollateralAsset.address as `0x${string}`,
       functionName: 'approve',
-      args: [CollateralAsset.address, BigInt(depositAmount)],
+      args: [
+        CollateralAsset.address,
+        parseUnits(depositAmount.toString(), collateralAssetDecimals),
+      ],
+      chainId,
     });
     setTransactionStep(1);
   };
@@ -100,15 +113,31 @@ const AddLiquidity = ({
     }
   }, [approveSuccess, transactionStep]);
 
+  const result = useSimulateContract({
+    address: Foil.address,
+    abi: Foil.abi,
+    functionName: 'createLiquidityPosition',
+    args: [
+      {
+        amountTokenA: BigInt(baseToken),
+        amountTokenB: BigInt(quoteToken),
+        collateralAmount: BigInt(depositAmount),
+        lowerTick: BigInt(tickLower),
+        upperTick: BigInt(tickUpper),
+      },
+    ],
+    chainId,
+  });
+  console.log('result', result);
+
   useEffect(() => {
     if (transactionStep === 2) {
-      addLiquidityWrite({
+      console.log('Calling addLiquidityWrite with:', {
         address: Foil.address,
         abi: Foil.abi,
         functionName: 'createLiquidityPosition',
         args: [
           {
-            accountId: BigInt(420), // Example accountId
             amountTokenA: BigInt(baseToken),
             amountTokenB: BigInt(quoteToken),
             collateralAmount: BigInt(depositAmount),
@@ -116,6 +145,23 @@ const AddLiquidity = ({
             upperTick: BigInt(tickUpper),
           },
         ],
+        chainId,
+      });
+
+      addLiquidityWrite({
+        address: Foil.address as `0x${string}`,
+        abi: Foil.abi,
+        functionName: 'createLiquidityPosition',
+        args: [
+          {
+            amountTokenA: BigInt(baseToken),
+            amountTokenB: BigInt(quoteToken),
+            collateralAmount: BigInt(depositAmount),
+            lowerTick: BigInt(tickLower),
+            upperTick: BigInt(tickUpper),
+          },
+        ],
+        chainId,
       });
       setTransactionStep(3);
     }
@@ -167,7 +213,7 @@ const AddLiquidity = ({
             value={depositAmount}
             onChange={(e) => setDepositAmount(Number(e.target.value))}
           />
-          <InputRightAddon>cbETH</InputRightAddon>
+          <InputRightAddon>{collateralAssetTicker}</InputRightAddon>
         </InputGroup>
       </FormControl>
       <FormControl mb={4}>
@@ -177,10 +223,8 @@ const AddLiquidity = ({
             type="number"
             value={lowPrice}
             onChange={(e) => setLowPrice(Number(e.target.value))}
-            min={tickToPrice(baseAssetMinPriceTick)}
-            max={tickToPrice(baseAssetMaxPriceTick)}
           />
-          <InputRightAddon>cbETH/Ggas</InputRightAddon>
+          <InputRightAddon>{collateralAssetTicker}/Ggas</InputRightAddon>
         </InputGroup>
       </FormControl>
       <FormControl mb={4}>
@@ -190,10 +234,8 @@ const AddLiquidity = ({
             type="number"
             value={highPrice}
             onChange={(e) => setHighPrice(Number(e.target.value))}
-            min={tickToPrice(baseAssetMinPriceTick)}
-            max={tickToPrice(baseAssetMaxPriceTick)}
           />
-          <InputRightAddon>cbETH/Ggas</InputRightAddon>
+          <InputRightAddon>{collateralAssetTicker}/Ggas</InputRightAddon>
         </InputGroup>
       </FormControl>
       <FormControl mb={4}>
@@ -223,20 +265,38 @@ const AddLiquidity = ({
           Net Position: {lowPrice.toFixed(2)} Ggas to {highPrice.toFixed(2)}{' '}
           Ggas
         </Text>
-        <Text fontSize="sm" color="gray.500" mb="1">
-          Wallet Balance: {collateralAmountFunctionResult?.data?.toString()}{' '}
-          cbETH
-        </Text>
+        {isConnected && collateralAmountFunctionResult?.data && (
+          <Text fontSize="sm" color="gray.500" mb="1">
+            Wallet Balance:{' '}
+            {formatUnits(
+              collateralAmountFunctionResult.data.toString(),
+              collateralAssetDecimals
+            )}{' '}
+            {collateralAssetTicker}
+          </Text>
+        )}
       </Box>
-      <Button
-        width="full"
-        variant="brand"
-        type="submit"
-        isLoading={transactionStep > 0 && transactionStep < 3}
-        isDisabled={transactionStep > 0 && transactionStep < 3}
-      >
-        Add Liquidity
-      </Button>
+      {isConnected ? (
+        <Button
+          width="full"
+          variant="brand"
+          type="submit"
+          isLoading={transactionStep > 0 && transactionStep < 3}
+          isDisabled={transactionStep > 0 && transactionStep < 3}
+        >
+          Add Liquidity
+        </Button>
+      ) : (
+        <Button
+          width="full"
+          variant="brand"
+          type="submit"
+          isLoading={transactionStep > 0 && transactionStep < 3}
+          isDisabled={transactionStep > 0 && transactionStep < 3}
+        >
+          Connect Wallet
+        </Button>
+      )}
       {transactionStep === 3 && addLiquiditySuccess && (
         <Text fontSize="sm" color="green.500" mt="2">
           Liquidity added successfully!

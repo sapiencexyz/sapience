@@ -204,8 +204,8 @@ importers:
         specifier: ^1.4.4
         version: 1.4.4
       '@usecannon/cli':
-        specifier: ^2.15.4
-        version: 2.15.6(bufferutil@4.0.8)(encoding@0.1.13)(hardhat@2.22.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@20.14.9)(typescript@5.5.2))(typescript@5.5.2)(utf-8-validate@5.0.10))(solc@0.8.25)(typescript@5.5.2)(utf-8-validate@5.0.10)
+        specifier: ^2.15.7
+        version: 2.15.8(bufferutil@4.0.8)(encoding@0.1.13)(hardhat@2.22.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@20.14.9)(typescript@5.5.2))(typescript@5.5.2)(utf-8-validate@5.0.10))(solc@0.8.25)(typescript@5.5.2)(utf-8-validate@5.0.10)
     devDependencies:
       '@types/chai':
         specifier: ^4.3.16
@@ -4602,12 +4602,12 @@ packages:
     engines: {node: '>=10'}
     deprecated: Please upgrade to 1.0.1
 
-  '@usecannon/builder@2.15.6':
-    resolution: {integrity: sha512-/sGLk+1gVCXixK+elanAELwoxVy6Flz4AXJ11Gx7hzR6IHSWvY7eahIpy/nZWyXYo5t0wR3pFNmgZ01jfkLZoA==}
+  '@usecannon/builder@2.15.8':
+    resolution: {integrity: sha512-jKNTHIaPPrJAn2QwNc8rzK8bXWcH2vIipappVobdwNIIUVYfYYmTDDmi4ZRk+eJjIp5DMu8QmaAZo8RMIfYqRQ==}
     engines: {node: '>=16.0.0'}
 
-  '@usecannon/cli@2.15.6':
-    resolution: {integrity: sha512-cBpaNok/A6Xdq8w0xzNQ1sbpUzvv165x7+AO+0N3uFPgDjvlNoDYZSmbmOYfsl/v/PgUV7UB6E4iG8zYWo76Jw==}
+  '@usecannon/cli@2.15.8':
+    resolution: {integrity: sha512-twfMTFt2/hLM40f+5twk590fuUNv1rXtJBiE5dfe+aMCAKbhdVFBtkQzK4ipQqAsJTwQ+E71KB4bcAgFXYZZeA==}
     hasBin: true
 
   '@vanilla-extract/babel-plugin-debug-ids@1.0.6':
@@ -7549,6 +7549,10 @@ packages:
 
   functions-have-names@1.2.3:
     resolution: {integrity: sha512-xckBUXyTIqT97tq2x2AMb+g163b5JFysYk0x4qxNFwbfQkmNZoiRHb6sPzI9/QV33WeuvVYBUIiD4NzNIyqaRQ==}
+
+  fuse.js@7.0.0:
+    resolution: {integrity: sha512-14F4hBIxqKvD4Zz/XjDc3y94mNZN6pRv3U13Udo0lNLCWRBUsrMv2xwcF/y/Z5sV6+FQW+/ow68cHpm4sunt8Q==}
+    engines: {node: '>=10'}
 
   futoin-hkdf@1.5.3:
     resolution: {integrity: sha512-SewY5KdMpaoCeh7jachEWFsh1nNlaDjNHZXWqL5IGwtpEYHTgkr2+AMCgNwKWkcc0wpSYrZfR7he4WdmHFtDxQ==}
@@ -19574,7 +19578,7 @@ snapshots:
       '@uniswap/v3-core': 1.0.0
       '@uniswap/v3-periphery': 1.4.4
 
-  '@usecannon/builder@2.15.6(bufferutil@4.0.8)(encoding@0.1.13)(hardhat@2.22.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@20.14.9)(typescript@5.5.2))(typescript@5.5.2)(utf-8-validate@5.0.10))(solc@0.8.25)(typescript@5.5.2)(utf-8-validate@5.0.10)':
+  '@usecannon/builder@2.15.8(bufferutil@4.0.8)(encoding@0.1.13)(hardhat@2.22.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@20.14.9)(typescript@5.5.2))(typescript@5.5.2)(utf-8-validate@5.0.10))(solc@0.8.25)(typescript@5.5.2)(utf-8-validate@5.0.10)':
     dependencies:
       '@synthetixio/router': 3.4.0(hardhat@2.22.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@20.14.9)(typescript@5.5.2))(typescript@5.5.2)(utf-8-validate@5.0.10))(solc@0.8.25)
       axios: 1.7.2(debug@4.3.5)
@@ -19583,6 +19587,7 @@ snapshots:
       chalk: 4.1.2
       debug: 4.3.5
       form-data: 4.0.0
+      fuse.js: 7.0.0
       lodash: 4.17.21
       pako: 2.1.0
       promise-events: 0.2.4
@@ -19598,10 +19603,10 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@usecannon/cli@2.15.6(bufferutil@4.0.8)(encoding@0.1.13)(hardhat@2.22.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@20.14.9)(typescript@5.5.2))(typescript@5.5.2)(utf-8-validate@5.0.10))(solc@0.8.25)(typescript@5.5.2)(utf-8-validate@5.0.10)':
+  '@usecannon/cli@2.15.8(bufferutil@4.0.8)(encoding@0.1.13)(hardhat@2.22.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@20.14.9)(typescript@5.5.2))(typescript@5.5.2)(utf-8-validate@5.0.10))(solc@0.8.25)(typescript@5.5.2)(utf-8-validate@5.0.10)':
     dependencies:
       '@iarna/toml': 3.0.0
-      '@usecannon/builder': 2.15.6(bufferutil@4.0.8)(encoding@0.1.13)(hardhat@2.22.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@20.14.9)(typescript@5.5.2))(typescript@5.5.2)(utf-8-validate@5.0.10))(solc@0.8.25)(typescript@5.5.2)(utf-8-validate@5.0.10)
+      '@usecannon/builder': 2.15.8(bufferutil@4.0.8)(encoding@0.1.13)(hardhat@2.22.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@20.14.9)(typescript@5.5.2))(typescript@5.5.2)(utf-8-validate@5.0.10))(solc@0.8.25)(typescript@5.5.2)(utf-8-validate@5.0.10)
       abitype: 1.0.4(typescript@5.5.2)(zod@3.23.8)
       chalk: 4.1.2
       commander: 9.5.0
@@ -23682,6 +23687,8 @@ snapshots:
   functional-red-black-tree@1.0.1: {}
 
   functions-have-names@1.2.3: {}
+
+  fuse.js@7.0.0: {}
 
   futoin-hkdf@1.5.3: {}
 

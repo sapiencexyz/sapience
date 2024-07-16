@@ -1,5 +1,5 @@
 {
-  "address": "0x0059844345b4149c121dcfe82c1daa982f1604d3",
+  "address": "0xf373c33634d0291a65fdbd215c70492887644a5b",
   "abi": [
     {
       "type": "function",
@@ -398,67 +398,6 @@
     },
     {
       "type": "function",
-      "name": "createLiquidityPositionTwo",
-      "inputs": [
-        {
-          "name": "params",
-          "type": "tuple",
-          "internalType": "struct IFoilStructs.LiquidityPositionParams",
-          "components": [
-            {
-              "name": "amountTokenA",
-              "type": "uint256",
-              "internalType": "uint256"
-            },
-            {
-              "name": "amountTokenB",
-              "type": "uint256",
-              "internalType": "uint256"
-            },
-            {
-              "name": "collateralAmount",
-              "type": "uint256",
-              "internalType": "uint256"
-            },
-            {
-              "name": "lowerTick",
-              "type": "int24",
-              "internalType": "int24"
-            },
-            {
-              "name": "upperTick",
-              "type": "int24",
-              "internalType": "int24"
-            }
-          ]
-        }
-      ],
-      "outputs": [
-        {
-          "name": "tokenId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "liquidity",
-          "type": "uint128",
-          "internalType": "uint128"
-        },
-        {
-          "name": "addedAmount0",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "addedAmount1",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "stateMutability": "payable"
-    },
-    {
-      "type": "function",
       "name": "getPosition",
       "inputs": [
         {
@@ -598,17 +537,6 @@
         }
       ],
       "stateMutability": "payable"
-    },
-    {
-      "type": "error",
-      "name": "InvalidAccountId",
-      "inputs": [
-        {
-          "name": "accountId",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ]
     },
     {
       "type": "function",
@@ -869,6 +797,17 @@
       ],
       "outputs": [],
       "stateMutability": "nonpayable"
+    },
+    {
+      "type": "error",
+      "name": "InvalidAccountId",
+      "inputs": [
+        {
+          "name": "accountId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
     },
     {
       "type": "constructor",
@@ -1290,11 +1229,11 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0xa1c45cb397096c40053e3ceb295d8962fa1b19548dbe1c45fa82ceda2ad2846d",
+  "deployTxnHash": "0xaab41eaeadd2d312cf1a7b3a637922289f4c70bf4550fbd770c1e2adcc28b3c5",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1721152883",
+  "deployTimestamp": "1721161305",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
-  "gasUsed": 533410,
-  "gasCost": "1005572411"
+  "gasUsed": 524978,
+  "gasCost": "1005560351"
 }
