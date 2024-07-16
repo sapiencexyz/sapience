@@ -239,7 +239,7 @@ const AddLiquidity = ({
         </InputGroup>
       </FormControl>
       <FormControl mb={4}>
-        <FormLabel>Base Token (vGwei)</FormLabel>
+        <FormLabel>Base Token (vGas)</FormLabel>
         <InputGroup>
           <Input
             type="number"
@@ -250,7 +250,7 @@ const AddLiquidity = ({
         </InputGroup>
       </FormControl>
       <FormControl mb={4}>
-        <FormLabel>Quote Token (vGas)</FormLabel>
+        <FormLabel>Quote Token (vGwei)</FormLabel>
         <InputGroup>
           <Input
             type="number"
