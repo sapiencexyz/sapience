@@ -45,6 +45,8 @@ contract EpochLiquidityModule is
             uint256 addedAmount1
         )
     {
+        // create or load account
+        // save tokenId to account
         console2.log("HELLO");
         Epoch.Data storage epoch = Epoch.load();
         console2.log(
@@ -130,6 +132,9 @@ contract EpochLiquidityModule is
             });
 
         (amount0, amount1) = epoch.uniswapPositionManager.collect(params);
+
+        // transfer the collateral to the account (virtual tokens)
+        // use current price to determine collateral amount
 
         // TODO: emit event
     }

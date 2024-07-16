@@ -58,5 +58,14 @@ contract EpochSettlementModule is ReentrancyGuard {
 
         epoch.settled = true;
         epoch.settlementPrice = settlementPrice;
+
+        // not actually withdrawing any virtual tokens from the pool
+        // checking balances of tokens in pool for LP and then settling based on that
+        // do any swaps manually to determine final collateral amount to return to LPs
+        // collect fees for LPs
+
+        // traders
+        // pay off loan by manual swapping based on settlement price
+        // return collateral amount
     }
 }

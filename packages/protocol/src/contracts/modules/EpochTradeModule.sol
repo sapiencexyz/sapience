@@ -124,7 +124,12 @@ contract EpochTradeModule {
         Position.load(accountId).accountId = accountId;
     }
 
+    /*
+    createTraderPosition(uint256 collateralAmount, int256 tokenAmount) returns (uint256 accountId) // createAccount & createPosition
+    modifyTraderPosition(uint256 accountId, uint256 collateralAmount, int256 tokenAmount)
+    */
     function openLong(uint256 accountId, uint256 collateralAmount) external {
+        // create/load account
         Epoch.Data storage epoch = Epoch.load();
         // check if epoch is not settled
         epoch.validateNotSettled();

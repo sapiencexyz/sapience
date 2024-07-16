@@ -65,6 +65,7 @@ library Epoch {
         });
     }
 
+    // add starting price
     function createValid(
         uint startTime,
         uint endTime,
@@ -137,7 +138,7 @@ library Epoch {
                 )
         );
 
-        IUniswapV3Pool(epoch.pool).initialize(112045541949572279837463876454);
+        IUniswapV3Pool(epoch.pool).initialize(112045541949572279837463876454); // starting price
         (uint160 sqrtPriceX96, int24 tick, , , , , ) = IUniswapV3Pool(
             epoch.pool
         ).slot0();
