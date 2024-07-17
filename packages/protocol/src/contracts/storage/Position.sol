@@ -6,14 +6,16 @@ import "./Epoch.sol";
 import "./Account.sol";
 import "./Debt.sol";
 import "../utils/UniV3Abstraction.sol";
+import {SafeCastU256} from "../../synthetix/utils/SafeCast.sol";
 
 library Position {
+    using SafeCastU256 for uint256;
+
     struct Data {
-        uint256 initialEthDeposit;
         uint256 accountId;
         uint256 vEthAmount;
         uint256 vGasAmount;
-        uint256 lpNftId;
+        int256 currentTokenAmount;
     }
 
     function load(
@@ -33,12 +35,13 @@ library Position {
         position = load(accountId);
     }
 
-    function createDeposit(Data storage self, uint256 tokenId) internal {
-        self.lpNftId = tokenId;
-    }
-
+    /*
     function openLong(Data storage self, uint256 collateralAmount) internal {
         Epoch.Data storage epoch = Epoch.load();
+
+        //
+        //  vEth -> vGas
+        //
 
         UniV3Abstraction.RuntimeSwapParameters memory params = UniV3Abstraction
             .RuntimeSwapParameters({
@@ -57,7 +60,9 @@ library Position {
     function reduceLong(Data storage self, uint256 vGasAmount) internal {
         Epoch.Data storage epoch = Epoch.load();
 
-        // vGas -> vwstETH
+        //
+        //  vGas -> vwstETH
+        //
 
         UniV3Abstraction.RuntimeSwapParameters memory params = UniV3Abstraction
             .RuntimeSwapParameters({
@@ -76,9 +81,9 @@ library Position {
     function openShort(Data storage self, uint256 collateralAmount) internal {
         Epoch.Data storage epoch = Epoch.load();
 
-        /*
-            wstETH -> vGas -> uniswap -> vwstETH
-        */
+        //
+        //  wstETH -> vGas -> uniswap -> vwstETH
+        //
 
         UniV3Abstraction.RuntimeSwapParameters memory params = UniV3Abstraction
             .RuntimeSwapParameters({
@@ -97,9 +102,9 @@ library Position {
     function reduceShort(Data storage self, uint256 vEthAmount) internal {
         Epoch.Data storage epoch = Epoch.load();
 
-        /*
-            vEth -> vGas
-        */
+        //
+        //  vEth -> vGas
+        //
 
         UniV3Abstraction.RuntimeSwapParameters memory params = UniV3Abstraction
             .RuntimeSwapParameters({
@@ -115,15 +120,16 @@ library Position {
         UniV3Abstraction.swap(params);
     }
 
+    */
+
     function updateBalance(
         Data storage self,
-        int256 amount0Delta,
-        int256 amount1Delta
+        int256 deltaTokenAmount,
+        int256 vEthDeltaAmount,
+        int256 vGasDeltaAmount
     ) internal {
-        if (amount0Delta < 0) {
-            self.vEthAmount += uint256(amount0Delta * -1);
-        } else {
-            self.vGasAmount += uint256(amount1Delta * -1);
-        }
+        self.currentTokenAmount += deltaTokenAmount;
+        self.vEthAmount = uint256(self.vEthAmount.toInt() + vEthDeltaAmount);
+        self.vGasAmount = uint256(self.vGasAmount.toInt() + vGasDeltaAmount);
     }
 }

@@ -1,14 +1,11 @@
-// contracts/GasWeiToken.sol
+// contracts/VirtualToken.sol
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {ERC20Pausable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-import "forge-std/console2.sol";
-
-contract VirtualToken is ERC20Pausable, Ownable {
+contract VirtualToken is ERC20, Ownable {
     constructor(
         address _owner,
         string memory name,
@@ -16,16 +13,6 @@ contract VirtualToken is ERC20Pausable, Ownable {
     ) ERC20(name, symbol) Ownable(_owner) {}
 
     function mint(address to, uint256 amount) public {
-        console2.logAddress(to);
-        console2.log("AMOUNT", amount);
         _mint(to, amount);
-    }
-
-    function pause() public onlyOwner {
-        _pause();
-    }
-
-    function unpause() public onlyOwner {
-        _unpause();
     }
 }

@@ -64,8 +64,9 @@ contract FoilTest is Test {
                 upperTick: 30000 // 20
             });
         foil.createLiquidityPosition(params);
-        (uint256 tokenId, uint128 liquidity, , ) = foil
-            .createLiquidityPosition(params);
+        (uint256 tokenId, uint128 liquidity, , ) = foil.createLiquidityPosition(
+            params
+        );
 
         uint128 halfLiquidity = liquidity / 2;
         uint256 coll = 10 ether;
@@ -112,31 +113,31 @@ contract FoilTest is Test {
         getAndLogPosition(positionId);
         getAndLogPosition(positionId2);
 
-        (uint256 tradedAmoun0, uint256 tradedAmount2) = foil.swapTokens(
-            0,
-            1 ether
-        );
+        // (uint256 tradedAmoun0, uint256 tradedAmount2) = foil.swapTokens(
+        //     0,
+        //     1 ether
+        // );
 
-        console2.log("TRADED", tradedAmoun0, tradedAmount2);
+        // console2.log("TRADED", tradedAmoun0, tradedAmount2);
 
-        (uint256 tokenAmount0, uint256 tokenAmount1) = foil.collectFees(
-            positionId
-        );
-        getAndLogPosition(positionId);
-        getAndLogPosition(positionId2);
-        console2.log("FEES COLLECTED", tokenAmount0, tokenAmount1);
-        (tokenAmount0, tokenAmount1) = foil.collectFees(positionId2);
-        console2.log("FEES COLLECTED 2", tokenAmount0, tokenAmount1);
-        getAndLogPosition(positionId);
-        getAndLogPosition(positionId2);
+        // (uint256 tokenAmount0, uint256 tokenAmount1) = foil.collectFees(
+        //     positionId
+        // );
+        // getAndLogPosition(positionId);
+        // getAndLogPosition(positionId2);
+        // console2.log("FEES COLLECTED", tokenAmount0, tokenAmount1);
+        // (tokenAmount0, tokenAmount1) = foil.collectFees(positionId2);
+        // console2.log("FEES COLLECTED 2", tokenAmount0, tokenAmount1);
+        // getAndLogPosition(positionId);
+        // getAndLogPosition(positionId2);
 
-        foil.fakeSettle(5 ether);
-        (tradedAmoun0, tradedAmount2) = foil.swapTokens(0, 1 ether);
+        // foil.fakeSettle(5 ether);
+        // (tradedAmoun0, tradedAmount2) = foil.swapTokens(0, 1 ether);
 
-        console2.log("TRADED after settle 1", tradedAmoun0, tradedAmount2);
-        (tradedAmoun0, tradedAmount2) = foil.swapTokens(1 ether, 0);
+        // console2.log("TRADED after settle 1", tradedAmoun0, tradedAmount2);
+        // (tradedAmoun0, tradedAmount2) = foil.swapTokens(1 ether, 0);
 
-        console2.log("TRADED after settle 2", tradedAmoun0, tradedAmount2);
+        // console2.log("TRADED after settle 2", tradedAmoun0, tradedAmount2);
     }
 
     function getAndLogPosition(uint256 positionId) public {

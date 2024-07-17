@@ -11,20 +11,371 @@ import "../storage/Position.sol";
 import "../storage/ERC721Storage.sol";
 import "../storage/ERC721EnumerableStorage.sol";
 import "../../synthetix/utils/DecimalMath.sol";
+import {SafeCastI256} from "../../synthetix/utils/SafeCast.sol";
+import {SafeCastU256} from "../../synthetix/utils/SafeCast.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 import "forge-std/console2.sol";
 
 contract EpochTradeModule {
     using Epoch for Epoch.Data;
     // using Account for Account.Data;
-    // using Position for Position.Data;
+    using Position for Position.Data;
     // using ERC721Storage for ERC721Storage.Data;
     using DecimalMath for uint256;
+    using SafeCastI256 for int256;
+    using SafeCastU256 for uint256;
+
+    uint256 private constant _COLLATERAL_TO_VGWEI = 1e9;
+
+    function createTraderPosition(
+        uint256 collateralAmount,
+        int256 tokenAmount
+    ) external returns (uint256 accountId) {
+        // create/load account
+        Epoch.Data storage epoch = Epoch.load();
+        // check if epoch is not settled
+        epoch.validateNotSettled();
+
+        accountId = ERC721EnumerableStorage.totalSupply() + 1;
+
+        Account.Data storage account = Account.createValid(accountId);
+        ERC721Storage._mint(msg.sender, accountId);
+
+        // Create empty position
+        Position.Data storage position = Position.load(accountId);
+        position.accountId = accountId;
+
+        if (tokenAmount > 0) {
+            _createLongPosition(
+                account,
+                position,
+                collateralAmount,
+                tokenAmount
+            );
+        } else {
+            _createShortPosition(
+                account,
+                position,
+                collateralAmount,
+                tokenAmount
+            );
+        }
+    }
+
+    function modifyTraderPosition(
+        uint256 accountId,
+        uint256 collateralAmount,
+        int256 deltaTokenAmount
+    ) external {
+        // create/load account
+        Epoch.Data storage epoch = Epoch.load();
+
+        // identify the account and position
+        // Notice: accountId is the tokenId
+        require(
+            ERC721Storage._ownerOf(accountId) == msg.sender,
+            "Not NFT owner"
+        );
+        Account.Data storage account = Account.loadValid(accountId);
+        Position.Data storage position = Position.loadValid(accountId);
+
+        (bool sameSide, int expectedTokenAmount) = sameSideAndExpected(
+            position.currentTokenAmount,
+            deltaTokenAmount
+        );
+
+        if (!sameSide || expectedTokenAmount == 0) {
+            // go to zero before moving to the other side
+            _closePosition(account, position, collateralAmount);
+        }
+
+        if (expectedTokenAmount > 0) {
+            _modifyLongPosition(
+                account,
+                position,
+                collateralAmount,
+                expectedTokenAmount
+            );
+        } else if (expectedTokenAmount < 0) {
+            _modifyShortPosition(
+                account,
+                position,
+                collateralAmount,
+                expectedTokenAmount
+            );
+        }
+    }
+
+    function _createLongPosition(
+        Account.Data storage account,
+        Position.Data storage position,
+        uint256 collateralAmount,
+        int256 tokenAmount
+    ) internal {
+        // with the collateral get vEth (Loan)
+        uint vEthLoan = collateralAmount * _COLLATERAL_TO_VGWEI; // 1:1e9
+
+        account.collateralAmount += collateralAmount;
+        account.borrowedGwei += vEthLoan;
+
+        // with the vEth get vGas (Swap)
+        (
+            uint256 refundAmountVEth,
+            uint256 refundAmountVGas,
+            uint256 tokenAmountVEth,
+            uint256 tokenAmountVGas
+        ) = swapTokensExactOut(vEthLoan, 0, 0, tokenAmount.toUint());
+        account.borrowedGwei -= refundAmountVEth;
+
+        position.updateBalance(
+            tokenAmountVEth.toInt(),
+            tokenAmountVGas.toInt(),
+            tokenAmount
+        );
+    }
+
+    function _createShortPosition(
+        Account.Data storage account,
+        Position.Data storage position,
+        uint256 collateralAmount,
+        int256 tokenAmount
+    ) internal {
+        // with the collateral get vGas (Loan)
+        uint vGasLoan = collateralAmount *
+            _COLLATERAL_TO_VGWEI *
+            getReferencePrice(); // 1:1e9:currentPrice
+
+        account.collateralAmount += collateralAmount;
+        account.borrowedGas += vGasLoan;
+
+        // with the vGas get vEth (Swap)
+        (uint256 tokenAmountVEth, uint256 tokenAmountVGas) = swapTokensExactIn(
+            0,
+            tokenAmount.toUint()
+        );
+
+        position.updateBalance(
+            tokenAmountVEth.toInt(),
+            tokenAmountVGas.toInt(),
+            tokenAmount
+        );
+    }
+
+    function _modifyLongPosition(
+        Account.Data storage account,
+        Position.Data storage position,
+        uint256 collateralAmount,
+        int256 tokenAmount
+    ) internal {
+        if (tokenAmount > position.currentTokenAmount) {
+            // Increase the position (LONG)
+            uint delta = (tokenAmount - position.currentTokenAmount).toUint();
+            // with the collateral get vEth (Loan)
+            uint vEthLoan = collateralAmount * _COLLATERAL_TO_VGWEI; // 1:1e9
+            account.collateralAmount += collateralAmount;
+            account.borrowedGwei += vEthLoan;
+
+            // with the vEth get vGas (Swap)
+            (
+                uint256 refundAmountVEth,
+                uint256 refundAmountVGas,
+                uint256 tokenAmountVEth,
+                uint256 tokenAmountVGas
+            ) = swapTokensExactOut(vEthLoan, 0, 0, delta);
+            account.borrowedGwei -= refundAmountVEth;
+
+            position.updateBalance(
+                tokenAmountVEth.toInt(),
+                tokenAmountVGas.toInt(),
+                delta.toInt()
+            );
+        } else {
+            // Decrease the position (LONG)
+            if (collateralAmount > 0) {
+                console2.log("IT SHULD REVERT WITH UNEXPECTED COLLATERAL");
+                return;
+            }
+
+            uint delta = (position.currentTokenAmount - tokenAmount).toUint();
+
+            // with the vGas get vEth (Swap)
+            (
+                uint256 tokenAmountVEth,
+                uint256 tokenAmountVGas
+            ) = swapTokensExactIn(0, delta);
+
+            position.updateBalance(
+                tokenAmountVEth.toInt(),
+                tokenAmountVGas.toInt(),
+                tokenAmount
+            );
+        }
+    }
+
+    function _modifyShortPosition(
+        Account.Data storage account,
+        Position.Data storage position,
+        uint256 collateralAmount,
+        int256 tokenAmount
+    ) internal {
+        if (tokenAmount < position.currentTokenAmount) {
+            // Increase the position (SHORT)
+
+            uint delta = (position.currentTokenAmount - tokenAmount).toUint();
+            // with the collateral get vGas (Loan)
+            uint vGasLoan = collateralAmount *
+                _COLLATERAL_TO_VGWEI *
+                getReferencePrice(); // 1:1e9:currentPrice
+            account.collateralAmount += collateralAmount;
+            account.borrowedGas += vGasLoan;
+
+            // with the vGas get vEth (Swap)
+            (
+                uint256 tokenAmountVEth,
+                uint256 tokenAmountVGas
+            ) = swapTokensExactIn(0, delta);
+
+            position.updateBalance(
+                tokenAmountVEth.toInt(),
+                tokenAmountVGas.toInt(),
+                tokenAmount
+            );
+        } else {
+            // Decrease the position (SHORT)
+            if (collateralAmount > 0) {
+                console2.log("IT SHULD REVERT WITH UNEXPECTED COLLATERAL");
+                return;
+            }
+
+            uint delta = (tokenAmount - position.currentTokenAmount).toUint();
+
+            // with the vEth get vGas (Swap)
+            (
+                uint256 refundAmountVEth,
+                uint256 refundAmountVGas,
+                uint256 tokenAmountVEth,
+                uint256 tokenAmountVGas
+            ) = swapTokensExactOut(position.vEthAmount, 0, 0, delta);
+            account.borrowedGas -= tokenAmountVGas;
+
+            position.updateBalance(
+                (position.vEthAmount - refundAmountVEth).toInt(),
+                0,
+                tokenAmount
+            );
+        }
+    }
+
+    function _closePosition(
+        Account.Data storage account,
+        Position.Data storage position,
+        uint256 collateralAmount
+    ) internal {
+        // TODO (autogenerated by copilot): Implement the close position logic
+        if (position.currentTokenAmount > 0) {
+            // Close LONG position
+            // with the vGas get vEth (Swap)
+            (
+                uint256 refundAmountVEth,
+                uint256 refundAmountVGas,
+                uint256 tokenAmountVEth,
+                uint256 tokenAmountVGas
+            ) = swapTokensExactOut(
+                    position.vEthAmount,
+                    0,
+                    0,
+                    position.currentTokenAmount.toUint()
+                );
+            account.borrowedGwei -= refundAmountVEth;
+
+            position.updateBalance(
+                tokenAmountVEth.toInt(),
+                tokenAmountVGas.toInt(),
+                position.currentTokenAmount
+            );
+        } else {
+            // Close SHORT position
+            // with the vEth get vGas (Swap)
+            (
+                uint256 refundAmountVEth,
+                uint256 refundAmountVGas,
+                uint256 tokenAmountVEth,
+                uint256 tokenAmountVGas
+            ) = swapTokensExactOut(
+                    position.vEthAmount,
+                    0,
+                    0,
+                    position.currentTokenAmount.toUint()
+                );
+            account.borrowedGas -= refundAmountVGas;
+
+            position.updateBalance(
+                tokenAmountVEth.toInt(),
+                tokenAmountVGas.toInt(),
+                position.currentTokenAmount
+            );
+        }
+    }
+
+    function swapTokensExactIn(
+        uint256 amountInVEth,
+        uint256 amountInVGas
+    ) internal returns (uint256 amountOutVEth, uint256 amountOutVGas) {
+        // TODO (autogenerated by copilot): Implement the close position logic
+        if (amountInVEth > 0 && amountInVGas > 0) {
+            revert("Only one token can be traded at a time");
+        }
+
+        Epoch.Data storage epoch = Epoch.load();
+        epoch.validateSettlmentState();
+
+        if (epoch.settled) {
+            return _afterSettlementSwap(epoch, amountInVEth, amountInVGas);
+        }
+
+        return _preSettlementSwap(epoch, amountInVEth, amountInVGas);
+    }
+
+    function swapTokensExactOut(
+        uint256 amountInVEth,
+        uint256 amountInVGas,
+        uint256 amountOutVEth,
+        uint256 amountOutVGas
+    ) internal returns (uint256, uint256, uint256, uint256) {
+        // TODO (autogenerated by copilot): Implement the close position logic
+        if (amountInVEth > 0 && amountInVGas > 0) {
+            revert("Only one token can be traded at a time");
+        }
+
+        // Epoch.Data storage epoch = Epoch.load();
+        // epoch.validateSettlmentState();
+
+        // if (epoch.settled) {
+        //     return
+        //         _afterSettlementSwap(
+        //             epoch,
+        //             amountInVEth,
+        //             amountInVGas,
+        //             amountOutVEth,
+        //             amountOutVGas
+        //         );
+        // }
+
+        // return
+        //     _preSettlementSwap(
+        //         epoch,
+        //         amountInVEth,
+        //         amountInVGas,
+        //         amountOutVEth,
+        //         amountOutVGas
+        //     );
+    }
 
     function swapTokens(
         uint256 amountInVEth,
         uint256 amountInVGas
-    ) external returns (uint256 amountOutVEth, uint256 amountOutVGas) {
+    ) internal returns (uint256 amountOutVEth, uint256 amountOutVGas) {
         if (amountInVEth > 0 && amountInVGas > 0) {
             revert("Only one token can be traded at a time");
         }
@@ -98,35 +449,33 @@ contract EpochTradeModule {
         }
     }
 
-    function createTraderPosition(uint256 collateralAmount, int256 tokenAmount) public returns (uint256 accountId) {}
-    function modifyTraderPosition(uint256 accountId, uint256 collateralAmount, int256 tokenAmount) public {}
-
-/*
-    function createTraderPosition(uint collateral, int size) external {
-        uint accountId = ERC721EnumerableStorage.totalSupply() + 1;
-        Account.createValid(accountId);
-        ERC721Storage._mint(msg.sender, accountId);
-
-        // Create empty position
-        Position.load(accountId).accountId = accountId;
-    }
-    function updateTraderPosition(
-        uint256 tokenId,
-        uint collateral,
-        int size
-    ) external {
-        return;
+    function sameSideAndExpected(
+        int tokenAmount,
+        int deltaTokenAmount
+    ) internal pure returns (bool sameSide, int expectedTokenAmount) {
+        expectedTokenAmount = tokenAmount + deltaTokenAmount;
+        if (tokenAmount > 0 && expectedTokenAmount > 0) {
+            return (true, expectedTokenAmount);
+        } else if (tokenAmount < 0 && deltaTokenAmount < 0) {
+            return (true, expectedTokenAmount);
+        } else {
+            return (false, expectedTokenAmount);
+        }
     }
 
-    function createTraderPositionLeo() external {
-        uint accountId = ERC721EnumerableStorage.totalSupply() + 1;
-        Account.createValid(accountId);
-        ERC721Storage._mint(msg.sender, accountId);
-
-        // Create empty position
-        Position.load(accountId).accountId = accountId;
+    function getReferencePrice() internal view returns (uint256) {
+        Epoch.Data storage epoch = Epoch.load();
+        if (epoch.settled) {
+            return epoch.settlementPrice;
+        } else {
+            (uint160 sqrtRatioX96, , , , , , ) = IUniswapV3Pool(epoch.pool)
+                .slot0();
+            return
+                FullMath.mulDiv(sqrtRatioX96, sqrtRatioX96, FixedPoint96.Q96);
+        }
     }
 
+    /*
     function openLong(uint256 accountId, uint256 collateralAmount) external {
         // create/load account
         Epoch.Data storage epoch = Epoch.load();
