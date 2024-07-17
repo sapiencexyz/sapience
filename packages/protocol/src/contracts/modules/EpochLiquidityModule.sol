@@ -1,38 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.25 <0.9.0;
 
-// import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-// import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePositionManager.sol";
-// import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
-// import {IUniswapV3MintCallback} from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
-// import {IUniswapV3SwapCallback} from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
-// import {TickMath} from "../external/univ3/TickMath.sol";
-// import "../external/VirtualToken.sol";
 import "../../synthetix/interfaces/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-// import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-// import "../storage/Epoch.sol";
 import "../storage/Account.sol";
-// import "../storage/Position.sol";
-// import {LiquidityAmounts} from "../external/univ3/LiquidityAmounts.sol";
 import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
-// import "../storage/ERC721Storage.sol";
 import "../storage/ERC721EnumerableStorage.sol";
 import "../utils/UniV3Abstraction.sol";
 import "forge-std/console2.sol";
 
-contract EpochLiquidityModule is
-    ReentrancyGuard,
-    IERC721Receiver
-    // IUniswapV3MintCallback
-    // IUniswapV3SwapCallback
-{
-    // using Epoch for Epoch.Data;
-    // using Account for Account.Data;
-    // using Position for Position.Data;
-
-    // using ERC721Storage for ERC721Storage.Data;
-
+contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
     function createLiquidityPosition(
         IFoilStructs.LiquidityPositionParams memory params
     )
@@ -188,56 +165,4 @@ contract EpochLiquidityModule is
         );
         console2.log("REMOVED", amount0, amount1);
     }
-
-    // --- Uniswap V3 Callbacks ---
-    // function uniswapV3MintCallback(
-    //     uint256 amount0Owed,
-    //     uint256 amount1Owed,
-    //     bytes calldata data
-    // ) external override {
-    //     // TODO: check sender is uniswap
-    //     uint256 accountId = abi.decode(data, (uint256));
-
-    //     Epoch.Data storage epoch = Epoch.load();
-    //     Position.Data storage position = Position.loadValid(accountId);
-
-    //     // VirtualToken(epoch.gasToken).mint(address(this), amountTokenB);
-
-    //     // TransferHelper.safeApprove(
-    //     //     address(epoch.ethToken),
-    //     //     address(epoch.uniswapPositionManager),
-    //     //     type(uint256).max
-    //     // );
-    //     // TransferHelper.safeApprove(
-    //     //     address(epoch.gasToken),
-    //     //     address(epoch.uniswapPositionManager),
-    //     //     type(uint256).max
-    //     // );
-
-    //     if (amount0Owed > 0) {
-    //         address token = IUniswapV3Pool(epoch.pool).token0();
-    //         // Check if the tokens are not swapped
-    //         if (token != address(epoch.ethToken)) {
-    //             revert Errors.InvalidVirtualToken(token);
-    //         }
-
-    //         epoch.ethToken.mint(address(this), amount0Owed);
-    //         epoch.ethToken.transfer(address(epoch.pool), amount0Owed);
-
-    //         position.vEthAmount += amount0Owed;
-    //     }
-
-    //     if (amount1Owed > 0) {
-    //         address token = IUniswapV3Pool(epoch.pool).token1();
-    //         // Check if the tokens are not swapped
-    //         if (token != address(epoch.gasToken)) {
-    //             revert Errors.InvalidVirtualToken(token);
-    //         }
-
-    //         epoch.gasToken.mint(address(this), amount1Owed);
-    //         epoch.gasToken.transfer(address(epoch.pool), amount1Owed);
-
-    //         position.vGasAmount += amount1Owed;
-    //     }
-    // }
 }
