@@ -115,10 +115,10 @@
   "linkedLibraries": {},
   "deployTxnHash": "0x5b73a692f23a7767228b971a8037fb93156d9feccc11610352314fb3e62e29a7",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1721161301",
+  "deployTimestamp": "1721183368",
   "sourceName": "src/contracts/modules/EpochSettlementModule.sol",
   "contractName": "EpochSettlementModule",
   "deployedOn": "deploy.EpochSettlementModule",
   "gasUsed": 428966,
-  "gasCost": "1012219960"
+  "gasCost": "1012219963"
 }

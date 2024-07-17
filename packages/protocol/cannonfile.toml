@@ -17,7 +17,7 @@ target="foil@uniswap"
 [clone.CollateralAsset]
 source="mintable-token@permissionless-mint"
 target="foil@test-collateral-asset"
-var.symbol="cbETH"
+var.symbol="wstETH"
 
 [deploy.ReentrancyGuard]
 artifact = "ReentrancyGuard"

@@ -9,6 +9,10 @@ import {
   InputGroup,
   InputRightAddon,
   Button,
+  RangeSlider,
+  RangeSliderFilledTrack,
+  RangeSliderThumb,
+  RangeSliderTrack,
 } from '@chakra-ui/react';
 import { Position } from '@uniswap/v3-sdk';
 import { useContext, useEffect, useState } from 'react';
@@ -177,6 +181,7 @@ const AddLiquidity = ({
     tickUpper,
   ]);
 
+  /*
   useEffect(() => {
     if (pool) {
       const p = Position.fromAmount0({
@@ -202,7 +207,7 @@ const AddLiquidity = ({
       setBaseToken(p.amount0.toSignificant());
     }
   }, [pool, quoteToken, tickLower, tickUpper]);
-
+*/
   return (
     <form onSubmit={handleFormSubmit}>
       <FormControl mb={4}>
@@ -238,35 +243,30 @@ const AddLiquidity = ({
           <InputRightAddon>{collateralAssetTicker}/Ggas</InputRightAddon>
         </InputGroup>
       </FormControl>
-      <FormControl mb={4}>
-        <FormLabel>Base Token (vGas)</FormLabel>
-        <InputGroup>
-          <Input
-            type="number"
-            value={baseToken}
-            onChange={(e) => setBaseToken(Number(e.target.value))}
-          />
-          <InputRightAddon>vGwei</InputRightAddon>
-        </InputGroup>
+
+      <FormControl>
+        <RangeSlider aria-label={['min', 'max']} defaultValue={[10, 30]}>
+          <RangeSliderTrack>
+            <RangeSliderFilledTrack />
+          </RangeSliderTrack>
+          <RangeSliderThumb index={0} />
+          <RangeSliderThumb index={1} />
+        </RangeSlider>
       </FormControl>
-      <FormControl mb={4}>
-        <FormLabel>Quote Token (vGwei)</FormLabel>
-        <InputGroup>
-          <Input
-            type="number"
-            value={quoteToken}
-            onChange={(e) => setQuoteToken(Number(e.target.value))}
-          />
-          <InputRightAddon>vGas</InputRightAddon>
-        </InputGroup>
-      </FormControl>
+
       <Box mb="4">
-        <Text fontSize="sm" color="gray.500" mb="1">
+        <Text fontSize="sm" color="gray.500" mb="0.5">
+        Base Token: {baseToken} vGas
+        </Text>
+        <Text fontSize="sm" color="gray.500" mb="0.5">
+        Quote Token: {quoteToken} vGwei
+        </Text>
+        <Text fontSize="sm" color="gray.500" mb="0.5">
           Net Position: {lowPrice.toFixed(2)} Ggas to {highPrice.toFixed(2)}{' '}
           Ggas
         </Text>
         {isConnected && collateralAmountFunctionResult?.data && (
-          <Text fontSize="sm" color="gray.500" mb="1">
+          <Text fontSize="sm" color="gray.500" mb="0.5">
             Wallet Balance:{' '}
             {formatUnits(
               collateralAmountFunctionResult.data.toString(),

@@ -236,12 +236,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x626886d0d27115488d4d2ff56c88667c7c0fcc592ab54e7bab5856c0954fa4ec",
+  "deployTxnHash": "0x33f981b8976d418ac7cd8a9e6c4ce1f3ac788c6d4e2aa0ace05863e880392c05",
   "deployTxnBlockNumber": "4",
-  "deployTimestamp": "1721161304",
+  "deployTimestamp": "1721183371",
   "sourceName": "src/contracts/modules/EpochLiquidityModule.sol",
   "contractName": "EpochLiquidityModule",
   "deployedOn": "deploy.EpochLiquidityModule",
   "gasUsed": 972224,
-  "gasCost": "1015659831"
+  "gasCost": "1015659835"
 }

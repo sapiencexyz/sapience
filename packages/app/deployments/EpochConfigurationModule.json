@@ -314,12 +314,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x68c406d412dd6d59fb72fae09499a8de520526a3aac8151968188b3aa0a42184",
+  "deployTxnHash": "0x0e1c11160e658498be67d83e7b80b13e94c7a614242fdb3a08cb151023e3533b",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1721161303",
+  "deployTimestamp": "1721183370",
   "sourceName": "src/contracts/modules/EpochConfigurationModule.sol",
   "contractName": "EpochConfigurationModule",
   "deployedOn": "deploy.EpochConfigurationModule",
   "gasUsed": 1956640,
-  "gasCost": "1017569547"
+  "gasCost": "1017569551"
 }
