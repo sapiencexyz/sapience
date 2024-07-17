@@ -98,6 +98,10 @@ contract EpochTradeModule {
         }
     }
 
+    function createTraderPosition(uint256 collateralAmount, int256 tokenAmount) public returns (uint256 accountId) {}
+    function modifyTraderPosition(uint256 accountId, uint256 collateralAmount, int256 tokenAmount) public {}
+
+/*
     function createTraderPosition(uint collateral, int size) external {
         uint accountId = ERC721EnumerableStorage.totalSupply() + 1;
         Account.createValid(accountId);
@@ -106,7 +110,6 @@ contract EpochTradeModule {
         // Create empty position
         Position.load(accountId).accountId = accountId;
     }
-
     function updateTraderPosition(
         uint256 tokenId,
         uint collateral,
@@ -124,10 +127,6 @@ contract EpochTradeModule {
         Position.load(accountId).accountId = accountId;
     }
 
-    /*
-    createTraderPosition(uint256 collateralAmount, int256 tokenAmount) returns (uint256 accountId) // createAccount & createPosition
-    modifyTraderPosition(uint256 accountId, uint256 collateralAmount, int256 tokenAmount)
-    */
     function openLong(uint256 accountId, uint256 collateralAmount) external {
         // create/load account
         Epoch.Data storage epoch = Epoch.load();

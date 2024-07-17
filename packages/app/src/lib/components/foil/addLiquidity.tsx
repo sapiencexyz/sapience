@@ -13,6 +13,9 @@ import {
   RangeSliderFilledTrack,
   RangeSliderThumb,
   RangeSliderTrack,
+  SliderMark,
+  RangeSliderMark,
+  Flex,
 } from '@chakra-ui/react';
 import { Position } from '@uniswap/v3-sdk';
 import { useContext, useEffect, useState } from 'react';
@@ -222,17 +225,6 @@ const AddLiquidity = ({
         </InputGroup>
       </FormControl>
       <FormControl mb={4}>
-        <FormLabel>Low Price</FormLabel>
-        <InputGroup>
-          <Input
-            type="number"
-            value={lowPrice}
-            onChange={(e) => setLowPrice(Number(e.target.value))}
-          />
-          <InputRightAddon>{collateralAssetTicker}/Ggas</InputRightAddon>
-        </InputGroup>
-      </FormControl>
-      <FormControl mb={4}>
         <FormLabel>High Price</FormLabel>
         <InputGroup>
           <Input
@@ -243,23 +235,56 @@ const AddLiquidity = ({
           <InputRightAddon>{collateralAssetTicker}/Ggas</InputRightAddon>
         </InputGroup>
       </FormControl>
-
-      <FormControl>
-        <RangeSlider aria-label={['min', 'max']} defaultValue={[10, 30]}>
-          <RangeSliderTrack>
-            <RangeSliderFilledTrack />
-          </RangeSliderTrack>
-          <RangeSliderThumb index={0} />
-          <RangeSliderThumb index={1} />
-        </RangeSlider>
+      <FormControl mb={4}>
+        <FormLabel>Low Price</FormLabel>
+        <InputGroup>
+          <Input
+            type="number"
+            value={lowPrice}
+            onChange={(e) => setLowPrice(Number(e.target.value))}
+          />
+          <InputRightAddon>{collateralAssetTicker}/Ggas</InputRightAddon>
+        </InputGroup>
       </FormControl>
+
+      <Flex>
+        <Box flex="auto">Recharts Histogram Here</Box>
+        <FormControl>
+          <RangeSlider
+            aria-label={['min', 'max']}
+            defaultValue={[10, 30]}
+            orientation="vertical"
+            minH="32"
+          >
+            <RangeSliderMark value={0} mb="-1" ml="3" fontSize="sm" w="90px">
+              5 gwei
+            </RangeSliderMark>
+
+            <RangeSliderMark
+              value={100}
+              mb="-3.5"
+              ml="3"
+              fontSize="sm"
+              w="90px"
+            >
+              100 gwei
+            </RangeSliderMark>
+
+            <RangeSliderTrack>
+              <RangeSliderFilledTrack />
+            </RangeSliderTrack>
+            <RangeSliderThumb index={0} />
+            <RangeSliderThumb index={1} />
+          </RangeSlider>
+        </FormControl>
+      </Flex>
 
       <Box mb="4">
         <Text fontSize="sm" color="gray.500" mb="0.5">
-        Base Token: {baseToken} vGas
+          Base Token: {baseToken} vGas
         </Text>
         <Text fontSize="sm" color="gray.500" mb="0.5">
-        Quote Token: {quoteToken} vGwei
+          Quote Token: {quoteToken} vGwei
         </Text>
         <Text fontSize="sm" color="gray.500" mb="0.5">
           Net Position: {lowPrice.toFixed(2)} Ggas to {highPrice.toFixed(2)}{' '}

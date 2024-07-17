@@ -1,5 +1,5 @@
 {
-  "address": "0xf373c33634d0291a65fdbd215c70492887644a5b",
+  "address": "0x889c4ca253bb55cc3e739ddc706d1ffb24e92285",
   "abi": [
     {
       "type": "function",
@@ -647,29 +647,28 @@
       "name": "createTraderPosition",
       "inputs": [
         {
-          "name": "collateral",
+          "name": "collateralAmount",
           "type": "uint256",
           "internalType": "uint256"
         },
         {
-          "name": "size",
+          "name": "tokenAmount",
           "type": "int256",
           "internalType": "int256"
         }
       ],
-      "outputs": [],
+      "outputs": [
+        {
+          "name": "accountId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
       "stateMutability": "nonpayable"
     },
     {
       "type": "function",
-      "name": "createTraderPositionLeo",
-      "inputs": [],
-      "outputs": [],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
-      "name": "openLong",
+      "name": "modifyTraderPosition",
       "inputs": [
         {
           "name": "accountId",
@@ -680,67 +679,11 @@
           "name": "collateralAmount",
           "type": "uint256",
           "internalType": "uint256"
-        }
-      ],
-      "outputs": [],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
-      "name": "openShort",
-      "inputs": [
-        {
-          "name": "accountId",
-          "type": "uint256",
-          "internalType": "uint256"
         },
         {
-          "name": "collateralAmount",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "outputs": [],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
-      "name": "payDebtAndBurnVtokens",
-      "inputs": [],
-      "outputs": [],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
-      "name": "reduceLong",
-      "inputs": [
-        {
-          "name": "accountId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "newVGasSize",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "outputs": [],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
-      "name": "reduceShort",
-      "inputs": [
-        {
-          "name": "accountId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "newVEthSize",
-          "type": "uint256",
-          "internalType": "uint256"
+          "name": "tokenAmount",
+          "type": "int256",
+          "internalType": "int256"
         }
       ],
       "outputs": [],
@@ -774,40 +717,6 @@
         }
       ],
       "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
-      "name": "updateTraderPosition",
-      "inputs": [
-        {
-          "name": "tokenId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "collateral",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "size",
-          "type": "int256",
-          "internalType": "int256"
-        }
-      ],
-      "outputs": [],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "error",
-      "name": "InvalidAccountId",
-      "inputs": [
-        {
-          "name": "accountId",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ]
     },
     {
       "type": "constructor",
@@ -1229,11 +1138,11 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0x6ebbb759f3b4acde05387563940cdeb75eb0e91733a9c8eb765774e5a768dd68",
+  "deployTxnHash": "0x0c504350e15f1e91e1c069475857b3b92ec20f69b09181a148245d7cf502e495",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1721183372",
+  "deployTimestamp": "1721233027",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
-  "gasUsed": 524978,
-  "gasCost": "1005560352"
+  "gasUsed": 461400,
+  "gasCost": "1005528707"
 }
