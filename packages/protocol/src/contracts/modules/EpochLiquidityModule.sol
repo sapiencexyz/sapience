@@ -15,12 +15,6 @@ uint256 constant ONE_ETH_IN_WEI = 10 ** 18;
 uint256 constant Q192 = 2 ** 192;
 
 contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
-    // using Epoch for Epoch.Data;
-    // using Account for Account.Data;
-    // using Position for Position.Data;
-
-    // using ERC721Storage for ERC721Storage.Data;
-
     function createLiquidityPosition(
         IFoilStructs.LiquidityPositionParams memory params
     )
@@ -35,17 +29,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
     {
         // create or load account
         // save tokenId to account
-        console2.log("HELLO");
         Epoch.Data storage epoch = Epoch.load();
-        console2.log(
-            "BEFORE MINTING TOKENS",
-            params.amountTokenA,
-            params.amountTokenB
-        );
-        console2.logAddress(address(this));
-        console2.logAddress(address(epoch.ethToken));
-
-        console2.log("AFTER MINTING TOKENS");
 
         epoch.ethToken.approve(
             address(epoch.uniswapPositionManager),
@@ -55,9 +39,6 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
             address(epoch.uniswapPositionManager),
             params.amountTokenB
         );
-
-        console2.log("MINT, ADDRESS");
-        console2.logAddress(address(this));
 
         INonfungiblePositionManager.MintParams
             memory mintParams = INonfungiblePositionManager.MintParams({
@@ -73,20 +54,14 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
                 recipient: address(this),
                 deadline: block.timestamp
             });
-        console2.log("BEFORE MINT");
 
         (tokenId, liquidity, addedAmount0, addedAmount1) = epoch
             .uniswapPositionManager
             .mint(mintParams);
 
-        console2.log("YAY", tokenId);
-        console2.log("ADDED AMTS", addedAmount0, addedAmount1);
-
         (, , address token0, address token1, , , , uint128 liq, , , , ) = epoch
             .uniswapPositionManager
             .positions(tokenId);
-
-        console2.log("Liquidity", liq);
 
         // TODO: refund
     }
@@ -177,6 +152,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
         console2.log("REMOVED", amount0, amount1);
     }
 
+    // TODO: this function isn't working correctly yet
     function getTokenAmounts(
         uint256 collateralAmountETH, // in ETH terms (18 decimals)
         int24 tickLower,
