@@ -1,5 +1,5 @@
 {
-  "address": "0xaba1b85ef449942ee78aaffcd56381e18b229064",
+  "address": "0x211206438d02902d43b8d10fb09285f7bcfb8fcb",
   "abi": [
     {
       "type": "function",
@@ -663,6 +663,19 @@
     },
     {
       "type": "function",
+      "name": "getReferencePrice",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "modifyTraderPosition",
       "inputs": [
         {
@@ -1125,11 +1138,11 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0xacb94ea69a0ee7dd5ad306dd221b6ace523b4700c1f8612c6c0a6b19ef86a7eb",
+  "deployTxnHash": "0xe7a681f9ebfa9219b9d2b6572fcc8345f9bb95828ab2ebb32dfb9c375b3a0e39",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1721264363",
+  "deployTimestamp": "1721268032",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
-  "gasUsed": 448651,
-  "gasCost": "1005563152"
+  "gasUsed": 461400,
+  "gasCost": "1005563368"
 }

@@ -115,7 +115,7 @@
   "linkedLibraries": {},
   "deployTxnHash": "0xbce06f7f023f1f3283881dfe3803e6ba12623a733a37897635b8ab1f75dc810c",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1721264359",
+  "deployTimestamp": "1721268028",
   "sourceName": "src/contracts/modules/EpochSettlementModule.sol",
   "contractName": "EpochSettlementModule",
   "deployedOn": "deploy.EpochSettlementModule",

@@ -71,14 +71,21 @@ function RadioCard(props) {
 export default function TraderPosition({ params }) {
   const account = useAccount();
   const [nftId, setNftId] = useState(0);
-  const [collateral, setCollateral] = useState(0);
-  const [size, setSize] = useState(0);
+  const [collateral, setCollateral] = useState<bigint>(0n);
+  const [size, setSize] = useState<bigint>(0n);
   const options = ['Long', 'Short'];
   const [option, setOption] = useState('Long');
   const [transactionStep, setTransactionStep] = useState(0);
   const { isConnected } = account;
 
   const chainId = 13370;
+
+  const referencePriceFunctionResult = useReadContract({
+    abi: Foil.abi,
+    address: Foil.address as `0x${string}`,
+    functionName: 'getReferencePrice',
+    chainId,
+  });
 
   const collateralAmountFunctionResult = useReadContract({
     abi: CollateralAsset.abi,
@@ -194,6 +201,18 @@ export default function TraderPosition({ params }) {
     }
   }, [toast, isConfirmed]);
 
+  React.useEffect(() => {
+    setCollateral(
+      BigInt(size) * BigInt(referencePriceFunctionResult?.data?.toString() || 0)
+    );
+  }, [referencePriceFunctionResult?.data, size]);
+
+  React.useEffect(() => {
+    setSize(
+      BigInt(collateral) / BigInt(referencePriceFunctionResult?.data?.toString() || 1)
+    );
+  }, [collateral, referencePriceFunctionResult?.data]);
+
   return (
     <form onSubmit={handleSubmit}>
       <PositionSelector isLP={false} onChange={setNftId} />
@@ -211,9 +230,13 @@ export default function TraderPosition({ params }) {
         <FormLabel>Size</FormLabel>
         <InputGroup>
           <Input
-            value={size}
+            value={show ? size : collateral}
             type="number"
-            onChange={(e) => setSize(Number(e.target.value))}
+            onChange={(e) =>
+              show
+                ? setSize(Number(e.target.value))
+                : setCollateral(Number(e.target.value))
+            }
           />
           <InputRightElement width="4.5rem">
             <Button h="1.75rem" size="sm" onClick={handleClick}>
@@ -224,12 +247,7 @@ export default function TraderPosition({ params }) {
       </FormControl>
       <FormControl mb={4}>
         <InputGroup>
-          <Input
-            readOnly
-            value={collateral}
-            type="number"
-            onChange={(e) => setCollateral(Number(e.target.value))}
-          />
+          <Input readOnly value={show ? collateral : size} type="number" />
           <InputRightAddon>
             {show ? 'Ggas' : collateralAssetTicker}
           </InputRightAddon>
