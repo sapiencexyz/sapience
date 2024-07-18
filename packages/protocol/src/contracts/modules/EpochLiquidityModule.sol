@@ -59,6 +59,13 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
             .uniswapPositionManager
             .mint(mintParams);
 
+        account.updateLoan(
+            tokenId,
+            params.collateralAmount,
+            addedAmount0,
+            addedAmount1
+        );
+
         (, , address token0, address token1, , , , uint128 liq, , , , ) = epoch
             .uniswapPositionManager
             .positions(tokenId);
@@ -201,5 +208,24 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
         amountGAS = amount1 / ONE_ETH_IN_WEI;
 
         return (amountGWEI, amountGAS);
+    }
+
+    function getPosition(
+        uint256 accountId
+    )
+        returns (
+            uint256 tokenId,
+            uint256 collateralAmount,
+            uint256 borrowedGwei,
+            uint256 borrowedGas
+        )
+    {
+        Account.Data storage account = Account.load(accountId);
+        return (
+            account.tokenId,
+            account.collateralAmount,
+            account.borrowedGwei,
+            account.borrowedGas
+        );
     }
 }

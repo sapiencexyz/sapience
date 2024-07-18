@@ -11,9 +11,9 @@ library Account {
     using Epoch for Epoch.Data;
 
     struct Data {
-        uint256 id; // nft id
+        uint256 tokenId; // nft id
         uint256 collateralAmount; // configured collateral
-        uint256 borrowedGwei; // Token A
+        uint256 borrowedGwei; // Token A (rename?)
         uint256 borrowedGas; // Token B
     }
 
@@ -42,6 +42,19 @@ library Account {
 
         account.id = accountId;
         return account;
+    }
+
+    function updateLoan(
+        Data storage self,
+        uint256 tokenId,
+        uint256 collateralAmount,
+        uint256 amount0,
+        uint256 amount1
+    ) internal {
+        self.collateralAmount = collateralAmount;
+        self.borrowedGwei = amount0;
+        self.borrowedGas = amount1;
+        self.tokenId = tokenId;
     }
 
     /**
