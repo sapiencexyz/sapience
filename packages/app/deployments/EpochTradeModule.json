@@ -1,9 +1,5 @@
 {
-<<<<<<< HEAD
-  "address": "0x53911B86891E4502d626a516859D9c5885e37008",
-=======
-  "address": "0xCD97AA6d0961956bbEC7D041a9E2376CEa3F9c2e",
->>>>>>> a896a56 (get amounts)
+  "address": "0x6Ef7254B6a630b15B6E5e4915399a74d60590324",
   "abi": [
     {
       "type": "function",
@@ -161,23 +157,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-<<<<<<< HEAD
-  "deployTxnHash": "0x370489374b41bfc84fceb331b269e0061c07a96aac62e3fb3e0a6254fd922a4e",
+  "deployTxnHash": "0x293a2349107655b02282e86d81770fc77f7cac497e08bcaad26c253a8b570b99",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1721268028",
+  "deployTimestamp": "1721300748",
   "sourceName": "src/contracts/modules/EpochTradeModule.sol",
   "contractName": "EpochTradeModule",
   "deployedOn": "deploy.EpochTradeModule",
-  "gasUsed": 1253404,
-  "gasCost": "1010718742"
-=======
-  "deployTxnHash": "0xfc669dda8d3b3a01b4d7aac644fc53e1606330c759038e956c887283540e2446",
-  "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1721240973",
-  "sourceName": "src/contracts/modules/EpochTradeModule.sol",
-  "contractName": "EpochTradeModule",
-  "deployedOn": "deploy.EpochTradeModule",
-  "gasUsed": 425182,
-  "gasCost": "1010816480"
->>>>>>> a896a56 (get amounts)
+  "gasUsed": 1253380,
+  "gasCost": "1013956801"
 }

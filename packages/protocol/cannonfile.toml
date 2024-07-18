@@ -22,18 +22,12 @@ var.symbol="wstETH"
 [deploy.ReentrancyGuard]
 artifact = "ReentrancyGuard"
 
-[deploy.UniV3Abstraction]
-artifact = "UniV3Abstraction"
-
 [deploy.EpochConfigurationModule]
 artifact="EpochConfigurationModule"
 libraries.ReentrancyGuard="<%= contracts.ReentrancyGuard.address %>"
-libraries.UniV3Abstraction="<%= contracts.UniV3Abstraction.address %>"
-depends = ['deploy.ReentrancyGuard', 'deploy.UniV3Abstraction']
 
 [deploy.EpochLiquidityModule]
 artifact="EpochLiquidityModule"
-libraries.UniV3Abstraction="<%= contracts.UniV3Abstraction.address %>"
 
 [deploy.EpochSettlementModule]
 artifact="EpochSettlementModule"

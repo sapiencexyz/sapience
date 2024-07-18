@@ -95,6 +95,14 @@ export default function TraderPosition({ params }) {
     chainId,
   });
 
+  const getPositionDataFunctionResult = useReadContract({
+    abi: Foil.abi,
+    address: Foil.address as `0x${string}`,
+    functionName: 'getPositionData',
+    args: [nftId],
+    chainId,
+  });
+
   const { collateralAssetTicker, collateralAssetDecimals } =
     React.useContext(MarketContext);
 
@@ -209,9 +217,25 @@ export default function TraderPosition({ params }) {
 
   React.useEffect(() => {
     setSize(
-      BigInt(collateral) / BigInt(referencePriceFunctionResult?.data?.toString() || 1)
+      BigInt(collateral) /
+        BigInt(referencePriceFunctionResult?.data?.toString() || 1)
     );
   }, [collateral, referencePriceFunctionResult?.data]);
+
+  React.useEffect(() => {
+    if (nftId > 0) {
+      setSize(
+        BigInt(
+          Math.abs(getPositionDataFunctionResult?.data?.currentTokenAmount) || 0
+        )
+      );
+      setOption(
+        getPositionDataFunctionResult?.data?.currentTokenAmount >= 0
+          ? 'Long'
+          : 'Short'
+      );
+    }
+  }, [nftId, getPositionDataFunctionResult?.data]);
 
   return (
     <form onSubmit={handleSubmit}>

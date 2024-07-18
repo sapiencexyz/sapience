@@ -238,13 +238,9 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x31daa387ff531c98dc27561e879d4f935ed1113f955be4803e6a90acf2183e93",
+  "deployTxnHash": "0x1b8b06974ccac79584ff62744179dbadbda5412c0ba26644eb9037d9bd23d6e0",
   "deployTxnBlockNumber": "3",
-<<<<<<< HEAD
-  "deployTimestamp": "1721268030",
-=======
-  "deployTimestamp": "1721240975",
->>>>>>> a896a56 (get amounts)
+  "deployTimestamp": "1721300750",
   "sourceName": "contracts/UniswapV3Factory.sol",
   "contractName": "UniswapV3Factory",
   "deployedOn": "deploy.UniswapV3Factory",

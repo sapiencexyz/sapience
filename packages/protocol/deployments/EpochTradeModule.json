@@ -1,5 +1,5 @@
 {
-  "address": "0xCD97AA6d0961956bbEC7D041a9E2376CEa3F9c2e",
+  "address": "0x6Ef7254B6a630b15B6E5e4915399a74d60590324",
   "abi": [
     {
       "type": "function",
@@ -27,6 +27,19 @@
     },
     {
       "type": "function",
+      "name": "getReferencePrice",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "modifyTraderPosition",
       "inputs": [
         {
@@ -40,7 +53,7 @@
           "internalType": "uint256"
         },
         {
-          "name": "tokenAmount",
+          "name": "deltaTokenAmount",
           "type": "int256",
           "internalType": "int256"
         }
@@ -49,43 +62,107 @@
       "stateMutability": "nonpayable"
     },
     {
-      "type": "function",
-      "name": "swapTokens",
+      "type": "event",
+      "name": "Transfer",
       "inputs": [
         {
-          "name": "amountInVEth",
-          "type": "uint256",
-          "internalType": "uint256"
+          "name": "from",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
         },
         {
-          "name": "amountInVGas",
+          "name": "to",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "tokenId",
           "type": "uint256",
+          "indexed": true,
           "internalType": "uint256"
         }
       ],
-      "outputs": [
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccountAlreadyCreated",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidAccountId",
+      "inputs": [
         {
-          "name": "amountOutVEth",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "amountOutVGas",
+          "name": "accountId",
           "type": "uint256",
           "internalType": "uint256"
         }
-      ],
-      "stateMutability": "nonpayable"
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidParameter",
+      "inputs": [
+        {
+          "name": "parameter",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "internalType": "string"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "OverflowInt256ToUint256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowInt256ToUint256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowUint256ToInt256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowUint256ToInt256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "TokenAlreadyMinted",
+      "inputs": [
+        {
+          "name": "id",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ZeroAddress",
+      "inputs": []
     }
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xfc669dda8d3b3a01b4d7aac644fc53e1606330c759038e956c887283540e2446",
+  "deployTxnHash": "0x293a2349107655b02282e86d81770fc77f7cac497e08bcaad26c253a8b570b99",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1721240973",
+  "deployTimestamp": "1721300748",
   "sourceName": "src/contracts/modules/EpochTradeModule.sol",
   "contractName": "EpochTradeModule",
   "deployedOn": "deploy.EpochTradeModule",
-  "gasUsed": 425182,
-  "gasCost": "1010816480"
+  "gasUsed": 1253380,
+  "gasCost": "1013956801"
 }

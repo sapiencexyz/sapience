@@ -36,11 +36,11 @@ library Account {
     ) internal returns (Data storage account) {
         account = load(accountId);
 
-        if (account.id != 0) {
+        if (account.tokenId != 0) {
             revert Errors.AccountAlreadyCreated();
         }
 
-        account.id = accountId;
+        account.tokenId = accountId;
         return account;
     }
 
@@ -66,15 +66,15 @@ library Account {
     ) internal view returns (Data storage account) {
         account = load(accountId);
 
-        if (accountId == 0 || account.id == 0) {
+        if (accountId == 0 || account.tokenId == 0) {
             revert Errors.InvalidAccountId(accountId);
         }
     }
 
     function getAddress(Data storage self) internal view returns (address) {
-        return address(uint160(self.id));
+        return address(uint160(self.tokenId));
     }
-
+/*
     function updateLoan(
         Data storage self,
         uint256 collateralAmount,
@@ -85,7 +85,7 @@ library Account {
         self.borrowedGwei += amount0;
         self.borrowedGas += amount1;
     }
-
+*/
     function validateProvidedLiquidity(
         Data storage self,
         Epoch.Data storage epoch,

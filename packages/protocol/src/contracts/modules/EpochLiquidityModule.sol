@@ -2,10 +2,11 @@
 pragma solidity >=0.8.25 <0.9.0;
 
 import "../../synthetix/interfaces/IERC721Receiver.sol";
+import "../storage/ERC721Storage.sol";
+import "../storage/ERC721EnumerableStorage.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../storage/Account.sol";
 import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
-import "../storage/ERC721EnumerableStorage.sol";
 
 import "forge-std/console2.sol";
 
@@ -15,6 +16,9 @@ uint256 constant ONE_ETH_IN_WEI = 10 ** 18;
 uint256 constant Q192 = 2 ** 192;
 
 contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
+    using Epoch for Epoch.Data;
+    using Account for Account.Data;
+
     function createLiquidityPosition(
         IFoilStructs.LiquidityPositionParams memory params
     )
@@ -29,6 +33,10 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
     {
         // create or load account
         // save tokenId to account
+        tokenId = ERC721EnumerableStorage.totalSupply() + 1;
+        Account.Data storage account = Account.createValid(tokenId);
+        ERC721Storage._mint(msg.sender, tokenId);
+
         Epoch.Data storage epoch = Epoch.load();
 
         epoch.ethToken.approve(
@@ -209,7 +217,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
 
         return (amountGWEI, amountGAS);
     }
-
+/*
     function getPosition(
         uint256 accountId
     )
@@ -228,4 +236,6 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
             account.borrowedGas
         );
     }
+*/
+
 }

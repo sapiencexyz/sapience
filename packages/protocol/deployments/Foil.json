@@ -1,5 +1,5 @@
 {
-  "address": "0x0797e40766a659b439cba3ed41ae8706c2d14a92",
+  "address": "0x945f824e405eed0b29e4221e7eb698fb42b43e51",
   "abi": [
     {
       "type": "function",
@@ -83,7 +83,7 @@
           "internalType": "struct Account.Data",
           "components": [
             {
-              "name": "id",
+              "name": "tokenId",
               "type": "uint256",
               "internalType": "uint256"
             },
@@ -205,11 +205,6 @@
           "internalType": "struct Position.Data",
           "components": [
             {
-              "name": "initialEthDeposit",
-              "type": "uint256",
-              "internalType": "uint256"
-            },
-            {
               "name": "accountId",
               "type": "uint256",
               "internalType": "uint256"
@@ -225,9 +220,9 @@
               "internalType": "uint256"
             },
             {
-              "name": "lpNftId",
-              "type": "uint256",
-              "internalType": "uint256"
+              "name": "currentTokenAmount",
+              "type": "int256",
+              "internalType": "int256"
             }
           ]
         }
@@ -722,6 +717,19 @@
     },
     {
       "type": "function",
+      "name": "getReferencePrice",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "modifyTraderPosition",
       "inputs": [
         {
@@ -735,7 +743,7 @@
           "internalType": "uint256"
         },
         {
-          "name": "tokenAmount",
+          "name": "deltaTokenAmount",
           "type": "int256",
           "internalType": "int256"
         }
@@ -744,33 +752,15 @@
       "stateMutability": "nonpayable"
     },
     {
-      "type": "function",
-      "name": "swapTokens",
+      "type": "error",
+      "name": "InvalidAccountId",
       "inputs": [
         {
-          "name": "amountInVEth",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "amountInVGas",
+          "name": "accountId",
           "type": "uint256",
           "internalType": "uint256"
         }
-      ],
-      "outputs": [
-        {
-          "name": "amountOutVEth",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "amountOutVGas",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "stateMutability": "nonpayable"
+      ]
     },
     {
       "type": "constructor",
@@ -1192,11 +1182,11 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0x4550e3b014a0ce32cfa7198cdd9a203103e184a0471129a0d57d8af515a9437e",
+  "deployTxnHash": "0xacabf2e6b707f7ac57213ecd0c732469230d08c84d4290c238a3df11992fd73b",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1721240977",
+  "deployTimestamp": "1721300753",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
   "gasUsed": 474152,
-  "gasCost": "1005570336"
+  "gasCost": "1006338519"
 }

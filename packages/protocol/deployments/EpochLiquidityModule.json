@@ -1,5 +1,5 @@
 {
-  "address": "0xCEBe94FefD29C3f72a291566d9befe85AF57ad1A",
+  "address": "0x42F07E7B8ac4939755a16e57F1481754e3C98172",
   "abi": [
     {
       "type": "function",
@@ -268,6 +268,52 @@
       "stateMutability": "payable"
     },
     {
+      "type": "event",
+      "name": "Transfer",
+      "inputs": [
+        {
+          "name": "from",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "to",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccountAlreadyCreated",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidParameter",
+      "inputs": [
+        {
+          "name": "parameter",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "internalType": "string"
+        }
+      ]
+    },
+    {
       "type": "error",
       "name": "OverflowInt24ToUint256",
       "inputs": []
@@ -286,16 +332,32 @@
       "type": "error",
       "name": "ReentrancyGuardReentrantCall",
       "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "TokenAlreadyMinted",
+      "inputs": [
+        {
+          "name": "id",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ZeroAddress",
+      "inputs": []
     }
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xb5c092e0665fdec6bd7d363d8618c04702b0e35debcbede819cc54577a1c2cea",
-  "deployTxnBlockNumber": "4",
-  "deployTimestamp": "1721240976",
+  "deployTxnHash": "0x08e0c94b0a2d00c2fd2ab33e3a4d22c207832015341cacc0ffa13c5d6fd6985e",
+  "deployTxnBlockNumber": "1",
+  "deployTimestamp": "1721300748",
   "sourceName": "src/contracts/modules/EpochLiquidityModule.sol",
   "contractName": "EpochLiquidityModule",
   "deployedOn": "deploy.EpochLiquidityModule",
-  "gasUsed": 1763224,
-  "gasCost": "1015659996"
+  "gasUsed": 1830843,
+  "gasCost": "1020193885"
 }
