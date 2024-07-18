@@ -1,5 +1,9 @@
 {
+<<<<<<< HEAD
   "address": "0x1835D82F637A49e48E686226D8dC07e7F2683ddA",
+=======
+  "address": "0xCEBe94FefD29C3f72a291566d9befe85AF57ad1A",
+>>>>>>> a896a56 (get amounts)
   "abi": [
     {
       "type": "function",
@@ -162,6 +166,45 @@
     },
     {
       "type": "function",
+      "name": "getTokenAmounts",
+      "inputs": [
+        {
+          "name": "collateralAmountETH",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "tickLower",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "tickUpper",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "sqrtPriceX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "amountGWEI",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "amountGAS",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "pure"
+    },
+    {
+      "type": "function",
       "name": "onERC721Received",
       "inputs": [
         {
@@ -230,12 +273,28 @@
     },
     {
       "type": "error",
+      "name": "OverflowInt24ToUint256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowInt256ToUint256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowUint256ToInt256",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "ReentrancyGuardReentrantCall",
       "inputs": []
     }
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
+<<<<<<< HEAD
   "deployTxnHash": "0x98f544fdd2d376dc26b9b92b8a400481077e91c916f7e2beb36d69bb9fab3054",
   "deployTxnBlockNumber": "4",
   "deployTimestamp": "1721268031",
@@ -244,4 +303,14 @@
   "deployedOn": "deploy.EpochLiquidityModule",
   "gasUsed": 972224,
   "gasCost": "1015634442"
+=======
+  "deployTxnHash": "0xb5c092e0665fdec6bd7d363d8618c04702b0e35debcbede819cc54577a1c2cea",
+  "deployTxnBlockNumber": "4",
+  "deployTimestamp": "1721240976",
+  "sourceName": "src/contracts/modules/EpochLiquidityModule.sol",
+  "contractName": "EpochLiquidityModule",
+  "deployedOn": "deploy.EpochLiquidityModule",
+  "gasUsed": 1763224,
+  "gasCost": "1015659996"
+>>>>>>> a896a56 (get amounts)
 }

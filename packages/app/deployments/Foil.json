@@ -1,5 +1,9 @@
 {
+<<<<<<< HEAD
   "address": "0x211206438d02902d43b8d10fb09285f7bcfb8fcb",
+=======
+  "address": "0x0797e40766a659b439cba3ed41ae8706c2d14a92",
+>>>>>>> a896a56 (get amounts)
   "abi": [
     {
       "type": "function",
@@ -467,6 +471,45 @@
     },
     {
       "type": "function",
+      "name": "getTokenAmounts",
+      "inputs": [
+        {
+          "name": "collateralAmountETH",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "tickLower",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "tickUpper",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "sqrtPriceX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "amountGWEI",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "amountGAS",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "pure"
+    },
+    {
+      "type": "function",
       "name": "onERC721Received",
       "inputs": [
         {
@@ -532,6 +575,21 @@
         }
       ],
       "stateMutability": "payable"
+    },
+    {
+      "type": "error",
+      "name": "OverflowInt24ToUint256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowInt256ToUint256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowUint256ToInt256",
+      "inputs": []
     },
     {
       "type": "function",
@@ -1138,6 +1196,7 @@
     }
   ],
   "deployedOn": "router.Foil",
+<<<<<<< HEAD
   "deployTxnHash": "0xe7a681f9ebfa9219b9d2b6572fcc8345f9bb95828ab2ebb32dfb9c375b3a0e39",
   "deployTxnBlockNumber": "3",
   "deployTimestamp": "1721268032",
@@ -1145,4 +1204,13 @@
   "sourceName": "Foil.sol",
   "gasUsed": 461400,
   "gasCost": "1005563368"
+=======
+  "deployTxnHash": "0x4550e3b014a0ce32cfa7198cdd9a203103e184a0471129a0d57d8af515a9437e",
+  "deployTxnBlockNumber": "3",
+  "deployTimestamp": "1721240977",
+  "contractName": "Foil",
+  "sourceName": "Foil.sol",
+  "gasUsed": 474152,
+  "gasCost": "1005570336"
+>>>>>>> a896a56 (get amounts)
 }

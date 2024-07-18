@@ -95,9 +95,13 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xdee24671b10cbf6d5b999b73cf3ef95111db9a7e872825fbf30cf780026817e2",
+  "deployTxnHash": "0x30576c1e3f72a4c021db2badeb02d30b9126f935dad2f20b6ce795b7ded5993e",
   "deployTxnBlockNumber": "6",
+<<<<<<< HEAD
   "deployTimestamp": "1721268029",
+=======
+  "deployTimestamp": "1721240974",
+>>>>>>> a896a56 (get amounts)
   "sourceName": "contracts/libraries/NFTDescriptor.sol",
   "contractName": "NFTDescriptor",
   "deployedOn": "deploy.NFTDescriptor",
