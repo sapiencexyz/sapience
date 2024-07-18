@@ -312,13 +312,7 @@ const AddLiquidity = ({
           Add Liquidity
         </Button>
       ) : (
-        <Button
-          width="full"
-          variant="brand"
-          type="submit"
-          isLoading={transactionStep > 0 && transactionStep < 3}
-          isDisabled={transactionStep > 0 && transactionStep < 3}
-        >
+        <Button width="full" variant="brand" type="submit">
           Connect Wallet
         </Button>
       )}

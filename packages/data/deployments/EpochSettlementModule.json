@@ -1,5 +1,5 @@
 {
-  "address": "0x555897923d128550587a1886daA086cED77099f5",
+  "address": "0x36d5aF15898bD53E81c092f9Ff42D302A9C186e1",
   "abi": [
     {
       "type": "function",
@@ -113,12 +113,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x5b73a692f23a7767228b971a8037fb93156d9feccc11610352314fb3e62e29a7",
+  "deployTxnHash": "0xbce06f7f023f1f3283881dfe3803e6ba12623a733a37897635b8ab1f75dc810c",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1721233023",
+  "deployTimestamp": "1721264359",
   "sourceName": "src/contracts/modules/EpochSettlementModule.sol",
   "contractName": "EpochSettlementModule",
   "deployedOn": "deploy.EpochSettlementModule",
   "gasUsed": 428966,
-  "gasCost": "1012219963"
+  "gasCost": "1012200148"
 }

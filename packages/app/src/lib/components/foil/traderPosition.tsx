@@ -15,6 +15,7 @@ import {
 } from '@chakra-ui/react';
 import * as React from 'react';
 import { useState } from 'react';
+import { formatUnits, parseUnits } from 'viem';
 import {
   useWaitForTransactionReceipt,
   useWriteContract,
@@ -26,6 +27,8 @@ import CollateralAsset from '../../../../deployments/CollateralAsset/Token.json'
 import Foil from '../../../../deployments/Foil.json';
 
 import PositionSelector from './positionSelector';
+
+import { MarketContext } from '~/lib/context/MarketProvider';
 
 function RadioCard(props) {
   const { getInputProps, getRadioProps } = useRadio(props);
@@ -73,6 +76,20 @@ export default function TraderPosition({ params }) {
   const options = ['Long', 'Short'];
   const [option, setOption] = useState('Long');
   const [transactionStep, setTransactionStep] = useState(0);
+  const { isConnected } = account;
+
+  const chainId = 13370;
+
+  const collateralAmountFunctionResult = useReadContract({
+    abi: CollateralAsset.abi,
+    address: CollateralAsset.address as `0x${string}`,
+    functionName: 'balanceOf',
+    args: [account.address],
+    chainId,
+  });
+
+  const { collateralAssetTicker, collateralAssetDecimals } =
+    React.useContext(MarketContext);
 
   const { getRootProps, getRadioProps } = useRadioGroup({
     name: 'positionType',
@@ -122,14 +139,21 @@ export default function TraderPosition({ params }) {
           abi: Foil.abi,
           address: Foil.address as `0x${string}`,
           functionName: 'createTraderPosition',
-          args: [collateral, finalSize],
+          args: [
+            parseUnits(collateral.toString(), collateralAssetDecimals),
+            parseUnits(finalSize.toString(), collateralAssetDecimals),
+          ],
         });
       } else {
         writeContract({
           abi: Foil.abi,
           address: Foil.address as `0x${string}`,
           functionName: 'updateTraderPosition',
-          args: [nftId, collateral, finalSize],
+          args: [
+            nftId,
+            parseUnits(collateral.toString(), collateralAssetDecimals),
+            parseUnits(finalSize.toString(), collateralAssetDecimals),
+          ],
         });
       }
       setTransactionStep(3);
@@ -193,7 +217,7 @@ export default function TraderPosition({ params }) {
           />
           <InputRightElement width="4.5rem">
             <Button h="1.75rem" size="sm" onClick={handleClick}>
-              {show ? 'cbETH' : 'Ggas'}
+              {show ? collateralAssetTicker : 'Ggas'}
             </Button>
           </InputRightElement>
         </InputGroup>
@@ -201,29 +225,45 @@ export default function TraderPosition({ params }) {
       <FormControl mb={4}>
         <InputGroup>
           <Input
+            readOnly
             value={collateral}
             type="number"
             onChange={(e) => setCollateral(Number(e.target.value))}
           />
-          <InputRightAddon>{show ? 'Ggas' : 'cbETH'}</InputRightAddon>
+          <InputRightAddon>
+            {show ? 'Ggas' : collateralAssetTicker}
+          </InputRightAddon>
         </InputGroup>
       </FormControl>
       <Box mb="4">
         <Text fontSize="sm" color="gray.500" mb={0.5}>
           Position: X Ggas to X Ggas
         </Text>
-        <Text fontSize="sm" color="gray.500" mb={0.5}>
-          Wallet Balance: X cbETH to x cbETH
-        </Text>
+        {isConnected && collateralAmountFunctionResult?.data && (
+          <Text fontSize="sm" color="gray.500" mb="0.5">
+            Wallet Balance:{' '}
+            {formatUnits(
+              collateralAmountFunctionResult.data.toString(),
+              collateralAssetDecimals
+            )}{' '}
+            {collateralAssetTicker}
+          </Text>
+        )}
       </Box>
-      <Button
-        width="full"
-        variant="brand"
-        type="submit"
-        isLoading={transactionStep > 0 && transactionStep < 3}
-      >
-        Trade
-      </Button>
+      {isConnected ? (
+        <Button
+          width="full"
+          variant="brand"
+          type="submit"
+          isLoading={transactionStep > 0 && transactionStep < 3}
+        >
+          Trade
+        </Button>
+      ) : (
+        <Button width="full" variant="brand" type="submit">
+          Connect Wallet
+        </Button>
+      )}
     </form>
   );
 }

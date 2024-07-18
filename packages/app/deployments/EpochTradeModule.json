@@ -1,5 +1,5 @@
 {
-  "address": "0x91fB1e5af3f383817188C2e11D1223C0FCB739c4",
+  "address": "0x392D11f1ABF7D9A6a14946456388c35D7378422b",
   "abi": [
     {
       "type": "function",
@@ -40,7 +40,7 @@
           "internalType": "uint256"
         },
         {
-          "name": "tokenAmount",
+          "name": "deltaTokenAmount",
           "type": "int256",
           "internalType": "int256"
         }
@@ -49,43 +49,107 @@
       "stateMutability": "nonpayable"
     },
     {
-      "type": "function",
-      "name": "swapTokens",
+      "type": "event",
+      "name": "Transfer",
       "inputs": [
         {
-          "name": "amountInVEth",
-          "type": "uint256",
-          "internalType": "uint256"
+          "name": "from",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
         },
         {
-          "name": "amountInVGas",
+          "name": "to",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "tokenId",
           "type": "uint256",
+          "indexed": true,
           "internalType": "uint256"
         }
       ],
-      "outputs": [
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccountAlreadyCreated",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidAccountId",
+      "inputs": [
         {
-          "name": "amountOutVEth",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "amountOutVGas",
+          "name": "accountId",
           "type": "uint256",
           "internalType": "uint256"
         }
-      ],
-      "stateMutability": "nonpayable"
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidParameter",
+      "inputs": [
+        {
+          "name": "parameter",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "internalType": "string"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "OverflowInt256ToUint256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowInt256ToUint256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowUint256ToInt256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowUint256ToInt256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "TokenAlreadyMinted",
+      "inputs": [
+        {
+          "name": "id",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ZeroAddress",
+      "inputs": []
     }
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x1f21e9e7e43ff8447cddb521883c48e8fee4cd9ee2008c8c8aaa2148ced0fa1e",
+  "deployTxnHash": "0x23155ead7aca285b8f2a213dedaf789f8ca2823fc777e60cfb17c929ea56b6a0",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1721233023",
+  "deployTimestamp": "1721264359",
   "sourceName": "src/contracts/modules/EpochTradeModule.sol",
   "contractName": "EpochTradeModule",
   "deployedOn": "deploy.EpochTradeModule",
-  "gasUsed": 420202,
-  "gasCost": "1010736151"
+  "gasUsed": 1249288,
+  "gasCost": "1010718742"
 }

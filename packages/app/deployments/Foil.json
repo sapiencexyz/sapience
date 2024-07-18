@@ -1,5 +1,5 @@
 {
-  "address": "0x889c4ca253bb55cc3e739ddc706d1ffb24e92285",
+  "address": "0xaba1b85ef449942ee78aaffcd56381e18b229064",
   "abi": [
     {
       "type": "function",
@@ -205,11 +205,6 @@
           "internalType": "struct Position.Data",
           "components": [
             {
-              "name": "initialEthDeposit",
-              "type": "uint256",
-              "internalType": "uint256"
-            },
-            {
               "name": "accountId",
               "type": "uint256",
               "internalType": "uint256"
@@ -225,9 +220,9 @@
               "internalType": "uint256"
             },
             {
-              "name": "lpNftId",
-              "type": "uint256",
-              "internalType": "uint256"
+              "name": "currentTokenAmount",
+              "type": "int256",
+              "internalType": "int256"
             }
           ]
         }
@@ -681,7 +676,7 @@
           "internalType": "uint256"
         },
         {
-          "name": "tokenAmount",
+          "name": "deltaTokenAmount",
           "type": "int256",
           "internalType": "int256"
         }
@@ -690,33 +685,25 @@
       "stateMutability": "nonpayable"
     },
     {
-      "type": "function",
-      "name": "swapTokens",
+      "type": "error",
+      "name": "InvalidAccountId",
       "inputs": [
         {
-          "name": "amountInVEth",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "amountInVGas",
+          "name": "accountId",
           "type": "uint256",
           "internalType": "uint256"
         }
-      ],
-      "outputs": [
-        {
-          "name": "amountOutVEth",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "amountOutVGas",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "stateMutability": "nonpayable"
+      ]
+    },
+    {
+      "type": "error",
+      "name": "OverflowInt256ToUint256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowUint256ToInt256",
+      "inputs": []
     },
     {
       "type": "constructor",
@@ -1138,11 +1125,11 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0x0c504350e15f1e91e1c069475857b3b92ec20f69b09181a148245d7cf502e495",
+  "deployTxnHash": "0xacb94ea69a0ee7dd5ad306dd221b6ace523b4700c1f8612c6c0a6b19ef86a7eb",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1721233027",
+  "deployTimestamp": "1721264363",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
-  "gasUsed": 461400,
-  "gasCost": "1005528707"
+  "gasUsed": 448651,
+  "gasCost": "1005563152"
 }

@@ -1,5 +1,5 @@
 {
-  "address": "0xdf462Eeb38a6472BaCEE2D7cE9Ff3210b737B4ac",
+  "address": "0x41a424A9225349BEB2e2fAe0c7e6681076e1E2a0",
   "abi": [
     {
       "type": "function",
@@ -205,11 +205,6 @@
           "internalType": "struct Position.Data",
           "components": [
             {
-              "name": "initialEthDeposit",
-              "type": "uint256",
-              "internalType": "uint256"
-            },
-            {
               "name": "accountId",
               "type": "uint256",
               "internalType": "uint256"
@@ -225,9 +220,9 @@
               "internalType": "uint256"
             },
             {
-              "name": "lpNftId",
-              "type": "uint256",
-              "internalType": "uint256"
+              "name": "currentTokenAmount",
+              "type": "int256",
+              "internalType": "int256"
             }
           ]
         }
@@ -314,12 +309,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x0e1c11160e658498be67d83e7b80b13e94c7a614242fdb3a08cb151023e3533b",
+  "deployTxnHash": "0x334274c34a5207cb9103c4d28db35fb14225791009e3dd2ab0f27aa9e6e5c675",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1721233025",
+  "deployTimestamp": "1721264361",
   "sourceName": "src/contracts/modules/EpochConfigurationModule.sol",
   "contractName": "EpochConfigurationModule",
   "deployedOn": "deploy.EpochConfigurationModule",
-  "gasUsed": 1956640,
+  "gasUsed": 1783207,
   "gasCost": "1017569551"
 }
