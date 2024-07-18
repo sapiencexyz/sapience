@@ -1,168 +1,91 @@
 {
-  "address": "0x7aa0262a8a4E78568225F13D211875506Ac0CE65",
+  "address": "0xCD97AA6d0961956bbEC7D041a9E2376CEa3F9c2e",
   "abi": [
     {
       "type": "function",
       "name": "createTraderPosition",
       "inputs": [
         {
-          "name": "collateral",
+          "name": "collateralAmount",
           "type": "uint256",
           "internalType": "uint256"
         },
         {
-          "name": "size",
+          "name": "tokenAmount",
           "type": "int256",
           "internalType": "int256"
         }
       ],
-      "outputs": [],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
-      "name": "uniswapV3SwapCallback",
-      "inputs": [
-        {
-          "name": "amount0Delta",
-          "type": "int256",
-          "internalType": "int256"
-        },
-        {
-          "name": "amount1Delta",
-          "type": "int256",
-          "internalType": "int256"
-        },
-        {
-          "name": "data",
-          "type": "bytes",
-          "internalType": "bytes"
-        }
-      ],
-      "outputs": [],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
-      "name": "updateTraderPosition",
-      "inputs": [
-        {
-          "name": "tokenId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "collateral",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "size",
-          "type": "int256",
-          "internalType": "int256"
-        }
-      ],
-      "outputs": [],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "event",
-      "name": "Transfer",
-      "inputs": [
-        {
-          "name": "from",
-          "type": "address",
-          "indexed": true,
-          "internalType": "address"
-        },
-        {
-          "name": "to",
-          "type": "address",
-          "indexed": true,
-          "internalType": "address"
-        },
-        {
-          "name": "tokenId",
-          "type": "uint256",
-          "indexed": true,
-          "internalType": "uint256"
-        }
-      ],
-      "anonymous": false
-    },
-    {
-      "type": "error",
-      "name": "AccountAlreadyCreated",
-      "inputs": []
-    },
-    {
-      "type": "error",
-      "name": "InvalidAccountId",
-      "inputs": [
+      "outputs": [
         {
           "name": "accountId",
           "type": "uint256",
           "internalType": "uint256"
         }
-      ]
+      ],
+      "stateMutability": "nonpayable"
     },
     {
-      "type": "error",
-      "name": "InvalidParameter",
+      "type": "function",
+      "name": "modifyTraderPosition",
       "inputs": [
         {
-          "name": "parameter",
-          "type": "string",
-          "internalType": "string"
+          "name": "accountId",
+          "type": "uint256",
+          "internalType": "uint256"
         },
         {
-          "name": "reason",
-          "type": "string",
-          "internalType": "string"
+          "name": "collateralAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "tokenAmount",
+          "type": "int256",
+          "internalType": "int256"
         }
-      ]
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
     },
     {
-      "type": "error",
-      "name": "InvalidVirtualToken",
+      "type": "function",
+      "name": "swapTokens",
       "inputs": [
         {
-          "name": "token",
-          "type": "address",
-          "internalType": "address"
-        }
-      ]
-    },
-    {
-      "type": "error",
-      "name": "ReentrancyGuardReentrantCall",
-      "inputs": []
-    },
-    {
-      "type": "error",
-      "name": "TokenAlreadyMinted",
-      "inputs": [
+          "name": "amountInVEth",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
         {
-          "name": "id",
+          "name": "amountInVGas",
           "type": "uint256",
           "internalType": "uint256"
         }
-      ]
-    },
-    {
-      "type": "error",
-      "name": "ZeroAddress",
-      "inputs": []
+      ],
+      "outputs": [
+        {
+          "name": "amountOutVEth",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "amountOutVGas",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
     }
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x6b3e3ae1e2dee5746f8ffd58a7ef398b0d22e1025e05b6e4055791f4e7bd1082",
+  "deployTxnHash": "0xfc669dda8d3b3a01b4d7aac644fc53e1606330c759038e956c887283540e2446",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1720650659",
+  "deployTimestamp": "1721240973",
   "sourceName": "src/contracts/modules/EpochTradeModule.sol",
   "contractName": "EpochTradeModule",
   "deployedOn": "deploy.EpochTradeModule",
-  "gasUsed": 786429,
-  "gasCost": "1010751664"
+  "gasUsed": 425182,
+  "gasCost": "1010816480"
 }

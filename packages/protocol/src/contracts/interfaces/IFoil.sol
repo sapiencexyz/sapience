@@ -93,4 +93,11 @@ interface IFoil {
     function getAccountData(
         uint256 accountId
     ) external view returns (Account.Data memory);
+
+    function getTokenAmounts(
+        uint256 collateralAmountETH, // in ETH terms (18 decimals)
+        int24 tickLower,
+        int24 tickUpper,
+        uint160 sqrtPriceX96
+    ) external pure returns (uint256 amountGWEI, uint256 amountGAS);
 }

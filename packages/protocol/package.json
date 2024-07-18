@@ -6,7 +6,7 @@
   "scripts": {
     "test": "",
     "dev": "cannon build --wipe --keep-alive --port 8545 --no-cors",
-    "update-abis": "cannon build --wipe && cannon inspect foil --write-deployments ../app/deployments && cannon inspect foil --write-deployments ../data/deployments && cannon inspect foil --write-deployments ./deployments/test/",
+    "update-abis": "cannon build --wipe && cannon inspect foil --write-deployments ../app/deployments && cannon inspect foil --write-deployments ./data/deployments && cannon inspect foil --write-deployments ./deployments/",
     "dev:fast": "cannon build --keep-alive --port 8545 --no-cors",
     "update-abis:fast": "cannon build && cannon inspect foil --write-deployments ../app/deployments && cannon inspect foil --write-deployments ../data/deployments && cannon inspect foil --write-deployments ./deployments/test/"
   },

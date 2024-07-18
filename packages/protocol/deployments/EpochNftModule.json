@@ -465,10 +465,10 @@
   "linkedLibraries": {},
   "deployTxnHash": "0x034005de13693dffbac7c9212c5bf9bda5b82adea48e1868c52a0ecc13b0d40f",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1720650659",
+  "deployTimestamp": "1721240973",
   "sourceName": "src/contracts/modules/EpochNftModule.sol",
   "contractName": "EpochNftModule",
   "deployedOn": "deploy.EpochNftModule",
   "gasUsed": 1037892,
-  "gasCost": "1013851124"
+  "gasCost": "1013932598"
 }

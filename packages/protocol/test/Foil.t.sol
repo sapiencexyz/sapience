@@ -40,9 +40,9 @@ contract FoilTest is Test {
         //     46000, // base asset max price
         //     10000 // fee rate
         // );
+        console2.logAddress(vm.getAddress("Foil"));
         foil = IFoil(vm.getAddress("Foil"));
-
-        (pool, tokenA, tokenB) = foil.getEpoch();
+        // (pool, tokenA, tokenB) = foil.getEpoch();
         // foil.createTraderPosition();
         // foil.createTraderPosition();
     }
@@ -55,6 +55,14 @@ contract FoilTest is Test {
         // int24 upperTick = TickMath.getTickAtSqrtRatio(
         //     306849353968360525628702781967
         // ); // 15
+        (uint256 amountGWEI, uint256 amountGAS) = foil.getTokenAmounts(
+            10 ether,
+            16000,
+            30000,
+            112045541949572279837463876454
+        );
+        console2.log("AMOUNTS", amountGWEI, amountGAS);
+
         IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
             .LiquidityPositionParams({
                 amountTokenA: 50 ether,

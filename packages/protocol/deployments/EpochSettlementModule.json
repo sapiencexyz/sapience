@@ -1,5 +1,5 @@
 {
-  "address": "0xF1cF5Dd9524f60B8Cafce8ECDea61a27F65b6345",
+  "address": "0x014E43C6304FEE5B8778911583589B329E4F8D8C",
   "abi": [
     {
       "type": "function",
@@ -55,6 +55,19 @@
     },
     {
       "type": "function",
+      "name": "fakeSettle",
+      "inputs": [
+        {
+          "name": "settlementPrice",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
       "name": "finalPrice",
       "inputs": [],
       "outputs": [
@@ -100,12 +113,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x75176678b1cadb76c098e143ce5bc4e4405b7426243411abff8f2eab55d3d6af",
+  "deployTxnHash": "0x2ba9d927693ae58678ebc57afb10f9801535311ea9fc9b795939e32397b7e274",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1720650659",
+  "deployTimestamp": "1721240973",
   "sourceName": "src/contracts/modules/EpochSettlementModule.sol",
   "contractName": "EpochSettlementModule",
   "deployedOn": "deploy.EpochSettlementModule",
-  "gasUsed": 412480,
-  "gasCost": "1012239534"
+  "gasUsed": 427821,
+  "gasCost": "1012311528"
 }

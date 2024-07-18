@@ -9,7 +9,18 @@ import "../storage/ERC721EnumerableStorage.sol";
 import "../utils/UniV3Abstraction.sol";
 import "forge-std/console2.sol";
 
+// Constants
+uint256 constant ONE_ETHER_IN_GWEI = 10 ** 9;
+uint256 constant ONE_ETH_IN_WEI = 10 ** 18;
+uint256 constant Q192 = 2 ** 192;
+
 contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
+    // using Epoch for Epoch.Data;
+    // using Account for Account.Data;
+    // using Position for Position.Data;
+
+    // using ERC721Storage for ERC721Storage.Data;
+
     function createLiquidityPosition(
         IFoilStructs.LiquidityPositionParams memory params
     )
@@ -164,5 +175,55 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
             decreaseParams
         );
         console2.log("REMOVED", amount0, amount1);
+    }
+
+    function getTokenAmounts(
+        uint256 collateralAmountETH, // in ETH terms (18 decimals)
+        int24 tickLower,
+        int24 tickUpper,
+        uint160 sqrtPriceX96
+    ) external pure returns (uint256 amountGWEI, uint256 amountGAS) {
+        // Calculate price P from sqrtPriceX96 using FullMath.mulDiv for precision
+        uint256 price = FullMath.mulDiv(
+            uint256(sqrtPriceX96),
+            uint256(sqrtPriceX96),
+            Q192
+        );
+
+        // Convert collateral amount from ETH to Wei
+        uint256 collateralAmountETHWei = collateralAmountETH * ONE_ETH_IN_WEI;
+
+        // Calculate collateral amounts in GWEI and GAS based on price ratio
+        uint256 collateralAmountGAS = collateralAmountETHWei / (price + 1);
+        uint256 collateralAmountETHAdjusted = collateralAmountETHWei -
+            FullMath.mulDiv(collateralAmountGAS, price, ONE_ETH_IN_WEI);
+
+        // Convert tick range to sqrt prices
+        uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(tickLower);
+        uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(tickUpper);
+
+        // Calculate liquidity using LiquidityAmounts library
+        uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
+            sqrtPriceX96,
+            sqrtRatioAX96,
+            sqrtRatioBX96,
+            collateralAmountETHAdjusted,
+            collateralAmountGAS
+        );
+
+        // Get the token amounts from liquidity
+        (uint256 amount0, uint256 amount1) = LiquidityAmounts
+            .getAmountsForLiquidity(
+                sqrtRatioAX96,
+                sqrtRatioBX96,
+                sqrtPriceX96,
+                liquidity
+            );
+
+        // Convert amounts to readable format
+        amountGWEI = amount0 / ONE_ETHER_IN_GWEI;
+        amountGAS = amount1 / ONE_ETH_IN_WEI;
+
+        return (amountGWEI, amountGAS);
     }
 }
