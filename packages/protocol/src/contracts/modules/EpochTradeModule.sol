@@ -453,7 +453,7 @@ contract EpochTradeModule {
         }
     }
 
-    function getReferencePrice() internal view returns (uint256) {
+    function getReferencePrice() public view returns (uint256) {
         Epoch.Data storage epoch = Epoch.load();
         if (epoch.settled) {
             return epoch.settlementPrice;
