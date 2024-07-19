@@ -22,4 +22,5 @@ library Errors {
     error NotAccountOwnerOrAuthorized(uint256 accountId, address sender);
     error NotEnoughCredit(uint256 amount, uint256 credit);
     error InsufficientCollateral();
+    error IndexOverrun(uint256 requestedIndex, uint256 length);
 }

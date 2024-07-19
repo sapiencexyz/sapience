@@ -20,7 +20,6 @@ contract FoilTest is Test {
     using Cannon for Vm;
 
     IFoil foil;
-    address constant foilAddress = 0xa886ec907D6529D8f7d0b74a181f709A6a5809fD;
     address pool;
     address tokenA;
     address tokenB;
