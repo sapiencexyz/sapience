@@ -7,7 +7,7 @@ import "./Epoch.sol";
 import "../external/univ3/LiquidityAmounts.sol";
 import "forge-std/console2.sol";
 
-library Account {
+library FAccount {
     using Epoch for Epoch.Data;
 
     struct Data {
@@ -74,7 +74,8 @@ library Account {
     function getAddress(Data storage self) internal view returns (address) {
         return address(uint160(self.tokenId));
     }
-/*
+
+    /*
     function updateLoan(
         Data storage self,
         uint256 collateralAmount,

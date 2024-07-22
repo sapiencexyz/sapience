@@ -6,7 +6,7 @@ import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3In
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../storage/Epoch.sol";
-import "../storage/Account.sol";
+import "../storage/FAccount.sol";
 import "../storage/Position.sol";
 import "../storage/ERC721Storage.sol";
 import "../storage/ERC721EnumerableStorage.sol";
@@ -14,7 +14,7 @@ import "forge-std/console2.sol";
 
 contract EpochConfigurationModule is ReentrancyGuard {
     using Epoch for Epoch.Data;
-    using Account for Account.Data;
+    using FAccount for FAccount.Data;
     using Position for Position.Data;
     using ERC721Storage for ERC721Storage.Data;
 
@@ -28,6 +28,7 @@ contract EpochConfigurationModule is ReentrancyGuard {
         int24 baseAssetMinPrice,
         int24 baseAssetMaxPrice,
         uint24 feeRate,
+        uint160 startingSqrtPriceX96,
         address optimisticOracleV3
     ) external {
         Epoch.createValid(
@@ -40,6 +41,7 @@ contract EpochConfigurationModule is ReentrancyGuard {
             baseAssetMinPrice,
             baseAssetMaxPrice,
             feeRate,
+            startingSqrtPriceX96,
             optimisticOracleV3
         );
     }
@@ -90,7 +92,7 @@ contract EpochConfigurationModule is ReentrancyGuard {
 
     function createTraderPosition() external {
         uint accountId = ERC721EnumerableStorage.totalSupply() + 1;
-        Account.createValid(accountId);
+        FAccount.createValid(accountId);
         ERC721Storage._mint(msg.sender, accountId);
         // Create empty position
         Position.load(accountId).accountId = accountId;
@@ -104,7 +106,7 @@ contract EpochConfigurationModule is ReentrancyGuard {
 
     function getAccountData(
         uint256 accountId
-    ) external pure returns (Account.Data memory) {
-        return Account.load(accountId);
+    ) external pure returns (FAccount.Data memory) {
+        return FAccount.load(accountId);
     }
 }

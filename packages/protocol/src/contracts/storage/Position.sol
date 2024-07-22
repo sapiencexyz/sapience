@@ -3,7 +3,7 @@
 pragma solidity >=0.8.2 <0.9.0;
 
 import "./Epoch.sol";
-import "./Account.sol";
+import "./FAccount.sol";
 import "./Debt.sol";
 import {SafeCastU256} from "../../synthetix/utils/SafeCast.sol";
 
@@ -30,7 +30,7 @@ library Position {
     function loadValid(
         uint256 accountId
     ) internal view returns (Data storage position) {
-        Account.loadValid(accountId);
+        FAccount.loadValid(accountId);
         position = load(accountId);
     }
 

@@ -2,11 +2,12 @@ name="foil"
 version="0.1"
 
 [var.settings]
-startTime = "1727740800"
-endTime = "1735689599"
+startTime = "1719792000" # 2024-07-01 00:00:00 GMT
+endTime = "1735689599" # 2024-12-31 23:59:59 GMT
 baseAssetMinPrice = "7000" # 2
 baseAssetMaxPrice = "46000" # 100
 feeRate = "10000" # 1%
+startingPrice = "112045541949572279837463876454" # 1
 resolver = "0x0000000000000000000000000000000000000000"
 depends = []
 
@@ -60,6 +61,7 @@ args=[
   "<%= settings.baseAssetMinPrice %>",
   "<%= settings.baseAssetMaxPrice %>",
   "<%= settings.feeRate %>",
+  "<%= settings.startingPrice %>",
   "<%= settings.resolver %>"
 ]
 depends = ['var.settings', 'router.Foil']

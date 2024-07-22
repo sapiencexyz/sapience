@@ -5,7 +5,7 @@ import "../../synthetix/interfaces/IERC721Receiver.sol";
 import "../storage/ERC721Storage.sol";
 import "../storage/ERC721EnumerableStorage.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "../storage/Account.sol";
+import "../storage/FAccount.sol";
 import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
 
 import "forge-std/console2.sol";
@@ -17,7 +17,7 @@ uint256 constant Q192 = 2 ** 192;
 
 contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
     using Epoch for Epoch.Data;
-    using Account for Account.Data;
+    using FAccount for FAccount.Data;
 
     function createLiquidityPosition(
         IFoilStructs.LiquidityPositionParams memory params
@@ -34,7 +34,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
         // create or load account
         // save tokenId to account
         tokenId = ERC721EnumerableStorage.totalSupply() + 1;
-        Account.Data storage account = Account.createValid(tokenId);
+        FAccount.Data storage account = FAccount.createValid(tokenId);
         ERC721Storage._mint(msg.sender, tokenId);
 
         Epoch.Data storage epoch = Epoch.load();
@@ -217,7 +217,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
 
         return (amountGWEI, amountGAS);
     }
-/*
+    /*
     function getPosition(
         uint256 accountId
     )
@@ -228,7 +228,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
             uint256 borrowedGas
         )
     {
-        Account.Data storage account = Account.load(accountId);
+        FAccount.Data storage account = FAccount.load(accountId);
         return (
             account.tokenId,
             account.collateralAmount,
@@ -237,5 +237,4 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
         );
     }
 */
-
 }

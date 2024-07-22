@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.25 <0.9.0;
 
-import "../storage/Account.sol";
+import "../storage/FAccount.sol";
 import "../storage/Position.sol";
 import "../storage/ERC721Storage.sol";
 import "../storage/ERC721EnumerableStorage.sol";
@@ -32,7 +32,7 @@ contract EpochTradeModule {
 
         accountId = ERC721EnumerableStorage.totalSupply() + 1;
 
-        Account.Data storage account = Account.createValid(accountId);
+        FAccount.Data storage account = FAccount.createValid(accountId);
         ERC721Storage._mint(msg.sender, accountId);
 
         // Create empty position
@@ -67,7 +67,7 @@ contract EpochTradeModule {
             ERC721Storage._ownerOf(accountId) == msg.sender,
             "Not NFT owner"
         );
-        Account.Data storage account = Account.loadValid(accountId);
+        FAccount.Data storage account = FAccount.loadValid(accountId);
         Position.Data storage position = Position.loadValid(accountId);
 
         (bool sameSide, int expectedTokenAmount) = sameSideAndExpected(
@@ -98,7 +98,7 @@ contract EpochTradeModule {
     }
 
     function _createLongPosition(
-        Account.Data storage account,
+        FAccount.Data storage account,
         Position.Data storage position,
         uint256 collateralAmount,
         int256 tokenAmount
@@ -126,7 +126,7 @@ contract EpochTradeModule {
     }
 
     function _createShortPosition(
-        Account.Data storage account,
+        FAccount.Data storage account,
         Position.Data storage position,
         uint256 collateralAmount,
         int256 tokenAmount
@@ -142,7 +142,7 @@ contract EpochTradeModule {
         // with the vGas get vEth (Swap)
         (uint256 tokenAmountVEth, uint256 tokenAmountVGas) = swapTokensExactIn(
             0,
-            tokenAmount.toUint()
+            (tokenAmount * -1).toUint()
         );
 
         position.updateBalance(
@@ -153,7 +153,7 @@ contract EpochTradeModule {
     }
 
     function _modifyLongPosition(
-        Account.Data storage account,
+        FAccount.Data storage account,
         Position.Data storage position,
         uint256 collateralAmount,
         int256 tokenAmount
@@ -204,7 +204,7 @@ contract EpochTradeModule {
     }
 
     function _modifyShortPosition(
-        Account.Data storage account,
+        FAccount.Data storage account,
         Position.Data storage position,
         uint256 collateralAmount,
         int256 tokenAmount
@@ -258,7 +258,7 @@ contract EpochTradeModule {
     }
 
     function _closePosition(
-        Account.Data storage account,
+        FAccount.Data storage account,
         Position.Data storage position,
         uint256 collateralAmount
     ) internal {

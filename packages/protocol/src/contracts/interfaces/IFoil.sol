@@ -3,6 +3,7 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import "./IFoilStructs.sol";
 import "../storage/Position.sol";
+import "../storage/FAccount.sol";
 
 interface IFoil {
     function getEpoch()
@@ -92,7 +93,7 @@ interface IFoil {
 
     function getAccountData(
         uint256 accountId
-    ) external view returns (Account.Data memory);
+    ) external view returns (FAccount.Data memory);
 
     function getTokenAmounts(
         uint256 collateralAmountETH, // in ETH terms (18 decimals)
@@ -100,4 +101,6 @@ interface IFoil {
         int24 tickUpper,
         uint160 sqrtPriceX96
     ) external pure returns (uint256 amountGWEI, uint256 amountGAS);
+
+    function getReferencePrice() external view returns (uint256 price);
 }

@@ -76,6 +76,7 @@ library Epoch {
         int24 baseAssetMinPrice,
         int24 baseAssetMaxPrice,
         uint24 feeRate,
+        uint160 startingSqrtPriceX96,
         address optimisticOracleV3
     ) internal returns (Data storage epoch) {
         epoch = load();
@@ -138,13 +139,15 @@ library Epoch {
                 )
         );
 
-        IUniswapV3Pool(epoch.pool).initialize(112045541949572279837463876454); // starting price
+        IUniswapV3Pool(epoch.pool).initialize(startingSqrtPriceX96); // starting price
         (uint160 sqrtPriceX96, int24 tick, , , , , ) = IUniswapV3Pool(
             epoch.pool
         ).slot0();
         int24 spacing = IUniswapV3Pool(epoch.pool).tickSpacing();
 
         console2.log("Spacing : ", spacing);
+        console2.log("SqrtPriceX96 : ", sqrtPriceX96);
+        console2.log("Tick : ", tick);
 
         // mint
         epoch.ethToken.mint(address(this), type(uint256).max);
