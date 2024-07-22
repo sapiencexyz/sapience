@@ -1,45 +1,66 @@
-import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
+  FormControl,
+  FormLabel,
   HStack,
   NumberInput,
   NumberInputField,
   Text,
 } from '@chakra-ui/react';
+import type React from 'react';
+import { useState, useEffect } from 'react';
 
 interface SlippageToleranceProps {
   onSlippageChange: (slippage: number) => void;
 }
 
-const SlippageTolerance: React.FC<SlippageToleranceProps> = ({ onSlippageChange }) => {
+const SlippageTolerance: React.FC<SlippageToleranceProps> = ({
+  onSlippageChange,
+}) => {
   const [slippage, setSlippage] = useState<number>(0.5);
 
   useEffect(() => {
     onSlippageChange(slippage);
   }, [slippage, onSlippageChange]);
 
-  const handleSlippageChange = (valueAsString: string, valueAsNumber: number) => {
-    setSlippage(valueAsNumber);
-  };
-
-  const handleCustomSlippageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSlippageChange = (
+    valueAsString: string,
+    valueAsNumber: number
+  ) => {
     const value = parseFloat(event.target.value);
     if (!isNaN(value)) {
-      setSlippage(value);
+      setSlippage(valueAsNumber);
     }
   };
 
   return (
-    <Box borderWidth="1px" borderRadius="lg" p={4}>
-      <Text fontSize="xl" mb={4}>Slippage Tolerance</Text>
-      <HStack spacing={4}>
-        <Button onClick={() => setSlippage(0.1)} isActive={slippage === 0.1}>0.1%</Button>
-        <Button onClick={() => setSlippage(0.5)} isActive={slippage === 0.5}>0.5%</Button>
-        <Button onClick={() => setSlippage(1.0)} isActive={slippage === 1.0}>1.0%</Button>
-      </HStack>
-      <Box mt={4}>
+    <FormControl mb={2}>
+      <HStack spacing={4} alignItems="center">
+        <FormLabel mb={0}>Slippage Tolerance:</FormLabel>
+        <Button
+          onClick={() => setSlippage(0.1)}
+          isActive={slippage === 0.1}
+          size="xs"
+        >
+          0.1%
+        </Button>
+        <Button
+          onClick={() => setSlippage(0.5)}
+          isActive={slippage === 0.5}
+          size="xs"
+        >
+          0.5%
+        </Button>
+        <Button
+          onClick={() => setSlippage(1.0)}
+          isActive={slippage === 1.0}
+          size="xs"
+        >
+          1.0%
+        </Button>
         <NumberInput
+          size="xs"
           value={slippage}
           onChange={handleSlippageChange}
           min={0}
@@ -49,8 +70,8 @@ const SlippageTolerance: React.FC<SlippageToleranceProps> = ({ onSlippageChange 
         >
           <NumberInputField />
         </NumberInput>
-      </Box>
-    </Box>
+      </HStack>
+    </FormControl>
   );
 };
 
