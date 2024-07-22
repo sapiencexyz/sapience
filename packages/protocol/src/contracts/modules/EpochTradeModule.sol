@@ -23,7 +23,8 @@ contract EpochTradeModule {
 
     function createTraderPosition(
         uint256 collateralAmount,
-        int256 tokenAmount
+        int256 tokenAmount,
+        int256 tokenAmountLimit
     ) external returns (uint256 accountId) {
         // create/load account
         Epoch.Data storage epoch = Epoch.load();
@@ -59,7 +60,8 @@ contract EpochTradeModule {
     function modifyTraderPosition(
         uint256 accountId,
         uint256 collateralAmount,
-        int256 deltaTokenAmount
+        int256 tokenAmount,
+        int256 tokenAmountLimit
     ) external {
         // identify the account and position
         // Notice: accountId is the tokenId
@@ -69,6 +71,8 @@ contract EpochTradeModule {
         );
         FAccount.Data storage account = FAccount.loadValid(accountId);
         Position.Data storage position = Position.loadValid(accountId);
+
+        int256 deltaTokenAmount = tokenAmount - position.currentTokenAmount;
 
         (bool sameSide, int expectedTokenAmount) = sameSideAndExpected(
             position.currentTokenAmount,

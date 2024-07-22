@@ -235,6 +235,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     address: state.collateralAsset as `0x${string}`,
     functionName: 'symbol',
   });
+  console.log(collateralTickerFunctionResult);
 
   useEffect(() => {
     if (collateralTickerFunctionResult.data !== undefined) {

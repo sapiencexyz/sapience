@@ -12,7 +12,7 @@ import "../src/contracts/interfaces/external/INonfungiblePositionManager.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "../src/contracts/storage/Position.sol";
-import "../src/contracts/storage/Account.sol";
+import "../src/contracts/storage/FAccount.sol";
 
 import "forge-std/console2.sol";
 
@@ -37,7 +37,9 @@ contract FoilTest is Test {
                 amountTokenB: 50 ether,
                 collateralAmount: 10 ether,
                 lowerTick: 16000, // 5
-                upperTick: 30000 // 20
+                upperTick: 30000, // 20
+                minAmountTokenA: 0,
+                minAmountTokenB: 0
             });
         (
             uint256 positionId,

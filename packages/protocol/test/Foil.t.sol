@@ -69,7 +69,9 @@ contract FoilTest is Test {
                 amountTokenB: 50 ether,
                 collateralAmount: 10 ether,
                 lowerTick: 16000, // 5
-                upperTick: 30000 // 20
+                upperTick: 30000, // 20,
+                minAmountTokenA: 0,
+                minAmountTokenB: 0
             });
         foil.createLiquidityPosition(params);
         (uint256 tokenId, uint128 liquidity, , ) = foil.createLiquidityPosition(
@@ -105,7 +107,9 @@ contract FoilTest is Test {
                 amountTokenB: 50 ether,
                 collateralAmount: 10 ether,
                 lowerTick: 16000, // 5
-                upperTick: 30000 // 20
+                upperTick: 30000, // 20
+                minAmountTokenA: 0,
+                minAmountTokenB: 0
             });
         (
             uint256 positionId,

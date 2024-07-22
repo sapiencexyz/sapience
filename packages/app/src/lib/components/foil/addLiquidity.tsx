@@ -32,6 +32,7 @@ import CollateralAsset from '../../../../deployments/CollateralAsset/Token.json'
 import Foil from '../../../../deployments/Foil.json';
 
 import { MarketContext } from '~/lib/context/MarketProvider';
+import SlippageTolerance from './slippageTolerance';
 
 const tickSpacing = 200; // Hardcoded for now, should be retrieved with pool.tickSpacing()
 
@@ -184,6 +185,13 @@ const AddLiquidity = ({
     tickUpper,
   ]);
 
+  const [slippage, setSlippage] = useState<number>(0.5);
+
+  const handleSlippageChange = (newSlippage: number) => {
+    setSlippage(newSlippage);
+    console.log(`Slippage tolerance updated to: ${newSlippage}%`);
+  };
+
   /*
   useEffect(() => {
     if (pool) {
@@ -278,6 +286,7 @@ const AddLiquidity = ({
           </RangeSlider>
         </FormControl>
       </Flex>
+      <SlippageTolerance onSlippageChange={handleSlippageChange} />
 
       <Box mb="4">
         <Text fontSize="sm" color="gray.500" mb="0.5">

@@ -29,6 +29,7 @@ import Foil from '../../../../deployments/Foil.json';
 import PositionSelector from './positionSelector';
 
 import { MarketContext } from '~/lib/context/MarketProvider';
+import SlippageTolerance from './slippageTolerance';
 
 function RadioCard(props) {
   const { getInputProps, getRadioProps } = useRadio(props);
@@ -237,6 +238,13 @@ export default function TraderPosition({ params }) {
     }
   }, [nftId, getPositionDataFunctionResult?.data]);
 
+  const [slippage, setSlippage] = useState<number>(0.5);
+
+  const handleSlippageChange = (newSlippage: number) => {
+    setSlippage(newSlippage);
+    console.log(`Slippage tolerance updated to: ${newSlippage}%`);
+  };
+
   return (
     <form onSubmit={handleSubmit}>
       <PositionSelector isLP={false} onChange={setNftId} />
@@ -277,6 +285,7 @@ export default function TraderPosition({ params }) {
           </InputRightAddon>
         </InputGroup>
       </FormControl>
+      <SlippageTolerance onSlippageChange={handleSlippageChange} />
       <Box mb="4">
         <Text fontSize="sm" color="gray.500" mb={0.5}>
           Position: X Ggas to X Ggas

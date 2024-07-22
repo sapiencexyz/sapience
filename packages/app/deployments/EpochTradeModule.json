@@ -1,5 +1,5 @@
 {
-  "address": "0x6A26aD86cfF0FB9F9115e170A1752Bb36E7e1De8",
+  "address": "0x3073e1D8b562E5C8d901C8CFF0BD093b3BBbEa40",
   "abi": [
     {
       "type": "function",
@@ -12,6 +12,11 @@
         },
         {
           "name": "tokenAmount",
+          "type": "int256",
+          "internalType": "int256"
+        },
+        {
+          "name": "tokenAmountLimit",
           "type": "int256",
           "internalType": "int256"
         }
@@ -53,7 +58,12 @@
           "internalType": "uint256"
         },
         {
-          "name": "deltaTokenAmount",
+          "name": "tokenAmount",
+          "type": "int256",
+          "internalType": "int256"
+        },
+        {
+          "name": "tokenAmountLimit",
           "type": "int256",
           "internalType": "int256"
         }
@@ -157,12 +167,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xa16b8a6051881d42deee61f39dad38006940426807044420edbbf90479a9f0b4",
+  "deployTxnHash": "0xe9d370855d644c93f384f0c0d73c12f221687618f328f2609f7b01f9bdc1c991",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1721420292",
+  "deployTimestamp": "1721680317",
   "sourceName": "src/contracts/modules/EpochTradeModule.sol",
   "contractName": "EpochTradeModule",
   "deployedOn": "deploy.EpochTradeModule",
-  "gasUsed": 1552973,
-  "gasCost": "1014019950"
+  "gasUsed": 1572395,
+  "gasCost": "1014026693"
 }

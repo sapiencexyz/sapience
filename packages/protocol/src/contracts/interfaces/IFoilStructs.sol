@@ -8,6 +8,8 @@ interface IFoilStructs {
         uint256 collateralAmount;
         int24 lowerTick;
         int24 upperTick;
+        uint256 minAmountTokenA;
+        uint256 minAmountTokenB;
     }
 
     struct TraderPositionParams {

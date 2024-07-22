@@ -1,5 +1,5 @@
 {
-  "address": "0xE8c02575585Ed7B61049D4707B471eC9261A86a0",
+  "address": "0x6c01277495a4B59BA32E3d768d2cBcc6151db094",
   "abi": [
     {
       "type": "function",
@@ -58,6 +58,16 @@
               "name": "upperTick",
               "type": "int24",
               "internalType": "int24"
+            },
+            {
+              "name": "minAmountTokenA",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "minAmountTokenB",
+              "type": "uint256",
+              "internalType": "uint256"
             }
           ]
         }
@@ -251,6 +261,11 @@
           "name": "liquidity",
           "type": "uint128",
           "internalType": "uint128"
+        },
+        {
+          "name": "minLiquidity",
+          "type": "uint256",
+          "internalType": "uint256"
         }
       ],
       "outputs": [
@@ -352,12 +367,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xcad55e0a0edfe001432cbb50723696cded7d400f2e764324585ddcd3c643abf8",
+  "deployTxnHash": "0x2469726a21a5d3cb24f3fb3d12531513e0161316a7c8f74c2f79175b21207516",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1721420292",
+  "deployTimestamp": "1721680317",
   "sourceName": "src/contracts/modules/EpochLiquidityModule.sol",
   "contractName": "EpochLiquidityModule",
   "deployedOn": "deploy.EpochLiquidityModule",
-  "gasUsed": 1990141,
-  "gasCost": "1020225606"
+  "gasUsed": 1998131,
+  "gasCost": "1020233822"
 }

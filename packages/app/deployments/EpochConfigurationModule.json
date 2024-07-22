@@ -1,5 +1,5 @@
 {
-  "address": "0xb25e8466BfccC264c3EbD6466e74ca2c3bb459Ed",
+  "address": "0xE93590bd58EfF7Df7Ce8DB454d4f67fEA5E44323",
   "abi": [
     {
       "type": "function",
@@ -51,6 +51,11 @@
           "internalType": "uint24"
         },
         {
+          "name": "startingSqrtPriceX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        },
+        {
           "name": "optimisticOracleV3",
           "type": "address",
           "internalType": "address"
@@ -80,7 +85,7 @@
         {
           "name": "",
           "type": "tuple",
-          "internalType": "struct Account.Data",
+          "internalType": "struct FAccount.Data",
           "components": [
             {
               "name": "tokenId",
@@ -309,12 +314,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x83ce63417a84abc0db0be079ce1cf2e6fadc8ef82a6d468e5b5a3c67f534ecc6",
+  "deployTxnHash": "0xf3d1ecae7cf5749239bffa45865af593f2eb3226ab2e5c074961a4b5fe5e5bbd",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1721420293",
+  "deployTimestamp": "1721680318",
   "sourceName": "src/contracts/modules/EpochConfigurationModule.sol",
   "contractName": "EpochConfigurationModule",
   "deployedOn": "deploy.EpochConfigurationModule",
-  "gasUsed": 1950943,
+  "gasUsed": 1994389,
   "gasCost": "1022693326"
 }

@@ -144,7 +144,8 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
     function updateLiquidityPosition(
         uint256 tokenId,
         uint256 collateral,
-        uint128 liquidity
+        uint128 liquidity,
+        uint256 minLiquidity
     ) external payable returns (uint256 amount0, uint256 amount1) {
         console2.log("UPDATELIQPOSITION");
         Epoch.Data storage epoch = Epoch.load();
