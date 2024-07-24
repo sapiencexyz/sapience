@@ -2,7 +2,7 @@
 pragma solidity >=0.8.25 <0.9.0;
 
 import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol"; // TODO: Reentrancy guard should be refactored as router compatible (uses local storage)
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../storage/Epoch.sol";
@@ -87,7 +87,7 @@ contract EpochUMASettlementModule is ReentrancyGuard {
         emit MarketSettled(settlement.settlementPrice);
     }
 
-    function assertionDisputedCallback(bytes32 assertionId) external {
+    function assertionDisputedCallback(bytes32 assertionId) external afterEndTime nonReentrant {
         Epoch.Data storage epoch = Epoch.load();
         require(msg.sender == address(epoch.optimisticOracleV3), "Invalid caller");
 
