@@ -58,7 +58,7 @@ contract EpochUMASettlementModule is ReentrancyGuard {
             abi.encodePacked(finalPrice)
         );
 
-epoch.assertionId = optimisticOracleV3.assertTruth(
+        epoch.assertionId = optimisticOracleV3.assertTruth(
             claim,
             msg.sender,
             address(this), // Callback recipient
@@ -75,57 +75,32 @@ epoch.assertionId = optimisticOracleV3.assertTruth(
         return epoch.assertionId;
     }
 
-    function disputeSettlement() external afterEndTime nonReentrant {
-        Epoch.Data storage epoch = Epoch.load();
-        Epoch.Settlement storage settlement = epoch.settlement;
-        require(block.timestamp <= settlement.submissionTime + epoch.assertionLiveness, "Challenge window has passed");
-        require(!settlement.disputed, "Settlement already disputed");
-
-        IERC20 bondCurrency = epoch.bondCurrency;
-
-        bondCurrency.safeTransferFrom(msg.sender, address(this), epoch.bondAmount);
-        settlement.disputed = true;
-        settlement.disputer = msg.sender;
-
-        emit SettlementDisputed(block.timestamp);
-
-        OptimisticOracleV3Interface optimisticOracleV3 = epoch.optimisticOracleV3;
-        optimisticOracleV3.disputeAssertion(epoch.assertionId, msg.sender);
-    }
-
-    function settle() external afterEndTime nonReentrant {
+    function settle(bool assertedTruthfully) internal afterEndTime nonReentrant {
         Epoch.Data storage epoch = Epoch.load();
         require(!epoch.settled, "Market already settled");
 
-        OptimisticOracleV3Interface optimisticOracleV3 = epoch.optimisticOracleV3;
-        if (optimisticOracleV3.settleAndGetAssertionResult(epoch.assertionId)) {
-            Epoch.Settlement storage settlement = epoch.settlement;
-            epoch.settlementPrice = settlement.settlementPrice;
-            epoch.settled = true;
+        Epoch.Settlement storage settlement = epoch.settlement;
+        epoch.settlementPrice = settlement.settlementPrice;
+        epoch.settled = true;
 
-            IERC20 bondCurrency = epoch.bondCurrency;
-            if (settlement.disputed) {
+        IERC20 bondCurrency = epoch.bondCurrency;
+        if (settlement.disputed) {
+            if (assertedTruthfully) {
                 bondCurrency.safeTransfer(epoch.asserter, epoch.bondAmount);
             } else {
                 bondCurrency.safeTransfer(settlement.disputer, epoch.bondAmount);
             }
-
-            emit MarketSettled(settlement.settlementPrice);
+        } else {
+            bondCurrency.safeTransfer(epoch.asserter, epoch.bondAmount);
         }
+
+        emit MarketSettled(settlement.settlementPrice);
     }
 
     function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) external {
         Epoch.Data storage epoch = Epoch.load();
         require(msg.sender == address(epoch.optimisticOracleV3), "Invalid caller");
-        Epoch.Settlement storage settlement = epoch.settlement;
-
-        IERC20 bondCurrency = epoch.bondCurrency;
-        if (assertedTruthfully) {
-            bondCurrency.safeTransfer(epoch.asserter, epoch.bondAmount);
-            emit MarketSettled(settlement.settlementPrice);
-        } else {
-            bondCurrency.safeTransfer(settlement.disputer, epoch.bondAmount);
-        }
+        settle(assertedTruthfully);
     }
 
     function assertionDisputedCallback(bytes32 assertionId) external {
