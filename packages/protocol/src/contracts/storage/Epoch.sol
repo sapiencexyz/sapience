@@ -87,9 +87,7 @@ library Epoch {
         epoch = load();
 
         // can only be called once
-        if (
-            epoch.endTime != 0
-        ) {
+        if (epoch.endTime != 0) {
             revert Errors.EpochAlreadyStarted();
         }
 
@@ -117,17 +115,18 @@ library Epoch {
         );
 
         if (address(tokenA) < address(tokenB)) {
-            epoch.ethToken = tokenA;
-            epoch.gasToken = tokenB;
-        } else {
-            epoch.ethToken = tokenB;
             epoch.gasToken = tokenA;
+            epoch.ethToken = tokenB;
+        } else {
+            epoch.gasToken = tokenB;
+            epoch.ethToken = tokenA;
         }
         epoch.pool = IUniswapV3Pool(
-            IUniswapV3Factory(INonfungiblePositionManager(uniswapPositionManager).factory())
-                .createPool(
-                    address(epoch.ethToken),
+            IUniswapV3Factory(
+                INonfungiblePositionManager(uniswapPositionManager).factory()
+            ).createPool(
                     address(epoch.gasToken),
+                    address(epoch.ethToken),
                     marketParams.feeRate
                 )
         );
@@ -157,14 +156,8 @@ library Epoch {
         );
 
         // approve to uniswapSwapRouter
-        epoch.ethToken.approve(
-            address(uniswapSwapRouter),
-            type(uint256).max
-        );
-        epoch.gasToken.approve(
-            address(uniswapSwapRouter),
-            type(uint256).max
-        );
+        epoch.ethToken.approve(address(uniswapSwapRouter), type(uint256).max);
+        epoch.gasToken.approve(address(uniswapSwapRouter), type(uint256).max);
     }
 
     function loadValid() internal view returns (Data storage epoch) {

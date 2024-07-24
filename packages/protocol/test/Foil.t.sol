@@ -28,23 +28,7 @@ contract FoilTest is Test {
         0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6;
 
     function setUp() public {
-        // deploy Foil contract
-        // foil = new Foil(
-        //     1712152320, // startime
-        //     1720051200, // endtime
-        //    UNISWAP, // uniswap
-        //     UNISWAP_QUOTER, // uniswap quoter
-        //     0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266, // resolver
-        //     0x101b9758583F47C63236D831db79247B6eEAdb57, // mintable asset
-        //     7000, // base asset min price
-        //     46000, // base asset max price
-        //     10000 // fee rate
-        // );
-        console2.logAddress(vm.getAddress("Foil"));
         foil = IFoil(vm.getAddress("Foil"));
-        // (pool, tokenA, tokenB) = foil.getEpoch();
-        // foil.createTraderPosition();
-        // foil.createTraderPosition();
     }
 
     function test_addLiquidity() public {
@@ -55,13 +39,10 @@ contract FoilTest is Test {
         // int24 upperTick = TickMath.getTickAtSqrtRatio(
         //     306849353968360525628702781967
         // ); // 15
-        (uint256 amountGWEI, uint256 amountGAS) = foil.getTokenAmounts(
-            10 ether,
-            16000,
-            30000,
-            112045541949572279837463876454
-        );
-        console2.log("AMOUNTS", amountGWEI, amountGAS);
+
+        // (uint256 amountGAS, uint256 amountGWEI) = foil.efficientTokenAmounts(
+        //     50 ether
+        // );
 
         IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
             .LiquidityPositionParams({
@@ -73,16 +54,15 @@ contract FoilTest is Test {
                 minAmountTokenA: 0,
                 minAmountTokenB: 0
             });
-        foil.createLiquidityPosition(params);
         (uint256 tokenId, uint128 liquidity, , ) = foil.createLiquidityPosition(
             params
         );
 
-        uint128 halfLiquidity = liquidity / 2;
-        uint256 coll = 10 ether;
+        // uint128 halfLiquidity = liquidity / 2;
+        // uint256 coll = 10 ether;
 
-        console2.log(tokenId, halfLiquidity);
-        foil.updateLiquidityPosition(tokenId, coll, halfLiquidity);
+        // console2.log(tokenId, halfLiquidity);
+        // foil.updateLiquidityPosition(tokenId, coll, halfLiquidity);
 
         // (uint256 tokenAmount0, uint256 tokenAmount1) = foil.getPosition(1);
         // console2.log(tokenAmount0, tokenAmount1);
@@ -101,88 +81,89 @@ contract FoilTest is Test {
     }
 
     function test_trade() public {
-        IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
-            .LiquidityPositionParams({
-                amountTokenA: 50 ether,
-                amountTokenB: 50 ether,
-                collateralAmount: 10 ether,
-                lowerTick: 16000, // 5
-                upperTick: 30000, // 20
-                minAmountTokenA: 0,
-                minAmountTokenB: 0
-            });
-        (
-            uint256 positionId,
-            uint128 liquidity,
-            uint256 addedAmount0,
-            uint256 addedAmount1
-        ) = foil.createLiquidityPosition(params);
-        console2.log("LIQUIDITY POSITION CREATED", positionId, liquidity);
-        console2.log("ADDED LIQUIDITY", addedAmount0, addedAmount1);
-        params.amountTokenA = 100 ether;
-        params.amountTokenB = 100 ether;
-        (uint256 positionId2, , , ) = foil.createLiquidityPosition(params);
-        getAndLogPosition(positionId);
-        getAndLogPosition(positionId2);
-
-        // (uint256 tradedAmoun0, uint256 tradedAmount2) = foil.swapTokens(
-        //     0,
-        //     1 ether
-        // );
-
-        // console2.log("TRADED", tradedAmoun0, tradedAmount2);
-
-        // (uint256 tokenAmount0, uint256 tokenAmount1) = foil.collectFees(
-        //     positionId
-        // );
+        // IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
+        //     .LiquidityPositionParams({
+        //         amountTokenA: 50 ether,
+        //         amountTokenB: 50 ether,
+        //         collateralAmount: 10 ether,
+        //         lowerTick: 16000, // 5
+        //         upperTick: 30000, // 20
+        //         minAmountTokenA: 0,
+        //         minAmountTokenB: 0
+        //     });
+        // (
+        //     uint256 positionId,
+        //     uint128 liquidity,
+        //     uint256 addedAmount0,
+        //     uint256 addedAmount1
+        // ) = foil.createLiquidityPosition(params);
+        // console2.log("LIQUIDITY POSITION CREATED", positionId, liquidity);
+        // console2.log("ADDED LIQUIDITY", addedAmount0, addedAmount1);
+        // params.amountTokenA = 100 ether;
+        // params.amountTokenB = 100 ether;
+        // (uint256 positionId2, , , ) = foil.createLiquidityPosition(params);
         // getAndLogPosition(positionId);
         // getAndLogPosition(positionId2);
-        // console2.log("FEES COLLECTED", tokenAmount0, tokenAmount1);
-        // (tokenAmount0, tokenAmount1) = foil.collectFees(positionId2);
-        // console2.log("FEES COLLECTED 2", tokenAmount0, tokenAmount1);
-        // getAndLogPosition(positionId);
-        // getAndLogPosition(positionId2);
-
-        // foil.fakeSettle(5 ether);
-        // (tradedAmoun0, tradedAmount2) = foil.swapTokens(0, 1 ether);
-
-        // console2.log("TRADED after settle 1", tradedAmoun0, tradedAmount2);
-        // (tradedAmoun0, tradedAmount2) = foil.swapTokens(1 ether, 0);
-
-        // console2.log("TRADED after settle 2", tradedAmoun0, tradedAmount2);
     }
 
-    function getAndLogPosition(uint256 positionId) public {
-        (
-            uint96 nonce,
-            address operator,
-            address token0,
-            address token1,
-            uint24 fee,
-            int24 tickLower,
-            int24 tickUpper,
-            uint128 liquidity,
-            uint256 feeGrowthInside0LastX128,
-            uint256 feeGrowthInside1LastX128,
-            uint128 tokensOwed0,
-            uint128 tokensOwed1
-        ) = foil.getPosition(positionId);
+    //     // (uint256 tradedAmoun0, uint256 tradedAmount2) = foil.swapTokens(
+    //     //     0,
+    //     //     1 ether
+    //     // );
 
-        console2.log("START POSITION", positionId);
-        console2.log("  nonce                    : ", nonce);
-        console2.log("  operator                 : ", operator);
-        console2.log("  token0                   : ", token0);
-        console2.log("  token1                   : ", token1);
-        console2.log("  fee                      : ", fee);
-        console2.log("  tickLower                : ", tickLower);
-        console2.log("  tickUpper                : ", tickUpper);
-        console2.log("  liquidity                : ", liquidity);
-        console2.log("  feeGrowthInside0LastX128 : ", feeGrowthInside0LastX128);
-        console2.log("  feeGrowthInside1LastX128 : ", feeGrowthInside1LastX128);
-        console2.log("  tokensOwed0              : ", tokensOwed0);
-        console2.log("  tokensOwed1              : ", tokensOwed1);
-        console2.log("END   POSITION", positionId);
-    }
+    //     // console2.log("TRADED", tradedAmoun0, tradedAmount2);
+
+    //     // (uint256 tokenAmount0, uint256 tokenAmount1) = foil.collectFees(
+    //     //     positionId
+    //     // );
+    //     // getAndLogPosition(positionId);
+    //     // getAndLogPosition(positionId2);
+    //     // console2.log("FEES COLLECTED", tokenAmount0, tokenAmount1);
+    //     // (tokenAmount0, tokenAmount1) = foil.collectFees(positionId2);
+    //     // console2.log("FEES COLLECTED 2", tokenAmount0, tokenAmount1);
+    //     // getAndLogPosition(positionId);
+    //     // getAndLogPosition(positionId2);
+
+    //     // foil.fakeSettle(5 ether);
+    //     // (tradedAmoun0, tradedAmount2) = foil.swapTokens(0, 1 ether);
+
+    //     // console2.log("TRADED after settle 1", tradedAmoun0, tradedAmount2);
+    //     // (tradedAmoun0, tradedAmount2) = foil.swapTokens(1 ether, 0);
+
+    //     // console2.log("TRADED after settle 2", tradedAmoun0, tradedAmount2);
+    // }
+
+    // function getAndLogPosition(uint256 positionId) public {
+    //     (
+    //         uint96 nonce,
+    //         address operator,
+    //         address token0,
+    //         address token1,
+    //         uint24 fee,
+    //         int24 tickLower,
+    //         int24 tickUpper,
+    //         uint128 liquidity,
+    //         uint256 feeGrowthInside0LastX128,
+    //         uint256 feeGrowthInside1LastX128,
+    //         uint128 tokensOwed0,
+    //         uint128 tokensOwed1
+    //     ) = foil.getPosition(positionId);
+
+    //     console2.log("START POSITION", positionId);
+    //     console2.log("  nonce                    : ", nonce);
+    //     console2.log("  operator                 : ", operator);
+    //     console2.log("  token0                   : ", token0);
+    //     console2.log("  token1                   : ", token1);
+    //     console2.log("  fee                      : ", fee);
+    //     console2.log("  tickLower                : ", tickLower);
+    //     console2.log("  tickUpper                : ", tickUpper);
+    //     console2.log("  liquidity                : ", liquidity);
+    //     console2.log("  feeGrowthInside0LastX128 : ", feeGrowthInside0LastX128);
+    //     console2.log("  feeGrowthInside1LastX128 : ", feeGrowthInside1LastX128);
+    //     console2.log("  tokensOwed0              : ", tokensOwed0);
+    //     console2.log("  tokensOwed1              : ", tokensOwed1);
+    //     console2.log("END   POSITION", positionId);
+    // }
     // function test_addLiquidityAndLongs() public {
     //     int24 tickSpacing = IUniswapV3Pool(pool).tickSpacing();
     //     // int24 lowerTick = TickMath.getTickAtSqrtRatio(

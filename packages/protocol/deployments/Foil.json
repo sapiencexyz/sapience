@@ -1,5 +1,5 @@
 {
-  "address": "0x945f824e405eed0b29e4221e7eb698fb42b43e51",
+  "address": "0x0e90e4fc7fca5b5f38fe5a2ba67d3e0317bec136",
   "abi": [
     {
       "type": "function",
@@ -14,6 +14,11 @@
           "name": "endTime",
           "type": "uint256",
           "internalType": "uint256"
+        },
+        {
+          "name": "startingPrice",
+          "type": "uint160",
+          "internalType": "uint160"
         },
         {
           "name": "uniswapPositionManager",
@@ -393,6 +398,30 @@
     },
     {
       "type": "function",
+      "name": "efficientTokenAmounts",
+      "inputs": [
+        {
+          "name": "collateralInWei",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "amount0",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "amount1",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "getPosition",
       "inputs": [
         {
@@ -470,7 +499,7 @@
       "name": "getTokenAmounts",
       "inputs": [
         {
-          "name": "collateralAmountETH",
+          "name": "collateralAmount",
           "type": "uint256",
           "internalType": "uint256"
         },
@@ -483,26 +512,65 @@
           "name": "tickUpper",
           "type": "int24",
           "internalType": "int24"
-        },
-        {
-          "name": "sqrtPriceX96",
-          "type": "uint160",
-          "internalType": "uint160"
         }
       ],
       "outputs": [
         {
-          "name": "amountGWEI",
+          "name": "amount0",
           "type": "uint256",
           "internalType": "uint256"
         },
         {
-          "name": "amountGAS",
+          "name": "amount1",
           "type": "uint256",
           "internalType": "uint256"
+        },
+        {
+          "name": "liquidity",
+          "type": "uint128",
+          "internalType": "uint128"
         }
       ],
-      "stateMutability": "pure"
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getTokenAmountsThree",
+      "inputs": [
+        {
+          "name": "collateralAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "tickLower",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "tickUpper",
+          "type": "int24",
+          "internalType": "int24"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "amount0",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "amount1",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "liquidity",
+          "type": "uint128",
+          "internalType": "uint128"
+        }
+      ],
+      "stateMutability": "view"
     },
     {
       "type": "function",
@@ -537,6 +605,25 @@
         }
       ],
       "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "tickToPrice",
+      "inputs": [
+        {
+          "name": "tick",
+          "type": "int24",
+          "internalType": "int24"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "pure"
     },
     {
       "type": "function",
@@ -1182,11 +1269,11 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0xacabf2e6b707f7ac57213ecd0c732469230d08c84d4290c238a3df11992fd73b",
+  "deployTxnHash": "0x2fda6efdf6e55041bd4ceaf6eb5d3520f824f86b83abac4b82e04863d10536f6",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1721300753",
+  "deployTimestamp": "1721831733",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
-  "gasUsed": 474152,
-  "gasCost": "1006338519"
+  "gasUsed": 507985,
+  "gasCost": "1013555016"
 }

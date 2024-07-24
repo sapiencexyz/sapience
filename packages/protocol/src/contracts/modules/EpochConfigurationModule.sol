@@ -53,7 +53,7 @@ contract EpochConfigurationModule is ReentrancyGuard {
         address uniswapSwapRouter,
         address optimisticOracleV3,
         Market.MarketParams memory marketParams
-    ) onlyOwner external  {
+    ) external onlyOwner {
         Market.updateValid(
             owner, // should be nominate/accept
             uniswapPositionManager,
@@ -63,48 +63,48 @@ contract EpochConfigurationModule is ReentrancyGuard {
             marketParams
         );
     }
-function createEpoch(
-    uint startTime,
-    uint endTime,
-    uint160 startingSqrtPriceX96
-) onlyOwner external  {
-    Market.Data storage market = Market.loadValid();
+    function createEpoch(
+        uint startTime,
+        uint endTime,
+        uint160 startingSqrtPriceX96
+    ) external onlyOwner {
+        Market.Data storage market = Market.loadValid();
 
-    Epoch.createValid(
-        startTime,
-        endTime,
-        address(market.uniswapPositionManager),
-        address(market.uniswapQuoter),
-        address(market.uniswapSwapRouter),
-        address(market.collateralAsset),
-        startingSqrtPriceX96,
-        address(market.optimisticOracleV3),
-        market.marketParams
-    );
-}
+        Epoch.createValid(
+            startTime,
+            endTime,
+            address(market.uniswapPositionManager),
+            address(market.uniswapQuoter),
+            address(market.uniswapSwapRouter),
+            address(market.collateralAsset),
+            startingSqrtPriceX96,
+            address(market.optimisticOracleV3),
+            market.marketParams
+        );
+    }
 
     function getMarket()
         external
         view
         returns (
-        address owner,
-        address collateralAsset,
-        address uniswapPositionManager,
-        address uniswapQuoter,
-        address uniswapSwapRouter,
-        address optimisticOracleV3,
-        Market.MarketParams memory marketParams
+            address owner,
+            address collateralAsset,
+            address uniswapPositionManager,
+            address uniswapQuoter,
+            address uniswapSwapRouter,
+            address optimisticOracleV3,
+            Market.MarketParams memory marketParams
         )
     {
         Market.Data storage market = Market.load();
         return (
-        market.owner,
-        market.collateralAsset,
-        address(market.uniswapPositionManager),
-        address(market.uniswapQuoter),
-        address(market.uniswapSwapRouter),
-        address(market.optimisticOracleV3),
-        market.marketParams
+            market.owner,
+            market.collateralAsset,
+            address(market.uniswapPositionManager),
+            address(market.uniswapQuoter),
+            address(market.uniswapSwapRouter),
+            address(market.optimisticOracleV3),
+            market.marketParams
         );
     }
 

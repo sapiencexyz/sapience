@@ -1,5 +1,5 @@
 {
-  "address": "0xCAb5988D6bA220Ad0B8075DBcaf9Aa6c867b81b9",
+  "address": "0x082B476ac55c2D5cE518921466A2B86B864DFfBc",
   "abi": [
     {
       "type": "function",
@@ -14,6 +14,11 @@
           "name": "endTime",
           "type": "uint256",
           "internalType": "uint256"
+        },
+        {
+          "name": "startingPrice",
+          "type": "uint160",
+          "internalType": "uint160"
         },
         {
           "name": "uniswapPositionManager",
@@ -309,12 +314,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xc0415863ee6551be470fe64495714a6dee31888b67457da20b4592dbec1b52e2",
+  "deployTxnHash": "0xa5f25edd456d411a7e1f54f3d1a9dc3ab6c4a0fa5bd66d54bac2532525004903",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1721300749",
+  "deployTimestamp": "1721662448",
   "sourceName": "src/contracts/modules/EpochConfigurationModule.sol",
   "contractName": "EpochConfigurationModule",
   "deployedOn": "deploy.EpochConfigurationModule",
-  "gasUsed": 1783207,
-  "gasCost": "1022693326"
+  "gasUsed": 1955296,
+  "gasCost": "1025922144"
 }
