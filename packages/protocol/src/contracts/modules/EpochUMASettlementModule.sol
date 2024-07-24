@@ -84,17 +84,6 @@ contract EpochUMASettlementModule is ReentrancyGuard {
         epoch.settlementPrice = settlement.settlementPrice;
         epoch.settled = true;
 
-        IERC20 bondCurrency = epoch.bondCurrency;
-        if (settlement.disputed) {
-            if (assertedTruthfully) {
-                bondCurrency.safeTransfer(epoch.asserter, epoch.bondAmount);
-            } else {
-                bondCurrency.safeTransfer(settlement.disputer, epoch.bondAmount);
-            }
-        } else {
-            bondCurrency.safeTransfer(epoch.asserter, epoch.bondAmount);
-        }
-
         emit MarketSettled(settlement.settlementPrice);
     }
 
