@@ -61,11 +61,11 @@ contract EpochUMASettlementModule is ReentrancyGuard {
         epoch.assertionId = optimisticOracleV3.assertTruth(
             claim,
             msg.sender,
-            address(this), // Callback recipient
-            address(0), // No bond currency address
-            uint64(epoch.bondAmount),
-            epoch.bondCurrency,
+            address(this),
+            address(0),
             epoch.assertionLiveness,
+            epoch.bondCurrency,
+            uint64(epoch.bondAmount),
             bytes32(0),
             bytes32(0)
         );
