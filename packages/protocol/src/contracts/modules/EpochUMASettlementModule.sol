@@ -25,7 +25,7 @@ contract EpochUMASettlementModule is ReentrancyGuard {
         _;
     }
 
-    modifier afterEndTime() {
+    modifier afterEndTime() { 
         Epoch.Data storage epoch = Epoch.load();
         require(block.timestamp > epoch.endTime, "Market activity is still allowed");
         _;
@@ -66,8 +66,8 @@ contract EpochUMASettlementModule is ReentrancyGuard {
             uint64(epoch.bondAmount),
             epoch.bondCurrency,
             epoch.assertionLiveness,
-            bytes32(uint256(uint160(address(this)))), // Callback contract
-            bytes32(0)  // Callback data
+            bytes32(0),
+            bytes32(0)
         );
 
         emit SettlementSubmitted(settlementPrice, block.timestamp);
