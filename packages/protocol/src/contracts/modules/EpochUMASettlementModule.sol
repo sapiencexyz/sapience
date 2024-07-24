@@ -50,11 +50,11 @@ contract EpochUMASettlementModule is ReentrancyGuard {
 
         bytes memory claim = abi.encodePacked(
             epoch.priceUnit,
-            " between timestamps ",
+            " TWAP between timestamps ",
             abi.encodePacked(epoch.startTime),
             " and ",
             abi.encodePacked(epoch.endTime),
-            ": ",
+            " (inclusive): ",
             abi.encodePacked(settlementPrice)
         );
 
