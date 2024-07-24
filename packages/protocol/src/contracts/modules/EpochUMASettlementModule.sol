@@ -66,7 +66,7 @@ contract EpochUMASettlementModule is ReentrancyGuard {
             uint64(epoch.bondAmount),
             epoch.bondCurrency,
             epoch.assertionLiveness,
-            addressToBytes32(address(this)), // Callback contract
+            bytes32(uint256(uint160(address(this)))), // Callback contract
             bytes32(0)  // Callback data
         );
 
@@ -75,8 +75,9 @@ contract EpochUMASettlementModule is ReentrancyGuard {
         return epoch.assertionId;
     }
 
-    function settle(bool assertedTruthfully) internal afterEndTime nonReentrant {
+    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) external afterEndTime nonReentrant {
         Epoch.Data storage epoch = Epoch.load();
+        require(msg.sender == address(epoch.optimisticOracleV3), "Invalid caller");
         require(!epoch.settled, "Market already settled");
 
         Epoch.Settlement storage settlement = epoch.settlement;
@@ -97,12 +98,6 @@ contract EpochUMASettlementModule is ReentrancyGuard {
         emit MarketSettled(settlement.settlementPrice);
     }
 
-    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) external {
-        Epoch.Data storage epoch = Epoch.load();
-        require(msg.sender == address(epoch.optimisticOracleV3), "Invalid caller");
-        settle(assertedTruthfully);
-    }
-
     function assertionDisputedCallback(bytes32 assertionId) external {
         Epoch.Data storage epoch = Epoch.load();
         require(msg.sender == address(epoch.optimisticOracleV3), "Invalid caller");
@@ -111,9 +106,5 @@ contract EpochUMASettlementModule is ReentrancyGuard {
         settlement.disputed = true;
 
         emit SettlementDisputed(block.timestamp);
-    }
-
-    function addressToBytes32(address addr) private pure returns (bytes32) {
-        return bytes32(uint256(uint160(addr)));
     }
 }
