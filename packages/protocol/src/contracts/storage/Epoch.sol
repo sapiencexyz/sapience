@@ -4,6 +4,8 @@ pragma solidity >=0.8.2 <0.9.0;
 import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../external/univ3/TickMath.sol";
 import "../external/univ3/FullMath.sol";
 import "../interfaces/external/INonfungiblePositionManager.sol";
@@ -16,6 +18,15 @@ import "./Errors.sol";
 import "forge-std/console2.sol";
 
 library Epoch {
+    using SafeERC20 for IERC20;
+
+struct Settlement {
+        uint256 settlementPrice;
+        uint256 submissionTime;
+        bool disputed;
+        address disputer;
+    }
+
     struct Data {
         uint startTime;
         uint endTime;
@@ -33,6 +44,13 @@ library Epoch {
         uint256 settlementPrice;
         mapping(uint256 => Debt.Data) lpDebtPositions;
         OptimisticOracleV3Interface optimisticOracleV3;
+        address asserter;
+        uint64 assertionLiveness;
+        IERC20 bondCurrency;
+        uint256 bondAmount;
+        bytes32 assertionId;
+        bytes priceUnit;
+        Settlement settlement;
     }
 
     function load() internal pure returns (Data storage epoch) {
@@ -77,7 +95,8 @@ library Epoch {
         int24 baseAssetMaxPrice,
         uint24 feeRate,
         uint160 startingSqrtPriceX96,
-        address optimisticOracleV3
+        address optimisticOracleV3,
+        address asserter
     ) internal returns (Data storage epoch) {
         epoch = load();
 
@@ -110,6 +129,7 @@ library Epoch {
         epoch.optimisticOracleV3 = OptimisticOracleV3Interface(
             optimisticOracleV3
         );
+        epoch.asserter = asserter;
 
         VirtualToken tokenA = new VirtualToken(
             address(this),

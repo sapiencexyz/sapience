@@ -369,7 +369,7 @@
   "linkedLibraries": {},
   "deployTxnHash": "0x2469726a21a5d3cb24f3fb3d12531513e0161316a7c8f74c2f79175b21207516",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1721680518",
+  "deployTimestamp": "1721760956",
   "sourceName": "src/contracts/modules/EpochLiquidityModule.sol",
   "contractName": "EpochLiquidityModule",
   "deployedOn": "deploy.EpochLiquidityModule",

@@ -30,8 +30,8 @@ libraries.ReentrancyGuard="<%= contracts.ReentrancyGuard.address %>"
 [deploy.EpochLiquidityModule]
 artifact="EpochLiquidityModule"
 
-[deploy.EpochSettlementModule]
-artifact="EpochSettlementModule"
+[deploy.EpochUMASettlementModule]
+artifact="EpochUMASettlementModule"
 
 [deploy.EpochTradeModule]
 artifact="EpochTradeModule"
@@ -43,7 +43,7 @@ artifact="EpochNftModule"
 contracts=[
   "EpochConfigurationModule",
   "EpochLiquidityModule",
-  "EpochSettlementModule",
+  "EpochUMASettlementModule",
   "EpochTradeModule",
   "EpochNftModule",
 ]

@@ -41,6 +41,10 @@ export default defineConfig({
           text: 'Ethereum L2 Gas Implementation',
           link: '/l2-implementation', 
         },
+        { 
+          text: 'Market Settlement',
+          link: '/market-settlement', 
+        },
       ], 
     } ,
     { 

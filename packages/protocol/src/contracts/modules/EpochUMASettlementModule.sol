@@ -1,0 +1,144 @@
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.8.25 <0.9.0;
+
+import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "../storage/Epoch.sol";
+import "../storage/FAccount.sol";
+import "../storage/Position.sol";
+
+contract EpochUMASettlementModule is ReentrancyGuard {
+    using Epoch for Epoch.Data;
+    using FAccount for FAccount.Data;
+    using Position for Position.Data;
+    using SafeERC20 for IERC20;
+
+    event SettlementSubmitted(uint256 price, uint256 submissionTime);
+    event SettlementDisputed(uint256 disputeTime);
+    event MarketSettled(uint256 settlementPrice);
+
+    modifier onlyAsserter() {
+        Epoch.Data storage epoch = Epoch.load();
+        require(msg.sender == epoch.asserter, "Only asserter can call this function");
+        _;
+    }
+
+    modifier afterEndTime() {
+        Epoch.Data storage epoch = Epoch.load();
+        require(block.timestamp > epoch.endTime, "Market activity is still allowed");
+        _;
+    }
+
+    function submitFinalPrice(uint256 finalPrice) external onlyAsserter afterEndTime nonReentrant returns (bytes32) {
+        Epoch.Data storage epoch = Epoch.load();
+        require(!epoch.settled, "Market already settled");
+
+        IERC20 bondCurrency = epoch.bondCurrency;
+        OptimisticOracleV3Interface optimisticOracleV3 = epoch.optimisticOracleV3;
+
+        bondCurrency.safeTransferFrom(msg.sender, address(this), epoch.bondAmount);
+        bondCurrency.forceApprove(address(optimisticOracleV3), epoch.bondAmount);
+
+        epoch.settlement = Epoch.Settlement({
+            settlementPrice: finalPrice,
+            submissionTime: block.timestamp,
+            disputed: false,
+            disputer: address(0)
+        });
+
+        bytes memory claim = abi.encodePacked(
+            epoch.priceUnit,
+            " between timestamps ",
+            abi.encodePacked(epoch.startTime),
+            " and ",
+            abi.encodePacked(epoch.endTime),
+            ": ",
+            abi.encodePacked(finalPrice)
+        );
+
+epoch.assertionId = optimisticOracleV3.assertTruth(
+            claim,
+            msg.sender,
+            address(this), // Callback recipient
+            address(0), // No bond currency address
+            uint64(epoch.bondAmount),
+            epoch.bondCurrency,
+            epoch.assertionLiveness,
+            addressToBytes32(address(this)), // Callback contract
+            bytes32(0)  // Callback data
+        );
+
+        emit SettlementSubmitted(finalPrice, block.timestamp);
+
+        return epoch.assertionId;
+    }
+
+    function disputeSettlement() external afterEndTime nonReentrant {
+        Epoch.Data storage epoch = Epoch.load();
+        Epoch.Settlement storage settlement = epoch.settlement;
+        require(block.timestamp <= settlement.submissionTime + epoch.assertionLiveness, "Challenge window has passed");
+        require(!settlement.disputed, "Settlement already disputed");
+
+        IERC20 bondCurrency = epoch.bondCurrency;
+
+        bondCurrency.safeTransferFrom(msg.sender, address(this), epoch.bondAmount);
+        settlement.disputed = true;
+        settlement.disputer = msg.sender;
+
+        emit SettlementDisputed(block.timestamp);
+
+        OptimisticOracleV3Interface optimisticOracleV3 = epoch.optimisticOracleV3;
+        optimisticOracleV3.disputeAssertion(epoch.assertionId, msg.sender);
+    }
+
+    function settle() external afterEndTime nonReentrant {
+        Epoch.Data storage epoch = Epoch.load();
+        require(!epoch.settled, "Market already settled");
+
+        OptimisticOracleV3Interface optimisticOracleV3 = epoch.optimisticOracleV3;
+        if (optimisticOracleV3.settleAndGetAssertionResult(epoch.assertionId)) {
+            Epoch.Settlement storage settlement = epoch.settlement;
+            epoch.settlementPrice = settlement.settlementPrice;
+            epoch.settled = true;
+
+            IERC20 bondCurrency = epoch.bondCurrency;
+            if (settlement.disputed) {
+                bondCurrency.safeTransfer(epoch.asserter, epoch.bondAmount);
+            } else {
+                bondCurrency.safeTransfer(settlement.disputer, epoch.bondAmount);
+            }
+
+            emit MarketSettled(settlement.settlementPrice);
+        }
+    }
+
+    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) external {
+        Epoch.Data storage epoch = Epoch.load();
+        require(msg.sender == address(epoch.optimisticOracleV3), "Invalid caller");
+        Epoch.Settlement storage settlement = epoch.settlement;
+
+        IERC20 bondCurrency = epoch.bondCurrency;
+        if (assertedTruthfully) {
+            bondCurrency.safeTransfer(epoch.asserter, epoch.bondAmount);
+            emit MarketSettled(settlement.settlementPrice);
+        } else {
+            bondCurrency.safeTransfer(settlement.disputer, epoch.bondAmount);
+        }
+    }
+
+    function assertionDisputedCallback(bytes32 assertionId) external {
+        Epoch.Data storage epoch = Epoch.load();
+        require(msg.sender == address(epoch.optimisticOracleV3), "Invalid caller");
+
+        Epoch.Settlement storage settlement = epoch.settlement;
+        settlement.disputed = true;
+
+        emit SettlementDisputed(block.timestamp);
+    }
+
+    function addressToBytes32(address addr) private pure returns (bytes32) {
+        return bytes32(uint256(uint160(addr)));
+    }
+}

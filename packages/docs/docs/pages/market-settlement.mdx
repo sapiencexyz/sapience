@@ -1,0 +1,14 @@
+# Market Settlement
+
+The Foil protocol architecture is modular, allowing different deployments to utilize different strategies for determining the settlement price after the expiration of a given market.
+
+## UMA
+
+[UMA](https://uma.xyz/)’s Optimistic Oracle can be used to determine the settlement price for a Foil market.
+
+* After `block.timestamp` exceeds the `endTime` of the market, all market activity (including deposits and withdrawals) is halted, and an asserter can call submitFinalPrice with a settlementPrice for the market, also providing a bond (configurable, typically 5,000 USDC).
+* During a challenge window (configurable, typically two hours by default) following submission, anyone can dispute this settlement price by posting an equal-sized bond.
+* If no dispute is submitted during this period, anyone can call settle. Market participants can then withdraw collateral based on the value of their position according to the settlement price.
+* If a dispute is submitted, UMA tokenholders vote during a 48-96 hour voting period to determine whether the assertion is true or false.
+  * If the vote resolves to true, the dispute loses their bond, and the system behaves as if no dispute was submitted.
+  * If the vote resolves to false, the asserter loses their bond, and another settlement price must be submitted.

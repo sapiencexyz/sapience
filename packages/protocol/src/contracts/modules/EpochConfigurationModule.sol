@@ -29,7 +29,8 @@ contract EpochConfigurationModule is ReentrancyGuard {
         int24 baseAssetMaxPrice,
         uint24 feeRate,
         uint160 startingSqrtPriceX96,
-        address optimisticOracleV3
+        address optimisticOracleV3,
+        address asserter
     ) external {
         Epoch.createValid(
             startTime,
@@ -42,7 +43,8 @@ contract EpochConfigurationModule is ReentrancyGuard {
             baseAssetMaxPrice,
             feeRate,
             startingSqrtPriceX96,
-            optimisticOracleV3
+            optimisticOracleV3,
+            asserter
         );
     }
 
@@ -59,7 +61,8 @@ contract EpochConfigurationModule is ReentrancyGuard {
             uint24 feeRate,
             address ethToken,
             address gasToken,
-            address pool
+            address pool,
+            address asserter
         )
     {
         Epoch.Data storage epoch = Epoch.load();
@@ -73,7 +76,8 @@ contract EpochConfigurationModule is ReentrancyGuard {
             epoch.feeRate,
             address(epoch.ethToken),
             address(epoch.gasToken),
-            address(epoch.pool)
+            address(epoch.pool),
+            address(epoch.asserter)
         );
     }
 

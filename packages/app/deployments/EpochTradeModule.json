@@ -169,7 +169,7 @@
   "linkedLibraries": {},
   "deployTxnHash": "0xe9d370855d644c93f384f0c0d73c12f221687618f328f2609f7b01f9bdc1c991",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1721680518",
+  "deployTimestamp": "1721760956",
   "sourceName": "src/contracts/modules/EpochTradeModule.sol",
   "contractName": "EpochTradeModule",
   "deployedOn": "deploy.EpochTradeModule",
