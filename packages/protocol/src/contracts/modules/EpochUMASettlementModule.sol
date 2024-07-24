@@ -31,7 +31,7 @@ contract EpochUMASettlementModule is ReentrancyGuard {
         _;
     }
 
-    function submitFinalPrice(uint256 finalPrice) external onlyAsserter afterEndTime nonReentrant returns (bytes32) {
+    function submitSettlementPrice(uint256 settlementPrice) external onlyAsserter afterEndTime nonReentrant returns (bytes32) {
         Epoch.Data storage epoch = Epoch.load();
         require(!epoch.settled, "Market already settled");
 
@@ -42,7 +42,7 @@ contract EpochUMASettlementModule is ReentrancyGuard {
         bondCurrency.forceApprove(address(optimisticOracleV3), epoch.bondAmount);
 
         epoch.settlement = Epoch.Settlement({
-            settlementPrice: finalPrice,
+            settlementPrice: settlementPrice,
             submissionTime: block.timestamp,
             disputed: false,
             disputer: address(0)
@@ -55,7 +55,7 @@ contract EpochUMASettlementModule is ReentrancyGuard {
             " and ",
             abi.encodePacked(epoch.endTime),
             ": ",
-            abi.encodePacked(finalPrice)
+            abi.encodePacked(settlementPrice)
         );
 
         epoch.assertionId = optimisticOracleV3.assertTruth(
@@ -70,7 +70,7 @@ contract EpochUMASettlementModule is ReentrancyGuard {
             bytes32(0)  // Callback data
         );
 
-        emit SettlementSubmitted(finalPrice, block.timestamp);
+        emit SettlementSubmitted(settlementPrice, block.timestamp);
 
         return epoch.assertionId;
     }
