@@ -9,6 +9,7 @@ baseAssetMaxPrice = "46000" # 100
 feeRate = "10000" # 1%
 startingPrice = "112045541949572279837463876454" # 1
 resolver = "0x0000000000000000000000000000000000000000"
+asserter = "0x0000000000000000000000000000000000000000"
 depends = []
 
 [clone.Uniswap]
@@ -62,7 +63,9 @@ args=[
   "<%= settings.baseAssetMaxPrice %>",
   "<%= settings.feeRate %>",
   "<%= settings.startingPrice %>",
-  "<%= settings.resolver %>"
+  "<%= settings.resolver %>",
+  "<%= settings.asserter %>",
+  
 ]
 depends = ['var.settings', 'router.Foil']
 
