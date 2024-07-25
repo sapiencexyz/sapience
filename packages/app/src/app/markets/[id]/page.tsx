@@ -13,10 +13,10 @@ import {
 
 import Chart from '~/lib/components/chart';
 import LiquidityPosition from '~/lib/components/foil/liquidityPosition';
+import LiquidityPositionsTable from '~/lib/components/foil/liquidityPositionsTable';
 import PositionsHeader from '~/lib/components/foil/positionsHeader';
 import TraderPosition from '~/lib/components/foil/traderPosition';
 import TraderPositionsTable from '~/lib/components/foil/traderPositionsTable';
-import LiquidityPositionsTable from '~/lib/components/foil/liquidityPositionsTable';
 import { MarketProvider } from '~/lib/context/MarketProvider';
 
 const Market = ({ params }: { params: { id: string } }) => {

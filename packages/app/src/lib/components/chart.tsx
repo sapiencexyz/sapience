@@ -138,8 +138,23 @@ const candlestickData: DataPoint[] = [
   },
 ];
 
-const CustomBarShape = ({ x, y, width, payload, yAxis }) => {
-  const candleColor = payload.open < payload.close ? colors.green[400] : colors.red[500];
+const CustomBarShape = ({
+  x,
+  y,
+  width,
+  payload,
+  yAxis,
+}: {
+  x: any;
+  y: any;
+  width: any;
+  payload: any;
+  yAxis: any;
+}) => {
+  const candleColor =
+    colors.green &&
+    colors.red &&
+    (payload.open < payload.close ? colors.green[400] : colors.red[500]);
   const barHeight = Math.abs(yAxis(payload.open) - yAxis(payload.close));
   const wickHeight = Math.abs(yAxis(payload.low) - yAxis(payload.high));
   const wickY = yAxis(payload.low);
@@ -147,8 +162,20 @@ const CustomBarShape = ({ x, y, width, payload, yAxis }) => {
 
   return (
     <>
-      <rect x={x + width / 2 - 0.5} y={wickY} width={1} height={wickHeight} fill={candleColor} />
-      <rect x={x} y={barY} width={width} height={barHeight} fill={candleColor} />
+      <rect
+        x={x + width / 2 - 0.5}
+        y={wickY}
+        width={1}
+        height={wickHeight}
+        fill={candleColor}
+      />
+      <rect
+        x={x}
+        y={barY}
+        width={width}
+        height={barHeight}
+        fill={candleColor}
+      />
     </>
   );
 };
@@ -163,11 +190,16 @@ const CandlestickChart: React.FC = () => {
         <XAxis dataKey="date" />
         <YAxis domain={[0, 15]} />
         <Tooltip />
-        <Bar dataKey="high" shape={props => <CustomBarShape {...props} yAxis={d => d * (400 / 15)} />} />
+        <Bar
+          dataKey="high"
+          shape={(props: any) => (
+            <CustomBarShape {...props} yAxis={(d: any) => d * (400 / 15)} />
+          )}
+        />
         <ReferenceLine
           y={averagePriceScaled}
           label="Average Price"
-          stroke={colors.gray[800]}
+          stroke={colors?.gray && colors.gray[800]}
           strokeDasharray="3 3"
         />
       </ComposedChart>

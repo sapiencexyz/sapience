@@ -1,18 +1,13 @@
 'use client';
 
-import { Box, Button, Divider, Heading, Text } from '@chakra-ui/react';
-import { useEffect, useState } from 'react';
+import { Box, Button, Divider, Heading, Text } from "@chakra-ui/react";
+import React, { useState } from 'react';
 
 import AddLiquidity from './addLiquidity';
 import EditLiquidity from './editLiquidity';
 import PositionSelector from './positionSelector';
 
-const LiquidityPosition = ({
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  params,
-}: {
-  params: { mode: string; selectedData: JSON };
-}) => {
+const LiquidityPosition = () => {
   const [nftId, setNftId] = useState(0);
 
   return (
@@ -20,13 +15,14 @@ const LiquidityPosition = ({
       <Box>
         <PositionSelector isLP onChange={setNftId} />
       </Box>
-      {nftId === 0 ? <AddLiquidity /> : <EditLiquidity nftId={nftId} />}
+      {nftId === 0 ? <AddLiquidity /> : <EditLiquidity />}
       <Divider my={6} />
       <Heading size="sm" mb={1}>
         Earn Fees
       </Heading>
       <Text fontSize="sm" mb={2} maxWidth="320px">
-        Liquidity providers earn fees from traders when the market price is within their low and high price.
+        Liquidity providers earn fees from traders when the market price is
+        within their low and high price.
       </Text>
       <Button size="sm" variant="brand" w="100%" mb={2}>
         Redeem 0.0023wstETH
@@ -34,9 +30,7 @@ const LiquidityPosition = ({
       <Text fontSize="sm" mb={0.5}>
         PnL: +32wstETH (inclusive of fees)
       </Text>
-      <Text fontSize="sm">
-        APY: 3%
-      </Text>
+      <Text fontSize="sm">APY: 3%</Text>
     </Box>
   );
 };

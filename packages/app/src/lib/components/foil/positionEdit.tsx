@@ -1,3 +1,5 @@
+/*
+
 import { EditIcon } from '@chakra-ui/icons';
 import {
   Heading,
@@ -59,3 +61,5 @@ export default function PositionEdit(row: any) {
     </>
   );
 }
+
+*/

@@ -3,5 +3,13 @@
     "sznm/react",
     "plugin:react/jsx-runtime",
     "plugin:@next/next/recommended"
-  ]
+  ],
+  "rules": {
+    "no-console": "warn",
+    "semi": ["warn", "always"],
+    "quotes": ["warn", "double"],
+    "react/prop-types": "warn",
+    "react/jsx-key": "warn",
+    "react/jsx-no-duplicate-props": "warn"
+  }
 }

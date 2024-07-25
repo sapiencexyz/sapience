@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Token } from '@uniswap/sdk-core';
-import { Pool } from '@uniswap/v3-sdk';
 import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
+import { Pool } from '@uniswap/v3-sdk';
 import type { ReactNode } from 'react';
 import type React from 'react';
 import { createContext, useEffect, useState } from 'react';

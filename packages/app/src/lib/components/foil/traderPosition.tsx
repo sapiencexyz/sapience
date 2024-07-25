@@ -25,10 +25,9 @@ import {
 
 import CollateralAsset from '../../../../deployments/CollateralAsset/Token.json';
 import Foil from '../../../../deployments/Foil.json';
+import { MarketContext } from '~/lib/context/MarketProvider';
 
 import PositionSelector from './positionSelector';
-
-import { MarketContext } from '~/lib/context/MarketProvider';
 import SlippageTolerance from './slippageTolerance';
 
 function RadioCard(props) {
@@ -69,7 +68,7 @@ function RadioCard(props) {
   );
 }
 
-export default function TraderPosition({ params }) {
+export default function TraderPosition({}) {
   const account = useAccount();
   const [nftId, setNftId] = useState(0);
   const [collateral, setCollateral] = useState<bigint>(0n);

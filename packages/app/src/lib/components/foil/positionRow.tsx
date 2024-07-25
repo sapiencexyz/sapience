@@ -3,7 +3,7 @@ import { useReadContract } from 'wagmi';
 
 import Foil from '../../../../deployments/Foil.json';
 
-import PositionEdit from './positionEdit';
+// import PositionEdit from './positionEdit';
 
 export default function PositionRow(row: any) {
   const positionResult = useReadContract({
@@ -54,9 +54,7 @@ export default function PositionRow(row: any) {
           cbETH
         </Text>
       </Td>
-      <Td isNumeric>
-        <PositionEdit id={row.id} />
-      </Td>
+      <Td isNumeric>{/* <PositionEdit id={row.id} /> */}</Td>
     </Tr>
   );
 }

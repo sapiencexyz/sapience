@@ -9,7 +9,7 @@ import { MarketContext } from '~/lib/context/MarketProvider';
 const LiquidityPositionHeader = () => {
   const { chain, address, collateralAssetTicker, endTime } =
     useContext(MarketContext);
-    console.log(chain, address, collateralAssetTicker, endTime)
+  console.log(chain, address, collateralAssetTicker, endTime);
 
   let relativeTime = '';
   if (endTime) {

@@ -22,11 +22,7 @@ import {
 import CollateralAsset from '../../../../deployments/CollateralAsset/Token.json';
 import Foil from '../../../../deployments/Foil.json';
 
-const EditLiquidity = ({
-  params,
-}: {
-  params: { mode: string; selectedData: JSON };
-}) => {
+const EditLiquidity = () => {
   const account = useAccount();
   const [nftId, setNftId] = useState(0);
   const [depositAmount, setDepositAmount] = useState(0);
@@ -51,12 +47,12 @@ const EditLiquidity = ({
     hash: updateLiquidityHash,
   });
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = (e: any) => {
     e.preventDefault();
 
     approveWrite({
       abi: CollateralAsset.abi,
-      address: CollateralAsset.address,
+      address: CollateralAsset.address as `0x${string}`,
       functionName: 'approve',
       args: [CollateralAsset.address, BigInt(depositAmount)],
     }); // Start the transaction sequence
@@ -78,7 +74,7 @@ const EditLiquidity = ({
   useEffect(() => {
     if (transactionStep === 2) {
       updateLiquidityWrite({
-        address: Foil.address,
+        address: Foil.address as `0x${string}`,
         abi: Foil.abi,
         functionName: 'updateLiquidityPosition',
         args: [nftId, BigInt(depositAmount), BigInt(liquidityRatio)],
@@ -92,12 +88,13 @@ const EditLiquidity = ({
     depositAmount,
     liquidityRatio,
   ]);
-  
-  const { data: collectFeesHash, writeContract: collectFeesWrite } = useWriteContract();
+
+  const { data: collectFeesHash, writeContract: collectFeesWrite } =
+    useWriteContract();
 
   const handleClaimRewards = () => {
     collectFeesWrite({
-      address: Foil.address,
+      address: Foil.address as `0x${string}`,
       abi: Foil.abi,
       functionName: 'collectFees',
       args: [nftId],
@@ -123,7 +120,7 @@ const EditLiquidity = ({
           <Input
             type="number"
             value={liquidityRatio}
-            onChange={(e) => setLiquidityRatio(Number(e.target.value))}
+            onChange={(e: any) => setLiquidityRatio(Number(e.target.value))}
           />
         </InputGroup>
       </FormControl>

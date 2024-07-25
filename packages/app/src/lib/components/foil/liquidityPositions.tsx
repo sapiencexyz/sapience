@@ -154,7 +154,7 @@ export default function LiquidityPositions() {
           </ModalHeader>
           <ModalCloseButton />
           <ModalBody pb={6}>
-            <LiquidityPosition params={{ mode, selectedData }} />
+            <LiquidityPosition />
           </ModalBody>
         </ModalContent>
       </Modal>

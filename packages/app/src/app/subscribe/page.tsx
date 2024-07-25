@@ -29,6 +29,7 @@ import {
   SliderThumb,
   SliderTrack,
 } from '@chakra-ui/react';
+import { useState } from 'react';
 import { FaCubes, FaRegEye, FaRegChartBar } from 'react-icons/fa';
 import { IoDocumentTextOutline } from 'react-icons/io5';
 import { formatEther } from 'viem';
@@ -39,6 +40,8 @@ const labelStyles = {
   fontSize: 'sm',
   color: 'gray.700',
 };
+
+const [sliderValue, setSliderValue] = useState(0);
 
 const Market = () => {
   return (
@@ -69,7 +72,7 @@ const Market = () => {
           <FormLabel>Duration</FormLabel>
           <Box pb={4}>
             <Slider
-              step="25"
+              step={25}
               aria-label="slider-ex-6"
               onChange={(val) => setSliderValue(val)}
             >

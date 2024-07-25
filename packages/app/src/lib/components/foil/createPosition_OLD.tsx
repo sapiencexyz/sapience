@@ -1,3 +1,4 @@
+/*
 import { AddIcon } from '@chakra-ui/icons';
 import {
   InputGroup,
@@ -27,7 +28,7 @@ export default function createAccount() {
       ...Foil,
       functionName: 'mint',
       args: [BigInt(id)],
-    })
+    });
     e.preventDefault();
     writeContract({
       ...Foil,
@@ -81,3 +82,4 @@ export default function createAccount() {
     </form>
   );
 }
+*/

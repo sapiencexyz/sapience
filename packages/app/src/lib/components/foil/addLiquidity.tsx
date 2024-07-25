@@ -18,6 +18,7 @@ import {
   Flex,
 } from '@chakra-ui/react';
 import { Position } from '@uniswap/v3-sdk';
+import type { ReactNode } from 'react';
 import { useContext, useEffect, useState } from 'react';
 import { formatUnits, parseUnits } from 'viem';
 import {
@@ -30,9 +31,9 @@ import {
 
 import CollateralAsset from '../../../../deployments/CollateralAsset/Token.json';
 import Foil from '../../../../deployments/Foil.json';
+import { MarketContext } from "~/lib/context/MarketProvider";
 
-import { MarketContext } from '~/lib/context/MarketProvider';
-import SlippageTolerance from './slippageTolerance';
+import SlippageTolerance from "./slippageTolerance";
 
 const tickSpacing = 200; // Hardcoded for now, should be retrieved with pool.tickSpacing()
 
@@ -43,11 +44,7 @@ const priceToTick = (price: number, tickSpacing: number): number => {
 
 const tickToPrice = (tick: number): number => 1.0001 ** tick;
 
-const AddLiquidity = ({
-  params,
-}: {
-  params: { mode: string; selectedData: JSON };
-}) => {
+const AddLiquidity = () => {
   const {
     pool,
     baseAssetMinPriceTick,
@@ -100,7 +97,7 @@ const AddLiquidity = ({
     setHighPrice(tickToPrice(baseAssetMaxPriceTick));
   }, [baseAssetMaxPriceTick]);
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = (e: any) => {
     e.preventDefault();
     approveWrite({
       abi: CollateralAsset.abi,
@@ -122,7 +119,7 @@ const AddLiquidity = ({
   }, [approveSuccess, transactionStep]);
 
   const result = useSimulateContract({
-    address: Foil.address,
+    address: Foil.address as `0x${string}`,
     abi: Foil.abi,
     functionName: 'createLiquidityPosition',
     args: [
@@ -299,15 +296,19 @@ const AddLiquidity = ({
           Net Position: {lowPrice.toFixed(2)} Ggas to {highPrice.toFixed(2)}{' '}
           Ggas
         </Text>
-        {isConnected && collateralAmountFunctionResult?.data && (
+        {isConnected && collateralAmountFunctionResult?.data ? (
           <Text fontSize="sm" color="gray.500" mb="0.5">
             Wallet Balance:{' '}
             {formatUnits(
-              collateralAmountFunctionResult.data.toString(),
+              BigInt(
+                (collateralAmountFunctionResult.data as string).toString()
+              ),
               collateralAssetDecimals
             )}{' '}
             {collateralAssetTicker}
           </Text>
+        ) : (
+          <></>
         )}
       </Box>
       {isConnected ? (
