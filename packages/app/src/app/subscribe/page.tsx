@@ -41,9 +41,9 @@ const labelStyles = {
   color: 'gray.700',
 };
 
-const [sliderValue, setSliderValue] = useState(0);
-
 const Market = () => {
+  const [sliderValue, setSliderValue] = useState(0);
+
   return (
     <Box
       border="1px solid"

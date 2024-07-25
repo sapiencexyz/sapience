@@ -121,7 +121,7 @@ export default function TraderPositions() {
           </ModalHeader>
           <ModalCloseButton />
           <ModalBody pb={6}>
-            <TraderPosition params={{ mode, selectedData }} />
+            <TraderPosition />
           </ModalBody>
         </ModalContent>
       </Modal>

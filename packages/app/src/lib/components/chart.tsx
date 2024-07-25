@@ -192,6 +192,7 @@ const CandlestickChart: React.FC = () => {
         <Tooltip />
         <Bar
           dataKey="high"
+          // eslint-disable-next-line react/no-unstable-nested-components
           shape={(props: any) => (
             <CustomBarShape {...props} yAxis={(d: any) => d * (400 / 15)} />
           )}

@@ -13,8 +13,8 @@ import { useContext } from 'react';
 import { MarketContext } from '~/lib/context/MarketProvider';
 
 export default function TraderPositionsTable() {
-  const { chainId, contractAddress } = useContext(MarketContext);
-  const contractId = `${chainId}:${contractAddress}`;
+  const { chain, address } = useContext(MarketContext);
+  const contractId = `${chain?.id}:${address}`;
   const API_BASE_URL = 'http://localhost:3000';
   const usePositions = () => {
     return useQuery({
@@ -56,7 +56,7 @@ export default function TraderPositionsTable() {
           </Tr>
         </Thead>
         <Tbody>
-          {positions.map((row) => (
+          {positions.map((row: any) => (
             <Tr key={row.id}>
               <Td>{row.nftId.toString()}</Td>
               <Td>{row.collateral.toString()}</Td>

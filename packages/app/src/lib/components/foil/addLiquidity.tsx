@@ -31,11 +31,11 @@ import {
 
 import CollateralAsset from '../../../../deployments/CollateralAsset/Token.json';
 import Foil from '../../../../deployments/Foil.json';
-import { MarketContext } from "~/lib/context/MarketProvider";
+import { MarketContext } from '~/lib/context/MarketProvider';
 
-import SlippageTolerance from "./slippageTolerance";
+import SlippageTolerance from './slippageTolerance';
 
-const tickSpacing = 200; // Hardcoded for now, should be retrieved with pool.tickSpacing()
+const tickSpacingDefault = 200; // Hardcoded for now, should be retrieved with pool.tickSpacing()
 
 const priceToTick = (price: number, tickSpacing: number): number => {
   const tick = Math.log(price) / Math.log(1.0001);
@@ -64,8 +64,8 @@ const AddLiquidity = () => {
   const [baseToken, setBaseToken] = useState(0);
   const [quoteToken, setQuoteToken] = useState(0);
 
-  const tickLower = priceToTick(lowPrice, tickSpacing);
-  const tickUpper = priceToTick(highPrice, tickSpacing);
+  const tickLower = priceToTick(lowPrice, tickSpacingDefault);
+  const tickUpper = priceToTick(highPrice, tickSpacingDefault);
 
   const collateralAmountFunctionResult = useReadContract({
     abi: CollateralAsset.abi,
@@ -255,12 +255,7 @@ const AddLiquidity = () => {
       <Flex>
         <Box flex="auto">Recharts Histogram Here</Box>
         <FormControl>
-          <RangeSlider
-            aria-label={['min', 'max']}
-            defaultValue={[10, 30]}
-            orientation="vertical"
-            minH="32"
-          >
+          <RangeSlider defaultValue={[10, 30]} orientation="vertical" minH="32">
             <RangeSliderMark value={0} mb="-1" ml="3" fontSize="sm" w="90px">
               5 gwei
             </RangeSliderMark>
@@ -307,9 +302,7 @@ const AddLiquidity = () => {
             )}{' '}
             {collateralAssetTicker}
           </Text>
-        ) : (
-          <></>
-        )}
+        ) : null}
       </Box>
       {isConnected ? (
         <Button

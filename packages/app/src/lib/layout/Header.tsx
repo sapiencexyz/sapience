@@ -23,9 +23,7 @@ const Header = () => {
           <Link href="/subscribe">Subscribe</Link>
           <Link href="/earn">Earn</Link>
           <Link href={`/markets/13370:${Foil.address}`}>Market</Link>
-          <Link href="https://docs.foil.xyz" isExternal>
-            Docs
-          </Link>
+          <Link href="https://docs.foil.xyz">Docs</Link>
           <ConnectButton />
         </Flex>
       </Flex>

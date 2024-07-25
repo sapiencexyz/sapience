@@ -14,7 +14,7 @@ import { MarketContext } from '~/lib/context/MarketProvider';
 
 export default function TraderPositionsTable() {
   const { chain, address } = useContext(MarketContext);
-  const contractId = `${chain.id}:${address}`;
+  const contractId = `${chain?.id}:${address}`;
   const API_BASE_URL = 'http://localhost:3000';
   const usePositions = () => {
     return useQuery({

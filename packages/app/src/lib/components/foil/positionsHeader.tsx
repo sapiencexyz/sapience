@@ -54,7 +54,7 @@ const PositionsHeader = () => {
     <Flex gap={6} mb={9} alignItems="center" direction="column">
       <Flex w="100%" alignItems="center">
         <Heading>
-          {chain.name} Gas Market{' '}
+          {chain?.name} Gas Market{' '}
           <Text ml={1.5} as="span" fontWeight="200" color="gray.600">
             Q2 2024
           </Text>
@@ -67,7 +67,7 @@ const PositionsHeader = () => {
             isExternal
             _hover={{ textDecoration: 'none' }}
             mr={6}
-            href={`${chain.blockExplorers?.default.url}/address/${address}`}
+            href={`${chain?.blockExplorers?.default.url}/address/${address}`}
           >
             <Flex display="inline-flex" alignItems="center">
               <Box display="inline-block" mr="1">
@@ -90,7 +90,7 @@ const PositionsHeader = () => {
             isExternal
             _hover={{ textDecoration: 'none' }}
             mr={6}
-            href={`${chain.blockExplorers?.default.url}/address/${collateralAsset}`}
+            href={`${chain?.blockExplorers?.default.url}/address/${collateralAsset}`}
           >
             <Flex display="inline-flex" alignItems="center">
               <Box display="inline-block" mr="1">
@@ -112,7 +112,7 @@ const PositionsHeader = () => {
             color="gray.800"
             isExternal
             _hover={{ textDecoration: 'none' }}
-            href={`${chain.blockExplorers?.default.url}/address/${resolver}`}
+            href={`${chain?.blockExplorers?.default.url}/address/${resolver}`}
           >
             <Flex display="inline-flex" alignItems="center">
               <Box display="inline-block" mr="1">

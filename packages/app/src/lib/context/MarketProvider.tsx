@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Token } from '@uniswap/sdk-core';
 import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
-import { Pool } from '@uniswap/v3-sdk';
+import { FeeAmount, Pool } from '@uniswap/v3-sdk';
 import type { ReactNode } from 'react';
 import type React from 'react';
 import { createContext, useEffect, useState } from 'react';
@@ -10,12 +10,12 @@ import { useContractReads, useReadContract } from 'wagmi';
 
 import CollateralAsset from '../../../deployments/CollateralAsset/Token.json';
 import Foil from '../../../deployments/Foil.json';
+import { Chain } from 'viem/chains';
 
 const API_BASE_URL = 'http://localhost:3001';
 
 interface MarketContextType {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  chain?: any;
+  chain?: Chain;
   address: string;
   collateralAsset: string;
   collateralAssetTicker: string;
@@ -37,7 +37,7 @@ interface MarketProviderProps {
 }
 
 export const MarketContext = createContext<MarketContextType>({
-  chain: {},
+  chain: undefined,
   address: '',
   collateralAsset: '',
   collateralAssetTicker: '',
@@ -94,25 +94,37 @@ export const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
 
   useEffect(() => {
     if (data && data[0] && data[1] && data[2] && data[3] && data[4]) {
-      const token0Address = data[0].result;
-      const token1Address = data[1].result;
-      const fee = data[2].result;
-      const liquidity = data[3].result;
-      const slot0 = data[4].result;
+      const token0Address = (data as any)[0].result;
+      const token1Address = (data as any)[1].result;
+      const fee = (data as any)[2].result;
+      const liquidity = (data as any)[3].result;
+      const slot0 = (data as any)[4].result as any[];
 
       if (token0Address && token1Address) {
-        const token0 = new Token(1, token0Address, 18, 'TOKEN0', 'Token 0');
-        const token1 = new Token(1, token1Address, 18, 'TOKEN1', 'Token 1');
+        const token0 = new Token(
+          1,
+          token0Address.toString(),
+          18,
+          'TOKEN0',
+          'Token 0'
+        );
+        const token1 = new Token(
+          1,
+          token1Address.toString(),
+          18,
+          'TOKEN1',
+          'Token 1'
+        );
 
-        const sqrtRatioX96 = slot0[0];
-        const tickCurrent = slot0[1];
+        const sqrtRatioX96 = slot0[0].toString();
+        const tickCurrent = slot0[1].toString();
 
         const poolInstance = new Pool(
           token0,
           token1,
-          fee,
-          sqrtRatioX96.toString(),
-          liquidity.toString(),
+          fee as FeeAmount, // todo confirm this is right
+          sqrtRatioX96,
+          Number(liquidity),
           tickCurrent
         );
         setPool(poolInstance);
@@ -129,7 +141,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
   children,
 }) => {
   const [state, setState] = useState<MarketContextType>({
-    chain: {},
+    chain: undefined,
     address: '',
     collateralAsset: '',
     collateralAssetTicker: '',
@@ -193,7 +205,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     abi: Foil.abi,
     address: Foil.address as `0x${string}`,
     functionName: 'getMarket',
-  });
+  }) as any;
 
   useEffect(() => {
     console.log(marketViewFunctionResult?.data);
@@ -241,7 +253,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     if (collateralTickerFunctionResult.data !== undefined) {
       setState((currentState) => ({
         ...currentState,
-        collateralAssetTicker: collateralTickerFunctionResult.data,
+        collateralAssetTicker: collateralTickerFunctionResult.data as string,
       }));
     }
   }, [collateralTickerFunctionResult.data]);
@@ -257,7 +269,8 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     if (collateralDecimalsFunctionResult.data !== undefined) {
       setState((currentState) => ({
         ...currentState,
-        collateralAssetDecimals: collateralDecimalsFunctionResult.data,
+        collateralAssetDecimals:
+          collateralDecimalsFunctionResult.data as number,
       }));
     }
   }, [collateralDecimalsFunctionResult.data]);

@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, Button, Divider, Heading, Text } from "@chakra-ui/react";
+import { Box, Button, Divider, Heading, Text } from '@chakra-ui/react';
 import React, { useState } from 'react';
 
 import AddLiquidity from './addLiquidity';

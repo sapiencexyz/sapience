@@ -9,13 +9,13 @@ import {
 } from '@chakra-ui/react';
 import { times } from 'lodash';
 import { useEffect, useState } from 'react';
+import type { AbiFunction } from 'viem';
 import { useReadContract, useReadContracts } from 'wagmi';
 
 import Foil from '../../../../deployments/Foil.json';
 
 import CreateAccount from './createPosition';
 import PositionRow from './positionRow';
-import { AbiFunction } from 'viem';
 
 export default function Positions() {
   const totalSupplyResult = useReadContract({

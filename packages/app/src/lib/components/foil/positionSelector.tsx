@@ -8,10 +8,10 @@ import {
 import { times } from 'lodash';
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import type React from 'react';
+import type { AbiFunction } from 'viem';
 import { useAccount, useReadContract, useReadContracts } from 'wagmi';
 
 import Foil from '../../../../deployments/Foil.json';
-import { AbiFunction } from 'viem';
 
 interface AccountSelectorProps {
   isLP: boolean;
@@ -37,7 +37,7 @@ const useTokenIdsOfOwner = (ownerAddress: `0x${string}`) => {
         functionName: 'tokenOfOwnerByIndex',
         args: [ownerAddress, index],
       }));
-/*
+      /*
       const fetchTokenIds = async () => {
         const tokensInfo = await useReadContracts({
           contracts: tokenContracts,
@@ -55,14 +55,14 @@ const useTokenIdsOfOwner = (ownerAddress: `0x${string}`) => {
       fetchTokenIds();
       */
     }
-  }, [balanceResult.data]); // React to changes in the balance result
+  }, [balanceResult.data, ownerAddress]); // React to changes in the balance result
 
   return tokenIds;
 };
 
 const useIsLps = (ids: number[]) => {
   const [isLps, setIsLps] = useState<boolean[]>([]);
-
+  /*
   useEffect(() => {
     const fetchIsLps = async () => {
       const tokenContracts = ids.map((id) => ({
@@ -76,13 +76,13 @@ const useIsLps = (ids: number[]) => {
         contracts: tokenContracts,
       });
 
-      const newIsLps = [] as any[] //tokensInfo.data?.map((resp) => resp?.isLp);
+      const newIsLps = [] as any[]; // tokensInfo.data?.map((resp) => resp?.isLp);
       setIsLps(newIsLps);
     };
 
     fetchIsLps();
   }, [ids]); // React to changes in the balance result
-
+*/
   return isLps;
 };
 

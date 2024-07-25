@@ -21,7 +21,7 @@ const LiquidityPositionHeader = () => {
   return (
     <Box>
       <Heading mb={2}>
-        Provide {collateralAssetTicker} Liquidity for {chain.name} Gas
+        Provide {collateralAssetTicker} Liquidity for {chain?.name} Gas
       </Heading>
       <Heading size="md" mb={3}>
         Ends in {relativeTime}
@@ -32,7 +32,7 @@ const LiquidityPositionHeader = () => {
           isExternal
           borderBottom="1px dotted"
           _hover={{ textDecoration: 'none' }}
-          href={`${chain.blockExplorers?.default.url}/address/${address}`}
+          href={`${chain?.blockExplorers?.default.url}/address/${address}`}
         >
           {address}
         </Link>

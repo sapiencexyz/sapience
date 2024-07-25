@@ -15,7 +15,8 @@ import {
 } from '@chakra-ui/react';
 import * as React from 'react';
 import { useState } from 'react';
-import { AbiFunction, formatUnits, parseUnits } from 'viem';
+import type { AbiFunction } from 'viem';
+import { formatUnits, parseUnits } from 'viem';
 import {
   useWaitForTransactionReceipt,
   useWriteContract,
@@ -147,7 +148,7 @@ export default function TraderPosition({}) {
 
   React.useEffect(() => {
     if (transactionStep === 2) {
-      const finalSize = option === 'Short' ? -Math.abs(size) : size;
+      const finalSize = option === 'Short' ? -Math.abs(Number(size)) : size;
 
       if (nftId === 0) {
         writeContract({
@@ -173,7 +174,15 @@ export default function TraderPosition({}) {
       }
       setTransactionStep(3);
     }
-  }, [transactionStep, writeContract, nftId, collateral, size, option]);
+  }, [
+    transactionStep,
+    writeContract,
+    nftId,
+    collateral,
+    size,
+    option,
+    collateralAssetDecimals,
+  ]);
 
   React.useEffect(() => {
     if (error) {
@@ -207,7 +216,7 @@ export default function TraderPosition({}) {
         isClosable: true,
       });
     }
-  }, [toast, isConfirmed]);
+  }, [toast, isConfirmed, nftId]);
 
   React.useEffect(() => {
     setCollateral(
@@ -223,6 +232,8 @@ export default function TraderPosition({}) {
   }, [collateral, referencePriceFunctionResult?.data]);
 
   React.useEffect(() => {
+    /*
+    TODO
     if (nftId > 0) {
       setSize(
         BigInt(
@@ -235,6 +246,7 @@ export default function TraderPosition({}) {
           : 'Short'
       );
     }
+      */
   }, [nftId, getPositionDataFunctionResult?.data]);
 
   const [slippage, setSlippage] = useState<number>(0.5);
@@ -261,12 +273,10 @@ export default function TraderPosition({}) {
         <FormLabel>Size</FormLabel>
         <InputGroup>
           <Input
-            value={show ? size : collateral}
+            value={show ? Number(size) : Number(collateral)}
             type="number"
-            onChange={(e) =>
-              show
-                ? setSize(Number(e.target.value))
-                : setCollateral(Number(e.target.value))
+            onChange={(e: any) =>
+              show ? setSize(e.target.value) : setCollateral(e.target.value)
             }
           />
           <InputRightElement width="4.5rem">
@@ -278,7 +288,11 @@ export default function TraderPosition({}) {
       </FormControl>
       <FormControl mb={4}>
         <InputGroup>
-          <Input readOnly value={show ? collateral : size} type="number" />
+          <Input
+            readOnly
+            value={show ? Number(collateral) : Number(size)}
+            type="number"
+          />
           <InputRightAddon>
             {show ? 'Ggas' : collateralAssetTicker}
           </InputRightAddon>
@@ -289,13 +303,15 @@ export default function TraderPosition({}) {
         <Text fontSize="sm" color="gray.500" mb={0.5}>
           Position: X Ggas to X Ggas
         </Text>
-        {isConnected && collateralAmountFunctionResult?.data && (
+        {isConnected && (
           <Text fontSize="sm" color="gray.500" mb="0.5">
             Wallet Balance:{' '}
-            {formatUnits(
-              collateralAmountFunctionResult.data.toString(),
-              collateralAssetDecimals
-            )}{' '}
+            {collateralAmountFunctionResult?.data
+              ? formatUnits(
+                  BigInt(collateralAmountFunctionResult.data.toString()),
+                  collateralAssetDecimals
+                )
+              : null}{' '}
             {collateralAssetTicker}
           </Text>
         )}
