@@ -11,6 +11,7 @@ import type React from 'react';
 import { useAccount, useReadContract, useReadContracts } from 'wagmi';
 
 import Foil from '../../../../deployments/Foil.json';
+import { AbiFunction } from 'viem';
 
 interface AccountSelectorProps {
   isLP: boolean;
@@ -31,20 +32,20 @@ const useTokenIdsOfOwner = (ownerAddress: `0x${string}`) => {
     if (balanceResult.data) {
       const balance = parseInt(balanceResult.data.toString(), 10);
       const tokenContracts = times(balance, (index) => ({
-        abi: Foil.abi,
-        address: Foil.address,
+        abi: Foil.abi as AbiFunction[],
+        address: Foil.address as `0x${string}`,
         functionName: 'tokenOfOwnerByIndex',
         args: [ownerAddress, index],
       }));
-
+/*
       const fetchTokenIds = async () => {
         const tokensInfo = await useReadContracts({
           contracts: tokenContracts,
         });
 
-        if (tokensInfo.isFulfilled) {
+        if (tokensInfo.data?.length) {
           // Extract token IDs from the responses
-          const ids = tokensInfo.responses.map((resp) =>
+          const ids = tokensInfo.data.map((resp) =>
             parseInt(resp.data.toString(), 10)
           );
           setTokenIds(ids);
@@ -52,8 +53,9 @@ const useTokenIdsOfOwner = (ownerAddress: `0x${string}`) => {
       };
 
       fetchTokenIds();
+      */
     }
-  }, [balanceResult.data, balanceResult.isFulfilled]); // React to changes in the balance result
+  }, [balanceResult.data]); // React to changes in the balance result
 
   return tokenIds;
 };
@@ -64,8 +66,8 @@ const useIsLps = (ids: number[]) => {
   useEffect(() => {
     const fetchIsLps = async () => {
       const tokenContracts = ids.map((id) => ({
-        abi: Foil.abi,
-        address: Foil.address,
+        abi: Foil.abi as AbiFunction[],
+        address: Foil.address as `0x${string}`,
         functionName: 'getPosition',
         args: [id],
       }));
@@ -74,10 +76,8 @@ const useIsLps = (ids: number[]) => {
         contracts: tokenContracts,
       });
 
-      if (tokensInfo.isFulfilled) {
-        const newIsLps = tokensInfo.responses.map((resp) => resp.data.isLp);
-        setIsLps(newIsLps);
-      }
+      const newIsLps = [] as any[] //tokensInfo.data?.map((resp) => resp?.isLp);
+      setIsLps(newIsLps);
     };
 
     fetchIsLps();
@@ -91,7 +91,7 @@ const AccountSelector: React.FC<AccountSelectorProps> = ({
   onChange,
 }) => {
   const { address } = useAccount();
-  const nftIds = useTokenIdsOfOwner(address);
+  const nftIds = useTokenIdsOfOwner(address as `0x${string}`);
   const isLps = useIsLps(nftIds);
   const filteredNfts = nftIds.filter((_, index) =>
     isLP ? isLps[index] : !isLps[index]

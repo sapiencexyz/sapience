@@ -15,7 +15,7 @@ import {
 } from '@chakra-ui/react';
 import * as React from 'react';
 import { useState } from 'react';
-import { formatUnits, parseUnits } from 'viem';
+import { AbiFunction, formatUnits, parseUnits } from 'viem';
 import {
   useWaitForTransactionReceipt,
   useWriteContract,
@@ -30,7 +30,7 @@ import { MarketContext } from '~/lib/context/MarketProvider';
 import PositionSelector from './positionSelector';
 import SlippageTolerance from './slippageTolerance';
 
-function RadioCard(props) {
+function RadioCard(props: any) {
   const { getInputProps, getRadioProps } = useRadio(props);
 
   const input = getInputProps();
@@ -71,8 +71,8 @@ function RadioCard(props) {
 export default function TraderPosition({}) {
   const account = useAccount();
   const [nftId, setNftId] = useState(0);
-  const [collateral, setCollateral] = useState<bigint>(0n);
-  const [size, setSize] = useState<bigint>(0n);
+  const [collateral, setCollateral] = useState<bigint>(BigInt(0));
+  const [size, setSize] = useState<bigint>(BigInt(0));
   const options = ['Long', 'Short'];
   const [option, setOption] = useState('Long');
   const [transactionStep, setTransactionStep] = useState(0);
@@ -127,12 +127,12 @@ export default function TraderPosition({}) {
     hash: approveHash,
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: any) => {
     e.preventDefault();
 
     approveWrite({
-      abi: CollateralAsset.abi,
-      address: CollateralAsset.address,
+      abi: CollateralAsset.abi as AbiFunction[],
+      address: CollateralAsset.address as `0x${string}`,
       functionName: 'approve',
       args: [CollateralAsset.address, BigInt(collateral)],
     }); // Start the transaction sequence

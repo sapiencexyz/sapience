@@ -24,16 +24,6 @@ const SlippageTolerance: React.FC<SlippageToleranceProps> = ({
     onSlippageChange(slippage);
   }, [slippage, onSlippageChange]);
 
-  const handleSlippageChange = (
-    valueAsString: string,
-    valueAsNumber: number
-  ) => {
-    const value = parseFloat(event.target.value);
-    if (!isNaN(value)) {
-      setSlippage(valueAsNumber);
-    }
-  };
-
   return (
     <FormControl mb={2}>
       <HStack spacing={4} alignItems="center">
@@ -62,7 +52,6 @@ const SlippageTolerance: React.FC<SlippageToleranceProps> = ({
         <NumberInput
           size="xs"
           value={slippage}
-          onChange={handleSlippageChange}
           min={0}
           max={100}
           step={0.1}

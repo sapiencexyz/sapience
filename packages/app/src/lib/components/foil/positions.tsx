@@ -15,6 +15,7 @@ import Foil from '../../../../deployments/Foil.json';
 
 import CreateAccount from './createPosition';
 import PositionRow from './positionRow';
+import { AbiFunction } from 'viem';
 
 export default function Positions() {
   const totalSupplyResult = useReadContract({
@@ -34,7 +35,7 @@ export default function Positions() {
   const tokens = useReadContracts({
     contracts: times(totalSupply).map((i) => {
       return {
-        abi: Foil.abi,
+        abi: Foil.abi as AbiFunction[],
         address: Foil.address as `0x${string}`,
         functionName: 'tokenByIndex',
         args: [i],

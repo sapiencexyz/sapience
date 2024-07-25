@@ -32,18 +32,19 @@ const PositionsHeader = () => {
     address,
     // collateralAssetTicker,
     endTime,
-    resolver,
     collateralAsset,
     baseAssetMinPriceTick,
     baseAssetMaxPriceTick,
   } = useContext(MarketContext);
+
+  const resolver = '0x0000'; // todo
 
   console.log('context', useContext(MarketContext));
 
   let relativeTime = '';
   let formattedTime = '';
   if (endTime) {
-    const dateMilliseconds = Number(endTime * 1000n);
+    const dateMilliseconds = Number(endTime * 1000);
     const date = new Date(dateMilliseconds);
     relativeTime = formatDistanceToNow(date);
     formattedTime = format(date, 'PPpp');

@@ -10,6 +10,11 @@
     "quotes": ["warn", "double"],
     "react/prop-types": "warn",
     "react/jsx-key": "warn",
-    "react/jsx-no-duplicate-props": "warn"
+    "react/jsx-no-duplicate-props": "warn",
+    "@typescript-eslint/no-unused-vars": "warn",
+    "@typescript-eslint/no-explicit-any": "warn",
+    "react/destructuring-assignment": "warn",
+    "no-empty-pattern": "warn",
+    "no-restricted-globals": "warn"
   }
 }
