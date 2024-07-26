@@ -44,4 +44,10 @@ library Position {
         self.vEthAmount = uint256(self.vEthAmount.toInt() + vEthDeltaAmount);
         self.vGasAmount = uint256(self.vGasAmount.toInt() + vGasDeltaAmount);
     }
+
+    function resetBalance(Data storage self) internal {
+        self.currentTokenAmount = 0;
+        self.vEthAmount = 0;
+        self.vGasAmount = 0;
+    }
 }

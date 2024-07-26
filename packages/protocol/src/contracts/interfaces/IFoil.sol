@@ -17,13 +17,15 @@ interface IFoil {
 
     function createTraderPosition(
         uint collateral,
-        int size
+        int256 tokenAmount,
+        int256 tokenAmountLimit
     ) external returns (uint256 tokenId);
 
-    function updateTraderPosition(
+    function modifyTraderPosition(
         uint256 tokenId,
         uint collateral,
-        int size
+        int256 tokenAmount,
+        int256 tokenAmountLimit
     ) external;
 
     function createLiquidityPosition(

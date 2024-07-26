@@ -9,7 +9,7 @@ assertionLiveness = "3600"
 baseAssetMinPriceTick = "7000" # 2
 baseAssetMaxPriceTick = "46000" # 100
 feeRate = "10000" # 1%
-startingSqrtPriceX96 = "112045541949572279837463876454" # 1
+startingSqrtPriceX96 = "354319114228591437807263678464" # // $20.0 => 354319114228591437807263678464 // original ($2.0) 112045541949572279837463876454
 resolver = "0x0000000000000000000000000000000000000000"
 bondAmount = "5000000000"
 priceUnit = "<%= formatBytes32String('gwei/gas') %>"

@@ -25,76 +25,222 @@ contract FoilTest is Test {
     address tokenB;
 
     function setUp() public {
+        console2.log("setUp");
         foil = IFoil(vm.getAddress("Foil"));
 
+        console2.log("getEpoch");
+
         (pool, tokenA, tokenB) = foil.getEpoch();
+
+        console2.log("pool", pool);
+        console2.log("tokenA", tokenA);
+        console2.log("tokenB", tokenB);
     }
 
-    function test_trade() public {
+    function test_trade_long() public {
+        uint256 priceReference;
+        uint256 accountId_1;
+        priceReference = foil.getReferencePrice();
+
+        console2.log("priceReference", priceReference);
         IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
             .LiquidityPositionParams({
-                amountTokenA: 50 ether,
-                amountTokenB: 50 ether,
+                amountTokenB: 20000 ether,
+                amountTokenA: 1000 ether,
                 collateralAmount: 10 ether,
-                lowerTick: 16000, // 5
-                upperTick: 30000, // 20
+                lowerTick: 27000, // 5
+                upperTick: 32000, // 30000 = 20, 34000 = 30
                 minAmountTokenA: 0,
                 minAmountTokenB: 0
             });
-        (
-            uint256 positionId,
-            uint128 liquidity,
-            uint256 addedAmount0,
-            uint256 addedAmount1
-        ) = foil.createLiquidityPosition(params);
-        console2.log("LIQUIDITY POSITION CREATED", positionId, liquidity);
-        console2.log("ADDED LIQUIDITY", addedAmount0, addedAmount1);
-        params.amountTokenA = 100 ether;
-        params.amountTokenB = 100 ether;
-        (uint256 positionId2, , , ) = foil.createLiquidityPosition(params);
 
-        // (uint256 tradedAmoun0, uint256 tradedAmount2) = foil.swapTokens(
-        //     0,
-        //     1 ether
-        // );
+        foil.createLiquidityPosition(params);
+        params.amountTokenB = 400000 ether;
+        params.amountTokenA = 20000 ether;
+        foil.createLiquidityPosition(params);
 
-        // console2.log("TRADED", tradedAmoun0, tradedAmount2);
+        priceReference = foil.getReferencePrice();
+        console2.log("priceReference", priceReference);
 
-        // foil.fakeSettle(5 ether);
-        // (tradedAmoun0, tradedAmount2) = foil.swapTokens(0, 1 ether);
+        // Create Long position
+        console2.log("Create Long position");
+        priceReference = foil.getReferencePrice();
+        console2.log("priceReference", priceReference);
+        accountId_1 = foil.createTraderPosition(10 ether, .1 ether, 0);
+        console2.log("accountId", accountId_1);
+        logPositionAndAccount(accountId_1);
 
-        // console2.log("TRADED after settle 1", tradedAmoun0, tradedAmount2);
-        // (tradedAmoun0, tradedAmount2) = foil.swapTokens(1 ether, 0);
+        // Modify Long position (increase it)
+        console2.log("Modify Long position (increase it)");
+        priceReference = foil.getReferencePrice();
+        console2.log("priceReference", priceReference);
+        foil.modifyTraderPosition(accountId_1, 10 ether, .2 ether, 0);
+        console2.log("accountId", accountId_1);
+        logPositionAndAccount(accountId_1);
 
-        // console2.log("TRADED after settle 2", tradedAmoun0, tradedAmount2);
+        // Modify Long position (decrease it)
+        console2.log("Modify Long position (decrease it)");
+        priceReference = foil.getReferencePrice();
+        console2.log("priceReference", priceReference);
+        foil.modifyTraderPosition(accountId_1, 0 ether, .1 ether, 0);
+        console2.log("accountId", accountId_1);
+        logPositionAndAccount(accountId_1);
+
+        // Modify Long position (close it)
+        console2.log("Modify Long position (close it)");
+        priceReference = foil.getReferencePrice();
+        console2.log("priceReference", priceReference);
+        foil.modifyTraderPosition(accountId_1, 0 ether, 0, 0);
+        console2.log("accountId", accountId_1);
+        logPositionAndAccount(accountId_1);
     }
 
-    // function logPositionAndAccount(uint256 accountId) public {
-    //     Position.data memory position = foil.getPositionData(accountId);
-    //     // (
-    //     //     uint256 initialEthDeposit,
-    //     //     uint256 accountId,
-    //     //     uint256 vEthAmount,
-    //     //     uint256 vGasAmount
-    //     // ) = foil.getPositionData(accountId);
+    function test_trade_long_cross_sides() public {
+        uint256 priceReference;
+        uint256 accountId_3;
+        priceReference = foil.getReferencePrice();
 
-    //     (
-    //         uint256 id, // nft id
-    //         uint256 collateralAmount, // configured collateral
-    //         uint256 borrowedGwei, // Token A
-    //         uint256 borrowedGas, // Token B
+        console2.log("priceReference", priceReference);
+        IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
+            .LiquidityPositionParams({
+                amountTokenB: 20000 ether,
+                amountTokenA: 1000 ether,
+                collateralAmount: 10 ether,
+                lowerTick: 27000, // 5
+                upperTick: 32000, // 30000 = 20, 34000 = 30
+                minAmountTokenA: 0,
+                minAmountTokenB: 0
+            });
 
-    //     ) = foil.getAccountData(accountId);
+        foil.createLiquidityPosition(params);
+        params.amountTokenB = 400000 ether;
+        params.amountTokenA = 20000 ether;
+        foil.createLiquidityPosition(params);
 
-    //     console2.log(" >>> Position", accountId);
-    //     console2.log("      >> vEthAmount        : ", vEthAmount);
-    //     console2.log("      >> vGasAmount        : ", vGasAmount);
-    //     console2.log("      >> initialEthDeposit : ", initialEthDeposit);
-    //     console2.log("      >> accountId         : ", accountId);
-    //     console2.log(" >>> Account", accountId);
-    //     console2.log("      >> id                : ", id);
-    //     console2.log("      >> collateralAmount  : ", collateralAmount);
-    //     console2.log("      >> borrowedGwei      : ", borrowedGwei);
-    //     console2.log("      >> borrowedGas       : ", borrowedGas);
-    // }
+        priceReference = foil.getReferencePrice();
+        console2.log("priceReference", priceReference);
+
+        // Create Long position (another one)
+        console2.log("Create Long position (another one)");
+        priceReference = foil.getReferencePrice();
+        console2.log("priceReference", priceReference);
+        accountId_3 = foil.createTraderPosition(10 ether, .1 ether, 0);
+        console2.log("accountId", accountId_3);
+        logPositionAndAccount(accountId_3);
+
+        // Modify Long position (change side)
+        console2.log("Modify Long position (change side)");
+        priceReference = foil.getReferencePrice();
+        console2.log("priceReference", priceReference);
+        foil.modifyTraderPosition(accountId_3, 0 ether, -.05 ether, -.01 ether);
+        console2.log("accountId", accountId_3);
+        logPositionAndAccount(accountId_3);
+    }
+
+    function test_trade_short() public {
+        uint256 priceReference;
+        uint256 accountId_2;
+        priceReference = foil.getReferencePrice();
+
+        console2.log("priceReference", priceReference);
+        IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
+            .LiquidityPositionParams({
+                amountTokenB: 20000 ether,
+                amountTokenA: 1000 ether,
+                collateralAmount: 10 ether,
+                lowerTick: 27000, // 5
+                upperTick: 32000, // 30000 = 20, 34000 = 30
+                minAmountTokenA: 0,
+                minAmountTokenB: 0
+            });
+
+        foil.createLiquidityPosition(params);
+        params.amountTokenB = 400000 ether;
+        params.amountTokenA = 20000 ether;
+        foil.createLiquidityPosition(params);
+
+        priceReference = foil.getReferencePrice();
+        console2.log("priceReference", priceReference);
+
+        // Create Short position
+        console2.log("Create Short position");
+        accountId_2 = foil.createTraderPosition(10 ether, -.1 ether, 0);
+        console2.log("accountId", accountId_2);
+        logPositionAndAccount(accountId_2);
+
+        // Modify Short position (increase it)
+        console2.log("Modify Short position (increase it)");
+        foil.modifyTraderPosition(accountId_2, 10 ether, -.2 ether, -.1 ether);
+        console2.log("accountId", accountId_2);
+        logPositionAndAccount(accountId_2);
+
+        // Modify Short position (decrease it)
+        console2.log("Modify Short position (decrease it)");
+        foil.modifyTraderPosition(accountId_2, 0, -.05 ether, -.01 ether);
+        console2.log("accountId", accountId_2);
+        logPositionAndAccount(accountId_2);
+
+        // Modify Short position (close it)
+        console2.log("Modify Short position (close it)");
+        foil.modifyTraderPosition(accountId_2, 0, 0, 0);
+        console2.log("accountId", accountId_2);
+        logPositionAndAccount(accountId_2);
+    }
+
+    function test_trade_short_cross_sides() public {
+        uint256 priceReference;
+        uint256 accountId_4;
+        priceReference = foil.getReferencePrice();
+
+        console2.log("priceReference", priceReference);
+        IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
+            .LiquidityPositionParams({
+                amountTokenB: 20000 ether,
+                amountTokenA: 1000 ether,
+                collateralAmount: 10 ether,
+                lowerTick: 27000, // 5
+                upperTick: 32000, // 30000 = 20, 34000 = 30
+                minAmountTokenA: 0,
+                minAmountTokenB: 0
+            });
+
+        foil.createLiquidityPosition(params);
+        params.amountTokenB = 400000 ether;
+        params.amountTokenA = 20000 ether;
+        foil.createLiquidityPosition(params);
+
+        priceReference = foil.getReferencePrice();
+        console2.log("priceReference", priceReference);
+
+        // Create Short position (another one)
+        console2.log("Create Short position (another one)");
+        accountId_4 = foil.createTraderPosition(10 ether, -.1 ether, 0);
+        console2.log("accountId", accountId_4);
+        logPositionAndAccount(accountId_4);
+
+        // Modify Short position (change side)
+        console2.log("Modify Short position (change side)");
+        foil.modifyTraderPosition(accountId_4, 0, .05 ether, 0);
+        console2.log("accountId", accountId_4);
+        logPositionAndAccount(accountId_4);
+    }
+
+    function logPositionAndAccount(uint256 accountId) public view {
+        Position.Data memory position = foil.getPositionData(accountId);
+        console2.log(" >>> Position", accountId);
+        console2.log("      >> accountId         : ", position.accountId);
+        console2.log("      >> vEthAmount        : ", position.vEthAmount);
+        console2.log("      >> vGasAmount        : ", position.vGasAmount);
+        console2.log(
+            "      >> currentTokenAmount: ",
+            position.currentTokenAmount
+        );
+
+        FAccount.Data memory account = foil.getAccountData(accountId);
+        console2.log(" >>> FAccount", accountId);
+        console2.log("      >> id                : ", account.tokenId);
+        console2.log("      >> collateralAmount  : ", account.collateralAmount);
+        console2.log("      >> borrowedGwei      : ", account.borrowedGwei);
+        console2.log("      >> borrowedGas       : ", account.borrowedGas);
+    }
 }

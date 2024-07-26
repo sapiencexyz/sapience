@@ -19,8 +19,6 @@ contract EpochTradeModule {
     using SafeCastI256 for int256;
     using SafeCastU256 for uint256;
 
-    uint256 private constant _COLLATERAL_TO_VGWEI = 1e9;
-
     function createTraderPosition(
         uint256 collateralAmount,
         int256 tokenAmount,
@@ -45,14 +43,16 @@ contract EpochTradeModule {
                 account,
                 position,
                 collateralAmount,
-                tokenAmount
+                tokenAmount,
+                tokenAmountLimit
             );
         } else {
             _createShortPosition(
                 account,
                 position,
                 collateralAmount,
-                tokenAmount
+                tokenAmount,
+                tokenAmountLimit
             );
         }
     }
@@ -63,6 +63,7 @@ contract EpochTradeModule {
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) external {
+        // console2.log("modifyTraderPosition");
         // identify the account and position
         // Notice: accountId is the tokenId
         require(
@@ -72,177 +73,357 @@ contract EpochTradeModule {
         FAccount.Data storage account = FAccount.loadValid(accountId);
         Position.Data storage position = Position.loadValid(accountId);
 
-        int256 deltaTokenAmount = tokenAmount - position.currentTokenAmount;
+        // console2.log("modifyTraderPosition collateralAmount", collateralAmount);
+        // console2.log("modifyTraderPosition tokenAmount", tokenAmount);
+        // console2.log("modifyTraderPosition tokenAmountLimit", tokenAmountLimit);
+        // console2.log(
+        //     "modifyTraderPosition position.currentTokenAmount",
+        //     position.currentTokenAmount
+        // );
+        // console2.log(
+        //     "sameSide",
+        //     sameSide(position.currentTokenAmount, tokenAmount)
+        // );
 
-        (bool sameSide, int expectedTokenAmount) = sameSideAndExpected(
-            position.currentTokenAmount,
-            deltaTokenAmount
-        );
-
-        if (!sameSide || expectedTokenAmount == 0) {
+        // console2.log("PASO 1");
+        if (
+            !sameSide(position.currentTokenAmount, tokenAmount) ||
+            tokenAmount == 0
+        ) {
+            // console2.log("PASO 2");
             // go to zero before moving to the other side
             _closePosition(account, position, collateralAmount);
+            // console2.log("PASO 3");
         }
 
-        if (expectedTokenAmount > 0) {
+        // console2.log("PASO 4");
+
+        if (tokenAmount > 0) {
+            // console2.log("modifyTraderPosition LONG");
             _modifyLongPosition(
                 account,
                 position,
                 collateralAmount,
-                expectedTokenAmount
+                tokenAmount,
+                tokenAmountLimit
             );
-        } else if (expectedTokenAmount < 0) {
+        } else if (tokenAmount < 0) {
+            // console2.log("modifyTraderPosition SHORT");
             _modifyShortPosition(
                 account,
                 position,
                 collateralAmount,
-                expectedTokenAmount
+                tokenAmount,
+                tokenAmountLimit
             );
         }
     }
 
+    /**
+     * @dev Create a long position
+     * With collateral get vEth (Loan)
+     * With vEth (use enough to) get vGas (Swap)
+     * End result:
+     * - account.collateralAmount += collateralAmount
+     * - account.borrowedGwei += vEthLoan
+     * - position.tokenGasAmount += vGas from swap
+     */
     function _createLongPosition(
         FAccount.Data storage account,
         Position.Data storage position,
         uint256 collateralAmount,
-        int256 tokenAmount
+        int256 tokenAmount,
+        int256 tokenAmountLimit
     ) internal {
         // with the collateral get vEth (Loan)
-        uint vEthLoan = collateralAmount * _COLLATERAL_TO_VGWEI; // 1:1e9
+        uint vEthLoan = collateralAmount; // 1:1
 
         account.collateralAmount += collateralAmount;
         account.borrowedGwei += vEthLoan;
 
+        if (tokenAmount < 0 || tokenAmountLimit < 0) {
+            console2.log("IT SHOULD REVERT WITH UNEXPECTED LONG POSITION");
+            // TODO revert
+        }
+
         // with the vEth get vGas (Swap)
+        SwapTokensExactOutParams memory params = SwapTokensExactOutParams({
+            availableAmountInVEth: vEthLoan,
+            availableAmountInVGas: 0,
+            amountInLimitVEth: 0,
+            amountInLimitVGas: tokenAmountLimit.toUint(),
+            expectedAmountOutVEth: 0,
+            expectedAmountOutVGas: tokenAmount.toUint()
+        });
+
         (
             uint256 refundAmountVEth,
-            uint256 refundAmountVGas,
+            ,
             uint256 tokenAmountVEth,
             uint256 tokenAmountVGas
-        ) = swapTokensExactOut(vEthLoan, 0, 0, tokenAmount.toUint());
+        ) = swapTokensExactOut(params);
+
+        // Refund excess vEth sent
         account.borrowedGwei -= refundAmountVEth;
 
         position.updateBalance(
+            tokenAmount,
             tokenAmountVEth.toInt(),
-            tokenAmountVGas.toInt(),
-            tokenAmount
+            tokenAmountVGas.toInt()
         );
+        // TODO check if the collateral is enough for the position
     }
 
+    /**
+     * @dev Create a short position
+     * With collateral get vGas (Loan)
+     * With vGas tokenAmount get vEth (Swap)
+     * End result:
+     * - account.collateralAmount += collateralAmount
+     * - account.borrowedGas += vGasLoan
+     * - position.tokenGweiAmount += vEth from swap
+     */
     function _createShortPosition(
         FAccount.Data storage account,
         Position.Data storage position,
         uint256 collateralAmount,
-        int256 tokenAmount
+        int256 tokenAmount,
+        int256 tokenAmountLimit
     ) internal {
         // with the collateral get vGas (Loan)
-        uint vGasLoan = collateralAmount *
-            _COLLATERAL_TO_VGWEI *
-            getReferencePrice(); // 1:1e9:currentPrice
+        uint vGasLoan = (tokenAmount * -1).toUint(); //(collateralAmount).divDecimal(getReferencePrice()); // collatera / vEth = 1/1 ; vGas/vEth = 1/currentPrice
 
         account.collateralAmount += collateralAmount;
         account.borrowedGas += vGasLoan;
 
+        if (tokenAmount > 0 || tokenAmountLimit > 0) {
+            console2.log("IT SHOULD REVERT WITH UNEXPECTED SHORT POSITION");
+            // TODO revert
+        }
+
         // with the vGas get vEth (Swap)
+        SwapTokensExactInParams memory params = SwapTokensExactInParams({
+            amountInVEth: 0,
+            amountInVGas: (tokenAmount * -1).toUint(),
+            amountOutLimitVEth: 0,
+            amountOutLimitVGas: (tokenAmountLimit * -1).toUint()
+        });
         (uint256 tokenAmountVEth, uint256 tokenAmountVGas) = swapTokensExactIn(
-            0,
-            (tokenAmount * -1).toUint()
+            params
         );
+        // console2.log("_createShortPosition tokenAmountVEth", tokenAmountVEth);
+        // console2.log("_createShortPosition tokenAmountVGas", tokenAmountVGas);
 
         position.updateBalance(
+            tokenAmount,
             tokenAmountVEth.toInt(),
-            tokenAmountVGas.toInt(),
-            tokenAmount
+            tokenAmountVGas.toInt()
         );
+
+        // TODO check if the collateral is enough for the position
     }
 
+    /**
+     * @dev Modify a long position. Can be increased, decreased. Closure or change sides is not allowed here and managed in the calling function
+     * tokenAmount is the end result of vGas tokens in the position
+     *
+     * Increase:
+     * With collateral get vEth (Loan)
+     * With vEth (use enough to) get detal tokenAmount vGas (Swap)
+     * End result:
+     * - account.collateralAmount += collateralAmount
+     * - account.borrowedGwei += vEthLoan
+     * - position.tokenGasAmount += vGas from swap
+     *
+     * Decrease:
+     * With vGas get vEth (Swap)
+     * Use vEth to pay debt
+     * End result:
+     * - account.borrowedGwei -= vEth from swap
+     * - position.tokenGasAmount -= vGas used on swap
+     *
+     */
     function _modifyLongPosition(
         FAccount.Data storage account,
         Position.Data storage position,
         uint256 collateralAmount,
-        int256 tokenAmount
+        int256 tokenAmount,
+        int256 tokenAmountLimit
     ) internal {
+        // console2.log("_modifyLongPosition");
+        // TODO check if after settlement and use the settlement price
+
         if (tokenAmount > position.currentTokenAmount) {
             // Increase the position (LONG)
             uint delta = (tokenAmount - position.currentTokenAmount).toUint();
             // with the collateral get vEth (Loan)
-            uint vEthLoan = collateralAmount * _COLLATERAL_TO_VGWEI; // 1:1e9
+            uint vEthLoan = collateralAmount; // 1:1
             account.collateralAmount += collateralAmount;
             account.borrowedGwei += vEthLoan;
+
+            SwapTokensExactOutParams memory params = SwapTokensExactOutParams({
+                availableAmountInVEth: vEthLoan,
+                availableAmountInVGas: 0,
+                amountInLimitVEth: 0,
+                amountInLimitVGas: 0,
+                expectedAmountOutVEth: 0,
+                expectedAmountOutVGas: delta
+            });
 
             // with the vEth get vGas (Swap)
             (
                 uint256 refundAmountVEth,
-                uint256 refundAmountVGas,
+                ,
                 uint256 tokenAmountVEth,
                 uint256 tokenAmountVGas
-            ) = swapTokensExactOut(vEthLoan, 0, 0, delta);
+            ) = swapTokensExactOut(params);
             account.borrowedGwei -= refundAmountVEth;
 
             position.updateBalance(
+                delta.toInt(),
                 tokenAmountVEth.toInt(),
-                tokenAmountVGas.toInt(),
-                delta.toInt()
+                tokenAmountVGas.toInt()
             );
         } else {
-            // Decrease the position (LONG)
+            // Reduce the position (LONG)
             if (collateralAmount > 0) {
                 console2.log("IT SHULD REVERT WITH UNEXPECTED COLLATERAL");
-                return;
+                // return;
             }
 
-            uint delta = (position.currentTokenAmount - tokenAmount).toUint();
+            int delta = (tokenAmount - position.currentTokenAmount);
+            console2.log(
+                "_modifyLongPosition position.currentTokenAmount",
+                position.currentTokenAmount
+            );
+            console2.log("_modifyLongPosition tokenAmount", tokenAmount);
+            console2.log("_modifyLongPosition delta", delta);
+            console2.log("_modifyLongPosition price", getReferencePrice());
+
+            SwapTokensExactInParams memory params = SwapTokensExactInParams({
+                amountInVEth: 0,
+                amountInVGas: (delta * -1).toUint(),
+                amountOutLimitVEth: 0,
+                amountOutLimitVGas: 0
+            });
 
             // with the vGas get vEth (Swap)
             (
                 uint256 tokenAmountVEth,
                 uint256 tokenAmountVGas
-            ) = swapTokensExactIn(0, delta);
+            ) = swapTokensExactIn(params);
 
-            position.updateBalance(
-                tokenAmountVEth.toInt(),
-                tokenAmountVGas.toInt(),
-                tokenAmount
+            console2.log(
+                "_modifyLongPosition amountInVGas         ",
+                params.amountInVGas
             );
+            console2.log(
+                "_modifyLongPosition tokenAmountVGas      ",
+                tokenAmountVGas
+            );
+            console2.log(
+                "_modifyLongPosition tokenAmountVEth      ",
+                tokenAmountVEth
+            );
+            console2.log(
+                "_modifyLongPosition account.borrowedGwei ",
+                account.borrowedGwei
+            );
+
+            // Pay debt with vEth
+            account.borrowedGwei -= tokenAmountVEth;
+
+            position.updateBalance(delta, 0, delta);
         }
     }
 
+    /**
+     * @dev Modify a short position. Can be increased, decreased. Closure or change sides is not allowed here and managed in the calling function
+     * tokenAmount is the end result of vGas debt tokens in the position
+     *
+     * Increase:
+     * With collateral get vGas (Loan)
+     * With delta tokenAmount vGas get vEth (Swap)
+     * End result:
+     * - account.collateralAmount += collateralAmount
+     * - account.borrowedGas += vGasLoan
+     * - position.tokenGweiAmount += vEth from swap
+     *
+     * Decrease:
+     * With vEthTokens get vGas (Swap) to repay debt
+     * Use vGas to pay debt
+     * End result:
+     * - account.borrowedGas -= vGas from swap
+     * - position.tokenGweiAmount -= vEth used on swap
+     *
+     */
     function _modifyShortPosition(
         FAccount.Data storage account,
         Position.Data storage position,
         uint256 collateralAmount,
-        int256 tokenAmount
+        int256 tokenAmount,
+        int256 tokenAmountLimit
     ) internal {
+        // console2.log("_modifyShortPosition");
         if (tokenAmount < position.currentTokenAmount) {
             // Increase the position (SHORT)
 
-            uint delta = (position.currentTokenAmount - tokenAmount).toUint();
+            int delta = (tokenAmount - position.currentTokenAmount);
+            int deltaLimit = (tokenAmountLimit - position.currentTokenAmount);
+            // console2.log("_modifyShortPosition delta", delta);
+            // console2.log("_modifyShortPosition deltaLimit", deltaLimit);
+            // console2.log(
+            //     "_modifyShortPosition position.currentTokenAmount",
+            //     position.currentTokenAmount
+            // );
+            // console2.log("_modifyShortPosition tokenAmount", tokenAmount);
+
             // with the collateral get vGas (Loan)
-            uint vGasLoan = collateralAmount *
-                _COLLATERAL_TO_VGWEI *
-                getReferencePrice(); // 1:1e9:currentPrice
+            uint vGasLoan = getReferencePrice() * (delta * -1).toUint(); //
             account.collateralAmount += collateralAmount;
             account.borrowedGas += vGasLoan;
+
+            SwapTokensExactInParams memory params = SwapTokensExactInParams({
+                amountInVEth: 0,
+                amountInVGas: (delta * -1).toUint(),
+                amountOutLimitVEth: 0,
+                amountOutLimitVGas: (deltaLimit * -1).toUint()
+            });
 
             // with the vGas get vEth (Swap)
             (
                 uint256 tokenAmountVEth,
                 uint256 tokenAmountVGas
-            ) = swapTokensExactIn(0, delta);
+            ) = swapTokensExactIn(params);
 
             position.updateBalance(
+                delta,
                 tokenAmountVEth.toInt(),
-                tokenAmountVGas.toInt(),
-                tokenAmount
+                tokenAmountVGas.toInt()
             );
         } else {
             // Decrease the position (SHORT)
             if (collateralAmount > 0) {
                 console2.log("IT SHULD REVERT WITH UNEXPECTED COLLATERAL");
-                return;
+                // return;
             }
 
-            uint delta = (tokenAmount - position.currentTokenAmount).toUint();
+            int delta = (position.currentTokenAmount - tokenAmount);
+            // console2.log("_modifyShortPosition delta", delta);
+            // console2.log(
+            //     "_modifyShortPosition position.currentTokenAmount",
+            //     position.currentTokenAmount
+            // );
+            // console2.log("_modifyShortPosition tokenAmount", tokenAmount);
+
+            SwapTokensExactOutParams memory params = SwapTokensExactOutParams({
+                availableAmountInVEth: position.vEthAmount,
+                availableAmountInVGas: 0,
+                amountInLimitVEth: 0,
+                amountInLimitVGas: 0,
+                expectedAmountOutVEth: 0,
+                expectedAmountOutVGas: (delta * -1).toUint()
+            });
 
             // with the vEth get vGas (Swap)
             (
@@ -250,77 +431,181 @@ contract EpochTradeModule {
                 uint256 refundAmountVGas,
                 uint256 tokenAmountVEth,
                 uint256 tokenAmountVGas
-            ) = swapTokensExactOut(position.vEthAmount, 0, 0, delta);
+            ) = swapTokensExactOut(params);
+
+            // console2.log(
+            //     "_modifyShortPosition refundAmountVEth",
+            //     refundAmountVEth
+            // );
+            // console2.log(
+            //     "_modifyShortPosition refundAmountVGas",
+            //     refundAmountVGas
+            // );
+            // console2.log(
+            //     "_modifyShortPosition tokenAmountVEth",
+            //     tokenAmountVEth
+            // );
+            // console2.log(
+            //     "_modifyShortPosition tokenAmountVGas",
+            //     tokenAmountVGas
+            // );
+
             account.borrowedGas -= tokenAmountVGas;
 
             position.updateBalance(
+                delta,
                 (position.vEthAmount - refundAmountVEth).toInt(),
-                0,
-                tokenAmount
+                0
             );
         }
     }
 
+    /**
+     * @dev Close a position. Can be a long or short position
+     *
+     * LONG position:
+     *
+     * With vGas get vEth (Swap) to pay debt
+     * If not enough vGas, use collateral to pay the remaining debt
+     * End result:
+     * - account.borrowedGwei = 0
+     * - position.tokenGasAmount -= vGas used on swap (or zero)
+     * - account.collateralAmount -= collateral used to pay the remaining debt
+     *
+     *
+     * SHORT position:
+     *
+     * With vEth get vGas (Swap) to pay debt
+     * If not enough vEth, use collateral as vEth (1:1) to swap for the required vGas to pay the remaining debt
+     * End result:
+     * - account.borrowedGas = 0
+     * - position.tokenGweiAmount -= vEth used on swap (or zero)
+     * - account.collateralAmount -= collateral used to pay the remaining debt
+     *
+     * Note:
+     * with the position closed, the remaining gas can be sold for vEth and converted to collateral, same for the remaining vEth that is converted 1:1 as colalteral
+     * then the remaining collateral can be withdrawn
+     */
     function _closePosition(
         FAccount.Data storage account,
         Position.Data storage position,
         uint256 collateralAmount
     ) internal {
-        // TODO (autogenerated by copilot): Implement the close position logic
+        // TODO check if after settlement and use the settlement price
+
+        // Add sent collateral
+        account.collateralAmount += collateralAmount;
+
         if (position.currentTokenAmount > 0) {
             // Close LONG position
-            // with the vGas get vEth (Swap)
-            (
-                uint256 refundAmountVEth,
-                uint256 refundAmountVGas,
-                uint256 tokenAmountVEth,
-                uint256 tokenAmountVGas
-            ) = swapTokensExactOut(
-                    position.vEthAmount,
-                    0,
-                    0,
-                    position.currentTokenAmount.toUint()
-                );
-            account.borrowedGwei -= refundAmountVEth;
+            SwapTokensExactInParams memory params = SwapTokensExactInParams({
+                amountInVEth: 0,
+                amountInVGas: position.vGasAmount,
+                amountOutLimitVEth: 0,
+                amountOutLimitVGas: 0
+            });
 
-            position.updateBalance(
-                tokenAmountVEth.toInt(),
-                tokenAmountVGas.toInt(),
-                position.currentTokenAmount
-            );
+            // with the vGas get vEth (Swap)
+            (uint256 tokenAmountVEth, ) = swapTokensExactIn(params);
+
+            if (account.borrowedGwei > tokenAmountVEth) {
+                // Not enough vEth to pay the debt
+                // Use collateral to pay the remaining debt
+                uint256 remainingDebt = account.borrowedGwei - tokenAmountVEth;
+                account.collateralAmount -= remainingDebt;
+                account.borrowedGwei = 0;
+            } else if (account.borrowedGwei < tokenAmountVEth) {
+                // Obtained more vEth than required to pay the debt
+                // Add it as collateral
+                account.collateralAmount +=
+                    tokenAmountVEth -
+                    account.borrowedGwei;
+            }
+
+            account.borrowedGwei = 0;
+
+            position.resetBalance();
         } else {
             // Close SHORT position
-            // with the vEth get vGas (Swap)
-            (
-                uint256 refundAmountVEth,
-                uint256 refundAmountVGas,
-                uint256 tokenAmountVEth,
-                uint256 tokenAmountVGas
-            ) = swapTokensExactOut(
-                    position.vEthAmount,
-                    0,
-                    0,
-                    position.currentTokenAmount.toUint()
-                );
-            account.borrowedGas -= refundAmountVGas;
 
-            position.updateBalance(
-                tokenAmountVEth.toInt(),
-                tokenAmountVGas.toInt(),
-                position.currentTokenAmount
-            );
+            SwapTokensExactInParams memory params = SwapTokensExactInParams({
+                amountInVEth: position.vEthAmount,
+                amountInVGas: 0,
+                amountOutLimitVEth: 0,
+                amountOutLimitVGas: 0
+            });
+
+            // with the vEth get vGas (Swap)
+            (, uint256 tokenAmountVGas) = swapTokensExactIn(params);
+
+            if (account.borrowedGas > tokenAmountVGas) {
+                // Not enough vGas to pay the debt
+                // Use collateral to pay the remaining debt
+                uint256 remainingDebt = account.borrowedGas - tokenAmountVGas;
+                uint256 vEth = account.collateralAmount; // Not needed but is here for clarity
+                account.collateralAmount = 0; // used all as vEth in the line above
+
+                // Use collateral (as vEth) to get vGas
+                SwapTokensExactOutParams
+                    memory secondSwapParams = SwapTokensExactOutParams({
+                        availableAmountInVEth: vEth,
+                        availableAmountInVGas: 0,
+                        amountInLimitVEth: 0,
+                        amountInLimitVGas: 0,
+                        expectedAmountOutVEth: 0,
+                        expectedAmountOutVGas: remainingDebt
+                    });
+
+                // with the vEth get vGas (Swap)
+                (uint256 refundAmountVEth, , , ) = swapTokensExactOut(
+                    secondSwapParams
+                );
+                account.collateralAmount += refundAmountVEth;
+
+                account.borrowedGwei = 0;
+            } else if (account.borrowedGas < tokenAmountVGas) {
+                // Obtained more vGas than required to pay the debt
+                // Sell it back and convert to collateral
+                uint256 extraGas = tokenAmountVGas - account.borrowedGas;
+
+                SwapTokensExactInParams
+                    memory secondSwapParams = SwapTokensExactInParams({
+                        amountInVEth: 0,
+                        amountInVGas: extraGas,
+                        amountOutLimitVEth: 0,
+                        amountOutLimitVGas: 0
+                    });
+
+                // with the vGas get vEth (Swap)
+                (uint256 tokenAmountVEth, ) = swapTokensExactIn(
+                    secondSwapParams
+                );
+
+                // Add it as collateral
+                account.collateralAmount += tokenAmountVEth;
+            }
+
+            account.borrowedGwei = 0;
+
+            position.resetBalance();
         }
     }
 
+    struct SwapTokensExactInParams {
+        uint256 amountInVEth;
+        uint256 amountInVGas;
+        uint256 amountOutLimitVEth;
+        uint256 amountOutLimitVGas;
+    }
+
     function swapTokensExactIn(
-        uint256 amountInVEth,
-        uint256 amountInVGas
+        SwapTokensExactInParams memory params
     ) internal returns (uint256 amountOutVEth, uint256 amountOutVGas) {
-        if (amountInVEth > 0 && amountInVGas > 0) {
+        if (params.amountInVEth > 0 && params.amountInVGas > 0) {
             revert("Only one token can be traded at a time");
         }
 
-        if (amountInVEth == 0 && amountInVGas == 0) {
+        if (params.amountInVEth == 0 && params.amountInVGas == 0) {
             revert("At least one token should be traded");
         }
 
@@ -331,55 +616,57 @@ contract EpochTradeModule {
         if (epoch.settled) {
             (amountOutVEth, amountOutVGas) = _afterSettlementSwapExactIn(
                 epoch,
-                amountInVEth,
-                amountInVGas
+                params.amountInVEth,
+                params.amountInVGas
             );
         } else {
-            address tokenIn;
-            address tokenOut;
-            uint256 amountIn;
+            ISwapRouter.ExactInputSingleParams memory swapParams;
+            swapParams.fee = epoch.marketParams.feeRate;
+            swapParams.recipient = address(this);
+            swapParams.deadline = block.timestamp;
 
-            if (amountInVEth > 0) {
-                tokenIn = address(epoch.ethToken);
-                tokenOut = address(epoch.gasToken);
-                amountIn = amountInVEth;
+            if (params.amountInVEth > 0) {
+                swapParams.tokenIn = address(epoch.ethToken);
+                swapParams.tokenOut = address(epoch.gasToken);
+                swapParams.amountIn = params.amountInVEth;
+                swapParams.amountOutMinimum = params.amountOutLimitVGas;
+                // TODO -- We also set the sqrtPriceLimitx96 to be 0 to ensure we swap our exact input amount.
+                swapParams.sqrtPriceLimitX96 = 0;
             } else {
-                tokenIn = address(epoch.gasToken);
-                tokenOut = address(epoch.ethToken);
-                amountIn = amountInVGas;
+                console2.log("Entered in the else => swap gas for eth");
+                swapParams.tokenIn = address(epoch.gasToken);
+                swapParams.tokenOut = address(epoch.ethToken);
+                swapParams.amountIn = params.amountInVGas;
+                swapParams.amountOutMinimum = params.amountOutLimitVEth;
+                // TODO -- We also set the sqrtPriceLimitx96 to be 0 to ensure we swap our exact input amount.
+                swapParams.sqrtPriceLimitX96 = 0;
             }
 
-            // TODO amountOutMinimum and sqrtPriceLimitX96 should be passed as param to prevent slippage
-            // TODO -- Naively set amountOutMinimum to 0. In production, use an oracle or other data source to choose a safer value for amountOutMinimum.
-            // TODO -- We also set the sqrtPriceLimitx96 to be 0 to ensure we swap our exact input amount.
-            ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
-                .ExactInputSingleParams({
-                    tokenIn: tokenIn,
-                    tokenOut: tokenOut,
-                    fee: epoch.marketParams.feeRate,
-                    recipient: address(this),
-                    deadline: block.timestamp,
-                    amountIn: amountIn,
-                    amountOutMinimum: 0,
-                    sqrtPriceLimitX96: 0
-                });
             uint256 amountOut = market.uniswapSwapRouter.exactInputSingle(
-                params
+                swapParams
             );
+            // console2.log("swapTokensExactIn amountOut", amountOut);
 
-            if (amountInVEth > 0) {
+            if (params.amountInVEth > 0) {
                 amountOutVGas = amountOut;
             } else {
+                console2.log("Entered in the else => result is for  eth");
                 amountOutVEth = amountOut;
             }
         }
     }
 
+    struct SwapTokensExactOutParams {
+        uint256 availableAmountInVEth;
+        uint256 availableAmountInVGas;
+        uint256 amountInLimitVEth;
+        uint256 amountInLimitVGas;
+        uint256 expectedAmountOutVEth;
+        uint256 expectedAmountOutVGas;
+    }
+
     function swapTokensExactOut(
-        uint256 availableAmountInVEth,
-        uint256 availableAmountInVGas,
-        uint256 expectedAmountOutVEth,
-        uint256 expectedAmountOutVGas
+        SwapTokensExactOutParams memory params
     )
         internal
         returns (
@@ -389,11 +676,16 @@ contract EpochTradeModule {
             uint256 tokenAmountVGas
         )
     {
-        if (expectedAmountOutVEth > 0 && expectedAmountOutVGas > 0) {
+        if (
+            params.expectedAmountOutVEth > 0 && params.expectedAmountOutVGas > 0
+        ) {
             revert("Only one token can be traded at a time");
         }
 
-        if (expectedAmountOutVEth == 0 && expectedAmountOutVGas == 0) {
+        if (
+            params.expectedAmountOutVEth == 0 &&
+            params.expectedAmountOutVGas == 0
+        ) {
             revert("At least one token should be traded");
         }
 
@@ -411,30 +703,57 @@ contract EpochTradeModule {
                 tokenAmountVGas
             ) = _afterSettlementSwapExactOut(
                 epoch,
-                expectedAmountOutVEth,
-                expectedAmountOutVGas
+                params.expectedAmountOutVEth,
+                params.expectedAmountOutVGas
             );
-            refundAmountVEth = availableAmountInVEth - consumedAmountInVEth;
-            refundAmountVGas = availableAmountInVGas - consumedAmountInVGas;
+            refundAmountVEth =
+                params.availableAmountInVEth -
+                consumedAmountInVEth;
+            refundAmountVGas =
+                params.availableAmountInVGas -
+                consumedAmountInVGas;
         } else {
             address tokenIn;
             address tokenOut;
             uint256 amountOut;
+            uint160 sqrtPriceLimitX96;
 
-            if (expectedAmountOutVEth > 0) {
+            if (params.expectedAmountOutVEth > 0) {
                 tokenIn = address(epoch.ethToken);
                 tokenOut = address(epoch.gasToken);
-                amountOut = expectedAmountOutVEth;
+                amountOut = params.expectedAmountOutVEth;
+                sqrtPriceLimitX96 = TickMath.MIN_SQRT_RATIO + 1;
             } else {
                 tokenIn = address(epoch.gasToken);
                 tokenOut = address(epoch.ethToken);
-                amountOut = expectedAmountOutVGas;
+                amountOut = params.expectedAmountOutVGas;
+                sqrtPriceLimitX96 = TickMath.MAX_SQRT_RATIO - 1;
             }
+
+            // {
+            //     // LOG BLOCK
+            //     (uint160 sqrtPriceX96, int24 tick, , , , , ) = IUniswapV3Pool(
+            //         epoch.pool
+            //     ).slot0();
+            //     console2.log("exact out swap: tokenIn", tokenIn);
+            //     console2.log("exact out swap: tokenOut", tokenOut);
+            //     console2.log("exact out swap: amountOut", amountOut);
+            //     console2.log(
+            //         "exact out swap: sqrtPriceLimitX96",
+            //         sqrtPriceLimitX96
+            //     );
+            //     console2.log(
+            //         "exact out swap: MAX Sqrt Ratio   ",
+            //         TickMath.MAX_SQRT_RATIO
+            //     );
+            //     console2.log("exact out swap: sqrtPriceX96     ", sqrtPriceX96);
+            //     console2.log("exact out swap: tick", tick);
+            // }
 
             // TODO amountInMaximum and sqrtPriceLimitX96 should be passed as param to prevent slippage
             // TODO -- Naively set amountInMaximum to maxUint . In production, use an oracle or other data source to choose a safer value for amountOutMinimum.
             // TODO -- We also set the sqrtPriceLimitx96 to be 0 to ensure we swap our exact input amount.
-            ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter
+            ISwapRouter.ExactOutputSingleParams memory swapParams = ISwapRouter
                 .ExactOutputSingleParams({
                     tokenIn: tokenIn,
                     tokenOut: tokenOut,
@@ -443,17 +762,49 @@ contract EpochTradeModule {
                     deadline: block.timestamp,
                     amountOut: amountOut,
                     amountInMaximum: type(uint256).max,
-                    sqrtPriceLimitX96: 0
+                    sqrtPriceLimitX96: sqrtPriceLimitX96
                 });
 
             uint256 amountIn = market.uniswapSwapRouter.exactOutputSingle(
-                params
+                swapParams
             );
+            // console2.log("swapTokensExactOut amountIn", amountIn);
+            // console2.log(
+            //     "swapTokensExactOut params.expectedAmountOutVEth",
+            //     params.expectedAmountOutVEth
+            // );
+            // console2.log(
+            //     "swapTokensExactOut params.expectedAmountOutVGas",
+            //     params.expectedAmountOutVGas
+            // );
+            // console2.log(
+            //     "swapTokensExactOut params.availableAmountInVGas",
+            //     params.availableAmountInVGas
+            // );
+            // console2.log(
+            //     "swapTokensExactOut params.availableAmountInVEth",
+            //     params.availableAmountInVEth
+            // );
+            tokenAmountVEth = params.expectedAmountOutVEth;
+            tokenAmountVGas = params.expectedAmountOutVGas;
 
-            if (expectedAmountOutVEth > 0) {
-                refundAmountVGas = availableAmountInVGas - amountIn;
+            if (params.expectedAmountOutVEth > 0) {
+                if (params.availableAmountInVGas > amountIn) {
+                    refundAmountVGas = params.availableAmountInVGas - amountIn;
+                } else {
+                    console2.log(
+                        "IT SHOULD REVERT WITH NOT ENOUGH availableAmountInVGas"
+                    );
+                }
+                refundAmountVGas = params.availableAmountInVGas - amountIn;
             } else {
-                refundAmountVEth = availableAmountInVEth - amountIn;
+                if (params.availableAmountInVEth > amountIn) {
+                    refundAmountVEth = params.availableAmountInVEth - amountIn;
+                } else {
+                    console2.log(
+                        "IT SHOULD REVERT WITH NOT ENOUGH availableAmountInVEth"
+                    );
+                }
             }
         }
     }
@@ -507,29 +858,59 @@ contract EpochTradeModule {
         }
     }
 
-    function sameSideAndExpected(
-        int tokenAmount,
-        int deltaTokenAmount
-    ) internal pure returns (bool sameSide, int expectedTokenAmount) {
-        expectedTokenAmount = tokenAmount + deltaTokenAmount;
-        if (tokenAmount > 0 && expectedTokenAmount > 0) {
-            return (true, expectedTokenAmount);
-        } else if (tokenAmount < 0 && deltaTokenAmount < 0) {
-            return (true, expectedTokenAmount);
+    function sameSide(
+        int currentTokenAmount,
+        int newTokenAmount
+    ) internal pure returns (bool) {
+        if (newTokenAmount == 0) {
+            return (true);
+        } else if (currentTokenAmount > 0 && newTokenAmount > 0) {
+            return (true);
+        } else if (currentTokenAmount < 0 && newTokenAmount < 0) {
+            return (true);
         } else {
-            return (false, expectedTokenAmount);
+            return (false);
         }
     }
 
-    function getReferencePrice() public view returns (uint256) {
+    function getReferencePrice() public view returns (uint256 price18Digits) {
         Epoch.Data storage epoch = Epoch.load();
+
+        // Just log data for debugging, remove this block after testing
+        // {
+        //     (uint160 sqrtRatioX96, int24 tick, , , , , ) = IUniswapV3Pool(
+        //         epoch.pool
+        //     ).slot0();
+        //     int24 spacing = IUniswapV3Pool(epoch.pool).tickSpacing();
+        //     uint256 price = (((uint256(sqrtRatioX96) * 1e18) / 2 ** 96) ** 2) /
+        //         1e18;
+        //     uint256 priceMulDiv = FullMath.mulDiv(
+        //         uint256(sqrtRatioX96),
+        //         uint256(sqrtRatioX96),
+        //         FixedPoint96.Q96
+        //     );
+
+        //     // uint256 price2 = (sqrtRatioX96 * sqrtRatioX96) >> (96 * 2);
+        //     uint256 price2 = (uint256(sqrtRatioX96) * uint256(sqrtRatioX96)) >>
+        //         (192); // 192 == 96 * 2
+
+        //     console2.log("Spacing : ", spacing);
+        //     console2.log("SqrtPriceX96 : ", sqrtRatioX96);
+        //     console2.log("Tick : ", tick);
+        //     console2.log("Price : ", price);
+        //     console2.log("priceMulDiv : ", priceMulDiv);
+        //     console2.log("price2 : ", price2);
+        // }
+
         if (epoch.settled) {
             return epoch.settlementPrice;
         } else {
             (uint160 sqrtRatioX96, , , , , , ) = IUniswapV3Pool(epoch.pool)
                 .slot0();
-            return
-                FullMath.mulDiv(sqrtRatioX96, sqrtRatioX96, FixedPoint96.Q96);
+            // TODO find a simple expression to calculate the price
+            uint256 price = (((uint256(sqrtRatioX96) * 1e18) / 2 ** 96) ** 2) /
+                1e18;
+            return price;
         }
     }
 }
