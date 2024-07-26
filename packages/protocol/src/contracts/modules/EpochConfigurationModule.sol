@@ -10,6 +10,7 @@ import "../storage/FAccount.sol";
 import "../storage/Position.sol";
 import "../storage/ERC721Storage.sol";
 import "../storage/ERC721EnumerableStorage.sol";
+import "../storage/Market.sol"; // Import the Market library
 import "forge-std/console2.sol";
 
 contract EpochConfigurationModule is ReentrancyGuard {
@@ -17,44 +18,70 @@ contract EpochConfigurationModule is ReentrancyGuard {
     using FAccount for FAccount.Data;
     using Position for Position.Data;
     using ERC721Storage for ERC721Storage.Data;
+    using Market for Market.Data; // Use the Market library
 
-    function createEpoch(
-        uint startTime,
-        uint endTime,
+    modifier onlyOwner() {
+        Market.Data storage market = Market.load();
+        require(msg.sender == market.owner, "Caller is not the owner");
+        _;
+    }
+
+    function initializeMarket(
+        address owner,
+        address collateralAsset,
         address uniswapPositionManager,
         address uniswapQuoter,
         address uniswapSwapRouter,
-        address collateralAsset,
-        int24 baseAssetMinPrice,
-        int24 baseAssetMaxPrice,
-        uint24 feeRate,
-        uint160 startingSqrtPriceX96,
         address optimisticOracleV3,
-        address asserter,
-        uint64 assertionLiveness,
-        address bondCurrency,
-        uint256 bondAmount,
-        bytes32 priceUnit
+        Market.MarketParams memory marketParams
     ) external {
-        Epoch.createValid(
-            startTime,
-            endTime,
+        Market.createValid(
+            owner,
+            collateralAsset,
             uniswapPositionManager,
             uniswapQuoter,
             uniswapSwapRouter,
-            collateralAsset,
-            baseAssetMinPrice,
-            baseAssetMaxPrice,
-            feeRate,
-            startingSqrtPriceX96,
             optimisticOracleV3,
-            asserter,
-            assertionLiveness,
-            bondCurrency,
-            bondAmount,
-            priceUnit
+            marketParams
         );
     }
+
+    function updateMarket(
+        address owner,
+        address uniswapPositionManager,
+        address uniswapQuoter,
+        address uniswapSwapRouter,
+        address optimisticOracleV3,
+        Market.MarketParams memory marketParams
+    ) onlyOwner external  {
+        Market.updateValid(
+            owner, // should be nominate/accept
+            uniswapPositionManager,
+            uniswapQuoter,
+            uniswapSwapRouter,
+            optimisticOracleV3,
+            marketParams
+        );
+    }
+function createEpoch(
+    uint startTime,
+    uint endTime,
+    uint160 startingSqrtPriceX96
+) onlyOwner external  {
+    Market.Data storage market = Market.loadValid();
+
+    Epoch.createValid(
+        startTime,
+        endTime,
+        address(market.uniswapPositionManager),
+        address(market.uniswapQuoter),
+        address(market.uniswapSwapRouter),
+        address(market.collateralAsset),
+        startingSqrtPriceX96,
+        address(market.optimisticOracleV3),
+        market.marketParams
+    );
+}
 
     function getMarket()
         external
@@ -83,9 +110,9 @@ contract EpochConfigurationModule is ReentrancyGuard {
             epoch.endTime,
             address(epoch.uniswapPositionManager),
             address(epoch.collateralAsset),
-            epoch.baseAssetMinPriceTick,
-            epoch.baseAssetMaxPriceTick,
-            epoch.feeRate,
+            epoch.marketParams.baseAssetMinPriceTick,
+            epoch.marketParams.baseAssetMaxPriceTick,
+            epoch.marketParams.feeRate,
             address(epoch.ethToken),
             address(epoch.gasToken),
             address(epoch.pool),
@@ -108,14 +135,6 @@ contract EpochConfigurationModule is ReentrancyGuard {
             address(epoch.ethToken),
             address(epoch.gasToken)
         );
-    }
-
-    function createTraderPosition() external {
-        uint accountId = ERC721EnumerableStorage.totalSupply() + 1;
-        FAccount.createValid(accountId);
-        ERC721Storage._mint(msg.sender, accountId);
-        // Create empty position
-        Position.load(accountId).accountId = accountId;
     }
 
     function getPositionData(

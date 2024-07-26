@@ -355,7 +355,7 @@ contract EpochTradeModule {
                 .ExactInputSingleParams({
                     tokenIn: tokenIn,
                     tokenOut: tokenOut,
-                    fee: epoch.feeRate,
+                    fee: epoch.marketParams.feeRate,
                     recipient: address(this),
                     deadline: block.timestamp,
                     amountIn: amountIn,
@@ -436,7 +436,7 @@ contract EpochTradeModule {
                 .ExactOutputSingleParams({
                     tokenIn: tokenIn,
                     tokenOut: tokenOut,
-                    fee: epoch.feeRate,
+                    fee: epoch.marketParams.feeRate,
                     recipient: address(this),
                     deadline: block.timestamp,
                     amountOut: amountOut,

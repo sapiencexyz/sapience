@@ -14,13 +14,14 @@ import "../interfaces/external/ISwapRouter.sol";
 import "../external/VirtualToken.sol";
 import "./Debt.sol";
 import "./Errors.sol";
+import "./Market.sol";
 
 import "forge-std/console2.sol";
 
 library Epoch {
     using SafeERC20 for IERC20;
 
-struct Settlement {
+    struct Settlement {
         uint256 settlementPrice;
         uint256 submissionTime;
         bool disputed;
@@ -36,9 +37,6 @@ struct Settlement {
         VirtualToken ethToken;
         VirtualToken gasToken;
         IUniswapV3Pool pool;
-        uint24 feeRate;
-        int24 baseAssetMinPriceTick;
-        int24 baseAssetMaxPriceTick;
         address collateralAsset;
         bool settled;
         uint256 settlementPrice;
@@ -51,9 +49,11 @@ struct Settlement {
         bytes32 priceUnit;
         bytes32 assertionId;
         Settlement settlement;
+        Market.MarketParams marketParams; // Storing MarketParams as a struct within Epoch.Data
     }
 
     function load() internal pure returns (Data storage epoch) {
+        // we need to have this be dynamic with IDs?
         bytes32 s = keccak256(abi.encode("foil.gas.epoch"));
 
         assembly {
@@ -83,7 +83,6 @@ struct Settlement {
         });
     }
 
-    // add starting price
     function createValid(
         uint startTime,
         uint endTime,
@@ -91,16 +90,9 @@ struct Settlement {
         address uniswapQuoter,
         address uniswapSwapRouter,
         address collateralAsset,
-        int24 baseAssetMinPrice,
-        int24 baseAssetMaxPrice,
-        uint24 feeRate,
         uint160 startingSqrtPriceX96,
         address optimisticOracleV3,
-        address asserter,
-        uint64 assertionLiveness,
-        address bondCurrency,
-        uint256 bondAmount,
-        bytes32 priceUnit
+        Market.MarketParams memory marketParams
     ) internal returns (Data storage epoch) {
         epoch = load();
 
@@ -127,17 +119,10 @@ struct Settlement {
         epoch.uniswapQuoter = IUniswapV3Quoter(uniswapQuoter);
         epoch.uniswapSwapRouter = ISwapRouter(uniswapSwapRouter);
         epoch.collateralAsset = collateralAsset;
-        epoch.baseAssetMinPriceTick = baseAssetMinPrice;
-        epoch.baseAssetMaxPriceTick = baseAssetMaxPrice;
-        epoch.feeRate = feeRate;
         epoch.optimisticOracleV3 = OptimisticOracleV3Interface(
             optimisticOracleV3
         );
-        epoch.asserter = asserter;
-        epoch.assertionLiveness = assertionLiveness;
-        epoch.bondCurrency = IERC20(bondCurrency);
-        epoch.bondAmount = bondAmount;
-        epoch.priceUnit = priceUnit;
+        epoch.marketParams = marketParams;
 
         VirtualToken tokenA = new VirtualToken(
             address(this),
@@ -163,7 +148,7 @@ struct Settlement {
                 .createPool(
                     address(epoch.ethToken),
                     address(epoch.gasToken),
-                    feeRate
+                    marketParams.feeRate
                 )
         );
 

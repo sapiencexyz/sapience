@@ -4,8 +4,8 @@ version="0.1"
 [var.settings]
 startTime = "1721971200"
 endTime = "1722057599" #
-baseAssetMinPrice = "7000" # 2
-baseAssetMaxPrice = "46000" # 100
+baseAssetMinPriceTick = "7000" # 2
+baseAssetMaxPriceTick = "46000" # 100
 feeRate = "10000" # 1%
 startingPrice = "112045541949572279837463876454" # 1
 resolver = "0x07aeeb7e544a070a2553e142828fb30c214a1f86"
@@ -51,6 +51,13 @@ contracts=[
   "EpochNftModule",
 ]
 
+[invoke.initializeMarket]
+target="Foil"
+func="initializeMarket"
+args=[
+
+]
+
 [invoke.createEpoch]
 target="Foil"
 func="createEpoch"
@@ -61,12 +68,10 @@ args=[
   "0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3",
   "0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD",
   "<%= imports.wstETH.contracts.Token.address %>",
-  "<%= settings.baseAssetMinPrice %>",
-  "<%= settings.baseAssetMaxPrice %>",
+  "<%= settings.baseAssetMinPriceTick %>",
+  "<%= settings.baseAssetMaxPriceTick %>",
   "<%= settings.feeRate %>",
   "<%= settings.startingPrice %>",
   "<%= settings.resolver %>",
   "<%= settings.asserter %>",
-  
 ]
-depends = ['var.settings', 'router.Foil']
