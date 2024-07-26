@@ -13,8 +13,11 @@ startingSqrtPriceX96 = "354319114228591437807263678464" # // $20.0 => 3543191142
 resolver = "0x0000000000000000000000000000000000000000"
 bondAmount = "5000000000"
 priceUnit = "<%= formatBytes32String('gwei/gas') %>"
-optimisticOracleV3 = "0x0000000000000000000000000000000000000000" # Need UMA package to clone
 depends=[]
+
+[clone.UMA]
+source="uma-mock-oracle-ancillary"
+target="foil@uma-mock"
 
 [clone.Uniswap]
 source="uniswap"
@@ -68,7 +71,7 @@ args=[
   "<%= imports.Uniswap.contracts.NonfungiblePositionManager.address %>",
   "<%= imports.Uniswap.contracts.Quoter.address %>",
   "<%= imports.Uniswap.contracts.SwapRouter.address %>",
-  "<%= settings.optimisticOracleV3 %>", # will be an import from a clone step
+  "<%= imports.UMA.contracts.MockOracleAncillary.address %>",
   { baseAssetMinPriceTick = "<%= settings.baseAssetMinPriceTick %>", baseAssetMaxPriceTick = "<%= settings.baseAssetMaxPriceTick %>", feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.BondCurrency.contracts.Token.address %>", bondAmount= "<%= settings.bondAmount %>", priceUnit= "<%= settings.priceUnit %>" }
 ]
 depends=["router.Foil"]
