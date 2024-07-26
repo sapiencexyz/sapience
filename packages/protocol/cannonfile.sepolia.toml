@@ -19,22 +19,11 @@ depends = []
 # [pull.Uniswap]
 # source="uniswap"
 
-# [pull.wstETH]
-# source="wsteth-token"
+[pull.wstETH]
+source="wsteth-token"
 
-# [pull.USDC]
-# source="usdc-token"
-
-[clone.CollateralAsset]
-source="mintable-token@permissionless-mint"
-target="foil@test-collateral-asset"
-var.symbol="wstETH"
-
-[clone.BondCurrency]
-source="mintable-token@permissionless-mint"
-target="foil@test-bond-currency"
-var.symbol="USDC"
-var.decimals = "6"
+[pull.USDC]
+source="usdc-token"
 
 [deploy.ReentrancyGuard]
 artifact = "ReentrancyGuard"
@@ -69,12 +58,12 @@ target="Foil"
 func="initializeMarket"
 args=[
   "<%= settings.owner %>",
-  "<%= imports.CollateralAsset.contracts.Token.address %>", # "<%= imports.wstETH.contracts.Token.address %>",
+  "<%= imports.wstETH.contracts.Token.address %>",
   "0x1238536071E1c677A632429e3655c799b22cDA52",
   "0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3",
   "0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD",
   "<%= settings.optimisticOracleV3 %>", # will be an import from a clone step
-  { baseAssetMinPriceTick = "<%= settings.baseAssetMinPriceTick %>", baseAssetMaxPriceTick = "<%= settings.baseAssetMaxPriceTick %>", feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.BondCurrency.contracts.Token.address %>", bondAmount = "<%= settings.bondAmount %>", priceUnit = "<%= settings.priceUnit %>" }
+  { baseAssetMinPriceTick = "<%= settings.baseAssetMinPriceTick %>", baseAssetMaxPriceTick = "<%= settings.baseAssetMaxPriceTick %>", feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.USDC.contracts.Token.address %>", bondAmount = "<%= settings.bondAmount %>", priceUnit = "<%= settings.priceUnit %>" }
 ]
 depends=["router.Foil"]
 
