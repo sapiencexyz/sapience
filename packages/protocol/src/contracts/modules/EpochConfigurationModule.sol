@@ -87,40 +87,24 @@ function createEpoch(
         external
         view
         returns (
-            uint startTime,
-            uint endTime,
-            address uniswapPositionManager,
-            address collateralAsset,
-            int24 baseAssetMinPriceTick,
-            int24 baseAssetMaxPriceTick,
-            uint24 feeRate,
-            address ethToken,
-            address gasToken,
-            address pool,
-            address asserter,
-            uint64 assertionLiveness,
-            address bondCurrency,
-            uint256 bondAmount,
-            bytes32 priceUnit
+        address owner,
+        address collateralAsset,
+        address uniswapPositionManager,
+        address uniswapQuoter,
+        address uniswapSwapRouter,
+        address optimisticOracleV3,
+        Market.MarketParams memory marketParams
         )
     {
-        Epoch.Data storage epoch = Epoch.load();
+        Market.Data storage market = Market.load();
         return (
-            epoch.startTime,
-            epoch.endTime,
-            address(epoch.uniswapPositionManager),
-            address(epoch.collateralAsset),
-            epoch.marketParams.baseAssetMinPriceTick,
-            epoch.marketParams.baseAssetMaxPriceTick,
-            epoch.marketParams.feeRate,
-            address(epoch.ethToken),
-            address(epoch.gasToken),
-            address(epoch.pool),
-            address(epoch.asserter),
-            assertionLiveness,
-            address(bondCurrency),
-            bondAmount,
-            priceUnit
+        market.owner,
+        market.collateralAsset,
+        address(market.uniswapPositionManager),
+        address(market.uniswapQuoter),
+        address(market.uniswapSwapRouter),
+        address(market.optimisticOracleV3),
+        market.marketParams
         );
     }
 
