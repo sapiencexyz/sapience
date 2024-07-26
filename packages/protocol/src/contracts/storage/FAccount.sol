@@ -100,7 +100,7 @@ library FAccount {
             self,
             epoch,
             liquidity,
-            epoch.baseAssetMinPriceTick,
+            epoch.marketParams.baseAssetMinPriceTick,
             lowerTick,
             upperTick
         );
@@ -108,7 +108,7 @@ library FAccount {
             self,
             epoch,
             liquidity,
-            epoch.baseAssetMaxPriceTick,
+            epoch.marketParams.baseAssetMaxPriceTick,
             lowerTick,
             upperTick
         );

@@ -52,7 +52,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
             memory mintParams = INonfungiblePositionManager.MintParams({
                 token0: address(epoch.ethToken),
                 token1: address(epoch.gasToken),
-                fee: epoch.feeRate,
+                fee: epoch.marketParams.feeRate,
                 tickLower: params.lowerTick,
                 tickUpper: params.upperTick,
                 amount0Desired: params.amountTokenA,

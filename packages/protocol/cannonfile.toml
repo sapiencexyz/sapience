@@ -2,15 +2,19 @@ name="foil"
 version="0.1"
 
 [var.settings]
+owner = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
 startTime = "1719792000" # 2024-07-01 00:00:00 GMT
 endTime = "1735689599" # 2024-12-31 23:59:59 GMT
-baseAssetMinPrice = "7000" # 2
-baseAssetMaxPrice = "46000" # 100
+assertionLiveness = "3600"
+baseAssetMinPriceTick = "7000" # 2
+baseAssetMaxPriceTick = "46000" # 100
 feeRate = "10000" # 1%
-startingPrice = "112045541949572279837463876454" # 1
+startingSqrtPriceX96 = "112045541949572279837463876454" # 1
 resolver = "0x0000000000000000000000000000000000000000"
-asserter = "0x0000000000000000000000000000000000000000"
-depends = []
+bondAmount = "5000000000"
+priceUnit = "<%= formatBytes32String('Gas/Gwei') %>"
+optimisticOracleV3 = "0x0000000000000000000000000000000000000000" # Need UMA package to clone
+depends=[]
 
 [clone.Uniswap]
 source="uniswap"
@@ -20,6 +24,12 @@ target="foil@uniswap"
 source="mintable-token@permissionless-mint"
 target="foil@test-collateral-asset"
 var.symbol="wstETH"
+
+[clone.BondCurrency]
+source="mintable-token@permissionless-mint"
+target="foil@test-bond-currency"
+var.symbol="USDC"
+var.decimals = "6"
 
 [deploy.ReentrancyGuard]
 artifact = "ReentrancyGuard"
@@ -49,25 +59,30 @@ contracts=[
   "EpochNftModule",
 ]
 
+[invoke.initializeMarket]
+target="Foil"
+func="initializeMarket"
+args=[
+  "<%= settings.owner %>",
+  "<%= imports.CollateralAsset.contracts.Token.address %>",
+  "<%= imports.Uniswap.contracts.NonfungiblePositionManager.address %>",
+  "<%= imports.Uniswap.contracts.Quoter.address %>",
+  "<%= imports.Uniswap.contracts.SwapRouter.address %>",
+  "<%= settings.optimisticOracleV3 %>", # will be an import from a clone step
+  { baseAssetMinPriceTick = "<%= settings.baseAssetMinPriceTick %>", baseAssetMaxPriceTick = "<%= settings.baseAssetMaxPriceTick %>", feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.BondCurrency.contracts.Token.address %>", bondAmount= "<%= settings.bondAmount %>", priceUnit= "<%= settings.priceUnit %>" }
+]
+depends=["router.Foil"]
+
+
 [invoke.createEpoch]
 target="Foil"
 func="createEpoch"
 args=[
   "<%= settings.startTime %>",
   "<%= settings.endTime %>",
-  "<%= imports.Uniswap.contracts.NonfungiblePositionManager.address %>",
-  "<%= imports.Uniswap.contracts.Quoter.address %>",
-  "<%= imports.Uniswap.contracts.SwapRouter.address %>",
-  "<%= imports.CollateralAsset.contracts.Token.address %>",
-  "<%= settings.baseAssetMinPrice %>",
-  "<%= settings.baseAssetMaxPrice %>",
-  "<%= settings.feeRate %>",
-  "<%= settings.startingPrice %>",
-  "<%= settings.resolver %>",
-  "<%= settings.asserter %>",
-  
+  "<%= settings.startingSqrtPriceX96 %>"
 ]
-depends = ['var.settings', 'router.Foil']
+depends=["invoke.initializeMarket"]
 
 [invoke.gimmeTokens]
 target="CollateralAsset.Token"

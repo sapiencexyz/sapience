@@ -1,0 +1,102 @@
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.8.2 <0.9.0;
+
+import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../interfaces/external/INonfungiblePositionManager.sol";
+import "../interfaces/external/IUniswapV3Quoter.sol";
+import "../interfaces/external/ISwapRouter.sol";
+import "./Errors.sol";
+
+library Market {
+    struct MarketParams {
+        int24 baseAssetMinPriceTick;
+        int24 baseAssetMaxPriceTick;
+        uint24 feeRate;
+        uint64 assertionLiveness;
+        address bondCurrency;
+        uint256 bondAmount;
+        bytes32 priceUnit;
+    }
+
+    struct Data {
+        address owner;
+        address collateralAsset;
+        INonfungiblePositionManager uniswapPositionManager;
+        IUniswapV3Quoter uniswapQuoter;
+        ISwapRouter uniswapSwapRouter;
+        OptimisticOracleV3Interface optimisticOracleV3;
+        MarketParams marketParams;
+    }
+
+    function load() internal pure returns (Data storage market) {
+        bytes32 slot = keccak256("foil.gas.market");
+
+        assembly {
+            market.slot := slot
+        }
+    }
+
+    function createValid(
+        address owner,
+        address collateralAsset,
+        address uniswapPositionManager,
+        address uniswapQuoter,
+        address uniswapSwapRouter,
+        address optimisticOracleV3,
+        MarketParams memory marketParams
+    ) internal returns (Data storage market) {
+        market = load();
+
+        // can only be called once
+        if (
+            address(market.uniswapPositionManager) != address(0) ||
+            address(market.uniswapQuoter) != address(0)
+        ) {
+            revert Errors.MarketAlreadyCreated();
+        }
+
+        market.collateralAsset = collateralAsset;
+        market.uniswapPositionManager = INonfungiblePositionManager(
+            uniswapPositionManager
+        );
+        market.uniswapQuoter = IUniswapV3Quoter(uniswapQuoter);
+        market.uniswapSwapRouter = ISwapRouter(uniswapSwapRouter);
+        market.optimisticOracleV3 = OptimisticOracleV3Interface(
+            optimisticOracleV3
+        );
+        market.marketParams = marketParams;
+    }
+
+    function updateValid(
+        address owner,
+        address uniswapPositionManager,
+        address uniswapQuoter,
+        address uniswapSwapRouter,
+        address optimisticOracleV3,
+        MarketParams memory marketParams
+    ) internal returns (Data storage market) {
+        market = load();
+
+        market.owner = owner;
+        market.uniswapPositionManager = INonfungiblePositionManager(
+            uniswapPositionManager
+        );
+        market.uniswapQuoter = IUniswapV3Quoter(uniswapQuoter);
+        market.uniswapSwapRouter = ISwapRouter(uniswapSwapRouter);
+        market.optimisticOracleV3 = OptimisticOracleV3Interface(
+            optimisticOracleV3
+        );
+        market.marketParams = marketParams;
+    }
+
+    function loadValid() internal view returns (Data storage market) {
+        market = load();
+
+        if (address(market.uniswapPositionManager) == address(0)) {
+            revert Errors.InvalidMarket();
+        }
+    }
+}
