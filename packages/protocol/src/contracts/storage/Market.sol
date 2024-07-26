@@ -58,6 +58,7 @@ library Market {
             revert Errors.MarketAlreadyCreated();
         }
 
+        market.owner = owner;
         market.collateralAsset = collateralAsset;
         market.uniswapPositionManager = INonfungiblePositionManager(
             uniswapPositionManager

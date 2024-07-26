@@ -2,7 +2,7 @@ name="foil"
 version="0.1"
 
 [var.settings]
-owner = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+owner = "0xEB045D78d273107348b0300c01D29B7552D622ab"
 startTime = "1719792000" # 2024-07-01 00:00:00 GMT
 endTime = "1735689599" # 2024-12-31 23:59:59 GMT
 assertionLiveness = "3600"
