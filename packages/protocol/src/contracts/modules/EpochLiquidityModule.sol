@@ -34,8 +34,6 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
             uint256 addedAmount1
         )
     {
-        // create or load account
-        // save tokenId to account
         tokenId = ERC721EnumerableStorage.totalSupply() + 1;
         FAccount.Data storage account = FAccount.createValid(tokenId);
         ERC721Storage._mint(msg.sender, tokenId);
@@ -74,6 +72,13 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
         (, , address token0, address token1, , , , uint128 liq, , , , ) = market
             .uniswapPositionManager
             .positions(tokenId);
+
+        account.validateProvidedLiquidity(
+            epoch,
+            liquidity,
+            params.lowerTick,
+            params.upperTick
+        );
 
         // TODO: refund
     }
@@ -243,6 +248,8 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
     function getPosition(
         uint256 accountId
     )
+        external
+        view
         returns (
             uint256 tokenId,
             uint256 collateralAmount,

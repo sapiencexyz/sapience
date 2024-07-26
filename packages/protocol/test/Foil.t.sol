@@ -40,17 +40,13 @@ contract FoilTest is Test {
         //     306849353968360525628702781967
         // ); // 15
 
-        // (uint256 amountGAS, uint256 amountGWEI) = foil.efficientTokenAmounts(
-        //     50 ether
-        // );
-
         IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
             .LiquidityPositionParams({
                 amountTokenA: 50 ether,
                 amountTokenB: 50 ether,
-                collateralAmount: 10 ether,
+                collateralAmount: 12 ether,
                 lowerTick: 16000, // 5
-                upperTick: 30000, // 20,
+                upperTick: 29800, // 20,
                 minAmountTokenA: 0,
                 minAmountTokenB: 0
             });
@@ -133,37 +129,37 @@ contract FoilTest is Test {
     //     // console2.log("TRADED after settle 2", tradedAmoun0, tradedAmount2);
     // }
 
-    // function getAndLogPosition(uint256 positionId) public {
-    //     (
-    //         uint96 nonce,
-    //         address operator,
-    //         address token0,
-    //         address token1,
-    //         uint24 fee,
-    //         int24 tickLower,
-    //         int24 tickUpper,
-    //         uint128 liquidity,
-    //         uint256 feeGrowthInside0LastX128,
-    //         uint256 feeGrowthInside1LastX128,
-    //         uint128 tokensOwed0,
-    //         uint128 tokensOwed1
-    //     ) = foil.getPosition(positionId);
+    function getAndLogPosition(uint256 positionId) public {
+        (
+            uint96 nonce,
+            address operator,
+            address token0,
+            address token1,
+            uint24 fee,
+            int24 tickLower,
+            int24 tickUpper,
+            uint128 liquidity,
+            uint256 feeGrowthInside0LastX128,
+            uint256 feeGrowthInside1LastX128,
+            uint128 tokensOwed0,
+            uint128 tokensOwed1
+        ) = foil.getPosition(positionId);
 
-    //     console2.log("START POSITION", positionId);
-    //     console2.log("  nonce                    : ", nonce);
-    //     console2.log("  operator                 : ", operator);
-    //     console2.log("  token0                   : ", token0);
-    //     console2.log("  token1                   : ", token1);
-    //     console2.log("  fee                      : ", fee);
-    //     console2.log("  tickLower                : ", tickLower);
-    //     console2.log("  tickUpper                : ", tickUpper);
-    //     console2.log("  liquidity                : ", liquidity);
-    //     console2.log("  feeGrowthInside0LastX128 : ", feeGrowthInside0LastX128);
-    //     console2.log("  feeGrowthInside1LastX128 : ", feeGrowthInside1LastX128);
-    //     console2.log("  tokensOwed0              : ", tokensOwed0);
-    //     console2.log("  tokensOwed1              : ", tokensOwed1);
-    //     console2.log("END   POSITION", positionId);
-    // }
+        console2.log("START POSITION", positionId);
+        console2.log("  nonce                    : ", nonce);
+        console2.log("  operator                 : ", operator);
+        console2.log("  token0                   : ", token0);
+        console2.log("  token1                   : ", token1);
+        console2.log("  fee                      : ", fee);
+        console2.log("  tickLower                : ", tickLower);
+        console2.log("  tickUpper                : ", tickUpper);
+        console2.log("  liquidity                : ", liquidity);
+        console2.log("  feeGrowthInside0LastX128 : ", feeGrowthInside0LastX128);
+        console2.log("  feeGrowthInside1LastX128 : ", feeGrowthInside1LastX128);
+        console2.log("  tokensOwed0              : ", tokensOwed0);
+        console2.log("  tokensOwed1              : ", tokensOwed1);
+        console2.log("END   POSITION", positionId);
+    }
     // function test_addLiquidityAndLongs() public {
     //     int24 tickSpacing = IUniswapV3Pool(pool).tickSpacing();
     //     // int24 lowerTick = TickMath.getTickAtSqrtRatio(

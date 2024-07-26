@@ -137,10 +137,6 @@ library Epoch {
         ).slot0();
         int24 spacing = IUniswapV3Pool(epoch.pool).tickSpacing();
 
-        console2.log("Spacing : ", spacing);
-        console2.log("SqrtPriceX96 : ", sqrtPriceX96);
-        console2.log("Tick : ", tick);
-
         // mint
         epoch.ethToken.mint(address(this), type(uint256).max);
         epoch.gasToken.mint(address(this), type(uint256).max);
@@ -166,28 +162,6 @@ library Epoch {
         if (epoch.endTime == 0) {
             revert Errors.InvalidEpoch();
         }
-    }
-
-    function quoteGweiToGas(
-        Data storage self,
-        uint256 gweiAmount,
-        int24 priceTick
-    ) internal returns (uint256) {
-        return FullMath.mulDiv(gweiAmount, 1e18, tickToPrice(priceTick));
-    }
-
-    function quoteGasToGwei(
-        Data storage self,
-        uint256 gasAmount,
-        int24 priceTick
-    ) internal returns (uint256) {
-        return FullMath.mulDiv(gasAmount, tickToPrice(priceTick), 1e18);
-    }
-
-    // should move to lib
-    function tickToPrice(int24 tick) internal pure returns (uint256) {
-        uint160 sqrtPriceX96 = TickMath.getSqrtRatioAtTick(tick);
-        return (uint256(sqrtPriceX96) * uint256(sqrtPriceX96) * (1e18)) >> 96;
     }
 
     function validateSettlmentState(Data storage self) internal {
@@ -222,6 +196,14 @@ library Epoch {
             return;
             // revert Errors.EpochNotSettled(self.endTime);
         }
+    }
+
+    function transferCollateral(Data storage self, uint256 amount) internal {
+        IERC20(self.collateralAsset).transferFrom(
+            msg.sender,
+            address(this),
+            amount
+        );
     }
 
     // function settle(Data storage self) internal {
