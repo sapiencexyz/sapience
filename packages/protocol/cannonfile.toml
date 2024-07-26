@@ -21,6 +21,12 @@ source="mintable-token@permissionless-mint"
 target="foil@test-collateral-asset"
 var.symbol="wstETH"
 
+[clone.BondCurrency]
+source="mintable-token@permissionless-mint"
+target="foil@test-bond-currency"
+var.symbol="USDC"
+var.decimals = "6"
+
 [deploy.ReentrancyGuard]
 artifact = "ReentrancyGuard"
 
@@ -66,6 +72,10 @@ args=[
   "<%= settings.resolver %>",
   "<%= settings.asserter %>",
   
+        uint64 assertionLiveness,
+        address bondCurrency,
+        uint256 bondAmount,
+        bytes priceUnit,
 ]
 depends = ['var.settings', 'router.Foil']
 

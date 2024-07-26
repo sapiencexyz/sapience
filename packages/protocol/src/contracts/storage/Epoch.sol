@@ -48,8 +48,8 @@ struct Settlement {
         uint64 assertionLiveness;
         IERC20 bondCurrency;
         uint256 bondAmount;
+        bytes32 priceUnit;
         bytes32 assertionId;
-        bytes priceUnit;
         Settlement settlement;
     }
 
@@ -96,7 +96,11 @@ struct Settlement {
         uint24 feeRate,
         uint160 startingSqrtPriceX96,
         address optimisticOracleV3,
-        address asserter
+        address asserter,
+        uint64 assertionLiveness,
+        address bondCurrency,
+        uint256 bondAmount,
+        bytes32 priceUnit
     ) internal returns (Data storage epoch) {
         epoch = load();
 
@@ -130,6 +134,10 @@ struct Settlement {
             optimisticOracleV3
         );
         epoch.asserter = asserter;
+        epoch.assertionLiveness = assertionLiveness;
+        epoch.bondCurrency = IERC20(bondCurrency);
+        epoch.bondAmount = bondAmount;
+        epoch.priceUnit = priceUnit;
 
         VirtualToken tokenA = new VirtualToken(
             address(this),
