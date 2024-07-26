@@ -1,5 +1,5 @@
 {
-  "address": "0x2f615cbfa7f075cbf889ee1b3ac20cfabbf921db",
+  "address": "0xbb3336b71be6e789e633970fcdc467fa1e7e95ba",
   "abi": [
     {
       "type": "function",
@@ -16,58 +16,11 @@
           "internalType": "uint256"
         },
         {
-          "name": "uniswapPositionManager",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "uniswapQuoter",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "uniswapSwapRouter",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "collateralAsset",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "baseAssetMinTick",
-          "type": "int24",
-          "internalType": "int24"
-        },
-        {
-          "name": "baseAssetMaxTick",
-          "type": "int24",
-          "internalType": "int24"
-        },
-        {
-          "name": "feeRate",
-          "type": "uint24",
-          "internalType": "uint24"
-        },
-        {
           "name": "startingSqrtPriceX96",
           "type": "uint160",
           "internalType": "uint160"
-        },
-        {
-          "name": "optimisticOracleV3",
-          "type": "address",
-          "internalType": "address"
         }
       ],
-      "outputs": [],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
-      "name": "createTraderPosition",
-      "inputs": [],
       "outputs": [],
       "stateMutability": "nonpayable"
     },
@@ -141,17 +94,7 @@
       "inputs": [],
       "outputs": [
         {
-          "name": "startTime",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "endTime",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "uniswapPositionManager",
+          "name": "owner",
           "type": "address",
           "internalType": "address"
         },
@@ -161,34 +104,66 @@
           "internalType": "address"
         },
         {
-          "name": "baseAssetMinPriceTick",
-          "type": "int24",
-          "internalType": "int24"
-        },
-        {
-          "name": "baseAssetMaxPriceTick",
-          "type": "int24",
-          "internalType": "int24"
-        },
-        {
-          "name": "feeRate",
-          "type": "uint24",
-          "internalType": "uint24"
-        },
-        {
-          "name": "ethToken",
+          "name": "uniswapPositionManager",
           "type": "address",
           "internalType": "address"
         },
         {
-          "name": "gasToken",
+          "name": "uniswapQuoter",
           "type": "address",
           "internalType": "address"
         },
         {
-          "name": "pool",
+          "name": "uniswapSwapRouter",
           "type": "address",
           "internalType": "address"
+        },
+        {
+          "name": "optimisticOracleV3",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "marketParams",
+          "type": "tuple",
+          "internalType": "struct Market.MarketParams",
+          "components": [
+            {
+              "name": "baseAssetMinPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "baseAssetMaxPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "feeRate",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "assertionLiveness",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "bondAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "priceUnit",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ]
         }
       ],
       "stateMutability": "view"
@@ -235,34 +210,159 @@
       "stateMutability": "pure"
     },
     {
-      "type": "event",
-      "name": "Transfer",
+      "type": "function",
+      "name": "initializeMarket",
       "inputs": [
         {
-          "name": "from",
+          "name": "owner",
           "type": "address",
-          "indexed": true,
           "internalType": "address"
         },
         {
-          "name": "to",
+          "name": "collateralAsset",
           "type": "address",
-          "indexed": true,
           "internalType": "address"
         },
         {
-          "name": "tokenId",
-          "type": "uint256",
-          "indexed": true,
-          "internalType": "uint256"
+          "name": "uniswapPositionManager",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapQuoter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapSwapRouter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "optimisticOracleV3",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "marketParams",
+          "type": "tuple",
+          "internalType": "struct Market.MarketParams",
+          "components": [
+            {
+              "name": "baseAssetMinPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "baseAssetMaxPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "feeRate",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "assertionLiveness",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "bondAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "priceUnit",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ]
         }
       ],
-      "anonymous": false
+      "outputs": [],
+      "stateMutability": "nonpayable"
     },
     {
-      "type": "error",
-      "name": "AccountAlreadyCreated",
-      "inputs": []
+      "type": "function",
+      "name": "updateMarket",
+      "inputs": [
+        {
+          "name": "owner",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapPositionManager",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapQuoter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapSwapRouter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "optimisticOracleV3",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "marketParams",
+          "type": "tuple",
+          "internalType": "struct Market.MarketParams",
+          "components": [
+            {
+              "name": "baseAssetMinPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "baseAssetMaxPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "feeRate",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "assertionLiveness",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "bondAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "priceUnit",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
     },
     {
       "type": "error",
@@ -271,19 +371,13 @@
     },
     {
       "type": "error",
-      "name": "InvalidParameter",
-      "inputs": [
-        {
-          "name": "parameter",
-          "type": "string",
-          "internalType": "string"
-        },
-        {
-          "name": "reason",
-          "type": "string",
-          "internalType": "string"
-        }
-      ]
+      "name": "InvalidMarket",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "MarketAlreadyCreated",
+      "inputs": []
     },
     {
       "type": "error",
@@ -292,23 +386,7 @@
     },
     {
       "type": "error",
-      "name": "TokenAlreadyMinted",
-      "inputs": [
-        {
-          "name": "id",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ]
-    },
-    {
-      "type": "error",
       "name": "TokensAlreadyCreated",
-      "inputs": []
-    },
-    {
-      "type": "error",
-      "name": "ZeroAddress",
       "inputs": []
     },
     {
@@ -405,40 +483,6 @@
         }
       ],
       "stateMutability": "payable"
-    },
-    {
-      "type": "function",
-      "name": "getFoilPosition",
-      "inputs": [
-        {
-          "name": "accountId",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "tokenId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "collateralAmount",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "borrowedGwei",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "borrowedGas",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "stateMutability": "view"
     },
     {
       "type": "function",
@@ -588,9 +632,55 @@
       "stateMutability": "payable"
     },
     {
+      "type": "event",
+      "name": "Transfer",
+      "inputs": [
+        {
+          "name": "from",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "to",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccountAlreadyCreated",
+      "inputs": []
+    },
+    {
       "type": "error",
       "name": "InsufficientCollateral",
       "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidParameter",
+      "inputs": [
+        {
+          "name": "parameter",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "internalType": "string"
+        }
+      ]
     },
     {
       "type": "error",
@@ -608,60 +698,55 @@
       "inputs": []
     },
     {
-      "type": "function",
-      "name": "assertedFinalPrice",
-      "inputs": [],
-      "outputs": [
+      "type": "error",
+      "name": "TokenAlreadyMinted",
+      "inputs": [
         {
-          "name": "",
+          "name": "id",
           "type": "uint256",
           "internalType": "uint256"
         }
-      ],
-      "stateMutability": "view"
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ZeroAddress",
+      "inputs": []
     },
     {
       "type": "function",
-      "name": "asserter",
-      "inputs": [],
-      "outputs": [
+      "name": "assertionDisputedCallback",
+      "inputs": [
         {
-          "name": "",
-          "type": "address",
-          "internalType": "address"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
-      "name": "assertionId",
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "",
+          "name": "assertionId",
           "type": "bytes32",
           "internalType": "bytes32"
         }
       ],
-      "stateMutability": "view"
+      "outputs": [],
+      "stateMutability": "nonpayable"
     },
     {
       "type": "function",
-      "name": "claim",
-      "inputs": [],
-      "outputs": [
+      "name": "assertionResolvedCallback",
+      "inputs": [
         {
-          "name": "",
-          "type": "bytes",
-          "internalType": "bytes"
+          "name": "assertionId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "assertedTruthfully",
+          "type": "bool",
+          "internalType": "bool"
         }
       ],
-      "stateMutability": "view"
+      "outputs": [],
+      "stateMutability": "nonpayable"
     },
     {
       "type": "function",
-      "name": "fakeSettle",
+      "name": "submitSettlementPrice",
       "inputs": [
         {
           "name": "settlementPrice",
@@ -669,47 +754,97 @@
           "internalType": "uint256"
         }
       ],
-      "outputs": [],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
-      "name": "finalPrice",
-      "inputs": [],
       "outputs": [
         {
           "name": "",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
-      "name": "settle",
-      "inputs": [],
-      "outputs": [],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
-      "name": "submitFinalPrice",
-      "inputs": [
-        {
-          "name": "finalPrice",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "assertionId",
           "type": "bytes32",
           "internalType": "bytes32"
         }
       ],
       "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "MarketSettled",
+      "inputs": [
+        {
+          "name": "settlementPrice",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "SettlementDisputed",
+      "inputs": [
+        {
+          "name": "disputeTime",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "SettlementSubmitted",
+      "inputs": [
+        {
+          "name": "price",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "submissionTime",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AddressEmptyCode",
+      "inputs": [
+        {
+          "name": "target",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "AddressInsufficientBalance",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "FailedInnerCall",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "SafeERC20FailedOperation",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
     },
     {
       "type": "function",
@@ -746,7 +881,7 @@
       "inputs": [],
       "outputs": [
         {
-          "name": "",
+          "name": "price18Digits",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -1212,11 +1347,11 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0x3e8330ede4e1e6c706fe0c5b68ae7bbcfb4d0f9c43e3293d3f6d0c3109fe35f4",
+  "deployTxnHash": "0xa99cf48d9293a387673e8053b2ca713440980e810d0e89b9ea960a26b4860d52",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1722026358",
+  "deployTimestamp": "1722028049",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
-  "gasUsed": 473936,
-  "gasCost": "1008230240"
+  "gasUsed": 423130,
+  "gasCost": "1001510609"
 }

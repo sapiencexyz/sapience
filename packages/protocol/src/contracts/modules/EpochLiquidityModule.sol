@@ -8,6 +8,7 @@ import "../storage/ERC721EnumerableStorage.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../storage/FAccount.sol";
 import "../storage/Market.sol";
+import "../storage/Epoch.sol";
 import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
 
 import "forge-std/console2.sol";
@@ -19,7 +20,6 @@ uint256 constant Q192 = 2 ** 192;
 
 contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
     using Market for Market.Data;
-    using Epoch for Epoch.Data;
     using FAccount for FAccount.Data;
 
     function createLiquidityPosition(
@@ -74,7 +74,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
             .positions(tokenId);
 
         account.validateProvidedLiquidity(
-            epoch,
+            epoch.marketParams,
             liquidity,
             params.lowerTick,
             params.upperTick

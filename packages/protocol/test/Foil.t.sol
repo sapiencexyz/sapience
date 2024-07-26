@@ -44,7 +44,7 @@ contract FoilTest is Test {
             .LiquidityPositionParams({
                 amountTokenA: 50 ether,
                 amountTokenB: 50 ether,
-                collateralAmount: 12 ether,
+                collateralAmount: 50 ether,
                 lowerTick: 16000, // 5
                 upperTick: 29800, // 20,
                 minAmountTokenA: 0,

@@ -2,14 +2,13 @@
 
 pragma solidity >=0.8.2 <0.9.0;
 
+import {TickMath} from "../external/univ3/TickMath.sol";
 import "./Position.sol";
-import "./Epoch.sol";
+import "./Market.sol";
 import "../external/univ3/LiquidityAmounts.sol";
 import "forge-std/console2.sol";
 
 library FAccount {
-    using Epoch for Epoch.Data;
-
     struct Data {
         uint256 tokenId; // nft id
         uint256 collateralAmount; // configured collateral
@@ -90,20 +89,13 @@ library FAccount {
 */
 
     struct RuntimeValidateParams {
-        uint160 readablePrice;
         uint160 sqrtPriceAX96;
         uint160 sqrtPriceBX96;
-        uint256 gweiAmount;
-        uint256 gasAmount;
-        uint256 gweiFromGas;
-        uint256 totalGweiAmount;
-        uint256 leftoverGwei;
-        uint256 leftoverGas;
     }
 
     function validateProvidedLiquidity(
         Data storage self,
-        Epoch.Data storage epoch,
+        Market.MarketParams memory marketParams,
         uint128 liquidity,
         int24 lowerTick,
         int24 upperTick
@@ -137,7 +129,7 @@ library FAccount {
 
         uint256 leftoverGweiAmountAtLowerTick = quoteGasToGwei(
             amountGasAtLowerTick - self.borrowedGas,
-            epoch.baseAssetMinTick
+            marketParams.baseAssetMinPriceTick
         );
 
         console2.log(
@@ -164,7 +156,7 @@ library FAccount {
         console2.log("AVAILABLE GWEI FROM POSITION", availableGweiFromPosition);
         uint256 maxAvailableGasToPayLoan = quoteGweiToGas(
             availableGweiFromPosition + self.collateralAmount,
-            epoch.baseAssetMaxTick
+            marketParams.baseAssetMaxPriceTick
         );
 
         console2.log(

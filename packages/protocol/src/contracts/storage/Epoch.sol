@@ -198,13 +198,13 @@ library Epoch {
         }
     }
 
-    function transferCollateral(Data storage self, uint256 amount) internal {
-        IERC20(self.collateralAsset).transferFrom(
-            msg.sender,
-            address(this),
-            amount
-        );
-    }
+    // function transferCollateral(Data storage self, uint256 amount) internal {
+    //     IERC20(self.collateralAsset).transferFrom(
+    //         msg.sender,
+    //         address(this),
+    //         amount
+    //     );
+    // }
 
     // function settle(Data storage self) internal {
     //     if (self.settled) {

@@ -1,5 +1,5 @@
 {
-  "address": "0xa587AB648d1B5B10D7369482addD46Ec106Ca15A",
+  "address": "0x30DA4f47f1b9CAA16f7b5a81Eb3f6852F0Eb7EC5",
   "abi": [
     {
       "type": "function",
@@ -16,58 +16,11 @@
           "internalType": "uint256"
         },
         {
-          "name": "uniswapPositionManager",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "uniswapQuoter",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "uniswapSwapRouter",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "collateralAsset",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "baseAssetMinTick",
-          "type": "int24",
-          "internalType": "int24"
-        },
-        {
-          "name": "baseAssetMaxTick",
-          "type": "int24",
-          "internalType": "int24"
-        },
-        {
-          "name": "feeRate",
-          "type": "uint24",
-          "internalType": "uint24"
-        },
-        {
           "name": "startingSqrtPriceX96",
           "type": "uint160",
           "internalType": "uint160"
-        },
-        {
-          "name": "optimisticOracleV3",
-          "type": "address",
-          "internalType": "address"
         }
       ],
-      "outputs": [],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
-      "name": "createTraderPosition",
-      "inputs": [],
       "outputs": [],
       "stateMutability": "nonpayable"
     },
@@ -141,17 +94,7 @@
       "inputs": [],
       "outputs": [
         {
-          "name": "startTime",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "endTime",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "uniswapPositionManager",
+          "name": "owner",
           "type": "address",
           "internalType": "address"
         },
@@ -161,34 +104,66 @@
           "internalType": "address"
         },
         {
-          "name": "baseAssetMinPriceTick",
-          "type": "int24",
-          "internalType": "int24"
-        },
-        {
-          "name": "baseAssetMaxPriceTick",
-          "type": "int24",
-          "internalType": "int24"
-        },
-        {
-          "name": "feeRate",
-          "type": "uint24",
-          "internalType": "uint24"
-        },
-        {
-          "name": "ethToken",
+          "name": "uniswapPositionManager",
           "type": "address",
           "internalType": "address"
         },
         {
-          "name": "gasToken",
+          "name": "uniswapQuoter",
           "type": "address",
           "internalType": "address"
         },
         {
-          "name": "pool",
+          "name": "uniswapSwapRouter",
           "type": "address",
           "internalType": "address"
+        },
+        {
+          "name": "optimisticOracleV3",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "marketParams",
+          "type": "tuple",
+          "internalType": "struct Market.MarketParams",
+          "components": [
+            {
+              "name": "baseAssetMinPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "baseAssetMaxPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "feeRate",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "assertionLiveness",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "bondAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "priceUnit",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ]
         }
       ],
       "stateMutability": "view"
@@ -235,34 +210,159 @@
       "stateMutability": "pure"
     },
     {
-      "type": "event",
-      "name": "Transfer",
+      "type": "function",
+      "name": "initializeMarket",
       "inputs": [
         {
-          "name": "from",
+          "name": "owner",
           "type": "address",
-          "indexed": true,
           "internalType": "address"
         },
         {
-          "name": "to",
+          "name": "collateralAsset",
           "type": "address",
-          "indexed": true,
           "internalType": "address"
         },
         {
-          "name": "tokenId",
-          "type": "uint256",
-          "indexed": true,
-          "internalType": "uint256"
+          "name": "uniswapPositionManager",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapQuoter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapSwapRouter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "optimisticOracleV3",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "marketParams",
+          "type": "tuple",
+          "internalType": "struct Market.MarketParams",
+          "components": [
+            {
+              "name": "baseAssetMinPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "baseAssetMaxPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "feeRate",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "assertionLiveness",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "bondAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "priceUnit",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ]
         }
       ],
-      "anonymous": false
+      "outputs": [],
+      "stateMutability": "nonpayable"
     },
     {
-      "type": "error",
-      "name": "AccountAlreadyCreated",
-      "inputs": []
+      "type": "function",
+      "name": "updateMarket",
+      "inputs": [
+        {
+          "name": "owner",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapPositionManager",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapQuoter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapSwapRouter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "optimisticOracleV3",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "marketParams",
+          "type": "tuple",
+          "internalType": "struct Market.MarketParams",
+          "components": [
+            {
+              "name": "baseAssetMinPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "baseAssetMaxPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "feeRate",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "assertionLiveness",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "bondAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "priceUnit",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
     },
     {
       "type": "error",
@@ -271,19 +371,13 @@
     },
     {
       "type": "error",
-      "name": "InvalidParameter",
-      "inputs": [
-        {
-          "name": "parameter",
-          "type": "string",
-          "internalType": "string"
-        },
-        {
-          "name": "reason",
-          "type": "string",
-          "internalType": "string"
-        }
-      ]
+      "name": "InvalidMarket",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "MarketAlreadyCreated",
+      "inputs": []
     },
     {
       "type": "error",
@@ -292,34 +386,18 @@
     },
     {
       "type": "error",
-      "name": "TokenAlreadyMinted",
-      "inputs": [
-        {
-          "name": "id",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ]
-    },
-    {
-      "type": "error",
       "name": "TokensAlreadyCreated",
-      "inputs": []
-    },
-    {
-      "type": "error",
-      "name": "ZeroAddress",
       "inputs": []
     }
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x3d1f66788999bbc1e593304a65ff1f8056e83e44b4fa6c64cb969861ad899e58",
+  "deployTxnHash": "0x9fa18571cd0e0ac2b8edf531d47401bd372c64bc0af3f303bfff5690bf042222",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1722026354",
+  "deployTimestamp": "1722028045",
   "sourceName": "src/contracts/modules/EpochConfigurationModule.sol",
   "contractName": "EpochConfigurationModule",
   "deployedOn": "deploy.EpochConfigurationModule",
-  "gasUsed": 1899261,
-  "gasCost": "1025922144"
+  "gasUsed": 2025179,
+  "gasCost": "1005326146"
 }

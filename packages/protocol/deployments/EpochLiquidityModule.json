@@ -1,5 +1,5 @@
 {
-  "address": "0xd15752c9afd99a1A2BEde75C465e42585592E417",
+  "address": "0xD7c10Acc02607652526078b1dA0e0DD4661Ca159",
   "abi": [
     {
       "type": "function",
@@ -95,40 +95,6 @@
         }
       ],
       "stateMutability": "payable"
-    },
-    {
-      "type": "function",
-      "name": "getFoilPosition",
-      "inputs": [
-        {
-          "name": "accountId",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "tokenId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "collateralAmount",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "borrowedGwei",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "borrowedGas",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "stateMutability": "view"
     },
     {
       "type": "function",
@@ -367,12 +333,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xed29c9df464db891f8c1b773fba36618adf1748949ab531cec3beec76e3232f1",
+  "deployTxnHash": "0xf65f0e235ba47fee1af270b3532c2378311465bdbdcdd84f0642a366b6235aaa",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1722026353",
+  "deployTimestamp": "1722028044",
   "sourceName": "src/contracts/modules/EpochLiquidityModule.sol",
   "contractName": "EpochLiquidityModule",
   "deployedOn": "deploy.EpochLiquidityModule",
-  "gasUsed": 1864584,
-  "gasCost": "1023092151"
+  "gasUsed": 1907869,
+  "gasCost": "1004750265"
 }
