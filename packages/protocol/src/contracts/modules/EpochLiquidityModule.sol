@@ -6,6 +6,7 @@ import "../storage/ERC721Storage.sol";
 import "../storage/ERC721EnumerableStorage.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../storage/FAccount.sol";
+import "../storage/Market.sol";
 import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
 
 import "forge-std/console2.sol";
@@ -16,6 +17,7 @@ uint256 constant ONE_ETH_IN_WEI = 10 ** 18;
 uint256 constant Q192 = 2 ** 192;
 
 contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
+    using Market for Market.Data;
     using Epoch for Epoch.Data;
     using FAccount for FAccount.Data;
 
@@ -37,14 +39,15 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
         FAccount.Data storage account = FAccount.createValid(tokenId);
         ERC721Storage._mint(msg.sender, tokenId);
 
+        Market.Data storage market = Market.load();
         Epoch.Data storage epoch = Epoch.load();
 
         epoch.ethToken.approve(
-            address(epoch.uniswapPositionManager),
+            address(market.uniswapPositionManager),
             params.amountTokenA
         );
         epoch.gasToken.approve(
-            address(epoch.uniswapPositionManager),
+            address(market.uniswapPositionManager),
             params.amountTokenB
         );
 
@@ -63,7 +66,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
                 deadline: block.timestamp
             });
 
-        (tokenId, liquidity, addedAmount0, addedAmount1) = epoch
+        (tokenId, liquidity, addedAmount0, addedAmount1) = market
             .uniswapPositionManager
             .mint(mintParams);
 
@@ -74,7 +77,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
             addedAmount1
         );
 
-        (, , address token0, address token1, , , , uint128 liq, , , , ) = epoch
+        (, , address token0, address token1, , , , uint128 liq, , , , ) = market
             .uniswapPositionManager
             .positions(tokenId);
 
@@ -97,6 +100,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
     function collectFees(
         uint256 tokenId
     ) external returns (uint256 amount0, uint256 amount1) {
+        Market.Data storage market = Market.load();
         Epoch.Data storage epoch = Epoch.load();
 
         // TODO: verify msg sender is owner of this tokenId
@@ -109,7 +113,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
                 amount1Max: type(uint128).max
             });
 
-        (amount0, amount1) = epoch.uniswapPositionManager.collect(params);
+        (amount0, amount1) = market.uniswapPositionManager.collect(params);
 
         // transfer the collateral to the account (virtual tokens)
         // use current price to determine collateral amount
@@ -137,8 +141,8 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
             uint128 tokensOwed1
         )
     {
-        Epoch.Data storage epoch = Epoch.load();
-        return epoch.uniswapPositionManager.positions(positionId);
+        Market.Data storage market = Market.load();
+        return market.uniswapPositionManager.positions(positionId);
     }
 
     function updateLiquidityPosition(
@@ -148,6 +152,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
         uint256 minLiquidity
     ) external payable returns (uint256 amount0, uint256 amount1) {
         console2.log("UPDATELIQPOSITION");
+        Market.Data storage market = Market.load();
         Epoch.Data storage epoch = Epoch.load();
         console2.log("removing liquidity");
         console2.logAddress(address(this));
@@ -162,7 +167,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
                     deadline: block.timestamp
                 });
 
-        (amount0, amount1) = epoch.uniswapPositionManager.decreaseLiquidity(
+        (amount0, amount1) = market.uniswapPositionManager.decreaseLiquidity(
             decreaseParams
         );
         console2.log("REMOVED", amount0, amount1);
