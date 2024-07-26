@@ -324,6 +324,7 @@ contract EpochTradeModule {
             revert("At least one token should be traded");
         }
 
+        Market.Data storage market = Market.load();
         Epoch.Data storage epoch = Epoch.load();
         epoch.validateSettlmentState();
 
@@ -362,7 +363,7 @@ contract EpochTradeModule {
                     amountOutMinimum: 0,
                     sqrtPriceLimitX96: 0
                 });
-            uint256 amountOut = epoch.uniswapSwapRouter.exactInputSingle(
+            uint256 amountOut = market.uniswapSwapRouter.exactInputSingle(
                 params
             );
 
@@ -396,6 +397,7 @@ contract EpochTradeModule {
             revert("At least one token should be traded");
         }
 
+        Market.Data storage market = Market.load();
         Epoch.Data storage epoch = Epoch.load();
         epoch.validateSettlmentState();
 
@@ -444,7 +446,7 @@ contract EpochTradeModule {
                     sqrtPriceLimitX96: 0
                 });
 
-            uint256 amountIn = epoch.uniswapSwapRouter.exactOutputSingle(
+            uint256 amountIn = market.uniswapSwapRouter.exactOutputSingle(
                 params
             );
 

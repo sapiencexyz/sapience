@@ -31,22 +31,12 @@ library Epoch {
     struct Data {
         uint startTime;
         uint endTime;
-        INonfungiblePositionManager uniswapPositionManager;
-        IUniswapV3Quoter uniswapQuoter;
-        ISwapRouter uniswapSwapRouter;
         VirtualToken ethToken;
         VirtualToken gasToken;
         IUniswapV3Pool pool;
-        address collateralAsset;
         bool settled;
         uint256 settlementPrice;
         mapping(uint256 => Debt.Data) lpDebtPositions;
-        OptimisticOracleV3Interface optimisticOracleV3;
-        address asserter;
-        uint64 assertionLiveness;
-        IERC20 bondCurrency;
-        uint256 bondAmount;
-        bytes32 priceUnit;
         bytes32 assertionId;
         Settlement settlement;
         Market.MarketParams marketParams; // Storing MarketParams as a struct within Epoch.Data
@@ -98,8 +88,7 @@ library Epoch {
 
         // can only be called once
         if (
-            epoch.endTime != 0 ||
-            address(epoch.uniswapPositionManager) != address(0)
+            epoch.endTime != 0
         ) {
             revert Errors.EpochAlreadyStarted();
         }
@@ -113,15 +102,6 @@ library Epoch {
 
         epoch.startTime = startTime;
         epoch.endTime = endTime;
-        epoch.uniswapPositionManager = INonfungiblePositionManager(
-            uniswapPositionManager
-        );
-        epoch.uniswapQuoter = IUniswapV3Quoter(uniswapQuoter);
-        epoch.uniswapSwapRouter = ISwapRouter(uniswapSwapRouter);
-        epoch.collateralAsset = collateralAsset;
-        epoch.optimisticOracleV3 = OptimisticOracleV3Interface(
-            optimisticOracleV3
-        );
         epoch.marketParams = marketParams;
 
         VirtualToken tokenA = new VirtualToken(
@@ -144,7 +124,7 @@ library Epoch {
             epoch.gasToken = tokenA;
         }
         epoch.pool = IUniswapV3Pool(
-            IUniswapV3Factory(epoch.uniswapPositionManager.factory())
+            IUniswapV3Factory(INonfungiblePositionManager(uniswapPositionManager).factory())
                 .createPool(
                     address(epoch.ethToken),
                     address(epoch.gasToken),
@@ -168,21 +148,21 @@ library Epoch {
 
         // approve to uniswapPositionManager
         epoch.ethToken.approve(
-            address(epoch.uniswapPositionManager),
+            address(uniswapPositionManager),
             type(uint256).max
         );
         epoch.gasToken.approve(
-            address(epoch.uniswapPositionManager),
+            address(uniswapPositionManager),
             type(uint256).max
         );
 
         // approve to uniswapSwapRouter
         epoch.ethToken.approve(
-            address(epoch.uniswapSwapRouter),
+            address(uniswapSwapRouter),
             type(uint256).max
         );
         epoch.gasToken.approve(
-            address(epoch.uniswapSwapRouter),
+            address(uniswapSwapRouter),
             type(uint256).max
         );
     }

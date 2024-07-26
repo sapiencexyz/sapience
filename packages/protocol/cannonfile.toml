@@ -12,7 +12,7 @@ feeRate = "10000" # 1%
 startingSqrtPriceX96 = "112045541949572279837463876454" # 1
 resolver = "0x0000000000000000000000000000000000000000"
 bondAmount = "5000000000"
-priceUnit = "<%= formatBytes32String('Gas/Gwei') %>"
+priceUnit = "<%= formatBytes32String('gwei/gas') %>"
 optimisticOracleV3 = "0x0000000000000000000000000000000000000000" # Need UMA package to clone
 depends=[]
 
