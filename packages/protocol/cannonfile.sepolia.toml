@@ -2,6 +2,7 @@ name="foil"
 version="0.1"
 
 [var.settings]
+owner="0xEB045D78d273107348b0300c01D29B7552D622ab"
 startTime = "1721971200"
 endTime = "1722057599" #
 baseAssetMinPriceTick = "7000" # 2
@@ -9,19 +10,31 @@ baseAssetMaxPriceTick = "46000" # 100
 feeRate = "10000" # 1%
 startingPrice = "112045541949572279837463876454" # 1
 resolver = "0x07aeeb7e544a070a2553e142828fb30c214a1f86"
-asserter = "0xFd9e2642a170aDD10F53Ee14a93FcF2F31924944"
 assertionLiveness = "3600"
 bondAmount = "5000000000"
-priceUnit = "<%= toBytes('Gas/Gwei') %>"
+priceUnit = "<%= formatBytes32String('gwei/gas') %>"
+optimisticOracleV3 = "0xFd9e2642a170aDD10F53Ee14a93FcF2F31924944"
+depends = []
 
 # [pull.Uniswap]
 # source="uniswap"
 
-[pull.wstETH]
-source="wsteth-token"
+# [pull.wstETH]
+# source="wsteth-token"
 
-[pull.USDC]
-source="usdc-token"
+# [pull.USDC]
+# source="usdc-token"
+
+[clone.CollateralAsset]
+source="mintable-token@permissionless-mint"
+target="foil@test-collateral-asset"
+var.symbol="wstETH"
+
+[clone.BondCurrency]
+source="mintable-token@permissionless-mint"
+target="foil@test-bond-currency"
+var.symbol="USDC"
+var.decimals = "6"
 
 [deploy.ReentrancyGuard]
 artifact = "ReentrancyGuard"
@@ -55,23 +68,23 @@ contracts=[
 target="Foil"
 func="initializeMarket"
 args=[
-
+  "<%= settings.owner %>",
+  "<%= imports.CollateralAsset.contracts.Token.address %>", # "<%= imports.wstETH.contracts.Token.address %>",
+  "0x1238536071E1c677A632429e3655c799b22cDA52",
+  "0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3",
+  "0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD",
+  "<%= settings.optimisticOracleV3 %>", # will be an import from a clone step
+  { baseAssetMinPriceTick = "<%= settings.baseAssetMinPriceTick %>", baseAssetMaxPriceTick = "<%= settings.baseAssetMaxPriceTick %>", feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.BondCurrency.contracts.Token.address %>", bondAmount = "<%= settings.bondAmount %>", priceUnit = "<%= settings.priceUnit %>" }
 ]
+depends=["router.Foil"]
 
 [invoke.createEpoch]
 target="Foil"
+from = "<%= settings.owner %>"
 func="createEpoch"
 args=[
   "<%= settings.startTime %>",
   "<%= settings.endTime %>",
-  "0x1238536071E1c677A632429e3655c799b22cDA52",
-  "0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3",
-  "0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD",
-  "<%= imports.wstETH.contracts.Token.address %>",
-  "<%= settings.baseAssetMinPriceTick %>",
-  "<%= settings.baseAssetMaxPriceTick %>",
-  "<%= settings.feeRate %>",
-  "<%= settings.startingPrice %>",
-  "<%= settings.resolver %>",
-  "<%= settings.asserter %>",
+  "<%= settings.startingSqrtPriceX96 %>"
 ]
+depends=["invoke.initializeMarket"]
