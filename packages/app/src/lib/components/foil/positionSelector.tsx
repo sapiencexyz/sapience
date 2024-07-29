@@ -6,12 +6,19 @@ import {
   Select,
 } from '@chakra-ui/react';
 import { times } from 'lodash';
-import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
+import {
+  useContext,
+  useEffect,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
 import type React from 'react';
 import type { AbiFunction } from 'viem';
-import { useAccount, useReadContract, useReadContracts } from 'wagmi';
+import { useAccount, useReadContract } from 'wagmi';
 
-import Foil from '../../../../deployments/Foil.json';
+import useFoilDeployment from './useFoilDeployment';
+import { MarketContext } from '~/lib/context/MarketProvider';
 
 interface AccountSelectorProps {
   isLP: boolean;
@@ -19,9 +26,12 @@ interface AccountSelectorProps {
 }
 
 const useTokenIdsOfOwner = (ownerAddress: `0x${string}`) => {
+  const { chain } = useContext(MarketContext);
+  const { foilData } = useFoilDeployment(chain?.id);
+
   const balanceResult = useReadContract({
-    abi: Foil.abi,
-    address: Foil.address as `0x${string}`,
+    abi: foilData.abi,
+    address: foilData.address as `0x${string}`,
     functionName: 'balanceOf',
     args: [ownerAddress],
   });
@@ -32,8 +42,8 @@ const useTokenIdsOfOwner = (ownerAddress: `0x${string}`) => {
     if (balanceResult.data) {
       const balance = parseInt(balanceResult.data.toString(), 10);
       const tokenContracts = times(balance, (index) => ({
-        abi: Foil.abi as AbiFunction[],
-        address: Foil.address as `0x${string}`,
+        abi: foilData.abi as AbiFunction[],
+        address: foilData.address as `0x${string}`,
         functionName: 'tokenOfOwnerByIndex',
         args: [ownerAddress, index],
       }));
@@ -55,7 +65,7 @@ const useTokenIdsOfOwner = (ownerAddress: `0x${string}`) => {
       fetchTokenIds();
       */
     }
-  }, [balanceResult.data, ownerAddress]); // React to changes in the balance result
+  }, [balanceResult.data, foilData.abi, foilData.address, ownerAddress]);
 
   return tokenIds;
 };
@@ -66,8 +76,8 @@ const useIsLps = (ids: number[]) => {
   useEffect(() => {
     const fetchIsLps = async () => {
       const tokenContracts = ids.map((id) => ({
-        abi: Foil.abi as AbiFunction[],
-        address: Foil.address as `0x${string}`,
+        abi: foilData.abi as AbiFunction[],
+        address: foilData.address as `0x${string}`,
         functionName: 'getPosition',
         args: [id],
       }));

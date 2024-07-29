@@ -4,6 +4,7 @@ import { CacheProvider } from '@chakra-ui/next-js';
 import { RainbowKitProvider, lightTheme } from '@rainbow-me/rainbowkit';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { defineChain } from 'viem';
+import { sepolia } from 'viem/chains';
 import { createConfig, http, WagmiProvider } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 
@@ -26,10 +27,11 @@ export const cannon = defineChain({
 // Create the configuration
 const config = createConfig({
   ssr: true,
-  chains: [cannon],
+  chains: [cannon, sepolia],
   connectors: [injected()],
   transports: {
     [cannon.id]: http('http://localhost:8545'),
+    [sepolia.id]: http('https://ethereum-sepolia-rpc.publicnode.com'),
   },
 });
 
