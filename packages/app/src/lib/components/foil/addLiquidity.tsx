@@ -13,12 +13,9 @@ import {
   RangeSliderFilledTrack,
   RangeSliderThumb,
   RangeSliderTrack,
-  SliderMark,
   RangeSliderMark,
   Flex,
 } from '@chakra-ui/react';
-import { Position } from '@uniswap/v3-sdk';
-import type { ReactNode } from 'react';
 import { useContext, useEffect, useState } from 'react';
 import { formatUnits, parseUnits } from 'viem';
 import {
@@ -29,13 +26,14 @@ import {
   useSimulateContract,
 } from 'wagmi';
 
-import CollateralAsset from '../../../../deployments/CollateralAsset/Token.json';
-import Foil from '../../../../deployments/Foil.json';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import erc20ABI from '../../erc20abi.json';
 
 import SlippageTolerance from './slippageTolerance';
+import useFoilDeployment from './useFoilDeployment';
 
-const tickSpacingDefault = 200; // Hardcoded for now, should be retrieved with pool.tickSpacing()
+import { MarketContext } from '~/lib/context/MarketProvider';
+
+const tickSpacingDefault = 200; // 1% - Hardcoded for now, should be retrieved with pool.tickSpacing()
 
 const priceToTick = (price: number, tickSpacing: number): number => {
   const tick = Math.log(price) / Math.log(1.0001);
@@ -47,13 +45,16 @@ const tickToPrice = (tick: number): number => 1.0001 ** tick;
 const AddLiquidity = () => {
   const {
     pool,
+    chain,
+    collateralAsset,
     baseAssetMinPriceTick,
     baseAssetMaxPriceTick,
     collateralAssetTicker,
     collateralAssetDecimals,
   } = useContext(MarketContext);
+  const { foilData } = useFoilDeployment(chain?.id);
+
   const account = useAccount();
-  const chainId = 13370;
   const { isConnected } = account;
 
   const [depositAmount, setDepositAmount] = useState(0);
@@ -68,11 +69,11 @@ const AddLiquidity = () => {
   const tickUpper = priceToTick(highPrice, tickSpacingDefault);
 
   const collateralAmountFunctionResult = useReadContract({
-    abi: CollateralAsset.abi,
-    address: CollateralAsset.address as `0x${string}`,
+    abi: erc20ABI,
+    address: collateralAsset as `0x${string}`,
     functionName: 'balanceOf',
     args: [account.address],
-    chainId,
+    chainId: chain?.id,
   });
 
   const [transactionStep, setTransactionStep] = useState(0);
@@ -100,14 +101,14 @@ const AddLiquidity = () => {
   const handleFormSubmit = (e: any) => {
     e.preventDefault();
     approveWrite({
-      abi: CollateralAsset.abi,
-      address: CollateralAsset.address as `0x${string}`,
+      abi: erc20ABI,
+      address: collateralAsset as `0x${string}`,
       functionName: 'approve',
       args: [
-        CollateralAsset.address,
+        collateralAsset,
         parseUnits(depositAmount.toString(), collateralAssetDecimals),
       ],
-      chainId,
+      chainId: chain?.id,
     });
     setTransactionStep(1);
   };
@@ -119,8 +120,8 @@ const AddLiquidity = () => {
   }, [approveSuccess, transactionStep]);
 
   const result = useSimulateContract({
-    address: Foil.address as `0x${string}`,
-    abi: Foil.abi,
+    address: foilData.address as `0x${string}`,
+    abi: foilData.abi,
     functionName: 'createLiquidityPosition',
     args: [
       {
@@ -131,15 +132,15 @@ const AddLiquidity = () => {
         upperTick: BigInt(tickUpper),
       },
     ],
-    chainId,
+    chainId: chain?.id,
   });
   console.log('result', result);
 
   useEffect(() => {
     if (transactionStep === 2) {
       console.log('Calling addLiquidityWrite with:', {
-        address: Foil.address,
-        abi: Foil.abi,
+        address: foilData.address,
+        abi: foilData.abi,
         functionName: 'createLiquidityPosition',
         args: [
           {
@@ -150,12 +151,12 @@ const AddLiquidity = () => {
             upperTick: BigInt(tickUpper),
           },
         ],
-        chainId,
+        chainId: chain?.id,
       });
 
       addLiquidityWrite({
-        address: Foil.address as `0x${string}`,
-        abi: Foil.abi,
+        address: foilData.address as `0x${string}`,
+        abi: foilData.abi,
         functionName: 'createLiquidityPosition',
         args: [
           {
@@ -166,7 +167,7 @@ const AddLiquidity = () => {
             upperTick: BigInt(tickUpper),
           },
         ],
-        chainId,
+        chainId: chain?.id,
       });
       setTransactionStep(3);
     }
@@ -180,6 +181,8 @@ const AddLiquidity = () => {
     highPrice,
     tickLower,
     tickUpper,
+    foilData,
+    chain,
   ]);
 
   const [slippage, setSlippage] = useState<number>(0.5);

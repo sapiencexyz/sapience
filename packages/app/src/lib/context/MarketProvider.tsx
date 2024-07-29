@@ -1,16 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { Token } from '@uniswap/sdk-core';
 import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
-import { FeeAmount, Pool } from '@uniswap/v3-sdk';
+import type { FeeAmount } from '@uniswap/v3-sdk';
+import { Pool } from '@uniswap/v3-sdk';
 import type { ReactNode } from 'react';
 import type React from 'react';
 import { createContext, useEffect, useState } from 'react';
 import * as Chains from 'viem/chains';
+import type { Chain } from 'viem/chains';
 import { useContractReads, useReadContract } from 'wagmi';
 
-import CollateralAsset from '../../../deployments/CollateralAsset/Token.json';
-import Foil from '../../../deployments/Foil.json';
-import { Chain } from 'viem/chains';
+import useFoilDeployment from '../components/foil/useFoilDeployment';
+import erc20ABI from '../erc20abi.json';
 
 const API_BASE_URL = 'http://localhost:3001';
 
@@ -93,6 +94,7 @@ export const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
   });
 
   useEffect(() => {
+    /*
     if (data && data[0] && data[1] && data[2] && data[3] && data[4]) {
       const token0Address = (data as any)[0].result;
       const token1Address = (data as any)[1].result;
@@ -130,6 +132,7 @@ export const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
         setPool(poolInstance);
       }
     }
+    */
   }, [data]);
 
   return { pool, isError, isLoading, error };
@@ -199,32 +202,50 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     }
   }, [price]);
 
+  const { foilData } = useFoilDeployment(chainId);
+
   // Get data about the market from Foil
   const marketViewFunctionResult = useReadContract({
     chainId,
-    abi: Foil.abi,
-    address: Foil.address as `0x${string}`,
+    abi: foilData.abi,
+    address: foilData?.address as `0x${string}`,
     functionName: 'getMarket',
   }) as any;
 
   useEffect(() => {
-    console.log(marketViewFunctionResult?.data);
+    console.log('marketViewFunctionResult', marketViewFunctionResult?.data);
     if (marketViewFunctionResult.data !== undefined) {
       setState((currentState) => ({
         ...currentState,
-        startTime: marketViewFunctionResult?.data[0],
-        endTime: marketViewFunctionResult?.data[1],
-        uniswapPositionManager: marketViewFunctionResult?.data[2],
-        collateralAsset: marketViewFunctionResult?.data[3],
-        baseAssetMinPriceTick: marketViewFunctionResult?.data[4].toString(),
-        baseAssetMaxPriceTick: marketViewFunctionResult?.data[5].toString(),
-        feeRate: marketViewFunctionResult?.data[6],
-        ethToken: marketViewFunctionResult?.data[7],
-        gasToken: marketViewFunctionResult?.data[8],
-        poolAddress: marketViewFunctionResult?.data[9],
+        owner: marketViewFunctionResult?.data[0],
+        collateralAsset: marketViewFunctionResult?.data[1],
+        baseAssetMinPriceTick:
+          marketViewFunctionResult?.data[6].baseAssetMinPriceTick,
+        baseAssetMaxPriceTick:
+          marketViewFunctionResult?.data[6].baseAssetMaxPriceTick,
+        feeRate: marketViewFunctionResult?.data[6].feeRate,
       }));
     }
   }, [marketViewFunctionResult.data]);
+
+  // Get data about the epoch from Foil
+  const epochViewFunctionResult = useReadContract({
+    chainId,
+    abi: foilData.abi,
+    address: foilData?.address as `0x${string}`,
+    functionName: 'getEpoch',
+  }) as any;
+
+  useEffect(() => {
+    console.log('epochViewFunctionResult', epochViewFunctionResult?.data);
+    if (epochViewFunctionResult.data !== undefined) {
+      setState((currentState) => ({
+        ...currentState,
+        // should add start/endtime here
+        poolAddress: epochViewFunctionResult?.data[0],
+      }));
+    }
+  }, [epochViewFunctionResult.data]);
 
   // Fetch pool data when poolAddress is updated
   const { pool, isError, isLoading, error } = useUniswapPool(
@@ -243,11 +264,10 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
 
   // Fetch Collateral Ticker
   const collateralTickerFunctionResult = useReadContract({
-    abi: CollateralAsset.abi,
+    abi: erc20ABI,
     address: state.collateralAsset as `0x${string}`,
     functionName: 'symbol',
   });
-  console.log(collateralTickerFunctionResult);
 
   useEffect(() => {
     if (collateralTickerFunctionResult.data !== undefined) {
@@ -260,7 +280,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
 
   // Fetch Collateral Decimals
   const collateralDecimalsFunctionResult = useReadContract({
-    abi: CollateralAsset.abi,
+    abi: erc20ABI,
     address: state.collateralAsset as `0x${string}`,
     functionName: 'decimals',
   });

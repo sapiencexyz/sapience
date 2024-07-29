@@ -1,14 +1,18 @@
 import { Tr, Td, Text, StatNumber, Stat } from '@chakra-ui/react';
 import { useReadContract } from 'wagmi';
-
-import Foil from '../../../../deployments/Foil.json';
+import useFoilDeployment from './useFoilDeployment';
+import { useContext } from 'react';
+import { MarketContext } from '~/lib/context/MarketProvider';
 
 // import PositionEdit from './positionEdit';
 
 export default function PositionRow(row: any) {
+  const { chain } = useContext(MarketContext);
+  const { foilData } = useFoilDeployment(chain?.id);
+
   const positionResult = useReadContract({
-    abi: Foil.abi,
-    address: Foil.address as `0x${string}`,
+    abi: foilData.abi,
+    address: foilData.address as `0x${string}`,
     functionName: 'getPosition',
     args: [row.id],
   });

@@ -1,7 +1,8 @@
 import { Box, Flex, Image } from '@chakra-ui/react';
 import Link from 'next/link';
 
-import Foil from '../../../deployments/Foil.json';
+import FoilTestnet from '../../../deployments/11155111/Foil.json';
+import FoilLocal from '../../../deployments/13370/Foil.json';
 import ConnectButton from '../components/ConnectButton';
 
 const Header = () => {
@@ -22,7 +23,10 @@ const Header = () => {
         <Flex marginLeft="auto" gap={9} align="center" fontWeight="600">
           <Link href="/subscribe">Subscribe</Link>
           <Link href="/earn">Earn</Link>
-          <Link href={`/markets/13370:${Foil.address}`}>Market</Link>
+          <Link href={`/markets/13370:${FoilLocal.address}`}>Local Market</Link>
+          <Link href={`/markets/11155111:${FoilTestnet.address}`}>
+            Testnet Market
+          </Link>
           <Link href="https://docs.foil.xyz">Docs</Link>
           <ConnectButton />
         </Flex>

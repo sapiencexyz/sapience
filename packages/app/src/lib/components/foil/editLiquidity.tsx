@@ -11,7 +11,7 @@ import {
   Button,
   Divider,
 } from '@chakra-ui/react';
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import {
   useWriteContract,
   useWaitForTransactionReceipt,
@@ -19,8 +19,11 @@ import {
   useReadContract,
 } from 'wagmi';
 
-import CollateralAsset from '../../../../deployments/CollateralAsset/Token.json';
-import Foil from '../../../../deployments/Foil.json';
+import erc20ABI from '../../erc20abi.json';
+
+import useFoilDeployment from './useFoilDeployment';
+
+import { MarketContext } from '~/lib/context/MarketProvider';
 
 const EditLiquidity = () => {
   const account = useAccount();
@@ -28,9 +31,12 @@ const EditLiquidity = () => {
   const [depositAmount, setDepositAmount] = useState(0);
   const [liquidityRatio, setLiquidityRatio] = useState(0);
 
+  const { collateralAsset, chain } = useContext(MarketContext);
+  const { foilData } = useFoilDeployment(chain?.id);
+
   const collateralAmountFunctionResult = useReadContract({
-    abi: CollateralAsset.abi,
-    address: CollateralAsset.address as `0x${string}`,
+    abi: erc20ABI,
+    address: collateralAsset as `0x${string}`,
     functionName: 'balanceOf',
     args: [account.address],
   });
@@ -51,10 +57,10 @@ const EditLiquidity = () => {
     e.preventDefault();
 
     approveWrite({
-      abi: CollateralAsset.abi,
-      address: CollateralAsset.address as `0x${string}`,
+      abi: erc20ABI,
+      address: collateralAsset as `0x${string}`,
       functionName: 'approve',
-      args: [CollateralAsset.address, BigInt(depositAmount)],
+      args: [collateralAsset, BigInt(depositAmount)],
     }); // Start the transaction sequence
     setTransactionStep(1);
   };
@@ -74,8 +80,8 @@ const EditLiquidity = () => {
   useEffect(() => {
     if (transactionStep === 2) {
       updateLiquidityWrite({
-        address: Foil.address as `0x${string}`,
-        abi: Foil.abi,
+        address: foilData.address as `0x${string}`,
+        abi: foilData.abi,
         functionName: 'updateLiquidityPosition',
         args: [nftId, BigInt(depositAmount), BigInt(liquidityRatio)],
       });
@@ -87,6 +93,8 @@ const EditLiquidity = () => {
     nftId,
     depositAmount,
     liquidityRatio,
+    foilData.address,
+    foilData.abi,
   ]);
 
   const { data: collectFeesHash, writeContract: collectFeesWrite } =
@@ -94,8 +102,8 @@ const EditLiquidity = () => {
 
   const handleClaimRewards = () => {
     collectFeesWrite({
-      address: Foil.address as `0x${string}`,
-      abi: Foil.abi,
+      address: foilData.address as `0x${string}`,
+      abi: foilData.abi,
       functionName: 'collectFees',
       args: [nftId],
     });

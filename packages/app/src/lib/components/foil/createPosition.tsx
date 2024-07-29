@@ -3,11 +3,15 @@ import { IconButton, useToast } from '@chakra-ui/react';
 import * as React from 'react';
 import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 
-import Foil from '../../../../deployments/Foil.json';
+import useFoilDeployment from './useFoilDeployment';
+import { MarketContext } from '~/lib/context/MarketProvider';
 
 export default function CreatePosition() {
   const { data: hash, error, isPending, writeContract } = useWriteContract();
   const toast = useToast();
+
+  const { chain } = React.useContext(MarketContext);
+  const { foilData } = useFoilDeployment(chain?.id);
 
   React.useEffect(() => {
     if (error) {
@@ -32,8 +36,8 @@ export default function CreatePosition() {
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     writeContract({
-      abi: Foil.abi,
-      address: Foil.address as `0x${string}`,
+      abi: foilData.abi,
+      address: foilData.address as `0x${string}`,
       functionName: 'createAccount',
       args: [],
     });

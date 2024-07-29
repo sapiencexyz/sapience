@@ -24,12 +24,13 @@ import {
   useReadContract,
 } from 'wagmi';
 
-import CollateralAsset from '../../../../deployments/CollateralAsset/Token.json';
-import Foil from '../../../../deployments/Foil.json';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import erc20ABI from '../../erc20abi.json';
 
 import PositionSelector from './positionSelector';
 import SlippageTolerance from './slippageTolerance';
+import useFoilDeployment from './useFoilDeployment';
+
+import { MarketContext } from '~/lib/context/MarketProvider';
 
 function RadioCard(props: any) {
   const { getInputProps, getRadioProps } = useRadio(props);
@@ -79,33 +80,36 @@ export default function TraderPosition({}) {
   const [transactionStep, setTransactionStep] = useState(0);
   const { isConnected } = account;
 
-  const chainId = 13370;
+  const {
+    chain,
+    collateralAsset,
+    collateralAssetTicker,
+    collateralAssetDecimals,
+  } = React.useContext(MarketContext);
+  const { foilData } = useFoilDeployment(chain?.id);
 
   const referencePriceFunctionResult = useReadContract({
-    abi: Foil.abi,
-    address: Foil.address as `0x${string}`,
+    abi: foilData.abi,
+    address: foilData.address as `0x${string}`,
     functionName: 'getReferencePrice',
-    chainId,
+    chainId: chain?.id,
   });
 
   const collateralAmountFunctionResult = useReadContract({
-    abi: CollateralAsset.abi,
-    address: CollateralAsset.address as `0x${string}`,
+    abi: erc20ABI,
+    address: collateralAsset as `0x${string}`,
     functionName: 'balanceOf',
     args: [account.address],
-    chainId,
+    chainId: chain?.id,
   });
 
   const getPositionDataFunctionResult = useReadContract({
-    abi: Foil.abi,
-    address: Foil.address as `0x${string}`,
+    abi: foilData.abi,
+    address: foilData.address as `0x${string}`,
     functionName: 'getPositionData',
     args: [nftId],
-    chainId,
+    chainId: chain?.id,
   });
-
-  const { collateralAssetTicker, collateralAssetDecimals } =
-    React.useContext(MarketContext);
 
   const { getRootProps, getRadioProps } = useRadioGroup({
     name: 'positionType',
@@ -132,10 +136,10 @@ export default function TraderPosition({}) {
     e.preventDefault();
 
     approveWrite({
-      abi: CollateralAsset.abi as AbiFunction[],
-      address: CollateralAsset.address as `0x${string}`,
+      abi: erc20ABI as AbiFunction[],
+      address: collateralAsset as `0x${string}`,
       functionName: 'approve',
-      args: [CollateralAsset.address, BigInt(collateral)],
+      args: [collateralAsset, BigInt(collateral)],
     }); // Start the transaction sequence
     setTransactionStep(1);
   };
@@ -152,8 +156,8 @@ export default function TraderPosition({}) {
 
       if (nftId === 0) {
         writeContract({
-          abi: Foil.abi,
-          address: Foil.address as `0x${string}`,
+          abi: foilData.abi,
+          address: foilData.address as `0x${string}`,
           functionName: 'createTraderPosition',
           args: [
             parseUnits(collateral.toString(), collateralAssetDecimals),
@@ -162,8 +166,8 @@ export default function TraderPosition({}) {
         });
       } else {
         writeContract({
-          abi: Foil.abi,
-          address: Foil.address as `0x${string}`,
+          abi: foilData.abi,
+          address: foilData.address as `0x${string}`,
           functionName: 'updateTraderPosition',
           args: [
             nftId,
@@ -182,6 +186,8 @@ export default function TraderPosition({}) {
     size,
     option,
     collateralAssetDecimals,
+    foilData.abi,
+    foilData.address,
   ]);
 
   React.useEffect(() => {

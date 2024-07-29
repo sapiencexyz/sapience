@@ -8,19 +8,23 @@ import {
   Box,
 } from '@chakra-ui/react';
 import { times } from 'lodash';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import type { AbiFunction } from 'viem';
 import { useReadContract, useReadContracts } from 'wagmi';
 
-import Foil from '../../../../deployments/Foil.json';
+import { MarketContext } from '~/lib/context/MarketProvider';
 
 import CreateAccount from './createPosition';
 import PositionRow from './positionRow';
+import useFoilDeployment from './useFoilDeployment';
 
 export default function Positions() {
+  const { chain } = useContext(MarketContext);
+  const { foilData } = useFoilDeployment(chain?.id);
+
   const totalSupplyResult = useReadContract({
-    abi: Foil.abi,
-    address: Foil.address as `0x${string}`,
+    abi: foilData.abi,
+    address: foilData.address as `0x${string}`,
     functionName: 'totalSupply',
     args: [],
   });
@@ -35,8 +39,8 @@ export default function Positions() {
   const tokens = useReadContracts({
     contracts: times(totalSupply).map((i) => {
       return {
-        abi: Foil.abi as AbiFunction[],
-        address: Foil.address as `0x${string}`,
+        abi: foilData.abi as AbiFunction[],
+        address: foilData.address as `0x${string}`,
         functionName: 'tokenByIndex',
         args: [i],
       };
