@@ -46,20 +46,6 @@ export default defineConfig({
           link: '/market-settlement', 
         },
       ], 
-    } ,
-    { 
-      text: 'Guides', 
-      collapsed: false, 
-      items: [ 
-        { 
-          text: 'Resource Producers',
-          link: '/producers-guide', 
-        },
-        {
-          text: 'Resource Consumers', 
-          link: '/consumers-guide', 
-        },
-      ], 
-    } 
+    }
   ]
 })
