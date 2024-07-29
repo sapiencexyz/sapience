@@ -6,29 +6,29 @@
   "scripts": {
     "test": "",
     "dev": "cannon build --wipe --keep-alive --port 8545 --no-cors",
-    "update-abis": "cannon build --wipe && cannon inspect foil --write-deployments ../app/deployments && cannon inspect foil --write-deployments ../data/deployments && cannon inspect foil --write-deployments ./deployments/test/",
+    "update-abis": "cannon build --wipe && cannon inspect foil --write-deployments ../app/deployments/13370 && cannon inspect foil --write-deployments ../data/deployments/13370 && cannon inspect foil --write-deployments ./deployments/13370/test/",
     "simulate-deploy:sepolia": "cannon build cannonfile.sepolia.toml --chain-id 11155111 --dry-run",
-    "update-run": "cannon build && cannon inspect foil --write-deployments ./deployments/ && cannon build --keep-alive --port 8545 --no-cors"
+    "update-run": "cannon build && cannon inspect foil --write-deployments ./deployments/13370 && cannon build --keep-alive --port 8545 --no-cors"
   },
   "devDependencies": {
     "@types/chai": "^4.3.16",
     "@types/mocha": "^10.0.7",
-    "@types/node": "^20.14.9",
-    "chai": "^4.4.1",
+    "@types/node": "^20.14.13",
+    "chai": "^4.5.0",
     "forge-std": "github:foundry-rs/forge-std#master",
-    "mocha": "^10.5.2",
+    "mocha": "^10.7.0",
     "mocha-junit-reporter": "^2.2.1",
     "solidity-coverage": "^0.8.12",
     "ts-node": "^10.9.2",
     "typechain": "^8.3.2",
-    "typescript": "^5.5.2"
+    "typescript": "^5.5.4"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.0.2",
-    "@uma/core": "^2.59.0",
+    "@uma/core": "^2.59.1",
     "@uniswap/v3-core": "^1.0.1",
     "@uniswap/v3-periphery": "^1.4.4",
-    "@usecannon/cli": "^2.15.7"
+    "@usecannon/cli": "^2.15.8"
   },
   "engines": {
     "node": ">=16.x.x",

@@ -2,17 +2,16 @@ name="foil"
 version="0.1"
 
 [var.settings]
-owner="0xEB045D78d273107348b0300c01D29B7552D622ab"
-startTime = "1721971200"
-endTime = "1722057599" #
-baseAssetMinPriceTick = "7000" # 2
-baseAssetMaxPriceTick = "46000" # 100
+owner="0xE006B58cA5aB7ba53863012dc3067A14b965C1da"
+startTime = "1722270000" # Mon Jul 29 2024 16:20:00 GMT+0000
+endTime = "1722458027" # Wed Jul 31 2024 20:33:47 GMT+0000
+baseAssetMinPriceTick = "5200" # 1.709
+baseAssetMaxPriceTick = "28200" # 17.09
 feeRate = "10000" # 1%
-startingSqrtPriceX96 = "112045541949572279837463876454" # 1
-resolver = "0x07aeeb7e544a070a2553e142828fb30c214a1f86"
+startingSqrtPriceX96 = "146497135921788803112962621440" # 3.419
 assertionLiveness = "3600"
 bondAmount = "5000000000"
-priceUnit = "<%= formatBytes32String('gwei/gas') %>"
+priceUnit = "<%= formatBytes32String('wstGwei/gas') %>"
 optimisticOracleV3 = "0xFd9e2642a170aDD10F53Ee14a93FcF2F31924944"
 depends = []
 
@@ -62,7 +61,7 @@ args=[
   "0x1238536071E1c677A632429e3655c799b22cDA52",
   "0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3",
   "0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD",
-  "<%= settings.optimisticOracleV3 %>", # will be an import from a clone step
+  "<%= settings.optimisticOracleV3 %>",
   { baseAssetMinPriceTick = "<%= settings.baseAssetMinPriceTick %>", baseAssetMaxPriceTick = "<%= settings.baseAssetMaxPriceTick %>", feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.USDC.contracts.Token.address %>", bondAmount = "<%= settings.bondAmount %>", priceUnit = "<%= settings.priceUnit %>" }
 ]
 depends=["router.Foil"]
