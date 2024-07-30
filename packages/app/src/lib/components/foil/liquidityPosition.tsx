@@ -25,12 +25,12 @@ const LiquidityPosition = () => {
         within their low and high price.
       </Text>
       <Button size="sm" variant="brand" w="100%" mb={2}>
-        Redeem 0.0023wstETH
+        Redeem 0wstETH
       </Button>
       <Text fontSize="sm" mb={0.5}>
-        PnL: +32wstETH (inclusive of fees)
+        PnL: +0wstETH (inclusive of fees)
       </Text>
-      <Text fontSize="sm">APY: 3%</Text>
+      <Text fontSize="sm">APY: 0%</Text>
     </Box>
   );
 };

@@ -64,17 +64,25 @@ const AddLiquidity = () => {
   );
   const [baseToken, setBaseToken] = useState(0);
   const [quoteToken, setQuoteToken] = useState(0);
+  const [walletBalance, setWalletBalance] = useState<string | null>(null);
+  const [walletBalanceAfter, setWalletBalanceAfter] = useState<string | null>(
+    null
+  );
+  const [minAmountTokenA, setMinAmountTokenA] = useState(0);
+  const [minAmountTokenB, setMinAmountTokenB] = useState(0);
+  const [slippage, setSlippage] = useState<number>(0.5);
 
   const tickLower = priceToTick(lowPrice, tickSpacingDefault);
   const tickUpper = priceToTick(highPrice, tickSpacingDefault);
 
-  const collateralAmountFunctionResult = useReadContract({
-    abi: erc20ABI,
-    address: collateralAsset as `0x${string}`,
-    functionName: 'balanceOf',
-    args: [account.address],
-    chainId: chain?.id,
-  });
+  const { data: collateralAmountData, refetch: refetchCollateralAmount } =
+    useReadContract({
+      abi: erc20ABI,
+      address: collateralAsset as `0x${string}`,
+      functionName: 'balanceOf',
+      args: [account.address],
+      chainId: chain?.id,
+    });
 
   const [transactionStep, setTransactionStep] = useState(0);
 
@@ -98,8 +106,33 @@ const AddLiquidity = () => {
     setHighPrice(tickToPrice(baseAssetMaxPriceTick));
   }, [baseAssetMaxPriceTick]);
 
+  useEffect(() => {
+    if (collateralAmountData) {
+      const formattedBalance = formatUnits(
+        BigInt(collateralAmountData.toString()),
+        collateralAssetDecimals
+      );
+      setWalletBalance(formattedBalance);
+      setWalletBalanceAfter(
+        (
+          parseFloat(formattedBalance) - parseFloat(depositAmount.toString())
+        ).toFixed(collateralAssetDecimals)
+      );
+    }
+  }, [collateralAmountData, collateralAssetDecimals, depositAmount]);
+
+  useEffect(() => {
+    const amountTokenA = Math.floor(baseToken);
+    const amountTokenB = Math.floor(quoteToken);
+    const minTokenA = (amountTokenA * (100 - slippage)) / 100;
+    const minTokenB = (amountTokenB * (100 - slippage)) / 100;
+    setMinAmountTokenA(minTokenA);
+    setMinAmountTokenB(minTokenB);
+  }, [baseToken, quoteToken, slippage]);
+
   const handleFormSubmit = (e: any) => {
     e.preventDefault();
+
     approveWrite({
       abi: erc20ABI,
       address: collateralAsset as `0x${string}`,
@@ -125,11 +158,16 @@ const AddLiquidity = () => {
     functionName: 'createLiquidityPosition',
     args: [
       {
-        amountTokenA: BigInt(baseToken),
-        amountTokenB: BigInt(quoteToken),
-        collateralAmount: BigInt(depositAmount),
+        amountTokenA: BigInt(Math.floor(baseToken)),
+        amountTokenB: BigInt(Math.floor(quoteToken)),
+        collateralAmount: parseUnits(
+          depositAmount.toString(),
+          collateralAssetDecimals
+        ),
         lowerTick: BigInt(tickLower),
         upperTick: BigInt(tickUpper),
+        minAmountTokenA: BigInt(Math.floor(minAmountTokenA)),
+        minAmountTokenB: BigInt(Math.floor(minAmountTokenB)),
       },
     ],
     chainId: chain?.id,
@@ -138,33 +176,19 @@ const AddLiquidity = () => {
 
   useEffect(() => {
     if (transactionStep === 2) {
-      console.log('Calling addLiquidityWrite with:', {
-        address: foilData.address,
-        abi: foilData.abi,
-        functionName: 'createLiquidityPosition',
-        args: [
-          {
-            amountTokenA: BigInt(baseToken),
-            amountTokenB: BigInt(quoteToken),
-            collateralAmount: BigInt(depositAmount),
-            lowerTick: BigInt(tickLower),
-            upperTick: BigInt(tickUpper),
-          },
-        ],
-        chainId: chain?.id,
-      });
-
       addLiquidityWrite({
         address: foilData.address as `0x${string}`,
         abi: foilData.abi,
         functionName: 'createLiquidityPosition',
         args: [
           {
-            amountTokenA: BigInt(baseToken),
-            amountTokenB: BigInt(quoteToken),
+            amountTokenA: BigInt(Math.floor(baseToken)),
+            amountTokenB: BigInt(Math.floor(quoteToken)),
             collateralAmount: BigInt(depositAmount),
             lowerTick: BigInt(tickLower),
             upperTick: BigInt(tickUpper),
+            minAmountTokenA: BigInt(Math.floor(minAmountTokenA)),
+            minAmountTokenB: BigInt(Math.floor(minAmountTokenB)),
           },
         ],
         chainId: chain?.id,
@@ -183,42 +207,23 @@ const AddLiquidity = () => {
     tickUpper,
     foilData,
     chain,
+    slippage,
+    minAmountTokenA,
+    minAmountTokenB,
   ]);
 
-  const [slippage, setSlippage] = useState<number>(0.5);
+  useEffect(() => {
+    if (addLiquiditySuccess && transactionStep === 3) {
+      refetchCollateralAmount();
+      setTransactionStep(4);
+    }
+  }, [addLiquiditySuccess, transactionStep, refetchCollateralAmount]);
 
   const handleSlippageChange = (newSlippage: number) => {
     setSlippage(newSlippage);
     console.log(`Slippage tolerance updated to: ${newSlippage}%`);
   };
 
-  /*
-  useEffect(() => {
-    if (pool) {
-      const p = Position.fromAmount0({
-        pool,
-        tickLower,
-        tickUpper,
-        amount0: baseToken.toString(),
-        useFullPrecision: true,
-      });
-      setQuoteToken(p.amount1.toSignificant());
-    }
-  }, [pool, baseToken, tickLower, tickUpper]);
-
-  useEffect(() => {
-    if (pool) {
-      const p = Position.fromAmount1({
-        pool,
-        tickLower,
-        tickUpper,
-        amount1: quoteToken.toString(),
-        useFullPrecision: true,
-      });
-      setBaseToken(p.amount0.toSignificant());
-    }
-  }, [pool, quoteToken, tickLower, tickUpper]);
-*/
   return (
     <form onSubmit={handleFormSubmit}>
       <FormControl mb={4}>
@@ -233,17 +238,6 @@ const AddLiquidity = () => {
         </InputGroup>
       </FormControl>
       <FormControl mb={4}>
-        <FormLabel>High Price</FormLabel>
-        <InputGroup>
-          <Input
-            type="number"
-            value={highPrice}
-            onChange={(e) => setHighPrice(Number(e.target.value))}
-          />
-          <InputRightAddon>{collateralAssetTicker}/Ggas</InputRightAddon>
-        </InputGroup>
-      </FormControl>
-      <FormControl mb={4}>
         <FormLabel>Low Price</FormLabel>
         <InputGroup>
           <Input
@@ -254,8 +248,19 @@ const AddLiquidity = () => {
           <InputRightAddon>{collateralAssetTicker}/Ggas</InputRightAddon>
         </InputGroup>
       </FormControl>
+      <FormControl mb={4}>
+        <FormLabel>High Price</FormLabel>
+        <InputGroup>
+          <Input
+            type="number"
+            value={highPrice}
+            onChange={(e) => setHighPrice(Number(e.target.value))}
+          />
+          <InputRightAddon>{collateralAssetTicker}/Ggas</InputRightAddon>
+        </InputGroup>
+      </FormControl>
 
-      <Flex>
+      <Flex display="none">
         <Box flex="auto">Recharts Histogram Here</Box>
         <FormControl>
           <RangeSlider defaultValue={[10, 30]} orientation="vertical" minH="32">
@@ -285,25 +290,22 @@ const AddLiquidity = () => {
 
       <Box mb="4">
         <Text fontSize="sm" color="gray.500" mb="0.5">
-          Base Token: {baseToken} vGas
+          Est. Base Token Amt.: {baseToken} vGas (min:{' '}
+          {minAmountTokenA.toFixed(2)})
         </Text>
         <Text fontSize="sm" color="gray.500" mb="0.5">
-          Quote Token: {quoteToken} vGwei
+          Est. Quote Token Amt.: {quoteToken} vGwei (min:{' '}
+          {minAmountTokenB.toFixed(2)})
         </Text>
         <Text fontSize="sm" color="gray.500" mb="0.5">
-          Net Position: {lowPrice.toFixed(2)} Ggas to {highPrice.toFixed(2)}{' '}
-          Ggas
+          Net Position: {highPrice.toFixed(2)} Ggas
         </Text>
-        {isConnected && collateralAmountFunctionResult?.data ? (
+        {isConnected &&
+        walletBalance !== null &&
+        walletBalanceAfter !== null ? (
           <Text fontSize="sm" color="gray.500" mb="0.5">
-            Wallet Balance:{' '}
-            {formatUnits(
-              BigInt(
-                (collateralAmountFunctionResult.data as string).toString()
-              ),
-              collateralAssetDecimals
-            )}{' '}
-            {collateralAssetTicker}
+            Wallet Balance: {walletBalance} {collateralAssetTicker} →{' '}
+            {walletBalanceAfter} {collateralAssetTicker}
           </Text>
         ) : null}
       </Box>
@@ -312,8 +314,8 @@ const AddLiquidity = () => {
           width="full"
           variant="brand"
           type="submit"
-          isLoading={transactionStep > 0 && transactionStep < 3}
-          isDisabled={transactionStep > 0 && transactionStep < 3}
+          isLoading={transactionStep > 0 && transactionStep < 4}
+          isDisabled={transactionStep > 0 && transactionStep < 4}
         >
           Add Liquidity
         </Button>
@@ -322,7 +324,7 @@ const AddLiquidity = () => {
           Connect Wallet
         </Button>
       )}
-      {transactionStep === 3 && addLiquiditySuccess && (
+      {transactionStep === 4 && addLiquiditySuccess && (
         <Text fontSize="sm" color="green.500" mt="2">
           Liquidity added successfully!
         </Text>

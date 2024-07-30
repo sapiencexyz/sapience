@@ -26,8 +26,8 @@ const SlippageTolerance: React.FC<SlippageToleranceProps> = ({
 
   return (
     <FormControl mb={2}>
+      <FormLabel>Slippage Tolerance</FormLabel>
       <HStack spacing={4} alignItems="center">
-        <FormLabel mb={0}>Slippage Tolerance:</FormLabel>
         <Button
           onClick={() => setSlippage(0.1)}
           isActive={slippage === 0.1}
@@ -56,6 +56,7 @@ const SlippageTolerance: React.FC<SlippageToleranceProps> = ({
           max={100}
           step={0.1}
           precision={2}
+          maxWidth="72px"
         >
           <NumberInputField />
         </NumberInput>
