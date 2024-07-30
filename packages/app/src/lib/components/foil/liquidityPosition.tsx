@@ -25,10 +25,10 @@ const LiquidityPosition = () => {
         within their low and high price.
       </Text>
       <Button size="sm" variant="brand" w="100%" mb={2}>
-        Redeem 0wstETH
+        Redeem 0 wstETH
       </Button>
       <Text fontSize="sm" mb={0.5}>
-        PnL: +0wstETH (inclusive of fees)
+        PnL: +0 wstETH (inclusive of fees)
       </Text>
       <Text fontSize="sm">APY: 0%</Text>
     </Box>

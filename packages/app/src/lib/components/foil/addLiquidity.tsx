@@ -71,6 +71,7 @@ const AddLiquidity = () => {
   const [minAmountTokenA, setMinAmountTokenA] = useState(0);
   const [minAmountTokenB, setMinAmountTokenB] = useState(0);
   const [slippage, setSlippage] = useState<number>(0.5);
+  const [allowance, setAllowance] = useState<string | null>(null);
 
   const tickLower = priceToTick(lowPrice, tickSpacingDefault);
   const tickUpper = priceToTick(highPrice, tickSpacingDefault);
@@ -83,6 +84,14 @@ const AddLiquidity = () => {
       args: [account.address],
       chainId: chain?.id,
     });
+
+  const { data: allowanceData } = useReadContract({
+    abi: erc20ABI,
+    address: collateralAsset as `0x${string}`,
+    functionName: 'allowance',
+    args: [account.address, foilData.address],
+    chainId: chain?.id,
+  });
 
   const [transactionStep, setTransactionStep] = useState(0);
 
@@ -130,21 +139,55 @@ const AddLiquidity = () => {
     setMinAmountTokenB(minTokenB);
   }, [baseToken, quoteToken, slippage]);
 
+  useEffect(() => {
+    if (allowanceData) {
+      const formattedAllowance = formatUnits(
+        BigInt(allowanceData.toString()),
+        collateralAssetDecimals
+      );
+      setAllowance(formattedAllowance);
+    }
+  }, [allowanceData, collateralAssetDecimals]);
+
   const handleFormSubmit = (e: any) => {
     e.preventDefault();
 
-    approveWrite({
-      abi: erc20ABI,
-      address: collateralAsset as `0x${string}`,
-      functionName: 'approve',
-      args: [
-        collateralAsset,
-        parseUnits(depositAmount.toString(), collateralAssetDecimals),
-      ],
-      chainId: chain?.id,
-    });
-    setTransactionStep(1);
+    if (
+      allowance &&
+      parseFloat(allowance) >= parseFloat(depositAmount.toString())
+    ) {
+      setTransactionStep(2); // Skip approve and go directly to add liquidity
+    } else {
+      approveWrite({
+        abi: erc20ABI,
+        address: collateralAsset as `0x${string}`,
+        functionName: 'approve',
+        args: [
+          foilData.address,
+          parseUnits(depositAmount.toString(), collateralAssetDecimals),
+        ],
+        chainId: chain?.id,
+      });
+      setTransactionStep(1);
+    }
   };
+
+  const handleDepositAmountChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const value = Number(e.target.value);
+    console.log('Setting depositAmount:', value);
+    setDepositAmount(value);
+  };
+
+  useEffect(() => {
+    console.log('Deposit amount changed:', depositAmount);
+    const newBaseToken = depositAmount * 0.001;
+    const newQuoteToken = depositAmount * 0.001;
+    console.log('Base Token:', newBaseToken, 'Quote Token:', newQuoteToken);
+    setBaseToken(newBaseToken);
+    setQuoteToken(newQuoteToken);
+  }, [depositAmount]);
 
   useEffect(() => {
     if (approveSuccess && transactionStep === 1) {
@@ -158,21 +201,34 @@ const AddLiquidity = () => {
     functionName: 'createLiquidityPosition',
     args: [
       {
-        amountTokenA: BigInt(Math.floor(baseToken)),
-        amountTokenB: BigInt(Math.floor(quoteToken)),
+        amountTokenA: parseUnits(baseToken.toString(), 18),
+        amountTokenB: parseUnits(quoteToken.toString(), 18),
         collateralAmount: parseUnits(
           depositAmount.toString(),
           collateralAssetDecimals
         ),
         lowerTick: BigInt(tickLower),
         upperTick: BigInt(tickUpper),
-        minAmountTokenA: BigInt(Math.floor(minAmountTokenA)),
-        minAmountTokenB: BigInt(Math.floor(minAmountTokenB)),
+        minAmountTokenA: parseUnits(minAmountTokenA.toString(), 18),
+        minAmountTokenB: parseUnits(minAmountTokenB.toString(), 18),
       },
     ],
     chainId: chain?.id,
   });
-  console.log('result', result);
+  console.log('result', result, [
+    {
+      amountTokenA: parseUnits(baseToken.toString(), 18),
+      amountTokenB: parseUnits(quoteToken.toString(), 18),
+      collateralAmount: parseUnits(
+        depositAmount.toString(),
+        collateralAssetDecimals
+      ),
+      lowerTick: BigInt(tickLower),
+      upperTick: BigInt(tickUpper),
+      minAmountTokenA: parseUnits(minAmountTokenA.toString(), 18),
+      minAmountTokenB: parseUnits(minAmountTokenB.toString(), 18),
+    },
+  ]);
 
   useEffect(() => {
     if (transactionStep === 2) {
@@ -182,13 +238,16 @@ const AddLiquidity = () => {
         functionName: 'createLiquidityPosition',
         args: [
           {
-            amountTokenA: BigInt(Math.floor(baseToken)),
-            amountTokenB: BigInt(Math.floor(quoteToken)),
-            collateralAmount: BigInt(depositAmount),
+            amountTokenA: parseUnits(baseToken.toString(), 18),
+            amountTokenB: parseUnits(quoteToken.toString(), 18),
+            collateralAmount: parseUnits(
+              depositAmount.toString(),
+              collateralAssetDecimals
+            ),
             lowerTick: BigInt(tickLower),
             upperTick: BigInt(tickUpper),
-            minAmountTokenA: BigInt(Math.floor(minAmountTokenA)),
-            minAmountTokenB: BigInt(Math.floor(minAmountTokenB)),
+            minAmountTokenA: parseUnits(minAmountTokenA.toString(), 18),
+            minAmountTokenB: parseUnits(minAmountTokenB.toString(), 18),
           },
         ],
         chainId: chain?.id,
@@ -210,6 +269,7 @@ const AddLiquidity = () => {
     slippage,
     minAmountTokenA,
     minAmountTokenB,
+    collateralAssetDecimals,
   ]);
 
   useEffect(() => {
@@ -232,7 +292,7 @@ const AddLiquidity = () => {
           <Input
             type="number"
             value={depositAmount}
-            onChange={(e) => setDepositAmount(Number(e.target.value))}
+            onChange={handleDepositAmountChange}
           />
           <InputRightAddon>{collateralAssetTicker}</InputRightAddon>
         </InputGroup>
