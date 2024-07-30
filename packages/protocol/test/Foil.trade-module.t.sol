@@ -37,7 +37,7 @@ contract FoilTest is Test {
         console2.log("tokenB", tokenB);
     }
 
-    function test_trade_long() public {
+    function test_trade_long_Only() public {
         uint256 priceReference;
         uint256 accountId_1;
         priceReference = foil.getReferencePrice();
@@ -47,16 +47,16 @@ contract FoilTest is Test {
             .LiquidityPositionParams({
                 amountTokenB: 20000 ether,
                 amountTokenA: 1000 ether,
-                collateralAmount: 10 ether,
-                lowerTick: 27000, // 5
-                upperTick: 32000, // 30000 = 20, 34000 = 30
+                collateralAmount: 10000000 ether,
+                lowerTick: 12200,
+                upperTick: 12400,
                 minAmountTokenA: 0,
                 minAmountTokenB: 0
             });
 
         foil.createLiquidityPosition(params);
-        params.amountTokenB = 400000 ether;
-        params.amountTokenA = 20000 ether;
+        params.amountTokenB = 40000 ether;
+        params.amountTokenA = 2000 ether;
         foil.createLiquidityPosition(params);
 
         priceReference = foil.getReferencePrice();
@@ -67,7 +67,6 @@ contract FoilTest is Test {
         priceReference = foil.getReferencePrice();
         console2.log("priceReference", priceReference);
         accountId_1 = foil.createTraderPosition(10 ether, .1 ether, 0);
-        console2.log("accountId", accountId_1);
         logPositionAndAccount(accountId_1);
 
         // Modify Long position (increase it)
@@ -75,7 +74,6 @@ contract FoilTest is Test {
         priceReference = foil.getReferencePrice();
         console2.log("priceReference", priceReference);
         foil.modifyTraderPosition(accountId_1, 10 ether, .2 ether, 0);
-        console2.log("accountId", accountId_1);
         logPositionAndAccount(accountId_1);
 
         // Modify Long position (decrease it)
@@ -83,7 +81,6 @@ contract FoilTest is Test {
         priceReference = foil.getReferencePrice();
         console2.log("priceReference", priceReference);
         foil.modifyTraderPosition(accountId_1, 0 ether, .1 ether, 0);
-        console2.log("accountId", accountId_1);
         logPositionAndAccount(accountId_1);
 
         // Modify Long position (close it)
@@ -91,7 +88,6 @@ contract FoilTest is Test {
         priceReference = foil.getReferencePrice();
         console2.log("priceReference", priceReference);
         foil.modifyTraderPosition(accountId_1, 0 ether, 0, 0);
-        console2.log("accountId", accountId_1);
         logPositionAndAccount(accountId_1);
     }
 
@@ -105,16 +101,16 @@ contract FoilTest is Test {
             .LiquidityPositionParams({
                 amountTokenB: 20000 ether,
                 amountTokenA: 1000 ether,
-                collateralAmount: 10 ether,
-                lowerTick: 27000, // 5
-                upperTick: 32000, // 30000 = 20, 34000 = 30
+                collateralAmount: 10000000 ether,
+                lowerTick: 12200,
+                upperTick: 12400,
                 minAmountTokenA: 0,
                 minAmountTokenB: 0
             });
 
         foil.createLiquidityPosition(params);
-        params.amountTokenB = 400000 ether;
-        params.amountTokenA = 20000 ether;
+        params.amountTokenB = 40000 ether;
+        params.amountTokenA = 2000 ether;
         foil.createLiquidityPosition(params);
 
         priceReference = foil.getReferencePrice();
@@ -125,7 +121,6 @@ contract FoilTest is Test {
         priceReference = foil.getReferencePrice();
         console2.log("priceReference", priceReference);
         accountId_3 = foil.createTraderPosition(10 ether, .1 ether, 0);
-        console2.log("accountId", accountId_3);
         logPositionAndAccount(accountId_3);
 
         // Modify Long position (change side)
@@ -133,7 +128,6 @@ contract FoilTest is Test {
         priceReference = foil.getReferencePrice();
         console2.log("priceReference", priceReference);
         foil.modifyTraderPosition(accountId_3, 0 ether, -.05 ether, -.01 ether);
-        console2.log("accountId", accountId_3);
         logPositionAndAccount(accountId_3);
     }
 
@@ -147,16 +141,16 @@ contract FoilTest is Test {
             .LiquidityPositionParams({
                 amountTokenB: 20000 ether,
                 amountTokenA: 1000 ether,
-                collateralAmount: 10 ether,
-                lowerTick: 27000, // 5
-                upperTick: 32000, // 30000 = 20, 34000 = 30
+                collateralAmount: 10000000 ether,
+                lowerTick: 12200,
+                upperTick: 12400,
                 minAmountTokenA: 0,
                 minAmountTokenB: 0
             });
 
         foil.createLiquidityPosition(params);
-        params.amountTokenB = 400000 ether;
-        params.amountTokenA = 20000 ether;
+        params.amountTokenB = 40000 ether;
+        params.amountTokenA = 2000 ether;
         foil.createLiquidityPosition(params);
 
         priceReference = foil.getReferencePrice();
@@ -165,25 +159,21 @@ contract FoilTest is Test {
         // Create Short position
         console2.log("Create Short position");
         accountId_2 = foil.createTraderPosition(10 ether, -.1 ether, 0);
-        console2.log("accountId", accountId_2);
         logPositionAndAccount(accountId_2);
 
         // Modify Short position (increase it)
         console2.log("Modify Short position (increase it)");
         foil.modifyTraderPosition(accountId_2, 10 ether, -.2 ether, -.1 ether);
-        console2.log("accountId", accountId_2);
         logPositionAndAccount(accountId_2);
 
         // Modify Short position (decrease it)
         console2.log("Modify Short position (decrease it)");
         foil.modifyTraderPosition(accountId_2, 0, -.05 ether, -.01 ether);
-        console2.log("accountId", accountId_2);
         logPositionAndAccount(accountId_2);
 
         // Modify Short position (close it)
         console2.log("Modify Short position (close it)");
         foil.modifyTraderPosition(accountId_2, 0, 0, 0);
-        console2.log("accountId", accountId_2);
         logPositionAndAccount(accountId_2);
     }
 
@@ -197,16 +187,16 @@ contract FoilTest is Test {
             .LiquidityPositionParams({
                 amountTokenB: 20000 ether,
                 amountTokenA: 1000 ether,
-                collateralAmount: 10 ether,
-                lowerTick: 27000, // 5
-                upperTick: 32000, // 30000 = 20, 34000 = 30
+                collateralAmount: 10000000 ether,
+                lowerTick: 12200,
+                upperTick: 12400,
                 minAmountTokenA: 0,
                 minAmountTokenB: 0
             });
 
         foil.createLiquidityPosition(params);
-        params.amountTokenB = 400000 ether;
-        params.amountTokenA = 20000 ether;
+        params.amountTokenB = 40000 ether;
+        params.amountTokenA = 2000 ether;
         foil.createLiquidityPosition(params);
 
         priceReference = foil.getReferencePrice();
@@ -215,13 +205,11 @@ contract FoilTest is Test {
         // Create Short position (another one)
         console2.log("Create Short position (another one)");
         accountId_4 = foil.createTraderPosition(10 ether, -.1 ether, 0);
-        console2.log("accountId", accountId_4);
         logPositionAndAccount(accountId_4);
 
         // Modify Short position (change side)
         console2.log("Modify Short position (change side)");
         foil.modifyTraderPosition(accountId_4, 0, .05 ether, 0);
-        console2.log("accountId", accountId_4);
         logPositionAndAccount(accountId_4);
     }
 
