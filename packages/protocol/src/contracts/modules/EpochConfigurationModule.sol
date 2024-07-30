@@ -111,13 +111,23 @@ contract EpochConfigurationModule is ReentrancyGuard {
     function getEpoch()
         external
         view
-        returns (address pool, address ethToken, address gasToken)
+        returns (
+            uint startTime,
+            uint endTime,
+            address pool,
+            address ethToken,
+            address gasToken,
+            bytes priceUnit,
+        )
     {
         Epoch.Data storage epoch = Epoch.load();
         return (
+            epoch.startTime,
+            epoch.endTime,
             address(epoch.pool),
             address(epoch.ethToken),
-            address(epoch.gasToken)
+            address(epoch.gasToken),
+            epoch.priceUnit
         );
     }
 
