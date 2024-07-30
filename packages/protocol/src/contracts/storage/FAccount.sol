@@ -74,20 +74,6 @@ library FAccount {
         return address(uint160(self.tokenId));
     }
 
-    /*
-    function updateLoan(
-        Data storage self,
-        uint256 collateralAmount,
-        uint256 amount0,
-        uint256 amount1
-    ) internal {
-        self.collateralAmount += collateralAmount;
-        self.borrowedGwei += amount0;
-        self.borrowedGas += amount1;
-    }
-    
-*/
-
     struct RuntimeValidateParams {
         uint160 sqrtPriceAX96;
         uint160 sqrtPriceBX96;
