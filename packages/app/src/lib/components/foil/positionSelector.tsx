@@ -48,6 +48,7 @@ const useTokenIdsOfOwner = (ownerAddress: `0x${string}`) => {
           functionName: 'tokenOfOwnerByIndex',
           args: [ownerAddress, index],
         }));
+        /*
         const tokensInfo = await useReadContracts({
           contracts: tokenContracts,
         });
@@ -59,6 +60,7 @@ const useTokenIdsOfOwner = (ownerAddress: `0x${string}`) => {
           );
           setTokenIds(ids);
         }
+        */
       }
     };
 
