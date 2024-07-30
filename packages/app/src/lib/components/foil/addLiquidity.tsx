@@ -65,7 +65,9 @@ const AddLiquidity = () => {
   const [baseToken, setBaseToken] = useState(0);
   const [quoteToken, setQuoteToken] = useState(0);
   const [walletBalance, setWalletBalance] = useState<string | null>(null);
-  const [walletBalanceAfter, setWalletBalanceAfter] = useState<string | null>(null);
+  const [walletBalanceAfter, setWalletBalanceAfter] = useState<string | null>(
+    null
+  );
   const [minAmountTokenA, setMinAmountTokenA] = useState(0);
   const [minAmountTokenB, setMinAmountTokenB] = useState(0);
   const [slippage, setSlippage] = useState<number>(0.5);
@@ -73,13 +75,14 @@ const AddLiquidity = () => {
   const tickLower = priceToTick(lowPrice, tickSpacingDefault);
   const tickUpper = priceToTick(highPrice, tickSpacingDefault);
 
-  const { data: collateralAmountData, refetch: refetchCollateralAmount } = useReadContract({
-    abi: erc20ABI,
-    address: collateralAsset as `0x${string}`,
-    functionName: 'balanceOf',
-    args: [account.address],
-    chainId: chain?.id,
-  });
+  const { data: collateralAmountData, refetch: refetchCollateralAmount } =
+    useReadContract({
+      abi: erc20ABI,
+      address: collateralAsset as `0x${string}`,
+      functionName: 'balanceOf',
+      args: [account.address],
+      chainId: chain?.id,
+    });
 
   const [transactionStep, setTransactionStep] = useState(0);
 
@@ -121,8 +124,8 @@ const AddLiquidity = () => {
   useEffect(() => {
     const amountTokenA = Math.floor(baseToken);
     const amountTokenB = Math.floor(quoteToken);
-    const minTokenA = amountTokenA * (100 - slippage) / 100;
-    const minTokenB = amountTokenB * (100 - slippage) / 100;
+    const minTokenA = (amountTokenA * (100 - slippage)) / 100;
+    const minTokenB = (amountTokenB * (100 - slippage)) / 100;
     setMinAmountTokenA(minTokenA);
     setMinAmountTokenB(minTokenB);
   }, [baseToken, quoteToken, slippage]);
@@ -287,17 +290,22 @@ const AddLiquidity = () => {
 
       <Box mb="4">
         <Text fontSize="sm" color="gray.500" mb="0.5">
-          Est. Base Token Amt.: {baseToken} vGas (min: {minAmountTokenA.toFixed(2)})
+          Est. Base Token Amt.: {baseToken} vGas (min:{' '}
+          {minAmountTokenA.toFixed(2)})
         </Text>
         <Text fontSize="sm" color="gray.500" mb="0.5">
-          Est. Quote Token Amt.: {quoteToken} vGwei (min: {minAmountTokenB.toFixed(2)})
+          Est. Quote Token Amt.: {quoteToken} vGwei (min:{' '}
+          {minAmountTokenB.toFixed(2)})
         </Text>
         <Text fontSize="sm" color="gray.500" mb="0.5">
           Net Position: {highPrice.toFixed(2)} Ggas
         </Text>
-        {isConnected && walletBalance !== null && walletBalanceAfter !== null ? (
+        {isConnected &&
+        walletBalance !== null &&
+        walletBalanceAfter !== null ? (
           <Text fontSize="sm" color="gray.500" mb="0.5">
-            Wallet Balance: {walletBalance} {collateralAssetTicker} → {walletBalanceAfter} {collateralAssetTicker}
+            Wallet Balance: {walletBalance} {collateralAssetTicker} →{' '}
+            {walletBalanceAfter} {collateralAssetTicker}
           </Text>
         ) : null}
       </Box>
