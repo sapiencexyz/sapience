@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
-interface IEpochLiquiditymodule {
+import {IFoilStructs} from "./IFoilStructs.sol";
+
+interface IEpochLiquidityModule {
     function createLiquidityPosition(
         IFoilStructs.LiquidityPositionParams memory params
     )
@@ -13,13 +15,22 @@ interface IEpochLiquiditymodule {
             uint256 addedAmount1
         );
 
-    function updateLiquidityPosition(
+    function decreaseLiquidityPosition(
         uint256 accountId,
-        uint256 collateral,
+        uint256 collateralAmount,
         uint128 liquidity,
         uint256 minGasAmount,
         uint256 minEthAmount
     ) external returns (uint256 amount0, uint256 amount1);
+
+    function increaseLiquidityPosition(
+        uint256 accountId,
+        uint256 collateralAmount,
+        uint256 gasTokenAmount,
+        uint256 ethTokenAmount,
+        uint256 minGasAmount,
+        uint256 minEthAmount
+    ) external returns (uint128 liquidity, uint256 amount0, uint256 amount1);
 
     function collectFees(
         uint256 tokenId

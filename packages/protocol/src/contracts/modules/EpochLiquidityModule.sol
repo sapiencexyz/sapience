@@ -11,14 +11,14 @@ import "../storage/Market.sol";
 import "../storage/Epoch.sol";
 import "../storage/Errors.sol";
 import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
-import {IEpochLiquiditymodule} from "../interfaces/IEpochLiquiditymodule.sol";
+import {IEpochLiquidityModule} from "../interfaces/IEpochLiquidityModule.sol";
 
 import "forge-std/console2.sol";
 
 contract EpochLiquidityModule is
     ReentrancyGuard,
     IERC721Receiver,
-    IEpochLiquiditymodule
+    IEpochLiquidityModule
 {
     using Market for Market.Data;
     using FAccount for FAccount.Data;
@@ -121,63 +121,25 @@ contract EpochLiquidityModule is
         // TODO: emit event
     }
 
-    function updateLiquidityPosition(
+    function decreaseLiquidityPosition(
         uint256 accountId,
-        uint256 collateral,
+        uint256 collateralAmount,
         uint128 liquidity,
         uint256 minGasAmount,
         uint256 minEthAmount
     ) external override returns (uint256 amount0, uint256 amount1) {
+        console2.log("--DECREASE LIQ POSITION--");
         Market.Data storage market = Market.load();
-        Epoch.Data storage epoch = Epoch.load();
-        Account.Data storage account = Account.load(accountId);
+        FAccount.Data storage account = FAccount.load(accountId);
 
-        (, , , , , int24 lowerTick, int24 upperTick) = market
+        (, , , , , int24 lowerTick, int24 upperTick, , , , , ) = market
             .uniswapPositionManager
             .positions(account.tokenId);
-
-        if (account.liquidity > liquidity) {
-            (amount0, amount1) = _increaseLiquidity(
-                market.uniswapPositionManager,
-                account.tokenId,
-                liquidity,
-                minGasAmount,
-                minEthAmount
-            );
-        } else if (account.liquidity < liquidity) {
-            (amount0, amount1) = _decreaseLiquidity(
-                market.uniswapPositionManager,
-                account.tokenId,
-                liquidity,
-                minGasAmount,
-                minEthAmount
-            );
-        } else {
-            revert InvalidLiquidityModification();
-        }
-
-        account.validateProvidedLiquidity(
-            market.marketParams,
-            liquidity,
-            lowerTick,
-            upperTick
-        );
-    }
-
-    function _decreaseLiquidity(
-        INonfungiblePositionManager positionManager,
-        uint256 tokenId,
-        uint128 liquidity,
-        uint256 minGasAmount,
-        uint256 minEthAmount
-    ) internal returns (uint256 amount0, uint256 amount1) {
-        Market.Data storage market = Market.load();
-        Epoch.Data storage epoch = Epoch.load();
 
         INonfungiblePositionManager.DecreaseLiquidityParams
             memory decreaseParams = INonfungiblePositionManager
                 .DecreaseLiquidityParams({
-                    tokenId: tokenId,
+                    tokenId: account.tokenId,
                     liquidity: liquidity,
                     amount0Min: 0,
                     amount1Min: 0,
@@ -187,29 +149,56 @@ contract EpochLiquidityModule is
         (amount0, amount1) = market.uniswapPositionManager.decreaseLiquidity(
             decreaseParams
         );
+
+        account.updateLoan(account.tokenId, collateralAmount, amount0, amount1);
+        account.validateProvidedLiquidity(
+            market.marketParams,
+            liquidity,
+            lowerTick,
+            upperTick
+        );
+
+        // transfer or remove collateral
     }
 
-    function _increaseLiquidity(
-        INonfungiblePositionManager positionManager,
-        uint256 tokenId,
-        uint128 liquidity,
+    function increaseLiquidityPosition(
+        uint256 accountId,
+        uint256 collateralAmount,
+        uint256 gasTokenAmount,
+        uint256 ethTokenAmount,
         uint256 minGasAmount,
         uint256 minEthAmount
-    ) internal returns (uint256 amount0, uint256 amount1) {
+    ) external returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
+        console2.log("--INCREASE LIQ POSITION--");
         Market.Data storage market = Market.load();
+        FAccount.Data storage account = FAccount.load(accountId);
+
+        (, , , , , int24 lowerTick, int24 upperTick, , , , , ) = market
+            .uniswapPositionManager
+            .positions(account.tokenId);
 
         INonfungiblePositionManager.IncreaseLiquidityParams
             memory increaseParams = INonfungiblePositionManager
                 .IncreaseLiquidityParams({
-                    tokenId: tokenId,
-                    amount0Desired: minGasAmount,
-                    amount1Desired: minEthAmount,
-                    amount0Min: 0,
-                    amount1Min: 0,
+                    tokenId: account.tokenId,
+                    amount0Desired: gasTokenAmount,
+                    amount1Desired: ethTokenAmount,
+                    amount0Min: minGasAmount,
+                    amount1Min: minEthAmount,
                     deadline: block.timestamp
                 });
 
-        (amount0, amount1) = positionManager.increaseLiquidity(increaseParams);
+        (liquidity, amount0, amount1) = market
+            .uniswapPositionManager
+            .increaseLiquidity(increaseParams);
+
+        account.updateLoan(account.tokenId, collateralAmount, amount0, amount1);
+        account.validateProvidedLiquidity(
+            market.marketParams,
+            liquidity,
+            lowerTick,
+            upperTick
+        );
     }
 
     // function getTokenAmounts(

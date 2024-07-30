@@ -111,17 +111,18 @@ library FAccount {
             self.borrowedGwei
         );
         console2.log("BORROWED GWEI", self.borrowedGwei);
-        console2.log("amountGasAtLowerTick", amountGasAtLowerTick);
+        console2.log("amountGasAtLowerTic", amountGasAtLowerTick);
 
-        uint256 leftoverGweiAmountAtLowerTick = quoteGasToGwei(
-            amountGasAtLowerTick - self.borrowedGas,
-            marketParams.baseAssetMinPriceTick
-        );
+        uint256 leftoverGweiAmountAtLowerTick;
+        if (amountGasAtLowerTick > self.borrowedGas) {
+            console2.log("INIF", amountGasAtLowerTick, self.borrowedGas);
+            leftoverGweiAmountAtLowerTick = quoteGasToGwei(
+                amountGasAtLowerTick - self.borrowedGas,
+                marketParams.baseAssetMinPriceTick
+            );
+        }
 
-        console2.log(
-            "LEFTOVER GAS AMOUNT",
-            amountGasAtLowerTick - self.borrowedGas
-        );
+        console2.log("LEFTOVER GAS AMOUNT", leftoverGweiAmountAtLowerTick);
         console2.log(
             "LEFTOVER GWEI AMOUNT LOWER",
             leftoverGweiAmountAtLowerTick,
@@ -162,6 +163,7 @@ library FAccount {
         int24 priceTick
     ) internal returns (uint256) {
         uint160 sqrtRatioX96 = TickMath.getSqrtRatioAtTick(priceTick);
+        console2.log("GWEITOGAS", sqrtRatioX96ToPrice(sqrtRatioX96));
         return
             FullMath.mulDiv(
                 gweiAmount,
@@ -175,6 +177,7 @@ library FAccount {
         int24 priceTick
     ) internal returns (uint256) {
         uint160 sqrtRatioX96 = TickMath.getSqrtRatioAtTick(priceTick);
+        console2.log("GASTOGWEI", sqrtRatioX96ToPrice(sqrtRatioX96));
         return
             FullMath.mulDiv(gasAmount, sqrtRatioX96ToPrice(sqrtRatioX96), 1e18);
     }
