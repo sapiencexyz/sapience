@@ -63,7 +63,6 @@ contract EpochTradeModule {
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) external {
-        // console2.log("modifyTraderPosition");
         // identify the account and position
         // Notice: accountId is the tokenId
         require(
@@ -73,33 +72,15 @@ contract EpochTradeModule {
         FAccount.Data storage account = FAccount.loadValid(accountId);
         Position.Data storage position = Position.loadValid(accountId);
 
-        // console2.log("modifyTraderPosition collateralAmount", collateralAmount);
-        // console2.log("modifyTraderPosition tokenAmount", tokenAmount);
-        // console2.log("modifyTraderPosition tokenAmountLimit", tokenAmountLimit);
-        // console2.log(
-        //     "modifyTraderPosition position.currentTokenAmount",
-        //     position.currentTokenAmount
-        // );
-        // console2.log(
-        //     "sameSide",
-        //     sameSide(position.currentTokenAmount, tokenAmount)
-        // );
-
-        // console2.log("PASO 1");
         if (
             !sameSide(position.currentTokenAmount, tokenAmount) ||
             tokenAmount == 0
         ) {
-            // console2.log("PASO 2");
             // go to zero before moving to the other side
             _closePosition(account, position, collateralAmount);
-            // console2.log("PASO 3");
         }
 
-        // console2.log("PASO 4");
-
         if (tokenAmount > 0) {
-            // console2.log("modifyTraderPosition LONG");
             _modifyLongPosition(
                 account,
                 position,
@@ -108,7 +89,6 @@ contract EpochTradeModule {
                 tokenAmountLimit
             );
         } else if (tokenAmount < 0) {
-            // console2.log("modifyTraderPosition SHORT");
             _modifyShortPosition(
                 account,
                 position,
@@ -151,7 +131,7 @@ contract EpochTradeModule {
             availableAmountInVEth: vEthLoan,
             availableAmountInVGas: 0,
             amountInLimitVEth: 0,
-            amountInLimitVGas: tokenAmountLimit.toUint(),
+            amountInLimitVGas: tokenAmountLimit.toUint().to160(),
             expectedAmountOutVEth: 0,
             expectedAmountOutVGas: tokenAmount.toUint()
         });
@@ -211,8 +191,6 @@ contract EpochTradeModule {
         (uint256 tokenAmountVEth, uint256 tokenAmountVGas) = swapTokensExactIn(
             params
         );
-        // console2.log("_createShortPosition tokenAmountVEth", tokenAmountVEth);
-        // console2.log("_createShortPosition tokenAmountVGas", tokenAmountVGas);
 
         position.updateBalance(
             tokenAmount,
@@ -250,7 +228,6 @@ contract EpochTradeModule {
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) internal {
-        // console2.log("_modifyLongPosition");
         // TODO check if after settlement and use the settlement price
 
         if (tokenAmount > position.currentTokenAmount) {
@@ -292,13 +269,6 @@ contract EpochTradeModule {
             }
 
             int delta = (tokenAmount - position.currentTokenAmount);
-            console2.log(
-                "_modifyLongPosition position.currentTokenAmount",
-                position.currentTokenAmount
-            );
-            console2.log("_modifyLongPosition tokenAmount", tokenAmount);
-            console2.log("_modifyLongPosition delta", delta);
-            console2.log("_modifyLongPosition price", getReferencePrice());
 
             SwapTokensExactInParams memory params = SwapTokensExactInParams({
                 amountInVEth: 0,
@@ -312,23 +282,6 @@ contract EpochTradeModule {
                 uint256 tokenAmountVEth,
                 uint256 tokenAmountVGas
             ) = swapTokensExactIn(params);
-
-            console2.log(
-                "_modifyLongPosition amountInVGas         ",
-                params.amountInVGas
-            );
-            console2.log(
-                "_modifyLongPosition tokenAmountVGas      ",
-                tokenAmountVGas
-            );
-            console2.log(
-                "_modifyLongPosition tokenAmountVEth      ",
-                tokenAmountVEth
-            );
-            console2.log(
-                "_modifyLongPosition account.borrowedGwei ",
-                account.borrowedGwei
-            );
 
             // Pay debt with vEth
             account.borrowedGwei -= tokenAmountVEth;
@@ -364,22 +317,14 @@ contract EpochTradeModule {
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) internal {
-        // console2.log("_modifyShortPosition");
         if (tokenAmount < position.currentTokenAmount) {
             // Increase the position (SHORT)
 
             int delta = (tokenAmount - position.currentTokenAmount);
             int deltaLimit = (tokenAmountLimit - position.currentTokenAmount);
-            // console2.log("_modifyShortPosition delta", delta);
-            // console2.log("_modifyShortPosition deltaLimit", deltaLimit);
-            // console2.log(
-            //     "_modifyShortPosition position.currentTokenAmount",
-            //     position.currentTokenAmount
-            // );
-            // console2.log("_modifyShortPosition tokenAmount", tokenAmount);
 
             // with the collateral get vGas (Loan)
-            uint vGasLoan = getReferencePrice() * (delta * -1).toUint(); //
+            uint vGasLoan = (delta * -1).toUint(); //
             account.collateralAmount += collateralAmount;
             account.borrowedGas += vGasLoan;
 
@@ -409,12 +354,6 @@ contract EpochTradeModule {
             }
 
             int delta = (position.currentTokenAmount - tokenAmount);
-            // console2.log("_modifyShortPosition delta", delta);
-            // console2.log(
-            //     "_modifyShortPosition position.currentTokenAmount",
-            //     position.currentTokenAmount
-            // );
-            // console2.log("_modifyShortPosition tokenAmount", tokenAmount);
 
             SwapTokensExactOutParams memory params = SwapTokensExactOutParams({
                 availableAmountInVEth: position.vEthAmount,
@@ -433,28 +372,9 @@ contract EpochTradeModule {
                 uint256 tokenAmountVGas
             ) = swapTokensExactOut(params);
 
-            // console2.log(
-            //     "_modifyShortPosition refundAmountVEth",
-            //     refundAmountVEth
-            // );
-            // console2.log(
-            //     "_modifyShortPosition refundAmountVGas",
-            //     refundAmountVGas
-            // );
-            // console2.log(
-            //     "_modifyShortPosition tokenAmountVEth",
-            //     tokenAmountVEth
-            // );
-            // console2.log(
-            //     "_modifyShortPosition tokenAmountVGas",
-            //     tokenAmountVGas
-            // );
-
-            account.borrowedGas -= tokenAmountVGas;
-
             position.updateBalance(
-                delta,
-                (position.vEthAmount - refundAmountVEth).toInt(),
+                -delta,
+                -(position.vEthAmount - refundAmountVEth).toInt(),
                 0
             );
         }
@@ -513,7 +433,6 @@ contract EpochTradeModule {
                 // Use collateral to pay the remaining debt
                 uint256 remainingDebt = account.borrowedGwei - tokenAmountVEth;
                 account.collateralAmount -= remainingDebt;
-                account.borrowedGwei = 0;
             } else if (account.borrowedGwei < tokenAmountVEth) {
                 // Obtained more vEth than required to pay the debt
                 // Add it as collateral
@@ -560,9 +479,7 @@ contract EpochTradeModule {
                 (uint256 refundAmountVEth, , , ) = swapTokensExactOut(
                     secondSwapParams
                 );
-                account.collateralAmount += refundAmountVEth;
-
-                account.borrowedGwei = 0;
+                account.collateralAmount = refundAmountVEth;
             } else if (account.borrowedGas < tokenAmountVGas) {
                 // Obtained more vGas than required to pay the debt
                 // Sell it back and convert to collateral
@@ -585,7 +502,7 @@ contract EpochTradeModule {
                 account.collateralAmount += tokenAmountVEth;
             }
 
-            account.borrowedGwei = 0;
+            account.borrowedGas = 0;
 
             position.resetBalance();
         }
@@ -633,7 +550,6 @@ contract EpochTradeModule {
                 // TODO -- We also set the sqrtPriceLimitx96 to be 0 to ensure we swap our exact input amount.
                 swapParams.sqrtPriceLimitX96 = 0;
             } else {
-                console2.log("Entered in the else => swap gas for eth");
                 swapParams.tokenIn = address(epoch.gasToken);
                 swapParams.tokenOut = address(epoch.ethToken);
                 swapParams.amountIn = params.amountInVGas;
@@ -645,12 +561,10 @@ contract EpochTradeModule {
             uint256 amountOut = market.uniswapSwapRouter.exactInputSingle(
                 swapParams
             );
-            // console2.log("swapTokensExactIn amountOut", amountOut);
 
             if (params.amountInVEth > 0) {
                 amountOutVGas = amountOut;
             } else {
-                console2.log("Entered in the else => result is for  eth");
                 amountOutVEth = amountOut;
             }
         }
@@ -659,8 +573,8 @@ contract EpochTradeModule {
     struct SwapTokensExactOutParams {
         uint256 availableAmountInVEth;
         uint256 availableAmountInVGas;
-        uint256 amountInLimitVEth;
-        uint256 amountInLimitVGas;
+        uint160 amountInLimitVEth;
+        uint160 amountInLimitVGas;
         uint256 expectedAmountOutVEth;
         uint256 expectedAmountOutVGas;
     }
@@ -719,36 +633,16 @@ contract EpochTradeModule {
             uint160 sqrtPriceLimitX96;
 
             if (params.expectedAmountOutVEth > 0) {
-                tokenIn = address(epoch.ethToken);
-                tokenOut = address(epoch.gasToken);
-                amountOut = params.expectedAmountOutVEth;
-                sqrtPriceLimitX96 = TickMath.MIN_SQRT_RATIO + 1;
-            } else {
                 tokenIn = address(epoch.gasToken);
                 tokenOut = address(epoch.ethToken);
+                amountOut = params.expectedAmountOutVEth;
+                sqrtPriceLimitX96 = params.amountInLimitVGas;
+            } else {
+                tokenIn = address(epoch.ethToken);
+                tokenOut = address(epoch.gasToken);
                 amountOut = params.expectedAmountOutVGas;
-                sqrtPriceLimitX96 = TickMath.MAX_SQRT_RATIO - 1;
+                sqrtPriceLimitX96 = params.amountInLimitVEth; // TODO use the input param
             }
-
-            // {
-            //     // LOG BLOCK
-            //     (uint160 sqrtPriceX96, int24 tick, , , , , ) = IUniswapV3Pool(
-            //         epoch.pool
-            //     ).slot0();
-            //     console2.log("exact out swap: tokenIn", tokenIn);
-            //     console2.log("exact out swap: tokenOut", tokenOut);
-            //     console2.log("exact out swap: amountOut", amountOut);
-            //     console2.log(
-            //         "exact out swap: sqrtPriceLimitX96",
-            //         sqrtPriceLimitX96
-            //     );
-            //     console2.log(
-            //         "exact out swap: MAX Sqrt Ratio   ",
-            //         TickMath.MAX_SQRT_RATIO
-            //     );
-            //     console2.log("exact out swap: sqrtPriceX96     ", sqrtPriceX96);
-            //     console2.log("exact out swap: tick", tick);
-            // }
 
             // TODO amountInMaximum and sqrtPriceLimitX96 should be passed as param to prevent slippage
             // TODO -- Naively set amountInMaximum to maxUint . In production, use an oracle or other data source to choose a safer value for amountOutMinimum.
@@ -768,23 +662,7 @@ contract EpochTradeModule {
             uint256 amountIn = market.uniswapSwapRouter.exactOutputSingle(
                 swapParams
             );
-            // console2.log("swapTokensExactOut amountIn", amountIn);
-            // console2.log(
-            //     "swapTokensExactOut params.expectedAmountOutVEth",
-            //     params.expectedAmountOutVEth
-            // );
-            // console2.log(
-            //     "swapTokensExactOut params.expectedAmountOutVGas",
-            //     params.expectedAmountOutVGas
-            // );
-            // console2.log(
-            //     "swapTokensExactOut params.availableAmountInVGas",
-            //     params.availableAmountInVGas
-            // );
-            // console2.log(
-            //     "swapTokensExactOut params.availableAmountInVEth",
-            //     params.availableAmountInVEth
-            // );
+
             tokenAmountVEth = params.expectedAmountOutVEth;
             tokenAmountVGas = params.expectedAmountOutVGas;
 
@@ -814,8 +692,6 @@ contract EpochTradeModule {
         uint256 amountInVEth,
         uint256 amountInVGas
     ) internal view returns (uint256 amountOutVEth, uint256 amountOutVGas) {
-        console2.log("_afterSettlementSwapExactIn");
-
         if (amountInVEth > 0) {
             amountOutVEth = 0;
             amountOutVGas = amountInVEth.divDecimal(epoch.settlementPrice);
@@ -839,8 +715,6 @@ contract EpochTradeModule {
             uint256 tokenOutVGas
         )
     {
-        console2.log("_afterSettlementSwapExactIn");
-
         if (amountOutVGas > 0) {
             tokenOutVEth = 0;
             tokenOutVGas = amountOutVGas;
@@ -875,32 +749,6 @@ contract EpochTradeModule {
 
     function getReferencePrice() public view returns (uint256 price18Digits) {
         Epoch.Data storage epoch = Epoch.load();
-
-        // Just log data for debugging, remove this block after testing
-        // {
-        //     (uint160 sqrtRatioX96, int24 tick, , , , , ) = IUniswapV3Pool(
-        //         epoch.pool
-        //     ).slot0();
-        //     int24 spacing = IUniswapV3Pool(epoch.pool).tickSpacing();
-        //     uint256 price = (((uint256(sqrtRatioX96) * 1e18) / 2 ** 96) ** 2) /
-        //         1e18;
-        //     uint256 priceMulDiv = FullMath.mulDiv(
-        //         uint256(sqrtRatioX96),
-        //         uint256(sqrtRatioX96),
-        //         FixedPoint96.Q96
-        //     );
-
-        //     // uint256 price2 = (sqrtRatioX96 * sqrtRatioX96) >> (96 * 2);
-        //     uint256 price2 = (uint256(sqrtRatioX96) * uint256(sqrtRatioX96)) >>
-        //         (192); // 192 == 96 * 2
-
-        //     console2.log("Spacing : ", spacing);
-        //     console2.log("SqrtPriceX96 : ", sqrtRatioX96);
-        //     console2.log("Tick : ", tick);
-        //     console2.log("Price : ", price);
-        //     console2.log("priceMulDiv : ", priceMulDiv);
-        //     console2.log("price2 : ", price2);
-        // }
 
         if (epoch.settled) {
             return epoch.settlementPrice;

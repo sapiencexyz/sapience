@@ -6,6 +6,7 @@
   "scripts": {
     "test": "",
     "dev": "cannon build --wipe --keep-alive --port 8545 --no-cors",
+    "update-abis:local": "cannon build --wipe && cannon inspect foil --write-deployments ../app/deployments && cannon inspect foil --write-deployments ../data/deployments && cannon inspect foil --write-deployments ./deployments/test/",
     "update-abis": "cannon build --wipe && cannon inspect foil --write-deployments ../app/deployments/13370 && cannon inspect foil --write-deployments ../data/deployments/13370 && cannon inspect foil --write-deployments ./deployments/13370/test/",
     "simulate-deploy:sepolia": "cannon build cannonfile.sepolia.toml --chain-id 11155111 --dry-run",
     "update-run": "cannon build && cannon inspect foil --write-deployments ./deployments/13370 && cannon build --keep-alive --port 8545 --no-cors"
