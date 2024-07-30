@@ -259,7 +259,6 @@ export default function TraderPosition({}) {
 
   const handleSlippageChange = (newSlippage: number) => {
     setSlippage(newSlippage);
-    console.log(`Slippage tolerance updated to: ${newSlippage}%`);
   };
 
   return (
