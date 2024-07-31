@@ -26,7 +26,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
-        working-directory: packages/protocol
 
       - name: Simulate deploy on Sepolia
         run: pnpm run simulate-deploy:sepolia
@@ -39,6 +38,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+        
       - name: Smart contract tests
         run: pnpm run test
         working-directory: packages/protocol

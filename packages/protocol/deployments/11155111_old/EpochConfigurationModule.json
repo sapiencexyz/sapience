@@ -1,5 +1,5 @@
 {
-  "address": "0x1652275AAc2661e2Dbc288C7df1c30a8AFCF4b1a",
+  "address": "0x6981f5723d7f780DBE143F3d8A082fC5519Cef08",
   "abi": [
     {
       "type": "function",
@@ -70,16 +70,6 @@
       "name": "getEpoch",
       "inputs": [],
       "outputs": [
-        {
-          "name": "startTime",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "endTime",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
         {
           "name": "pool",
           "type": "address",
@@ -402,12 +392,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xaa8d69d20643bb726f6892b85c3a42528b51130e9ec85e33dd55f4a5ca6b089e",
-  "deployTxnBlockNumber": "6406793",
-  "deployTimestamp": "1722386047",
+  "deployTxnHash": "0xd6840683511dda1c7899d483f603249bdd3ee2375c35ee4f5666dd27386bd517",
+  "deployTxnBlockNumber": "6398654",
+  "deployTimestamp": "1722272724",
   "sourceName": "src/contracts/modules/EpochConfigurationModule.sol",
   "contractName": "EpochConfigurationModule",
   "deployedOn": "deploy.EpochConfigurationModule",
-  "gasUsed": 2031872,
-  "gasCost": "1120866306"
+  "gasUsed": 2025611,
+  "gasCost": "2368976400"
 }
