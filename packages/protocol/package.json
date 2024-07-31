@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "scripts": {
     "dev": "cannon build --keep-alive --port 8545 --no-cors --write-deployments ./deployments/13370",
-    "test": "cannon build --write-deployments ./deployments/test/ && forge test",
+    "test": "cannon build --write-deployments ./deployments/test/ && cannon test -vv",
     "deploy:sepolia": "cannon build cannonfile.sepolia.toml --chain-id 11155111 --write-deployments ./deployments/11155111",
     "simulate-deploy:sepolia": "cannon build cannonfile.sepolia.toml --chain-id 11155111 --dry-run"
   },
