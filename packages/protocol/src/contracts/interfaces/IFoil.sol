@@ -16,14 +16,14 @@ interface IFoil {
     // ) external view returns (uint256 tokenAmount0, uint256 tokenAmount1);
 
     function createTraderPosition(
-        uint collateral,
+        uint256 collateral,
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) external returns (uint256 tokenId);
 
     function modifyTraderPosition(
         uint256 tokenId,
-        uint collateral,
+        uint256 collateral,
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) external;

@@ -29,8 +29,8 @@ library Epoch {
     }
 
     struct Data {
-        uint startTime;
-        uint endTime;
+        uint256 startTime;
+        uint256 endTime;
         VirtualToken ethToken;
         VirtualToken gasToken;
         IUniswapV3Pool pool;
@@ -74,8 +74,8 @@ library Epoch {
     }
 
     function createValid(
-        uint startTime,
-        uint endTime,
+        uint256 startTime,
+        uint256 endTime,
         address uniswapPositionManager,
         address uniswapQuoter,
         address uniswapSwapRouter,

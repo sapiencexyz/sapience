@@ -116,7 +116,7 @@ contract EpochTradeModule {
         int256 tokenAmountLimit
     ) internal {
         // with the collateral get vEth (Loan)
-        uint vEthLoan = collateralAmount; // 1:1
+        uint256 vEthLoan = collateralAmount; // 1:1
 
         account.collateralAmount += collateralAmount;
         account.borrowedGwei += vEthLoan;
@@ -171,7 +171,7 @@ contract EpochTradeModule {
         int256 tokenAmountLimit
     ) internal {
         // with the collateral get vGas (Loan)
-        uint vGasLoan = (tokenAmount * -1).toUint(); //(collateralAmount).divDecimal(getReferencePrice()); // collatera / vEth = 1/1 ; vGas/vEth = 1/currentPrice
+        uint256 vGasLoan = (tokenAmount * -1).toUint(); //(collateralAmount).divDecimal(getReferencePrice()); // collatera / vEth = 1/1 ; vGas/vEth = 1/currentPrice
 
         account.collateralAmount += collateralAmount;
         account.borrowedGas += vGasLoan;
@@ -232,9 +232,10 @@ contract EpochTradeModule {
 
         if (tokenAmount > position.currentTokenAmount) {
             // Increase the position (LONG)
-            uint delta = (tokenAmount - position.currentTokenAmount).toUint();
+            uint256 delta = (tokenAmount - position.currentTokenAmount)
+                .toUint();
             // with the collateral get vEth (Loan)
-            uint vEthLoan = collateralAmount; // 1:1
+            uint256 vEthLoan = collateralAmount; // 1:1
             account.collateralAmount += collateralAmount;
             account.borrowedGwei += vEthLoan;
 
@@ -324,7 +325,7 @@ contract EpochTradeModule {
             int deltaLimit = (tokenAmountLimit - position.currentTokenAmount);
 
             // with the collateral get vGas (Loan)
-            uint vGasLoan = (delta * -1).toUint(); //
+            uint256 vGasLoan = (delta * -1).toUint(); //
             account.collateralAmount += collateralAmount;
             account.borrowedGas += vGasLoan;
 
@@ -608,8 +609,8 @@ contract EpochTradeModule {
         epoch.validateSettlmentState();
 
         if (epoch.settled) {
-            uint consumedAmountInVEth;
-            uint consumedAmountInVGas;
+            uint256 consumedAmountInVEth;
+            uint256 consumedAmountInVGas;
             (
                 consumedAmountInVEth,
                 consumedAmountInVGas,

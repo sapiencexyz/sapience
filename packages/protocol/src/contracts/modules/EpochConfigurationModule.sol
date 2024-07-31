@@ -63,9 +63,10 @@ contract EpochConfigurationModule is ReentrancyGuard {
             marketParams
         );
     }
+
     function createEpoch(
-        uint startTime,
-        uint endTime,
+        uint256 startTime,
+        uint256 endTime,
         uint160 startingSqrtPriceX96
     ) external onlyOwner {
         Market.Data storage market = Market.loadValid();
@@ -112,8 +113,8 @@ contract EpochConfigurationModule is ReentrancyGuard {
         external
         view
         returns (
-            uint startTime,
-            uint endTime,
+            uint256 startTime,
+            uint256 endTime,
             address pool,
             address ethToken,
             address gasToken

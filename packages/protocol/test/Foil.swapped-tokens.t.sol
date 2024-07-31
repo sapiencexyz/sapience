@@ -20,7 +20,7 @@
 //     address constant UNISWAP = 0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1;
 
 //     function setUp() public {
-//         for (uint i = 0; i < 10; i++) {
+//         for (uint256 i = 0; i < 10; i++) {
 //             address pool;
 
 //             Foil newFoil = new Foil(
@@ -42,7 +42,7 @@
 //     }
 
 //     function test_addLiquidityToAll() public {
-//         for (uint i = 0; i < 10; i++) {
+//         for (uint256 i = 0; i < 10; i++) {
 //             int24 tickSpacing = IUniswapV3Pool(pools[i]).tickSpacing();
 //             // int24 lowerTick = TickMath.getTickAtSqrtRatio(
 //             //     177159557114295710296101716160

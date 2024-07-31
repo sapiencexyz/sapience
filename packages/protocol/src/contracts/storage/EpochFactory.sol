@@ -32,7 +32,7 @@
 //             revert Errors.NoEpochs();
 //         }
 
-//         uint index = self.epochIds.length - 1;
+//         uint256 index = self.epochIds.length - 1;
 //         uint256 currentEpochId = self.epochIds[index];
 //         Epoch.Data storage epoch = Epoch.load(currentEpochId);
 //         while (block.timestamp < epoch.startTime) {
@@ -112,19 +112,19 @@
 //         self.latestStartTime = _startTime;
 //     }
 
-//     function integerToString(uint _i) internal pure returns (string memory) {
+//     function integerToString(uint256 _i) internal pure returns (string memory) {
 //         if (_i == 0) {
 //             return "0";
 //         }
-//         uint j = _i;
-//         uint len;
+//         uint256 j = _i;
+//         uint256 len;
 
 //         while (j != 0) {
 //             len++;
 //             j /= 10;
 //         }
 //         bytes memory bstr = new bytes(len);
-//         uint k = len - 1;
+//         uint256 k = len - 1;
 
 //         while (_i != 0) {
 //             bstr[k--] = bytes1(uint8(48 + (_i % 10)));
