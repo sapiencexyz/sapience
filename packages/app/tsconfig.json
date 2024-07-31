@@ -23,7 +23,7 @@
       "~/*": [
         "./*",
       ],
-      "@/protocol/*": ["../protocol/*"]
+      "@/protocol/*": ["../../protocol/*"]
     },
     "incremental": true,
     "plugins": [
