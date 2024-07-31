@@ -15,7 +15,7 @@ import {
 } from 'react';
 import type React from 'react';
 import type { AbiFunction } from 'viem';
-import { useAccount, useReadContract } from 'wagmi';
+import { useAccount, useReadContract, useReadContracts } from 'wagmi';
 
 import useFoilDeployment from './useFoilDeployment';
 import { MarketContext } from '~/lib/context/MarketProvider';
@@ -39,16 +39,16 @@ const useTokenIdsOfOwner = (ownerAddress: `0x${string}`) => {
   const [tokenIds, setTokenIds] = useState<number[]>([]);
 
   useEffect(() => {
-    if (balanceResult.data) {
-      const balance = parseInt(balanceResult.data.toString(), 10);
-      const tokenContracts = times(balance, (index) => ({
-        abi: foilData.abi as AbiFunction[],
-        address: foilData.address as `0x${string}`,
-        functionName: 'tokenOfOwnerByIndex',
-        args: [ownerAddress, index],
-      }));
-      /*
-      const fetchTokenIds = async () => {
+    const fetchTokenIds = async () => {
+      if (balanceResult.data) {
+        const balance = parseInt(balanceResult.data.toString(), 10);
+        const tokenContracts = times(balance, (index) => ({
+          abi: foilData.abi,
+          address: foilData.address as `0x${string}`,
+          functionName: 'tokenOfOwnerByIndex',
+          args: [ownerAddress, index],
+        }));
+        /*
         const tokensInfo = await useReadContracts({
           contracts: tokenContracts,
         });
@@ -56,15 +56,15 @@ const useTokenIdsOfOwner = (ownerAddress: `0x${string}`) => {
         if (tokensInfo.data?.length) {
           // Extract token IDs from the responses
           const ids = tokensInfo.data.map((resp) =>
-            parseInt(resp.data.toString(), 10)
+            parseInt(resp.toString(), 10)
           );
           setTokenIds(ids);
         }
-      };
+        */
+      }
+    };
 
-      fetchTokenIds();
-      */
-    }
+    fetchTokenIds();
   }, [balanceResult.data, foilData.abi, foilData.address, ownerAddress]);
 
   return tokenIds;

@@ -4,12 +4,10 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "test": "",
-    "dev": "cannon build --wipe --keep-alive --port 8545 --no-cors",
-    "update-abis:local": "cannon build --wipe && cannon inspect foil --write-deployments ../app/deployments && cannon inspect foil --write-deployments ../data/deployments && cannon inspect foil --write-deployments ./deployments/test/",
-    "update-abis": "cannon build --wipe && cannon inspect foil --write-deployments ../app/deployments/13370 && cannon inspect foil --write-deployments ../data/deployments/13370 && cannon inspect foil --write-deployments ./deployments/13370/test/",
-    "simulate-deploy:sepolia": "cannon build cannonfile.sepolia.toml --chain-id 11155111 --dry-run",
-    "update-run": "cannon build && cannon inspect foil --write-deployments ./deployments/13370 && cannon build --keep-alive --port 8545 --no-cors"
+    "dev": "cannon build --keep-alive --port 8545 --no-cors --write-deployments ./deployments/13370",
+    "test": "forge build && cannon build --write-deployments ./deployments/test/ && cannon test",
+    "deploy:sepolia": "cannon build cannonfile.sepolia.toml --chain-id 11155111 --write-deployments ./deployments/11155111",
+    "simulate-deploy:sepolia": "cannon build cannonfile.sepolia.toml --chain-id 11155111 --dry-run"
   },
   "devDependencies": {
     "@types/chai": "^4.3.16",
@@ -29,7 +27,7 @@
     "@uma/core": "^2.59.1",
     "@uniswap/v3-core": "^1.0.1",
     "@uniswap/v3-periphery": "^1.4.4",
-    "@usecannon/cli": "^2.15.8"
+    "@usecannon/cli": "^2.16.0"
   },
   "engines": {
     "node": ">=16.x.x",
