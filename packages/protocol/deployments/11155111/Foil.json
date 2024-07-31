@@ -1,5 +1,5 @@
 {
-  "address": "0x4979c4dcdce8155bb4775d0ad59507327843718d",
+  "address": "0xbc4a9aa404b79d84901a1939ae77a89c02603755",
   "abi": [
     {
       "type": "function",
@@ -70,16 +70,6 @@
       "name": "getEpoch",
       "inputs": [],
       "outputs": [
-        {
-          "name": "startTime",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "endTime",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
         {
           "name": "pool",
           "type": "address",
@@ -938,11 +928,6 @@
       ]
     },
     {
-      "type": "error",
-      "name": "OverflowUint256ToUint160",
-      "inputs": []
-    },
-    {
       "type": "constructor",
       "inputs": [],
       "stateMutability": "nonpayable"
@@ -1362,11 +1347,11 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0x31fa1d8ae179a911a6fb4ae8938b587f7c3167c1ae9ce882c72895587c189021",
-  "deployTxnBlockNumber": "6406794",
-  "deployTimestamp": "1722386048",
+  "deployTxnHash": "0xfc6f2f4d393a6d8ba09a46dc1feeb4096b8aed64b9eb8ec88673dc241ae04902",
+  "deployTxnBlockNumber": "6398656",
+  "deployTimestamp": "1722272748",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
-  "gasUsed": 420248,
-  "gasCost": "1107804559"
+  "gasUsed": 420260,
+  "gasCost": "2333137625"
 }
