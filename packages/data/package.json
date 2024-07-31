@@ -4,9 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start:api": "ts-node-dev src/index.ts --port 3001",
-    "start:market": "ts-node-dev src/market.ts",
-    "start:chain": "ts-node-dev src/chain.ts",
+    "build": "tsc",
+    "dev:service": "ts-node-dev src/service.ts --port 3001",
+    "dev:worker": "ts-node-dev src/worker.ts",
+    "start:service": "ts-node src/service.ts",
+    "start:worker": "ts-node src/worker.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -15,6 +17,7 @@
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.19.2",
+    "pg": "^8.12.0",
     "reflect-metadata": "^0.2.2",
     "sqlite3": "^5.1.7",
     "ts-node-dev": "^2.0.0",

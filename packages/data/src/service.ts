@@ -5,18 +5,13 @@ import { Price } from './entity/Price';
 import { Position } from './entity/Position';
 import express from 'express';
 import { Between } from 'typeorm';
+import connectionOptions from './db';
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 
-createConnection({
-    type: "sqlite",
-    database: "./data/database.sqlite",
-    synchronize: true,
-    logging: true,
-    entities: [Price],
-}).then(async connection => {
+createConnection(connectionOptions).then(async connection => {
     const priceRepository = connection.getRepository(Price);
     const positionRepository = connection.getRepository(Position);
 

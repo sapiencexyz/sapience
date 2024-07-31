@@ -1,8 +1,9 @@
 import { createConnection } from 'typeorm';
-import { Event } from './entity/Event';
-import Foil from '@/protocol/deployments/13370/test/Foil.json';
+import { Event } from '../entity/Event';
+import Foil from '@/protocol/deployments/13370/Foil.json';
 import { createPublicClient, http, Log } from 'viem'
 import { hardhat } from 'viem/chains'
+import connectionOptions from '../db';
  
 const bigintReplacer = (key: string, value: any) => {
     if (typeof value === 'bigint') {
@@ -20,13 +21,7 @@ export const publicClient = createPublicClient({
 
 const startBackgroundProcess = async () => {
     // Initialize database connection
-    const connection = await createConnection({
-        type: "sqlite",
-        database: "./data/database.sqlite",
-        synchronize: true,
-        logging: true,
-        entities: [Event],
-    });
+    const connection = await createConnection(connectionOptions);
     const eventRepository = connection.getRepository(Event);
 
     // Process log data

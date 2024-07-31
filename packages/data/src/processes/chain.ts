@@ -1,8 +1,9 @@
 import { createConnection } from 'typeorm';
-import { Price } from './entity/Price';
+import { Price } from '../entity/Price';
 import { createPublicClient, http, Block } from 'viem';
-import Foil from '@/protocol/deployments/13370/test/Foil.json';
+import Foil from '@/protocol/deployments/13370/Foil.json';
 import { mainnet, hardhat } from 'viem/chains';
+import connectionOptions from '../db';
 
 // Initialize RPC connection
 export const publicClient = createPublicClient({
@@ -12,13 +13,7 @@ export const publicClient = createPublicClient({
 
 const startBackgroundProcess = async () => {
   // Initialize database connection
-  const connection = await createConnection({
-    type: 'sqlite',
-    database: './data/database.sqlite',
-    synchronize: true,
-    logging: true,
-    entities: [Price],
-  });
+  const connection = await createConnection(connectionOptions);
   const priceRepository = connection.getRepository(Price);
 
   // Process log data
