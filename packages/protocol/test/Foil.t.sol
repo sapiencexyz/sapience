@@ -26,6 +26,7 @@ contract FoilTest is Test {
     address constant UNISWAP = 0xC36442b4a4522E871399CD717aBDD847Ab11FE88;
     address constant UNISWAP_QUOTER =
         0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6;
+    uint256 constant EPOCH_START_TIME = 1722270000;
 
     function setUp() public {
         foil = IFoil(vm.getAddress("Foil"));
@@ -42,6 +43,7 @@ contract FoilTest is Test {
 
         IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
             .LiquidityPositionParams({
+                epochId: EPOCH_START_TIME,
                 amountTokenB: 1000 ether,
                 amountTokenA: 1000 ether,
                 collateralAmount: 100000 ether,

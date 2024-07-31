@@ -19,23 +19,40 @@ contract EpochUMASettlementModule is ReentrancyGuard {
     event SettlementDisputed(uint256 disputeTime);
     event MarketSettled(uint256 settlementPrice);
 
-    modifier afterEndTime() { 
-        Epoch.Data storage epoch = Epoch.load();
-        require(block.timestamp > epoch.endTime, "Market activity is still allowed");
+    modifier afterEndTime(uint256 epochId) {
+        Epoch.Data storage epoch = Epoch.load(epochId);
+        require(
+            block.timestamp > epoch.endTime,
+            "Market activity is still allowed"
+        );
         _;
     }
 
-    function submitSettlementPrice(uint256 settlementPrice) external afterEndTime nonReentrant returns (bytes32) {
+    function submitSettlementPrice(
+        uint256 epochId,
+        uint256 settlementPrice
+    ) external afterEndTime(epochId) nonReentrant returns (bytes32) {
         Market.Data storage market = Market.load();
-        Epoch.Data storage epoch = Epoch.load();
-        require(msg.sender == market.owner, "Only owner can call this function");
+        Epoch.Data storage epoch = Epoch.load(epochId);
+        require(
+            msg.sender == market.owner,
+            "Only owner can call this function"
+        );
         require(!epoch.settled, "Market already settled");
 
         IERC20 bondCurrency = IERC20(epoch.marketParams.bondCurrency);
-        OptimisticOracleV3Interface optimisticOracleV3 = market.optimisticOracleV3;
+        OptimisticOracleV3Interface optimisticOracleV3 = market
+            .optimisticOracleV3;
 
-        bondCurrency.safeTransferFrom(msg.sender, address(this), epoch.marketParams.bondAmount);
-        bondCurrency.forceApprove(address(optimisticOracleV3), epoch.marketParams.bondAmount);
+        bondCurrency.safeTransferFrom(
+            msg.sender,
+            address(this),
+            epoch.marketParams.bondAmount
+        );
+        bondCurrency.forceApprove(
+            address(optimisticOracleV3),
+            epoch.marketParams.bondAmount
+        );
 
         epoch.settlement = Epoch.Settlement({
             settlementPrice: settlementPrice,
@@ -71,10 +88,17 @@ contract EpochUMASettlementModule is ReentrancyGuard {
         return epoch.assertionId;
     }
 
-    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) external afterEndTime nonReentrant {
+    function assertionResolvedCallback(
+        uint256 epochId,
+        bytes32 assertionId,
+        bool assertedTruthfully
+    ) external afterEndTime(epochId) nonReentrant {
         Market.Data storage market = Market.load();
-        Epoch.Data storage epoch = Epoch.load();
-        require(msg.sender == address(market.optimisticOracleV3), "Invalid caller");
+        Epoch.Data storage epoch = Epoch.load(epochId);
+        require(
+            msg.sender == address(market.optimisticOracleV3),
+            "Invalid caller"
+        );
         require(!epoch.settled, "Market already settled");
 
         Epoch.Settlement storage settlement = epoch.settlement;
@@ -84,10 +108,16 @@ contract EpochUMASettlementModule is ReentrancyGuard {
         emit MarketSettled(settlement.settlementPrice);
     }
 
-    function assertionDisputedCallback(bytes32 assertionId) external afterEndTime nonReentrant {
+    function assertionDisputedCallback(
+        uint256 epochId,
+        bytes32 assertionId
+    ) external afterEndTime(epochId) nonReentrant {
         Market.Data storage market = Market.load();
-        Epoch.Data storage epoch = Epoch.load();
-        require(msg.sender == address(market.optimisticOracleV3), "Invalid caller");
+        Epoch.Data storage epoch = Epoch.load(epochId);
+        require(
+            msg.sender == address(market.optimisticOracleV3),
+            "Invalid caller"
+        );
 
         Epoch.Settlement storage settlement = epoch.settlement;
         settlement.disputed = true;

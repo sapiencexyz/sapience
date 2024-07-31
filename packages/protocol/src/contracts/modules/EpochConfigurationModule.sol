@@ -109,7 +109,9 @@ contract EpochConfigurationModule is ReentrancyGuard {
         );
     }
 
-    function getEpoch()
+    function getEpoch(
+        uint256 id
+    )
         external
         view
         returns (
@@ -120,7 +122,7 @@ contract EpochConfigurationModule is ReentrancyGuard {
             address gasToken
         )
     {
-        Epoch.Data storage epoch = Epoch.load();
+        Epoch.Data storage epoch = Epoch.load(id);
         return (
             epoch.startTime,
             epoch.endTime,

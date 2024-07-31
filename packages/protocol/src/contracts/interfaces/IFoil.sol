@@ -6,22 +6,23 @@ import "../storage/Position.sol";
 import "../storage/FAccount.sol";
 
 interface IFoil {
-    function getEpoch()
-        external
-        view
-        returns (address pool, address ethToken, address gasToken);
+    function getEpoch(
+        uint256 startTime
+    ) external view returns (address pool, address ethToken, address gasToken);
 
     // function getPosition(
     //     uint256 accountId
     // ) external view returns (uint256 tokenAmount0, uint256 tokenAmount1);
 
     function createTraderPosition(
+        uint256 epochId,
         uint256 collateral,
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) external returns (uint256 tokenId);
 
     function modifyTraderPosition(
+        uint256 epochId,
         uint256 tokenId,
         uint256 collateral,
         int256 tokenAmount,
@@ -58,6 +59,7 @@ interface IFoil {
     ) external returns (uint256 amountOutVEth, uint256 amountOutVGas);
 
     function updateLiquidityPosition(
+        uint256 epochId,
         uint256 tokenId,
         uint256 collateral,
         uint128 liquidityRatio
@@ -104,5 +106,7 @@ interface IFoil {
         uint160 sqrtPriceX96
     ) external pure returns (uint256 amountGWEI, uint256 amountGAS);
 
-    function getReferencePrice() external view returns (uint256 price);
+    function getReferencePrice(
+        uint256 epochId
+    ) external view returns (uint256 price);
 }

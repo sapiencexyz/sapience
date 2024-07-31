@@ -39,7 +39,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
         ERC721Storage._mint(msg.sender, tokenId);
 
         Market.Data storage market = Market.load();
-        Epoch.Data storage epoch = Epoch.load();
+        Epoch.Data storage epoch = Epoch.load(params.epochId);
 
         INonfungiblePositionManager.MintParams
             memory mintParams = INonfungiblePositionManager.MintParams({
@@ -97,10 +97,11 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
     }
 
     function collectFees(
+        uint256 epochId,
         uint256 tokenId
     ) external returns (uint256 amount0, uint256 amount1) {
         Market.Data storage market = Market.load();
-        Epoch.Data storage epoch = Epoch.load();
+        Epoch.Data storage epoch = Epoch.load(epochId);
 
         // TODO: verify msg sender is owner of this tokenId
 
@@ -145,6 +146,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
     }
 
     function updateLiquidityPosition(
+        uint256 epochId,
         uint256 tokenId,
         uint256 collateral,
         uint128 liquidity,
@@ -152,7 +154,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
     ) external payable returns (uint256 amount0, uint256 amount1) {
         console2.log("UPDATELIQPOSITION");
         Market.Data storage market = Market.load();
-        Epoch.Data storage epoch = Epoch.load();
+        Epoch.Data storage epoch = Epoch.load(epochId);
 
         INonfungiblePositionManager.DecreaseLiquidityParams
             memory decreaseParams = INonfungiblePositionManager

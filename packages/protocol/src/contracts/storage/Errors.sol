@@ -3,6 +3,7 @@
 pragma solidity >=0.8.2 <0.9.0;
 
 library Errors {
+    error InvalidData(string message);
     error AccountAlreadyCreated();
     error MarketAlreadyCreated();
     error InvalidAccountId(uint256 accountId);

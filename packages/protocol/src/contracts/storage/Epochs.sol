@@ -11,4 +11,17 @@ library Epochs {
         mapping(uint256 => Epoch.Data) epochs;
         uint256 latestStartTime;
     }
+
+    function load() internal pure returns (Epochs.Data storage epochs) {
+        bytes32 s = keccak256(abi.encode("foil.gas.epochs"));
+
+        assembly {
+            epochs.slot := s
+        }
+    }
+
+    function getLatestEpoch() internal view returns (Epoch.Data storage epoch) {
+        Data storage self = load();
+        return self.epochs[self.latestStartTime];
+    }
 }

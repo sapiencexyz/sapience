@@ -42,9 +42,8 @@ library Epoch {
         Market.MarketParams marketParams; // Storing MarketParams as a struct within Epoch.Data
     }
 
-    function load() internal pure returns (Data storage epoch) {
-        // we need to have this be dynamic with IDs?
-        bytes32 s = keccak256(abi.encode("foil.gas.epoch"));
+    function load(uint256 id) internal pure returns (Data storage epoch) {
+        bytes32 s = keccak256(abi.encode("foil.gas.epoch", id));
 
         assembly {
             epoch.slot := s
@@ -84,11 +83,19 @@ library Epoch {
         address optimisticOracleV3,
         Market.MarketParams memory marketParams
     ) internal returns (Data storage epoch) {
-        epoch = load();
+        epoch = load(startTime);
 
         // can only be called once
         if (epoch.endTime != 0) {
             revert Errors.EpochAlreadyStarted();
+        }
+
+        if (startTime == 0) {
+            revert Errors.InvalidData("startTime");
+        }
+
+        if (endTime <= startTime) {
+            revert Errors.InvalidData("endTime");
         }
 
         if (
@@ -156,15 +163,15 @@ library Epoch {
         epoch.gasToken.approve(address(uniswapSwapRouter), type(uint256).max);
     }
 
-    function loadValid() internal view returns (Data storage epoch) {
-        epoch = load();
+    function loadValid(uint256 id) internal view returns (Data storage epoch) {
+        epoch = load(id);
 
         if (epoch.endTime == 0) {
             revert Errors.InvalidEpoch();
         }
     }
 
-    function validateSettlmentState(Data storage self) internal {
+    function validateSettlmentState(Data storage self) internal view {
         if (block.timestamp < self.startTime) {
             console2.log("IT SHOULD REVERT WITH EPOCH NOT STARTED");
             return;
@@ -178,7 +185,7 @@ library Epoch {
         }
     }
 
-    function validateNotSettled(Data storage self) internal {
+    function validateNotSettled(Data storage self) internal view {
         if (block.timestamp < self.startTime) {
             console2.log("IT SHOULD REVERT WITH EPOCH NOT STARTED");
             return;
