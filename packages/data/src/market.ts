@@ -1,6 +1,6 @@
 import { createConnection } from 'typeorm';
 import { Event } from './entity/Event';
-import Foil from '../deployments/Foil.json';
+import Foil from '@/protocol/deployments/13370/test/Foil.json';
 import { createPublicClient, http, Log } from 'viem'
 import { hardhat } from 'viem/chains'
  

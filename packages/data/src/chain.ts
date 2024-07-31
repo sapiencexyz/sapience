@@ -1,7 +1,7 @@
 import { createConnection } from 'typeorm';
 import { Price } from './entity/Price';
 import { createPublicClient, http, Block } from 'viem';
-import Foil from '../deployments/Foil.json';
+import Foil from '@/protocol/deployments/13370/test/Foil.json';
 import { mainnet, hardhat } from 'viem/chains';
 
 // Initialize RPC connection

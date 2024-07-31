@@ -10,7 +10,8 @@
       "experimentalDecorators": true,
       "skipLibCheck": true,
       "strictPropertyInitialization": false,
-      "resolveJsonModule": true
+      "resolveJsonModule": true,
+      "paths": {"@/protocol/*": ["../protocol/*"]}
     },
     "include": ["src"],
     "exclude": ["node_modules", "**/*.spec.ts"]

@@ -117,7 +117,7 @@ contract EpochConfigurationModule is ReentrancyGuard {
             address pool,
             address ethToken,
             address gasToken,
-            bytes priceUnit,
+            bytes priceUnit
         )
     {
         Epoch.Data storage epoch = Epoch.load();

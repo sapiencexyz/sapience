@@ -21,8 +21,9 @@
     "baseUrl": "src",
     "paths": {
       "~/*": [
-        "./*"
-      ]
+        "./*",
+      ],
+      "@/protocol/*": ["../protocol/*"]
     },
     "incremental": true,
     "plugins": [

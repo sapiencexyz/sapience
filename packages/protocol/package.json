@@ -6,9 +6,10 @@
   "scripts": {
     "test": "",
     "dev": "cannon build --keep-alive --port 8545 --no-cors --write-deployments ./deployments/13370",
-    "update-abis:local": "cannon build --write-deployments ../app/deployments && cannon inspect foil --write-deployments ../data/deployments && cannon inspect foil --write-deployments ./deployments/test/",
-    "update-abis": "cannon build && cannon inspect foil --write-deployments ../app/deployments/13370 && cannon inspect foil --write-deployments ../data/deployments/13370 && cannon inspect foil --write-deployments ./deployments/13370/test/",
-    "simulate-deploy:sepolia": "cannon build cannonfile.sepolia.toml --chain-id 11155111 --dry-run"
+    "update-abis:local": "cannon build --write-deployments ./deployments/test/",
+    "update-abis": "cannon build --write-deployments ./deployments/13370/test/",
+    "simulate-deploy:sepolia": "cannon build cannonfile.sepolia.toml --chain-id 11155111 --dry-run",
+    "test": "forge test"
   },
   "devDependencies": {
     "@types/chai": "^4.3.16",
