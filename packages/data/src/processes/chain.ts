@@ -1,3 +1,4 @@
+import 'tsconfig-paths/register';
 import { createConnection } from 'typeorm';
 import { Price } from '../entity/Price';
 import { createPublicClient, http, Block } from 'viem';
@@ -11,7 +12,7 @@ export const publicClient = createPublicClient({
   transport: http(), // switch to websockets? should automatically switch poll default on watchContractEvent 
 });
 
-const startBackgroundProcess = async () => {
+export const runChainProcess = async () => {
   // Initialize database connection
   const connection = await createConnection(connectionOptions);
   const priceRepository = connection.getRepository(Price);
@@ -39,4 +40,6 @@ const startBackgroundProcess = async () => {
   });
 };
 
-startBackgroundProcess().catch((error) => console.log(error));
+if (require.main === module) {
+  runChainProcess().catch((error) => console.log(error));
+}
