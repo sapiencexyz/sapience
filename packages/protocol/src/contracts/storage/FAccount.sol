@@ -6,6 +6,7 @@ import {TickMath} from "../external/univ3/TickMath.sol";
 import "./Position.sol";
 import "./Market.sol";
 import "../external/univ3/LiquidityAmounts.sol";
+import "../libraries/Quote.sol";
 import "forge-std/console2.sol";
 
 library FAccount {
@@ -79,119 +80,92 @@ library FAccount {
         uint160 sqrtPriceBX96;
     }
 
-    function validateProvidedLiquidity(
-        Data storage self,
-        Market.MarketParams memory marketParams,
-        uint128 liquidity,
-        int24 lowerTick,
-        int24 upperTick
-    ) internal {
-        RuntimeValidateParams memory params;
-        params.sqrtPriceAX96 = TickMath.getSqrtRatioAtTick(lowerTick);
-        params.sqrtPriceBX96 = TickMath.getSqrtRatioAtTick(upperTick);
+    // function validateProvidedLiquidity(
+    //     Data storage self,
+    //     Ep,
+    //     uint128 liquidity,
+    //     int24 lowerTick,
+    //     int24 upperTick
+    // ) internal {
+    //     RuntimeValidateParams memory params;
+    // add +1
 
-        uint128 scaleFactor = 1e3;
+    // uint128 scaleFactor = 1e3;
 
-        uint256 amountGasAtLowerTick = LiquidityAmounts.getAmount0ForLiquidity(
-            params.sqrtPriceAX96,
-            params.sqrtPriceBX96,
-            liquidity / scaleFactor
-        ) * uint256(scaleFactor);
-        console2.log("AMOUNT GAS AT LOWER TICK", amountGasAtLowerTick);
+    // uint256 amountGasAtLowerTick = LiquidityAmounts.getAmount0ForLiquidity(
+    //     params.sqrtPriceAX96,
+    //     params.sqrtPriceBX96,
+    //     liquidity / scaleFactor
+    // ) * uint256(scaleFactor);
+    // console2.log("AMOUNT GAS AT LOWER TICK", amountGasAtLowerTick);
 
-        uint256 amountGweiAtUpperTick = LiquidityAmounts.getAmount1ForLiquidity(
-            params.sqrtPriceAX96,
-            params.sqrtPriceBX96,
-            liquidity / scaleFactor
-        ) * uint256(scaleFactor);
+    // // 5 - 30
+    // // at price 5: X amt of GAS, 0 GWEI
 
-        console2.log(
-            "AMOUNT GWEI AT UPPER TICK",
-            amountGweiAtUpperTick,
-            self.borrowedGwei
-        );
-        console2.log("BORROWED GWEI", self.borrowedGwei);
-        console2.log("amountGasAtLowerTic", amountGasAtLowerTick);
+    // uint256 amountGweiAtUpperTick = LiquidityAmounts.getAmount1ForLiquidity(
+    //     params.sqrtPriceAX96,
+    //     params.sqrtPriceBX96,
+    //     liquidity / scaleFactor
+    // ) * uint256(scaleFactor);
 
-        uint256 leftoverGweiAmountAtLowerTick;
-        if (amountGasAtLowerTick > self.borrowedGas) {
-            console2.log("INIF", amountGasAtLowerTick, self.borrowedGas);
-            leftoverGweiAmountAtLowerTick = quoteGasToGwei(
-                amountGasAtLowerTick - self.borrowedGas,
-                marketParams.baseAssetMinPriceTick
-            );
-        }
+    // // 5 - 30
+    // // at price 30: 0 of GAS, X amt GWEI
 
-        console2.log("LEFTOVER GAS AMOUNT", leftoverGweiAmountAtLowerTick);
-        console2.log(
-            "LEFTOVER GWEI AMOUNT LOWER",
-            leftoverGweiAmountAtLowerTick,
-            leftoverGweiAmountAtLowerTick + self.collateralAmount
-        );
+    // console2.log(
+    //     "AMOUNT GWEI AT UPPER TICK",
+    //     amountGweiAtUpperTick,
+    //     self.borrowedGwei
+    // );
+    // console2.log("BORROWED GWEI", self.borrowedGwei);
+    // console2.log("amountGasAtLowerTic", amountGasAtLowerTick);
 
-        if (
-            leftoverGweiAmountAtLowerTick + self.collateralAmount <
-            self.borrowedGwei
-        ) {
-            revert Errors.InsufficientCollateral();
-        }
+    // uint256 leftoverGweiAmountAtLowerTick;
+    // if (amountGasAtLowerTick > self.borrowedGas) {
+    //     console2.log("INIF", amountGasAtLowerTick, self.borrowedGas);
+    //     leftoverGweiAmountAtLowerTick = Quote.quoteGasToEth(
+    //         amountGasAtLowerTick - self.borrowedGas,
+    //         marketParams.baseAssetMinPriceTick
+    //     );
+    // }
 
-        uint256 availableGweiFromPosition = amountGweiAtUpperTick >
-            self.borrowedGwei
-            ? amountGweiAtUpperTick - self.borrowedGwei
-            : 0;
-        console2.log("AVAILABLE GWEI FROM POSITION", availableGweiFromPosition);
-        uint256 maxAvailableGasToPayLoan = quoteGweiToGas(
-            availableGweiFromPosition + self.collateralAmount,
-            marketParams.baseAssetMaxPriceTick
-        );
+    // // 5 - 30
+    // // loan is 25 GAS, 100 GWEI
+    // // at price 5: 50 amt of GAS, 0 GWEI
+    // // borrowed 25, 50 - 25 = 25
+    // // 25 -> 25 * 1.7 = 42.5 + 50 = 92
 
-        console2.log(
-            "MAX AVAILABLE GAS TO PAY LOAN",
-            maxAvailableGasToPayLoan,
-            self.borrowedGas
-        );
+    // console2.log("LEFTOVER GAS AMOUNT", leftoverGweiAmountAtLowerTick);
+    // console2.log(
+    //     "LEFTOVER GWEI AMOUNT LOWER",
+    //     leftoverGweiAmountAtLowerTick,
+    //     leftoverGweiAmountAtLowerTick + self.collateralAmount
+    // );
 
-        if (maxAvailableGasToPayLoan < self.borrowedGas) {
-            revert Errors.InsufficientCollateral();
-        }
-    }
+    // if (
+    //     leftoverGweiAmountAtLowerTick + self.collateralAmount <
+    //     self.borrowedGwei
+    // ) {
+    //     revert Errors.InsufficientCollateral();
+    // }
 
-    // MOVE TO LIB
-    function quoteGweiToGas(
-        uint256 gweiAmount,
-        int24 priceTick
-    ) internal returns (uint256) {
-        uint160 sqrtRatioX96 = TickMath.getSqrtRatioAtTick(priceTick);
-        console2.log("GWEITOGAS", sqrtRatioX96ToPrice(sqrtRatioX96));
-        return
-            FullMath.mulDiv(
-                gweiAmount,
-                1e18,
-                sqrtRatioX96ToPrice(sqrtRatioX96)
-            );
-    }
+    // uint256 availableGweiFromPosition = amountGweiAtUpperTick >
+    //     self.borrowedGwei
+    //     ? amountGweiAtUpperTick - self.borrowedGwei
+    //     : 0;
+    // console2.log("AVAILABLE GWEI FROM POSITION", availableGweiFromPosition);
+    // uint256 maxAvailableGasToPayLoan = Quote.quoteEthToGas(
+    //     availableGweiFromPosition + self.collateralAmount,
+    //     marketParams.baseAssetMaxPriceTick
+    // );
 
-    function quoteGasToGwei(
-        uint256 gasAmount,
-        int24 priceTick
-    ) internal returns (uint256) {
-        uint160 sqrtRatioX96 = TickMath.getSqrtRatioAtTick(priceTick);
-        console2.log("GASTOGWEI", sqrtRatioX96ToPrice(sqrtRatioX96));
-        return
-            FullMath.mulDiv(gasAmount, sqrtRatioX96ToPrice(sqrtRatioX96), 1e18);
-    }
-    // should move to lib
+    // console2.log(
+    //     "MAX AVAILABLE GAS TO PAY LOAN",
+    //     maxAvailableGasToPayLoan,
+    //     self.borrowedGas
+    // );
 
-    // Function to convert sqrtRatioX96 to price
-    function sqrtRatioX96ToPrice(
-        uint160 sqrtRatioX96
-    ) internal pure returns (uint256 price) {
-        // Calculate the price as (sqrtRatioX96^2) / (2^192)
-        uint256 sqrtRatioX96Squared = uint256(sqrtRatioX96) *
-            uint256(sqrtRatioX96);
-        price = sqrtRatioX96Squared >> 96;
-        // Scale price to have 18 decimal places
-        price = (price * 10 ** 18) / (2 ** 96);
-    }
+    // if (maxAvailableGasToPayLoan < self.borrowedGas) {
+    //     revert Errors.InsufficientCollateral();
+    // }
+    // }
 }

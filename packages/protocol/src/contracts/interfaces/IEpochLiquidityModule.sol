@@ -32,6 +32,16 @@ interface IEpochLiquidityModule {
         uint256 minEthAmount
     ) external returns (uint128 liquidity, uint256 amount0, uint256 amount1);
 
+    function getTokenAmounts(
+        uint256 collateralAmount,
+        uint160 sqrtPriceX96,
+        uint160 sqrtPriceAX96,
+        uint160 sqrtPriceBX96
+    )
+        external
+        view
+        returns (uint256 amount0, uint256 amount1, uint128 liquidity);
+
     function collectFees(
         uint256 tokenId
     ) external returns (uint256 amount0, uint256 amount1);

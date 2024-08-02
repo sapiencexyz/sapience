@@ -12,6 +12,8 @@ import "../interfaces/external/INonfungiblePositionManager.sol";
 import "../interfaces/external/IUniswapV3Quoter.sol";
 import "../interfaces/external/ISwapRouter.sol";
 import "../external/VirtualToken.sol";
+import "../libraries/Quote.sol";
+import "../external/univ3/LiquidityAmounts.sol";
 import "./Debt.sol";
 import "./Errors.sol";
 import "./Market.sol";
@@ -196,6 +198,138 @@ library Epoch {
             return;
             // revert Errors.EpochNotSettled(self.endTime);
         }
+    }
+
+    function validateProvidedLiquidity(
+        Data storage self,
+        uint256 collateralAmount,
+        uint128 liquidity,
+        int24 lowerTick,
+        int24 upperTick
+    ) internal {
+        uint160 sqrtPriceAX96 = TickMath.getSqrtRatioAtTick(lowerTick);
+        uint160 sqrtPriceBX96 = TickMath.getSqrtRatioAtTick(upperTick + 1);
+
+        (uint160 sqrtPriceX96, , , , , , ) = self.pool.slot0();
+
+        uint128 scaleFactor = 8;
+        (
+            uint256 requiredCollateral,
+            uint256 tokenAmountA,
+            uint256 tokenAmountB
+        ) = requiredCollateralForLiquidity(
+                self,
+                liquidity / scaleFactor,
+                sqrtPriceX96,
+                sqrtPriceAX96,
+                sqrtPriceBX96
+            );
+
+        requiredCollateral *= scaleFactor;
+
+        if (collateralAmount < requiredCollateral) {
+            revert Errors.InsufficientCollateral(
+                collateralAmount,
+                requiredCollateral
+            );
+        }
+    }
+
+    function requiredCollateralForLiquidity(
+        Data storage self,
+        uint128 liquidity,
+        uint160 sqrtPriceX96,
+        uint160 sqrtPriceAX96,
+        uint160 sqrtPriceBX96
+    )
+        internal
+        view
+        returns (
+            uint256 requiredCollateral,
+            uint256 loanAmount0,
+            uint256 loanAmount1
+        )
+    {
+        (loanAmount0, loanAmount1) = LiquidityAmounts.getAmountsForLiquidity(
+            sqrtPriceX96,
+            sqrtPriceAX96,
+            sqrtPriceBX96,
+            liquidity
+        );
+
+        uint256 collateralRequirementAtMin = collateralRequirementAtMinTick(
+            self,
+            liquidity,
+            sqrtPriceAX96,
+            sqrtPriceBX96,
+            loanAmount0,
+            loanAmount1
+        );
+        uint256 collateralRequirementAtMax = collateralRequirementAtMaxTick(
+            self,
+            liquidity,
+            sqrtPriceAX96,
+            sqrtPriceBX96,
+            loanAmount0,
+            loanAmount1
+        );
+
+        requiredCollateral = collateralRequirementAtMin >
+            collateralRequirementAtMax
+            ? collateralRequirementAtMin
+            : collateralRequirementAtMax;
+    }
+
+    function collateralRequirementAtMinTick(
+        Data storage self,
+        uint128 liquidity,
+        uint160 sqrtPriceAX96,
+        uint160 sqrtPriceBX96,
+        uint256 loanAmount0,
+        uint256 loanAmount1
+    ) internal view returns (uint256) {
+        uint256 maxAmount0 = LiquidityAmounts.getAmount0ForLiquidity(
+            sqrtPriceAX96,
+            sqrtPriceBX96,
+            liquidity
+        );
+        uint256 availableAmount0 = maxAmount0 > loanAmount0
+            ? maxAmount0 - loanAmount0
+            : 0;
+        uint256 availableAmount1 = Quote.quoteGasToEth(
+            availableAmount0,
+            self.marketParams.baseAssetMinPriceTick
+        );
+        return loanAmount1 - availableAmount1;
+    }
+
+    function collateralRequirementAtMaxTick(
+        Data storage self,
+        uint128 liquidity,
+        uint160 sqrtPriceAX96,
+        uint160 sqrtPriceBX96,
+        uint256 loanAmount0,
+        uint256 loanAmount1
+    ) internal view returns (uint256) {
+        uint256 maxAmount1 = LiquidityAmounts.getAmount1ForLiquidity(
+            sqrtPriceAX96,
+            sqrtPriceBX96,
+            liquidity
+        );
+        uint256 availableAmount1 = maxAmount1 > loanAmount1
+            ? maxAmount1 - loanAmount1
+            : 0;
+        uint256 availableAmount0 = Quote.quoteEthToGas(
+            availableAmount1,
+            self.marketParams.baseAssetMaxPriceTick
+        );
+
+        uint256 amount0LoanLeftover = loanAmount0 - availableAmount0;
+        return
+            Quote.quoteGasToEth(
+                amount0LoanLeftover,
+                self.marketParams.baseAssetMaxPriceTick
+            );
     }
 
     // function transferCollateral(Data storage self, uint256 amount) internal {

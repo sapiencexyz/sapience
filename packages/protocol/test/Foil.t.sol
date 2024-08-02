@@ -39,14 +39,23 @@ contract FoilTest is Test {
         // int24 upperTick = TickMath.getTickAtSqrtRatio(
         //     306849353968360525628702781967
         // ); // 15
+        uint160 sqrtPriceX96 = 146497135921788803112962621440;
+        uint160 sqrtPriceAX96 = 111309523877349767887238162754; // 6800
+        uint160 sqrtPriceBX96 = 250203434948259642083317319084; // 23000
+        (uint256 loanAmount0, uint256 loanAmount1, ) = foil.getTokenAmounts(
+            50 ether,
+            sqrtPriceX96,
+            sqrtPriceAX96,
+            sqrtPriceBX96
+        );
 
         IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
             .LiquidityPositionParams({
-                amountTokenA: 50 ether,
-                amountTokenB: 50 ether,
-                collateralAmount: 250 ether,
-                lowerTick: 5200,
-                upperTick: 28200,
+                amountTokenA: loanAmount0,
+                amountTokenB: loanAmount1,
+                collateralAmount: 50 ether,
+                lowerTick: 6800,
+                upperTick: 23000,
                 minAmountTokenA: 0,
                 minAmountTokenB: 0
             });
@@ -58,7 +67,7 @@ contract FoilTest is Test {
         ) = foil.createLiquidityPosition(params);
 
         uint128 halfLiquidity = liquidity / 2;
-        uint256 coll = 125 ether;
+        uint256 coll = 25 ether;
 
         foil.decreaseLiquidityPosition(tokenId, coll, halfLiquidity, 0, 0);
 

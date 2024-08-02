@@ -22,6 +22,7 @@ contract EpochLiquidityModule is
 {
     using Market for Market.Data;
     using FAccount for FAccount.Data;
+    using Epoch for Epoch.Data;
 
     function createLiquidityPosition(
         IFoilStructs.LiquidityPositionParams memory params
@@ -70,18 +71,12 @@ contract EpochLiquidityModule is
             addedAmount1
         );
 
-        (, , address token0, address token1, , , , uint128 liq, , , , ) = market
-            .uniswapPositionManager
-            .positions(tokenId);
-
-        account.validateProvidedLiquidity(
-            epoch.marketParams,
+        epoch.validateProvidedLiquidity(
+            params.collateralAmount,
             liquidity,
             params.lowerTick,
             params.upperTick
         );
-
-        // TODO: refund
     }
 
     function onERC721Received(
@@ -150,9 +145,11 @@ contract EpochLiquidityModule is
             decreaseParams
         );
 
+        console2.log("DECREASED AMTS", amount0, amount1, liquidity);
+
         account.updateLoan(account.tokenId, collateralAmount, amount0, amount1);
-        account.validateProvidedLiquidity(
-            market.marketParams,
+        Epoch.load().validateProvidedLiquidity(
+            collateralAmount,
             liquidity,
             lowerTick,
             upperTick
@@ -193,88 +190,54 @@ contract EpochLiquidityModule is
             .increaseLiquidity(increaseParams);
 
         account.updateLoan(account.tokenId, collateralAmount, amount0, amount1);
-        account.validateProvidedLiquidity(
-            market.marketParams,
+        Epoch.load().validateProvidedLiquidity(
+            collateralAmount,
             liquidity,
             lowerTick,
             upperTick
         );
     }
 
-    // function getTokenAmounts(
-    //     uint256 collateralAmount,
-    //     int24 tickLower,
-    //     int24 tickUpper
-    // )
-    //     public
-    //     view
-    //     returns (uint256 amount0, uint256 amount1, uint128 liquidity)
-    // {
-    //     Epoch.Data storage epoch = Epoch.load();
-    //     console2.log("calc liq amts");
+    function getTokenAmounts(
+        uint256 collateralAmount,
+        uint160 sqrtPriceX96,
+        uint160 sqrtPriceAX96,
+        uint160 sqrtPriceBX96
+    )
+        external
+        view
+        override
+        returns (uint256 amount0, uint256 amount1, uint128 liquidity)
+    {
+        // calculate for unit
+        uint128 unitLiquidity = LiquidityAmounts.getLiquidityForAmounts(
+            sqrtPriceX96,
+            sqrtPriceAX96,
+            sqrtPriceBX96,
+            1e18,
+            1e18
+        );
 
-    //     uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(tickLower);
-    //     uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(tickUpper);
+        (
+            uint256 requiredCollateral,
+            uint256 unitAmount0,
+            uint256 uintAmount1
+        ) = Epoch.load().requiredCollateralForLiquidity(
+                unitLiquidity,
+                sqrtPriceX96,
+                sqrtPriceAX96,
+                sqrtPriceBX96
+            );
 
-    //     uint160 minTickSqrtRatio = TickMath.getSqrtRatioAtTick(
-    //         epoch.baseAssetMinPriceTick
-    //     );
-    //     uint256 maxTickSqrtRatio = TickMath.getSqrtRatioAtTick(
-    //         epoch.baseAssetMaxPriceTick
-    //     );
-    //     // console2.log(minPrice);
+        uint256 collateralRatio = collateralAmount / requiredCollateral;
 
-    //     // liquidity = LiquidityAmounts.getLiquidityForAmount1(
-    //     //     sqrtRatioAX96,
-    //     //     sqrtRatioBX96,
-    //     //     collateralAmount
-    //     // );
-
-    //     liquidity = LiquidityAmounts.getLiquidityForAmount1(
-    //         sqrtRatioAX96,
-    //         sqrtRatioBX96,
-    //         collateralAmount
-    //     );
-
-    //     // console2.log("LIQUIDITY 2", liquidityOne, liquidityTwo);
-
-    //     // liquidity = liquidityOne < liquidityTwo ? liquidityOne : liquidityTwo;
-
-    //     uint128 scaleFactor = 1e9;
-
-    //     console2.log("LIQUIDITY", liquidity);
-
-    //     (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
-    //         396140812571321687967719751680, // 25
-    //         sqrtRatioAX96,
-    //         sqrtRatioBX96,
-    //         liquidity / scaleFactor
-    //     );
-
-    //     console2.log("Scaled amount0:", amount0);
-    //     console2.log("Scaled amount1:", amount1);
-
-    //     // Scale the amounts back up
-    //     amount0 = amount0 * scaleFactor;
-    //     amount1 = amount1 * scaleFactor;
-
-    //     console2.log("Final amount0 (GAS):", amount0);
-    //     console2.log("Final amount1 (GWEI):", amount1);
-
-    //     (uint256 amount0final, uint256 amount1final) = LiquidityAmounts
-    //         .getAmountsForLiquidity(
-    //             minTickSqrtRatio,
-    //             sqrtRatioAX96,
-    //             sqrtRatioBX96,
-    //             liquidity / scaleFactor
-    //         );
-
-    //     console2.log(
-    //         "amountsmintick",
-    //         amount0final * scaleFactor,
-    //         amount1final * scaleFactor
-    //     );
-    // }
+        // scale up liquidity by collateral amount
+        return (
+            unitAmount0 * collateralRatio,
+            uintAmount1 * collateralRatio,
+            uint128(unitLiquidity * collateralRatio)
+        );
+    }
 
     function getPosition(
         uint256 accountId
