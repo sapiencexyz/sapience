@@ -1,9 +1,7 @@
 import 'tsconfig-paths/register';
 import { createConnection } from 'typeorm';
 import { Event } from '../entity/Event';
-import Foil from '@/protocol/deployments/13370/Foil.json';
-import { createPublicClient, http, Log } from 'viem';
-import { hardhat } from 'viem/chains';
+import { Abi, Log, PublicClient } from 'viem';
 import connectionOptions from '../db';
 
 const bigintReplacer = (key: string, value: any) => {
@@ -13,17 +11,11 @@ const bigintReplacer = (key: string, value: any) => {
   return value;
 };
 
-// Initialize RPC connection
-hardhat.id = 13370 as any;
-export const publicClient = createPublicClient({
-  chain: hardhat,
-  transport: http() // switch to websockets? should automatically switch poll default on watchContractEvent 
-});
-
-export const runMarketProcess = async () => {
+export const indexMarketEvents = async (publicClient: PublicClient, Foil: {address: string, abi: Abi}) => {
   // Initialize database connection
   const connection = await createConnection(connectionOptions);
   const eventRepository = connection.getRepository(Event);
+  const chainId = await publicClient.getChainId();
 
   // Process log data
   const processLogs = async (logs: Log[]) => {
@@ -31,7 +23,7 @@ export const runMarketProcess = async () => {
       const serializedLog = JSON.stringify(log, bigintReplacer);
       const event = eventRepository.create({
         logData: JSON.parse(serializedLog), // Parse back to JSON object
-        contractId: `${hardhat.id}:${Foil.address}`,
+        contractId: `${chainId}:${Foil.address}`,
       });
 
       console.log('Creating event:', event);
@@ -41,14 +33,10 @@ export const runMarketProcess = async () => {
 
   // Start watching for new events
   console.log(`Watching contract events for ${Foil.address}`);
-  const unwatch = publicClient.watchContractEvent({
+  publicClient.watchContractEvent({
     address: Foil.address as `0x${string}`,
     abi: Foil.abi,
     onLogs: (logs) => processLogs(logs),
     onError: (logs) => console.error(logs),
   });
 };
-
-if (require.main === module) {
-  runMarketProcess().catch((error) => console.log(error));
-}

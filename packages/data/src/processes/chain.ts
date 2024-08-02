@@ -1,29 +1,20 @@
 import 'tsconfig-paths/register';
 import { createConnection } from 'typeorm';
 import { Price } from '../entity/Price';
-import { createPublicClient, http, Block } from 'viem';
-import Foil from '@/protocol/deployments/13370/Foil.json';
-import { mainnet, hardhat } from 'viem/chains';
+import { Block, PublicClient } from 'viem';
 import connectionOptions from '../db';
 
-// Initialize RPC connection
-export const publicClient = createPublicClient({
-  chain: mainnet,
-  transport: http(), // switch to websockets? should automatically switch poll default on watchContractEvent 
-});
-
-export const runChainProcess = async () => {
-  // Initialize database connection
+export const indexBaseFeePerGas = async (publicClient: PublicClient, contractId: string) => {
   const connection = await createConnection(connectionOptions);
   const priceRepository = connection.getRepository(Price);
+  const chainId = await publicClient.getChainId();
 
   // Process log data
   const processBlock = async (block: Block) => {
-    // Ensure block.baseFeePerGas is a number, adjust if necessary
     const value = Number(block.baseFeePerGas);
 
     const price = priceRepository.create({
-      contractId: `${hardhat.id}:${Foil.address}`,
+      contractId,
       timestamp: Number(block.timestamp),
       value: value,
     });
@@ -33,13 +24,9 @@ export const runChainProcess = async () => {
   };
 
   // Start watching for new events
-  console.log(`Watching contract events for ${Foil.address}`);
-  const unwatch = publicClient.watchBlocks({
+  console.log(`Watching base fee per gas on chain ID ${chainId} for market ${contractId}`);
+  publicClient.watchBlocks({
     onBlock: (block) => processBlock(block),
     onError: (block) => console.error(block),
   });
 };
-
-if (require.main === module) {
-  runChainProcess().catch((error) => console.log(error));
-}
