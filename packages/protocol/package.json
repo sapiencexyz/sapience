@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "cannon build --keep-alive --port 8545 --no-cors --write-deployments ./deployments/13370",
     "test": "forge build && cannon build --write-deployments ./deployments && cannon test",
-    "deploy:sepolia": "cannon build cannonfile.sepolia.toml --chain-id 11155111 --write-deployments ./deployments/11155111 --provider-url https://sepolia.infura.io/v3/2ec6e503197e468ca2f04b8a017ee1b0",
-    "simulate-deploy:sepolia": "cannon build cannonfile.sepolia.toml --chain-id 11155111 --dry-run --provider-url https://sepolia.infura.io/v3/2ec6e503197e468ca2f04b8a017ee1b0"
+    "deploy:sepolia": "cannon build cannonfile.sepolia.toml --chain-id 11155111 --write-deployments ./deployments/11155111",
+    "simulate-deploy:sepolia": "cannon build cannonfile.sepolia.toml --chain-id 11155111 --dry-run"
   },
   "devDependencies": {
     "@types/chai": "^4.3.16",
