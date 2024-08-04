@@ -23,6 +23,7 @@ library Errors {
     error NoEpochs();
     error NotAccountOwnerOrAuthorized(uint256 accountId, address sender);
     error NotEnoughCredit(uint256 amount, uint256 credit);
-    error InsufficientCollateral();
+    error InsufficientCollateral(uint256 amount, uint256 collateral);
     error IndexOverrun(uint256 requestedIndex, uint256 length);
+    error InvalidLiquidityModification();
 }
