@@ -319,7 +319,7 @@
   "linkedLibraries": {},
   "deployTxnHash": "0x12ee0b194db4db0157edc1ecd4711e1b128110b845c2232c6b427b5749ddc7a5",
   "deployTxnBlockNumber": "2",
-  "deployTimestamp": "1722617324",
+  "deployTimestamp": "1722754539",
   "sourceName": "src/MintableTokenPermissionlessMint.sol",
   "contractName": "MintableTokenPermissionlessMint",
   "deployedOn": "contract.Token",

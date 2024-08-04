@@ -11,7 +11,7 @@ import "../interfaces/external/ISwapRouter.sol";
 import "./Errors.sol";
 
 library Market {
-    struct MarketParams {
+    struct EpochParams {
         int24 baseAssetMinPriceTick;
         int24 baseAssetMaxPriceTick;
         uint24 feeRate;
@@ -23,12 +23,12 @@ library Market {
 
     struct Data {
         address owner;
-        address collateralAsset;
+        IERC20 collateralAsset;
         INonfungiblePositionManager uniswapPositionManager;
         IUniswapV3Quoter uniswapQuoter;
         ISwapRouter uniswapSwapRouter;
         OptimisticOracleV3Interface optimisticOracleV3;
-        MarketParams marketParams;
+        EpochParams epochParams;
     }
 
     function load() internal pure returns (Data storage market) {
@@ -46,7 +46,7 @@ library Market {
         address uniswapQuoter,
         address uniswapSwapRouter,
         address optimisticOracleV3,
-        MarketParams memory marketParams
+        EpochParams memory epochParams
     ) internal returns (Data storage market) {
         market = load();
 
@@ -59,7 +59,7 @@ library Market {
         }
 
         market.owner = owner;
-        market.collateralAsset = collateralAsset;
+        market.collateralAsset = IERC20(collateralAsset);
         market.uniswapPositionManager = INonfungiblePositionManager(
             uniswapPositionManager
         );
@@ -68,7 +68,7 @@ library Market {
         market.optimisticOracleV3 = OptimisticOracleV3Interface(
             optimisticOracleV3
         );
-        market.marketParams = marketParams;
+        market.epochParams = epochParams;
     }
 
     function updateValid(
@@ -77,7 +77,7 @@ library Market {
         address uniswapQuoter,
         address uniswapSwapRouter,
         address optimisticOracleV3,
-        MarketParams memory marketParams
+        EpochParams memory epochParams
     ) internal returns (Data storage market) {
         market = load();
 
@@ -90,7 +90,7 @@ library Market {
         market.optimisticOracleV3 = OptimisticOracleV3Interface(
             optimisticOracleV3
         );
-        market.marketParams = marketParams;
+        market.epochParams = epochParams;
     }
 
     function loadValid() internal view returns (Data storage market) {

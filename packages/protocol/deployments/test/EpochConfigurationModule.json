@@ -1,5 +1,5 @@
 {
-  "address": "0xceE20f985915a3e218Cc2ABf99F41EAe8C5b4911",
+  "address": "0xDD59E99E336FF485ec3C8420dd7CE128F1b806e3",
   "abi": [
     {
       "type": "function",
@@ -134,9 +134,9 @@
           "internalType": "address"
         },
         {
-          "name": "marketParams",
+          "name": "epochParams",
           "type": "tuple",
-          "internalType": "struct Market.MarketParams",
+          "internalType": "struct Market.EpochParams",
           "components": [
             {
               "name": "baseAssetMinPriceTick",
@@ -254,9 +254,9 @@
           "internalType": "address"
         },
         {
-          "name": "marketParams",
+          "name": "epochParams",
           "type": "tuple",
-          "internalType": "struct Market.MarketParams",
+          "internalType": "struct Market.EpochParams",
           "components": [
             {
               "name": "baseAssetMinPriceTick",
@@ -329,9 +329,9 @@
           "internalType": "address"
         },
         {
-          "name": "marketParams",
+          "name": "epochParms",
           "type": "tuple",
-          "internalType": "struct Market.MarketParams",
+          "internalType": "struct Market.EpochParams",
           "components": [
             {
               "name": "baseAssetMinPriceTick",
@@ -391,6 +391,11 @@
     },
     {
       "type": "error",
+      "name": "OverflowInt24ToUint256",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "ReentrancyGuardReentrantCall",
       "inputs": []
     },
@@ -402,12 +407,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x3160f02190eb9f29f74ed54e7da02cae4054d74b954cde1dc1de10b1b520ffdc",
+  "deployTxnHash": "0xb3d7b11ccdbb240b670d6d65fa796bfc2f4cfc9818293378496c36e2add84036",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1722617310",
+  "deployTimestamp": "1722754340",
   "sourceName": "src/contracts/modules/EpochConfigurationModule.sol",
   "contractName": "EpochConfigurationModule",
   "deployedOn": "deploy.EpochConfigurationModule",
-  "gasUsed": 2031440,
+  "gasUsed": 2256590,
   "gasCost": "1005326146"
 }
