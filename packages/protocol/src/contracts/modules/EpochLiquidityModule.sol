@@ -9,24 +9,26 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../storage/FAccount.sol";
 import "../storage/Market.sol";
 import "../storage/Epoch.sol";
+import "../storage/Errors.sol";
 import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
+import {IEpochLiquidityModule} from "../interfaces/IEpochLiquidityModule.sol";
 
 import "forge-std/console2.sol";
 
-// Constants
-uint256 constant ONE_ETHER_IN_GWEI = 10 ** 9;
-uint256 constant ONE_ETH_IN_WEI = 10 ** 18;
-uint256 constant Q192 = 2 ** 192;
-
-contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
+contract EpochLiquidityModule is
+    ReentrancyGuard,
+    IERC721Receiver,
+    IEpochLiquidityModule
+{
     using Market for Market.Data;
     using FAccount for FAccount.Data;
+    using Epoch for Epoch.Data;
 
     function createLiquidityPosition(
         IFoilStructs.LiquidityPositionParams memory params
     )
         external
-        payable
+        override
         returns (
             uint256 tokenId,
             uint128 liquidity,
@@ -69,18 +71,12 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
             addedAmount1
         );
 
-        (, , address token0, address token1, , , , uint128 liq, , , , ) = market
-            .uniswapPositionManager
-            .positions(tokenId);
-
-        account.validateProvidedLiquidity(
-            epoch.marketParams,
+        epoch.validateProvidedLiquidity(
+            params.collateralAmount,
             liquidity,
             params.lowerTick,
             params.upperTick
         );
-
-        // TODO: refund
     }
 
     function onERC721Received(
@@ -98,7 +94,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
 
     function collectFees(
         uint256 tokenId
-    ) external returns (uint256 amount0, uint256 amount1) {
+    ) external override returns (uint256 amount0, uint256 amount1) {
         Market.Data storage market = Market.load();
         Epoch.Data storage epoch = Epoch.load();
 
@@ -120,44 +116,25 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
         // TODO: emit event
     }
 
-    function getPosition(
-        uint256 positionId
-    )
-        external
-        view
-        returns (
-            uint96 nonce,
-            address operator,
-            address token0,
-            address token1,
-            uint24 fee,
-            int24 tickLower,
-            int24 tickUpper,
-            uint128 liquidity,
-            uint256 feeGrowthInside0LastX128,
-            uint256 feeGrowthInside1LastX128,
-            uint128 tokensOwed0,
-            uint128 tokensOwed1
-        )
-    {
-        Market.Data storage market = Market.load();
-        return market.uniswapPositionManager.positions(positionId);
-    }
-
-    function updateLiquidityPosition(
-        uint256 tokenId,
-        uint256 collateral,
+    function decreaseLiquidityPosition(
+        uint256 accountId,
+        uint256 collateralAmount,
         uint128 liquidity,
-        uint256 minLiquidity
-    ) external payable returns (uint256 amount0, uint256 amount1) {
-        console2.log("UPDATELIQPOSITION");
+        uint256 minGasAmount,
+        uint256 minEthAmount
+    ) external override returns (uint256 amount0, uint256 amount1) {
+        console2.log("--DECREASE LIQ POSITION--");
         Market.Data storage market = Market.load();
-        Epoch.Data storage epoch = Epoch.load();
+        FAccount.Data storage account = FAccount.load(accountId);
+
+        (, , , , , int24 lowerTick, int24 upperTick, , , , , ) = market
+            .uniswapPositionManager
+            .positions(account.tokenId);
 
         INonfungiblePositionManager.DecreaseLiquidityParams
             memory decreaseParams = INonfungiblePositionManager
                 .DecreaseLiquidityParams({
-                    tokenId: tokenId,
+                    tokenId: account.tokenId,
                     liquidity: liquidity,
                     amount0Min: 0,
                     amount1Min: 0,
@@ -167,89 +144,107 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
         (amount0, amount1) = market.uniswapPositionManager.decreaseLiquidity(
             decreaseParams
         );
-        console2.log("REMOVED", amount0, amount1);
+
+        console2.log("DECREASED AMTS", amount0, amount1, liquidity);
+
+        account.updateLoan(account.tokenId, collateralAmount, amount0, amount1);
+        Epoch.load().validateProvidedLiquidity(
+            collateralAmount,
+            liquidity,
+            lowerTick,
+            upperTick
+        );
+
+        // transfer or remove collateral
     }
 
-    // function getTokenAmounts(
-    //     uint256 collateralAmount,
-    //     int24 tickLower,
-    //     int24 tickUpper
-    // )
-    //     public
-    //     view
-    //     returns (uint256 amount0, uint256 amount1, uint128 liquidity)
-    // {
-    //     Epoch.Data storage epoch = Epoch.load();
-    //     console2.log("calc liq amts");
+    function increaseLiquidityPosition(
+        uint256 accountId,
+        uint256 collateralAmount,
+        uint256 gasTokenAmount,
+        uint256 ethTokenAmount,
+        uint256 minGasAmount,
+        uint256 minEthAmount
+    ) external returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
+        console2.log("--INCREASE LIQ POSITION--");
+        Market.Data storage market = Market.load();
+        FAccount.Data storage account = FAccount.load(accountId);
 
-    //     uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(tickLower);
-    //     uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(tickUpper);
+        (, , , , , int24 lowerTick, int24 upperTick, , , , , ) = market
+            .uniswapPositionManager
+            .positions(account.tokenId);
 
-    //     uint160 minTickSqrtRatio = TickMath.getSqrtRatioAtTick(
-    //         epoch.baseAssetMinPriceTick
-    //     );
-    //     uint256 maxTickSqrtRatio = TickMath.getSqrtRatioAtTick(
-    //         epoch.baseAssetMaxPriceTick
-    //     );
-    //     // console2.log(minPrice);
+        INonfungiblePositionManager.IncreaseLiquidityParams
+            memory increaseParams = INonfungiblePositionManager
+                .IncreaseLiquidityParams({
+                    tokenId: account.tokenId,
+                    amount0Desired: gasTokenAmount,
+                    amount1Desired: ethTokenAmount,
+                    amount0Min: minGasAmount,
+                    amount1Min: minEthAmount,
+                    deadline: block.timestamp
+                });
 
-    //     // liquidity = LiquidityAmounts.getLiquidityForAmount1(
-    //     //     sqrtRatioAX96,
-    //     //     sqrtRatioBX96,
-    //     //     collateralAmount
-    //     // );
+        (liquidity, amount0, amount1) = market
+            .uniswapPositionManager
+            .increaseLiquidity(increaseParams);
 
-    //     liquidity = LiquidityAmounts.getLiquidityForAmount1(
-    //         sqrtRatioAX96,
-    //         sqrtRatioBX96,
-    //         collateralAmount
-    //     );
+        account.updateLoan(account.tokenId, collateralAmount, amount0, amount1);
+        Epoch.load().validateProvidedLiquidity(
+            collateralAmount,
+            liquidity,
+            lowerTick,
+            upperTick
+        );
+    }
 
-    //     // console2.log("LIQUIDITY 2", liquidityOne, liquidityTwo);
+    function getTokenAmounts(
+        uint256 collateralAmount,
+        uint160 sqrtPriceX96,
+        uint160 sqrtPriceAX96,
+        uint160 sqrtPriceBX96
+    )
+        external
+        view
+        override
+        returns (uint256 amount0, uint256 amount1, uint128 liquidity)
+    {
+        // calculate for unit
+        uint128 unitLiquidity = LiquidityAmounts.getLiquidityForAmounts(
+            sqrtPriceX96,
+            sqrtPriceAX96,
+            sqrtPriceBX96,
+            1e18,
+            1e18
+        );
 
-    //     // liquidity = liquidityOne < liquidityTwo ? liquidityOne : liquidityTwo;
+        (
+            uint256 requiredCollateral,
+            uint256 unitAmount0,
+            uint256 uintAmount1
+        ) = Epoch.load().requiredCollateralForLiquidity(
+                unitLiquidity,
+                sqrtPriceX96,
+                sqrtPriceAX96,
+                sqrtPriceBX96
+            );
 
-    //     uint128 scaleFactor = 1e9;
+        uint256 collateralRatio = collateralAmount / requiredCollateral;
 
-    //     console2.log("LIQUIDITY", liquidity);
+        // scale up liquidity by collateral amount
+        return (
+            unitAmount0 * collateralRatio,
+            uintAmount1 * collateralRatio,
+            uint128(unitLiquidity * collateralRatio)
+        );
+    }
 
-    //     (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
-    //         396140812571321687967719751680, // 25
-    //         sqrtRatioAX96,
-    //         sqrtRatioBX96,
-    //         liquidity / scaleFactor
-    //     );
-
-    //     console2.log("Scaled amount0:", amount0);
-    //     console2.log("Scaled amount1:", amount1);
-
-    //     // Scale the amounts back up
-    //     amount0 = amount0 * scaleFactor;
-    //     amount1 = amount1 * scaleFactor;
-
-    //     console2.log("Final amount0 (GAS):", amount0);
-    //     console2.log("Final amount1 (GWEI):", amount1);
-
-    //     (uint256 amount0final, uint256 amount1final) = LiquidityAmounts
-    //         .getAmountsForLiquidity(
-    //             minTickSqrtRatio,
-    //             sqrtRatioAX96,
-    //             sqrtRatioBX96,
-    //             liquidity / scaleFactor
-    //         );
-
-    //     console2.log(
-    //         "amountsmintick",
-    //         amount0final * scaleFactor,
-    //         amount1final * scaleFactor
-    //     );
-    // }
-    /*
     function getPosition(
         uint256 accountId
     )
         external
         view
+        override
         returns (
             uint256 tokenId,
             uint256 collateralAmount,
@@ -265,5 +260,4 @@ contract EpochLiquidityModule is ReentrancyGuard, IERC721Receiver {
             account.borrowedGas
         );
     }
-*/
 }
