@@ -41,7 +41,9 @@ library Epoch {
         mapping(uint256 => Debt.Data) lpDebtPositions;
         bytes32 assertionId;
         Settlement settlement;
-        Market.MarketParams marketParams; // Storing MarketParams as a struct within Epoch.Data
+        Market.EpochParams params; // Storing epochParams as a struct within Epoch.Data
+        uint160 sqrtPriceMinX96;
+        uint160 sqrtPriceMaxX96;
     }
 
     function load() internal pure returns (Data storage epoch) {
@@ -78,14 +80,11 @@ library Epoch {
     function createValid(
         uint startTime,
         uint endTime,
-        address uniswapPositionManager,
-        address uniswapQuoter,
-        address uniswapSwapRouter,
-        address collateralAsset,
-        uint160 startingSqrtPriceX96,
-        address optimisticOracleV3,
-        Market.MarketParams memory marketParams
+        uint160 startingSqrtPriceX96
     ) internal returns (Data storage epoch) {
+        Market.Data storage market = Market.loadValid();
+        Market.EpochParams storage epochParams = market.epochParams;
+
         epoch = load();
 
         // can only be called once
@@ -102,7 +101,9 @@ library Epoch {
 
         epoch.startTime = startTime;
         epoch.endTime = endTime;
-        epoch.marketParams = marketParams;
+
+        // copy over market parameters into epoch
+        epoch.params = market.epochParams;
 
         VirtualToken tokenA = new VirtualToken(
             address(this),
@@ -123,39 +124,53 @@ library Epoch {
             epoch.gasToken = tokenB;
             epoch.ethToken = tokenA;
         }
+
+        // create & initialize pool
         epoch.pool = IUniswapV3Pool(
             IUniswapV3Factory(
-                INonfungiblePositionManager(uniswapPositionManager).factory()
+                INonfungiblePositionManager(market.uniswapPositionManager)
+                    .factory()
             ).createPool(
                     address(epoch.gasToken),
                     address(epoch.ethToken),
-                    marketParams.feeRate
+                    epochParams.feeRate
                 )
         );
-
         IUniswapV3Pool(epoch.pool).initialize(startingSqrtPriceX96); // starting price
-        (uint160 sqrtPriceX96, int24 tick, , , , , ) = IUniswapV3Pool(
-            epoch.pool
-        ).slot0();
-        int24 spacing = IUniswapV3Pool(epoch.pool).tickSpacing();
 
-        // mint
+        int24 spacing = IUniswapV3Pool(epoch.pool).tickSpacing();
+        // store min/max prices
+        epoch.sqrtPriceMinX96 = TickMath.getSqrtRatioAtTick(
+            epoch.params.baseAssetMinPriceTick
+        );
+        // use next tick for max price
+        epoch.sqrtPriceMaxX96 = TickMath.getSqrtRatioAtTick(
+            epoch.params.baseAssetMaxPriceTick + spacing
+        );
+
+        // mint max; track tokens loaned by in FAccount
         epoch.ethToken.mint(address(this), type(uint256).max);
         epoch.gasToken.mint(address(this), type(uint256).max);
 
         // approve to uniswapPositionManager
         epoch.ethToken.approve(
-            address(uniswapPositionManager),
+            address(market.uniswapPositionManager),
             type(uint256).max
         );
         epoch.gasToken.approve(
-            address(uniswapPositionManager),
+            address(market.uniswapPositionManager),
             type(uint256).max
         );
 
         // approve to uniswapSwapRouter
-        epoch.ethToken.approve(address(uniswapSwapRouter), type(uint256).max);
-        epoch.gasToken.approve(address(uniswapSwapRouter), type(uint256).max);
+        epoch.ethToken.approve(
+            address(market.uniswapSwapRouter),
+            type(uint256).max
+        );
+        epoch.gasToken.approve(
+            address(market.uniswapSwapRouter),
+            type(uint256).max
+        );
     }
 
     function loadValid() internal view returns (Data storage epoch) {
@@ -207,9 +222,6 @@ library Epoch {
         int24 lowerTick,
         int24 upperTick
     ) internal {
-        uint160 sqrtPriceAX96 = TickMath.getSqrtRatioAtTick(lowerTick);
-        uint160 sqrtPriceBX96 = TickMath.getSqrtRatioAtTick(upperTick + 1);
-
         (uint160 sqrtPriceX96, , , , , , ) = self.pool.slot0();
 
         uint128 scaleFactor = 8;
@@ -221,8 +233,8 @@ library Epoch {
                 self,
                 liquidity / scaleFactor,
                 sqrtPriceX96,
-                sqrtPriceAX96,
-                sqrtPriceBX96
+                TickMath.getSqrtRatioAtTick(lowerTick),
+                TickMath.getSqrtRatioAtTick(upperTick)
             );
 
         requiredCollateral *= scaleFactor;
@@ -298,7 +310,7 @@ library Epoch {
             : 0;
         uint256 availableAmount1 = Quote.quoteGasToEth(
             availableAmount0,
-            self.marketParams.baseAssetMinPriceTick
+            self.sqrtPriceMinX96
         );
         return loanAmount1 - availableAmount1;
     }
@@ -321,15 +333,11 @@ library Epoch {
             : 0;
         uint256 availableAmount0 = Quote.quoteEthToGas(
             availableAmount1,
-            self.marketParams.baseAssetMaxPriceTick
+            self.sqrtPriceMaxX96
         );
 
         uint256 amount0LoanLeftover = loanAmount0 - availableAmount0;
-        return
-            Quote.quoteGasToEth(
-                amount0LoanLeftover,
-                self.marketParams.baseAssetMaxPriceTick
-            );
+        return Quote.quoteGasToEth(amount0LoanLeftover, self.sqrtPriceMaxX96);
     }
 
     // function transferCollateral(Data storage self, uint256 amount) internal {

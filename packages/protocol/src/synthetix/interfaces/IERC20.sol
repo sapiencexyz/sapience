@@ -19,7 +19,11 @@ interface IERC20 {
      * @param spender The address that received the allowance.
      * @param amount The number of tokens that were added to `spender`'s allowance.
      */
-    event Approval(address indexed owner, address indexed spender, uint256 amount);
+    event Approval(
+        address indexed owner,
+        address indexed spender,
+        uint256 amount
+    );
 
     /**
      * @notice Thrown when the address interacting with the contract does not have sufficient allowance to transfer tokens from another contract.
@@ -72,7 +76,10 @@ interface IERC20 {
      * @param spender The user who was given the allowance.
      * @return The amount of tokens `spender` can transfer on `owner`'s behalf.
      */
-    function allowance(address owner, address spender) external view returns (uint256);
+    function allowance(
+        address owner,
+        address spender
+    ) external view returns (uint256);
 
     /**
      * @notice Transfer tokens from one address to another.
@@ -102,7 +109,10 @@ interface IERC20 {
      *
      * - `spender` cannot be the zero address.
      */
-    function increaseAllowance(address spender, uint256 addedValue) external returns (bool);
+    function increaseAllowance(
+        address spender,
+        uint256 addedValue
+    ) external returns (bool);
 
     /**
      * @notice Atomically decreases the allowance granted to `spender` by the caller.
@@ -118,7 +128,10 @@ interface IERC20 {
      * - `spender` must have allowance for the caller of at least
      * `subtractedValue`.
      */
-    function decreaseAllowance(address spender, uint256 subtractedValue) external returns (bool);
+    function decreaseAllowance(
+        address spender,
+        uint256 subtractedValue
+    ) external returns (bool);
 
     /**
      * @notice Allows a user who has been given allowance to transfer tokens on another user's behalf.
@@ -127,5 +140,9 @@ interface IERC20 {
      * @param amount The number of tokens to transfer.
      * @return A boolean which is true if the operation succeeded.
      */
-    function transferFrom(address from, address to, uint256 amount) external returns (bool);
+    function transferFrom(
+        address from,
+        address to,
+        uint256 amount
+    ) external returns (bool);
 }

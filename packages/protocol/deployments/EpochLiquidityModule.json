@@ -1,5 +1,5 @@
 {
-  "address": "0x408f9283b88015D6B3CfC2cB42168028058adEdb",
+  "address": "0x7C244D9661bF634ca8909C4058924513f30CE6C0",
   "abi": [
     {
       "type": "function",
@@ -308,6 +308,93 @@
     },
     {
       "type": "event",
+      "name": "LiquidityPositionCreated",
+      "inputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "liquidity",
+          "type": "uint128",
+          "indexed": false,
+          "internalType": "uint128"
+        },
+        {
+          "name": "addedAmount0",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "addedAmount1",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "LiquidityPositionDecreased",
+      "inputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "amount0",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "amount1",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "LiquidityPositionIncreased",
+      "inputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "liquidity",
+          "type": "uint128",
+          "indexed": false,
+          "internalType": "uint128"
+        },
+        {
+          "name": "amount0",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "amount1",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
       "name": "Transfer",
       "inputs": [
         {
@@ -407,12 +494,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x5a22ace2d9158dab44ada65eb0da03a939b27a3db8495a1a03bef590e963cc98",
+  "deployTxnHash": "0xc422f47a846c7efdfc6439b4363a85d3054f52a81d1c8e50fd57fbadc24221e9",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1722617309",
+  "deployTimestamp": "1722754422",
   "sourceName": "src/contracts/modules/EpochLiquidityModule.sol",
   "contractName": "EpochLiquidityModule",
   "deployedOn": "deploy.EpochLiquidityModule",
-  "gasUsed": 2118814,
-  "gasCost": "1004750543"
+  "gasUsed": 2132620,
+  "gasCost": "1006087024"
 }

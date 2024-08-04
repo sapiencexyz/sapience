@@ -43,11 +43,16 @@ contract EpochLiquidityModule is
         Market.Data storage market = Market.load();
         Epoch.Data storage epoch = Epoch.load();
 
+        account.updateCollateral(
+            market.collateralAsset,
+            params.collateralAmount
+        );
+
         INonfungiblePositionManager.MintParams
             memory mintParams = INonfungiblePositionManager.MintParams({
                 token0: address(epoch.gasToken),
                 token1: address(epoch.ethToken),
-                fee: epoch.marketParams.feeRate,
+                fee: epoch.params.feeRate,
                 tickLower: params.lowerTick,
                 tickUpper: params.upperTick,
                 amount0Desired: params.amountTokenA,
@@ -62,8 +67,6 @@ contract EpochLiquidityModule is
             .uniswapPositionManager
             .mint(mintParams);
 
-        console2.log("ADDED AMTS", addedAmount0, addedAmount1, liquidity);
-
         account.updateLoan(
             tokenId,
             params.collateralAmount,
@@ -76,6 +79,14 @@ contract EpochLiquidityModule is
             liquidity,
             params.lowerTick,
             params.upperTick
+        );
+
+        // emit event
+        emit LiquidityPositionCreated(
+            tokenId,
+            liquidity,
+            addedAmount0,
+            addedAmount1
         );
     }
 
@@ -123,13 +134,14 @@ contract EpochLiquidityModule is
         uint256 minGasAmount,
         uint256 minEthAmount
     ) external override returns (uint256 amount0, uint256 amount1) {
-        console2.log("--DECREASE LIQ POSITION--");
         Market.Data storage market = Market.load();
         FAccount.Data storage account = FAccount.load(accountId);
 
         (, , , , , int24 lowerTick, int24 upperTick, , , , , ) = market
             .uniswapPositionManager
             .positions(account.tokenId);
+
+        account.updateCollateral(market.collateralAsset, collateralAmount);
 
         INonfungiblePositionManager.DecreaseLiquidityParams
             memory decreaseParams = INonfungiblePositionManager
@@ -145,8 +157,6 @@ contract EpochLiquidityModule is
             decreaseParams
         );
 
-        console2.log("DECREASED AMTS", amount0, amount1, liquidity);
-
         account.updateLoan(account.tokenId, collateralAmount, amount0, amount1);
         Epoch.load().validateProvidedLiquidity(
             collateralAmount,
@@ -154,6 +164,8 @@ contract EpochLiquidityModule is
             lowerTick,
             upperTick
         );
+
+        emit LiquidityPositionDecreased(account.tokenId, amount0, amount1);
 
         // transfer or remove collateral
     }
@@ -166,13 +178,14 @@ contract EpochLiquidityModule is
         uint256 minGasAmount,
         uint256 minEthAmount
     ) external returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
-        console2.log("--INCREASE LIQ POSITION--");
         Market.Data storage market = Market.load();
         FAccount.Data storage account = FAccount.load(accountId);
 
         (, , , , , int24 lowerTick, int24 upperTick, , , , , ) = market
             .uniswapPositionManager
             .positions(account.tokenId);
+
+        account.updateCollateral(market.collateralAsset, collateralAmount);
 
         INonfungiblePositionManager.IncreaseLiquidityParams
             memory increaseParams = INonfungiblePositionManager
@@ -195,6 +208,13 @@ contract EpochLiquidityModule is
             liquidity,
             lowerTick,
             upperTick
+        );
+
+        emit LiquidityPositionIncreased(
+            account.tokenId,
+            liquidity,
+            amount0,
+            amount1
         );
     }
 
@@ -229,13 +249,18 @@ contract EpochLiquidityModule is
                 sqrtPriceBX96
             );
 
-        uint256 collateralRatio = collateralAmount / requiredCollateral;
+        // scale up for fractional collateral ratio
+        uint256 collateralRatio = FullMath.mulDiv(
+            collateralAmount,
+            1e18, // Create MathUtil and use UNIT
+            requiredCollateral
+        );
 
         // scale up liquidity by collateral amount
         return (
-            unitAmount0 * collateralRatio,
-            uintAmount1 * collateralRatio,
-            uint128(unitLiquidity * collateralRatio)
+            FullMath.mulDiv(unitAmount0, collateralRatio, 1e18),
+            FullMath.mulDiv(uintAmount1, collateralRatio, 1e18),
+            uint128(unitLiquidity * collateralRatio) / 1e18
         );
     }
 

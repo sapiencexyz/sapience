@@ -1,5 +1,5 @@
 {
-  "address": "0x9661c9974af455b816d6d2a21788c55ebd23105d",
+  "address": "0x76f9e59a9e68dee497ec7aeb4261d089bf6360d0",
   "abi": [
     {
       "type": "function",
@@ -134,9 +134,9 @@
           "internalType": "address"
         },
         {
-          "name": "marketParams",
+          "name": "epochParams",
           "type": "tuple",
-          "internalType": "struct Market.MarketParams",
+          "internalType": "struct Market.EpochParams",
           "components": [
             {
               "name": "baseAssetMinPriceTick",
@@ -254,9 +254,9 @@
           "internalType": "address"
         },
         {
-          "name": "marketParams",
+          "name": "epochParams",
           "type": "tuple",
-          "internalType": "struct Market.MarketParams",
+          "internalType": "struct Market.EpochParams",
           "components": [
             {
               "name": "baseAssetMinPriceTick",
@@ -329,9 +329,9 @@
           "internalType": "address"
         },
         {
-          "name": "marketParams",
+          "name": "epochParms",
           "type": "tuple",
-          "internalType": "struct Market.MarketParams",
+          "internalType": "struct Market.EpochParams",
           "components": [
             {
               "name": "baseAssetMinPriceTick",
@@ -387,6 +387,11 @@
     {
       "type": "error",
       "name": "MarketAlreadyCreated",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowInt24ToUint256",
       "inputs": []
     },
     {
@@ -706,6 +711,93 @@
     },
     {
       "type": "event",
+      "name": "LiquidityPositionCreated",
+      "inputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "liquidity",
+          "type": "uint128",
+          "indexed": false,
+          "internalType": "uint128"
+        },
+        {
+          "name": "addedAmount0",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "addedAmount1",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "LiquidityPositionDecreased",
+      "inputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "amount0",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "amount1",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "LiquidityPositionIncreased",
+      "inputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "liquidity",
+          "type": "uint128",
+          "indexed": false,
+          "internalType": "uint128"
+        },
+        {
+          "name": "amount0",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "amount1",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
       "name": "Transfer",
       "inputs": [
         {
@@ -765,11 +857,6 @@
           "internalType": "string"
         }
       ]
-    },
-    {
-      "type": "error",
-      "name": "OverflowInt24ToUint256",
-      "inputs": []
     },
     {
       "type": "error",
@@ -1436,11 +1523,11 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0xbab1cc68c0d6f5723935ac40b9facdc3cdb6ee33052e1b7e14c39c9325b7cdb1",
+  "deployTxnHash": "0xbf62116248415e97431c6592b08fd2ca6b14152c44ebaa7fd432d2e38b9801b8",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1722617314",
+  "deployTimestamp": "1722754427",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
-  "gasUsed": 439977,
-  "gasCost": "1001706705"
+  "gasUsed": 439989,
+  "gasCost": "1002787316"
 }
