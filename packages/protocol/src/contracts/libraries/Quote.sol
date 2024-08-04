@@ -9,18 +9,16 @@ import "forge-std/console2.sol";
 library Quote {
     function quoteEthToGas(
         uint256 ethAmount,
-        int24 tick
+        uint160 sqrtRatioX96
     ) internal pure returns (uint256) {
-        uint160 sqrtRatioX96 = TickMath.getSqrtRatioAtTick(tick);
         return
             FullMath.mulDiv(ethAmount, 1e18, sqrtRatioX96ToPrice(sqrtRatioX96));
     }
 
     function quoteGasToEth(
         uint256 gasAmount,
-        int24 tick
+        uint160 sqrtRatioX96
     ) internal pure returns (uint256) {
-        uint160 sqrtRatioX96 = TickMath.getSqrtRatioAtTick(tick);
         return
             FullMath.mulDiv(gasAmount, sqrtRatioX96ToPrice(sqrtRatioX96), 1e18);
     }
