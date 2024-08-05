@@ -38,7 +38,7 @@ export class Transaction {
     nftId: number; // foreign key to NFT
 
     @Column({
-        type: 'enum',
+        type: 'simple-enum',
         enum: TransactionType,
     })
     type: TransactionType;

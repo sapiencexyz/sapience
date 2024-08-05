@@ -1,5 +1,5 @@
 {
-  "address": "0x6981f5723d7f780DBE143F3d8A082fC5519Cef08",
+  "address": "0xfE6Cc6E08D279dc31e78DCEC9fd49d88E5B599Ed",
   "abi": [
     {
       "type": "function",
@@ -71,6 +71,16 @@
       "inputs": [],
       "outputs": [
         {
+          "name": "startTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "endTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
           "name": "pool",
           "type": "address",
           "internalType": "address"
@@ -124,9 +134,9 @@
           "internalType": "address"
         },
         {
-          "name": "marketParams",
+          "name": "epochParams",
           "type": "tuple",
-          "internalType": "struct Market.MarketParams",
+          "internalType": "struct Market.EpochParams",
           "components": [
             {
               "name": "baseAssetMinPriceTick",
@@ -244,9 +254,9 @@
           "internalType": "address"
         },
         {
-          "name": "marketParams",
+          "name": "epochParams",
           "type": "tuple",
-          "internalType": "struct Market.MarketParams",
+          "internalType": "struct Market.EpochParams",
           "components": [
             {
               "name": "baseAssetMinPriceTick",
@@ -319,9 +329,9 @@
           "internalType": "address"
         },
         {
-          "name": "marketParams",
+          "name": "epochParms",
           "type": "tuple",
-          "internalType": "struct Market.MarketParams",
+          "internalType": "struct Market.EpochParams",
           "components": [
             {
               "name": "baseAssetMinPriceTick",
@@ -381,6 +391,11 @@
     },
     {
       "type": "error",
+      "name": "OverflowInt24ToUint256",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "ReentrancyGuardReentrantCall",
       "inputs": []
     },
@@ -392,12 +407,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xd6840683511dda1c7899d483f603249bdd3ee2375c35ee4f5666dd27386bd517",
-  "deployTxnBlockNumber": "6398654",
-  "deployTimestamp": "1722272724",
+  "deployTxnHash": "0xba4d6ddf7bfd95259df401cf76f672984116b3257c5a999827fe011771060a69",
+  "deployTxnBlockNumber": "6437196",
+  "deployTimestamp": "1722799824",
   "sourceName": "src/contracts/modules/EpochConfigurationModule.sol",
   "contractName": "EpochConfigurationModule",
   "deployedOn": "deploy.EpochConfigurationModule",
-  "gasUsed": 2025611,
-  "gasCost": "2368976400"
+  "gasUsed": 2257070,
+  "gasCost": "5075557086"
 }
