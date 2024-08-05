@@ -561,7 +561,7 @@ contract EpochTradeModule {
             );
         } else {
             ISwapRouter.ExactInputSingleParams memory swapParams;
-            swapParams.fee = epoch.marketParams.feeRate;
+            swapParams.fee = epoch.params.feeRate;
             swapParams.recipient = address(this);
             swapParams.deadline = block.timestamp;
 
@@ -675,7 +675,7 @@ contract EpochTradeModule {
                 .ExactOutputSingleParams({
                     tokenIn: tokenIn,
                     tokenOut: tokenOut,
-                    fee: epoch.marketParams.feeRate,
+                    fee: epoch.params.feeRate,
                     recipient: address(this),
                     deadline: block.timestamp,
                     amountOut: amountOut,

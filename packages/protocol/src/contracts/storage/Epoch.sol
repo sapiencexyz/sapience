@@ -12,6 +12,8 @@ import "../interfaces/external/INonfungiblePositionManager.sol";
 import "../interfaces/external/IUniswapV3Quoter.sol";
 import "../interfaces/external/ISwapRouter.sol";
 import "../external/VirtualToken.sol";
+import "../libraries/Quote.sol";
+import "../external/univ3/LiquidityAmounts.sol";
 import "./Debt.sol";
 import "./Errors.sol";
 import "./Market.sol";
@@ -39,7 +41,9 @@ library Epoch {
         mapping(uint256 => Debt.Data) lpDebtPositions;
         bytes32 assertionId;
         Settlement settlement;
-        Market.MarketParams marketParams; // Storing MarketParams as a struct within Epoch.Data
+        Market.EpochParams params; // Storing epochParams as a struct within Epoch.Data
+        uint160 sqrtPriceMinX96;
+        uint160 sqrtPriceMaxX96;
     }
 
     function load(uint256 id) internal pure returns (Data storage epoch) {
@@ -73,16 +77,14 @@ library Epoch {
     }
 
     function createValid(
-        uint256 startTime,
-        uint256 endTime,
-        address uniswapPositionManager,
-        address uniswapQuoter,
-        address uniswapSwapRouter,
-        address collateralAsset,
-        uint160 startingSqrtPriceX96,
-        address optimisticOracleV3,
-        Market.MarketParams memory marketParams
+        epoch = load(startTime);
+        uint startTime,
+        uint endTime,
+        uint160 startingSqrtPriceX96
     ) internal returns (Data storage epoch) {
+        Market.Data storage market = Market.loadValid();
+        Market.EpochParams storage epochParams = market.epochParams;
+
         epoch = load(startTime);
 
         // can only be called once
@@ -107,7 +109,9 @@ library Epoch {
 
         epoch.startTime = startTime;
         epoch.endTime = endTime;
-        epoch.marketParams = marketParams;
+
+        // copy over market parameters into epoch
+        epoch.params = market.epochParams;
 
         VirtualToken tokenA = new VirtualToken(
             address(this),
@@ -128,39 +132,53 @@ library Epoch {
             epoch.gasToken = tokenB;
             epoch.ethToken = tokenA;
         }
+
+        // create & initialize pool
         epoch.pool = IUniswapV3Pool(
             IUniswapV3Factory(
-                INonfungiblePositionManager(uniswapPositionManager).factory()
+                INonfungiblePositionManager(market.uniswapPositionManager)
+                    .factory()
             ).createPool(
                     address(epoch.gasToken),
                     address(epoch.ethToken),
-                    marketParams.feeRate
+                    epochParams.feeRate
                 )
         );
-
         IUniswapV3Pool(epoch.pool).initialize(startingSqrtPriceX96); // starting price
-        (uint160 sqrtPriceX96, int24 tick, , , , , ) = IUniswapV3Pool(
-            epoch.pool
-        ).slot0();
-        int24 spacing = IUniswapV3Pool(epoch.pool).tickSpacing();
 
-        // mint
+        int24 spacing = IUniswapV3Pool(epoch.pool).tickSpacing();
+        // store min/max prices
+        epoch.sqrtPriceMinX96 = TickMath.getSqrtRatioAtTick(
+            epoch.params.baseAssetMinPriceTick
+        );
+        // use next tick for max price
+        epoch.sqrtPriceMaxX96 = TickMath.getSqrtRatioAtTick(
+            epoch.params.baseAssetMaxPriceTick + spacing
+        );
+
+        // mint max; track tokens loaned by in FAccount
         epoch.ethToken.mint(address(this), type(uint256).max);
         epoch.gasToken.mint(address(this), type(uint256).max);
 
         // approve to uniswapPositionManager
         epoch.ethToken.approve(
-            address(uniswapPositionManager),
+            address(market.uniswapPositionManager),
             type(uint256).max
         );
         epoch.gasToken.approve(
-            address(uniswapPositionManager),
+            address(market.uniswapPositionManager),
             type(uint256).max
         );
 
         // approve to uniswapSwapRouter
-        epoch.ethToken.approve(address(uniswapSwapRouter), type(uint256).max);
-        epoch.gasToken.approve(address(uniswapSwapRouter), type(uint256).max);
+        epoch.ethToken.approve(
+            address(market.uniswapSwapRouter),
+            type(uint256).max
+        );
+        epoch.gasToken.approve(
+            address(market.uniswapSwapRouter),
+            type(uint256).max
+        );
     }
 
     function loadValid(uint256 id) internal view returns (Data storage epoch) {
@@ -203,6 +221,131 @@ library Epoch {
             return;
             // revert Errors.EpochNotSettled(self.endTime);
         }
+    }
+
+    function validateProvidedLiquidity(
+        Data storage self,
+        uint256 collateralAmount,
+        uint128 liquidity,
+        int24 lowerTick,
+        int24 upperTick
+    ) internal {
+        (uint160 sqrtPriceX96, , , , , , ) = self.pool.slot0();
+
+        uint128 scaleFactor = 8;
+        (
+            uint256 requiredCollateral,
+            uint256 tokenAmountA,
+            uint256 tokenAmountB
+        ) = requiredCollateralForLiquidity(
+                self,
+                liquidity / scaleFactor,
+                sqrtPriceX96,
+                TickMath.getSqrtRatioAtTick(lowerTick),
+                TickMath.getSqrtRatioAtTick(upperTick)
+            );
+
+        requiredCollateral *= scaleFactor;
+
+        if (collateralAmount < requiredCollateral) {
+            revert Errors.InsufficientCollateral(
+                collateralAmount,
+                requiredCollateral
+            );
+        }
+    }
+
+    function requiredCollateralForLiquidity(
+        Data storage self,
+        uint128 liquidity,
+        uint160 sqrtPriceX96,
+        uint160 sqrtPriceAX96,
+        uint160 sqrtPriceBX96
+    )
+        internal
+        view
+        returns (
+            uint256 requiredCollateral,
+            uint256 loanAmount0,
+            uint256 loanAmount1
+        )
+    {
+        (loanAmount0, loanAmount1) = LiquidityAmounts.getAmountsForLiquidity(
+            sqrtPriceX96,
+            sqrtPriceAX96,
+            sqrtPriceBX96,
+            liquidity
+        );
+
+        uint256 collateralRequirementAtMin = collateralRequirementAtMinTick(
+            self,
+            liquidity,
+            sqrtPriceAX96,
+            sqrtPriceBX96,
+            loanAmount0,
+            loanAmount1
+        );
+        uint256 collateralRequirementAtMax = collateralRequirementAtMaxTick(
+            self,
+            liquidity,
+            sqrtPriceAX96,
+            sqrtPriceBX96,
+            loanAmount0,
+            loanAmount1
+        );
+
+        requiredCollateral = collateralRequirementAtMin >
+            collateralRequirementAtMax
+            ? collateralRequirementAtMin
+            : collateralRequirementAtMax;
+    }
+
+    function collateralRequirementAtMinTick(
+        Data storage self,
+        uint128 liquidity,
+        uint160 sqrtPriceAX96,
+        uint160 sqrtPriceBX96,
+        uint256 loanAmount0,
+        uint256 loanAmount1
+    ) internal view returns (uint256) {
+        uint256 maxAmount0 = LiquidityAmounts.getAmount0ForLiquidity(
+            sqrtPriceAX96,
+            sqrtPriceBX96,
+            liquidity
+        );
+        uint256 availableAmount0 = maxAmount0 > loanAmount0
+            ? maxAmount0 - loanAmount0
+            : 0;
+        uint256 availableAmount1 = Quote.quoteGasToEth(
+            availableAmount0,
+            self.sqrtPriceMinX96
+        );
+        return loanAmount1 - availableAmount1;
+    }
+
+    function collateralRequirementAtMaxTick(
+        Data storage self,
+        uint128 liquidity,
+        uint160 sqrtPriceAX96,
+        uint160 sqrtPriceBX96,
+        uint256 loanAmount0,
+        uint256 loanAmount1
+    ) internal view returns (uint256) {
+        uint256 maxAmount1 = LiquidityAmounts.getAmount1ForLiquidity(
+            sqrtPriceAX96,
+            sqrtPriceBX96,
+            liquidity
+        );
+        uint256 availableAmount1 = maxAmount1 > loanAmount1
+            ? maxAmount1 - loanAmount1
+            : 0;
+        uint256 availableAmount0 = Quote.quoteEthToGas(
+            availableAmount1,
+            self.sqrtPriceMaxX96
+        );
+
+        uint256 amount0LoanLeftover = loanAmount0 - availableAmount0;
+        return Quote.quoteGasToEth(amount0LoanLeftover, self.sqrtPriceMaxX96);
     }
 
     // function transferCollateral(Data storage self, uint256 amount) internal {

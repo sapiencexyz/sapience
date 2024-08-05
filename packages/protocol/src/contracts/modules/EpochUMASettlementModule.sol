@@ -40,18 +40,18 @@ contract EpochUMASettlementModule is ReentrancyGuard {
         );
         require(!epoch.settled, "Market already settled");
 
-        IERC20 bondCurrency = IERC20(epoch.marketParams.bondCurrency);
+        IERC20 bondCurrency = IERC20(epoch.params.bondCurrency);
         OptimisticOracleV3Interface optimisticOracleV3 = market
             .optimisticOracleV3;
 
         bondCurrency.safeTransferFrom(
             msg.sender,
             address(this),
-            epoch.marketParams.bondAmount
+            epoch.params.bondAmount
         );
         bondCurrency.forceApprove(
             address(optimisticOracleV3),
-            epoch.marketParams.bondAmount
+            epoch.params.bondAmount
         );
 
         epoch.settlement = Epoch.Settlement({
@@ -62,7 +62,7 @@ contract EpochUMASettlementModule is ReentrancyGuard {
         });
 
         bytes memory claim = abi.encodePacked(
-            epoch.marketParams.priceUnit,
+            epoch.params.priceUnit,
             " TWAP between timestamps ",
             abi.encodePacked(epoch.startTime),
             " and ",
@@ -76,9 +76,9 @@ contract EpochUMASettlementModule is ReentrancyGuard {
             msg.sender,
             address(this),
             address(0),
-            epoch.marketParams.assertionLiveness,
-            IERC20(epoch.marketParams.bondCurrency),
-            uint64(epoch.marketParams.bondAmount),
+            epoch.params.assertionLiveness,
+            IERC20(epoch.params.bondCurrency),
+            uint64(epoch.params.bondAmount),
             bytes32(0),
             bytes32(0)
         );

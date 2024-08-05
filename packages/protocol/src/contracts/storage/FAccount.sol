@@ -6,6 +6,7 @@ import {TickMath} from "../external/univ3/TickMath.sol";
 import "./Position.sol";
 import "./Market.sol";
 import "../external/univ3/LiquidityAmounts.sol";
+import "../libraries/Quote.sol";
 import "forge-std/console2.sol";
 
 library FAccount {
@@ -74,135 +75,24 @@ library FAccount {
         return address(uint160(self.tokenId));
     }
 
-    /*
-    function updateLoan(
+    function updateCollateral(
         Data storage self,
-        uint256 collateralAmount,
-        uint256 amount0,
-        uint256 amount1
+        IERC20 collateralAsset,
+        uint256 amount
     ) internal {
-        self.collateralAmount += collateralAmount;
-        self.borrowedGwei += amount0;
-        self.borrowedGas += amount1;
-    }
-    
-*/
-
-    struct RuntimeValidateParams {
-        uint160 sqrtPriceAX96;
-        uint160 sqrtPriceBX96;
-    }
-
-    function validateProvidedLiquidity(
-        Data storage self,
-        Market.MarketParams memory marketParams,
-        uint128 liquidity,
-        int24 lowerTick,
-        int24 upperTick
-    ) internal {
-        RuntimeValidateParams memory params;
-        params.sqrtPriceAX96 = TickMath.getSqrtRatioAtTick(lowerTick);
-        params.sqrtPriceBX96 = TickMath.getSqrtRatioAtTick(upperTick);
-
-        uint128 scaleFactor = 1e3;
-
-        uint256 amountGasAtLowerTick = LiquidityAmounts.getAmount0ForLiquidity(
-            params.sqrtPriceAX96,
-            params.sqrtPriceBX96,
-            liquidity / scaleFactor
-        ) * uint256(scaleFactor);
-        console2.log("AMOUNT GAS AT LOWER TICK", amountGasAtLowerTick);
-
-        uint256 amountGweiAtUpperTick = LiquidityAmounts.getAmount1ForLiquidity(
-            params.sqrtPriceAX96,
-            params.sqrtPriceBX96,
-            liquidity / scaleFactor
-        ) * uint256(scaleFactor);
-
-        console2.log(
-            "AMOUNT GWEI AT UPPER TICK",
-            amountGweiAtUpperTick,
-            self.borrowedGwei
-        );
-        console2.log("BORROWED GWEI", self.borrowedGwei);
-        console2.log("amountGasAtLowerTick", amountGasAtLowerTick);
-
-        uint256 leftoverGweiAmountAtLowerTick = quoteGasToGwei(
-            amountGasAtLowerTick - self.borrowedGas,
-            marketParams.baseAssetMinPriceTick
-        );
-
-        console2.log(
-            "LEFTOVER GAS AMOUNT",
-            amountGasAtLowerTick - self.borrowedGas
-        );
-        console2.log(
-            "LEFTOVER GWEI AMOUNT LOWER",
-            leftoverGweiAmountAtLowerTick,
-            leftoverGweiAmountAtLowerTick + self.collateralAmount
-        );
-
-        if (
-            leftoverGweiAmountAtLowerTick + self.collateralAmount <
-            self.borrowedGwei
-        ) {
-            revert Errors.InsufficientCollateral();
-        }
-
-        uint256 availableGweiFromPosition = amountGweiAtUpperTick >
-            self.borrowedGwei
-            ? amountGweiAtUpperTick - self.borrowedGwei
-            : 0;
-        console2.log("AVAILABLE GWEI FROM POSITION", availableGweiFromPosition);
-        uint256 maxAvailableGasToPayLoan = quoteGweiToGas(
-            availableGweiFromPosition + self.collateralAmount,
-            marketParams.baseAssetMaxPriceTick
-        );
-
-        console2.log(
-            "MAX AVAILABLE GAS TO PAY LOAN",
-            maxAvailableGasToPayLoan,
-            self.borrowedGas
-        );
-
-        if (maxAvailableGasToPayLoan < self.borrowedGas) {
-            revert Errors.InsufficientCollateral();
-        }
-    }
-
-    // MOVE TO LIB
-    function quoteGweiToGas(
-        uint256 gweiAmount,
-        int24 priceTick
-    ) internal returns (uint256) {
-        uint160 sqrtRatioX96 = TickMath.getSqrtRatioAtTick(priceTick);
-        return
-            FullMath.mulDiv(
-                gweiAmount,
-                1e18,
-                sqrtRatioX96ToPrice(sqrtRatioX96)
+        if (amount > self.collateralAmount) {
+            collateralAsset.transferFrom(
+                msg.sender,
+                address(this),
+                amount - self.collateralAmount
             );
-    }
+        } else {
+            collateralAsset.transfer(
+                msg.sender,
+                self.collateralAmount - amount
+            );
+        }
 
-    function quoteGasToGwei(
-        uint256 gasAmount,
-        int24 priceTick
-    ) internal returns (uint256) {
-        uint160 sqrtRatioX96 = TickMath.getSqrtRatioAtTick(priceTick);
-        return
-            FullMath.mulDiv(gasAmount, sqrtRatioX96ToPrice(sqrtRatioX96), 1e18);
-    }
-    // should move to lib
-
-    // Function to convert sqrtRatioX96 to price
-    function sqrtRatioX96ToPrice(
-        uint160 sqrtRatioX96
-    ) internal pure returns (uint256 price) {
-        // Calculate the price as (sqrtRatioX96^2) / (2^192)
-        uint256 sqrtRatioX96Squared = uint256(sqrtRatioX96) *
-            uint256(sqrtRatioX96);
-        price = sqrtRatioX96Squared >> 96;
-        // Scale price to have 18 decimal places
-        price = (price * 10 ** 18) / (2 ** 96);
+        self.collateralAmount = amount;
     }
 }

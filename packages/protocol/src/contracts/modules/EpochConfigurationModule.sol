@@ -10,7 +10,7 @@ import "../storage/FAccount.sol";
 import "../storage/Position.sol";
 import "../storage/ERC721Storage.sol";
 import "../storage/ERC721EnumerableStorage.sol";
-import "../storage/Market.sol"; // Import the Market library
+import "../storage/Market.sol";
 import "forge-std/console2.sol";
 
 contract EpochConfigurationModule is ReentrancyGuard {
@@ -33,7 +33,7 @@ contract EpochConfigurationModule is ReentrancyGuard {
         address uniswapQuoter,
         address uniswapSwapRouter,
         address optimisticOracleV3,
-        Market.MarketParams memory marketParams
+        Market.EpochParams memory epochParams
     ) external {
         Market.createValid(
             owner,
@@ -42,7 +42,7 @@ contract EpochConfigurationModule is ReentrancyGuard {
             uniswapQuoter,
             uniswapSwapRouter,
             optimisticOracleV3,
-            marketParams
+            epochParams
         );
     }
 
@@ -52,7 +52,7 @@ contract EpochConfigurationModule is ReentrancyGuard {
         address uniswapQuoter,
         address uniswapSwapRouter,
         address optimisticOracleV3,
-        Market.MarketParams memory marketParams
+        Market.EpochParams memory epochParms
     ) external onlyOwner {
         Market.updateValid(
             owner, // should be nominate/accept
@@ -60,7 +60,7 @@ contract EpochConfigurationModule is ReentrancyGuard {
             uniswapQuoter,
             uniswapSwapRouter,
             optimisticOracleV3,
-            marketParams
+            epochParms
         );
     }
 
@@ -71,17 +71,7 @@ contract EpochConfigurationModule is ReentrancyGuard {
     ) external onlyOwner {
         Market.Data storage market = Market.loadValid();
 
-        Epoch.createValid(
-            startTime,
-            endTime,
-            address(market.uniswapPositionManager),
-            address(market.uniswapQuoter),
-            address(market.uniswapSwapRouter),
-            address(market.collateralAsset),
-            startingSqrtPriceX96,
-            address(market.optimisticOracleV3),
-            market.marketParams
-        );
+        Epoch.createValid(startTime, endTime, startingSqrtPriceX96);
     }
 
     function getMarket()
@@ -94,18 +84,18 @@ contract EpochConfigurationModule is ReentrancyGuard {
             address uniswapQuoter,
             address uniswapSwapRouter,
             address optimisticOracleV3,
-            Market.MarketParams memory marketParams
+            Market.EpochParams memory epochParams
         )
     {
         Market.Data storage market = Market.load();
         return (
             market.owner,
-            market.collateralAsset,
+            address(market.collateralAsset),
             address(market.uniswapPositionManager),
             address(market.uniswapQuoter),
             address(market.uniswapSwapRouter),
             address(market.optimisticOracleV3),
-            market.marketParams
+            market.epochParams
         );
     }
 
