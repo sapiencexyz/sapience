@@ -54,6 +54,7 @@ contract FoilTest is Test {
         uint160 sqrtPriceAX96 = 176318465955219228901572735582;
         uint160 sqrtPriceBX96 = 273764932352251420676860998407;
         (uint256 loanAmount0, uint256 loanAmount1, ) = foil.getTokenAmounts(
+            EPOCH_START_TIME,
             50 ether,
             sqrtPriceX96,
             sqrtPriceAX96,
@@ -83,13 +84,21 @@ contract FoilTest is Test {
         uint128 halfLiquidity = liquidity / 2;
         uint256 coll = 25 ether;
 
-        foil.decreaseLiquidityPosition(tokenId, coll, halfLiquidity, 0, 0);
+        foil.decreaseLiquidityPosition(
+            EPOCH_START_TIME,
+            tokenId,
+            coll,
+            halfLiquidity,
+            0,
+            0
+        );
 
         assertEq(collateralAsset.balanceOf(address(foil)), 25 ether);
 
         coll = 500 ether;
 
         foil.increaseLiquidityPosition(
+            EPOCH_START_TIME,
             tokenId,
             coll,
             amount0 * 2,
@@ -115,164 +124,4 @@ contract FoilTest is Test {
         // (uint256 tokenAmount3, uint256 tokenAmount4) = foil.getPosition(2);
         // console2.log(tokenAmount3, tokenAmount4);
     }
-
-    function test_trade() public {
-        // IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
-        //     .LiquidityPositionParams({
-        //         amountTokenA: 50 ether,
-        //         amountTokenB: 50 ether,
-        //         collateralAmount: 10 ether,
-        //         lowerTick: 16000, // 5
-        //         upperTick: 30000, // 20
-        //         minAmountTokenA: 0,
-        //         minAmountTokenB: 0
-        //     });
-        // (
-        //     uint256 positionId,
-        //     uint128 liquidity,
-        //     uint256 addedAmount0,
-        //     uint256 addedAmount1
-        // ) = foil.createLiquidityPosition(params);
-        // console2.log("LIQUIDITY POSITION CREATED", positionId, liquidity);
-        // console2.log("ADDED LIQUIDITY", addedAmount0, addedAmount1);
-        // params.amountTokenA = 100 ether;
-        // params.amountTokenB = 100 ether;
-        // (uint256 positionId2, , , ) = foil.createLiquidityPosition(params);
-        // getAndLogPosition(positionId);
-        // getAndLogPosition(positionId2);
-    }
-
-    //     // (uint256 tradedAmoun0, uint256 tradedAmount2) = foil.swapTokens(
-    //     //     0,
-    //     //     1 ether
-    //     // );
-
-    //     // console2.log("TRADED", tradedAmoun0, tradedAmount2);
-
-    //     // (uint256 tokenAmount0, uint256 tokenAmount1) = foil.collectFees(
-    //     //     positionId
-    //     // );
-    //     // getAndLogPosition(positionId);
-    //     // getAndLogPosition(positionId2);
-    //     // console2.log("FEES COLLECTED", tokenAmount0, tokenAmount1);
-    //     // (tokenAmount0, tokenAmount1) = foil.collectFees(positionId2);
-    //     // console2.log("FEES COLLECTED 2", tokenAmount0, tokenAmount1);
-    //     // getAndLogPosition(positionId);
-    //     // getAndLogPosition(positionId2);
-
-    //     // foil.fakeSettle(5 ether);
-    //     // (tradedAmoun0, tradedAmount2) = foil.swapTokens(0, 1 ether);
-
-    //     // console2.log("TRADED after settle 1", tradedAmoun0, tradedAmount2);
-    //     // (tradedAmoun0, tradedAmount2) = foil.swapTokens(1 ether, 0);
-
-    //     // console2.log("TRADED after settle 2", tradedAmoun0, tradedAmount2);
-    // }
-
-    // function getAndLogPosition(uint256 positionId) public {
-    //     (
-    //         uint96 nonce,
-    //         address operator,
-    //         address token0,
-    //         address token1,
-    //         uint24 fee,
-    //         int24 tickLower,
-    //         int24 tickUpper,
-    //         uint128 liquidity,
-    //         uint256 feeGrowthInside0LastX128,
-    //         uint256 feeGrowthInside1LastX128,
-    //         uint128 tokensOwed0,
-    //         uint128 tokensOwed1
-    //     ) = foil.getPosition(positionId);
-
-    //     console2.log("START POSITION", positionId);
-    //     console2.log("  nonce                    : ", nonce);
-    //     console2.log("  operator                 : ", operator);
-    //     console2.log("  token0                   : ", token0);
-    //     console2.log("  token1                   : ", token1);
-    //     console2.log("  fee                      : ", fee);
-    //     console2.log("  tickLower                : ", tickLower);
-    //     console2.log("  tickUpper                : ", tickUpper);
-    //     console2.log("  liquidity                : ", liquidity);
-    //     console2.log("  feeGrowthInside0LastX128 : ", feeGrowthInside0LastX128);
-    //     console2.log("  feeGrowthInside1LastX128 : ", feeGrowthInside1LastX128);
-    //     console2.log("  tokensOwed0              : ", tokensOwed0);
-    //     console2.log("  tokensOwed1              : ", tokensOwed1);
-    //     console2.log("END   POSITION", positionId);
-    // }
-    // function test_addLiquidityAndLongs() public {
-    //     int24 tickSpacing = IUniswapV3Pool(pool).tickSpacing();
-    //     // int24 lowerTick = TickMath.getTickAtSqrtRatio(
-    //     //     177159557114295710296101716160
-    //     // ); // 5
-    //     // int24 upperTick = TickMath.getTickAtSqrtRatio(
-    //     //     306849353968360525628702781967
-    //     // ); // 15
-    //     IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
-    //         .LiquidityPositionParams({
-    //             accountId: 1,
-    //             amountTokenA: 10 ether,
-    //             amountTokenB: 100 ether,
-    //             collateralAmount: 10 ether,
-    //             lowerTick: 27000, // 5
-    //             upperTick: 30000 // 15
-    //         });
-    //     foil.addLiquidity(params);
-
-    //     (uint256 tokenAmount0, uint256 tokenAmount1) = foil.getPosition(1);
-
-    //     // new account!
-    //     params = IFoilStructs.LiquidityPositionParams({
-    //         accountId: 2,
-    //         amountTokenA: 100 ether,
-    //         amountTokenB: 10 ether,
-    //         collateralAmount: 10 ether,
-    //         lowerTick: -887200, // minTick
-    //         upperTick: 887200 // maxTick
-    //     });
-    //     foil.addLiquidity(params);
-
-    //     (uint256 tokenAmount3, uint256 tokenAmount4) = foil.getPosition(2);
-
-    //     foil.openLong(1, 10 ether);
-    //     foil.reduceLong(1, 1 ether);
-    // }
-
-    // function test_addLiquidityAndShorts() public {
-    //     int24 tickSpacing = IUniswapV3Pool(pool).tickSpacing();
-    //     // int24 lowerTick = TickMath.getTickAtSqrtRatio(
-    //     //     177159557114295710296101716160
-    //     // ); // 5
-    //     // int24 upperTick = TickMath.getTickAtSqrtRatio(
-    //     //     306849353968360525628702781967
-    //     // ); // 15
-    //     IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
-    //         .LiquidityPositionParams({
-    //             accountId: 1,
-    //             amountTokenA: 10 ether,
-    //             amountTokenB: 100 ether,
-    //             collateralAmount: 10 ether,
-    //             lowerTick: 27000, // 5
-    //             upperTick: 30000 // 15
-    //         });
-    //     foil.addLiquidity(params);
-
-    //     (uint256 tokenAmount0, uint256 tokenAmount1) = foil.getPosition(1);
-
-    //     // new account!
-    //     params = IFoilStructs.LiquidityPositionParams({
-    //         accountId: 2,
-    //         amountTokenA: 100 ether,
-    //         amountTokenB: 10 ether,
-    //         collateralAmount: 10 ether,
-    //         lowerTick: -887200, // minTick
-    //         upperTick: 887200 // maxTick
-    //     });
-    //     foil.addLiquidity(params);
-
-    //     (uint256 tokenAmount3, uint256 tokenAmount4) = foil.getPosition(2);
-
-    //     foil.openShort(1, 1 ether);
-    //     foil.reduceShort(1, 0.1 ether);
-    // }
 }

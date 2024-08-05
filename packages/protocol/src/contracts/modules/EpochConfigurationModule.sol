@@ -11,9 +11,15 @@ import "../storage/Position.sol";
 import "../storage/ERC721Storage.sol";
 import "../storage/ERC721EnumerableStorage.sol";
 import "../storage/Market.sol";
+import "../interfaces/IEpochConfigurationModule.sol";
+import "../interfaces/IFoilStructs.sol";
+
 import "forge-std/console2.sol";
 
-contract EpochConfigurationModule is ReentrancyGuard {
+contract EpochConfigurationModule is
+    IEpochConfigurationModule,
+    ReentrancyGuard
+{
     using Epoch for Epoch.Data;
     using FAccount for FAccount.Data;
     using Position for Position.Data;
@@ -33,8 +39,8 @@ contract EpochConfigurationModule is ReentrancyGuard {
         address uniswapQuoter,
         address uniswapSwapRouter,
         address optimisticOracleV3,
-        Market.EpochParams memory epochParams
-    ) external {
+        IFoilStructs.EpochParams memory epochParams
+    ) external override {
         Market.createValid(
             owner,
             collateralAsset,
@@ -52,8 +58,8 @@ contract EpochConfigurationModule is ReentrancyGuard {
         address uniswapQuoter,
         address uniswapSwapRouter,
         address optimisticOracleV3,
-        Market.EpochParams memory epochParms
-    ) external onlyOwner {
+        IFoilStructs.EpochParams memory epochParms
+    ) external override onlyOwner {
         Market.updateValid(
             owner, // should be nominate/accept
             uniswapPositionManager,
@@ -68,7 +74,7 @@ contract EpochConfigurationModule is ReentrancyGuard {
         uint256 startTime,
         uint256 endTime,
         uint160 startingSqrtPriceX96
-    ) external onlyOwner {
+    ) external override onlyOwner {
         Market.Data storage market = Market.loadValid();
 
         Epoch.createValid(startTime, endTime, startingSqrtPriceX96);
@@ -77,6 +83,7 @@ contract EpochConfigurationModule is ReentrancyGuard {
     function getMarket()
         external
         view
+        override
         returns (
             address owner,
             address collateralAsset,
@@ -84,7 +91,7 @@ contract EpochConfigurationModule is ReentrancyGuard {
             address uniswapQuoter,
             address uniswapSwapRouter,
             address optimisticOracleV3,
-            Market.EpochParams memory epochParams
+            IFoilStructs.EpochParams memory epochParams
         )
     {
         Market.Data storage market = Market.load();
@@ -104,6 +111,7 @@ contract EpochConfigurationModule is ReentrancyGuard {
     )
         external
         view
+        override
         returns (
             uint256 startTime,
             uint256 endTime,
@@ -124,13 +132,13 @@ contract EpochConfigurationModule is ReentrancyGuard {
 
     function getPositionData(
         uint256 accountId
-    ) external pure returns (Position.Data memory) {
+    ) external pure override returns (Position.Data memory) {
         return Position.load(accountId);
     }
 
     function getAccountData(
         uint256 accountId
-    ) external pure returns (FAccount.Data memory) {
+    ) external pure override returns (FAccount.Data memory) {
         return FAccount.load(accountId);
     }
 }

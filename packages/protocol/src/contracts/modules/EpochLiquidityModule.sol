@@ -128,41 +128,17 @@ contract EpochLiquidityModule is
         // TODO: emit event
     }
 
-    function getPosition(
-        uint256 positionId
-    )
-        external
-        view
-        returns (
-            uint96 nonce,
-            address operator,
-            address token0,
-            address token1,
-            uint24 fee,
-            int24 tickLower,
-            int24 tickUpper,
-            uint128 liquidity,
-            uint256 feeGrowthInside0LastX128,
-            uint256 feeGrowthInside1LastX128,
-            uint128 tokensOwed0,
-            uint128 tokensOwed1
-        )
-    {
-        Market.Data storage market = Market.load();
-        return market.uniswapPositionManager.positions(positionId);
-    }
-
-    function updateLiquidityPosition(
+    function decreaseLiquidityPosition(
         uint256 epochId,
-        uint256 tokenId,
-        uint256 collateral,
+        uint256 accountId,
+        uint256 collateralAmount,
         uint128 liquidity,
         uint256 minGasAmount,
         uint256 minEthAmount
     ) external override returns (uint256 amount0, uint256 amount1) {
         Market.Data storage market = Market.load();
-        Epoch.Data storage epoch = Epoch.load(epochId);
         FAccount.Data storage account = FAccount.load(accountId);
+        Epoch.Data storage epoch = Epoch.load(epochId);
 
         (, , , , , int24 lowerTick, int24 upperTick, , , , , ) = market
             .uniswapPositionManager
@@ -185,7 +161,7 @@ contract EpochLiquidityModule is
         );
 
         account.updateLoan(account.tokenId, collateralAmount, amount0, amount1);
-        Epoch.load().validateProvidedLiquidity(
+        epoch.validateProvidedLiquidity(
             collateralAmount,
             liquidity,
             lowerTick,
@@ -198,6 +174,7 @@ contract EpochLiquidityModule is
     }
 
     function increaseLiquidityPosition(
+        uint256 epochId,
         uint256 accountId,
         uint256 collateralAmount,
         uint256 gasTokenAmount,
@@ -207,6 +184,7 @@ contract EpochLiquidityModule is
     ) external returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
         Market.Data storage market = Market.load();
         FAccount.Data storage account = FAccount.load(accountId);
+        Epoch.Data storage epoch = Epoch.load(epochId);
 
         (, , , , , int24 lowerTick, int24 upperTick, , , , , ) = market
             .uniswapPositionManager
@@ -230,7 +208,7 @@ contract EpochLiquidityModule is
             .increaseLiquidity(increaseParams);
 
         account.updateLoan(account.tokenId, collateralAmount, amount0, amount1);
-        Epoch.load().validateProvidedLiquidity(
+        epoch.validateProvidedLiquidity(
             collateralAmount,
             liquidity,
             lowerTick,
@@ -246,6 +224,7 @@ contract EpochLiquidityModule is
     }
 
     function getTokenAmounts(
+        uint256 epochId,
         uint256 collateralAmount,
         uint160 sqrtPriceX96,
         uint160 sqrtPriceAX96,
@@ -256,6 +235,8 @@ contract EpochLiquidityModule is
         override
         returns (uint256 amount0, uint256 amount1, uint128 liquidity)
     {
+        Epoch.Data storage epoch = Epoch.load(epochId);
+
         // calculate for unit
         uint128 unitLiquidity = LiquidityAmounts.getLiquidityForAmounts(
             sqrtPriceX96,
@@ -269,7 +250,7 @@ contract EpochLiquidityModule is
             uint256 requiredCollateral,
             uint256 unitAmount0,
             uint256 uintAmount1
-        ) = Epoch.load().requiredCollateralForLiquidity(
+        ) = epoch.requiredCollateralForLiquidity(
                 unitLiquidity,
                 sqrtPriceX96,
                 sqrtPriceAX96,

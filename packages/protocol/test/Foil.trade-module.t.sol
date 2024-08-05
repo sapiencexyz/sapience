@@ -31,7 +31,7 @@ contract FoilTradeModuleTest is Test {
 
         console2.log("getEpoch");
 
-        (pool, tokenA, tokenB) = foil.getEpoch(EPOCH_START_TIME);
+        (, , pool, tokenA, tokenB) = foil.getEpoch(EPOCH_START_TIME);
 
         console2.log("pool", pool);
         console2.log("tokenA", tokenA);
@@ -274,7 +274,7 @@ contract FoilTradeModuleTest is Test {
         logPositionAndAccount(accountId_4);
     }
 
-    function logPositionAndAccount(uint256 accountId) public view {
+    function logPositionAndAccount(uint256 accountId) public {
         Position.Data memory position = foil.getPositionData(accountId);
         console2.log(" >>> Position", accountId);
         console2.log("      >> accountId         : ", position.accountId);

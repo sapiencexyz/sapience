@@ -17,6 +17,7 @@ import "../external/univ3/LiquidityAmounts.sol";
 import "./Debt.sol";
 import "./Errors.sol";
 import "./Market.sol";
+import "../interfaces/IFoilStructs.sol";
 
 import "forge-std/console2.sol";
 
@@ -41,7 +42,7 @@ library Epoch {
         mapping(uint256 => Debt.Data) lpDebtPositions;
         bytes32 assertionId;
         Settlement settlement;
-        Market.EpochParams params; // Storing epochParams as a struct within Epoch.Data
+        IFoilStructs.EpochParams params; // Storing epochParams as a struct within Epoch.Data
         uint160 sqrtPriceMinX96;
         uint160 sqrtPriceMaxX96;
     }
@@ -77,13 +78,12 @@ library Epoch {
     }
 
     function createValid(
-        epoch = load(startTime);
         uint startTime,
         uint endTime,
         uint160 startingSqrtPriceX96
     ) internal returns (Data storage epoch) {
         Market.Data storage market = Market.loadValid();
-        Market.EpochParams storage epochParams = market.epochParams;
+        IFoilStructs.EpochParams storage epochParams = market.epochParams;
 
         epoch = load(startTime);
 

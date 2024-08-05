@@ -10,9 +10,11 @@ import {SafeCastI256} from "../../synthetix/utils/SafeCast.sol";
 import {SafeCastU256} from "../../synthetix/utils/SafeCast.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
+import {IEpochTradeModule} from "../interfaces/IEpochTradeModule.sol";
+
 import "forge-std/console2.sol";
 
-contract EpochTradeModule {
+contract EpochTradeModule is IEpochTradeModule {
     using Epoch for Epoch.Data;
     using Position for Position.Data;
     using DecimalMath for uint256;
@@ -24,7 +26,7 @@ contract EpochTradeModule {
         uint256 collateralAmount,
         int256 tokenAmount,
         int256 tokenAmountLimit
-    ) external returns (uint256 accountId) {
+    ) external override returns (uint256 accountId) {
         // create/load account
         Epoch.Data storage epoch = Epoch.load(epochId);
         // check if epoch is not settled
@@ -66,7 +68,7 @@ contract EpochTradeModule {
         uint256 collateralAmount,
         int256 tokenAmount,
         int256 tokenAmountLimit
-    ) external {
+    ) external override {
         // identify the account and position
         // Notice: accountId is the tokenId
         require(
@@ -102,6 +104,23 @@ contract EpochTradeModule {
                 tokenAmount,
                 tokenAmountLimit
             );
+        }
+    }
+
+    function getReferencePrice(
+        uint epochId
+    ) public view override returns (uint256 price18Digits) {
+        Epoch.Data storage epoch = Epoch.load(epochId);
+
+        if (epoch.settled) {
+            return epoch.settlementPrice;
+        } else {
+            (uint160 sqrtRatioX96, , , , , , ) = IUniswapV3Pool(epoch.pool)
+                .slot0();
+            // TODO find a simple expression to calculate the price
+            uint256 price = (((uint256(sqrtRatioX96) * 1e18) / 2 ** 96) ** 2) /
+                1e18;
+            return price;
         }
     }
 
@@ -768,23 +787,6 @@ contract EpochTradeModule {
             return (true);
         } else {
             return (false);
-        }
-    }
-
-    function getReferencePrice(
-        uint epochId
-    ) public view returns (uint256 price18Digits) {
-        Epoch.Data storage epoch = Epoch.load(epochId);
-
-        if (epoch.settled) {
-            return epoch.settlementPrice;
-        } else {
-            (uint160 sqrtRatioX96, , , , , , ) = IUniswapV3Pool(epoch.pool)
-                .slot0();
-            // TODO find a simple expression to calculate the price
-            uint256 price = (((uint256(sqrtRatioX96) * 1e18) / 2 ** 96) ** 2) /
-                1e18;
-            return price;
         }
     }
 }

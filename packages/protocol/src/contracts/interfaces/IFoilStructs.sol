@@ -20,4 +20,14 @@ interface IFoilStructs {
         uint256 collateralAmount;
         int size;
     }
+
+    struct EpochParams {
+        int24 baseAssetMinPriceTick;
+        int24 baseAssetMaxPriceTick;
+        uint24 feeRate;
+        uint64 assertionLiveness;
+        address bondCurrency;
+        uint256 bondAmount;
+        bytes32 priceUnit;
+    }
 }
