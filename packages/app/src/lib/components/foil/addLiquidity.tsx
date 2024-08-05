@@ -16,6 +16,7 @@ import {
   RangeSliderMark,
   Flex,
 } from '@chakra-ui/react';
+import { TickMath } from '@uniswap/v3-sdk';
 import { useContext, useEffect, useState } from 'react';
 import { formatUnits, parseUnits } from 'viem';
 import {
@@ -30,8 +31,6 @@ import erc20ABI from '../../erc20abi.json';
 
 import SlippageTolerance from './slippageTolerance';
 import useFoilDeployment from './useFoilDeployment';
-
-import { TickMath } from "@uniswap/v3-sdk";
 
 import { MarketContext } from '~/lib/context/MarketProvider';
 
@@ -170,7 +169,7 @@ const AddLiquidity = () => {
 
   useEffect(() => {
     if (tokenAmounts) {
-      const [amount0, amount1] = tokenAmounts;
+      const [amount0, amount1] = tokenAmounts as any[]; // there's some abitype project, i think
       setBaseToken(parseFloat(formatUnits(amount0, 18)));
       setQuoteToken(parseFloat(formatUnits(amount1, 18)));
     }

@@ -104,14 +104,14 @@ export const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
 
         const token0 = new Token(
           chainId,
-          token0Address,
+          token0Address as string,
           18,
           'TOKEN0',
           'Token 0'
         );
         const token1 = new Token(
           chainId,
-          token1Address,
+          token1Address as string,
           18,
           'TOKEN1',
           'Token 1'
@@ -122,7 +122,7 @@ export const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
           token1,
           fee as FeeAmount,
           sqrtPriceX96.toString(),
-          liquidity.toString(),
+          (liquidity as any).toString(),
           tick
         );
 
