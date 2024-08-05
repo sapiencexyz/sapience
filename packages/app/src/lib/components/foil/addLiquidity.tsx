@@ -31,6 +31,8 @@ import erc20ABI from '../../erc20abi.json';
 import SlippageTolerance from './slippageTolerance';
 import useFoilDeployment from './useFoilDeployment';
 
+import { TickMath } from "@uniswap/v3-sdk";
+
 import { MarketContext } from '~/lib/context/MarketProvider';
 
 const tickSpacingDefault = 200; // 1% - Hardcoded for now, should be retrieved with pool.tickSpacing()
@@ -160,15 +162,15 @@ const AddLiquidity = () => {
     args: [
       parseUnits(depositAmount.toString(), collateralAssetDecimals), // uint256 collateralAmount
       pool ? pool.sqrtRatioX96.toString() : '0', // uint160 sqrtPriceX96, // current price of pool
-      BigInt(Math.sqrt(tickLower) * 2 ** 96), // uint160 sqrtPriceAX96, // lower tick price in sqrtRatio
-      BigInt(Math.sqrt(tickUpper) * 2 ** 96), // uint160 sqrtPriceBX96 // upper tick price in sqrtRatio
+      TickMath.getSqrtRatioAtTick(tickLower).toString(), // uint160 sqrtPriceAX96, // lower tick price in sqrtRatio
+      TickMath.getSqrtRatioAtTick(tickUpper).toString(), // uint160 sqrtPriceBX96 // upper tick price in sqrtRatio
     ],
     chainId: chain?.id,
   });
 
   useEffect(() => {
     if (tokenAmounts) {
-      const { amount0, amount1 } = tokenAmounts;
+      const [amount0, amount1] = tokenAmounts;
       setBaseToken(parseFloat(formatUnits(amount0, 18)));
       setQuoteToken(parseFloat(formatUnits(amount1, 18)));
     }
@@ -387,7 +389,7 @@ const AddLiquidity = () => {
           {minAmountTokenB.toFixed(2)})
         </Text>
         <Text fontSize="sm" color="gray.500" mb="0.5">
-          Net Position: {highPrice.toFixed(2)} Ggas
+          Net Position: X Ggas
         </Text>
         {isConnected &&
         walletBalance !== null &&
