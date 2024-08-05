@@ -108,7 +108,7 @@ contract EpochTradeModule is IEpochTradeModule {
     }
 
     function getReferencePrice(
-        uint epochId
+        uint256 epochId
     ) public view override returns (uint256 price18Digits) {
         Epoch.Data storage epoch = Epoch.load(epochId);
 
@@ -300,7 +300,7 @@ contract EpochTradeModule is IEpochTradeModule {
                 // return;
             }
 
-            int delta = (tokenAmount - position.currentTokenAmount);
+            int256 delta = (tokenAmount - position.currentTokenAmount);
 
             SwapTokensExactInParams memory params = SwapTokensExactInParams({
                 epochId: epochId,
@@ -354,8 +354,9 @@ contract EpochTradeModule is IEpochTradeModule {
         if (tokenAmount < position.currentTokenAmount) {
             // Increase the position (SHORT)
 
-            int delta = (tokenAmount - position.currentTokenAmount);
-            int deltaLimit = (tokenAmountLimit - position.currentTokenAmount);
+            int256 delta = (tokenAmount - position.currentTokenAmount);
+            int256 deltaLimit = (tokenAmountLimit -
+                position.currentTokenAmount);
 
             // with the collateral get vGas (Loan)
             uint256 vGasLoan = (delta * -1).toUint(); //
@@ -388,7 +389,7 @@ contract EpochTradeModule is IEpochTradeModule {
                 // return;
             }
 
-            int delta = (position.currentTokenAmount - tokenAmount);
+            int256 delta = (position.currentTokenAmount - tokenAmount);
 
             SwapTokensExactOutParams memory params = SwapTokensExactOutParams({
                 epochId: epochId,
@@ -776,8 +777,8 @@ contract EpochTradeModule is IEpochTradeModule {
     }
 
     function sameSide(
-        int currentTokenAmount,
-        int newTokenAmount
+        int256 currentTokenAmount,
+        int256 newTokenAmount
     ) internal pure returns (bool) {
         if (newTokenAmount == 0) {
             return (true);

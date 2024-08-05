@@ -132,7 +132,7 @@
 //         account.isAuthorized(foilNFT, msg.sender);
 //         // TODO check if can supply that amount
 //         // notice: using the epoch rate, calculate the amount of gas tokens and wei tokens to mint,
-//         uint rate = Epoch.loadValid(epochId).getCurrentPrice();
+//         uint256 rate = Epoch.loadValid(epochId).getCurrentPrice();
 
 //         // calculate the user holding and swap them to supply to the pool
 //         // TODO adjust balances
@@ -149,7 +149,7 @@
 //             account.epochPosition[epochId]
 //         );
 
-//         uint midRangePrice = (position.priceMin + position.priceMax) / 2;
+//         uint256 midRangePrice = (position.priceMin + position.priceMax) / 2;
 //         if (epoch.settlementPrice >= position.priceMax) {
 //             // Passing through range means user sold all GAS tokens for GWEI tokens (@GAS/GWEI = mid range price)
 //             account.freeGweiAmount +=

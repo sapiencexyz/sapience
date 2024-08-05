@@ -18,7 +18,7 @@ interface IFoilStructs {
         uint256 amountTokenA;
         uint256 amountTokenB;
         uint256 collateralAmount;
-        int size;
+        int256 size;
     }
 
     struct EpochParams {

@@ -78,8 +78,8 @@ library Epoch {
     }
 
     function createValid(
-        uint startTime,
-        uint endTime,
+        uint256 startTime,
+        uint256 endTime,
         uint160 startingSqrtPriceX96
     ) internal returns (Data storage epoch) {
         Market.Data storage market = Market.loadValid();

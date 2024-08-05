@@ -20,6 +20,6 @@ interface IEpochTradeModule {
     ) external;
 
     function getReferencePrice(
-        uint epochId
+        uint256 epochId
     ) external view returns (uint256 price18Digits);
 }
