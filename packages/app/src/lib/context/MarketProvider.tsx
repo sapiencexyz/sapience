@@ -8,7 +8,7 @@ import type React from 'react';
 import { createContext, useEffect, useState } from 'react';
 import * as Chains from 'viem/chains';
 import type { Chain } from 'viem/chains';
-import { useContractReads, useReadContract } from 'wagmi';
+import { useReadContracts, useReadContract } from 'wagmi';
 
 import useFoilDeployment from '../components/foil/useFoilDeployment';
 import erc20ABI from '../erc20abi.json';
@@ -56,9 +56,7 @@ export const MarketContext = createContext<MarketContextType>({
 export const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
   const [pool, setPool] = useState<Pool | null>(null);
 
-  // TODO: Should this refetch on chainId change? Every X seconds?
-  // Remember token a and token b can switch btwn base and quote
-  const { data, isError, isLoading, error } = useContractReads({
+  const { data, isError, isLoading } = useReadContracts({
     contracts: [
       {
         address: poolAddress,
@@ -94,48 +92,46 @@ export const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
   });
 
   useEffect(() => {
-    /*
-    if (data && data[0] && data[1] && data[2] && data[3] && data[4]) {
-      const token0Address = (data as any)[0].result;
-      const token1Address = (data as any)[1].result;
-      const fee = (data as any)[2].result;
-      const liquidity = (data as any)[3].result;
-      const slot0 = (data as any)[4].result as any[];
+    if (data) {
+      const token0Address = data[0].result;
+      const token1Address = data[1].result;
+      const fee = data[2].result;
+      const liquidity = data[3].result;
+      const slot0 = data[4].result as any[];
 
       if (token0Address && token1Address) {
+        const [sqrtPriceX96, tick] = slot0;
+
         const token0 = new Token(
-          1,
-          token0Address.toString(),
+          chainId,
+          token0Address,
           18,
           'TOKEN0',
           'Token 0'
         );
         const token1 = new Token(
-          1,
-          token1Address.toString(),
+          chainId,
+          token1Address,
           18,
           'TOKEN1',
           'Token 1'
         );
 
-        const sqrtRatioX96 = slot0[0].toString();
-        const tickCurrent = slot0[1].toString();
-
         const poolInstance = new Pool(
           token0,
           token1,
-          fee as FeeAmount, // todo confirm this is right
-          sqrtRatioX96,
-          Number(liquidity),
-          tickCurrent
+          fee as FeeAmount,
+          sqrtPriceX96.toString(),
+          liquidity.toString(),
+          tick
         );
+
         setPool(poolInstance);
       }
     }
-    */
-  }, [data]);
+  }, [data, chainId]);
 
-  return { pool, isError, isLoading, error };
+  return { pool, isError, isLoading };
 };
 
 export const MarketProvider: React.FC<MarketProviderProps> = ({
@@ -241,14 +237,15 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     if (epochViewFunctionResult.data !== undefined) {
       setState((currentState) => ({
         ...currentState,
-        // should add start/endtime here
-        poolAddress: epochViewFunctionResult?.data[0],
+        startTime: epochViewFunctionResult?.data[0],
+        endTime: epochViewFunctionResult?.data[1],
+        poolAddress: epochViewFunctionResult?.data[2],
       }));
     }
   }, [epochViewFunctionResult.data]);
 
   // Fetch pool data when poolAddress is updated
-  const { pool, isError, isLoading, error } = useUniswapPool(
+  const { pool, isError, isLoading } = useUniswapPool(
     chainId,
     state.poolAddress
   );
