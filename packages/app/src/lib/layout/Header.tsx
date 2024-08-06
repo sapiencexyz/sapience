@@ -23,8 +23,8 @@ const Header = () => {
           <Image src="/logo.svg" alt="Foil" height="28px" />
         </Box>
         <Flex marginLeft="auto" gap={9} align="center" fontWeight="600">
-          <Link href="/subscribe">Subscribe</Link>
-          <Link href="/earn">Earn</Link>
+          {/* <Link href="/subscribe">Subscribe</Link> */}
+          {/* <Link href="/earn">Earn</Link> */}
           <Link href={`/markets/13370:${FoilLocal.address}`}>Local Market</Link>
           <Link href={`/markets/11155111:${FoilTestnet.address}`}>
             Testnet Market

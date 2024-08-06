@@ -1,5 +1,5 @@
 {
-  "address": "0xcab1bcff7f537afd4065dbf4b1f175ab046a8eda",
+  "address": "0xa7514ec04ebc7efa0dedd26a6af5b92b2d0ba287",
   "abi": [
     {
       "type": "function",
@@ -134,9 +134,9 @@
           "internalType": "address"
         },
         {
-          "name": "marketParams",
+          "name": "epochParams",
           "type": "tuple",
-          "internalType": "struct Market.MarketParams",
+          "internalType": "struct Market.EpochParams",
           "components": [
             {
               "name": "baseAssetMinPriceTick",
@@ -254,9 +254,9 @@
           "internalType": "address"
         },
         {
-          "name": "marketParams",
+          "name": "epochParams",
           "type": "tuple",
-          "internalType": "struct Market.MarketParams",
+          "internalType": "struct Market.EpochParams",
           "components": [
             {
               "name": "baseAssetMinPriceTick",
@@ -329,9 +329,9 @@
           "internalType": "address"
         },
         {
-          "name": "marketParams",
+          "name": "epochParms",
           "type": "tuple",
-          "internalType": "struct Market.MarketParams",
+          "internalType": "struct Market.EpochParams",
           "components": [
             {
               "name": "baseAssetMinPriceTick",
@@ -387,6 +387,11 @@
     {
       "type": "error",
       "name": "MarketAlreadyCreated",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowInt24ToUint256",
       "inputs": []
     },
     {
@@ -492,53 +497,21 @@
           "internalType": "uint256"
         }
       ],
-      "stateMutability": "payable"
+      "stateMutability": "nonpayable"
     },
     {
       "type": "function",
-      "name": "getPosition",
+      "name": "decreaseLiquidityPosition",
       "inputs": [
         {
-          "name": "positionId",
+          "name": "accountId",
           "type": "uint256",
           "internalType": "uint256"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "nonce",
-          "type": "uint96",
-          "internalType": "uint96"
         },
         {
-          "name": "operator",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "token0",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "token1",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "fee",
-          "type": "uint24",
-          "internalType": "uint24"
-        },
-        {
-          "name": "tickLower",
-          "type": "int24",
-          "internalType": "int24"
-        },
-        {
-          "name": "tickUpper",
-          "type": "int24",
-          "internalType": "int24"
+          "name": "collateralAmount",
+          "type": "uint256",
+          "internalType": "uint256"
         },
         {
           "name": "liquidity",
@@ -546,27 +519,161 @@
           "internalType": "uint128"
         },
         {
-          "name": "feeGrowthInside0LastX128",
+          "name": "minGasAmount",
           "type": "uint256",
           "internalType": "uint256"
         },
         {
-          "name": "feeGrowthInside1LastX128",
+          "name": "minEthAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "amount0",
           "type": "uint256",
           "internalType": "uint256"
         },
         {
-          "name": "tokensOwed0",
-          "type": "uint128",
-          "internalType": "uint128"
+          "name": "amount1",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "getPosition",
+      "inputs": [
+        {
+          "name": "accountId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
         },
         {
-          "name": "tokensOwed1",
+          "name": "collateralAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "borrowedGwei",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "borrowedGas",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getTokenAmounts",
+      "inputs": [
+        {
+          "name": "collateralAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "sqrtPriceX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        },
+        {
+          "name": "sqrtPriceAX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        },
+        {
+          "name": "sqrtPriceBX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "amount0",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "amount1",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "liquidity",
           "type": "uint128",
           "internalType": "uint128"
         }
       ],
       "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "increaseLiquidityPosition",
+      "inputs": [
+        {
+          "name": "accountId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateralAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "gasTokenAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "ethTokenAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "minGasAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "minEthAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "liquidity",
+          "type": "uint128",
+          "internalType": "uint128"
+        },
+        {
+          "name": "amount0",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "amount1",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
     },
     {
       "type": "function",
@@ -603,43 +710,91 @@
       "stateMutability": "nonpayable"
     },
     {
-      "type": "function",
-      "name": "updateLiquidityPosition",
+      "type": "event",
+      "name": "LiquidityPositionCreated",
       "inputs": [
         {
           "name": "tokenId",
           "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "collateral",
-          "type": "uint256",
+          "indexed": false,
           "internalType": "uint256"
         },
         {
           "name": "liquidity",
           "type": "uint128",
+          "indexed": false,
           "internalType": "uint128"
         },
         {
-          "name": "minLiquidity",
+          "name": "addedAmount0",
           "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "addedAmount1",
+          "type": "uint256",
+          "indexed": false,
           "internalType": "uint256"
         }
       ],
-      "outputs": [
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "LiquidityPositionDecreased",
+      "inputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
         {
           "name": "amount0",
           "type": "uint256",
+          "indexed": false,
           "internalType": "uint256"
         },
         {
           "name": "amount1",
           "type": "uint256",
+          "indexed": false,
           "internalType": "uint256"
         }
       ],
-      "stateMutability": "payable"
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "LiquidityPositionIncreased",
+      "inputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "liquidity",
+          "type": "uint128",
+          "indexed": false,
+          "internalType": "uint128"
+        },
+        {
+          "name": "amount0",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "amount1",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
     },
     {
       "type": "event",
@@ -674,7 +829,18 @@
     {
       "type": "error",
       "name": "InsufficientCollateral",
-      "inputs": []
+      "inputs": [
+        {
+          "name": "amount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
     },
     {
       "type": "error",
@@ -691,11 +857,6 @@
           "internalType": "string"
         }
       ]
-    },
-    {
-      "type": "error",
-      "name": "OverflowInt24ToUint256",
-      "inputs": []
     },
     {
       "type": "error",
@@ -1362,11 +1523,11 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0xee19df8e37e8c5f84551ff8d60cfc90271bdbd8b665400ca55b15eeeb1caa2b2",
+  "deployTxnHash": "0x2fabcdad68a1ab483b51e99875bb55c32c90f57c7e5ac29952c3f3acdcc44bd9",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1722385875",
+  "deployTimestamp": "1722798195",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
-  "gasUsed": 423046,
-  "gasCost": "1002169180"
+  "gasUsed": 439335,
+  "gasCost": "1001325031"
 }

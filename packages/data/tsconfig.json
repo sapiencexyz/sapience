@@ -11,6 +11,7 @@
       "skipLibCheck": true,
       "strictPropertyInitialization": false,
       "resolveJsonModule": true,
+      "baseUrl": ".",
       "paths": {"@/protocol/*": ["../protocol/*"]}
     },
     "include": ["src"],

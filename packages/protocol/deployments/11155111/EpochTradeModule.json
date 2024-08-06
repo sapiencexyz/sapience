@@ -1,5 +1,5 @@
 {
-  "address": "0x47c985b83565129980CF747011C0c8947b8B59A1",
+  "address": "0x0054AA59a6289da60480E7c2c6b1F6Cd31dF72f4",
   "abi": [
     {
       "type": "function",
@@ -140,6 +140,11 @@
     },
     {
       "type": "error",
+      "name": "OverflowUint256ToUint160",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "TokenAlreadyMinted",
       "inputs": [
         {
@@ -157,12 +162,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x062c6cbfcb16d7b14e9cfa99f2d3282591f9a97179e5c08f4012f1e3cb0dd72e",
-  "deployTxnBlockNumber": "6398652",
-  "deployTimestamp": "1722272700",
+  "deployTxnHash": "0x16266136ecd1e7242f0eff88c7cdd434b1234e4f702b01d287db8aac997105df",
+  "deployTxnBlockNumber": "6437193",
+  "deployTimestamp": "1722799788",
   "sourceName": "src/contracts/modules/EpochTradeModule.sol",
   "contractName": "EpochTradeModule",
   "deployedOn": "deploy.EpochTradeModule",
-  "gasUsed": 2066915,
-  "gasCost": "2519357767"
+  "gasUsed": 1829463,
+  "gasCost": "4715393912"
 }

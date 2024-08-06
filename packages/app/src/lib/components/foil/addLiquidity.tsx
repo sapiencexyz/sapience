@@ -16,6 +16,7 @@ import {
   RangeSliderMark,
   Flex,
 } from '@chakra-ui/react';
+import { TickMath } from '@uniswap/v3-sdk';
 import { useContext, useEffect, useState } from 'react';
 import { formatUnits, parseUnits } from 'viem';
 import {
@@ -149,6 +150,35 @@ const AddLiquidity = () => {
     }
   }, [allowanceData, collateralAssetDecimals]);
 
+  const {
+    data: tokenAmounts,
+    error,
+    status,
+  } = useReadContract({
+    address: foilData.address,
+    abi: foilData.abi,
+    functionName: 'getTokenAmounts',
+    args: [
+      parseUnits(depositAmount.toString(), collateralAssetDecimals), // uint256 collateralAmount
+      pool ? pool.sqrtRatioX96.toString() : '0', // uint160 sqrtPriceX96, // current price of pool
+      TickMath.getSqrtRatioAtTick(tickLower).toString(), // uint160 sqrtPriceAX96, // lower tick price in sqrtRatio
+      TickMath.getSqrtRatioAtTick(tickUpper).toString(), // uint160 sqrtPriceBX96 // upper tick price in sqrtRatio
+    ],
+    chainId: chain?.id,
+  });
+
+  useEffect(() => {
+    if (tokenAmounts) {
+      const [amount0, amount1] = tokenAmounts as any[]; // there's some abitype project, i think
+      setBaseToken(parseFloat(formatUnits(amount0, 18)));
+      setQuoteToken(parseFloat(formatUnits(amount1, 18)));
+    }
+
+    if (error) {
+      console.error('Failed to fetch token amounts', error);
+    }
+  }, [tokenAmounts, error]);
+
   const handleFormSubmit = (e: any) => {
     e.preventDefault();
 
@@ -182,11 +212,11 @@ const AddLiquidity = () => {
 
   useEffect(() => {
     console.log('Deposit amount changed:', depositAmount);
-    const newBaseToken = depositAmount * 0.001;
-    const newQuoteToken = depositAmount * 0.001;
-    console.log('Base Token:', newBaseToken, 'Quote Token:', newQuoteToken);
-    setBaseToken(newBaseToken);
-    setQuoteToken(newQuoteToken);
+    // The following lines have been removed as they are redundant:
+    // const newBaseToken = depositAmount * 0.001;
+    // const newQuoteToken = depositAmount * 0.001;
+    // setBaseToken(newBaseToken);
+    // setQuoteToken(newQuoteToken);
   }, [depositAmount]);
 
   useEffect(() => {
@@ -358,7 +388,7 @@ const AddLiquidity = () => {
           {minAmountTokenB.toFixed(2)})
         </Text>
         <Text fontSize="sm" color="gray.500" mb="0.5">
-          Net Position: {highPrice.toFixed(2)} Ggas
+          Net Position: X Ggas
         </Text>
         {isConnected &&
         walletBalance !== null &&

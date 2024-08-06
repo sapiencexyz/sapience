@@ -5,11 +5,11 @@
   "main": "index.js",
   "scripts": {
     "test": "pnpm run test --recursive",
-    "dev:protocol": "pnpm --filter protocol run update-abis && pnpm --filter protocol run dev",
-    "dev:app": "pnpm --filter protocol run update-abis && pnpm --filter app run dev",
-    "dev:docs": "pnpm --filter protocol run update-abis && pnpm --filter docs run dev",
-    "dev:website": "pnpm --filter protocol run update-abis && pnpm --filter website run dev",
-    "dev:data": "pnpm --filter protocol run update-abis && concurrently \"pnpm --filter data run start:api\" \"pnpm --filter data run start:market\" \"pnpm --filter data run start:chain\""
+    "dev:protocol": "pnpm --filter protocol run dev",
+    "dev:app": "pnpm --filter app run dev",
+    "dev:docs": "pnpm --filter docs run dev",
+    "dev:website": "pnpm --filter website run dev",
+    "dev:data": "concurrently \"pnpm --filter data run dev:service\" \"pnpm --filter data run dev:worker\""
   },
   "keywords": [],
   "author": "",
