@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
 
 //import {Foil} from "../src/contracts/Foil.sol";
-import {IEpochLiquidityModule} from "../src/contracts/interfaces/IEpochLiquidityModule.sol";
+import {IFoil} from "../src/contracts/interfaces/IFoil.sol";
 import {IFoilStructs} from "../src/contracts/interfaces/IFoilStructs.sol";
 import {VirtualToken} from "../src/contracts/external/VirtualToken.sol";
 import {TickMath} from "../src/contracts/external/univ3/TickMath.sol";
@@ -19,7 +19,7 @@ import "forge-std/console2.sol";
 contract FoilTest is Test {
     using Cannon for Vm;
 
-    IEpochLiquidityModule foil;
+    IFoil foil;
     address constant foilAddress = 0xa886ec907D6529D8f7d0b74a181f709A6a5809fD;
     address pool;
     address tokenA;
@@ -27,17 +27,19 @@ contract FoilTest is Test {
     address constant UNISWAP = 0xC36442b4a4522E871399CD717aBDD847Ab11FE88;
     address constant UNISWAP_QUOTER =
         0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6;
-    uint256 constant EPOCH_START_TIME = 1722270000;
+    uint256 epochStartTime;
 
     IMintableToken collateralAsset;
 
     function setUp() public {
-        foil = IEpochLiquidityModule(vm.getAddress("Foil"));
+        foil = IFoil(vm.getAddress("Foil"));
         collateralAsset = IMintableToken(
             vm.getAddress("CollateralAsset.Token")
         );
         collateralAsset.mint(1000 ether, address(this));
         collateralAsset.approve(address(foil), 1000 ether);
+
+        (epochStartTime, , , , ) = foil.getLatestEpoch();
     }
 
     function test_addLiquidity() public {
@@ -54,7 +56,7 @@ contract FoilTest is Test {
         uint160 sqrtPriceAX96 = 176318465955219228901572735582;
         uint160 sqrtPriceBX96 = 273764932352251420676860998407;
         (uint256 loanAmount0, uint256 loanAmount1, ) = foil.getTokenAmounts(
-            EPOCH_START_TIME,
+            epochStartTime,
             50 ether,
             sqrtPriceX96,
             sqrtPriceAX96,
@@ -63,7 +65,7 @@ contract FoilTest is Test {
 
         IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
             .LiquidityPositionParams({
-                epochId: EPOCH_START_TIME,
+                epochId: epochStartTime,
                 amountTokenA: loanAmount0,
                 amountTokenB: loanAmount1,
                 collateralAmount: 50 ether,
@@ -85,7 +87,7 @@ contract FoilTest is Test {
         uint256 coll = 25 ether;
 
         foil.decreaseLiquidityPosition(
-            EPOCH_START_TIME,
+            epochStartTime,
             tokenId,
             coll,
             halfLiquidity,
@@ -98,7 +100,7 @@ contract FoilTest is Test {
         coll = 500 ether;
 
         foil.increaseLiquidityPosition(
-            EPOCH_START_TIME,
+            epochStartTime,
             tokenId,
             coll,
             amount0 * 2,

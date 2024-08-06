@@ -57,6 +57,17 @@ interface IEpochConfigurationModule {
             address gasToken
         );
 
+    function getLatestEpoch()
+        external
+        view
+        returns (
+            uint256 startTime,
+            uint256 endTime,
+            address pool,
+            address ethToken,
+            address gasToken
+        );
+
     function getPositionData(
         uint256 accountId
     ) external returns (Position.Data memory);

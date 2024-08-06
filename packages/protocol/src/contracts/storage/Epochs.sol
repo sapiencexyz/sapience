@@ -8,7 +8,6 @@ import "forge-std/console2.sol";
 library Epochs {
     struct Data {
         uint256[] epochIds; // use startTime as id
-        mapping(uint256 => Epoch.Data) epochs;
         uint256 latestStartTime;
     }
 
@@ -22,6 +21,12 @@ library Epochs {
 
     function getLatestEpoch() internal view returns (Epoch.Data storage epoch) {
         Data storage self = load();
-        return self.epochs[self.latestStartTime];
+        return Epoch.load(self.latestStartTime);
+    }
+
+    function addEpoch(Epoch.Data storage epoch) internal {
+        Data storage self = load();
+        self.epochIds.push(epoch.startTime);
+        self.latestStartTime = epoch.startTime;
     }
 }

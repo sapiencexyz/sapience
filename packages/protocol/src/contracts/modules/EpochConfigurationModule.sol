@@ -6,6 +6,7 @@ import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3In
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../storage/Epoch.sol";
+import "../storage/Epochs.sol";
 import "../storage/FAccount.sol";
 import "../storage/Position.sol";
 import "../storage/ERC721Storage.sol";
@@ -77,7 +78,12 @@ contract EpochConfigurationModule is
     ) external override onlyOwner {
         Market.Data storage market = Market.loadValid();
 
-        Epoch.createValid(startTime, endTime, startingSqrtPriceX96);
+        Epoch.Data storage epoch = Epoch.createValid(
+            startTime,
+            endTime,
+            startingSqrtPriceX96
+        );
+        Epochs.addEpoch(epoch);
     }
 
     function getMarket()
@@ -121,6 +127,28 @@ contract EpochConfigurationModule is
         )
     {
         Epoch.Data storage epoch = Epoch.load(id);
+        return (
+            epoch.startTime,
+            epoch.endTime,
+            address(epoch.pool),
+            address(epoch.ethToken),
+            address(epoch.gasToken)
+        );
+    }
+
+    function getLatestEpoch()
+        external
+        view
+        override
+        returns (
+            uint256 startTime,
+            uint256 endTime,
+            address pool,
+            address ethToken,
+            address gasToken
+        )
+    {
+        Epoch.Data storage epoch = Epochs.getLatestEpoch();
         return (
             epoch.startTime,
             epoch.endTime,
