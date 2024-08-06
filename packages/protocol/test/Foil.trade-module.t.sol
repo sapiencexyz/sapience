@@ -55,21 +55,31 @@ contract FoilTradeModuleTest is Test {
         console2.log("priceReference", priceReference);
 
         uint256 collateralAmount = 100_000 ether;
+        int24 lowerTick = 12200;
+        int24 upperTick = 12400;
 
         (
             uint256 amountTokenA,
             uint256 amountTokenB,
+            uint256 liquidity
+        ) = getTokenAmountsForCollateralAmount(
+                collateralAmount,
+                lowerTick,
+                upperTick
+            );
 
-        ) = getTokenAmountsForCollateralAmount(collateralAmount);
+        console2.log("amountTokenA", amountTokenA);
+        console2.log("amountTokenB", amountTokenB);
+        console2.log("liquidity", liquidity);
 
         IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
             .LiquidityPositionParams({
                 epochId: epochStartTime,
-                amountTokenA: 1_000 ether,
-                amountTokenB: 2_000 ether,
+                amountTokenA: amountTokenA,
+                amountTokenB: amountTokenB,
                 collateralAmount: collateralAmount,
-                lowerTick: 12200,
-                upperTick: 12400,
+                lowerTick: lowerTick,
+                upperTick: upperTick,
                 minAmountTokenA: 0,
                 minAmountTokenB: 0
             });
@@ -284,28 +294,29 @@ contract FoilTradeModuleTest is Test {
     }
 
     function getTokenAmountsForCollateralAmount(
-        uint256 collateralAmount
+        uint256 collateralAmount,
+        int24 lowerTick,
+        int24 upperTick
     )
         public
         view
         returns (uint256 loanAmount0, uint256 loanAmount1, uint256 liquidity)
     {
-        // uint160 sqrtPriceX96 = uint160(
-        //     TickMath.getSqrtRatioAtTick(12200 * 2 ** 16)
-        // );
-        // uint160 sqrtPriceAX96 = uint160(
-        //     TickMath.getSqrtRatioAtTick(12400 * 2 ** 16)
-        // );
-        // uint160 sqrtPriceBX96 = uint160(
-        //     TickMath.getSqrtRatioAtTick(12000 * 2 ** 16)
-        // );
-        // (loanAmount0, loanAmount1, liquidity) = foil.getTokenAmounts(
-        //     epochStartTime,
-        //     collateralAmount,
-        //     sqrtPriceX96,
-        //     sqrtPriceAX96,
-        //     sqrtPriceBX96
-        // );
+        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
+        console.log("sqrtPriceX96", sqrtPriceX96);
+
+        uint160 sqrtPriceAX96 = uint160(TickMath.getSqrtRatioAtTick(lowerTick));
+        uint160 sqrtPriceBX96 = uint160(TickMath.getSqrtRatioAtTick(upperTick));
+
+        console2.log("sqrtPriceAX96", sqrtPriceAX96);
+        console2.log("sqrtPriceBX96", sqrtPriceBX96);
+        (loanAmount0, loanAmount1, liquidity) = foil.getTokenAmounts(
+            epochStartTime,
+            collateralAmount,
+            sqrtPriceX96,
+            sqrtPriceAX96,
+            sqrtPriceBX96
+        );
     }
 
     function logPositionAndAccount(uint256 accountId) public {
