@@ -1,5 +1,5 @@
 {
-  "address": "0xfE6Cc6E08D279dc31e78DCEC9fd49d88E5B599Ed",
+  "address": "0x18E03c74Aa56dbb6c2255F2a7b87331621A1eB03",
   "abi": [
     {
       "type": "function",
@@ -68,6 +68,45 @@
     {
       "type": "function",
       "name": "getEpoch",
+      "inputs": [
+        {
+          "name": "id",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "startTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "endTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "pool",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "ethToken",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "gasToken",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getLatestEpoch",
       "inputs": [],
       "outputs": [
         {
@@ -136,7 +175,7 @@
         {
           "name": "epochParams",
           "type": "tuple",
-          "internalType": "struct Market.EpochParams",
+          "internalType": "struct IFoilStructs.EpochParams",
           "components": [
             {
               "name": "baseAssetMinPriceTick",
@@ -256,7 +295,7 @@
         {
           "name": "epochParams",
           "type": "tuple",
-          "internalType": "struct Market.EpochParams",
+          "internalType": "struct IFoilStructs.EpochParams",
           "components": [
             {
               "name": "baseAssetMinPriceTick",
@@ -331,7 +370,7 @@
         {
           "name": "epochParms",
           "type": "tuple",
-          "internalType": "struct Market.EpochParams",
+          "internalType": "struct IFoilStructs.EpochParams",
           "components": [
             {
               "name": "baseAssetMinPriceTick",
@@ -381,6 +420,17 @@
     },
     {
       "type": "error",
+      "name": "InvalidData",
+      "inputs": [
+        {
+          "name": "message",
+          "type": "string",
+          "internalType": "string"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "InvalidMarket",
       "inputs": []
     },
@@ -407,12 +457,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xba4d6ddf7bfd95259df401cf76f672984116b3257c5a999827fe011771060a69",
-  "deployTxnBlockNumber": "6437196",
-  "deployTimestamp": "1722799824",
+  "deployTxnHash": "0x4bad60777f46c1274224ff69cd0e8df2c625d6e80041e8c6b101f764e7fb0216",
+  "deployTxnBlockNumber": "6455400",
+  "deployTimestamp": "1723048644",
   "sourceName": "src/contracts/modules/EpochConfigurationModule.sol",
   "contractName": "EpochConfigurationModule",
   "deployedOn": "deploy.EpochConfigurationModule",
-  "gasUsed": 2257070,
-  "gasCost": "5075557086"
+  "gasUsed": 2338721,
+  "gasCost": "17266776845"
 }

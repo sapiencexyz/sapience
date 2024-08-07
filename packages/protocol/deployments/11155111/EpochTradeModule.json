@@ -1,10 +1,15 @@
 {
-  "address": "0x0054AA59a6289da60480E7c2c6b1F6Cd31dF72f4",
+  "address": "0x4859304371694FD29e3a567E5e08877DEF3ac466",
   "abi": [
     {
       "type": "function",
       "name": "createTraderPosition",
       "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
         {
           "name": "collateralAmount",
           "type": "uint256",
@@ -33,7 +38,13 @@
     {
       "type": "function",
       "name": "getReferencePrice",
-      "inputs": [],
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
       "outputs": [
         {
           "name": "price18Digits",
@@ -47,6 +58,11 @@
       "type": "function",
       "name": "modifyTraderPosition",
       "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
         {
           "name": "accountId",
           "type": "uint256",
@@ -162,12 +178,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x16266136ecd1e7242f0eff88c7cdd434b1234e4f702b01d287db8aac997105df",
-  "deployTxnBlockNumber": "6437193",
-  "deployTimestamp": "1722799788",
+  "deployTxnHash": "0xe918e7a2fc5335f25b243f76e02ec4063ec3fe021cff5e9e84cb1d453783afb7",
+  "deployTxnBlockNumber": "6455397",
+  "deployTimestamp": "1723048608",
   "sourceName": "src/contracts/modules/EpochTradeModule.sol",
   "contractName": "EpochTradeModule",
   "deployedOn": "deploy.EpochTradeModule",
-  "gasUsed": 1829463,
-  "gasCost": "4715393912"
+  "gasUsed": 1869324,
+  "gasCost": "16079594139"
 }

@@ -1,10 +1,15 @@
 {
-  "address": "0x9d8c228aAE2Cd914c556d247FF85Ba37b25fFB06",
+  "address": "0x5F919e3949eE8e6DF4f4340B00A6E38969F02Aa2",
   "abi": [
     {
       "type": "function",
       "name": "assertionDisputedCallback",
       "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
         {
           "name": "assertionId",
           "type": "bytes32",
@@ -18,6 +23,11 @@
       "type": "function",
       "name": "assertionResolvedCallback",
       "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
         {
           "name": "assertionId",
           "type": "bytes32",
@@ -36,6 +46,11 @@
       "type": "function",
       "name": "submitSettlementPrice",
       "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
         {
           "name": "settlementPrice",
           "type": "uint256",
@@ -142,12 +157,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xe4af5e9e0ef5c8b0b90a6edbbbc30167b149816cb51067cbcacd9daed4a8ba9d",
-  "deployTxnBlockNumber": "6437194",
-  "deployTimestamp": "1722799800",
+  "deployTxnHash": "0xb46fa3800a997df2c376c567e8dc419be48980ac0e66f1699ad3b77855720b2c",
+  "deployTxnBlockNumber": "6455398",
+  "deployTimestamp": "1723048620",
   "sourceName": "src/contracts/modules/EpochUMASettlementModule.sol",
   "contractName": "EpochUMASettlementModule",
   "deployedOn": "deploy.EpochUMASettlementModule",
-  "gasUsed": 762618,
-  "gasCost": "4687721187"
+  "gasUsed": 768926,
+  "gasCost": "18086458204"
 }
