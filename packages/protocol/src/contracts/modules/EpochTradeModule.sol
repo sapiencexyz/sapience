@@ -8,7 +8,6 @@ import "../storage/ERC721EnumerableStorage.sol";
 import "../../synthetix/utils/DecimalMath.sol";
 import {SafeCastI256} from "../../synthetix/utils/SafeCast.sol";
 import {SafeCastU256} from "../../synthetix/utils/SafeCast.sol";
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 import {IEpochTradeModule} from "../interfaces/IEpochTradeModule.sol";
 
@@ -115,12 +114,7 @@ contract EpochTradeModule is IEpochTradeModule {
         if (epoch.settled) {
             return epoch.settlementPrice;
         } else {
-            (uint160 sqrtRatioX96, , , , , , ) = IUniswapV3Pool(epoch.pool)
-                .slot0();
-            // TODO find a simple expression to calculate the price
-            uint256 price = (((uint256(sqrtRatioX96) * 1e18) / 2 ** 96) ** 2) /
-                1e18;
-            return price;
+            return epoch.getCurrentPoolPrice();
         }
     }
 

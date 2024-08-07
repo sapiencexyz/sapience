@@ -74,9 +74,10 @@ contract EpochLiquidityModule is
             addedAmount1
         );
 
-        epoch.validateProvidedLiquidity(
+        epoch.validateCollateralRequirementsForLP(
             params.collateralAmount,
-            liquidity,
+            addedAmount0,
+            addedAmount1,
             params.lowerTick,
             params.upperTick
         );
@@ -161,9 +162,10 @@ contract EpochLiquidityModule is
         );
 
         account.updateLoan(account.tokenId, collateralAmount, amount0, amount1);
-        epoch.validateProvidedLiquidity(
+        epoch.validateCollateralRequirementsForLP(
             collateralAmount,
-            liquidity,
+            amount0,
+            amount1,
             lowerTick,
             upperTick
         );
@@ -208,9 +210,10 @@ contract EpochLiquidityModule is
             .increaseLiquidity(increaseParams);
 
         account.updateLoan(account.tokenId, collateralAmount, amount0, amount1);
-        epoch.validateProvidedLiquidity(
+        epoch.validateCollateralRequirementsForLP(
             collateralAmount,
-            liquidity,
+            amount0,
+            amount1,
             lowerTick,
             upperTick
         );
