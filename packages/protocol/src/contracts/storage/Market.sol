@@ -2,9 +2,6 @@
 pragma solidity >=0.8.2 <0.9.0;
 
 import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/external/INonfungiblePositionManager.sol";
 import "../interfaces/external/IUniswapV3Quoter.sol";
 import "../interfaces/external/ISwapRouter.sol";

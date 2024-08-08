@@ -1,5 +1,5 @@
 {
-  "address": "0x4859304371694FD29e3a567E5e08877DEF3ac466",
+  "address": "0xC886d7241B8618BA4E9628AA23D456624fbA308F",
   "abi": [
     {
       "type": "function",
@@ -28,7 +28,7 @@
       ],
       "outputs": [
         {
-          "name": "accountId",
+          "name": "positionId",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -59,12 +59,7 @@
       "name": "modifyTraderPosition",
       "inputs": [
         {
-          "name": "epochId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "accountId",
+          "name": "positionId",
           "type": "uint256",
           "internalType": "uint256"
         },
@@ -114,22 +109,6 @@
     },
     {
       "type": "error",
-      "name": "AccountAlreadyCreated",
-      "inputs": []
-    },
-    {
-      "type": "error",
-      "name": "InvalidAccountId",
-      "inputs": [
-        {
-          "name": "accountId",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ]
-    },
-    {
-      "type": "error",
       "name": "InvalidParameter",
       "inputs": [
         {
@@ -146,6 +125,17 @@
     },
     {
       "type": "error",
+      "name": "InvalidPositionId",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "OverflowInt256ToUint256",
       "inputs": []
     },
@@ -157,6 +147,11 @@
     {
       "type": "error",
       "name": "OverflowUint256ToUint160",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PositionAlreadyCreated",
       "inputs": []
     },
     {
@@ -178,12 +173,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xe918e7a2fc5335f25b243f76e02ec4063ec3fe021cff5e9e84cb1d453783afb7",
-  "deployTxnBlockNumber": "6455397",
-  "deployTimestamp": "1723048608",
+  "deployTxnHash": "0xe329216d9352e42ae0e6eba17e119137418a0716291d84245184be81f36033f3",
+  "deployTxnBlockNumber": "6461952",
+  "deployTimestamp": "1723138716",
   "sourceName": "src/contracts/modules/EpochTradeModule.sol",
   "contractName": "EpochTradeModule",
   "deployedOn": "deploy.EpochTradeModule",
-  "gasUsed": 1869324,
-  "gasCost": "16079594139"
+  "gasUsed": 1841820,
+  "gasCost": "1563348470"
 }

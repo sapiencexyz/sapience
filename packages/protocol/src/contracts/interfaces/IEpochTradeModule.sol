@@ -9,11 +9,10 @@ interface IEpochTradeModule {
         uint256 collateralAmount,
         int256 tokenAmount,
         int256 tokenAmountLimit
-    ) external returns (uint256 accountId);
+    ) external returns (uint256 positionId);
 
     function modifyTraderPosition(
-        uint256 epochId,
-        uint256 accountId,
+        uint256 positionId,
         uint256 collateralAmount,
         int256 tokenAmount,
         int256 tokenAmountLimit

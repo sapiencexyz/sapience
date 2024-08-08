@@ -1,18 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.25 <0.9.0;
 
-import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol"; // TODO: Reentrancy guard should be refactored as router compatible (uses local storage)
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../storage/Epoch.sol";
-import "../storage/FAccount.sol";
-import "../storage/Position.sol";
 
 contract EpochUMASettlementModule is ReentrancyGuard {
-    using Epoch for Epoch.Data;
-    using FAccount for FAccount.Data;
-    using Position for Position.Data;
+    // using Epoch for Epoch.Data;
+    // using Position for Position.Data;
     using SafeERC20 for IERC20;
 
     event SettlementSubmitted(uint256 price, uint256 submissionTime);

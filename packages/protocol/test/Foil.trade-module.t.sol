@@ -12,7 +12,6 @@ import "../src/contracts/interfaces/external/INonfungiblePositionManager.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "../src/contracts/storage/Position.sol";
-import "../src/contracts/storage/FAccount.sol";
 import {IMintableToken} from "../src/contracts/external/IMintableToken.sol";
 
 import "forge-std/console2.sol";
@@ -49,7 +48,7 @@ contract FoilTradeModuleTest is Test {
 
     function test_trade_long_Only() public {
         uint256 priceReference;
-        uint256 accountId_1;
+        uint256 positionId_1;
         priceReference = foil.getReferencePrice(epochStartTime);
 
         console2.log("priceReference", priceReference);
@@ -93,51 +92,39 @@ contract FoilTradeModuleTest is Test {
         console2.log("Create Long position");
         priceReference = foil.getReferencePrice(epochStartTime);
         console2.log("priceReference", priceReference);
-        accountId_1 = foil.createTraderPosition(
+        positionId_1 = foil.createTraderPosition(
             epochStartTime,
             10 ether,
             .1 ether,
             0
         );
-        logPositionAndAccount(accountId_1);
+        logPositionAndAccount(positionId_1);
 
         // Modify Long position (increase it)
         console2.log("Modify Long position (increase it)");
         priceReference = foil.getReferencePrice(epochStartTime);
         console2.log("priceReference", priceReference);
-        foil.modifyTraderPosition(
-            epochStartTime,
-            accountId_1,
-            10 ether,
-            .2 ether,
-            0
-        );
-        logPositionAndAccount(accountId_1);
+        foil.modifyTraderPosition(positionId_1, 10 ether, .2 ether, 0);
+        logPositionAndAccount(positionId_1);
 
         // Modify Long position (decrease it)
         console2.log("Modify Long position (decrease it)");
         priceReference = foil.getReferencePrice(epochStartTime);
         console2.log("priceReference", priceReference);
-        foil.modifyTraderPosition(
-            epochStartTime,
-            accountId_1,
-            0 ether,
-            .1 ether,
-            0
-        );
-        logPositionAndAccount(accountId_1);
+        foil.modifyTraderPosition(positionId_1, 0 ether, .1 ether, 0);
+        logPositionAndAccount(positionId_1);
 
         // Modify Long position (close it)
         console2.log("Modify Long position (close it)");
         priceReference = foil.getReferencePrice(epochStartTime);
         console2.log("priceReference", priceReference);
-        foil.modifyTraderPosition(epochStartTime, accountId_1, 0 ether, 0, 0);
-        logPositionAndAccount(accountId_1);
+        foil.modifyTraderPosition(positionId_1, 0 ether, 0, 0);
+        logPositionAndAccount(positionId_1);
     }
 
     function test_trade_long_cross_sides() public {
         uint256 priceReference;
-        uint256 accountId_3;
+        uint256 positionId_3;
         priceReference = foil.getReferencePrice(epochStartTime);
 
         console2.log("priceReference", priceReference);
@@ -165,31 +152,30 @@ contract FoilTradeModuleTest is Test {
         console2.log("Create Long position (another one)");
         priceReference = foil.getReferencePrice(epochStartTime);
         console2.log("priceReference", priceReference);
-        accountId_3 = foil.createTraderPosition(
+        positionId_3 = foil.createTraderPosition(
             epochStartTime,
             10 ether,
             .1 ether,
             0
         );
-        logPositionAndAccount(accountId_3);
+        logPositionAndAccount(positionId_3);
 
         // Modify Long position (change side)
         console2.log("Modify Long position (change side)");
         priceReference = foil.getReferencePrice(epochStartTime);
         console2.log("priceReference", priceReference);
         foil.modifyTraderPosition(
-            epochStartTime,
-            accountId_3,
+            positionId_3,
             0 ether,
             -.05 ether,
             -.01 ether
         );
-        logPositionAndAccount(accountId_3);
+        logPositionAndAccount(positionId_3);
     }
 
     function test_trade_short() public {
         uint256 priceReference;
-        uint256 accountId_2;
+        uint256 positionId_2;
         priceReference = foil.getReferencePrice(epochStartTime);
 
         console2.log("priceReference", priceReference);
@@ -215,45 +201,33 @@ contract FoilTradeModuleTest is Test {
 
         // Create Short position
         console2.log("Create Short position");
-        accountId_2 = foil.createTraderPosition(
+        positionId_2 = foil.createTraderPosition(
             epochStartTime,
             10 ether,
             -.1 ether,
             0
         );
-        logPositionAndAccount(accountId_2);
+        logPositionAndAccount(positionId_2);
 
         // Modify Short position (increase it)
         console2.log("Modify Short position (increase it)");
-        foil.modifyTraderPosition(
-            epochStartTime,
-            accountId_2,
-            10 ether,
-            -.2 ether,
-            -.1 ether
-        );
-        logPositionAndAccount(accountId_2);
+        foil.modifyTraderPosition(positionId_2, 10 ether, -.2 ether, -.1 ether);
+        logPositionAndAccount(positionId_2);
 
         // Modify Short position (decrease it)
         console2.log("Modify Short position (decrease it)");
-        foil.modifyTraderPosition(
-            epochStartTime,
-            accountId_2,
-            0,
-            -.05 ether,
-            -.01 ether
-        );
-        logPositionAndAccount(accountId_2);
+        foil.modifyTraderPosition(positionId_2, 0, -.05 ether, -.01 ether);
+        logPositionAndAccount(positionId_2);
 
         // Modify Short position (close it)
         console2.log("Modify Short position (close it)");
-        foil.modifyTraderPosition(epochStartTime, accountId_2, 0, 0, 0);
-        logPositionAndAccount(accountId_2);
+        foil.modifyTraderPosition(positionId_2, 0, 0, 0);
+        logPositionAndAccount(positionId_2);
     }
 
     function test_trade_short_cross_sides() public {
         uint256 priceReference;
-        uint256 accountId_4;
+        uint256 positionId_4;
         priceReference = foil.getReferencePrice(epochStartTime);
 
         console2.log("priceReference", priceReference);
@@ -279,18 +253,18 @@ contract FoilTradeModuleTest is Test {
 
         // Create Short position (another one)
         console2.log("Create Short position (another one)");
-        accountId_4 = foil.createTraderPosition(
+        positionId_4 = foil.createTraderPosition(
             epochStartTime,
             10 ether,
             -.1 ether,
             0
         );
-        logPositionAndAccount(accountId_4);
+        logPositionAndAccount(positionId_4);
 
         // Modify Short position (change side)
         console2.log("Modify Short position (change side)");
-        foil.modifyTraderPosition(epochStartTime, accountId_4, 0, .05 ether, 0);
-        logPositionAndAccount(accountId_4);
+        foil.modifyTraderPosition(positionId_4, 0, .05 ether, 0);
+        logPositionAndAccount(positionId_4);
     }
 
     function getTokenAmountsForCollateralAmount(
@@ -319,22 +293,26 @@ contract FoilTradeModuleTest is Test {
         );
     }
 
-    function logPositionAndAccount(uint256 accountId) public {
-        Position.Data memory position = foil.getPositionData(accountId);
-        console2.log(" >>> Position", accountId);
-        console2.log("      >> accountId         : ", position.accountId);
+    function logPositionAndAccount(uint256 positionId) public {
+        Position.Data memory position = foil.getPosition(positionId);
+        console2.log(" >>> Position", positionId);
+        console2.log("    >>> Ids");
+        console2.log("      >> tokenId           : ", position.tokenId);
+        console2.log("      >> epochId           : ", position.epochId);
+        // console2.log("      >> kind              : ", position.kind);
+        console2.log("    >>> Accounting data (debt and deposited collateral)");
+        console2.log(
+            "      >> depositedCollateralAmount  : ",
+            position.depositedCollateralAmount
+        );
+        console2.log("      >> borrowedVEth      : ", position.borrowedVEth);
+        console2.log("      >> borrowedVGas       : ", position.borrowedVGas);
+        console2.log("    >>> Position data (owned tokens and position size)");
         console2.log("      >> vEthAmount        : ", position.vEthAmount);
         console2.log("      >> vGasAmount        : ", position.vGasAmount);
         console2.log(
             "      >> currentTokenAmount: ",
             position.currentTokenAmount
         );
-
-        FAccount.Data memory account = foil.getAccountData(accountId);
-        console2.log(" >>> FAccount", accountId);
-        console2.log("      >> id                : ", account.tokenId);
-        console2.log("      >> collateralAmount  : ", account.collateralAmount);
-        console2.log("      >> borrowedGwei      : ", account.borrowedGwei);
-        console2.log("      >> borrowedGas       : ", account.borrowedGas);
     }
 }

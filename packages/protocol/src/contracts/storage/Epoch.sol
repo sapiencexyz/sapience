@@ -1,29 +1,28 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
-import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
+// import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../external/univ3/TickMath.sol";
-import "../external/univ3/FullMath.sol";
-import "../interfaces/external/INonfungiblePositionManager.sol";
-import "../interfaces/external/IUniswapV3Quoter.sol";
-import "../interfaces/external/ISwapRouter.sol";
+// import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+// import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+// import "../external/univ3/TickMath.sol";
+// import "../external/univ3/FullMath.sol";
+// import "../interfaces/external/INonfungiblePositionManager.sol";
+// import "../interfaces/external/IUniswapV3Quoter.sol";
+// import "../interfaces/external/ISwapRouter.sol";
 import "../external/VirtualToken.sol";
 import "../libraries/Quote.sol";
 import "../external/univ3/LiquidityAmounts.sol";
 import "./Debt.sol";
-import "./Errors.sol";
+// import "./Errors.sol";
 import "./Market.sol";
-import "../interfaces/IFoilStructs.sol";
 
-import "forge-std/console2.sol";
+// import "../interfaces/IFoilStructs.sol";
+
+// import "forge-std/console2.sol";
 
 library Epoch {
-    using SafeERC20 for IERC20;
-
     struct Settlement {
         uint256 settlementPrice;
         uint256 submissionTime;

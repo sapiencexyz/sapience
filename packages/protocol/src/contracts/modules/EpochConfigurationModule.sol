@@ -1,32 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.25 <0.9.0;
 
-import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 // TODO Reentrancy guard should be refactored as router compatible (uses local storage)
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../storage/Epoch.sol";
 import "../storage/Epochs.sol";
-import "../storage/FAccount.sol";
-import "../storage/Position.sol";
-import "../storage/ERC721Storage.sol";
-import "../storage/ERC721EnumerableStorage.sol";
-import "../storage/Market.sol";
 import "../interfaces/IEpochConfigurationModule.sol";
-import "../interfaces/IFoilStructs.sol";
 
-import "forge-std/console2.sol";
+// import "forge-std/console2.sol";
 
 contract EpochConfigurationModule is
     IEpochConfigurationModule,
     ReentrancyGuard
 {
-    using Epoch for Epoch.Data;
-    using FAccount for FAccount.Data;
-    using Position for Position.Data;
-    using ERC721Storage for ERC721Storage.Data;
-    using Market for Market.Data; // Use the Market library
-
     modifier onlyOwner() {
         Market.Data storage market = Market.load();
         require(msg.sender == market.owner, "Caller is not the owner");
@@ -76,7 +61,8 @@ contract EpochConfigurationModule is
         uint256 endTime,
         uint160 startingSqrtPriceX96
     ) external override onlyOwner {
-        Market.Data storage market = Market.loadValid();
+        // load the market to check if it's already created
+        Market.loadValid();
 
         Epoch.Data storage epoch = Epoch.createValid(
             startTime,
@@ -84,89 +70,5 @@ contract EpochConfigurationModule is
             startingSqrtPriceX96
         );
         Epochs.addEpoch(epoch);
-    }
-
-    function getMarket()
-        external
-        view
-        override
-        returns (
-            address owner,
-            address collateralAsset,
-            address uniswapPositionManager,
-            address uniswapQuoter,
-            address uniswapSwapRouter,
-            address optimisticOracleV3,
-            IFoilStructs.EpochParams memory epochParams
-        )
-    {
-        Market.Data storage market = Market.load();
-        return (
-            market.owner,
-            address(market.collateralAsset),
-            address(market.uniswapPositionManager),
-            address(market.uniswapQuoter),
-            address(market.uniswapSwapRouter),
-            address(market.optimisticOracleV3),
-            market.epochParams
-        );
-    }
-
-    function getEpoch(
-        uint256 id
-    )
-        external
-        view
-        override
-        returns (
-            uint256 startTime,
-            uint256 endTime,
-            address pool,
-            address ethToken,
-            address gasToken
-        )
-    {
-        Epoch.Data storage epoch = Epoch.load(id);
-        return (
-            epoch.startTime,
-            epoch.endTime,
-            address(epoch.pool),
-            address(epoch.ethToken),
-            address(epoch.gasToken)
-        );
-    }
-
-    function getLatestEpoch()
-        external
-        view
-        override
-        returns (
-            uint256 startTime,
-            uint256 endTime,
-            address pool,
-            address ethToken,
-            address gasToken
-        )
-    {
-        Epoch.Data storage epoch = Epochs.getLatestEpoch();
-        return (
-            epoch.startTime,
-            epoch.endTime,
-            address(epoch.pool),
-            address(epoch.ethToken),
-            address(epoch.gasToken)
-        );
-    }
-
-    function getPositionData(
-        uint256 accountId
-    ) external pure override returns (Position.Data memory) {
-        return Position.load(accountId);
-    }
-
-    function getAccountData(
-        uint256 accountId
-    ) external pure override returns (FAccount.Data memory) {
-        return FAccount.load(accountId);
     }
 }
