@@ -19,8 +19,8 @@ contract EpochUMASettlementModule is ReentrancyGuard {
     event SettlementDisputed(uint256 disputeTime);
     event MarketSettled(uint256 settlementPrice);
 
-    modifier afterEndTime() {
-        Epoch.Data storage epoch = Epoch.load();
+    modifier afterEndTime(uint256 epochId) {
+        Epoch.Data storage epoch = Epoch.load(epochId);
         require(
             block.timestamp > epoch.endTime,
             "Market activity is still allowed"
@@ -29,10 +29,11 @@ contract EpochUMASettlementModule is ReentrancyGuard {
     }
 
     function submitSettlementPrice(
+        uint256 epochId,
         uint256 settlementPrice
-    ) external afterEndTime nonReentrant returns (bytes32) {
+    ) external afterEndTime(epochId) nonReentrant returns (bytes32) {
         Market.Data storage market = Market.load();
-        Epoch.Data storage epoch = Epoch.load();
+        Epoch.Data storage epoch = Epoch.load(epochId);
         require(
             msg.sender == market.owner,
             "Only owner can call this function"
@@ -88,11 +89,12 @@ contract EpochUMASettlementModule is ReentrancyGuard {
     }
 
     function assertionResolvedCallback(
+        uint256 epochId,
         bytes32 assertionId,
         bool assertedTruthfully
-    ) external afterEndTime nonReentrant {
+    ) external afterEndTime(epochId) nonReentrant {
         Market.Data storage market = Market.load();
-        Epoch.Data storage epoch = Epoch.load();
+        Epoch.Data storage epoch = Epoch.load(epochId);
         require(
             msg.sender == address(market.optimisticOracleV3),
             "Invalid caller"
@@ -107,10 +109,11 @@ contract EpochUMASettlementModule is ReentrancyGuard {
     }
 
     function assertionDisputedCallback(
+        uint256 epochId,
         bytes32 assertionId
-    ) external afterEndTime nonReentrant {
+    ) external afterEndTime(epochId) nonReentrant {
         Market.Data storage market = Market.load();
-        Epoch.Data storage epoch = Epoch.load();
+        Epoch.Data storage epoch = Epoch.load(epochId);
         require(
             msg.sender == address(market.optimisticOracleV3),
             "Invalid caller"

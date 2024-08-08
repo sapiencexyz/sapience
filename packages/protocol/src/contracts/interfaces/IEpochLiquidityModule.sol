@@ -36,6 +36,7 @@ interface IEpochLiquidityModule {
         );
 
     function decreaseLiquidityPosition(
+        uint256 epochId,
         uint256 accountId,
         uint256 collateralAmount,
         uint128 liquidity,
@@ -44,6 +45,7 @@ interface IEpochLiquidityModule {
     ) external returns (uint256 amount0, uint256 amount1);
 
     function increaseLiquidityPosition(
+        uint256 epochId,
         uint256 accountId,
         uint256 collateralAmount,
         uint256 gasTokenAmount,
@@ -53,6 +55,7 @@ interface IEpochLiquidityModule {
     ) external returns (uint128 liquidity, uint256 amount0, uint256 amount1);
 
     function getTokenAmounts(
+        uint256 epochId,
         uint256 collateralAmount,
         uint160 sqrtPriceX96,
         uint160 sqrtPriceAX96,
@@ -63,6 +66,7 @@ interface IEpochLiquidityModule {
         returns (uint256 amount0, uint256 amount1, uint128 liquidity);
 
     function collectFees(
+        uint256 epochId,
         uint256 tokenId
     ) external returns (uint256 amount0, uint256 amount1);
 

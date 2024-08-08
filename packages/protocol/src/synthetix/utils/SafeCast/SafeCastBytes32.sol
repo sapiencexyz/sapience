@@ -9,7 +9,7 @@ library SafeCastBytes32 {
         return address(uint160(uint256(x)));
     }
 
-    function toUint(bytes32 x) internal pure returns (uint) {
-        return uint(x);
+    function toUint(bytes32 x) internal pure returns (uint256) {
+        return uint256(x);
     }
 }

@@ -29,11 +29,13 @@ interface MarketContextType {
   poolAddress: `0x${string}`;
   pool: Pool | null;
   collateralAssetDecimals: number;
+  epoch: number;
 }
 
 interface MarketProviderProps {
   chainId: number;
   address: string;
+  epoch: number;
   children: ReactNode;
 }
 
@@ -51,6 +53,7 @@ export const MarketContext = createContext<MarketContextType>({
   prices: [],
   pool: null,
   poolAddress: '0x',
+  epoch: 0,
 });
 
 export const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
@@ -138,6 +141,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
   chainId,
   address,
   children,
+  epoch,
 }) => {
   const [state, setState] = useState<MarketContextType>({
     chain: undefined,
@@ -153,6 +157,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     prices: [],
     pool: null,
     poolAddress: '0x',
+    epoch: 0,
   });
 
   // Set chainId and address from the URL
@@ -169,8 +174,9 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
       ...currentState,
       chain: chain[1] as any,
       address,
+      epoch,
     }));
-  }, [chainId, address]);
+  }, [chainId, address, epoch]);
 
   const contractId = `${chainId}:${address}`;
 

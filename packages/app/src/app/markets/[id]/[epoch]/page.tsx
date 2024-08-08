@@ -19,11 +19,16 @@ import TraderPosition from '~/lib/components/foil/traderPosition';
 import TraderPositionsTable from '~/lib/components/foil/traderPositionsTable';
 import { MarketProvider } from '~/lib/context/MarketProvider';
 
-const Market = ({ params }: { params: { id: string } }) => {
+const Market = ({ params }: { params: { id: string, epoch: string } }) => {
   const [chainId, marketAddress] = params.id.split('%3A');
+  const { epoch } = params;
 
   return (
-    <MarketProvider chainId={Number(chainId)} address={marketAddress}>
+    <MarketProvider
+      chainId={Number(chainId)}
+      address={marketAddress}
+      epoch={Number(epoch)}
+    >
       <Flex direction="column" alignItems="left" mb={8} w="full" py={8}>
         <PositionsHeader />
         <Flex width="100%" gap={12} mb={12}>

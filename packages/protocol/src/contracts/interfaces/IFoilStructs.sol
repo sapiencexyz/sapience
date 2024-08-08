@@ -3,6 +3,7 @@ pragma solidity >=0.8.2 <0.9.0;
 
 interface IFoilStructs {
     struct LiquidityPositionParams {
+        uint256 epochId;
         uint256 amountTokenA;
         uint256 amountTokenB;
         uint256 collateralAmount;
@@ -17,6 +18,16 @@ interface IFoilStructs {
         uint256 amountTokenA;
         uint256 amountTokenB;
         uint256 collateralAmount;
-        int size;
+        int256 size;
+    }
+
+    struct EpochParams {
+        int24 baseAssetMinPriceTick;
+        int24 baseAssetMaxPriceTick;
+        uint24 feeRate;
+        uint64 assertionLiveness;
+        address bondCurrency;
+        uint256 bondAmount;
+        bytes32 priceUnit;
     }
 }

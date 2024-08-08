@@ -17,6 +17,7 @@ import "../external/univ3/LiquidityAmounts.sol";
 import "./Debt.sol";
 import "./Errors.sol";
 import "./Market.sol";
+import "../interfaces/IFoilStructs.sol";
 
 import "forge-std/console2.sol";
 
@@ -31,8 +32,8 @@ library Epoch {
     }
 
     struct Data {
-        uint startTime;
-        uint endTime;
+        uint256 startTime;
+        uint256 endTime;
         VirtualToken ethToken;
         VirtualToken gasToken;
         IUniswapV3Pool pool;
@@ -41,14 +42,13 @@ library Epoch {
         mapping(uint256 => Debt.Data) lpDebtPositions;
         bytes32 assertionId;
         Settlement settlement;
-        Market.EpochParams params; // Storing epochParams as a struct within Epoch.Data
+        IFoilStructs.EpochParams params; // Storing epochParams as a struct within Epoch.Data
         uint160 sqrtPriceMinX96;
         uint160 sqrtPriceMaxX96;
     }
 
-    function load() internal pure returns (Data storage epoch) {
-        // we need to have this be dynamic with IDs?
-        bytes32 s = keccak256(abi.encode("foil.gas.epoch"));
+    function load(uint256 id) internal pure returns (Data storage epoch) {
+        bytes32 s = keccak256(abi.encode("foil.gas.epoch", id));
 
         assembly {
             epoch.slot := s
@@ -78,18 +78,26 @@ library Epoch {
     }
 
     function createValid(
-        uint startTime,
-        uint endTime,
+        uint256 startTime,
+        uint256 endTime,
         uint160 startingSqrtPriceX96
     ) internal returns (Data storage epoch) {
         Market.Data storage market = Market.loadValid();
-        Market.EpochParams storage epochParams = market.epochParams;
+        IFoilStructs.EpochParams storage epochParams = market.epochParams;
 
-        epoch = load();
+        epoch = load(startTime);
 
         // can only be called once
         if (epoch.endTime != 0) {
             revert Errors.EpochAlreadyStarted();
+        }
+
+        if (startTime == 0) {
+            revert Errors.InvalidData("startTime");
+        }
+
+        if (endTime <= startTime) {
+            revert Errors.InvalidData("endTime");
         }
 
         if (
@@ -173,15 +181,15 @@ library Epoch {
         );
     }
 
-    function loadValid() internal view returns (Data storage epoch) {
-        epoch = load();
+    function loadValid(uint256 id) internal view returns (Data storage epoch) {
+        epoch = load(id);
 
         if (epoch.endTime == 0) {
             revert Errors.InvalidEpoch();
         }
     }
 
-    function validateSettlmentState(Data storage self) internal {
+    function validateSettlmentState(Data storage self) internal view {
         if (block.timestamp < self.startTime) {
             console2.log("IT SHOULD REVERT WITH EPOCH NOT STARTED");
             return;
@@ -195,7 +203,7 @@ library Epoch {
         }
     }
 
-    function validateNotSettled(Data storage self) internal {
+    function validateNotSettled(Data storage self) internal view {
         if (block.timestamp < self.startTime) {
             console2.log("IT SHOULD REVERT WITH EPOCH NOT STARTED");
             return;
@@ -340,6 +348,134 @@ library Epoch {
         return Quote.quoteGasToEth(amount0LoanLeftover, self.sqrtPriceMaxX96);
     }
 
+    function validateCollateralRequirementsForLP(
+        Data storage self,
+        uint256 collateralAmount,
+        uint256 loanGasAmount,
+        uint256 loanEthAmount,
+        int24 lowerTick,
+        int24 upperTick
+    ) internal view {
+        // get epoch min and max prices
+        uint160 minSqrtPriceX96 = TickMath.getSqrtRatioAtTick(
+            self.params.baseAssetMinPriceTick
+        );
+        uint160 maxSqrtPriceX96 = TickMath.getSqrtRatioAtTick(
+            self.params.baseAssetMaxPriceTick + 1
+        );
+
+        // calculate the mid price of the liquidity position
+        uint160 lowerSqrtPriceX96 = TickMath.getSqrtRatioAtTick(lowerTick);
+        uint160 upperSqrtPriceX96 = TickMath.getSqrtRatioAtTick(upperTick + 1);
+
+        uint160 midPriceSqrtX96 = lowerSqrtPriceX96 +
+            (upperSqrtPriceX96 - lowerSqrtPriceX96) /
+            2; // Not exactly mid price since is sqrt, but...
+
+        validateOwedAndDebtAtPrice(
+            collateralAmount,
+            Quote.quoteEthToGas(loanEthAmount, midPriceSqrtX96) + loanGasAmount,
+            0,
+            loanGasAmount,
+            loanEthAmount,
+            minSqrtPriceX96
+        );
+
+        validateOwedAndDebtAtPrice(
+            collateralAmount,
+            0,
+            Quote.quoteGasToEth(loanGasAmount, midPriceSqrtX96) + loanEthAmount,
+            loanGasAmount,
+            loanEthAmount,
+            maxSqrtPriceX96
+        );
+    }
+
+    /**
+     * @notice Validates that the provided collateral amount is sufficient to cover the loan amounts
+     * @notice will revert if not enough collateral is provided
+     *
+     * @param self Epoch storage
+     * @param collateralAmount Amount of collateral provided
+     * @param ownedGasAmount Amount of gas owned by the trader
+     * @param ownedEthAmount Amount of eth owned by the trader
+     * @param loanGasAmount Amount of gas loaned by the trader
+     * @param loanEthAmount Amount of eth loaned by the trader
+     */
+    function validateCollateralRequirementsForTrade(
+        Data storage self,
+        uint256 collateralAmount,
+        uint256 ownedGasAmount,
+        uint256 ownedEthAmount,
+        uint256 loanGasAmount,
+        uint256 loanEthAmount
+    ) internal view {
+        // get epoch min and max prices
+        uint160 minSqrtPriceX96 = TickMath.getSqrtRatioAtTick(
+            self.params.baseAssetMinPriceTick
+        );
+        uint160 maxSqrtPriceX96 = TickMath.getSqrtRatioAtTick(
+            self.params.baseAssetMaxPriceTick + 1
+        );
+
+        validateOwedAndDebtAtPrice(
+            collateralAmount,
+            ownedGasAmount,
+            ownedEthAmount,
+            loanGasAmount,
+            loanEthAmount,
+            minSqrtPriceX96
+        );
+
+        validateOwedAndDebtAtPrice(
+            collateralAmount,
+            ownedGasAmount,
+            ownedEthAmount,
+            loanGasAmount,
+            loanEthAmount,
+            maxSqrtPriceX96
+        );
+    }
+
+    function validateOwedAndDebtAtPrice(
+        uint256 collateralAmount,
+        uint256 ownedGasAmount,
+        uint256 ownedEthAmount,
+        uint256 loanGasAmount,
+        uint256 loanEthAmount,
+        uint160 price
+    ) internal pure {
+        uint256 totalDebtValue = Quote.quoteGasToEth(loanGasAmount, price) +
+            loanEthAmount;
+
+        uint256 totalOwedValue = Quote.quoteGasToEth(ownedGasAmount, price) +
+            ownedEthAmount +
+            collateralAmount;
+
+        if (totalDebtValue > totalOwedValue) {
+            revert Errors.InsufficientCollateral(
+                totalOwedValue,
+                totalDebtValue
+            );
+        }
+    }
+
+    function getCurrentPoolPrice(
+        Data storage self
+    ) internal view returns (uint256 decimalPrice) {
+        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(self.pool).slot0();
+
+        return sqrtPriceX96ToDecimlaPrice(sqrtPriceX96);
+    }
+
+    function sqrtPriceX96ToDecimlaPrice(
+        uint160 sqrtPriceX96
+    ) internal pure returns (uint256 decimalPrice) {
+        // TODO find a simple expression to calculate the price
+
+        decimalPrice = (((uint256(sqrtPriceX96) * 1e18) / 2 ** 96) ** 2) / 1e18;
+    }
+
     // function transferCollateral(Data storage self, uint256 amount) internal {
     //     IERC20(self.collateralAsset).transferFrom(
     //         msg.sender,
@@ -360,23 +496,5 @@ library Epoch {
     //     self.settled = true;
     //     self.vGas.pause();
     //     self.vEth.pause();
-    // }
-
-    // function getCurrentPrice(
-    //     Data storage self
-    // ) internal view returns (uint256) {
-    //     if (block.timestamp < self.startTime) {
-    //         revert Errors.EpochNotStarted(self.id);
-    //     }
-
-    //     if (self.settled || block.timestamp > self.endTime) {
-    //         return self.settlementPrice;
-    //     }
-
-    //     (uint160 sqrtPriceX96, , , , , , ) = self.pool.slot0();
-    //     // double check formula
-    //     return
-    //         (uint256(sqrtPriceX96) * uint256(sqrtPriceX96) * (1e18)) >>
-    //         (96 * 2);
     // }
 }

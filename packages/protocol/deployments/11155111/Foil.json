@@ -1,5 +1,5 @@
 {
-  "address": "0x65ffa35125a6f0e1c7553805acb81408a2bd3821",
+  "address": "0x22123889875338a6e50bfa7c1607c1f41617416b",
   "abi": [
     {
       "type": "function",
@@ -68,6 +68,45 @@
     {
       "type": "function",
       "name": "getEpoch",
+      "inputs": [
+        {
+          "name": "id",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "startTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "endTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "pool",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "ethToken",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "gasToken",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getLatestEpoch",
       "inputs": [],
       "outputs": [
         {
@@ -136,7 +175,7 @@
         {
           "name": "epochParams",
           "type": "tuple",
-          "internalType": "struct Market.EpochParams",
+          "internalType": "struct IFoilStructs.EpochParams",
           "components": [
             {
               "name": "baseAssetMinPriceTick",
@@ -256,7 +295,7 @@
         {
           "name": "epochParams",
           "type": "tuple",
-          "internalType": "struct Market.EpochParams",
+          "internalType": "struct IFoilStructs.EpochParams",
           "components": [
             {
               "name": "baseAssetMinPriceTick",
@@ -331,7 +370,7 @@
         {
           "name": "epochParms",
           "type": "tuple",
-          "internalType": "struct Market.EpochParams",
+          "internalType": "struct IFoilStructs.EpochParams",
           "components": [
             {
               "name": "baseAssetMinPriceTick",
@@ -381,6 +420,17 @@
     },
     {
       "type": "error",
+      "name": "InvalidData",
+      "inputs": [
+        {
+          "name": "message",
+          "type": "string",
+          "internalType": "string"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "InvalidMarket",
       "inputs": []
     },
@@ -408,6 +458,11 @@
       "type": "function",
       "name": "collectFees",
       "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
         {
           "name": "tokenId",
           "type": "uint256",
@@ -437,6 +492,11 @@
           "type": "tuple",
           "internalType": "struct IFoilStructs.LiquidityPositionParams",
           "components": [
+            {
+              "name": "epochId",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
             {
               "name": "amountTokenA",
               "type": "uint256",
@@ -503,6 +563,11 @@
       "type": "function",
       "name": "decreaseLiquidityPosition",
       "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
         {
           "name": "accountId",
           "type": "uint256",
@@ -582,6 +647,11 @@
       "name": "getTokenAmounts",
       "inputs": [
         {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
           "name": "collateralAmount",
           "type": "uint256",
           "internalType": "uint256"
@@ -625,6 +695,11 @@
       "type": "function",
       "name": "increaseLiquidityPosition",
       "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
         {
           "name": "accountId",
           "type": "uint256",
@@ -889,6 +964,11 @@
       "name": "assertionDisputedCallback",
       "inputs": [
         {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
           "name": "assertionId",
           "type": "bytes32",
           "internalType": "bytes32"
@@ -901,6 +981,11 @@
       "type": "function",
       "name": "assertionResolvedCallback",
       "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
         {
           "name": "assertionId",
           "type": "bytes32",
@@ -919,6 +1004,11 @@
       "type": "function",
       "name": "submitSettlementPrice",
       "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
         {
           "name": "settlementPrice",
           "type": "uint256",
@@ -1022,6 +1112,11 @@
       "name": "createTraderPosition",
       "inputs": [
         {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
           "name": "collateralAmount",
           "type": "uint256",
           "internalType": "uint256"
@@ -1049,7 +1144,13 @@
     {
       "type": "function",
       "name": "getReferencePrice",
-      "inputs": [],
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
       "outputs": [
         {
           "name": "price18Digits",
@@ -1063,6 +1164,11 @@
       "type": "function",
       "name": "modifyTraderPosition",
       "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
         {
           "name": "accountId",
           "type": "uint256",
@@ -1523,11 +1629,11 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0xa92d095816abd452a0243a8f332fe4df3b2e29cba3af695b3532b67585c51e01",
-  "deployTxnBlockNumber": "6437197",
-  "deployTimestamp": "1722799836",
+  "deployTxnHash": "0xc4a9b202e1e02ca9e025348d7552152ed6b90338af4352ba63a2deba76fe25b0",
+  "deployTxnBlockNumber": "6455401",
+  "deployTimestamp": "1723048656",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
-  "gasUsed": 436477,
-  "gasCost": "5628076893"
+  "gasUsed": 445725,
+  "gasCost": "17523120567"
 }

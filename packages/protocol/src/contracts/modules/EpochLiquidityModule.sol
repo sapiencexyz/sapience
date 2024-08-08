@@ -41,7 +41,7 @@ contract EpochLiquidityModule is
         ERC721Storage._mint(msg.sender, tokenId);
 
         Market.Data storage market = Market.load();
-        Epoch.Data storage epoch = Epoch.load();
+        Epoch.Data storage epoch = Epoch.load(params.epochId);
 
         account.updateCollateral(
             market.collateralAsset,
@@ -74,9 +74,10 @@ contract EpochLiquidityModule is
             addedAmount1
         );
 
-        epoch.validateProvidedLiquidity(
+        epoch.validateCollateralRequirementsForLP(
             params.collateralAmount,
-            liquidity,
+            addedAmount0,
+            addedAmount1,
             params.lowerTick,
             params.upperTick
         );
@@ -104,10 +105,11 @@ contract EpochLiquidityModule is
     }
 
     function collectFees(
+        uint256 epochId,
         uint256 tokenId
     ) external override returns (uint256 amount0, uint256 amount1) {
         Market.Data storage market = Market.load();
-        Epoch.Data storage epoch = Epoch.load();
+        Epoch.Data storage epoch = Epoch.load(epochId);
 
         // TODO: verify msg sender is owner of this tokenId
 
@@ -128,6 +130,7 @@ contract EpochLiquidityModule is
     }
 
     function decreaseLiquidityPosition(
+        uint256 epochId,
         uint256 accountId,
         uint256 collateralAmount,
         uint128 liquidity,
@@ -136,6 +139,7 @@ contract EpochLiquidityModule is
     ) external override returns (uint256 amount0, uint256 amount1) {
         Market.Data storage market = Market.load();
         FAccount.Data storage account = FAccount.load(accountId);
+        Epoch.Data storage epoch = Epoch.load(epochId);
 
         (, , , , , int24 lowerTick, int24 upperTick, , , , , ) = market
             .uniswapPositionManager
@@ -158,9 +162,10 @@ contract EpochLiquidityModule is
         );
 
         account.updateLoan(account.tokenId, collateralAmount, amount0, amount1);
-        Epoch.load().validateProvidedLiquidity(
+        epoch.validateCollateralRequirementsForLP(
             collateralAmount,
-            liquidity,
+            amount0,
+            amount1,
             lowerTick,
             upperTick
         );
@@ -171,6 +176,7 @@ contract EpochLiquidityModule is
     }
 
     function increaseLiquidityPosition(
+        uint256 epochId,
         uint256 accountId,
         uint256 collateralAmount,
         uint256 gasTokenAmount,
@@ -180,6 +186,7 @@ contract EpochLiquidityModule is
     ) external returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
         Market.Data storage market = Market.load();
         FAccount.Data storage account = FAccount.load(accountId);
+        Epoch.Data storage epoch = Epoch.load(epochId);
 
         (, , , , , int24 lowerTick, int24 upperTick, , , , , ) = market
             .uniswapPositionManager
@@ -203,9 +210,10 @@ contract EpochLiquidityModule is
             .increaseLiquidity(increaseParams);
 
         account.updateLoan(account.tokenId, collateralAmount, amount0, amount1);
-        Epoch.load().validateProvidedLiquidity(
+        epoch.validateCollateralRequirementsForLP(
             collateralAmount,
-            liquidity,
+            amount0,
+            amount1,
             lowerTick,
             upperTick
         );
@@ -219,6 +227,7 @@ contract EpochLiquidityModule is
     }
 
     function getTokenAmounts(
+        uint256 epochId,
         uint256 collateralAmount,
         uint160 sqrtPriceX96,
         uint160 sqrtPriceAX96,
@@ -229,6 +238,8 @@ contract EpochLiquidityModule is
         override
         returns (uint256 amount0, uint256 amount1, uint128 liquidity)
     {
+        Epoch.Data storage epoch = Epoch.load(epochId);
+
         // calculate for unit
         uint128 unitLiquidity = LiquidityAmounts.getLiquidityForAmounts(
             sqrtPriceX96,
@@ -242,7 +253,7 @@ contract EpochLiquidityModule is
             uint256 requiredCollateral,
             uint256 unitAmount0,
             uint256 uintAmount1
-        ) = Epoch.load().requiredCollateralForLiquidity(
+        ) = epoch.requiredCollateralForLiquidity(
                 unitLiquidity,
                 sqrtPriceX96,
                 sqrtPriceAX96,

@@ -9,18 +9,9 @@ import "../interfaces/external/INonfungiblePositionManager.sol";
 import "../interfaces/external/IUniswapV3Quoter.sol";
 import "../interfaces/external/ISwapRouter.sol";
 import "./Errors.sol";
+import "../interfaces/IFoilStructs.sol";
 
 library Market {
-    struct EpochParams {
-        int24 baseAssetMinPriceTick;
-        int24 baseAssetMaxPriceTick;
-        uint24 feeRate;
-        uint64 assertionLiveness;
-        address bondCurrency;
-        uint256 bondAmount;
-        bytes32 priceUnit;
-    }
-
     struct Data {
         address owner;
         IERC20 collateralAsset;
@@ -28,7 +19,7 @@ library Market {
         IUniswapV3Quoter uniswapQuoter;
         ISwapRouter uniswapSwapRouter;
         OptimisticOracleV3Interface optimisticOracleV3;
-        EpochParams epochParams;
+        IFoilStructs.EpochParams epochParams;
     }
 
     function load() internal pure returns (Data storage market) {
@@ -46,7 +37,7 @@ library Market {
         address uniswapQuoter,
         address uniswapSwapRouter,
         address optimisticOracleV3,
-        EpochParams memory epochParams
+        IFoilStructs.EpochParams memory epochParams
     ) internal returns (Data storage market) {
         market = load();
 
@@ -77,7 +68,7 @@ library Market {
         address uniswapQuoter,
         address uniswapSwapRouter,
         address optimisticOracleV3,
-        EpochParams memory epochParams
+        IFoilStructs.EpochParams memory epochParams
     ) internal returns (Data storage market) {
         market = load();
 

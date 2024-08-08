@@ -45,6 +45,7 @@ const tickToPrice = (tick: number): number => 1.0001 ** tick;
 
 const AddLiquidity = () => {
   const {
+    epoch,
     pool,
     chain,
     collateralAsset,
@@ -159,6 +160,7 @@ const AddLiquidity = () => {
     abi: foilData.abi,
     functionName: 'getTokenAmounts',
     args: [
+      epoch.toString(),
       parseUnits(depositAmount.toString(), collateralAssetDecimals), // uint256 collateralAmount
       pool ? pool.sqrtRatioX96.toString() : '0', // uint160 sqrtPriceX96, // current price of pool
       TickMath.getSqrtRatioAtTick(tickLower).toString(), // uint160 sqrtPriceAX96, // lower tick price in sqrtRatio
@@ -211,54 +213,10 @@ const AddLiquidity = () => {
   };
 
   useEffect(() => {
-    console.log('Deposit amount changed:', depositAmount);
-    // The following lines have been removed as they are redundant:
-    // const newBaseToken = depositAmount * 0.001;
-    // const newQuoteToken = depositAmount * 0.001;
-    // setBaseToken(newBaseToken);
-    // setQuoteToken(newQuoteToken);
-  }, [depositAmount]);
-
-  useEffect(() => {
     if (approveSuccess && transactionStep === 1) {
       setTransactionStep(2);
     }
   }, [approveSuccess, transactionStep]);
-
-  const result = useSimulateContract({
-    address: foilData.address as `0x${string}`,
-    abi: foilData.abi,
-    functionName: 'createLiquidityPosition',
-    args: [
-      {
-        amountTokenA: parseUnits(baseToken.toString(), 18),
-        amountTokenB: parseUnits(quoteToken.toString(), 18),
-        collateralAmount: parseUnits(
-          depositAmount.toString(),
-          collateralAssetDecimals
-        ),
-        lowerTick: BigInt(tickLower),
-        upperTick: BigInt(tickUpper),
-        minAmountTokenA: parseUnits(minAmountTokenA.toString(), 18),
-        minAmountTokenB: parseUnits(minAmountTokenB.toString(), 18),
-      },
-    ],
-    chainId: chain?.id,
-  });
-  console.log('result', result, [
-    {
-      amountTokenA: parseUnits(baseToken.toString(), 18),
-      amountTokenB: parseUnits(quoteToken.toString(), 18),
-      collateralAmount: parseUnits(
-        depositAmount.toString(),
-        collateralAssetDecimals
-      ),
-      lowerTick: BigInt(tickLower),
-      upperTick: BigInt(tickUpper),
-      minAmountTokenA: parseUnits(minAmountTokenA.toString(), 18),
-      minAmountTokenB: parseUnits(minAmountTokenB.toString(), 18),
-    },
-  ]);
 
   useEffect(() => {
     if (transactionStep === 2) {
@@ -268,6 +226,7 @@ const AddLiquidity = () => {
         functionName: 'createLiquidityPosition',
         args: [
           {
+            epochId: epoch,
             amountTokenA: parseUnits(baseToken.toString(), 18),
             amountTokenB: parseUnits(quoteToken.toString(), 18),
             collateralAmount: parseUnits(
@@ -285,6 +244,7 @@ const AddLiquidity = () => {
       setTransactionStep(3);
     }
   }, [
+    epoch,
     transactionStep,
     addLiquidityWrite,
     baseToken,
@@ -311,7 +271,6 @@ const AddLiquidity = () => {
 
   const handleSlippageChange = (newSlippage: number) => {
     setSlippage(newSlippage);
-    console.log(`Slippage tolerance updated to: ${newSlippage}%`);
   };
 
   return (

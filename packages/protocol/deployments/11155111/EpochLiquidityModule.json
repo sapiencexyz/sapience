@@ -1,10 +1,15 @@
 {
-  "address": "0x4b50D165D7D85C480374BaAC8547CF7D1953c205",
+  "address": "0x91d122d12863D7620EfFa9812Ad79Abf80f37A01",
   "abi": [
     {
       "type": "function",
       "name": "collectFees",
       "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
         {
           "name": "tokenId",
           "type": "uint256",
@@ -34,6 +39,11 @@
           "type": "tuple",
           "internalType": "struct IFoilStructs.LiquidityPositionParams",
           "components": [
+            {
+              "name": "epochId",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
             {
               "name": "amountTokenA",
               "type": "uint256",
@@ -100,6 +110,11 @@
       "type": "function",
       "name": "decreaseLiquidityPosition",
       "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
         {
           "name": "accountId",
           "type": "uint256",
@@ -179,6 +194,11 @@
       "name": "getTokenAmounts",
       "inputs": [
         {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
           "name": "collateralAmount",
           "type": "uint256",
           "internalType": "uint256"
@@ -222,6 +242,11 @@
       "type": "function",
       "name": "increaseLiquidityPosition",
       "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
         {
           "name": "accountId",
           "type": "uint256",
@@ -494,12 +519,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xcf391b1e589d12bdb9bc16f30a8490e15a279507411d74315b6a29b52f9ecaa2",
-  "deployTxnBlockNumber": "6437191",
-  "deployTimestamp": "1722799764",
+  "deployTxnHash": "0x1b8dde6061aa8128612949d63a8caede89ce27e6ec293f2b3b9c38f1a9a8281a",
+  "deployTxnBlockNumber": "6455394",
+  "deployTimestamp": "1723048560",
   "sourceName": "src/contracts/modules/EpochLiquidityModule.sol",
   "contractName": "EpochLiquidityModule",
   "deployedOn": "deploy.EpochLiquidityModule",
-  "gasUsed": 2131396,
-  "gasCost": "4713106815"
+  "gasUsed": 2165858,
+  "gasCost": "16351223971"
 }
