@@ -1,27 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.25 <0.9.0;
 
-import "../../synthetix/interfaces/IERC721Receiver.sol";
-import "../storage/ERC721Storage.sol";
-import {TickMath} from "../external/univ3/TickMath.sol";
 import "../storage/ERC721EnumerableStorage.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "../storage/FAccount.sol";
-import "../storage/Market.sol";
-import "../storage/Epoch.sol";
-import "../storage/Errors.sol";
+import "../storage/Position.sol";
 import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
 import {IEpochLiquidityModule} from "../interfaces/IEpochLiquidityModule.sol";
 
-import "forge-std/console2.sol";
+// import "forge-std/console2.sol";
 
 contract EpochLiquidityModule is
     ReentrancyGuard,
     IERC721Receiver,
     IEpochLiquidityModule
 {
-    using Market for Market.Data;
-    using FAccount for FAccount.Data;
+    using Position for Position.Data;
     using Epoch for Epoch.Data;
 
     function createLiquidityPosition(
@@ -37,15 +30,16 @@ contract EpochLiquidityModule is
         )
     {
         tokenId = ERC721EnumerableStorage.totalSupply() + 1;
-        FAccount.Data storage account = FAccount.createValid(tokenId);
+        Position.Data storage position = Position.createValid(tokenId);
         ERC721Storage._mint(msg.sender, tokenId);
+        position.epochId = params.epochId;
 
         Market.Data storage market = Market.load();
         Epoch.Data storage epoch = Epoch.load(params.epochId);
 
-        account.updateCollateral(
+        position.updateCollateral(
             market.collateralAsset,
-            params.collateralAmount
+            params.depositedCollateralAmount
         );
 
         INonfungiblePositionManager.MintParams
@@ -67,15 +61,15 @@ contract EpochLiquidityModule is
             .uniswapPositionManager
             .mint(mintParams);
 
-        account.updateLoan(
+        position.updateLoan(
             tokenId,
-            params.collateralAmount,
+            params.depositedCollateralAmount,
             addedAmount0,
             addedAmount1
         );
 
         epoch.validateCollateralRequirementsForLP(
-            params.collateralAmount,
+            params.depositedCollateralAmount,
             addedAmount0,
             addedAmount1,
             params.lowerTick,
@@ -130,27 +124,29 @@ contract EpochLiquidityModule is
     }
 
     function decreaseLiquidityPosition(
-        uint256 epochId,
-        uint256 accountId,
-        uint256 collateralAmount,
+        uint256 positionId,
+        uint256 depositedCollateralAmount,
         uint128 liquidity,
         uint256 minGasAmount,
         uint256 minEthAmount
     ) external override returns (uint256 amount0, uint256 amount1) {
         Market.Data storage market = Market.load();
-        FAccount.Data storage account = FAccount.load(accountId);
-        Epoch.Data storage epoch = Epoch.load(epochId);
+        Position.Data storage position = Position.load(positionId);
+        Epoch.Data storage epoch = Epoch.load(position.epochId);
 
         (, , , , , int24 lowerTick, int24 upperTick, , , , , ) = market
             .uniswapPositionManager
-            .positions(account.tokenId);
+            .positions(position.tokenId);
 
-        account.updateCollateral(market.collateralAsset, collateralAmount);
+        position.updateCollateral(
+            market.collateralAsset,
+            depositedCollateralAmount
+        );
 
         INonfungiblePositionManager.DecreaseLiquidityParams
             memory decreaseParams = INonfungiblePositionManager
                 .DecreaseLiquidityParams({
-                    tokenId: account.tokenId,
+                    tokenId: position.tokenId,
                     liquidity: liquidity,
                     amount0Min: 0,
                     amount1Min: 0,
@@ -161,43 +157,50 @@ contract EpochLiquidityModule is
             decreaseParams
         );
 
-        account.updateLoan(account.tokenId, collateralAmount, amount0, amount1);
+        position.updateLoan(
+            position.tokenId,
+            depositedCollateralAmount,
+            amount0,
+            amount1
+        );
         epoch.validateCollateralRequirementsForLP(
-            collateralAmount,
+            depositedCollateralAmount,
             amount0,
             amount1,
             lowerTick,
             upperTick
         );
 
-        emit LiquidityPositionDecreased(account.tokenId, amount0, amount1);
+        emit LiquidityPositionDecreased(position.tokenId, amount0, amount1);
 
         // transfer or remove collateral
     }
 
     function increaseLiquidityPosition(
-        uint256 epochId,
-        uint256 accountId,
-        uint256 collateralAmount,
+        uint256 positionId,
+        uint256 depositedCollateralAmount,
         uint256 gasTokenAmount,
         uint256 ethTokenAmount,
         uint256 minGasAmount,
         uint256 minEthAmount
     ) external returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
         Market.Data storage market = Market.load();
-        FAccount.Data storage account = FAccount.load(accountId);
-        Epoch.Data storage epoch = Epoch.load(epochId);
+        Position.Data storage position = Position.load(positionId);
+        Epoch.Data storage epoch = Epoch.load(position.epochId);
 
         (, , , , , int24 lowerTick, int24 upperTick, , , , , ) = market
             .uniswapPositionManager
-            .positions(account.tokenId);
+            .positions(position.tokenId);
 
-        account.updateCollateral(market.collateralAsset, collateralAmount);
+        position.updateCollateral(
+            market.collateralAsset,
+            depositedCollateralAmount
+        );
 
         INonfungiblePositionManager.IncreaseLiquidityParams
             memory increaseParams = INonfungiblePositionManager
                 .IncreaseLiquidityParams({
-                    tokenId: account.tokenId,
+                    tokenId: position.tokenId,
                     amount0Desired: gasTokenAmount,
                     amount1Desired: ethTokenAmount,
                     amount0Min: minGasAmount,
@@ -209,9 +212,14 @@ contract EpochLiquidityModule is
             .uniswapPositionManager
             .increaseLiquidity(increaseParams);
 
-        account.updateLoan(account.tokenId, collateralAmount, amount0, amount1);
+        position.updateLoan(
+            position.tokenId,
+            depositedCollateralAmount,
+            amount0,
+            amount1
+        );
         epoch.validateCollateralRequirementsForLP(
-            collateralAmount,
+            depositedCollateralAmount,
             amount0,
             amount1,
             lowerTick,
@@ -219,7 +227,7 @@ contract EpochLiquidityModule is
         );
 
         emit LiquidityPositionIncreased(
-            account.tokenId,
+            position.tokenId,
             liquidity,
             amount0,
             amount1
@@ -228,7 +236,7 @@ contract EpochLiquidityModule is
 
     function getTokenAmounts(
         uint256 epochId,
-        uint256 collateralAmount,
+        uint256 depositedCollateralAmount,
         uint160 sqrtPriceX96,
         uint160 sqrtPriceAX96,
         uint160 sqrtPriceBX96
@@ -262,7 +270,7 @@ contract EpochLiquidityModule is
 
         // scale up for fractional collateral ratio
         uint256 collateralRatio = FullMath.mulDiv(
-            collateralAmount,
+            depositedCollateralAmount,
             1e18, // Create MathUtil and use UNIT
             requiredCollateral
         );
@@ -272,28 +280,6 @@ contract EpochLiquidityModule is
             FullMath.mulDiv(unitAmount0, collateralRatio, 1e18),
             FullMath.mulDiv(uintAmount1, collateralRatio, 1e18),
             uint128(unitLiquidity * collateralRatio) / 1e18
-        );
-    }
-
-    function getPosition(
-        uint256 accountId
-    )
-        external
-        view
-        override
-        returns (
-            uint256 tokenId,
-            uint256 collateralAmount,
-            uint256 borrowedGwei,
-            uint256 borrowedGas
-        )
-    {
-        FAccount.Data storage account = FAccount.load(accountId);
-        return (
-            account.tokenId,
-            account.collateralAmount,
-            account.borrowedGwei,
-            account.borrowedGas
         );
     }
 }

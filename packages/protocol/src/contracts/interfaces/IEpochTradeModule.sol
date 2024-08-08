@@ -6,15 +6,14 @@ import {IFoilStructs} from "./IFoilStructs.sol";
 interface IEpochTradeModule {
     function createTraderPosition(
         uint256 epochId,
-        uint256 collateralAmount,
+        uint256 depositedCollateralAmount,
         int256 tokenAmount,
         int256 tokenAmountLimit
-    ) external returns (uint256 accountId);
+    ) external returns (uint256 positionId);
 
     function modifyTraderPosition(
-        uint256 epochId,
-        uint256 accountId,
-        uint256 collateralAmount,
+        uint256 positionId,
+        uint256 depositedCollateralAmount,
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) external;

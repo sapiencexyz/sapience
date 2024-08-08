@@ -52,6 +52,9 @@ artifact="EpochTradeModule"
 [deploy.EpochNftModule]
 artifact="EpochNftModule"
 
+[deploy.EpochViewsModule]
+artifact="EpochViewsModule"
+
 [router.Foil]
 contracts=[
   "EpochConfigurationModule",
@@ -59,6 +62,7 @@ contracts=[
   "EpochUMASettlementModule",
   "EpochTradeModule",
   "EpochNftModule",
+  "EpochViewsModule",
 ]
 
 [invoke.initializeMarket]

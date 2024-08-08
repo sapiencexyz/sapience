@@ -1,17 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.25 <0.9.0;
 
-import "../storage/FAccount.sol";
 import "../storage/Position.sol";
 import "../storage/ERC721Storage.sol";
-import "../storage/ERC721EnumerableStorage.sol";
 import "../../synthetix/utils/DecimalMath.sol";
 import {SafeCastI256} from "../../synthetix/utils/SafeCast.sol";
 import {SafeCastU256} from "../../synthetix/utils/SafeCast.sol";
-
 import {IEpochTradeModule} from "../interfaces/IEpochTradeModule.sol";
 
-import "forge-std/console2.sol";
+// import "forge-std/console2.sol";
 
 contract EpochTradeModule is IEpochTradeModule {
     using Epoch for Epoch.Data;
@@ -22,39 +19,31 @@ contract EpochTradeModule is IEpochTradeModule {
 
     function createTraderPosition(
         uint256 epochId,
-        uint256 collateralAmount,
+        uint256 depositedCollateralAmount,
         int256 tokenAmount,
         int256 tokenAmountLimit
-    ) external override returns (uint256 accountId) {
+    ) external override returns (uint256 positionId) {
         // create/load account
         Epoch.Data storage epoch = Epoch.load(epochId);
         // check if epoch is not settled
         epoch.validateNotSettled();
 
-        accountId = ERC721EnumerableStorage.totalSupply() + 1;
-
-        FAccount.Data storage account = FAccount.createValid(accountId);
-        ERC721Storage._mint(msg.sender, accountId);
-
-        // Create empty position
-        Position.Data storage position = Position.load(accountId);
-        position.accountId = accountId;
+        positionId = ERC721EnumerableStorage.totalSupply() + 1;
+        Position.Data storage position = Position.createValid(positionId);
+        ERC721Storage._mint(msg.sender, positionId);
+        position.epochId = epochId;
 
         if (tokenAmount > 0) {
             _createLongPosition(
-                epochId,
-                account,
                 position,
-                collateralAmount,
+                depositedCollateralAmount,
                 tokenAmount,
                 tokenAmountLimit
             );
         } else {
             _createShortPosition(
-                epochId,
-                account,
                 position,
-                collateralAmount,
+                depositedCollateralAmount,
                 tokenAmount,
                 tokenAmountLimit
             );
@@ -62,44 +51,38 @@ contract EpochTradeModule is IEpochTradeModule {
     }
 
     function modifyTraderPosition(
-        uint256 epochId,
-        uint256 accountId,
-        uint256 collateralAmount,
+        uint256 positionId,
+        uint256 depositedCollateralAmount,
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) external override {
         // identify the account and position
-        // Notice: accountId is the tokenId
+        // Notice: positionId is the tokenId
         require(
-            ERC721Storage._ownerOf(accountId) == msg.sender,
+            ERC721Storage._ownerOf(positionId) == msg.sender,
             "Not NFT owner"
         );
-        FAccount.Data storage account = FAccount.loadValid(accountId);
-        Position.Data storage position = Position.loadValid(accountId);
+        Position.Data storage position = Position.loadValid(positionId);
 
         if (
             !sameSide(position.currentTokenAmount, tokenAmount) ||
             tokenAmount == 0
         ) {
             // go to zero before moving to the other side
-            _closePosition(epochId, account, position, collateralAmount);
+            _closePosition(position, depositedCollateralAmount);
         }
 
         if (tokenAmount > 0) {
             _modifyLongPosition(
-                epochId,
-                account,
                 position,
-                collateralAmount,
+                depositedCollateralAmount,
                 tokenAmount,
                 tokenAmountLimit
             );
         } else if (tokenAmount < 0) {
             _modifyShortPosition(
-                epochId,
-                account,
                 position,
-                collateralAmount,
+                depositedCollateralAmount,
                 tokenAmount,
                 tokenAmountLimit
             );
@@ -123,23 +106,21 @@ contract EpochTradeModule is IEpochTradeModule {
      * With collateral get vEth (Loan)
      * With vEth (use enough to) get vGas (Swap)
      * End result:
-     * - account.collateralAmount += collateralAmount
-     * - account.borrowedGwei += vEthLoan
+     * - account.depositedCollateralAmount += depositedCollateralAmount
+     * - account.borrowedVEth += vEthLoan
      * - position.tokenGasAmount += vGas from swap
      */
     function _createLongPosition(
-        uint256 epochId,
-        FAccount.Data storage account,
         Position.Data storage position,
-        uint256 collateralAmount,
+        uint256 depositedCollateralAmount,
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) internal {
         // with the collateral get vEth (Loan)
-        uint256 vEthLoan = collateralAmount; // 1:1
+        uint256 vEthLoan = depositedCollateralAmount; // 1:1
 
-        account.collateralAmount += collateralAmount;
-        account.borrowedGwei += vEthLoan;
+        position.depositedCollateralAmount += depositedCollateralAmount;
+        position.borrowedVEth += vEthLoan;
 
         if (tokenAmount < 0 || tokenAmountLimit < 0) {
             console2.log("IT SHOULD REVERT WITH UNEXPECTED LONG POSITION");
@@ -148,7 +129,7 @@ contract EpochTradeModule is IEpochTradeModule {
 
         // with the vEth get vGas (Swap)
         SwapTokensExactOutParams memory params = SwapTokensExactOutParams({
-            epochId: epochId,
+            epochId: position.epochId,
             availableAmountInVEth: vEthLoan,
             availableAmountInVGas: 0,
             amountInLimitVEth: 0,
@@ -165,7 +146,7 @@ contract EpochTradeModule is IEpochTradeModule {
         ) = swapTokensExactOut(params);
 
         // Refund excess vEth sent
-        account.borrowedGwei -= refundAmountVEth;
+        position.borrowedVEth -= refundAmountVEth;
 
         position.updateBalance(
             tokenAmount,
@@ -180,23 +161,21 @@ contract EpochTradeModule is IEpochTradeModule {
      * With collateral get vGas (Loan)
      * With vGas tokenAmount get vEth (Swap)
      * End result:
-     * - account.collateralAmount += collateralAmount
-     * - account.borrowedGas += vGasLoan
+     * - account.depositedCollateralAmount += depositedCollateralAmount
+     * - account.borrowedVGas += vGasLoan
      * - position.tokenGweiAmount += vEth from swap
      */
     function _createShortPosition(
-        uint256 epochId,
-        FAccount.Data storage account,
         Position.Data storage position,
-        uint256 collateralAmount,
+        uint256 depositedCollateralAmount,
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) internal {
         // with the collateral get vGas (Loan)
-        uint256 vGasLoan = (tokenAmount * -1).toUint(); //(collateralAmount).divDecimal(getReferencePrice()); // collatera / vEth = 1/1 ; vGas/vEth = 1/currentPrice
+        uint256 vGasLoan = (tokenAmount * -1).toUint(); //(depositedCollateralAmount).divDecimal(getReferencePrice()); // collatera / vEth = 1/1 ; vGas/vEth = 1/currentPrice
 
-        account.collateralAmount += collateralAmount;
-        account.borrowedGas += vGasLoan;
+        position.depositedCollateralAmount += depositedCollateralAmount;
+        position.borrowedVGas += vGasLoan;
 
         if (tokenAmount > 0 || tokenAmountLimit > 0) {
             console2.log("IT SHOULD REVERT WITH UNEXPECTED SHORT POSITION");
@@ -205,7 +184,7 @@ contract EpochTradeModule is IEpochTradeModule {
 
         // with the vGas get vEth (Swap)
         SwapTokensExactInParams memory params = SwapTokensExactInParams({
-            epochId: epochId,
+            epochId: position.epochId,
             amountInVEth: 0,
             amountInVGas: (tokenAmount * -1).toUint(),
             amountOutLimitVEth: 0,
@@ -232,23 +211,21 @@ contract EpochTradeModule is IEpochTradeModule {
      * With collateral get vEth (Loan)
      * With vEth (use enough to) get detal tokenAmount vGas (Swap)
      * End result:
-     * - account.collateralAmount += collateralAmount
-     * - account.borrowedGwei += vEthLoan
+     * - account.depositedCollateralAmount += depositedCollateralAmount
+     * - account.borrowedVEth += vEthLoan
      * - position.tokenGasAmount += vGas from swap
      *
      * Decrease:
      * With vGas get vEth (Swap)
      * Use vEth to pay debt
      * End result:
-     * - account.borrowedGwei -= vEth from swap
+     * - account.borrowedVEth -= vEth from swap
      * - position.tokenGasAmount -= vGas used on swap
      *
      */
     function _modifyLongPosition(
-        uint256 epochId,
-        FAccount.Data storage account,
         Position.Data storage position,
-        uint256 collateralAmount,
+        uint256 depositedCollateralAmount,
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) internal {
@@ -259,12 +236,12 @@ contract EpochTradeModule is IEpochTradeModule {
             uint256 delta = (tokenAmount - position.currentTokenAmount)
                 .toUint();
             // with the collateral get vEth (Loan)
-            uint256 vEthLoan = collateralAmount; // 1:1
-            account.collateralAmount += collateralAmount;
-            account.borrowedGwei += vEthLoan;
+            uint256 vEthLoan = depositedCollateralAmount; // 1:1
+            position.depositedCollateralAmount += depositedCollateralAmount;
+            position.borrowedVEth += vEthLoan;
 
             SwapTokensExactOutParams memory params = SwapTokensExactOutParams({
-                epochId: epochId,
+                epochId: position.epochId,
                 availableAmountInVEth: vEthLoan,
                 availableAmountInVGas: 0,
                 amountInLimitVEth: 0,
@@ -280,7 +257,7 @@ contract EpochTradeModule is IEpochTradeModule {
                 uint256 tokenAmountVEth,
                 uint256 tokenAmountVGas
             ) = swapTokensExactOut(params);
-            account.borrowedGwei -= refundAmountVEth;
+            position.borrowedVEth -= refundAmountVEth;
 
             position.updateBalance(
                 delta.toInt(),
@@ -289,7 +266,7 @@ contract EpochTradeModule is IEpochTradeModule {
             );
         } else {
             // Reduce the position (LONG)
-            if (collateralAmount > 0) {
+            if (depositedCollateralAmount > 0) {
                 console2.log("IT SHULD REVERT WITH UNEXPECTED COLLATERAL");
                 // return;
             }
@@ -297,7 +274,7 @@ contract EpochTradeModule is IEpochTradeModule {
             int256 delta = (tokenAmount - position.currentTokenAmount);
 
             SwapTokensExactInParams memory params = SwapTokensExactInParams({
-                epochId: epochId,
+                epochId: position.epochId,
                 amountInVEth: 0,
                 amountInVGas: (delta * -1).toUint(),
                 amountOutLimitVEth: 0,
@@ -311,7 +288,7 @@ contract EpochTradeModule is IEpochTradeModule {
             ) = swapTokensExactIn(params);
 
             // Pay debt with vEth
-            account.borrowedGwei -= tokenAmountVEth;
+            position.borrowedVEth -= tokenAmountVEth;
 
             position.updateBalance(delta, 0, delta);
         }
@@ -325,23 +302,21 @@ contract EpochTradeModule is IEpochTradeModule {
      * With collateral get vGas (Loan)
      * With delta tokenAmount vGas get vEth (Swap)
      * End result:
-     * - account.collateralAmount += collateralAmount
-     * - account.borrowedGas += vGasLoan
+     * - account.depositedCollateralAmount += depositedCollateralAmount
+     * - account.borrowedVGas += vGasLoan
      * - position.tokenGweiAmount += vEth from swap
      *
      * Decrease:
      * With vEthTokens get vGas (Swap) to repay debt
      * Use vGas to pay debt
      * End result:
-     * - account.borrowedGas -= vGas from swap
+     * - account.borrowedVGas -= vGas from swap
      * - position.tokenGweiAmount -= vEth used on swap
      *
      */
     function _modifyShortPosition(
-        uint256 epochId,
-        FAccount.Data storage account,
         Position.Data storage position,
-        uint256 collateralAmount,
+        uint256 depositedCollateralAmount,
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) internal {
@@ -354,11 +329,11 @@ contract EpochTradeModule is IEpochTradeModule {
 
             // with the collateral get vGas (Loan)
             uint256 vGasLoan = (delta * -1).toUint(); //
-            account.collateralAmount += collateralAmount;
-            account.borrowedGas += vGasLoan;
+            position.depositedCollateralAmount += depositedCollateralAmount;
+            position.borrowedVGas += vGasLoan;
 
             SwapTokensExactInParams memory params = SwapTokensExactInParams({
-                epochId: epochId,
+                epochId: position.epochId,
                 amountInVEth: 0,
                 amountInVGas: (delta * -1).toUint(),
                 amountOutLimitVEth: 0,
@@ -378,7 +353,7 @@ contract EpochTradeModule is IEpochTradeModule {
             );
         } else {
             // Decrease the position (SHORT)
-            if (collateralAmount > 0) {
+            if (depositedCollateralAmount > 0) {
                 console2.log("IT SHULD REVERT WITH UNEXPECTED COLLATERAL");
                 // return;
             }
@@ -386,7 +361,7 @@ contract EpochTradeModule is IEpochTradeModule {
             int256 delta = (position.currentTokenAmount - tokenAmount);
 
             SwapTokensExactOutParams memory params = SwapTokensExactOutParams({
-                epochId: epochId,
+                epochId: position.epochId,
                 availableAmountInVEth: position.vEthAmount,
                 availableAmountInVGas: 0,
                 amountInLimitVEth: 0,
@@ -419,9 +394,9 @@ contract EpochTradeModule is IEpochTradeModule {
      * With vGas get vEth (Swap) to pay debt
      * If not enough vGas, use collateral to pay the remaining debt
      * End result:
-     * - account.borrowedGwei = 0
+     * - account.borrowedVEth = 0
      * - position.tokenGasAmount -= vGas used on swap (or zero)
-     * - account.collateralAmount -= collateral used to pay the remaining debt
+     * - account.depositedCollateralAmount -= collateral used to pay the remaining debt
      *
      *
      * SHORT position:
@@ -429,29 +404,27 @@ contract EpochTradeModule is IEpochTradeModule {
      * With vEth get vGas (Swap) to pay debt
      * If not enough vEth, use collateral as vEth (1:1) to swap for the required vGas to pay the remaining debt
      * End result:
-     * - account.borrowedGas = 0
+     * - account.borrowedVGas = 0
      * - position.tokenGweiAmount -= vEth used on swap (or zero)
-     * - account.collateralAmount -= collateral used to pay the remaining debt
+     * - account.depositedCollateralAmount -= collateral used to pay the remaining debt
      *
      * Note:
      * with the position closed, the remaining gas can be sold for vEth and converted to collateral, same for the remaining vEth that is converted 1:1 as colalteral
      * then the remaining collateral can be withdrawn
      */
     function _closePosition(
-        uint256 epochId,
-        FAccount.Data storage account,
         Position.Data storage position,
-        uint256 collateralAmount
+        uint256 depositedCollateralAmount
     ) internal {
         // TODO check if after settlement and use the settlement price
 
         // Add sent collateral
-        account.collateralAmount += collateralAmount;
+        position.depositedCollateralAmount += depositedCollateralAmount;
 
         if (position.currentTokenAmount > 0) {
             // Close LONG position
             SwapTokensExactInParams memory params = SwapTokensExactInParams({
-                epochId: epochId,
+                epochId: position.epochId,
                 amountInVEth: 0,
                 amountInVGas: position.vGasAmount,
                 amountOutLimitVEth: 0,
@@ -461,27 +434,27 @@ contract EpochTradeModule is IEpochTradeModule {
             // with the vGas get vEth (Swap)
             (uint256 tokenAmountVEth, ) = swapTokensExactIn(params);
 
-            if (account.borrowedGwei > tokenAmountVEth) {
+            if (position.borrowedVEth > tokenAmountVEth) {
                 // Not enough vEth to pay the debt
                 // Use collateral to pay the remaining debt
-                uint256 remainingDebt = account.borrowedGwei - tokenAmountVEth;
-                account.collateralAmount -= remainingDebt;
-            } else if (account.borrowedGwei < tokenAmountVEth) {
+                uint256 remainingDebt = position.borrowedVEth - tokenAmountVEth;
+                position.depositedCollateralAmount -= remainingDebt;
+            } else if (position.borrowedVEth < tokenAmountVEth) {
                 // Obtained more vEth than required to pay the debt
                 // Add it as collateral
-                account.collateralAmount +=
+                position.depositedCollateralAmount +=
                     tokenAmountVEth -
-                    account.borrowedGwei;
+                    position.borrowedVEth;
             }
 
-            account.borrowedGwei = 0;
+            position.borrowedVEth = 0;
 
             position.resetBalance();
         } else {
             // Close SHORT position
 
             SwapTokensExactInParams memory params = SwapTokensExactInParams({
-                epochId: epochId,
+                epochId: position.epochId,
                 amountInVEth: position.vEthAmount,
                 amountInVGas: 0,
                 amountOutLimitVEth: 0,
@@ -491,17 +464,17 @@ contract EpochTradeModule is IEpochTradeModule {
             // with the vEth get vGas (Swap)
             (, uint256 tokenAmountVGas) = swapTokensExactIn(params);
 
-            if (account.borrowedGas > tokenAmountVGas) {
+            if (position.borrowedVGas > tokenAmountVGas) {
                 // Not enough vGas to pay the debt
                 // Use collateral to pay the remaining debt
-                uint256 remainingDebt = account.borrowedGas - tokenAmountVGas;
-                uint256 vEth = account.collateralAmount; // Not needed but is here for clarity
-                account.collateralAmount = 0; // used all as vEth in the line above
+                uint256 remainingDebt = position.borrowedVGas - tokenAmountVGas;
+                uint256 vEth = position.depositedCollateralAmount; // Not needed but is here for clarity
+                position.depositedCollateralAmount = 0; // used all as vEth in the line above
 
                 // Use collateral (as vEth) to get vGas
                 SwapTokensExactOutParams
                     memory secondSwapParams = SwapTokensExactOutParams({
-                        epochId: epochId,
+                        epochId: position.epochId,
                         availableAmountInVEth: vEth,
                         availableAmountInVGas: 0,
                         amountInLimitVEth: 0,
@@ -514,15 +487,15 @@ contract EpochTradeModule is IEpochTradeModule {
                 (uint256 refundAmountVEth, , , ) = swapTokensExactOut(
                     secondSwapParams
                 );
-                account.collateralAmount = refundAmountVEth;
-            } else if (account.borrowedGas < tokenAmountVGas) {
+                position.depositedCollateralAmount = refundAmountVEth;
+            } else if (position.borrowedVGas < tokenAmountVGas) {
                 // Obtained more vGas than required to pay the debt
                 // Sell it back and convert to collateral
-                uint256 extraGas = tokenAmountVGas - account.borrowedGas;
+                uint256 extraGas = tokenAmountVGas - position.borrowedVGas;
 
                 SwapTokensExactInParams
                     memory secondSwapParams = SwapTokensExactInParams({
-                        epochId: epochId,
+                        epochId: position.epochId,
                         amountInVEth: 0,
                         amountInVGas: extraGas,
                         amountOutLimitVEth: 0,
@@ -535,10 +508,10 @@ contract EpochTradeModule is IEpochTradeModule {
                 );
 
                 // Add it as collateral
-                account.collateralAmount += tokenAmountVEth;
+                position.depositedCollateralAmount += tokenAmountVEth;
             }
 
-            account.borrowedGas = 0;
+            position.borrowedVGas = 0;
 
             position.resetBalance();
         }

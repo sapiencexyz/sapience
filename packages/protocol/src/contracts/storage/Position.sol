@@ -3,24 +3,29 @@
 pragma solidity >=0.8.2 <0.9.0;
 
 import "./Epoch.sol";
-import "./FAccount.sol";
-import "./Debt.sol";
 import {SafeCastU256} from "../../synthetix/utils/SafeCast.sol";
 
 library Position {
     using SafeCastU256 for uint256;
 
     struct Data {
-        uint256 accountId;
+        uint256 tokenId; // nft id
+        IFoilStructs.PositionKind kind;
+        uint256 epochId;
+        // Accounting data (debt and deposited collateral)
+        uint256 depositedCollateralAmount; // configured collateral
+        uint256 borrowedVEth;
+        uint256 borrowedVGas;
+        // Position data (owned tokens and position size)
         uint256 vEthAmount;
         uint256 vGasAmount;
         int256 currentTokenAmount;
     }
 
     function load(
-        uint256 accountId
+        uint256 positionId
     ) internal pure returns (Data storage position) {
-        bytes32 s = keccak256(abi.encode("foil.gas.position", accountId));
+        bytes32 s = keccak256(abi.encode("foil.gas.position", positionId));
 
         assembly {
             position.slot := s
@@ -28,10 +33,29 @@ library Position {
     }
 
     function loadValid(
-        uint256 accountId
+        uint256 positionId
     ) internal view returns (Data storage position) {
-        FAccount.loadValid(accountId);
-        position = load(accountId);
+        position = load(positionId);
+        if (positionId == 0 || position.tokenId == 0) {
+            revert Errors.InvalidPositionId(positionId);
+        }
+    }
+
+    function createValid(
+        uint256 positionId
+    ) internal returns (Data storage position) {
+        if (positionId == 0) {
+            revert Errors.InvalidPositionId(positionId);
+        }
+
+        position = load(positionId);
+
+        if (position.tokenId != 0) {
+            revert Errors.PositionAlreadyCreated();
+        }
+
+        position.tokenId = positionId;
+        return position;
     }
 
     function updateBalance(
@@ -49,5 +73,39 @@ library Position {
         self.currentTokenAmount = 0;
         self.vEthAmount = 0;
         self.vGasAmount = 0;
+    }
+
+    function updateLoan(
+        Data storage self,
+        uint256 tokenId,
+        uint256 depositedCollateralAmount,
+        uint256 amount0,
+        uint256 amount1
+    ) internal {
+        self.depositedCollateralAmount = depositedCollateralAmount;
+        self.borrowedVGas = amount0;
+        self.borrowedVEth = amount1;
+        self.tokenId = tokenId;
+    }
+
+    function updateCollateral(
+        Data storage self,
+        IERC20 collateralAsset,
+        uint256 amount
+    ) internal {
+        if (amount > self.depositedCollateralAmount) {
+            collateralAsset.transferFrom(
+                msg.sender,
+                address(this),
+                amount - self.depositedCollateralAmount
+            );
+        } else {
+            collateralAsset.transfer(
+                msg.sender,
+                self.depositedCollateralAmount - amount
+            );
+        }
+
+        self.depositedCollateralAmount = amount;
     }
 }

@@ -1,29 +1,28 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
-import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
+// import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../external/univ3/TickMath.sol";
-import "../external/univ3/FullMath.sol";
-import "../interfaces/external/INonfungiblePositionManager.sol";
-import "../interfaces/external/IUniswapV3Quoter.sol";
-import "../interfaces/external/ISwapRouter.sol";
+// import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+// import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+// import "../external/univ3/TickMath.sol";
+// import "../external/univ3/FullMath.sol";
+// import "../interfaces/external/INonfungiblePositionManager.sol";
+// import "../interfaces/external/IUniswapV3Quoter.sol";
+// import "../interfaces/external/ISwapRouter.sol";
 import "../external/VirtualToken.sol";
 import "../libraries/Quote.sol";
 import "../external/univ3/LiquidityAmounts.sol";
 import "./Debt.sol";
-import "./Errors.sol";
+// import "./Errors.sol";
 import "./Market.sol";
-import "../interfaces/IFoilStructs.sol";
 
-import "forge-std/console2.sol";
+// import "../interfaces/IFoilStructs.sol";
+
+// import "forge-std/console2.sol";
 
 library Epoch {
-    using SafeERC20 for IERC20;
-
     struct Settlement {
         uint256 settlementPrice;
         uint256 submissionTime;
@@ -225,7 +224,7 @@ library Epoch {
 
     function validateProvidedLiquidity(
         Data storage self,
-        uint256 collateralAmount,
+        uint256 depositedCollateralAmount,
         uint128 liquidity,
         int24 lowerTick,
         int24 upperTick
@@ -247,9 +246,9 @@ library Epoch {
 
         requiredCollateral *= scaleFactor;
 
-        if (collateralAmount < requiredCollateral) {
+        if (depositedCollateralAmount < requiredCollateral) {
             revert Errors.InsufficientCollateral(
-                collateralAmount,
+                depositedCollateralAmount,
                 requiredCollateral
             );
         }
@@ -350,7 +349,7 @@ library Epoch {
 
     function validateCollateralRequirementsForLP(
         Data storage self,
-        uint256 collateralAmount,
+        uint256 depositedCollateralAmount,
         uint256 loanGasAmount,
         uint256 loanEthAmount,
         int24 lowerTick,
@@ -373,7 +372,7 @@ library Epoch {
             2; // Not exactly mid price since is sqrt, but...
 
         validateOwedAndDebtAtPrice(
-            collateralAmount,
+            depositedCollateralAmount,
             Quote.quoteEthToGas(loanEthAmount, midPriceSqrtX96) + loanGasAmount,
             0,
             loanGasAmount,
@@ -382,7 +381,7 @@ library Epoch {
         );
 
         validateOwedAndDebtAtPrice(
-            collateralAmount,
+            depositedCollateralAmount,
             0,
             Quote.quoteGasToEth(loanGasAmount, midPriceSqrtX96) + loanEthAmount,
             loanGasAmount,
@@ -396,7 +395,7 @@ library Epoch {
      * @notice will revert if not enough collateral is provided
      *
      * @param self Epoch storage
-     * @param collateralAmount Amount of collateral provided
+     * @param depositedCollateralAmount Amount of collateral provided
      * @param ownedGasAmount Amount of gas owned by the trader
      * @param ownedEthAmount Amount of eth owned by the trader
      * @param loanGasAmount Amount of gas loaned by the trader
@@ -404,7 +403,7 @@ library Epoch {
      */
     function validateCollateralRequirementsForTrade(
         Data storage self,
-        uint256 collateralAmount,
+        uint256 depositedCollateralAmount,
         uint256 ownedGasAmount,
         uint256 ownedEthAmount,
         uint256 loanGasAmount,
@@ -419,7 +418,7 @@ library Epoch {
         );
 
         validateOwedAndDebtAtPrice(
-            collateralAmount,
+            depositedCollateralAmount,
             ownedGasAmount,
             ownedEthAmount,
             loanGasAmount,
@@ -428,7 +427,7 @@ library Epoch {
         );
 
         validateOwedAndDebtAtPrice(
-            collateralAmount,
+            depositedCollateralAmount,
             ownedGasAmount,
             ownedEthAmount,
             loanGasAmount,
@@ -438,7 +437,7 @@ library Epoch {
     }
 
     function validateOwedAndDebtAtPrice(
-        uint256 collateralAmount,
+        uint256 depositedCollateralAmount,
         uint256 ownedGasAmount,
         uint256 ownedEthAmount,
         uint256 loanGasAmount,
@@ -450,7 +449,7 @@ library Epoch {
 
         uint256 totalOwedValue = Quote.quoteGasToEth(ownedGasAmount, price) +
             ownedEthAmount +
-            collateralAmount;
+            depositedCollateralAmount;
 
         if (totalDebtValue > totalOwedValue) {
             revert Errors.InsufficientCollateral(

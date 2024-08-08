@@ -68,7 +68,7 @@ contract FoilTest is Test {
                 epochId: epochStartTime,
                 amountTokenA: loanAmount0,
                 amountTokenB: loanAmount1,
-                collateralAmount: 50 ether,
+                depositedCollateralAmount: 50 ether,
                 lowerTick: 16000,
                 upperTick: 24800,
                 minAmountTokenA: 0,
@@ -86,21 +86,13 @@ contract FoilTest is Test {
         uint128 halfLiquidity = liquidity / 2;
         uint256 coll = 25 ether;
 
-        foil.decreaseLiquidityPosition(
-            epochStartTime,
-            tokenId,
-            coll,
-            halfLiquidity,
-            0,
-            0
-        );
+        foil.decreaseLiquidityPosition(tokenId, coll, halfLiquidity, 0, 0);
 
         assertEq(collateralAsset.balanceOf(address(foil)), 25 ether);
 
         coll = 500 ether;
 
         foil.increaseLiquidityPosition(
-            epochStartTime,
             tokenId,
             coll,
             amount0 * 2,
@@ -115,10 +107,10 @@ contract FoilTest is Test {
         // console2.log(tokenAmount0, tokenAmount1);
         // // new account!
         // params = IFoilStructs.LiquidityPositionParams({
-        //     accountId: 2,
+        //     positionId: 2,
         //     amountTokenA: 100 ether,
         //     amountTokenB: 10 ether,
-        //     collateralAmount: 10 ether,
+        //     depositedCollateralAmount: 10 ether,
         //     lowerTick: -887200, // minTick
         //     upperTick: 887200 // maxTick
         // });
