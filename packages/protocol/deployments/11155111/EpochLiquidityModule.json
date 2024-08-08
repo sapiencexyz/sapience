@@ -1,5 +1,5 @@
 {
-  "address": "0x91d122d12863D7620EfFa9812Ad79Abf80f37A01",
+  "address": "0x43B3Be9dd2DCB3aDFe77bcA79c89320578B4B9ED",
   "abi": [
     {
       "type": "function",
@@ -111,12 +111,7 @@
       "name": "decreaseLiquidityPosition",
       "inputs": [
         {
-          "name": "epochId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "accountId",
+          "name": "positionId",
           "type": "uint256",
           "internalType": "uint256"
         },
@@ -157,40 +152,6 @@
     },
     {
       "type": "function",
-      "name": "getPosition",
-      "inputs": [
-        {
-          "name": "accountId",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "tokenId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "collateralAmount",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "borrowedGwei",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "borrowedGas",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
       "name": "getTokenAmounts",
       "inputs": [
         {
@@ -199,7 +160,7 @@
           "internalType": "uint256"
         },
         {
-          "name": "collateralAmount",
+          "name": "depositedCollateralAmount",
           "type": "uint256",
           "internalType": "uint256"
         },
@@ -243,12 +204,7 @@
       "name": "increaseLiquidityPosition",
       "inputs": [
         {
-          "name": "epochId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "accountId",
+          "name": "positionId",
           "type": "uint256",
           "internalType": "uint256"
         },
@@ -445,11 +401,6 @@
     },
     {
       "type": "error",
-      "name": "AccountAlreadyCreated",
-      "inputs": []
-    },
-    {
-      "type": "error",
       "name": "InsufficientCollateral",
       "inputs": [
         {
@@ -482,6 +433,17 @@
     },
     {
       "type": "error",
+      "name": "InvalidPositionId",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "OverflowInt24ToUint256",
       "inputs": []
     },
@@ -493,6 +455,11 @@
     {
       "type": "error",
       "name": "OverflowUint256ToInt256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PositionAlreadyCreated",
       "inputs": []
     },
     {
@@ -519,12 +486,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x1b8dde6061aa8128612949d63a8caede89ce27e6ec293f2b3b9c38f1a9a8281a",
-  "deployTxnBlockNumber": "6455394",
-  "deployTimestamp": "1723048560",
+  "deployTxnHash": "0xa121b459a22e32c74bf27748ffeb0a9d07e21f70678a71dddcd6a25be76d2577",
+  "deployTxnBlockNumber": "6461950",
+  "deployTimestamp": "1723138680",
   "sourceName": "src/contracts/modules/EpochLiquidityModule.sol",
   "contractName": "EpochLiquidityModule",
   "deployedOn": "deploy.EpochLiquidityModule",
-  "gasUsed": 2165858,
-  "gasCost": "16351223971"
+  "gasUsed": 2136721,
+  "gasCost": "1549256938"
 }
