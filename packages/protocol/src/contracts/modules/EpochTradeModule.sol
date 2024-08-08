@@ -19,7 +19,7 @@ contract EpochTradeModule is IEpochTradeModule {
 
     function createTraderPosition(
         uint256 epochId,
-        uint256 depositedCollateralAmount,
+        uint256 collateralAmount,
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) external override returns (uint256 positionId) {
@@ -36,14 +36,14 @@ contract EpochTradeModule is IEpochTradeModule {
         if (tokenAmount > 0) {
             _createLongPosition(
                 position,
-                depositedCollateralAmount,
+                collateralAmount,
                 tokenAmount,
                 tokenAmountLimit
             );
         } else {
             _createShortPosition(
                 position,
-                depositedCollateralAmount,
+                collateralAmount,
                 tokenAmount,
                 tokenAmountLimit
             );
@@ -52,7 +52,7 @@ contract EpochTradeModule is IEpochTradeModule {
 
     function modifyTraderPosition(
         uint256 positionId,
-        uint256 depositedCollateralAmount,
+        uint256 collateralAmount,
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) external override {
@@ -69,20 +69,20 @@ contract EpochTradeModule is IEpochTradeModule {
             tokenAmount == 0
         ) {
             // go to zero before moving to the other side
-            _closePosition(position, depositedCollateralAmount);
+            _closePosition(position, collateralAmount);
         }
 
         if (tokenAmount > 0) {
             _modifyLongPosition(
                 position,
-                depositedCollateralAmount,
+                collateralAmount,
                 tokenAmount,
                 tokenAmountLimit
             );
         } else if (tokenAmount < 0) {
             _modifyShortPosition(
                 position,
-                depositedCollateralAmount,
+                collateralAmount,
                 tokenAmount,
                 tokenAmountLimit
             );
@@ -112,14 +112,14 @@ contract EpochTradeModule is IEpochTradeModule {
      */
     function _createLongPosition(
         Position.Data storage position,
-        uint256 depositedCollateralAmount,
+        uint256 collateralAmount,
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) internal {
         // with the collateral get vEth (Loan)
-        uint256 vEthLoan = depositedCollateralAmount; // 1:1
+        uint256 vEthLoan = collateralAmount; // 1:1
 
-        position.depositedCollateralAmount += depositedCollateralAmount;
+        position.depositedCollateralAmount += collateralAmount;
         position.borrowedVEth += vEthLoan;
 
         if (tokenAmount < 0 || tokenAmountLimit < 0) {
@@ -167,14 +167,14 @@ contract EpochTradeModule is IEpochTradeModule {
      */
     function _createShortPosition(
         Position.Data storage position,
-        uint256 depositedCollateralAmount,
+        uint256 collateralAmount,
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) internal {
         // with the collateral get vGas (Loan)
-        uint256 vGasLoan = (tokenAmount * -1).toUint(); //(depositedCollateralAmount).divDecimal(getReferencePrice()); // collatera / vEth = 1/1 ; vGas/vEth = 1/currentPrice
+        uint256 vGasLoan = (tokenAmount * -1).toUint(); //(collateralAmount).divDecimal(getReferencePrice()); // collatera / vEth = 1/1 ; vGas/vEth = 1/currentPrice
 
-        position.depositedCollateralAmount += depositedCollateralAmount;
+        position.depositedCollateralAmount += collateralAmount;
         position.borrowedVGas += vGasLoan;
 
         if (tokenAmount > 0 || tokenAmountLimit > 0) {
@@ -225,7 +225,7 @@ contract EpochTradeModule is IEpochTradeModule {
      */
     function _modifyLongPosition(
         Position.Data storage position,
-        uint256 depositedCollateralAmount,
+        uint256 collateralAmount,
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) internal {
@@ -236,8 +236,8 @@ contract EpochTradeModule is IEpochTradeModule {
             uint256 delta = (tokenAmount - position.currentTokenAmount)
                 .toUint();
             // with the collateral get vEth (Loan)
-            uint256 vEthLoan = depositedCollateralAmount; // 1:1
-            position.depositedCollateralAmount += depositedCollateralAmount;
+            uint256 vEthLoan = collateralAmount; // 1:1
+            position.depositedCollateralAmount += collateralAmount;
             position.borrowedVEth += vEthLoan;
 
             SwapTokensExactOutParams memory params = SwapTokensExactOutParams({
@@ -266,7 +266,7 @@ contract EpochTradeModule is IEpochTradeModule {
             );
         } else {
             // Reduce the position (LONG)
-            if (depositedCollateralAmount > 0) {
+            if (collateralAmount > 0) {
                 console2.log("IT SHULD REVERT WITH UNEXPECTED COLLATERAL");
                 // return;
             }
@@ -316,7 +316,7 @@ contract EpochTradeModule is IEpochTradeModule {
      */
     function _modifyShortPosition(
         Position.Data storage position,
-        uint256 depositedCollateralAmount,
+        uint256 collateralAmount,
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) internal {
@@ -329,7 +329,7 @@ contract EpochTradeModule is IEpochTradeModule {
 
             // with the collateral get vGas (Loan)
             uint256 vGasLoan = (delta * -1).toUint(); //
-            position.depositedCollateralAmount += depositedCollateralAmount;
+            position.depositedCollateralAmount += collateralAmount;
             position.borrowedVGas += vGasLoan;
 
             SwapTokensExactInParams memory params = SwapTokensExactInParams({
@@ -353,7 +353,7 @@ contract EpochTradeModule is IEpochTradeModule {
             );
         } else {
             // Decrease the position (SHORT)
-            if (depositedCollateralAmount > 0) {
+            if (collateralAmount > 0) {
                 console2.log("IT SHULD REVERT WITH UNEXPECTED COLLATERAL");
                 // return;
             }
@@ -414,12 +414,12 @@ contract EpochTradeModule is IEpochTradeModule {
      */
     function _closePosition(
         Position.Data storage position,
-        uint256 depositedCollateralAmount
+        uint256 collateralAmount
     ) internal {
         // TODO check if after settlement and use the settlement price
 
         // Add sent collateral
-        position.depositedCollateralAmount += depositedCollateralAmount;
+        position.depositedCollateralAmount += collateralAmount;
 
         if (position.currentTokenAmount > 0) {
             // Close LONG position

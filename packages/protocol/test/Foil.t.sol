@@ -68,7 +68,7 @@ contract FoilTest is Test {
                 epochId: epochStartTime,
                 amountTokenA: loanAmount0,
                 amountTokenB: loanAmount1,
-                depositedCollateralAmount: 50 ether,
+                collateralAmount: 50 ether,
                 lowerTick: 16000,
                 upperTick: 24800,
                 minAmountTokenA: 0,
@@ -110,7 +110,7 @@ contract FoilTest is Test {
         //     positionId: 2,
         //     amountTokenA: 100 ether,
         //     amountTokenB: 10 ether,
-        //     depositedCollateralAmount: 10 ether,
+        //     collateralAmount: 10 ether,
         //     lowerTick: -887200, // minTick
         //     upperTick: 887200 // maxTick
         // });

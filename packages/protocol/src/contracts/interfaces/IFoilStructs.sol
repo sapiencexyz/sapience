@@ -10,7 +10,7 @@ interface IFoilStructs {
         uint256 epochId;
         uint256 amountTokenA;
         uint256 amountTokenB;
-        uint256 depositedCollateralAmount;
+        uint256 collateralAmount;
         int24 lowerTick;
         int24 upperTick;
         uint256 minAmountTokenA;
@@ -21,7 +21,7 @@ interface IFoilStructs {
         uint256 positionId;
         uint256 amountTokenA;
         uint256 amountTokenB;
-        uint256 depositedCollateralAmount;
+        uint256 collateralAmount;
         int256 size;
     }
 

@@ -53,7 +53,7 @@ contract FoilTradeModuleTest is Test {
 
         console2.log("priceReference", priceReference);
 
-        uint256 depositedCollateralAmount = 100_000 ether;
+        uint256 collateralAmount = 100_000 ether;
         int24 lowerTick = 12200;
         int24 upperTick = 12400;
 
@@ -62,7 +62,7 @@ contract FoilTradeModuleTest is Test {
             uint256 amountTokenB,
             uint256 liquidity
         ) = getTokenAmountsForCollateralAmount(
-                depositedCollateralAmount,
+                collateralAmount,
                 lowerTick,
                 upperTick
             );
@@ -76,7 +76,7 @@ contract FoilTradeModuleTest is Test {
                 epochId: epochStartTime,
                 amountTokenA: amountTokenA,
                 amountTokenB: amountTokenB,
-                depositedCollateralAmount: depositedCollateralAmount,
+                collateralAmount: collateralAmount,
                 lowerTick: lowerTick,
                 upperTick: upperTick,
                 minAmountTokenA: 0,
@@ -133,7 +133,7 @@ contract FoilTradeModuleTest is Test {
                 epochId: epochStartTime,
                 amountTokenB: 20000 ether,
                 amountTokenA: 1000 ether,
-                depositedCollateralAmount: 100_000 ether,
+                collateralAmount: 100_000 ether,
                 lowerTick: 12200,
                 upperTick: 12400,
                 minAmountTokenA: 0,
@@ -184,7 +184,7 @@ contract FoilTradeModuleTest is Test {
                 epochId: epochStartTime,
                 amountTokenB: 20000 ether,
                 amountTokenA: 1000 ether,
-                depositedCollateralAmount: 100_000 ether,
+                collateralAmount: 100_000 ether,
                 lowerTick: 12200,
                 upperTick: 12400,
                 minAmountTokenA: 0,
@@ -236,7 +236,7 @@ contract FoilTradeModuleTest is Test {
                 epochId: epochStartTime,
                 amountTokenB: 20000 ether,
                 amountTokenA: 1000 ether,
-                depositedCollateralAmount: 100_000 ether,
+                collateralAmount: 100_000 ether,
                 lowerTick: 12200,
                 upperTick: 12400,
                 minAmountTokenA: 0,
@@ -268,7 +268,7 @@ contract FoilTradeModuleTest is Test {
     }
 
     function getTokenAmountsForCollateralAmount(
-        uint256 depositedCollateralAmount,
+        uint256 collateralAmount,
         int24 lowerTick,
         int24 upperTick
     )
@@ -286,7 +286,7 @@ contract FoilTradeModuleTest is Test {
         console2.log("sqrtPriceBX96", sqrtPriceBX96);
         (loanAmount0, loanAmount1, liquidity) = foil.getTokenAmounts(
             epochStartTime,
-            depositedCollateralAmount,
+            collateralAmount,
             sqrtPriceX96,
             sqrtPriceAX96,
             sqrtPriceBX96

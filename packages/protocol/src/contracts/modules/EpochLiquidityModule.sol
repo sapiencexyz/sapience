@@ -39,7 +39,7 @@ contract EpochLiquidityModule is
 
         position.updateCollateral(
             market.collateralAsset,
-            params.depositedCollateralAmount
+            params.collateralAmount
         );
 
         INonfungiblePositionManager.MintParams
@@ -63,13 +63,13 @@ contract EpochLiquidityModule is
 
         position.updateLoan(
             tokenId,
-            params.depositedCollateralAmount,
+            params.collateralAmount,
             addedAmount0,
             addedAmount1
         );
 
         epoch.validateCollateralRequirementsForLP(
-            params.depositedCollateralAmount,
+            params.collateralAmount,
             addedAmount0,
             addedAmount1,
             params.lowerTick,
@@ -125,7 +125,7 @@ contract EpochLiquidityModule is
 
     function decreaseLiquidityPosition(
         uint256 positionId,
-        uint256 depositedCollateralAmount,
+        uint256 collateralAmount,
         uint128 liquidity,
         uint256 minGasAmount,
         uint256 minEthAmount
@@ -138,10 +138,7 @@ contract EpochLiquidityModule is
             .uniswapPositionManager
             .positions(position.tokenId);
 
-        position.updateCollateral(
-            market.collateralAsset,
-            depositedCollateralAmount
-        );
+        position.updateCollateral(market.collateralAsset, collateralAmount);
 
         INonfungiblePositionManager.DecreaseLiquidityParams
             memory decreaseParams = INonfungiblePositionManager
@@ -159,12 +156,12 @@ contract EpochLiquidityModule is
 
         position.updateLoan(
             position.tokenId,
-            depositedCollateralAmount,
+            collateralAmount,
             amount0,
             amount1
         );
         epoch.validateCollateralRequirementsForLP(
-            depositedCollateralAmount,
+            collateralAmount,
             amount0,
             amount1,
             lowerTick,
@@ -178,7 +175,7 @@ contract EpochLiquidityModule is
 
     function increaseLiquidityPosition(
         uint256 positionId,
-        uint256 depositedCollateralAmount,
+        uint256 collateralAmount,
         uint256 gasTokenAmount,
         uint256 ethTokenAmount,
         uint256 minGasAmount,
@@ -192,10 +189,7 @@ contract EpochLiquidityModule is
             .uniswapPositionManager
             .positions(position.tokenId);
 
-        position.updateCollateral(
-            market.collateralAsset,
-            depositedCollateralAmount
-        );
+        position.updateCollateral(market.collateralAsset, collateralAmount);
 
         INonfungiblePositionManager.IncreaseLiquidityParams
             memory increaseParams = INonfungiblePositionManager
@@ -214,12 +208,12 @@ contract EpochLiquidityModule is
 
         position.updateLoan(
             position.tokenId,
-            depositedCollateralAmount,
+            collateralAmount,
             amount0,
             amount1
         );
         epoch.validateCollateralRequirementsForLP(
-            depositedCollateralAmount,
+            collateralAmount,
             amount0,
             amount1,
             lowerTick,

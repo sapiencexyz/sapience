@@ -78,11 +78,11 @@ library Position {
     function updateLoan(
         Data storage self,
         uint256 tokenId,
-        uint256 depositedCollateralAmount,
+        uint256 collateralAmount,
         uint256 amount0,
         uint256 amount1
     ) internal {
-        self.depositedCollateralAmount = depositedCollateralAmount;
+        self.depositedCollateralAmount = collateralAmount;
         self.borrowedVGas = amount0;
         self.borrowedVEth = amount1;
         self.tokenId = tokenId;
