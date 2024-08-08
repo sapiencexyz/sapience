@@ -25,10 +25,10 @@ const Header = () => {
         <Flex marginLeft="auto" gap={9} align="center" fontWeight="600">
           {/* <Link href="/subscribe">Subscribe</Link> */}
           {/* <Link href="/earn">Earn</Link> */}
-          <Link href={`/markets/13370:${FoilLocal.address}/1`}>
+          <Link href={`/markets/13370:${FoilLocal.address}/1722270000`}>
             Local Market
           </Link>
-          <Link href={`/markets/11155111:${FoilTestnet.address}/1`}>
+          <Link href={`/markets/11155111:${FoilTestnet.address}/1722270000`}>
             Testnet Market
           </Link>
           <Link href="https://docs.foil.xyz">Docs</Link>
