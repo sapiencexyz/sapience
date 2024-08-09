@@ -4,7 +4,7 @@ version="0.4"
 [var.settings]
 owner = "0xEB045D78d273107348b0300c01D29B7552D622ab"
 startTime = "1722270000" # Mon Jul 29 2024 16:20:00 GMT+0000
-endTime = "1722458027" # Wed Jul 31 2024 20:33:47 GMT+0000
+endTime = "1725900163" # Fri, 09 Sep 2024 16:42:43 GMT+0000
 baseAssetMinPriceTick = "5200" # 1.709
 baseAssetMaxPriceTick = "28200" # 17.09
 feeRate = "10000" # 1%

@@ -4,21 +4,12 @@ pragma solidity >=0.8.2 <0.9.0;
 // import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
-// import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-// import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-// import "../external/univ3/TickMath.sol";
-// import "../external/univ3/FullMath.sol";
-// import "../interfaces/external/INonfungiblePositionManager.sol";
-// import "../interfaces/external/IUniswapV3Quoter.sol";
-// import "../interfaces/external/ISwapRouter.sol";
 import "../external/VirtualToken.sol";
 import "../libraries/Quote.sol";
 import "../external/univ3/LiquidityAmounts.sol";
 import "./Debt.sol";
 // import "./Errors.sol";
 import "./Market.sol";
-
-// import "../interfaces/IFoilStructs.sol";
 
 // import "forge-std/console2.sol";
 
@@ -197,70 +188,61 @@ library Epoch {
 
     function validateSettlmentState(Data storage self) internal view {
         if (block.timestamp < self.startTime) {
-            console2.log("IT SHOULD REVERT WITH EPOCH NOT STARTED");
-            return;
-            // revert Errors.EpochNotStarted(self.startTime);
+            revert Errors.EpochNotStarted(self.startTime);
         }
 
         if (block.timestamp >= self.endTime && !self.settled) {
-            console2.log("IT SHOULD REVERT WITH EPOCH NOT SETTLED");
-            return;
-            // revert Errors.EpochNotSettled(self.endTime);
+            revert Errors.EpochNotSettled(self.endTime);
         }
     }
 
     function validateNotSettled(Data storage self) internal view {
         if (block.timestamp < self.startTime) {
-            console2.log("IT SHOULD REVERT WITH EPOCH NOT STARTED");
-            return;
-            // revert Errors.EpochNotStarted(self.startTime);
+            revert Errors.EpochNotStarted(self.startTime);
         }
 
         if (block.timestamp >= self.endTime && !self.settled) {
-            console2.log("IT SHOULD REVERT WITH EPOCH NOT SETTLED");
-            return;
-            // revert Errors.EpochNotSettled(self.endTime);
+            revert Errors.EpochNotSettled(self.endTime);
         }
 
         if (self.settled) {
-            console2.log("IT SHOULD REVERT WITH EPOCH SETTLED");
-            return;
-            // revert Errors.EpochNotSettled(self.endTime);
+            revert Errors.EpochNotSettled(self.endTime);
         }
     }
 
-    function validateProvidedLiquidity(
-        Data storage self,
-        uint256 collateralAmount,
-        uint128 liquidity,
-        int24 lowerTick,
-        int24 upperTick
-    ) internal {
-        (uint160 sqrtPriceX96, , , , , , ) = self.pool.slot0();
+    // function validateProvidedLiquidity(
+    //     Data storage self,
+    //     uint256 collateralAmount,
+    //     uint128 liquidity,
+    //     int24 lowerTick,
+    //     int24 upperTick
+    // ) internal {
+    //     (uint160 sqrtPriceX96, , , , , , ) = self.pool.slot0();
 
-        uint128 scaleFactor = 8;
-        (
-            uint256 requiredCollateral,
-            uint256 tokenAmountA,
-            uint256 tokenAmountB
-        ) = requiredCollateralForLiquidity(
-                self,
-                liquidity / scaleFactor,
-                sqrtPriceX96,
-                TickMath.getSqrtRatioAtTick(lowerTick),
-                TickMath.getSqrtRatioAtTick(upperTick)
-            );
+    //     uint128 scaleFactor = 8;
+    //     (
+    //         uint256 requiredCollateral,
+    //         uint256 tokenAmountA,
+    //         uint256 tokenAmountB
+    //     ) = requiredCollateralForLiquidity(
+    //             self,
+    //             liquidity / scaleFactor,
+    //             sqrtPriceX96,
+    //             TickMath.getSqrtRatioAtTick(lowerTick),
+    //             TickMath.getSqrtRatioAtTick(upperTick)
+    //         );
 
-        requiredCollateral *= scaleFactor;
+    //     requiredCollateral *= scaleFactor;
 
-        if (collateralAmount < requiredCollateral) {
-            revert Errors.InsufficientCollateral(
-                collateralAmount,
-                requiredCollateral
-            );
-        }
-    }
+    //     if (collateralAmount < requiredCollateral) {
+    //         revert Errors.InsufficientCollateral(
+    //             collateralAmount,
+    //             requiredCollateral
+    //         );
+    //     }
+    // }
 
+    // TODO This needs to be fixed, not sure if it's the right way to calculate the required collateral
     function requiredCollateralForLiquidity(
         Data storage self,
         uint128 liquidity,
@@ -276,6 +258,7 @@ library Epoch {
             uint256 loanAmount1
         )
     {
+        // TODO This needs to be fixed, not sure if it's the right way to calculate the required collateral
         (loanAmount0, loanAmount1) = LiquidityAmounts.getAmountsForLiquidity(
             sqrtPriceX96,
             sqrtPriceAX96,

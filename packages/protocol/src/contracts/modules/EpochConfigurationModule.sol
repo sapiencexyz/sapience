@@ -17,7 +17,12 @@ contract EpochConfigurationModule is
 
     modifier onlyOwner() {
         Market.Data storage market = Market.load();
-        require(msg.sender == market.owner, "Caller is not the owner");
+        if (msg.sender != market.owner) {
+            revert Errors.OnlyOwner();
+        }
+        if (market.owner == address(0)) {
+            revert Errors.MarketNotInitialized();
+        }
         _;
     }
 
