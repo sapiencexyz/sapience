@@ -13,7 +13,7 @@ import { useAccount, useReadContract, useReadContracts } from 'wagmi';
 
 import useFoilDeployment from './useFoilDeployment';
 import { MarketContext } from '~/lib/context/MarketProvider';
-import { PositionKind } from '~/lib/interfaces/interfaces';
+import { Position, PositionKind } from '~/lib/interfaces/interfaces';
 
 interface AccountSelectorProps {
   isLP: boolean;
@@ -73,7 +73,7 @@ const useIsLps = (ids: number[]) => {
   const tokensInfo = useReadContracts({
     contracts: ids.map((i) => {
       return {
-        abi: foilData.abi as AbiFunction[],
+        abi: foilData.abi,
         address: foilData.address as `0x${string}`,
         functionName: 'getPosition',
         args: [i],
@@ -84,8 +84,8 @@ const useIsLps = (ids: number[]) => {
   const isLps: boolean[] = useMemo(() => {
     if (!tokensInfo.data) return [];
     return tokensInfo.data.map((resp) => {
-      return true; // uncomment below when contrract is updated
-      //return  resp.positionKind === PositionKind.Liquidity
+      const position = resp.result as Position;
+      return position.kind === PositionKind.Liquidity;
     });
   }, [tokensInfo.data]);
 
