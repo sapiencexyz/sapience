@@ -77,6 +77,7 @@ library Epoch {
     }
 
     function createValid(
+        uint256 id,
         uint256 startTime,
         uint256 endTime,
         uint160 startingSqrtPriceX96
@@ -84,10 +85,10 @@ library Epoch {
         Market.Data storage market = Market.loadValid();
         IFoilStructs.EpochParams storage epochParams = market.epochParams;
 
-        epoch = load(startTime);
+        epoch = load(id);
 
         // can only be called once
-        if (epoch.endTime != 0) {
+        if (epoch.startTime != 0) {
             revert Errors.EpochAlreadyStarted();
         }
 
@@ -109,8 +110,14 @@ library Epoch {
         epoch.startTime = startTime;
         epoch.endTime = endTime;
 
-        // copy over market parameters into epoch
-        epoch.params = market.epochParams;
+        // copy over market parameters into epoch (clone them to prevent any changes to market params)
+        epoch.params.baseAssetMinPriceTick = epochParams.baseAssetMinPriceTick;
+        epoch.params.baseAssetMaxPriceTick = epochParams.baseAssetMaxPriceTick;
+        epoch.params.feeRate = epochParams.feeRate;
+        epoch.params.assertionLiveness = epochParams.assertionLiveness;
+        epoch.params.bondCurrency = epochParams.bondCurrency;
+        epoch.params.bondAmount = epochParams.bondAmount;
+        epoch.params.priceUnit = epochParams.priceUnit;
 
         VirtualToken tokenA = new VirtualToken(
             address(this),

@@ -62,13 +62,15 @@ contract EpochConfigurationModule is
         uint160 startingSqrtPriceX96
     ) external override onlyOwner {
         // load the market to check if it's already created
-        Market.loadValid();
+        Market.Data storage market = Market.loadValid();
+
+        uint256 newEpochId = market.getNewEpochId();
 
         Epoch.Data storage epoch = Epoch.createValid(
+            newEpochId,
             startTime,
             endTime,
             startingSqrtPriceX96
         );
-        Epochs.addEpoch(epoch);
     }
 }
