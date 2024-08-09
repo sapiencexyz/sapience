@@ -236,6 +236,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     abi: foilData.abi,
     address: foilData?.address as `0x${string}`,
     functionName: 'getEpoch',
+    args: [epoch],
   }) as any;
 
   useEffect(() => {

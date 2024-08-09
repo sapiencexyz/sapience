@@ -6,19 +6,14 @@ import {
   Select,
 } from '@chakra-ui/react';
 import { times } from 'lodash';
-import {
-  useContext,
-  useEffect,
-  useState,
-  type Dispatch,
-  type SetStateAction,
-} from 'react';
+import { useContext, useMemo, type Dispatch, type SetStateAction } from 'react';
 import type React from 'react';
 import type { AbiFunction } from 'viem';
 import { useAccount, useReadContract, useReadContracts } from 'wagmi';
 
 import useFoilDeployment from './useFoilDeployment';
 import { MarketContext } from '~/lib/context/MarketProvider';
+import { PositionKind } from '~/lib/interfaces/interfaces';
 
 interface AccountSelectorProps {
   isLP: boolean;
@@ -36,63 +31,64 @@ const useTokenIdsOfOwner = (ownerAddress: `0x${string}`) => {
     args: [ownerAddress],
   });
 
-  const [tokenIds, setTokenIds] = useState<number[]>([]);
+  const tokenBalance = useMemo(() => {
+    if (!balanceResult.data) return 0;
+    return parseInt(balanceResult.data.toString(), 10);
+  }, [balanceResult]);
 
-  useEffect(() => {
-    const fetchTokenIds = async () => {
-      if (balanceResult.data) {
-        const balance = parseInt(balanceResult.data.toString(), 10);
-        const tokenContracts = times(balance, (index) => ({
-          abi: foilData.abi,
-          address: foilData.address as `0x${string}`,
-          functionName: 'tokenOfOwnerByIndex',
-          args: [ownerAddress, index],
-        }));
-        /*
-        const tokensInfo = await useReadContracts({
-          contracts: tokenContracts,
-        });
+  const contracts = useMemo(() => {
+    return times(tokenBalance).map((i) => {
+      return {
+        abi: foilData.abi as AbiFunction[],
+        address: foilData.address as `0x${string}`,
+        functionName: 'tokenOfOwnerByIndex',
+        args: [ownerAddress, i],
+      };
+    });
+  }, [tokenBalance]);
 
-        if (tokensInfo.data?.length) {
-          // Extract token IDs from the responses
-          const ids = tokensInfo.data.map((resp) =>
-            parseInt(resp.toString(), 10)
-          );
-          setTokenIds(ids);
+  const tokens = useReadContracts({
+    contracts: contracts,
+  });
+
+  const tokenIds = useMemo(() => {
+    if (tokens.data) {
+      const ids = [];
+      for (const t of tokens.data) {
+        if (t.result) {
+          ids.push(parseInt(t.result.toString(), 10));
         }
-        */
       }
-    };
-
-    fetchTokenIds();
-  }, [balanceResult.data, foilData.abi, foilData.address, ownerAddress]);
-
+      return ids;
+    }
+    return [];
+  }, [tokens]);
   return tokenIds;
 };
 
 const useIsLps = (ids: number[]) => {
-  const [isLps, setIsLps] = useState<boolean[]>([]);
-  /*
-  useEffect(() => {
-    const fetchIsLps = async () => {
-      const tokenContracts = ids.map((id) => ({
+  const { chain } = useContext(MarketContext);
+  const { foilData } = useFoilDeployment(chain?.id);
+
+  const tokensInfo = useReadContracts({
+    contracts: ids.map((i) => {
+      return {
         abi: foilData.abi as AbiFunction[],
         address: foilData.address as `0x${string}`,
         functionName: 'getPosition',
-        args: [id],
-      }));
+        args: [i],
+      };
+    }),
+  });
 
-      const tokensInfo = await useReadContracts({
-        contracts: tokenContracts,
-      });
+  const isLps: boolean[] = useMemo(() => {
+    if (!tokensInfo.data) return [];
+    return tokensInfo.data.map((resp) => {
+      return true; // uncomment below when contrract is updated
+      //return  resp.positionKind === PositionKind.Liquidity
+    });
+  }, [tokensInfo.data]);
 
-      const newIsLps = [] as any[]; // tokensInfo.data?.map((resp) => resp?.isLp);
-      setIsLps(newIsLps);
-    };
-
-    fetchIsLps();
-  }, [ids]); // React to changes in the balance result
-*/
   return isLps;
 };
 

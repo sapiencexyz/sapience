@@ -15,6 +15,7 @@ import {
   RangeSliderTrack,
   RangeSliderMark,
   Flex,
+  useToast,
 } from '@chakra-ui/react';
 import { TickMath } from '@uniswap/v3-sdk';
 import { useContext, useEffect, useState } from 'react';
@@ -24,7 +25,6 @@ import {
   useWaitForTransactionReceipt,
   useAccount,
   useReadContract,
-  useSimulateContract,
 } from 'wagmi';
 
 import erc20ABI from '../../erc20abi.json';
@@ -55,7 +55,7 @@ const AddLiquidity = () => {
     collateralAssetDecimals,
   } = useContext(MarketContext);
   const { foilData } = useFoilDeployment(chain?.id);
-
+  const toast = useToast();
   const account = useAccount();
   const { isConnected } = account;
 
@@ -74,6 +74,7 @@ const AddLiquidity = () => {
   const [minAmountTokenB, setMinAmountTokenB] = useState(0);
   const [slippage, setSlippage] = useState<number>(0.5);
   const [allowance, setAllowance] = useState<string | null>(null);
+  const [transactionStep, setTransactionStep] = useState(0);
 
   const tickLower = priceToTick(lowPrice, tickSpacingDefault);
   const tickUpper = priceToTick(highPrice, tickSpacingDefault);
@@ -95,11 +96,16 @@ const AddLiquidity = () => {
     chainId: chain?.id,
   });
 
-  const [transactionStep, setTransactionStep] = useState(0);
-
-  const { data: approveHash, writeContract: approveWrite } = useWriteContract();
-  const { data: addLiquidityHash, writeContract: addLiquidityWrite } =
-    useWriteContract();
+  const {
+    data: approveHash,
+    writeContract: approveWrite,
+    error: approveError,
+  } = useWriteContract();
+  const {
+    data: addLiquidityHash,
+    writeContract: addLiquidityWrite,
+    error: addLiquidityError,
+  } = useWriteContract();
 
   const { isSuccess: approveSuccess } = useWaitForTransactionReceipt({
     hash: approveHash,
@@ -108,6 +114,36 @@ const AddLiquidity = () => {
   const { isSuccess: addLiquiditySuccess } = useWaitForTransactionReceipt({
     hash: addLiquidityHash,
   });
+
+  // handle liquidity error
+  useEffect(() => {
+    if (addLiquidityError) {
+      console.error('addLiquidityError - ', addLiquidityError.message);
+      toast({
+        title: 'Unable to Add Liquidity',
+        description: addLiquidityError.message,
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+      });
+      setTransactionStep(0);
+    }
+  }, [addLiquidityError]);
+
+  // handle approval error
+  useEffect(() => {
+    if (approveError) {
+      console.error('approveError.message -', approveError.message);
+      toast({
+        title: 'Unable to approve',
+        description: approveError.message,
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+      });
+      setTransactionStep(0);
+    }
+  }, [approveError]);
 
   useEffect(() => {
     setLowPrice(tickToPrice(baseAssetMinPriceTick));
@@ -178,6 +214,13 @@ const AddLiquidity = () => {
 
     if (error) {
       console.error('Failed to fetch token amounts', error);
+      toast({
+        title: 'Failed to fetch token amounts',
+        description: error.message,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
     }
   }, [tokenAmounts, error]);
 
