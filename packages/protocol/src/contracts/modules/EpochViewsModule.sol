@@ -60,6 +60,7 @@ contract EpochViewsModule is IEpochViewsModule {
         view
         override
         returns (
+            uint256 epochId,
             uint256 startTime,
             uint256 endTime,
             address pool,
@@ -67,8 +68,15 @@ contract EpochViewsModule is IEpochViewsModule {
             address gasToken
         )
     {
-        Epoch.Data storage epoch = Epochs.getLatestEpoch();
+        epochId = Market.load().lastEpochId;
+
+        if (epochId == 0) {
+            revert Errors.NoEpochsCreated();
+        }
+        Epoch.Data storage epoch = Epoch.load(epochId);
+
         return (
+            epochId,
             epoch.startTime,
             epoch.endTime,
             address(epoch.pool),
@@ -81,28 +89,5 @@ contract EpochViewsModule is IEpochViewsModule {
         uint256 positionId
     ) external pure override returns (Position.Data memory) {
         return Position.load(positionId);
-    }
-
-    function getLatestEpoch()
-        internal
-        view
-        returns (
-            uint256 startTime,
-            uint256 endTime,
-            address pool,
-            address ethToken,
-            address gasToken
-        )
-    {
-        Market.Data storage market = Market.load();
-
-        if (market.lastId == 0) {
-            revert Errors.NoEpochsCreated();
-        }
-        Epoch.Data epoch = Epoch.load(market.lastId);
-
-        startTime = epoch.startTime;
-
-        return Epoch.load(market.lastId);
     }
 }

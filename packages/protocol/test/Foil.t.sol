@@ -27,7 +27,7 @@ contract FoilTest is Test {
     address constant UNISWAP = 0xC36442b4a4522E871399CD717aBDD847Ab11FE88;
     address constant UNISWAP_QUOTER =
         0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6;
-    uint256 epochStartTime;
+    uint256 epochId;
 
     IMintableToken collateralAsset;
 
@@ -39,7 +39,7 @@ contract FoilTest is Test {
         collateralAsset.mint(1000 ether, address(this));
         collateralAsset.approve(address(foil), 1000 ether);
 
-        (epochStartTime, , , , ) = foil.getLatestEpoch();
+        (epochId, , , , , ) = foil.getLatestEpoch();
     }
 
     function test_addLiquidity() public {
@@ -56,7 +56,7 @@ contract FoilTest is Test {
         uint160 sqrtPriceAX96 = 176318465955219228901572735582;
         uint160 sqrtPriceBX96 = 273764932352251420676860998407;
         (uint256 loanAmount0, uint256 loanAmount1, ) = foil.getTokenAmounts(
-            epochStartTime,
+            epochId,
             50 ether,
             sqrtPriceX96,
             sqrtPriceAX96,
@@ -65,7 +65,7 @@ contract FoilTest is Test {
 
         IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
             .LiquidityPositionParams({
-                epochId: epochStartTime,
+                epochId: epochId,
                 amountTokenA: loanAmount0,
                 amountTokenB: loanAmount1,
                 collateralAmount: 50 ether,

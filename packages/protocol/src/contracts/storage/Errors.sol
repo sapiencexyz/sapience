@@ -7,6 +7,7 @@ library Errors {
     error MarketAlreadyCreated();
     error PositionAlreadyCreated();
     error InvalidPositionId(uint256 positionId);
+    error NoEpochsCreated();
     error InvalidEpoch();
     error InvalidAmount(uint256 amount);
     error InvalidStartTime(uint256 time);
@@ -21,10 +22,8 @@ library Errors {
     error EpochAlreadyStarted();
     error TokensAlreadyCreated();
     error PoolAlreadyCreated();
-    error NoEpochs();
     error NotAccountOwnerOrAuthorized(uint256 tokenId, address sender);
     error NotEnoughCredit(uint256 amount, uint256 credit);
     error InsufficientCollateral(uint256 amount, uint256 collateral);
     error IndexOverrun(uint256 requestedIndex, uint256 length);
-    error InvalidLiquidityModification();
 }
