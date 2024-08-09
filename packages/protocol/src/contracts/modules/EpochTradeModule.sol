@@ -273,8 +273,9 @@ contract EpochTradeModule is IEpochTradeModule {
         } else {
             // Reduce the position (LONG)
             if (collateralAmount > 0) {
-                console2.log("IT SHULD REVERT WITH UNEXPECTED COLLATERAL");
-                // return;
+                revert Errors.InvalidData(
+                    "Long Position: Unexpected collateral"
+                );
             }
 
             int256 delta = (tokenAmount - position.currentTokenAmount);
@@ -362,8 +363,9 @@ contract EpochTradeModule is IEpochTradeModule {
         } else {
             // Decrease the position (SHORT)
             if (collateralAmount > 0) {
-                console2.log("IT SHULD REVERT WITH UNEXPECTED COLLATERAL");
-                // return;
+                revert Errors.InvalidData(
+                    "Short Position: Unexpected collateral"
+                );
             }
 
             int256 delta = (position.currentTokenAmount - tokenAmount);

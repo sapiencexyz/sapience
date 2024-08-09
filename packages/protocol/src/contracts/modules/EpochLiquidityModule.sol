@@ -93,8 +93,6 @@ contract EpochLiquidityModule is
     ) external override returns (bytes4) {
         // get position information
 
-        console2.log("onERC721Received", tokenId);
-
         return this.onERC721Received.selector;
     }
 
