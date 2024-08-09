@@ -46,7 +46,7 @@ contract FoilTradeModuleTest is Test {
         console2.log("epochId", epochId);
     }
 
-    function test_trade_long_Only() public {
+    function test_trade_long() public {
         uint256 priceReference;
         uint256 positionId_1;
         priceReference = foil.getReferencePrice(epochId);
@@ -225,7 +225,7 @@ contract FoilTradeModuleTest is Test {
         logPositionAndAccount(positionId_2);
     }
 
-    function test_trade_short_cross_sides() public {
+    function test_trade_short_cross_sides_Only() public {
         uint256 priceReference;
         uint256 positionId_4;
         priceReference = foil.getReferencePrice(epochId);

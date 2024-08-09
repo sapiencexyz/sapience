@@ -73,6 +73,7 @@ contract EpochTradeModule is IEpochTradeModule {
         ) {
             // go to zero before moving to the other side
             _closePosition(position, collateralAmount);
+            collateralAmount = 0; // Already accounted in the close position
         }
 
         if (tokenAmount > 0) {
@@ -241,9 +242,9 @@ contract EpochTradeModule is IEpochTradeModule {
             uint256 delta = (tokenAmount - position.currentTokenAmount)
                 .toUint();
             // with the collateral get vEth (Loan)
-            uint256 vEthLoan = collateralAmount; // 1:1
             position.depositedCollateralAmount += collateralAmount;
-            position.borrowedVEth += vEthLoan;
+            uint256 vEthLoan = position.depositedCollateralAmount; // 1:1
+            position.borrowedVEth = vEthLoan;
 
             SwapTokensExactOutParams memory params = SwapTokensExactOutParams({
                 epochId: position.epochId,
