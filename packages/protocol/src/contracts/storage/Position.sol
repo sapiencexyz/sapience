@@ -7,6 +7,7 @@ import {SafeCastU256} from "../../synthetix/utils/SafeCast.sol";
 
 library Position {
     using SafeCastU256 for uint256;
+    using Epoch for Epoch.Data;
 
     struct Data {
         uint256 tokenId; // nft id
@@ -107,5 +108,15 @@ library Position {
         }
 
         self.depositedCollateralAmount = amount;
+    }
+
+    function afterTradeCheck(Data storage self) internal view {
+        Epoch.load(self.epochId).validateCollateralRequirementsForTrade(
+            self.depositedCollateralAmount,
+            self.vGasAmount,
+            self.vEthAmount,
+            self.borrowedVGas,
+            self.borrowedVEth
+        );
     }
 }

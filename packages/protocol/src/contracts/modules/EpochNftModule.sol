@@ -4,7 +4,7 @@ pragma solidity >=0.8.25 <0.9.0;
 import "../interfaces/IERC721Enumerable.sol";
 import "../storage/ERC721Storage.sol";
 import "../storage/ERC721EnumerableStorage.sol";
-import "forge-std/console2.sol";
+// import "forge-std/console2.sol";
 
 contract EpochNftModule is IERC721Enumerable {
     constructor() {}
