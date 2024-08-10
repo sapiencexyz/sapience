@@ -1,5 +1,5 @@
 {
-  "address": "0xf854ff714f174D0f5ac6859c4D5722C22b213F26",
+  "address": "0x0660A1E92Ff10E2fA30fe971812A1Eb99b2d8313",
   "abi": [
     {
       "type": "function",
@@ -45,6 +45,11 @@
       "name": "getLatestEpoch",
       "inputs": [],
       "outputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
         {
           "name": "startTime",
           "type": "uint256",
@@ -218,16 +223,21 @@
         }
       ],
       "stateMutability": "pure"
+    },
+    {
+      "type": "error",
+      "name": "NoEpochsCreated",
+      "inputs": []
     }
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x43c9dbbd40f9f7ea4858eac87936e3db2e674178bf4b16ce0224af92c8bb0e49",
-  "deployTxnBlockNumber": "6461955",
-  "deployTimestamp": "1723138752",
+  "deployTxnHash": "0x43fc7637f2e3e32338e8080ec625a984d222c9020f596a068821cc70ef466fc1",
+  "deployTxnBlockNumber": "6474233",
+  "deployTimestamp": "1723307076",
   "sourceName": "src/contracts/modules/EpochViewsModule.sol",
   "contractName": "EpochViewsModule",
   "deployedOn": "deploy.EpochViewsModule",
-  "gasUsed": 440259,
-  "gasCost": "1564225882"
+  "gasUsed": 443339,
+  "gasCost": "1001152855"
 }
