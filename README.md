@@ -11,3 +11,10 @@
   * `pnpm run dev:website` and access at http://localhost:3002
 * Start the docs
   * `pnpm run dev:docs` and access at http://localhost:3003
+
+## Deploy
+
+In `/packages/protcol`:
+* Increment the version number in the cannonfiles
+* Run `pnpm simulate-deploy:sepolia` to verify there are no issues
+* Run `CANNON_PRIVATE_KEY=x CANNON_PROVIDER_URL=y pnpm deploy sepolia` (or set those values in a `.env` file)

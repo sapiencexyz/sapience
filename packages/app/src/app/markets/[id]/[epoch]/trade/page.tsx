@@ -5,11 +5,16 @@ import { Flex } from '@chakra-ui/react';
 import TraderPositions from '~/lib/components/foil/traderPositions';
 import { MarketProvider } from '~/lib/context/MarketProvider';
 
-const Market = ({ params }: { params: { id: string } }) => {
+const Market = ({ params }: { params: { id: string; epoch: string } }) => {
   const [chainId, marketAddress] = params.id.split('%3A');
+  const { epoch } = params;
 
   return (
-    <MarketProvider chainId={Number(chainId)} address={marketAddress}>
+    <MarketProvider
+      chainId={Number(chainId)}
+      address={marketAddress}
+      epoch={Number(epoch)}
+    >
       <Flex
         direction="column"
         alignItems="left"

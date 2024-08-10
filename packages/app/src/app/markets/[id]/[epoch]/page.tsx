@@ -2,7 +2,6 @@
 
 import {
   Flex,
-  Heading,
   Box,
   Tab,
   TabList,
@@ -19,7 +18,7 @@ import TraderPosition from '~/lib/components/foil/traderPosition';
 import TraderPositionsTable from '~/lib/components/foil/traderPositionsTable';
 import { MarketProvider } from '~/lib/context/MarketProvider';
 
-const Market = ({ params }: { params: { id: string, epoch: string } }) => {
+const Market = ({ params }: { params: { id: string; epoch: string } }) => {
   const [chainId, marketAddress] = params.id.split('%3A');
   const { epoch } = params;
 
