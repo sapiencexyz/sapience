@@ -2,8 +2,9 @@
 pragma solidity >=0.8.25 <0.9.0;
 
 // TODO Reentrancy guard should be refactored as router compatible (uses local storage)
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../interfaces/IEpochConfigurationModule.sol";
+import "../storage/ReentrancyGuard.sol";
+
 import "../storage/Market.sol";
 import "../storage/Epoch.sol";
 
@@ -35,6 +36,8 @@ contract EpochConfigurationModule is
         address optimisticOracleV3,
         IFoilStructs.EpochParams memory epochParams
     ) external override {
+        initializeReentrancy();
+
         Market.createValid(
             owner,
             collateralAsset,

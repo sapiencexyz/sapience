@@ -2,8 +2,8 @@
 pragma solidity >=0.8.25 <0.9.0;
 
 import "../storage/ERC721EnumerableStorage.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../storage/Position.sol";
+import {ReentrancyGuard} from "../storage/ReentrancyGuard.sol";
 import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
 import {IEpochLiquidityModule} from "../interfaces/IEpochLiquidityModule.sol";
 
@@ -22,6 +22,7 @@ contract EpochLiquidityModule is
     )
         external
         override
+        nonReentrant
         returns (
             uint256 tokenId,
             uint128 liquidity,
@@ -127,7 +128,12 @@ contract EpochLiquidityModule is
         uint128 liquidity,
         uint256 minGasAmount,
         uint256 minEthAmount
-    ) external override returns (uint256 amount0, uint256 amount1) {
+    )
+        external
+        override
+        nonReentrant
+        returns (uint256 amount0, uint256 amount1)
+    {
         Market.Data storage market = Market.load();
         Position.Data storage position = Position.load(positionId);
         Epoch.Data storage epoch = Epoch.load(position.epochId);
@@ -171,6 +177,15 @@ contract EpochLiquidityModule is
         // transfer or remove collateral
     }
 
+    struct IncreaseLiquidityRuntime {
+        // Market.Data market;
+        // Epoch.Data epoch;
+        // Position.Data position;
+        int24 lowerTick;
+        int24 upperTick;
+        INonfungiblePositionManager.IncreaseLiquidityParams increaseParams;
+    }
+
     function increaseLiquidityPosition(
         uint256 positionId,
         uint256 collateralAmount,
@@ -178,31 +193,37 @@ contract EpochLiquidityModule is
         uint256 ethTokenAmount,
         uint256 minGasAmount,
         uint256 minEthAmount
-    ) external returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
+    )
+        external
+        override
+        nonReentrant
+        returns (uint128 liquidity, uint256 amount0, uint256 amount1)
+    {
         Market.Data storage market = Market.load();
         Position.Data storage position = Position.load(positionId);
         Epoch.Data storage epoch = Epoch.load(position.epochId);
 
-        (, , , , , int24 lowerTick, int24 upperTick, , , , , ) = market
+        IncreaseLiquidityRuntime memory runtime;
+
+        (, , , , , runtime.lowerTick, runtime.upperTick, , , , , ) = market
             .uniswapPositionManager
             .positions(position.tokenId);
 
         position.updateCollateral(market.collateralAsset, collateralAmount);
 
-        INonfungiblePositionManager.IncreaseLiquidityParams
-            memory increaseParams = INonfungiblePositionManager
-                .IncreaseLiquidityParams({
-                    tokenId: position.tokenId,
-                    amount0Desired: gasTokenAmount,
-                    amount1Desired: ethTokenAmount,
-                    amount0Min: minGasAmount,
-                    amount1Min: minEthAmount,
-                    deadline: block.timestamp
-                });
+        runtime.increaseParams = INonfungiblePositionManager
+            .IncreaseLiquidityParams({
+                tokenId: position.tokenId,
+                amount0Desired: gasTokenAmount,
+                amount1Desired: ethTokenAmount,
+                amount0Min: minGasAmount,
+                amount1Min: minEthAmount,
+                deadline: block.timestamp
+            });
 
         (liquidity, amount0, amount1) = market
             .uniswapPositionManager
-            .increaseLiquidity(increaseParams);
+            .increaseLiquidity(runtime.increaseParams);
 
         position.updateLoan(
             position.tokenId,
@@ -214,8 +235,8 @@ contract EpochLiquidityModule is
             collateralAmount,
             amount0,
             amount1,
-            lowerTick,
-            upperTick
+            runtime.lowerTick,
+            runtime.upperTick
         );
 
         emit LiquidityPositionIncreased(

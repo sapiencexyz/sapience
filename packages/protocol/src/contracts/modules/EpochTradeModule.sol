@@ -3,6 +3,7 @@ pragma solidity >=0.8.25 <0.9.0;
 
 import "../storage/Position.sol";
 import "../storage/ERC721Storage.sol";
+import "../storage/ReentrancyGuard.sol";
 import "../../synthetix/utils/DecimalMath.sol";
 import {SafeCastI256} from "../../synthetix/utils/SafeCast.sol";
 import {SafeCastU256} from "../../synthetix/utils/SafeCast.sol";
@@ -10,7 +11,7 @@ import {IEpochTradeModule} from "../interfaces/IEpochTradeModule.sol";
 
 // import "forge-std/console2.sol";
 
-contract EpochTradeModule is IEpochTradeModule {
+contract EpochTradeModule is IEpochTradeModule, ReentrancyGuard {
     using Epoch for Epoch.Data;
     using Position for Position.Data;
     using DecimalMath for uint256;
@@ -22,7 +23,7 @@ contract EpochTradeModule is IEpochTradeModule {
         uint256 collateralAmount,
         int256 tokenAmount,
         int256 tokenAmountLimit
-    ) external override returns (uint256 positionId) {
+    ) external override nonReentrant returns (uint256 positionId) {
         // create/load account
         Epoch.Data storage epoch = Epoch.load(epochId);
 
@@ -50,6 +51,10 @@ contract EpochTradeModule is IEpochTradeModule {
             );
         }
 
+        // Transfer collateral
+        Market.Data storage market = Market.load();
+        position.updateCollateral(market.collateralAsset, collateralAmount);
+
         // Validate after trading that collateral is enough
         position.afterTradeCheck();
     }
@@ -59,7 +64,7 @@ contract EpochTradeModule is IEpochTradeModule {
         uint256 collateralAmount,
         int256 tokenAmount,
         int256 tokenAmountLimit
-    ) external override {
+    ) external override nonReentrant {
         // Notice: positionId is the tokenId
         if (ERC721Storage._ownerOf(positionId) != msg.sender) {
             revert Errors.NotAccountOwnerOrAuthorized(positionId, msg.sender);
@@ -91,6 +96,10 @@ contract EpochTradeModule is IEpochTradeModule {
                 tokenAmountLimit
             );
         }
+
+        // Transfer collateral
+        Market.Data storage market = Market.load();
+        position.updateCollateral(market.collateralAsset, collateralAmount);
 
         // Validate after trading that collateral is enough
         position.afterTradeCheck();

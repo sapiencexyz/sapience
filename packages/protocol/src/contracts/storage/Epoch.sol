@@ -465,14 +465,6 @@ library Epoch {
         decimalPrice = (((uint256(sqrtPriceX96) * 1e18) / 2 ** 96) ** 2) / 1e18;
     }
 
-    // function transferCollateral(Data storage self, uint256 amount) internal {
-    //     IERC20(self.collateralAsset).transferFrom(
-    //         msg.sender,
-    //         address(this),
-    //         amount
-    //     );
-    // }
-
     // function settle(Data storage self) internal {
     //     if (self.settled) {
     //         revert Errors.EpochAlreadySettled(self.id);
