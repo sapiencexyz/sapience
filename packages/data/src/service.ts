@@ -7,6 +7,8 @@ import express from 'express';
 import { Between } from 'typeorm';
 import connectionOptions from './db';
 
+const PORT = 3001;
+
 const app = express();
 app.use(express.json());
 app.use(cors());
@@ -29,6 +31,57 @@ createConnection(connectionOptions).then(async connection => {
 
         const prices = await priceRepository.find({ where });
         res.json(prices);
+    });
+
+    app.get('/prices/chart-data', async (req, res) => {
+        const { startTimestamp, endTimestamp, contractId } = req.query;
+        const where: any = {};
+    
+        if (startTimestamp && endTimestamp) {
+            where.timestamp = Between(Number(startTimestamp), Number(endTimestamp));
+        }
+        if (contractId) {
+            where.contractId = contractId;
+        }
+    
+        const prices = await priceRepository.find({
+            where,
+            order: {
+                timestamp: 'ASC'
+            }
+        });
+    
+        if (prices.length === 0) {
+            return res.status(404).json({ error: 'No data found for the specified range and contractId' });
+        }
+    
+        // Group prices by date (ignoring time)
+        const groupedPrices: { [date: string]: any[] } = prices.reduce((acc: Record<string, any[]>, price) => {
+            const date = new Date(price.timestamp).toISOString().split('T')[0]; // Extract the date part in 'YYYY-MM-DD' format
+            if (!acc[date]) {
+                acc[date] = [];
+            }
+            acc[date].push(price);
+            return acc;
+        }, {} as Record<string, any[]>);        
+    
+        // Create candlestick data from grouped prices
+        const chartData = Object.entries(groupedPrices).map(([date, prices]) => {
+            const open = prices[0].value; // First price of the day
+            const close = prices[prices.length - 1].value; // Last price of the day
+            const high = Math.max(...prices.map(p => p.value)); // Highest price of the day
+            const low = Math.min(...prices.map(p => p.value)); // Lowest price of the day
+    
+            return {
+                date, // This will be in 'YYYY-MM-DD' format
+                open,
+                close,
+                low,
+                high,
+            };
+        });
+    
+        res.json(chartData);
     });
 
    // Get average price over a specified time period filtered by contractId
@@ -122,7 +175,7 @@ createConnection(connectionOptions).then(async connection => {
         res.json(positions);
     });
 
-    app.listen(3000, () => {
-        console.log('Server is running on port 3000');
+    app.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
     });
 }).catch(error => console.log(error));

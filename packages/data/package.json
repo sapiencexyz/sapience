@@ -5,11 +5,12 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "dev:service": "ts-node-dev src/service.ts --port 3001",
+    "dev:service": "ts-node-dev src/service.ts",
     "dev:worker": "ts-node-dev src/worker.ts",
     "start:service": "ts-node src/service.ts",
     "start:worker": "ts-node src/worker.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "index-sepolia": "ts-node-dev src/worker.ts index-sepolia"
   },
   "keywords": [],
   "author": "",
