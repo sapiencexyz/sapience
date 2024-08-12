@@ -20,7 +20,7 @@ interface IEpochConfigurationModule {
         address uniswapQuoter,
         address uniswapSwapRouter,
         address optimisticOracleV3,
-        IFoilStructs.EpochParams memory epochParms
+        IFoilStructs.EpochParams memory epochParams
     ) external;
 
     function createEpoch(

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.25 <0.9.0;
 
-import "../storage/Epochs.sol";
+import "../storage/Epoch.sol";
 import "../interfaces/IEpochViewsModule.sol";
 
 contract EpochViewsModule is IEpochViewsModule {
@@ -60,6 +60,7 @@ contract EpochViewsModule is IEpochViewsModule {
         view
         override
         returns (
+            uint256 epochId,
             uint256 startTime,
             uint256 endTime,
             address pool,
@@ -67,8 +68,15 @@ contract EpochViewsModule is IEpochViewsModule {
             address gasToken
         )
     {
-        Epoch.Data storage epoch = Epochs.getLatestEpoch();
+        epochId = Market.load().lastEpochId;
+
+        if (epochId == 0) {
+            revert Errors.NoEpochsCreated();
+        }
+        Epoch.Data storage epoch = Epoch.load(epochId);
+
         return (
+            epochId,
             epoch.startTime,
             epoch.endTime,
             address(epoch.pool),

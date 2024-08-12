@@ -25,6 +25,7 @@ contract EpochTradeModule is IEpochTradeModule {
     ) external override returns (uint256 positionId) {
         // create/load account
         Epoch.Data storage epoch = Epoch.load(epochId);
+
         // check if epoch is not settled
         epoch.validateNotSettled();
 
@@ -48,6 +49,9 @@ contract EpochTradeModule is IEpochTradeModule {
                 tokenAmountLimit
             );
         }
+
+        // Validate after trading that collateral is enough
+        position.afterTradeCheck();
     }
 
     function modifyTraderPosition(
@@ -56,12 +60,11 @@ contract EpochTradeModule is IEpochTradeModule {
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) external override {
-        // identify the account and position
         // Notice: positionId is the tokenId
-        require(
-            ERC721Storage._ownerOf(positionId) == msg.sender,
-            "Not NFT owner"
-        );
+        if (ERC721Storage._ownerOf(positionId) != msg.sender) {
+            revert Errors.NotAccountOwnerOrAuthorized(positionId, msg.sender);
+        }
+
         Position.Data storage position = Position.loadValid(positionId);
 
         if (
@@ -70,6 +73,7 @@ contract EpochTradeModule is IEpochTradeModule {
         ) {
             // go to zero before moving to the other side
             _closePosition(position, collateralAmount);
+            collateralAmount = 0; // Already accounted in the close position
         }
 
         if (tokenAmount > 0) {
@@ -87,6 +91,9 @@ contract EpochTradeModule is IEpochTradeModule {
                 tokenAmountLimit
             );
         }
+
+        // Validate after trading that collateral is enough
+        position.afterTradeCheck();
     }
 
     function getReferencePrice(
@@ -123,8 +130,9 @@ contract EpochTradeModule is IEpochTradeModule {
         position.borrowedVEth += vEthLoan;
 
         if (tokenAmount < 0 || tokenAmountLimit < 0) {
-            console2.log("IT SHOULD REVERT WITH UNEXPECTED LONG POSITION");
-            // TODO revert
+            revert Errors.InvalidData(
+                "Long Position: Invalid tokenAmount or tokenAmountLimit"
+            );
         }
 
         // with the vEth get vGas (Swap)
@@ -153,7 +161,6 @@ contract EpochTradeModule is IEpochTradeModule {
             tokenAmountVEth.toInt(),
             tokenAmountVGas.toInt()
         );
-        // TODO check if the collateral is enough for the position
     }
 
     /**
@@ -178,8 +185,9 @@ contract EpochTradeModule is IEpochTradeModule {
         position.borrowedVGas += vGasLoan;
 
         if (tokenAmount > 0 || tokenAmountLimit > 0) {
-            console2.log("IT SHOULD REVERT WITH UNEXPECTED SHORT POSITION");
-            // TODO revert
+            revert Errors.InvalidData(
+                "Short Position: Invalid tokenAmount or tokenAmountLimit"
+            );
         }
 
         // with the vGas get vEth (Swap)
@@ -199,8 +207,6 @@ contract EpochTradeModule is IEpochTradeModule {
             tokenAmountVEth.toInt(),
             tokenAmountVGas.toInt()
         );
-
-        // TODO check if the collateral is enough for the position
     }
 
     /**
@@ -236,9 +242,9 @@ contract EpochTradeModule is IEpochTradeModule {
             uint256 delta = (tokenAmount - position.currentTokenAmount)
                 .toUint();
             // with the collateral get vEth (Loan)
-            uint256 vEthLoan = collateralAmount; // 1:1
             position.depositedCollateralAmount += collateralAmount;
-            position.borrowedVEth += vEthLoan;
+            uint256 vEthLoan = position.depositedCollateralAmount; // 1:1
+            position.borrowedVEth = vEthLoan;
 
             SwapTokensExactOutParams memory params = SwapTokensExactOutParams({
                 epochId: position.epochId,
@@ -267,8 +273,9 @@ contract EpochTradeModule is IEpochTradeModule {
         } else {
             // Reduce the position (LONG)
             if (collateralAmount > 0) {
-                console2.log("IT SHULD REVERT WITH UNEXPECTED COLLATERAL");
-                // return;
+                revert Errors.InvalidData(
+                    "Long Position: Unexpected collateral"
+                );
             }
 
             int256 delta = (tokenAmount - position.currentTokenAmount);
@@ -320,6 +327,8 @@ contract EpochTradeModule is IEpochTradeModule {
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) internal {
+        // TODO check if after settlement and use the settlement price
+
         if (tokenAmount < position.currentTokenAmount) {
             // Increase the position (SHORT)
 
@@ -354,8 +363,9 @@ contract EpochTradeModule is IEpochTradeModule {
         } else {
             // Decrease the position (SHORT)
             if (collateralAmount > 0) {
-                console2.log("IT SHULD REVERT WITH UNEXPECTED COLLATERAL");
-                // return;
+                revert Errors.InvalidData(
+                    "Short Position: Unexpected collateral"
+                );
             }
 
             int256 delta = (position.currentTokenAmount - tokenAmount);
@@ -604,14 +614,14 @@ contract EpochTradeModule is IEpochTradeModule {
         if (
             params.expectedAmountOutVEth > 0 && params.expectedAmountOutVGas > 0
         ) {
-            revert("Only one token can be traded at a time");
+            revert Errors.InvalidData("Only one token can be traded at a time");
         }
 
         if (
             params.expectedAmountOutVEth == 0 &&
             params.expectedAmountOutVGas == 0
         ) {
-            revert("At least one token should be traded");
+            revert Errors.InvalidData("At least one token should be traded");
         }
 
         Market.Data storage market = Market.load();
@@ -681,8 +691,9 @@ contract EpochTradeModule is IEpochTradeModule {
                 if (params.availableAmountInVGas > amountIn) {
                     refundAmountVGas = params.availableAmountInVGas - amountIn;
                 } else {
-                    console2.log(
-                        "IT SHOULD REVERT WITH NOT ENOUGH availableAmountInVGas"
+                    revert Errors.InsufficientVGas(
+                        amountIn,
+                        params.availableAmountInVGas
                     );
                 }
                 refundAmountVGas = params.availableAmountInVGas - amountIn;
@@ -690,8 +701,9 @@ contract EpochTradeModule is IEpochTradeModule {
                 if (params.availableAmountInVEth > amountIn) {
                     refundAmountVEth = params.availableAmountInVEth - amountIn;
                 } else {
-                    console2.log(
-                        "IT SHOULD REVERT WITH NOT ENOUGH availableAmountInVEth"
+                    revert Errors.InsufficientVEth(
+                        amountIn,
+                        params.availableAmountInVEth
                     );
                 }
             }

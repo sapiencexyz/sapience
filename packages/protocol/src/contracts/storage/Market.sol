@@ -17,6 +17,7 @@ library Market {
         ISwapRouter uniswapSwapRouter;
         OptimisticOracleV3Interface optimisticOracleV3;
         IFoilStructs.EpochParams epochParams;
+        uint256 lastEpochId; // index of the last epoch
     }
 
     function load() internal pure returns (Data storage market) {
@@ -87,5 +88,10 @@ library Market {
         if (address(market.uniswapPositionManager) == address(0)) {
             revert Errors.InvalidMarket();
         }
+    }
+
+    function getNewEpochId(Data storage self) internal returns (uint256) {
+        self.lastEpochId++;
+        return self.lastEpochId;
     }
 }

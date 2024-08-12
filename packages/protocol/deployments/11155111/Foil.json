@@ -1,5 +1,5 @@
 {
-  "address": "0x9bd89951782b4341941c9a6a80c38b244f8651f7",
+  "address": "0xa088d9093076894185184c3b1e4ab524fc947720",
   "abi": [
     {
       "type": "function",
@@ -203,6 +203,16 @@
     {
       "type": "error",
       "name": "MarketAlreadyCreated",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "MarketNotInitialized",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OnlyOwner",
       "inputs": []
     },
     {
@@ -923,6 +933,76 @@
     },
     {
       "type": "error",
+      "name": "EpochNotSettled",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "EpochNotStarted",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InsufficientVEth",
+      "inputs": [
+        {
+          "name": "amount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "vEth",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InsufficientVGas",
+      "inputs": [
+        {
+          "name": "amount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "vGas",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "NotAccountOwnerOrAuthorized",
+      "inputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "OverflowUint256ToUint160",
       "inputs": []
     },
@@ -1389,6 +1469,11 @@
       "inputs": [],
       "outputs": [
         {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
           "name": "startTime",
           "type": "uint256",
           "internalType": "uint256"
@@ -1561,14 +1646,19 @@
         }
       ],
       "stateMutability": "pure"
+    },
+    {
+      "type": "error",
+      "name": "NoEpochsCreated",
+      "inputs": []
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0x0f8c8efdcadad3b63738b9def795b885bec3f3dd2719a0824c6fdde27f1c7f85",
-  "deployTxnBlockNumber": "6461959",
-  "deployTimestamp": "1723138812",
+  "deployTxnHash": "0xe954629061d99bc95f0a2721a06458214f0f7910574057d59d1d94e007d13c70",
+  "deployTxnBlockNumber": "6474236",
+  "deployTimestamp": "1723307112",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
-  "gasUsed": 428908,
-  "gasCost": "1674772660"
+  "gasUsed": 428716,
+  "gasCost": "964291468"
 }

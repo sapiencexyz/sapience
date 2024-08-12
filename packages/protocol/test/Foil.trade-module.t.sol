@@ -23,7 +23,7 @@ contract FoilTradeModuleTest is Test {
     address pool;
     address tokenA;
     address tokenB;
-    uint256 epochStartTime;
+    uint256 epochId;
 
     IMintableToken collateralAsset;
 
@@ -38,18 +38,18 @@ contract FoilTradeModuleTest is Test {
 
         console2.log("getEpoch");
 
-        (epochStartTime, , pool, tokenA, tokenB) = foil.getLatestEpoch();
+        (epochId, , , pool, tokenA, tokenB) = foil.getLatestEpoch();
 
         console2.log("pool", pool);
         console2.log("tokenA", tokenA);
         console2.log("tokenB", tokenB);
-        console2.log("epochStartTime", epochStartTime);
+        console2.log("epochId", epochId);
     }
 
-    function test_trade_long_Only() public {
+    function test_trade_long() public {
         uint256 priceReference;
         uint256 positionId_1;
-        priceReference = foil.getReferencePrice(epochStartTime);
+        priceReference = foil.getReferencePrice(epochId);
 
         console2.log("priceReference", priceReference);
 
@@ -73,7 +73,7 @@ contract FoilTradeModuleTest is Test {
 
         IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
             .LiquidityPositionParams({
-                epochId: epochStartTime,
+                epochId: epochId,
                 amountTokenA: amountTokenA,
                 amountTokenB: amountTokenB,
                 collateralAmount: collateralAmount,
@@ -85,15 +85,15 @@ contract FoilTradeModuleTest is Test {
 
         foil.createLiquidityPosition(params);
 
-        priceReference = foil.getReferencePrice(epochStartTime);
+        priceReference = foil.getReferencePrice(epochId);
         console2.log("priceReference", priceReference);
 
         // Create Long position
         console2.log("Create Long position");
-        priceReference = foil.getReferencePrice(epochStartTime);
+        priceReference = foil.getReferencePrice(epochId);
         console2.log("priceReference", priceReference);
         positionId_1 = foil.createTraderPosition(
-            epochStartTime,
+            epochId,
             10 ether,
             .1 ether,
             0
@@ -102,21 +102,21 @@ contract FoilTradeModuleTest is Test {
 
         // Modify Long position (increase it)
         console2.log("Modify Long position (increase it)");
-        priceReference = foil.getReferencePrice(epochStartTime);
+        priceReference = foil.getReferencePrice(epochId);
         console2.log("priceReference", priceReference);
         foil.modifyTraderPosition(positionId_1, 10 ether, .2 ether, 0);
         logPositionAndAccount(positionId_1);
 
         // Modify Long position (decrease it)
         console2.log("Modify Long position (decrease it)");
-        priceReference = foil.getReferencePrice(epochStartTime);
+        priceReference = foil.getReferencePrice(epochId);
         console2.log("priceReference", priceReference);
         foil.modifyTraderPosition(positionId_1, 0 ether, .1 ether, 0);
         logPositionAndAccount(positionId_1);
 
         // Modify Long position (close it)
         console2.log("Modify Long position (close it)");
-        priceReference = foil.getReferencePrice(epochStartTime);
+        priceReference = foil.getReferencePrice(epochId);
         console2.log("priceReference", priceReference);
         foil.modifyTraderPosition(positionId_1, 0 ether, 0, 0);
         logPositionAndAccount(positionId_1);
@@ -125,12 +125,12 @@ contract FoilTradeModuleTest is Test {
     function test_trade_long_cross_sides() public {
         uint256 priceReference;
         uint256 positionId_3;
-        priceReference = foil.getReferencePrice(epochStartTime);
+        priceReference = foil.getReferencePrice(epochId);
 
         console2.log("priceReference", priceReference);
         IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
             .LiquidityPositionParams({
-                epochId: epochStartTime,
+                epochId: epochId,
                 amountTokenB: 20000 ether,
                 amountTokenA: 1000 ether,
                 collateralAmount: 100_000 ether,
@@ -145,15 +145,15 @@ contract FoilTradeModuleTest is Test {
         params.amountTokenA = 2000 ether;
         foil.createLiquidityPosition(params);
 
-        priceReference = foil.getReferencePrice(epochStartTime);
+        priceReference = foil.getReferencePrice(epochId);
         console2.log("priceReference", priceReference);
 
         // Create Long position (another one)
         console2.log("Create Long position (another one)");
-        priceReference = foil.getReferencePrice(epochStartTime);
+        priceReference = foil.getReferencePrice(epochId);
         console2.log("priceReference", priceReference);
         positionId_3 = foil.createTraderPosition(
-            epochStartTime,
+            epochId,
             10 ether,
             .1 ether,
             0
@@ -162,7 +162,7 @@ contract FoilTradeModuleTest is Test {
 
         // Modify Long position (change side)
         console2.log("Modify Long position (change side)");
-        priceReference = foil.getReferencePrice(epochStartTime);
+        priceReference = foil.getReferencePrice(epochId);
         console2.log("priceReference", priceReference);
         foil.modifyTraderPosition(
             positionId_3,
@@ -176,12 +176,12 @@ contract FoilTradeModuleTest is Test {
     function test_trade_short() public {
         uint256 priceReference;
         uint256 positionId_2;
-        priceReference = foil.getReferencePrice(epochStartTime);
+        priceReference = foil.getReferencePrice(epochId);
 
         console2.log("priceReference", priceReference);
         IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
             .LiquidityPositionParams({
-                epochId: epochStartTime,
+                epochId: epochId,
                 amountTokenB: 20000 ether,
                 amountTokenA: 1000 ether,
                 collateralAmount: 100_000 ether,
@@ -196,13 +196,13 @@ contract FoilTradeModuleTest is Test {
         params.amountTokenA = 2000 ether;
         foil.createLiquidityPosition(params);
 
-        priceReference = foil.getReferencePrice(epochStartTime);
+        priceReference = foil.getReferencePrice(epochId);
         console2.log("priceReference", priceReference);
 
         // Create Short position
         console2.log("Create Short position");
         positionId_2 = foil.createTraderPosition(
-            epochStartTime,
+            epochId,
             10 ether,
             -.1 ether,
             0
@@ -225,15 +225,15 @@ contract FoilTradeModuleTest is Test {
         logPositionAndAccount(positionId_2);
     }
 
-    function test_trade_short_cross_sides() public {
+    function test_trade_short_cross_sides_Only() public {
         uint256 priceReference;
         uint256 positionId_4;
-        priceReference = foil.getReferencePrice(epochStartTime);
+        priceReference = foil.getReferencePrice(epochId);
 
         console2.log("priceReference", priceReference);
         IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
             .LiquidityPositionParams({
-                epochId: epochStartTime,
+                epochId: epochId,
                 amountTokenB: 20000 ether,
                 amountTokenA: 1000 ether,
                 collateralAmount: 100_000 ether,
@@ -248,13 +248,13 @@ contract FoilTradeModuleTest is Test {
         params.amountTokenA = 2000 ether;
         foil.createLiquidityPosition(params);
 
-        priceReference = foil.getReferencePrice(epochStartTime);
+        priceReference = foil.getReferencePrice(epochId);
         console2.log("priceReference", priceReference);
 
         // Create Short position (another one)
         console2.log("Create Short position (another one)");
         positionId_4 = foil.createTraderPosition(
-            epochStartTime,
+            epochId,
             10 ether,
             -.1 ether,
             0
@@ -285,7 +285,7 @@ contract FoilTradeModuleTest is Test {
         console2.log("sqrtPriceAX96", sqrtPriceAX96);
         console2.log("sqrtPriceBX96", sqrtPriceBX96);
         (loanAmount0, loanAmount1, liquidity) = foil.getTokenAmounts(
-            epochStartTime,
+            epochId,
             collateralAmount,
             sqrtPriceX96,
             sqrtPriceAX96,

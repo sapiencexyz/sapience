@@ -93,8 +93,6 @@ contract EpochLiquidityModule is
     ) external override returns (bytes4) {
         // get position information
 
-        console2.log("onERC721Received", tokenId);
-
         return this.onERC721Received.selector;
     }
 
@@ -228,6 +226,7 @@ contract EpochLiquidityModule is
         );
     }
 
+    // TODO This needs to be fixed, not sure if it's the right way to calculate the required collateral
     function getTokenAmounts(
         uint256 epochId,
         uint256 depositedCollateralAmount,
@@ -241,6 +240,8 @@ contract EpochLiquidityModule is
         returns (uint256 amount0, uint256 amount1, uint128 liquidity)
     {
         Epoch.Data storage epoch = Epoch.load(epochId);
+
+        // TODO This needs to be reviewed and fixed.
 
         // calculate for unit
         uint128 unitLiquidity = LiquidityAmounts.getLiquidityForAmounts(

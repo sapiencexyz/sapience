@@ -1,5 +1,5 @@
 {
-  "address": "0x585A9a48190Ff438D69Bbb6F5182843Bc29408d3",
+  "address": "0x233Fdf7aeD41DADcf21E684048649e84769807C5",
   "abi": [
     {
       "type": "function",
@@ -207,6 +207,16 @@
     },
     {
       "type": "error",
+      "name": "MarketNotInitialized",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OnlyOwner",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "OverflowInt24ToUint256",
       "inputs": []
     },
@@ -223,12 +233,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x17fb2a7157ddb97a4feac354fe2793dadce755c37f919919512bd145dab63f9b",
-  "deployTxnBlockNumber": "6461958",
-  "deployTimestamp": "1723138788",
+  "deployTxnHash": "0x8c5d6ed2010e2a75000260198e7cb0b009bd1cf3770097874ba764674d995f2b",
+  "deployTxnBlockNumber": "6474235",
+  "deployTimestamp": "1723307100",
   "sourceName": "src/contracts/modules/EpochConfigurationModule.sol",
   "contractName": "EpochConfigurationModule",
   "deployedOn": "deploy.EpochConfigurationModule",
-  "gasUsed": 2035436,
-  "gasCost": "1602056507"
+  "gasUsed": 2016847,
+  "gasCost": "1001154682"
 }

@@ -35,6 +35,7 @@ interface IEpochViewsModule {
         external
         view
         returns (
+            uint256 epochId,
             uint256 startTime,
             uint256 endTime,
             address pool,

@@ -6,11 +6,16 @@ import LiquidityPositionHeader from '~/lib/components/foil/liquidityPositionHead
 import LiquidityPositions from '~/lib/components/foil/liquidityPositions';
 import { MarketProvider } from '~/lib/context/MarketProvider';
 
-const Market = ({ params }: { params: { id: string } }) => {
+const Market = ({ params }: { params: { id: string; epoch: string } }) => {
   const [chainId, marketAddress] = params.id.split('%3A');
+  const { epoch } = params;
 
   return (
-    <MarketProvider chainId={Number(chainId)} address={marketAddress}>
+    <MarketProvider
+      chainId={Number(chainId)}
+      address={marketAddress}
+      epoch={Number(epoch)}
+    >
       <Flex
         direction="column"
         alignItems="left"
