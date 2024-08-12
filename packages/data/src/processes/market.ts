@@ -1,7 +1,7 @@
 import 'tsconfig-paths/register';
 import { createConnection } from 'typeorm';
 import { Event } from '../entity/Event';
-import { Abi, Log, PublicClient } from 'viem';
+import { Abi, decodeEventLog, Log, PublicClient } from 'viem';
 import connectionOptions from '../db';
 
 const bigintReplacer = (key: string, value: any) => {
@@ -49,13 +49,17 @@ export const indexMarketEventsRange = async (publicClient: PublicClient, start: 
     try {
       const logs = await publicClient.getLogs({
         address: contractAddress as `0x${string}`,
-        abi: contractAbi,
         fromBlock: BigInt(blockNumber),
         toBlock: BigInt(blockNumber),
       });
 
       for (const log of logs) {
-        const serializedLog = JSON.stringify(log, bigintReplacer);
+        const decodedLog = decodeEventLog({
+          abi: contractAbi,
+          data: log.data,
+          topics: log.topics,
+        });
+        const serializedLog = JSON.stringify(decodedLog, bigintReplacer);
         const event = eventRepository.create({
           logData: JSON.parse(serializedLog), // Parse back to JSON object
           contractId: `${await publicClient.getChainId()}:${contractAddress}`,

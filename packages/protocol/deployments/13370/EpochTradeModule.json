@@ -1,10 +1,15 @@
 {
-  "address": "0x7A4F7aB53bD91ccb7eA86D31914293725D7f0b03",
+  "address": "0x298197097771d5D3bB9A78A0785167948EC97A23",
   "abi": [
     {
       "type": "function",
       "name": "createTraderPosition",
       "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
         {
           "name": "collateralAmount",
           "type": "uint256",
@@ -23,7 +28,7 @@
       ],
       "outputs": [
         {
-          "name": "accountId",
+          "name": "positionId",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -33,7 +38,13 @@
     {
       "type": "function",
       "name": "getReferencePrice",
-      "inputs": [],
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
       "outputs": [
         {
           "name": "price18Digits",
@@ -48,7 +59,7 @@
       "name": "modifyTraderPosition",
       "inputs": [
         {
-          "name": "accountId",
+          "name": "positionId",
           "type": "uint256",
           "internalType": "uint256"
         },
@@ -98,17 +109,82 @@
     },
     {
       "type": "error",
-      "name": "AccountAlreadyCreated",
-      "inputs": []
+      "name": "EpochNotSettled",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
     },
     {
       "type": "error",
-      "name": "InvalidAccountId",
+      "name": "EpochNotStarted",
       "inputs": [
         {
-          "name": "accountId",
+          "name": "epochId",
           "type": "uint256",
           "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InsufficientCollateral",
+      "inputs": [
+        {
+          "name": "amount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InsufficientVEth",
+      "inputs": [
+        {
+          "name": "amount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "vEth",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InsufficientVGas",
+      "inputs": [
+        {
+          "name": "amount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "vGas",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidData",
+      "inputs": [
+        {
+          "name": "message",
+          "type": "string",
+          "internalType": "string"
         }
       ]
     },
@@ -130,6 +206,43 @@
     },
     {
       "type": "error",
+      "name": "InvalidPositionId",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "NotAccountOwnerOrAuthorized",
+      "inputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "OverflowInt24ToUint256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowInt256ToUint256",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "OverflowInt256ToUint256",
       "inputs": []
     },
@@ -140,7 +253,17 @@
     },
     {
       "type": "error",
+      "name": "OverflowUint256ToInt256",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "OverflowUint256ToUint160",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PositionAlreadyCreated",
       "inputs": []
     },
     {
@@ -162,12 +285,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x7134b76bf987e8dd49d9a5094b90d42e8d228e37c5e89bf89ab40b2fed411967",
+  "deployTxnHash": "0xad92ff75abe4cf0a4a78ec80e70499ad8ebc4752264ee9c67b7374c90779cf78",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1722798190",
+  "deployTimestamp": "1723470948",
   "sourceName": "src/contracts/modules/EpochTradeModule.sol",
   "contractName": "EpochTradeModule",
   "deployedOn": "deploy.EpochTradeModule",
-  "gasUsed": 1829463,
-  "gasCost": "1003292490"
+  "gasUsed": 2196653,
+  "gasCost": "1003283604"
 }

@@ -1,4 +1,5 @@
-import { Abi, createPublicClient, http, webSocket } from 'viem';
+import { Abi, Chain, createPublicClient, http, webSocket } from 'viem';
+import * as chains from 'viem/chains';
 import { indexBaseFeePerGas, indexBaseFeePerGasRange } from './processes/chain';
 import { indexMarketEvents, indexMarketEventsRange } from './processes/market'; // Assuming you have this function
 import { mainnet, sepolia, hardhat } from 'viem/chains';
@@ -7,18 +8,18 @@ import FoilSepolia from '@/protocol/deployments/11155111/Foil.json';
 
 const mainnetPublicClient = createPublicClient({
   chain: mainnet,
-  transport: webSocket()
+  transport: http() // switch to websockets with a paid endpoint
 });
 
 const sepoliaPublicClient = createPublicClient({
   chain: sepolia,
-  transport: webSocket()
+  transport: http() // switch to websockets with a paid endpoint
 });
 
 hardhat.id = 13370 as any;
 export const cannonPublicClient = createPublicClient({
   chain: hardhat,
-  transport: http()
+  transport: http("http://localhost:8545")
 });
 
 Promise.all([
@@ -30,26 +31,53 @@ Promise.all([
   console.error('Error running processes in parallel:', error);
 });
 
-// Function to create PublicClient based on rpc-url
-function createClientFromRpcUrl(rpcUrl: string): any {
-  const isWebSocket = rpcUrl.startsWith('ws');
-  return createPublicClient({
-    chain: { id: 0, rpcUrls: [rpcUrl] },
-    transport: isWebSocket ? webSocket() : http()
-  });
+// When running the worker as a command, for a one-off job:
+
+function findChainById(chainId: number): Chain | undefined {
+    const availableChains = Object.values(chains);
+    return availableChains.find(chain => chain.id === chainId);
+}
+
+async function createViemPublicClient(providerUrl: string) {
+    const transport = http(providerUrl);
+
+    // Create a temporary client to get the chain ID
+    const tempClient = createPublicClient({
+        chain: mainnet,  // Temporary chain, will be overridden
+        transport,
+    });
+
+    // Call the eth_chainId method to get the chain ID
+    const chainIdHex = await tempClient.request({ method: 'eth_chainId' });
+    const chainId = parseInt(chainIdHex, 16);
+
+    // Find the corresponding chain configuration
+    const chain = findChainById(chainId);
+
+    if (!chain) {
+        throw new Error(`Unsupported or unknown chain ID: ${chainId}`);
+    }
+
+    // Create the final client with the correct chain
+    const client = createPublicClient({
+        chain,
+        transport,
+    });
+
+    return client;
 }
 
 // Function to index base fee per gas range
-async function indexBaseFeePerGasRange(startBlock: number, endBlock: number, rpcUrl: string, contractAddress: string) {
+async function indexBaseFeePerGasRangeCommand(startBlock: number, endBlock: number, rpcUrl: string, contractAddress: string) {
   console.log(`Indexing base fee per gas from block ${startBlock} to ${endBlock} for contract ${contractAddress} using ${rpcUrl}`);
-  const client = createClientFromRpcUrl(rpcUrl);
+  const client = await createViemPublicClient(rpcUrl);
   await indexBaseFeePerGasRange(client, startBlock, endBlock, contractAddress);
 }
 
 // Function to index market events range
-async function indexMarketEventsRange(startBlock: number, endBlock: number, rpcUrl: string, contractAddress: string, contractAbi: Abi) {
+async function indexMarketEventsRangeCommand(startBlock: number, endBlock: number, rpcUrl: string, contractAddress: string, contractAbi: Abi) {
   console.log(`Indexing market events from block ${startBlock} to ${endBlock} for contract ${contractAddress} using ${rpcUrl}`);
-  const client = createClientFromRpcUrl(rpcUrl);
+  const client = await createViemPublicClient(rpcUrl);
   await indexMarketEventsRange(client, startBlock, endBlock, contractAddress, contractAbi);
 }
 
@@ -57,13 +85,13 @@ async function indexMarketEventsRange(startBlock: number, endBlock: number, rpcU
 const args = process.argv.slice(2);
 if (args[0] === 'index-base-fee-per-gas') {
   const [start, end, rpcUrl, contractAddress] = args.slice(1);
-  indexBaseFeePerGasRange(Number(start), Number(end), rpcUrl, contractAddress)
+  indexBaseFeePerGasRangeCommand(Number(start), Number(end), rpcUrl, contractAddress)
     .then(() => console.log('Indexing completed successfully'))
     .catch(error => console.error('Error indexing base fee per gas range:', error));
 } else if (args[0] === 'index-market-events') {
   const [start, end, rpcUrl, contractAddress, contractAbiPath] = args.slice(1);
   const contractAbi = require(contractAbiPath) as Abi; // Assuming the ABI is provided as a JSON file path
-  indexMarketEventsRange(Number(start), Number(end), rpcUrl, contractAddress, contractAbi)
+  indexMarketEventsRangeCommand(Number(start), Number(end), rpcUrl, contractAddress, contractAbi)
     .then(() => console.log('Indexing completed successfully'))
     .catch(error => console.error('Error indexing market events range:', error));
 }
