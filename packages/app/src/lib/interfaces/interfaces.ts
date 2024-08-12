@@ -2,16 +2,16 @@ export enum PositionKind {
   Liquidity,
   Trade,
 }
-export interface Position {
-  tokenId: BigInt; // nft id
+export interface FoilPosition {
+  tokenId: bigint; // nft id
   kind: PositionKind;
-  epochId: BigInt;
+  epochId: bigint;
   // Accounting data (debt and deposited collateral)
-  depositedCollateralAmount: BigInt; // configured collateral
-  borrowedVEth: BigInt;
-  borrowedVGas: BigInt;
+  depositedCollateralAmount: bigint; // configured collateral
+  borrowedVEth: bigint;
+  borrowedVGas: bigint;
   // Position data (owned tokens and position size)
-  vEthAmount: BigInt;
-  vGasAmount: BigInt;
-  currentTokenAmount: BigInt;
+  vEthAmount: bigint;
+  vGasAmount: bigint;
+  currentTokenAmount: bigint;
 }

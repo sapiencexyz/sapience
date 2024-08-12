@@ -31,6 +31,7 @@ import SlippageTolerance from './slippageTolerance';
 import useFoilDeployment from './useFoilDeployment';
 
 import { MarketContext } from '~/lib/context/MarketProvider';
+import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';
 
 function RadioCard(props: any) {
   const { getInputProps, getRadioProps } = useRadio(props);
@@ -79,6 +80,8 @@ export default function TraderPosition({}) {
   const [option, setOption] = useState('Long');
   const [transactionStep, setTransactionStep] = useState(0);
   const { isConnected } = account;
+  const { address } = useAccount();
+  const { tokenIds, refetch } = useTokenIdsOfOwner(address as `0x${string}`);
 
   const {
     chain,
@@ -263,7 +266,7 @@ export default function TraderPosition({}) {
 
   return (
     <form onSubmit={handleSubmit}>
-      <PositionSelector isLP={false} onChange={setNftId} />
+      <PositionSelector isLP={false} onChange={setNftId} nftIds={tokenIds} />
       <Flex {...group} gap={4} mb={4}>
         {options.map((value) => {
           const radio = getRadioProps({ value });
