@@ -76,7 +76,7 @@ contract FoilTest is Test {
                 epochId: epochId,
                 amountTokenA: loanAmount0,
                 amountTokenB: loanAmount1,
-                collateralAmount: 0.99 ether,
+                collateralAmount: 1 ether,
                 lowerTick: lowerTick,
                 upperTick: upperTick,
                 minAmountTokenA: 0,
@@ -89,7 +89,7 @@ contract FoilTest is Test {
             uint256 amount1
         ) = foil.createLiquidityPosition(params);
 
-        assertEq(collateralAsset.balanceOf(address(foil)), 100_000 ether);
+        assertEq(collateralAsset.balanceOf(address(foil)), 1 ether);
 
         // uint128 halfLiquidity = liquidity / 2;
         // uint256 coll = 25 ether;
