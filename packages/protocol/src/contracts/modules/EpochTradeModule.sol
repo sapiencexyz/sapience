@@ -50,6 +50,11 @@ contract EpochTradeModule is IEpochTradeModule {
             );
         }
 
+        position.updateCollateral(
+            Market.load().collateralAsset,
+            collateralAmount
+        );
+
         // Validate after trading that collateral is enough
         position.afterTradeCheck();
     }
@@ -126,7 +131,6 @@ contract EpochTradeModule is IEpochTradeModule {
         // with the collateral get vEth (Loan)
         uint256 vEthLoan = collateralAmount; // 1:1
 
-        position.depositedCollateralAmount += collateralAmount;
         position.borrowedVEth += vEthLoan;
 
         if (tokenAmount < 0 || tokenAmountLimit < 0) {
@@ -156,6 +160,11 @@ contract EpochTradeModule is IEpochTradeModule {
         // Refund excess vEth sent
         position.borrowedVEth -= refundAmountVEth;
 
+        position.updateCollateral(
+            Market.load().collateralAsset,
+            collateralAmount
+        );
+
         position.updateBalance(
             tokenAmount,
             tokenAmountVEth.toInt(),
@@ -181,7 +190,6 @@ contract EpochTradeModule is IEpochTradeModule {
         // with the collateral get vGas (Loan)
         uint256 vGasLoan = (tokenAmount * -1).toUint(); //(collateralAmount).divDecimal(getReferencePrice()); // collatera / vEth = 1/1 ; vGas/vEth = 1/currentPrice
 
-        position.depositedCollateralAmount += collateralAmount;
         position.borrowedVGas += vGasLoan;
 
         if (tokenAmount > 0 || tokenAmountLimit > 0) {
@@ -200,6 +208,11 @@ contract EpochTradeModule is IEpochTradeModule {
         });
         (uint256 tokenAmountVEth, uint256 tokenAmountVGas) = swapTokensExactIn(
             params
+        );
+
+        position.updateCollateral(
+            Market.load().collateralAsset,
+            collateralAmount
         );
 
         position.updateBalance(
@@ -242,8 +255,8 @@ contract EpochTradeModule is IEpochTradeModule {
             uint256 delta = (tokenAmount - position.currentTokenAmount)
                 .toUint();
             // with the collateral get vEth (Loan)
-            position.depositedCollateralAmount += collateralAmount;
-            uint256 vEthLoan = position.depositedCollateralAmount; // 1:1
+            uint256 vEthLoan = position.depositedCollateralAmount +
+                collateralAmount; // 1:1
             position.borrowedVEth = vEthLoan;
 
             SwapTokensExactOutParams memory params = SwapTokensExactOutParams({
@@ -272,11 +285,6 @@ contract EpochTradeModule is IEpochTradeModule {
             );
         } else {
             // Reduce the position (LONG)
-            if (collateralAmount > 0) {
-                revert Errors.InvalidData(
-                    "Long Position: Unexpected collateral"
-                );
-            }
 
             int256 delta = (tokenAmount - position.currentTokenAmount);
 
@@ -299,6 +307,11 @@ contract EpochTradeModule is IEpochTradeModule {
 
             position.updateBalance(delta, 0, delta);
         }
+
+        position.updateCollateral(
+            Market.load().collateralAsset,
+            collateralAmount
+        );
     }
 
     /**
@@ -338,7 +351,6 @@ contract EpochTradeModule is IEpochTradeModule {
 
             // with the collateral get vGas (Loan)
             uint256 vGasLoan = (delta * -1).toUint(); //
-            position.depositedCollateralAmount += collateralAmount;
             position.borrowedVGas += vGasLoan;
 
             SwapTokensExactInParams memory params = SwapTokensExactInParams({
@@ -362,12 +374,6 @@ contract EpochTradeModule is IEpochTradeModule {
             );
         } else {
             // Decrease the position (SHORT)
-            if (collateralAmount > 0) {
-                revert Errors.InvalidData(
-                    "Short Position: Unexpected collateral"
-                );
-            }
-
             int256 delta = (position.currentTokenAmount - tokenAmount);
 
             SwapTokensExactOutParams memory params = SwapTokensExactOutParams({
@@ -394,6 +400,11 @@ contract EpochTradeModule is IEpochTradeModule {
                 0
             );
         }
+
+        position.updateCollateral(
+            Market.load().collateralAsset,
+            collateralAmount
+        );
     }
 
     /**
@@ -427,9 +438,6 @@ contract EpochTradeModule is IEpochTradeModule {
         uint256 collateralAmount
     ) internal {
         // TODO check if after settlement and use the settlement price
-
-        // Add sent collateral
-        position.depositedCollateralAmount += collateralAmount;
 
         if (position.currentTokenAmount > 0) {
             // Close LONG position
@@ -522,6 +530,8 @@ contract EpochTradeModule is IEpochTradeModule {
             }
 
             position.borrowedVGas = 0;
+
+            position.updateCollateral(Market.load().collateralAsset, 0);
 
             position.resetBalance();
         }
