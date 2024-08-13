@@ -157,10 +157,9 @@ contract EpochLiquidityModule is
             amount0,
             amount1
         );
-        epoch.validateCollateralRequirementsForLP(
+        epoch.validateProvidedLiquidity(
             collateralAmount,
-            amount0,
-            amount1,
+            liquidity,
             lowerTick,
             upperTick
         );
@@ -207,10 +206,9 @@ contract EpochLiquidityModule is
             amount0,
             amount1
         );
-        epoch.validateCollateralRequirementsForLP(
+        epoch.validateProvidedLiquidity(
             collateralAmount,
-            amount0,
-            amount1,
+            liquidity,
             lowerTick,
             upperTick
         );
