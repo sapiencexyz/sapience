@@ -25,7 +25,13 @@ interface MarketContextType {
   endTime: number;
   baseAssetMinPriceTick: number;
   baseAssetMaxPriceTick: number;
-  prices?: Array<{ timestamp: number; value: number }>;
+  prices: Array<{
+    date: string;
+    open: number;
+    close: number;
+    low: number;
+    high: number;
+  }>;
   poolAddress: `0x${string}`;
   pool: Pool | null;
   collateralAssetDecimals: number;
@@ -197,6 +203,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
 
   useEffect(() => {
     if (price) {
+      console.log('avg', price.average);
       setState((currentState) => ({
         ...currentState,
         averagePrice: price.average,

@@ -2,7 +2,6 @@ import type React from 'react';
 import { useContext } from 'react';
 import {
   ResponsiveContainer,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -34,7 +33,7 @@ const CustomBarShape = ({
     (payload.open < payload.close ? colors.green[400] : colors.red[500]);
   const barHeight = Math.abs(yAxis(payload.open) - yAxis(payload.close));
   const wickHeight = Math.abs(yAxis(payload.low) - yAxis(payload.high));
-  const wickY = yAxis(payload.low);
+  const wickY = Math.min(yAxis(payload.low), yAxis(payload.high));
   const barY = Math.min(yAxis(payload.open), yAxis(payload.close));
 
   return (
@@ -60,24 +59,29 @@ const CustomBarShape = ({
 const CandlestickChart: React.FC = () => {
   const { averagePrice, prices } = useContext(MarketContext);
   console.log('prices:', prices);
-  const averagePriceScaled = averagePrice / 10e8;
 
   return (
     <ResponsiveContainer>
       <ComposedChart data={prices}>
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="date" />
-        <YAxis domain={[0, 15]} />
-        <Tooltip />
+        <YAxis
+          domain={[0, Math.max(...prices.map((p) => p.high))]}
+          tickFormatter={(value) => (value / 10e8).toFixed(2)}
+        />
+        <Tooltip formatter={(value) => ((value as number) / 10e8).toFixed(2)} />
         <Bar
           dataKey="high"
           // eslint-disable-next-line react/no-unstable-nested-components
           shape={(props: any) => (
-            <CustomBarShape {...props} yAxis={(d: any) => d * (400 / 15)} />
+            <CustomBarShape
+              {...props}
+              yAxis={(d: any) => (d / 10e8) * (400 / 15)}
+            />
           )}
         />
         <ReferenceLine
-          y={averagePriceScaled}
+          y={averagePrice}
           label="Average Price"
           stroke={colors?.gray && colors.gray[800]}
           strokeDasharray="3 3"

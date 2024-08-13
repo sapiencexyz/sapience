@@ -57,7 +57,7 @@ createConnection(connectionOptions).then(async connection => {
     
         // Group prices by date (ignoring time)
         const groupedPrices: { [date: string]: any[] } = prices.reduce((acc: Record<string, any[]>, price) => {
-            const date = new Date(price.timestamp).toISOString().split('T')[0]; // Extract the date part in 'YYYY-MM-DD' format
+            const date = new Date(price.timestamp * 1000).toISOString().split('T')[0];
             if (!acc[date]) {
                 acc[date] = [];
             }
@@ -73,7 +73,7 @@ createConnection(connectionOptions).then(async connection => {
             const low = Math.min(...prices.map(p => p.value)); // Lowest price of the day
     
             return {
-                date, // This will be in 'YYYY-MM-DD' format
+                date,
                 open,
                 close,
                 low,
