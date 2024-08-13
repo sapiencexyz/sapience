@@ -79,12 +79,7 @@ const AddLiquidity: React.FC<Props> = ({ nftId, refetch }) => {
   const [highPrice, setHighPrice] = useState(
     tickToPrice(baseAssetMaxPriceTick)
   );
-  const [walletBalance, setWalletBalance] = useState<string | null>(null);
-  const [walletBalanceAfter, setWalletBalanceAfter] = useState<string | null>(
-    null
-  );
   const [slippage, setSlippage] = useState<number>(0.5);
-  const [allowance, setAllowance] = useState<string | null>(null);
   const [transactionStep, setTransactionStep] = useState(0);
 
   const tickLower = priceToTick(lowPrice, tickSpacingDefault);
@@ -97,6 +92,9 @@ const AddLiquidity: React.FC<Props> = ({ nftId, refetch }) => {
     address: foilData.address as `0x${string}`,
     functionName: 'getPosition',
     args: [nftId],
+    query: {
+      enabled: isEdit,
+    },
   }) as { data: FoilPosition; refetch: () => void };
 
   const {
@@ -115,17 +113,6 @@ const AddLiquidity: React.FC<Props> = ({ nftId, refetch }) => {
     },
   });
 
-  useEffect(() => {
-    console.log('uniswap position loading', uniswapPositionLoading);
-  }, [uniswapPositionLoading]);
-  useEffect(() => {
-    console.log('uniswap position', uniswapPosition);
-  }, [uniswapPosition]);
-
-  useEffect(() => {
-    console.log(' uniswapPositionError', uniswapPositionError);
-  }, [uniswapPositionError]);
-
   const { data: collateralAmountData, refetch: refetchCollateralAmount } =
     useReadContract({
       abi: erc20ABI,
@@ -140,6 +127,9 @@ const AddLiquidity: React.FC<Props> = ({ nftId, refetch }) => {
     address: collateralAsset as `0x${string}`,
     functionName: 'allowance',
     args: [account.address, foilData.address],
+    query: {
+      enabled: Boolean(isConnected && foilData.address),
+    },
     chainId: chain?.id,
   });
 
@@ -155,31 +145,66 @@ const AddLiquidity: React.FC<Props> = ({ nftId, refetch }) => {
       TickMath.getSqrtRatioAtTick(tickUpper).toString(), // uint160 sqrtPriceBX96 // upper tick price in sqrtRatio
     ],
     chainId: chain?.id,
+    query: {
+      enabled: Boolean(pool),
+    },
   });
 
   /////// WRITE CONTRACT HOOKS ///////
-  const {
-    data: approveHash,
-    writeContract: approveWrite,
-    error: approveError,
-  } = useWriteContract();
-  const {
-    data: addLiquidityHash,
-    writeContract: addLiquidityWrite,
-    error: addLiquidityError,
-  } = useWriteContract();
+  const { data: approveHash, writeContract: approveWrite } = useWriteContract({
+    mutation: {
+      onError: (error) => {
+        renderContractErrorToast(
+          error as WriteContractErrorType,
+          toast,
+          'Failed to approve'
+        );
+        setTransactionStep(0);
+      },
+    },
+  });
 
-  const {
-    data: increaseLiquidityHash,
-    writeContract: increaseLiquidity,
-    error: increaseLiquidityError,
-  } = useWriteContract();
+  const { data: addLiquidityHash, writeContract: addLiquidityWrite } =
+    useWriteContract({
+      mutation: {
+        onError: (error) => {
+          renderContractErrorToast(
+            error as WriteContractErrorType,
+            toast,
+            'Failed to add liquidity'
+          );
+          setTransactionStep(0);
+        },
+      },
+    });
 
-  const {
-    data: decreaseLiqudiityHash,
-    writeContract: decreaseLiquidity,
-    error: decreaseLiquidityError,
-  } = useWriteContract();
+  const { data: increaseLiquidityHash, writeContract: increaseLiquidity } =
+    useWriteContract({
+      mutation: {
+        onError: (error) => {
+          renderContractErrorToast(
+            error as WriteContractErrorType,
+            toast,
+            'Failed to increase liquidity'
+          );
+          setTransactionStep(0);
+        },
+      },
+    });
+
+  const { data: decreaseLiqudiityHash, writeContract: decreaseLiquidity } =
+    useWriteContract({
+      mutation: {
+        onError: (error) => {
+          renderContractErrorToast(
+            error as WriteContractErrorType,
+            toast,
+            'Failed to decrease liquidity'
+          );
+          setTransactionStep(0);
+        },
+      },
+    });
 
   /////// WAIT FOR TRANSACTION RECEIPT HOOKS ///////
   const { isSuccess: approveSuccess } = useWaitForTransactionReceipt({
@@ -197,14 +222,6 @@ const AddLiquidity: React.FC<Props> = ({ nftId, refetch }) => {
     useWaitForTransactionReceipt({
       hash: decreaseLiqudiityHash,
     });
-
-  useEffect(() => {
-    console.log('isLoadingDecrease -', isLoadingDecrease);
-  }, [isLoadingDecrease]);
-
-  useEffect(() => {
-    console.log('increaseLiquiditySuccess -', increaseLiquiditySuccess);
-  }, [increaseLiquiditySuccess]);
 
   useEffect(() => {
     console.log('decreaseLiquiditySuccess -', decreaseLiquiditySuccess);
@@ -254,54 +271,30 @@ const AddLiquidity: React.FC<Props> = ({ nftId, refetch }) => {
     return (quoteToken * (100 - slippage)) / 100;
   }, [quoteToken, slippage]);
 
+  const walletBalance = useMemo(() => {
+    if (!collateralAmountData) return null;
+    return formatUnits(
+      BigInt(collateralAmountData.toString()),
+      collateralAssetDecimals
+    );
+  }, [collateralAmountData, collateralAssetDecimals]);
+
+  const walletBalanceAfter = useMemo(() => {
+    if (!walletBalance) return null;
+    return (
+      parseFloat(walletBalance) - parseFloat(depositAmount.toString())
+    ).toPrecision(3);
+  }, [walletBalance, depositAmount]);
+
+  const allowance = useMemo(() => {
+    if (!allowanceData) return null;
+    return formatUnits(
+      BigInt(allowanceData.toString()),
+      collateralAssetDecimals
+    );
+  }, [allowanceData, collateralAssetDecimals]);
+
   /////// USE EFFECTS ///////
-  // handle increase liquidity error
-  useEffect(() => {
-    renderContractErrorToast(
-      increaseLiquidityError as WriteContractErrorType,
-      toast,
-      'Failed to increase liquidity'
-    );
-    if (increaseLiquidityError) {
-      setTransactionStep(0);
-    }
-  }, [increaseLiquidityError]);
-
-  useEffect(() => {
-    renderContractErrorToast(
-      decreaseLiquidityError as WriteContractErrorType,
-      toast,
-      'Failed to decrease liquidity'
-    );
-    if (decreaseLiquidityError) {
-      setTransactionStep(0);
-    }
-  }, [decreaseLiquidityError]);
-
-  // handle liquidity error
-  useEffect(() => {
-    renderContractErrorToast(
-      addLiquidityError as WriteContractErrorType,
-      toast,
-      'Failed to add liquidity'
-    );
-    if (addLiquidityError) {
-      setTransactionStep(0);
-    }
-  }, [addLiquidityError]);
-
-  // handle approval error
-  useEffect(() => {
-    renderContractErrorToast(
-      approveError as WriteContractErrorType,
-      toast,
-      'Failed to approve'
-    );
-    if (approveError) {
-      setTransactionStep(0);
-    }
-  }, [approveError]);
-
   // handle token amounts error
   useEffect(() => {
     renderContractErrorToast(
@@ -327,31 +320,6 @@ const AddLiquidity: React.FC<Props> = ({ nftId, refetch }) => {
   useEffect(() => {
     setHighPrice(tickToPrice(baseAssetMaxPriceTick));
   }, [baseAssetMaxPriceTick]);
-
-  useEffect(() => {
-    if (collateralAmountData) {
-      const formattedBalance = formatUnits(
-        BigInt(collateralAmountData.toString()),
-        collateralAssetDecimals
-      );
-      setWalletBalance(formattedBalance);
-      setWalletBalanceAfter(
-        (
-          parseFloat(formattedBalance) - parseFloat(depositAmount.toString())
-        ).toFixed(collateralAssetDecimals)
-      );
-    }
-  }, [collateralAmountData, collateralAssetDecimals, depositAmount]);
-
-  useEffect(() => {
-    if (allowanceData) {
-      const formattedAllowance = formatUnits(
-        BigInt(allowanceData.toString()),
-        collateralAssetDecimals
-      );
-      setAllowance(formattedAllowance);
-    }
-  }, [allowanceData, collateralAssetDecimals]);
 
   useEffect(() => {
     if (approveSuccess && transactionStep === 1) {
@@ -465,7 +433,7 @@ const AddLiquidity: React.FC<Props> = ({ nftId, refetch }) => {
       args: [
         nftId,
         parseUnits(depositAmount.toString(), collateralAssetDecimals),
-        dummyNewLiq,
+        parsedNewLiq,
         parseUnits(minAmountTokenA.toString(), TOKEN_DECIMALS),
         parseUnits(minAmountTokenB.toString(), TOKEN_DECIMALS),
       ],
