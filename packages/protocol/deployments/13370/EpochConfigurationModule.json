@@ -1,0 +1,244 @@
+{
+  "address": "0x621847E9ce5d6F9b7808b8feB6fDE39CbD6b3ac9",
+  "abi": [
+    {
+      "type": "function",
+      "name": "createEpoch",
+      "inputs": [
+        {
+          "name": "startTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "endTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "startingSqrtPriceX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "initializeMarket",
+      "inputs": [
+        {
+          "name": "owner",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "collateralAsset",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapPositionManager",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapQuoter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapSwapRouter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "optimisticOracleV3",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "epochParams",
+          "type": "tuple",
+          "internalType": "struct IFoilStructs.EpochParams",
+          "components": [
+            {
+              "name": "baseAssetMinPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "baseAssetMaxPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "feeRate",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "assertionLiveness",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "bondAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "priceUnit",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "updateMarket",
+      "inputs": [
+        {
+          "name": "owner",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapPositionManager",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapQuoter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapSwapRouter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "optimisticOracleV3",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "epochParms",
+          "type": "tuple",
+          "internalType": "struct IFoilStructs.EpochParams",
+          "components": [
+            {
+              "name": "baseAssetMinPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "baseAssetMaxPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "feeRate",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "assertionLiveness",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "bondAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "priceUnit",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "error",
+      "name": "EpochAlreadyStarted",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidData",
+      "inputs": [
+        {
+          "name": "message",
+          "type": "string",
+          "internalType": "string"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidMarket",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "MarketAlreadyCreated",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "MarketNotInitialized",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OnlyOwner",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowInt24ToUint256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ReentrancyGuardReentrantCall",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "TokensAlreadyCreated",
+      "inputs": []
+    }
+  ],
+  "constructorArgs": [],
+  "linkedLibraries": {},
+  "deployTxnHash": "0x7710ae899b1fd6c4314e4fcf5829c02dd23b8cdfc40409465da9ee9795fa806f",
+  "deployTxnBlockNumber": "3",
+  "deployTimestamp": "1723470949",
+  "sourceName": "src/contracts/modules/EpochConfigurationModule.sol",
+  "contractName": "EpochConfigurationModule",
+  "deployedOn": "deploy.EpochConfigurationModule",
+  "gasUsed": 2016847,
+  "gasCost": "1004662731"
+}
