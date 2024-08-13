@@ -5,7 +5,7 @@ pragma solidity >=0.8.2 <0.9.0;
 import {TickMath} from "../external/univ3/TickMath.sol";
 import {FullMath} from "../external/univ3/FullMath.sol";
 
-// import "forge-std/console2.sol";
+import "forge-std/console2.sol";
 
 library Quote {
     function quoteEthToGas(

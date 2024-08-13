@@ -337,7 +337,7 @@
   "linkedLibraries": {},
   "deployTxnHash": "0x43618c7361ca78b0aab21b92675caacbc9e19526846c8e179199b6ccf1566b3f",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1722798328",
+  "deployTimestamp": "1723484487",
   "sourceName": "node_modules/@uma/core/contracts/data-verification-mechanism/test/MockOracleAncillary.sol",
   "contractName": "MockOracleAncillary",
   "deployedOn": "deploy.MockOracleAncillary",

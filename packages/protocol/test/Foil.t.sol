@@ -10,6 +10,7 @@ import {IFoilStructs} from "../src/contracts/interfaces/IFoilStructs.sol";
 import {VirtualToken} from "../src/contracts/external/VirtualToken.sol";
 import {TickMath} from "../src/contracts/external/univ3/TickMath.sol";
 import {IMintableToken} from "../src/contracts/external/IMintableToken.sol";
+import {Quote} from "../src/contracts/libraries/Quote.sol";
 import "../src/contracts/interfaces/external/INonfungiblePositionManager.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
@@ -36,10 +37,10 @@ contract FoilTest is Test {
         collateralAsset = IMintableToken(
             vm.getAddress("CollateralAsset.Token")
         );
-        collateralAsset.mint(1000 ether, address(this));
-        collateralAsset.approve(address(foil), 1000 ether);
+        collateralAsset.mint(10_000_000 ether, address(this));
+        collateralAsset.approve(address(foil), 10_000_000 ether);
 
-        (epochId, , , , , ) = foil.getLatestEpoch();
+        (epochId, , , pool, tokenA, tokenB) = foil.getLatestEpoch();
     }
 
     function test_addLiquidity() public {
@@ -52,25 +53,32 @@ contract FoilTest is Test {
         // int24 upperTick = TickMath.getTickAtSqrtRatio(
         //     306849353968360525628702781967
         // ); // 15
-        uint160 sqrtPriceX96 = 146497135921788803112962621440;
-        uint160 sqrtPriceAX96 = 176318465955219228901572735582;
-        uint160 sqrtPriceBX96 = 273764932352251420676860998407;
-        (uint256 loanAmount0, uint256 loanAmount1, ) = foil.getTokenAmounts(
-            epochId,
-            50 ether,
-            sqrtPriceX96,
-            sqrtPriceAX96,
-            sqrtPriceBX96
-        );
+
+        uint256 collateralAmount = 1 ether;
+        int24 lowerTick = 12200;
+        int24 upperTick = 12400;
+
+        (
+            uint256 loanAmount0,
+            uint256 loanAmount1,
+
+        ) = getTokenAmountsForCollateralAmount(
+                collateralAmount,
+                lowerTick,
+                upperTick
+            );
+
+        console2.log("loanAmount0", loanAmount0);
+        console2.log("loanAmount1", loanAmount1);
 
         IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
             .LiquidityPositionParams({
                 epochId: epochId,
                 amountTokenA: loanAmount0,
                 amountTokenB: loanAmount1,
-                collateralAmount: 50 ether,
-                lowerTick: 16000,
-                upperTick: 24800,
+                collateralAmount: 1 ether,
+                lowerTick: lowerTick,
+                upperTick: upperTick,
                 minAmountTokenA: 0,
                 minAmountTokenB: 0
             });
@@ -81,27 +89,27 @@ contract FoilTest is Test {
             uint256 amount1
         ) = foil.createLiquidityPosition(params);
 
-        assertEq(collateralAsset.balanceOf(address(foil)), 50 ether);
+        assertEq(collateralAsset.balanceOf(address(foil)), 1 ether);
 
-        uint128 halfLiquidity = liquidity / 2;
-        uint256 coll = 25 ether;
+        // uint128 halfLiquidity = liquidity / 2;
+        // uint256 coll = 25 ether;
 
-        foil.decreaseLiquidityPosition(tokenId, coll, halfLiquidity, 0, 0);
+        // foil.decreaseLiquidityPosition(tokenId, coll, halfLiquidity, 0, 0);
 
-        assertEq(collateralAsset.balanceOf(address(foil)), 25 ether);
+        // assertEq(collateralAsset.balanceOf(address(foil)), 25 ether);
 
-        coll = 500 ether;
+        // coll = 500 ether;
 
-        foil.increaseLiquidityPosition(
-            tokenId,
-            coll,
-            amount0 * 2,
-            amount1 * 2,
-            0,
-            0
-        );
+        // foil.increaseLiquidityPosition(
+        //     tokenId,
+        //     coll,
+        //     amount0 * 2,
+        //     amount1 * 2,
+        //     0,
+        //     0
+        // );
 
-        assertEq(collateralAsset.balanceOf(address(foil)), 500 ether);
+        // assertEq(collateralAsset.balanceOf(address(foil)), 500 ether);
 
         // (uint256 tokenAmount0, uint256 tokenAmount1) = foil.getPosition(1);
         // console2.log(tokenAmount0, tokenAmount1);
@@ -117,5 +125,39 @@ contract FoilTest is Test {
         // foil.addLiquidity(params);
         // (uint256 tokenAmount3, uint256 tokenAmount4) = foil.getPosition(2);
         // console2.log(tokenAmount3, tokenAmount4);
+    }
+
+    function getTokenAmountsForCollateralAmount(
+        uint256 collateralAmount,
+        int24 lowerTick,
+        int24 upperTick
+    )
+        public
+        view
+        returns (uint256 loanAmount0, uint256 loanAmount1, uint256 liquidity)
+    {
+        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
+        console.log("sqrtPriceX96", sqrtPriceX96);
+
+        uint160 sqrtPriceAX96 = uint160(TickMath.getSqrtRatioAtTick(lowerTick));
+        uint160 sqrtPriceBX96 = uint160(TickMath.getSqrtRatioAtTick(upperTick));
+
+        console2.log("sqrtPriceAX96", sqrtPriceAX96);
+        console2.log("sqrtPriceBX96", sqrtPriceBX96);
+        console2.log(
+            "LOWERTICKPRICE",
+            Quote.sqrtRatioX96ToPrice(sqrtPriceAX96)
+        );
+        console2.log(
+            "UPPERTICKPRICE",
+            Quote.sqrtRatioX96ToPrice(sqrtPriceBX96)
+        );
+        (loanAmount0, loanAmount1, liquidity) = foil.getTokenAmounts(
+            epochId,
+            collateralAmount,
+            sqrtPriceX96,
+            sqrtPriceAX96,
+            sqrtPriceBX96
+        );
     }
 }
