@@ -12,6 +12,9 @@ export class Price {
     contractId: string;
 
     @Column()
+    block: number;
+
+    @Column()
     timestamp: number;
 
     @Column()

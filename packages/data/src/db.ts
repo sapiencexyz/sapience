@@ -12,6 +12,9 @@ const sqliteOptions: ConnectionOptions = {
     synchronize: true,
     logging: true,
     entities: [Price, Position, Transaction, Event],
+    extra: {
+      busyTimeout: 5000,
+    },
 };
 
 const postgresOptions: ConnectionOptions = {

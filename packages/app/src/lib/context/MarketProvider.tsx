@@ -183,7 +183,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
 
   const contractId = `${chainId}:${address}`;
 
-  // Fetch prices using React Query
+  // Fetch average price using React Query
   const { data: price } = useQuery({
     queryKey: ['averagePrice', contractId],
     queryFn: async () => {
@@ -206,6 +206,30 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
       }));
     }
   }, [price]);
+
+  // Fetch prices using React Query
+  const { data: prices } = useQuery({
+    queryKey: ['prices', contractId],
+    queryFn: async () => {
+      const response = await fetch(
+        `${API_BASE_URL}/prices/chart-data?contractId=${contractId}&startTimestamp=${state.startTime}&endTimestamp=${state.endTime}`
+      );
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    },
+    refetchInterval: 60000, // Refetch every 60 seconds
+  });
+
+  useEffect(() => {
+    if (prices) {
+      setState((currentState) => ({
+        ...currentState,
+        prices,
+      }));
+    }
+  }, [prices]);
 
   const { foilData } = useFoilDeployment(chainId);
 

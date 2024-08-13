@@ -29,6 +29,7 @@ function tickToPrice(tick: number): number {
 const PositionsHeader = () => {
   const {
     chain,
+    epoch,
     address,
     // collateralAssetTicker,
     endTime,
@@ -55,7 +56,7 @@ const PositionsHeader = () => {
         <Heading>
           {chain?.name} Gas Market{' '}
           <Text ml={1.5} as="span" fontWeight="200" color="gray.600">
-            Q2 2024
+            Epoch {epoch}
           </Text>
         </Heading>
 
