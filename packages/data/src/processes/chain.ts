@@ -12,14 +12,24 @@ export const indexBaseFeePerGas = async (publicClient: PublicClient, contractId:
   // Process log data
   const processBlock = async (block: Block) => {
     const value = Number(block.baseFeePerGas);
+    const timestamp = Number(block.timestamp);
 
-    const price = priceRepository.create({
-      contractId,
-      timestamp: Number(block.timestamp),
-      value: value,
-    });
+    let price = await priceRepository.findOne({ where: { contractId, timestamp } });
 
-    console.log('Creating price:', price);
+    if (price) {
+      // Update existing record
+      price.value = value;
+      console.log('Updating price:', price);
+    } else {
+      // Create new record
+      price = priceRepository.create({
+        contractId,
+        timestamp,
+        value,
+      });
+      console.log('Creating price:', price);
+    }
+
     await priceRepository.save(price);
   };
 
@@ -39,14 +49,25 @@ export const indexBaseFeePerGasRange = async (publicClient: PublicClient, start:
     try {
       const block = await publicClient.getBlock({ blockNumber: BigInt(blockNumber) });
       const value = Number(block.baseFeePerGas);
+      const timestamp = Number(block.timestamp);
 
-      const price = priceRepository.create({
-        contractId,
-        timestamp: Number(block.timestamp),
-        value: value,
-      });
+      let price = await priceRepository.findOne({ where: { contractId, block: blockNumber } });
 
-      console.log('Creating price:', price);
+      if (price) {
+        // Update existing record
+        price.value = value;
+        console.log('Updating price:', price);
+      } else {
+        // Create new record
+        price = priceRepository.create({
+          contractId,
+          timestamp,
+          value,
+          block: blockNumber
+        });
+        console.log('Creating price:', price);
+      }
+
       await priceRepository.save(price);
     } catch (error) {
       console.error(`Error processing block ${blockNumber}:`, error);
