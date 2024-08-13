@@ -16,12 +16,7 @@ export const useTokenIdsOfOwner = (ownerAddress: `0x${string}`) => {
     args: [ownerAddress],
   });
 
-  useEffect(() => {
-    console.log('isREfetching -', isRefetching);
-  }, [isRefetching]);
-
   const tokenBalance = useMemo(() => {
-    console.log('data updated...', data);
     if (!data) return 0;
     return parseInt(data.toString(), 10);
   }, [data]);

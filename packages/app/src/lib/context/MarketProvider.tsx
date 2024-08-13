@@ -27,6 +27,7 @@ interface MarketContextType {
   baseAssetMaxPriceTick: number;
   prices?: Array<{ timestamp: number; value: number }>;
   poolAddress: `0x${string}`;
+  uniswapPositionManagerAddress: `0x${string}`;
   pool: Pool | null;
   collateralAssetDecimals: number;
   epoch: number;
@@ -53,6 +54,7 @@ export const MarketContext = createContext<MarketContextType>({
   prices: [],
   pool: null,
   poolAddress: '0x',
+  uniswapPositionManagerAddress: `0x`,
   epoch: 0,
 });
 
@@ -157,6 +159,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     prices: [],
     pool: null,
     poolAddress: '0x',
+    uniswapPositionManagerAddress: '0x',
     epoch: 0,
   });
 
@@ -221,6 +224,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
         ...currentState,
         owner: marketViewFunctionResult?.data[0],
         collateralAsset: marketViewFunctionResult?.data[1],
+        uniswapPositionManagerAddress: marketViewFunctionResult?.data[2],
         baseAssetMinPriceTick:
           marketViewFunctionResult?.data[6].baseAssetMinPriceTick,
         baseAssetMaxPriceTick:

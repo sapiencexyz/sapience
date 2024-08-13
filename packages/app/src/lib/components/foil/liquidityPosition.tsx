@@ -16,7 +16,6 @@ const LiquidityPosition = () => {
 
   return (
     <Box>
-      <Button onClick={() => refetch()}>test</Button>
       <Box>
         <PositionSelector isLP onChange={setNftId} nftIds={tokenIds} />
       </Box>
