@@ -80,7 +80,8 @@ if(process.argv.length < 3) {
 } else {
 const args = process.argv.slice(2);
 if (args[0] === 'index-sepolia') {
-  indexBaseFeePerGasRangeCommand(6300000, 6500000, 'https://ethereum-rpc.publicnode.com', `${sepolia.id}:${FoilSepolia.address}`)
+  // Index mainnet gas to sepolia contract
+  indexBaseFeePerGasRangeCommand(20413376, 20428947, 'https://ethereum-rpc.publicnode.com', `${sepolia.id}:${FoilSepolia.address}`)
   //indexMarketEventsRangeCommand(1722270000, 1722458027, 'https://ethereum-rpc.publicnode.com', FoilSepolia.address, FoilSepolia.abi as Abi)
 } else if (args[0] === 'index-base-fee-per-gas') {
   const [start, end, rpcUrl, contractAddress] = args.slice(1);
