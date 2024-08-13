@@ -78,22 +78,21 @@ if(process.argv.length < 3) {
     console.error('Error running processes in parallel:', error);
   });
 } else {
-const args = process.argv.slice(2);
-if (args[0] === 'index-sepolia') {
-  // Index mainnet gas to sepolia contract
-  indexBaseFeePerGasRangeCommand(20413376, 20428947, 'https://ethereum-rpc.publicnode.com', `${sepolia.id}:${FoilSepolia.address}`)
-  //indexMarketEventsRangeCommand(1722270000, 1722458027, 'https://ethereum-rpc.publicnode.com', FoilSepolia.address, FoilSepolia.abi as Abi)
-} else if (args[0] === 'index-base-fee-per-gas') {
-  const [start, end, rpcUrl, contractAddress] = args.slice(1);
-  indexBaseFeePerGasRangeCommand(Number(start), Number(end), rpcUrl, contractAddress)
-    .then(() => console.log('Indexing completed successfully'))
-    .catch(error => console.error('Error indexing base fee per gas range:', error));
-} else if (args[0] === 'index-market-events') {
-  const [start, end, rpcUrl, contractAddress, contractAbiPath] = args.slice(1);
-  const contractAbi = require(contractAbiPath) as Abi; // Assuming the ABI is provided as a JSON file path
-  indexMarketEventsRangeCommand(Number(start), Number(end), rpcUrl, contractAddress, contractAbi)
-    .then(() => console.log('Indexing completed successfully'))
-    .catch(error => console.error('Error indexing market events range:', error));
-}
-
+  const args = process.argv.slice(2);
+  if (args[0] === 'index-sepolia') {
+    // Index mainnet gas to sepolia contract
+    indexBaseFeePerGasRangeCommand(20413376, 20428947, 'https://ethereum-rpc.publicnode.com', `${sepolia.id}:${FoilSepolia.address}`)
+    //indexMarketEventsRangeCommand(1722270000, 1722458027, 'https://ethereum-rpc.publicnode.com', FoilSepolia.address, FoilSepolia.abi as Abi)
+  } else if (args[0] === 'index-base-fee-per-gas') {
+    const [start, end, rpcUrl, contractAddress] = args.slice(1);
+    indexBaseFeePerGasRangeCommand(Number(start), Number(end), rpcUrl, contractAddress)
+      .then(() => console.log('Indexing completed successfully'))
+      .catch(error => console.error('Error indexing base fee per gas range:', error));
+  } else if (args[0] === 'index-market-events') {
+    const [start, end, rpcUrl, contractAddress, contractAbiPath] = args.slice(1);
+    const contractAbi = require(contractAbiPath) as Abi; // Assuming the ABI is provided as a JSON file path
+    indexMarketEventsRangeCommand(Number(start), Number(end), rpcUrl, contractAddress, contractAbi)
+      .then(() => console.log('Indexing completed successfully'))
+      .catch(error => console.error('Error indexing market events range:', error));
+  }
 }
