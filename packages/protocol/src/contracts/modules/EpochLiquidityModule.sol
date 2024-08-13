@@ -7,7 +7,7 @@ import "../storage/Position.sol";
 import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
 import {IEpochLiquidityModule} from "../interfaces/IEpochLiquidityModule.sol";
 
-// import "forge-std/console2.sol";
+import "forge-std/console2.sol";
 
 contract EpochLiquidityModule is
     ReentrancyGuard,
@@ -68,10 +68,9 @@ contract EpochLiquidityModule is
             addedAmount1
         );
 
-        epoch.validateCollateralRequirementsForLP(
+        epoch.validateProvidedLiquidity(
             params.collateralAmount,
-            addedAmount0,
-            addedAmount1,
+            liquidity,
             params.lowerTick,
             params.upperTick
         );
@@ -167,8 +166,6 @@ contract EpochLiquidityModule is
         );
 
         emit LiquidityPositionDecreased(position.tokenId, amount0, amount1);
-
-        // transfer or remove collateral
     }
 
     function increaseLiquidityPosition(
@@ -226,7 +223,6 @@ contract EpochLiquidityModule is
         );
     }
 
-    // TODO This needs to be fixed, not sure if it's the right way to calculate the required collateral
     function getTokenAmounts(
         uint256 epochId,
         uint256 depositedCollateralAmount,
@@ -240,8 +236,6 @@ contract EpochLiquidityModule is
         returns (uint256 amount0, uint256 amount1, uint128 liquidity)
     {
         Epoch.Data storage epoch = Epoch.load(epochId);
-
-        // TODO This needs to be reviewed and fixed.
 
         // calculate for unit
         uint128 unitLiquidity = LiquidityAmounts.getLiquidityForAmounts(
