@@ -34,8 +34,9 @@ import {
 } from 'wagmi';
 
 import erc20ABI from '../../erc20abi.json';
-import { getNewLiquidity } from '../util/positionUtil';
-import { renderContractErrorToast, renderToastSuccess } from '../util/util';
+import { getNewLiquidity } from '../../util/positionUtil';
+import { renderContractErrorToast, renderToastSuccess } from '../../util/util';
+import { TOKEN_DECIMALS } from '~/lib/constants/constants';
 import { useLoading } from '~/lib/context/LoadingContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
@@ -45,7 +46,6 @@ import useFoilDeployment from './useFoilDeployment';
 
 const tickSpacingDefault = 200; // 1% - Hardcoded for now, should be retrieved with pool.tickSpacing()
 
-const TOKEN_DECIMALS = 18; // should be retrieved from the contract?
 const priceToTick = (price: number, tickSpacing: number): number => {
   const tick = Math.log(price) / Math.log(1.0001);
   return Math.round(tick / tickSpacing) * tickSpacing;
