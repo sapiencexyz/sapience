@@ -346,17 +346,21 @@ contract EpochTradeModule is IEpochTradeModule {
             // Increase the position (SHORT)
 
             int256 delta = (tokenAmount - position.currentTokenAmount);
-            int256 deltaLimit = (tokenAmountLimit -
-                position.currentTokenAmount);
+            int256 deltaLimit;
+            if (tokenAmountLimit >= position.currentTokenAmount) {
+                deltaLimit = 0;
+            } else {
+                deltaLimit = (tokenAmountLimit - position.currentTokenAmount);
+            }
 
             // with the collateral get vGas (Loan)
-            uint256 vGasLoan = (delta * -1).toUint(); //
+            uint256 vGasLoan = (delta * -1).toUint();
             position.borrowedVGas += vGasLoan;
 
             SwapTokensExactInParams memory params = SwapTokensExactInParams({
                 epochId: position.epochId,
                 amountInVEth: 0,
-                amountInVGas: (delta * -1).toUint(),
+                amountInVGas: vGasLoan,
                 amountOutLimitVEth: 0,
                 amountOutLimitVGas: (deltaLimit * -1).toUint()
             });
@@ -375,6 +379,7 @@ contract EpochTradeModule is IEpochTradeModule {
         } else {
             // Decrease the position (SHORT)
             int256 delta = (position.currentTokenAmount - tokenAmount);
+            position.borrowedVGas -= (delta * -1).toUint();
 
             SwapTokensExactOutParams memory params = SwapTokensExactOutParams({
                 epochId: position.epochId,
