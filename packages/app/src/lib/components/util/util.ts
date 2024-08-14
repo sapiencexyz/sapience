@@ -17,3 +17,15 @@ export const renderContractErrorToast = (
     });
   }
 };
+
+export const renderToastSuccess = (
+  toast: (options?: UseToastOptions) => ToastId,
+  desc: string
+) => {
+  toast({
+    title: desc,
+    status: 'success',
+    duration: 5000,
+    isClosable: true,
+  });
+};

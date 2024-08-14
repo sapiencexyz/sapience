@@ -1,15 +1,21 @@
-import { MarketContext } from '../context/MarketProvider';
-import useFoilDeployment from '../components/foil/useFoilDeployment';
-import { useReadContract, useReadContracts } from 'wagmi';
-import { useContext, useEffect, useMemo } from 'react';
 import { times } from 'lodash';
+import { useContext, useEffect, useMemo } from 'react';
 import type { AbiFunction } from 'viem';
+import { useReadContract, useReadContracts } from 'wagmi';
+
+import useFoilDeployment from '../components/foil/useFoilDeployment';
+import { MarketContext } from '../context/MarketProvider';
 
 export const useTokenIdsOfOwner = (ownerAddress: `0x${string}`) => {
   const { chain } = useContext(MarketContext);
   const { foilData } = useFoilDeployment(chain?.id);
 
-  const { data, refetch, isRefetching } = useReadContract({
+  const {
+    data: balanceData,
+    refetch,
+    isRefetching: isRefetchingBalance,
+    isLoading: isLoadingBalance,
+  } = useReadContract({
     abi: foilData.abi,
     address: foilData.address as `0x${string}`,
     functionName: 'balanceOf',
@@ -17,9 +23,9 @@ export const useTokenIdsOfOwner = (ownerAddress: `0x${string}`) => {
   });
 
   const tokenBalance = useMemo(() => {
-    if (!data) return 0;
-    return parseInt(data.toString(), 10);
-  }, [data]);
+    if (!balanceData) return 0;
+    return parseInt(balanceData.toString(), 10);
+  }, [balanceData]);
 
   const contracts = useMemo(() => {
     return times(tokenBalance).map((i) => {
@@ -32,14 +38,14 @@ export const useTokenIdsOfOwner = (ownerAddress: `0x${string}`) => {
     });
   }, [tokenBalance]);
 
-  const tokens = useReadContracts({
-    contracts: contracts,
+  const { data, isLoading: isLoadingContracts } = useReadContracts({
+    contracts,
   });
 
   const tokenIds = useMemo(() => {
-    if (tokens.data) {
+    if (data) {
       const ids = [];
-      for (const t of tokens.data) {
+      for (const t of data) {
         if (t.result) {
           ids.push(parseInt(t.result.toString(), 10));
         }
@@ -47,6 +53,12 @@ export const useTokenIdsOfOwner = (ownerAddress: `0x${string}`) => {
       return ids;
     }
     return [];
-  }, [tokens]);
-  return { tokenIds, refetch };
+  }, [data]);
+  return {
+    tokenIds,
+    refetch,
+    isLoadingContracts,
+    isLoadingBalance,
+    isRefetchingBalance,
+  };
 };

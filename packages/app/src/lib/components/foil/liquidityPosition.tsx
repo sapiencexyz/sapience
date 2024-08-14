@@ -1,13 +1,13 @@
 'use client';
 
 import { Box, Button, Divider, Heading, Text } from '@chakra-ui/react';
-import React, { useState } from 'react';
-
-import AddLiquidity from './addLiquidity';
-import EditLiquidity from './editLiquidity';
-import PositionSelector from './positionSelector';
-import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';
+import { useState } from 'react';
 import { useAccount } from 'wagmi';
+
+import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';
+
+import AddEditLiquidity from './addEditLiquidity';
+import PositionSelector from './positionSelector';
 
 const LiquidityPosition = () => {
   const [nftId, setNftId] = useState(0);
@@ -19,8 +19,7 @@ const LiquidityPosition = () => {
       <Box>
         <PositionSelector isLP onChange={setNftId} nftIds={tokenIds} />
       </Box>
-      <AddLiquidity nftId={nftId} refetch={refetch} />
-      {/* {nftId === 0 ? <AddLiquidity /> : <EditLiquidity />} */}
+      <AddEditLiquidity nftId={nftId} refetchTokens={refetch} />
       <Box hidden={nftId === 0}>
         <Divider my={6} />
         <Heading size="sm" mb={1}>

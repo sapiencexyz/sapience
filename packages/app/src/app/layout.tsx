@@ -1,9 +1,11 @@
 import type { Metadata, Viewport } from 'next';
 
 import Providers from '~/app/providers';
-import Layout from '~/lib/layout';
 import '@rainbow-me/rainbowkit/styles.css';
 import '../lib/styles/globals.css';
+import { LoadingSpinner } from '~/lib/components/foil/loadingSpinner';
+import { LoadingProvider } from '~/lib/context/LoadingContext';
+import Layout from '~/lib/layout';
 // import { spacemonoRegular, figtreeFont } from '~/lib/styles/theme/fonts';
 
 type RootLayoutProps = {
@@ -50,7 +52,10 @@ const RootLayout = ({ children }: RootLayoutProps) => {
     <html lang="en">
       <body>
         <Providers>
-          <Layout>{children}</Layout>
+          <LoadingProvider>
+            <LoadingSpinner />
+            <Layout>{children}</Layout>
+          </LoadingProvider>
         </Providers>
       </body>
     </html>
