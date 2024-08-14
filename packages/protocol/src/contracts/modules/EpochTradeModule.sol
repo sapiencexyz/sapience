@@ -255,13 +255,11 @@ contract EpochTradeModule is IEpochTradeModule {
             uint256 delta = (tokenAmount - position.currentTokenAmount)
                 .toUint();
             // with the collateral get vEth (Loan)
-            uint256 vEthLoan = position.depositedCollateralAmount +
-                collateralAmount; // 1:1
-            position.borrowedVEth = vEthLoan;
+            uint256 vEthDeltaLoan = collateralAmount; // 1:1
 
             SwapTokensExactOutParams memory params = SwapTokensExactOutParams({
                 epochId: position.epochId,
-                availableAmountInVEth: vEthLoan,
+                availableAmountInVEth: vEthDeltaLoan,
                 availableAmountInVGas: 0,
                 amountInLimitVEth: 0,
                 amountInLimitVGas: 0,
@@ -276,7 +274,9 @@ contract EpochTradeModule is IEpochTradeModule {
                 uint256 tokenAmountVEth,
                 uint256 tokenAmountVGas
             ) = swapTokensExactOut(params);
-            position.borrowedVEth -= refundAmountVEth;
+            // Adjust the delta loan with the refund
+            vEthDeltaLoan -= refundAmountVEth;
+            position.borrowedVEth += vEthDeltaLoan;
 
             position.updateBalance(
                 delta.toInt(),
@@ -466,6 +466,8 @@ contract EpochTradeModule is IEpochTradeModule {
             }
 
             position.borrowedVEth = 0;
+
+            position.updateCollateral(Market.load().collateralAsset, 0);
 
             position.resetBalance();
         } else {
