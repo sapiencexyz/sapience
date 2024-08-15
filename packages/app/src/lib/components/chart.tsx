@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useContext } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import {
   ResponsiveContainer,
   XAxis,
@@ -18,19 +18,24 @@ const CustomBarShape = ({
   width,
   payload,
   yAxisDomain,
+  chartHeight,
+  gridOffsetFromParent,
 }: {
   x: number;
   width: number;
   payload: any;
   yAxisDomain: any;
+  chartHeight: number;
+  gridOffsetFromParent: number;
 }) => {
   const candleColor =
     payload.open < payload.close
-      ? colors.green?.[400] ?? '#00FF00' // Default to a green color
+      ? colors.green?.[400] ?? '#00FF00'
       : colors.red?.[500] ?? '#FF0000';
 
   const scaleY = (value: number) => {
-    return (value - yAxisDomain[0]) / (yAxisDomain[1] - yAxisDomain[0]);
+    const scaled = (value - yAxisDomain[0]) / (yAxisDomain[1] - yAxisDomain[0]);
+    return chartHeight - scaled * chartHeight + gridOffsetFromParent;
   };
 
   const lowY = scaleY(payload.low);
@@ -73,9 +78,34 @@ const CandlestickChart: React.FC = () => {
     Math.max(...prices.map((p) => p.high)),
   ];
 
+  const chartRef = useRef(null);
+  const [gridHeight, setGridHeight] = useState(0);
+  const [gridOffsetFromParent, setGridOffsetFromParent] = useState(0);
+
+  useEffect(() => {
+    if (chartRef.current) {
+      // Access the parent container and the CartesianGrid's bounding boxes
+      const parentElement = (chartRef.current as any).container;
+      const gridElement = parentElement.querySelector(
+        '.recharts-cartesian-grid'
+      );
+
+      if (gridElement && parentElement) {
+        const gridRect = gridElement.getBoundingClientRect();
+        const parentRect = parentElement.getBoundingClientRect();
+
+        // Calculate the height of the CartesianGrid
+        setGridHeight(gridRect.height);
+
+        // Calculate the offset from the top of the parent container
+        setGridOffsetFromParent(gridRect.top - parentRect.top);
+      }
+    }
+  }, [prices]);
+
   return (
     <ResponsiveContainer height="100%" width="100%">
-      <ComposedChart data={prices}>
+      <ComposedChart data={prices} ref={chartRef}>
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="date" />
         <YAxis domain={yAxisDomain} />
@@ -83,7 +113,14 @@ const CandlestickChart: React.FC = () => {
           dataKey="candles"
           // eslint-disable-next-line @typescript-eslint/no-explicit-any, react/no-unstable-nested-components
           shape={(props: any) => {
-            return <CustomBarShape {...props} yAxisDomain={yAxisDomain} />;
+            return (
+              <CustomBarShape
+                {...props}
+                yAxisDomain={yAxisDomain}
+                chartHeight={gridHeight}
+                gridOffsetFromParent={gridOffsetFromParent}
+              />
+            );
           }}
         />
         <ReferenceLine
