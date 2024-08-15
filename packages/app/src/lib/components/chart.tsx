@@ -81,6 +81,7 @@ const CandlestickChart: React.FC = () => {
         <YAxis domain={yAxisDomain} />
         <Bar
           dataKey="candles"
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any, react/no-unstable-nested-components
           shape={(props: any) => {
             return <CustomBarShape {...props} yAxisDomain={yAxisDomain} />;
           }}

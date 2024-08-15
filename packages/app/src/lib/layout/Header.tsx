@@ -1,3 +1,5 @@
+/* eslint-disable import/no-extraneous-dependencies */
+
 import { Box, Flex, Image } from '@chakra-ui/react';
 import Link from 'next/link';
 
