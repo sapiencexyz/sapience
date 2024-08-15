@@ -82,7 +82,7 @@ if(process.argv.length < 3) {
   if (args[0] === 'index-sepolia') {
     Promise.all([
       indexBaseFeePerGasRangeCommand(20413376, 20428947, 'https://ethereum-rpc.publicnode.com', `${sepolia.id}:${FoilSepolia.address}`),
-      indexMarketEventsRangeCommand(1722270000, 1722458027, 'https://ethereum-sepolia-rpc.publicnode.com', FoilSepolia.address, FoilSepolia.abi as Abi)
+      indexMarketEventsRangeCommand(6506300, 6606300, 'https://ethereum-sepolia-rpc.publicnode.com', FoilSepolia.address, FoilSepolia.abi as Abi)
     ])
   }
 }
