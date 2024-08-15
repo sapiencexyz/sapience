@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "build": "pnpm --filter protocol run build && pnpm --filter app run build && pnpm --filter docs run build && pnpm --filter website run build && pnpm --filter data run build",
     "test": "pnpm run test --recursive",
     "dev:protocol": "pnpm --filter protocol run dev",
     "dev:app": "pnpm --filter app run dev",
