@@ -17,4 +17,4 @@
 In `/packages/protcol`:
 * Increment the version number in the cannonfiles
 * Run `pnpm simulate-deploy:sepolia` to verify there are no issues
-* Run `CANNON_PRIVATE_KEY=x CANNON_PROVIDER_URL=y pnpm deploy sepolia` (or set those values in a `.env` file)
+* Run `CANNON_PRIVATE_KEY=x CANNON_PROVIDER_URL=y pnpm deploy:sepolia` (or set those values in a `.env` file)

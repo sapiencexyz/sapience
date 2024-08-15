@@ -57,15 +57,15 @@ async function createViemPublicClient(providerUrl: string) {
 }
 
 async function indexBaseFeePerGasRangeCommand(startBlock: number, endBlock: number, rpcUrl: string, contractAddress: string) {
-console.log(`Indexing base fee per gas from block ${startBlock} to ${endBlock} for contract ${contractAddress} using ${rpcUrl}`);
-const client = await createViemPublicClient(rpcUrl);
-await indexBaseFeePerGasRange(client, startBlock, endBlock, contractAddress);
+  console.log(`Indexing base fee per gas from block ${startBlock} to ${endBlock} for contract ${contractAddress} using ${rpcUrl}`);
+  const client = await createViemPublicClient(rpcUrl);
+  await indexBaseFeePerGasRange(client, startBlock, endBlock, contractAddress);
 }
 
 async function indexMarketEventsRangeCommand(startBlock: number, endBlock: number, rpcUrl: string, contractAddress: string, contractAbi: Abi) {
-console.log(`Indexing market events from block ${startBlock} to ${endBlock} for contract ${contractAddress} using ${rpcUrl}`);
-const client = await createViemPublicClient(rpcUrl);
-await indexMarketEventsRange(client, startBlock, endBlock, contractAddress, contractAbi);
+  console.log(`Indexing market events from block ${startBlock} to ${endBlock} for contract ${contractAddress} using ${rpcUrl}`);
+  const client = await createViemPublicClient(rpcUrl);
+  await indexMarketEventsRange(client, startBlock, endBlock, contractAddress, contractAbi);
 }
 
 if(process.argv.length < 3) {
@@ -80,19 +80,9 @@ if(process.argv.length < 3) {
 } else {
   const args = process.argv.slice(2);
   if (args[0] === 'index-sepolia') {
-    // Index mainnet gas to sepolia contract
-    indexBaseFeePerGasRangeCommand(20413376, 20428947, 'https://ethereum-rpc.publicnode.com', `${sepolia.id}:${FoilSepolia.address}`)
-    //indexMarketEventsRangeCommand(1722270000, 1722458027, 'https://ethereum-rpc.publicnode.com', FoilSepolia.address, FoilSepolia.abi as Abi)
-  } else if (args[0] === 'index-base-fee-per-gas') {
-    const [start, end, rpcUrl, contractAddress] = args.slice(1);
-    indexBaseFeePerGasRangeCommand(Number(start), Number(end), rpcUrl, contractAddress)
-      .then(() => console.log('Indexing completed successfully'))
-      .catch(error => console.error('Error indexing base fee per gas range:', error));
-  } else if (args[0] === 'index-market-events') {
-    const [start, end, rpcUrl, contractAddress, contractAbiPath] = args.slice(1);
-    const contractAbi = require(contractAbiPath) as Abi; // Assuming the ABI is provided as a JSON file path
-    indexMarketEventsRangeCommand(Number(start), Number(end), rpcUrl, contractAddress, contractAbi)
-      .then(() => console.log('Indexing completed successfully'))
-      .catch(error => console.error('Error indexing market events range:', error));
+    Promise.all([
+      indexBaseFeePerGasRangeCommand(20413376, 20428947, 'https://ethereum-rpc.publicnode.com', `${sepolia.id}:${FoilSepolia.address}`),
+      indexMarketEventsRangeCommand(1722270000, 1722458027, 'https://ethereum-sepolia-rpc.publicnode.com', FoilSepolia.address, FoilSepolia.abi as Abi)
+    ])
   }
 }

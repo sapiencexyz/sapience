@@ -21,6 +21,7 @@ export const indexMarketEvents = async (publicClient: PublicClient, Foil: { addr
   const processLogs = async (logs: Log[]) => {
     for (const log of logs) {
       const serializedLog = JSON.stringify(log, bigintReplacer);
+      // TODO: Make this upsert!
       const event = eventRepository.create({
         logData: JSON.parse(serializedLog), // Parse back to JSON object
         contractId: `${chainId}:${Foil.address}`,
@@ -60,6 +61,7 @@ export const indexMarketEventsRange = async (publicClient: PublicClient, start: 
           topics: log.topics,
         });
         const serializedLog = JSON.stringify(decodedLog, bigintReplacer);
+        // TODO: Make this upsert!
         const event = eventRepository.create({
           logData: JSON.parse(serializedLog), // Parse back to JSON object
           contractId: `${await publicClient.getChainId()}:${contractAddress}`,

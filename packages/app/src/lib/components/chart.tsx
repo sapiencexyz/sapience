@@ -1,11 +1,10 @@
 import type React from 'react';
-import { useContext } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import {
   ResponsiveContainer,
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
   ComposedChart,
   Bar,
   ReferenceLine,
@@ -16,38 +15,51 @@ import { colors } from '~/lib/styles/theme/colors';
 
 const CustomBarShape = ({
   x,
-  y,
   width,
   payload,
-  yAxis,
+  yAxisDomain,
+  chartHeight,
+  gridOffsetFromParent,
 }: {
-  x: any;
-  y: any;
-  width: any;
+  x: number;
+  width: number;
   payload: any;
-  yAxis: any;
+  yAxisDomain: any;
+  chartHeight: number;
+  gridOffsetFromParent: number;
 }) => {
   const candleColor =
-    colors.green &&
-    colors.red &&
-    (payload.open < payload.close ? colors.green[400] : colors.red[500]);
-  const barHeight = Math.abs(yAxis(payload.open) - yAxis(payload.close));
-  const wickHeight = Math.abs(yAxis(payload.low) - yAxis(payload.high));
-  const wickY = Math.min(yAxis(payload.low), yAxis(payload.high));
-  const barY = Math.min(yAxis(payload.open), yAxis(payload.close));
+    payload.open < payload.close
+      ? colors.green?.[400] ?? '#00FF00'
+      : colors.red?.[500] ?? '#FF0000';
+
+  const scaleY = (value: number) => {
+    const scaled = (value - yAxisDomain[0]) / (yAxisDomain[1] - yAxisDomain[0]);
+    return chartHeight - scaled * chartHeight + gridOffsetFromParent;
+  };
+
+  const lowY = scaleY(payload.low);
+  const highY = scaleY(payload.high);
+  const openY = scaleY(payload.open);
+  const closeY = scaleY(payload.close);
+
+  const barHeight = Math.abs(openY - closeY);
+  const wickHeight = Math.abs(lowY - highY);
 
   return (
     <>
+      {/* Wick */}
       <rect
         x={x + width / 2 - 0.5}
-        y={wickY}
+        y={highY}
         width={1}
         height={wickHeight}
         fill={candleColor}
       />
+      {/* Body */}
       <rect
         x={x}
-        y={barY}
+        y={Math.min(openY, closeY)}
         width={width}
         height={barHeight}
         fill={candleColor}
@@ -57,33 +69,64 @@ const CustomBarShape = ({
 };
 
 const CandlestickChart: React.FC = () => {
+  const grayColor = colors.gray?.[800] ?? '#808080';
+
   const { averagePrice, prices } = useContext(MarketContext);
-  console.log('prices:', prices);
+
+  const yAxisDomain = [
+    Math.min(...prices.map((p) => p.low)),
+    Math.max(...prices.map((p) => p.high)),
+  ];
+
+  const chartRef = useRef(null);
+  const [gridHeight, setGridHeight] = useState(0);
+  const [gridOffsetFromParent, setGridOffsetFromParent] = useState(0);
+
+  useEffect(() => {
+    if (chartRef.current) {
+      // Access the parent container and the CartesianGrid's bounding boxes
+      const parentElement = (chartRef.current as any).container;
+      const gridElement = parentElement.querySelector(
+        '.recharts-cartesian-grid'
+      );
+
+      if (gridElement && parentElement) {
+        const gridRect = gridElement.getBoundingClientRect();
+        const parentRect = parentElement.getBoundingClientRect();
+
+        // Calculate the height of the CartesianGrid
+        setGridHeight(gridRect.height);
+
+        // Calculate the offset from the top of the parent container
+        setGridOffsetFromParent(gridRect.top - parentRect.top);
+      }
+    }
+  }, [prices]);
 
   return (
-    <ResponsiveContainer>
-      <ComposedChart data={prices}>
+    <ResponsiveContainer height="100%" width="100%">
+      <ComposedChart data={prices} ref={chartRef}>
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="date" />
-        <YAxis
-          domain={[0, Math.max(...prices.map((p) => p.high))]}
-          tickFormatter={(value) => (value / 10e8).toFixed(2)}
-        />
-        <Tooltip formatter={(value) => ((value as number) / 10e8).toFixed(2)} />
+        <YAxis domain={yAxisDomain} />
         <Bar
-          dataKey="high"
-          // eslint-disable-next-line react/no-unstable-nested-components
-          shape={(props: any) => (
-            <CustomBarShape
-              {...props}
-              yAxis={(d: any) => (d / 10e8) * (400 / 15)}
-            />
-          )}
+          dataKey="candles"
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any, react/no-unstable-nested-components
+          shape={(props: any) => {
+            return (
+              <CustomBarShape
+                {...props}
+                yAxisDomain={yAxisDomain}
+                chartHeight={gridHeight}
+                gridOffsetFromParent={gridOffsetFromParent}
+              />
+            );
+          }}
         />
         <ReferenceLine
           y={averagePrice}
           label="Average Price"
-          stroke={colors?.gray && colors.gray[800]}
+          stroke={grayColor}
           strokeDasharray="3 3"
         />
       </ComposedChart>
