@@ -83,7 +83,9 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   const [highPrice, setHighPrice] = useState(
     tickToPrice(baseAssetMaxPriceTick)
   );
+  const [txnStep, setTxnStep] = useState<number>(0);
   const [slippage, setSlippage] = useState<number>(0.5);
+  const [pendingTxn, setPendingTxn] = useState(false);
 
   const tickLower = priceToTick(lowPrice, tickSpacingDefault);
   const tickUpper = priceToTick(highPrice, tickSpacingDefault);
@@ -151,20 +153,17 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   });
 
   /// //// WRITE CONTRACT HOOKS ///////
-  const {
-    data: approveHash,
-    writeContract: approveWrite,
-    isPending: isApprovePending,
-  } = useWriteContract({
+  const { data: approveHash, writeContract: approveWrite } = useWriteContract({
     mutation: {
       onError: (error) => {
+        setPendingTxn(false);
+        setIsLoading(false);
         renderContractErrorToast(
           error as WriteContractErrorType,
           toast,
           'Failed to approve'
         );
       },
-      onSuccess: () => handleCreateOrIncreaseLiquidity(),
     },
   });
 
@@ -172,6 +171,8 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     useWriteContract({
       mutation: {
         onError: (error) => {
+          setPendingTxn(false);
+          setIsLoading(false);
           renderContractErrorToast(
             error as WriteContractErrorType,
             toast,
@@ -185,6 +186,8 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     useWriteContract({
       mutation: {
         onError: (error) => {
+          setPendingTxn(false);
+          setIsLoading(false);
           renderContractErrorToast(
             error as WriteContractErrorType,
             toast,
@@ -198,6 +201,8 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     useWriteContract({
       mutation: {
         onError: (error) => {
+          setPendingTxn(false);
+          setIsLoading(false);
           renderContractErrorToast(
             error as WriteContractErrorType,
             toast,
@@ -208,41 +213,22 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     });
 
   /// //// WAIT FOR TRANSACTION RECEIPT HOOKS ///////
-  const { isLoading: isLoadingApprove } = useWaitForTransactionReceipt({
+  const { isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({
     hash: approveHash,
   });
 
-  const { isSuccess: addLiquiditySuccess, isLoading: isLoadingAdd } =
-    useWaitForTransactionReceipt({
-      hash: addLiquidityHash,
-    });
+  const { isSuccess: addLiquiditySuccess } = useWaitForTransactionReceipt({
+    hash: addLiquidityHash,
+  });
 
-  const { isSuccess: increaseLiquiditySuccess, isLoading: isLoadingIncrease } =
-    useWaitForTransactionReceipt({
-      hash: increaseLiquidityHash,
-    });
-  const { isSuccess: decreaseLiquiditySuccess, isLoading: isLoadingDecrease } =
-    useWaitForTransactionReceipt({
-      hash: decreaseLiqudiityHash,
-    });
+  const { isSuccess: increaseLiquiditySuccess } = useWaitForTransactionReceipt({
+    hash: increaseLiquidityHash,
+  });
+  const { isSuccess: decreaseLiquiditySuccess } = useWaitForTransactionReceipt({
+    hash: decreaseLiqudiityHash,
+  });
 
   /// ///// MEMOIZED VALUES ////////
-  const isPending = useMemo(() => {
-    return (
-      isLoadingApprove ||
-      isLoadingAdd ||
-      isLoadingIncrease ||
-      isLoadingDecrease ||
-      isApprovePending
-    );
-  }, [
-    isLoadingApprove,
-    isLoadingAdd,
-    isLoadingIncrease,
-    isLoadingDecrease,
-    isApprovePending,
-  ]);
-
   const liquidity: undefined | bigint = useMemo(() => {
     if (!uniswapPosition) return;
     const uniswapData = uniswapPosition as any[];
@@ -310,19 +296,27 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   }, [allowanceData, collateralAssetDecimals]);
 
   /// //// USE EFFECTS ///////
+  // handle successful approval
   useEffect(() => {
-    if (addLiquiditySuccess) {
-      renderToastSuccess(toast, 'successfully added liquidity');
+    if (isApproveSuccess && txnStep === 1) {
+      handleCreateOrIncreaseLiquidity();
+    }
+  }, [isApproveSuccess, txnStep]);
+
+  // handle successful add/increase liquidity
+  useEffect(() => {
+    if (addLiquiditySuccess && txnStep === 2) {
+      renderToastSuccess(toast, `successfully added liquidity`);
       refetchStates();
     }
-  }, [addLiquiditySuccess]);
+  }, [addLiquiditySuccess, txnStep]);
 
   useEffect(() => {
-    if (increaseLiquiditySuccess) {
-      renderToastSuccess(toast, 'successfully increased liquidity');
+    if (increaseLiquiditySuccess && txnStep === 2) {
+      renderToastSuccess(toast, `successfully increased liquidity`);
       refetchStates();
     }
-  }, [increaseLiquiditySuccess]);
+  }, [increaseLiquiditySuccess, txnStep]);
 
   useEffect(() => {
     if (decreaseLiquiditySuccess) {
@@ -330,11 +324,6 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
       refetchStates();
     }
   }, [decreaseLiquiditySuccess]);
-
-  useEffect(() => {
-    console.log('isPending', isPending);
-    setIsLoading(isPending);
-  }, [isPending]);
 
   // handle token amounts error
   useEffect(() => {
@@ -408,6 +397,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
         chainId: chain?.id,
       });
     }
+    setTxnStep(2);
   };
 
   const refetchStates = () => {
@@ -416,6 +406,9 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     setLowPrice(tickToPrice(baseAssetMinPriceTick));
     setHighPrice(tickToPrice(baseAssetMaxPriceTick));
     setSlippage(0.5);
+    setTxnStep(0);
+    setPendingTxn(false);
+    setIsLoading(false);
 
     // refetch contract data
     refetchCollateralAmount();
@@ -458,6 +451,8 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   };
 
   const handleFormSubmit = (e: any) => {
+    setPendingTxn(true);
+    setIsLoading(true);
     e.preventDefault();
     if (isEdit && isDecrease) {
       return handleDecreaseLiquidty();
@@ -478,6 +473,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
         ],
         chainId: chain?.id,
       });
+      setTxnStep(1);
     }
   };
 
@@ -604,8 +600,8 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
           width="full"
           variant="brand"
           type="submit"
-          isLoading={isPending}
-          isDisabled={isPending}
+          isLoading={pendingTxn}
+          isDisabled={pendingTxn}
         >
           {isEdit && isDecrease ? 'Decrease' : 'Add'} Liquidity
         </Button>
