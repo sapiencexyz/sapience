@@ -1,236 +1,463 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
-import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
-
-import {IFoil} from "../src/contracts/interfaces/IFoil.sol";
-import {IFoilStructs} from "../src/contracts/interfaces/IFoilStructs.sol";
-import {VirtualToken} from "../src/contracts/external/VirtualToken.sol";
-import {TickMath} from "../src/contracts/external/univ3/TickMath.sol";
-import "../src/contracts/interfaces/external/INonfungiblePositionManager.sol";
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
-import "../src/contracts/storage/Position.sol";
-import {IMintableToken} from "../src/contracts/external/IMintableToken.sol";
+import "./FoilTradeTestHelper.sol";
+import "../src/synthetix/utils/DecimalMath.sol";
 
 import "forge-std/console2.sol";
 
-contract FoilTradeModuleTest is Test {
+contract FoilTradeModuleTest is FoilTradeTestHelper {
     using Cannon for Vm;
+    using DecimalMath for uint256;
 
     IFoil foil;
     address pool;
     address tokenA;
     address tokenB;
     uint256 epochId;
+    uint256 feeRate;
+    uint256 UNIT = 1e18;
 
     IMintableToken collateralAsset;
+    IUniswapV3Pool uniCastedPool;
 
     function setUp() public {
-        console2.log("setUp");
         foil = IFoil(vm.getAddress("Foil"));
         collateralAsset = IMintableToken(
             vm.getAddress("CollateralAsset.Token")
         );
-        collateralAsset.mint(10_000_000 ether, address(this));
-        collateralAsset.approve(address(foil), 10_000_000 ether);
-
-        console2.log("getEpoch");
+        collateralAsset.mint(type(uint240).max, address(this));
+        collateralAsset.approve(address(foil), type(uint240).max);
 
         (epochId, , , pool, tokenA, tokenB) = foil.getLatestEpoch();
-
-        console2.log("pool", pool);
-        console2.log("tokenA", tokenA);
-        console2.log("tokenB", tokenB);
-        console2.log("epochId", epochId);
+        uniCastedPool = IUniswapV3Pool(pool);
+        feeRate = uint256(uniCastedPool.fee()) * 1e12;
     }
 
-    function test_trade_long() public {
-        uint256 priceReference;
-        uint256 positionId_1;
-        priceReference = foil.getReferencePrice(epochId);
+    function test_tradeLong_Only() public {
+        uint256 referencePrice;
+        uint256 positionId;
+        uint256 collateralForOrder = 10 ether;
+        int256 positionSize;
+        uint256 tokens;
+        uint256 fee;
+        uint256 accumulatedFee;
 
-        console2.log("priceReference", priceReference);
+        StateData memory expectedStateData;
+        StateData memory currentStateData;
 
-        uint256 collateralAmount = 100_000 ether;
-        int24 lowerTick = 12200;
-        int24 upperTick = 12400;
+        addLiquidity(foil, pool, epochId, collateralForOrder * 100_000); // enough to keep price stable (no slippage)
 
-        (
-            uint256 amountTokenA,
-            uint256 amountTokenB,
-            uint256 liquidity
-        ) = getTokenAmountsForCollateralAmount(
-                collateralAmount,
-                lowerTick,
-                upperTick
-            );
+        // Set position size
+        positionSize = int256(collateralForOrder / 100);
 
-        console2.log("amountTokenA", amountTokenA);
-        console2.log("amountTokenB", amountTokenB);
-        console2.log("liquidity", liquidity);
+        fillCollateralStateData(foil, collateralAsset, currentStateData);
 
-        IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
-            .LiquidityPositionParams({
-                epochId: epochId,
-                amountTokenA: amountTokenA,
-                amountTokenB: amountTokenB,
-                collateralAmount: collateralAmount,
-                lowerTick: lowerTick,
-                upperTick: upperTick,
-                minAmountTokenA: 0,
-                minAmountTokenB: 0
-            });
+        referencePrice = foil.getReferencePrice(epochId);
+        tokens = uint256(positionSize).mulDecimal(referencePrice);
+        fee = tokens.mulDecimal(feeRate);
+        accumulatedFee += fee;
 
-        foil.createLiquidityPosition(params);
+        expectedStateData.userCollateral =
+            currentStateData.userCollateral -
+            collateralForOrder;
+        expectedStateData.foilCollateral =
+            currentStateData.foilCollateral +
+            collateralForOrder;
+        expectedStateData.depositedCollateralAmount = collateralForOrder;
+        expectedStateData.currentTokenAmount = positionSize;
+        expectedStateData.vEthAmount = 0;
+        expectedStateData.vGasAmount = uint256(positionSize);
+        expectedStateData.borrowedVEth = tokens + fee;
+        expectedStateData.borrowedVGas = 0;
 
-        priceReference = foil.getReferencePrice(epochId);
-        console2.log("priceReference", priceReference);
-
-        // Create Long position
-        console2.log("Create Long position");
-        priceReference = foil.getReferencePrice(epochId);
-        console2.log("priceReference", priceReference);
-        positionId_1 = foil.createTraderPosition(
+        // Create Long position (with enough collateral)
+        positionId = foil.createTraderPosition(
             epochId,
-            10 ether,
-            .1 ether,
+            collateralForOrder,
+            positionSize,
             0
         );
-        logPositionAndAccount(positionId_1);
+
+        currentStateData = assertPosition(
+            foil,
+            positionId,
+            collateralAsset,
+            expectedStateData,
+            "Create Long"
+        );
 
         // Modify Long position (increase it)
-        console2.log("Modify Long position (increase it)");
-        priceReference = foil.getReferencePrice(epochId);
-        console2.log("priceReference", priceReference);
-        foil.modifyTraderPosition(positionId_1, 10 ether, .2 ether, 0);
-        logPositionAndAccount(positionId_1);
+        referencePrice = foil.getReferencePrice(epochId);
+        tokens = uint256(positionSize).mulDecimal(referencePrice);
+        fee = tokens.mulDecimal(feeRate);
+        accumulatedFee += fee;
+
+        expectedStateData.userCollateral =
+            currentStateData.userCollateral -
+            collateralForOrder;
+        expectedStateData.foilCollateral =
+            currentStateData.foilCollateral +
+            collateralForOrder;
+        expectedStateData.depositedCollateralAmount = collateralForOrder * 2;
+        expectedStateData.currentTokenAmount = positionSize * 2;
+        expectedStateData.vEthAmount = 0;
+        expectedStateData.vGasAmount = uint256(positionSize) * 2;
+        expectedStateData.borrowedVEth =
+            currentStateData.borrowedVEth +
+            tokens +
+            fee;
+        expectedStateData.borrowedVGas = 0;
+
+        foil.modifyTraderPosition(
+            positionId,
+            2 * collateralForOrder,
+            2 * positionSize,
+            0
+        );
+
+        currentStateData = assertPosition(
+            foil,
+            positionId,
+            collateralAsset,
+            expectedStateData,
+            "Increase Long"
+        );
 
         // Modify Long position (decrease it)
-        console2.log("Modify Long position (decrease it)");
-        priceReference = foil.getReferencePrice(epochId);
-        console2.log("priceReference", priceReference);
-        foil.modifyTraderPosition(positionId_1, 0 ether, .1 ether, 0);
-        logPositionAndAccount(positionId_1);
+        referencePrice = foil.getReferencePrice(epochId);
+        tokens = uint256(positionSize).mulDecimal(referencePrice);
+        fee = tokens.mulDecimal(feeRate);
+        accumulatedFee += fee;
+
+        expectedStateData.userCollateral = currentStateData.userCollateral;
+        expectedStateData.foilCollateral = currentStateData.foilCollateral;
+        expectedStateData.depositedCollateralAmount = currentStateData
+            .depositedCollateralAmount;
+        expectedStateData.currentTokenAmount = positionSize;
+        expectedStateData.vEthAmount = 0;
+        expectedStateData.vGasAmount = uint256(positionSize);
+        expectedStateData.borrowedVEth =
+            currentStateData.borrowedVEth -
+            tokens +
+            fee; // discounting here because we are charging the fee on the vETH we get back
+        expectedStateData.borrowedVGas = 0;
+
+        foil.modifyTraderPosition(
+            positionId,
+            2 * collateralForOrder, // keep same collateral
+            positionSize,
+            0
+        );
+
+        currentStateData = assertPosition(
+            foil,
+            positionId,
+            collateralAsset,
+            expectedStateData,
+            "Decrease Long"
+        );
 
         // Modify Long position (close it)
-        console2.log("Modify Long position (close it)");
-        priceReference = foil.getReferencePrice(epochId);
-        console2.log("priceReference", priceReference);
-        foil.modifyTraderPosition(positionId_1, 0 ether, 0, 0);
-        logPositionAndAccount(positionId_1);
+        referencePrice = foil.getReferencePrice(epochId);
+        // fee for closing the position
+        fee = currentStateData.vGasAmount.mulDecimal(referencePrice).mulDecimal(
+                feeRate
+            );
+        accumulatedFee += fee;
+
+        expectedStateData.userCollateral =
+            currentStateData.userCollateral +
+            2 *
+            collateralForOrder -
+            accumulatedFee;
+        expectedStateData.foilCollateral =
+            currentStateData.foilCollateral -
+            2 *
+            collateralForOrder +
+            accumulatedFee;
+        expectedStateData.depositedCollateralAmount = 0;
+        expectedStateData.currentTokenAmount = 0;
+        expectedStateData.vEthAmount = 0;
+        expectedStateData.vGasAmount = 0;
+        expectedStateData.borrowedVEth = 0;
+        expectedStateData.borrowedVGas = 0;
+
+        foil.modifyTraderPosition(positionId, 0 ether, 0, 0);
+
+        assertPosition(
+            foil,
+            positionId,
+            collateralAsset,
+            expectedStateData,
+            "Close Long"
+        );
     }
 
-    function test_trade_long_cross_sides() public {
-        uint256 priceReference;
-        uint256 positionId_3;
-        priceReference = foil.getReferencePrice(epochId);
+    function test_trade_long_cross_sides_Only() public {
+        uint256 referencePrice;
+        uint256 positionId;
+        uint256 collateralForOrder = 10 ether;
+        int256 positionSize;
+        uint256 tokens;
+        uint256 fee;
+        uint256 accumulatedFee;
 
-        console2.log("priceReference", priceReference);
-        IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
-            .LiquidityPositionParams({
-                epochId: epochId,
-                amountTokenB: 20000 ether,
-                amountTokenA: 1000 ether,
-                collateralAmount: 100_000 ether,
-                lowerTick: 12200,
-                upperTick: 12400,
-                minAmountTokenA: 0,
-                minAmountTokenB: 0
-            });
+        StateData memory expectedStateData;
+        StateData memory currentStateData;
 
-        foil.createLiquidityPosition(params);
-        params.amountTokenB = 40000 ether;
-        params.amountTokenA = 2000 ether;
-        foil.createLiquidityPosition(params);
+        addLiquidity(foil, pool, epochId, collateralForOrder * 100_000); // enough to keep price stable (no slippage)
 
-        priceReference = foil.getReferencePrice(epochId);
-        console2.log("priceReference", priceReference);
+        // Set position size
+        positionSize = int256(collateralForOrder / 100);
 
-        // Create Long position (another one)
-        console2.log("Create Long position (another one)");
-        priceReference = foil.getReferencePrice(epochId);
-        console2.log("priceReference", priceReference);
-        positionId_3 = foil.createTraderPosition(
+        fillCollateralStateData(foil, collateralAsset, currentStateData);
+
+        referencePrice = foil.getReferencePrice(epochId);
+        tokens = uint256(positionSize).mulDecimal(referencePrice);
+        fee = tokens.mulDecimal(feeRate);
+        accumulatedFee += fee;
+
+        expectedStateData.userCollateral =
+            currentStateData.userCollateral -
+            collateralForOrder;
+        expectedStateData.foilCollateral =
+            currentStateData.foilCollateral +
+            collateralForOrder;
+        expectedStateData.depositedCollateralAmount = collateralForOrder;
+        expectedStateData.currentTokenAmount = positionSize;
+        expectedStateData.vEthAmount = 0;
+        expectedStateData.vGasAmount = uint256(positionSize);
+        expectedStateData.borrowedVEth = tokens + fee;
+        expectedStateData.borrowedVGas = 0;
+
+        accumulatedFee += uint256(positionSize)
+            .mulDecimal(referencePrice)
+            .mulDecimal(feeRate);
+
+        // Create Long position (with enough collateral)
+        positionId = foil.createTraderPosition(
             epochId,
-            10 ether,
-            .1 ether,
+            collateralForOrder,
+            positionSize,
             0
         );
-        logPositionAndAccount(positionId_3);
+
+        currentStateData = assertPosition(
+            foil,
+            positionId,
+            collateralAsset,
+            expectedStateData,
+            "Create Long"
+        );
 
         // Modify Long position (change side)
-        console2.log("Modify Long position (change side)");
-        priceReference = foil.getReferencePrice(epochId);
-        console2.log("priceReference", priceReference);
+        referencePrice = foil.getReferencePrice(epochId);
+        // change sides means closing the long order and opening a short order
+        // fee for closing the position
+        fee = currentStateData.vGasAmount.mulDecimal(referencePrice).mulDecimal(
+                feeRate
+            );
+        accumulatedFee += fee;
+
+        // tokens and fee for opening the short order
+        tokens = uint256(positionSize).divDecimal(referencePrice);
+        fee = tokens.mulDecimal(feeRate);
+        accumulatedFee += fee;
+
+        expectedStateData.userCollateral = currentStateData.userCollateral;
+        expectedStateData.foilCollateral = currentStateData.foilCollateral;
+        expectedStateData.depositedCollateralAmount = currentStateData
+            .depositedCollateralAmount;
+        expectedStateData.currentTokenAmount = positionSize * -1;
+        expectedStateData.vEthAmount = tokens - fee;
+        expectedStateData.vGasAmount = 0;
+        expectedStateData.borrowedVEth = 0;
+        expectedStateData.borrowedVGas = uint256(positionSize);
+
         foil.modifyTraderPosition(
-            positionId_3,
-            0 ether,
-            -.05 ether,
-            -.01 ether
-        );
-        logPositionAndAccount(positionId_3);
-    }
-
-    function test_trade_short() public {
-        uint256 priceReference;
-        uint256 positionId_2;
-        priceReference = foil.getReferencePrice(epochId);
-
-        console2.log("priceReference", priceReference);
-        IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
-            .LiquidityPositionParams({
-                epochId: epochId,
-                amountTokenB: 20000 ether,
-                amountTokenA: 1000 ether,
-                collateralAmount: 100_000 ether,
-                lowerTick: 12200,
-                upperTick: 12400,
-                minAmountTokenA: 0,
-                minAmountTokenB: 0
-            });
-
-        foil.createLiquidityPosition(params);
-        params.amountTokenB = 40000 ether;
-        params.amountTokenA = 2000 ether;
-        foil.createLiquidityPosition(params);
-
-        priceReference = foil.getReferencePrice(epochId);
-        console2.log("priceReference", priceReference);
-
-        // Create Short position
-        console2.log("Create Short position");
-        positionId_2 = foil.createTraderPosition(
-            epochId,
-            10 ether,
-            -.1 ether,
+            positionId,
+            collateralForOrder,
+            -1 * positionSize,
             0
         );
-        logPositionAndAccount(positionId_2);
 
-        // Modify Short position (increase it)
-        console2.log("Modify Short position (increase it)");
-        foil.modifyTraderPosition(positionId_2, 10 ether, -.2 ether, -.1 ether);
-        logPositionAndAccount(positionId_2);
-
-        // Modify Short position (decrease it)
-        console2.log("Modify Short position (decrease it)");
-        foil.modifyTraderPosition(positionId_2, 0, -.05 ether, -.01 ether);
-        logPositionAndAccount(positionId_2);
-
-        // Modify Short position (close it)
-        console2.log("Modify Short position (close it)");
-        foil.modifyTraderPosition(positionId_2, 0, 0, 0);
-        logPositionAndAccount(positionId_2);
+        currentStateData = assertPosition(
+            foil,
+            positionId,
+            collateralAsset,
+            expectedStateData,
+            "Change sides Long"
+        );
     }
 
-    function test_trade_short_cross_sides_Only() public {
-        uint256 priceReference;
-        uint256 positionId_4;
-        priceReference = foil.getReferencePrice(epochId);
+    function test_trade_short_Only() public {
+        uint256 referencePrice;
+        uint256 positionId;
+        uint256 collateralForOrder = 10 ether;
+        int256 positionSize;
+        uint256 tokens;
+        uint256 fee;
+        uint256 accumulatedFee;
 
-        console2.log("priceReference", priceReference);
+        StateData memory expectedStateData;
+        StateData memory currentStateData;
+
+        addLiquidity(foil, pool, epochId, collateralForOrder * 100_000); // enough to keep price stable (no slippage)
+
+        // Set position size
+        positionSize = int256(collateralForOrder / 100);
+
+        fillCollateralStateData(foil, collateralAsset, currentStateData);
+
+        referencePrice = foil.getReferencePrice(epochId);
+        tokens = uint256(positionSize).mulDecimal(referencePrice);
+        fee = tokens.mulDecimal(feeRate);
+        accumulatedFee += fee;
+
+        expectedStateData.userCollateral =
+            currentStateData.userCollateral -
+            collateralForOrder;
+        expectedStateData.foilCollateral =
+            currentStateData.foilCollateral +
+            collateralForOrder;
+        expectedStateData.depositedCollateralAmount = collateralForOrder;
+        expectedStateData.currentTokenAmount = -1 * positionSize;
+        expectedStateData.vEthAmount = tokens - fee;
+        expectedStateData.vGasAmount = 0;
+        expectedStateData.borrowedVEth = 0;
+        expectedStateData.borrowedVGas = uint256(positionSize);
+
+        // Create Long position (with enough collateral)
+        positionId = foil.createTraderPosition(
+            epochId,
+            collateralForOrder,
+            -1 * positionSize,
+            0
+        );
+
+        currentStateData = assertPosition(
+            foil,
+            positionId,
+            collateralAsset,
+            expectedStateData,
+            "Create Short"
+        );
+
+        // Modify Short position (increase it)
+        referencePrice = foil.getReferencePrice(epochId);
+        tokens = uint256(positionSize).mulDecimal(referencePrice);
+        fee = tokens.mulDecimal(feeRate);
+        accumulatedFee += fee;
+
+        expectedStateData.userCollateral =
+            currentStateData.userCollateral -
+            collateralForOrder;
+        expectedStateData.foilCollateral =
+            currentStateData.foilCollateral +
+            collateralForOrder;
+        expectedStateData.depositedCollateralAmount = collateralForOrder * 2;
+        expectedStateData.currentTokenAmount = positionSize * -2;
+        expectedStateData.vEthAmount =
+            currentStateData.vEthAmount +
+            tokens -
+            fee;
+        expectedStateData.vGasAmount = 0;
+        expectedStateData.borrowedVEth = 0;
+        expectedStateData.borrowedVGas = uint256(positionSize) * 2;
+
+        foil.modifyTraderPosition(
+            positionId,
+            2 * collateralForOrder,
+            -2 * positionSize,
+            0
+        );
+
+        currentStateData = assertPosition(
+            foil,
+            positionId,
+            collateralAsset,
+            expectedStateData,
+            "Increase Short"
+        );
+
+        // Modify Short position (decrease it)
+        referencePrice = foil.getReferencePrice(epochId);
+        tokens = uint256(positionSize).mulDecimal(referencePrice);
+        fee = tokens.mulDecimal(feeRate);
+        accumulatedFee += fee;
+
+        expectedStateData.userCollateral = currentStateData.userCollateral;
+        expectedStateData.foilCollateral = currentStateData.foilCollateral;
+        expectedStateData.depositedCollateralAmount = currentStateData
+            .depositedCollateralAmount;
+        expectedStateData.currentTokenAmount = positionSize * -1;
+        expectedStateData.vEthAmount =
+            currentStateData.vEthAmount -
+            tokens -
+            fee;
+        expectedStateData.vGasAmount = 0;
+        expectedStateData.borrowedVEth = 0;
+        expectedStateData.borrowedVGas = uint256(positionSize);
+
+        foil.modifyTraderPosition(
+            positionId,
+            2 * collateralForOrder, // keep same collateral
+            -1 * positionSize,
+            0
+        );
+
+        currentStateData = assertPosition(
+            foil,
+            positionId,
+            collateralAsset,
+            expectedStateData,
+            "Decrease Short"
+        );
+
+        // Modify Short position (close it)
+        referencePrice = foil.getReferencePrice(epochId);
+        // fee for closing the position
+        fee = currentStateData.vGasAmount.mulDecimal(referencePrice).mulDecimal(
+                feeRate
+            );
+        accumulatedFee += fee;
+
+        expectedStateData.userCollateral =
+            currentStateData.userCollateral +
+            2 *
+            collateralForOrder -
+            accumulatedFee;
+        expectedStateData.foilCollateral =
+            currentStateData.foilCollateral -
+            2 *
+            collateralForOrder +
+            accumulatedFee;
+        expectedStateData.depositedCollateralAmount = 0;
+        expectedStateData.currentTokenAmount = 0;
+        expectedStateData.vEthAmount = 0;
+        expectedStateData.vGasAmount = 0;
+        expectedStateData.borrowedVEth = 0;
+        expectedStateData.borrowedVGas = 0;
+
+        foil.modifyTraderPosition(positionId, 0 ether, 0, 0);
+
+        assertPosition(
+            foil,
+            positionId,
+            collateralAsset,
+            expectedStateData,
+            "Close Short"
+        );
+    }
+
+    function test_trade_short_cross_sides() public {
+        uint256 referencePrice;
+        uint256 positionId_4;
+        referencePrice = foil.getReferencePrice(epochId);
+
+        console2.log("referencePrice", referencePrice);
         IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
             .LiquidityPositionParams({
                 epochId: epochId,
@@ -248,8 +475,8 @@ contract FoilTradeModuleTest is Test {
         params.amountTokenA = 2000 ether;
         foil.createLiquidityPosition(params);
 
-        priceReference = foil.getReferencePrice(epochId);
-        console2.log("priceReference", priceReference);
+        referencePrice = foil.getReferencePrice(epochId);
+        console2.log("referencePrice", referencePrice);
 
         // Create Short position (another one)
         console2.log("Create Short position (another one)");
@@ -259,60 +486,11 @@ contract FoilTradeModuleTest is Test {
             -.1 ether,
             0
         );
-        logPositionAndAccount(positionId_4);
+        logPositionAndAccount(foil, positionId_4);
 
         // Modify Short position (change side)
         console2.log("Modify Short position (change side)");
         foil.modifyTraderPosition(positionId_4, 0, .05 ether, 0);
-        logPositionAndAccount(positionId_4);
-    }
-
-    function getTokenAmountsForCollateralAmount(
-        uint256 collateralAmount,
-        int24 lowerTick,
-        int24 upperTick
-    )
-        public
-        view
-        returns (uint256 loanAmount0, uint256 loanAmount1, uint256 liquidity)
-    {
-        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
-        console.log("sqrtPriceX96", sqrtPriceX96);
-
-        uint160 sqrtPriceAX96 = uint160(TickMath.getSqrtRatioAtTick(lowerTick));
-        uint160 sqrtPriceBX96 = uint160(TickMath.getSqrtRatioAtTick(upperTick));
-
-        console2.log("sqrtPriceAX96", sqrtPriceAX96);
-        console2.log("sqrtPriceBX96", sqrtPriceBX96);
-        (loanAmount0, loanAmount1, liquidity) = foil.getTokenAmounts(
-            epochId,
-            collateralAmount,
-            sqrtPriceX96,
-            sqrtPriceAX96,
-            sqrtPriceBX96
-        );
-    }
-
-    function logPositionAndAccount(uint256 positionId) public {
-        Position.Data memory position = foil.getPosition(positionId);
-        console2.log(" >>> Position", positionId);
-        console2.log("    >>> Ids");
-        console2.log("      >> tokenId           : ", position.tokenId);
-        console2.log("      >> epochId           : ", position.epochId);
-        // console2.log("      >> kind              : ", position.kind);
-        console2.log("    >>> Accounting data (debt and deposited collateral)");
-        console2.log(
-            "      >> depositedCollateralAmount  : ",
-            position.depositedCollateralAmount
-        );
-        console2.log("      >> borrowedVEth      : ", position.borrowedVEth);
-        console2.log("      >> borrowedVGas       : ", position.borrowedVGas);
-        console2.log("    >>> Position data (owned tokens and position size)");
-        console2.log("      >> vEthAmount        : ", position.vEthAmount);
-        console2.log("      >> vGasAmount        : ", position.vGasAmount);
-        console2.log(
-            "      >> currentTokenAmount: ",
-            position.currentTokenAmount
-        );
+        logPositionAndAccount(foil, positionId_4);
     }
 }
