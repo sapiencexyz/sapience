@@ -115,7 +115,6 @@ const EditLiquidity = () => {
         <FormLabel>Collateral Amount</FormLabel>
         <InputGroup>
           <Input
-            type="number"
             value={depositAmount}
             onChange={(e) => setDepositAmount(Number(e.target.value))}
           />
