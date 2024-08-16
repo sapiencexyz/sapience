@@ -110,7 +110,9 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
       args: [positionData?.tokenId.toString()],
       query: {
         enabled: Boolean(
-          uniswapPositionManagerAddress !== '0x' && positionData?.tokenId
+          uniswapPositionManagerAddress !== '0x' &&
+            positionData?.tokenId &&
+            isEdit
         ),
       },
     });
@@ -344,12 +346,27 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   }, [uniswapPositionError]);
 
   useEffect(() => {
+    if (isEdit) return;
     setLowPrice(tickToPrice(baseAssetMinPriceTick));
-  }, [baseAssetMinPriceTick]);
+  }, [baseAssetMinPriceTick, isEdit]);
 
   useEffect(() => {
+    if (isEdit) return;
     setHighPrice(tickToPrice(baseAssetMaxPriceTick));
-  }, [baseAssetMaxPriceTick]);
+  }, [baseAssetMaxPriceTick, isEdit]);
+
+  useEffect(() => {
+    if (!uniswapPosition) return;
+    const uniswapData = uniswapPosition as any[];
+    const lowerTick = uniswapData[5];
+    const upperTick = uniswapData[6];
+    if (lowerTick) {
+      setLowPrice(tickToPrice(lowerTick));
+    }
+    if (upperTick) {
+      setHighPrice(tickToPrice(upperTick));
+    }
+  }, [uniswapPosition]);
 
   /// /// HANDLERS //////
   const handleCreateOrIncreaseLiquidity = () => {
