@@ -9,9 +9,9 @@ import { useContext, useMemo, type Dispatch, type SetStateAction } from 'react';
 import type React from 'react';
 import { useReadContracts } from 'wagmi';
 
-import useFoilDeployment from './useFoilDeployment';
 import { MarketContext } from '~/lib/context/MarketProvider';
-import { FoilPosition, PositionKind } from '~/lib/interfaces/interfaces';
+import type { FoilPosition } from '~/lib/interfaces/interfaces';
+import { PositionKind } from '~/lib/interfaces/interfaces';
 
 interface AccountSelectorProps {
   isLP: boolean;
@@ -20,8 +20,7 @@ interface AccountSelectorProps {
 }
 
 const useIsLps = (ids: number[]) => {
-  const { chain } = useContext(MarketContext);
-  const { foilData } = useFoilDeployment(chain?.id);
+  const { foilData } = useContext(MarketContext);
 
   const tokensInfo = useReadContracts({
     contracts: ids.map((i) => {

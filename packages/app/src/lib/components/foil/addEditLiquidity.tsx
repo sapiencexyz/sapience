@@ -42,7 +42,6 @@ import { MarketContext } from '~/lib/context/MarketProvider';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
 
 import SlippageTolerance from './slippageTolerance';
-import useFoilDeployment from './useFoilDeployment';
 
 const tickSpacingDefault = 200; // 1% - Hardcoded for now, should be retrieved with pool.tickSpacing()
 
@@ -64,15 +63,15 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   const {
     epoch,
     pool,
-    chain,
     collateralAsset,
     baseAssetMinPriceTick,
     uniswapPositionManagerAddress,
     baseAssetMaxPriceTick,
     collateralAssetTicker,
     collateralAssetDecimals,
+    chainId,
+    foilData,
   } = useContext(MarketContext);
-  const { foilData } = useFoilDeployment(chain?.id);
   const { setIsLoading } = useLoading();
   const toast = useToast();
   const account = useAccount();
@@ -123,7 +122,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
       address: collateralAsset as `0x${string}`,
       functionName: 'balanceOf',
       args: [account.address],
-      chainId: chain?.id,
+      chainId,
     });
 
   const { data: allowanceData } = useReadContract({
@@ -134,7 +133,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     query: {
       enabled: Boolean(isConnected && foilData.address),
     },
-    chainId: chain?.id,
+    chainId,
   });
 
   const { data: tokenAmounts, error: tokenAmountsError } = useReadContract({
@@ -148,7 +147,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
       TickMath.getSqrtRatioAtTick(tickLower).toString(), // uint160 sqrtPriceAX96, // lower tick price in sqrtRatio
       TickMath.getSqrtRatioAtTick(tickUpper).toString(), // uint160 sqrtPriceBX96 // upper tick price in sqrtRatio
     ],
-    chainId: chain?.id,
+    chainId,
     query: {
       enabled: Boolean(pool),
     },
@@ -169,20 +168,24 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     },
   });
 
-  const { data: addLiquidityHash, writeContract: addLiquidityWrite } =
-    useWriteContract({
-      mutation: {
-        onError: (error) => {
-          setPendingTxn(false);
-          setIsLoading(false);
-          renderContractErrorToast(
-            error as WriteContractErrorType,
-            toast,
-            'Failed to add liquidity'
-          );
-        },
+  const {
+    data: addLiquidityHash,
+    writeContract: addLiquidityWrite,
+    isPending: isPendingAdd,
+    isPaused: isPausedAdd,
+  } = useWriteContract({
+    mutation: {
+      onError: (error) => {
+        setPendingTxn(false);
+        setIsLoading(false);
+        renderContractErrorToast(
+          error as WriteContractErrorType,
+          toast,
+          'Failed to add liquidity'
+        );
       },
-    });
+    },
+  });
 
   const { data: increaseLiquidityHash, writeContract: increaseLiquidity } =
     useWriteContract({
@@ -383,7 +386,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
           parseUnits(minAmountTokenA.toString(), TOKEN_DECIMALS),
           parseUnits(minAmountTokenB.toString(), TOKEN_DECIMALS),
         ],
-        chainId: chain?.id,
+        chainId,
       });
     } else {
       addLiquidityWrite({
@@ -411,7 +414,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
             ),
           },
         ],
-        chainId: chain?.id,
+        chainId,
       });
     }
     setTxnStep(2);
@@ -463,7 +466,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
         parseUnits(minAmountTokenA.toString(), TOKEN_DECIMALS),
         parseUnits(minAmountTokenB.toString(), TOKEN_DECIMALS),
       ],
-      chainId: chain?.id,
+      chainId,
     });
   };
 
@@ -488,7 +491,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
           foilData.address,
           parseUnits(depositAmount.toString(), collateralAssetDecimals),
         ],
-        chainId: chain?.id,
+        chainId,
       });
       setTxnStep(1);
     }

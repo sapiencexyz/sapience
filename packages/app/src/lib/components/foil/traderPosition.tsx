@@ -25,13 +25,12 @@ import {
 } from 'wagmi';
 
 import erc20ABI from '../../erc20abi.json';
+import { MarketContext } from '~/lib/context/MarketProvider';
+import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';
 
 import PositionSelector from './positionSelector';
 import SlippageTolerance from './slippageTolerance';
 import useFoilDeployment from './useFoilDeployment';
-
-import { MarketContext } from '~/lib/context/MarketProvider';
-import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';
 
 function RadioCard(props: any) {
   const { getInputProps, getRadioProps } = useRadio(props);
@@ -81,7 +80,7 @@ export default function TraderPosition({}) {
   const [transactionStep, setTransactionStep] = useState(0);
   const { isConnected } = account;
   const { address } = useAccount();
-  const { tokenIds, refetch } = useTokenIdsOfOwner(address as `0x${string}`);
+  const { tokenIds } = useTokenIdsOfOwner(address as `0x${string}`);
 
   const {
     chain,

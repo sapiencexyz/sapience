@@ -1,14 +1,12 @@
 import { times } from 'lodash';
-import { useContext, useEffect, useMemo } from 'react';
+import { useContext, useMemo } from 'react';
 import type { AbiFunction } from 'viem';
 import { useReadContract, useReadContracts } from 'wagmi';
 
-import useFoilDeployment from '../components/foil/useFoilDeployment';
 import { MarketContext } from '../context/MarketProvider';
 
 export const useTokenIdsOfOwner = (ownerAddress: `0x${string}`) => {
-  const { chain } = useContext(MarketContext);
-  const { foilData } = useFoilDeployment(chain?.id);
+  const { foilData } = useContext(MarketContext);
 
   const {
     data: balanceData,

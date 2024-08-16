@@ -37,6 +37,8 @@ interface MarketContextType {
   pool: Pool | null;
   collateralAssetDecimals: number;
   epoch: number;
+  foilData: any;
+  chainId: number;
 }
 
 interface MarketProviderProps {
@@ -62,6 +64,8 @@ export const MarketContext = createContext<MarketContextType>({
   poolAddress: '0x',
   uniswapPositionManagerAddress: `0x`,
   epoch: 0,
+  foilData: {},
+  chainId: 0,
 });
 
 export const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
@@ -167,13 +171,18 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     poolAddress: '0x',
     uniswapPositionManagerAddress: '0x',
     epoch: 0,
+    foilData: {},
+    chainId,
   });
 
   // Set chainId and address from the URL
   useEffect(() => {
-    const chain = Object.entries(Chains).find(
-      (chainOption) => chainOption[1].id === chainId
-    );
+    const chain = Object.entries(Chains).find((chainOption) => {
+      if (chainId === 13370 && chainOption[0] === 'localhost') {
+        return true;
+      }
+      return chainOption[1].id === chainId;
+    });
 
     if (chain === undefined) {
       return;
@@ -184,6 +193,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
       chain: chain[1] as any,
       address,
       epoch,
+      chainId,
     }));
   }, [chainId, address, epoch]);
 
@@ -239,6 +249,13 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
   }, [prices]);
 
   const { foilData } = useFoilDeployment(chainId);
+
+  useEffect(() => {
+    setState((currentState) => ({
+      ...currentState,
+      foilData: { address: foilData.address, abi: foilData.abi },
+    }));
+  }, [foilData]);
 
   // Get data about the market from Foil
   const marketViewFunctionResult = useReadContract({
