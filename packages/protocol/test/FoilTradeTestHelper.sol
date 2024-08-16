@@ -159,11 +159,10 @@ abstract contract FoilTradeTestHelper is Test {
         IFoil foil,
         address pool,
         uint256 epochId,
-        uint256 collateralRequired
+        uint256 collateralRequired,
+        int24 lowerTick,
+        int24 upperTick
     ) internal {
-        int24 lowerTick = 12200;
-        int24 upperTick = 12400;
-
         (
             uint256 amountTokenA,
             uint256 amountTokenB,

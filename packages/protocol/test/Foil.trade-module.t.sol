@@ -4,6 +4,7 @@ pragma solidity >=0.8.2 <0.9.0;
 import "cannon-std/Cannon.sol";
 import "./FoilTradeTestHelper.sol";
 import "../src/synthetix/utils/DecimalMath.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 import "forge-std/console2.sol";
 
@@ -18,6 +19,8 @@ contract FoilTradeModuleTest is FoilTradeTestHelper {
     uint256 epochId;
     uint256 feeRate;
     uint256 UNIT = 1e18;
+    int24 LOWERTICK = 12200;
+    int24 UPPERTICK = 12400;
 
     IMintableToken collateralAsset;
     IUniswapV3Pool uniCastedPool;
@@ -35,6 +38,27 @@ contract FoilTradeModuleTest is FoilTradeTestHelper {
         feeRate = uint256(uniCastedPool.fee()) * 1e12;
     }
 
+    function test_tradeWildJake_Only() public {
+        uint256 positionId;
+        addLiquidity(foil, pool, epochId, 0.004 ether, 5200, 28200);
+        addLiquidity(foil, pool, epochId, 0.003 ether, 5200, 28200);
+
+        // Set position size
+        uint256 liq = IUniswapV3Pool(pool).liquidity();
+        console2.log(" >>> Liquidity", liq);
+
+        positionId = foil.createTraderPosition(
+            // Create Long position (with enough collateral)
+            epochId,
+            2254647488776959,
+            438725000000000,
+            434337750000000
+        );
+
+        console2.log(" >>> Position", positionId);
+        logPositionAndAccount(foil, positionId);
+    }
+
     function test_tradeLong() public {
         uint256 referencePrice;
         uint256 positionId;
@@ -47,7 +71,14 @@ contract FoilTradeModuleTest is FoilTradeTestHelper {
         StateData memory expectedStateData;
         StateData memory currentStateData;
 
-        addLiquidity(foil, pool, epochId, collateralForOrder * 100_000); // enough to keep price stable (no slippage)
+        addLiquidity(
+            foil,
+            pool,
+            epochId,
+            collateralForOrder * 100_000,
+            LOWERTICK,
+            UPPERTICK
+        ); // enough to keep price stable (no slippage)
 
         // Set position size
         positionSize = int256(collateralForOrder / 100);
@@ -207,7 +238,14 @@ contract FoilTradeModuleTest is FoilTradeTestHelper {
         StateData memory expectedStateData;
         StateData memory currentStateData;
 
-        addLiquidity(foil, pool, epochId, collateralForOrder * 100_000); // enough to keep price stable (no slippage)
+        addLiquidity(
+            foil,
+            pool,
+            epochId,
+            collateralForOrder * 100_000,
+            LOWERTICK,
+            UPPERTICK
+        ); // enough to keep price stable (no slippage)
 
         // Set position size
         positionSize = int256(collateralForOrder / 100);
@@ -300,7 +338,14 @@ contract FoilTradeModuleTest is FoilTradeTestHelper {
         StateData memory expectedStateData;
         StateData memory currentStateData;
 
-        addLiquidity(foil, pool, epochId, collateralForOrder * 100_000); // enough to keep price stable (no slippage)
+        addLiquidity(
+            foil,
+            pool,
+            epochId,
+            collateralForOrder * 100_000,
+            LOWERTICK,
+            UPPERTICK
+        ); // enough to keep price stable (no slippage)
 
         // Set position size
         positionSize = int256(collateralForOrder / 100);
@@ -460,7 +505,14 @@ contract FoilTradeModuleTest is FoilTradeTestHelper {
         StateData memory expectedStateData;
         StateData memory currentStateData;
 
-        addLiquidity(foil, pool, epochId, collateralForOrder * 100_000); // enough to keep price stable (no slippage)
+        addLiquidity(
+            foil,
+            pool,
+            epochId,
+            collateralForOrder * 100_000,
+            LOWERTICK,
+            UPPERTICK
+        ); // enough to keep price stable (no slippage)
 
         // Set position size
         positionSize = int256(collateralForOrder / 100);
