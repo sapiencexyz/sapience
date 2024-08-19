@@ -1,5 +1,5 @@
 {
-  "address": "0x50f01027C17E5d5CbE228a56527d5259e849047a",
+  "address": "0xCfafB7Ee1A4cD7098cd0Ec5C7eEA5316ad0D8cB1",
   "abi": [
     {
       "type": "function",
@@ -486,12 +486,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x786d1f2b62724886777b2dafc1f10d9e0b9e97997c7b99d7fb2f42d4ba1a4345",
+  "deployTxnHash": "0x510b38ca3555dc62a4c9ab27ac9bb99e9283700ce34ece6d4cc7b94056637fac",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1723484428",
+  "deployTimestamp": "1724079813",
   "sourceName": "src/contracts/modules/EpochLiquidityModule.sol",
   "contractName": "EpochLiquidityModule",
   "deployedOn": "deploy.EpochLiquidityModule",
-  "gasUsed": 2299895,
-  "gasCost": "1004749876"
+  "gasUsed": 2143150,
+  "gasCost": "1006087024"
 }

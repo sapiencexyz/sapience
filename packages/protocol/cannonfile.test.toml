@@ -1,0 +1,53 @@
+name="foil-test"
+version="0.1"
+
+[clone.UMA]
+source="uma-mock-oracle-ancillary"
+target="foil@uma-mock"
+
+[clone.Uniswap]
+source="uniswap"
+target="foil@uniswap"
+
+[clone.CollateralAsset]
+source="mintable-token@permissionless-mint"
+target="foil@test-collateral-asset"
+var.symbol="wstETH"
+
+[clone.BondCurrency]
+source="mintable-token@permissionless-mint"
+target="foil@test-bond-currency"
+var.symbol="USDC"
+var.decimals = "6"
+
+[deploy.ReentrancyGuard]
+artifact = "ReentrancyGuard"
+
+[deploy.EpochConfigurationModule]
+artifact="EpochConfigurationModule"
+libraries.ReentrancyGuard="<%= contracts.ReentrancyGuard.address %>"
+
+[deploy.EpochLiquidityModule]
+artifact="EpochLiquidityModule"
+
+[deploy.EpochUMASettlementModule]
+artifact="EpochUMASettlementModule"
+
+[deploy.EpochTradeModule]
+artifact="EpochTradeModule"
+
+[deploy.EpochNftModule]
+artifact="EpochNftModule"
+
+[deploy.EpochViewsModule]
+artifact="EpochViewsModule"
+
+[router.Foil]
+contracts=[
+  "EpochConfigurationModule",
+  "EpochLiquidityModule",
+  "EpochUMASettlementModule",
+  "EpochTradeModule",
+  "EpochNftModule",
+  "EpochViewsModule",
+]

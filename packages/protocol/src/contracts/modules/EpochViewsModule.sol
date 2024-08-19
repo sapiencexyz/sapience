@@ -13,7 +13,6 @@ contract EpochViewsModule is IEpochViewsModule {
             address owner,
             address collateralAsset,
             address uniswapPositionManager,
-            address uniswapQuoter,
             address uniswapSwapRouter,
             address optimisticOracleV3,
             IFoilStructs.EpochParams memory epochParams
@@ -24,7 +23,6 @@ contract EpochViewsModule is IEpochViewsModule {
             market.owner,
             address(market.collateralAsset),
             address(market.uniswapPositionManager),
-            address(market.uniswapQuoter),
             address(market.uniswapSwapRouter),
             address(market.optimisticOracleV3),
             market.epochParams

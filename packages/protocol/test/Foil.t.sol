@@ -10,10 +10,9 @@ import {IFoilStructs} from "../src/contracts/interfaces/IFoilStructs.sol";
 import {VirtualToken} from "../src/contracts/external/VirtualToken.sol";
 import {TickMath} from "../src/contracts/external/univ3/TickMath.sol";
 import {IMintableToken} from "../src/contracts/external/IMintableToken.sol";
-import {Quote} from "../src/contracts/libraries/Quote.sol";
+import {DecimalPrice} from "../src/contracts/libraries/DecimalPrice.sol";
 import "../src/contracts/interfaces/external/INonfungiblePositionManager.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
 import "forge-std/console2.sol";
 
@@ -137,21 +136,10 @@ contract FoilTest is Test {
         returns (uint256 loanAmount0, uint256 loanAmount1, uint256 liquidity)
     {
         (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
-        console.log("sqrtPriceX96", sqrtPriceX96);
 
         uint160 sqrtPriceAX96 = uint160(TickMath.getSqrtRatioAtTick(lowerTick));
         uint160 sqrtPriceBX96 = uint160(TickMath.getSqrtRatioAtTick(upperTick));
 
-        console2.log("sqrtPriceAX96", sqrtPriceAX96);
-        console2.log("sqrtPriceBX96", sqrtPriceBX96);
-        console2.log(
-            "LOWERTICKPRICE",
-            Quote.sqrtRatioX96ToPrice(sqrtPriceAX96)
-        );
-        console2.log(
-            "UPPERTICKPRICE",
-            Quote.sqrtRatioX96ToPrice(sqrtPriceBX96)
-        );
         (loanAmount0, loanAmount1, liquidity) = foil.getTokenAmounts(
             epochId,
             collateralAmount,

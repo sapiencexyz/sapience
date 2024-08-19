@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "cannon build --keep-alive --port 8545 --no-cors --write-deployments ./deployments/13370",
     "test": "forge build && cannon build --write-deployments ./deployments && cannon test",
+    "test2": "forge build && cannon build cannonfile.test.toml --write-deployments ./deployments && cannon test",
     "deploy:sepolia": "cannon build cannonfile.sepolia.toml --chain-id 11155111 --write-deployments ./deployments/11155111",
     "simulate-deploy:sepolia": "cannon build cannonfile.sepolia.toml --chain-id 11155111 --dry-run"
   },
