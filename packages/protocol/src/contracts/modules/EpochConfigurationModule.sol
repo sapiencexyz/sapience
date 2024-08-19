@@ -30,7 +30,6 @@ contract EpochConfigurationModule is
         address owner,
         address collateralAsset,
         address uniswapPositionManager,
-        address uniswapQuoter,
         address uniswapSwapRouter,
         address optimisticOracleV3,
         IFoilStructs.EpochParams memory epochParams
@@ -39,7 +38,6 @@ contract EpochConfigurationModule is
             owner,
             collateralAsset,
             uniswapPositionManager,
-            uniswapQuoter,
             uniswapSwapRouter,
             optimisticOracleV3,
             epochParams
@@ -49,7 +47,6 @@ contract EpochConfigurationModule is
     function updateMarket(
         address owner,
         address uniswapPositionManager,
-        address uniswapQuoter,
         address uniswapSwapRouter,
         address optimisticOracleV3,
         IFoilStructs.EpochParams memory epochParms
@@ -57,7 +54,6 @@ contract EpochConfigurationModule is
         Market.updateValid(
             owner, // should be nominate/accept
             uniswapPositionManager,
-            uniswapQuoter,
             uniswapSwapRouter,
             optimisticOracleV3,
             epochParms
