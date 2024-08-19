@@ -8,7 +8,6 @@ interface IEpochConfigurationModule {
         address owner,
         address collateralAsset,
         address uniswapPositionManager,
-        address uniswapQuoter,
         address uniswapSwapRouter,
         address optimisticOracleV3,
         IFoilStructs.EpochParams memory epochParams
@@ -17,7 +16,6 @@ interface IEpochConfigurationModule {
     function updateMarket(
         address owner,
         address uniswapPositionManager,
-        address uniswapQuoter,
         address uniswapSwapRouter,
         address optimisticOracleV3,
         IFoilStructs.EpochParams memory epochParams

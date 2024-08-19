@@ -3,7 +3,6 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import "../interfaces/external/INonfungiblePositionManager.sol";
-import "../interfaces/external/IUniswapV3Quoter.sol";
 import "../interfaces/external/ISwapRouter.sol";
 import "./Errors.sol";
 import "../interfaces/IFoilStructs.sol";
@@ -13,7 +12,6 @@ library Market {
         address owner;
         IERC20 collateralAsset;
         INonfungiblePositionManager uniswapPositionManager;
-        IUniswapV3Quoter uniswapQuoter;
         ISwapRouter uniswapSwapRouter;
         OptimisticOracleV3Interface optimisticOracleV3;
         IFoilStructs.EpochParams epochParams;
@@ -32,7 +30,6 @@ library Market {
         address owner,
         address collateralAsset,
         address uniswapPositionManager,
-        address uniswapQuoter,
         address uniswapSwapRouter,
         address optimisticOracleV3,
         IFoilStructs.EpochParams memory epochParams
@@ -40,10 +37,7 @@ library Market {
         market = load();
 
         // can only be called once
-        if (
-            address(market.uniswapPositionManager) != address(0) ||
-            address(market.uniswapQuoter) != address(0)
-        ) {
+        if (address(market.uniswapPositionManager) != address(0)) {
             revert Errors.MarketAlreadyCreated();
         }
 
@@ -52,7 +46,6 @@ library Market {
         market.uniswapPositionManager = INonfungiblePositionManager(
             uniswapPositionManager
         );
-        market.uniswapQuoter = IUniswapV3Quoter(uniswapQuoter);
         market.uniswapSwapRouter = ISwapRouter(uniswapSwapRouter);
         market.optimisticOracleV3 = OptimisticOracleV3Interface(
             optimisticOracleV3
@@ -63,7 +56,6 @@ library Market {
     function updateValid(
         address owner,
         address uniswapPositionManager,
-        address uniswapQuoter,
         address uniswapSwapRouter,
         address optimisticOracleV3,
         IFoilStructs.EpochParams memory epochParams
@@ -74,7 +66,6 @@ library Market {
         market.uniswapPositionManager = INonfungiblePositionManager(
             uniswapPositionManager
         );
-        market.uniswapQuoter = IUniswapV3Quoter(uniswapQuoter);
         market.uniswapSwapRouter = ISwapRouter(uniswapSwapRouter);
         market.optimisticOracleV3 = OptimisticOracleV3Interface(
             optimisticOracleV3

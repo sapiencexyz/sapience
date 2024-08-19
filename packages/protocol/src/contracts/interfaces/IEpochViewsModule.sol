@@ -12,7 +12,6 @@ interface IEpochViewsModule {
             address owner,
             address collateralAsset,
             address uniswapPositionManager,
-            address uniswapQuoter,
             address uniswapSwapRouter,
             address optimisticOracleV3,
             IFoilStructs.EpochParams memory epochParams
