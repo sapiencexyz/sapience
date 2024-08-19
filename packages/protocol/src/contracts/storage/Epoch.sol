@@ -35,6 +35,8 @@ library Epoch {
         IFoilStructs.EpochParams params; // Storing epochParams as a struct within Epoch.Data
         uint160 sqrtPriceMinX96;
         uint160 sqrtPriceMaxX96;
+        uint256 minPriceD18;
+        uint256 maxPriceD18;
     }
 
     function load(uint256 id) internal pure returns (Data storage epoch) {
@@ -152,6 +154,8 @@ library Epoch {
         epoch.sqrtPriceMaxX96 = TickMath.getSqrtRatioAtTick(
             epoch.params.baseAssetMaxPriceTick + spacing
         );
+        epoch.maxPriceD18 = Quote.sqrtRatioX96ToPrice(epoch.sqrtPriceMaxX96);
+        epoch.minPriceD18 = Quote.sqrtRatioX96ToPrice(epoch.sqrtPriceMinX96);
 
         // mint max; track tokens loaned by in FAccount
         epoch.ethToken.mint(address(this), type(uint256).max);

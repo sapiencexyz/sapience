@@ -118,6 +118,31 @@ contract EpochTradeModule is IEpochTradeModule {
         }
     }
 
+    function getLongSizeForCollateral(
+        uint256 epochId,
+        uint256 collateral
+    ) external view returns (uint256) {
+        /*
+        PositionSize = C*K*(1-K*Pl) 
+        K = (1-Fee)/Pt
+        Where 
+        Pt = price at time t 
+        Pl = lowest price set in market
+        C = collateral
+        Fee = Fee ¯\_(ツ)_/¯
+        */
+        uint256 price = getReferencePrice(epochId);
+        uint256 lowestPrice = Epoch.load(epochId).minPriceD18;
+        uint256 fee = Epoch.load(epochId).params.feeRate;
+
+        uint256 K = (DecimalMath.UNIT - fee).divDecimal(price);
+        uint256 positionSize = collateral.mulDecimal(K).mulDecimal(
+            DecimalMath.UNIT - K.mulDecimal(lowestPrice)
+        );
+
+        return positionSize;
+    }
+
     /**
      * @dev Create a long position
      * With collateral get vEth (Loan)
