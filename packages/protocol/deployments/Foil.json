@@ -1,5 +1,5 @@
 {
-  "address": "0x053d7cb066d7cdd3f252109610bd190958430518",
+  "address": "0x17cc112ba554547e26795d22ce76dace8faa6b21",
   "abi": [
     {
       "type": "function",
@@ -40,11 +40,6 @@
         },
         {
           "name": "uniswapPositionManager",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "uniswapQuoter",
           "type": "address",
           "internalType": "address"
         },
@@ -115,11 +110,6 @@
         },
         {
           "name": "uniswapPositionManager",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "uniswapQuoter",
           "type": "address",
           "internalType": "address"
         },
@@ -1522,11 +1512,6 @@
           "internalType": "address"
         },
         {
-          "name": "uniswapQuoter",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
           "name": "uniswapSwapRouter",
           "type": "address",
           "internalType": "address"
@@ -1654,11 +1639,11 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0x9fc237f7a231dccf754336d57561da524efec0eee4c84f709a9af214d707284c",
+  "deployTxnHash": "0x52462feb1e495446691d46c685f699278aefc181daede8a0465b52e1039656d7",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1723484434",
+  "deployTimestamp": "1724079819",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
-  "gasUsed": 431130,
-  "gasCost": "1001318847"
+  "gasUsed": 431778,
+  "gasCost": "1002439141"
 }

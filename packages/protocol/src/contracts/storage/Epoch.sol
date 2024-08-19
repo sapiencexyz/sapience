@@ -5,6 +5,7 @@ pragma solidity >=0.8.2 <0.9.0;
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "../external/VirtualToken.sol";
+import "../libraries/DecimalPrice.sol";
 import "../libraries/Quote.sol";
 import "../external/univ3/LiquidityAmounts.sol";
 import "./Debt.sol";
@@ -311,7 +312,8 @@ library Epoch {
             availableAmount0,
             self.sqrtPriceMinX96
         );
-        return loanAmount1 - availableAmount1;
+        return
+            loanAmount1 > availableAmount1 ? loanAmount1 - availableAmount1 : 0;
     }
 
     function collateralRequirementAtMaxTick(
@@ -400,6 +402,6 @@ library Epoch {
     ) internal view returns (uint256 decimalPrice) {
         (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(self.pool).slot0();
 
-        return Quote.sqrtRatioX96ToPrice(sqrtPriceX96);
+        return DecimalPrice.sqrtRatioX96ToPrice(sqrtPriceX96);
     }
 }
