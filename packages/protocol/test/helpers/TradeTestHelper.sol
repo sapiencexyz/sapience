@@ -1,17 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
-import "forge-std/Test.sol";
+import {TickMath} from "../../src/contracts/external/univ3/TickMath.sol";
+import {IFoil} from "../../src/contracts/interfaces/IFoil.sol";
+import {IFoilStructs} from "../../src/contracts/interfaces/IFoilStructs.sol";
+import {Position} from "../../src/contracts/storage/Position.sol";
+import {IMintableToken} from "../../src/contracts/external/IMintableToken.sol";
 
-import {TickMath} from "../src/contracts/external/univ3/TickMath.sol";
-import {IFoil} from "../src/contracts/interfaces/IFoil.sol";
-import {IFoilStructs} from "../src/contracts/interfaces/IFoilStructs.sol";
-import {Position} from "../src/contracts/storage/Position.sol";
-import {IMintableToken} from "../src/contracts/external/IMintableToken.sol";
-
+import "./TestEpoch.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
-abstract contract FoilTradeTestHelper is Test {
+contract TradeTestHelper is TestEpoch {
     struct StateData {
         uint256 userCollateral;
         uint256 foilCollateral;
@@ -21,32 +20,6 @@ abstract contract FoilTradeTestHelper is Test {
         uint256 vGasAmount;
         int256 currentTokenAmount; // position size
         uint256 depositedCollateralAmount;
-    }
-
-    function getTokenAmountsForCollateralAmount(
-        IFoil foil,
-        address pool,
-        uint256 epochId,
-        uint256 collateralAmount,
-        int24 lowerTick,
-        int24 upperTick
-    )
-        public
-        view
-        returns (uint256 loanAmount0, uint256 loanAmount1, uint256 liquidity)
-    {
-        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
-
-        uint160 sqrtPriceAX96 = uint160(TickMath.getSqrtRatioAtTick(lowerTick));
-        uint160 sqrtPriceBX96 = uint160(TickMath.getSqrtRatioAtTick(upperTick));
-
-        (loanAmount0, loanAmount1, liquidity) = foil.getTokenAmounts(
-            epochId,
-            collateralAmount,
-            sqrtPriceX96,
-            sqrtPriceAX96,
-            sqrtPriceBX96
-        );
     }
 
     function fillPositionState(
@@ -159,7 +132,7 @@ abstract contract FoilTradeTestHelper is Test {
         IFoil foil,
         address pool,
         uint256 epochId,
-        uint256 collateralRequired,
+        uint256 collateralAmount,
         int24 lowerTick,
         int24 upperTick
     ) internal {
@@ -168,10 +141,7 @@ abstract contract FoilTradeTestHelper is Test {
             uint256 amountTokenB,
 
         ) = getTokenAmountsForCollateralAmount(
-                foil,
-                pool,
-                epochId,
-                collateralRequired,
+                collateralAmount,
                 lowerTick,
                 upperTick
             );
@@ -181,7 +151,7 @@ abstract contract FoilTradeTestHelper is Test {
                 epochId: epochId,
                 amountTokenA: amountTokenA,
                 amountTokenB: amountTokenB,
-                collateralAmount: collateralRequired,
+                collateralAmount: collateralAmount,
                 lowerTick: lowerTick,
                 upperTick: upperTick,
                 minAmountTokenA: 0,
