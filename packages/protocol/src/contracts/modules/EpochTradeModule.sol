@@ -121,7 +121,7 @@ contract EpochTradeModule is IEpochTradeModule {
     function getLongSizeForCollateral(
         uint256 epochId,
         uint256 collateral
-    ) external view returns (uint256) {
+    ) external view returns (uint256 positionSize) {
         /*
         PositionSize = C*K*(1-K*Pl) 
         K = (1-Fee)/Pt
@@ -136,12 +136,17 @@ contract EpochTradeModule is IEpochTradeModule {
         uint256 fee = Epoch.load(epochId).params.feeRate;
 
         uint256 K = (DecimalMath.UNIT - fee).divDecimal(price);
-        uint256 positionSize = collateral.mulDecimal(K).mulDecimal(
+        positionSize = collateral.mulDecimal(K).mulDecimal(
             DecimalMath.UNIT - K.mulDecimal(lowestPrice)
         );
 
         return positionSize;
     }
+
+    function getShortSizeForCollateral(
+        uint256 epochId,
+        uint256 collateral
+    ) external view returns (uint256 positionSize) {}
 
     /**
      * @dev Create a long position
