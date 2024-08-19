@@ -1,0 +1,243 @@
+{
+  "address": "0x0DaBE96E09E407cBf823cc997417461934fdB6B6",
+  "abi": [
+    {
+      "type": "function",
+      "name": "getEpoch",
+      "inputs": [
+        {
+          "name": "id",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "startTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "endTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "pool",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "ethToken",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "gasToken",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getLatestEpoch",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "startTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "endTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "pool",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "ethToken",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "gasToken",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getMarket",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "owner",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "collateralAsset",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapPositionManager",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapQuoter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapSwapRouter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "optimisticOracleV3",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "epochParams",
+          "type": "tuple",
+          "internalType": "struct IFoilStructs.EpochParams",
+          "components": [
+            {
+              "name": "baseAssetMinPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "baseAssetMaxPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "feeRate",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "assertionLiveness",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "bondAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "priceUnit",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getPosition",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct Position.Data",
+          "components": [
+            {
+              "name": "tokenId",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "kind",
+              "type": "uint8",
+              "internalType": "enum IFoilStructs.PositionKind"
+            },
+            {
+              "name": "epochId",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "depositedCollateralAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "borrowedVEth",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "borrowedVGas",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "vEthAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "vGasAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "currentTokenAmount",
+              "type": "int256",
+              "internalType": "int256"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "pure"
+    },
+    {
+      "type": "error",
+      "name": "NoEpochsCreated",
+      "inputs": []
+    }
+  ],
+  "constructorArgs": [],
+  "linkedLibraries": {},
+  "deployTxnHash": "0xda7e61920275c692226b0d9fd77a429b5432b93b6580e9aa732b7b3a6d437f99",
+  "deployTxnBlockNumber": "1",
+  "deployTimestamp": "1723830378",
+  "sourceName": "src/contracts/modules/EpochViewsModule.sol",
+  "contractName": "EpochViewsModule",
+  "deployedOn": "deploy.EpochViewsModule",
+  "gasUsed": 443327,
+  "gasCost": "1002579454"
+}
