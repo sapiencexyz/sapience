@@ -278,11 +278,7 @@ const AddLiquidity = () => {
       <FormControl mb={4}>
         <FormLabel>Collateral Amount</FormLabel>
         <InputGroup>
-          <Input
-            type="number"
-            value={depositAmount}
-            onChange={handleDepositAmountChange}
-          />
+          <Input value={depositAmount} onChange={handleDepositAmountChange} />
           <InputRightAddon>{collateralAssetTicker}</InputRightAddon>
         </InputGroup>
       </FormControl>

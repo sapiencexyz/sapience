@@ -74,7 +74,7 @@ contract EpochUMASettlementModule is ReentrancyGuard {
             epoch.params.assertionLiveness,
             IERC20(epoch.params.bondCurrency),
             uint64(epoch.params.bondAmount),
-            bytes32(0),
+            optimisticOracleV3.defaultIdentifier(),
             bytes32(0)
         );
 
@@ -97,10 +97,12 @@ contract EpochUMASettlementModule is ReentrancyGuard {
         require(!epoch.settled, "Market already settled");
 
         Epoch.Settlement storage settlement = epoch.settlement;
-        epoch.settlementPrice = settlement.settlementPrice;
-        epoch.settled = true;
 
-        emit MarketSettled(settlement.settlementPrice);
+        if(!epoch.settlement.disputed) {
+            epoch.settlementPrice = settlement.settlementPrice;
+            epoch.settled = true;
+            emit MarketSettled(settlement.settlementPrice);
+        }
     }
 
     function assertionDisputedCallback(

@@ -1,10 +1,10 @@
 name="foil"
-version="0.5"
+version="0.6"
 
 [var.settings]
 owner = "0xEB045D78d273107348b0300c01D29B7552D622ab"
 startTime = "1722270000" # Mon Jul 29 2024 16:20:00 GMT+0000
-endTime = "1725900163" # Fri, 09 Sep 2024 16:42:43 GMT+0000
+endTime = "1725195600" # Sunday, September 1, 2024 9:00:00 AM GMT-04:00
 baseAssetMinPriceTick = "5200" # 1.709
 baseAssetMaxPriceTick = "28200" # 17.09
 feeRate = "10000" # 1%

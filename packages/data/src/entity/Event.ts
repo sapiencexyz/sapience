@@ -1,10 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, AfterInsert, AfterRemove, AfterUpdate, CreateDateColumn, OneToOne, JoinColumn,  } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, AfterInsert, AfterRemove, AfterUpdate, CreateDateColumn, OneToOne, JoinColumn, Unique,  } from 'typeorm';
 import { Log } from 'viem';
 import { Transaction } from './Transaction'
-// Read contractIds (chainId:address) from foilconfig.json ?
-// Add timestamp if the ORM doesn't do it automatically
 
 @Entity()
+@Unique(['contractId', 'blockNumber', 'logIndex'])  // Add this line
 export class Event {
     @OneToOne(() => Transaction, (transaction) => transaction.event, { cascade: true })
     @JoinColumn()
@@ -18,6 +17,12 @@ export class Event {
 
     @Column()
     contractId: string;
+
+    @Column()
+    blockNumber: number;
+
+    @Column()
+    logIndex: number;
 
     @Column({ type: 'json' })
     logData!: Log;

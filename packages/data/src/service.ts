@@ -85,7 +85,7 @@ createConnection(connectionOptions).then(async connection => {
     });
 
    // Get average price over a specified time period filtered by contractId
-   app.get('/prices/average', async (req, res) => {
+app.get('/prices/average', async (req, res) => {
     const { startTimestamp, endTimestamp, contractId } = req.query;
     const where: any = {};
 
@@ -160,6 +160,7 @@ createConnection(connectionOptions).then(async connection => {
 
         res.json(chartData);
     });
+
     app.get('/positions', async (req, res) => {
         const { contractId, isLP } = req.query;
         const where: any = {};
