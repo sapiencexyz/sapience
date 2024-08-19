@@ -155,8 +155,12 @@ library Epoch {
         epoch.sqrtPriceMaxX96 = TickMath.getSqrtRatioAtTick(
             epoch.params.baseAssetMaxPriceTick + spacing
         );
-        epoch.maxPriceD18 = Quote.sqrtRatioX96ToPrice(epoch.sqrtPriceMaxX96);
-        epoch.minPriceD18 = Quote.sqrtRatioX96ToPrice(epoch.sqrtPriceMinX96);
+        epoch.maxPriceD18 = DecimalPrice.sqrtRatioX96ToPrice(
+            epoch.sqrtPriceMaxX96
+        );
+        epoch.minPriceD18 = DecimalPrice.sqrtRatioX96ToPrice(
+            epoch.sqrtPriceMinX96
+        );
 
         // mint max; track tokens loaned by in FAccount
         epoch.ethToken.mint(address(this), type(uint256).max);

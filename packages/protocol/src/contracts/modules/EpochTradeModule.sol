@@ -123,10 +123,10 @@ contract EpochTradeModule is IEpochTradeModule {
         uint256 collateral
     ) external view returns (uint256 positionSize) {
         /*
-        PositionSize = C*K*(1-K*Pl) 
-        K = (1-Fee)/Pt
+        S = C / (Pe - Pl + (Pe + Pl) * fee)
+
         Where 
-        Pt = price at time t 
+        Pe = entry price (current price)
         Pl = lowest price set in market
         C = collateral
         Fee = Fee ¯\_(ツ)_/¯
@@ -135,10 +135,8 @@ contract EpochTradeModule is IEpochTradeModule {
         uint256 lowestPrice = Epoch.load(epochId).minPriceD18;
         uint256 fee = Epoch.load(epochId).params.feeRate;
 
-        uint256 K = (DecimalMath.UNIT - fee).divDecimal(price);
-        positionSize = collateral.mulDecimal(K).mulDecimal(
-            DecimalMath.UNIT - K.mulDecimal(lowestPrice)
-        );
+        uint256 K = (price + lowestPrice).mulDecimal(fee);
+        positionSize = collateral.divDecimal(price - lowestPrice + K);
 
         return positionSize;
     }
@@ -146,7 +144,25 @@ contract EpochTradeModule is IEpochTradeModule {
     function getShortSizeForCollateral(
         uint256 epochId,
         uint256 collateral
-    ) external view returns (uint256 positionSize) {}
+    ) external view returns (uint256 positionSize) {
+        /*
+        S = C / ( Ph - Pe + (Pe + Pl) * fee)
+
+        Where 
+        Pe = entry price (current price)
+        Ph = highest price set in market
+        C = collateral
+        Fee = Fee ¯\_(ツ)_/¯
+        */
+        uint256 price = getReferencePrice(epochId);
+        uint256 highestPrice = Epoch.load(epochId).maxPriceD18;
+        uint256 fee = Epoch.load(epochId).params.feeRate;
+
+        uint256 K = (price + highestPrice).mulDecimal(fee);
+        positionSize = collateral.divDecimal(highestPrice - price + K);
+
+        return positionSize;
+    }
 
     /**
      * @dev Create a long position
