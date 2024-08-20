@@ -19,8 +19,9 @@ contract TestUser is Test {
 
         asset.mint(amount, user);
 
-        vm.prank(user);
+        vm.startPrank(user); // notice, prank will work only for a single call, getting the address inside approve is that call, that's why we need to use start/stop prank here
         asset.approve(vm.getAddress("Foil"), amount);
+        vm.stopPrank();
 
         return user;
     }

@@ -37,20 +37,14 @@ contract CreateLiquidityPosition is TradeTestHelper {
         collateralAsset = IMintableToken(
             vm.getAddress("CollateralAsset.Token")
         );
-        foil = IFoil(vm.getAddress("Foil"));
 
         uint160 startingSqrtPriceX96 = 250541448375047931186413801569; // 10
         (foil, ) = createEpoch(16000, 29800, startingSqrtPriceX96);
 
         lp1 = TestUser.createUser("LP1", 1_000_000 ether);
         trader1 = TestUser.createUser("Trader1", 1_000_000 ether);
-        console2.log(" >>> LP1", lp1);
-        console2.log(" >>> Trader1", trader1);
 
         (epochId, , , pool, tokenA, tokenB) = foil.getLatestEpoch();
-
-        console2.log(" >>> Epoch", epochId);
-        console2.log(" >>> Pool", pool);
 
         uniCastedPool = IUniswapV3Pool(pool);
         feeRate = uint256(uniCastedPool.fee()) * 1e12;
@@ -58,27 +52,27 @@ contract CreateLiquidityPosition is TradeTestHelper {
 
     function test_tradeWildJake_Only() public {
         uint256 positionId;
-        vm.prank(lp1);
+        vm.startPrank(lp1);
 
         addLiquidity(foil, pool, epochId, 0.004 ether, 5200, 28200);
         addLiquidity(foil, pool, epochId, 0.003 ether, 5200, 28200);
+        vm.stopPrank();
 
-        vm.prank(trader1);
-
+        vm.startPrank(trader1);
         // Set position size
         uint256 liq = IUniswapV3Pool(pool).liquidity();
-        console2.log(" >>> Liquidity", liq);
 
         positionId = foil.createTraderPosition(
             // Create Long position (with enough collateral)
             epochId,
-            2254647488776959,
+            4934123598537506,
             438725000000000,
             434337750000000
         );
 
         console2.log(" >>> Position", positionId);
         logPositionAndAccount(foil, positionId);
+        vm.stopPrank();
     }
 
     function test_tradeLong() public {
