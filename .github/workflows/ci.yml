@@ -19,7 +19,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Install pnpm
         run: npm install -g pnpm
@@ -31,7 +31,7 @@ jobs:
         run: pnpm run simulate-deploy:sepolia
         working-directory: packages/protocol
 
-  test-contracts: 
+  test-contracts:
     runs-on: ubuntu-latest
 
     steps:
@@ -44,14 +44,14 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Install pnpm
         run: npm install -g pnpm
 
       - name: Install dependencies
         run: pnpm install
-        
+
       - name: Smart contract tests
-        run: pnpm run test
+        run: pnpm run test2
         working-directory: packages/protocol

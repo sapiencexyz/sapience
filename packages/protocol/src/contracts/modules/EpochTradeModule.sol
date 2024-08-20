@@ -10,6 +10,10 @@ import {IEpochTradeModule} from "../interfaces/IEpochTradeModule.sol";
 
 // import "forge-std/console2.sol";
 
+/**
+ * @title Module for trade positions.
+ * @dev See IEpochTradeModule.
+ */
 contract EpochTradeModule is IEpochTradeModule {
     using Epoch for Epoch.Data;
     using Position for Position.Data;
@@ -17,6 +21,9 @@ contract EpochTradeModule is IEpochTradeModule {
     using SafeCastI256 for int256;
     using SafeCastU256 for uint256;
 
+    /**
+     * @inheritdoc IEpochTradeModule
+     */
     function createTraderPosition(
         uint256 epochId,
         uint256 collateralAmount,
@@ -33,6 +40,7 @@ contract EpochTradeModule is IEpochTradeModule {
         Position.Data storage position = Position.createValid(positionId);
         ERC721Storage._mint(msg.sender, positionId);
         position.epochId = epochId;
+        position.kind = IFoilStructs.PositionKind.Trade;
 
         if (tokenAmount > 0) {
             _createLongPosition(
@@ -59,6 +67,9 @@ contract EpochTradeModule is IEpochTradeModule {
         position.afterTradeCheck();
     }
 
+    /**
+     * @inheritdoc IEpochTradeModule
+     */
     function modifyTraderPosition(
         uint256 positionId,
         uint256 collateralAmount,
@@ -72,15 +83,19 @@ contract EpochTradeModule is IEpochTradeModule {
 
         Position.Data storage position = Position.loadValid(positionId);
 
+        if(position.kind != IFoilStructs.PositionKind.Trade) {
+            revert Errors.InvalidPositionKind();
+        }
+
         if (
             !sameSide(position.currentTokenAmount, tokenAmount) ||
             tokenAmount == 0
         ) {
             // go to zero before moving to the other side
-            _closePosition(position, collateralAmount);
-            collateralAmount = 0; // Already accounted in the close position
+            _closePosition(position);
         }
 
+        // Notice: if/else won't enter on tokenAmount == 0 since it's already closed
         if (tokenAmount > 0) {
             _modifyLongPosition(
                 position,
@@ -97,10 +112,18 @@ contract EpochTradeModule is IEpochTradeModule {
             );
         }
 
+        position.updateCollateral(
+            Market.load().collateralAsset,
+            collateralAmount
+        );
+
         // Validate after trading that collateral is enough
         position.afterTradeCheck();
     }
 
+    /**
+     * @inheritdoc IEpochTradeModule
+     */
     function getReferencePrice(
         uint256 epochId
     ) public view override returns (uint256 price18Digits) {
@@ -111,6 +134,58 @@ contract EpochTradeModule is IEpochTradeModule {
         } else {
             return epoch.getCurrentPoolPrice();
         }
+    }
+
+    /**
+     * @inheritdoc IEpochTradeModule
+     */
+    function getLongSizeForCollateral(
+        uint256 epochId,
+        uint256 collateral
+    ) external view override returns (uint256 positionSize) {
+        /*
+        S = C / (Pe - Pl + (Pe + Pl) * fee)
+
+        Where 
+        Pe = entry price (current price)
+        Pl = lowest price set in market
+        C = collateral
+        Fee = Fee ¯\_(ツ)_/¯
+        */
+        uint256 price = getReferencePrice(epochId);
+        uint256 lowestPrice = Epoch.load(epochId).minPriceD18;
+        uint256 fee = Epoch.load(epochId).params.feeRate;
+
+        uint256 K = (price + lowestPrice).mulDecimal(fee);
+        positionSize = collateral.divDecimal(price - lowestPrice + K);
+
+        return positionSize;
+    }
+
+    /**
+     * @inheritdoc IEpochTradeModule
+     */
+    function getShortSizeForCollateral(
+        uint256 epochId,
+        uint256 collateral
+    ) external view override returns (uint256 positionSize) {
+        /*
+        S = C / ( Ph - Pe + (Pe + Pl) * fee)
+
+        Where 
+        Pe = entry price (current price)
+        Ph = highest price set in market
+        C = collateral
+        Fee = Fee ¯\_(ツ)_/¯
+        */
+        uint256 price = getReferencePrice(epochId);
+        uint256 highestPrice = Epoch.load(epochId).maxPriceD18;
+        uint256 fee = Epoch.load(epochId).params.feeRate;
+
+        uint256 K = (price + highestPrice).mulDecimal(fee);
+        positionSize = collateral.divDecimal(highestPrice - price + K);
+
+        return positionSize;
     }
 
     /**
@@ -438,10 +513,7 @@ contract EpochTradeModule is IEpochTradeModule {
      * with the position closed, the remaining gas can be sold for vEth and converted to collateral, same for the remaining vEth that is converted 1:1 as colalteral
      * then the remaining collateral can be withdrawn
      */
-    function _closePosition(
-        Position.Data storage position,
-        uint256 collateralAmount
-    ) internal {
+    function _closePosition(Position.Data storage position) internal {
         // TODO check if after settlement and use the settlement price
 
         if (position.currentTokenAmount > 0) {
@@ -471,13 +543,8 @@ contract EpochTradeModule is IEpochTradeModule {
             }
 
             position.borrowedVEth = 0;
-
-            position.updateCollateral(Market.load().collateralAsset, 0);
-
-            position.resetBalance();
         } else {
             // Close SHORT position
-
             SwapTokensExactInParams memory params = SwapTokensExactInParams({
                 epochId: position.epochId,
                 amountInVEth: position.vEthAmount,
@@ -537,11 +604,8 @@ contract EpochTradeModule is IEpochTradeModule {
             }
 
             position.borrowedVGas = 0;
-
-            position.updateCollateral(Market.load().collateralAsset, 0);
-
-            position.resetBalance();
         }
+        position.resetBalance();
     }
 
     struct SwapTokensExactInParams {

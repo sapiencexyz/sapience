@@ -24,6 +24,7 @@ library Errors {
     error NotAccountOwnerOrAuthorized(uint256 tokenId, address sender);
     error InsufficientVEth(uint256 amount, uint256 vEth);
     error InsufficientVGas(uint256 amount, uint256 vGas);
+    error InvalidPositionKind();
     // error InvalidAmount(uint256 amount);
     // error InvalidStartTime(uint256 time);
     // error InvalidEndTime(uint256 time);

@@ -33,6 +33,7 @@ contract EpochLiquidityModule is
         Position.Data storage position = Position.createValid(tokenId);
         ERC721Storage._mint(msg.sender, tokenId);
         position.epochId = params.epochId;
+        position.kind = IFoilStructs.PositionKind.Liquidity;
 
         Market.Data storage market = Market.load();
         Epoch.Data storage epoch = Epoch.load(params.epochId);
@@ -131,6 +132,10 @@ contract EpochLiquidityModule is
         Position.Data storage position = Position.load(positionId);
         Epoch.Data storage epoch = Epoch.load(position.epochId);
 
+        if (position.kind != IFoilStructs.PositionKind.Liquidity) {
+            revert Errors.InvalidPositionKind();
+        }
+
         (, , , , , int24 lowerTick, int24 upperTick, , , , , ) = market
             .uniswapPositionManager
             .positions(position.tokenId);
@@ -178,6 +183,10 @@ contract EpochLiquidityModule is
         Market.Data storage market = Market.load();
         Position.Data storage position = Position.load(positionId);
         Epoch.Data storage epoch = Epoch.load(position.epochId);
+
+        if (position.kind != IFoilStructs.PositionKind.Liquidity) {
+            revert Errors.InvalidPositionKind();
+        }
 
         (, , , , , int24 lowerTick, int24 upperTick, , , , , ) = market
             .uniswapPositionManager
