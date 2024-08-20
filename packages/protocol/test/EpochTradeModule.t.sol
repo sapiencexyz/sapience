@@ -75,7 +75,7 @@ contract CreateLiquidityPosition is TradeTestHelper {
         vm.stopPrank();
     }
 
-    function test_tradeLong_Only() public {
+    function test_tradeLong() public {
         uint256 referencePrice;
         uint256 positionId;
         uint256 collateralForOrder = 10 ether;
