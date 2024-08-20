@@ -11,6 +11,7 @@ import type { Chain } from 'viem/chains';
 import { useReadContracts, useReadContract } from 'wagmi';
 
 import useFoilDeployment from '../components/foil/useFoilDeployment';
+import { LOCAL_MARKET_CHAIN_ID } from '../constants/constants';
 import erc20ABI from '../erc20abi.json';
 
 const API_BASE_URL = 'http://localhost:3001';
@@ -274,10 +275,17 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
         collateralAsset: marketViewFunctionResult?.data[1],
         uniswapPositionManagerAddress: marketViewFunctionResult?.data[2],
         baseAssetMinPriceTick:
-          marketViewFunctionResult?.data[6].baseAssetMinPriceTick,
+          marketViewFunctionResult?.data[
+            chainId === LOCAL_MARKET_CHAIN_ID ? 5 : 6
+          ].baseAssetMinPriceTick,
         baseAssetMaxPriceTick:
-          marketViewFunctionResult?.data[6].baseAssetMaxPriceTick,
-        feeRate: marketViewFunctionResult?.data[6].feeRate,
+          marketViewFunctionResult?.data[
+            chainId === LOCAL_MARKET_CHAIN_ID ? 5 : 6
+          ].baseAssetMaxPriceTick,
+        feeRate:
+          marketViewFunctionResult?.data[
+            chainId === LOCAL_MARKET_CHAIN_ID ? 5 : 6
+          ].feeRate,
       }));
     }
   }, [marketViewFunctionResult.data]);

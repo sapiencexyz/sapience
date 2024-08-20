@@ -35,7 +35,7 @@ import {
 
 import erc20ABI from '../../erc20abi.json';
 import { getNewLiquidity } from '../../util/positionUtil';
-import { renderContractErrorToast, renderToastSuccess } from '../../util/util';
+import { renderContractErrorToast, renderToast } from '../../util/util';
 import { TOKEN_DECIMALS } from '~/lib/constants/constants';
 import { useLoading } from '~/lib/context/LoadingContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
@@ -157,8 +157,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   const { data: approveHash, writeContract: approveWrite } = useWriteContract({
     mutation: {
       onError: (error) => {
-        setPendingTxn(false);
-        setIsLoading(false);
+        resetAfterError();
         renderContractErrorToast(
           error as WriteContractErrorType,
           toast,
@@ -168,31 +167,25 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     },
   });
 
-  const {
-    data: addLiquidityHash,
-    writeContract: addLiquidityWrite,
-    isPending: isPendingAdd,
-    isPaused: isPausedAdd,
-  } = useWriteContract({
-    mutation: {
-      onError: (error) => {
-        setPendingTxn(false);
-        setIsLoading(false);
-        renderContractErrorToast(
-          error as WriteContractErrorType,
-          toast,
-          'Failed to add liquidity'
-        );
+  const { data: addLiquidityHash, writeContract: addLiquidityWrite } =
+    useWriteContract({
+      mutation: {
+        onError: (error) => {
+          resetAfterError();
+          renderContractErrorToast(
+            error as WriteContractErrorType,
+            toast,
+            'Failed to add liquidity'
+          );
+        },
       },
-    },
-  });
+    });
 
   const { data: increaseLiquidityHash, writeContract: increaseLiquidity } =
     useWriteContract({
       mutation: {
         onError: (error) => {
-          setPendingTxn(false);
-          setIsLoading(false);
+          resetAfterError();
           renderContractErrorToast(
             error as WriteContractErrorType,
             toast,
@@ -206,8 +199,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     useWriteContract({
       mutation: {
         onError: (error) => {
-          setPendingTxn(false);
-          setIsLoading(false);
+          resetAfterError();
           renderContractErrorToast(
             error as WriteContractErrorType,
             toast,
@@ -311,21 +303,21 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   // handle successful add/increase liquidity
   useEffect(() => {
     if (addLiquiditySuccess && txnStep === 2) {
-      renderToastSuccess(toast, `successfully added liquidity`);
+      renderToast(toast, `successfully added liquidity`);
       refetchStates();
     }
   }, [addLiquiditySuccess, txnStep]);
 
   useEffect(() => {
     if (increaseLiquiditySuccess && txnStep === 2) {
-      renderToastSuccess(toast, `successfully increased liquidity`);
+      renderToast(toast, `successfully increased liquidity`);
       refetchStates();
     }
   }, [increaseLiquiditySuccess, txnStep]);
 
   useEffect(() => {
     if (decreaseLiquiditySuccess) {
-      renderToastSuccess(toast, 'successfully decreased liquidity ');
+      renderToast(toast, 'successfully decreased liquidity ');
       refetchStates();
     }
   }, [decreaseLiquiditySuccess]);
@@ -434,6 +426,12 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     refetchCollateralAmount();
     refetchTokens();
     refetchPosition();
+  };
+
+  const resetAfterError = () => {
+    setTxnStep(0);
+    setPendingTxn(false);
+    setIsLoading(false);
   };
   /**
    * Handle updating slippage tolerance

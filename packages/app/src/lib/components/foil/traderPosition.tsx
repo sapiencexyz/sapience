@@ -13,7 +13,8 @@ import {
   Text,
   useToast,
 } from '@chakra-ui/react';
-import { useState, useEffect, useMemo, useContext } from 'react';
+import INONFUNGIBLE_POSITION_MANAGER from '@uniswap/v3-periphery/artifacts/contracts/NonfungiblePositionManager.sol/NonfungiblePositionManager.json';
+import { useState, useEffect, useContext } from 'react';
 import type { AbiFunction, WriteContractErrorType } from 'viem';
 import { formatUnits, parseUnits } from 'viem';
 import {
@@ -25,15 +26,21 @@ import {
 
 import erc20ABI from '../../erc20abi.json';
 import { TOKEN_DECIMALS } from '~/lib/constants/constants';
+import { useLoading } from '~/lib/context/LoadingContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';
-import { renderContractErrorToast } from '~/lib/util/util';
+import type { FoilPosition } from '~/lib/interfaces/interfaces';
+import {
+  convertHundredthsOfBipToPercent,
+  renderContractErrorToast,
+  renderToast,
+} from '~/lib/util/util';
 
 import PositionSelector from './positionSelector';
 import SlippageTolerance from './slippageTolerance';
 
 const tradeOptions = ['Long', 'Short'];
-const PRECISION = 9;
+const PRECISION = 12;
 
 function RadioCard(props: any) {
   const { getInputProps, getRadioProps } = useRadio(props);
@@ -81,10 +88,15 @@ export default function TraderPosition({}) {
   const [slippage, setSlippage] = useState<number>(0.5);
   const [transactionStep, setTransactionStep] = useState(0);
   const [isSizeInput, setIsSizeInput] = useState(false);
+  const [pendingTxn, setPendingTxn] = useState(false);
   const account = useAccount();
   const { isConnected } = account;
   const { address } = useAccount();
-  const { tokenIds } = useTokenIdsOfOwner(address as `0x${string}`);
+  const { tokenIds, refetch: refetchTokens } = useTokenIdsOfOwner(
+    address as `0x${string}`
+  );
+  const { setIsLoading } = useLoading();
+  const isEdit = nftId > 0;
 
   const {
     collateralAsset,
@@ -94,6 +106,7 @@ export default function TraderPosition({}) {
     pool,
     foilData,
     chainId,
+    uniswapPositionManagerAddress,
   } = useContext(MarketContext);
 
   const { getRootProps, getRadioProps } = useRadioGroup({
@@ -105,11 +118,34 @@ export default function TraderPosition({}) {
   const toast = useToast();
 
   const isLong = option === 'Long';
-  useEffect(() => {
-    console.log('pool', pool);
-  }, [pool]);
+  const fee = convertHundredthsOfBipToPercent(pool?.fee || 0) + 0.01; // TODO FIGURE OUT WHAT THIS SHOULD BE
 
   /// //// READ CONTRACT HOOKS ///////
+  const { data: positionData, refetch: refetchPosition } = useReadContract({
+    abi: foilData.abi,
+    address: foilData.address as `0x${string}`,
+    functionName: 'getPosition',
+    args: [nftId],
+    query: {
+      enabled: isEdit,
+    },
+  }) as { data: FoilPosition; refetch: any; isRefetching: boolean };
+
+  const { data: uniswapPosition, error: uniswapPositionError } =
+    useReadContract({
+      abi: INONFUNGIBLE_POSITION_MANAGER.abi,
+      address: uniswapPositionManagerAddress,
+      functionName: 'positions',
+      args: [positionData?.tokenId.toString()],
+      query: {
+        enabled: Boolean(
+          uniswapPositionManagerAddress !== '0x' &&
+            positionData?.tokenId &&
+            isEdit
+        ),
+      },
+    });
+
   const referencePriceFunctionResult = useReadContract({
     abi: foilData.abi,
     address: foilData.address as `0x${string}`,
@@ -135,12 +171,25 @@ export default function TraderPosition({}) {
   });
 
   /// //// WRITE CONTRACT HOOKS ///////
-  const {
-    data: hash,
-    error,
-    isPending: isPendingWrite,
-    writeContract,
-  } = useWriteContract();
+  const { data: hash, writeContract } = useWriteContract({
+    mutation: {
+      onError: (error) => {
+        renderContractErrorToast(
+          error as WriteContractErrorType,
+          toast,
+          `There was an issue creating/updating your position.`
+        );
+        resetAfterError();
+      },
+      onSuccess: () => {
+        renderToast(
+          toast,
+          'Transaction submitted. Waiting for confirmation...',
+          'info'
+        );
+      },
+    },
+  });
   const { data: approveHash, writeContract: approveWrite } = useWriteContract({
     mutation: {
       onError: (error) => {
@@ -149,22 +198,15 @@ export default function TraderPosition({}) {
           toast,
           'Failed to approve'
         );
-        setTransactionStep(0);
+        resetAfterError();
       },
-      //  onSuccess: () => handleCreateOrIncreaseLiquidity(),
     },
   });
 
-  const { isLoading: isConfirming, isSuccess: isConfirmed } =
-    useWaitForTransactionReceipt({ hash });
-  const { isSuccess: approveSuccess, isLoading: isLoadingApprove } =
-    useWaitForTransactionReceipt({
-      hash: approveHash,
-    });
-  /// ///// MEMOIZED VALUES ////////
-  const isPending = useMemo(() => {
-    return isPendingWrite || isConfirming || isLoadingApprove;
-  }, [isLoadingApprove, isPendingWrite, isConfirming]);
+  const { isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+  const { isSuccess: approveSuccess } = useWaitForTransactionReceipt({
+    hash: approveHash,
+  });
 
   /// //// USE EFFECTS ///////
   useEffect(() => {
@@ -184,19 +226,12 @@ export default function TraderPosition({}) {
         parseUnits(tokenAmountLimit.toString(), collateralAssetDecimals),
       ];
       console.log('args', args);
-      // setTransactionStep(0);
-      // return;
       if (nftId === 0) {
         writeContract({
           abi: foilData.abi,
           address: foilData.address as `0x${string}`,
           functionName: 'createTraderPosition',
-          args: [
-            epoch,
-            parseUnits(collateral.toString(), collateralAssetDecimals),
-            parseUnits(finalSize.toString(), collateralAssetDecimals),
-            parseUnits(tokenAmountLimit.toString(), collateralAssetDecimals),
-          ],
+          args,
         });
       } else {
         writeContract({
@@ -226,39 +261,14 @@ export default function TraderPosition({}) {
   ]);
 
   useEffect(() => {
-    if (error) {
-      console.error('error', error.message);
-      toast({
-        title: `There was an issue creating/updating your position.`,
-        description: error.message,
-        status: 'error',
-        duration: 9000,
-        isClosable: true,
-      });
-    } else if (hash) {
-      toast({
-        title: 'Submitted',
-        description: 'Transaction submitted. Waiting for confirmation...',
-        status: 'info',
-        duration: 9000,
-        isClosable: true,
-      });
-    }
-  }, [toast, error, hash]);
-
-  useEffect(() => {
     if (isConfirmed) {
-      toast({
-        title: 'Success',
-        description: `We've ${
-          nftId === 0 ? 'created' : 'updated'
-        } your position for you.`,
-        status: 'success',
-        duration: 9000,
-        isClosable: true,
-      });
+      renderToast(
+        toast,
+        `We've ${nftId === 0 ? 'created' : 'updated'} your position for you.`
+      );
+      resetAfterSuccess();
     }
-  }, [toast, isConfirmed, nftId]);
+  }, [isConfirmed]);
 
   useEffect(() => {
     /*
@@ -278,16 +288,21 @@ export default function TraderPosition({}) {
       */
   }, [nftId, getPositionDataFunctionResult?.data]);
 
+  useEffect(() => {
+    console.log('fee', fee);
+    console.log('pool', pool);
+  }, [pool, fee]);
   /// /// HANDLERS //////
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
+    setPendingTxn(true);
+    setIsLoading(true);
     approveWrite({
       abi: erc20ABI as AbiFunction[],
       address: collateralAsset as `0x${string}`,
       functionName: 'approve',
       args: [
-        collateralAsset,
+        foilData.address,
         parseUnits(collateral.toString(), collateralAssetDecimals),
       ],
     }); // Start the transaction sequence
@@ -304,7 +319,8 @@ export default function TraderPosition({}) {
     const newSize = parseFloat(newVal || '0');
     setSize(newSize);
     const refPriceNumber = formatUnits(refPrice as bigint, TOKEN_DECIMALS);
-    const newCollateral = parseFloat(`${newSize}`) * parseFloat(refPriceNumber);
+    const newCollateral =
+      parseFloat(`${newSize * (1 + fee)}`) * parseFloat(refPriceNumber);
     setCollateral(parseFloat(newCollateral.toFixed(PRECISION)));
   };
 
@@ -318,7 +334,7 @@ export default function TraderPosition({}) {
     const newCollateral = parseFloat(newVal || '0');
     setCollateral(newCollateral);
     const refPriceNumber = formatUnits(refPrice as bigint, TOKEN_DECIMALS);
-    const newSize = newCollateral / parseFloat(refPriceNumber);
+    const newSize = (newCollateral * (1 - fee)) / parseFloat(refPriceNumber);
     setSize(parseFloat(newSize.toFixed(PRECISION)));
   };
 
@@ -328,26 +344,29 @@ export default function TraderPosition({}) {
 
   const handleUpdateIsSizeInput = () => setIsSizeInput(!isSizeInput);
 
-  const test = () => {
-    const finalSize = !isLong ? -Math.abs(Number(size)) : size;
-    const tokenAmountLimit = finalSize * (1 - slippage / 100);
-    const args = [
-      epoch,
-      parseUnits(collateral.toString(), collateralAssetDecimals),
-      parseUnits(finalSize.toString(), collateralAssetDecimals),
-      parseUnits(tokenAmountLimit.toString(), collateralAssetDecimals),
-    ];
-    console.log('args', args);
-    console.log('slippage', slippage);
-    console.log('finalSize', finalSize);
-    console.log('collateral amount', collateral);
-    console.log('tokenAmountLimit', tokenAmountLimit);
+  const resetAfterError = () => {
+    setTransactionStep(0);
+    setPendingTxn(false);
+    setIsLoading(false);
+  };
+
+  const resetAfterSuccess = () => {
+    // reset form states
+    setSize(0);
+    setCollateral(0);
+    setSlippage(0.5);
+
+    setTransactionStep(0);
+    setPendingTxn(false);
+    setIsLoading(false);
+
+    refetchTokens();
+    refetchPosition();
+    // to do ....refetch states....
   };
 
   return (
     <form onSubmit={handleSubmit}>
-      {/* <div> pool liquidity {pool?.liquidity}</div> */}
-      <Button onClick={test}>Test</Button>
       <PositionSelector isLP={false} onChange={setNftId} nftIds={tokenIds} />
       <Flex {...group} gap={4} mb={4}>
         {tradeOptions.map((value) => {
@@ -413,7 +432,8 @@ export default function TraderPosition({}) {
           width="full"
           variant="brand"
           type="submit"
-          isLoading={transactionStep > 0 && transactionStep < 3}
+          isLoading={pendingTxn}
+          isDisabled={pendingTxn}
         >
           Trade
         </Button>

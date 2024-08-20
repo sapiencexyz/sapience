@@ -18,35 +18,23 @@ export const renderContractErrorToast = (
   }
 };
 
-export const renderToastSuccess = (
+export const renderToast = (
   toast: (options?: UseToastOptions) => ToastId,
-  desc: string
+  desc: string,
+  status?: 'info' | 'warning' | 'success' | 'error' | 'loading'
 ) => {
   toast({
     title: desc,
-    status: 'success',
+    status: status || 'success',
     duration: 5000,
     isClosable: true,
   });
 };
 
-export function decimalToFraction(
-  decimal: number,
-  decimalPlaces?: number
-): [number, number] {
-  if (Number.isInteger(decimal)) {
-    return [decimal, 1];
-  }
-
-  const precision = decimalPlaces || 1000000; // Adjust this for more/less precision
-  let numerator = Math.round(decimal * precision);
-  let denominator = precision;
-
-  const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a);
-  const divisor = gcd(numerator, denominator);
-
-  numerator /= divisor;
-  denominator /= divisor;
-
-  return [numerator, denominator];
+export function convertHundredthsOfBipToPercent(
+  hundredthsOfBip: number
+): number {
+  // 1 bip = 0.01%
+  // 1 hundredth of bip = 0.01/100 = 0.0001
+  return (hundredthsOfBip * 0.0001) / 100;
 }
