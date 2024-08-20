@@ -59,20 +59,21 @@ export default function TraderPositionsTable() {
           </Tr>
         </Thead>
         <Tbody>
-          {positions.map((row: any) => (
-            <Tr key={row.id}>
-              <Td>{row.nftId.toString()}</Td>
-              <Td>{row.collateral.toString()}</Td>
-              <Td>{row.baseToken.toString()}</Td>
-              <Td>{row.quoteToken.toString()}</Td>
-              <Td>{row.quoteToken.toString()}</Td>
-              <Td />
-              <Td>{row.profitLoss.toString()}</Td>
-              <Td>{row.highPrice.toString()}</Td>
-              <Td>{row.lowPrice.toString()}</Td>
-              <Td>{row.unclaimedFees.toString()}</Td>
-            </Tr>
-          ))}
+          {positions &&
+            positions.map((row: any) => (
+              <Tr key={row.id}>
+                <Td>{row.nftId.toString()}</Td>
+                <Td>{row.collateral.toString()}</Td>
+                <Td>{row.baseToken.toString()}</Td>
+                <Td>{row.quoteToken.toString()}</Td>
+                <Td>{row.quoteToken.toString()}</Td>
+                <Td />
+                <Td>{row.profitLoss.toString()}</Td>
+                <Td>{row.highPrice.toString()}</Td>
+                <Td>{row.lowPrice.toString()}</Td>
+                <Td>{row.unclaimedFees.toString()}</Td>
+              </Tr>
+            ))}
         </Tbody>
       </Table>
     </TableContainer>

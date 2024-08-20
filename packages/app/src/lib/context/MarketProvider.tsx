@@ -11,6 +11,7 @@ import type { Chain } from 'viem/chains';
 import { useReadContracts, useReadContract } from 'wagmi';
 
 import useFoilDeployment from '../components/foil/useFoilDeployment';
+import { LOCAL_MARKET_CHAIN_ID } from '../constants/constants';
 import erc20ABI from '../erc20abi.json';
 
 const API_BASE_URL = 'http://localhost:3001';
@@ -33,9 +34,12 @@ interface MarketContextType {
     high: number;
   }>;
   poolAddress: `0x${string}`;
+  uniswapPositionManagerAddress: `0x${string}`;
   pool: Pool | null;
   collateralAssetDecimals: number;
   epoch: number;
+  foilData: any;
+  chainId: number;
 }
 
 interface MarketProviderProps {
@@ -59,7 +63,10 @@ export const MarketContext = createContext<MarketContextType>({
   prices: [],
   pool: null,
   poolAddress: '0x',
+  uniswapPositionManagerAddress: `0x`,
   epoch: 0,
+  foilData: {},
+  chainId: 0,
 });
 
 export const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
@@ -163,14 +170,20 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     prices: [],
     pool: null,
     poolAddress: '0x',
+    uniswapPositionManagerAddress: '0x',
     epoch: 0,
+    foilData: {},
+    chainId,
   });
 
   // Set chainId and address from the URL
   useEffect(() => {
-    const chain = Object.entries(Chains).find(
-      (chainOption) => chainOption[1].id === chainId
-    );
+    const chain = Object.entries(Chains).find((chainOption) => {
+      if (chainId === 13370 && chainOption[0] === 'localhost') {
+        return true;
+      }
+      return chainOption[1].id === chainId;
+    });
 
     if (chain === undefined) {
       return;
@@ -181,6 +194,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
       chain: chain[1] as any,
       address,
       epoch,
+      chainId,
     }));
   }, [chainId, address, epoch]);
 
@@ -237,6 +251,13 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
 
   const { foilData } = useFoilDeployment(chainId);
 
+  useEffect(() => {
+    setState((currentState) => ({
+      ...currentState,
+      foilData: { address: foilData.address, abi: foilData.abi },
+    }));
+  }, [foilData]);
+
   // Get data about the market from Foil
   const marketViewFunctionResult = useReadContract({
     chainId,
@@ -252,11 +273,19 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
         ...currentState,
         owner: marketViewFunctionResult?.data[0],
         collateralAsset: marketViewFunctionResult?.data[1],
+        uniswapPositionManagerAddress: marketViewFunctionResult?.data[2],
         baseAssetMinPriceTick:
-          marketViewFunctionResult?.data[6].baseAssetMinPriceTick,
+          marketViewFunctionResult?.data[
+            chainId === LOCAL_MARKET_CHAIN_ID ? 5 : 6
+          ].baseAssetMinPriceTick,
         baseAssetMaxPriceTick:
-          marketViewFunctionResult?.data[6].baseAssetMaxPriceTick,
-        feeRate: marketViewFunctionResult?.data[6].feeRate,
+          marketViewFunctionResult?.data[
+            chainId === LOCAL_MARKET_CHAIN_ID ? 5 : 6
+          ].baseAssetMaxPriceTick,
+        feeRate:
+          marketViewFunctionResult?.data[
+            chainId === LOCAL_MARKET_CHAIN_ID ? 5 : 6
+          ].feeRate,
       }));
     }
   }, [marketViewFunctionResult.data]);

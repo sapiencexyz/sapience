@@ -50,7 +50,6 @@ const PositionsHeader = () => {
     relativeTime = formatDistanceToNow(date);
     formattedTime = format(date, 'PPpp');
   }
-
   return (
     <Flex gap={6} mb={9} alignItems="center" direction="column">
       <Flex w="100%" alignItems="center">
@@ -131,7 +130,7 @@ const PositionsHeader = () => {
             </Flex>
           </Link>
 
-          <Text fontSize="sm" color="gray.800" mt={1}>
+          <Box fontSize="sm" color="gray.800" mt={1}>
             <Flex display="inline-flex" alignItems="center">
               <Box display="inline-block" mr="1">
                 <FaRegChartBar />
@@ -142,7 +141,7 @@ const PositionsHeader = () => {
               {tickToPrice(baseAssetMinPriceTick).toFixed(2)} cbETH/gGas -{' '}
               {tickToPrice(baseAssetMaxPriceTick).toFixed(2)} cbETH/gGas
             </Flex>
-          </Text>
+          </Box>
         </Box>
       </Flex>
 

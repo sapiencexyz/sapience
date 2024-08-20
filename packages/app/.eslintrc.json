@@ -5,17 +5,43 @@
     "plugin:@next/next/recommended"
   ],
   "rules": {
-    "no-console": "warn",
+    "consistent-return": "off",
+    "no-console": "off",
     "semi": ["warn", "always"],
-    "react/prop-types": "warn",
+    "react/prop-types": "off",
     "react/jsx-key": "warn",
     "react/jsx-no-duplicate-props": "warn",
+    "react/jsx-no-constructed-context-values": "off",
     "@typescript-eslint/no-unused-vars": "warn",
     "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/naming-convention": "off",
+    "@typescript-eslint/no-shadow": "warn",
+    "@typescript-eslint/ban-types": "off",
+    "@typescript-eslint/no-use-before-define": "off",
     "react/destructuring-assignment": "warn",
+    "react-hooks/exhaustive-deps": "warn",
+    "no-restricted-syntax": "off",
     "no-empty-pattern": "warn",
     "no-restricted-globals": "warn",
+    "no-underscore-dangle": "off",
     "@typescript-eslint/consistent-type-imports": "warn",
+    "import/extensions": [
+      "error",
+      "ignorePackages",
+      {
+        "js": "never",
+        "jsx": "never",
+        "ts": "never",
+        "tsx": "never"
+      }
+    ],
     "import/order": "warn"
+  },
+  "settings": {
+    "import/resolver": {
+      "typescript": {
+        "project": "packages/app/tsconfig.json"
+      }
+    }
   }
 }

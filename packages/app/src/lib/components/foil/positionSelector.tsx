@@ -5,103 +5,50 @@ import {
   InputGroup,
   Select,
 } from '@chakra-ui/react';
-import { times } from 'lodash';
-import {
-  useContext,
-  useEffect,
-  useState,
-  type Dispatch,
-  type SetStateAction,
-} from 'react';
+import { useContext, useMemo, type Dispatch, type SetStateAction } from 'react';
 import type React from 'react';
-import type { AbiFunction } from 'viem';
-import { useAccount, useReadContract, useReadContracts } from 'wagmi';
+import { useReadContracts } from 'wagmi';
 
-import useFoilDeployment from './useFoilDeployment';
 import { MarketContext } from '~/lib/context/MarketProvider';
+import type { FoilPosition } from '~/lib/interfaces/interfaces';
+import { PositionKind } from '~/lib/interfaces/interfaces';
 
 interface AccountSelectorProps {
   isLP: boolean;
   onChange: Dispatch<SetStateAction<number>>;
+  nftIds: number[];
 }
 
-const useTokenIdsOfOwner = (ownerAddress: `0x${string}`) => {
-  const { chain } = useContext(MarketContext);
-  const { foilData } = useFoilDeployment(chain?.id);
-
-  const balanceResult = useReadContract({
-    abi: foilData.abi,
-    address: foilData.address as `0x${string}`,
-    functionName: 'balanceOf',
-    args: [ownerAddress],
-  });
-
-  const [tokenIds, setTokenIds] = useState<number[]>([]);
-
-  useEffect(() => {
-    const fetchTokenIds = async () => {
-      if (balanceResult.data) {
-        const balance = parseInt(balanceResult.data.toString(), 10);
-        const tokenContracts = times(balance, (index) => ({
-          abi: foilData.abi,
-          address: foilData.address as `0x${string}`,
-          functionName: 'tokenOfOwnerByIndex',
-          args: [ownerAddress, index],
-        }));
-        /*
-        const tokensInfo = await useReadContracts({
-          contracts: tokenContracts,
-        });
-
-        if (tokensInfo.data?.length) {
-          // Extract token IDs from the responses
-          const ids = tokensInfo.data.map((resp) =>
-            parseInt(resp.toString(), 10)
-          );
-          setTokenIds(ids);
-        }
-        */
-      }
-    };
-
-    fetchTokenIds();
-  }, [balanceResult.data, foilData.abi, foilData.address, ownerAddress]);
-
-  return tokenIds;
-};
-
 const useIsLps = (ids: number[]) => {
-  const [isLps, setIsLps] = useState<boolean[]>([]);
-  /*
-  useEffect(() => {
-    const fetchIsLps = async () => {
-      const tokenContracts = ids.map((id) => ({
-        abi: foilData.abi as AbiFunction[],
+  const { foilData } = useContext(MarketContext);
+
+  const tokensInfo = useReadContracts({
+    contracts: ids.map((i) => {
+      return {
+        abi: foilData.abi,
         address: foilData.address as `0x${string}`,
         functionName: 'getPosition',
-        args: [id],
-      }));
+        args: [i],
+      };
+    }),
+  });
 
-      const tokensInfo = await useReadContracts({
-        contracts: tokenContracts,
-      });
+  const isLps: boolean[] = useMemo(() => {
+    if (!tokensInfo.data) return [];
+    return tokensInfo.data.map((resp) => {
+      const position = resp.result as FoilPosition;
+      return position.kind === PositionKind.Liquidity;
+    });
+  }, [tokensInfo.data]);
 
-      const newIsLps = [] as any[]; // tokensInfo.data?.map((resp) => resp?.isLp);
-      setIsLps(newIsLps);
-    };
-
-    fetchIsLps();
-  }, [ids]); // React to changes in the balance result
-*/
   return isLps;
 };
 
 const AccountSelector: React.FC<AccountSelectorProps> = ({
   isLP,
   onChange,
+  nftIds,
 }) => {
-  const { address } = useAccount();
-  const nftIds = useTokenIdsOfOwner(address as `0x${string}`);
   const isLps = useIsLps(nftIds);
   const filteredNfts = nftIds.filter((_, index) =>
     isLP ? isLps[index] : !isLps[index]
