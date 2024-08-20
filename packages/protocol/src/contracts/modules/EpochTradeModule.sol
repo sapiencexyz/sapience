@@ -10,6 +10,10 @@ import {IEpochTradeModule} from "../interfaces/IEpochTradeModule.sol";
 
 // import "forge-std/console2.sol";
 
+/**
+ * @title Module for trade positions.
+ * @dev See IEpochTradeModule.
+ */
 contract EpochTradeModule is IEpochTradeModule {
     using Epoch for Epoch.Data;
     using Position for Position.Data;
@@ -17,6 +21,9 @@ contract EpochTradeModule is IEpochTradeModule {
     using SafeCastI256 for int256;
     using SafeCastU256 for uint256;
 
+    /**
+     * @inheritdoc IEpochTradeModule
+     */
     function createTraderPosition(
         uint256 epochId,
         uint256 collateralAmount,
@@ -33,6 +40,7 @@ contract EpochTradeModule is IEpochTradeModule {
         Position.Data storage position = Position.createValid(positionId);
         ERC721Storage._mint(msg.sender, positionId);
         position.epochId = epochId;
+        position.kind = IFoilStructs.PositionKind.Trade;
 
         if (tokenAmount > 0) {
             _createLongPosition(
@@ -59,6 +67,9 @@ contract EpochTradeModule is IEpochTradeModule {
         position.afterTradeCheck();
     }
 
+    /**
+     * @inheritdoc IEpochTradeModule
+     */
     function modifyTraderPosition(
         uint256 positionId,
         uint256 collateralAmount,
@@ -71,6 +82,10 @@ contract EpochTradeModule is IEpochTradeModule {
         }
 
         Position.Data storage position = Position.loadValid(positionId);
+
+        if(position.kind != IFoilStructs.PositionKind.Trade) {
+            revert Errors.InvalidPositionKind();
+        }
 
         if (
             !sameSide(position.currentTokenAmount, tokenAmount) ||
@@ -106,6 +121,9 @@ contract EpochTradeModule is IEpochTradeModule {
         position.afterTradeCheck();
     }
 
+    /**
+     * @inheritdoc IEpochTradeModule
+     */
     function getReferencePrice(
         uint256 epochId
     ) public view override returns (uint256 price18Digits) {
@@ -118,10 +136,13 @@ contract EpochTradeModule is IEpochTradeModule {
         }
     }
 
+    /**
+     * @inheritdoc IEpochTradeModule
+     */
     function getLongSizeForCollateral(
         uint256 epochId,
         uint256 collateral
-    ) external view returns (uint256 positionSize) {
+    ) external view override returns (uint256 positionSize) {
         /*
         S = C / (Pe - Pl + (Pe + Pl) * fee)
 
@@ -141,10 +162,13 @@ contract EpochTradeModule is IEpochTradeModule {
         return positionSize;
     }
 
+    /**
+     * @inheritdoc IEpochTradeModule
+     */
     function getShortSizeForCollateral(
         uint256 epochId,
         uint256 collateral
-    ) external view returns (uint256 positionSize) {
+    ) external view override returns (uint256 positionSize) {
         /*
         S = C / ( Ph - Pe + (Pe + Pl) * fee)
 
