@@ -38,11 +38,11 @@ contract CreateLiquidityPosition is TradeTestHelper {
             vm.getAddress("CollateralAsset.Token")
         );
 
-        uint160 startingSqrtPriceX96 = 250541448375047931186413801569; // 10
-        (foil, ) = createEpoch(16000, 29800, startingSqrtPriceX96);
+        uint160 startingSqrtPriceX96 = 146497135921788803112962621440; // 3.419
+        (foil, ) = createEpoch(5200, 28200, startingSqrtPriceX96);
 
-        lp1 = TestUser.createUser("LP1", 1_000_000 ether);
-        trader1 = TestUser.createUser("Trader1", 1_000_000 ether);
+        lp1 = TestUser.createUser("LP1", 10_000_000 ether);
+        trader1 = TestUser.createUser("Trader1", 10_000_000 ether);
 
         (epochId, , , pool, tokenA, tokenB) = foil.getLatestEpoch();
 
@@ -50,7 +50,7 @@ contract CreateLiquidityPosition is TradeTestHelper {
         feeRate = uint256(uniCastedPool.fee()) * 1e12;
     }
 
-    function test_tradeWildJake_Only() public {
+    function test_tradeWildJake_Skip() public {
         uint256 positionId;
         vm.startPrank(lp1);
 
@@ -75,7 +75,7 @@ contract CreateLiquidityPosition is TradeTestHelper {
         vm.stopPrank();
     }
 
-    function test_tradeLong() public {
+    function test_tradeLong_Only() public {
         uint256 referencePrice;
         uint256 positionId;
         uint256 collateralForOrder = 10 ether;
@@ -87,6 +87,7 @@ contract CreateLiquidityPosition is TradeTestHelper {
         StateData memory expectedStateData;
         StateData memory currentStateData;
 
+        vm.startPrank(lp1);
         addLiquidity(
             foil,
             pool,
@@ -95,11 +96,19 @@ contract CreateLiquidityPosition is TradeTestHelper {
             LOWERTICK,
             UPPERTICK
         ); // enough to keep price stable (no slippage)
+        vm.stopPrank();
+
+        vm.startPrank(trader1);
 
         // Set position size
         positionSize = int256(collateralForOrder / 100);
 
-        fillCollateralStateData(foil, collateralAsset, currentStateData);
+        fillCollateralStateData(
+            trader1,
+            foil,
+            collateralAsset,
+            currentStateData
+        );
 
         referencePrice = foil.getReferencePrice(epochId);
         tokens = uint256(positionSize).mulDecimal(referencePrice);
@@ -128,6 +137,7 @@ contract CreateLiquidityPosition is TradeTestHelper {
         );
 
         currentStateData = assertPosition(
+            trader1,
             foil,
             positionId,
             collateralAsset,
@@ -165,6 +175,7 @@ contract CreateLiquidityPosition is TradeTestHelper {
         );
 
         currentStateData = assertPosition(
+            trader1,
             foil,
             positionId,
             collateralAsset,
@@ -199,6 +210,7 @@ contract CreateLiquidityPosition is TradeTestHelper {
         );
 
         currentStateData = assertPosition(
+            trader1,
             foil,
             positionId,
             collateralAsset,
@@ -234,12 +246,14 @@ contract CreateLiquidityPosition is TradeTestHelper {
         foil.modifyTraderPosition(positionId, 0 ether, 0, 0);
 
         assertPosition(
+            trader1,
             foil,
             positionId,
             collateralAsset,
             expectedStateData,
             "Close Long"
         );
+        vm.stopPrank();
     }
 
     function test_tradeLongCrossSides() public {
@@ -254,6 +268,7 @@ contract CreateLiquidityPosition is TradeTestHelper {
         StateData memory expectedStateData;
         StateData memory currentStateData;
 
+        vm.startPrank(lp1);
         addLiquidity(
             foil,
             pool,
@@ -262,11 +277,19 @@ contract CreateLiquidityPosition is TradeTestHelper {
             LOWERTICK,
             UPPERTICK
         ); // enough to keep price stable (no slippage)
+        vm.stopPrank();
+
+        vm.startPrank(trader1);
 
         // Set position size
         positionSize = int256(collateralForOrder / 100);
 
-        fillCollateralStateData(foil, collateralAsset, currentStateData);
+        fillCollateralStateData(
+            trader1,
+            foil,
+            collateralAsset,
+            currentStateData
+        );
 
         referencePrice = foil.getReferencePrice(epochId);
         tokens = uint256(positionSize).mulDecimal(referencePrice);
@@ -295,6 +318,7 @@ contract CreateLiquidityPosition is TradeTestHelper {
         );
 
         currentStateData = assertPosition(
+            trader1,
             foil,
             positionId,
             collateralAsset,
@@ -334,12 +358,14 @@ contract CreateLiquidityPosition is TradeTestHelper {
         );
 
         currentStateData = assertPosition(
+            trader1,
             foil,
             positionId,
             collateralAsset,
             expectedStateData,
             "Change sides Long"
         );
+        vm.stopPrank();
     }
 
     function test_tradeShort() public {
@@ -354,6 +380,7 @@ contract CreateLiquidityPosition is TradeTestHelper {
         StateData memory expectedStateData;
         StateData memory currentStateData;
 
+        vm.startPrank(lp1);
         addLiquidity(
             foil,
             pool,
@@ -362,11 +389,19 @@ contract CreateLiquidityPosition is TradeTestHelper {
             LOWERTICK,
             UPPERTICK
         ); // enough to keep price stable (no slippage)
+        vm.stopPrank();
+
+        vm.startPrank(trader1);
 
         // Set position size
         positionSize = int256(collateralForOrder / 100);
 
-        fillCollateralStateData(foil, collateralAsset, currentStateData);
+        fillCollateralStateData(
+            trader1,
+            foil,
+            collateralAsset,
+            currentStateData
+        );
 
         referencePrice = foil.getReferencePrice(epochId);
         tokens = uint256(positionSize).mulDecimal(referencePrice);
@@ -395,6 +430,7 @@ contract CreateLiquidityPosition is TradeTestHelper {
         );
 
         currentStateData = assertPosition(
+            trader1,
             foil,
             positionId,
             collateralAsset,
@@ -432,6 +468,7 @@ contract CreateLiquidityPosition is TradeTestHelper {
         );
 
         currentStateData = assertPosition(
+            trader1,
             foil,
             positionId,
             collateralAsset,
@@ -466,6 +503,7 @@ contract CreateLiquidityPosition is TradeTestHelper {
         );
 
         currentStateData = assertPosition(
+            trader1,
             foil,
             positionId,
             collateralAsset,
@@ -501,12 +539,14 @@ contract CreateLiquidityPosition is TradeTestHelper {
         foil.modifyTraderPosition(positionId, 0 ether, 0, 0);
 
         assertPosition(
+            trader1,
             foil,
             positionId,
             collateralAsset,
             expectedStateData,
             "Close Short"
         );
+        vm.stopPrank();
     }
 
     function test_tradeShortCrossSides() public {
@@ -521,6 +561,7 @@ contract CreateLiquidityPosition is TradeTestHelper {
         StateData memory expectedStateData;
         StateData memory currentStateData;
 
+        vm.startPrank(lp1);
         addLiquidity(
             foil,
             pool,
@@ -529,11 +570,19 @@ contract CreateLiquidityPosition is TradeTestHelper {
             LOWERTICK,
             UPPERTICK
         ); // enough to keep price stable (no slippage)
+        vm.stopPrank();
+
+        vm.startPrank(trader1);
 
         // Set position size
         positionSize = int256(collateralForOrder / 100);
 
-        fillCollateralStateData(foil, collateralAsset, currentStateData);
+        fillCollateralStateData(
+            trader1,
+            foil,
+            collateralAsset,
+            currentStateData
+        );
 
         referencePrice = foil.getReferencePrice(epochId);
         tokens = uint256(positionSize).mulDecimal(referencePrice);
@@ -562,6 +611,7 @@ contract CreateLiquidityPosition is TradeTestHelper {
         );
 
         currentStateData = assertPosition(
+            trader1,
             foil,
             positionId,
             collateralAsset,
@@ -602,11 +652,13 @@ contract CreateLiquidityPosition is TradeTestHelper {
         );
 
         currentStateData = assertPosition(
+            trader1,
             foil,
             positionId,
             collateralAsset,
             expectedStateData,
             "Change sides Short"
         );
+        vm.stopPrank();
     }
 }

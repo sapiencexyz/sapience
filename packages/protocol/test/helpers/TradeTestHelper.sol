@@ -38,22 +38,24 @@ contract TradeTestHelper is TestEpoch {
     }
 
     function fillCollateralStateData(
+        address user,
         IFoil foil,
         IMintableToken collateralAsset,
         StateData memory stateData
     ) public {
-        stateData.userCollateral = collateralAsset.balanceOf(address(this));
+        stateData.userCollateral = collateralAsset.balanceOf(user);
         stateData.foilCollateral = collateralAsset.balanceOf(address(foil));
     }
 
     function assertPosition(
+        address user,
         IFoil foil,
         uint256 positionId,
         IMintableToken collateralAsset,
         StateData memory expectedStateData,
         string memory stage
     ) public returns (StateData memory currentStateData) {
-        fillCollateralStateData(foil, collateralAsset, currentStateData);
+        fillCollateralStateData(user, foil, collateralAsset, currentStateData);
         fillPositionState(foil, positionId, currentStateData);
 
         assertApproxEqRel(
