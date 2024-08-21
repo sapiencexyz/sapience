@@ -1,6 +1,3 @@
-// Example usage:
-// pnpm ts-node-dev getBlockByTimestamp.ts https://ethereum-rpc.publicnode.com 1722270000
-
 import { createPublicClient, http, Block, Chain } from 'viem';
 
 // Function to create a custom chain configuration
@@ -39,7 +36,7 @@ async function getBlockByTimestamp(client: ReturnType<typeof createClient>, time
     // Initialize the binary search range
     let low = 0n;
     let high = latestBlock.number;
-    let closestBlock = latestBlock;
+    let closestBlock: Block | null = null;
 
     // Binary search for the block with the closest timestamp
     while (low <= high) {
@@ -54,7 +51,16 @@ async function getBlockByTimestamp(client: ReturnType<typeof createClient>, time
         }
     }
 
-    return closestBlock;
+    // If the closest block's timestamp is greater than the given timestamp, it is our match
+    // Otherwise, we need to get the next block (if it exists)
+    if (closestBlock && closestBlock.timestamp < timestamp) {
+        const nextBlock = await client.getBlock({ blockNumber: closestBlock.number + 1n });
+        if (nextBlock) {
+            closestBlock = nextBlock;
+        }
+    }
+
+    return closestBlock!;
 }
 
 // Get the RPC URL and timestamp from the command line arguments
