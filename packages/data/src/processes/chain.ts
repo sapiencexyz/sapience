@@ -7,8 +7,6 @@ export const indexBaseFeePerGas = async (
   publicClient: PublicClient,
   contractId: string
 ) => {
-  // const connection = await createConnection(connectionOptions);
-  // const priceRepository = connection.getRepository(Price);
   await initializeDataSource();
   const priceRepository = dataSource.getRepository(Price);
   const chainId = await publicClient.getChainId();
