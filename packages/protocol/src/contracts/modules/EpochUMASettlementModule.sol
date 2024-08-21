@@ -57,13 +57,14 @@ contract EpochUMASettlementModule is ReentrancyGuard {
         });
 
         bytes memory claim = abi.encodePacked(
+            "ipfs://QmaiiQ8qjKjVDVpDCqWknUDv8QdfLrg888yn6GTnFxBBMN evaluates to ",
+            abi.encodePacked(settlementPrice),
+            " ",
             epoch.params.priceUnit,
-            " TWAP between timestamps ",
+            " with start time ",
             abi.encodePacked(epoch.startTime),
-            " and ",
-            abi.encodePacked(epoch.endTime),
-            " (inclusive): ",
-            abi.encodePacked(settlementPrice)
+            " and end time ",
+            abi.encodePacked(epoch.endTime)
         );
 
         epoch.assertionId = optimisticOracleV3.assertTruth(
