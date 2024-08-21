@@ -1,22 +1,27 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+} from "typeorm";
 
 @Entity()
 export class Price {
-    @PrimaryGeneratedColumn()
-    id: number;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-    @CreateDateColumn()
-    createdAt: Date;
+  @CreateDateColumn()
+  createdAt: Date;
 
-    @Column()
-    contractId: string;
+  @Column()
+  contractId: string;
 
-    @Column()
-    block: number;
+  @Column({ type: "bigint" })
+  blockNumber: string;
 
-    @Column()
-    timestamp: number;
+  @Column({ type: "bigint" })
+  timestamp: string;
 
-    @Column()
-    value: number;
+  @Column({ type: "bigint" })
+  value: string;
 }
