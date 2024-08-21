@@ -1,20 +1,22 @@
-import 'tsconfig-paths/register';
-import { createConnection } from 'typeorm';
-import { Event } from '../entity/Event';
-import { Abi, decodeEventLog, Log, PublicClient } from 'viem';
-import connectionOptions from '../db';
+import "tsconfig-paths/register";
+import { Event } from "../entity/Event";
+import { Abi, decodeEventLog, Log, PublicClient } from "viem";
+import dataSource, { initializeDataSource } from "../db";
+import { Repository } from "typeorm";
 
 const bigintReplacer = (key: string, value: any) => {
-  if (typeof value === 'bigint') {
+  if (typeof value === "bigint") {
     return value.toString(); // Convert BigInt to string
   }
   return value;
 };
 
-export const indexMarketEvents = async (publicClient: PublicClient, Foil: { address: string, abi: Abi }) => {
-  // Initialize database connection
-  const connection = await createConnection(connectionOptions);
-  const eventRepository = connection.getRepository(Event);
+export const indexMarketEvents = async (
+  publicClient: PublicClient,
+  Foil: { address: string; abi: Abi }
+) => {
+  await initializeDataSource();
+  const eventRepository = dataSource.getRepository(Event);
   const chainId = await publicClient.getChainId();
 
   // Process log data
@@ -27,14 +29,12 @@ export const indexMarketEvents = async (publicClient: PublicClient, Foil: { addr
       const logIndex = log.logIndex || 0;
       const logData = JSON.parse(serializedLog); // Parse back to JSON object
 
-      console.log('Upserting event:', { contractId, blockNumber, logIndex, logData });
-
-      await eventRepository.query(
-        `INSERT INTO "event" ("contractId", "blockNumber", "logIndex", "logData")
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT ("contractId", "blockNumber", "logIndex")
-         DO UPDATE SET "logData" = EXCLUDED."logData"`,
-        [contractId, blockNumber, logIndex, logData]
+      await handleEventUpsert(
+        eventRepository,
+        contractId,
+        blockNumber,
+        logIndex,
+        logData
       );
     }
   };
@@ -56,8 +56,8 @@ export const indexMarketEventsRange = async (
   contractAddress: string,
   contractAbi: Abi
 ) => {
-  const connection = await createConnection(connectionOptions);
-  const eventRepository = connection.getRepository(Event);
+  await initializeDataSource();
+  const eventRepository = dataSource.getRepository(Event);
 
   for (let blockNumber = start; blockNumber <= end; blockNumber++) {
     console.log(`Processing block ${blockNumber}`);
@@ -81,18 +81,53 @@ export const indexMarketEventsRange = async (
         const logIndex = log.logIndex || 0;
         const logData = JSON.parse(serializedLog);
 
-        console.log('Upserting event:', { contractId, blockNumber, logIndex, logData });
-
-        await eventRepository.query(
-          `INSERT INTO "event" ("contractId", "blockNumber", "logIndex", "logData")
-           VALUES ($1, $2, $3, $4)
-           ON CONFLICT ("contractId", "blockNumber", "logIndex")
-           DO UPDATE SET "logData" = EXCLUDED."logData"`,
-          [contractId, blockNumber, logIndex, logData]
+        await handleEventUpsert(
+          eventRepository,
+          contractId,
+          blockNumber,
+          logIndex,
+          logData
         );
       }
     } catch (error) {
       console.error(`Error processing block ${blockNumber}:`, error);
     }
+  }
+};
+
+const handleEventUpsert = async (
+  eventRepository: Repository<Event>,
+  contractId: string,
+  blockNumber: number,
+  logIndex: number,
+  logData: any
+) => {
+  let event = await eventRepository.findOne({
+    where: { contractId, blockNumber, logIndex },
+  });
+
+  if (event) {
+    // Update existing event
+    event.logData = logData;
+    console.log("existing event: ", event);
+    await eventRepository.save(event);
+  } else {
+    console.log("Upserting new event:", {
+      contractId,
+      blockNumber,
+      logIndex,
+      logData,
+    });
+    // Create a new Event entity
+    const newEvent = new Event();
+    newEvent.contractId = contractId;
+    newEvent.blockNumber = blockNumber;
+    newEvent.logIndex = logIndex;
+    newEvent.logData = logData;
+    await eventRepository.upsert(newEvent, [
+      "contractId",
+      "blockNumber",
+      "logIndex",
+    ]);
   }
 };
