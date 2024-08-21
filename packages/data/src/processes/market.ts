@@ -103,7 +103,7 @@ const handleEventUpsert = async (
   logData: any
 ) => {
   let event = await eventRepository.findOne({
-    where: { contractId, blockNumber, logIndex },
+    where: { contractId, blockNumber: blockNumber.toString(), logIndex },
   });
 
   if (event) {
@@ -121,7 +121,7 @@ const handleEventUpsert = async (
     // Create a new Event entity
     const newEvent = new Event();
     newEvent.contractId = contractId;
-    newEvent.blockNumber = blockNumber;
+    newEvent.blockNumber = blockNumber.toString();
     newEvent.logIndex = logIndex;
     newEvent.logData = logData;
     await eventRepository.upsert(newEvent, [

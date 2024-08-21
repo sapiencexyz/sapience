@@ -31,8 +31,8 @@ export class Event {
   @Column()
   contractId: string;
 
-  @Column()
-  blockNumber: number;
+  @Column({ type: "bigint" })
+  blockNumber: string;
 
   @Column()
   logIndex: number;

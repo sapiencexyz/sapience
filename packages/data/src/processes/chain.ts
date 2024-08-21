@@ -13,8 +13,8 @@ export const indexBaseFeePerGas = async (
 
   // Process log data
   const processBlock = async (block: Block) => {
-    const value = Number(block.baseFeePerGas);
-    const timestamp = Number(block.timestamp);
+    const value = block.baseFeePerGas?.toString() || "0";
+    const timestamp = block.timestamp.toString();
 
     let price = await priceRepository.findOne({
       where: { contractId, timestamp },
@@ -61,11 +61,11 @@ export const indexBaseFeePerGasRange = async (
       const block = await publicClient.getBlock({
         blockNumber: BigInt(blockNumber),
       });
-      const value = Number(block.baseFeePerGas);
-      const timestamp = Number(block.timestamp);
+      const value = block.baseFeePerGas?.toString() || "0";
+      const timestamp = block.timestamp.toString();
 
       let price = await priceRepository.findOne({
-        where: { contractId, block: blockNumber },
+        where: { contractId, blockNumber: blockNumber.toString() },
       });
 
       if (price) {
@@ -78,7 +78,7 @@ export const indexBaseFeePerGasRange = async (
           contractId,
           timestamp,
           value,
-          block: blockNumber,
+          blockNumber: blockNumber.toString(),
         });
         console.log("Creating price:", price);
       }
