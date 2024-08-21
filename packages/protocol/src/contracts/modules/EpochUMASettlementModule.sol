@@ -57,7 +57,7 @@ contract EpochUMASettlementModule is ReentrancyGuard {
         });
 
         bytes memory claim = abi.encodePacked(
-            "ipfs://QmaiiQ8qjKjVDVpDCqWknUDv8QdfLrg888yn6GTnFxBBMN evaluates to ",
+            "ipfs://Qmbg1KiuKNmCbL696Zu8hXUAJrTxuhgNCbyjaPyni4RXTc evaluates to ",
             abi.encodePacked(settlementPrice),
             " ",
             epoch.params.priceUnit,
