@@ -241,11 +241,6 @@ contract EpochTradeModule is IEpochTradeModule {
         // Refund excess vEth sent
         position.borrowedVEth -= refundAmountVEth;
 
-        position.updateCollateral(
-            Market.load().collateralAsset,
-            collateralAmount
-        );
-
         position.updateBalance(
             tokenAmount,
             tokenAmountVEth.toInt(),
@@ -289,11 +284,6 @@ contract EpochTradeModule is IEpochTradeModule {
         });
         (uint256 tokenAmountVEth, uint256 tokenAmountVGas) = swapTokensExactIn(
             params
-        );
-
-        position.updateCollateral(
-            Market.load().collateralAsset,
-            collateralAmount
         );
 
         position.updateBalance(
@@ -405,10 +395,6 @@ contract EpochTradeModule is IEpochTradeModule {
             position.updateBalance(delta, deltaEth, delta);
         }
 
-        position.updateCollateral(
-            Market.load().collateralAsset,
-            collateralAmount
-        );
     }
 
     /**
@@ -502,11 +488,6 @@ contract EpochTradeModule is IEpochTradeModule {
                 0
             );
         }
-
-        position.updateCollateral(
-            Market.load().collateralAsset,
-            collateralAmount
-        );
     }
 
     /**
