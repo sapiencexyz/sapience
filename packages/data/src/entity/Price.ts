@@ -3,9 +3,11 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  Unique,
 } from "typeorm";
 
 @Entity()
+@Unique(["contractId", "timestamp"])
 export class Price {
   @PrimaryGeneratedColumn()
   id: number;

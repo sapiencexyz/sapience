@@ -102,32 +102,21 @@ const handleEventUpsert = async (
   logIndex: number,
   logData: any
 ) => {
-  let event = await eventRepository.findOne({
-    where: { contractId, blockNumber: blockNumber.toString(), logIndex },
+  console.log("Upserting event:", {
+    contractId,
+    blockNumber,
+    logIndex,
+    logData,
   });
-
-  if (event) {
-    // Update existing event
-    event.logData = logData;
-    console.log("existing event: ", event);
-    await eventRepository.save(event);
-  } else {
-    console.log("Upserting new event:", {
-      contractId,
-      blockNumber,
-      logIndex,
-      logData,
-    });
-    // Create a new Event entity
-    const newEvent = new Event();
-    newEvent.contractId = contractId;
-    newEvent.blockNumber = blockNumber.toString();
-    newEvent.logIndex = logIndex;
-    newEvent.logData = logData;
-    await eventRepository.upsert(newEvent, [
-      "contractId",
-      "blockNumber",
-      "logIndex",
-    ]);
-  }
+  // Create a new Event entity
+  const newEvent = new Event();
+  newEvent.contractId = contractId;
+  newEvent.blockNumber = blockNumber.toString();
+  newEvent.logIndex = logIndex;
+  newEvent.logData = logData;
+  await eventRepository.upsert(newEvent, [
+    "contractId",
+    "blockNumber",
+    "logIndex",
+  ]);
 };

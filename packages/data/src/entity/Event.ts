@@ -10,11 +10,13 @@ import {
   JoinColumn,
   Unique,
 } from "typeorm";
+import { upsertPositionFromLiquidityEvent } from "../util/dbUtil";
 import { Log } from "viem";
 import { Transaction } from "./Transaction";
+import { LIQUIDITY_POSITION_EVENT_NAME } from "src/interfaces/interfaces";
 
 @Entity()
-@Unique(["contractId", "blockNumber", "logIndex"]) // Add this line
+@Unique(["contractId", "blockNumber", "logIndex"])
 export class Event {
   @OneToOne(() => Transaction, (transaction) => transaction.event, {
     cascade: true,
@@ -42,9 +44,16 @@ export class Event {
 
   // All should fail without crashing
   @AfterInsert()
-  afterInsert() {
+  async afterInsert() {
     console.log(`!!!!Event inserted: ${this.id}`);
     // Upsert associated Position or Transaction
+    if (this.logData.eventName === LIQUIDITY_POSITION_EVENT_NAME) {
+      try {
+        await upsertPositionFromLiquidityEvent(this);
+      } catch (error) {
+        console.error("Error upserting position:", error);
+      }
+    }
   }
 
   @AfterUpdate()
