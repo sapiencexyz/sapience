@@ -70,11 +70,6 @@ contract EpochConfigurationModule is
 
         uint256 newEpochId = market.getNewEpochId();
 
-        Epoch.Data storage epoch = Epoch.createValid(
-            newEpochId,
-            startTime,
-            endTime,
-            startingSqrtPriceX96
-        );
+        Epoch.createValid(newEpochId, startTime, endTime, startingSqrtPriceX96);
     }
 }
