@@ -16,6 +16,7 @@ library Market {
         OptimisticOracleV3Interface optimisticOracleV3;
         IFoilStructs.EpochParams epochParams;
         uint256 lastEpochId; // index of the last epoch
+        mapping(bytes32 => uint256) epochIdByAssertionId;
     }
 
     function load() internal pure returns (Data storage market) {

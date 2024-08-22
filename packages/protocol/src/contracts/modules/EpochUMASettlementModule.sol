@@ -1,34 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.25 <0.9.0;
 
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol"; // TODO: Reentrancy guard should be refactored as router compatible (uses local storage)
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../storage/Epoch.sol";
 
 contract EpochUMASettlementModule is ReentrancyGuard {
-    // using Epoch for Epoch.Data;
-    // using Position for Position.Data;
+    using Epoch for Epoch.Data;
     using SafeERC20 for IERC20;
 
-    event SettlementSubmitted(uint256 price, uint256 submissionTime);
-    event SettlementDisputed(uint256 disputeTime);
-    event MarketSettled(uint256 settlementPrice);
-
-    modifier afterEndTime(uint256 epochId) {
-        Epoch.Data storage epoch = Epoch.load(epochId);
-        require(
-            block.timestamp > epoch.endTime,
-            "Market activity is still allowed"
-        );
-        _;
-    }
+    event SettlementSubmitted(uint256 epochId, uint256 price, uint256 submissionTime);
+    event SettlementDisputed(uint256 epochId, uint256 disputeTime);
+    event MarketSettled(uint256 epochId, uint256 settlementPrice);
 
     function submitSettlementPrice(
         uint256 epochId,
         uint256 settlementPrice
-    ) external afterEndTime(epochId) nonReentrant returns (bytes32) {
+    ) external nonReentrant returns (bytes32) {
         Market.Data storage market = Market.load();
         Epoch.Data storage epoch = Epoch.load(epochId);
+        require(block.timestamp > epoch.endTime, "Market activity is still allowed");
         require(
             msg.sender == market.owner,
             "Only owner can call this function"
@@ -74,23 +65,26 @@ contract EpochUMASettlementModule is ReentrancyGuard {
             address(0),
             epoch.params.assertionLiveness,
             IERC20(epoch.params.bondCurrency),
-            uint64(epoch.params.bondAmount),
+            epoch.params.bondAmount,
             optimisticOracleV3.defaultIdentifier(),
             bytes32(0)
         );
 
-        emit SettlementSubmitted(settlementPrice, block.timestamp);
+        epoch.epochIdByAssertionId[epoch.assertionId] = epochId;
+
+        emit SettlementSubmitted(epochId, settlementPrice, block.timestamp);
 
         return epoch.assertionId;
     }
 
     function assertionResolvedCallback(
-        uint256 epochId,
         bytes32 assertionId,
         bool assertedTruthfully
-    ) external afterEndTime(epochId) nonReentrant {
+    ) external {
         Market.Data storage market = Market.load();
+        uint256 epochId = epoch.epochIdByAssertionId[epoch.assertionId];
         Epoch.Data storage epoch = Epoch.load(epochId);
+        require(block.timestamp > epoch.endTime, "Market activity is still allowed");
         require(
             msg.sender == address(market.optimisticOracleV3),
             "Invalid caller"
@@ -100,18 +94,17 @@ contract EpochUMASettlementModule is ReentrancyGuard {
         Epoch.Settlement storage settlement = epoch.settlement;
 
         if(!epoch.settlement.disputed) {
-            epoch.settlementPrice = settlement.settlementPrice;
+            epoch.setSettlementPrice(settlement.settlementPrice);
             epoch.settled = true;
-            emit MarketSettled(settlement.settlementPrice);
+            emit MarketSettled(epochId, settlement.settlementPrice);
         }
     }
 
-    function assertionDisputedCallback(
-        uint256 epochId,
-        bytes32 assertionId
-    ) external afterEndTime(epochId) nonReentrant {
+    function assertionDisputedCallback(bytes32 assertionId) external {
         Market.Data storage market = Market.load();
+        uint256 epochId = epoch.epochIdByAssertionId[epoch.assertionId];
         Epoch.Data storage epoch = Epoch.load(epochId);
+        require(block.timestamp > epoch.endTime, "Market activity is still allowed");
         require(
             msg.sender == address(market.optimisticOracleV3),
             "Invalid caller"
@@ -120,6 +113,6 @@ contract EpochUMASettlementModule is ReentrancyGuard {
         Epoch.Settlement storage settlement = epoch.settlement;
         settlement.disputed = true;
 
-        emit SettlementDisputed(block.timestamp);
+        emit SettlementDisputed(epochId, block.timestamp);
     }
 }

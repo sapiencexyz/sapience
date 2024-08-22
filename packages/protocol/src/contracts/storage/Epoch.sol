@@ -408,4 +408,20 @@ library Epoch {
 
         return DecimalPrice.sqrtRatioX96ToPrice(sqrtPriceX96);
     }
+
+    function setSettlementPrice(
+        Data storage self,
+        uint256 settlementPrice
+    ) internal {
+        uint256 priceMin = uint256(self.sqrtPriceMinX96) * self.sqrtPriceMinX96 / (1 << 192);
+        uint256 priceMax = uint256(self.sqrtPriceMaxX96) * self.sqrtPriceMaxX96 / (1 << 192);
+    
+        if (settlementPrice > priceMax) {
+            self.settlementPrice = priceMax;
+        } else if (settlementPrice < priceMin) {
+            self.settlementPrice = priceMin;
+        } else {
+            self.settlementPrice = settlementPrice;
+        }
+    }
 }
