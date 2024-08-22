@@ -61,7 +61,7 @@ dataSource
       // Group prices by date (ignoring time)
       const groupedPrices: { [date: string]: any[] } = prices.reduce(
         (acc: Record<string, any[]>, price) => {
-          const date = new Date(price.timestamp * 1000)
+          const date = new Date(Number(price.timestamp) * 1000)
             .toISOString()
             .split("T")[0];
           if (!acc[date]) {
@@ -121,19 +121,22 @@ dataSource
       for (let i = 0; i < prices.length - 1; i++) {
         const currentPrice = prices[i];
         const nextPrice = prices[i + 1];
-        const timeDiff = nextPrice.timestamp - currentPrice.timestamp;
+        const timeDiff =
+          Number(nextPrice.timestamp) - Number(currentPrice.timestamp);
 
         totalWeight += timeDiff;
-        weightedSum += currentPrice.value * timeDiff;
+        weightedSum += Number(currentPrice.value) * timeDiff;
       }
 
       // Handle the last price point if needed (consider it until the endTimestamp or a default time span)
       const lastPrice = prices[prices.length - 1];
-      const endTime = endTimestamp ? Number(endTimestamp) : lastPrice.timestamp;
-      const timeDiff = endTime - lastPrice.timestamp;
+      const endTime = endTimestamp
+        ? Number(endTimestamp)
+        : Number(lastPrice.timestamp);
+      const timeDiff = endTime - Number(lastPrice.timestamp);
 
       totalWeight += timeDiff;
-      weightedSum += lastPrice.value * timeDiff;
+      weightedSum += Number(lastPrice.value) * timeDiff;
 
       const weightedAverage = weightedSum / totalWeight;
 

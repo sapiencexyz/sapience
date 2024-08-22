@@ -1,45 +1,53 @@
-import { Entity, PrimaryGeneratedColumn, Column, AfterInsert, AfterRemove, AfterUpdate, CreateDateColumn, OneToMany, ManyToOne } from 'typeorm';
-import { Transaction } from './Transaction';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  OneToMany,
+  Unique,
+} from "typeorm";
+import { Transaction } from "./Transaction";
 // Read contractIds (chainId:address) from foilconfig.json ?
 
 @Entity()
+@Unique(["contractId", "nftId"])
 export class Position {
-    @OneToMany(() => Transaction, (transaction) => transaction.position)
-    transactions: Transaction[];
+  @OneToMany(() => Transaction, (transaction) => transaction.position)
+  transactions: Transaction[];
 
-    @PrimaryGeneratedColumn()
-    id: number;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-    @CreateDateColumn()
-    createdAt: Date;
+  @CreateDateColumn()
+  createdAt: Date;
 
-    @Column()
-    contractId: string;
+  @Column()
+  contractId: string;
 
-    @Column()
-    nftId: number;
+  @Column()
+  nftId: number;
 
-    @Column()
-    baseToken: number; // vGas
+  @Column({ type: "bigint" })
+  baseToken: string; // vGas tokenamount 0
 
-    @Column()
-    quoteToken: number; // vETH
+  @Column({ type: "bigint" })
+  quoteToken: string; // vETH tokenamount 1
 
-    @Column()
-    collateral: number;  // ETH
+  @Column({ type: "bigint" })
+  collateral: string; // ETH  needs to be added
 
-    @Column()
-    profitLoss: number; // ETH
+  @Column()
+  profitLoss: number; // ETH  will calculate off chain, start at 0
 
-    @Column()
-    isLP: boolean;
+  @Column()
+  isLP: boolean; // true for event name
 
-    @Column()
-    highPrice: number;
+  @Column()
+  highPrice: number; // still need to add to event
 
-    @Column()
-    lowPrice: number;
+  @Column()
+  lowPrice: number; // still need to add to event
 
-    @Column()
-    unclaimedFees: number; // ETH
+  @Column()
+  unclaimedFees: number; // ETH  start at 0
 }

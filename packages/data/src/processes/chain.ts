@@ -16,25 +16,14 @@ export const indexBaseFeePerGas = async (
     const value = block.baseFeePerGas?.toString() || "0";
     const timestamp = block.timestamp.toString();
 
-    let price = await priceRepository.findOne({
-      where: { contractId, timestamp },
-    });
-
-    if (price) {
-      // Update existing record
-      price.value = value;
-      console.log("Updating price:", price);
-    } else {
-      // Create new record
-      price = priceRepository.create({
-        contractId,
-        timestamp,
-        value,
-      });
-      console.log("Creating price:", price);
+    const price = new Price();
+    price.contractId = contractId;
+    price.timestamp = timestamp;
+    price.value = value;
+    if (block.number) {
+      price.blockNumber = block.number.toString();
     }
-
-    await priceRepository.save(price);
+    await priceRepository.upsert(price, ["contractId", "timestamp"]);
   };
 
   // Start watching for new events
@@ -64,26 +53,12 @@ export const indexBaseFeePerGasRange = async (
       const value = block.baseFeePerGas?.toString() || "0";
       const timestamp = block.timestamp.toString();
 
-      let price = await priceRepository.findOne({
-        where: { contractId, blockNumber: blockNumber.toString() },
-      });
-
-      if (price) {
-        // Update existing record
-        price.value = value;
-        console.log("Updating price:", price);
-      } else {
-        // Create new record
-        price = priceRepository.create({
-          contractId,
-          timestamp,
-          value,
-          blockNumber: blockNumber.toString(),
-        });
-        console.log("Creating price:", price);
-      }
-
-      await priceRepository.save(price);
+      const price = new Price();
+      price.contractId = contractId;
+      price.timestamp = timestamp;
+      price.value = value;
+      price.blockNumber = blockNumber.toString();
+      await priceRepository.upsert(price, ["contractId", "timestamp"]);
     } catch (error) {
       console.error(`Error processing block ${blockNumber}:`, error);
     }
