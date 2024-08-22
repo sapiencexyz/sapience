@@ -26,8 +26,6 @@ contract UmaSettleMarket is TestEpoch {
     uint256 endTime;
     uint256 minPriceD18;
     uint256 maxPriceD18;
-    bool settled;
-    uint256 settlementPriceD18;
     IFoilStructs.EpochParams epochParams;
 
     bytes32 assertionId;
@@ -45,7 +43,7 @@ contract UmaSettleMarket is TestEpoch {
         (foil, ) = createEpoch(16000, 29800, startingSqrtPriceX96);
 
         (owner, , , , optimisticOracleV3, ) = foil.getMarket();
-        (epochId, , endTime, , , , minPriceD18, maxPriceD18, settled, settlementPriceD18, epochParams) = foil.getLatestEpoch();
+        (epochId, , endTime, , , , minPriceD18, maxPriceD18, , , epochParams) = foil.getLatestEpoch();
 
         bondCurrency.mint(epochParams.bondAmount, owner);
     }
@@ -57,6 +55,9 @@ contract UmaSettleMarket is TestEpoch {
     }
 
     function test_settle_in_range() public {
+        bool settled;
+        uint256 settlementPriceD18;
+
         vm.warp(endTime + 1);
 
         vm.startPrank(owner);
@@ -64,11 +65,16 @@ contract UmaSettleMarket is TestEpoch {
         assertionId = foil.submitSettlementPrice(epochId, 11 ether);
         vm.stopPrank();
 
-        // startPrank as the oracle contract
-        // foil.assertionResolvedCallback(assertionId, true);
+        (, , , , , , , , settled, settlementPriceD18, ) = foil.getLatestEpoch();
+        assertFalse(settled, "The epoch isn't settled");
 
-        // show that it settled successfully
-        // show that the settlementPrice is 11 ether
+        vm.startPrank(optimisticOracleV3);
+        foil.assertionResolvedCallback(assertionId, true);
+        vm.stopPrank();
+
+        (, , , , , , , , settled, settlementPriceD18, ) = foil.getLatestEpoch();
+        assertTrue(settled, "The epoch is settled");
+        assertTrue(settlementPriceD18 == 11 ether, "The settlement price is as submitted");
     }
 
     function test_settle_above_range() public {
