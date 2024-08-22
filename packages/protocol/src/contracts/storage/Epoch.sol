@@ -16,7 +16,7 @@ import "./Market.sol";
 
 library Epoch {
     struct Settlement {
-        uint256 settlementPrice;
+        uint256 settlementPriceD18;
         uint256 submissionTime;
         bool disputed;
         address disputer;
@@ -29,7 +29,7 @@ library Epoch {
         VirtualToken gasToken;
         IUniswapV3Pool pool;
         bool settled;
-        uint256 settlementPrice;
+        uint256 settlementPriceD18;
         mapping(uint256 => Debt.Data) lpDebtPositions;
         bytes32 assertionId;
         Settlement settlement;
@@ -411,14 +411,14 @@ library Epoch {
 
     function setSettlementPriceInRange(
         Data storage self,
-        uint256 settlementPrice
+        uint256 settlementPriceD18
     ) internal {
-        if (settlementPrice > self.maxPriceD18) {
-            self.settlementPrice = self.maxPriceD18;
-        } else if (settlementPrice < self.minPriceD18) {
-            self.settlementPrice = self.minPriceD18;
+        if (settlementPriceD18 > self.maxPriceD18) {
+            self.settlementPriceD18 = self.maxPriceD18;
+        } else if (settlementPriceD18 < self.minPriceD18) {
+            self.settlementPriceD18 = self.minPriceD18;
         } else {
-            self.settlementPrice = settlementPrice;
+            self.settlementPriceD18 = settlementPriceD18;
         }
     }
 }

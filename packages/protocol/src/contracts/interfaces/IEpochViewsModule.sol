@@ -27,7 +27,11 @@ interface IEpochViewsModule {
             uint256 endTime,
             address pool,
             address ethToken,
-            address gasToken
+            address gasToken,
+            uint256 minPriceD18,
+            uint256 maxPriceD18,
+            bool settled,
+            uint256 settlementPriceD18
         );
 
     function getLatestEpoch()
@@ -39,7 +43,11 @@ interface IEpochViewsModule {
             uint256 endTime,
             address pool,
             address ethToken,
-            address gasToken
+            address gasToken,
+            uint256 minPriceD18,
+            uint256 maxPriceD18,
+            bool settled,
+            uint256 settlementPriceD18
         );
 
     function getPosition(
