@@ -359,7 +359,7 @@ library Epoch {
         uint256 loanGasAmount,
         uint256 loanEthAmount
     ) internal view {
-        validateOwedAndDebtAtPrice(
+        validateOwnedAndDebtAtPrice(
             collateralAmount,
             ownedGasAmount,
             ownedEthAmount,
@@ -368,7 +368,7 @@ library Epoch {
             self.sqrtPriceMinX96
         );
 
-        validateOwedAndDebtAtPrice(
+        validateOwnedAndDebtAtPrice(
             collateralAmount,
             ownedGasAmount,
             ownedEthAmount,
@@ -378,7 +378,7 @@ library Epoch {
         );
     }
 
-    function validateOwedAndDebtAtPrice(
+    function validateOwnedAndDebtAtPrice(
         uint256 collateralAmount,
         uint256 ownedGasAmount,
         uint256 ownedEthAmount,
@@ -386,17 +386,17 @@ library Epoch {
         uint256 loanEthAmount,
         uint160 price
     ) internal pure {
+        // TODO: use fees
         uint256 totalDebtValue = Quote.quoteGasToEth(loanGasAmount, price) +
             loanEthAmount;
 
-        uint256 totalOwedValue = Quote.quoteGasToEth(ownedGasAmount, price) +
-            ownedEthAmount +
-            collateralAmount;
-
-        if (totalDebtValue > totalOwedValue) {
+        // TODO: use fees
+        uint256 totalOwnedValue = Quote.quoteGasToEth(ownedGasAmount, price) +
+            ownedEthAmount;
+        if (totalDebtValue > totalOwnedValue + collateralAmount) {
             revert Errors.InsufficientCollateral(
-                totalOwedValue,
-                totalDebtValue
+                totalDebtValue - totalOwnedValue,
+                collateralAmount
             );
         }
     }

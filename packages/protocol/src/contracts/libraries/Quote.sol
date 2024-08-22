@@ -13,6 +13,7 @@ library Quote {
         uint256 ethAmount,
         uint160 sqrtRatioX96
     ) internal pure returns (uint256) {
+        // TODO we can use the precalculated D18 price instead of srqtRatioX96 (or maybe another function)
         return
             FullMath.mulDiv(
                 ethAmount,
@@ -25,6 +26,7 @@ library Quote {
         uint256 gasAmount,
         uint160 sqrtRatioX96
     ) internal pure returns (uint256) {
+        // TODO we can use the precalculated D18 price instead of srqtRatioX96 (or maybe another function)
         return
             FullMath.mulDiv(
                 gasAmount,

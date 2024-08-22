@@ -15,7 +15,7 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 import "forge-std/console2.sol";
 
-contract CreateLiquidityPosition is TradeTestHelper {
+contract TradePositionBasic is TradeTestHelper {
     using Cannon for Vm;
     using DecimalMath for uint256;
 
