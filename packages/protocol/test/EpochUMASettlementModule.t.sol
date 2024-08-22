@@ -18,12 +18,13 @@ contract UmaSettleMarket is TestEpoch {
     IFoil foil;
     IMintableToken collateralAsset;
 
-    address lp1;
-    address trader1;
-    uint256 epochId;
-    address pool;
-    address tokenA;
-    address tokenB;
+    address owner;
+    address optimisticOracleV3;
+    uint256 endTime;
+    uint256 minPriceD18;
+    uint256 maxPriceD18;
+    bool settled;
+    uint256 settlementPriceD18;
 
     function setUp() public {
         collateralAsset = IMintableToken(
@@ -34,37 +35,33 @@ contract UmaSettleMarket is TestEpoch {
         uint160 startingSqrtPriceX96 = 250541448375047931186413801569; // 10
         (foil, ) = createEpoch(16000, 29800, startingSqrtPriceX96);
 
-        lp1 = TestUser.createUser("LP1", 10_000_000 ether);
-        trader1 = TestUser.createUser("Trader1", 10_000_000 ether);
-
-        (epochId, , , pool, tokenA, tokenB, , , , ) = foil.getLatestEpoch();
+        (owner, , , , optimisticOracleV3, ) = foil.getMarket();
+        (, , endTime, , , , minPriceD18, maxPriceD18, settled, settlementPriceD18) = foil.getLatestEpoch();
     }
 
     function test_settle_in_range_Only() public {
-        /*
-        uint256 collateralAmount = 10 ether;
-        int24 lowerTick = 19400;
-        int24 upperTick = 23000;
-        (
-            uint256 loanAmount0,
-            uint256 loanAmount1,
-
-        ) = getTokenAmountsForCollateralAmount(
-                collateralAmount,
-                lowerTick,
-                upperTick
-            );
-
-        console2.log("loanAmount0", loanAmount0);
-        console2.log("loanAmount1", loanAmount1);
-        */
+        vm.warp(endTime + 1);
+        
     }
 
-    function test_settle_above_range_Only() public {}
-    function test_settle_below_range_Only() public {}
+    function test_settle_above_range() public {
+        vm.warp(endTime + 1);
+        // should be max, not higher
+    }
+    
+    function test_settle_below_range() public {
+        vm.warp(endTime + 1);
+        // should be min, not lower
+    }
 
-    function test_settle_too_early_Only() public {}
+    function test_settle_too_early() public {
+        vm.warp(endTime - 1);
+    }
 
-    function test_settle_too_late_Only() public {}
+    function test_settle_too_late() public {
+        vm.warp(endTime + 1);
+        // Settle
+        // Try settling again
+    }
 
 }

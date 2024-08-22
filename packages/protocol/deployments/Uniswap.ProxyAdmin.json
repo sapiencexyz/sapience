@@ -155,7 +155,7 @@
   "linkedLibraries": {},
   "deployTxnHash": "0xec0692423399c3d742c864060cd640bc3e7a966cb4ede764a323ab91fe6c52d1",
   "deployTxnBlockNumber": "5",
-  "deployTimestamp": "1724339752",
+  "deployTimestamp": "1724341813",
   "sourceName": "@openzeppelin/contracts/proxy/ProxyAdmin.sol",
   "contractName": "ProxyAdmin",
   "deployedOn": "deploy.ProxyAdmin",
