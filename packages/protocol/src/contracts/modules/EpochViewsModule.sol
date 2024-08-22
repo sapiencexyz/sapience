@@ -3,6 +3,7 @@ pragma solidity >=0.8.25 <0.9.0;
 
 import "../storage/Epoch.sol";
 import "../interfaces/IEpochViewsModule.sol";
+import "../interfaces/IFoilStructs.sol";
 
 contract EpochViewsModule is IEpochViewsModule {
     function getMarket()
@@ -44,7 +45,8 @@ contract EpochViewsModule is IEpochViewsModule {
             uint256 minPriceD18,
             uint256 maxPriceD18,
             bool settled,
-            uint256 settlementPriceD18
+            uint256 settlementPriceD18,
+            IFoilStructs.EpochParams memory params
         )
     {
         Epoch.Data storage epoch = Epoch.load(id);
@@ -57,7 +59,8 @@ contract EpochViewsModule is IEpochViewsModule {
             epoch.minPriceD18,
             epoch.maxPriceD18,
             epoch.settled,
-            epoch.settlementPriceD18
+            epoch.settlementPriceD18,
+            epoch.params
         );
     }
 
@@ -75,7 +78,8 @@ contract EpochViewsModule is IEpochViewsModule {
             uint256 minPriceD18,
             uint256 maxPriceD18,
             bool settled,
-            uint256 settlementPriceD18
+            uint256 settlementPriceD18,
+            IFoilStructs.EpochParams memory params
         )
     {
         epochId = Market.load().lastEpochId;
@@ -95,7 +99,8 @@ contract EpochViewsModule is IEpochViewsModule {
             epoch.minPriceD18,
             epoch.maxPriceD18,
             epoch.settled,
-            epoch.settlementPriceD18
+            epoch.settlementPriceD18,
+            epoch.params
         );
     }
 

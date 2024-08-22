@@ -1,5 +1,5 @@
 {
-  "address": "0x19c904047f707fafd6e80c2469ec1a22dd835b48",
+  "address": "0x257390e6e994c1934cc2014a9e65facc270476a2",
   "abi": [
     {
       "type": "function",
@@ -517,6 +517,12 @@
           "internalType": "uint256"
         },
         {
+          "name": "collateralAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
           "name": "liquidity",
           "type": "uint128",
           "indexed": false,
@@ -533,6 +539,18 @@
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
+        },
+        {
+          "name": "lowerTick",
+          "type": "int24",
+          "indexed": false,
+          "internalType": "int24"
+        },
+        {
+          "name": "upperTick",
+          "type": "int24",
+          "indexed": false,
+          "internalType": "int24"
         }
       ],
       "anonymous": false
@@ -546,6 +564,18 @@
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
+        },
+        {
+          "name": "collateralAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "liquidity",
+          "type": "uint128",
+          "indexed": false,
+          "internalType": "uint128"
         },
         {
           "name": "amount0",
@@ -568,6 +598,12 @@
       "inputs": [
         {
           "name": "tokenId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateralAmount",
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
@@ -1530,6 +1566,48 @@
           "name": "settlementPriceD18",
           "type": "uint256",
           "internalType": "uint256"
+        },
+        {
+          "name": "params",
+          "type": "tuple",
+          "internalType": "struct IFoilStructs.EpochParams",
+          "components": [
+            {
+              "name": "baseAssetMinPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "baseAssetMaxPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "feeRate",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "assertionLiveness",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "bondAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "priceUnit",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ]
         }
       ],
       "stateMutability": "view"
@@ -1588,6 +1666,48 @@
           "name": "settlementPriceD18",
           "type": "uint256",
           "internalType": "uint256"
+        },
+        {
+          "name": "params",
+          "type": "tuple",
+          "internalType": "struct IFoilStructs.EpochParams",
+          "components": [
+            {
+              "name": "baseAssetMinPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "baseAssetMaxPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "feeRate",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "assertionLiveness",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "bondAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "priceUnit",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ]
         }
       ],
       "stateMutability": "view"
@@ -1759,11 +1879,11 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0x51dbb6988efb5a1c7820bbcac8c25b4c91d9af31c62e1e39401be960ed8f7914",
+  "deployTxnHash": "0x2831bfee412732811eea3d08182f83b5f13a24d1cac44b184dcfb616dbc7d73c",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1724339755",
+  "deployTimestamp": "1724347661",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
-  "gasUsed": 461316,
-  "gasCost": "1001316734"
+  "gasUsed": 461352,
+  "gasCost": "1002108299"
 }

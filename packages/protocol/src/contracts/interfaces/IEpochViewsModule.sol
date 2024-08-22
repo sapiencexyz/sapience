@@ -31,7 +31,8 @@ interface IEpochViewsModule {
             uint256 minPriceD18,
             uint256 maxPriceD18,
             bool settled,
-            uint256 settlementPriceD18
+            uint256 settlementPriceD18,
+            IFoilStructs.EpochParams memory epochParams
         );
 
     function getLatestEpoch()
@@ -47,7 +48,8 @@ interface IEpochViewsModule {
             uint256 minPriceD18,
             uint256 maxPriceD18,
             bool settled,
-            uint256 settlementPriceD18
+            uint256 settlementPriceD18,
+            IFoilStructs.EpochParams memory epochParams
         );
 
     function getPosition(

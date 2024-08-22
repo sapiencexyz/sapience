@@ -79,9 +79,12 @@ contract EpochLiquidityModule is
         // emit event
         emit LiquidityPositionCreated(
             tokenId,
+            params.collateralAmount,
             liquidity,
             addedAmount0,
-            addedAmount1
+            addedAmount1,
+            params.lowerTick,
+            params.upperTick
         );
     }
 
@@ -169,7 +172,7 @@ contract EpochLiquidityModule is
             upperTick
         );
 
-        emit LiquidityPositionDecreased(position.tokenId, amount0, amount1);
+        emit LiquidityPositionDecreased(position.tokenId, collateralAmount, liquidity, amount0, amount1);
     }
 
     function increaseLiquidityPosition(
@@ -224,6 +227,7 @@ contract EpochLiquidityModule is
 
         emit LiquidityPositionIncreased(
             position.tokenId,
+            collateralAmount,
             liquidity,
             amount0,
             amount1

@@ -15,7 +15,7 @@ priceUnit = "<%= formatBytes32String('wstGwei/gas') %>"
 depends=[]
 
 [clone.UMA]
-source="uma-mock-oracle-ancillary"
+source="uma-oov3"
 target="foil@uma-mock"
 
 [clone.Uniswap]

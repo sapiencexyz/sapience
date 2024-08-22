@@ -39,7 +39,7 @@ contract TradePositionCollateral is TradeTestHelper {
         lp1 = TestUser.createUser("LP1", 10_000_000 ether);
         trader1 = TestUser.createUser("Trader1", 10_000_000 ether);
 
-        (epochId, , , pool, tokenA, tokenB, , , , ) = foil.getLatestEpoch();
+        (epochId, , , pool, tokenA, tokenB, , , , , ) = foil.getLatestEpoch();
 
         uniCastedPool = IUniswapV3Pool(pool);
         feeRate = uint256(uniCastedPool.fee()) * 1e12;

@@ -1,5 +1,5 @@
 {
-  "address": "0x4dcE1F74d147A7eBd686a232C40F5672bCa2dAfb",
+  "address": "0xBb77116435A395C7c88e1805716fb451c69692C5",
   "abi": [
     {
       "type": "function",
@@ -56,6 +56,48 @@
           "name": "settlementPriceD18",
           "type": "uint256",
           "internalType": "uint256"
+        },
+        {
+          "name": "params",
+          "type": "tuple",
+          "internalType": "struct IFoilStructs.EpochParams",
+          "components": [
+            {
+              "name": "baseAssetMinPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "baseAssetMaxPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "feeRate",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "assertionLiveness",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "bondAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "priceUnit",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ]
         }
       ],
       "stateMutability": "view"
@@ -114,6 +156,48 @@
           "name": "settlementPriceD18",
           "type": "uint256",
           "internalType": "uint256"
+        },
+        {
+          "name": "params",
+          "type": "tuple",
+          "internalType": "struct IFoilStructs.EpochParams",
+          "components": [
+            {
+              "name": "baseAssetMinPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "baseAssetMaxPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "feeRate",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "assertionLiveness",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "bondAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "priceUnit",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ]
         }
       ],
       "stateMutability": "view"
@@ -267,12 +351,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x4a1e235cc3c99efaf37c419062059ee939c404717de571c96970e8c8d606b391",
+  "deployTxnHash": "0x96c5af9bca8a4e4a20168f35b7335710fe25c5b0229627ded0109f84718968c0",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1724339748",
+  "deployTimestamp": "1724344869",
   "sourceName": "src/contracts/modules/EpochViewsModule.sol",
   "contractName": "EpochViewsModule",
   "deployedOn": "deploy.EpochViewsModule",
-  "gasUsed": 488328,
-  "gasCost": "1003814324"
+  "gasUsed": 623458,
+  "gasCost": "1006087024"
 }

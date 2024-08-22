@@ -69,7 +69,7 @@ contract TestEpoch is TestUser {
         returns (uint256 loanAmount0, uint256 loanAmount1, uint256 liquidity)
     {
         IFoil foil = IFoil(vm.getAddress("Foil"));
-        (uint256 epochId, , , address pool, , , , , ,) = foil.getLatestEpoch();
+        (uint256 epochId, , , address pool, , , , , , , ) = foil.getLatestEpoch();
         (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
 
         uint160 sqrtPriceAX96 = uint160(TickMath.getSqrtRatioAtTick(lowerTick));

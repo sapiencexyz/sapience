@@ -1,17 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.25 <0.9.0;
 
+import {IEpochUMASettlementModule} from "../interfaces/IEpochUMASettlementModule.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../storage/Epoch.sol";
 
-contract EpochUMASettlementModule is ReentrancyGuard {
+contract EpochUMASettlementModule is IEpochUMASettlementModule, ReentrancyGuard {
     using Epoch for Epoch.Data;
     using SafeERC20 for IERC20;
-
-    event SettlementSubmitted(uint256 epochId, uint256 price, uint256 submissionTime);
-    event SettlementDisputed(uint256 epochId, uint256 disputeTime);
-    event MarketSettled(uint256 epochId, uint256 settlementPriceD18);
 
     function submitSettlementPrice(
         uint256 epochId,

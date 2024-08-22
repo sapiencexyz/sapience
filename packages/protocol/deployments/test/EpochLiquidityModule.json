@@ -1,5 +1,5 @@
 {
-  "address": "0x078Cc5835F3714C7f81d01E711611b6E619fE24F",
+  "address": "0x4D4dB75c99a877ccad12405303B75Bd482AeDbc5",
   "abi": [
     {
       "type": "function",
@@ -298,6 +298,12 @@
           "internalType": "uint256"
         },
         {
+          "name": "collateralAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
           "name": "liquidity",
           "type": "uint128",
           "indexed": false,
@@ -314,6 +320,18 @@
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
+        },
+        {
+          "name": "lowerTick",
+          "type": "int24",
+          "indexed": false,
+          "internalType": "int24"
+        },
+        {
+          "name": "upperTick",
+          "type": "int24",
+          "indexed": false,
+          "internalType": "int24"
         }
       ],
       "anonymous": false
@@ -327,6 +345,18 @@
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
+        },
+        {
+          "name": "collateralAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "liquidity",
+          "type": "uint128",
+          "indexed": false,
+          "internalType": "uint128"
         },
         {
           "name": "amount0",
@@ -349,6 +379,12 @@
       "inputs": [
         {
           "name": "tokenId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateralAmount",
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
@@ -491,12 +527,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xe952d5f82bca2bfae7d2409b4f47137f5d427a46d67bad1e36b00f91c1594c18",
+  "deployTxnHash": "0x59328fe821bf3162fd8a9944fde22aa87b1ef8d69daa471afabd01eab49bf880",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1724339748",
+  "deployTimestamp": "1724345675",
   "sourceName": "src/contracts/modules/EpochLiquidityModule.sol",
   "contractName": "EpochLiquidityModule",
   "deployedOn": "deploy.EpochLiquidityModule",
-  "gasUsed": 2106569,
-  "gasCost": "1005428200"
+  "gasUsed": 2124667,
+  "gasCost": "1006087024"
 }

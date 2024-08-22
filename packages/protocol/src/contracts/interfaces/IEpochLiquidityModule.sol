@@ -6,19 +6,25 @@ import {IFoilStructs} from "./IFoilStructs.sol";
 interface IEpochLiquidityModule {
     event LiquidityPositionCreated(
         uint256 tokenId,
+        uint256 collateralAmount,
         uint128 liquidity,
         uint256 addedAmount0,
-        uint256 addedAmount1
+        uint256 addedAmount1,
+        int24 lowerTick,
+        int24 upperTick
     );
 
     event LiquidityPositionDecreased(
         uint256 tokenId,
+        uint256 collateralAmount,
+        uint128 liquidity,
         uint256 amount0,
         uint256 amount1
     );
 
     event LiquidityPositionIncreased(
         uint256 tokenId,
+        uint256 collateralAmount,
         uint128 liquidity,
         uint256 amount0,
         uint256 amount1

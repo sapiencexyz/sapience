@@ -4,6 +4,7 @@ pragma solidity >=0.8.2 <0.9.0;
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
 import {IFoil} from "../src/contracts/interfaces/IFoil.sol";
+import {IFoilStructs} from "../src/contracts/interfaces/IFoilStructs.sol";
 import {IMintableToken} from "../src/contracts/external/IMintableToken.sol";
 import {TickMath} from "../src/contracts/external/univ3/TickMath.sol";
 import {TestEpoch} from "./helpers/TestEpoch.sol";
@@ -17,7 +18,9 @@ contract UmaSettleMarket is TestEpoch {
 
     IFoil foil;
     IMintableToken collateralAsset;
+    IMintableToken bondCurrency;
 
+    uint256 epochId;
     address owner;
     address optimisticOracleV3;
     uint256 endTime;
@@ -25,10 +28,16 @@ contract UmaSettleMarket is TestEpoch {
     uint256 maxPriceD18;
     bool settled;
     uint256 settlementPriceD18;
+    IFoilStructs.EpochParams epochParams;
+
+    bytes32 assertionId;
 
     function setUp() public {
         collateralAsset = IMintableToken(
             vm.getAddress("CollateralAsset.Token")
+        );
+        bondCurrency = IMintableToken(
+            vm.getAddress("BondCurrency.Token")
         );
         foil = IFoil(vm.getAddress("Foil"));
 
@@ -36,12 +45,30 @@ contract UmaSettleMarket is TestEpoch {
         (foil, ) = createEpoch(16000, 29800, startingSqrtPriceX96);
 
         (owner, , , , optimisticOracleV3, ) = foil.getMarket();
-        (, , endTime, , , , minPriceD18, maxPriceD18, settled, settlementPriceD18) = foil.getLatestEpoch();
+        (epochId, , endTime, , , , minPriceD18, maxPriceD18, settled, settlementPriceD18, epochParams) = foil.getLatestEpoch();
+
+        bondCurrency.mint(epochParams.bondAmount, owner);
     }
 
-    function test_settle_in_range_Only() public {
+    function test_only_owner_settle() public {
         vm.warp(endTime + 1);
-        
+        vm.expectRevert("Only owner can call this function");
+        foil.submitSettlementPrice(epochId, 11 ether);
+    }
+
+    function test_settle_in_range() public {
+        vm.warp(endTime + 1);
+
+        vm.startPrank(owner);
+        IMintableToken(epochParams.bondCurrency).approve(address(foil), epochParams.bondAmount);
+        //assertionId = foil.submitSettlementPrice(epochId, 11 ether);
+        vm.stopPrank();
+
+        // startPrank as the oracle contract
+        // foil.assertionResolvedCallback(assertionId, true);
+
+        // show that it settled successfully
+        // show that the settlementPrice is 11 ether
     }
 
     function test_settle_above_range() public {
