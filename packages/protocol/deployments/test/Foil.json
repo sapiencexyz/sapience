@@ -1,5 +1,5 @@
 {
-  "address": "0x19ad60839e9b7a455f041b82f6f04f87e90016d3",
+  "address": "0x3baa0b0e57d0b3424b7520f2981f0969a5272a0b",
   "abi": [
     {
       "type": "function",
@@ -40,11 +40,6 @@
         },
         {
           "name": "uniswapPositionManager",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "uniswapQuoter",
           "type": "address",
           "internalType": "address"
         },
@@ -115,11 +110,6 @@
         },
         {
           "name": "uniswapPositionManager",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "uniswapQuoter",
           "type": "address",
           "internalType": "address"
         },
@@ -633,12 +623,12 @@
       "name": "InsufficientCollateral",
       "inputs": [
         {
-          "name": "amount",
+          "name": "amountRequired",
           "type": "uint256",
           "internalType": "uint256"
         },
         {
-          "name": "collateral",
+          "name": "collateralAvailable",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -670,6 +660,11 @@
           "internalType": "uint256"
         }
       ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidPositionKind",
+      "inputs": []
     },
     {
       "type": "error",
@@ -707,11 +702,6 @@
       "name": "assertionDisputedCallback",
       "inputs": [
         {
-          "name": "epochId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
           "name": "assertionId",
           "type": "bytes32",
           "internalType": "bytes32"
@@ -724,11 +714,6 @@
       "type": "function",
       "name": "assertionResolvedCallback",
       "inputs": [
-        {
-          "name": "epochId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
         {
           "name": "assertionId",
           "type": "bytes32",
@@ -772,6 +757,12 @@
       "name": "MarketSettled",
       "inputs": [
         {
+          "name": "epochId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
           "name": "settlementPrice",
           "type": "uint256",
           "indexed": false,
@@ -785,6 +776,12 @@
       "name": "SettlementDisputed",
       "inputs": [
         {
+          "name": "epochId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
           "name": "disputeTime",
           "type": "uint256",
           "indexed": false,
@@ -797,6 +794,12 @@
       "type": "event",
       "name": "SettlementSubmitted",
       "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
         {
           "name": "price",
           "type": "uint256",
@@ -886,6 +889,30 @@
     },
     {
       "type": "function",
+      "name": "getLongSizeForCollateral",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "positionSize",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "getReferencePrice",
       "inputs": [
         {
@@ -897,6 +924,30 @@
       "outputs": [
         {
           "name": "price18Digits",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getShortSizeForCollateral",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "positionSize",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -1522,11 +1573,6 @@
           "internalType": "address"
         },
         {
-          "name": "uniswapQuoter",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
           "name": "uniswapSwapRouter",
           "type": "address",
           "internalType": "address"
@@ -1651,14 +1697,33 @@
       "type": "error",
       "name": "NoEpochsCreated",
       "inputs": []
+    },
+    {
+      "type": "function",
+      "name": "supportsInterface",
+      "inputs": [
+        {
+          "name": "interfaceId",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0x4afdb53bafeb45d7f18786043407308b96f9da7e3e77ed5589cd631437a806ff",
+  "deployTxnHash": "0x864d445a2ca5118a92dd83f7c8e56a158c05a055e63ab00e1e77e9ef4232b1ef",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1723830384",
+  "deployTimestamp": "1724338430",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
-  "gasUsed": 431742,
-  "gasCost": "1001017219"
+  "gasUsed": 461316,
+  "gasCost": "1001020089"
 }

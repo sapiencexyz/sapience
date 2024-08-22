@@ -1,5 +1,5 @@
 {
-  "address": "0xCfafB7Ee1A4cD7098cd0Ec5C7eEA5316ad0D8cB1",
+  "address": "0x495C8F8d7Dd5dFfE8B72A703d0299246D1914Eb8",
   "abi": [
     {
       "type": "function",
@@ -404,12 +404,12 @@
       "name": "InsufficientCollateral",
       "inputs": [
         {
-          "name": "amount",
+          "name": "amountRequired",
           "type": "uint256",
           "internalType": "uint256"
         },
         {
-          "name": "collateral",
+          "name": "collateralAvailable",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -441,6 +441,11 @@
           "internalType": "uint256"
         }
       ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidPositionKind",
+      "inputs": []
     },
     {
       "type": "error",
@@ -486,12 +491,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x510b38ca3555dc62a4c9ab27ac9bb99e9283700ce34ece6d4cc7b94056637fac",
+  "deployTxnHash": "0x37749cafd754027e40f2beb2cd83063542516ab8ef4f8608549c512465ffb130",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1724079813",
+  "deployTimestamp": "1724338423",
   "sourceName": "src/contracts/modules/EpochLiquidityModule.sol",
   "contractName": "EpochLiquidityModule",
   "deployedOn": "deploy.EpochLiquidityModule",
-  "gasUsed": 2143150,
-  "gasCost": "1006087024"
+  "gasUsed": 2106569,
+  "gasCost": "1004754644"
 }

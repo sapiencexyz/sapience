@@ -1,5 +1,5 @@
 {
-  "address": "0x029933C3367F9700e0065F7b374cEF099e1E54f6",
+  "address": "0xc3705567450b113df11eAF82D1ccE22D1195A665",
   "abi": [
     {
       "type": "function",
@@ -37,6 +37,30 @@
     },
     {
       "type": "function",
+      "name": "getLongSizeForCollateral",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "positionSize",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "getReferencePrice",
       "inputs": [
         {
@@ -48,6 +72,30 @@
       "outputs": [
         {
           "name": "price18Digits",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getShortSizeForCollateral",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "positionSize",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -134,12 +182,12 @@
       "name": "InsufficientCollateral",
       "inputs": [
         {
-          "name": "amount",
+          "name": "amountRequired",
           "type": "uint256",
           "internalType": "uint256"
         },
         {
-          "name": "collateral",
+          "name": "collateralAvailable",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -217,6 +265,11 @@
     },
     {
       "type": "error",
+      "name": "InvalidPositionKind",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "NotAccountOwnerOrAuthorized",
       "inputs": [
         {
@@ -280,12 +333,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x8cec26260f3747be1964fb2a7d25d42e9b73d8c96068cd3c05dad2a9a86c2759",
+  "deployTxnHash": "0x9ca88f8e024bfbcbd59ca3638bc5fe63049866f2dee438b853734012b1dc2aa9",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1723830378",
+  "deployTimestamp": "1724338423",
   "sourceName": "src/contracts/modules/EpochTradeModule.sol",
   "contractName": "EpochTradeModule",
   "deployedOn": "deploy.EpochTradeModule",
-  "gasUsed": 1933722,
-  "gasCost": "1003283187"
+  "gasUsed": 2111862,
+  "gasCost": "1003755404"
 }

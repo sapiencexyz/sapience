@@ -1,15 +1,10 @@
 {
-  "address": "0xa29c8c1e9C60d567403A8156Cf0B49bF4291Dc91",
+  "address": "0xDbf1A7098769b491F9B580a572D001ebD84e9b69",
   "abi": [
     {
       "type": "function",
       "name": "assertionDisputedCallback",
       "inputs": [
-        {
-          "name": "epochId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
         {
           "name": "assertionId",
           "type": "bytes32",
@@ -23,11 +18,6 @@
       "type": "function",
       "name": "assertionResolvedCallback",
       "inputs": [
-        {
-          "name": "epochId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
         {
           "name": "assertionId",
           "type": "bytes32",
@@ -71,6 +61,12 @@
       "name": "MarketSettled",
       "inputs": [
         {
+          "name": "epochId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
           "name": "settlementPrice",
           "type": "uint256",
           "indexed": false,
@@ -84,6 +80,12 @@
       "name": "SettlementDisputed",
       "inputs": [
         {
+          "name": "epochId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
           "name": "disputeTime",
           "type": "uint256",
           "indexed": false,
@@ -96,6 +98,12 @@
       "type": "event",
       "name": "SettlementSubmitted",
       "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
         {
           "name": "price",
           "type": "uint256",
@@ -157,12 +165,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x6d9e0589b30230b7fe3e06073d91ca753646c4ed681d188c7dedce165404db73",
+  "deployTxnHash": "0x586f29316506cae933f545067b027f717b3f7e71df61f1a1bad82293f4c76982",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1723830378",
+  "deployTimestamp": "1724338423",
   "sourceName": "src/contracts/modules/EpochUMASettlementModule.sol",
   "contractName": "EpochUMASettlementModule",
   "deployedOn": "deploy.EpochUMASettlementModule",
-  "gasUsed": 798576,
-  "gasCost": "1002925696"
+  "gasUsed": 840423,
+  "gasCost": "1003352070"
 }
