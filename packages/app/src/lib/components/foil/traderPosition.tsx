@@ -13,8 +13,7 @@ import {
   Text,
   useToast,
 } from '@chakra-ui/react';
-import INONFUNGIBLE_POSITION_MANAGER from '@uniswap/v3-periphery/artifacts/contracts/NonfungiblePositionManager.sol/NonfungiblePositionManager.json';
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useMemo } from 'react';
 import type { AbiFunction, WriteContractErrorType } from 'viem';
 import { formatUnits, parseUnits } from 'viem';
 import {
@@ -106,13 +105,13 @@ export default function TraderPosition({}) {
     pool,
     foilData,
     chainId,
-    uniswapPositionManagerAddress,
   } = useContext(MarketContext);
 
   const { getRootProps, getRadioProps } = useRadioGroup({
     name: 'positionType',
     defaultValue: 'Long',
     onChange: setOption,
+    value: option,
   });
   const group = getRootProps();
   const toast = useToast();
@@ -131,21 +130,6 @@ export default function TraderPosition({}) {
     },
   }) as { data: FoilPosition; refetch: any; isRefetching: boolean };
 
-  const { data: uniswapPosition, error: uniswapPositionError } =
-    useReadContract({
-      abi: INONFUNGIBLE_POSITION_MANAGER.abi,
-      address: uniswapPositionManagerAddress,
-      functionName: 'positions',
-      args: [positionData?.tokenId.toString()],
-      query: {
-        enabled: Boolean(
-          uniswapPositionManagerAddress !== '0x' &&
-            positionData?.tokenId &&
-            isEdit
-        ),
-      },
-    });
-
   const referencePriceFunctionResult = useReadContract({
     abi: foilData.abi,
     address: foilData.address as `0x${string}`,
@@ -159,14 +143,6 @@ export default function TraderPosition({}) {
     address: collateralAsset as `0x${string}`,
     functionName: 'balanceOf',
     args: [account.address],
-    chainId,
-  });
-
-  const getPositionDataFunctionResult = useReadContract({
-    abi: foilData.abi,
-    address: foilData.address as `0x${string}`,
-    functionName: 'getPositionData',
-    args: [nftId],
     chainId,
   });
 
@@ -271,27 +247,28 @@ export default function TraderPosition({}) {
   }, [isConfirmed]);
 
   useEffect(() => {
-    /*
-    TODO
-    if (nftId > 0) {
-      setSize(
-        BigInt(
-          Math.abs(getPositionDataFunctionResult?.data?.currentTokenAmount) || 0
-        )
-      );
-      setOption(
-        getPositionDataFunctionResult?.data?.currentTokenAmount >= 0
-          ? 'Long'
-          : 'Short'
-      );
+    if (isEdit && positionData) {
+      setOption(positionData.currentTokenAmount >= 0 ? 'Long' : 'Short');
     }
-      */
-  }, [nftId, getPositionDataFunctionResult?.data]);
+  }, [isEdit, positionData]);
 
-  useEffect(() => {
-    console.log('fee', fee);
-    console.log('pool', pool);
-  }, [pool, fee]);
+  /// /// MEMOIZED FUNCTIONS ///////
+  const originalCollateral = useMemo(() => {
+    if (!positionData) return '0';
+    return formatUnits(
+      positionData.depositedCollateralAmount,
+      collateralAssetDecimals
+    );
+  }, [positionData, collateralAssetDecimals]);
+
+  const originalSize = useMemo(() => {
+    if (!positionData) return '0';
+    return formatUnits(
+      positionData.currentTokenAmount,
+      collateralAssetDecimals
+    );
+  }, [positionData, collateralAssetDecimals]);
+
   /// /// HANDLERS //////
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -396,6 +373,9 @@ export default function TraderPosition({}) {
             </Button>
           </InputRightElement>
         </InputGroup>
+        <Text hidden={!isEdit} fontSize="small">
+          Original value: {isSizeInput ? originalSize : originalCollateral}
+        </Text>
       </FormControl>
       <FormControl mb={4}>
         <InputGroup>
@@ -408,6 +388,9 @@ export default function TraderPosition({}) {
             {isSizeInput ? collateralAssetTicker : 'Ggas'}
           </InputRightAddon>
         </InputGroup>
+        <Text hidden={!isEdit} fontSize="small">
+          Original value: {!isSizeInput ? originalSize : originalCollateral}
+        </Text>
       </FormControl>
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
       <Box mb="4">

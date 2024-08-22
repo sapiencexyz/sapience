@@ -1,3 +1,4 @@
+import { useToast } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import { Token } from '@uniswap/sdk-core';
 import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
@@ -13,6 +14,7 @@ import { useReadContracts, useReadContract } from 'wagmi';
 import useFoilDeployment from '../components/foil/useFoilDeployment';
 import { LOCAL_MARKET_CHAIN_ID } from '../constants/constants';
 import erc20ABI from '../erc20abi.json';
+import { renderContractErrorToast } from '../util/util';
 
 const API_BASE_URL = 'http://localhost:3001';
 
@@ -40,6 +42,7 @@ interface MarketContextType {
   epoch: number;
   foilData: any;
   chainId: number;
+  error?: string;
 }
 
 interface MarketProviderProps {
@@ -156,6 +159,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
   children,
   epoch,
 }) => {
+  const toast = useToast();
   const [state, setState] = useState<MarketContextType>({
     chain: undefined,
     address: '',
@@ -265,6 +269,30 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     address: foilData?.address as `0x${string}`,
     functionName: 'getMarket',
   }) as any;
+
+  // show error from getMarket call if any
+  useEffect(() => {
+    if (marketViewFunctionResult.error) {
+      renderContractErrorToast(
+        marketViewFunctionResult.error,
+        toast,
+        'Unable to get market data'
+      );
+      setState((prev) => {
+        return {
+          ...prev,
+          error: marketViewFunctionResult.error?.message,
+        };
+      });
+    } else {
+      setState((prev) => {
+        return {
+          ...prev,
+          error: undefined,
+        };
+      });
+    }
+  }, [marketViewFunctionResult.error]);
 
   useEffect(() => {
     console.log('marketViewFunctionResult', marketViewFunctionResult?.data);

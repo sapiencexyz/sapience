@@ -1,4 +1,5 @@
 export enum PositionKind {
+  Unknown,
   Liquidity,
   Trade,
 }
