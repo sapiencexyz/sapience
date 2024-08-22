@@ -83,7 +83,7 @@ contract EpochTradeModule is IEpochTradeModule {
 
         Position.Data storage position = Position.loadValid(positionId);
 
-        if(position.kind != IFoilStructs.PositionKind.Trade) {
+        if (position.kind != IFoilStructs.PositionKind.Trade) {
             revert Errors.InvalidPositionKind();
         }
 
@@ -150,13 +150,17 @@ contract EpochTradeModule is IEpochTradeModule {
         Pe = entry price (current price)
         Pl = lowest price set in market
         C = collateral
-        Fee = Fee ¯\_(ツ)_/¯
+        Fee = Fee as D18 1/100 (1% in uni is 1000) => fee * 1e12
         */
         uint256 price = getReferencePrice(epochId);
+        console2.log("price", price);
         uint256 lowestPrice = Epoch.load(epochId).minPriceD18;
-        uint256 fee = Epoch.load(epochId).params.feeRate;
+        console2.log("lowestPrice", lowestPrice);
+        uint256 fee = uint256(Epoch.load(epochId).params.feeRate) * 1e12; // scaled to 1e18 fee
+        console2.log("fee", fee);
 
         uint256 K = (price + lowestPrice).mulDecimal(fee);
+        console2.log("K", K);
         positionSize = collateral.divDecimal(price - lowestPrice + K);
 
         return positionSize;
@@ -176,11 +180,11 @@ contract EpochTradeModule is IEpochTradeModule {
         Pe = entry price (current price)
         Ph = highest price set in market
         C = collateral
-        Fee = Fee ¯\_(ツ)_/¯
+        Fee = Fee as D18 1/100 (1% in uni is 1000) => fee * 1e12
         */
         uint256 price = getReferencePrice(epochId);
         uint256 highestPrice = Epoch.load(epochId).maxPriceD18;
-        uint256 fee = Epoch.load(epochId).params.feeRate;
+        uint256 fee = uint256(Epoch.load(epochId).params.feeRate) * 1e12; // scaled to 1e18 fee
 
         uint256 K = (price + highestPrice).mulDecimal(fee);
         positionSize = collateral.divDecimal(highestPrice - price + K);
@@ -203,24 +207,26 @@ contract EpochTradeModule is IEpochTradeModule {
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) internal {
-        // with the collateral get vEth (Loan)
-        uint256 vEthLoan = collateralAmount; // 1:1
-
-        position.borrowedVEth += vEthLoan;
-
         if (tokenAmount < 0 || tokenAmountLimit < 0) {
             revert Errors.InvalidData(
                 "Long Position: Invalid tokenAmount or tokenAmountLimit"
             );
         }
 
+        // with the collateral get vEth (Loan)
+        uint256 highestPrice = Epoch.load(position.epochId).maxPriceD18;
+        uint256 vEthToSwap = highestPrice.mulDecimal(uint(tokenAmount)); // Taking the max that can be required
+        // Todo adjust for the fee. Edge case when the price is almost at max
+
+        position.borrowedVEth += vEthToSwap;
+
         // with the vEth get vGas (Swap)
         SwapTokensExactOutParams memory params = SwapTokensExactOutParams({
             epochId: position.epochId,
-            availableAmountInVEth: vEthLoan,
+            availableAmountInVEth: vEthToSwap,
             availableAmountInVGas: 0,
-            amountInLimitVEth: 0,
-            amountInLimitVGas: tokenAmountLimit.toUint().to160(),
+            amountInLimitVEth: tokenAmountLimit.toUint().to160(),
+            amountInLimitVGas: 0,
             expectedAmountOutVEth: 0,
             expectedAmountOutVGas: tokenAmount.toUint()
         });
@@ -234,11 +240,6 @@ contract EpochTradeModule is IEpochTradeModule {
 
         // Refund excess vEth sent
         position.borrowedVEth -= refundAmountVEth;
-
-        position.updateCollateral(
-            Market.load().collateralAsset,
-            collateralAmount
-        );
 
         position.updateBalance(
             tokenAmount,
@@ -262,16 +263,16 @@ contract EpochTradeModule is IEpochTradeModule {
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) internal {
-        // with the collateral get vGas (Loan)
-        uint256 vGasLoan = (tokenAmount * -1).toUint(); //(collateralAmount).divDecimal(getReferencePrice()); // collatera / vEth = 1/1 ; vGas/vEth = 1/currentPrice
-
-        position.borrowedVGas += vGasLoan;
-
         if (tokenAmount > 0 || tokenAmountLimit > 0) {
             revert Errors.InvalidData(
                 "Short Position: Invalid tokenAmount or tokenAmountLimit"
             );
         }
+
+        // with the collateral get vGas (Loan)
+        uint256 vGasLoan = (tokenAmount * -1).toUint(); //(collateralAmount).divDecimal(getReferencePrice()); // collatera / vEth = 1/1 ; vGas/vEth = 1/currentPrice
+
+        position.borrowedVGas += vGasLoan;
 
         // with the vGas get vEth (Swap)
         SwapTokensExactInParams memory params = SwapTokensExactInParams({
@@ -283,11 +284,6 @@ contract EpochTradeModule is IEpochTradeModule {
         });
         (uint256 tokenAmountVEth, uint256 tokenAmountVGas) = swapTokensExactIn(
             params
-        );
-
-        position.updateCollateral(
-            Market.load().collateralAsset,
-            collateralAmount
         );
 
         position.updateBalance(
@@ -323,6 +319,12 @@ contract EpochTradeModule is IEpochTradeModule {
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) internal {
+        if (tokenAmount < 0 || tokenAmountLimit < 0) {
+            revert Errors.InvalidData(
+                "Long Position: Invalid tokenAmount or tokenAmountLimit"
+            );
+        }
+
         // TODO check if after settlement and use the settlement price
 
         if (tokenAmount > position.currentTokenAmount) {
@@ -330,13 +332,15 @@ contract EpochTradeModule is IEpochTradeModule {
             uint256 delta = (tokenAmount - position.currentTokenAmount)
                 .toUint();
             // with the collateral get vEth (Loan)
-            uint256 vEthDeltaLoan = collateralAmount; // 1:1
+            uint256 highestPrice = Epoch.load(position.epochId).maxPriceD18;
+            uint256 vEthToSwap = highestPrice.mulDecimal(uint(tokenAmount)); // Taking the max that can be required
+            // Todo adjust for the fee. Edge case when the price is almost at max
 
             SwapTokensExactOutParams memory params = SwapTokensExactOutParams({
                 epochId: position.epochId,
-                availableAmountInVEth: vEthDeltaLoan,
+                availableAmountInVEth: vEthToSwap,
                 availableAmountInVGas: 0,
-                amountInLimitVEth: 0,
+                amountInLimitVEth: tokenAmountLimit.toUint().to160(),
                 amountInLimitVGas: 0,
                 expectedAmountOutVEth: 0,
                 expectedAmountOutVGas: delta
@@ -350,8 +354,8 @@ contract EpochTradeModule is IEpochTradeModule {
                 uint256 tokenAmountVGas
             ) = swapTokensExactOut(params);
             // Adjust the delta loan with the refund
-            vEthDeltaLoan -= refundAmountVEth;
-            position.borrowedVEth += vEthDeltaLoan;
+            vEthToSwap -= refundAmountVEth;
+            position.borrowedVEth += vEthToSwap;
 
             position.updateBalance(
                 delta.toInt(),
@@ -360,8 +364,10 @@ contract EpochTradeModule is IEpochTradeModule {
             );
         } else {
             // Reduce the position (LONG)
+            // Need to sell vGas and use it to pay the debt
 
             int256 delta = (tokenAmount - position.currentTokenAmount);
+            int256 deltaEth; // usually is going to be zero
 
             SwapTokensExactInParams memory params = SwapTokensExactInParams({
                 epochId: position.epochId,
@@ -372,21 +378,23 @@ contract EpochTradeModule is IEpochTradeModule {
             });
 
             // with the vGas get vEth (Swap)
-            (
-                uint256 tokenAmountVEth,
-                uint256 tokenAmountVGas
-            ) = swapTokensExactIn(params);
+            (uint256 tokenAmountVEth, ) = swapTokensExactIn(params);
 
             // Pay debt with vEth
-            position.borrowedVEth -= tokenAmountVEth;
+            if (position.borrowedVEth > tokenAmountVEth) {
+                position.borrowedVEth -= tokenAmountVEth;
+            } else {
+                // Got more vEth than required to pay the debt
+                // Add it as available vETH
+                position.borrowedVEth = 0;
+                deltaEth =
+                    tokenAmountVEth.toInt() -
+                    position.borrowedVEth.toInt();
+            }
 
-            position.updateBalance(delta, 0, delta);
+            position.updateBalance(delta, deltaEth, delta);
         }
 
-        position.updateCollateral(
-            Market.load().collateralAsset,
-            collateralAmount
-        );
     }
 
     /**
@@ -480,11 +488,6 @@ contract EpochTradeModule is IEpochTradeModule {
                 0
             );
         }
-
-        position.updateCollateral(
-            Market.load().collateralAsset,
-            collateralAmount
-        );
     }
 
     /**
