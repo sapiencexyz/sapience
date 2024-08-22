@@ -82,7 +82,7 @@ contract EpochUMASettlementModule is ReentrancyGuard {
         bool assertedTruthfully
     ) external {
         Market.Data storage market = Market.load();
-        uint256 epochId = epoch.epochIdByAssertionId[epoch.assertionId];
+        uint256 epochId = epoch.epochIdByAssertionId[assertionId];
         Epoch.Data storage epoch = Epoch.load(epochId);
         require(block.timestamp > epoch.endTime, "Market activity is still allowed");
         require(
@@ -102,7 +102,7 @@ contract EpochUMASettlementModule is ReentrancyGuard {
 
     function assertionDisputedCallback(bytes32 assertionId) external {
         Market.Data storage market = Market.load();
-        uint256 epochId = epoch.epochIdByAssertionId[epoch.assertionId];
+        uint256 epochId = epoch.epochIdByAssertionId[assertionId];
         Epoch.Data storage epoch = Epoch.load(epochId);
         require(block.timestamp > epoch.endTime, "Market activity is still allowed");
         require(
