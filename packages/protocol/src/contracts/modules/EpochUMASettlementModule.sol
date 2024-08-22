@@ -3,14 +3,13 @@ pragma solidity >=0.8.25 <0.9.0;
 
 import {IEpochUMASettlementModule} from "../interfaces/IEpochUMASettlementModule.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {OptimisticOracleV3Interface} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import {Epoch} from "../storage/Epoch.sol";
 import {Market} from "../storage/Market.sol";
 
 contract EpochUMASettlementModule is IEpochUMASettlementModule, ReentrancyGuard {
     using Epoch for Epoch.Data;
-    using SafeERC20 for IERC20;
 
     function submitSettlementPrice(
         uint256 epochId,
@@ -29,12 +28,12 @@ contract EpochUMASettlementModule is IEpochUMASettlementModule, ReentrancyGuard 
         OptimisticOracleV3Interface optimisticOracleV3 = market
             .optimisticOracleV3;
 
-        bondCurrency.safeTransferFrom(
+        bondCurrency.transferFrom(
             msg.sender,
             address(this),
             epoch.params.bondAmount
         );
-        bondCurrency.forceApprove(
+        bondCurrency.approve(
             address(optimisticOracleV3),
             epoch.params.bondAmount
         );

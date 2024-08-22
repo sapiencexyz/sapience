@@ -180,7 +180,7 @@
   "linkedLibraries": {},
   "deployTxnHash": "0x4d612fc517ab52dc45fcbc1a74c6cdce64c5790b50090504518ea50869ffc70c",
   "deployTxnBlockNumber": "6",
-  "deployTimestamp": "1724358659",
+  "deployTimestamp": "1724359006",
   "sourceName": "node_modules/@uma/core/contracts/common/implementation/AddressWhitelist.sol",
   "contractName": "AddressWhitelist",
   "deployedOn": "deploy.AddressWhitelist",
