@@ -1,5 +1,7 @@
 'use client';
 
+// eslint-disable-next-line import/no-extraneous-dependencies
+import INONFUNGIBLE_POSITION_MANAGER from '@/protocol/deployments/13370/Uniswap.NonfungiblePositionManager.json';
 import {
   Box,
   FormControl,
@@ -21,7 +23,6 @@ import type {
   QueryObserverResult,
   RefetchOptions,
 } from '@tanstack/react-query';
-import INONFUNGIBLE_POSITION_MANAGER from '@uniswap/v3-periphery/artifacts/contracts/NonfungiblePositionManager.sol/NonfungiblePositionManager.json';
 import { TickMath } from '@uniswap/v3-sdk';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import type { ReadContractErrorType, WriteContractErrorType } from 'viem';
