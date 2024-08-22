@@ -1,5 +1,5 @@
 {
-  "address": "0x57c471130fc6ffe0d278efe2e2770347da16be3a",
+  "address": "0x849a8370f2adb23bb4ef649faf91636b6a0921a7",
   "abi": [
     {
       "type": "function",
@@ -797,6 +797,12 @@
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
+        },
+        {
+          "name": "assertionId",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "bytes32"
         },
         {
           "name": "settlementPriceD18",
@@ -1879,11 +1885,11 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0x707be3772a674dbf4b98ad77785d784837f67ffb8bb85d232ec9922eecabdc36",
+  "deployTxnHash": "0x4173e841349dfe4feee2ba6c9a8a0ff02af8b15ed363372f55587d4071b7102b",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1724350645",
+  "deployTimestamp": "1724355901",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
-  "gasUsed": 461328,
-  "gasCost": "1000116851"
+  "gasUsed": 461316,
+  "gasCost": "1000116828"
 }

@@ -1,5 +1,5 @@
 {
-  "address": "0x1e15010d928a6C3204500C7D669D7B55064B89b7",
+  "address": "0x4624c7a186F1A8a3bD787f8c99cee41f654c60c5",
   "abi": [
     {
       "type": "function",
@@ -65,6 +65,12 @@
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
+        },
+        {
+          "name": "assertionId",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "bytes32"
         },
         {
           "name": "settlementPriceD18",
@@ -165,12 +171,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x5e6ea6b9b397856606ae8e48427ad8d5a9cbf28f9480b39b69ba0458c5758a26",
+  "deployTxnHash": "0x66969a04a487f441e7025edf2b61f76af0ededdacaecbb46136fc636322b8930",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1724350638",
+  "deployTimestamp": "1724355894",
   "sourceName": "src/contracts/modules/EpochUMASettlementModule.sol",
   "contractName": "EpochUMASettlementModule",
   "deployedOn": "deploy.EpochUMASettlementModule",
   "gasUsed": 840423,
-  "gasCost": "1000337360"
+  "gasCost": "1000337295"
 }

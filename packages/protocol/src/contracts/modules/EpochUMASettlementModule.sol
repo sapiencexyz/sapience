@@ -95,7 +95,7 @@ contract EpochUMASettlementModule is IEpochUMASettlementModule, ReentrancyGuard 
         if(!epoch.settlement.disputed) {
             epoch.setSettlementPriceInRange(settlement.settlementPriceD18);
             epoch.settled = true;
-            emit MarketSettled(epochId, settlement.settlementPriceD18);
+            emit MarketSettled(epochId, assertionId, settlement.settlementPriceD18);
         }
     }
 

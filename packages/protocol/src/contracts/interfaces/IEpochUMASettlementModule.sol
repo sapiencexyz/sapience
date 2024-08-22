@@ -4,7 +4,7 @@ pragma solidity >=0.8.2 <0.9.0;
 interface IEpochUMASettlementModule {
     event SettlementSubmitted(uint256 epochId, uint256 price, uint256 submissionTime);
     event SettlementDisputed(uint256 epochId, uint256 disputeTime);
-    event MarketSettled(uint256 epochId, uint256 settlementPriceD18);
+    event MarketSettled(uint256 epochId, bytes32 assertionId, uint256 settlementPriceD18);
 
     function submitSettlementPrice(
         uint256 epochId,
