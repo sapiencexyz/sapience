@@ -94,7 +94,7 @@ contract EpochUMASettlementModule is ReentrancyGuard {
         Epoch.Settlement storage settlement = epoch.settlement;
 
         if(!epoch.settlement.disputed) {
-            epoch.setSettlementPrice(settlement.settlementPrice);
+            epoch.setSettlementPriceInRange(settlement.settlementPrice);
             epoch.settled = true;
             emit MarketSettled(epochId, settlement.settlementPrice);
         }
