@@ -163,7 +163,7 @@ contract UmaSettleMarket is TestEpoch {
 
         vm.startPrank(optimisticOracleV3);
         IMintableToken(epochParams.bondCurrency).approve(address(foil), epochParams.bondAmount);
-        foil.assertionResolvedCallback(assertionId, true);
+        foil.assertionResolvedCallback(assertionId2, true);
         vm.stopPrank();
 
         (, , , , , , , , , uint256 settlementPriceD18, ) = foil.getLatestEpoch();

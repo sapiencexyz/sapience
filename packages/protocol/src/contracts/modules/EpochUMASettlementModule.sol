@@ -39,13 +39,6 @@ contract EpochUMASettlementModule is IEpochUMASettlementModule, ReentrancyGuard 
             epoch.params.bondAmount
         );
 
-        epoch.settlement = Epoch.Settlement({
-            settlementPriceD18: settlementPriceD18,
-            submissionTime: block.timestamp,
-            disputed: false,
-            disputer: address(0)
-        });
-
         bytes memory claim = abi.encodePacked(
             "ipfs://Qmbg1KiuKNmCbL696Zu8hXUAJrTxuhgNCbyjaPyni4RXTc evaluates to ",
             abi.encodePacked(settlementPriceD18),
@@ -69,6 +62,13 @@ contract EpochUMASettlementModule is IEpochUMASettlementModule, ReentrancyGuard 
             bytes32(0)
         );
 
+        epoch.settlement = Epoch.Settlement({
+            settlementPriceD18: settlementPriceD18,
+            submissionTime: block.timestamp,
+            disputed: false,
+            disputer: address(0)
+        });
+
         market.epochIdByAssertionId[epoch.assertionId] = epochId;
 
         emit SettlementSubmitted(epochId, settlementPriceD18, block.timestamp);
@@ -83,6 +83,7 @@ contract EpochUMASettlementModule is IEpochUMASettlementModule, ReentrancyGuard 
         Market.Data storage market = Market.load();
         uint256 epochId = market.epochIdByAssertionId[assertionId];
         Epoch.Data storage epoch = Epoch.load(epochId);
+        require(assertionId == epoch.assertionId, "Invalid assertionId");
         require(block.timestamp > epoch.endTime, "Market activity is still allowed");
         require(
             msg.sender == address(market.optimisticOracleV3),
