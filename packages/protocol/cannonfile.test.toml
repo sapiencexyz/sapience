@@ -1,10 +1,6 @@
 name="foil-test"
 version="0.1"
 
-[clone.UMA]
-source="uma-oov3"
-target="foil@uma-mock"
-
 [clone.Uniswap]
 source="uniswap"
 target="foil@uniswap"
@@ -19,6 +15,12 @@ source="mintable-token@permissionless-mint"
 target="foil@test-bond-currency"
 var.symbol="USDC"
 var.decimals = "6"
+
+[clone.UMA]
+source="uma-oov3"
+target="foil@uma-mock"
+options.defaultCurrency = "<%= BondCurrency.Token.address %>"
+options.minimumBond = "0"
 
 [deploy.EpochConfigurationModule]
 artifact="EpochConfigurationModule"

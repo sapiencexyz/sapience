@@ -1,5 +1,5 @@
 {
-  "address": "0x97d400ef99d3F054109634146E25D3d31f41Beda",
+  "address": "0x5528f7E578C2283baCFf117663266048536ab5E6",
   "abi": [
     {
       "type": "constructor",
@@ -843,17 +843,17 @@
   ],
   "constructorArgs": [
     "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
-    "0x6b187A09EA0c9bBCdC943488e0Ad32B215bc46b0",
+    "0xBDF33AE1C1e5f8E3B3ce166F64f2337E2e07a398",
     "7200"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0xb1d24fb1fc9fe2e817bf189c2526a8baa5de7658a28ad07330d1e738ff8e1bc0",
-  "deployTxnBlockNumber": "2",
-  "deployTimestamp": "1724348256",
+  "deployTxnHash": "0x15ab7b1a5cdc9aefd42f8f1cdd9a248f3d44814122d6ef9d3b919556fc296ffb",
+  "deployTxnBlockNumber": "6",
+  "deployTimestamp": "1724351440",
   "sourceName": "src/UMA/src/OptimisticOracleV3.sol",
   "contractName": "OptimisticOracleV3",
   "deployedOn": "deploy.OptimisticOracleV3",
   "highlight": true,
   "gasUsed": 3154889,
-  "gasCost": "1016568053"
+  "gasCost": "1014497048"
 }

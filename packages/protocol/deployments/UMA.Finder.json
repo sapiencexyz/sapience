@@ -131,12 +131,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x1fdbbf698b64ef20186453ca12040190c8fd9e08d7ab4ebd0114553a18d9e20e",
-  "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1724348256",
+  "deployTxnHash": "0x06c789d249937ab605a6189823da71da69db689805e6446d0ba26a6d2e024c96",
+  "deployTxnBlockNumber": "7",
+  "deployTimestamp": "1724351440",
   "sourceName": "src/UMA/src/Finder.sol",
   "contractName": "Finder",
   "deployedOn": "deploy.Finder",
   "gasUsed": 285093,
-  "gasCost": "1120128768"
+  "gasCost": "1105112672"
 }

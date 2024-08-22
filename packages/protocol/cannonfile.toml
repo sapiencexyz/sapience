@@ -17,6 +17,8 @@ depends=[]
 [clone.UMA]
 source="uma-oov3"
 target="foil@uma-mock"
+options.defaultCurrency = "<%= BondCurrency.Token.address %>"
+options.minimumBond = "0"
 
 [clone.Uniswap]
 source="uniswap"
@@ -77,7 +79,7 @@ args=[
   "<%= imports.CollateralAsset.contracts.Token.address %>",
   "<%= imports.Uniswap.contracts.NonfungiblePositionManager.address %>",
   "<%= imports.Uniswap.contracts.SwapRouter.address %>",
-  "<%= imports.UMA.contracts.MockOracleAncillary.address %>",
+  "<%= imports.UMA.contracts.OptimisticOracleV3.address %>",
   { baseAssetMinPriceTick = "<%= settings.baseAssetMinPriceTick %>", baseAssetMaxPriceTick = "<%= settings.baseAssetMaxPriceTick %>", feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.BondCurrency.contracts.Token.address %>", bondAmount= "<%= settings.bondAmount %>", priceUnit= "<%= settings.priceUnit %>" }
 ]
 depends=["router.Foil"]

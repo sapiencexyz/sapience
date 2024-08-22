@@ -95,12 +95,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x8cc62325461b1285a106aaa90011466e8e57de0558bd11cfbce048b4bf3bb605",
+  "deployTxnHash": "0x1669ced2a7430e477736fb2c4a5eba6ed771b85a22ab2275fb7cd9785b74d725",
   "deployTxnBlockNumber": "6",
-  "deployTimestamp": "1724348259",
+  "deployTimestamp": "1724351442",
   "sourceName": "contracts/libraries/NFTDescriptor.sol",
   "contractName": "NFTDescriptor",
   "deployedOn": "deploy.NFTDescriptor",
   "gasUsed": 5340067,
-  "gasCost": "1001302110"
+  "gasCost": "1001139130"
 }

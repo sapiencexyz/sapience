@@ -4,7 +4,9 @@ pragma solidity >=0.8.25 <0.9.0;
 import {IEpochUMASettlementModule} from "../interfaces/IEpochUMASettlementModule.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../storage/Epoch.sol";
+import {OptimisticOracleV3Interface} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
+import {Epoch} from "../storage/Epoch.sol";
+import {Market} from "../storage/Market.sol";
 
 contract EpochUMASettlementModule is IEpochUMASettlementModule, ReentrancyGuard {
     using Epoch for Epoch.Data;

@@ -44,7 +44,7 @@ contract TestEpoch is TestUser {
             vm.getAddress("CollateralAsset.Token"),
             vm.getAddress("Uniswap.NonfungiblePositionManager"),
             vm.getAddress("Uniswap.SwapRouter"),
-            vm.getAddress("UMA.MockOracleAncillary"),
+            vm.getAddress("UMA.OptimisticOracleV3"),
             IFoilStructs.EpochParams({
                 baseAssetMinPriceTick: minTick,
                 baseAssetMaxPriceTick: maxTick,

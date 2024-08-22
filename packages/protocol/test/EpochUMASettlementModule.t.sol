@@ -61,7 +61,7 @@ contract UmaSettleMarket is TestEpoch {
 
         vm.startPrank(owner);
         IMintableToken(epochParams.bondCurrency).approve(address(foil), epochParams.bondAmount);
-        //assertionId = foil.submitSettlementPrice(epochId, 11 ether);
+        assertionId = foil.submitSettlementPrice(epochId, 11 ether);
         vm.stopPrank();
 
         // startPrank as the oracle contract

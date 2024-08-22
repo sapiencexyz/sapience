@@ -238,12 +238,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x1e11d3d7c8697cb97758fd247b38c0cb4aa6c5825c679491a43c9e7e1dd0ccb4",
+  "deployTxnHash": "0x772cbcee5a700271f302eb2df3cce710ce08ab11e9ada86ae905c310106f5531",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1724348254",
+  "deployTimestamp": "1724351437",
   "sourceName": "contracts/UniswapV3Factory.sol",
   "contractName": "UniswapV3Factory",
   "deployedOn": "deploy.UniswapV3Factory",
   "gasUsed": 5440656,
-  "gasCost": "1004499054"
+  "gasCost": "1003935925"
 }

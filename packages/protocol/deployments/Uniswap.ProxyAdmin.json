@@ -153,12 +153,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x1a10cb20c1abd78cdb4d6e9e06e3f90d56e73dbc76d1575c3ba71190304b3e04",
+  "deployTxnHash": "0x2421d84b4dbaddb19fbee733770d698072299bb4f77fdf69e7f595a89cf69665",
   "deployTxnBlockNumber": "5",
-  "deployTimestamp": "1724348256",
+  "deployTimestamp": "1724351439",
   "sourceName": "@openzeppelin/contracts/proxy/ProxyAdmin.sol",
   "contractName": "ProxyAdmin",
   "deployedOn": "deploy.ProxyAdmin",
   "gasUsed": 687009,
-  "gasCost": "1003623073"
+  "gasCost": "1003169587"
 }
