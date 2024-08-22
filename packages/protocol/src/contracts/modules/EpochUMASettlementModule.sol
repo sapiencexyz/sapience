@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.25 <0.9.0;
 
-import {IEpochUMASettlementModule} from "../interfaces/IEpochUMASettlementModule.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {OptimisticOracleV3Interface} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import {Epoch} from "../storage/Epoch.sol";
 import {Market} from "../storage/Market.sol";
+import {IEpochUMASettlementModule} from "../interfaces/IEpochUMASettlementModule.sol";
+import {OptimisticOracleV3Interface} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 
 contract EpochUMASettlementModule is IEpochUMASettlementModule, ReentrancyGuard {
     using Epoch for Epoch.Data;
@@ -17,6 +17,7 @@ contract EpochUMASettlementModule is IEpochUMASettlementModule, ReentrancyGuard 
     ) external nonReentrant returns (bytes32) {
         Market.Data storage market = Market.load();
         Epoch.Data storage epoch = Epoch.loadValid(epochId);
+
         require(block.timestamp > epoch.endTime, "Market activity is still allowed");
         require(
             msg.sender == market.owner,
@@ -61,14 +62,14 @@ contract EpochUMASettlementModule is IEpochUMASettlementModule, ReentrancyGuard 
             bytes32(0)
         );
 
+        market.epochIdByAssertionId[epoch.assertionId] = epochId;
+
         epoch.settlement = Epoch.Settlement({
             settlementPriceD18: settlementPriceD18,
             submissionTime: block.timestamp,
             disputed: false,
             disputer: address(0)
         });
-
-        market.epochIdByAssertionId[epoch.assertionId] = epochId;
 
         emit SettlementSubmitted(epochId, settlementPriceD18, block.timestamp);
 
@@ -80,8 +81,10 @@ contract EpochUMASettlementModule is IEpochUMASettlementModule, ReentrancyGuard 
         bool assertedTruthfully
     ) external {
         Market.Data storage market = Market.load();
+
         uint256 epochId = market.epochIdByAssertionId[assertionId];
         Epoch.Data storage epoch = Epoch.load(epochId);
+
         require(assertionId == epoch.assertionId, "Invalid assertionId");
         require(block.timestamp > epoch.endTime, "Market activity is still allowed");
         require(
@@ -101,8 +104,10 @@ contract EpochUMASettlementModule is IEpochUMASettlementModule, ReentrancyGuard 
 
     function assertionDisputedCallback(bytes32 assertionId) external {
         Market.Data storage market = Market.load();
+
         uint256 epochId = market.epochIdByAssertionId[assertionId];
         Epoch.Data storage epoch = Epoch.load(epochId);
+
         require(block.timestamp > epoch.endTime, "Market activity is still allowed");
         require(
             msg.sender == address(market.optimisticOracleV3),
