@@ -62,11 +62,11 @@ contract UmaSettleMarket is TestEpoch {
 
         vm.startPrank(owner);
         IMintableToken(epochParams.bondCurrency).approve(address(foil), epochParams.bondAmount);
-        assertionId = foil.submitSettlementPrice(epochId, 11 ether);
+        assertionId = foil.submitSettlementPrice(epochId, 10 ether);
         vm.stopPrank();
 
         (, , , , , , , , settled, settlementPriceD18, ) = foil.getLatestEpoch();
-        assertFalse(settled, "The epoch isn't settled");
+        assertTrue(!settled, "The epoch isn't settled");
 
         vm.startPrank(optimisticOracleV3);
         foil.assertionResolvedCallback(assertionId, true);
@@ -74,27 +74,72 @@ contract UmaSettleMarket is TestEpoch {
 
         (, , , , , , , , settled, settlementPriceD18, ) = foil.getLatestEpoch();
         assertTrue(settled, "The epoch is settled");
-        assertTrue(settlementPriceD18 == 11 ether, "The settlement price is as submitted");
+        assertTrue(settlementPriceD18 == 10 ether, "The settlement price is as submitted");
     }
 
     function test_settle_above_range() public {
+        (, , , , , , uint256 minPriceD18, uint256 maxPriceD18, , , ) = foil.getLatestEpoch();
+
         vm.warp(endTime + 1);
-        // should be max, not higher
+
+        vm.startPrank(owner);
+        IMintableToken(epochParams.bondCurrency).approve(address(foil), epochParams.bondAmount);
+        assertionId = foil.submitSettlementPrice(epochId, maxPriceD18 + 1);
+        vm.stopPrank();
+
+        vm.startPrank(optimisticOracleV3);
+        foil.assertionResolvedCallback(assertionId, true);
+        vm.stopPrank();
+
+        (, , , , , , , , , uint256 settlementPriceD18, ) = foil.getLatestEpoch();
+        assertTrue(settlementPriceD18 == maxPriceD18, "The settlement price is the maximum");
     }
-    
+
     function test_settle_below_range() public {
+        (, , , , , , uint256 minPriceD18, uint256 maxPriceD18, , , ) = foil.getLatestEpoch();
+
         vm.warp(endTime + 1);
-        // should be min, not lower
+
+        vm.startPrank(owner);
+        IMintableToken(epochParams.bondCurrency).approve(address(foil), epochParams.bondAmount);
+        assertionId = foil.submitSettlementPrice(epochId, minPriceD18 - 1);
+        vm.stopPrank();
+
+        vm.startPrank(optimisticOracleV3);
+        foil.assertionResolvedCallback(assertionId, true);
+        vm.stopPrank();
+
+        (, , , , , , , , , uint256 settlementPriceD18, ) = foil.getLatestEpoch();
+        assertTrue(settlementPriceD18 == minPriceD18, "The settlement price is the minimum");
     }
 
     function test_settle_too_early() public {
         vm.warp(endTime - 1);
+
+        vm.startPrank(owner);
+        IMintableToken(epochParams.bondCurrency).approve(address(foil), epochParams.bondAmount);
+        vm.expectRevert("Market activity is still allowed");
+        assertionId = foil.submitSettlementPrice(epochId, minPriceD18 - 1);
+        vm.stopPrank();
     }
 
     function test_settle_too_late() public {
         vm.warp(endTime + 1);
-        // Settle
-        // Try settling again
+
+        vm.startPrank(owner);
+        IMintableToken(epochParams.bondCurrency).approve(address(foil), epochParams.bondAmount);
+        assertionId = foil.submitSettlementPrice(epochId, 10 ether);
+        vm.stopPrank();
+
+        vm.startPrank(optimisticOracleV3);
+        foil.assertionResolvedCallback(assertionId, true);
+        vm.stopPrank();
+        
+        vm.startPrank(owner);
+        IMintableToken(epochParams.bondCurrency).approve(address(foil), epochParams.bondAmount);
+        vm.expectRevert("Market already settled");
+        assertionId = foil.submitSettlementPrice(epochId, 10 ether);
+        vm.stopPrank();
     }
 
 }
