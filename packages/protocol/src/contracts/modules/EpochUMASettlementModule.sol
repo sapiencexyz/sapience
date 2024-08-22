@@ -16,7 +16,7 @@ contract EpochUMASettlementModule is IEpochUMASettlementModule, ReentrancyGuard 
         uint256 settlementPriceD18
     ) external nonReentrant returns (bytes32) {
         Market.Data storage market = Market.load();
-        Epoch.Data storage epoch = Epoch.load(epochId);
+        Epoch.Data storage epoch = Epoch.loadValid(epochId);
         require(block.timestamp > epoch.endTime, "Market activity is still allowed");
         require(
             msg.sender == market.owner,
