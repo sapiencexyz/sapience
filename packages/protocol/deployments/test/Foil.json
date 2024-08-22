@@ -1,5 +1,5 @@
 {
-  "address": "0x3baa0b0e57d0b3424b7520f2981f0969a5272a0b",
+  "address": "0x19c904047f707fafd6e80c2469ec1a22dd835b48",
   "abi": [
     {
       "type": "function",
@@ -738,7 +738,7 @@
           "internalType": "uint256"
         },
         {
-          "name": "settlementPrice",
+          "name": "settlementPriceD18",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -763,7 +763,7 @@
           "internalType": "uint256"
         },
         {
-          "name": "settlementPrice",
+          "name": "settlementPriceD18",
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
@@ -1510,6 +1510,26 @@
           "name": "gasToken",
           "type": "address",
           "internalType": "address"
+        },
+        {
+          "name": "minPriceD18",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "maxPriceD18",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "settled",
+          "type": "bool",
+          "internalType": "bool"
+        },
+        {
+          "name": "settlementPriceD18",
+          "type": "uint256",
+          "internalType": "uint256"
         }
       ],
       "stateMutability": "view"
@@ -1548,6 +1568,26 @@
           "name": "gasToken",
           "type": "address",
           "internalType": "address"
+        },
+        {
+          "name": "minPriceD18",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "maxPriceD18",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "settled",
+          "type": "bool",
+          "internalType": "bool"
+        },
+        {
+          "name": "settlementPriceD18",
+          "type": "uint256",
+          "internalType": "uint256"
         }
       ],
       "stateMutability": "view"
@@ -1719,11 +1759,11 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0x864d445a2ca5118a92dd83f7c8e56a158c05a055e63ab00e1e77e9ef4232b1ef",
+  "deployTxnHash": "0x51dbb6988efb5a1c7820bbcac8c25b4c91d9af31c62e1e39401be960ed8f7914",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1724338430",
+  "deployTimestamp": "1724339755",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
   "gasUsed": 461316,
-  "gasCost": "1001020089"
+  "gasCost": "1001316734"
 }

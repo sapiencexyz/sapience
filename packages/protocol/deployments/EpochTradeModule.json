@@ -1,5 +1,5 @@
 {
-  "address": "0xc3705567450b113df11eAF82D1ccE22D1195A665",
+  "address": "0x0a1b0B357a0705CD8dA1B4A9ff7a60ACE58FBD40",
   "abi": [
     {
       "type": "function",
@@ -333,12 +333,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x9ca88f8e024bfbcbd59ca3638bc5fe63049866f2dee438b853734012b1dc2aa9",
+  "deployTxnHash": "0x9cc0e847194f5bf1f362a62d15625d708fef29a5398c6680c6b1ccddb12c04f4",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1724338423",
+  "deployTimestamp": "1724339748",
   "sourceName": "src/contracts/modules/EpochTradeModule.sol",
   "contractName": "EpochTradeModule",
   "deployedOn": "deploy.EpochTradeModule",
   "gasUsed": 2111862,
-  "gasCost": "1003755404"
+  "gasCost": "1004844966"
 }

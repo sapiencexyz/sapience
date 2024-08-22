@@ -1,5 +1,5 @@
 {
-  "address": "0xBcEe0f0EAeCE1BF123638ed1CAAf3b5C57de838E",
+  "address": "0x4dcE1F74d147A7eBd686a232C40F5672bCa2dAfb",
   "abi": [
     {
       "type": "function",
@@ -36,6 +36,26 @@
           "name": "gasToken",
           "type": "address",
           "internalType": "address"
+        },
+        {
+          "name": "minPriceD18",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "maxPriceD18",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "settled",
+          "type": "bool",
+          "internalType": "bool"
+        },
+        {
+          "name": "settlementPriceD18",
+          "type": "uint256",
+          "internalType": "uint256"
         }
       ],
       "stateMutability": "view"
@@ -74,6 +94,26 @@
           "name": "gasToken",
           "type": "address",
           "internalType": "address"
+        },
+        {
+          "name": "minPriceD18",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "maxPriceD18",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "settled",
+          "type": "bool",
+          "internalType": "bool"
+        },
+        {
+          "name": "settlementPriceD18",
+          "type": "uint256",
+          "internalType": "uint256"
         }
       ],
       "stateMutability": "view"
@@ -227,12 +267,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x16c9a63c2731c9eb243e816f5ce25d6ed020e15bfb32c2c07f04c9dc4a06c995",
+  "deployTxnHash": "0x4a1e235cc3c99efaf37c419062059ee939c404717de571c96970e8c8d606b391",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1724338423",
+  "deployTimestamp": "1724339748",
   "sourceName": "src/contracts/modules/EpochViewsModule.sol",
   "contractName": "EpochViewsModule",
   "deployedOn": "deploy.EpochViewsModule",
-  "gasUsed": 433386,
-  "gasCost": "1002956538"
+  "gasUsed": 488328,
+  "gasCost": "1003814324"
 }
