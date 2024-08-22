@@ -33,8 +33,12 @@ target="foil@test-bond-currency"
 var.symbol="USDC"
 var.decimals = "6"
 
+[deploy.ReentrancyGuard]
+artifact = "ReentrancyGuard"
+
 [deploy.EpochConfigurationModule]
 artifact="EpochConfigurationModule"
+libraries.ReentrancyGuard="<%= contracts.ReentrancyGuard.address %>"
 
 [deploy.EpochLiquidityModule]
 artifact="EpochLiquidityModule"
