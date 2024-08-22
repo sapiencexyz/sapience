@@ -40,7 +40,11 @@ contract EpochViewsModule is IEpochViewsModule {
             uint256 endTime,
             address pool,
             address ethToken,
-            address gasToken
+            address gasToken,
+            uint256 minPriceD18,
+            uint256 maxPriceD18,
+            bool settled,
+            uint256 settlementPriceD18
         )
     {
         Epoch.Data storage epoch = Epoch.load(id);
@@ -49,7 +53,11 @@ contract EpochViewsModule is IEpochViewsModule {
             epoch.endTime,
             address(epoch.pool),
             address(epoch.ethToken),
-            address(epoch.gasToken)
+            address(epoch.gasToken),
+            epoch.minPriceD18,
+            epoch.maxPriceD18,
+            epoch.settled,
+            epoch.settlementPriceD18
         );
     }
 
@@ -63,7 +71,11 @@ contract EpochViewsModule is IEpochViewsModule {
             uint256 endTime,
             address pool,
             address ethToken,
-            address gasToken
+            address gasToken,
+            uint256 minPriceD18,
+            uint256 maxPriceD18,
+            bool settled,
+            uint256 settlementPriceD18
         )
     {
         epochId = Market.load().lastEpochId;
@@ -79,7 +91,11 @@ contract EpochViewsModule is IEpochViewsModule {
             epoch.endTime,
             address(epoch.pool),
             address(epoch.ethToken),
-            address(epoch.gasToken)
+            address(epoch.gasToken),
+            epoch.minPriceD18,
+            epoch.maxPriceD18,
+            epoch.settled,
+            epoch.settlementPriceD18
         );
     }
 

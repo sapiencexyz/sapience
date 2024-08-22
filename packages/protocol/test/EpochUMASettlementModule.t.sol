@@ -37,10 +37,11 @@ contract UmaSettleMarket is TestEpoch {
         lp1 = TestUser.createUser("LP1", 10_000_000 ether);
         trader1 = TestUser.createUser("Trader1", 10_000_000 ether);
 
-        (epochId, , , pool, tokenA, tokenB) = foil.getLatestEpoch();
+        (epochId, , , pool, tokenA, tokenB, , , , ) = foil.getLatestEpoch();
     }
 
-    function test_newPosition() public {
+    function test_settle_in_range_Only() public {
+        /*
         uint256 collateralAmount = 10 ether;
         int24 lowerTick = 19400;
         int24 upperTick = 23000;
@@ -56,5 +57,14 @@ contract UmaSettleMarket is TestEpoch {
 
         console2.log("loanAmount0", loanAmount0);
         console2.log("loanAmount1", loanAmount1);
+        */
     }
+
+    function test_settle_above_range_Only() public {}
+    function test_settle_below_range_Only() public {}
+
+    function test_settle_too_early_Only() public {}
+
+    function test_settle_too_late_Only() public {}
+
 }

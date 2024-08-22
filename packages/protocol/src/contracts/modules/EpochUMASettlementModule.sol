@@ -11,11 +11,11 @@ contract EpochUMASettlementModule is ReentrancyGuard {
 
     event SettlementSubmitted(uint256 epochId, uint256 price, uint256 submissionTime);
     event SettlementDisputed(uint256 epochId, uint256 disputeTime);
-    event MarketSettled(uint256 epochId, uint256 settlementPrice);
+    event MarketSettled(uint256 epochId, uint256 settlementPriceD18);
 
     function submitSettlementPrice(
         uint256 epochId,
-        uint256 settlementPrice
+        uint256 settlementPriceD18
     ) external nonReentrant returns (bytes32) {
         Market.Data storage market = Market.load();
         Epoch.Data storage epoch = Epoch.load(epochId);
@@ -41,7 +41,7 @@ contract EpochUMASettlementModule is ReentrancyGuard {
         );
 
         epoch.settlement = Epoch.Settlement({
-            settlementPrice: settlementPrice,
+            settlementPriceD18: settlementPriceD18,
             submissionTime: block.timestamp,
             disputed: false,
             disputer: address(0)
@@ -49,7 +49,7 @@ contract EpochUMASettlementModule is ReentrancyGuard {
 
         bytes memory claim = abi.encodePacked(
             "ipfs://Qmbg1KiuKNmCbL696Zu8hXUAJrTxuhgNCbyjaPyni4RXTc evaluates to ",
-            abi.encodePacked(settlementPrice),
+            abi.encodePacked(settlementPriceD18),
             " ",
             epoch.params.priceUnit,
             " with start time ",
@@ -72,7 +72,7 @@ contract EpochUMASettlementModule is ReentrancyGuard {
 
         market.epochIdByAssertionId[epoch.assertionId] = epochId;
 
-        emit SettlementSubmitted(epochId, settlementPrice, block.timestamp);
+        emit SettlementSubmitted(epochId, settlementPriceD18, block.timestamp);
 
         return epoch.assertionId;
     }
@@ -94,9 +94,9 @@ contract EpochUMASettlementModule is ReentrancyGuard {
         Epoch.Settlement storage settlement = epoch.settlement;
 
         if(!epoch.settlement.disputed) {
-            epoch.setSettlementPriceInRange(settlement.settlementPrice);
+            epoch.setSettlementPriceInRange(settlement.settlementPriceD18);
             epoch.settled = true;
-            emit MarketSettled(epochId, settlement.settlementPrice);
+            emit MarketSettled(epochId, settlement.settlementPriceD18);
         }
     }
 

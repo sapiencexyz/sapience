@@ -130,7 +130,7 @@ contract EpochTradeModule is IEpochTradeModule {
         Epoch.Data storage epoch = Epoch.load(epochId);
 
         if (epoch.settled) {
-            return epoch.settlementPrice;
+            return epoch.settlementPriceD18;
         } else {
             return epoch.getCurrentPoolPrice();
         }
@@ -801,9 +801,9 @@ contract EpochTradeModule is IEpochTradeModule {
     ) internal view returns (uint256 amountOutVEth, uint256 amountOutVGas) {
         if (amountInVEth > 0) {
             amountOutVEth = 0;
-            amountOutVGas = amountInVEth.divDecimal(epoch.settlementPrice);
+            amountOutVGas = amountInVEth.divDecimal(epoch.settlementPriceD18);
         } else {
-            amountOutVEth = amountInVGas.mulDecimal(epoch.settlementPrice);
+            amountOutVEth = amountInVGas.mulDecimal(epoch.settlementPriceD18);
             amountOutVGas = 0;
         }
     }
@@ -826,7 +826,7 @@ contract EpochTradeModule is IEpochTradeModule {
             tokenOutVEth = 0;
             tokenOutVGas = amountOutVGas;
             consumedAmountInVEth = amountOutVGas.mulDecimal(
-                epoch.settlementPrice
+                epoch.settlementPriceD18
             );
             consumedAmountInVGas = 0;
         } else {
@@ -834,7 +834,7 @@ contract EpochTradeModule is IEpochTradeModule {
             tokenOutVGas = 0;
             consumedAmountInVEth = 0;
             consumedAmountInVGas = amountOutVEth.divDecimal(
-                epoch.settlementPrice
+                epoch.settlementPriceD18
             );
         }
     }

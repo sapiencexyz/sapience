@@ -141,7 +141,7 @@
   "linkedLibraries": {},
   "deployTxnHash": "0x488f88a8c7d794288db591295391a226738ac6ed932f71f0f4fd3a3a5519a868",
   "deployTxnBlockNumber": "10",
-  "deployTimestamp": "1724338424",
+  "deployTimestamp": "1724339749",
   "sourceName": "@openzeppelin/contracts/proxy/TransparentUpgradeableProxy.sol",
   "contractName": "TransparentUpgradeableProxy",
   "deployedOn": "deploy.TransparentUpgradeableProxy",
