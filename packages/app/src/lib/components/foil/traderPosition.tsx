@@ -361,17 +361,18 @@ export default function TraderPosition({}) {
           <Input
             value={isSizeInput ? Number(size) : Number(collateral)}
             type="number"
+            onWheel={(e) => e.currentTarget.blur()}
             onChange={(e) =>
               isSizeInput
                 ? handleSizeChange(e.target.value)
                 : handleCollateralChange(e.target.value)
             }
           />
-          <InputRightElement width="4.5rem">
+          <InputRightAddon width="4.5rem">
             <Button h="1.75rem" size="sm" onClick={handleUpdateIsSizeInput}>
               {isSizeInput ? 'Ggas' : collateralAssetTicker}
             </Button>
-          </InputRightElement>
+          </InputRightAddon>
         </InputGroup>
         <Text hidden={!isEdit} fontSize="small">
           Original value: {isSizeInput ? originalSize : originalCollateral}

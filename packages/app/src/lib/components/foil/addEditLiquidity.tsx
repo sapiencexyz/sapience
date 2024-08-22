@@ -511,6 +511,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
             <Input
               type="number"
               value={depositAmount}
+              onWheel={(e) => e.currentTarget.blur()}
               onChange={handleDepositAmountChange}
             />
             <InputRightAddon>{collateralAssetTicker}</InputRightAddon>
@@ -545,6 +546,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
           <Input
             type="number"
             disabled={isEdit}
+            onWheel={(e) => e.currentTarget.blur()}
             value={lowPrice}
             onChange={(e) => setLowPrice(Number(e.target.value))}
           />
@@ -557,6 +559,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
           <Input
             type="number"
             disabled={isEdit}
+            onWheel={(e) => e.currentTarget.blur()}
             value={highPrice}
             onChange={(e) => setHighPrice(Number(e.target.value))}
           />
