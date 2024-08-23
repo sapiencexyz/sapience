@@ -8,6 +8,7 @@ import {TradeTestHelper} from "./helpers/TradeTestHelper.sol";
 import {TestUser} from "./helpers/TestUser.sol";
 import {DecimalPrice} from "../src/contracts/libraries/DecimalPrice.sol";
 import "../src/synthetix/utils/DecimalMath.sol";
+import {SafeCastI256} from "../src/synthetix/utils/SafeCast.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {Errors} from "../src/contracts/storage/Errors.sol";
 import {Position} from "../src/contracts/storage/Position.sol";
@@ -17,6 +18,7 @@ import "forge-std/console2.sol";
 contract TradePositionCollateral is TradeTestHelper {
     using Cannon for Vm;
     using DecimalMath for uint256;
+    using SafeCastI256 for int256;
 
     IFoil foil;
 
@@ -28,13 +30,13 @@ contract TradePositionCollateral is TradeTestHelper {
     address tokenB;
     IUniswapV3Pool uniCastedPool;
     uint256 feeRate;
-    int24 LOWERTICK = 12200;
-    int24 UPPERTICK = 12400;
-    uint256 collateralForOrder = 10 ether;
+    int24 LOWERTICK = 12200; //3.31
+    int24 UPPERTICK = 12400; //3.52
+    uint256 collateralForOrders = 10 ether;
 
     function setUp() public {
         uint160 startingSqrtPriceX96 = 146497135921788803112962621440; // 3.419
-        (foil, ) = createEpoch(5200, 28200, startingSqrtPriceX96); // 1.709 to 17.09
+        (foil, ) = createEpoch(5200, 28200, startingSqrtPriceX96); // 1.709 to 17.09 (1.6819839204636384 to 16.774485460620674)
 
         lp1 = TestUser.createUser("LP1", 10_000_000 ether);
         trader1 = TestUser.createUser("Trader1", 10_000_000 ether);
@@ -49,7 +51,7 @@ contract TradePositionCollateral is TradeTestHelper {
             foil,
             pool,
             epochId,
-            collateralForOrder * 100_000,
+            collateralForOrders * 100_000,
             LOWERTICK,
             UPPERTICK
         ); // enough to keep price stable (no slippage)
@@ -59,283 +61,91 @@ contract TradePositionCollateral is TradeTestHelper {
     function test_createTraderPosition_long_RevertIf_NotEnoughCollateral()
         public
     {
-        vm.startPrank(trader1);
-
-        uint256 requiredCollateral = 1771551682497315102; // got from error message
-        uint256 sentCollateral = requiredCollateral - 1;
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Errors.InsufficientCollateral.selector,
-                requiredCollateral,
-                sentCollateral
-            )
-        );
-        foil.createTraderPosition(epochId, sentCollateral, 1 ether, 0);
-        vm.stopPrank();
+        createAndRevert(1771551682497315102, 1 ether);
     }
 
     function test_createTraderPosition_long_enoughCollateral() public {
-        vm.startPrank(trader1);
-
-        uint256 requiredCollateral = 1771551682497315102; // got from error message
-
-        uint256 positionId = foil.createTraderPosition(
-            epochId,
-            requiredCollateral,
-            1 ether,
-            0
-        );
-        vm.stopPrank();
-
-        Position.Data memory position = foil.getPosition(positionId);
-        assertEq(position.depositedCollateralAmount, requiredCollateral);
+        createAndSucceed(1771551682497315102, 1 ether);
     }
 
     function test_modifyTraderPosition_long_increase_RevertIf_notEnoughCollateral()
         public
     {
-        vm.startPrank(trader1);
-        prepareLongPosition();
-
-        uint256 requiredCollateral = 3543104861549130612; // got from error message
-        uint256 sentCollateral = requiredCollateral - 1;
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Errors.InsufficientCollateral.selector,
-                requiredCollateral,
-                sentCollateral
-            )
-        );
-        foil.createTraderPosition(epochId, sentCollateral, 2 ether, 0);
-
-        vm.stopPrank();
+        modifyAndRevert(3543103863846094311, true, 2 ether);
     }
 
     function test_modifyTraderPosition_long_increase_enoughCollateral() public {
-        vm.startPrank(trader1);
-        prepareLongPosition();
-
-        uint256 requiredCollateral = 3543104861549130612; // got from error message
-
-        uint256 positionId = foil.createTraderPosition(
-            epochId,
-            requiredCollateral,
-            2 ether,
-            0
-        );
-        vm.stopPrank();
-
-        Position.Data memory position = foil.getPosition(positionId);
-        assertEq(position.depositedCollateralAmount, requiredCollateral);
+        modifyAndSucceed(3543103863846094311, true, 2 ether);
     }
 
     function test_modifyTraderPosition_long_reduce_RevertIf_notEnoughCollateral()
         public
     {
-        vm.startPrank(trader1);
-        prepareLongPosition();
-
-        uint256 requiredCollateral = 885776028317949837; // got from error message
-        uint256 sentCollateral = requiredCollateral - 1;
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Errors.InsufficientCollateral.selector,
-                requiredCollateral,
-                sentCollateral
-            )
-        );
-        foil.createTraderPosition(epochId, sentCollateral, 0.5 ether, 0);
-        vm.stopPrank();
+        modifyAndRevert(920138458771431266, true, 0.5 ether);
     }
 
     function test_modifyTraderPosition_long_reduce_enoughCollateral() public {
-        vm.startPrank(trader1);
-        prepareLongPosition();
-
-        uint256 requiredCollateral = 885776028317949837; // got from error message
-
-        uint256 positionId = foil.createTraderPosition(
-            epochId,
-            requiredCollateral,
-            0.5 ether,
-            0
-        );
-        vm.stopPrank();
-
-        Position.Data memory position = foil.getPosition(positionId);
-        assertEq(position.depositedCollateralAmount, requiredCollateral);
+        modifyAndSucceed(920138458771431266, true, 0.5 ether);
     }
 
     function test_modifyTraderPosition_long_cross_RevertIf_notEnoughCollateral()
         public
     {
-        vm.startPrank(trader1);
-        prepareLongPosition();
-
-        // TODO check why this is less than just opening a short 1 ether position. This is wrong
-        // It should be 13728525675004143763 or more, not less
-        uint256 requiredCollateral = 13728525186079929197; // got from error message
-
-        uint256 sentCollateral = requiredCollateral - 1;
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Errors.InsufficientCollateral.selector,
-                requiredCollateral,
-                sentCollateral
-            )
-        );
-
-        foil.createTraderPosition(epochId, sentCollateral, -1 ether, 0);
-        vm.stopPrank();
+        modifyAndRevert(13728525670114902142, true, -1 ether);
     }
 
     function test_modifyTraderPosition_long_cross_enoughCollateral() public {
-        vm.startPrank(trader1);
-        prepareLongPosition();
-
-        uint256 requiredCollateral = 13728525186079929197; // got from error message
-
-        uint256 positionId = foil.createTraderPosition(
-            epochId,
-            requiredCollateral,
-            -1 ether,
-            0
-        );
-        vm.stopPrank();
-
-        Position.Data memory position = foil.getPosition(positionId);
-        assertEq(position.depositedCollateralAmount, requiredCollateral);
+        modifyAndSucceed(13728525670114902142, true, -1 ether);
     }
 
     function test_createTraderPosition_short_RevertIf_notEnoughCollateral()
         public
     {
-        vm.startPrank(trader1);
-
-        uint256 requiredCollateral = 13728525675004143763; // got from error message
-        uint256 sentCollateral = requiredCollateral - 1;
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Errors.InsufficientCollateral.selector,
-                requiredCollateral,
-                sentCollateral
-            )
-        );
-        foil.createTraderPosition(epochId, sentCollateral, -1 ether, 0);
-        vm.stopPrank();
+        createAndRevert(13728525675004143763, -1 ether);
     }
 
     function test_createTraderPosition_short_enoughCollateral() public {
-        vm.startPrank(trader1);
-
-        uint256 requiredCollateral = 13728525675004143763; // got from error message
-
-        uint256 positionId = foil.createTraderPosition(
-            epochId,
-            requiredCollateral,
-            -1 ether,
-            0
-        );
-        vm.stopPrank();
-
-        Position.Data memory position = foil.getPosition(positionId);
-        assertEq(position.depositedCollateralAmount, requiredCollateral);
+        createAndSucceed(13728525675004143763, -1 ether);
     }
 
     function test_modifyTraderPosition_short_increase_RevertIf_notEnoughCollateral()
         public
     {
-        vm.startPrank(trader1);
-        prepareShortPosition();
-
-        uint256 requiredCollateral = 27457052802112787907; // got from error message
-        uint256 sentCollateral = requiredCollateral - 1;
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Errors.InsufficientCollateral.selector,
-                requiredCollateral,
-                sentCollateral
-            )
-        );
-
-        foil.createTraderPosition(epochId, sentCollateral, -2.0 ether, 0);
-        vm.stopPrank();
+        modifyAndRevert(27457051834043155596, false, -2 ether);
     }
 
     function test_modifyTraderPosition_short_increase_enoughCollateral()
         public
     {
-        vm.startPrank(trader1);
-        prepareShortPosition();
-
-        uint256 requiredCollateral = 27457052802112787907; // got from error message
-
-        uint256 positionId = foil.createTraderPosition(
-            epochId,
-            requiredCollateral,
-            -2.0 ether,
-            0
-        );
-        vm.stopPrank();
-
-        Position.Data memory position = foil.getPosition(positionId);
-        assertEq(position.depositedCollateralAmount, requiredCollateral);
+        modifyAndSucceed(27457051834043155596, false, -2 ether);
     }
 
-    function test_modifyTraderPosition_short_reduce_RevertIf_notEnoughCollateral()
+    function test_modifyTraderPosition_short_reduce_RevertIf_notEnoughCollatera()
         public
     {
-        vm.startPrank(trader1);
-        prepareShortPosition();
-
-        uint256 requiredCollateral = 6864263019015153897; // got from error message
-        uint256 sentCollateral = requiredCollateral - 1;
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Errors.InsufficientCollateral.selector,
-                requiredCollateral,
-                sentCollateral
-            )
-        );
-
-        foil.createTraderPosition(epochId, sentCollateral, -0.5 ether, 0);
-        vm.stopPrank();
+        modifyAndRevert(6898625450703496607, false, -0.5 ether);
     }
 
     function test_modifyTraderPosition_short_reduce_enoughCollateral() public {
-        vm.startPrank(trader1);
-        prepareShortPosition();
-
-        uint256 requiredCollateral = 6864263019015153897; // got from error message
-
-        uint256 positionId = foil.createTraderPosition(
-            epochId,
-            requiredCollateral,
-            -0.5 ether,
-            0
-        );
-        vm.stopPrank();
-
-        Position.Data memory position = foil.getPosition(positionId);
-        assertEq(position.depositedCollateralAmount, requiredCollateral);
+        modifyAndSucceed(6898625450703496607, false, -0.5 ether);
     }
 
     function test_modifyTraderPosition_short_cross_RevertIf_notEnoughCollateral()
         public
     {
-        vm.startPrank(trader1);
-        prepareShortPosition();
+        modifyAndRevert(1771551687485829208, false, 1 ether);
+    }
 
-        // TODO check why this is less than just opening a long 1 ether position. This is wrong
-        // It should be 1771551682497315102
-        uint256 requiredCollateral = 1771551188634472106; // got from error message
+    function test_modifyTraderPosition_short_cross_enoughCollateral() public {
+        modifyAndSucceed(1771551687485829208, false, 1 ether);
+    }
+
+    // TODO
+    function test_modifyTraderPosition_long_edge_reduceWithGains() public {}
+
+    function createAndRevert(uint requiredCollateral, int size) internal {
+        vm.startPrank(trader1);
+
         uint256 sentCollateral = requiredCollateral - 1;
 
         vm.expectRevert(
@@ -345,21 +155,17 @@ contract TradePositionCollateral is TradeTestHelper {
                 sentCollateral
             )
         );
-
-        foil.createTraderPosition(epochId, sentCollateral, 1 ether, 0);
+        foil.createTraderPosition(epochId, sentCollateral, size, 0);
         vm.stopPrank();
     }
 
-    function test_modifyTraderPosition_short_cross_enoughCollateral() public {
+    function createAndSucceed(uint requiredCollateral, int size) internal {
         vm.startPrank(trader1);
-        prepareShortPosition();
-
-        uint256 requiredCollateral = 1771551188634472106; // got from error message
 
         uint256 positionId = foil.createTraderPosition(
             epochId,
             requiredCollateral,
-            1 ether,
+            size,
             0
         );
         vm.stopPrank();
@@ -368,28 +174,72 @@ contract TradePositionCollateral is TradeTestHelper {
         assertEq(position.depositedCollateralAmount, requiredCollateral);
     }
 
-    // TODO
-    function test_modifyTraderPosition_long_edge_reduceWithGains() public {}
+    function modifyAndRevert(
+        uint requiredCollateral,
+        bool initialPositionIsLong,
+        int256 newPositionSize
+    ) internal {
+        vm.startPrank(trader1);
+        uint256 positionId = createInitialPosition(initialPositionIsLong);
 
-    function prepareLongPosition() internal {
-        uint256 requiredCollateral = 1771551682497315102; // got from error message
+        uint256 sentCollateral = requiredCollateral - 1;
 
-        uint256 positionId = foil.createTraderPosition(
-            epochId,
-            requiredCollateral,
-            1 ether,
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Errors.InsufficientCollateral.selector,
+                requiredCollateral,
+                sentCollateral
+            )
+        );
+        foil.modifyTraderPosition(
+            positionId,
+            sentCollateral,
+            newPositionSize,
             0
         );
+
+        vm.stopPrank();
     }
 
-    function prepareShortPosition() internal {
-        uint256 requiredCollateral = 13728525675004143763; // got from error message
+    function modifyAndSucceed(
+        uint requiredCollateral,
+        bool initialPositionIsLong,
+        int256 newPositionSize
+    ) internal {
+        vm.startPrank(trader1);
+        uint256 positionId = createInitialPosition(initialPositionIsLong);
+        Position.Data memory position = foil.getPosition(positionId);
+        uint256 preBorrowedEth = position.borrowedVEth;
+        int256 preSize = position.currentTokenAmount;
 
-        uint256 positionId = foil.createTraderPosition(
+        foil.modifyTraderPosition(
+            positionId,
+            requiredCollateral,
+            newPositionSize,
+            0
+        );
+        vm.stopPrank();
+
+        position = foil.getPosition(positionId);
+        assertEq(position.depositedCollateralAmount, requiredCollateral);
+    }
+
+    function createInitialPosition(
+        bool initialPositionIsLong
+    ) internal returns (uint256 positionId) {
+        uint256 requiredCollateral = initialPositionIsLong
+            ? 1771551682497315102
+            : 13728525675004143763;
+        int256 size = initialPositionIsLong
+            ? int256(1 ether)
+            : int256(-1 ether);
+
+        positionId = foil.createTraderPosition(
             epochId,
             requiredCollateral,
-            -1 ether,
+            size,
             0
+            // initialPositionIsLong ? int256(1) : int256(-1) // almost no slippage protection, we want to test it later
         );
     }
 }

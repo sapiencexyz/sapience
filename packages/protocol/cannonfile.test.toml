@@ -1,6 +1,12 @@
 name="foil-test"
 version="0.1"
 
+[clone.UMA]
+source="uma-oov3"
+target="foil@uma-mock"
+options.defaultCurrency = "<%= BondCurrency.Token.address %>"
+options.minimumBond = "0"
+
 [clone.Uniswap]
 source="uniswap"
 target="foil@uniswap"
@@ -16,14 +22,12 @@ target="foil@test-bond-currency"
 var.symbol="USDC"
 var.decimals = "6"
 
-[clone.UMA]
-source="uma-oov3"
-target="foil@uma-mock"
-options.defaultCurrency = "<%= BondCurrency.Token.address %>"
-options.minimumBond = "0"
+[deploy.ReentrancyGuard]
+artifact = "ReentrancyGuard"
 
 [deploy.EpochConfigurationModule]
 artifact="EpochConfigurationModule"
+libraries.ReentrancyGuard="<%= contracts.ReentrancyGuard.address %>"
 
 [deploy.EpochLiquidityModule]
 artifact="EpochLiquidityModule"
