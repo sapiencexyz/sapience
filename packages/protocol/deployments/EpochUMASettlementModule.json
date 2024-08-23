@@ -1,5 +1,5 @@
 {
-  "address": "0xE236F0E82759266a19e66b6aea6143FC98Edd3fA",
+  "address": "0x66b42caE326051B17bd5DFfA6f17AD67F41ccd1e",
   "abi": [
     {
       "type": "function",
@@ -127,18 +127,23 @@
     },
     {
       "type": "error",
+      "name": "InvalidEpoch",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "ReentrancyGuardReentrantCall",
       "inputs": []
     }
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x15596ec7f06b487131db69ed96dbba075b76293b98d44468a0922d2dfd527d05",
+  "deployTxnHash": "0xfee7c7e8121891e367eba4b69bfaf57cf1ef7be84e61ed2d21d97db6dea6d3a2",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1724358995",
+  "deployTimestamp": "1724378160",
   "sourceName": "src/contracts/modules/EpochUMASettlementModule.sol",
   "contractName": "EpochUMASettlementModule",
   "deployedOn": "deploy.EpochUMASettlementModule",
-  "gasUsed": 712543,
+  "gasUsed": 724842,
   "gasCost": "1000337295"
 }

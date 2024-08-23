@@ -849,7 +849,7 @@
   "linkedLibraries": {},
   "deployTxnHash": "0x15ab7b1a5cdc9aefd42f8f1cdd9a248f3d44814122d6ef9d3b919556fc296ffb",
   "deployTxnBlockNumber": "6",
-  "deployTimestamp": "1724359007",
+  "deployTimestamp": "1724378173",
   "sourceName": "src/UMA/src/OptimisticOracleV3.sol",
   "contractName": "OptimisticOracleV3",
   "deployedOn": "deploy.OptimisticOracleV3",

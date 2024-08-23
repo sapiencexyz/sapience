@@ -1,5 +1,5 @@
 {
-  "address": "0xfd5a23f946a7bed0832a0a7e5c7ae118dc05b263",
+  "address": "0x374161095f85fe3066299311eebf8210ebe42884",
   "abi": [
     {
       "type": "function",
@@ -856,6 +856,11 @@
         }
       ],
       "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "InvalidEpoch",
+      "inputs": []
     },
     {
       "type": "function",
@@ -1847,11 +1852,11 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0x391993a4dd0d967b552a2202e3038c728596193c29a07dbd803c64349e911191",
+  "deployTxnHash": "0xcf379802343889778e3aec8d6bfa5cef867193900d6297a9689e0c3772270424",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1724359002",
+  "deployTimestamp": "1724378167",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
   "gasUsed": 461328,
-  "gasCost": "1000116686"
+  "gasCost": "1000116700"
 }
