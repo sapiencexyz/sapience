@@ -8,8 +8,6 @@ import {SafeCastI256} from "../../synthetix/utils/SafeCast.sol";
 import {SafeCastU256} from "../../synthetix/utils/SafeCast.sol";
 import {IEpochTradeModule} from "../interfaces/IEpochTradeModule.sol";
 
-// import "forge-std/console2.sol";
-
 /**
  * @title Module for trade positions.
  * @dev See IEpochTradeModule.
@@ -43,19 +41,9 @@ contract EpochTradeModule is IEpochTradeModule {
         position.kind = IFoilStructs.PositionKind.Trade;
 
         if (tokenAmount > 0) {
-            _createLongPosition(
-                position,
-                collateralAmount,
-                tokenAmount,
-                tokenAmountLimit
-            );
+            _createLongPosition(position, tokenAmount, tokenAmountLimit);
         } else {
-            _createShortPosition(
-                position,
-                collateralAmount,
-                tokenAmount,
-                tokenAmountLimit
-            );
+            _createShortPosition(position, tokenAmount, tokenAmountLimit);
         }
 
         position.updateCollateral(
@@ -97,19 +85,9 @@ contract EpochTradeModule is IEpochTradeModule {
 
         // Notice: if/else won't enter on tokenAmount == 0 since it's already closed
         if (tokenAmount > 0) {
-            _modifyLongPosition(
-                position,
-                collateralAmount,
-                tokenAmount,
-                tokenAmountLimit
-            );
+            _modifyLongPosition(position, tokenAmount, tokenAmountLimit);
         } else if (tokenAmount < 0) {
-            _modifyShortPosition(
-                position,
-                collateralAmount,
-                tokenAmount,
-                tokenAmountLimit
-            );
+            _modifyShortPosition(position, tokenAmount, tokenAmountLimit);
         }
 
         position.updateCollateral(
@@ -153,14 +131,10 @@ contract EpochTradeModule is IEpochTradeModule {
         Fee = Fee as D18 1/100 (1% in uni is 1000) => fee * 1e12
         */
         uint256 price = getReferencePrice(epochId);
-        console2.log("price", price);
         uint256 lowestPrice = Epoch.load(epochId).minPriceD18;
-        console2.log("lowestPrice", lowestPrice);
         uint256 fee = uint256(Epoch.load(epochId).params.feeRate) * 1e12; // scaled to 1e18 fee
-        console2.log("fee", fee);
 
         uint256 K = (price + lowestPrice).mulDecimal(fee);
-        console2.log("K", K);
         positionSize = collateral.divDecimal(price - lowestPrice + K);
 
         return positionSize;
@@ -203,7 +177,6 @@ contract EpochTradeModule is IEpochTradeModule {
      */
     function _createLongPosition(
         Position.Data storage position,
-        uint256 collateralAmount,
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) internal {
@@ -259,7 +232,6 @@ contract EpochTradeModule is IEpochTradeModule {
      */
     function _createShortPosition(
         Position.Data storage position,
-        uint256 collateralAmount,
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) internal {
@@ -279,18 +251,12 @@ contract EpochTradeModule is IEpochTradeModule {
             epochId: position.epochId,
             amountInVEth: 0,
             amountInVGas: (tokenAmount * -1).toUint(),
-            amountOutLimitVEth: 0,
-            amountOutLimitVGas: (tokenAmountLimit * -1).toUint()
+            amountOutLimitVEth: (tokenAmountLimit * -1).toUint(),
+            amountOutLimitVGas: 0
         });
-        (uint256 tokenAmountVEth, uint256 tokenAmountVGas) = swapTokensExactIn(
-            params
-        );
+        (uint256 tokenAmountVEth, ) = swapTokensExactIn(params);
 
-        position.updateBalance(
-            tokenAmount,
-            tokenAmountVEth.toInt(),
-            tokenAmountVGas.toInt()
-        );
+        position.updateBalance(tokenAmount, tokenAmountVEth.toInt(), 0);
     }
 
     /**
@@ -315,7 +281,6 @@ contract EpochTradeModule is IEpochTradeModule {
      */
     function _modifyLongPosition(
         Position.Data storage position,
-        uint256 collateralAmount,
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) internal {
@@ -324,8 +289,6 @@ contract EpochTradeModule is IEpochTradeModule {
                 "Long Position: Invalid tokenAmount or tokenAmountLimit"
             );
         }
-
-        // TODO check if after settlement and use the settlement price
 
         if (tokenAmount > position.currentTokenAmount) {
             // Increase the position (LONG)
@@ -350,18 +313,14 @@ contract EpochTradeModule is IEpochTradeModule {
             (
                 uint256 refundAmountVEth,
                 ,
-                uint256 tokenAmountVEth,
+                ,
                 uint256 tokenAmountVGas
             ) = swapTokensExactOut(params);
             // Adjust the delta loan with the refund
             vEthToSwap -= refundAmountVEth;
             position.borrowedVEth += vEthToSwap;
 
-            position.updateBalance(
-                delta.toInt(),
-                tokenAmountVEth.toInt(),
-                tokenAmountVGas.toInt()
-            );
+            position.updateBalance(delta.toInt(), 0, tokenAmountVGas.toInt());
         } else {
             // Reduce the position (LONG)
             // Need to sell vGas and use it to pay the debt
@@ -373,7 +332,7 @@ contract EpochTradeModule is IEpochTradeModule {
                 epochId: position.epochId,
                 amountInVEth: 0,
                 amountInVGas: (delta * -1).toUint(),
-                amountOutLimitVEth: 0,
+                amountOutLimitVEth: tokenAmountLimit.toUint(),
                 amountOutLimitVGas: 0
             });
 
@@ -394,7 +353,6 @@ contract EpochTradeModule is IEpochTradeModule {
 
             position.updateBalance(delta, deltaEth, delta);
         }
-
     }
 
     /**
@@ -405,7 +363,6 @@ contract EpochTradeModule is IEpochTradeModule {
      * With collateral get vGas (Loan)
      * With delta tokenAmount vGas get vEth (Swap)
      * End result:
-     * - account.depositedCollateralAmount += depositedCollateralAmount
      * - account.borrowedVGas += vGasLoan
      * - position.tokenGweiAmount += vEth from swap
      *
@@ -419,25 +376,26 @@ contract EpochTradeModule is IEpochTradeModule {
      */
     function _modifyShortPosition(
         Position.Data storage position,
-        uint256 collateralAmount,
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) internal {
         // TODO check if after settlement and use the settlement price
+        uint256 tokenAmountAbs = (tokenAmount * -1).toUint();
+        uint256 tokenAmountLimitAbs = (tokenAmountLimit * -1).toUint();
+        uint256 currentTokenAmountAbs = (position.currentTokenAmount * -1)
+            .toUint();
+        console2.log("tokenAmountAbs", tokenAmountAbs);
+        console2.log("tokenAmountLimitAbs", tokenAmountLimitAbs);
+        console2.log("currentTokenAmountAbs", currentTokenAmountAbs);
 
         if (tokenAmount < position.currentTokenAmount) {
             // Increase the position (SHORT)
 
-            int256 delta = (tokenAmount - position.currentTokenAmount);
-            int256 deltaLimit;
-            if (tokenAmountLimit >= position.currentTokenAmount) {
-                deltaLimit = 0;
-            } else {
-                deltaLimit = (tokenAmountLimit - position.currentTokenAmount);
-            }
+            uint256 delta = tokenAmountAbs - currentTokenAmountAbs;
+            console2.log("delta", delta);
 
             // with the collateral get vGas (Loan)
-            uint256 vGasLoan = (delta * -1).toUint();
+            uint256 vGasLoan = delta;
             position.borrowedVGas += vGasLoan;
 
             SwapTokensExactInParams memory params = SwapTokensExactInParams({
@@ -445,19 +403,17 @@ contract EpochTradeModule is IEpochTradeModule {
                 amountInVEth: 0,
                 amountInVGas: vGasLoan,
                 amountOutLimitVEth: 0,
-                amountOutLimitVGas: (deltaLimit * -1).toUint()
+                amountOutLimitVGas: tokenAmountLimitAbs
             });
 
             // with the vGas get vEth (Swap)
-            (
-                uint256 tokenAmountVEth,
-                uint256 tokenAmountVGas
-            ) = swapTokensExactIn(params);
+            (uint256 tokenAmountVEth, ) = swapTokensExactIn(params);
+            console2.log("tokenAmountVEth", tokenAmountVEth);
 
             position.updateBalance(
-                delta,
+                delta.toInt() * -1,
                 tokenAmountVEth.toInt(),
-                tokenAmountVGas.toInt()
+                0
             );
         } else {
             // Decrease the position (SHORT)
@@ -475,12 +431,7 @@ contract EpochTradeModule is IEpochTradeModule {
             });
 
             // with the vEth get vGas (Swap)
-            (
-                uint256 refundAmountVEth,
-                uint256 refundAmountVGas,
-                uint256 tokenAmountVEth,
-                uint256 tokenAmountVGas
-            ) = swapTokensExactOut(params);
+            (uint256 refundAmountVEth, , , ) = swapTokensExactOut(params);
 
             position.updateBalance(
                 -delta,
@@ -735,23 +686,25 @@ contract EpochTradeModule is IEpochTradeModule {
             address tokenIn;
             address tokenOut;
             uint256 amountOut;
-            uint160 sqrtPriceLimitX96;
+            // uint160 sqrtPriceLimitX96;
+            uint256 amountInMaximum;
 
             if (params.expectedAmountOutVEth > 0) {
                 tokenIn = address(epoch.gasToken);
                 tokenOut = address(epoch.ethToken);
                 amountOut = params.expectedAmountOutVEth;
-                sqrtPriceLimitX96 = params.amountInLimitVGas;
+                amountInMaximum = params.amountInLimitVGas == 0
+                    ? type(uint256).max
+                    : params.amountInLimitVGas;
             } else {
                 tokenIn = address(epoch.ethToken);
                 tokenOut = address(epoch.gasToken);
                 amountOut = params.expectedAmountOutVGas;
-                sqrtPriceLimitX96 = params.amountInLimitVEth; // TODO use the input param
+                amountInMaximum = params.amountInLimitVEth == 0
+                    ? type(uint256).max
+                    : params.amountInLimitVEth;
             }
 
-            // TODO amountInMaximum and sqrtPriceLimitX96 should be passed as param to prevent slippage
-            // TODO -- Naively set amountInMaximum to maxUint . In production, use an oracle or other data source to choose a safer value for amountOutMinimum.
-            // TODO -- We also set the sqrtPriceLimitx96 to be 0 to ensure we swap our exact input amount.
             ISwapRouter.ExactOutputSingleParams memory swapParams = ISwapRouter
                 .ExactOutputSingleParams({
                     tokenIn: tokenIn,
@@ -760,8 +713,8 @@ contract EpochTradeModule is IEpochTradeModule {
                     recipient: address(this),
                     deadline: block.timestamp,
                     amountOut: amountOut,
-                    amountInMaximum: type(uint256).max,
-                    sqrtPriceLimitX96: sqrtPriceLimitX96
+                    amountInMaximum: amountInMaximum,
+                    sqrtPriceLimitX96: 0
                 });
 
             uint256 amountIn = market.uniswapSwapRouter.exactOutputSingle(
