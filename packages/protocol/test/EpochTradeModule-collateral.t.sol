@@ -61,6 +61,7 @@ contract TradePositionCollateral is TradeTestHelper {
     function test_createTraderPosition_long_RevertIf_NotEnoughCollateral()
         public
     {
+        // -> 1 ether here means I want 1e18 vGAS
         createAndRevert(1771551682497315102, 1 ether);
     }
 

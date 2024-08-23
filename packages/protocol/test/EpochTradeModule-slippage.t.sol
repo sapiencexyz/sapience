@@ -103,18 +103,17 @@ contract TradePositionSlippage is TradeTestHelper {
         modifyAndSucceed(1 ether, .5 ether, requested);
     }
 
-    // TODO
-    function test_createTraderPosition_long_cross_RevertIf_SlippageFails_Only()
+    function test_createTraderPosition_long_cross_RevertIf_SlippageFails()
         public
     {
-        // int256 requested = -1 * (baseRequestedAmount - baseFee);
-        // modifyAndRevert(1 ether, -1 ether, requested, false);
+        int256 requested = -1 * (baseRequestedAmount - baseFee);
+        modifyAndRevert(1 ether, -1 ether, requested, false);
     }
 
-    // TODO
-    function test_createTraderPosition_long_cross_SlippageSucceds_Only()
-        public
-    {}
+    function test_createTraderPosition_long_cross_SlippageSucceds() public {
+        int256 requested = -1 * (baseRequestedAmount - baseFee - baseSlippage);
+        modifyAndSucceed(1 ether, -1 ether, requested);
+    }
 
     function test_createTraderPosition_short_RevertIf_SlippageFails() public {
         int256 requested = -1 * (baseRequestedAmount - baseFee);
@@ -122,45 +121,46 @@ contract TradePositionSlippage is TradeTestHelper {
     }
 
     function test_createTraderPosition_short_SlippageSucceds() public {
-        int256 requested = -1 * (baseRequestedAmount - baseFee) + baseSlippage;
+        int256 requested = -1 * (baseRequestedAmount - baseFee - baseSlippage);
         createAndSucceed(-1 ether, requested);
     }
 
-    // TODO
-    function test_createTraderPosition_short_increase_RevertIf_SlippageFails_Only()
+    function test_createTraderPosition_short_increase_RevertIf_SlippageFails()
         public
     {
-        // int256 requested = -1 * (baseRequestedAmount - baseFee);
-        // modifyAndRevert(-1 ether, -2 ether, requested, false);
+        int256 requested = -1 * (baseRequestedAmount - baseFee);
+        modifyAndRevert(-1 ether, -2 ether, requested, false);
     }
 
-    // TODO
-    function test_createTraderPosition_short_increase_SlippageSucceds_Only_Skip()
+    function test_createTraderPosition_short_increase_SlippageSucceds() public {
+        int256 requested = -1 * (baseRequestedAmount - baseFee - baseSlippage);
+        modifyAndSucceed(-1 ether, -2 ether, requested);
+    }
+
+    function test_createTraderPosition_short_reduce_RevertIf_SlippageFails()
         public
     {
-        // int256 requested = -1 * (baseRequestedAmount - baseFee);
-        // modifyAndSucceed(-1 ether, -2 ether, requested);
+        int256 requested = (-1 * (baseRequestedAmount + baseFee)) / 2;
+        modifyAndRevert(-1 ether, -0.5 ether, requested, true);
     }
 
-    // TODO
-    function test_createTraderPosition_short_reduce_RevertIf_SlippageFails_Only()
-        public
-    {}
+    function test_createTraderPosition_short_reduce_SlippageSucceds() public {
+        int256 requested = (-1 *
+            (baseRequestedAmount + baseFee + baseSlippage)) / 2;
+        modifyAndSucceed(-1 ether, -0.5 ether, requested);
+    }
 
-    // TODO
-    function test_createTraderPosition_short_reduce_SlippageSucceds_Only()
+    function test_createTraderPosition_short_cross_RevertIf_SlippageFails()
         public
-    {}
+    {
+        int256 requested = baseRequestedAmount + baseFee;
+        modifyAndRevert(-1 ether, 1 ether, requested, true);
+    }
 
-    // TODO
-    function test_createTraderPosition_short_cross_RevertIf_SlippageFails_Only()
-        public
-    {}
-
-    // TODO
-    function test_createTraderPosition_short_cross_SlippageSucceds_Only()
-        public
-    {}
+    function test_createTraderPosition_short_cross_SlippageSucceds() public {
+        int256 requested = baseRequestedAmount + baseFee + baseSlippage;
+        modifyAndSucceed(-1 ether, 1 ether, requested);
+    }
 
     function createAndRevert(
         int256 size,
@@ -240,7 +240,6 @@ contract TradePositionSlippage is TradeTestHelper {
         Position.Data memory position = foil.getPosition(positionId);
         uint256 preBorrowedEth = position.borrowedVEth;
         int256 preSize = position.currentTokenAmount;
-        logPositionAndAccount(foil, positionId);
 
         uint256 sentCollateral = (
             newPositionSize > 0
@@ -257,8 +256,6 @@ contract TradePositionSlippage is TradeTestHelper {
         vm.stopPrank();
 
         position = foil.getPosition(positionId);
-
-        logPositionAndAccount(foil, positionId);
 
         if (newPositionSize > 0) {
             if (position.borrowedVEth > preBorrowedEth) {

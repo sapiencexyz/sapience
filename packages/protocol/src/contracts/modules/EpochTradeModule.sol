@@ -384,15 +384,11 @@ contract EpochTradeModule is IEpochTradeModule {
         uint256 tokenAmountLimitAbs = (tokenAmountLimit * -1).toUint();
         uint256 currentTokenAmountAbs = (position.currentTokenAmount * -1)
             .toUint();
-        console2.log("tokenAmountAbs", tokenAmountAbs);
-        console2.log("tokenAmountLimitAbs", tokenAmountLimitAbs);
-        console2.log("currentTokenAmountAbs", currentTokenAmountAbs);
 
         if (tokenAmount < position.currentTokenAmount) {
             // Increase the position (SHORT)
 
             uint256 delta = tokenAmountAbs - currentTokenAmountAbs;
-            console2.log("delta", delta);
 
             // with the collateral get vGas (Loan)
             uint256 vGasLoan = delta;
@@ -402,13 +398,12 @@ contract EpochTradeModule is IEpochTradeModule {
                 epochId: position.epochId,
                 amountInVEth: 0,
                 amountInVGas: vGasLoan,
-                amountOutLimitVEth: 0,
-                amountOutLimitVGas: tokenAmountLimitAbs
+                amountOutLimitVEth: tokenAmountLimitAbs,
+                amountOutLimitVGas: 0
             });
 
             // with the vGas get vEth (Swap)
             (uint256 tokenAmountVEth, ) = swapTokensExactIn(params);
-            console2.log("tokenAmountVEth", tokenAmountVEth);
 
             position.updateBalance(
                 delta.toInt() * -1,
@@ -417,24 +412,24 @@ contract EpochTradeModule is IEpochTradeModule {
             );
         } else {
             // Decrease the position (SHORT)
-            int256 delta = (position.currentTokenAmount - tokenAmount);
-            position.borrowedVGas -= (delta * -1).toUint();
+            uint256 delta = currentTokenAmountAbs - tokenAmountAbs;
+            position.borrowedVGas -= delta;
 
             SwapTokensExactOutParams memory params = SwapTokensExactOutParams({
                 epochId: position.epochId,
                 availableAmountInVEth: position.vEthAmount,
                 availableAmountInVGas: 0,
-                amountInLimitVEth: 0,
+                amountInLimitVEth: tokenAmountLimitAbs.to160(),
                 amountInLimitVGas: 0,
                 expectedAmountOutVEth: 0,
-                expectedAmountOutVGas: (delta * -1).toUint()
+                expectedAmountOutVGas: delta
             });
 
             // with the vEth get vGas (Swap)
             (uint256 refundAmountVEth, , , ) = swapTokensExactOut(params);
 
             position.updateBalance(
-                -delta,
+                delta.toInt(),
                 -(position.vEthAmount - refundAmountVEth).toInt(),
                 0
             );
