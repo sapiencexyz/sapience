@@ -32,7 +32,7 @@ interface IEpochLiquidityModule {
     );
 
     function createLiquidityPosition(
-        IFoilStructs.LiquidityPositionParams memory params
+        IFoilStructs.LiquidityMintParams memory params
     )
         external
         returns (

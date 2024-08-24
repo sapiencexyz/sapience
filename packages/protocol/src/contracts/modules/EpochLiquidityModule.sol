@@ -14,7 +14,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
     using Epoch for Epoch.Data;
 
     function createLiquidityPosition(
-        IFoilStructs.LiquidityPositionParams memory params
+        IFoilStructs.LiquidityMintParams memory params
     )
         external
         override
@@ -39,24 +39,23 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
             params.collateralAmount
         );
 
-        INonfungiblePositionManager.MintParams
-            memory mintParams = INonfungiblePositionManager.MintParams({
-                token0: address(epoch.gasToken),
-                token1: address(epoch.ethToken),
-                fee: epoch.params.feeRate,
-                tickLower: params.lowerTick,
-                tickUpper: params.upperTick,
-                amount0Desired: params.amountTokenA,
-                amount1Desired: params.amountTokenB,
-                amount0Min: params.minAmountTokenA,
-                amount1Min: params.minAmountTokenB,
-                recipient: address(this),
-                deadline: block.timestamp
-            });
-
         (uniswapNftId, liquidity, addedAmount0, addedAmount1) = market
             .uniswapPositionManager
-            .mint(mintParams);
+            .mint(
+                INonfungiblePositionManager.MintParams({
+                    token0: address(epoch.gasToken),
+                    token1: address(epoch.ethToken),
+                    fee: epoch.params.feeRate,
+                    tickLower: params.lowerTick,
+                    tickUpper: params.upperTick,
+                    amount0Desired: params.amountTokenA,
+                    amount1Desired: params.amountTokenB,
+                    amount0Min: params.minAmountTokenA,
+                    amount1Min: params.minAmountTokenB,
+                    recipient: address(this),
+                    deadline: block.timestamp
+                })
+            );
 
         position.updateValidLp(
             epoch,
@@ -143,9 +142,9 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
         );
 
         emit LiquidityPositionDecreased(
-            position.tokenId,
-            collateralAmount,
-            liquidity,
+            position.id,
+            params.collateralAmount,
+            params.liquidity,
             amount0,
             amount1
         );
@@ -212,7 +211,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
 
         emit LiquidityPositionIncreased(
             position.id,
-            collateralAmount,
+            params.collateralAmount,
             liquidity,
             amount0,
             amount1

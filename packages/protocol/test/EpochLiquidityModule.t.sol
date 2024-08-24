@@ -61,7 +61,7 @@ contract CreateLiquidityPosition is TestEpoch {
             uint256 addedAmount0,
             uint256 addedAmount1
         ) = foil.createLiquidityPosition(
-                IFoilStructs.LiquidityPositionParams({
+                IFoilStructs.LiquidityMintParams({
                     epochId: epochId,
                     amountTokenA: loanAmount0,
                     amountTokenB: loanAmount1,

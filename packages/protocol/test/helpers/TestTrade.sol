@@ -229,8 +229,8 @@ contract TestTrade is TestEpoch {
                 upperTick
             );
 
-        IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
-            .LiquidityPositionParams({
+        IFoilStructs.LiquidityMintParams memory params = IFoilStructs
+            .LiquidityMintParams({
                 epochId: epochId,
                 amountTokenA: amountTokenA,
                 amountTokenB: amountTokenB,

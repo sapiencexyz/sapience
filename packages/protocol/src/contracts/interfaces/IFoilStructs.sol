@@ -7,7 +7,7 @@ interface IFoilStructs {
         Liquidity,
         Trade
     }
-    struct LiquidityPositionParams {
+    struct LiquidityMintParams {
         uint256 epochId;
         uint256 amountTokenA;
         uint256 amountTokenB;
