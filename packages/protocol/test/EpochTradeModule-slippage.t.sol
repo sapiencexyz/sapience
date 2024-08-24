@@ -79,38 +79,38 @@ contract TradePositionSlippage is TradeTestHelper {
         createAndSucceed(1 ether, requested);
     }
 
-    function test_createTraderPosition_long_increase_RevertIf_SlippageFails()
+    function test_modifyTraderPosition_long_increase_RevertIf_SlippageFails()
         public
     {
         int256 requested = baseRequestedAmount + baseFee; // it applies just to the delta
         modifyAndRevert(1 ether, 2 ether, requested, true);
     }
 
-    function test_createTraderPosition_long_increase_SlippageSucceds() public {
+    function test_modifyTraderPosition_long_increase_SlippageSucceds() public {
         int256 requested = baseRequestedAmount + baseFee + baseSlippage; // it applies just to the delta
         modifyAndSucceed(1 ether, 2 ether, requested);
     }
 
-    function test_createTraderPosition_long_reduce_RevertIf_SlippageFails()
+    function test_modifyTraderPosition_long_reduce_RevertIf_SlippageFails()
         public
     {
         int256 requested = ((baseRequestedAmount - baseFee) / 2) + baseSlippage; // it applies just to the delta
         modifyAndRevert(1 ether, .5 ether, requested, false);
     }
 
-    function test_createTraderPosition_long_reduce_SlippageSucceds() public {
+    function test_modifyTraderPosition_long_reduce_SlippageSucceds() public {
         int256 requested = ((baseRequestedAmount - baseFee) / 2); // it applies just to the delta
         modifyAndSucceed(1 ether, .5 ether, requested);
     }
 
-    function test_createTraderPosition_long_cross_RevertIf_SlippageFails()
+    function test_modifyTraderPosition_long_cross_RevertIf_SlippageFails()
         public
     {
         int256 requested = -1 * (baseRequestedAmount - baseFee);
         modifyAndRevert(1 ether, -1 ether, requested, false);
     }
 
-    function test_createTraderPosition_long_cross_SlippageSucceds() public {
+    function test_modifyTraderPosition_long_cross_SlippageSucceds() public {
         int256 requested = -1 * (baseRequestedAmount - baseFee - baseSlippage);
         modifyAndSucceed(1 ether, -1 ether, requested);
     }
@@ -125,39 +125,39 @@ contract TradePositionSlippage is TradeTestHelper {
         createAndSucceed(-1 ether, requested);
     }
 
-    function test_createTraderPosition_short_increase_RevertIf_SlippageFails()
+    function test_modifyTraderPosition_short_increase_RevertIf_SlippageFails()
         public
     {
         int256 requested = -1 * (baseRequestedAmount - baseFee);
         modifyAndRevert(-1 ether, -2 ether, requested, false);
     }
 
-    function test_createTraderPosition_short_increase_SlippageSucceds() public {
+    function test_modifyTraderPosition_short_increase_SlippageSucceds() public {
         int256 requested = -1 * (baseRequestedAmount - baseFee - baseSlippage);
         modifyAndSucceed(-1 ether, -2 ether, requested);
     }
 
-    function test_createTraderPosition_short_reduce_RevertIf_SlippageFails()
+    function test_modifyTraderPosition_short_reduce_RevertIf_SlippageFails()
         public
     {
         int256 requested = (-1 * (baseRequestedAmount + baseFee)) / 2;
         modifyAndRevert(-1 ether, -0.5 ether, requested, true);
     }
 
-    function test_createTraderPosition_short_reduce_SlippageSucceds() public {
+    function test_modifyTraderPosition_short_reduce_SlippageSucceds() public {
         int256 requested = (-1 *
             (baseRequestedAmount + baseFee + baseSlippage)) / 2;
         modifyAndSucceed(-1 ether, -0.5 ether, requested);
     }
 
-    function test_createTraderPosition_short_cross_RevertIf_SlippageFails()
+    function test_modifyTraderPosition_short_cross_RevertIf_SlippageFails()
         public
     {
         int256 requested = baseRequestedAmount + baseFee;
         modifyAndRevert(-1 ether, 1 ether, requested, true);
     }
 
-    function test_createTraderPosition_short_cross_SlippageSucceds() public {
+    function test_modifyTraderPosition_short_cross_SlippageSucceds() public {
         int256 requested = baseRequestedAmount + baseFee + baseSlippage;
         modifyAndSucceed(-1 ether, 1 ether, requested);
     }

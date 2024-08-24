@@ -194,7 +194,7 @@ library Epoch {
         }
     }
 
-    function validateSettlmentState(Data storage self) internal view {
+    function validateSettlmentSanity(Data storage self) internal view {
         if (block.timestamp < self.startTime) {
             revert Errors.EpochNotStarted(self.startTime);
         }
@@ -214,7 +214,7 @@ library Epoch {
         }
 
         if (self.settled) {
-            revert Errors.EpochNotSettled(self.endTime);
+            revert Errors.EpochSettled();
         }
     }
 
