@@ -75,6 +75,13 @@ contract EpochTradeModule is IEpochTradeModule {
             revert Errors.InvalidPositionKind();
         }
 
+        // check settlement state
+        if (increaseSize(position.currentTokenAmount, tokenAmount)) {
+            Epoch.load(position.epochId).validateNotSettled();
+        } else {
+            Epoch.load(position.epochId).validateSettlmentSanity();
+        }
+
         if (
             !sameSide(position.currentTokenAmount, tokenAmount) ||
             tokenAmount == 0
@@ -345,12 +352,11 @@ contract EpochTradeModule is IEpochTradeModule {
             } else {
                 // Got more vEth than required to pay the debt
                 // Add it as available vETH
-                position.borrowedVEth = 0;
                 deltaEth =
                     tokenAmountVEth.toInt() -
                     position.borrowedVEth.toInt();
+                position.borrowedVEth = 0;
             }
-
             position.updateBalance(delta, deltaEth, delta);
         }
     }
@@ -578,7 +584,6 @@ contract EpochTradeModule is IEpochTradeModule {
 
         Market.Data storage market = Market.load();
         Epoch.Data storage epoch = Epoch.load(params.epochId);
-        epoch.validateSettlmentState();
 
         if (epoch.settled) {
             (amountOutVEth, amountOutVGas) = _afterSettlementSwapExactIn(
@@ -656,7 +661,6 @@ contract EpochTradeModule is IEpochTradeModule {
 
         Market.Data storage market = Market.load();
         Epoch.Data storage epoch = Epoch.load(params.epochId);
-        epoch.validateSettlmentState();
 
         if (epoch.settled) {
             uint256 consumedAmountInVEth;
@@ -785,6 +789,15 @@ contract EpochTradeModule is IEpochTradeModule {
                 epoch.settlementPriceD18
             );
         }
+    }
+
+    function increaseSize(
+        int256 currentTokenAmount,
+        int256 newTokenAmount
+    ) internal pure returns (bool) {
+        return
+            MigrationMathUtils.abs(newTokenAmount) >
+            MigrationMathUtils.abs(currentTokenAmount);
     }
 
     function sameSide(

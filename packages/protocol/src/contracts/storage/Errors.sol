@@ -18,6 +18,7 @@ library Errors {
     error EpochNotStarted(uint256 epochId);
     error EpochNotSettled(uint256 epochId);
     error EpochAlreadyStarted();
+    error EpochSettled();
     error TokensAlreadyCreated();
     error InsufficientCollateral(
         uint256 amountRequired,
