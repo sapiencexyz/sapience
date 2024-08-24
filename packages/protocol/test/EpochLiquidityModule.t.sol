@@ -9,7 +9,7 @@ import {TickMath} from "../src/contracts/external/univ3/TickMath.sol";
 import {TestEpoch} from "./helpers/TestEpoch.sol";
 import {TestUser} from "./helpers/TestUser.sol";
 import {DecimalPrice} from "../src/contracts/libraries/DecimalPrice.sol";
-
+import {IFoilStructs} from "../src/contracts/interfaces/IFoilStructs.sol";
 import "forge-std/console2.sol";
 
 contract CreateLiquidityPosition is TestEpoch {
@@ -54,7 +54,26 @@ contract CreateLiquidityPosition is TestEpoch {
                 upperTick
             );
 
-        console2.log("loanAmount0", loanAmount0);
-        console2.log("loanAmount1", loanAmount1);
+        (
+            uint256 id,
+            uint256 uniswapNftId,
+            uint128 liquidity,
+            uint256 addedAmount0,
+            uint256 addedAmount1
+        ) = foil.createLiquidityPosition(
+                IFoilStructs.LiquidityPositionParams({
+                    epochId: epochId,
+                    amountTokenA: loanAmount0,
+                    amountTokenB: loanAmount1,
+                    collateralAmount: collateralAmount,
+                    lowerTick: lowerTick,
+                    upperTick: upperTick,
+                    minAmountTokenA: 0,
+                    minAmountTokenB: 0
+                })
+            );
+
+        console2.log("addedAmount0", addedAmount0);
+        console2.log("addedAmount1", addedAmount1);
     }
 }

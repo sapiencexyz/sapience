@@ -4,13 +4,15 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import "./Epoch.sol";
 import {SafeCastU256} from "../../synthetix/utils/SafeCast.sol";
+import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
+import {PositionKey} from "../libraries/PositionKey.sol";
 
 library Position {
     using SafeCastU256 for uint256;
     using Epoch for Epoch.Data;
 
     struct Data {
-        uint256 tokenId; // nft id
+        uint256 id;
         IFoilStructs.PositionKind kind;
         uint256 epochId;
         // Accounting data (debt and deposited collateral)
@@ -21,6 +23,7 @@ library Position {
         uint256 vEthAmount;
         uint256 vGasAmount;
         int256 currentTokenAmount;
+        uint256 uniswapPositionId; // uniswap nft id
     }
 
     function load(
@@ -37,7 +40,7 @@ library Position {
         uint256 positionId
     ) internal view returns (Data storage position) {
         position = load(positionId);
-        if (positionId == 0 || position.tokenId == 0) {
+        if (positionId == 0 || position.id == 0) {
             revert Errors.InvalidPositionId(positionId);
         }
     }
@@ -51,11 +54,11 @@ library Position {
 
         position = load(positionId);
 
-        if (position.tokenId != 0) {
+        if (position.id != 0) {
             revert Errors.PositionAlreadyCreated();
         }
 
-        position.tokenId = positionId;
+        position.id = positionId;
         return position;
     }
 
@@ -74,19 +77,6 @@ library Position {
         self.currentTokenAmount = 0;
         self.vEthAmount = 0;
         self.vGasAmount = 0;
-    }
-
-    function updateLoan(
-        Data storage self,
-        uint256 tokenId,
-        uint256 collateralAmount,
-        uint256 amount0,
-        uint256 amount1
-    ) internal {
-        self.depositedCollateralAmount = collateralAmount;
-        self.borrowedVGas = amount0;
-        self.borrowedVEth = amount1;
-        self.tokenId = tokenId;
     }
 
     function updateCollateral(
@@ -118,5 +108,52 @@ library Position {
             self.borrowedVGas,
             self.borrowedVEth
         );
+    }
+
+    struct UpdateLpParams {
+        uint256 uniswapNftId;
+        uint128 liquidity;
+        uint256 additionalLoanAmount0;
+        uint256 additionalLoanAmount1;
+        int24 lowerTick;
+        int24 upperTick;
+        uint256 tokensOwed0;
+        uint256 tokensOwed1;
+    }
+
+    function updateValidLp(
+        Data storage self,
+        Epoch.Data storage epoch,
+        UpdateLpParams memory params
+    ) internal {
+        self.kind = IFoilStructs.PositionKind.Liquidity;
+        self.epochId = epoch.id;
+        self.uniswapPositionId = params.uniswapNftId;
+        self.borrowedVGas += params.additionalLoanAmount0;
+        self.borrowedVEth += params.additionalLoanAmount1;
+
+        (uint256 loanAmount0, uint256 loanAmount1) = (
+            self.borrowedVGas > params.tokensOwed0
+                ? self.borrowedVGas - params.tokensOwed0
+                : 0,
+            self.borrowedVEth > params.tokensOwed1
+                ? self.borrowedVEth - params.tokensOwed1
+                : 0
+        );
+
+        uint256 requiredCollateral = epoch.requiredCollateralForLiquidity(
+            params.liquidity,
+            loanAmount0,
+            loanAmount1,
+            TickMath.getSqrtRatioAtTick(params.lowerTick),
+            TickMath.getSqrtRatioAtTick(params.upperTick)
+        );
+
+        if (self.depositedCollateralAmount < requiredCollateral) {
+            revert Errors.InsufficientCollateral(
+                self.depositedCollateralAmount,
+                requiredCollateral
+            );
+        }
     }
 }

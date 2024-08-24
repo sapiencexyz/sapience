@@ -193,7 +193,7 @@ contract TestTrade is TestEpoch {
         Position.Data memory position = foil.getPosition(positionId);
         console2.log(" >>> Position", positionId);
         console2.log("    >>> Ids");
-        console2.log("      >> tokenId           : ", position.tokenId);
+        console2.log("      >> tokenId           : ", position.id);
         console2.log("      >> epochId           : ", position.epochId);
         console2.log("    >>> Accounting data (debt and deposited collateral)");
         console2.log(
