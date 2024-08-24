@@ -76,10 +76,12 @@ contract EpochTradeModule is IEpochTradeModule {
         }
 
         // check settlement state
-        if (increaseSize(position.currentTokenAmount, tokenAmount)) {
-            Epoch.load(position.epochId).validateNotSettled();
+        if (tokenAmount == 0) {
+            // closing, can happen at any time
+            Epoch.load(position.epochId).validateSettlementSanity();
         } else {
-            Epoch.load(position.epochId).validateSettlmentSanity();
+            // not closing, can only happen if not settled
+            Epoch.load(position.epochId).validateNotSettled();
         }
 
         if (
@@ -214,18 +216,14 @@ contract EpochTradeModule is IEpochTradeModule {
         (
             uint256 refundAmountVEth,
             ,
-            uint256 tokenAmountVEth,
+            ,
             uint256 tokenAmountVGas
         ) = swapTokensExactOut(params);
 
         // Refund excess vEth sent
         position.borrowedVEth -= refundAmountVEth;
 
-        position.updateBalance(
-            tokenAmount,
-            tokenAmountVEth.toInt(),
-            tokenAmountVGas.toInt()
-        );
+        position.updateBalance(tokenAmount, 0, tokenAmountVGas.toInt());
     }
 
     /**
@@ -357,6 +355,7 @@ contract EpochTradeModule is IEpochTradeModule {
                     position.borrowedVEth.toInt();
                 position.borrowedVEth = 0;
             }
+
             position.updateBalance(delta, deltaEth, delta);
         }
     }
@@ -385,7 +384,6 @@ contract EpochTradeModule is IEpochTradeModule {
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) internal {
-        // TODO check if after settlement and use the settlement price
         uint256 tokenAmountAbs = (tokenAmount * -1).toUint();
         uint256 tokenAmountLimitAbs = (tokenAmountLimit * -1).toUint();
         uint256 currentTokenAmountAbs = (position.currentTokenAmount * -1)
@@ -419,11 +417,13 @@ contract EpochTradeModule is IEpochTradeModule {
         } else {
             // Decrease the position (SHORT)
             uint256 delta = currentTokenAmountAbs - tokenAmountAbs;
+            uint256 availableVEth = position.depositedCollateralAmount +
+                position.vEthAmount;
             position.borrowedVGas -= delta;
 
             SwapTokensExactOutParams memory params = SwapTokensExactOutParams({
                 epochId: position.epochId,
-                availableAmountInVEth: position.vEthAmount,
+                availableAmountInVEth: availableVEth,
                 availableAmountInVGas: 0,
                 amountInLimitVEth: tokenAmountLimitAbs.to160(),
                 amountInLimitVGas: 0,
@@ -434,11 +434,26 @@ contract EpochTradeModule is IEpochTradeModule {
             // with the vEth get vGas (Swap)
             (uint256 refundAmountVEth, , , ) = swapTokensExactOut(params);
 
-            position.updateBalance(
-                delta.toInt(),
-                -(position.vEthAmount - refundAmountVEth).toInt(),
-                0
-            );
+            uint256 consumedVEth = availableVEth - refundAmountVEth;
+
+            if (consumedVEth > position.vEthAmount) {
+                // Not enough vEth to pay the debt
+                // Use collateral to pay the remaining debt
+                uint256 remainingDebt = consumedVEth - position.vEthAmount;
+                position.depositedCollateralAmount -= remainingDebt;
+
+                position.updateBalance(
+                    delta.toInt(),
+                    -(position.vEthAmount).toInt(), // reduce all vEth
+                    0
+                );
+            } else {
+                position.updateBalance(
+                    delta.toInt(),
+                    -(consumedVEth).toInt(), // reduce all vEth
+                    0
+                );
+            }
         }
     }
 
@@ -663,24 +678,31 @@ contract EpochTradeModule is IEpochTradeModule {
         Epoch.Data storage epoch = Epoch.load(params.epochId);
 
         if (epoch.settled) {
-            uint256 consumedAmountInVEth;
-            uint256 consumedAmountInVGas;
+            uint256 requiredAmountInVEth;
+            uint256 requiredAmountInVGas;
             (
-                consumedAmountInVEth,
-                consumedAmountInVGas,
-                tokenAmountVEth,
-                tokenAmountVGas
+                requiredAmountInVEth,
+                requiredAmountInVGas
             ) = _afterSettlementSwapExactOut(
                 epoch,
                 params.expectedAmountOutVEth,
                 params.expectedAmountOutVGas
             );
+
+            if (requiredAmountInVEth > params.availableAmountInVEth) {
+                revert Errors.InsufficientVEth(
+                    requiredAmountInVEth,
+                    params.availableAmountInVEth
+                );
+            }
+
             refundAmountVEth =
                 params.availableAmountInVEth -
-                consumedAmountInVEth;
+                requiredAmountInVEth;
+
             refundAmountVGas =
                 params.availableAmountInVGas -
-                consumedAmountInVGas;
+                requiredAmountInVGas;
         } else {
             address tokenIn;
             address tokenOut;
@@ -767,25 +789,16 @@ contract EpochTradeModule is IEpochTradeModule {
     )
         internal
         view
-        returns (
-            uint256 consumedAmountInVEth,
-            uint256 consumedAmountInVGas,
-            uint256 tokenOutVEth,
-            uint256 tokenOutVGas
-        )
+        returns (uint256 requiredAmountInVEth, uint256 requiredAmountInVGas)
     {
         if (amountOutVGas > 0) {
-            tokenOutVEth = 0;
-            tokenOutVGas = amountOutVGas;
-            consumedAmountInVEth = amountOutVGas.mulDecimal(
+            requiredAmountInVEth = amountOutVGas.mulDecimal(
                 epoch.settlementPriceD18
             );
-            consumedAmountInVGas = 0;
+            requiredAmountInVGas = 0;
         } else {
-            tokenOutVEth = amountOutVEth;
-            tokenOutVGas = 0;
-            consumedAmountInVEth = 0;
-            consumedAmountInVGas = amountOutVEth.divDecimal(
+            requiredAmountInVEth = 0;
+            requiredAmountInVGas = amountOutVEth.divDecimal(
                 epoch.settlementPriceD18
             );
         }

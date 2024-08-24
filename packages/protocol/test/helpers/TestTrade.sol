@@ -6,11 +6,18 @@ import {IFoil} from "../../src/contracts/interfaces/IFoil.sol";
 import {IFoilStructs} from "../../src/contracts/interfaces/IFoilStructs.sol";
 import {Position} from "../../src/contracts/storage/Position.sol";
 import {IMintableToken} from "../../src/contracts/external/IMintableToken.sol";
+import {DecimalMath} from "../../src/synthetix/utils/DecimalMath.sol";
+import {SafeCastU256, SafeCastI256} from "../../src/synthetix/utils/SafeCast.sol";
 
 import "./TestEpoch.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
-contract TradeTestHelper is TestEpoch {
+contract TestTrade is TestEpoch {
+    using DecimalMath for uint256;
+    using DecimalMath for int256;
+    using SafeCastU256 for uint256;
+    using SafeCastI256 for int256;
+
     struct StateData {
         uint256 userCollateral;
         uint256 foilCollateral;
@@ -107,13 +114,87 @@ contract TradeTestHelper is TestEpoch {
         );
     }
 
+    struct PositionAccountingData {
+        uint256 debtValue;
+        uint256 tokensValue;
+        int256 debtTokensBalance;
+        uint256 collateral;
+        uint256 withdrawableCollateral;
+    }
+
+    function positionAccounting(
+        IFoil foil,
+        uint256 positionId
+    ) public returns (PositionAccountingData memory data) {
+        Position.Data memory position = foil.getPosition(positionId);
+        uint256 currentPrice = foil.getReferencePrice(position.epochId);
+
+        data.debtValue =
+            position.borrowedVEth +
+            position.borrowedVGas.mulDecimal(currentPrice);
+        data.tokensValue =
+            position.vEthAmount +
+            position.vGasAmount.mulDecimal(currentPrice);
+
+        data.debtTokensBalance =
+            data.tokensValue.toInt() -
+            data.debtValue.toInt();
+
+        data.collateral = position.depositedCollateralAmount;
+
+        data.withdrawableCollateral = data.collateral - data.debtValue;
+        console2.log(" >>> PositionAccountingData");
+        console2.log("    >> debtValue           : ", data.debtValue);
+        console2.log("    >> tokensValue         : ", data.tokensValue);
+        console2.log("    >> debtTokensBalance   : ", data.debtTokensBalance);
+        console2.log("    >> collateral          : ", data.collateral);
+        console2.log(
+            "    >> withdrawableCollateral: ",
+            data.withdrawableCollateral
+        );
+        console2.log(" >>> PositionData", positionId);
+        console2.log(
+            "      >> depositedCollateralAmount  : ",
+            position.depositedCollateralAmount
+        );
+        console2.log("      >> borrowedVEth      : ", position.borrowedVEth);
+        console2.log("      >> borrowedVGas       : ", position.borrowedVGas);
+        console2.log("      >> vEthAmount        : ", position.vEthAmount);
+        console2.log("      >> vGasAmount        : ", position.vGasAmount);
+        console2.log(
+            "      >> currentTokenAmount: ",
+            position.currentTokenAmount
+        );
+    }
+
+    // function pnl(
+    //     int256 initialSize,
+    //     uint256 initialPrice,
+    //     int256 finalSize,
+    //     uint256 finalPrice
+    // ) public pure returns (int256 resultPnl) {
+    //     int256 deltaSize = finalSize - initialSize;
+    //     int256 deltaPrice = finalPrice.toInt() - initialPrice.toInt();
+    //     resultPnl =
+    //         deltaSize.mulDecimal(finalPrice.toInt()) -
+    //         deltaSize.mulDecimal(initialPrice.toInt());
+
+    //     // console2.log(" >>> PnL");
+    //     // console2.log("    >> initialSize: ", initialSize);
+    //     // console2.log("    >> initialPrice: ", initialPrice);
+    //     // console2.log("    >> finalSize: ", finalSize);
+    //     // console2.log("    >> finalPrice: ", finalPrice);
+    //     // console2.log("    >> deltaSize: ", deltaSize);
+    //     // console2.log("    >> deltaPrice: ", deltaPrice);
+    //     // console2.log("    >> resultPnl: ", resultPnl);
+    // }
+
     function logPositionAndAccount(IFoil foil, uint256 positionId) public {
         Position.Data memory position = foil.getPosition(positionId);
         console2.log(" >>> Position", positionId);
         console2.log("    >>> Ids");
         console2.log("      >> tokenId           : ", position.tokenId);
         console2.log("      >> epochId           : ", position.epochId);
-        // console2.log("      >> kind              : ", position.kind);
         console2.log("    >>> Accounting data (debt and deposited collateral)");
         console2.log(
             "      >> depositedCollateralAmount  : ",

@@ -6,12 +6,12 @@ import "cannon-std/Cannon.sol";
 import {IFoil} from "../src/contracts/interfaces/IFoil.sol";
 import {IMintableToken} from "../src/contracts/external/IMintableToken.sol";
 import {TickMath} from "../src/contracts/external/univ3/TickMath.sol";
-import {TradeTestHelper} from "./helpers/TradeTestHelper.sol";
+import {TestTrade} from "./helpers/TestTrade.sol";
 import {TestEpoch} from "./helpers/TestEpoch.sol";
 import {TestUser} from "./helpers/TestUser.sol";
 import {DecimalPrice} from "../src/contracts/libraries/DecimalPrice.sol";
 import "../src/synthetix/utils/DecimalMath.sol";
-import {SafeCastI256} from "../src/synthetix/utils/SafeCast.sol";
+import {SafeCastI256, SafeCastU256} from "../src/synthetix/utils/SafeCast.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {Errors} from "../src/contracts/storage/Errors.sol";
 import {Position} from "../src/contracts/storage/Position.sol";
@@ -21,10 +21,12 @@ import "../src/synthetix/utils/DecimalMath.sol";
 
 import "forge-std/console2.sol";
 
-contract TradePositionSettlement is TradeTestHelper {
+contract TradePositionSettlement is TestTrade {
     using Cannon for Vm;
     using DecimalMath for uint256;
+    using DecimalMath for int256;
     using SafeCastI256 for int256;
+    using SafeCastU256 for uint256;
 
     IFoil foil;
     IMintableToken collateralAsset;
@@ -39,23 +41,28 @@ contract TradePositionSettlement is TradeTestHelper {
     address tokenB;
     IUniswapV3Pool uniCastedPool;
     uint256 feeRate;
-    int24 LOWERTICK = 12200; //3.31
-    int24 UPPERTICK = 12400; //3.52
-    uint256 collateralForOrders = 10 ether;
-    int256 baseRequestedAmount;
-    int256 baseFee;
+    uint256 COLLATERAL_FOR_ORDERS = 100 ether;
+    uint256 INITIAL_PRICE_D18 = 5 ether;
+    uint256 INITIAL_PRICE_PLUS_FEE_D18 = 5.05 ether;
+    uint256 INITIAL_PRICE_LESS_FEE_D18 = 4.95 ether;
+    uint160 INITIAL_PRICE_SQRT = 177159557114295718903631839232; // 5.0
+    int24 EPOCH_LOWER_TICK = 6800; // 2.0
+    int24 EPOCH_UPPER_TICK = 27000; // 15.0
+    int24 LP_LOWER_TICK = 15800; //3.31
+    int24 LP_UPPER_TICK = 16200; //3.52
+    uint256 SETTLEMENT_PRICE_D18 = 10 ether;
 
     address optimisticOracleV3;
     uint256 endTime;
     uint256 minPriceD18;
     uint256 maxPriceD18;
     IFoilStructs.EpochParams epochParams;
-    uint256 settlementPriceD18 = 10 ether;
 
     function setUp() public {
-        uint160 startingSqrtPriceX96 = 146497135921788803112962621440; // 3.419
-        baseRequestedAmount = 3.419 ether;
-        baseFee = baseRequestedAmount / 100; // 1%
+        collateralAsset = IMintableToken(
+            vm.getAddress("CollateralAsset.Token")
+        );
+        uint160 startingSqrtPriceX96 = INITIAL_PRICE_SQRT;
 
         (foil, ) = createEpoch(5200, 28200, startingSqrtPriceX96); // 1.709 to 17.09 (1.6819839204636384 to 16.774485460620674)
 
@@ -72,9 +79,9 @@ contract TradePositionSettlement is TradeTestHelper {
             foil,
             pool,
             epochId,
-            collateralForOrders * 100_000,
-            LOWERTICK,
-            UPPERTICK
+            COLLATERAL_FOR_ORDERS * 100_000,
+            LP_LOWER_TICK,
+            LP_UPPER_TICK
         ); // enough to keep price stable (no slippage)
         vm.stopPrank();
 
@@ -110,16 +117,12 @@ contract TradePositionSettlement is TradeTestHelper {
         modifyAndRevert(1 ether, 2 ether);
     }
 
-    function test_modifyTraderPosition_long_reduce_UsesSettlementPrice()
-        public
-    {
-        modifyAndSucceed(1 ether, .5 ether);
+    function test_modifyTraderPosition_long_reduce_RevertIf_Settled() public {
+        modifyAndRevert(1 ether, .5 ether);
     }
 
-    function test_modifyTraderPosition_long_close_UsesSettlementPrice_Only()
-        public
-    {
-        // modifyAndSucceed(1 ether, 0);
+    function test_modifyTraderPosition_long_close_UsesSettlementPrice() public {
+        closeAndSucceed(1 ether);
     }
 
     function test_modifyTraderPosition_long_cross_greater_RevertIf_Settled()
@@ -128,10 +131,10 @@ contract TradePositionSettlement is TradeTestHelper {
         modifyAndRevert(1 ether, -2 ether);
     }
 
-    function test_modifyTraderPosition_long_cross_lower_UsesSettlementPrice_Only()
+    function test_modifyTraderPosition_long_cross_lower_RevertIf_Settled()
         public
     {
-        // modifyAndSucceed(1 ether, -.5 ether);
+        modifyAndRevert(1 ether, -.5 ether);
     }
 
     function test_createTraderPosition_short_RevertIf_Settled() public {
@@ -148,16 +151,14 @@ contract TradePositionSettlement is TradeTestHelper {
         modifyAndRevert(-1 ether, -2 ether);
     }
 
-    function test_modifyTraderPosition_short_reduce_UsesSettlementPrice_Only()
-        public
-    {
-        // modifyAndSucceed(-1 ether, -.5 ether);
+    function test_modifyTraderPosition_short_reduce_RevertIf_Settled() public {
+        modifyAndRevert(-1 ether, -.5 ether);
     }
 
-    function test_modifyTraderPosition_short_close_UsesSettlementPrice_Only()
+    function test_modifyTraderPosition_short_close_UsesSettlementPrice()
         public
     {
-        // modifyAndSucceed(-1 ether, 0 ether);
+        closeAndSucceed(-1 ether);
     }
 
     function test_modifyTraderPosition_short_cross_greater_RevertIf_Settled()
@@ -166,10 +167,10 @@ contract TradePositionSettlement is TradeTestHelper {
         modifyAndRevert(-1 ether, 2 ether);
     }
 
-    function test_modifyTraderPosition_short_cross_lower_UsesSettlementPrice_Only()
+    function test_modifyTraderPosition_short_cross_lower_RevertIf_Settled()
         public
     {
-        // modifyAndSucceed(-1 ether, .5 ether);
+        modifyAndRevert(-1 ether, .5 ether);
     }
 
     function modifyAndRevert(
@@ -195,10 +196,9 @@ contract TradePositionSettlement is TradeTestHelper {
         vm.stopPrank();
     }
 
-    function modifyAndSucceed(
-        int256 initialPositionSize,
-        int256 newPositionSize
-    ) internal {
+    function closeAndSucceed(int256 initialPositionSize) internal {
+        uint256 trader1InitialBalance = collateralAsset.balanceOf(trader1);
+
         vm.startPrank(trader1);
         uint256 positionId = foil.createTraderPosition(
             epochId,
@@ -206,33 +206,32 @@ contract TradePositionSettlement is TradeTestHelper {
             initialPositionSize,
             0
         );
-        Position.Data memory position = foil.getPosition(positionId);
-        uint256 totalEthPre = position.depositedCollateralAmount -
-            position.borrowedVEth +
-            position.vEthAmount;
-        uint256 expectedDelta = (MigrationMathUtils.abs(initialPositionSize) -
-            MigrationMathUtils.abs(newPositionSize)).mulDecimal(
-                settlementPriceD18
-            );
 
-        // console2.log(" >>> expectedDelta", expectedDelta);
         vm.stopPrank();
 
         settle();
 
-        // console2.log(" >>> AAAA 1");
         vm.startPrank(trader1);
-        foil.modifyTraderPosition(positionId, 200 ether, newPositionSize, 0);
+        foil.modifyTraderPosition(positionId, 0, 0, 0);
         vm.stopPrank();
-        // console2.log(" >>> AAAA 2");
 
-        position = foil.getPosition(positionId);
-        logPositionAndAccount(foil, positionId);
-        uint256 totalEthPost = position.depositedCollateralAmount -
-            position.borrowedVEth +
-            position.vEthAmount -
-            100 ether;
-        assertEq(totalEthPre + expectedDelta, totalEthPost, "totalEthLike");
+        uint256 trader1FinalBalance = collateralAsset.balanceOf(trader1);
+
+        int256 feeAdjustedPrice = initialPositionSize > 0
+            ? INITIAL_PRICE_PLUS_FEE_D18.toInt()
+            : INITIAL_PRICE_LESS_FEE_D18.toInt();
+
+        int256 pnl = initialPositionSize.mulDecimal(
+            SETTLEMENT_PRICE_D18.toInt() - feeAdjustedPrice
+        );
+
+        assertApproxEqAbsDecimal(
+            trader1FinalBalance.toInt(),
+            trader1InitialBalance.toInt() + pnl,
+            .001 ether,
+            18,
+            "pnl"
+        );
     }
 
     function settle() internal {
@@ -245,7 +244,7 @@ contract TradePositionSettlement is TradeTestHelper {
         );
         bytes32 assertionId = foil.submitSettlementPrice(
             epochId,
-            settlementPriceD18
+            SETTLEMENT_PRICE_D18
         );
         vm.stopPrank();
 
