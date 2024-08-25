@@ -6,7 +6,7 @@ import "cannon-std/Cannon.sol";
 import {IFoil} from "../src/contracts/interfaces/IFoil.sol";
 import {IMintableToken} from "../src/contracts/external/IMintableToken.sol";
 import {TickMath} from "../src/contracts/external/univ3/TickMath.sol";
-import {TradeTestHelper} from "./helpers/TradeTestHelper.sol";
+import {TestTrade} from "./helpers/TestTrade.sol";
 import {TestEpoch} from "./helpers/TestEpoch.sol";
 import {TestUser} from "./helpers/TestUser.sol";
 import {DecimalPrice} from "../src/contracts/libraries/DecimalPrice.sol";
@@ -18,7 +18,7 @@ import {Position} from "../src/contracts/storage/Position.sol";
 
 import "forge-std/console2.sol";
 
-contract TradePositionSlippage is TradeTestHelper {
+contract TradePositionSlippage is TestTrade {
     using Cannon for Vm;
     using DecimalMath for uint256;
     using SafeCastI256 for int256;

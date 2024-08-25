@@ -194,7 +194,7 @@ library Epoch {
         }
     }
 
-    function validateSettlmentSanity(Data storage self) internal view {
+    function validateSettlementSanity(Data storage self) internal view {
         if (block.timestamp < self.startTime) {
             revert Errors.EpochNotStarted(self.startTime);
         }

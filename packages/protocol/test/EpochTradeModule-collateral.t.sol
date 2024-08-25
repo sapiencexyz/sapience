@@ -4,7 +4,7 @@ pragma solidity >=0.8.2 <0.9.0;
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
 import {IFoil} from "../src/contracts/interfaces/IFoil.sol";
-import {TradeTestHelper} from "./helpers/TradeTestHelper.sol";
+import {TestTrade} from "./helpers/TestTrade.sol";
 import {TestUser} from "./helpers/TestUser.sol";
 import {DecimalPrice} from "../src/contracts/libraries/DecimalPrice.sol";
 import "../src/synthetix/utils/DecimalMath.sol";
@@ -15,7 +15,7 @@ import {Position} from "../src/contracts/storage/Position.sol";
 
 import "forge-std/console2.sol";
 
-contract TradePositionCollateral is TradeTestHelper {
+contract TradePositionCollateral is TestTrade {
     using Cannon for Vm;
     using DecimalMath for uint256;
     using SafeCastI256 for int256;
