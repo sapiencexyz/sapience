@@ -3,6 +3,8 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
+import {LiquidityAmounts} from "../../src/contracts/external/univ3/LiquidityAmounts.sol";
+import {INonfungiblePositionManager} from "../../src/contracts/interfaces/external/INonfungiblePositionManager.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {TickMath} from "../../src/contracts/external/univ3/TickMath.sol";
 import {IMintableToken} from "../../src/contracts/external/IMintableToken.sol";
@@ -69,7 +71,8 @@ contract TestEpoch is TestUser {
         returns (uint256 loanAmount0, uint256 loanAmount1, uint256 liquidity)
     {
         IFoil foil = IFoil(vm.getAddress("Foil"));
-        (uint256 epochId, , , address pool, , , , , , , ) = foil.getLatestEpoch();
+        (uint256 epochId, , , address pool, , , , , , , ) = foil
+            .getLatestEpoch();
         (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
 
         uint160 sqrtPriceAX96 = uint160(TickMath.getSqrtRatioAtTick(lowerTick));
@@ -81,6 +84,38 @@ contract TestEpoch is TestUser {
             sqrtPriceX96,
             sqrtPriceAX96,
             sqrtPriceBX96
+        );
+    }
+
+    function getCurrentPositionTokenAmounts(
+        uint256 uniswapPositionId,
+        int24 lowerTick,
+        int24 upperTick
+    )
+        internal
+        returns (
+            uint256 amount0,
+            uint256 amount1,
+            uint256 tokensOwed0,
+            uint256 tokensOwed1
+        )
+    {
+        IFoil foil = IFoil(vm.getAddress("Foil"));
+        (uint256 epochId, , , address pool, , , , , , , ) = foil
+            .getLatestEpoch();
+        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
+
+        (, , address positionManager, , , ) = foil.getMarket();
+
+        (, , , , , , , uint128 liquidity, , , , ) = INonfungiblePositionManager(
+            positionManager
+        ).positions(uniswapPositionId);
+
+        (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
+            sqrtPriceX96,
+            TickMath.getSqrtRatioAtTick(lowerTick),
+            TickMath.getSqrtRatioAtTick(upperTick),
+            liquidity
         );
     }
 }

@@ -79,11 +79,8 @@ library Position {
         self.vGasAmount = 0;
     }
 
-    function updateCollateral(
-        Data storage self,
-        IERC20 collateralAsset,
-        uint256 amount
-    ) internal {
+    function updateCollateral(Data storage self, uint256 amount) internal {
+        IERC20 collateralAsset = Market.load().collateralAsset;
         if (amount > self.depositedCollateralAmount) {
             collateralAsset.transferFrom(
                 msg.sender,
@@ -113,6 +110,7 @@ library Position {
     struct UpdateLpParams {
         uint256 uniswapNftId;
         uint128 liquidity;
+        uint256 additionalCollateral;
         uint256 additionalLoanAmount0;
         uint256 additionalLoanAmount1;
         int24 lowerTick;
@@ -125,7 +123,7 @@ library Position {
         Data storage self,
         Epoch.Data storage epoch,
         UpdateLpParams memory params
-    ) internal {
+    ) internal returns (uint256 requiredCollateral) {
         self.kind = IFoilStructs.PositionKind.Liquidity;
         self.epochId = epoch.id;
         self.uniswapPositionId = params.uniswapNftId;
@@ -141,7 +139,7 @@ library Position {
                 : 0
         );
 
-        uint256 requiredCollateral = epoch.requiredCollateralForLiquidity(
+        requiredCollateral = epoch.requiredCollateralForLiquidity(
             params.liquidity,
             loanAmount0,
             loanAmount1,
@@ -149,11 +147,16 @@ library Position {
             TickMath.getSqrtRatioAtTick(params.upperTick)
         );
 
-        if (self.depositedCollateralAmount < requiredCollateral) {
+        uint256 newCollateral = self.depositedCollateralAmount +
+            params.additionalCollateral;
+
+        if (newCollateral < requiredCollateral) {
             revert Errors.InsufficientCollateral(
-                self.depositedCollateralAmount,
+                newCollateral,
                 requiredCollateral
             );
         }
+
+        updateCollateral(self, requiredCollateral);
     }
 }

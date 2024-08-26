@@ -20,7 +20,6 @@ interface IFoilStructs {
 
     struct LiquidityDecreaseParams {
         uint256 positionId;
-        uint256 collateralAmount;
         uint128 liquidity;
         uint256 minGasAmount;
         uint256 minEthAmount;

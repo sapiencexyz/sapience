@@ -47,6 +47,9 @@ artifact="EpochViewsModule"
 [deploy.EpochERC165Module]
 artifact="EpochERC165Module"
 
+[deploy.ExposedInternalFunctions]
+artifact="ExposedInternalFunctions"
+
 [router.Foil]
 contracts=[
   "EpochConfigurationModule",
@@ -56,4 +59,5 @@ contracts=[
   "EpochNftModule",
   "EpochViewsModule",
   "EpochERC165Module",
+  "ExposedInternalFunctions"
 ]

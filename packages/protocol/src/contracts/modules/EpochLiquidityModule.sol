@@ -20,6 +20,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
         override
         returns (
             uint256 id,
+            uint256 collateralAmount,
             uint256 uniswapNftId,
             uint128 liquidity,
             uint256 addedAmount0,
@@ -30,16 +31,11 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
         Position.Data storage position = Position.createValid(id);
         ERC721Storage._mint(msg.sender, id);
 
-        Market.Data storage market = Market.load();
-        Epoch.Data storage epoch = Epoch.load(params.epochId);
+        Epoch.Data storage epoch = Epoch.loadValid(params.epochId);
         epoch.validateLp(params.lowerTick, params.upperTick);
 
-        position.updateCollateral(
-            market.collateralAsset,
-            params.collateralAmount
-        );
-
-        (uniswapNftId, liquidity, addedAmount0, addedAmount1) = market
+        (uniswapNftId, liquidity, addedAmount0, addedAmount1) = Market
+            .load()
             .uniswapPositionManager
             .mint(
                 INonfungiblePositionManager.MintParams({
@@ -57,11 +53,12 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
                 })
             );
 
-        position.updateValidLp(
+        collateralAmount = position.updateValidLp(
             epoch,
             Position.UpdateLpParams({
                 uniswapNftId: uniswapNftId,
                 liquidity: liquidity,
+                additionalCollateral: params.collateralAmount,
                 additionalLoanAmount0: addedAmount0,
                 additionalLoanAmount1: addedAmount1,
                 lowerTick: params.lowerTick,
@@ -74,7 +71,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
         // emit event
         emit LiquidityPositionCreated(
             id,
-            params.collateralAmount,
+            position.depositedCollateralAmount,
             liquidity,
             addedAmount0,
             addedAmount1,
@@ -85,12 +82,18 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
 
     function decreaseLiquidityPosition(
         IFoilStructs.LiquidityDecreaseParams memory params
-    ) external override returns (uint256 amount0, uint256 amount1) {
+    )
+        external
+        override
+        returns (uint256 amount0, uint256 amount1, uint256 collateralAmount)
+    {
         DecreaseLiquidityPositionStack memory stack;
 
         Market.Data storage market = Market.load();
-        Position.Data storage position = Position.load(params.positionId);
-        Epoch.Data storage epoch = Epoch.load(position.epochId);
+        Position.Data storage position = Position.loadValid(params.positionId);
+        Epoch.Data storage epoch = Epoch.loadValid(position.epochId);
+
+        epoch.validateEpochNotSettled();
 
         if (position.kind != IFoilStructs.PositionKind.Liquidity) {
             revert Errors.InvalidPositionKind();
@@ -101,8 +104,8 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
             stack.previousAmount1,
             stack.lowerTick,
             stack.upperTick,
-
-        ) = _getCurrentPoolTokenAmounts(market, epoch, position);
+            stack.previousLiquidity
+        ) = _getCurrentPositionTokenAmounts(market, epoch, position);
 
         stack.decreaseParams = INonfungiblePositionManager
             .DecreaseLiquidityParams({
@@ -117,21 +120,17 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
             stack.decreaseParams
         );
 
-        position.updateCollateral(
-            market.collateralAsset,
-            params.collateralAmount
-        );
-
         // get tokens owed
         (, , , , , , , , , , stack.tokensOwed0, stack.tokensOwed1) = market
             .uniswapPositionManager
             .positions(position.uniswapPositionId);
 
-        position.updateValidLp(
+        collateralAmount = position.updateValidLp(
             epoch,
             Position.UpdateLpParams({
                 uniswapNftId: position.uniswapPositionId,
-                liquidity: params.liquidity,
+                liquidity: stack.previousLiquidity - params.liquidity,
+                additionalCollateral: 0,
                 additionalLoanAmount0: 0, // tokensOwed0 represents the returned tokens
                 additionalLoanAmount1: 0, // tokensOwed1 represents the returned tokens
                 lowerTick: stack.lowerTick,
@@ -143,7 +142,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
 
         emit LiquidityPositionDecreased(
             position.id,
-            params.collateralAmount,
+            position.depositedCollateralAmount,
             params.liquidity,
             amount0,
             amount1
@@ -152,12 +151,22 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
 
     function increaseLiquidityPosition(
         IFoilStructs.LiquidityIncreaseParams memory params
-    ) external returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
+    )
+        external
+        returns (
+            uint128 liquidity,
+            uint256 amount0,
+            uint256 amount1,
+            uint256 collateralAmount
+        )
+    {
         IncreaseLiquidityPositionStack memory stack;
 
         Market.Data storage market = Market.load();
-        Position.Data storage position = Position.load(params.positionId);
-        Epoch.Data storage epoch = Epoch.load(position.epochId);
+        Position.Data storage position = Position.loadValid(params.positionId);
+        Epoch.Data storage epoch = Epoch.loadValid(position.epochId);
+
+        epoch.validateEpochNotSettled();
 
         if (position.kind != IFoilStructs.PositionKind.Liquidity) {
             revert Errors.InvalidPositionKind();
@@ -168,8 +177,8 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
             stack.previousAmount1,
             stack.lowerTick,
             stack.upperTick,
-
-        ) = _getCurrentPoolTokenAmounts(market, epoch, position);
+            stack.previousLiquidity
+        ) = _getCurrentPositionTokenAmounts(market, epoch, position);
 
         stack.increaseParams = INonfungiblePositionManager
             .IncreaseLiquidityParams({
@@ -185,21 +194,17 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
             .uniswapPositionManager
             .increaseLiquidity(stack.increaseParams);
 
-        position.updateCollateral(
-            market.collateralAsset,
-            params.collateralAmount
-        );
-
         // get tokens owed
         (, , , , , , , , , , stack.tokensOwed0, stack.tokensOwed1) = market
             .uniswapPositionManager
             .positions(position.uniswapPositionId);
 
-        position.updateValidLp(
+        collateralAmount = position.updateValidLp(
             epoch,
             Position.UpdateLpParams({
                 uniswapNftId: position.uniswapPositionId,
-                liquidity: liquidity,
+                liquidity: stack.previousLiquidity + liquidity,
+                additionalCollateral: params.collateralAmount,
                 additionalLoanAmount0: amount0, // these are the added tokens to the position
                 additionalLoanAmount1: amount1,
                 lowerTick: stack.lowerTick,
@@ -211,7 +216,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
 
         emit LiquidityPositionIncreased(
             position.id,
-            params.collateralAmount,
+            position.depositedCollateralAmount,
             liquidity,
             amount0,
             amount1
@@ -272,7 +277,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
         );
     }
 
-    function _getCurrentPoolTokenAmounts(
+    function _getCurrentPositionTokenAmounts(
         Market.Data storage market,
         Epoch.Data storage epoch,
         Position.Data storage position
@@ -301,5 +306,51 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
             sqrtPriceBX96,
             liquidity
         );
+    }
+
+    function getCollateralRequirementForAdditionalTokens(
+        uint256 positionId,
+        uint256 amount0,
+        uint256 amount1
+    ) external view returns (uint256) {
+        Market.Data storage market = Market.load();
+        Position.Data storage position = Position.loadValid(positionId);
+        Epoch.Data storage epoch = Epoch.loadValid(position.epochId);
+
+        IncreaseLiquidityPositionStack memory stack;
+
+        (
+            stack.previousAmount0,
+            stack.previousAmount1,
+            stack.lowerTick,
+            stack.upperTick,
+            stack.previousLiquidity
+        ) = _getCurrentPositionTokenAmounts(market, epoch, position);
+
+        (, , , , , , , , , , stack.tokensOwed0, stack.tokensOwed1) = market
+            .uniswapPositionManager
+            .positions(position.uniswapPositionId);
+
+        (uint160 sqrtPriceX96, , , , , , ) = epoch.pool.slot0();
+
+        uint160 sqrtPriceAX96 = TickMath.getSqrtRatioAtTick(stack.lowerTick);
+        uint160 sqrtPriceBX96 = TickMath.getSqrtRatioAtTick(stack.upperTick);
+
+        uint128 liquidityDelta = LiquidityAmounts.getLiquidityForAmounts(
+            sqrtPriceX96,
+            sqrtPriceAX96,
+            sqrtPriceBX96,
+            amount0,
+            amount1
+        );
+
+        return
+            epoch.requiredCollateralForLiquidity(
+                stack.previousLiquidity + liquidityDelta,
+                position.borrowedVGas + amount0 - stack.tokensOwed0,
+                position.borrowedVEth + amount1 - stack.tokensOwed1,
+                sqrtPriceAX96,
+                sqrtPriceBX96
+            );
     }
 }

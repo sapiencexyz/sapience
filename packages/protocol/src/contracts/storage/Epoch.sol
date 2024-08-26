@@ -195,14 +195,18 @@ library Epoch {
         int24 lowerTick,
         int24 upperTick
     ) internal view {
-        if (self.settled || block.timestamp >= self.endTime) {
-            revert Errors.ExpiredEpoch();
-        }
+        validateEpochNotSettled(self);
 
         int24 minTick = self.params.baseAssetMinPriceTick;
         int24 maxTick = self.params.baseAssetMaxPriceTick;
         if (lowerTick < minTick) revert Errors.InvalidRange(lowerTick, minTick);
         if (upperTick > maxTick) revert Errors.InvalidRange(upperTick, maxTick);
+    }
+
+    function validateEpochNotSettled(Data storage self) internal view {
+        if (self.settled || block.timestamp >= self.endTime) {
+            revert Errors.ExpiredEpoch();
+        }
     }
 
     function validateSettlementSanity(Data storage self) internal view {
@@ -322,7 +326,6 @@ library Epoch {
             loanAmount0,
             loanAmount1
         );
-
         requiredCollateral = collateralRequirementAtMin >
             collateralRequirementAtMax
             ? collateralRequirementAtMin
@@ -366,7 +369,6 @@ library Epoch {
             sqrtPriceBX96,
             liquidity
         );
-
         uint256 totalLoanAmountInEth = loanAmount1 +
             Quote.quoteGasToEth(loanAmount0, self.sqrtPriceMaxX96);
 

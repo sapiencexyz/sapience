@@ -37,6 +37,7 @@ interface IEpochLiquidityModule {
         external
         returns (
             uint256 id,
+            uint256 collateralAmount,
             uint256 uniswapNftId,
             uint128 liquidity,
             uint256 addedAmount0,
@@ -46,6 +47,7 @@ interface IEpochLiquidityModule {
     struct DecreaseLiquidityPositionStack {
         uint256 previousAmount0;
         uint256 previousAmount1;
+        uint128 previousLiquidity;
         int24 lowerTick;
         int24 upperTick;
         INonfungiblePositionManager.DecreaseLiquidityParams decreaseParams;
@@ -55,11 +57,14 @@ interface IEpochLiquidityModule {
 
     function decreaseLiquidityPosition(
         IFoilStructs.LiquidityDecreaseParams memory params
-    ) external returns (uint256 amount0, uint256 amount1);
+    )
+        external
+        returns (uint256 amount0, uint256 amount1, uint256 collateralAmount);
 
     struct IncreaseLiquidityPositionStack {
         uint256 previousAmount0;
         uint256 previousAmount1;
+        uint128 previousLiquidity;
         int24 lowerTick;
         int24 upperTick;
         INonfungiblePositionManager.IncreaseLiquidityParams increaseParams;
@@ -69,7 +74,14 @@ interface IEpochLiquidityModule {
 
     function increaseLiquidityPosition(
         IFoilStructs.LiquidityIncreaseParams memory params
-    ) external returns (uint128 liquidity, uint256 amount0, uint256 amount1);
+    )
+        external
+        returns (
+            uint128 liquidity,
+            uint256 amount0,
+            uint256 amount1,
+            uint256 collateralAmount
+        );
 
     function getTokenAmounts(
         uint256 epochId,
@@ -81,4 +93,10 @@ interface IEpochLiquidityModule {
         external
         view
         returns (uint256 amount0, uint256 amount1, uint128 liquidity);
+
+    function getCollateralRequirementForAdditionalTokens(
+        uint256 positionId,
+        uint256 amount0,
+        uint256 amount1
+    ) external view returns (uint256);
 }
