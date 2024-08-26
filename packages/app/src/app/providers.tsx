@@ -31,7 +31,11 @@ const config = createConfig({
   connectors: [injected()],
   transports: {
     [cannon.id]: http('http://localhost:8545'),
-    [sepolia.id]: http('https://ethereum-sepolia-rpc.publicnode.com'),
+    [sepolia.id]: http(
+      process.env.NEXT_PUBLIC_INFURA_API_KEY
+        ? `https://sepolia.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
+        : 'https://ethereum-sepolia-rpc.publicnode.com'
+    ),
   },
 });
 
