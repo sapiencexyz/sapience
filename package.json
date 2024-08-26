@@ -1,8 +1,9 @@
 {
   "name": "fh",
-  "version": "1.0.0",
+  "version": "9.3.0",
   "description": "",
   "main": "index.js",
+  "packageManager": "pnpm@8.0.0",
   "scripts": {
     "build": "pnpm --filter protocol run build && pnpm --filter app run build && pnpm --filter docs run build && pnpm --filter website run build && pnpm --filter data run build",
     "test": "pnpm run test --recursive",
@@ -20,6 +21,6 @@
   },
   "engines": {
     "node": ">=20.14.x",
-    "pnpm": ">=8"
+    "pnpm": ">=9"
   }
 }
