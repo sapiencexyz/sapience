@@ -8,12 +8,12 @@ import FoilSepolia from "@/protocol/deployments/11155111/Foil.json";
 
 const mainnetPublicClient = createPublicClient({
   chain: mainnet,
-  transport: http(), // switch to websockets with a paid endpoint
+  transport: process.env.INFURA_API_KEY ? webSocket(`wss://sepolia.infura.io/ws/v3/${process.env.INFURA_API_KEY}`) : http(),
 });
 
 const sepoliaPublicClient = createPublicClient({
   chain: sepolia,
-  transport: http(), // switch to websockets with a paid endpoint
+  transport: process.env.INFURA_API_KEY ? webSocket(`wss://mainnet.infura.io/ws/v3/${process.env.INFURA_API_KEY}`) : http(),
 });
 
 hardhat.id = 13370 as any;
