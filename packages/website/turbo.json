@@ -1,16 +1,17 @@
 {
-  "$schema": "https://turbo.build/schema.json",
-  "tasks": {
-    "build": {
-      "outputs": [".next/**", "!.next/cache/**", "public/**"],
-      "env": []
-    },
-    "lint": {
-      "outputs": [],
-      "inputs": [".eslintrc.*", "src/**"]
-    },
-    "type-check": {
-      "outputs": ["*.tsbuildinfo"]
+    "$schema": "https://turbo.build/schema.json",
+    "pipeline": {
+      "build": {
+        "outputs": [".next/**", "!.next/cache/**", "public/**"],
+        "env": []
+      },
+      "lint": {
+        "outputs": [],
+        "inputs": [".eslintrc.*", "src/**"]
+      },
+      "type-check": {
+        "outputs": ["*.tsbuildinfo"]
+      }
     }
   }
-}
+  
