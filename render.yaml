@@ -1,22 +1,19 @@
-services:
-  - name: postgres-db
-    type: database
-    databaseName: mydatabase
-    databaseType: postgres
-    databaseVersion: 13
-    plan: standard
+databases:
+  - name: Foil
+    databaseName: foildb
 
+services:
   - name: web-service
     type: web
     env: node
     plan: standard
-    buildCommand: cd packages/data && pnpm install
-    startCommand: cd packages/data && pnpm start:service
+    buildCommand: pnpm --prefix packages/data install
+    startCommand: pnpm --prefix packages/data start:service
     autoDeploy: true
     envVars:
       - key: DATABASE_URL
         fromDatabase:
-          name: postgres-db
+          name: foildb
           property: connectionString
     repo: https://github.com/foilxyz/foil
     branch: main
@@ -25,13 +22,13 @@ services:
     type: worker
     env: node
     plan: standard
-    buildCommand: cd packages/data && pnpm install
-    startCommand: cd packages/data && pnpm start:worker
+    buildCommand: pnpm --prefix packages/data install
+    startCommand: pnpm --prefix packages/data start:worker
     autoDeploy: true
     envVars:
       - key: DATABASE_URL
         fromDatabase:
-          name: postgres-db
+          name: foildb
           property: connectionString
     repo: https://github.com/foilxyz/foil
     branch: main
