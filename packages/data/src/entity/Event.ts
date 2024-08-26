@@ -11,9 +11,8 @@ import {
   Unique,
 } from "typeorm";
 import { upsertPositionFromLiquidityEvent } from "../util/dbUtil";
-import { Log } from "viem";
 import { Transaction } from "./Transaction";
-import { LIQUIDITY_POSITION_EVENT_NAME } from "src/interfaces/interfaces";
+import { LIQUIDITY_POSITION_EVENT_NAME } from "../interfaces/interfaces";
 
 @Entity()
 @Unique(["contractId", "blockNumber", "logIndex"])
