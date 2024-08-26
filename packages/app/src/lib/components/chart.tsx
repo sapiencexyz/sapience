@@ -28,10 +28,7 @@ const CustomBarShape = ({
   chartHeight: number;
   gridOffsetFromParent: number;
 }) => {
-  const candleColor =
-    payload.open < payload.close
-      ? colors.green?.[400] ?? '#00FF00'
-      : colors.red?.[500] ?? '#FF0000';
+  const candleColor = payload.open < payload.close ? '#3FBC44' : '#FF0000';
 
   const scaleY = (value: number) => {
     const scaled = (value - yAxisDomain[0]) / (yAxisDomain[1] - yAxisDomain[0]);
