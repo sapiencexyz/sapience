@@ -67,7 +67,7 @@
     "typescript": "^5.5.4"
   },
   "engines": {
-    "node": ">=16.x.x",
-    "pnpm": ">=8"
+    "node": ">=20.14.x",
+    "pnpm": ">=9"
   }
 }
