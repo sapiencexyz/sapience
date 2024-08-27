@@ -1,15 +1,10 @@
 {
-  "address": "0xEBAd76CA60B0524063aF9049f7E7c2a1DF1E442e",
+  "address": "0xA8d2cB802868FA075aEf3af1d863809db437979D",
   "abi": [
     {
       "type": "function",
       "name": "assertionDisputedCallback",
       "inputs": [
-        {
-          "name": "epochId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
         {
           "name": "assertionId",
           "type": "bytes32",
@@ -23,11 +18,6 @@
       "type": "function",
       "name": "assertionResolvedCallback",
       "inputs": [
-        {
-          "name": "epochId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
         {
           "name": "assertionId",
           "type": "bytes32",
@@ -52,7 +42,7 @@
           "internalType": "uint256"
         },
         {
-          "name": "settlementPrice",
+          "name": "settlementPriceD18",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -71,7 +61,19 @@
       "name": "MarketSettled",
       "inputs": [
         {
-          "name": "settlementPrice",
+          "name": "epochId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "assertionId",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "settlementPriceD18",
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
@@ -83,6 +85,12 @@
       "type": "event",
       "name": "SettlementDisputed",
       "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
         {
           "name": "disputeTime",
           "type": "uint256",
@@ -96,6 +104,12 @@
       "type": "event",
       "name": "SettlementSubmitted",
       "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
         {
           "name": "price",
           "type": "uint256",
@@ -113,56 +127,23 @@
     },
     {
       "type": "error",
-      "name": "AddressEmptyCode",
-      "inputs": [
-        {
-          "name": "target",
-          "type": "address",
-          "internalType": "address"
-        }
-      ]
-    },
-    {
-      "type": "error",
-      "name": "AddressInsufficientBalance",
-      "inputs": [
-        {
-          "name": "account",
-          "type": "address",
-          "internalType": "address"
-        }
-      ]
-    },
-    {
-      "type": "error",
-      "name": "FailedInnerCall",
+      "name": "InvalidEpoch",
       "inputs": []
     },
     {
       "type": "error",
       "name": "ReentrancyGuardReentrantCall",
       "inputs": []
-    },
-    {
-      "type": "error",
-      "name": "SafeERC20FailedOperation",
-      "inputs": [
-        {
-          "name": "token",
-          "type": "address",
-          "internalType": "address"
-        }
-      ]
     }
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xbe91e256e5495a233b6ed50eccb59ac9a939e60189e1edba1f846a61365a108e",
-  "deployTxnBlockNumber": "6506102",
-  "deployTimestamp": "1723741704",
+  "deployTxnHash": "0x95d3ff65b1704f5d573a6b52e75dea5e6c40f1a77ca732d27960022142f68486",
+  "deployTxnBlockNumber": "6582996",
+  "deployTimestamp": "1724785620",
   "sourceName": "src/contracts/modules/EpochUMASettlementModule.sol",
   "contractName": "EpochUMASettlementModule",
   "deployedOn": "deploy.EpochUMASettlementModule",
-  "gasUsed": 798576,
-  "gasCost": "33852750403"
+  "gasUsed": 724842,
+  "gasCost": "3465335934"
 }

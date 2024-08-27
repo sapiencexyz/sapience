@@ -18,6 +18,8 @@ contract TestTrade is TestEpoch {
     using SafeCastU256 for uint256;
     using SafeCastI256 for int256;
 
+    uint256 constant dust = 1e8;
+
     struct StateData {
         uint256 userCollateral;
         uint256 foilCollateral;
@@ -193,7 +195,7 @@ contract TestTrade is TestEpoch {
         Position.Data memory position = foil.getPosition(positionId);
         console2.log(" >>> Position", positionId);
         console2.log("    >>> Ids");
-        console2.log("      >> tokenId           : ", position.tokenId);
+        console2.log("      >> tokenId           : ", position.id);
         console2.log("      >> epochId           : ", position.epochId);
         console2.log("    >>> Accounting data (debt and deposited collateral)");
         console2.log(
@@ -229,12 +231,12 @@ contract TestTrade is TestEpoch {
                 upperTick
             );
 
-        IFoilStructs.LiquidityPositionParams memory params = IFoilStructs
-            .LiquidityPositionParams({
+        IFoilStructs.LiquidityMintParams memory params = IFoilStructs
+            .LiquidityMintParams({
                 epochId: epochId,
                 amountTokenA: amountTokenA,
                 amountTokenB: amountTokenB,
-                collateralAmount: collateralAmount,
+                collateralAmount: collateralAmount + dust,
                 lowerTick: lowerTick,
                 upperTick: upperTick,
                 minAmountTokenA: 0,

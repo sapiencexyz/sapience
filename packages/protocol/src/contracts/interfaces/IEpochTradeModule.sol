@@ -4,6 +4,30 @@ pragma solidity >=0.8.2 <0.9.0;
 import {IFoilStructs} from "./IFoilStructs.sol";
 
 interface IEpochTradeModule {
+    event TraderPositionCreated(
+        uint256 indexed epochId,
+        uint256 indexed positionId,
+        uint256 collateralAmount,
+        uint256 vEthAmount,
+        uint256 vGasAmount,
+        uint256 borrowedVEth,
+        uint256 borrowedVGas,
+        uint256 initialPrice,
+        uint256 finalPrice
+    );
+
+    event TraderPositionModified(
+        uint256 indexed epochId,
+        uint256 indexed positionId,
+        uint256 collateralAmount,
+        uint256 vEthAmount,
+        uint256 vGasAmount,
+        uint256 borrowedVEth,
+        uint256 borrowedVGas,
+        uint256 initialPrice,
+        uint256 finalPrice
+    );
+
     /**
      * @notice Create a new position for a trade
      * @param epochId the epoch id
@@ -57,10 +81,10 @@ interface IEpochTradeModule {
      * @notice Gets the position size (Short position) for a given collateral amount as a new position
      * @param epochId the epoch id
      * @param collateral the amount of collateral that would be used
-     * @return positionSize the absolut position size in vgas token amount
+     * @return modPositionSize the absolut position size in vgas token amount
      */
     function getShortSizeForCollateral(
         uint256 epochId,
         uint256 collateral
-    ) external view returns (uint256 positionSize);
+    ) external view returns (uint256 modPositionSize);
 }

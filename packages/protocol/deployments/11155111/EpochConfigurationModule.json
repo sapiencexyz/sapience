@@ -1,5 +1,5 @@
 {
-  "address": "0x35f49BA660F4A65A3e411D6Ee9C97332b9Fb5Ac9",
+  "address": "0x32345922D7b7106cea9DEEa743D2B0e206862Df7",
   "abi": [
     {
       "type": "function",
@@ -40,11 +40,6 @@
         },
         {
           "name": "uniswapPositionManager",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "uniswapQuoter",
           "type": "address",
           "internalType": "address"
         },
@@ -115,11 +110,6 @@
         },
         {
           "name": "uniswapPositionManager",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "uniswapQuoter",
           "type": "address",
           "internalType": "address"
         },
@@ -233,12 +223,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x784d70f38d9e76198c86767878647a4b7d7aeff268cbce8cb810bafe1d867ed1",
-  "deployTxnBlockNumber": "6506105",
-  "deployTimestamp": "1723741740",
+  "deployTxnHash": "0x1d9a1317ceae3c65b12634be280edf9ed49457f591e84d2ef09f70181fdd96a2",
+  "deployTxnBlockNumber": "6582999",
+  "deployTimestamp": "1724785656",
   "sourceName": "src/contracts/modules/EpochConfigurationModule.sol",
   "contractName": "EpochConfigurationModule",
   "deployedOn": "deploy.EpochConfigurationModule",
-  "gasUsed": 2016847,
-  "gasCost": "27304630816"
+  "gasUsed": 2016221,
+  "gasCost": "3313035255"
 }

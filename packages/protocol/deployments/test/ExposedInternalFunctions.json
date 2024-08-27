@@ -1,0 +1,69 @@
+{
+  "address": "0xaAC8e190bBBAF9ABa6986f466b1F550fe0ac0D85",
+  "abi": [
+    {
+      "type": "function",
+      "name": "requiredCollateralForLiquidity",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "liquidity",
+          "type": "uint128",
+          "internalType": "uint128"
+        },
+        {
+          "name": "loanAmount0",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "loanAmount1",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "sqrtPriceAX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        },
+        {
+          "name": "sqrtPriceBX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "error",
+      "name": "OverflowInt256ToUint256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowUint256ToInt256",
+      "inputs": []
+    }
+  ],
+  "constructorArgs": [],
+  "linkedLibraries": {},
+  "deployTxnHash": "0x03de6695988225cd5db437a80177282b10142990d69a3fb24a8cea98128b3c57",
+  "deployTxnBlockNumber": "1",
+  "deployTimestamp": "1724725060",
+  "sourceName": "src/contracts/ mocks/ExposedInternalFunctions.sol",
+  "contractName": "ExposedInternalFunctions",
+  "deployedOn": "deploy.ExposedInternalFunctions",
+  "gasUsed": 400246,
+  "gasCost": "1000163674"
+}
