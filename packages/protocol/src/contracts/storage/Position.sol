@@ -181,6 +181,8 @@ library Position {
         Data storage self,
         uint256 settlementPriceD18
     ) internal returns (uint256 collateralAmountReturned) {
+        console2.log("self.vGasAmount", self.vGasAmount);
+        console2.log("self.borrowedVGas", self.borrowedVGas);
         // convert everything to ETH
         if (self.vGasAmount > 0) {
             self.vEthAmount += (self.vGasAmount * settlementPriceD18) / 1e18;
@@ -190,10 +192,16 @@ library Position {
                 (self.borrowedVGas * settlementPriceD18) /
                 1e18;
         }
+        console2.log("self.vEthAmount", self.vEthAmount);
+        console2.log("self.borrowedVEth", self.borrowedVEth);
 
         self.isSettled = true;
 
         self.depositedCollateralAmount += self.vEthAmount - self.borrowedVEth;
+        console2.log(
+            "self.depositedCollateralAmount",
+            self.depositedCollateralAmount
+        );
         return self.depositedCollateralAmount;
     }
 }

@@ -1,5 +1,5 @@
 {
-  "address": "0x05341dbe31f83b51d08dc8d4a587f29be9554add",
+  "address": "0xabba3bd76d4451bfc92378c93087b5bae66602a3",
   "abi": [
     {
       "type": "function",
@@ -756,6 +756,22 @@
     },
     {
       "type": "error",
+      "name": "NotAccountOwnerOrAuthorized",
+      "inputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "OverflowInt256ToUint256",
       "inputs": []
     },
@@ -768,6 +784,17 @@
       "type": "error",
       "name": "PositionAlreadyCreated",
       "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PositionAlreadySettled",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
     },
     {
       "type": "error",
@@ -1062,6 +1089,11 @@
     },
     {
       "type": "error",
+      "name": "EpochSettled",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "InsufficientVEth",
       "inputs": [
         {
@@ -1089,22 +1121,6 @@
           "name": "vGas",
           "type": "uint256",
           "internalType": "uint256"
-        }
-      ]
-    },
-    {
-      "type": "error",
-      "name": "NotAccountOwnerOrAuthorized",
-      "inputs": [
-        {
-          "name": "tokenId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "sender",
-          "type": "address",
-          "internalType": "address"
         }
       ]
     },
@@ -1872,6 +1888,11 @@
               "name": "uniswapPositionId",
               "type": "uint256",
               "internalType": "uint256"
+            },
+            {
+              "name": "isSettled",
+              "type": "bool",
+              "internalType": "bool"
             }
           ]
         }
@@ -1948,11 +1969,11 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0x0ec56b77da6631621d0387942bb38ea1f6a295a27d5145616acd10f18004cb89",
+  "deployTxnHash": "0x34f21536ad04354877f2b749e64bf60e23ff03b99e43a4122e1e53150eed6f78",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1724770239",
+  "deployTimestamp": "1724789812",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
-  "gasUsed": 461316,
-  "gasCost": "1000104193"
+  "gasUsed": 461352,
+  "gasCost": "1000081783"
 }

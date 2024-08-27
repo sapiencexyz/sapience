@@ -1,5 +1,5 @@
 {
-  "address": "0x268dfAa3400a8F20697Aed3f01C4Ab3378C326aa",
+  "address": "0xa764EcAfF885D6f09ab20566942E1B2c4287E177",
   "abi": [
     {
       "type": "function",
@@ -537,6 +537,22 @@
     },
     {
       "type": "error",
+      "name": "NotAccountOwnerOrAuthorized",
+      "inputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "OverflowInt24ToUint256",
       "inputs": []
     },
@@ -554,6 +570,17 @@
       "type": "error",
       "name": "PositionAlreadyCreated",
       "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PositionAlreadySettled",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
     },
     {
       "type": "error",
@@ -579,12 +606,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x36463b390346f511db6ea4195763d3fe2d6dcd4452ce6fac64205e0e3093d20a",
+  "deployTxnHash": "0xeba4a0ac702c16c73f465202b1cdfa9a4f5226ffec7a95b3bd37c6ad49a67dc9",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1724770231",
+  "deployTimestamp": "1724789804",
   "sourceName": "src/contracts/modules/EpochLiquidityModule.sol",
   "contractName": "EpochLiquidityModule",
   "deployedOn": "deploy.EpochLiquidityModule",
-  "gasUsed": 2878844,
+  "gasUsed": 2792258,
   "gasCost": "1000337295"
 }

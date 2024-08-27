@@ -1,5 +1,5 @@
 {
-  "address": "0xecD3F502A2620a6cf335110250e062E48d52EAeD",
+  "address": "0x34aB8276B86fab7b50485920c64269e0B6699D8e",
   "abi": [
     {
       "type": "function",
@@ -179,6 +179,11 @@
     },
     {
       "type": "error",
+      "name": "EpochSettled",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "InsufficientCollateral",
       "inputs": [
         {
@@ -333,12 +338,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xe11d1b878af9aa71fc60dffa64257ce4740c9147d3064cae65cb5da0c5c7cfd0",
+  "deployTxnHash": "0x4b8423afa26e7300bbf0fcbadec6a58ba2e7ac5605176f2a6932e03564c874b6",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1724725060",
+  "deployTimestamp": "1724789804",
   "sourceName": "src/contracts/modules/EpochTradeModule.sol",
   "contractName": "EpochTradeModule",
   "deployedOn": "deploy.EpochTradeModule",
-  "gasUsed": 2032933,
-  "gasCost": "1000236596"
+  "gasUsed": 2075876,
+  "gasCost": "1000302982"
 }
