@@ -1,7 +1,7 @@
 import "tsconfig-paths/register";
+import dataSource, { initializeDataSource } from "src/db";
 import { Price } from "../entity/Price";
 import { Block, PublicClient } from "viem";
-import dataSource, { initializeDataSource } from "../db";
 
 export const indexBaseFeePerGas = async (
   publicClient: PublicClient,

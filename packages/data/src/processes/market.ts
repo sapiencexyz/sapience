@@ -1,7 +1,7 @@
 import "tsconfig-paths/register";
+import dataSource, { initializeDataSource } from "src/db";
 import { Event } from "../entity/Event";
 import { Abi, decodeEventLog, Log, PublicClient } from "viem";
-import dataSource, { initializeDataSource } from "../db";
 import { Repository } from "typeorm";
 
 const bigintReplacer = (key: string, value: any) => {

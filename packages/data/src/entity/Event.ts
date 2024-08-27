@@ -44,7 +44,6 @@ export class Event {
   // All should fail without crashing
   @AfterInsert()
   async afterInsert() {
-    console.log(`!!!!Event inserted: ${this.id}`);
     // Upsert associated Position or Transaction
     if (this.logData.eventName === LIQUIDITY_POSITION_EVENT_NAME) {
       try {

@@ -1,6 +1,6 @@
+import dataSource, { initializeDataSource } from "../db";
 import { Event } from "../entity/Event";
 import { Position } from "../entity/Position";
-import dataSource, { initializeDataSource } from "../db";
 import { LiquidityPositionEventLog } from "../interfaces/interfaces";
 export const upsertPositionFromLiquidityEvent = async (event: Event) => {
   await initializeDataSource();
