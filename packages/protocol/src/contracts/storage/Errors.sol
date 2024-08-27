@@ -31,4 +31,5 @@ library Errors {
     error InsufficientVGas(uint256 amount, uint256 vGas);
     error InvalidPositionKind();
     error InvalidRange(int24 requestedTick, int24 boundedTick);
+    error PositionAlreadySettled(uint256 positionId);
 }

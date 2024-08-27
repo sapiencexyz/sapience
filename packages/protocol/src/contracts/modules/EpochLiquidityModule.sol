@@ -7,8 +7,6 @@ import "../storage/Position.sol";
 import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
 import {IEpochLiquidityModule} from "../interfaces/IEpochLiquidityModule.sol";
 
-import "forge-std/console2.sol";
-
 contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
     using Position for Position.Data;
     using Epoch for Epoch.Data;
@@ -95,11 +93,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
         Epoch.Data storage epoch = Epoch.loadValid(position.epochId);
 
         epoch.validateEpochNotSettled();
-
-        if (position.kind != IFoilStructs.PositionKind.Liquidity) {
-            revert Errors.InvalidPositionKind();
-        }
-
+        position.preValidateLp();
         (
             stack.previousAmount0,
             stack.previousAmount1,
@@ -172,10 +166,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
         Epoch.Data storage epoch = Epoch.loadValid(position.epochId);
 
         epoch.validateEpochNotSettled();
-
-        if (position.kind != IFoilStructs.PositionKind.Liquidity) {
-            revert Errors.InvalidPositionKind();
-        }
+        position.preValidateLp();
 
         (
             stack.previousAmount0,
@@ -381,11 +372,6 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
                     amount1Max: type(uint128).max
                 })
             );
-
-        // Print out the token amounts
-        console2.log("Closed liquidity position:");
-        console2.log("Collected amount0:", collectedAmount0);
-        console2.log("Collected amount1:", collectedAmount1);
 
         // Burn the Uniswap position
         market.uniswapPositionManager.burn(position.uniswapPositionId);

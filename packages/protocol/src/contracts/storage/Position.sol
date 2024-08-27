@@ -24,6 +24,7 @@ library Position {
         uint256 vGasAmount;
         int256 currentTokenAmount;
         uint256 uniswapPositionId; // uniswap nft id
+        bool isSettled;
     }
 
     function load(
@@ -107,6 +108,16 @@ library Position {
         );
     }
 
+    function preValidateLp(Data storage self) internal view {
+        if (self.kind != IFoilStructs.PositionKind.Liquidity) {
+            revert Errors.InvalidPositionKind();
+        }
+
+        if (self.isSettled) {
+            revert Errors.PositionAlreadySettled(self.id);
+        }
+    }
+
     struct UpdateLpParams {
         uint256 uniswapNftId;
         uint128 liquidity;
@@ -158,5 +169,25 @@ library Position {
         }
 
         updateCollateral(self, requiredCollateral);
+    }
+
+    function settle(
+        Data storage self,
+        uint256 settlementPriceD18
+    ) internal returns (uint256 collateralAmountReturned) {
+        // convert everything to ETH
+        if (self.vGasAmount > 0) {
+            self.vEthAmount += (self.vGasAmount * settlementPriceD18) / 1e18;
+        }
+        if (self.borrowedVGas > 0) {
+            self.borrowedVEth +=
+                (self.borrowedVGas * settlementPriceD18) /
+                1e18;
+        }
+
+        self.isSettled = true;
+
+        self.depositedCollateralAmount += self.vEthAmount - self.borrowedVEth;
+        return self.depositedCollateralAmount;
     }
 }
