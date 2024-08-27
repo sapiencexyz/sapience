@@ -18,6 +18,8 @@ contract TestTrade is TestEpoch {
     using SafeCastU256 for uint256;
     using SafeCastI256 for int256;
 
+    uint256 constant dust = 1e8;
+
     struct StateData {
         uint256 userCollateral;
         uint256 foilCollateral;
@@ -234,7 +236,7 @@ contract TestTrade is TestEpoch {
                 epochId: epochId,
                 amountTokenA: amountTokenA,
                 amountTokenB: amountTokenB,
-                collateralAmount: collateralAmount,
+                collateralAmount: collateralAmount + dust,
                 lowerTick: lowerTick,
                 upperTick: upperTick,
                 minAmountTokenA: 0,
