@@ -3,21 +3,21 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
-import {IFoil} from "../src/contracts/interfaces/IFoil.sol";
-import {IMintableToken} from "../src/contracts/external/IMintableToken.sol";
-import {TickMath} from "../src/contracts/external/univ3/TickMath.sol";
-import {TestTrade} from "./helpers/TestTrade.sol";
-import {TestEpoch} from "./helpers/TestEpoch.sol";
-import {TestUser} from "./helpers/TestUser.sol";
-import {DecimalPrice} from "../src/contracts/libraries/DecimalPrice.sol";
-import "../src/synthetix/utils/DecimalMath.sol";
-import {SafeCastI256, SafeCastU256} from "../src/synthetix/utils/SafeCast.sol";
+import {IFoil} from "../../src/contracts/interfaces/IFoil.sol";
+import {IMintableToken} from "../../src/contracts/external/IMintableToken.sol";
+import {TickMath} from "../../src/contracts/external/univ3/TickMath.sol";
+import {TestTrade} from "../helpers/TestTrade.sol";
+import {TestEpoch} from "../helpers/TestEpoch.sol";
+import {TestUser} from "../helpers/TestUser.sol";
+import {DecimalPrice} from "../../src/contracts/libraries/DecimalPrice.sol";
+import "../../src/synthetix/utils/DecimalMath.sol";
+import {SafeCastI256, SafeCastU256} from "../../src/synthetix/utils/SafeCast.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import {Errors} from "../src/contracts/storage/Errors.sol";
-import {Position} from "../src/contracts/storage/Position.sol";
-import {IFoilStructs} from "../src/contracts/interfaces/IFoilStructs.sol";
-import {MigrationMathUtils} from "../src/contracts/external/univ3/MigrationMathUtils.sol";
-import "../src/synthetix/utils/DecimalMath.sol";
+import {Errors} from "../../src/contracts/storage/Errors.sol";
+import {Position} from "../../src/contracts/storage/Position.sol";
+import {IFoilStructs} from "../../src/contracts/interfaces/IFoilStructs.sol";
+import {MigrationMathUtils} from "../../src/contracts/external/univ3/MigrationMathUtils.sol";
+import "../../src/synthetix/utils/DecimalMath.sol";
 
 import "forge-std/console2.sol";
 
@@ -66,8 +66,8 @@ contract TradePositionSettlement is TestTrade {
 
         (foil, ) = createEpoch(5200, 28200, startingSqrtPriceX96); // 1.709 to 17.09 (1.6819839204636384 to 16.774485460620674)
 
-        lp1 = TestUser.createUser("LP1", 10_000_000 ether);
-        trader1 = TestUser.createUser("Trader1", 10_000_000 ether);
+        lp1 = TestUser.createUser("LP1", 20_000_000 ether);
+        trader1 = TestUser.createUser("Trader1", 20_000_000 ether);
 
         (epochId, , , pool, tokenA, tokenB, , , , , ) = foil.getLatestEpoch();
 
@@ -87,6 +87,7 @@ contract TradePositionSettlement is TestTrade {
 
         // Settle the epoch
         bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
+
         (owner, , , , optimisticOracleV3, ) = foil.getMarket();
         (
             epochId,

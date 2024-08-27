@@ -196,4 +196,28 @@ library Position {
         self.depositedCollateralAmount += self.vEthAmount - self.borrowedVEth;
         return self.depositedCollateralAmount;
     }
+
+    function consolidateDebtsAndTokens(Data storage self) internal {
+        if (self.borrowedVEth > self.vEthAmount) {
+            self.borrowedVEth -= self.vEthAmount;
+            self.vEthAmount = 0;
+        } else {
+            self.vEthAmount -= self.borrowedVEth;
+            self.borrowedVEth = 0;
+        }
+
+        if (self.borrowedVGas > self.vGasAmount) {
+            self.borrowedVGas -= self.vGasAmount;
+            self.vGasAmount = 0;
+        } else {
+            self.vGasAmount -= self.borrowedVGas;
+            self.borrowedVGas = 0;
+        }
+
+        // Size of the position is the amount of vGas and direction depends on the kind
+        // TODO remove currentTokenAmount and get it from the position size
+        self.currentTokenAmount =
+            self.vGasAmount.toInt() -
+            self.borrowedVGas.toInt();
+    }
 }
