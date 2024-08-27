@@ -8,6 +8,8 @@ import {SafeCastI256} from "../../synthetix/utils/SafeCast.sol";
 import {SafeCastU256} from "../../synthetix/utils/SafeCast.sol";
 import {IEpochTradeModule} from "../interfaces/IEpochTradeModule.sol";
 
+import "forge-std/console2.sol";
+
 /**
  * @title Module for trade positions.
  * @dev See IEpochTradeModule.
@@ -46,10 +48,7 @@ contract EpochTradeModule is IEpochTradeModule {
             _createShortPosition(position, tokenAmount, tokenAmountLimit);
         }
 
-        position.updateCollateral(
-            Market.load().collateralAsset,
-            collateralAmount
-        );
+        position.updateCollateral(collateralAmount);
 
         // Validate after trading that collateral is enough
         position.afterTradeCheck();
@@ -99,10 +98,7 @@ contract EpochTradeModule is IEpochTradeModule {
             _modifyShortPosition(position, tokenAmount, tokenAmountLimit);
         }
 
-        position.updateCollateral(
-            Market.load().collateralAsset,
-            collateralAmount
-        );
+        position.updateCollateral(collateralAmount);
 
         // Validate after trading that collateral is enough
         position.afterTradeCheck();

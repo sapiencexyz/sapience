@@ -8,7 +8,7 @@ import "../libraries/DecimalPrice.sol";
 import "../libraries/Quote.sol";
 import "../external/univ3/LiquidityAmounts.sol";
 import "./Debt.sol";
-// import "./Errors.sol";
+import "./Errors.sol";
 import "./Market.sol";
 
 // import "forge-std/console2.sol";
@@ -37,6 +37,7 @@ library Epoch {
         uint160 sqrtPriceMaxX96;
         uint256 minPriceD18;
         uint256 maxPriceD18;
+        uint256 id;
     }
 
     function load(uint256 id) internal pure returns (Data storage epoch) {
@@ -45,14 +46,6 @@ library Epoch {
         assembly {
             epoch.slot := s
         }
-    }
-
-    function validateInRange(
-        Data storage self,
-        int24 lowerTick,
-        int24 upperTick
-    ) internal {
-        lowerTick;
     }
 
     function updateDebtPosition(
@@ -99,6 +92,9 @@ library Epoch {
         ) {
             revert Errors.TokensAlreadyCreated();
         }
+
+        // set id on first creation
+        if (epoch.id == 0) epoch.id = id;
 
         epoch.startTime = startTime;
         epoch.endTime = endTime;
@@ -194,6 +190,25 @@ library Epoch {
         }
     }
 
+    function validateLp(
+        Data storage self,
+        int24 lowerTick,
+        int24 upperTick
+    ) internal view {
+        validateEpochNotSettled(self);
+
+        int24 minTick = self.params.baseAssetMinPriceTick;
+        int24 maxTick = self.params.baseAssetMaxPriceTick;
+        if (lowerTick < minTick) revert Errors.InvalidRange(lowerTick, minTick);
+        if (upperTick > maxTick) revert Errors.InvalidRange(upperTick, maxTick);
+    }
+
+    function validateEpochNotSettled(Data storage self) internal view {
+        if (self.settled || block.timestamp >= self.endTime) {
+            revert Errors.ExpiredEpoch();
+        }
+    }
+
     function validateSettlementSanity(Data storage self) internal view {
         if (block.timestamp < self.startTime) {
             revert Errors.EpochNotStarted(self.startTime);
@@ -216,127 +231,6 @@ library Epoch {
         if (self.settled) {
             revert Errors.EpochSettled();
         }
-    }
-
-    function validateProvidedLiquidity(
-        Data storage self,
-        uint256 collateralAmount,
-        uint128 liquidity,
-        int24 lowerTick,
-        int24 upperTick
-    ) internal {
-        (uint160 sqrtPriceX96, , , , , , ) = self.pool.slot0();
-
-        uint128 scaleFactor = 1e10;
-        (
-            uint256 requiredCollateral,
-            uint256 tokenAmountA,
-            uint256 tokenAmountB
-        ) = requiredCollateralForLiquidity(
-                self,
-                liquidity / scaleFactor,
-                sqrtPriceX96,
-                TickMath.getSqrtRatioAtTick(lowerTick),
-                TickMath.getSqrtRatioAtTick(upperTick)
-            );
-
-        requiredCollateral *= scaleFactor;
-
-        if (collateralAmount < requiredCollateral) {
-            revert Errors.InsufficientCollateral(
-                collateralAmount,
-                requiredCollateral
-            );
-        }
-    }
-
-    function requiredCollateralForLiquidity(
-        Data storage self,
-        uint128 liquidity,
-        uint160 sqrtPriceX96,
-        uint160 sqrtPriceAX96,
-        uint160 sqrtPriceBX96
-    )
-        internal
-        view
-        returns (
-            uint256 requiredCollateral,
-            uint256 loanAmount0,
-            uint256 loanAmount1
-        )
-    {
-        (loanAmount0, loanAmount1) = LiquidityAmounts.getAmountsForLiquidity(
-            sqrtPriceX96,
-            sqrtPriceAX96,
-            sqrtPriceBX96,
-            liquidity
-        );
-
-        uint256 collateralRequirementAtMin = collateralRequirementAtMinTick(
-            self,
-            liquidity,
-            sqrtPriceAX96,
-            sqrtPriceBX96,
-            loanAmount0,
-            loanAmount1
-        );
-        uint256 collateralRequirementAtMax = collateralRequirementAtMaxTick(
-            self,
-            liquidity,
-            sqrtPriceAX96,
-            sqrtPriceBX96,
-            loanAmount0,
-            loanAmount1
-        );
-
-        requiredCollateral = collateralRequirementAtMin >
-            collateralRequirementAtMax
-            ? collateralRequirementAtMin
-            : collateralRequirementAtMax;
-    }
-
-    function collateralRequirementAtMinTick(
-        Data storage self,
-        uint128 liquidity,
-        uint160 sqrtPriceAX96,
-        uint160 sqrtPriceBX96,
-        uint256 loanAmount0,
-        uint256 loanAmount1
-    ) internal view returns (uint256) {
-        uint256 maxAmount0 = LiquidityAmounts.getAmount0ForLiquidity(
-            sqrtPriceAX96,
-            sqrtPriceBX96,
-            liquidity
-        );
-        uint256 availableAmount0 = maxAmount0 > loanAmount0
-            ? maxAmount0 - loanAmount0
-            : 0;
-        uint256 availableAmount1 = Quote.quoteGasToEth(
-            availableAmount0,
-            self.sqrtPriceMinX96
-        );
-        return
-            loanAmount1 > availableAmount1 ? loanAmount1 - availableAmount1 : 0;
-    }
-
-    function collateralRequirementAtMaxTick(
-        Data storage self,
-        uint128 liquidity,
-        uint160 sqrtPriceAX96,
-        uint160 sqrtPriceBX96,
-        uint256 loanAmount0,
-        uint256 loanAmount1
-    ) internal view returns (uint256) {
-        uint256 maxAmount1 = LiquidityAmounts.getAmount1ForLiquidity(
-            sqrtPriceAX96,
-            sqrtPriceBX96,
-            liquidity
-        );
-
-        uint256 totalLoanAmountInEth = loanAmount1 +
-            Quote.quoteGasToEth(loanAmount0, self.sqrtPriceMaxX96);
-
-        return totalLoanAmountInEth - maxAmount1;
     }
 
     /**
@@ -403,9 +297,82 @@ library Epoch {
     function getCurrentPoolPrice(
         Data storage self
     ) internal view returns (uint256 decimalPrice) {
-        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(self.pool).slot0();
+        (uint160 sqrtPriceX96, , , , , , ) = self.pool.slot0();
 
         return DecimalPrice.sqrtRatioX96ToPrice(sqrtPriceX96);
+    }
+
+    function requiredCollateralForLiquidity(
+        Data storage self,
+        uint128 liquidity,
+        uint256 loanAmount0,
+        uint256 loanAmount1,
+        uint160 sqrtPriceAX96,
+        uint160 sqrtPriceBX96
+    ) internal view returns (uint256 requiredCollateral) {
+        uint256 collateralRequirementAtMin = collateralRequirementAtMinTick(
+            self,
+            liquidity,
+            sqrtPriceAX96,
+            sqrtPriceBX96,
+            loanAmount0,
+            loanAmount1
+        );
+        uint256 collateralRequirementAtMax = collateralRequirementAtMaxTick(
+            self,
+            liquidity,
+            sqrtPriceAX96,
+            sqrtPriceBX96,
+            loanAmount0,
+            loanAmount1
+        );
+        requiredCollateral = collateralRequirementAtMin >
+            collateralRequirementAtMax
+            ? collateralRequirementAtMin
+            : collateralRequirementAtMax;
+    }
+
+    function collateralRequirementAtMinTick(
+        Data storage self,
+        uint128 liquidity,
+        uint160 sqrtPriceAX96,
+        uint160 sqrtPriceBX96,
+        uint256 loanAmount0,
+        uint256 loanAmount1
+    ) internal view returns (uint256) {
+        uint256 maxAmount0 = LiquidityAmounts.getAmount0ForLiquidity(
+            sqrtPriceAX96,
+            sqrtPriceBX96,
+            liquidity
+        );
+        uint256 availableAmount0 = maxAmount0 > loanAmount0
+            ? maxAmount0 - loanAmount0
+            : 0;
+        uint256 availableAmount1 = Quote.quoteGasToEth(
+            availableAmount0,
+            self.sqrtPriceMinX96
+        );
+        return
+            loanAmount1 > availableAmount1 ? loanAmount1 - availableAmount1 : 0;
+    }
+
+    function collateralRequirementAtMaxTick(
+        Data storage self,
+        uint128 liquidity,
+        uint160 sqrtPriceAX96,
+        uint160 sqrtPriceBX96,
+        uint256 loanAmount0,
+        uint256 loanAmount1
+    ) internal view returns (uint256) {
+        uint256 maxAmount1 = LiquidityAmounts.getAmount1ForLiquidity(
+            sqrtPriceAX96,
+            sqrtPriceBX96,
+            liquidity
+        );
+        uint256 totalLoanAmountInEth = loanAmount1 +
+            Quote.quoteGasToEth(loanAmount0, self.sqrtPriceMaxX96);
+
+        return totalLoanAmountInEth - maxAmount1;
     }
 
     function setSettlementPriceInRange(

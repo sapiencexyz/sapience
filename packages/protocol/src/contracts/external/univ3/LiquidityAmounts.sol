@@ -5,6 +5,8 @@ pragma solidity >=0.8.2 <0.9.0;
 import "./FullMath.sol";
 import "./FixedPoint96.sol";
 
+import "forge-std/console2.sol";
+
 /// @title Liquidity amount functions
 /// @notice Provides functions for computing liquidity amounts from token amounts and prices
 library LiquidityAmounts {
@@ -112,6 +114,7 @@ library LiquidityAmounts {
         }
     }
 
+    /// Modified from Uniswap V3's getAmount0ForLiquidity to resolve overflow issues
     /// @notice Computes the amount of token0 for a given amount of liquidity and a price range
     /// @param sqrtRatioAX96 A sqrt price representing the first tick boundary
     /// @param sqrtRatioBX96 A sqrt price representing the second tick boundary
@@ -125,12 +128,20 @@ library LiquidityAmounts {
         if (sqrtRatioAX96 > sqrtRatioBX96)
             (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
 
-        return
-            FullMath.mulDiv(
-                uint256(liquidity) << FixedPoint96.RESOLUTION,
-                sqrtRatioBX96 - sqrtRatioAX96,
-                sqrtRatioBX96
-            ) / sqrtRatioAX96;
+        uint256 numerator1 = uint256(liquidity) << FixedPoint96.RESOLUTION;
+        uint256 numerator2 = FullMath.mulDiv(
+            sqrtRatioBX96 - sqrtRatioAX96,
+            FixedPoint96.Q96,
+            sqrtRatioBX96
+        );
+
+        uint256 numerator = FullMath.mulDiv(
+            numerator1,
+            numerator2,
+            FixedPoint96.Q96
+        );
+
+        amount0 = numerator / sqrtRatioAX96;
     }
 
     /// @notice Computes the amount of token1 for a given amount of liquidity and a price range

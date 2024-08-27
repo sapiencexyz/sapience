@@ -1,5 +1,5 @@
 {
-  "address": "0x3799c7eE6e1DEf4503AECA72B5878a8c8c2b4599",
+  "address": "0x6BCf1FC010b0b7a6D7A5D5E35129E6a4000eDc7f",
   "abi": [
     {
       "type": "function",
@@ -294,7 +294,7 @@
           "internalType": "struct Position.Data",
           "components": [
             {
-              "name": "tokenId",
+              "name": "id",
               "type": "uint256",
               "internalType": "uint256"
             },
@@ -337,6 +337,11 @@
               "name": "currentTokenAmount",
               "type": "int256",
               "internalType": "int256"
+            },
+            {
+              "name": "uniswapPositionId",
+              "type": "uint256",
+              "internalType": "uint256"
             }
           ]
         }
@@ -351,12 +356,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xc7e2b1905754b0109af55a17f3a4461295bf14be0791247202ecd358178e03b3",
+  "deployTxnHash": "0x23562bbfacd97c6e345449255a2490df5a7b697e97968d9cd54b5e53f1b67624",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1724349975",
+  "deployTimestamp": "1724725060",
   "sourceName": "src/contracts/modules/EpochViewsModule.sol",
   "contractName": "EpochViewsModule",
   "deployedOn": "deploy.EpochViewsModule",
-  "gasUsed": 623446,
-  "gasCost": "1000211438"
+  "gasUsed": 632262,
+  "gasCost": "1000185936"
 }

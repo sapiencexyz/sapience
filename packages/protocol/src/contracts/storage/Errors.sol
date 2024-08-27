@@ -19,6 +19,7 @@ library Errors {
     error EpochNotSettled(uint256 epochId);
     error EpochAlreadyStarted();
     error EpochSettled();
+    error ExpiredEpoch();
     error TokensAlreadyCreated();
     error InsufficientCollateral(
         uint256 amountRequired,
@@ -29,12 +30,6 @@ library Errors {
     error InsufficientVEth(uint256 amount, uint256 vEth);
     error InsufficientVGas(uint256 amount, uint256 vGas);
     error InvalidPositionKind();
-    // error InvalidAmount(uint256 amount);
-    // error InvalidStartTime(uint256 time);
-    // error InvalidEndTime(uint256 time);
-    // error OverlappingEpochs(uint256 startTime);
-    // error InvalidPool(address pool);
-    // error InvalidVirtualToken(address token);
-    // error PoolAlreadyCreated();
-    // error NotEnoughCredit(uint256 amount, uint256 credit);
+    error InvalidRange(int24 requestedTick, int24 boundedTick);
+    error PositionAlreadySettled(uint256 positionId);
 }
