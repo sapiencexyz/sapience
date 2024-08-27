@@ -6,6 +6,8 @@ import "./Epoch.sol";
 import {SafeCastU256} from "../../synthetix/utils/SafeCast.sol";
 import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
 import {PositionKey} from "../libraries/PositionKey.sol";
+import {ERC721Storage} from "./ERC721Storage.sol";
+import {Errors} from "./Errors.sol";
 
 library Position {
     using SafeCastU256 for uint256;
@@ -115,6 +117,10 @@ library Position {
 
         if (self.isSettled) {
             revert Errors.PositionAlreadySettled(self.id);
+        }
+
+        if (ERC721Storage._ownerOf(self.id) != msg.sender) {
+            revert Errors.NotAccountOwnerOrAuthorized(self.id, msg.sender);
         }
     }
 

@@ -12,12 +12,12 @@ interface IEpochSettlementModule {
      * @notice Settles a position
      * @param positionId The ID of the position to settle
      */
-    function settlePosition(uint256 positionId) external;
+    function settlePosition(uint256 positionId) external returns (uint256);
 
     /**
      * @notice Event emitted when a position is settled
      * @param positionId The ID of the settled position
-     * @param kind The kind of position that was settled
+     * @param withdrawnCollateral The amount of collateral withdrawn after settlement
      */
-    event PositionSettled(uint256 positionId, IFoilStructs.PositionKind kind);
+    event PositionSettled(uint256 positionId, uint256 withdrawnCollateral);
 }

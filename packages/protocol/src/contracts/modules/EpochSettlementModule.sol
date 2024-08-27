@@ -6,14 +6,24 @@ import {Position} from "../storage/Position.sol";
 import {Epoch} from "../storage/Epoch.sol";
 import {Market} from "../storage/Market.sol";
 import {Errors} from "../storage/Errors.sol";
+import {ERC721Storage} from "../storage/ERC721Storage.sol";
+import {IEpochSettlementModule} from "../interfaces/IEpochSettlementModule.sol";
+import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePositionManager.sol";
 
-contract EpochSettlementModule {
+contract EpochSettlementModule is IEpochSettlementModule {
+    using Position for Position.Data;
+    using Market for Market.Data;
+
     function settlePosition(
         uint256 positionId
-    ) external returns (uint256 withdrawableCollateral) {
+    ) external override returns (uint256 withdrawableCollateral) {
         Position.Data storage position = Position.loadValid(positionId);
         Epoch.Data storage epoch = Epoch.loadValid(position.epochId);
         Market.Data storage market = Market.load();
+
+        if (ERC721Storage._ownerOf(positionId) != msg.sender) {
+            revert Errors.NotAccountOwnerOrAuthorized(positionId, msg.sender);
+        }
 
         // Ensure the epoch has ended
         if (!epoch.settled) {
@@ -29,8 +39,8 @@ contract EpochSettlementModule {
         if (position.kind == IFoilStructs.PositionKind.Liquidity) {
             withdrawableCollateral = _settleLiquidityPosition(
                 position,
-                epoch,
-                market
+                market,
+                epoch.settlementPriceD18
             );
         } else if (position.kind == IFoilStructs.PositionKind.Trade) {
             withdrawableCollateral = position.settle(epoch.settlementPriceD18);
@@ -38,32 +48,32 @@ contract EpochSettlementModule {
             revert Errors.InvalidPositionKind();
         }
 
-        market.withdraw(msg.sender, withdrawableCollateral);
+        market.withdrawCollateral(msg.sender, withdrawableCollateral);
 
-        emit PositionSettled(positionId, withdrawnCollateral);
+        emit PositionSettled(positionId, withdrawableCollateral);
     }
 
     function _settleLiquidityPosition(
         Position.Data storage position,
-        Epoch.Data storage epoch,
-        Market.Data storage market
-    ) internal {
+        Market.Data storage market,
+        uint256 settlementPriceD18
+    ) internal returns (uint256) {
         // Collect fees from the Uniswap position
-        (uint256 amount0, uint256 amount1) = epoch.pool.collect(
-            address(this),
-            position.uniswapPositionId,
-            type(uint128).max,
-            type(uint128).max
-        );
+        (uint256 amount0, uint256 amount1) = market
+            .uniswapPositionManager
+            .collect(
+                INonfungiblePositionManager.CollectParams({
+                    tokenId: position.uniswapPositionId,
+                    recipient: address(this),
+                    amount0Max: type(uint128).max,
+                    amount1Max: type(uint128).max
+                })
+            );
 
         // Update the position's token amounts
         position.vGasAmount += amount0;
         position.vEthAmount += amount1;
 
-        uint256 withdrawableCollateral = position.settle(
-            epoch.settlementPriceD18
-        );
-
-        return withdrawableCollateral;
+        return position.settle(settlementPriceD18);
     }
 }
