@@ -177,6 +177,7 @@ contract IncreaseLiquidityPosition is TestEpoch {
             uint256 currentGasTokenAmount,
             uint256 currentEthTokenAmount,
             ,
+            ,
 
         ) = getCurrentPositionTokenAmounts(
                 initialPosition.uniswapPositionId,
@@ -259,6 +260,7 @@ contract IncreaseLiquidityPosition is TestEpoch {
         (
             uint256 currentGasTokenAmount,
             uint256 currentEthTokenAmount,
+            ,
             ,
 
         ) = getCurrentPositionTokenAmounts(

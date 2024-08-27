@@ -97,7 +97,8 @@ contract TestEpoch is TestUser {
             uint256 amount0,
             uint256 amount1,
             uint256 tokensOwed0,
-            uint256 tokensOwed1
+            uint256 tokensOwed1,
+            uint128 liquidity
         )
     {
         IFoil foil = IFoil(vm.getAddress("Foil"));
@@ -107,9 +108,22 @@ contract TestEpoch is TestUser {
 
         (, , address positionManager, , , ) = foil.getMarket();
 
-        (, , , , , , , uint128 liquidity, , , , ) = INonfungiblePositionManager(
-            positionManager
-        ).positions(uniswapPositionId);
+        (
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            liquidity,
+            ,
+            ,
+            tokensOwed0,
+            tokensOwed1
+        ) = INonfungiblePositionManager(positionManager).positions(
+            uniswapPositionId
+        );
 
         (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
             sqrtPriceX96,

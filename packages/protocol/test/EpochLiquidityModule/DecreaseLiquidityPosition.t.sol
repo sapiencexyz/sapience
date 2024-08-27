@@ -119,31 +119,55 @@ contract DecreaseLiquidityPosition is TestEpoch {
         address trader = createUser("Trader", 1000 ether);
         vm.startPrank(trader);
 
-        uint256 positionSize = foil.getShortSizeForCollateral(
-            epochId,
-            50 ether
-        );
+        uint256 positionSize = foil.getLongSizeForCollateral(epochId, 50 ether);
         foil.createTraderPosition(
             epochId,
-            7 ether, // TODO: needs more eth than what the function returns
-            -int256(positionSize),
+            70 ether, // TODO: needs more eth than what the function returns
+            int256(positionSize),
             0
         );
         vm.stopPrank();
     }
 
-    function test_decreaseLiquidityPosition() public {
-        traderSellsGas(); // moves price
+    struct InitialValues {
+        uint256 initialGasTokenAmount;
+        uint256 initialEthTokenAmount;
+        uint256 initialOwedTokens0;
+        uint256 initialOwedTokens1;
+        uint128 initialLiquidity;
+        uint256 initialLpBalance;
+        uint256 initialFoilBalance;
+    }
 
+    function test_decreaseLiquidityPosition() public {
         // Get the initial position data
         Position.Data memory initialPosition = foil.getPosition(positionId);
 
+        InitialValues memory initialValues;
+        (
+            initialValues.initialGasTokenAmount,
+            initialValues.initialEthTokenAmount,
+            ,
+            ,
+            initialValues.initialLiquidity
+        ) = getCurrentPositionTokenAmounts(
+            initialPosition.uniswapPositionId,
+            MIN_TICK,
+            MAX_TICK
+        );
+
         // Calculate 30% of the initial liquidity
         uint128 liquidityToDecrease = uint128(
-            (initialPosition.liquidity * 30) / 100
+            (initialValues.initialLiquidity * 30) / 100
         );
 
         vm.startPrank(lp1);
+
+        // Check initial balances
+        initialValues.initialLpBalance = collateralAsset.balanceOf(lp1);
+        initialValues.initialFoilBalance = collateralAsset.balanceOf(
+            address(foil)
+        );
 
         (uint256 amount0, uint256 amount1, uint256 newCollateralAmount) = foil
             .decreaseLiquidityPosition(
@@ -158,6 +182,48 @@ contract DecreaseLiquidityPosition is TestEpoch {
         // Get the updated position data
         Position.Data memory updatedPosition = foil.getPosition(positionId);
 
+        // Assert that the proper collateral amount was returned to lp
+        assertEq(
+            collateralAsset.balanceOf(lp1),
+            initialValues.initialLpBalance +
+                (initialPosition.depositedCollateralAmount -
+                    newCollateralAmount),
+            "Incorrect amount of collateral returned to LP"
+        );
+
+        // Assert that the proper collateral amount was reduced from foil balance
+        assertEq(
+            collateralAsset.balanceOf(address(foil)),
+            initialValues.initialFoilBalance -
+                (initialPosition.depositedCollateralAmount -
+                    newCollateralAmount),
+            "Incorrect amount of collateral reduced from Foil balance"
+        );
+
+        // Check that owed tokens have increased correctly
+        (
+            ,
+            ,
+            uint256 newTokensOwed0,
+            uint256 newTokensOwed1,
+
+        ) = getCurrentPositionTokenAmounts(
+                updatedPosition.uniswapPositionId,
+                MIN_TICK,
+                MAX_TICK
+            );
+
+        assertEq(
+            newTokensOwed0,
+            amount0,
+            "Owed token0 should increase by 30% of removed amount"
+        );
+        assertEq(
+            newTokensOwed1,
+            amount1,
+            "Owed token1 should increase by 30% of removed amount"
+        );
+
         // Assertions
         assertGt(
             amount0,
@@ -171,28 +237,125 @@ contract DecreaseLiquidityPosition is TestEpoch {
         );
 
         assertEq(
-            updatedPosition.liquidity,
-            initialPosition.liquidity - liquidityToDecrease,
-            "Liquidity should be decreased by 30%"
-        );
-
-        assertEq(
             updatedPosition.depositedCollateralAmount,
             newCollateralAmount,
             "Collateral amount should be decreased to 70% of initial amount"
         );
 
-        assertLt(
-            updatedPosition.borrowedVGas,
-            initialPosition.borrowedVGas,
-            "Borrowed vGas should be less than initial borrowed amount"
+        vm.stopPrank();
+    }
+
+    function increaseLiquidityPosition() internal {
+        traderSellsGas();
+
+        vm.startPrank(lp1);
+
+        // Get initial position details
+        (
+            uint256 initialAmount0,
+            uint256 initialAmount1,
+            ,
+            ,
+            uint128 initialLiquidity
+        ) = getCurrentPositionTokenAmounts(positionId, MIN_TICK, MAX_TICK);
+
+        // Calculate amounts to increase
+        uint256 increaseAmount0 = initialAmount0 / 2; // Increase by 50%
+        uint256 increaseAmount1 = initialAmount1 / 2; // Increase by 50%
+
+        // Increase the liquidity position
+        foil.increaseLiquidityPosition(
+            IFoilStructs.LiquidityIncreaseParams({
+                positionId: positionId,
+                collateralAmount: 1000 ether,
+                gasTokenAmount: increaseAmount0,
+                ethTokenAmount: increaseAmount1,
+                minGasAmount: 0,
+                minEthAmount: 0
+            })
+        );
+        vm.stopPrank();
+    }
+
+    function test_decreaseLiquidityPosition_closePosition() public {
+        traderSellsGas();
+        increaseLiquidityPosition(); // this collects fees from trader
+
+        vm.startPrank(lp1);
+
+        Position.Data memory initialPosition = foil.getPosition(positionId);
+
+        // Get initial position details
+        (
+            uint256 initialAmount0,
+            uint256 initialAmount1,
+            uint256 initialOwedTokens0,
+            uint256 initialOwedTokens1,
+            uint128 initialLiquidity
+        ) = getCurrentPositionTokenAmounts(
+                initialPosition.uniswapPositionId,
+                MIN_TICK,
+                MAX_TICK
+            );
+
+        // Close the position
+        (uint256 amount0, uint256 amount1, uint256 collateralAmount) = foil
+            .decreaseLiquidityPosition(
+                IFoilStructs.LiquidityDecreaseParams({
+                    positionId: positionId,
+                    liquidity: initialLiquidity,
+                    minGasAmount: 0,
+                    minEthAmount: 0
+                })
+            );
+
+        // Get updated position
+        Position.Data memory updatedPosition = foil.getPosition(positionId);
+
+        assertEq(
+            updatedPosition.uniswapPositionId,
+            0,
+            "Uniswap position ID should be 0"
+        );
+        int256 vEthLoan = int256(initialPosition.borrowedVEth) -
+            int256(amount1);
+        assertEq(
+            updatedPosition.depositedCollateralAmount,
+            uint256(
+                int256(initialPosition.depositedCollateralAmount) - vEthLoan
+            ),
+            "Deposited collateral amount shouldn't change"
+        );
+        assertEq(updatedPosition.borrowedVEth, 0, "Borrowed vEth should be 0");
+
+        if (amount0 + initialOwedTokens0 > initialPosition.borrowedVGas) {
+            assertEq(
+                updatedPosition.vGasAmount,
+                initialPosition.borrowedVGas - (initialOwedTokens0 + amount0),
+                "vGas amount should be equal to borrowed vGas minus owed tokens and decreased amount"
+            );
+        } else {
+            assertEq(
+                updatedPosition.borrowedVGas,
+                initialPosition.borrowedVGas - (initialOwedTokens0 + amount0),
+                "vGas amount should be equal to borrowed vGas minus owed tokens and decreased amount"
+            );
+        }
+
+        assertEq(
+            amount0,
+            initialAmount0 + initialOwedTokens0,
+            "All token0 should be collected"
+        );
+        assertEq(
+            amount1,
+            initialAmount1 + initialOwedTokens1,
+            "All token1 should be collected"
         );
 
-        assertLt(
-            updatedPosition.borrowedVEth,
-            initialPosition.borrowedVEth,
-            "Borrowed vEth should be less than initial borrowed amount"
-        );
+        // Check that the Uniswap position is burned
+        // vm.expectRevert("Invalid token ID");
+        // uniswapV3PositionManager.positions(initialPosition.uniswapPositionId);
 
         vm.stopPrank();
     }

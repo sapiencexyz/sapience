@@ -1,5 +1,5 @@
 {
-  "address": "0x6280b92758f6641cfb6d9b44d645ef194cd19106",
+  "address": "0x05341dbe31f83b51d08dc8d4a587f29be9554add",
   "abi": [
     {
       "type": "function",
@@ -503,12 +503,43 @@
     },
     {
       "type": "event",
+      "name": "LiquidityPositionClosed",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "kind",
+          "type": "uint8",
+          "indexed": false,
+          "internalType": "enum IFoilStructs.PositionKind"
+        },
+        {
+          "name": "collectedAmount0",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "collectedAmount1",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
       "name": "LiquidityPositionCreated",
       "inputs": [
         {
-          "name": "tokenId",
+          "name": "positionId",
           "type": "uint256",
-          "indexed": false,
+          "indexed": true,
           "internalType": "uint256"
         },
         {
@@ -555,9 +586,9 @@
       "name": "LiquidityPositionDecreased",
       "inputs": [
         {
-          "name": "tokenId",
+          "name": "positionId",
           "type": "uint256",
-          "indexed": false,
+          "indexed": true,
           "internalType": "uint256"
         },
         {
@@ -592,9 +623,9 @@
       "name": "LiquidityPositionIncreased",
       "inputs": [
         {
-          "name": "tokenId",
+          "name": "positionId",
           "type": "uint256",
-          "indexed": false,
+          "indexed": true,
           "internalType": "uint256"
         },
         {
@@ -1917,11 +1948,11 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0xeb15f07dbafc088a45f61192f2439b3ac97ee6c7c574028bd6daf092f644bf00",
+  "deployTxnHash": "0x0ec56b77da6631621d0387942bb38ea1f6a295a27d5145616acd10f18004cb89",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1724683763",
+  "deployTimestamp": "1724770239",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
-  "gasUsed": 461400,
-  "gasCost": "1000081579"
+  "gasUsed": 461316,
+  "gasCost": "1000104193"
 }

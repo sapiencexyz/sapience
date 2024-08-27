@@ -86,4 +86,12 @@ library Market {
         self.lastEpochId++;
         return self.lastEpochId;
     }
+
+    function withdrawCollateral(
+        Data storage self,
+        address user,
+        uint256 amount
+    ) internal {
+        self.collateralAsset.transfer(user, amount);
+    }
 }

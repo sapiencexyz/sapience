@@ -12,6 +12,7 @@ import "forge-std/console2.sol";
 contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
     using Position for Position.Data;
     using Epoch for Epoch.Data;
+    using Market for Market.Data;
 
     function createLiquidityPosition(
         IFoilStructs.LiquidityMintParams memory params
@@ -120,25 +121,29 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
             stack.decreaseParams
         );
 
-        // get tokens owed
-        (, , , , , , , , , , stack.tokensOwed0, stack.tokensOwed1) = market
-            .uniswapPositionManager
-            .positions(position.uniswapPositionId);
+        if (params.liquidity == stack.previousLiquidity) {
+            return _closeLiquidityPosition(market, position);
+        } else {
+            // get tokens owed
+            (, , , , , , , , , , stack.tokensOwed0, stack.tokensOwed1) = market
+                .uniswapPositionManager
+                .positions(position.uniswapPositionId);
 
-        collateralAmount = position.updateValidLp(
-            epoch,
-            Position.UpdateLpParams({
-                uniswapNftId: position.uniswapPositionId,
-                liquidity: stack.previousLiquidity - params.liquidity,
-                additionalCollateral: 0,
-                additionalLoanAmount0: 0, // tokensOwed0 represents the returned tokens
-                additionalLoanAmount1: 0, // tokensOwed1 represents the returned tokens
-                lowerTick: stack.lowerTick,
-                upperTick: stack.upperTick,
-                tokensOwed0: stack.tokensOwed0,
-                tokensOwed1: stack.tokensOwed1
-            })
-        );
+            collateralAmount = position.updateValidLp(
+                epoch,
+                Position.UpdateLpParams({
+                    uniswapNftId: position.uniswapPositionId,
+                    liquidity: stack.previousLiquidity - params.liquidity,
+                    additionalCollateral: 0,
+                    additionalLoanAmount0: 0, // tokensOwed0 represents the returned tokens
+                    additionalLoanAmount1: 0, // tokensOwed1 represents the returned tokens
+                    lowerTick: stack.lowerTick,
+                    upperTick: stack.upperTick,
+                    tokensOwed0: stack.tokensOwed0,
+                    tokensOwed1: stack.tokensOwed1
+                })
+            );
+        }
 
         emit LiquidityPositionDecreased(
             position.id,
@@ -352,5 +357,81 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
                 sqrtPriceAX96,
                 sqrtPriceBX96
             );
+    }
+
+    function _closeLiquidityPosition(
+        Market.Data storage market,
+        Position.Data storage position
+    )
+        internal
+        returns (
+            uint256 collectedAmount0,
+            uint256 collectedAmount1,
+            uint256 collateralAmount
+        )
+    {
+        // Collect fees and remaining tokens
+        (collectedAmount0, collectedAmount1) = market
+            .uniswapPositionManager
+            .collect(
+                INonfungiblePositionManager.CollectParams({
+                    tokenId: position.uniswapPositionId,
+                    recipient: address(this),
+                    amount0Max: type(uint128).max,
+                    amount1Max: type(uint128).max
+                })
+            );
+
+        // Print out the token amounts
+        console2.log("Closed liquidity position:");
+        console2.log("Collected amount0:", collectedAmount0);
+        console2.log("Collected amount1:", collectedAmount1);
+
+        // Burn the Uniswap position
+        market.uniswapPositionManager.burn(position.uniswapPositionId);
+        position.uniswapPositionId = 0;
+
+        if (collectedAmount0 > position.borrowedVGas) {
+            position.borrowedVGas = 0;
+            position.vGasAmount = collectedAmount0 - position.borrowedVGas;
+        } else {
+            position.borrowedVGas = position.borrowedVGas - collectedAmount0;
+        }
+
+        // recouncil with deposited collateral
+        if (collectedAmount1 > position.borrowedVEth) {
+            position.depositedCollateralAmount +=
+                collectedAmount1 -
+                position.borrowedVEth;
+        } else {
+            position.depositedCollateralAmount -=
+                position.borrowedVEth -
+                collectedAmount1;
+        }
+
+        position.borrowedVEth = 0; // eth is fully paid
+
+        // if gas amounts, transition to trader and let user trade through pool
+        // otherwise withdraw collateral to user
+        if (position.borrowedVGas == 0 && position.vGasAmount == 0) {
+            market.withdrawCollateral(
+                ERC721Storage._ownerOf(position.id),
+                position.depositedCollateralAmount
+            );
+            position.depositedCollateralAmount = 0;
+            position.kind = IFoilStructs.PositionKind.Unknown;
+        } else {
+            position.kind = IFoilStructs.PositionKind.Trade;
+        }
+
+        collateralAmount = position.depositedCollateralAmount;
+
+        // Emit an event for the closed position
+        emit LiquidityPositionClosed(
+            position.id,
+            position.kind,
+            collectedAmount0,
+            collectedAmount1
+        );
     }
 }
