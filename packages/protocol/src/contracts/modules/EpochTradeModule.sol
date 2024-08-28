@@ -3,9 +3,9 @@ pragma solidity >=0.8.25 <0.9.0;
 
 import "../storage/Position.sol";
 import "../storage/ERC721Storage.sol";
-import "../../synthetix/utils/DecimalMath.sol";
-import {SafeCastI256} from "../../synthetix/utils/SafeCast.sol";
-import {SafeCastU256} from "../../synthetix/utils/SafeCast.sol";
+import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
+import {SafeCastI256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
+import {SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 import {IEpochTradeModule} from "../interfaces/IEpochTradeModule.sol";
 
 import "forge-std/console2.sol";
