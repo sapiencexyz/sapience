@@ -181,6 +181,10 @@ library Position {
         Data storage self,
         uint256 settlementPriceD18
     ) internal returns (uint256 collateralAmountReturned) {
+        console2.log(
+            "self.depositedCollateralAmount",
+            self.depositedCollateralAmount
+        );
         console2.log("self.vGasAmount", self.vGasAmount);
         console2.log("self.borrowedVGas", self.borrowedVGas);
         // convert everything to ETH

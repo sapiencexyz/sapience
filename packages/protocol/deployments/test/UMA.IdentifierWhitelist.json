@@ -129,7 +129,7 @@
   "linkedLibraries": {},
   "deployTxnHash": "0xf5f4747c64610d12167bdef3dfc528f3671373ac0ee4242e88bcbf5870d1bc6e",
   "deployTxnBlockNumber": "8",
-  "deployTimestamp": "1724790157",
+  "deployTimestamp": "1724800859",
   "sourceName": "src/UMA/src/IdentifierWhitelist.sol",
   "contractName": "IdentifierWhitelist",
   "deployedOn": "deploy.IdentifierWhitelist",

@@ -10,6 +10,8 @@ import {ERC721Storage} from "../storage/ERC721Storage.sol";
 import {IEpochSettlementModule} from "../interfaces/IEpochSettlementModule.sol";
 import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePositionManager.sol";
 
+import {console2} from "forge-std/console2.sol";
+
 contract EpochSettlementModule is IEpochSettlementModule {
     using Position for Position.Data;
     using Market for Market.Data;
@@ -17,6 +19,8 @@ contract EpochSettlementModule is IEpochSettlementModule {
     function settlePosition(
         uint256 positionId
     ) external override returns (uint256 withdrawableCollateral) {
+        console2.log("settlePosition");
+
         Position.Data storage position = Position.loadValid(positionId);
         Epoch.Data storage epoch = Epoch.loadValid(position.epochId);
         Market.Data storage market = Market.load();
@@ -34,6 +38,8 @@ contract EpochSettlementModule is IEpochSettlementModule {
         if (position.isSettled) {
             revert Errors.PositionAlreadySettled(positionId);
         }
+
+        console2.log("settlePosition 2");
 
         // Perform settlement logic based on position kind
         if (position.kind == IFoilStructs.PositionKind.Liquidity) {
@@ -69,6 +75,9 @@ contract EpochSettlementModule is IEpochSettlementModule {
                     amount1Max: type(uint128).max
                 })
             );
+
+        console2.log("amount0", amount0);
+        console2.log("amount1", amount1);
 
         // Update the position's token amounts
         position.vGasAmount += amount0;

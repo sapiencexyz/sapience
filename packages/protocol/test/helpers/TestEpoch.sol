@@ -77,14 +77,18 @@ contract TestEpoch is TestUser {
         bondCurrency.mint(BOND_AMOUNT * 2, owner);
         vm.startPrank(owner);
 
+        console2.log("submitSettlementPrice");
         bondCurrency.approve(address(foil), BOND_AMOUNT);
         bytes32 assertionId = foil.submitSettlementPrice(epochId, price);
         vm.stopPrank();
+
+        console2.log("assertionResolvedCallback");
 
         address optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
         vm.startPrank(optimisticOracleV3);
         foil.assertionResolvedCallback(assertionId, true);
         vm.stopPrank();
+        console2.log("done");
     }
 
     // helpers

@@ -25,7 +25,7 @@
   "linkedLibraries": {},
   "deployTxnHash": "0x76232316669ba3888b840794d9a683731ae2be005989cd6afd9c95b61654ef43",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1724511637",
+  "deployTimestamp": "1724800294",
   "sourceName": "src/contracts/modules/EpochERC165Module.sol",
   "contractName": "EpochERC165Module",
   "deployedOn": "deploy.EpochERC165Module",

@@ -60,10 +60,10 @@
   "linkedLibraries": {},
   "deployTxnHash": "0x01d1c7d0a9dd4c98231e40866e6903c999a21008c757bd3d35679a6cdfaf688f",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1724789545",
+  "deployTimestamp": "1724800294",
   "sourceName": "src/contracts/ mocks/ExposedInternalFunctions.sol",
   "contractName": "ExposedInternalFunctions",
   "deployedOn": "deploy.ExposedInternalFunctions",
   "gasUsed": 400246,
-  "gasCost": "1000144808"
+  "gasCost": "1000111042"
 }

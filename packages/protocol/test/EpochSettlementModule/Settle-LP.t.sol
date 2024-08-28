@@ -35,7 +35,7 @@ contract SettleLPTest is TestEpoch {
     int24 constant MIN_TICK = 16000;
     int24 constant MAX_TICK = 29800;
     uint256 constant dust = 1e8;
-    uint256 constant settlementPrice = 15 ether;
+    uint256 constant settlementPrice = 11 ether;
 
     function setUp() public {
         collateralAsset = IMintableToken(

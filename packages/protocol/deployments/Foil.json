@@ -1,5 +1,5 @@
 {
-  "address": "0xabba3bd76d4451bfc92378c93087b5bae66602a3",
+  "address": "0x9863d7e300582210b0cf24252f17d6874459a5a2",
   "abi": [
     {
       "type": "function",
@@ -1966,14 +1966,52 @@
         }
       ],
       "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "settlePosition",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "withdrawableCollateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "PositionSettled",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "withdrawnCollateral",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0x34f21536ad04354877f2b749e64bf60e23ff03b99e43a4122e1e53150eed6f78",
+  "deployTxnHash": "0x667768efe66fb9db26706adc9c436c2f3dc21d52384480e81435decf08881709",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1724789812",
+  "deployTimestamp": "1724800793",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
-  "gasUsed": 461352,
-  "gasCost": "1000081783"
+  "gasUsed": 474116,
+  "gasCost": "1000062991"
 }

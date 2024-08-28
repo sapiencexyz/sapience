@@ -140,10 +140,10 @@
   "linkedLibraries": {},
   "deployTxnHash": "0x6f849ea96abf23dadb2d6de07f3316d0a633d451d7a868e219e7e4b38bb1bea2",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1724789545",
+  "deployTimestamp": "1724800294",
   "sourceName": "src/contracts/modules/EpochUMASettlementModule.sol",
   "contractName": "EpochUMASettlementModule",
   "deployedOn": "deploy.EpochUMASettlementModule",
   "gasUsed": 730044,
-  "gasCost": "1000186688"
+  "gasCost": "1000143156"
 }
