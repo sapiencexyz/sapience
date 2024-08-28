@@ -4,9 +4,11 @@ import dataSource, { initializeDataSource } from "../db";
 import { LiquidityPositionEventLog } from "../interfaces/interfaces";
 export const upsertPositionFromLiquidityEvent = async (event: Event) => {
   await initializeDataSource();
+
   const positionRepository = dataSource.getRepository(Position);
 
   // create new position
+  /*
   const eventArgs = event.logData.args as LiquidityPositionEventLog;
   const newPosition = new Position();
   newPosition.contractId = event.contractId;
@@ -21,4 +23,5 @@ export const upsertPositionFromLiquidityEvent = async (event: Event) => {
   newPosition.unclaimedFees = 0;
 
   await positionRepository.upsert(newPosition, ["contractId", "nftId"]);
+  */
 };

@@ -1,7 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, AfterInsert, AfterRemove, AfterUpdate, CreateDateColumn, OneToMany, ManyToOne, OneToOne } from 'typeorm';
 import { Event } from './Event'
 import { Position } from './Position'
-// Read contractIds (chainId:address) from foilconfig.json ?
 
 export enum TransactionType {
     BUY = 'buy',

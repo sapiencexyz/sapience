@@ -9,13 +9,15 @@ import {
   OneToOne,
   JoinColumn,
   Unique,
+  ManyToOne,
 } from "typeorm";
 import { upsertPositionFromLiquidityEvent } from "../util/dbUtil";
 import { Transaction } from "./Transaction";
 import { LIQUIDITY_POSITION_EVENT_NAME } from "../interfaces/interfaces";
+import { Epoch } from "./Epoch";
 
 @Entity()
-@Unique(["contractId", "blockNumber", "logIndex"])
+@Unique(["epoch", "blockNumber", "logIndex"])
 export class Event {
   @OneToOne(() => Transaction, (transaction) => transaction.event, {
     cascade: true,
@@ -23,14 +25,14 @@ export class Event {
   @JoinColumn()
   transaction: Transaction;
 
+  @ManyToOne(() => Epoch, (epoch) => epoch.events)
+  epoch: Epoch;
+
   @PrimaryGeneratedColumn()
   id: number;
 
   @CreateDateColumn()
   createdAt: Date;
-
-  @Column()
-  contractId: string;
 
   @Column({ type: "bigint" })
   blockNumber: string;
