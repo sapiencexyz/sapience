@@ -5,10 +5,8 @@ import { indexMarketEvents, indexMarketEventsRange } from "./processes/market"; 
 import { mainnet, sepolia, hardhat } from "viem/chains";
 import FoilLocal from "@/protocol/deployments/13370/Foil.json";
 import FoilSepolia from "@/protocol/deployments/11155111/Foil.json";
-import { getRepository } from "typeorm";
 import { Market } from "./entity/Market";
-
-const marketRepository = getRepository(Market);
+import dataSource, { initializeDataSource } from "./db";
 
 const mainnetPublicClient = createPublicClient({
   chain: mainnet,
@@ -95,6 +93,9 @@ async function indexMarketEventsRangeCommand(
 }
 
 async function initializeMarkets(){
+  await initializeDataSource();
+  const marketRepository = dataSource.getRepository(Market);
+  
   const marketLocal = marketRepository.create({ address: FoilLocal.address, chainId: 13370 });
   await marketRepository.save(marketLocal);
 
