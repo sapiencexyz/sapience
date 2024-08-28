@@ -37,7 +37,9 @@ const startServer = async () => {
     res.json(prices);
   });
 
+  // Get data for rendering candlestick/boxplot charts filtered by contractId
   app.get("/prices/chart-data", async (req, res) => {
+    // TODO: GET MARKET PRICE
     const { startTimestamp, endTimestamp, contractId } = req.query;
     const where: any = {};
 
@@ -144,39 +146,6 @@ const startServer = async () => {
     const weightedAverage = weightedSum / totalWeight;
 
     res.json({ average: weightedAverage });
-  });
-
-  // Get data for rendering candlestick/boxplot charts filtered by contractId
-  app.get("/prices/chart-data", async (req, res) => {
-    const { startTimestamp, endTimestamp, contractId } = req.query;
-    const where: any = {};
-
-    if (startTimestamp && endTimestamp) {
-      where.timestamp = Between(Number(startTimestamp), Number(endTimestamp));
-    }
-    if (contractId) {
-      where.contractId = contractId;
-    }
-
-    const prices = await priceRepository.find({
-      where,
-      order: {
-        timestamp: "ASC",
-      },
-    });
-
-    if (prices.length === 0) {
-      return res.status(404).json({
-        error: "No data found for the specified range and contractId",
-      });
-    }
-
-    const chartData = prices.map((price) => ({
-      timestamp: price.timestamp,
-      value: price.value,
-    }));
-
-    res.json(chartData);
   });
 
   app.get("/positions", async (req, res) => {

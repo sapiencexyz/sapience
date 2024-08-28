@@ -102,17 +102,17 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     },
   }) as { data: FoilPosition; refetch: any; isRefetching: boolean };
 
+  console.log('positionData -', positionData);
+
   const { data: uniswapPosition, error: uniswapPositionError } =
     useReadContract({
       abi: INONFUNGIBLE_POSITION_MANAGER.abi,
       address: uniswapPositionManagerAddress,
       functionName: 'positions',
-      args: [positionData?.tokenId.toString()],
+      args: [positionData?.id],
       query: {
         enabled: Boolean(
-          uniswapPositionManagerAddress !== '0x' &&
-            positionData?.tokenId &&
-            isEdit
+          uniswapPositionManagerAddress !== '0x' && positionData?.id && isEdit
         ),
       },
     });
@@ -252,7 +252,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     return parseFloat(formatUnits(amount0, TOKEN_DECIMALS));
   }, [tokenAmounts]);
 
-  // same as token/tokenB/ethToken
+  // same as token1/tokenB/ethToken
   const quoteToken = useMemo(() => {
     const tokenAmountsAny = tokenAmounts as any[]; // there's some abitype project, i think
     if (!tokenAmountsAny) return 0;

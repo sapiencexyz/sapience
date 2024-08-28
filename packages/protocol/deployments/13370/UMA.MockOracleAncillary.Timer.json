@@ -32,10 +32,10 @@
   "linkedLibraries": {},
   "deployTxnHash": "0x29b7ae3d95bb5bbf8d49183656651fd97d2f53d56735b7e2fd7d063f6346bf55",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1723833625",
+  "deployTimestamp": "1722024170",
   "sourceName": "src/UMA/Timer.sol",
   "contractName": "Timer",
   "deployedOn": "deploy.Timer",
   "gasUsed": 112718,
-  "gasCost": "1178878943"
+  "gasCost": "1877375775"
 }

@@ -4,7 +4,7 @@ export enum PositionKind {
   Trade,
 }
 export interface FoilPosition {
-  tokenId: bigint; // nft id
+  id: bigint; // nft id
   kind: PositionKind;
   epochId: bigint;
   // Accounting data (debt and deposited collateral)

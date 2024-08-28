@@ -1,8 +1,9 @@
 import "tsconfig-paths/register";
-import dataSource, { initializeDataSource } from "src/db";
+import dataSource, { initializeDataSource } from "../db";
 import { Event } from "../entity/Event";
 import { Abi, decodeEventLog, Log, PublicClient } from "viem";
 import { Repository } from "typeorm";
+import { EventType } from "../interfaces/interfaces";
 
 const bigintReplacer = (key: string, value: any) => {
   if (typeof value === "bigint") {
@@ -25,7 +26,10 @@ export const indexMarketEvents = async (
       const serializedLog = JSON.stringify(log, bigintReplacer);
 
       const contractId = `${chainId}:${Foil.address}`;
-      const blockNumber = Number(log.blockNumber) || 0;
+      const blockNumber = log.blockNumber || 0n;
+      const block = await publicClient.getBlock({
+        blockNumber,
+      });
       const logIndex = log.logIndex || 0;
       const logData = JSON.parse(serializedLog); // Parse back to JSON object
 
@@ -33,6 +37,7 @@ export const indexMarketEvents = async (
         eventRepository,
         contractId,
         blockNumber,
+        block.timestamp,
         logIndex,
         logData
       );
@@ -77,7 +82,10 @@ export const indexMarketEventsRange = async (
         const serializedLog = JSON.stringify(decodedLog, bigintReplacer);
 
         const contractId = `${await publicClient.getChainId()}:${contractAddress}`;
-        const blockNumber = Number(log.blockNumber) || 0;
+        const blockNumber = log.blockNumber;
+        const block = await publicClient.getBlock({
+          blockNumber: log.blockNumber,
+        });
         const logIndex = log.logIndex || 0;
         const logData = JSON.parse(serializedLog);
 
@@ -85,6 +93,7 @@ export const indexMarketEventsRange = async (
           eventRepository,
           contractId,
           blockNumber,
+          block.timestamp,
           logIndex,
           logData
         );
@@ -98,7 +107,8 @@ export const indexMarketEventsRange = async (
 const handleEventUpsert = async (
   eventRepository: Repository<Event>,
   contractId: string,
-  blockNumber: number,
+  blockNumber: bigint,
+  timeStamp: bigint,
   logIndex: number,
   logData: any
 ) => {
@@ -112,8 +122,14 @@ const handleEventUpsert = async (
   const newEvent = new Event();
   newEvent.contractId = contractId;
   newEvent.blockNumber = blockNumber.toString();
+  newEvent.timestamp = timeStamp.toString();
   newEvent.logIndex = logIndex;
   newEvent.logData = logData;
+
+  if (logData.eventName === EventType.LiquidityPositionCreated) {
+    //  newEvent.
+  }
+
   await eventRepository.upsert(newEvent, [
     "contractId",
     "blockNumber",

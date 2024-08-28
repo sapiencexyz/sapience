@@ -12,15 +12,12 @@ import {
 } from "typeorm";
 import { upsertPositionFromLiquidityEvent } from "../util/dbUtil";
 import { Transaction } from "./Transaction";
-import { LIQUIDITY_POSITION_EVENT_NAME } from "../interfaces/interfaces";
+import { EventType } from "../interfaces/interfaces";
 
 @Entity()
 @Unique(["contractId", "blockNumber", "logIndex"])
 export class Event {
-  @OneToOne(() => Transaction, (transaction) => transaction.event, {
-    cascade: true,
-  })
-  @JoinColumn()
+  @OneToOne(() => Transaction, (transaction) => transaction.event)
   transaction: Transaction;
 
   @PrimaryGeneratedColumn()
@@ -35,6 +32,9 @@ export class Event {
   @Column({ type: "bigint" })
   blockNumber: string;
 
+  @Column({ type: "bigint" })
+  timestamp: string;
+
   @Column()
   logIndex: number;
 
@@ -45,7 +45,7 @@ export class Event {
   @AfterInsert()
   async afterInsert() {
     // Upsert associated Position or Transaction
-    if (this.logData.eventName === LIQUIDITY_POSITION_EVENT_NAME) {
+    if (this.logData.eventName === EventType.LiquidityPositionCreated) {
       try {
         await upsertPositionFromLiquidityEvent(this);
       } catch (error) {

@@ -1,5 +1,5 @@
 import "tsconfig-paths/register";
-import dataSource, { initializeDataSource } from "src/db";
+import dataSource, { initializeDataSource } from "../db";
 import { Price } from "../entity/Price";
 import { Block, PublicClient } from "viem";
 
@@ -13,13 +13,13 @@ export const indexBaseFeePerGas = async (
 
   // Process log data
   const processBlock = async (block: Block) => {
-    const value = block.baseFeePerGas?.toString() || "0";
+    const value = block.baseFeePerGas || BigInt("0");
     const timestamp = block.timestamp.toString();
 
     const price = new Price();
     price.contractId = contractId;
     price.timestamp = timestamp;
-    price.value = value;
+    price.value = value.toString();
     if (block.number) {
       price.blockNumber = block.number.toString();
     }
@@ -50,13 +50,13 @@ export const indexBaseFeePerGasRange = async (
       const block = await publicClient.getBlock({
         blockNumber: BigInt(blockNumber),
       });
-      const value = block.baseFeePerGas?.toString() || "0";
+      const value = block.baseFeePerGas || BigInt("0");
       const timestamp = block.timestamp.toString();
 
       const price = new Price();
       price.contractId = contractId;
       price.timestamp = timestamp;
-      price.value = value;
+      price.value = value.toString();
       price.blockNumber = blockNumber.toString();
       await priceRepository.upsert(price, ["contractId", "timestamp"]);
     } catch (error) {
