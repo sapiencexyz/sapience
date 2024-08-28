@@ -34,7 +34,7 @@ export const indexBaseFeePerGas = async (
     if (block.number) {
       price.blockNumber = block.number.toString();
     }
-    await priceRepository.upsert(price, ["contractId", "timestamp"]);
+    await priceRepository.upsert(price, ["market", "timestamp"]);
   };
 
   // Start watching for new events

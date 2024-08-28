@@ -99,12 +99,8 @@ async function indexMarketEventsRangeCommand(
 async function initializeMarkets(){
   await initializeDataSource();
   const marketRepository = dataSource.getRepository(Market);
-  
-  const marketLocal = marketRepository.create({ address: FoilLocal.address, chainId: 13370 });
-  await marketRepository.save(marketLocal);
-
-  const marketSepolia = marketRepository.create({ address: FoilSepolia.address, chainId: 11155111 });
-  await marketRepository.save(marketSepolia);
+  marketRepository.upsert({ address: FoilLocal.address, chainId: 13370 }, ["address", "chainId"]);
+  marketRepository.upsert({ address: FoilSepolia.address, chainId: 11155111 }, ["address", "chainId"]);
 }
 
 if (process.argv.length < 3) {
