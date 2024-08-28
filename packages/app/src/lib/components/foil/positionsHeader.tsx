@@ -14,31 +14,38 @@ import {
   StatLabel,
   StatNumber,
 } from '@chakra-ui/react';
+import { tickToPrice, SqrtPriceMath } from '@uniswap/v3-sdk';
 import { format, formatDistanceToNow } from 'date-fns';
+import JSBI from 'jsbi';
 import { useContext } from 'react';
 import { FaRegEye, FaRegChartBar, FaCubes } from 'react-icons/fa';
 import { IoDocumentTextOutline } from 'react-icons/io5';
 
 import { MarketContext } from '~/lib/context/MarketProvider';
 
-function tickToPrice(tick: number): number {
-  const price: number = 1.0001 ** tick;
-  return price;
-}
-
 const PositionsHeader = () => {
   const {
     chain,
     epoch,
     address,
-    // collateralAssetTicker,
     endTime,
     collateralAsset,
     baseAssetMinPriceTick,
     baseAssetMaxPriceTick,
+    averagePrice,
+    pool,
   } = useContext(MarketContext);
 
-  const resolver = '0x0000'; // todo
+  // Calculate token amounts
+  const sqrtPriceX96BigInt = JSBI.BigInt(pool?.sqrtRatioX96.toString() || 1);
+  const liquidityBigInt = JSBI.BigInt(pool?.liquidity.toString() || 0);
+
+  const token0Amount = SqrtPriceMath.getAmount0Delta(
+    sqrtPriceX96BigInt,
+    JSBI.add(sqrtPriceX96BigInt, JSBI.BigInt(1)), // Slightly higher price
+    liquidityBigInt,
+    false
+  );
 
   console.log('context', useContext(MarketContext));
 
@@ -107,6 +114,7 @@ const PositionsHeader = () => {
             </Flex>
           </Link>
 
+          {/*
           <Link
             fontSize="sm"
             color="gray.800"
@@ -129,26 +137,38 @@ const PositionsHeader = () => {
               </Text>
             </Flex>
           </Link>
+          */}
 
-          <Box fontSize="sm" color="gray.800" mt={1}>
-            <Flex display="inline-flex" alignItems="center">
-              <Box display="inline-block" mr="1">
-                <FaRegChartBar />
-              </Box>
-              <Text as="span" fontWeight="500" mr={1}>
-                Allowed Range:
-              </Text>{' '}
-              {tickToPrice(baseAssetMinPriceTick).toFixed(2)} cbETH/gGas -{' '}
-              {tickToPrice(baseAssetMaxPriceTick).toFixed(2)} cbETH/gGas
-            </Flex>
-          </Box>
+          {pool && (
+            <Box fontSize="sm" color="gray.800" mt={1}>
+              <Flex display="inline-flex" alignItems="center">
+                <Box display="inline-block" mr="1">
+                  <FaRegChartBar />
+                </Box>
+                <Text as="span" fontWeight="500" mr={1}>
+                  Allowed Range:
+                </Text>{' '}
+                {tickToPrice(
+                  pool.token0,
+                  pool.token1,
+                  baseAssetMinPriceTick
+                ).toFixed(2)}{' '}
+                -{' '}
+                {tickToPrice(
+                  pool.token0,
+                  pool.token1,
+                  baseAssetMaxPriceTick
+                ).toFixed(2)}
+              </Flex>
+            </Box>
+          )}
         </Box>
       </Flex>
 
       <StatGroup gap={6} w="100%">
         <Stat>
           <StatLabel fontSize="md">
-            Current Price
+            Index Price
             <InfoOutlineIcon
               transform="translateY(-2.5px)"
               color="gray.600"
@@ -157,12 +177,14 @@ const PositionsHeader = () => {
             />
           </StatLabel>
           <StatNumber>
-            0.22 <Text as="span">gwei</Text>
+            {averagePrice} {/* <Text as="span">gwei</Text> */}
           </StatNumber>
+          {/*
           <StatHelpText>
             <StatArrow type="decrease" color="red.500" />
             9.36% (24hr)
           </StatHelpText>
+          */}
         </Stat>
 
         <Stat>
@@ -176,29 +198,43 @@ const PositionsHeader = () => {
             />
           </StatLabel>
           <StatNumber>
-            0.19 <Text as="span">gwei</Text>
+            {pool?.token0Price.toFixed(2)} {/* <Text as="span">gwei</Text> */}
           </StatNumber>
+          {/*
           <StatHelpText>
             <StatArrow type="decrease" color="red.500" />
             3.36% (24hr)
           </StatHelpText>
+          */}
         </Stat>
 
         <Stat>
-          <StatLabel fontSize="md">Liquidity</StatLabel>
+          <StatLabel fontSize="md">
+            Liquidity
+            <InfoOutlineIcon
+              transform="translateY(-2px)"
+              color="gray.600"
+              height="4"
+              ml={1.5}
+            />
+          </StatLabel>
           <StatNumber>
-            12,000 <Text as="span">Ggas</Text>
+            {token0Amount.toString()} {/* <Text as="span">Ggas</Text> */}
           </StatNumber>
+          {/*
           <StatHelpText>
             <StatArrow type="increase" color="green.400" />
             23.36%
           </StatHelpText>
+          */}
         </Stat>
 
         <Stat>
           <StatLabel fontSize="md">Ends In</StatLabel>
           <StatNumber>{relativeTime}</StatNumber>
+          {/*
           <StatHelpText>{formattedTime} UTC</StatHelpText>
+          */}
         </Stat>
       </StatGroup>
     </Flex>
