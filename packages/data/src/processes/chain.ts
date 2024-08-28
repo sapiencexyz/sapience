@@ -13,13 +13,6 @@ export const indexBaseFeePerGas = async (
   const priceRepository = dataSource.getRepository(Price);
   const marketRepository = dataSource.getRepository(Market);
 
-  const rpcChainId = await publicClient.getChainId();
-  if (rpcChainId != chainId) {
-    throw new Error(
-      `Chain ID from RPC ${rpcChainId} doesn't match chain ID ${chainId}`
-    );
-  }
-
   const market = await marketRepository.findOne({
     where: { chainId, address },
   });
