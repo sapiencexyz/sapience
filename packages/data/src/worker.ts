@@ -7,6 +7,7 @@ import { mainnet, sepolia, hardhat } from "viem/chains";
 import FoilLocal from "@/protocol/deployments/13370/Foil.json";
 import FoilSepolia from "@/protocol/deployments/11155111/Foil.json";
 import { Market } from "./entity/Market";
+import { Epoch } from "./entity/Epoch";
 
 const mainnetPublicClient = createPublicClient({
   chain: mainnet,
@@ -73,7 +74,13 @@ async function indexBaseFeePerGasRangeCommand(
   );
   const client = await createViemPublicClient(rpcUrl);
   const [chainId, address] = contractAddress.split(":");
-  await indexBaseFeePerGasRange(client, startBlock, endBlock, parseInt(chainId), address);
+  await indexBaseFeePerGasRange(
+    client,
+    startBlock,
+    endBlock,
+    parseInt(chainId),
+    address
+  );
 }
 
 async function indexMarketEventsRangeCommand(
@@ -96,26 +103,58 @@ async function indexMarketEventsRangeCommand(
   );
 }
 
-async function initializeMarkets(){
+async function initializeMarkets() {
   await initializeDataSource();
   const marketRepository = dataSource.getRepository(Market);
-  marketRepository.upsert({ address: FoilLocal.address, chainId: 13370 }, ["address", "chainId"]);
-  marketRepository.upsert({ address: FoilSepolia.address, chainId: 11155111 }, ["address", "chainId"]);
+  const epochRepository = dataSource.getRepository(Epoch);
+
+  // LOCAL
+  let localMarket = await marketRepository.findOne({
+    where: { address: FoilLocal.address, chainId: hardhat.id },
+    relations: ["epochs"],
+  });
+  if (!localMarket) {
+    localMarket = new Market();
+    localMarket.address = FoilLocal.address;
+    localMarket.chainId = hardhat.id;
+    localMarket = await marketRepository.save(localMarket);
+
+    const localEpoch = new Epoch();
+    localEpoch.epochId = 1;
+    localEpoch.market = localMarket;
+    await epochRepository.save(localEpoch);
+  }
+
+  // SEPOLIA
+  let sepoliaMarket = await marketRepository.findOne({
+    where: { address: FoilSepolia.address, chainId: sepolia.id },
+    relations: ["epochs"],
+  });
+  if (!sepoliaMarket) {
+    sepoliaMarket = new Market();
+    sepoliaMarket.address = FoilSepolia.address;
+    sepoliaMarket.chainId = sepolia.id;
+    sepoliaMarket = await marketRepository.save(sepoliaMarket);
+
+    const sepoliaEpoch = new Epoch();
+    sepoliaEpoch.epochId = 1;
+    sepoliaEpoch.market = sepoliaMarket;
+    await epochRepository.save(sepoliaEpoch);
+  }
+
+  const allEpochs = await epochRepository.find({ relations: ["market"] });
+  console.log("All Epochs:", allEpochs);
+
+  const allMarkets = await marketRepository.find({ relations: ["epochs"] });
+  console.log("All Markets:", allMarkets);
+  console.log("First epoch in market:", allMarkets[0].epochs);
 }
 
 if (process.argv.length < 3) {
   initializeMarkets().then(() => {
     Promise.all([
-      indexBaseFeePerGas(
-        mainnetPublicClient,
-        hardhat.id,
-        FoilLocal.address
-      ),
-      indexBaseFeePerGas(
-        mainnetPublicClient,
-        sepolia.id,
-        FoilSepolia.address
-      ),
+      indexBaseFeePerGas(mainnetPublicClient, hardhat.id, FoilLocal.address),
+      indexBaseFeePerGas(mainnetPublicClient, sepolia.id, FoilSepolia.address),
       indexMarketEvents(
         sepoliaPublicClient,
         FoilSepolia as { address: string; abi: Abi }

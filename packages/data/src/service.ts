@@ -173,7 +173,10 @@ const startServer = async () => {
 
   app.get("/positions", async (req, res) => {
     const { isLP, contractId } = req.query;
-
+    const all = await positionRepository.find({
+      relations: ["epoch", "epoch.market"],
+    });
+    console.log("all positions -", all);
     if (typeof contractId !== "string") {
       return res.status(400).json({ error: "Invalid contractId" });
     }
@@ -196,10 +199,10 @@ const startServer = async () => {
       return res.status(400).json({ error: "Invalid contractId format" });
     }
 
-    if (isLP !== undefined) {
-      where.isLP = isLP === "true";
-    }
-
+    // if (isLP !== undefined) {
+    where.isLP = isLP === "true";
+    // }
+    console.log("where -", where);
     try {
       const positions = await positionRepository.find({
         where,

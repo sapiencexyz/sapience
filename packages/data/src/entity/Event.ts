@@ -49,6 +49,7 @@ export class Event {
     // Upsert associated Position or Transaction
     if (this.logData.eventName === EventType.LiquidityPositionCreated) {
       try {
+        console.log("Creating liquidity position from event: ", this);
         await upsertPositionFromLiquidityEvent(this);
       } catch (error) {
         console.error("Error upserting position:", error);

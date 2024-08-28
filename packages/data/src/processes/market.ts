@@ -167,21 +167,40 @@ const handleEventUpsert = async (
   });
 
   // Find or create the market
-  let market = await marketRepository.findOne({ where: { chainId, address } });
+  let market = await marketRepository.findOne({
+    where: { chainId, address },
+    relations: ["epochs"],
+  });
   if (!market) {
-    market = new Market();
-    market.chainId = chainId;
-    market.address = address;
-    await marketRepository.save(market);
+    throw new Error(
+      `Market not found for chainId ${chainId} and address ${address}`
+    );
   }
+  console.log("Market found:", market);
+  let epoch = market.epochs.find((e) => e.epochId === epochId);
 
   // Find or create the epoch
-  let epoch = await epochRepository.findOne({ where: { market, epochId } });
+  // let epoch = await epochRepository.findOne({
+  //   where: { market: { id: market.id }, epochId },
+  //   relations: ["market"],
+  // });
   if (!epoch) {
-    epoch = new Epoch();
-    epoch.market = market;
-    epoch.epochId = epochId;
-    await epochRepository.save(epoch);
+    const allE = await epochRepository.find({ relations: ["market"] });
+    console.log("allE", allE);
+    const allE2 = await epochRepository.find({
+      where: { market: { id: market.id } },
+      relations: ["market"],
+    });
+    console.log("allE with market", allE2);
+    // get latest epoch id from repository
+    epoch =
+      (await epochRepository.findOne({
+        where: { market: { id: market.id } },
+        order: { epochId: "DESC" },
+      })) || undefined;
+    if (!epoch) {
+      throw new Error(`No epochs found for market ${market.address}`);
+    }
   }
 
   // Create a new Event entity

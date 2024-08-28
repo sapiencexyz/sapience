@@ -10,6 +10,7 @@ import {
 import { MarketPrice } from "../entity/MarketPrice";
 
 export const NUMERIC_PRECISION = 78;
+export const DECIMAL_PRECISION = 18;
 // TODO GET FEE FROM CONTRACT
 const FEE = 0.0001;
 const tickToPrice = (tick: number): number => (1 + FEE) ** tick;
@@ -27,15 +28,16 @@ export const upsertPositionFromLiquidityEvent = async (event: Event) => {
   newPosition.baseToken = eventArgs.addedAmount0;
   newPosition.quoteToken = eventArgs.addedAmount1;
   newPosition.collateral = eventArgs.collateralAmount;
-  newPosition.profitLoss = 0; // TODO
+  newPosition.profitLoss = "0"; // TODO
   newPosition.isLP = true;
-  newPosition.highPrice = tickToPrice(eventArgs.upperTick);
-  newPosition.lowPrice = tickToPrice(eventArgs.lowerTick);
-  newPosition.unclaimedFees = 0; // TODO
-  await positionRepository.upsert(newPosition, ["contractId", "nftId"]);
+  newPosition.epoch = event.epoch;
+  newPosition.highPrice = tickToPrice(eventArgs.upperTick).toString();
+  newPosition.lowPrice = tickToPrice(eventArgs.lowerTick).toString();
+  newPosition.unclaimedFees = "0"; // TODO
+  await positionRepository.upsert(newPosition, ["epoch", "nftId"]);
 
   // create txn based on position:
-  await createTxnFromLiquidityPositionCreatedEvent(event, newPosition);
+  //await createTxnFromLiquidityPositionCreatedEvent(event, newPosition);
 };
 
 /**
