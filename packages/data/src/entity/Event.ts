@@ -13,16 +13,13 @@ import {
 } from "typeorm";
 import { upsertPositionFromLiquidityEvent } from "../util/dbUtil";
 import { Transaction } from "./Transaction";
-import { LIQUIDITY_POSITION_EVENT_NAME } from "../interfaces/interfaces";
+import { EventType } from "../interfaces/interfaces";
 import { Epoch } from "./Epoch";
 
 @Entity()
 @Unique(["epoch", "blockNumber", "logIndex"])
 export class Event {
-  @OneToOne(() => Transaction, (transaction) => transaction.event, {
-    cascade: true,
-  })
-  @JoinColumn()
+  @OneToOne(() => Transaction, (transaction) => transaction.event)
   transaction: Transaction;
 
   @ManyToOne(() => Epoch, (epoch) => epoch.events)
@@ -37,6 +34,9 @@ export class Event {
   @Column({ type: "bigint" })
   blockNumber: string;
 
+  @Column({ type: "bigint" })
+  timestamp: string;
+
   @Column()
   logIndex: number;
 
@@ -46,9 +46,8 @@ export class Event {
   // All should fail without crashing
   @AfterInsert()
   async afterInsert() {
-    console.log(`!!!!Event inserted: ${this.id}`);
     // Upsert associated Position or Transaction
-    if (this.logData.eventName === LIQUIDITY_POSITION_EVENT_NAME) {
+    if (this.logData.eventName === EventType.LiquidityPositionCreated) {
       try {
         await upsertPositionFromLiquidityEvent(this);
       } catch (error) {

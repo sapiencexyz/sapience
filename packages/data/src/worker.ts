@@ -12,12 +12,16 @@ const marketRepository = getRepository(Market);
 
 const mainnetPublicClient = createPublicClient({
   chain: mainnet,
-  transport: process.env.INFURA_API_KEY ? webSocket(`wss://mainnet.infura.io/ws/v3/${process.env.INFURA_API_KEY}`) : http(),
+  transport: process.env.INFURA_API_KEY
+    ? webSocket(`wss://mainnet.infura.io/ws/v3/${process.env.INFURA_API_KEY}`)
+    : http(),
 });
 
 const sepoliaPublicClient = createPublicClient({
   chain: sepolia,
-  transport: process.env.INFURA_API_KEY ? webSocket(`wss://sepolia.infura.io/ws/v3/${process.env.INFURA_API_KEY}`) : http(),
+  transport: process.env.INFURA_API_KEY
+    ? webSocket(`wss://sepolia.infura.io/ws/v3/${process.env.INFURA_API_KEY}`)
+    : http(),
 });
 
 hardhat.id = 13370 as any;

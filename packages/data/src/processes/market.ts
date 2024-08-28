@@ -1,10 +1,11 @@
 import "tsconfig-paths/register";
+import dataSource, { initializeDataSource } from "../db";
 import { Event } from "../entity/Event";
 import { Market } from "../entity/Market";
 import { Epoch } from "../entity/Epoch";
 import { Abi, decodeEventLog, Log, PublicClient } from "viem";
-import dataSource, { initializeDataSource } from "../db";
 import { Repository } from "typeorm";
+import { EventType } from "../interfaces/interfaces";
 
 const bigintReplacer = (key: string, value: any) => {
   if (typeof value === "bigint") {
@@ -24,7 +25,9 @@ export const indexMarketEvents = async (
   const chainId = await publicClient.getChainId();
 
   // Ensure the market exists
-  let market = await marketRepository.findOne({ where: { chainId, address: Foil.address } });
+  let market = await marketRepository.findOne({
+    where: { chainId, address: Foil.address },
+  });
   if (!market) {
     market = new Market();
     market.chainId = chainId;
@@ -36,7 +39,12 @@ export const indexMarketEvents = async (
   const processLogs = async (logs: Log[]) => {
     for (const log of logs) {
       const serializedLog = JSON.stringify(log, bigintReplacer);
-      const blockNumber = Number(log.blockNumber) || 0;
+
+      const blockNumber = log.blockNumber || 0n;
+      const block = await publicClient.getBlock({
+        blockNumber,
+      });
+
       const logIndex = log.logIndex || 0;
       const logData = JSON.parse(serializedLog); // Parse back to JSON object
 
@@ -51,6 +59,7 @@ export const indexMarketEvents = async (
         Foil.address,
         epochId,
         blockNumber,
+        block.timestamp,
         logIndex,
         logData
       );
@@ -81,7 +90,9 @@ export const indexMarketEventsRange = async (
   const chainId = await publicClient.getChainId();
 
   // Ensure the market exists
-  let market = await marketRepository.findOne({ where: { chainId, address: contractAddress } });
+  let market = await marketRepository.findOne({
+    where: { chainId, address: contractAddress },
+  });
   if (!market) {
     market = new Market();
     market.chainId = chainId;
@@ -105,8 +116,10 @@ export const indexMarketEventsRange = async (
           topics: log.topics,
         });
         const serializedLog = JSON.stringify(decodedLog, bigintReplacer);
-
-        const blockNumber = Number(log.blockNumber) || 0;
+        const blockNumber = log.blockNumber;
+        const block = await publicClient.getBlock({
+          blockNumber: log.blockNumber,
+        });
         const logIndex = log.logIndex || 0;
         const logData = JSON.parse(serializedLog);
 
@@ -121,6 +134,7 @@ export const indexMarketEventsRange = async (
           contractAddress,
           epochId,
           blockNumber,
+          block.timestamp,
           logIndex,
           logData
         );
@@ -138,7 +152,8 @@ const handleEventUpsert = async (
   chainId: number,
   address: string,
   epochId: number,
-  blockNumber: number,
+  blockNumber: bigint,
+  timeStamp: bigint,
   logIndex: number,
   logData: any
 ) => {
@@ -173,6 +188,7 @@ const handleEventUpsert = async (
   const newEvent = new Event();
   newEvent.epoch = epoch;
   newEvent.blockNumber = blockNumber.toString();
+  newEvent.timestamp = timeStamp.toString();
   newEvent.logIndex = logIndex;
   newEvent.logData = logData;
 

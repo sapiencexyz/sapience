@@ -1,19 +1,14 @@
 {
-  "address": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+  "address": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
   "abi": [
     {
       "type": "function",
-      "name": "changeImplementationAddress",
+      "name": "addSupportedIdentifier",
       "inputs": [
         {
-          "name": "interfaceName",
+          "name": "identifier",
           "type": "bytes32",
           "internalType": "bytes32"
-        },
-        {
-          "name": "implementationAddress",
-          "type": "address",
-          "internalType": "address"
         }
       ],
       "outputs": [],
@@ -21,10 +16,10 @@
     },
     {
       "type": "function",
-      "name": "getImplementationAddress",
+      "name": "isIdentifierSupported",
       "inputs": [
         {
-          "name": "interfaceName",
+          "name": "identifier",
           "type": "bytes32",
           "internalType": "bytes32"
         }
@@ -32,27 +27,8 @@
       "outputs": [
         {
           "name": "",
-          "type": "address",
-          "internalType": "address"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
-      "name": "interfacesImplemented",
-      "inputs": [
-        {
-          "name": "",
-          "type": "bytes32",
-          "internalType": "bytes32"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "",
-          "type": "address",
-          "internalType": "address"
+          "type": "bool",
+          "internalType": "bool"
         }
       ],
       "stateMutability": "view"
@@ -69,6 +45,19 @@
         }
       ],
       "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "removeSupportedIdentifier",
+      "inputs": [
+        {
+          "name": "identifier",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
     },
     {
       "type": "function",
@@ -92,25 +81,6 @@
     },
     {
       "type": "event",
-      "name": "InterfaceImplementationChanged",
-      "inputs": [
-        {
-          "name": "interfaceName",
-          "type": "bytes32",
-          "indexed": true,
-          "internalType": "bytes32"
-        },
-        {
-          "name": "newImplementationAddress",
-          "type": "address",
-          "indexed": true,
-          "internalType": "address"
-        }
-      ],
-      "anonymous": false
-    },
-    {
-      "type": "event",
       "name": "OwnershipTransferred",
       "inputs": [
         {
@@ -127,16 +97,42 @@
         }
       ],
       "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "SupportedIdentifierAdded",
+      "inputs": [
+        {
+          "name": "identifier",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "SupportedIdentifierRemoved",
+      "inputs": [
+        {
+          "name": "identifier",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
     }
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x06c789d249937ab605a6189823da71da69db689805e6446d0ba26a6d2e024c96",
-  "deployTxnBlockNumber": "7",
-  "deployTimestamp": "1724816538",
-  "sourceName": "src/UMA/src/Finder.sol",
-  "contractName": "Finder",
-  "deployedOn": "deploy.Finder",
-  "gasUsed": 285093,
-  "gasCost": "1105112672"
+  "deployTxnHash": "0xf5f4747c64610d12167bdef3dfc528f3671373ac0ee4242e88bcbf5870d1bc6e",
+  "deployTxnBlockNumber": "8",
+  "deployTimestamp": "1724816539",
+  "sourceName": "src/UMA/src/IdentifierWhitelist.sol",
+  "contractName": "IdentifierWhitelist",
+  "deployedOn": "deploy.IdentifierWhitelist",
+  "gasUsed": 270473,
+  "gasCost": "1092223313"
 }
