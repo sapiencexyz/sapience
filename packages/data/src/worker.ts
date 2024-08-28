@@ -1,3 +1,4 @@
+import dataSource, { initializeDataSource } from "./db";
 import { Abi, Chain, createPublicClient, http, webSocket } from "viem";
 import * as chains from "viem/chains";
 import { indexBaseFeePerGas, indexBaseFeePerGasRange } from "./processes/chain";
@@ -6,7 +7,6 @@ import { mainnet, sepolia, hardhat } from "viem/chains";
 import FoilLocal from "@/protocol/deployments/13370/Foil.json";
 import FoilSepolia from "@/protocol/deployments/11155111/Foil.json";
 import { Market } from "./entity/Market";
-import dataSource, { initializeDataSource } from "./db";
 
 const mainnetPublicClient = createPublicClient({
   chain: mainnet,
