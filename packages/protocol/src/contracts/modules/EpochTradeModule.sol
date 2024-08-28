@@ -163,9 +163,9 @@ contract EpochTradeModule is IEpochTradeModule {
         // IMPORTANT: DON'T USE THIS FUNCTION. THE FORMULA USED IS WRONG.
 
         /*
-        S = C / (Pe - Pl + (Pe + Pl) * fee)
+        S = C / (Pe(1+fee) - Pl (1-fee))
 
-        Where 
+        Where
         Pe = entry price (current price)
         Pl = lowest price set in market
         C = collateral
@@ -175,29 +175,10 @@ contract EpochTradeModule is IEpochTradeModule {
         uint256 lowestPrice = Epoch.load(epochId).minPriceD18;
         uint256 fee = uint256(Epoch.load(epochId).params.feeRate) * 1e12; // scaled to 1e18 fee
 
-        uint256 K = (price + lowestPrice).mulDecimal(fee);
-        positionSize = collateral.divDecimal(price - lowestPrice + K);
-
-        return positionSize;
-
-        // // IMPORTANT: DON'T USE THIS FUNCTION. THE FORMULA USED IS WRONG.
-
-        // /*
-        // S = C / (Pe(1+fee) - Pl (1-fee))
-
-        // Where
-        // Pe = entry price (current price)
-        // Pl = lowest price set in market
-        // C = collateral
-        // Fee = Fee as D18 1/100 (1% in uni is 1000) => fee * 1e12
-        // */
-        // uint256 price = getReferencePrice(epochId);
-        // uint256 lowestPrice = Epoch.load(epochId).minPriceD18;
-        // uint256 fee = uint256(Epoch.load(epochId).params.feeRate) * 1e12; // scaled to 1e18 fee
-
-        // positionSize = collateral.divDecimal(
-        //     price.mulDecimal(1 + fee) - lowestPrice.mulDecimal(1 - fee)
-        // );
+        positionSize = collateral.divDecimal(
+            price.mulDecimal(DecimalMath.UNIT + fee) -
+                lowestPrice.mulDecimal(DecimalMath.UNIT - fee)
+        );
     }
 
     /**
@@ -222,7 +203,8 @@ contract EpochTradeModule is IEpochTradeModule {
         uint256 highestPrice = Epoch.load(epochId).maxPriceD18;
         uint256 fee = uint256(Epoch.load(epochId).params.feeRate) * 1e12; // scaled to 1e18 fee
         modPositionSize = collateral.divDecimal(
-            highestPrice.mulDecimal(1 + fee) - price.mulDecimal(1 - fee)
+            highestPrice.mulDecimal(DecimalMath.UNIT + fee) -
+                price.mulDecimal(DecimalMath.UNIT - fee)
         );
 
         return modPositionSize;
