@@ -1,0 +1,34 @@
+{
+  "address": "0x1BBF73e5002E49d5f48dBDEcB6F43d33b1Cc3194",
+  "abi": [
+    {
+      "type": "function",
+      "name": "supportsInterface",
+      "inputs": [
+        {
+          "name": "interfaceId",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    }
+  ],
+  "constructorArgs": [],
+  "linkedLibraries": {},
+  "deployTxnHash": "0x5d90e8adfcb13d1345aafbea110f58a3d6324d04e5d438717c2d31957d51d11f",
+  "deployTxnBlockNumber": "1",
+  "deployTimestamp": "1724816533",
+  "sourceName": "src/contracts/modules/EpochERC165Module.sol",
+  "contractName": "EpochERC165Module",
+  "deployedOn": "deploy.EpochERC165Module",
+  "gasUsed": 109841,
+  "gasCost": "1000230417"
+}

@@ -8,6 +8,8 @@ import {
   Index,
 } from "typeorm";
 import { Transaction } from "./Transaction";
+import { NUMERIC_PRECISION } from "../util/dbUtil";
+// Read contractIds (chainId:address) from foilconfig.json ?
 import { Epoch } from "./Epoch";
 
 @Entity()
@@ -30,13 +32,13 @@ export class Position {
   @Index("IDX_POSITION_NFTID")
   nftId: number;
 
-  @Column({ type: "bigint" })
+  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
   baseToken: string; // vGas tokenamount 0
 
-  @Column({ type: "bigint" })
+  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
   quoteToken: string; // vETH tokenamount 1
 
-  @Column({ type: "bigint" })
+  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
   collateral: string; // ETH  needs to be added
 
   @Column()

@@ -335,12 +335,12 @@
     "0x4b6Ad469Fc85Bf3917E288e1CE973C0F3382dC71"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x43618c7361ca78b0aab21b92675caacbc9e19526846c8e179199b6ccf1566b3f",
+  "deployTxnHash": "0xb37f69b3204268b02b9e92f2eed84e405db9eae7209af57457defe34241f8ec0",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1723833627",
+  "deployTimestamp": "1722024171",
   "sourceName": "node_modules/@uma/core/contracts/data-verification-mechanism/test/MockOracleAncillary.sol",
   "contractName": "MockOracleAncillary",
   "deployedOn": "deploy.MockOracleAncillary",
   "gasUsed": 1060225,
-  "gasCost": "1119963562"
+  "gasCost": "1588404202"
 }

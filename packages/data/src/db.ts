@@ -5,6 +5,7 @@ import { Transaction } from "./entity/Transaction";
 import { Event } from "./entity/Event";
 import { Market } from "./entity/Market";
 import { Epoch } from "./entity/Epoch";
+import { MarketPrice } from "./entity/MarketPrice";
 
 const isProduction = process.env.NODE_ENV === "production";
 const devDatabase = process.env.POSTGRES_DB;
@@ -19,7 +20,7 @@ const devDataSource: DataSource = new DataSource({
   url: "postgresql://localhost",
   synchronize: true,
   logging: true,
-  entities: [Price, Position, Transaction, Event, Market, Epoch],
+  entities: [Price, Position, Transaction, Event, Market, Epoch, MarketPrice],
 });
 
 const postgresDataSource: DataSource = new DataSource({
@@ -27,7 +28,7 @@ const postgresDataSource: DataSource = new DataSource({
   url: process.env.DATABASE_URL,
   synchronize: true,
   logging: true,
-  entities: [Price, Position, Transaction, Event, Market, Epoch],
+  entities: [Price, Position, Transaction, Event, Market, Epoch, MarketPrice],
 });
 
 const dataSource = isProduction ? postgresDataSource : devDataSource;

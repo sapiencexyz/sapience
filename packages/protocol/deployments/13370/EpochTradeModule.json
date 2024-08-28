@@ -1,5 +1,5 @@
 {
-  "address": "0x029933C3367F9700e0065F7b374cEF099e1E54f6",
+  "address": "0xC93EfbF1874fC6e180fCA4515d7A460719cb3596",
   "abi": [
     {
       "type": "function",
@@ -37,6 +37,30 @@
     },
     {
       "type": "function",
+      "name": "getLongSizeForCollateral",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "positionSize",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "getReferencePrice",
       "inputs": [
         {
@@ -48,6 +72,30 @@
       "outputs": [
         {
           "name": "price18Digits",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getShortSizeForCollateral",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "modPositionSize",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -81,6 +129,128 @@
       ],
       "outputs": [],
       "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "TraderPositionCreated",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateralAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "vEthAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "vGasAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "borrowedVEth",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "borrowedVGas",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "initialPrice",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "finalPrice",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "TraderPositionModified",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateralAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "vEthAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "vGasAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "borrowedVEth",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "borrowedVGas",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "initialPrice",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "finalPrice",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
     },
     {
       "type": "event",
@@ -131,15 +301,20 @@
     },
     {
       "type": "error",
+      "name": "EpochSettled",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "InsufficientCollateral",
       "inputs": [
         {
-          "name": "amount",
+          "name": "amountRequired",
           "type": "uint256",
           "internalType": "uint256"
         },
         {
-          "name": "collateral",
+          "name": "collateralAvailable",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -217,6 +392,11 @@
     },
     {
       "type": "error",
+      "name": "InvalidPositionKind",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "NotAccountOwnerOrAuthorized",
       "inputs": [
         {
@@ -280,12 +460,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x8cec26260f3747be1964fb2a7d25d42e9b73d8c96068cd3c05dad2a9a86c2759",
+  "deployTxnHash": "0x7d51f34d067e23c803051525828fd7236d4923eac2f59ddce445b7b70b7adcf0",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1723830378",
+  "deployTimestamp": "1724816533",
   "sourceName": "src/contracts/modules/EpochTradeModule.sol",
   "contractName": "EpochTradeModule",
   "deployedOn": "deploy.EpochTradeModule",
-  "gasUsed": 1933722,
-  "gasCost": "1003283187"
+  "gasUsed": 2199281,
+  "gasCost": "1000160435"
 }
