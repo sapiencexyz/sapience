@@ -5,10 +5,12 @@ import {
   Column,
   CreateDateColumn,
   Unique,
+  ManyToOne,
 } from "typeorm";
+import { Market } from "./Market";
 
 @Entity()
-@Unique(["contractId", "timestamp"])
+@Unique(["market", "timestamp"])
 export class Price {
   @PrimaryGeneratedColumn()
   id: number;
@@ -16,8 +18,8 @@ export class Price {
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column()
-  contractId: string;
+  @ManyToOne(() => Market, (market) => market.prices)
+  market: Market;
 
   @Column({ type: "bigint" })
   blockNumber: string;

@@ -301,17 +301,10 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
         collateralAsset: marketViewFunctionResult?.data[1],
         uniswapPositionManagerAddress: marketViewFunctionResult?.data[2],
         baseAssetMinPriceTick:
-          marketViewFunctionResult?.data[
-            chainId === LOCAL_MARKET_CHAIN_ID ? 5 : 6
-          ].baseAssetMinPriceTick,
+          marketViewFunctionResult?.data[5].baseAssetMinPriceTick,
         baseAssetMaxPriceTick:
-          marketViewFunctionResult?.data[
-            chainId === LOCAL_MARKET_CHAIN_ID ? 5 : 6
-          ].baseAssetMaxPriceTick,
-        feeRate:
-          marketViewFunctionResult?.data[
-            chainId === LOCAL_MARKET_CHAIN_ID ? 5 : 6
-          ].feeRate,
+          marketViewFunctionResult?.data[5].baseAssetMaxPriceTick,
+        feeRate: marketViewFunctionResult?.data[5].feeRate,
       }));
     }
   }, [marketViewFunctionResult.data]);

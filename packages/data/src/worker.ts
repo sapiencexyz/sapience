@@ -5,6 +5,10 @@ import { indexMarketEvents, indexMarketEventsRange } from "./processes/market"; 
 import { mainnet, sepolia, hardhat } from "viem/chains";
 import FoilLocal from "@/protocol/deployments/13370/Foil.json";
 import FoilSepolia from "@/protocol/deployments/11155111/Foil.json";
+import { getRepository } from "typeorm";
+import { Market } from "./entity/Market";
+
+const marketRepository = getRepository(Market);
 
 const mainnetPublicClient = createPublicClient({
   chain: mainnet,
@@ -70,7 +74,8 @@ async function indexBaseFeePerGasRangeCommand(
     `Indexing base fee per gas from block ${startBlock} to ${endBlock} for contract ${contractAddress} using ${rpcUrl}`
   );
   const client = await createViemPublicClient(rpcUrl);
-  await indexBaseFeePerGasRange(client, startBlock, endBlock, contractAddress);
+  const [chainId, address] = contractAddress.split(":");
+  await indexBaseFeePerGasRange(client, startBlock, endBlock, parseInt(chainId), address);
 }
 
 async function indexMarketEventsRangeCommand(
@@ -93,26 +98,38 @@ async function indexMarketEventsRangeCommand(
   );
 }
 
+async function initializeMarkets(){
+  const marketLocal = marketRepository.create({ address: FoilLocal.address, chainId: 13370 });
+  await marketRepository.save(marketLocal);
+
+  const marketSepolia = marketRepository.create({ address: FoilSepolia.address, chainId: 11155111 });
+  await marketRepository.save(marketSepolia);
+}
+
 if (process.argv.length < 3) {
-  Promise.all([
-    indexBaseFeePerGas(
-      mainnetPublicClient,
-      `${hardhat.id}:${FoilLocal.address}`
-    ),
-    indexBaseFeePerGas(
-      mainnetPublicClient,
-      `${sepolia.id}:${FoilSepolia.address}`
-    ),
-    indexMarketEvents(
-      sepoliaPublicClient,
-      FoilSepolia as { address: string; abi: Abi }
-    ),
-    indexMarketEvents(
-      cannonPublicClient,
-      FoilLocal as { address: string; abi: Abi }
-    ),
-  ]).catch((error) => {
-    console.error("Error running processes in parallel:", error);
+  initializeMarkets().then(() => {
+    Promise.all([
+      indexBaseFeePerGas(
+        mainnetPublicClient,
+        hardhat.id,
+        FoilLocal.address
+      ),
+      indexBaseFeePerGas(
+        mainnetPublicClient,
+        sepolia.id,
+        FoilSepolia.address
+      ),
+      indexMarketEvents(
+        sepoliaPublicClient,
+        FoilSepolia as { address: string; abi: Abi }
+      ),
+      indexMarketEvents(
+        cannonPublicClient,
+        FoilLocal as { address: string; abi: Abi }
+      ),
+    ]).catch((error) => {
+      console.error("Error running processes in parallel:", error);
+    });
   });
 } else {
   const args = process.argv.slice(2);

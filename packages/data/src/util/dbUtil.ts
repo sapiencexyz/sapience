@@ -16,12 +16,13 @@ const tickToPrice = (tick: number): number => (1 + FEE) ** tick;
 
 export const upsertPositionFromLiquidityEvent = async (event: Event) => {
   await initializeDataSource();
+
   const positionRepository = dataSource.getRepository(Position);
 
   // create new position
   const eventArgs = event.logData.args as LiquidityPositionCreatedEventLog;
+
   const newPosition = new Position();
-  newPosition.contractId = event.contractId;
   newPosition.nftId = Number(eventArgs.positionId);
   newPosition.baseToken = eventArgs.addedAmount0;
   newPosition.quoteToken = eventArgs.addedAmount1;

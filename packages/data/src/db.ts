@@ -6,7 +6,7 @@ import { Event } from "./entity/Event";
 import { MarketPrice } from "./entity/MarketPrice";
 
 const isProduction = process.env.NODE_ENV === "production";
-const devDatabase = process.env.POSTGRES_USER;
+const devDatabase = process.env.POSTGRES_DB;
 const devUsername = process.env.POSTGRES_USER;
 
 const devDataSource: DataSource = new DataSource({

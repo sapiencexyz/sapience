@@ -6,7 +6,6 @@ import {
   AfterRemove,
   AfterUpdate,
   CreateDateColumn,
-  OneToMany,
   ManyToOne,
   OneToOne,
   JoinColumn,

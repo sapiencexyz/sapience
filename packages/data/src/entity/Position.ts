@@ -4,14 +4,16 @@ import {
   Column,
   CreateDateColumn,
   OneToMany,
-  Unique,
+  ManyToOne,
+  Index,
 } from "typeorm";
 import { Transaction } from "./Transaction";
 import { NUMERIC_PRECISION } from "../util/dbUtil";
 // Read contractIds (chainId:address) from foilconfig.json ?
+import { Epoch } from "./Epoch";
 
 @Entity()
-@Unique(["contractId", "nftId"])
+@Index("IDX_POSITION_MARKET_NFTID", ["epoch.market", "nftId"], { unique: true })
 export class Position {
   @OneToMany(() => Transaction, (transaction) => transaction.position)
   transactions: Transaction[];
@@ -22,10 +24,12 @@ export class Position {
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column()
-  contractId: string;
+  @ManyToOne(() => Epoch, (epoch) => epoch.positions)
+  @Index("IDX_POSITION_EPOCH")
+  epoch: Epoch;
 
   @Column()
+  @Index("IDX_POSITION_NFTID")
   nftId: number;
 
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
