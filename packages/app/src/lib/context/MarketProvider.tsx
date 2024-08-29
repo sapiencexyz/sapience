@@ -366,6 +366,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
 
   // Fetch Collateral Ticker
   const collateralTickerFunctionResult = useReadContract({
+    chainId,
     abi: erc20ABI,
     address: state.collateralAsset as `0x${string}`,
     functionName: 'symbol',
@@ -382,6 +383,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
 
   // Fetch Collateral Decimals
   const collateralDecimalsFunctionResult = useReadContract({
+    chainId,
     abi: erc20ABI,
     address: state.collateralAsset as `0x${string}`,
     functionName: 'decimals',

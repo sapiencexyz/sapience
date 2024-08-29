@@ -1,5 +1,5 @@
 {
-  "address": "0xd5b5fd36cfad6b08ef221895f666697b355c9071",
+  "address": "0xe58991d53bc039637002da993a61e51b88b4affd",
   "abi": [
     {
       "type": "function",
@@ -2047,11 +2047,11 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0xecb45a46b64dd23d2296e720453d1f8060bdd664b2583dd6b956571ad82e32e3",
+  "deployTxnHash": "0x970d45cf49b287ebadacc37d9aa8758637e10e35dd3b085a7fdca87c85565846",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1724816540",
+  "deployTimestamp": "1724934152",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
-  "gasUsed": 448639,
-  "gasCost": "1000043659"
+  "gasUsed": 448603,
+  "gasCost": "1000043652"
 }
