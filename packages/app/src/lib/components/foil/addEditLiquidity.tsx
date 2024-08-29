@@ -86,6 +86,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   const [txnStep, setTxnStep] = useState<number>(0);
   const [slippage, setSlippage] = useState<number>(0.5);
   const [pendingTxn, setPendingTxn] = useState(false);
+  const [txnSuccessMsg, setTxnSuccessMsg] = useState('');
 
   const tickLower = priceToTick(lowPrice, tickSpacingDefault);
   const tickUpper = priceToTick(highPrice, tickSpacingDefault);
@@ -248,19 +249,20 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   }, [positionData, collateralAssetDecimals]);
   const isDecrease = isEdit && depositAmount < positionCollateralAmount;
 
-  useEffect(() => {
-    if (isEdit && positionData) {
-      const currentCollateral = Number(
-        formatUnits(
-          positionData.depositedCollateralAmount,
-          collateralAssetDecimals
-        )
-      );
-      setDepositAmount(currentCollateral);
-    } else {
-      setDepositAmount(0);
-    }
-  }, [nftId, positionData, isEdit, collateralAssetDecimals]);
+  const newLiquidity: bigint = useMemo(() => {
+    if (!liquidity) return BigInt(0);
+    return getNewLiquidity(
+      depositAmount,
+      positionCollateralAmount,
+      collateralAssetDecimals,
+      liquidity
+    );
+  }, [
+    depositAmount,
+    positionCollateralAmount,
+    collateralAssetDecimals,
+    liquidity,
+  ]);
 
   // same as token0/tokenA/gasToken
   const baseToken = useMemo(() => {
@@ -296,21 +298,6 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     );
   }, [collateralAmountData, collateralAssetDecimals]);
 
-  useEffect(() => {
-    const calculateDelta = () => {
-      const newDepositAmountBigInt = parseUnits(
-        depositAmount.toString(),
-        collateralAssetDecimals
-      );
-      const currentDepositAmountBigInt = BigInt(
-        positionData?.depositedCollateralAmount || 0
-      );
-      return newDepositAmountBigInt - currentDepositAmountBigInt;
-    };
-
-    setCollateralAmountDelta(calculateDelta());
-  }, [depositAmount, positionData, collateralAssetDecimals]);
-
   const walletBalanceAfter = useMemo(() => {
     if (!walletBalance) return null;
     const delta = parseFloat(
@@ -328,6 +315,43 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   }, [allowanceData, collateralAssetDecimals]);
 
   /// //// USE EFFECTS ///////
+  // handle successful txn
+  useEffect(() => {
+    if (txnSuccessMsg && txnStep === 2) {
+      renderToast(toast, txnSuccessMsg);
+      refetchStates();
+    }
+  }, [txnSuccessMsg, txnStep]);
+
+  useEffect(() => {
+    const calculateDelta = () => {
+      const newDepositAmountBigInt = parseUnits(
+        depositAmount.toString(),
+        collateralAssetDecimals
+      );
+      const currentDepositAmountBigInt = BigInt(
+        positionData?.depositedCollateralAmount || 0
+      );
+      return newDepositAmountBigInt - currentDepositAmountBigInt;
+    };
+
+    setCollateralAmountDelta(calculateDelta());
+  }, [depositAmount, positionData, collateralAssetDecimals]);
+
+  useEffect(() => {
+    if (isEdit && positionData) {
+      const currentCollateral = Number(
+        formatUnits(
+          positionData.depositedCollateralAmount,
+          collateralAssetDecimals
+        )
+      );
+      setDepositAmount(currentCollateral);
+    } else {
+      setDepositAmount(0);
+    }
+  }, [nftId, positionData, isEdit, collateralAssetDecimals]);
+
   // handle successful approval
   useEffect(() => {
     if (isApproveSuccess && txnStep === 1) {
@@ -337,23 +361,20 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
 
   // handle successful add/increase liquidity
   useEffect(() => {
-    if (addLiquiditySuccess && txnStep === 2) {
-      renderToast(toast, `Successfully added liquidity`);
-      refetchStates();
+    if (addLiquiditySuccess) {
+      setTxnSuccessMsg('successfully added liquidity');
     }
-  }, [addLiquiditySuccess, txnStep]);
+  }, [addLiquiditySuccess]);
 
   useEffect(() => {
-    if (increaseLiquiditySuccess && txnStep === 2) {
-      renderToast(toast, `Successfully increased liquidity`);
-      refetchStates();
+    if (increaseLiquiditySuccess) {
+      setTxnSuccessMsg('successfully increased liquidity');
     }
-  }, [increaseLiquiditySuccess, txnStep]);
+  }, [increaseLiquiditySuccess]);
 
   useEffect(() => {
     if (decreaseLiquiditySuccess) {
-      renderToast(toast, 'Successfully decreased liquidity ');
-      refetchStates();
+      setTxnSuccessMsg('successfully decreased liquidity');
     }
   }, [decreaseLiquiditySuccess]);
 
@@ -408,8 +429,8 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
         args: [
           {
             positionId: nftId,
-            collateralAmount: collateralAmountDelta,
-            gasTokenAmount: parseUnits(baseToken.toString(), TOKEN_DECIMALS),
+            collateralAmount: collateralAmountDelta, // total desired
+            gasTokenAmount: parseUnits(baseToken.toString(), TOKEN_DECIMALS), // generated with delta
             ethTokenAmount: parseUnits(quoteToken.toString(), TOKEN_DECIMALS),
             minGasAmount: parseUnits(
               minAmountTokenA.toString(),
@@ -457,6 +478,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
 
   const refetchStates = () => {
     // reset form states
+    setTxnSuccessMsg('');
     setDepositAmount(0);
     setLowPrice(tickToPrice(baseAssetMinPriceTick));
     setHighPrice(tickToPrice(baseAssetMaxPriceTick));
@@ -490,12 +512,6 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   const handleDecreaseLiquidty = () => {
     if (!liquidity) return;
 
-    const newLiquidity: bigint = getNewLiquidity(
-      depositAmount,
-      positionCollateralAmount,
-      collateralAssetDecimals,
-      liquidity
-    );
     decreaseLiquidity({
       address: foilData.address as `0x${string}`,
       abi: foilData.abi,
@@ -510,6 +526,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
       ],
       chainId,
     });
+    setTxnStep(2);
   };
 
   const handleFormSubmit = (e: any) => {
