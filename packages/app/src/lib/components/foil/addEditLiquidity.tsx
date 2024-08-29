@@ -244,6 +244,20 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   }, [positionData, collateralAssetDecimals]);
   const isDecrease = isEdit && depositAmount < positionCollateralAmount;
 
+  useEffect(() => {
+    if (isEdit && positionData) {
+      const currentCollateral = Number(
+        formatUnits(
+          positionData.depositedCollateralAmount,
+          collateralAssetDecimals
+        )
+      );
+      setDepositAmount(currentCollateral);
+    } else {
+      setDepositAmount(0);
+    }
+  }, [nftId, positionData, isEdit, collateralAssetDecimals]);
+
   // same as token0/tokenA/gasToken
   const baseToken = useMemo(() => {
     const tokenAmountsAny = tokenAmounts as any[]; // there's some abitype project, i think
@@ -372,12 +386,23 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
         abi: foilData.abi,
         functionName: 'increaseLiquidityPosition',
         args: [
-          nftId,
-          parseUnits(depositAmount.toString(), collateralAssetDecimals),
-          parseUnits(baseToken.toString(), TOKEN_DECIMALS),
-          parseUnits(quoteToken.toString(), TOKEN_DECIMALS),
-          parseUnits(minAmountTokenA.toString(), TOKEN_DECIMALS),
-          parseUnits(minAmountTokenB.toString(), TOKEN_DECIMALS),
+          {
+            positionId: nftId,
+            collateralAmount: parseUnits(
+              depositAmount.toString(),
+              collateralAssetDecimals
+            ),
+            gasTokenAmount: parseUnits(baseToken.toString(), TOKEN_DECIMALS),
+            ethTokenAmount: parseUnits(quoteToken.toString(), TOKEN_DECIMALS),
+            minGasAmount: parseUnits(
+              minAmountTokenA.toString(),
+              TOKEN_DECIMALS
+            ),
+            minEthAmount: parseUnits(
+              minAmountTokenB.toString(),
+              TOKEN_DECIMALS
+            ),
+          },
         ],
         chainId,
       });
@@ -459,11 +484,12 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
       abi: foilData.abi,
       functionName: 'decreaseLiquidityPosition',
       args: [
-        nftId,
-        parseUnits(depositAmount.toString(), collateralAssetDecimals),
-        newLiquidity,
-        parseUnits(minAmountTokenA.toString(), TOKEN_DECIMALS),
-        parseUnits(minAmountTokenB.toString(), TOKEN_DECIMALS),
+        {
+          positionId: nftId,
+          liquidity: newLiquidity,
+          minGasAmount: parseUnits(minAmountTokenA.toString(), TOKEN_DECIMALS),
+          minEthAmount: parseUnits(minAmountTokenB.toString(), TOKEN_DECIMALS),
+        },
       ],
       chainId,
     });
@@ -473,12 +499,30 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     setPendingTxn(true);
     setIsLoading(true);
     e.preventDefault();
+
     if (isEdit && isDecrease) {
       return handleDecreaseLiquidty();
     }
+
+    const newDepositAmountBigInt = BigInt(
+      parseUnits(depositAmount.toString(), collateralAssetDecimals)
+    );
+    const currentDepositAmountBigInt = BigInt(
+      positionData.depositedCollateralAmount
+    );
+
+    const increaseAmountBigInt =
+      newDepositAmountBigInt - currentDepositAmountBigInt;
+
+    if (increaseAmountBigInt <= 0) {
+      // No increase in deposit, proceed with creating or increasing liquidity
+      handleCreateOrIncreaseLiquidity();
+      return;
+    }
+
     if (
       allowance &&
-      parseFloat(allowance) >= parseFloat(depositAmount.toString())
+      parseFloat(allowance) >= parseFloat(increaseAmountBigInt.toString())
     ) {
       handleCreateOrIncreaseLiquidity();
     } else {
@@ -488,7 +532,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
         functionName: 'approve',
         args: [
           foilData.address,
-          parseUnits(depositAmount.toString(), collateralAssetDecimals),
+          parseUnits(increaseAmountBigInt.toString(), collateralAssetDecimals),
         ],
         chainId,
       });

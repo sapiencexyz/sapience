@@ -161,6 +161,7 @@ const PositionsHeader = () => {
           <StatLabel fontSize="md">
             Index Price
             <InfoOutlineIcon
+              display="none"
               transform="translateY(-2.5px)"
               color="gray.600"
               height="4"
@@ -182,6 +183,7 @@ const PositionsHeader = () => {
           <StatLabel fontSize="md">
             Market Price
             <InfoOutlineIcon
+              display="none"
               transform="translateY(-2px)"
               color="gray.600"
               height="4"
@@ -189,7 +191,7 @@ const PositionsHeader = () => {
             />
           </StatLabel>
           <StatNumber>
-            {marketPrice}
+            {marketPrice.toFixed(2)}
             {/*  <Text as="span">gwei</Text> */}
           </StatNumber>
           {/*
@@ -204,6 +206,7 @@ const PositionsHeader = () => {
           <StatLabel fontSize="md">
             Liquidity
             <InfoOutlineIcon
+              display="none"
               transform="translateY(-2px)"
               color="gray.600"
               height="4"
