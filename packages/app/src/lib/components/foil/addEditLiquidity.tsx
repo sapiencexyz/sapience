@@ -159,6 +159,27 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     },
   });
 
+  const { data: deltaTokenAmounts, error: deltaTokenAmountsError } =
+    useReadContract({
+      address: foilData.address,
+      abi: foilData.abi,
+      functionName: 'getTokenAmounts',
+      args: [
+        epoch.toString(),
+        collateralAmountDelta, // uint256 collateralAmount
+        pool ? pool.sqrtRatioX96.toString() : '0', // uint160 sqrtPriceX96, // current price of pool
+        TickMath.getSqrtRatioAtTick(tickLower).toString(), // uint160 sqrtPriceAX96, // lower tick price in sqrtRatio
+        TickMath.getSqrtRatioAtTick(tickUpper).toString(), // uint160 sqrtPriceBX96 // upper tick price in sqrtRatio
+      ],
+      chainId,
+      query: {
+        enabled: Boolean(pool),
+      },
+    }) as {
+      data: [bigint, bigint, bigint];
+      error: any;
+    };
+
   /// //// WRITE CONTRACT HOOKS ///////
   const { data: approveHash, writeContract: approveWrite } = useWriteContract({
     mutation: {
@@ -264,7 +285,32 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     liquidity,
   ]);
 
-  // same as token0/tokenA/gasToken
+  // same delta token0/gasToken
+  const baseTokenDelta = useMemo(() => {
+    if (!deltaTokenAmounts) return BigInt('0');
+    return deltaTokenAmounts[0];
+  }, [deltaTokenAmounts]);
+
+  // same as delta token1/ethToken
+  const quoteTokenDelta = useMemo(() => {
+    if (!deltaTokenAmounts) return BigInt('0');
+    return deltaTokenAmounts[1];
+  }, [deltaTokenAmounts]);
+
+  // same as min delta token0/baseToken/gasToken
+  const minAmountBaseTokenDelta = useMemo(() => {
+    const numerator = BigInt(100 * 100) - BigInt(slippage * 100);
+    const denominator = BigInt(100 * 100);
+    return (baseTokenDelta * numerator) / denominator;
+  }, [baseTokenDelta, slippage]);
+
+  // same as min delta token1/quoteToken/ethToken
+  const minAmountQuoteTokenDelta = useMemo(() => {
+    const numerator = BigInt(100 * 100) - BigInt(slippage * 100);
+    const denominator = BigInt(100 * 100);
+    return (quoteTokenDelta * numerator) / denominator;
+  }, [quoteTokenDelta, slippage]);
+
   const baseToken = useMemo(() => {
     const tokenAmountsAny = tokenAmounts as any[]; // there's some abitype project, i think
     if (!tokenAmountsAny) return 0;
@@ -430,16 +476,10 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
           {
             positionId: nftId,
             collateralAmount: collateralAmountDelta, // total desired
-            gasTokenAmount: parseUnits(baseToken.toString(), TOKEN_DECIMALS), // generated with delta
-            ethTokenAmount: parseUnits(quoteToken.toString(), TOKEN_DECIMALS),
-            minGasAmount: parseUnits(
-              minAmountTokenA.toString(),
-              TOKEN_DECIMALS
-            ),
-            minEthAmount: parseUnits(
-              minAmountTokenB.toString(),
-              TOKEN_DECIMALS
-            ),
+            gasTokenAmount: baseTokenDelta, // generated with delta
+            ethTokenAmount: quoteTokenDelta,
+            minGasAmount: minAmountBaseTokenDelta,
+            minEthAmount: minAmountQuoteTokenDelta,
           },
         ],
         chainId,
