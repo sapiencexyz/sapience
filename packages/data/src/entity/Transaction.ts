@@ -13,7 +13,11 @@ import {
 import { Event } from "./Event";
 import { Position } from "./Position";
 import { MarketPrice } from "./MarketPrice";
-import { NUMERIC_PRECISION } from "../util/dbUtil";
+import {
+  createOrModifyPosition,
+  NUMERIC_PRECISION,
+  upsertMarketPrice,
+} from "../util/dbUtil";
 // Read contractIds (chainId:address) from foilconfig.json ?
 
 export enum TransactionType {
@@ -36,7 +40,6 @@ export class Transaction {
   @OneToOne(() => MarketPrice, (mp) => mp.transaction, {
     cascade: true,
   })
-  @JoinColumn()
   marketPrice: MarketPrice;
 
   @OneToOne(() => Event, (event) => event.transaction, {
@@ -62,10 +65,10 @@ export class Transaction {
   type: TransactionType;
 
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
-  baseTokenDelta: string; // vGas
+  baseTokenDelta: string; // vGas make sure signed
 
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
-  quoteTokenDelta: string; // vETH
+  quoteTokenDelta: string; // vETH make sure these are signed
 
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
   collateralDelta: string; // ETH
@@ -75,17 +78,8 @@ export class Transaction {
   // @after insert: create MarketPrice (if long or short txn type)
   @AfterInsert()
   async afterInsert() {
-    // Upsert associated Position or Transaction
-    if (
-      this.type === TransactionType.LONG ||
-      this.type === TransactionType.SHORT
-    ) {
-      try {
-        //  await upsertPositionFromLiquidityEvent(this);
-      } catch (error) {
-        console.error("Error upserting Market Price:", error);
-      }
-    }
+    await createOrModifyPosition(this);
+    await upsertMarketPrice(this);
   }
 
   @AfterUpdate()

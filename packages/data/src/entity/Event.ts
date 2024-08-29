@@ -7,13 +7,11 @@ import {
   AfterUpdate,
   CreateDateColumn,
   OneToOne,
-  JoinColumn,
   Unique,
   ManyToOne,
 } from "typeorm";
-import { upsertPositionFromLiquidityEvent } from "../util/dbUtil";
+import { upsertTransactionFromEvent } from "../util/dbUtil";
 import { Transaction } from "./Transaction";
-import { EventType } from "../interfaces/interfaces";
 import { Epoch } from "./Epoch";
 
 @Entity()
@@ -46,15 +44,8 @@ export class Event {
   // All should fail without crashing
   @AfterInsert()
   async afterInsert() {
-    // Upsert associated Position or Transaction
-    if (this.logData.eventName === EventType.LiquidityPositionCreated) {
-      try {
-        console.log("Creating liquidity position from event: ", this);
-        await upsertPositionFromLiquidityEvent(this);
-      } catch (error) {
-        console.error("Error upserting position:", error);
-      }
-    }
+    // Upsert associated Transaction
+    await upsertTransactionFromEvent(this);
   }
 
   @AfterUpdate()
