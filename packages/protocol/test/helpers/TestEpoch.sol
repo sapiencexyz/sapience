@@ -77,18 +77,14 @@ contract TestEpoch is TestUser {
         bondCurrency.mint(BOND_AMOUNT * 2, owner);
         vm.startPrank(owner);
 
-        console2.log("submitSettlementPrice");
         bondCurrency.approve(address(foil), BOND_AMOUNT);
         bytes32 assertionId = foil.submitSettlementPrice(epochId, price);
         vm.stopPrank();
-
-        console2.log("assertionResolvedCallback");
 
         address optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
         vm.startPrank(optimisticOracleV3);
         foil.assertionResolvedCallback(assertionId, true);
         vm.stopPrank();
-        console2.log("done");
     }
 
     // helpers
@@ -163,69 +159,70 @@ contract TestEpoch is TestUser {
         );
     }
 
-    struct OwedTokensData {
-        address positionManager;
-        address pool;
-        int24 tickLower;
-        int24 tickUpper;
-        uint128 liquidity;
-        uint256 feeGrowthInside0LastX128;
-        uint256 feeGrowthInside1LastX128;
-        uint128 tokensOwed0;
-        uint128 tokensOwed1;
-        uint256 feeGrowthInside0X128;
-        uint256 feeGrowthInside1X128;
-    }
-    function getOwedTokens(
-        uint256 uniswapPositionId
-    ) internal returns (uint256 owed0, uint256 owed1) {
-        IFoil foil = IFoil(vm.getAddress("Foil"));
+    // struct OwedTokensData {
+    //     address positionManager;
+    //     address pool;
+    //     int24 tickLower;
+    //     int24 tickUpper;
+    //     uint128 liquidity;
+    //     uint256 feeGrowthInside0LastX128;
+    //     uint256 feeGrowthInside1LastX128;
+    //     uint128 tokensOwed0;
+    //     uint128 tokensOwed1;
+    //     uint256 feeGrowthInside0X128;
+    //     uint256 feeGrowthInside1X128;
+    //     uint256 feeGrowthGlobal0X128;
+    //     uint256 feeGrowthGlobal1X128;
+    // }
+    // function getOwedTokens(
+    //     uint256 uniswapPositionId
+    // ) internal returns (uint256 owed0, uint256 owed1) {
+    //     console2.log("IN GETOWEDTOKENS");
+    //     IFoil foil = IFoil(vm.getAddress("Foil"));
 
-        OwedTokensData memory data;
+    //     OwedTokensData memory data;
 
-        (, , data.positionManager, , , ) = foil.getMarket();
-        (
-            ,
-            ,
-            ,
-            ,
-            ,
-            data.tickLower,
-            data.tickUpper,
-            data.liquidity,
-            data.feeGrowthInside0LastX128,
-            data.feeGrowthInside1LastX128,
-            data.tokensOwed0,
-            data.tokensOwed1
-        ) = INonfungiblePositionManager(data.positionManager).positions(
-            uniswapPositionId
-        );
+    //     (, , data.positionManager, , , ) = foil.getMarket();
 
-        (, , , data.pool, , , , , , , ) = foil.getLatestEpoch();
+    //     // Fetch the current fee growth global values
+    //     data.feeGrowthGlobal0X128 = IUniswapV3Pool(data.pool)
+    //         .feeGrowthGlobal0X128();
+    //     data.feeGrowthGlobal1X128 = IUniswapV3Pool(data.pool)
+    //         .feeGrowthGlobal1X128();
 
-        bytes32 positionKey = keccak256(
-            abi.encodePacked(address(foil), data.tickLower, data.tickUpper)
-        );
-        (
-            ,
-            data.feeGrowthInside0X128,
-            data.feeGrowthInside1X128,
-            ,
+    //     console2.log("feeGrowthGlobal0X128", data.feeGrowthGlobal0X128);
+    //     console2.log("feeGrowthGlobal1X128", data.feeGrowthGlobal1X128);
 
-        ) = IUniswapV3Pool(data.pool).positions(positionKey);
+    //     (, , , data.pool, , , , , , , ) = foil.getLatestEpoch();
 
-        uint256 tokensOwed0Additional = FullMath.mulDiv(
-            data.feeGrowthInside0X128 - data.feeGrowthInside0LastX128,
-            data.liquidity,
-            Q128
-        );
-        uint256 tokensOwed1Additional = FullMath.mulDiv(
-            data.feeGrowthInside1X128 - data.feeGrowthInside1LastX128,
-            data.liquidity,
-            Q128
-        );
+    //     bytes32 positionKey = keccak256(
+    //         abi.encodePacked(
+    //             address(data.positionManager),
+    //             data.tickLower,
+    //             data.tickUpper
+    //         )
+    //     );
+    //     (
+    //         ,
+    //         data.feeGrowthInside0X128,
+    //         data.feeGrowthInside1X128,
+    //         ,
 
-        owed0 = uint256(data.tokensOwed0) + tokensOwed0Additional;
-        owed1 = uint256(data.tokensOwed1) + tokensOwed1Additional;
-    }
+    //     ) = IUniswapV3Pool(data.pool).positions(positionKey);
+
+    //     uint256 tokensOwed0Additional = FullMath.mulDiv(
+    //         data.feeGrowthGlobal0X128 - data.feeGrowthInside0LastX128,
+    //         data.liquidity,
+    //         Q128
+    //     );
+    //     uint256 tokensOwed1Additional = FullMath.mulDiv(
+    //         data.feeGrowthGlobal1X128 - data.feeGrowthInside1LastX128,
+    //         data.liquidity,
+    //         Q128
+    //     );
+
+    //     owed0 = uint256(data.tokensOwed0) + tokensOwed0Additional;
+    //     owed1 = uint256(data.tokensOwed1) + tokensOwed1Additional;
+    //     console2.log("OUT OF GETOWEDTOKENS");
+    // }
 }

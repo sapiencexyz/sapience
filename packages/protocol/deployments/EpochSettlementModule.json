@@ -1,5 +1,5 @@
 {
-  "address": "0x456fa2c63E727565A9235Edb614861125B223722",
+  "address": "0x18618ee9B6721BA14BD930edDb42EEE064A2452c",
   "abi": [
     {
       "type": "function",
@@ -89,6 +89,21 @@
     },
     {
       "type": "error",
+      "name": "OverflowInt24ToUint256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowInt256ToUint256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowUint256ToInt256",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "PositionAlreadySettled",
       "inputs": [
         {
@@ -101,12 +116,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x645d11fa9e78e8cacd09f288ef9178948b06f161633e2440c6c909948eeb175d",
+  "deployTxnHash": "0x6a6bfb92b579085060e2ac81ccfb1a5eb6ee43fe26d803a5749edddd6657b234",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1724800784",
+  "deployTimestamp": "1724955487",
   "sourceName": "src/contracts/modules/EpochSettlementModule.sol",
   "contractName": "EpochSettlementModule",
   "deployedOn": "deploy.EpochSettlementModule",
-  "gasUsed": 630270,
-  "gasCost": "1000302982"
+  "gasUsed": 1306801,
+  "gasCost": "1000302984"
 }

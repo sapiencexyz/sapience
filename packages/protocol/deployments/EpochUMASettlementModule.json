@@ -1,5 +1,5 @@
 {
-  "address": "0x61F5D977FEb2a59F93c400CFc2E963A38fA3bA98",
+  "address": "0x6CCd1e99331A13C5388f7a4246f6CFe7243609E5",
   "abi": [
     {
       "type": "function",
@@ -138,12 +138,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x6f849ea96abf23dadb2d6de07f3316d0a633d451d7a868e219e7e4b38bb1bea2",
+  "deployTxnHash": "0x99bfb796c5207ab72791baf0b6a65381ada0adcbcb8b776574c82647f79e3bbf",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1724800294",
+  "deployTimestamp": "1724953259",
   "sourceName": "src/contracts/modules/EpochUMASettlementModule.sol",
   "contractName": "EpochUMASettlementModule",
   "deployedOn": "deploy.EpochUMASettlementModule",
   "gasUsed": 730044,
-  "gasCost": "1000143156"
+  "gasCost": "1000186783"
 }

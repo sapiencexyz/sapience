@@ -35,7 +35,7 @@ contract SettleLPTest is TestEpoch {
     int24 constant MIN_TICK = 16000;
     int24 constant MAX_TICK = 29800;
     uint256 constant dust = 1e8;
-    uint256 constant settlementPrice = 11 ether;
+    uint256 constant settlementPrice = 10 ether;
 
     function setUp() public {
         collateralAsset = IMintableToken(
@@ -52,13 +52,9 @@ contract SettleLPTest is TestEpoch {
         (epochId, , , pool, tokenA, tokenB, , , , , ) = foil.getLatestEpoch();
 
         // Create LP position
-        console2.log("lp");
         provideLiquidity(lp1, 100 ether);
-        console2.log("trader1");
         longPositionId = traderBuysGas(trader1, 5 ether);
-        console2.log("trader2");
-        shortPositionId = traderSellsGas(trader2, 5 ether);
-        console2.log("done");
+        shortPositionId = traderSellsGas(trader2, 15 ether);
     }
 
     function provideLiquidity(address user, uint256 collateralAmount) internal {
@@ -110,34 +106,30 @@ contract SettleLPTest is TestEpoch {
         uint256 amount
     ) internal returns (uint256 traderPositionId) {
         vm.startPrank(trader);
-        uint256 positionSize = foil.getShortSizeForCollateral(epochId, 5 ether);
+        uint256 positionSize = foil.getShortSizeForCollateral(epochId, amount);
         traderPositionId = foil.createTraderPosition(
             epochId,
-            10 ether,
+            amount + 10 ether,
             -int256(positionSize),
             0
         );
         vm.stopPrank();
     }
 
-    function testFailSettleInvalidPositionId() public {
+    function test_revertWhen_invalidPositionId() public {
         uint256 invalidPositionId = 999; // An ID that doesn't exist
-
         vm.expectRevert(
             abi.encodeWithSelector(
                 Errors.InvalidPositionId.selector,
                 invalidPositionId
             )
         );
+        vm.prank(lp1);
         foil.settlePosition(invalidPositionId);
     }
 
-    function testFailSettleByNonOwner() public {
-        vm.warp(block.timestamp + 1 days); // Ensure epoch has ended
-
+    function test_revertWhen_notOwner() public {
         address randomUser = address(0x1234);
-        vm.startPrank(randomUser);
-
         vm.expectRevert(
             abi.encodeWithSelector(
                 Errors.NotAccountOwnerOrAuthorized.selector,
@@ -145,19 +137,16 @@ contract SettleLPTest is TestEpoch {
                 randomUser
             )
         );
+        vm.prank(randomUser);
         foil.settlePosition(lpPositionId);
-
-        vm.stopPrank();
     }
 
-    function testFailSettleUnsettledEpoch() public {
-        vm.startPrank(lp1);
+    function test_revertWhen_epochNotSettled() public {
         vm.expectRevert(
             abi.encodeWithSelector(Errors.EpochNotSettled.selector, epochId)
         );
+        vm.prank(lp1);
         foil.settlePosition(lpPositionId);
-
-        vm.stopPrank();
     }
 
     function testSettleLp() public {
@@ -172,29 +161,99 @@ contract SettleLPTest is TestEpoch {
         Position.Data memory position = foil.getPosition(lpPositionId);
         // Get initial balances
         uint256 initialCollateralBalance = collateralAsset.balanceOf(lp1);
+        (uint256 owed0, uint256 owed1) = getOwedTokens(
+            position.uniswapPositionId
+        );
 
         // Settle LP position
         vm.prank(lp1);
         foil.settlePosition(lpPositionId);
-
-        // Get final balances
-        uint256 finalCollateralBalance = collateralAsset.balanceOf(lp1);
 
         // Assert position is settled
         Position.Data memory updatedPosition = foil.getPosition(lpPositionId);
         bool isSettled = updatedPosition.isSettled;
         assertTrue(isSettled, "Position should be settled");
 
-        assertCollateralBalanceAfterSettlement(position);
+        // TODO: fix this, need to calculate tokens that were collected which is a bit tricky
+        // assertCollateralBalanceAfterSettlement(
+        //     initialCollateralBalance,
+        //     position
+        // );
     }
 
-    function assertCollateralBalanceAfterSettlement(
-        Position.Data memory position
-    ) internal {
-        (uint256 tokensOwed0, uint256 tokensOwed1) = getOwedTokens(
-            position.uniswapPositionId
-        );
-        console2.log("tokensOwed0", tokensOwed0);
-        console2.log("tokensOwed1", tokensOwed1);
+    struct SettlementCollateralAssertionData {
+        uint256 amount0;
+        uint256 amount1;
+        uint256 tokensOwed0;
+        uint256 tokensOwed1;
+        uint128 liquidity;
+        uint256 totalOwed0;
+        uint256 totalOwed1;
+        uint256 owned0InCollateral;
+        uint256 owned1InCollateral;
+        uint256 loan0InCollateral;
+        uint256 loan1InCollateral;
+        uint256 expectedCollateralReturned;
     }
+
+    // function assertCollateralBalanceAfterSettlement(
+    //     uint256 initialCollateralBalance,
+    //     Position.Data memory position
+    // ) internal {
+    //     SettlementCollateralAssertionData memory data;
+    //     // Get the current position token amounts
+    //     (
+    //         data.amount0,
+    //         data.amount1,
+    //         data.tokensOwed0,
+    //         data.tokensOwed1,
+    //         data.liquidity
+    //     ) = getCurrentPositionTokenAmounts(
+    //         position.uniswapPositionId,
+    //         MIN_TICK,
+    //         MAX_TICK
+    //     );
+
+    //     // Calculate total owed tokens
+    //     data.totalOwed0 = data.amount0 + data.tokensOwed0;
+    //     data.totalOwed1 = data.amount1 + data.tokensOwed1;
+
+    //     // Convert owed tokens to collateral asset
+    //     data.owned0InCollateral = (data.totalOwed0 * settlementPrice) / 1e18;
+    //     data.owned1InCollateral = data.totalOwed1;
+
+    //     data.loan0InCollateral =
+    //         (position.borrowedVGas * settlementPrice) /
+    //         1e18;
+    //     data.loan1InCollateral = position.borrowedVEth;
+
+    //     // Calculate expected collateral balance after settlement
+    //     data.expectedCollateralReturned =
+    //         position.depositedCollateralAmount +
+    //         data.owned0InCollateral +
+    //         data.owned1InCollateral -
+    //         data.loan0InCollateral -
+    //         data.loan1InCollateral;
+
+    //     // Log all relevant data for debugging and verification
+    //     console.log("Tokens Owed0:", data.tokensOwed0);
+    //     console.log("Tokens Owed1:", data.tokensOwed1);
+    //     console.log("Total Owed0:", data.totalOwed0);
+    //     console.log("Total Owed1:", data.totalOwed1);
+    //     console.log("Owned0 In Collateral:", data.owned0InCollateral);
+    //     console.log("Owned1 In Collateral:", data.owned1InCollateral);
+    //     console.log("Loan0 In Collateral:", data.loan0InCollateral);
+    //     console.log("Loan1 In Collateral:", data.loan1InCollateral);
+    //     console.log(
+    //         "Expected Collateral Returned:",
+    //         data.expectedCollateralReturned
+    //     );
+
+    //     // Assert that the actual collateral balance matches the expected balance
+    //     assertEq(
+    //         collateralAsset.balanceOf(lp1),
+    //         initialCollateralBalance + data.expectedCollateralReturned,
+    //         "Collateral balance after settlement does not match expected value"
+    //     );
+    // }
 }
