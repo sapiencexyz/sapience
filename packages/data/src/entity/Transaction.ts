@@ -74,8 +74,6 @@ export class Transaction {
   collateralDelta: string; // ETH
 
   // AfterInsert AfterUpdate and AfterRemove to update the associated Position based on positionId
-
-  // @after insert: create MarketPrice (if long or short txn type)
   @AfterInsert()
   async afterInsert() {
     await createOrModifyPosition(this);
