@@ -219,7 +219,11 @@ const startServer = async () => {
     }
   });
   app.get("/transactions", async (req, res) => {
-    const all = await transactionRepository.find({ relations: ["position"] });
+    const all = await transactionRepository.find({
+      relations: {
+        position: true,
+      },
+    });
     console.log("all txns -", all);
     const { contractId, epochId } = req.query;
 
@@ -227,51 +231,6 @@ const startServer = async () => {
       return res.status(400).json({ error: "Invalid contractId" });
     }
     const [chainId, address] = contractId.split(":");
-    console.log("chainId = ", chainId);
-    console.log("address = ", address);
-    const allMarkets = await marketRepository.find({});
-    console.log("allMarkets = ", allMarkets);
-
-    const market = await marketRepository
-      .createQueryBuilder("market")
-      .where("market.chainId = :chainId", { chainId: Number(chainId) })
-      .andWhere("market.address = :address", { address })
-      .getOne();
-
-    console.log("Market found:", market);
-    if (!market) {
-      return [];
-    }
-
-    const epoch = await epochRepository
-      .createQueryBuilder("epoch")
-      .where("epoch.marketId = :marketId", { marketId: market.id })
-      .andWhere("epoch.epochId = :epochId", { epochId })
-      .getOne();
-
-    console.log("Epoch found:", epoch);
-    if (!epoch) {
-      return [];
-    }
-
-    const positions = await positionRepository
-      .createQueryBuilder("position")
-      .where("position.epochId = :epochId", { epochId: epoch.id })
-      .getMany();
-
-    console.log("Positions found:", positions.length);
-
-    const transactions = await transactionRepository
-      .createQueryBuilder("transaction")
-      .innerJoinAndSelect("transaction.position", "position")
-      .innerJoinAndSelect("position.epoch", "epoch")
-      .innerJoinAndSelect("epoch.market", "market")
-      .where("market.chainId = :chainId", { chainId })
-      .andWhere("market.address = :address", { address })
-      .andWhere("epoch.epochId = :epochId", { epochId })
-      .getMany();
-
-    console.log("Transactions found:", transactions.length);
 
     try {
       const transactions = await transactionRepository
@@ -279,13 +238,11 @@ const startServer = async () => {
         .innerJoinAndSelect("transaction.position", "position")
         .innerJoinAndSelect("position.epoch", "epoch")
         .innerJoinAndSelect("epoch.market", "market")
-        .where("market.chainId = :chainId", { chainId: Number(chainId) })
+        .where("market.chainId = :chainId", { chainId })
+        .andWhere("market.address = :address", { address })
+        .andWhere("epoch.epochId = :epochId", { epochId })
         .getMany();
-      // .andWhere("market.address = :address", { address })
-      // .andWhere("epoch.epochId = :epochId", { epochId: Number(epochId) })
-      // .getMany();
 
-      console.log("transactions = ", transactions);
       res.json(transactions);
     } catch (error) {
       console.error("Error fetching transactions:", error);

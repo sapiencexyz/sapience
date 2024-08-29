@@ -7,6 +7,7 @@ import {
   Tbody,
   Td,
 } from '@chakra-ui/react';
+import type { Transaction } from '@data/entity/Transaction';
 import { useQuery } from '@tanstack/react-query';
 import { useContext } from 'react';
 
@@ -46,35 +47,27 @@ export default function TransactoinTable() {
   return (
     <TableContainer mb={4}>
       <Table variant="simple" size="sm">
-        {/* <Thead>
+        <Thead>
           <Tr>
-            <Th>ID</Th>
-            <Th>Collateral</Th>
-            <Th>Base Token</Th>
-            <Th>Quote Token</Th>
-            <Th>Net Position</Th>
-            <Th>Gain/Loss</Th>
-            <Th>High Price</Th>
-            <Th>Low Price</Th>
-            <Th>Unclaimed Fees</Th>
+            <Th>Position ID</Th>
+            <Th>Collateral Change</Th>
+            <Th>Base Token Change</Th>
+            <Th>Quote Token Change</Th>
+            <Th>Type</Th>
           </Tr>
         </Thead>
         <Tbody>
-          {positions &&
-            positions.map((row: any) => (
+          {transactions &&
+            transactions.map((row: Transaction) => (
               <Tr key={row.id}>
-                <Td>{row.positionId.toString()}</Td>
-                <Td>{row.collateral.toString()}</Td>
-                <Td>{row.baseToken.toString()}</Td>
-                <Td>{row.quoteToken.toString()}</Td>
-                <Td>TODO</Td>
-                <Td>{row.profitLoss.toString()}</Td>
-                <Td>{row.highPrice.toString()}</Td>
-                <Td>{row.lowPrice.toString()}</Td>
-                <Td>{row.unclaimedFees.toString()}</Td>
+                <Td>{row.position.positionId}</Td>
+                <Td>{row.collateralDelta}</Td>
+                <Td>{row.baseTokenDelta}</Td>
+                <Td>{row.quoteTokenDelta}</Td>
+                <Td>{row.type}</Td>
               </Tr>
             ))}
-        </Tbody> */}
+        </Tbody>
       </Table>
     </TableContainer>
   );

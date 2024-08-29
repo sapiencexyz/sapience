@@ -1,11 +1,7 @@
 {
   "compilerOptions": {
     "target": "es5",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -20,10 +16,9 @@
     "jsx": "preserve",
     "baseUrl": "src",
     "paths": {
-      "~/*": [
-        "./*",
-      ],
-      "@/protocol/*": ["../../protocol/*"]
+      "~/*": ["./*"],
+      "@/protocol/*": ["../../protocol/*"],
+      "@data/*": ["../../data/src/*"] // Add this line
     },
     "incremental": true,
     "plugins": [
@@ -41,7 +36,5 @@
     "commitlint.config.js",
     ".next/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules"]
 }
