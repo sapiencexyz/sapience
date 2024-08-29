@@ -10,14 +10,14 @@ import {TestTrade} from "../helpers/TestTrade.sol";
 import {TestEpoch} from "../helpers/TestEpoch.sol";
 import {TestUser} from "../helpers/TestUser.sol";
 import {DecimalPrice} from "../../src/contracts/libraries/DecimalPrice.sol";
-import "../../src/synthetix/utils/DecimalMath.sol";
-import {SafeCastI256, SafeCastU256} from "../../src/synthetix/utils/SafeCast.sol";
+import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
+import {SafeCastI256, SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {Errors} from "../../src/contracts/storage/Errors.sol";
 import {Position} from "../../src/contracts/storage/Position.sol";
 import {IFoilStructs} from "../../src/contracts/interfaces/IFoilStructs.sol";
 import {MigrationMathUtils} from "../../src/contracts/external/univ3/MigrationMathUtils.sol";
-import "../../src/synthetix/utils/DecimalMath.sol";
+import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
 
 import "forge-std/console2.sol";
 
