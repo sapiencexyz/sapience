@@ -39,18 +39,18 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
             border="1px solid"
             borderColor="gray.300"
             borderRadius="md"
-            p={6}
+            maxWidth="380px"
           >
             <Tabs isFitted>
               <TabList>
-                <Tab>Trade</Tab>
-                <Tab>Provide&nbsp;Liquidity</Tab>
+                <Tab pt={4}>Trade</Tab>
+                <Tab pt={4}>Provide&nbsp;Liquidity</Tab>
               </TabList>
               <TabPanels>
-                <TabPanel pt={6}>
+                <TabPanel p={6}>
                   <TraderPosition />
                 </TabPanel>
-                <TabPanel pt={6}>
+                <TabPanel p={6}>
                   <LiquidityPosition />
                 </TabPanel>
               </TabPanels>

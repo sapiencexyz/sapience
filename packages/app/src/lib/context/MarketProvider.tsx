@@ -4,6 +4,7 @@ import { Token } from '@uniswap/sdk-core';
 import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import type { FeeAmount } from '@uniswap/v3-sdk';
 import { Pool } from '@uniswap/v3-sdk';
+import JSBI from 'jsbi';
 import type { ReactNode } from 'react';
 import type React from 'react';
 import { createContext, useEffect, useState } from 'react';
@@ -12,7 +13,7 @@ import type { Chain } from 'viem/chains';
 import { useReadContracts, useReadContract } from 'wagmi';
 
 import useFoilDeployment from '../components/foil/useFoilDeployment';
-import { API_BASE_URL, LOCAL_MARKET_CHAIN_ID } from '../constants/constants';
+import { API_BASE_URL } from '../constants/constants';
 import erc20ABI from '../erc20abi.json';
 import { renderContractErrorToast } from '../util/util';
 
@@ -41,6 +42,7 @@ interface MarketContextType {
   foilData: any;
   chainId: number;
   error?: string;
+  marketPrice: number;
 }
 
 interface MarketProviderProps {
@@ -68,10 +70,12 @@ export const MarketContext = createContext<MarketContextType>({
   epoch: 0,
   foilData: {},
   chainId: 0,
+  marketPrice: 0,
 });
 
 export const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
   const [pool, setPool] = useState<Pool | null>(null);
+  const [marketPrice, setMarketPrice] = useState<number>(0);
 
   const { data, isError, isLoading } = useReadContracts({
     contracts: [
@@ -144,11 +148,24 @@ export const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
         );
 
         setPool(poolInstance);
+
+        // Calculate the market price
+        const sqrtRatioX96 = JSBI.BigInt(sqrtPriceX96.toString());
+        const ratioX192 = JSBI.multiply(sqrtRatioX96, sqrtRatioX96);
+        const shiftedRatioX192 = JSBI.leftShift(ratioX192, JSBI.BigInt(64));
+        const token1Decimals = JSBI.BigInt(10 ** token1.decimals);
+        const token0Decimals = JSBI.BigInt(10 ** token0.decimals);
+        const price = JSBI.divide(
+          JSBI.multiply(shiftedRatioX192, token1Decimals),
+          JSBI.multiply(JSBI.BigInt(2 ** 192), token0Decimals)
+        );
+
+        setMarketPrice(Number(price.toString()) / 10 ** token1.decimals);
       }
     }
   }, [data, chainId]);
 
-  return { pool, isError, isLoading };
+  return { pool, marketPrice, isError, isLoading };
 };
 
 export const MarketProvider: React.FC<MarketProviderProps> = ({
@@ -176,6 +193,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     epoch: 0,
     foilData: {},
     chainId,
+    marketPrice: 0,
   });
 
   // Set chainId and address from the URL
@@ -331,7 +349,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
   }, [epochViewFunctionResult.data]);
 
   // Fetch pool data when poolAddress is updated
-  const { pool, isError, isLoading } = useUniswapPool(
+  const { pool, marketPrice, isError, isLoading } = useUniswapPool(
     chainId,
     state.poolAddress
   );
@@ -341,12 +359,14 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
       setState((currentState) => ({
         ...currentState,
         pool,
+        marketPrice,
       }));
     }
-  }, [pool]);
+  }, [pool, marketPrice]);
 
   // Fetch Collateral Ticker
   const collateralTickerFunctionResult = useReadContract({
+    chainId,
     abi: erc20ABI,
     address: state.collateralAsset as `0x${string}`,
     functionName: 'symbol',
@@ -363,6 +383,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
 
   // Fetch Collateral Decimals
   const collateralDecimalsFunctionResult = useReadContract({
+    chainId,
     abi: erc20ABI,
     address: state.collateralAsset as `0x${string}`,
     functionName: 'decimals',

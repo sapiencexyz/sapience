@@ -91,6 +91,10 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   const tickUpper = priceToTick(highPrice, tickSpacingDefault);
   const isEdit = nftId > 0;
 
+  const [collateralAmountDelta, setCollateralAmountDelta] = useState<bigint>(
+    BigInt(0)
+  );
+
   /// //// READ CONTRACT HOOKS ///////
   const { data: positionData, refetch: refetchPosition } = useReadContract({
     abi: foilData.abi,
@@ -100,6 +104,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     query: {
       enabled: isEdit,
     },
+    chainId,
   }) as { data: FoilPosition; refetch: any; isRefetching: boolean };
 
   const { data: uniswapPosition, error: uniswapPositionError } =
@@ -113,6 +118,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
           uniswapPositionManagerAddress !== '0x' && positionData?.id && isEdit
         ),
       },
+      chainId,
     });
 
   const { data: collateralAmountData, refetch: refetchCollateralAmount } =
@@ -242,6 +248,20 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   }, [positionData, collateralAssetDecimals]);
   const isDecrease = isEdit && depositAmount < positionCollateralAmount;
 
+  useEffect(() => {
+    if (isEdit && positionData) {
+      const currentCollateral = Number(
+        formatUnits(
+          positionData.depositedCollateralAmount,
+          collateralAssetDecimals
+        )
+      );
+      setDepositAmount(currentCollateral);
+    } else {
+      setDepositAmount(0);
+    }
+  }, [nftId, positionData, isEdit, collateralAssetDecimals]);
+
   // same as token0/tokenA/gasToken
   const baseToken = useMemo(() => {
     const tokenAmountsAny = tokenAmounts as any[]; // there's some abitype project, i think
@@ -276,12 +296,28 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     );
   }, [collateralAmountData, collateralAssetDecimals]);
 
+  useEffect(() => {
+    const calculateDelta = () => {
+      const newDepositAmountBigInt = parseUnits(
+        depositAmount.toString(),
+        collateralAssetDecimals
+      );
+      const currentDepositAmountBigInt = BigInt(
+        positionData?.depositedCollateralAmount || 0
+      );
+      return newDepositAmountBigInt - currentDepositAmountBigInt;
+    };
+
+    setCollateralAmountDelta(calculateDelta());
+  }, [depositAmount, positionData, collateralAssetDecimals]);
+
   const walletBalanceAfter = useMemo(() => {
     if (!walletBalance) return null;
-    return (
-      parseFloat(walletBalance) - parseFloat(depositAmount.toString())
-    ).toPrecision(3);
-  }, [walletBalance, depositAmount]);
+    const delta = parseFloat(
+      formatUnits(collateralAmountDelta, collateralAssetDecimals)
+    );
+    return (parseFloat(walletBalance) - delta).toPrecision(3);
+  }, [walletBalance, collateralAmountDelta, collateralAssetDecimals]);
 
   const allowance = useMemo(() => {
     if (!allowanceData) return null;
@@ -302,21 +338,21 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   // handle successful add/increase liquidity
   useEffect(() => {
     if (addLiquiditySuccess && txnStep === 2) {
-      renderToast(toast, `successfully added liquidity`);
+      renderToast(toast, `Successfully added liquidity`);
       refetchStates();
     }
   }, [addLiquiditySuccess, txnStep]);
 
   useEffect(() => {
     if (increaseLiquiditySuccess && txnStep === 2) {
-      renderToast(toast, `successfully increased liquidity`);
+      renderToast(toast, `Successfully increased liquidity`);
       refetchStates();
     }
   }, [increaseLiquiditySuccess, txnStep]);
 
   useEffect(() => {
     if (decreaseLiquiditySuccess) {
-      renderToast(toast, 'successfully decreased liquidity ');
+      renderToast(toast, 'Successfully decreased liquidity ');
       refetchStates();
     }
   }, [decreaseLiquiditySuccess]);
@@ -370,12 +406,23 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
         abi: foilData.abi,
         functionName: 'increaseLiquidityPosition',
         args: [
-          nftId,
-          parseUnits(depositAmount.toString(), collateralAssetDecimals),
-          parseUnits(baseToken.toString(), TOKEN_DECIMALS),
-          parseUnits(quoteToken.toString(), TOKEN_DECIMALS),
-          parseUnits(minAmountTokenA.toString(), TOKEN_DECIMALS),
-          parseUnits(minAmountTokenB.toString(), TOKEN_DECIMALS),
+          {
+            positionId: nftId,
+            collateralAmount: parseUnits(
+              depositAmount.toString(),
+              collateralAssetDecimals
+            ),
+            gasTokenAmount: parseUnits(baseToken.toString(), TOKEN_DECIMALS),
+            ethTokenAmount: parseUnits(quoteToken.toString(), TOKEN_DECIMALS),
+            minGasAmount: parseUnits(
+              minAmountTokenA.toString(),
+              TOKEN_DECIMALS
+            ),
+            minEthAmount: parseUnits(
+              minAmountTokenB.toString(),
+              TOKEN_DECIMALS
+            ),
+          },
         ],
         chainId,
       });
@@ -457,11 +504,12 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
       abi: foilData.abi,
       functionName: 'decreaseLiquidityPosition',
       args: [
-        nftId,
-        parseUnits(depositAmount.toString(), collateralAssetDecimals),
-        newLiquidity,
-        parseUnits(minAmountTokenA.toString(), TOKEN_DECIMALS),
-        parseUnits(minAmountTokenB.toString(), TOKEN_DECIMALS),
+        {
+          positionId: nftId,
+          liquidity: newLiquidity,
+          minGasAmount: parseUnits(minAmountTokenA.toString(), TOKEN_DECIMALS),
+          minEthAmount: parseUnits(minAmountTokenB.toString(), TOKEN_DECIMALS),
+        },
       ],
       chainId,
     });
@@ -471,12 +519,41 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     setPendingTxn(true);
     setIsLoading(true);
     e.preventDefault();
+
     if (isEdit && isDecrease) {
       return handleDecreaseLiquidty();
     }
+
+    // Double-check the delta before submission
+    const newDepositAmountBigInt = parseUnits(
+      depositAmount.toString(),
+      collateralAssetDecimals
+    );
+    const currentDepositAmountBigInt = BigInt(
+      positionData?.depositedCollateralAmount || 0
+    );
+    const calculatedDelta = newDepositAmountBigInt - currentDepositAmountBigInt;
+
+    // Use the calculated delta if it differs from the state (shouldn't happen, but just in case)
+    const finalDelta =
+      calculatedDelta !== collateralAmountDelta
+        ? calculatedDelta
+        : collateralAmountDelta;
+
+    if (finalDelta <= 0) {
+      // No increase in deposit, proceed with creating or increasing liquidity
+      handleCreateOrIncreaseLiquidity();
+      return;
+    }
+
+    const collateralAmountDeltaFormatted = formatUnits(
+      finalDelta,
+      collateralAssetDecimals
+    );
+
     if (
       allowance &&
-      parseFloat(allowance) >= parseFloat(depositAmount.toString())
+      parseFloat(allowance) >= parseFloat(collateralAmountDeltaFormatted)
     ) {
       handleCreateOrIncreaseLiquidity();
     } else {
@@ -484,10 +561,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
         abi: erc20ABI,
         address: collateralAsset as `0x${string}`,
         functionName: 'approve',
-        args: [
-          foilData.address,
-          parseUnits(depositAmount.toString(), collateralAssetDecimals),
-        ],
+        args: [foilData.address, finalDelta],
         chainId,
       });
       setTxnStep(1);
@@ -505,7 +579,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     <form onSubmit={handleFormSubmit}>
       <Box mb={4}>
         <FormControl>
-          <FormLabel>{isEdit ? 'New ' : ''}Collateral Amount</FormLabel>
+          <FormLabel>Collateral</FormLabel>
           <InputGroup>
             <Input
               type="number"
@@ -516,28 +590,6 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
             <InputRightAddon>{collateralAssetTicker}</InputRightAddon>
           </InputGroup>
         </FormControl>
-        <Text fontSize="small" hidden={!isEdit}>
-          Original Amount: {positionCollateralAmount} ratio{' '}
-          {depositAmount / positionCollateralAmount}
-        </Text>
-        <Text fontSize="small" hidden={!isEdit}>
-          deposit amount {depositAmount}
-        </Text>
-        <Text fontSize="small" hidden={!isEdit}>
-          original amount {positionCollateralAmount}
-        </Text>
-        <Text>Liq - {Number(liquidity)?.toString()}</Text>
-        <Text>
-          New Liq -{' '}
-          {liquidity
-            ? getNewLiquidity(
-                depositAmount,
-                positionCollateralAmount,
-                collateralAssetDecimals,
-                liquidity
-              )
-            : 'N/A'}
-        </Text>
       </Box>
       <FormControl mb={4}>
         <FormLabel>Low Price</FormLabel>
@@ -596,22 +648,23 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
 
       <Box mb="4">
         <Text fontSize="sm" color="gray.500" mb="0.5">
-          Est. Base Token Amt.: {baseToken.toPrecision(3)} vGas (min:{' '}
+          Base Token: {baseToken.toPrecision(3)} vGas (min:{' '}
           {minAmountTokenA.toPrecision(3)})
         </Text>
         <Text fontSize="sm" color="gray.500" mb="0.5">
-          Est. Quote Token Amt.: {quoteToken.toPrecision(3)} vGwei (min:{' '}
+          Quote Token: {quoteToken.toPrecision(3)} vGwei (min:{' '}
           {minAmountTokenB.toPrecision(3)})
         </Text>
-        <Text fontSize="sm" color="gray.500" mb="0.5">
+        <Text display="none" fontSize="sm" color="gray.500" mb="0.5">
           Net Position: X Ggas
         </Text>
         {isConnected &&
         walletBalance !== null &&
         walletBalanceAfter !== null ? (
           <Text fontSize="sm" color="gray.500" mb="0.5">
-            Wallet Balance: {walletBalance} {collateralAssetTicker} →{' '}
-            {walletBalanceAfter} {collateralAssetTicker}
+            Wallet Balance: {Number(walletBalance).toFixed(2)}{' '}
+            {collateralAssetTicker} → {walletBalanceAfter}{' '}
+            {collateralAssetTicker}
           </Text>
         ) : null}
       </Box>

@@ -357,9 +357,10 @@ export default function TraderPosition({}) {
         })}
       </Flex>
       <FormControl mb={4}>
-        <FormLabel>Size (is size input? {`${isSizeInput}`}) </FormLabel>
+        <FormLabel>Size</FormLabel>
         <InputGroup>
           <Input
+            borderRight="none"
             value={isSizeInput ? Number(size) : Number(collateral)}
             type="number"
             onWheel={(e) => e.currentTarget.blur()}
@@ -369,8 +370,13 @@ export default function TraderPosition({}) {
                 : handleCollateralChange(e.target.value)
             }
           />
-          <InputRightAddon width="4.5rem">
-            <Button h="1.75rem" size="sm" onClick={handleUpdateIsSizeInput}>
+          <InputRightAddon bg="none">
+            <Button
+              px={3}
+              h="1.75rem"
+              size="sm"
+              onClick={handleUpdateIsSizeInput}
+            >
               {isSizeInput ? 'Ggas' : collateralAssetTicker}
             </Button>
           </InputRightAddon>
@@ -403,10 +409,12 @@ export default function TraderPosition({}) {
           <Text fontSize="sm" color="gray.500" mb="0.5">
             Wallet Balance:{' '}
             {collateralAmountFunctionResult?.data
-              ? formatUnits(
-                  BigInt(collateralAmountFunctionResult.data.toString()),
-                  collateralAssetDecimals
-                )
+              ? Number(
+                  formatUnits(
+                    BigInt(collateralAmountFunctionResult.data.toString()),
+                    collateralAssetDecimals
+                  )
+                ).toFixed(2)
               : null}{' '}
             {collateralAssetTicker}
           </Text>

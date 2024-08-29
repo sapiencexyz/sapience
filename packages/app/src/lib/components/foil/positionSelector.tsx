@@ -62,21 +62,17 @@ const AccountSelector: React.FC<AccountSelectorProps> = ({
   return (
     <Box>
       <FormControl mb={6}>
-        <InputGroup gap={3} alignItems="center">
-          <FormLabel color="gray.700" mb={0}>
-            Position
-          </FormLabel>
-          <Select onChange={handleAccountChange}>
-            {filteredNfts.map((id) => (
-              <option key={id} value={id}>
-                {id}
-              </option>
-            ))}
-            <option key="new" value={0}>
-              New Position
+        <FormLabel>Position</FormLabel>
+        <Select onChange={handleAccountChange}>
+          {filteredNfts.map((id) => (
+            <option key={id} value={id}>
+              {id}
             </option>
-          </Select>
-        </InputGroup>
+          ))}
+          <option key="new" value={0}>
+            New Position
+          </option>
+        </Select>
       </FormControl>
     </Box>
   );

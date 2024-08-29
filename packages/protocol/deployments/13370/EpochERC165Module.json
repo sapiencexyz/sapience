@@ -1,5 +1,5 @@
 {
-  "address": "0x1BBF73e5002E49d5f48dBDEcB6F43d33b1Cc3194",
+  "address": "0x2C9F3958a715B77900F5550e64f09e6F0c3Bfc67",
   "abi": [
     {
       "type": "function",
@@ -23,12 +23,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x5d90e8adfcb13d1345aafbea110f58a3d6324d04e5d438717c2d31957d51d11f",
+  "deployTxnHash": "0x20aad741559778d439436ed78b47b9e5e68672039f11f794ce782b459bce419f",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1724816533",
+  "deployTimestamp": "1724934145",
   "sourceName": "src/contracts/modules/EpochERC165Module.sol",
   "contractName": "EpochERC165Module",
   "deployedOn": "deploy.EpochERC165Module",
   "gasUsed": 109841,
-  "gasCost": "1000230417"
+  "gasCost": "1000230418"
 }
