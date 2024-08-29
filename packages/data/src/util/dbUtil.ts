@@ -24,7 +24,7 @@ const getTradeTypeFromEvent = (eventArgs: TradePositionEventLog) => {
   return TransactionType.SHORT;
 };
 
-export const upsertTransactionFromEvent = async (event: Event) => {
+export const upsertTransactionAndPositionFromEvent = async (event: Event) => {
   const transactionRepository = dataSource.getRepository(Transaction);
 
   const newTransaction = new Transaction();
@@ -74,36 +74,37 @@ export const upsertTransactionFromEvent = async (event: Event) => {
       break;
   }
 
-  // upsert instead?
-  if (!skipTransaction) {
+  if (
+    !skipTransaction &&
+    event.logData.eventName === EventType.LiquidityPositionCreated //TEMPORARY TO PREVENT DATA SERVICE FROM CRASHING WHILE WE SORT OUT OTHER SWITCH CASES
+  ) {
     console.log("Saving new transaction: ", newTransaction);
     await transactionRepository.save(newTransaction);
+    await createOrModifyPosition(newTransaction);
   }
 };
 
 export const createOrModifyPosition = async (transaction: Transaction) => {
   await initializeDataSource(); // get rid of?
   const positionRepository = dataSource.getRepository(Position);
-  const transactionRepository = dataSource.getRepository(Transaction);
 
   const existingPosition = await positionRepository.findOne({
     where: {
       epoch: transaction.event.epoch,
       positionId: transaction.event.logData.args.positionId,
     },
+    relations: ["transactions"],
   });
-  const posTxns = existingPosition ? existingPosition.transactions : [];
+
   const originalBaseToken = existingPosition ? existingPosition.baseToken : 0;
   const originalQuoteToken = existingPosition ? existingPosition.quoteToken : 0;
   const originalCollateral = existingPosition ? existingPosition.collateral : 0;
-
-  const isLp =
-    transaction.type === TransactionType.ADD_LIQUIDITY ||
-    transaction.type === TransactionType.REMOVE_LIQUIDITY;
   const eventArgs = transaction.event.logData.args; //as LiquidityPositionModifiedEventLog;
 
-  const position = new Position();
-  position.isLP = isLp;
+  const position = existingPosition || new Position();
+  position.isLP =
+    transaction.type === TransactionType.ADD_LIQUIDITY ||
+    transaction.type === TransactionType.REMOVE_LIQUIDITY;
   position.positionId = Number(eventArgs.positionId);
   position.baseToken = originalBaseToken + transaction.baseTokenDelta;
   position.quoteToken = originalQuoteToken + transaction.quoteTokenDelta;
@@ -115,21 +116,11 @@ export const createOrModifyPosition = async (transaction: Transaction) => {
   position.epoch = transaction.event.epoch;
   position.profitLoss = "0"; //TODO
   position.unclaimedFees = "0"; //TODO
-  // position.transactions = [...posTxns, transaction];
-  // Need to save transaction as well?
+  position.transactions = position.transactions || [];
+  position.transactions.push(transaction);
 
-  // upsert to database
   console.log("Saving position: ", position);
-  await positionRepository.save(position);
-  // transaction.position = position;
-  // console.log("saving position to transaction -", transaction.id);
-  // await transactionRepository.save(transaction);
-
-  // Now link the Position to the Transaction
-  // transaction.position = position;
-  // // Save the Transaction with the linked Position
-  // await transactionRepository.save(transaction);
-  await transactionRepository.update(transaction.id, { position: position });
+  await dataSource.manager.save(position);
 };
 
 /**

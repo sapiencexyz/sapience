@@ -13,7 +13,7 @@ import type { Chain } from 'viem/chains';
 import { useReadContracts, useReadContract } from 'wagmi';
 
 import useFoilDeployment from '../components/foil/useFoilDeployment';
-import { API_BASE_URL, LOCAL_MARKET_CHAIN_ID } from '../constants/constants';
+import { API_BASE_URL } from '../constants/constants';
 import erc20ABI from '../erc20abi.json';
 import { renderContractErrorToast } from '../util/util';
 
