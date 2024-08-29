@@ -91,6 +91,10 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   const tickUpper = priceToTick(highPrice, tickSpacingDefault);
   const isEdit = nftId > 0;
 
+  const [collateralAmountDelta, setCollateralAmountDelta] = useState<bigint>(
+    BigInt(0)
+  );
+
   /// //// READ CONTRACT HOOKS ///////
   const { data: positionData, refetch: refetchPosition } = useReadContract({
     abi: foilData.abi,
@@ -292,12 +296,28 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     );
   }, [collateralAmountData, collateralAssetDecimals]);
 
+  useEffect(() => {
+    const calculateDelta = () => {
+      const newDepositAmountBigInt = parseUnits(
+        depositAmount.toString(),
+        collateralAssetDecimals
+      );
+      const currentDepositAmountBigInt = BigInt(
+        positionData?.depositedCollateralAmount || 0
+      );
+      return newDepositAmountBigInt - currentDepositAmountBigInt;
+    };
+
+    setCollateralAmountDelta(calculateDelta());
+  }, [depositAmount, positionData, collateralAssetDecimals]);
+
   const walletBalanceAfter = useMemo(() => {
     if (!walletBalance) return null;
-    return (
-      parseFloat(walletBalance) - parseFloat(depositAmount.toString())
-    ).toPrecision(3);
-  }, [walletBalance, depositAmount]);
+    const delta = parseFloat(
+      formatUnits(collateralAmountDelta, collateralAssetDecimals)
+    );
+    return (parseFloat(walletBalance) - delta).toPrecision(3);
+  }, [walletBalance, collateralAmountDelta, collateralAssetDecimals]);
 
   const allowance = useMemo(() => {
     if (!allowanceData) return null;
@@ -504,25 +524,36 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
       return handleDecreaseLiquidty();
     }
 
-    const newDepositAmountBigInt = BigInt(
-      parseUnits(depositAmount.toString(), collateralAssetDecimals)
+    // Double-check the delta before submission
+    const newDepositAmountBigInt = parseUnits(
+      depositAmount.toString(),
+      collateralAssetDecimals
     );
     const currentDepositAmountBigInt = BigInt(
-      positionData.depositedCollateralAmount
+      positionData?.depositedCollateralAmount || 0
     );
+    const calculatedDelta = newDepositAmountBigInt - currentDepositAmountBigInt;
 
-    const increaseAmountBigInt =
-      newDepositAmountBigInt - currentDepositAmountBigInt;
+    // Use the calculated delta if it differs from the state (shouldn't happen, but just in case)
+    const finalDelta =
+      calculatedDelta !== collateralAmountDelta
+        ? calculatedDelta
+        : collateralAmountDelta;
 
-    if (increaseAmountBigInt <= 0) {
+    if (finalDelta <= 0) {
       // No increase in deposit, proceed with creating or increasing liquidity
       handleCreateOrIncreaseLiquidity();
       return;
     }
 
+    const collateralAmountDeltaFormatted = formatUnits(
+      finalDelta,
+      collateralAssetDecimals
+    );
+
     if (
       allowance &&
-      parseFloat(allowance) >= parseFloat(increaseAmountBigInt.toString())
+      parseFloat(allowance) >= parseFloat(collateralAmountDeltaFormatted)
     ) {
       handleCreateOrIncreaseLiquidity();
     } else {
@@ -530,10 +561,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
         abi: erc20ABI,
         address: collateralAsset as `0x${string}`,
         functionName: 'approve',
-        args: [
-          foilData.address,
-          parseUnits(increaseAmountBigInt.toString(), collateralAssetDecimals),
-        ],
+        args: [foilData.address, finalDelta],
         chainId,
       });
       setTxnStep(1);
@@ -635,7 +663,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
         walletBalanceAfter !== null ? (
           <Text fontSize="sm" color="gray.500" mb="0.5">
             Wallet Balance: {Number(walletBalance).toFixed(2)}{' '}
-            {collateralAssetTicker} → {Number(walletBalanceAfter).toFixed(2)}{' '}
+            {collateralAssetTicker} → {walletBalanceAfter}{' '}
             {collateralAssetTicker}
           </Text>
         ) : null}
