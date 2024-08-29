@@ -575,7 +575,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   /**
    * handle decreasing liquidity position
    */
-  const handleDecreaseLiquidty = () => {
+  const handleDecreaseLiquidity = () => {
     if (!liquidity || !pool) return;
 
     // Convert liquidity and newLiquidity to JSBI
@@ -585,19 +585,32 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     // Calculate the liquidity to remove
     const liquidityToRemove = JSBI.subtract(liquidityJSBI, newLiquidityJSBI);
 
-    // Get amounts for liquidity
+    // Get amounts for total liquidity, not just the new liquidity
     const { amount0, amount1 } = getTokenAmountsFromLiquidity(
       pool.sqrtRatioX96,
       tickLower,
       tickUpper,
-      newLiquidityJSBI
+      liquidityJSBI
+    );
+
+    // Calculate the proportion of liquidity being removed
+    const proportion = JSBI.divide(liquidityToRemove, liquidityJSBI);
+
+    // Calculate the amounts being removed
+    const amount0ToRemove = JSBI.divide(
+      JSBI.multiply(amount0, proportion),
+      JSBI.BigInt(1e18)
+    );
+    const amount1ToRemove = JSBI.divide(
+      JSBI.multiply(amount1, proportion),
+      JSBI.BigInt(1e18)
     );
 
     // Convert amounts to decimal strings
     const amount0Decimal =
-      parseFloat(amount0.toString()) / 10 ** TOKEN_DECIMALS;
+      parseFloat(amount0ToRemove.toString()) / 10 ** TOKEN_DECIMALS;
     const amount1Decimal =
-      parseFloat(amount1.toString()) / 10 ** TOKEN_DECIMALS;
+      parseFloat(amount1ToRemove.toString()) / 10 ** TOKEN_DECIMALS;
 
     // Calculate minimum amounts with slippage
     const minAmount0 = amount0Decimal * (1 - slippage / 100);
@@ -613,11 +626,11 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
       TOKEN_DECIMALS
     );
 
-    console.log('hey', {
+    console.log('Decrease Liquidity Parameters:', {
       positionId: nftId,
       liquidity: liquidityToRemove.toString(),
-      minGasAmount: parsedMinAmount0,
-      minEthAmount: parsedMinAmount1,
+      minGasAmount: parsedMinAmount0.toString(),
+      minEthAmount: parsedMinAmount1.toString(),
     });
 
     decreaseLiquidity({
@@ -643,7 +656,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     e.preventDefault();
 
     if (isEdit && isDecrease) {
-      return handleDecreaseLiquidty();
+      return handleDecreaseLiquidity();
     }
 
     // Double-check the delta before submission
