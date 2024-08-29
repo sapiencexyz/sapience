@@ -32,8 +32,8 @@ export interface LiquidityPositionCreatedEventLog {
 export interface LiquidityPositionModifiedEventLog {
   positionId: string;
   collateralAmount: string;
-  addedAmount0: string;
-  addedAmount1: string;
+  amount0: string;
+  amount1: string;
   liquidity: string;
 }
 

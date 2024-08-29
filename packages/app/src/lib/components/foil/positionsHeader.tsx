@@ -14,7 +14,7 @@ import {
   StatLabel,
   StatNumber,
 } from '@chakra-ui/react';
-import { tickToPrice, SqrtPriceMath } from '@uniswap/v3-sdk';
+import { SqrtPriceMath } from '@uniswap/v3-sdk';
 import { format, formatDistanceToNow } from 'date-fns';
 import JSBI from 'jsbi';
 import { useContext } from 'react';
@@ -34,6 +34,7 @@ const PositionsHeader = () => {
     baseAssetMaxPriceTick,
     averagePrice,
     pool,
+    marketPrice,
   } = useContext(MarketContext);
 
   // Calculate token amounts
@@ -146,19 +147,9 @@ const PositionsHeader = () => {
                   <FaRegChartBar />
                 </Box>
                 <Text as="span" fontWeight="500" mr={1}>
-                  Allowed Range:
+                  Allowed Range (Ticks):
                 </Text>{' '}
-                {tickToPrice(
-                  pool.token0,
-                  pool.token1,
-                  baseAssetMinPriceTick
-                ).toFixed(2)}{' '}
-                -{' '}
-                {tickToPrice(
-                  pool.token0,
-                  pool.token1,
-                  baseAssetMaxPriceTick
-                ).toFixed(2)}
+                {baseAssetMinPriceTick}- {baseAssetMaxPriceTick}
               </Flex>
             </Box>
           )}
@@ -198,7 +189,8 @@ const PositionsHeader = () => {
             />
           </StatLabel>
           <StatNumber>
-            {pool?.token0Price.toFixed(2)} {/* <Text as="span">gwei</Text> */}
+            {marketPrice}
+            {/*  <Text as="span">gwei</Text> */}
           </StatNumber>
           {/*
           <StatHelpText>

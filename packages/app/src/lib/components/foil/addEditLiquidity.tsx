@@ -102,8 +102,6 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     },
   }) as { data: FoilPosition; refetch: any; isRefetching: boolean };
 
-  console.log('positionData -', positionData);
-
   const { data: uniswapPosition, error: uniswapPositionError } =
     useReadContract({
       abi: INONFUNGIBLE_POSITION_MANAGER.abi,

@@ -4,13 +4,17 @@ import {
   Column,
   CreateDateColumn,
   OneToOne,
+  Unique,
+  JoinColumn,
 } from "typeorm";
 import { Transaction } from "./Transaction";
 import { NUMERIC_PRECISION } from "../util/dbUtil";
 
 @Entity()
+@Unique(["transaction", "timestamp"])
 export class MarketPrice {
   @OneToOne(() => Transaction, (transaction) => transaction.marketPrice)
+  @JoinColumn()
   transaction: Transaction;
 
   @PrimaryGeneratedColumn()
