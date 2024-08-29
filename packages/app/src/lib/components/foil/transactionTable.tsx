@@ -13,15 +13,15 @@ import { useContext } from 'react';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { MarketContext } from '~/lib/context/MarketProvider';
 
-export default function TraderPositionsTable() {
-  const { chainId, address } = useContext(MarketContext);
+export default function TransactoinTable() {
+  const { chainId, address, epoch } = useContext(MarketContext);
   const contractId = `${chainId}:${address}`;
-  const usePositions = () => {
+  const useTransactions = () => {
     return useQuery({
-      queryKey: ['liquidityPositions', contractId],
+      queryKey: ['transactions', contractId, epoch],
       queryFn: async () => {
         const response = await fetch(
-          `${API_BASE_URL}/positions?contractId=${contractId}&isLP=true`
+          `${API_BASE_URL}/transactions?contractId=${contractId}&epochId=${epoch}`
         );
         if (!response.ok) {
           throw new Error('Network response was not ok');
@@ -32,8 +32,8 @@ export default function TraderPositionsTable() {
     });
   };
 
-  const { data: positions, error, isLoading } = usePositions();
-  console.log('positions = ', positions);
+  const { data: transactions, error, isLoading } = useTransactions();
+  console.log('transactions = ', transactions);
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -46,7 +46,7 @@ export default function TraderPositionsTable() {
   return (
     <TableContainer mb={4}>
       <Table variant="simple" size="sm">
-        <Thead>
+        {/* <Thead>
           <Tr>
             <Th>ID</Th>
             <Th>Collateral</Th>
@@ -74,7 +74,7 @@ export default function TraderPositionsTable() {
                 <Td>{row.unclaimedFees.toString()}</Td>
               </Tr>
             ))}
-        </Tbody>
+        </Tbody> */}
       </Table>
     </TableContainer>
   );

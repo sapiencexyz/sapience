@@ -84,6 +84,7 @@ export const upsertTransactionFromEvent = async (event: Event) => {
 export const createOrModifyPosition = async (transaction: Transaction) => {
   await initializeDataSource(); // get rid of?
   const positionRepository = dataSource.getRepository(Position);
+  const transactionRepository = dataSource.getRepository(Transaction);
 
   const existingPosition = await positionRepository.findOne({
     where: {
@@ -114,14 +115,31 @@ export const createOrModifyPosition = async (transaction: Transaction) => {
   position.epoch = transaction.event.epoch;
   position.profitLoss = "0"; //TODO
   position.unclaimedFees = "0"; //TODO
-  position.transactions = [...posTxns, transaction];
+  // position.transactions = [...posTxns, transaction];
   // Need to save transaction as well?
 
   // upsert to database
   console.log("Saving position: ", position);
   await positionRepository.save(position);
+  // transaction.position = position;
+  // console.log("saving position to transaction -", transaction.id);
+  // await transactionRepository.save(transaction);
+
+  // Now link the Position to the Transaction
+  // transaction.position = position;
+  // // Save the Transaction with the linked Position
+  // await transactionRepository.save(transaction);
+  await transactionRepository.update(transaction.id, { position: position });
 };
 
+/**
+ * Upsert a MarketPrice given a Transaction. If the Transaction is a long or
+ * short, it will upsert a MarketPrice with the timestamp and value from the
+ * Transaction's event log arguments. If the MarketPrice already exists, it
+ * will be updated with the new timestamp and value.
+ *
+ * @param transaction the Transaction to upsert a MarketPrice for
+ */
 export const upsertMarketPrice = async (transaction: Transaction) => {
   if (
     transaction.type === TransactionType.LONG ||

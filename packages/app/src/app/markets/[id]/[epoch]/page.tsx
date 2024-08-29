@@ -16,6 +16,7 @@ import LiquidityPositionsTable from '~/lib/components/foil/liquidityPositionsTab
 import PositionsHeader from '~/lib/components/foil/positionsHeader';
 import TraderPosition from '~/lib/components/foil/traderPosition';
 import TraderPositionsTable from '~/lib/components/foil/traderPositionsTable';
+import TransactionTable from '~/lib/components/foil/transactionTable';
 import { MarketProvider } from '~/lib/context/MarketProvider';
 
 const Market = ({ params }: { params: { id: string; epoch: string } }) => {
@@ -64,7 +65,7 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
           </TabList>
           <TabPanels>
             <TabPanel>
-              <Box py={6}>Coming soon.</Box>
+              <TransactionTable />
             </TabPanel>
             <TabPanel>
               <TraderPositionsTable />
