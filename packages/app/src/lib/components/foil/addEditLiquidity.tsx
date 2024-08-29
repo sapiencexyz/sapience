@@ -23,7 +23,8 @@ import type {
   QueryObserverResult,
   RefetchOptions,
 } from '@tanstack/react-query';
-import { TickMath } from '@uniswap/v3-sdk';
+import { TickMath, SqrtPriceMath } from '@uniswap/v3-sdk';
+import JSBI from 'jsbi';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import type { ReadContractErrorType, WriteContractErrorType } from 'viem';
 import { formatUnits, parseUnits } from 'viem';
@@ -44,7 +45,7 @@ import type { FoilPosition } from '~/lib/interfaces/interfaces';
 
 import SlippageTolerance from './slippageTolerance';
 
-const tickSpacingDefault = 200; // 1% - Hardcoded for now, should be retrieved with pool.tickSpacing()
+const tickSpacingDefault = 200; // TODO 1% - Hardcoded for now, should be retrieved with pool.tickSpacing()
 
 const priceToTick = (price: number, tickSpacing: number): number => {
   const tick = Math.log(price) / Math.log(1.0001);
@@ -58,6 +59,31 @@ interface Props {
     options?: RefetchOptions
   ) => Promise<QueryObserverResult<unknown, ReadContractErrorType>>;
   nftId: number;
+}
+
+function getTokenAmountsFromLiquidity(
+  sqrtPriceX96: JSBI,
+  tickLower: number,
+  tickUpper: number,
+  liquidity: JSBI
+): { amount0: JSBI; amount1: JSBI } {
+  const sqrtRatioA = TickMath.getSqrtRatioAtTick(tickLower);
+  const sqrtRatioB = TickMath.getSqrtRatioAtTick(tickUpper);
+
+  const amount0 = SqrtPriceMath.getAmount0Delta(
+    sqrtRatioA,
+    sqrtRatioB,
+    liquidity,
+    true
+  );
+  const amount1 = SqrtPriceMath.getAmount1Delta(
+    sqrtRatioA,
+    sqrtRatioB,
+    liquidity,
+    true
+  );
+
+  return { amount0, amount1 };
 }
 
 const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
@@ -86,6 +112,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   const [txnStep, setTxnStep] = useState<number>(0);
   const [slippage, setSlippage] = useState<number>(0.5);
   const [pendingTxn, setPendingTxn] = useState(false);
+  const [txnSuccessMsg, setTxnSuccessMsg] = useState('');
 
   const tickLower = priceToTick(lowPrice, tickSpacingDefault);
   const tickUpper = priceToTick(highPrice, tickSpacingDefault);
@@ -157,6 +184,27 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
       enabled: Boolean(pool),
     },
   });
+
+  const { data: deltaTokenAmounts, error: deltaTokenAmountsError } =
+    useReadContract({
+      address: foilData.address,
+      abi: foilData.abi,
+      functionName: 'getTokenAmounts',
+      args: [
+        epoch.toString(),
+        collateralAmountDelta, // uint256 collateralAmount
+        pool ? pool.sqrtRatioX96.toString() : '0', // uint160 sqrtPriceX96, // current price of pool
+        TickMath.getSqrtRatioAtTick(tickLower).toString(), // uint160 sqrtPriceAX96, // lower tick price in sqrtRatio
+        TickMath.getSqrtRatioAtTick(tickUpper).toString(), // uint160 sqrtPriceBX96 // upper tick price in sqrtRatio
+      ],
+      chainId,
+      query: {
+        enabled: Boolean(pool),
+      },
+    }) as {
+      data: [bigint, bigint, bigint];
+      error: any;
+    };
 
   /// //// WRITE CONTRACT HOOKS ///////
   const { data: approveHash, writeContract: approveWrite } = useWriteContract({
@@ -248,21 +296,47 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   }, [positionData, collateralAssetDecimals]);
   const isDecrease = isEdit && depositAmount < positionCollateralAmount;
 
-  useEffect(() => {
-    if (isEdit && positionData) {
-      const currentCollateral = Number(
-        formatUnits(
-          positionData.depositedCollateralAmount,
-          collateralAssetDecimals
-        )
-      );
-      setDepositAmount(currentCollateral);
-    } else {
-      setDepositAmount(0);
-    }
-  }, [nftId, positionData, isEdit, collateralAssetDecimals]);
+  const newLiquidity: bigint = useMemo(() => {
+    if (!liquidity) return BigInt(0);
+    return getNewLiquidity(
+      depositAmount,
+      positionCollateralAmount,
+      collateralAssetDecimals,
+      liquidity
+    );
+  }, [
+    depositAmount,
+    positionCollateralAmount,
+    collateralAssetDecimals,
+    liquidity,
+  ]);
 
-  // same as token0/tokenA/gasToken
+  // same delta token0/gasToken
+  const baseTokenDelta = useMemo(() => {
+    if (!deltaTokenAmounts) return BigInt('0');
+    return deltaTokenAmounts[0];
+  }, [deltaTokenAmounts]);
+
+  // same as delta token1/ethToken
+  const quoteTokenDelta = useMemo(() => {
+    if (!deltaTokenAmounts) return BigInt('0');
+    return deltaTokenAmounts[1];
+  }, [deltaTokenAmounts]);
+
+  // same as min delta token0/baseToken/gasToken
+  const minAmountBaseTokenDelta = useMemo(() => {
+    const numerator = BigInt(100 * 100) - BigInt(slippage * 100);
+    const denominator = BigInt(100 * 100);
+    return (baseTokenDelta * numerator) / denominator;
+  }, [baseTokenDelta, slippage]);
+
+  // same as min delta token1/quoteToken/ethToken
+  const minAmountQuoteTokenDelta = useMemo(() => {
+    const numerator = BigInt(100 * 100) - BigInt(slippage * 100);
+    const denominator = BigInt(100 * 100);
+    return (quoteTokenDelta * numerator) / denominator;
+  }, [quoteTokenDelta, slippage]);
+
   const baseToken = useMemo(() => {
     const tokenAmountsAny = tokenAmounts as any[]; // there's some abitype project, i think
     if (!tokenAmountsAny) return 0;
@@ -296,21 +370,6 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     );
   }, [collateralAmountData, collateralAssetDecimals]);
 
-  useEffect(() => {
-    const calculateDelta = () => {
-      const newDepositAmountBigInt = parseUnits(
-        depositAmount.toString(),
-        collateralAssetDecimals
-      );
-      const currentDepositAmountBigInt = BigInt(
-        positionData?.depositedCollateralAmount || 0
-      );
-      return newDepositAmountBigInt - currentDepositAmountBigInt;
-    };
-
-    setCollateralAmountDelta(calculateDelta());
-  }, [depositAmount, positionData, collateralAssetDecimals]);
-
   const walletBalanceAfter = useMemo(() => {
     if (!walletBalance) return null;
     const delta = parseFloat(
@@ -328,6 +387,43 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   }, [allowanceData, collateralAssetDecimals]);
 
   /// //// USE EFFECTS ///////
+  // handle successful txn
+  useEffect(() => {
+    if (txnSuccessMsg && txnStep === 2) {
+      renderToast(toast, txnSuccessMsg);
+      refetchStates();
+    }
+  }, [txnSuccessMsg, txnStep]);
+
+  useEffect(() => {
+    const calculateDelta = () => {
+      const newDepositAmountBigInt = parseUnits(
+        depositAmount.toString(),
+        collateralAssetDecimals
+      );
+      const currentDepositAmountBigInt = BigInt(
+        positionData?.depositedCollateralAmount || 0
+      );
+      return newDepositAmountBigInt - currentDepositAmountBigInt;
+    };
+
+    setCollateralAmountDelta(calculateDelta());
+  }, [depositAmount, positionData, collateralAssetDecimals]);
+
+  useEffect(() => {
+    if (isEdit && positionData) {
+      const currentCollateral = Number(
+        formatUnits(
+          positionData.depositedCollateralAmount,
+          collateralAssetDecimals
+        )
+      );
+      setDepositAmount(currentCollateral);
+    } else {
+      setDepositAmount(0);
+    }
+  }, [nftId, positionData, isEdit, collateralAssetDecimals]);
+
   // handle successful approval
   useEffect(() => {
     if (isApproveSuccess && txnStep === 1) {
@@ -337,23 +433,20 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
 
   // handle successful add/increase liquidity
   useEffect(() => {
-    if (addLiquiditySuccess && txnStep === 2) {
-      renderToast(toast, `Successfully added liquidity`);
-      refetchStates();
+    if (addLiquiditySuccess) {
+      setTxnSuccessMsg('successfully added liquidity');
     }
-  }, [addLiquiditySuccess, txnStep]);
+  }, [addLiquiditySuccess]);
 
   useEffect(() => {
-    if (increaseLiquiditySuccess && txnStep === 2) {
-      renderToast(toast, `Successfully increased liquidity`);
-      refetchStates();
+    if (increaseLiquiditySuccess) {
+      setTxnSuccessMsg('successfully increased liquidity');
     }
-  }, [increaseLiquiditySuccess, txnStep]);
+  }, [increaseLiquiditySuccess]);
 
   useEffect(() => {
     if (decreaseLiquiditySuccess) {
-      renderToast(toast, 'Successfully decreased liquidity ');
-      refetchStates();
+      setTxnSuccessMsg('successfully decreased liquidity');
     }
   }, [decreaseLiquiditySuccess]);
 
@@ -401,7 +494,6 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   /// /// HANDLERS //////
   const handleCreateOrIncreaseLiquidity = () => {
     if (isEdit) {
-      console.log("collateralAmountDelta",collateralAmountDelta)
       increaseLiquidity({
         address: foilData.address as `0x${string}`,
         abi: foilData.abi,
@@ -409,17 +501,11 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
         args: [
           {
             positionId: nftId,
-            collateralAmount: collateralAmountDelta,
-            gasTokenAmount: parseUnits(baseToken.toString(), TOKEN_DECIMALS),
-            ethTokenAmount: parseUnits(quoteToken.toString(), TOKEN_DECIMALS),
-            minGasAmount: parseUnits(
-              minAmountTokenA.toString(),
-              TOKEN_DECIMALS
-            ),
-            minEthAmount: parseUnits(
-              minAmountTokenB.toString(),
-              TOKEN_DECIMALS
-            ),
+            collateralAmount: collateralAmountDelta, // total desired
+            gasTokenAmount: baseTokenDelta, // generated with delta
+            ethTokenAmount: quoteTokenDelta,
+            minGasAmount: minAmountBaseTokenDelta,
+            minEthAmount: minAmountQuoteTokenDelta,
           },
         ],
         chainId,
@@ -458,6 +544,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
 
   const refetchStates = () => {
     // reset form states
+    setTxnSuccessMsg('');
     setDepositAmount(0);
     setLowPrice(tickToPrice(baseAssetMinPriceTick));
     setHighPrice(tickToPrice(baseAssetMaxPriceTick));
@@ -488,15 +575,64 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   /**
    * handle decreasing liquidity position
    */
-  const handleDecreaseLiquidty = () => {
-    if (!liquidity) return;
+  const handleDecreaseLiquidity = () => {
+    if (!liquidity || !pool) return;
 
-    const newLiquidity: bigint = getNewLiquidity(
-      depositAmount,
-      positionCollateralAmount,
-      collateralAssetDecimals,
-      liquidity
+    // Convert liquidity and newLiquidity to JSBI
+    const liquidityJSBI = JSBI.BigInt(liquidity.toString());
+    const newLiquidityJSBI = JSBI.BigInt(newLiquidity.toString());
+
+    // Calculate the liquidity to remove
+    const liquidityToRemove = JSBI.subtract(liquidityJSBI, newLiquidityJSBI);
+
+    // Get amounts for total liquidity, not just the new liquidity
+    const { amount0, amount1 } = getTokenAmountsFromLiquidity(
+      pool.sqrtRatioX96,
+      tickLower,
+      tickUpper,
+      liquidityJSBI
     );
+
+    // Calculate the proportion of liquidity being removed
+    const proportion = JSBI.divide(liquidityToRemove, liquidityJSBI);
+
+    // Calculate the amounts being removed
+    const amount0ToRemove = JSBI.divide(
+      JSBI.multiply(amount0, proportion),
+      JSBI.BigInt(1e18)
+    );
+    const amount1ToRemove = JSBI.divide(
+      JSBI.multiply(amount1, proportion),
+      JSBI.BigInt(1e18)
+    );
+
+    // Convert amounts to decimal strings
+    const amount0Decimal =
+      parseFloat(amount0ToRemove.toString()) / 10 ** TOKEN_DECIMALS;
+    const amount1Decimal =
+      parseFloat(amount1ToRemove.toString()) / 10 ** TOKEN_DECIMALS;
+
+    // Calculate minimum amounts with slippage
+    const minAmount0 = amount0Decimal * (1 - slippage / 100);
+    const minAmount1 = amount1Decimal * (1 - slippage / 100);
+
+    // Parse amounts with proper decimals
+    const parsedMinAmount0 = parseUnits(
+      minAmount0.toFixed(TOKEN_DECIMALS),
+      TOKEN_DECIMALS
+    );
+    const parsedMinAmount1 = parseUnits(
+      minAmount1.toFixed(TOKEN_DECIMALS),
+      TOKEN_DECIMALS
+    );
+
+    console.log('Decrease Liquidity Parameters:', {
+      positionId: nftId,
+      liquidity: liquidityToRemove.toString(),
+      minGasAmount: parsedMinAmount0.toString(),
+      minEthAmount: parsedMinAmount1.toString(),
+    });
+
     decreaseLiquidity({
       address: foilData.address as `0x${string}`,
       abi: foilData.abi,
@@ -504,13 +640,14 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
       args: [
         {
           positionId: nftId,
-          liquidity: newLiquidity,
-          minGasAmount: parseUnits(minAmountTokenA.toString(), TOKEN_DECIMALS),
-          minEthAmount: parseUnits(minAmountTokenB.toString(), TOKEN_DECIMALS),
+          liquidity: liquidityToRemove.toString(),
+          minGasAmount: parsedMinAmount0,
+          minEthAmount: parsedMinAmount1,
         },
       ],
       chainId,
     });
+    setTxnStep(2);
   };
 
   const handleFormSubmit = (e: any) => {
@@ -519,7 +656,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     e.preventDefault();
 
     if (isEdit && isDecrease) {
-      return handleDecreaseLiquidty();
+      return handleDecreaseLiquidity();
     }
 
     // Double-check the delta before submission
