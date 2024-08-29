@@ -100,6 +100,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     query: {
       enabled: isEdit,
     },
+    chainId,
   }) as { data: FoilPosition; refetch: any; isRefetching: boolean };
 
   const { data: uniswapPosition, error: uniswapPositionError } =
@@ -113,6 +114,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
           uniswapPositionManagerAddress !== '0x' && positionData?.id && isEdit
         ),
       },
+      chainId,
     });
 
   const { data: collateralAmountData, refetch: refetchCollateralAmount } =
@@ -302,21 +304,21 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   // handle successful add/increase liquidity
   useEffect(() => {
     if (addLiquiditySuccess && txnStep === 2) {
-      renderToast(toast, `successfully added liquidity`);
+      renderToast(toast, `Successfully added liquidity`);
       refetchStates();
     }
   }, [addLiquiditySuccess, txnStep]);
 
   useEffect(() => {
     if (increaseLiquiditySuccess && txnStep === 2) {
-      renderToast(toast, `successfully increased liquidity`);
+      renderToast(toast, `Successfully increased liquidity`);
       refetchStates();
     }
   }, [increaseLiquiditySuccess, txnStep]);
 
   useEffect(() => {
     if (decreaseLiquiditySuccess) {
-      renderToast(toast, 'successfully decreased liquidity ');
+      renderToast(toast, 'Successfully decreased liquidity ');
       refetchStates();
     }
   }, [decreaseLiquiditySuccess]);
@@ -505,7 +507,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     <form onSubmit={handleFormSubmit}>
       <Box mb={4}>
         <FormControl>
-          <FormLabel>{isEdit ? 'New ' : ''}Collateral Amount</FormLabel>
+          <FormLabel>Collateral</FormLabel>
           <InputGroup>
             <Input
               type="number"
@@ -516,28 +518,6 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
             <InputRightAddon>{collateralAssetTicker}</InputRightAddon>
           </InputGroup>
         </FormControl>
-        <Text fontSize="small" hidden={!isEdit}>
-          Original Amount: {positionCollateralAmount} ratio{' '}
-          {depositAmount / positionCollateralAmount}
-        </Text>
-        <Text fontSize="small" hidden={!isEdit}>
-          deposit amount {depositAmount}
-        </Text>
-        <Text fontSize="small" hidden={!isEdit}>
-          original amount {positionCollateralAmount}
-        </Text>
-        <Text>Liq - {Number(liquidity)?.toString()}</Text>
-        <Text>
-          New Liq -{' '}
-          {liquidity
-            ? getNewLiquidity(
-                depositAmount,
-                positionCollateralAmount,
-                collateralAssetDecimals,
-                liquidity
-              )
-            : 'N/A'}
-        </Text>
       </Box>
       <FormControl mb={4}>
         <FormLabel>Low Price</FormLabel>
@@ -596,22 +576,23 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
 
       <Box mb="4">
         <Text fontSize="sm" color="gray.500" mb="0.5">
-          Est. Base Token Amt.: {baseToken.toPrecision(3)} vGas (min:{' '}
+          Base Token: {baseToken.toPrecision(3)} vGas (min:{' '}
           {minAmountTokenA.toPrecision(3)})
         </Text>
         <Text fontSize="sm" color="gray.500" mb="0.5">
-          Est. Quote Token Amt.: {quoteToken.toPrecision(3)} vGwei (min:{' '}
+          Quote Token: {quoteToken.toPrecision(3)} vGwei (min:{' '}
           {minAmountTokenB.toPrecision(3)})
         </Text>
-        <Text fontSize="sm" color="gray.500" mb="0.5">
+        <Text display="none" fontSize="sm" color="gray.500" mb="0.5">
           Net Position: X Ggas
         </Text>
         {isConnected &&
         walletBalance !== null &&
         walletBalanceAfter !== null ? (
           <Text fontSize="sm" color="gray.500" mb="0.5">
-            Wallet Balance: {walletBalance} {collateralAssetTicker} →{' '}
-            {walletBalanceAfter} {collateralAssetTicker}
+            Wallet Balance: {Number(walletBalance).toFixed(2)}{' '}
+            {collateralAssetTicker} → {Number(walletBalanceAfter).toFixed(2)}{' '}
+            {collateralAssetTicker}
           </Text>
         ) : null}
       </Box>

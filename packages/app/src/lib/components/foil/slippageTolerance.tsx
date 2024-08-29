@@ -25,7 +25,7 @@ const SlippageTolerance: React.FC<SlippageToleranceProps> = ({
   }, [slippage, onSlippageChange]);
 
   return (
-    <FormControl mb={2}>
+    <FormControl mb={4}>
       <FormLabel>Slippage Tolerance</FormLabel>
       <HStack spacing={4} alignItems="center">
         <Button
