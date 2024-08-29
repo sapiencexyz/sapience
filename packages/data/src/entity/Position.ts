@@ -16,7 +16,7 @@ import {
 import { Epoch } from "./Epoch";
 
 @Entity()
-@Unique(["nftId", "epoch"])
+@Unique(["positionId", "epoch"])
 export class Position {
   @OneToMany(() => Transaction, (transaction) => transaction.position)
   transactions: Transaction[];
@@ -31,7 +31,7 @@ export class Position {
   epoch: Epoch;
 
   @Column()
-  nftId: number;
+  positionId: number;
 
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
   baseToken: string; // vGas tokenamount 0

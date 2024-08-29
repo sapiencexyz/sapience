@@ -73,7 +73,7 @@ export class Transaction {
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
   collateralDelta: string; // ETH
 
-  // AfterInsert AfterUpdate and AfterRemove to update the associated Position based on nftId
+  // AfterInsert AfterUpdate and AfterRemove to update the associated Position based on positionId
 
   // @after insert: create MarketPrice (if long or short txn type)
   @AfterInsert()
@@ -85,12 +85,12 @@ export class Transaction {
   @AfterUpdate()
   afterUpdate() {
     console.log(`TXN updated: ${this.id}`);
-    // Upsert associated MarketPrice and Position based on nftId
+    // Upsert associated MarketPrice and Position based on positionId
   }
 
   @AfterRemove()
   afterRemove() {
     console.log(`TXN removed: ${this.id}`);
-    // Delete associated MarketPrice and Position based on nftId
+    // Delete associated MarketPrice and Position based on positionId
   }
 }

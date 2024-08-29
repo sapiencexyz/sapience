@@ -26,6 +26,7 @@ export default function TraderPositionsTable() {
         if (!response.ok) {
           throw new Error('Network response was not ok');
         }
+        console.log('response = ', response);
         return response.json();
       },
       refetchInterval: 60000, // Refetch every 60 seconds
@@ -33,6 +34,7 @@ export default function TraderPositionsTable() {
   };
 
   const { data: positions, error, isLoading } = usePositions();
+  console.log('positions = ', positions);
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -62,7 +64,7 @@ export default function TraderPositionsTable() {
           {positions &&
             positions.map((row: any) => (
               <Tr key={row.id}>
-                <Td>{row.nftId.toString()}</Td>
+                <Td>{row.positionId.toString()}</Td>
                 <Td>{row.collateral.toString()}</Td>
                 <Td>{row.baseToken.toString()}</Td>
                 <Td>{row.quoteToken.toString()}</Td>

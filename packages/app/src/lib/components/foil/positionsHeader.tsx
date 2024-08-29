@@ -188,7 +188,8 @@ const PositionsHeader = () => {
             />
           </StatLabel>
           <StatNumber>
-            {pool?.token0Price} {/* <Text as="span">gwei</Text> */}
+            0 (TODO)
+            {/* {pool?.token0Price} <Text as="span">gwei</Text> */}
           </StatNumber>
           {/*
           <StatHelpText>

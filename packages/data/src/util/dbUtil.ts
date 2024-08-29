@@ -28,9 +28,10 @@ export const upsertTransactionFromEvent = async (event: Event) => {
   const transactionRepository = dataSource.getRepository(Transaction);
 
   const newTransaction = new Transaction();
-  // newTransaction.type = TransactionType.ADD_LIQUIDITY;
-  // newTransaction.position = position;
   newTransaction.event = event;
+
+  // set to true if the Event does not require a transaction (i.e. a Transfer event)
+  let skipTransaction = false;
 
   // TODO - figure out signed deltas
   switch (event.logData.eventName) {
@@ -42,40 +43,52 @@ export const upsertTransactionFromEvent = async (event: Event) => {
       newTransaction.baseTokenDelta = eventArgsAddLiquidity.addedAmount0;
       newTransaction.quoteTokenDelta = eventArgsAddLiquidity.addedAmount1;
       newTransaction.collateralDelta = eventArgsAddLiquidity.collateralAmount;
-    // await upsertPositionFromLiquidityEvent(event);
+      // await upsertPositionFromLiquidityEvent(event);
+      break;
     case EventType.LiquidityPositionClosed:
       console.log("Closing liquidity position from event: ", event);
       newTransaction.type = TransactionType.REMOVE_LIQUIDITY;
+      break;
     case EventType.LiquidityPositionDecreased:
       console.log("Decreasing liquidity position from event: ", event);
       newTransaction.type = TransactionType.REMOVE_LIQUIDITY;
+      break;
     case EventType.LiquidityPositionIncreased:
       console.log("Increasing liquidity position from event: ", event);
       newTransaction.type = TransactionType.ADD_LIQUIDITY;
+      break;
     case EventType.TraderPositionCreated:
       console.log("Creating trader position from event: ", event);
       newTransaction.type = getTradeTypeFromEvent(
         event.logData.args as TradePositionEventLog
       );
+      break;
     case EventType.TraderPositionModified:
       console.log("Modifying trader position from event: ", event);
       newTransaction.type = getTradeTypeFromEvent(
         event.logData.args as TradePositionEventLog
       );
+      break;
     default:
+      skipTransaction = true;
       break;
   }
 
-  await transactionRepository.save(newTransaction);
+  // upsert instead?
+  if (!skipTransaction) {
+    console.log("Saving new transaction: ", newTransaction);
+    await transactionRepository.save(newTransaction);
+  }
 };
 
 export const createOrModifyPosition = async (transaction: Transaction) => {
+  await initializeDataSource(); // get rid of?
   const positionRepository = dataSource.getRepository(Position);
 
   const existingPosition = await positionRepository.findOne({
     where: {
       epoch: transaction.event.epoch,
-      nftId: transaction.event.logData.args.positionId,
+      positionId: transaction.event.logData.args.positionId,
     },
   });
   const posTxns = existingPosition ? existingPosition.transactions : [];
@@ -90,7 +103,7 @@ export const createOrModifyPosition = async (transaction: Transaction) => {
 
   const position = new Position();
   position.isLP = isLp;
-  position.nftId = Number(eventArgs.positionId);
+  position.positionId = Number(eventArgs.positionId);
   position.baseToken = originalBaseToken + transaction.baseTokenDelta;
   position.quoteToken = originalQuoteToken + transaction.quoteTokenDelta;
   position.collateral = originalCollateral + transaction.collateralDelta;
@@ -99,12 +112,14 @@ export const createOrModifyPosition = async (transaction: Transaction) => {
     position.lowPrice = tickToPrice(eventArgs.lowerTick).toString();
   }
   position.epoch = transaction.event.epoch;
-  // position.transactions  = [...posTxns, transaction]
-  // transactions
-  // profit loss
-  // unclaimed fees
+  position.profitLoss = "0"; //TODO
+  position.unclaimedFees = "0"; //TODO
+  position.transactions = [...posTxns, transaction];
+  // Need to save transaction as well?
 
   // upsert to database
+  console.log("Saving position: ", position);
+  await positionRepository.save(position);
 };
 
 export const upsertMarketPrice = async (transaction: Transaction) => {
@@ -133,7 +148,7 @@ export const upsertPositionFromLiquidityEvent = async (event: Event) => {
   const eventArgs = event.logData.args as LiquidityPositionCreatedEventLog;
 
   const newPosition = new Position();
-  newPosition.nftId = Number(eventArgs.positionId);
+  newPosition.positionId = Number(eventArgs.positionId);
   newPosition.baseToken = eventArgs.addedAmount0;
   newPosition.quoteToken = eventArgs.addedAmount1;
   newPosition.collateral = eventArgs.collateralAmount;
@@ -143,7 +158,7 @@ export const upsertPositionFromLiquidityEvent = async (event: Event) => {
   newPosition.highPrice = tickToPrice(eventArgs.upperTick).toString();
   newPosition.lowPrice = tickToPrice(eventArgs.lowerTick).toString();
   newPosition.unclaimedFees = "0"; // TODO
-  await positionRepository.upsert(newPosition, ["epoch", "nftId"]);
+  await positionRepository.upsert(newPosition, ["epoch", "positionId"]);
 
   // create txn based on position:
   await createTxnFromLiquidityPositionCreatedEvent(event, newPosition);
