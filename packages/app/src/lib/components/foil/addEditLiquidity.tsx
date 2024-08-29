@@ -401,6 +401,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   /// /// HANDLERS //////
   const handleCreateOrIncreaseLiquidity = () => {
     if (isEdit) {
+      console.log("collateralAmountDelta",collateralAmountDelta)
       increaseLiquidity({
         address: foilData.address as `0x${string}`,
         abi: foilData.abi,
@@ -408,10 +409,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
         args: [
           {
             positionId: nftId,
-            collateralAmount: parseUnits(
-              depositAmount.toString(),
-              collateralAssetDecimals
-            ),
+            collateralAmount: collateralAmountDelta,
             gasTokenAmount: parseUnits(baseToken.toString(), TOKEN_DECIMALS),
             ethTokenAmount: parseUnits(quoteToken.toString(), TOKEN_DECIMALS),
             minGasAmount: parseUnits(
