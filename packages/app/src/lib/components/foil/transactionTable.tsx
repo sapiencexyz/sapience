@@ -7,7 +7,6 @@ import {
   Tbody,
   Td,
 } from '@chakra-ui/react';
-import type { Transaction } from '@data/entity/Transaction';
 import { useQuery } from '@tanstack/react-query';
 import { useContext } from 'react';
 
@@ -58,7 +57,7 @@ export default function TransactoinTable() {
         </Thead>
         <Tbody>
           {transactions &&
-            transactions.map((row: Transaction) => (
+            transactions.map((row: any) => (
               <Tr key={row.id}>
                 <Td>{row.position.positionId}</Td>
                 <Td>{row.collateralDelta}</Td>
