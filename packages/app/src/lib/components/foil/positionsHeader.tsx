@@ -34,6 +34,7 @@ const PositionsHeader = () => {
     baseAssetMaxPriceTick,
     averagePrice,
     pool,
+    marketPrice,
   } = useContext(MarketContext);
 
   // Calculate token amounts
@@ -188,8 +189,8 @@ const PositionsHeader = () => {
             />
           </StatLabel>
           <StatNumber>
-            0 (TODO)
-            {/* {pool?.token0Price} <Text as="span">gwei</Text> */}
+            {marketPrice}
+            {/*  <Text as="span">gwei</Text> */}
           </StatNumber>
           {/*
           <StatHelpText>
