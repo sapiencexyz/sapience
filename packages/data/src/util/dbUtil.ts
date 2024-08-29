@@ -24,7 +24,7 @@ const getTradeTypeFromEvent = (eventArgs: TradePositionEventLog) => {
   return TransactionType.SHORT;
 };
 
-export const upsertTransactionFromEvent = async (event: Event) => {
+export const upsertTransactionAndPositionFromEvent = async (event: Event) => {
   const transactionRepository = dataSource.getRepository(Transaction);
 
   const newTransaction = new Transaction();
@@ -74,10 +74,13 @@ export const upsertTransactionFromEvent = async (event: Event) => {
       break;
   }
 
-  // upsert instead?
-  if (!skipTransaction) {
+  if (
+    !skipTransaction &&
+    event.logData.eventName === EventType.LiquidityPositionCreated //TEMPORARY TO PREVENT DATA SERVICE FROM CRASHING WHILE WE SORT OUT OTHER SWITCH CASES
+  ) {
     console.log("Saving new transaction: ", newTransaction);
     await transactionRepository.save(newTransaction);
+    await createOrModifyPosition(newTransaction);
   }
 };
 
@@ -90,16 +93,18 @@ export const createOrModifyPosition = async (transaction: Transaction) => {
       epoch: transaction.event.epoch,
       positionId: transaction.event.logData.args.positionId,
     },
-    relations: ["transactions"]
+    relations: ["transactions"],
   });
+
   const originalBaseToken = existingPosition ? existingPosition.baseToken : 0;
   const originalQuoteToken = existingPosition ? existingPosition.quoteToken : 0;
   const originalCollateral = existingPosition ? existingPosition.collateral : 0;
   const eventArgs = transaction.event.logData.args; //as LiquidityPositionModifiedEventLog;
 
   const position = existingPosition || new Position();
-  position.isLP = transaction.type === TransactionType.ADD_LIQUIDITY ||
-  transaction.type === TransactionType.REMOVE_LIQUIDITY;
+  position.isLP =
+    transaction.type === TransactionType.ADD_LIQUIDITY ||
+    transaction.type === TransactionType.REMOVE_LIQUIDITY;
   position.positionId = Number(eventArgs.positionId);
   position.baseToken = originalBaseToken + transaction.baseTokenDelta;
   position.quoteToken = originalQuoteToken + transaction.quoteTokenDelta;
@@ -111,10 +116,11 @@ export const createOrModifyPosition = async (transaction: Transaction) => {
   position.epoch = transaction.event.epoch;
   position.profitLoss = "0"; //TODO
   position.unclaimedFees = "0"; //TODO
+  position.transactions = position.transactions || [];
   position.transactions.push(transaction);
 
   console.log("Saving position: ", position);
-  await positionRepository.save(position);
+  await dataSource.manager.save(position);
 };
 
 /**

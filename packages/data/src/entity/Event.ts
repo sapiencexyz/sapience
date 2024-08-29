@@ -10,7 +10,7 @@ import {
   Unique,
   ManyToOne,
 } from "typeorm";
-import { upsertTransactionFromEvent } from "../util/dbUtil";
+import { upsertTransactionAndPositionFromEvent } from "../util/dbUtil";
 import { Transaction } from "./Transaction";
 import { Epoch } from "./Epoch";
 
@@ -45,7 +45,7 @@ export class Event {
   @AfterInsert()
   async afterInsert() {
     // Upsert associated Transaction
-    await upsertTransactionFromEvent(this);
+    await upsertTransactionAndPositionFromEvent(this);
   }
 
   @AfterUpdate()

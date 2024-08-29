@@ -49,7 +49,6 @@ export class Transaction {
   event: Event;
 
   @ManyToOne(() => Position, (position) => position.transactions)
-  @JoinColumn()
   position: Position;
 
   @PrimaryGeneratedColumn()
@@ -76,7 +75,6 @@ export class Transaction {
   // AfterInsert AfterUpdate and AfterRemove to update the associated Position based on positionId
   @AfterInsert()
   async afterInsert() {
-    await createOrModifyPosition(this);
     await upsertMarketPrice(this);
   }
 
