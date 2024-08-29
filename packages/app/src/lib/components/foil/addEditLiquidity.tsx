@@ -23,7 +23,8 @@ import type {
   QueryObserverResult,
   RefetchOptions,
 } from '@tanstack/react-query';
-import { TickMath } from '@uniswap/v3-sdk';
+import { TickMath, SqrtPriceMath } from '@uniswap/v3-sdk';
+import JSBI from 'jsbi';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import type { ReadContractErrorType, WriteContractErrorType } from 'viem';
 import { formatUnits, parseUnits } from 'viem';
@@ -44,7 +45,7 @@ import type { FoilPosition } from '~/lib/interfaces/interfaces';
 
 import SlippageTolerance from './slippageTolerance';
 
-const tickSpacingDefault = 200; // 1% - Hardcoded for now, should be retrieved with pool.tickSpacing()
+const tickSpacingDefault = 200; // TODO 1% - Hardcoded for now, should be retrieved with pool.tickSpacing()
 
 const priceToTick = (price: number, tickSpacing: number): number => {
   const tick = Math.log(price) / Math.log(1.0001);
@@ -58,6 +59,31 @@ interface Props {
     options?: RefetchOptions
   ) => Promise<QueryObserverResult<unknown, ReadContractErrorType>>;
   nftId: number;
+}
+
+function getTokenAmountsFromLiquidity(
+  sqrtPriceX96: JSBI,
+  tickLower: number,
+  tickUpper: number,
+  liquidity: JSBI
+): { amount0: JSBI; amount1: JSBI } {
+  const sqrtRatioA = TickMath.getSqrtRatioAtTick(tickLower);
+  const sqrtRatioB = TickMath.getSqrtRatioAtTick(tickUpper);
+
+  const amount0 = SqrtPriceMath.getAmount0Delta(
+    sqrtRatioA,
+    sqrtRatioB,
+    liquidity,
+    true
+  );
+  const amount1 = SqrtPriceMath.getAmount1Delta(
+    sqrtRatioA,
+    sqrtRatioB,
+    liquidity,
+    true
+  );
+
+  return { amount0, amount1 };
 }
 
 const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
@@ -549,8 +575,63 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   /**
    * handle decreasing liquidity position
    */
-  const handleDecreaseLiquidty = () => {
-    if (!liquidity) return;
+  const handleDecreaseLiquidity = () => {
+    if (!liquidity || !pool) return;
+
+    // Convert liquidity and newLiquidity to JSBI
+    const liquidityJSBI = JSBI.BigInt(liquidity.toString());
+    const newLiquidityJSBI = JSBI.BigInt(newLiquidity.toString());
+
+    // Calculate the liquidity to remove
+    const liquidityToRemove = JSBI.subtract(liquidityJSBI, newLiquidityJSBI);
+
+    // Get amounts for total liquidity, not just the new liquidity
+    const { amount0, amount1 } = getTokenAmountsFromLiquidity(
+      pool.sqrtRatioX96,
+      tickLower,
+      tickUpper,
+      liquidityJSBI
+    );
+
+    // Calculate the proportion of liquidity being removed
+    const proportion = JSBI.divide(liquidityToRemove, liquidityJSBI);
+
+    // Calculate the amounts being removed
+    const amount0ToRemove = JSBI.divide(
+      JSBI.multiply(amount0, proportion),
+      JSBI.BigInt(1e18)
+    );
+    const amount1ToRemove = JSBI.divide(
+      JSBI.multiply(amount1, proportion),
+      JSBI.BigInt(1e18)
+    );
+
+    // Convert amounts to decimal strings
+    const amount0Decimal =
+      parseFloat(amount0ToRemove.toString()) / 10 ** TOKEN_DECIMALS;
+    const amount1Decimal =
+      parseFloat(amount1ToRemove.toString()) / 10 ** TOKEN_DECIMALS;
+
+    // Calculate minimum amounts with slippage
+    const minAmount0 = amount0Decimal * (1 - slippage / 100);
+    const minAmount1 = amount1Decimal * (1 - slippage / 100);
+
+    // Parse amounts with proper decimals
+    const parsedMinAmount0 = parseUnits(
+      minAmount0.toFixed(TOKEN_DECIMALS),
+      TOKEN_DECIMALS
+    );
+    const parsedMinAmount1 = parseUnits(
+      minAmount1.toFixed(TOKEN_DECIMALS),
+      TOKEN_DECIMALS
+    );
+
+    console.log('Decrease Liquidity Parameters:', {
+      positionId: nftId,
+      liquidity: liquidityToRemove.toString(),
+      minGasAmount: parsedMinAmount0.toString(),
+      minEthAmount: parsedMinAmount1.toString(),
+    });
 
     decreaseLiquidity({
       address: foilData.address as `0x${string}`,
@@ -559,9 +640,9 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
       args: [
         {
           positionId: nftId,
-          liquidity: liquidity - newLiquidity,
-          minGasAmount: parseUnits(minAmountTokenA.toString(), TOKEN_DECIMALS),
-          minEthAmount: parseUnits(minAmountTokenB.toString(), TOKEN_DECIMALS),
+          liquidity: liquidityToRemove.toString(),
+          minGasAmount: parsedMinAmount0,
+          minEthAmount: parsedMinAmount1,
         },
       ],
       chainId,
@@ -575,7 +656,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     e.preventDefault();
 
     if (isEdit && isDecrease) {
-      return handleDecreaseLiquidty();
+      return handleDecreaseLiquidity();
     }
 
     // Double-check the delta before submission

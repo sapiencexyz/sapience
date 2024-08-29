@@ -169,8 +169,8 @@ library Position {
 
         if (newCollateral < requiredCollateral) {
             revert Errors.InsufficientCollateral(
-                newCollateral,
-                requiredCollateral
+                requiredCollateral,
+                newCollateral
             );
         }
 
