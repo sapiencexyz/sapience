@@ -7,6 +7,8 @@ import { Market } from "./entity/Market";
 import express from "express";
 import { Between } from "typeorm";
 import { Event } from "./entity/Event";
+import { Transaction } from "./entity/Transaction";
+import { Epoch } from "./entity/Epoch";
 
 const PORT = 3001;
 
@@ -14,8 +16,10 @@ const startServer = async () => {
   await initializeDataSource();
   const positionRepository = dataSource.getRepository(Position);
   const eventRepository = dataSource.getRepository(Event);
+  const epochRepository = dataSource.getRepository(Epoch);
   const priceRepository = dataSource.getRepository(Price);
   const marketRepository = dataSource.getRepository(Market);
+  const transactionRepository = dataSource.getRepository(Transaction);
 
   const app = express();
   app.use(cors());
@@ -173,10 +177,12 @@ const startServer = async () => {
 
   app.get("/positions", async (req, res) => {
     const { isLP, contractId } = req.query;
+
     const all = await positionRepository.find({
-      relations: ["epoch", "epoch.market"],
+      relations: ["epoch", "epoch.market", "transactions"],
     });
     console.log("all positions -", all);
+
     if (typeof contractId !== "string") {
       return res.status(400).json({ error: "Invalid contractId" });
     }
@@ -199,10 +205,8 @@ const startServer = async () => {
       return res.status(400).json({ error: "Invalid contractId format" });
     }
 
-    // if (isLP !== undefined) {
     where.isLP = isLP === "true";
-    // }
-    console.log("where -", where);
+
     try {
       const positions = await positionRepository.find({
         where,
@@ -211,6 +215,80 @@ const startServer = async () => {
       res.json(positions);
     } catch (error) {
       console.error("Error fetching positions:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  app.get("/transactions", async (req, res) => {
+    const all = await transactionRepository.find({ relations: ["position"] });
+    console.log("all txns -", all);
+    const { contractId, epochId } = req.query;
+
+    if (typeof contractId !== "string") {
+      return res.status(400).json({ error: "Invalid contractId" });
+    }
+    const [chainId, address] = contractId.split(":");
+    console.log("chainId = ", chainId);
+    console.log("address = ", address);
+    const allMarkets = await marketRepository.find({});
+    console.log("allMarkets = ", allMarkets);
+
+    const market = await marketRepository
+      .createQueryBuilder("market")
+      .where("market.chainId = :chainId", { chainId: Number(chainId) })
+      .andWhere("market.address = :address", { address })
+      .getOne();
+
+    console.log("Market found:", market);
+    if (!market) {
+      return [];
+    }
+
+    const epoch = await epochRepository
+      .createQueryBuilder("epoch")
+      .where("epoch.marketId = :marketId", { marketId: market.id })
+      .andWhere("epoch.epochId = :epochId", { epochId })
+      .getOne();
+
+    console.log("Epoch found:", epoch);
+    if (!epoch) {
+      return [];
+    }
+
+    const positions = await positionRepository
+      .createQueryBuilder("position")
+      .where("position.epochId = :epochId", { epochId: epoch.id })
+      .getMany();
+
+    console.log("Positions found:", positions.length);
+
+    const transactions = await transactionRepository
+      .createQueryBuilder("transaction")
+      .innerJoinAndSelect("transaction.position", "position")
+      .innerJoinAndSelect("position.epoch", "epoch")
+      .innerJoinAndSelect("epoch.market", "market")
+      .where("market.chainId = :chainId", { chainId })
+      .andWhere("market.address = :address", { address })
+      .andWhere("epoch.epochId = :epochId", { epochId })
+      .getMany();
+
+    console.log("Transactions found:", transactions.length);
+
+    try {
+      const transactions = await transactionRepository
+        .createQueryBuilder("transaction")
+        .innerJoinAndSelect("transaction.position", "position")
+        .innerJoinAndSelect("position.epoch", "epoch")
+        .innerJoinAndSelect("epoch.market", "market")
+        .where("market.chainId = :chainId", { chainId: Number(chainId) })
+        .getMany();
+      // .andWhere("market.address = :address", { address })
+      // .andWhere("epoch.epochId = :epochId", { epochId: Number(epochId) })
+      // .getMany();
+
+      console.log("transactions = ", transactions);
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

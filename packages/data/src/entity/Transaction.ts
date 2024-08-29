@@ -13,7 +13,11 @@ import {
 import { Event } from "./Event";
 import { Position } from "./Position";
 import { MarketPrice } from "./MarketPrice";
-import { NUMERIC_PRECISION } from "../util/dbUtil";
+import {
+  createOrModifyPosition,
+  NUMERIC_PRECISION,
+  upsertMarketPrice,
+} from "../util/dbUtil";
 // Read contractIds (chainId:address) from foilconfig.json ?
 
 export enum TransactionType {
@@ -36,7 +40,6 @@ export class Transaction {
   @OneToOne(() => MarketPrice, (mp) => mp.transaction, {
     cascade: true,
   })
-  @JoinColumn()
   marketPrice: MarketPrice;
 
   @OneToOne(() => Event, (event) => event.transaction, {
@@ -62,41 +65,32 @@ export class Transaction {
   type: TransactionType;
 
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
-  baseTokenDelta: string; // vGas
+  baseTokenDelta: string; // vGas make sure signed
 
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
-  quoteTokenDelta: string; // vETH
+  quoteTokenDelta: string; // vETH make sure these are signed
 
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
   collateralDelta: string; // ETH
 
-  // AfterInsert AfterUpdate and AfterRemove to update the associated Position based on nftId
+  // AfterInsert AfterUpdate and AfterRemove to update the associated Position based on positionId
 
   // @after insert: create MarketPrice (if long or short txn type)
   @AfterInsert()
   async afterInsert() {
-    // Upsert associated Position or Transaction
-    if (
-      this.type === TransactionType.LONG ||
-      this.type === TransactionType.SHORT
-    ) {
-      try {
-        //  await upsertPositionFromLiquidityEvent(this);
-      } catch (error) {
-        console.error("Error upserting Market Price:", error);
-      }
-    }
+    await createOrModifyPosition(this);
+    await upsertMarketPrice(this);
   }
 
   @AfterUpdate()
   afterUpdate() {
     console.log(`TXN updated: ${this.id}`);
-    // Upsert associated MarketPrice and Position based on nftId
+    // Upsert associated MarketPrice and Position based on positionId
   }
 
   @AfterRemove()
   afterRemove() {
     console.log(`TXN removed: ${this.id}`);
-    // Delete associated MarketPrice and Position based on nftId
+    // Delete associated MarketPrice and Position based on positionId
   }
 }

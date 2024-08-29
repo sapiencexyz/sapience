@@ -5,18 +5,18 @@ import {
   CreateDateColumn,
   OneToMany,
   ManyToOne,
-  Index,
-  JoinColumn,
   Unique,
 } from "typeorm";
 import { Transaction } from "./Transaction";
-import { DECIMAL_PRECISION, NUMERIC_PRECISION } from "../util/dbUtil";
-// Read contractIds (chainId:address) from foilconfig.json ?
+import {
+  DECIMAL_PRECISION,
+  DECIMAL_SCALE,
+  NUMERIC_PRECISION,
+} from "../util/dbUtil";
 import { Epoch } from "./Epoch";
-import { Market } from "./Market";
 
 @Entity()
-@Unique(["nftId", "epoch"])
+@Unique(["positionId", "epoch"])
 export class Position {
   @OneToMany(() => Transaction, (transaction) => transaction.position)
   transactions: Transaction[];
@@ -31,7 +31,7 @@ export class Position {
   epoch: Epoch;
 
   @Column()
-  nftId: number;
+  positionId: number;
 
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
   baseToken: string; // vGas tokenamount 0
@@ -44,8 +44,8 @@ export class Position {
 
   @Column({
     type: "numeric",
-    precision: 18, // Total number of significant digits
-    scale: 15, // Number of digits after the decimal point
+    precision: DECIMAL_PRECISION, // Total number of significant digits
+    scale: DECIMAL_SCALE, // Number of digits after the decimal point
   })
   profitLoss: string; // ETH  will calculate off chain, start at 0
 
@@ -54,22 +54,22 @@ export class Position {
 
   @Column({
     type: "numeric",
-    precision: 18, // Total number of significant digits
-    scale: 15, // Number of digits after the decimal point
+    precision: DECIMAL_PRECISION, // Total number of significant digits
+    scale: DECIMAL_SCALE, // Number of digits after the decimal point
   })
-  highPrice: string; // still need to add to event
+  highPrice: string;
 
   @Column({
     type: "numeric",
-    precision: 18, // Total number of significant digits
-    scale: 15, // Number of digits after the decimal point
+    precision: DECIMAL_PRECISION, // Total number of significant digits
+    scale: DECIMAL_SCALE, // Number of digits after the decimal point
   })
-  lowPrice: string; // still need to add to event
+  lowPrice: string;
 
   @Column({
     type: "numeric",
-    precision: 18, // Total number of significant digits
-    scale: 15, // Number of digits after the decimal point
+    precision: DECIMAL_PRECISION, // Total number of significant digits
+    scale: DECIMAL_SCALE, // Number of digits after the decimal point
   })
-  unclaimedFees: string; // ETH  start at 0
+  unclaimedFees: string; // ETH
 }
