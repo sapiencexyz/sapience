@@ -159,70 +159,71 @@ contract TestEpoch is TestUser {
         );
     }
 
-    // struct OwedTokensData {
-    //     address positionManager;
-    //     address pool;
-    //     int24 tickLower;
-    //     int24 tickUpper;
-    //     uint128 liquidity;
-    //     uint256 feeGrowthInside0LastX128;
-    //     uint256 feeGrowthInside1LastX128;
-    //     uint128 tokensOwed0;
-    //     uint128 tokensOwed1;
-    //     uint256 feeGrowthInside0X128;
-    //     uint256 feeGrowthInside1X128;
-    //     uint256 feeGrowthGlobal0X128;
-    //     uint256 feeGrowthGlobal1X128;
-    // }
-    // function getOwedTokens(
-    //     uint256 uniswapPositionId
-    // ) internal returns (uint256 owed0, uint256 owed1) {
-    //     console2.log("IN GETOWEDTOKENS");
-    //     IFoil foil = IFoil(vm.getAddress("Foil"));
+    struct OwedTokensData {
+        address positionManager;
+        address pool;
+        int24 tickLower;
+        int24 tickUpper;
+        uint128 liquidity;
+        uint256 feeGrowthInside0LastX128;
+        uint256 feeGrowthInside1LastX128;
+        uint128 tokensOwed0;
+        uint128 tokensOwed1;
+        uint256 feeGrowthInside0X128;
+        uint256 feeGrowthInside1X128;
+        uint256 feeGrowthGlobal0X128;
+        uint256 feeGrowthGlobal1X128;
+    }
 
-    //     OwedTokensData memory data;
+    function getOwedTokens(
+        uint256 uniswapPositionId
+    ) internal returns (uint256 owed0, uint256 owed1) {
+        console2.log("IN GETOWEDTOKENS");
+        IFoil foil = IFoil(vm.getAddress("Foil"));
 
-    //     (, , data.positionManager, , , ) = foil.getMarket();
+        OwedTokensData memory data;
 
-    //     // Fetch the current fee growth global values
-    //     data.feeGrowthGlobal0X128 = IUniswapV3Pool(data.pool)
-    //         .feeGrowthGlobal0X128();
-    //     data.feeGrowthGlobal1X128 = IUniswapV3Pool(data.pool)
-    //         .feeGrowthGlobal1X128();
+        (, , data.positionManager, , , ) = foil.getMarket();
 
-    //     console2.log("feeGrowthGlobal0X128", data.feeGrowthGlobal0X128);
-    //     console2.log("feeGrowthGlobal1X128", data.feeGrowthGlobal1X128);
+        // Fetch the current fee growth global values
+        data.feeGrowthGlobal0X128 = IUniswapV3Pool(data.pool)
+            .feeGrowthGlobal0X128();
+        data.feeGrowthGlobal1X128 = IUniswapV3Pool(data.pool)
+            .feeGrowthGlobal1X128();
 
-    //     (, , , data.pool, , , , , , , ) = foil.getLatestEpoch();
+        console2.log("feeGrowthGlobal0X128", data.feeGrowthGlobal0X128);
+        console2.log("feeGrowthGlobal1X128", data.feeGrowthGlobal1X128);
 
-    //     bytes32 positionKey = keccak256(
-    //         abi.encodePacked(
-    //             address(data.positionManager),
-    //             data.tickLower,
-    //             data.tickUpper
-    //         )
-    //     );
-    //     (
-    //         ,
-    //         data.feeGrowthInside0X128,
-    //         data.feeGrowthInside1X128,
-    //         ,
+        (, , , data.pool, , , , , , , ) = foil.getLatestEpoch();
 
-    //     ) = IUniswapV3Pool(data.pool).positions(positionKey);
+        bytes32 positionKey = keccak256(
+            abi.encodePacked(
+                address(data.positionManager),
+                data.tickLower,
+                data.tickUpper
+            )
+        );
+        (
+            ,
+            data.feeGrowthInside0X128,
+            data.feeGrowthInside1X128,
+            ,
 
-    //     uint256 tokensOwed0Additional = FullMath.mulDiv(
-    //         data.feeGrowthGlobal0X128 - data.feeGrowthInside0LastX128,
-    //         data.liquidity,
-    //         Q128
-    //     );
-    //     uint256 tokensOwed1Additional = FullMath.mulDiv(
-    //         data.feeGrowthGlobal1X128 - data.feeGrowthInside1LastX128,
-    //         data.liquidity,
-    //         Q128
-    //     );
+        ) = IUniswapV3Pool(data.pool).positions(positionKey);
 
-    //     owed0 = uint256(data.tokensOwed0) + tokensOwed0Additional;
-    //     owed1 = uint256(data.tokensOwed1) + tokensOwed1Additional;
-    //     console2.log("OUT OF GETOWEDTOKENS");
-    // }
+        uint256 tokensOwed0Additional = FullMath.mulDiv(
+            data.feeGrowthGlobal0X128 - data.feeGrowthInside0LastX128,
+            data.liquidity,
+            Q128
+        );
+        uint256 tokensOwed1Additional = FullMath.mulDiv(
+            data.feeGrowthGlobal1X128 - data.feeGrowthInside1LastX128,
+            data.liquidity,
+            Q128
+        );
+
+        owed0 = uint256(data.tokensOwed0) + tokensOwed0Additional;
+        owed1 = uint256(data.tokensOwed1) + tokensOwed1Additional;
+        console2.log("OUT OF GETOWEDTOKENS");
+    }
 }

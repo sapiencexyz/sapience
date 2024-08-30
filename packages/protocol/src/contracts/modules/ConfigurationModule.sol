@@ -3,16 +3,13 @@ pragma solidity >=0.8.25 <0.9.0;
 
 // TODO Reentrancy guard should be refactored as router compatible (uses local storage)
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "../interfaces/IEpochConfigurationModule.sol";
+import "../interfaces/IConfigurationModule.sol";
 import "../storage/Market.sol";
 import "../storage/Epoch.sol";
 
 // import "forge-std/console2.sol";
 
-contract EpochConfigurationModule is
-    IEpochConfigurationModule,
-    ReentrancyGuard
-{
+contract ConfigurationModule is IConfigurationModule, ReentrancyGuard {
     using Market for Market.Data;
 
     modifier onlyOwner() {

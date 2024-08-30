@@ -10,12 +10,12 @@ import {Pool} from "../libraries/Pool.sol";
 import {DecimalPrice} from "../libraries/DecimalPrice.sol";
 import {ERC721Storage} from "../storage/ERC721Storage.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import {IEpochSettlementModule} from "../interfaces/IEpochSettlementModule.sol";
+import {ISettlementModule} from "../interfaces/ISettlementModule.sol";
 import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePositionManager.sol";
 
 import {console2} from "forge-std/console2.sol";
 
-contract EpochSettlementModule is IEpochSettlementModule {
+contract SettlementModule is ISettlementModule {
     using Position for Position.Data;
     using Market for Market.Data;
 

@@ -5,10 +5,10 @@ import "../storage/ERC721EnumerableStorage.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../storage/Position.sol";
 import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
-import {IEpochLiquidityModule} from "../interfaces/IEpochLiquidityModule.sol";
+import {ILiquidityModule} from "../interfaces/ILiquidityModule.sol";
 import {Pool} from "../libraries/Pool.sol";
 
-contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
+contract LiquidityModule is ReentrancyGuard, ILiquidityModule {
     using Position for Position.Data;
     using Epoch for Epoch.Data;
     using Market for Market.Data;
