@@ -33,18 +33,22 @@ jobs:
       - name: Simulate deploy on Sepolia
         id: simulate-deploy
         run: |
-          output=$(pnpm run simulate-deploy:sepolia)
-          echo "::set-output name=deploy_output::$output"
+          set -eo pipefail
+          output=$(pnpm run simulate-deploy:sepolia 2>&1)
           echo "$output"
+          echo "DEPLOY_OUTPUT<<EOF" >> $GITHUB_OUTPUT
+          echo "$output" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
         working-directory: packages/protocol
 
       - name: Check for 💥
         run: |
-          if echo "${{ steps.simulate-deploy.outputs.deploy_output }}" | grep -q "💥"; then
+          if echo "${{ steps.simulate-deploy.outputs.DEPLOY_OUTPUT }}" | grep -q "💥"; then
             echo "Deployment simulation successful!"
-            exit 0
           else
             echo "Deployment simulation failed: 💥 not found in output."
+            echo "Full output:"
+            echo "${{ steps.simulate-deploy.outputs.DEPLOY_OUTPUT }}"
             exit 1
           fi
 
