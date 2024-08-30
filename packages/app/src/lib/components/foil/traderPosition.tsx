@@ -445,9 +445,11 @@ export default function TraderPosition({}) {
       </FormControl>
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
       <Box mb="4">
+        {/*
         <Text fontSize="sm" color="gray.500" mb={0.5}>
           Position: X Ggas to X Ggas
         </Text>
+        */}
         {isConnected && (
           <Text fontSize="sm" color="gray.500" mb="0.5">
             Wallet Balance:{' '}

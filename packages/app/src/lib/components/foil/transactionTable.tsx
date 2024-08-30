@@ -7,7 +7,6 @@ import {
   Tbody,
   Td,
 } from '@chakra-ui/react';
-import type { Transaction } from '@data/entity/Transaction';
 import { useQuery } from '@tanstack/react-query';
 import { useContext } from 'react';
 import { formatUnits } from 'viem';
@@ -47,7 +46,7 @@ export default function TransactoinTable() {
     return <div>Error: {error.message}</div>;
   }
 
-  const getFinalPrice = (transaction: Transaction) => {
+  const getFinalPrice = (transaction: any) => {
     if (
       transaction.type === TransactionType.LONG ||
       transaction.type === TransactionType.SHORT

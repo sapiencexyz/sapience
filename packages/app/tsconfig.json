@@ -18,7 +18,6 @@
     "paths": {
       "~/*": ["./*"],
       "@/protocol/*": ["../../protocol/*"],
-      "@data/*": ["../../data/src/*"] // Add this line
     },
     "incremental": true,
     "plugins": [

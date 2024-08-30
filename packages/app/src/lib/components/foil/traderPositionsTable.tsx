@@ -7,7 +7,6 @@ import {
   Tbody,
   Td,
 } from '@chakra-ui/react';
-import type { Position } from '@data/entity/Position';
 import { useQuery } from '@tanstack/react-query';
 import { useContext } from 'react';
 
@@ -38,7 +37,7 @@ export default function TraderPositionsTable() {
     error,
     isLoading,
   }: {
-    data: Position[] | undefined;
+    data: any;
     error: any;
     isLoading: boolean;
   } = usePositions();
@@ -67,7 +66,7 @@ export default function TraderPositionsTable() {
         </Thead>
         <Tbody>
           {positions &&
-            positions.map((row: Position) => (
+            positions.map((row: any) => (
               <Tr key={row.id}>
                 <Td>{row.positionId.toString()}</Td>
                 <Td>{row.collateral.toString()}</Td>
