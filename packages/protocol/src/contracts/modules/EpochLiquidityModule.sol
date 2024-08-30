@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../storage/Position.sol";
 import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
 import {IEpochLiquidityModule} from "../interfaces/IEpochLiquidityModule.sol";
+import {Pool} from "../libraries/Pool.sol";
 
 contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
     using Position for Position.Data;
@@ -51,6 +52,11 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
                     deadline: block.timestamp
                 })
             );
+
+        console2.log(
+            "NONFUNGIBLE POSITION MANAGER",
+            address(Market.load().uniswapPositionManager)
+        );
 
         collateralAmount = position.updateValidLp(
             epoch,
@@ -100,7 +106,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
             stack.lowerTick,
             stack.upperTick,
             stack.previousLiquidity
-        ) = _getCurrentPositionTokenAmounts(market, epoch, position);
+        ) = Pool.getCurrentPositionTokenAmounts(market, epoch, position);
 
         stack.decreaseParams = INonfungiblePositionManager
             .DecreaseLiquidityParams({
@@ -174,11 +180,11 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
             stack.lowerTick,
             stack.upperTick,
             stack.previousLiquidity
-        ) = _getCurrentPositionTokenAmounts(market, epoch, position);
+        ) = Pool.getCurrentPositionTokenAmounts(market, epoch, position);
 
         stack.increaseParams = INonfungiblePositionManager
             .IncreaseLiquidityParams({
-                tokenId: position.id,
+                tokenId: position.uniswapPositionId,
                 amount0Desired: params.gasTokenAmount,
                 amount1Desired: params.ethTokenAmount,
                 amount0Min: params.minGasAmount,
@@ -273,37 +279,6 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
         );
     }
 
-    function _getCurrentPositionTokenAmounts(
-        Market.Data storage market,
-        Epoch.Data storage epoch,
-        Position.Data storage position
-    )
-        internal
-        view
-        returns (
-            uint256 amount0,
-            uint256 amount1,
-            int24 lowerTick,
-            int24 upperTick,
-            uint128 liquidity
-        )
-    {
-        // get liquidity given tokenId
-        (, , , , , lowerTick, upperTick, liquidity, , , , ) = market
-            .uniswapPositionManager
-            .positions(position.uniswapPositionId);
-        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(epoch.pool).slot0();
-        uint160 sqrtPriceAX96 = uint160(TickMath.getSqrtRatioAtTick(lowerTick));
-        uint160 sqrtPriceBX96 = uint160(TickMath.getSqrtRatioAtTick(upperTick));
-
-        (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
-            sqrtPriceX96,
-            sqrtPriceAX96,
-            sqrtPriceBX96,
-            liquidity
-        );
-    }
-
     function getCollateralRequirementForAdditionalTokens(
         uint256 positionId,
         uint256 amount0,
@@ -321,7 +296,7 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
             stack.lowerTick,
             stack.upperTick,
             stack.previousLiquidity
-        ) = _getCurrentPositionTokenAmounts(market, epoch, position);
+        ) = Pool.getCurrentPositionTokenAmounts(market, epoch, position);
 
         (, , , , , , , , , , stack.tokensOwed0, stack.tokensOwed1) = market
             .uniswapPositionManager
@@ -378,8 +353,8 @@ contract EpochLiquidityModule is ReentrancyGuard, IEpochLiquidityModule {
         position.uniswapPositionId = 0;
 
         if (collectedAmount0 > position.borrowedVGas) {
-            position.borrowedVGas = 0;
             position.vGasAmount = collectedAmount0 - position.borrowedVGas;
+            position.borrowedVGas = 0;
         } else {
             position.borrowedVGas = position.borrowedVGas - collectedAmount0;
         }

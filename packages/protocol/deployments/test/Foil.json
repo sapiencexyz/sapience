@@ -1,5 +1,5 @@
 {
-  "address": "0x05341dbe31f83b51d08dc8d4a587f29be9554add",
+  "address": "0x0fd36da59e014d15f623505faf6cb2726b6b9378",
   "abi": [
     {
       "type": "function",
@@ -756,6 +756,22 @@
     },
     {
       "type": "error",
+      "name": "NotAccountOwnerOrAuthorized",
+      "inputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "OverflowInt256ToUint256",
       "inputs": []
     },
@@ -768,6 +784,17 @@
       "type": "error",
       "name": "PositionAlreadyCreated",
       "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PositionAlreadySettled",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
     },
     {
       "type": "error",
@@ -1062,6 +1089,11 @@
     },
     {
       "type": "error",
+      "name": "EpochSettled",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "InsufficientVEth",
       "inputs": [
         {
@@ -1089,22 +1121,6 @@
           "name": "vGas",
           "type": "uint256",
           "internalType": "uint256"
-        }
-      ]
-    },
-    {
-      "type": "error",
-      "name": "NotAccountOwnerOrAuthorized",
-      "inputs": [
-        {
-          "name": "tokenId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "sender",
-          "type": "address",
-          "internalType": "address"
         }
       ]
     },
@@ -1872,6 +1888,11 @@
               "name": "uniswapPositionId",
               "type": "uint256",
               "internalType": "uint256"
+            },
+            {
+              "name": "isSettled",
+              "type": "bool",
+              "internalType": "bool"
             }
           ]
         }
@@ -1945,14 +1966,52 @@
         }
       ],
       "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "settlePosition",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "withdrawableCollateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "PositionSettled",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "withdrawnCollateral",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0x0ec56b77da6631621d0387942bb38ea1f6a295a27d5145616acd10f18004cb89",
+  "deployTxnHash": "0x1442ea3b83b4fd4c79cf4afe2b5f0d3b3ee2b7454e0b8e88e92752976436cd1d",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1724770239",
+  "deployTimestamp": "1724966310",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
-  "gasUsed": 461316,
-  "gasCost": "1000104193"
+  "gasUsed": 474152,
+  "gasCost": "1000091154"
 }

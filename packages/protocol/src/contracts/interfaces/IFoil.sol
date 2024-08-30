@@ -8,11 +8,13 @@ import "./IEpochTradeModule.sol";
 import "./IEpochConfigurationModule.sol";
 import "./IEpochViewsModule.sol";
 import "./IEpochUMASettlementModule.sol";
+import "./IEpochSettlementModule.sol";
 
 interface IFoil is
     IEpochLiquidityModule,
     IEpochTradeModule,
     IEpochConfigurationModule,
     IEpochViewsModule,
-    IEpochUMASettlementModule
+    IEpochUMASettlementModule,
+    IEpochSettlementModule
 {}
