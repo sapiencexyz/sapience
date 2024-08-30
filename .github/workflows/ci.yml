@@ -31,7 +31,7 @@ jobs:
         run: pnpm install
 
       - name: Test run
-        run: pnpm run simulate-deploy:sepolia
+        run: forge build
         working-directory: packages/protocol
 
       - name: Simulate deploy on Sepolia
