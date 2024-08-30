@@ -16,6 +16,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
@@ -35,13 +38,13 @@ jobs:
           echo "$output"
         working-directory: packages/protocol
 
-      - name: Check for success character
+      - name: Check for 💥
         run: |
           if echo "${{ steps.simulate-deploy.outputs.deploy_output }}" | grep -q "💥"; then
             echo "Deployment simulation successful!"
             exit 0
           else
-            echo "Deployment simulation failed: Success character not found in output."
+            echo "Deployment simulation failed: 💥 not found in output."
             exit 1
           fi
 
