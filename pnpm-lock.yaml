@@ -234,8 +234,8 @@ importers:
         specifier: ^1.4.4
         version: 1.4.4
       '@usecannon/cli':
-        specifier: ^2.16.5
-        version: 2.16.5(bufferutil@4.0.8)(encoding@0.1.13)(hardhat@2.22.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@20.14.13)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(solc@0.8.25)(typescript@5.5.4)(utf-8-validate@5.0.10)
+        specifier: ^2.16.6
+        version: 2.16.6(bufferutil@4.0.8)(encoding@0.1.13)(hardhat@2.22.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@20.14.13)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(solc@0.8.25)(typescript@5.5.4)(utf-8-validate@5.0.10)
     devDependencies:
       '@types/chai':
         specifier: ^4.3.16
@@ -4779,12 +4779,12 @@ packages:
     engines: {node: '>=10'}
     deprecated: Please upgrade to 1.0.1
 
-  '@usecannon/builder@2.16.5':
-    resolution: {integrity: sha512-6EYCs3OHyJQWgDlTTnHcn1AkntBeyjGRJYFWeEiFbNVNdDv+ZKHHB58TAgzslBFwrwNr3G1/2u0CFdfJCeTEew==}
+  '@usecannon/builder@2.16.6':
+    resolution: {integrity: sha512-esMLOL4cDdGLuvGkz2I1SWTh24JzYywoXsBK4OgMeJidFc/EBMNrENS0f2tQL6Lmpaf7k9LaY/fAmfto3svJzg==}
     engines: {node: '>=16.0.0'}
 
-  '@usecannon/cli@2.16.5':
-    resolution: {integrity: sha512-PfdkIDjCwQs6/ZB50oF5xMX4dtbbN7/X+3hzaKf1qesho0cGAQKjoP+olVlqQciTO0d8xjs1JPeQZ2T2VCb6Ow==}
+  '@usecannon/cli@2.16.6':
+    resolution: {integrity: sha512-g4lUk8Qk2A3aq55gyTYPYLYKFLWoCCJV1fEGeCH0iqvLTiNwfTqn9EhwIKg2r025L4pAu2IGI0TZjcHvb8RKhA==}
     hasBin: true
 
   '@vanilla-extract/babel-plugin-debug-ids@1.0.6':
@@ -20775,7 +20775,7 @@ snapshots:
       '@uniswap/v3-core': 1.0.0
       '@uniswap/v3-periphery': 1.4.4
 
-  '@usecannon/builder@2.16.5(bufferutil@4.0.8)(encoding@0.1.13)(hardhat@2.22.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@20.14.13)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(solc@0.8.25)(typescript@5.5.4)(utf-8-validate@5.0.10)':
+  '@usecannon/builder@2.16.6(bufferutil@4.0.8)(encoding@0.1.13)(hardhat@2.22.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@20.14.13)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(solc@0.8.25)(typescript@5.5.4)(utf-8-validate@5.0.10)':
     dependencies:
       '@synthetixio/router': 3.4.0(hardhat@2.22.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@20.14.13)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(solc@0.8.25)
       axios: 1.7.2(debug@4.3.6)
@@ -20800,10 +20800,10 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@usecannon/cli@2.16.5(bufferutil@4.0.8)(encoding@0.1.13)(hardhat@2.22.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@20.14.13)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(solc@0.8.25)(typescript@5.5.4)(utf-8-validate@5.0.10)':
+  '@usecannon/cli@2.16.6(bufferutil@4.0.8)(encoding@0.1.13)(hardhat@2.22.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@20.14.13)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(solc@0.8.25)(typescript@5.5.4)(utf-8-validate@5.0.10)':
     dependencies:
       '@iarna/toml': 3.0.0
-      '@usecannon/builder': 2.16.5(bufferutil@4.0.8)(encoding@0.1.13)(hardhat@2.22.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@20.14.13)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(solc@0.8.25)(typescript@5.5.4)(utf-8-validate@5.0.10)
+      '@usecannon/builder': 2.16.6(bufferutil@4.0.8)(encoding@0.1.13)(hardhat@2.22.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@20.14.13)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(solc@0.8.25)(typescript@5.5.4)(utf-8-validate@5.0.10)
       abitype: 1.0.5(typescript@5.5.4)(zod@3.23.8)
       chalk: 4.1.2
       commander: 9.5.0
