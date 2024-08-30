@@ -352,6 +352,7 @@ library Epoch {
             availableAmount0,
             self.sqrtPriceMinX96
         );
+
         return
             loanAmount1 > availableAmount1 ? loanAmount1 - availableAmount1 : 0;
     }
