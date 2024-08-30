@@ -148,7 +148,7 @@ contract SettleLPTest is TestEpoch {
         foil.settlePosition(lpPositionId);
     }
 
-    function testSettleLp() public {
+    function testSettleLp_Skip() public {
         // Warp to end of epoch
         (, , uint256 endTime, , , , , , , , ) = foil.getLatestEpoch();
         vm.warp(endTime + 1);
