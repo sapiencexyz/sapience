@@ -22,18 +22,25 @@ const startServer = async () => {
   const transactionRepository = dataSource.getRepository(Transaction);
 
   const app = express();
-  
+
   const corsOptions: cors.CorsOptions = {
-    origin: (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) => {
-      if (process.env.NODE_ENV === 'dev') {
+    origin: (
+      origin: string | undefined,
+      callback: (error: Error | null, allow?: boolean) => void
+    ) => {
+      if (process.env.NODE_ENV !== "production") {
         callback(null, true);
-      } else if (origin && /^https?:\/\/([a-zA-Z0-9-]+\.)*foil\.xyz$/.test(origin)) {
+      } else if (
+        origin &&
+        /^https?:\/\/([a-zA-Z0-9-]+\.)*foil\.xyz$/.test(origin)
+      ) {
         callback(null, true);
       } else {
-        callback(new Error('Not allowed by CORS'));
+        console.log("process.env.NODE_ENV =", process.env.NODE_ENV);
+        callback(new Error("Not allowed by CORS"));
       }
     },
-    optionsSuccessStatus: 200
+    optionsSuccessStatus: 200,
   };
 
   app.use(cors(corsOptions));

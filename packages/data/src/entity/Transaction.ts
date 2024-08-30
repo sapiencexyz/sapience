@@ -75,7 +75,7 @@ export class Transaction {
   // AfterInsert AfterUpdate and AfterRemove to update the associated Position based on positionId
   @AfterInsert()
   async afterInsert() {
-    await upsertMarketPrice(this);
+    // await upsertMarketPrice(this);
   }
 
   @AfterUpdate()

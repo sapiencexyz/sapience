@@ -32,7 +32,7 @@ export const upsertTransactionAndPositionFromEvent = async (event: Event) => {
 
   // set to true if the Event does not require a transaction (i.e. a Transfer event)
   let skipTransaction = false;
-
+  console.log("event.logData.eventName", event.logData.eventName);
   // TODO - figure out signed deltas
   switch (event.logData.eventName) {
     case EventType.LiquidityPositionCreated:
@@ -58,10 +58,16 @@ export const upsertTransactionAndPositionFromEvent = async (event: Event) => {
       newTransaction.type = TransactionType.ADD_LIQUIDITY;
       break;
     case EventType.TraderPositionCreated:
+      console.log("TRADER POSITION CREATED");
       console.log("Creating trader position from event: ", event);
       newTransaction.type = getTradeTypeFromEvent(
         event.logData.args as TradePositionEventLog
       );
+
+      const eventArgsCreateTrade = event.logData.args as TradePositionEventLog;
+      newTransaction.baseTokenDelta = eventArgsCreateTrade.vGasAmount;
+      newTransaction.quoteTokenDelta = eventArgsCreateTrade.vEthAmount;
+      newTransaction.collateralDelta = eventArgsCreateTrade.collateralAmount;
       break;
     case EventType.TraderPositionModified:
       console.log("Modifying trader position from event: ", event);
@@ -76,7 +82,8 @@ export const upsertTransactionAndPositionFromEvent = async (event: Event) => {
 
   if (
     !skipTransaction &&
-    event.logData.eventName === EventType.LiquidityPositionCreated //TEMPORARY TO PREVENT DATA SERVICE FROM CRASHING WHILE WE SORT OUT OTHER SWITCH CASES
+    (event.logData.eventName === EventType.LiquidityPositionCreated ||
+      event.logData.eventName === EventType.TraderPositionCreated) //TEMPORARY TO PREVENT DATA SERVICE FROM CRASHING WHILE WE SORT OUT OTHER SWITCH CASES
   ) {
     console.log("Saving new transaction: ", newTransaction);
     await transactionRepository.save(newTransaction);
@@ -143,7 +150,7 @@ export const upsertMarketPrice = async (transaction: Transaction) => {
     newMp.value = finalPrice;
     newMp.timestamp = transaction.event.timestamp;
     newMp.transaction = transaction;
-    await mpRepository.upsert(newMp, ["timestamp", "transaction"]);
+    await mpRepository.upsert(newMp, ["transaction"]);
     // match on timestamp and txn
   }
 };

@@ -52,8 +52,8 @@ export default function TraderPositionsTable() {
             <Th>Collateral</Th>
             <Th>Base Token</Th>
             <Th>Quote Token</Th>
-            <Th>Net Position</Th>
-            <Th>Gain/Loss</Th>
+            {/* <Th>Net Position</Th> */}
+            {/* <Th>Gain/Loss</Th> */}
             <Th>High Price</Th>
             <Th>Low Price</Th>
             <Th>Unclaimed Fees</Th>
@@ -67,8 +67,8 @@ export default function TraderPositionsTable() {
                 <Td>{row.collateral.toString()}</Td>
                 <Td>{row.baseToken.toString()}</Td>
                 <Td>{row.quoteToken.toString()}</Td>
-                <Td>TODO</Td>
-                <Td>{row.profitLoss.toString()}</Td>
+                {/* <Td>TODO</Td> */}
+                {/* <Td>{row.profitLoss.toString()}</Td> */}
                 <Td>{row.highPrice.toString()}</Td>
                 <Td>{row.lowPrice.toString()}</Td>
                 <Td>{row.unclaimedFees.toString()}</Td>

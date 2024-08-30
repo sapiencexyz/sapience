@@ -7,6 +7,7 @@ import {
   Tbody,
   Td,
 } from '@chakra-ui/react';
+import type { Position } from '@data/entity/Position';
 import { useQuery } from '@tanstack/react-query';
 import { useContext } from 'react';
 
@@ -32,7 +33,15 @@ export default function TraderPositionsTable() {
     });
   };
 
-  const { data: positions, error, isLoading } = usePositions();
+  const {
+    data: positions,
+    error,
+    isLoading,
+  }: {
+    data: Position[] | undefined;
+    error: any;
+    isLoading: boolean;
+  } = usePositions();
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -41,6 +50,7 @@ export default function TraderPositionsTable() {
   if (error) {
     return <div>Error: {error.message}</div>;
   }
+  console.log('trade positions = ', positions);
 
   return (
     <TableContainer mb={4}>
@@ -51,21 +61,20 @@ export default function TraderPositionsTable() {
             <Th>Collateral</Th>
             <Th>Base Token</Th>
             <Th>Quote Token</Th>
-            <Th>Net Position</Th>
-            <Th>Gain/Loss</Th>
+            {/* <Th>Net Position</Th> */}
+            {/* <Th>Gain/Loss</Th> */}
           </Tr>
         </Thead>
         <Tbody>
           {positions &&
-            positions.map((row: any) => (
+            positions.map((row: Position) => (
               <Tr key={row.id}>
-                <Td>{row.nftId.toString()}</Td>
+                <Td>{row.positionId.toString()}</Td>
                 <Td>{row.collateral.toString()}</Td>
                 <Td>{row.baseToken.toString()}</Td>
                 <Td>{row.quoteToken.toString()}</Td>
-                <Td>{row.quoteToken.toString()}</Td>
-                <Td />
-                <Td>{row.profitLoss.toString()}</Td>
+                {/* <Td>TODO</Td> */}
+                {/* <Td>{row.profitLoss.toString()}</Td> */}
               </Tr>
             ))}
         </Tbody>

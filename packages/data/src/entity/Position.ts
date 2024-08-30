@@ -54,6 +54,7 @@ export class Position {
 
   @Column({
     type: "numeric",
+    nullable: true,
     precision: DECIMAL_PRECISION, // Total number of significant digits
     scale: DECIMAL_SCALE, // Number of digits after the decimal point
   })
@@ -61,6 +62,7 @@ export class Position {
 
   @Column({
     type: "numeric",
+    nullable: true,
     precision: DECIMAL_PRECISION, // Total number of significant digits
     scale: DECIMAL_SCALE, // Number of digits after the decimal point
   })
@@ -68,6 +70,7 @@ export class Position {
 
   @Column({
     type: "numeric",
+    nullable: true,
     precision: DECIMAL_PRECISION, // Total number of significant digits
     scale: DECIMAL_SCALE, // Number of digits after the decimal point
   })

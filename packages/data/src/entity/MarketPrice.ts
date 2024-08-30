@@ -11,7 +11,7 @@ import { Transaction } from "./Transaction";
 import { NUMERIC_PRECISION } from "../util/dbUtil";
 
 @Entity()
-@Unique(["transaction", "timestamp"])
+@Unique(["transaction"])
 export class MarketPrice {
   @OneToOne(() => Transaction, (transaction) => transaction.marketPrice)
   @JoinColumn()

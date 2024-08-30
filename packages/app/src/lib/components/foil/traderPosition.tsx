@@ -225,7 +225,8 @@ export default function TraderPosition({}) {
         epoch,
         parseUnits(collateral.toString(), collateralAssetDecimals),
         finalSize,
-        tokenAmountLimit,
+        // tokenAmountLimit,
+        parseUnits('0', 18),
       ];
       console.log('args', args);
       if (nftId === 0) {
