@@ -28,8 +28,22 @@ jobs:
         run: pnpm install
 
       - name: Simulate deploy on Sepolia
-        run: pnpm run simulate-deploy:sepolia
+        id: simulate-deploy
+        run: |
+          output=$(pnpm run simulate-deploy:sepolia)
+          echo "::set-output name=deploy_output::$output"
+          echo "$output"
         working-directory: packages/protocol
+
+      - name: Check for success character
+        run: |
+          if echo "${{ steps.simulate-deploy.outputs.deploy_output }}" | grep -q "💥"; then
+            echo "Deployment simulation successful!"
+            exit 0
+          else
+            echo "Deployment simulation failed: Success character not found in output."
+            exit 1
+          fi
 
   test-contracts:
     runs-on: ubuntu-latest
