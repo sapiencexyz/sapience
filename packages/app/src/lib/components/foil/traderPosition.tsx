@@ -8,7 +8,6 @@ import {
   useRadio,
   useRadioGroup,
   Button,
-  InputRightElement,
   FormLabel,
   Text,
   useToast,
@@ -29,6 +28,7 @@ import { useLoading } from '~/lib/context/LoadingContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
+import { getTokenAmountLimit } from '~/lib/util/positionUtil';
 import {
   convertHundredthsOfBipToPercent,
   renderContractErrorToast,
@@ -138,6 +138,22 @@ export default function TraderPosition({}) {
     args: [epoch],
   });
 
+  const longSizeRead = useReadContract({
+    abi: foilData.abi,
+    address: foilData.address as `0x${string}`,
+    functionName: 'getLongSizeForCollateral',
+    chainId,
+    args: [epoch, parseUnits(collateral.toString(), collateralAssetDecimals)],
+  });
+
+  const shortSizeRead = useReadContract({
+    abi: foilData.abi,
+    address: foilData.address as `0x${string}`,
+    functionName: 'getShortSizeForCollateral',
+    chainId,
+    args: [epoch, parseUnits(collateral.toString(), collateralAssetDecimals)],
+  });
+
   const collateralAmountFunctionResult = useReadContract({
     abi: erc20ABI,
     address: collateralAsset as `0x${string}`,
@@ -193,14 +209,23 @@ export default function TraderPosition({}) {
 
   useEffect(() => {
     if (transactionStep === 2) {
-      const finalSize = !isLong ? -Math.abs(Number(size)) : size;
-      const tokenAmountLimit = finalSize * (1 - slippage / 100);
+      const finalSize = isLong
+        ? (longSizeRead.data as bigint)
+        : BigInt(-1) * (shortSizeRead.data as bigint);
+
+      const tokenAmountLimit = getTokenAmountLimit(
+        finalSize,
+        slippage,
+        referencePriceFunctionResult.data as bigint,
+        !isLong
+      );
+      console.log('tokenAmountLimit', tokenAmountLimit);
+
       const args = [
         epoch,
         parseUnits(collateral.toString(), collateralAssetDecimals),
-        parseUnits(finalSize.toString(), collateralAssetDecimals),
-        parseUnits('0', collateralAssetDecimals),
-        // parseUnits(tokenAmountLimit.toString(), collateralAssetDecimals),
+        finalSize,
+        tokenAmountLimit,
       ];
       console.log('args', args);
       if (nftId === 0) {
@@ -214,11 +239,12 @@ export default function TraderPosition({}) {
         writeContract({
           abi: foilData.abi,
           address: foilData.address as `0x${string}`,
-          functionName: 'updateTraderPosition',
+          functionName: 'modifyTraderPosition',
           args: [
             nftId,
             parseUnits(collateral.toString(), collateralAssetDecimals),
-            parseUnits(finalSize.toString(), collateralAssetDecimals),
+            finalSize, // target amount
+            tokenAmountLimit, // get limit
           ],
         });
       }
@@ -343,6 +369,15 @@ export default function TraderPosition({}) {
     // to do ....refetch states....
   };
 
+  const getSecondInputValue = () => {
+    if (isSizeInput) return Number(collateral);
+    if (isLong && longSizeRead.data)
+      return formatUnits(longSizeRead.data as bigint, collateralAssetDecimals);
+    if (shortSizeRead.data)
+      return formatUnits(shortSizeRead.data as bigint, collateralAssetDecimals);
+    return size;
+  };
+
   return (
     <form onSubmit={handleSubmit}>
       <PositionSelector isLP={false} onChange={setNftId} nftIds={tokenIds} />
@@ -357,7 +392,7 @@ export default function TraderPosition({}) {
         })}
       </Flex>
       <FormControl mb={4}>
-        <FormLabel>Size</FormLabel>
+        <FormLabel>Size (isSizeInput {`${isSizeInput}`} )</FormLabel>
         <InputGroup>
           <Input
             borderRight="none"
@@ -386,12 +421,19 @@ export default function TraderPosition({}) {
         </Text>
       </FormControl>
       <FormControl mb={4}>
+        {/* <Text>
+          Long Size from Read Function:{' '}
+          {longSizeRead.data !== undefined &&
+            formatUnits(longSizeRead.data as bigint, collateralAssetDecimals)}
+        </Text>
+        <Text>
+          Short Size from Read Function:{' '}
+          {shortSizeRead.data !== undefined &&
+            formatUnits(shortSizeRead.data as bigint, collateralAssetDecimals)}
+        </Text>
+        <Text>Size from original formula: {size}</Text> */}
         <InputGroup>
-          <Input
-            readOnly
-            value={isSizeInput ? Number(collateral) : Number(size)}
-            type="number"
-          />
+          <Input readOnly value={getSecondInputValue()} type="number" />
           <InputRightAddon>
             {isSizeInput ? collateralAssetTicker : 'Ggas'}
           </InputRightAddon>

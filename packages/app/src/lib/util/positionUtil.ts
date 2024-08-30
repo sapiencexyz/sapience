@@ -1,4 +1,4 @@
-import { parseUnits } from 'viem';
+import { formatUnits, parseUnits } from 'viem';
 
 /**
  * Calculate the new liquidity of a position after depositing collateral
@@ -26,4 +26,40 @@ export const getNewLiquidity = (
   const newLiquidity: bigint =
     (liquidity * depositAmountBigInt) / positionCollateralAmountBigInt;
   return newLiquidity;
+};
+
+export const getTokenAmountLimit = (
+  size: bigint,
+  slippage: number,
+  refPrice: bigint,
+  isShort?: boolean
+): bigint => {
+  console.log('size -', size);
+  console.log('ref price -', refPrice);
+  console.log('slippage -', slippage);
+
+  const nonBigIntSize = formatUnits(size, 18);
+  const nonBigIntRefPrice = formatUnits(refPrice, 18);
+  const slippageMultiplier = isShort
+    ? 1 - (slippage * 10) / 100
+    : 1 + (slippage * 10) / -100;
+  const tokenAmountLimit: number =
+    Number(nonBigIntSize) * Number(nonBigIntRefPrice) * slippageMultiplier;
+
+  console.log('nonBigIntSize- ', nonBigIntSize);
+  console.log('nonBigIntRefPrice =', nonBigIntRefPrice);
+  console.log('slippageMultiplier-', slippageMultiplier);
+  console.log('tokenAmountLimit', tokenAmountLimit);
+
+  return parseUnits(tokenAmountLimit.toString(), 18);
+
+  // const product = Number(nonBigIntSize) * Number(nonBigIntRefPrice);
+  // const productBigInt = parseUnits(product.toString(), 18);
+  // const slippageMaxDecimals = 2;
+  // const multiplier = 10 ** slippageMaxDecimals;
+  // const numerator = isShort
+  //   ? BigInt(100 * multiplier) + BigInt(slippage * multiplier)
+  //   : BigInt(100 * multiplier) - BigInt(slippage * multiplier);
+  // const denominator = BigInt(100 * multiplier);
+  // return (productBigInt * numerator) / denominator;
 };
