@@ -221,8 +221,6 @@ export default function TraderPosition({}) {
       );
       console.log('tokenAmountLimit', tokenAmountLimit);
 
-      //
-
       const args = [
         epoch,
         parseUnits(collateral.toString(), collateralAssetDecimals),
