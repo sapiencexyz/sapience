@@ -209,10 +209,10 @@ export default function TraderPosition({}) {
 
   useEffect(() => {
     if (transactionStep === 2) {
-      // const finalSize = !isLong ? -Math.abs(Number(size)) : size;
       const finalSize = isLong
         ? (longSizeRead.data as bigint)
-        : (shortSizeRead.data as bigint);
+        : BigInt(-1) * (shortSizeRead.data as bigint);
+
       const tokenAmountLimit = getTokenAmountLimit(
         finalSize,
         slippage,
@@ -221,14 +221,12 @@ export default function TraderPosition({}) {
       );
       console.log('tokenAmountLimit', tokenAmountLimit);
 
+      //
+
       const args = [
         epoch,
         parseUnits(collateral.toString(), collateralAssetDecimals),
         finalSize,
-        // longSize,
-        // parseUnits(finalSize.toString(), collateralAssetDecimals),
-        //  parseUnits('0', collateralAssetDecimals),
-        //  parseUnits(tokenAmountLimit.toString(), collateralAssetDecimals),
         tokenAmountLimit,
       ];
       console.log('args', args);
@@ -243,11 +241,12 @@ export default function TraderPosition({}) {
         writeContract({
           abi: foilData.abi,
           address: foilData.address as `0x${string}`,
-          functionName: 'updateTraderPosition',
+          functionName: 'modifyTraderPosition',
           args: [
             nftId,
             parseUnits(collateral.toString(), collateralAssetDecimals),
-            parseUnits(finalSize.toString(), collateralAssetDecimals),
+            finalSize, // target amount
+            tokenAmountLimit, // get limit
           ],
         });
       }
@@ -440,7 +439,12 @@ export default function TraderPosition({}) {
                           longSizeRead.data as bigint,
                           collateralAssetDecimals
                         )
-                      : size
+                      : shortSizeRead.data
+                        ? formatUnits(
+                            shortSizeRead.data as bigint,
+                            collateralAssetDecimals
+                          )
+                        : 0
                   )
             }
             type="number"

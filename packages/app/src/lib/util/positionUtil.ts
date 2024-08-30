@@ -40,8 +40,10 @@ export const getTokenAmountLimit = (
 
   const nonBigIntSize = formatUnits(size, 18);
   const nonBigIntRefPrice = formatUnits(refPrice, 18);
-  const slippageMultiplier = isShort ? 1 + slippage / 100 : 1 - slippage / 100;
-  const tokenAmountLimit =
+  const slippageMultiplier = isShort
+    ? 1 - (slippage * 10) / 100
+    : 1 + (slippage * 10) / -100;
+  const tokenAmountLimit: number =
     Number(nonBigIntSize) * Number(nonBigIntRefPrice) * slippageMultiplier;
 
   console.log('nonBigIntSize- ', nonBigIntSize);
