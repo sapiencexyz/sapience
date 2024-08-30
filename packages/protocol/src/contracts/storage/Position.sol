@@ -3,7 +3,7 @@
 pragma solidity >=0.8.2 <0.9.0;
 
 import "./Epoch.sol";
-import {SafeCastU256} from "../../synthetix/utils/SafeCast.sol";
+import {SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
 import {PositionKey} from "../libraries/PositionKey.sol";
 import {ERC721Storage} from "./ERC721Storage.sol";
@@ -169,8 +169,8 @@ library Position {
 
         if (newCollateral < requiredCollateral) {
             revert Errors.InsufficientCollateral(
-                newCollateral,
-                requiredCollateral
+                requiredCollateral,
+                newCollateral
             );
         }
 
@@ -207,5 +207,29 @@ library Position {
         );
 
         return self.depositedCollateralAmount;
+    }
+
+    function consolidateDebtsAndTokens(Data storage self) internal {
+        if (self.borrowedVEth > self.vEthAmount) {
+            self.borrowedVEth -= self.vEthAmount;
+            self.vEthAmount = 0;
+        } else {
+            self.vEthAmount -= self.borrowedVEth;
+            self.borrowedVEth = 0;
+        }
+
+        if (self.borrowedVGas > self.vGasAmount) {
+            self.borrowedVGas -= self.vGasAmount;
+            self.vGasAmount = 0;
+        } else {
+            self.vGasAmount -= self.borrowedVGas;
+            self.borrowedVGas = 0;
+        }
+
+        // Size of the position is the amount of vGas and direction depends on the kind
+        // TODO remove currentTokenAmount and get it from the position size
+        self.currentTokenAmount =
+            self.vGasAmount.toInt() -
+            self.borrowedVGas.toInt();
     }
 }

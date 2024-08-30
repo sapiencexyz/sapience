@@ -1,14 +1,14 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.8.11 <0.9.0;
-import "../../synthetix/utils/AddressUtil.sol";
-import "../../synthetix/utils/StringUtil.sol";
-import "../../synthetix/utils/ERC2771Context.sol";
-import "../../synthetix/errors/AddressError.sol";
-import "../../synthetix/errors/AccessError.sol";
-import "../../synthetix/errors/InitError.sol";
-import "../../synthetix/errors/ParameterError.sol";
+import "@synthetixio/core-contracts/contracts/utils/AddressUtil.sol";
+import "@synthetixio/core-contracts/contracts/utils/StringUtil.sol";
+import "@synthetixio/core-contracts/contracts/utils/ERC2771Context.sol";
+import "@synthetixio/core-contracts/contracts/errors/AddressError.sol";
+import "@synthetixio/core-contracts/contracts/errors/AccessError.sol";
+import "@synthetixio/core-contracts/contracts/errors/InitError.sol";
+import "@synthetixio/core-contracts/contracts/errors/ParameterError.sol";
 import "../interfaces/IERC721.sol";
-import "../../synthetix/interfaces/IERC721Receiver.sol";
+import "@synthetixio/core-contracts/contracts/interfaces/IERC721Receiver.sol";
 import "./ERC721EnumerableStorage.sol";
 
 library ERC721Storage {

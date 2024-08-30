@@ -10,12 +10,12 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useContext } from 'react';
 
+import { API_BASE_URL } from '~/lib/constants/constants';
 import { MarketContext } from '~/lib/context/MarketProvider';
 
 export default function TraderPositionsTable() {
-  const { chain, address } = useContext(MarketContext);
-  const contractId = `${chain?.id}:${address}`;
-  const API_BASE_URL = 'http://localhost:3000';
+  const { chainId, address } = useContext(MarketContext);
+  const contractId = `${chainId}:${address}`;
   const usePositions = () => {
     return useQuery({
       queryKey: ['liquidityPositions', contractId],
@@ -33,6 +33,7 @@ export default function TraderPositionsTable() {
   };
 
   const { data: positions, error, isLoading } = usePositions();
+  console.log('positions = ', positions);
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -62,12 +63,11 @@ export default function TraderPositionsTable() {
           {positions &&
             positions.map((row: any) => (
               <Tr key={row.id}>
-                <Td>{row.nftId.toString()}</Td>
+                <Td>{row.positionId.toString()}</Td>
                 <Td>{row.collateral.toString()}</Td>
                 <Td>{row.baseToken.toString()}</Td>
                 <Td>{row.quoteToken.toString()}</Td>
-                <Td>{row.quoteToken.toString()}</Td>
-                <Td />
+                <Td>TODO</Td>
                 <Td>{row.profitLoss.toString()}</Td>
                 <Td>{row.highPrice.toString()}</Td>
                 <Td>{row.lowPrice.toString()}</Td>

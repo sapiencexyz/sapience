@@ -1,13 +1,16 @@
+import { NUMERIC_PRECISION } from "../util/dbUtil";
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
   Unique,
+  ManyToOne,
 } from "typeorm";
+import { Market } from "./Market";
 
 @Entity()
-@Unique(["contractId", "timestamp"])
+@Unique(["market", "timestamp"])
 export class Price {
   @PrimaryGeneratedColumn()
   id: number;
@@ -15,8 +18,8 @@ export class Price {
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column()
-  contractId: string;
+  @ManyToOne(() => Market, (market) => market.prices)
+  market: Market;
 
   @Column({ type: "bigint" })
   blockNumber: string;
@@ -24,6 +27,6 @@ export class Price {
   @Column({ type: "bigint" })
   timestamp: string;
 
-  @Column({ type: "bigint" })
+  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
   value: string;
 }

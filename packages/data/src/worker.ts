@@ -1,3 +1,4 @@
+import dataSource, { initializeDataSource } from "./db";
 import { Abi, Chain, createPublicClient, http, webSocket } from "viem";
 import * as chains from "viem/chains";
 import { indexBaseFeePerGas, indexBaseFeePerGasRange } from "./processes/chain";
@@ -5,15 +6,21 @@ import { indexMarketEvents, indexMarketEventsRange } from "./processes/market"; 
 import { mainnet, sepolia, hardhat } from "viem/chains";
 import FoilLocal from "@/protocol/deployments/13370/Foil.json";
 import FoilSepolia from "@/protocol/deployments/11155111/Foil.json";
+import { Market } from "./entity/Market";
+import { Epoch } from "./entity/Epoch";
 
 const mainnetPublicClient = createPublicClient({
   chain: mainnet,
-  transport: process.env.INFURA_API_KEY ? webSocket(`wss://mainnet.infura.io/ws/v3/${process.env.INFURA_API_KEY}`) : http(),
+  transport: process.env.INFURA_API_KEY
+    ? webSocket(`wss://mainnet.infura.io/ws/v3/${process.env.INFURA_API_KEY}`)
+    : http(),
 });
 
 const sepoliaPublicClient = createPublicClient({
   chain: sepolia,
-  transport: process.env.INFURA_API_KEY ? webSocket(`wss://sepolia.infura.io/ws/v3/${process.env.INFURA_API_KEY}`) : http(),
+  transport: process.env.INFURA_API_KEY
+    ? webSocket(`wss://sepolia.infura.io/ws/v3/${process.env.INFURA_API_KEY}`)
+    : http(),
 });
 
 hardhat.id = 13370 as any;
@@ -66,7 +73,14 @@ async function indexBaseFeePerGasRangeCommand(
     `Indexing base fee per gas from block ${startBlock} to ${endBlock} for contract ${contractAddress} using ${rpcUrl}`
   );
   const client = await createViemPublicClient(rpcUrl);
-  await indexBaseFeePerGasRange(client, startBlock, endBlock, contractAddress);
+  const [chainId, address] = contractAddress.split(":");
+  await indexBaseFeePerGasRange(
+    client,
+    startBlock,
+    endBlock,
+    parseInt(chainId),
+    address
+  );
 }
 
 async function indexMarketEventsRangeCommand(
@@ -89,26 +103,69 @@ async function indexMarketEventsRangeCommand(
   );
 }
 
+async function initializeMarkets() {
+  await initializeDataSource();
+  const marketRepository = dataSource.getRepository(Market);
+  const epochRepository = dataSource.getRepository(Epoch);
+
+  // LOCAL
+  let localMarket = await marketRepository.findOne({
+    where: { address: FoilLocal.address, chainId: hardhat.id },
+    relations: ["epochs"],
+  });
+  if (!localMarket) {
+    localMarket = new Market();
+    localMarket.address = FoilLocal.address;
+    localMarket.chainId = hardhat.id;
+    localMarket = await marketRepository.save(localMarket);
+
+    const localEpoch = new Epoch();
+    localEpoch.epochId = 1;
+    localEpoch.market = localMarket;
+    await epochRepository.save(localEpoch);
+  }
+
+  // SEPOLIA
+  let sepoliaMarket = await marketRepository.findOne({
+    where: { address: FoilSepolia.address, chainId: sepolia.id },
+    relations: ["epochs"],
+  });
+  if (!sepoliaMarket) {
+    sepoliaMarket = new Market();
+    sepoliaMarket.address = FoilSepolia.address;
+    sepoliaMarket.chainId = sepolia.id;
+    sepoliaMarket = await marketRepository.save(sepoliaMarket);
+
+    const sepoliaEpoch = new Epoch();
+    sepoliaEpoch.epochId = 1;
+    sepoliaEpoch.market = sepoliaMarket;
+    await epochRepository.save(sepoliaEpoch);
+  }
+
+  const allEpochs = await epochRepository.find({ relations: ["market"] });
+  console.log("All Epochs:", allEpochs);
+
+  const allMarkets = await marketRepository.find({ relations: ["epochs"] });
+  console.log("All Markets:", allMarkets);
+  console.log("First epoch in market:", allMarkets[0].epochs);
+}
+
 if (process.argv.length < 3) {
-  Promise.all([
-    indexBaseFeePerGas(
-      mainnetPublicClient,
-      `${hardhat.id}:${FoilLocal.address}`
-    ),
-    indexBaseFeePerGas(
-      mainnetPublicClient,
-      `${sepolia.id}:${FoilSepolia.address}`
-    ),
-    indexMarketEvents(
-      sepoliaPublicClient,
-      FoilSepolia as { address: string; abi: Abi }
-    ),
-    indexMarketEvents(
-      cannonPublicClient,
-      FoilLocal as { address: string; abi: Abi }
-    ),
-  ]).catch((error) => {
-    console.error("Error running processes in parallel:", error);
+  initializeMarkets().then(() => {
+    Promise.all([
+      indexBaseFeePerGas(mainnetPublicClient, hardhat.id, FoilLocal.address),
+      indexBaseFeePerGas(mainnetPublicClient, sepolia.id, FoilSepolia.address),
+      indexMarketEvents(
+        sepoliaPublicClient,
+        FoilSepolia as { address: string; abi: Abi }
+      ),
+      indexMarketEvents(
+        cannonPublicClient,
+        FoilLocal as { address: string; abi: Abi }
+      ),
+    ]).catch((error) => {
+      console.error("Error running processes in parallel:", error);
+    });
   });
 } else {
   const args = process.argv.slice(2);

@@ -35,6 +35,7 @@
     "@uniswap/v3-sdk": "^3.13.1",
     "date-fns": "^3.6.0",
     "framer-motion": "^10.18.0",
+    "jsbi": "^4.3.0",
     "lodash": "^4.17.21",
     "next": "^14.2.5",
     "next-pwa": "^5.6.0",
@@ -68,6 +69,6 @@
   },
   "engines": {
     "node": ">=20.14.x",
-    "pnpm": ">=8"
+    "pnpm": "9.x"
   }
 }

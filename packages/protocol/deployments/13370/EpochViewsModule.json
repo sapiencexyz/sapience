@@ -1,5 +1,5 @@
 {
-  "address": "0x0DaBE96E09E407cBf823cc997417461934fdB6B6",
+  "address": "0x10C115A67BF07B2766ce0A6d36ba884Dbc912bfa",
   "abi": [
     {
       "type": "function",
@@ -36,6 +36,68 @@
           "name": "gasToken",
           "type": "address",
           "internalType": "address"
+        },
+        {
+          "name": "minPriceD18",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "maxPriceD18",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "settled",
+          "type": "bool",
+          "internalType": "bool"
+        },
+        {
+          "name": "settlementPriceD18",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "params",
+          "type": "tuple",
+          "internalType": "struct IFoilStructs.EpochParams",
+          "components": [
+            {
+              "name": "baseAssetMinPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "baseAssetMaxPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "feeRate",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "assertionLiveness",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "bondAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "priceUnit",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ]
         }
       ],
       "stateMutability": "view"
@@ -74,6 +136,68 @@
           "name": "gasToken",
           "type": "address",
           "internalType": "address"
+        },
+        {
+          "name": "minPriceD18",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "maxPriceD18",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "settled",
+          "type": "bool",
+          "internalType": "bool"
+        },
+        {
+          "name": "settlementPriceD18",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "params",
+          "type": "tuple",
+          "internalType": "struct IFoilStructs.EpochParams",
+          "components": [
+            {
+              "name": "baseAssetMinPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "baseAssetMaxPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "feeRate",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "assertionLiveness",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "bondAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "priceUnit",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ]
         }
       ],
       "stateMutability": "view"
@@ -95,11 +219,6 @@
         },
         {
           "name": "uniswapPositionManager",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "uniswapQuoter",
           "type": "address",
           "internalType": "address"
         },
@@ -175,7 +294,7 @@
           "internalType": "struct Position.Data",
           "components": [
             {
-              "name": "tokenId",
+              "name": "id",
               "type": "uint256",
               "internalType": "uint256"
             },
@@ -218,6 +337,16 @@
               "name": "currentTokenAmount",
               "type": "int256",
               "internalType": "int256"
+            },
+            {
+              "name": "uniswapPositionId",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "isSettled",
+              "type": "bool",
+              "internalType": "bool"
             }
           ]
         }
@@ -232,12 +361,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xda7e61920275c692226b0d9fd77a429b5432b93b6580e9aa732b7b3a6d437f99",
+  "deployTxnHash": "0xd63591cb461e040fde93f6aad4f529b6c4c5d543cc7ea2cd950e23a85147a5ea",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1723830378",
+  "deployTimestamp": "1724962061",
   "sourceName": "src/contracts/modules/EpochViewsModule.sol",
   "contractName": "EpochViewsModule",
   "deployedOn": "deploy.EpochViewsModule",
-  "gasUsed": 443327,
-  "gasCost": "1002579454"
+  "gasUsed": 642455,
+  "gasCost": "1000239496"
 }
