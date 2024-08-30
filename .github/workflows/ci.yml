@@ -29,28 +29,48 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
-
-      - name: Simulate deploy on Sepolia
+      - name: Simulate deploy on Sepolia with timeout
         id: simulate-deploy
         run: |
           set -eo pipefail
-          output=$(pnpm run simulate-deploy:sepolia 2>&1)
-          echo "$output"
+          
+          # Run the command with a 10-minute timeout and tee output to both console and file
+          if timeout 10m pnpm run simulate-deploy:sepolia 2>&1 | tee deploy_output.log; then
+            echo "Command completed successfully"
+          else
+            exit_code=$?
+            if [ $exit_code -eq 124 ]; then
+              echo "Command timed out after 10 minutes"
+            else
+              echo "Command failed with exit code $exit_code"
+            fi
+            exit $exit_code
+          fi
+          
+          # Set the output for the next step
           echo "DEPLOY_OUTPUT<<EOF" >> $GITHUB_OUTPUT
-          echo "$output" >> $GITHUB_OUTPUT
+          cat deploy_output.log >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
         working-directory: packages/protocol
 
       - name: Check for 💥
         run: |
-          if echo "${{ steps.simulate-deploy.outputs.DEPLOY_OUTPUT }}" | grep -q "💥"; then
+          if grep -q "💥" deploy_output.log; then
             echo "Deployment simulation successful!"
           else
             echo "Deployment simulation failed: 💥 not found in output."
             echo "Full output:"
-            echo "${{ steps.simulate-deploy.outputs.DEPLOY_OUTPUT }}"
+            cat deploy_output.log
             exit 1
           fi
+        working-directory: packages/protocol
+
+      - name: Upload deploy output as artifact
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: deploy-output
+          path: packages/protocol/deploy_output.log
 
   test-contracts:
     runs-on: ubuntu-latest
