@@ -30,6 +30,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Test run
+        run: pnpm run simulate-deploy:sepolia > deploy_output.log 2>&1
+
       - name: Simulate deploy on Sepolia
         id: simulate-deploy
         run: |
