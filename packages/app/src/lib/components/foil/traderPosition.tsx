@@ -393,7 +393,7 @@ export default function TraderPosition({}) {
         })}
       </Flex>
       <FormControl mb={4}>
-        <FormLabel>Size (isSizeInput {`${isSizeInput}`} )</FormLabel>
+        <FormLabel>Size</FormLabel>
         <InputGroup>
           <Input
             borderRight="none"
