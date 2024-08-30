@@ -16,6 +16,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
@@ -27,8 +30,34 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Forge build
+        run: forge build
+        working-directory: packages/protocol
+
       - name: Simulate deploy on Sepolia
-        run: pnpm run simulate-deploy:sepolia
+        id: simulate-deploy
+        run: |
+          set -eo pipefail
+          pnpm run simulate-deploy:sepolia > deploy_output.log 2>&1
+          
+          echo "DEPLOY_OUTPUT<<EOF" >> $GITHUB_OUTPUT
+          cat deploy_output.log >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        working-directory: packages/protocol
+
+      - name: Check for success
+        run: |
+          if grep -q "💥" deploy_output.log; then
+            echo "Deployment simulation successful!"
+          elif grep -q "ELIFECYCLE" deploy_output.log; then
+            echo "Deployment simulation failed. Full output:"
+            cat deploy_output.log
+            exit 1
+          else
+            echo "Unexpected output. Full log:"
+            cat deploy_output.log
+            exit 1
+          fi
         working-directory: packages/protocol
 
   test-contracts:
