@@ -22,7 +22,22 @@ const startServer = async () => {
   const transactionRepository = dataSource.getRepository(Transaction);
 
   const app = express();
-  app.use(cors());
+  
+  const corsOptions: cors.CorsOptions = {
+    origin: (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) => {
+      if (process.env.NODE_ENV === 'dev') {
+        callback(null, true);
+      } else if (origin && /^https?:\/\/([a-zA-Z0-9-]+\.)*foil\.xyz$/.test(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    optionsSuccessStatus: 200
+  };
+
+  app.use(cors(corsOptions));
+
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
   });
