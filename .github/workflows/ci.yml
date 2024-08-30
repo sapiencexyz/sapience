@@ -31,7 +31,7 @@ jobs:
         run: pnpm install
 
       - name: Test run
-        run: pnpm run simulate-deploy:sepolia > deploy_output.log 2>&1
+        run: pnpm run simulate-deploy:sepolia
 
       - name: Simulate deploy on Sepolia
         id: simulate-deploy
