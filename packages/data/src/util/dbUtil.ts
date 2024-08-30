@@ -88,6 +88,7 @@ export const upsertTransactionAndPositionFromEvent = async (event: Event) => {
     console.log("Saving new transaction: ", newTransaction);
     await transactionRepository.save(newTransaction);
     await createOrModifyPosition(newTransaction);
+    await upsertMarketPrice(newTransaction);
   }
 };
 
@@ -143,6 +144,7 @@ export const upsertMarketPrice = async (transaction: Transaction) => {
     transaction.type === TransactionType.LONG ||
     transaction.type === TransactionType.SHORT
   ) {
+    console.log("Upserting market price for transaction: ", transaction);
     const mpRepository = dataSource.getRepository(MarketPrice);
     // upsert market price
     const newMp = new MarketPrice(); // might already get saved when upserting txn
@@ -150,8 +152,8 @@ export const upsertMarketPrice = async (transaction: Transaction) => {
     newMp.value = finalPrice;
     newMp.timestamp = transaction.event.timestamp;
     newMp.transaction = transaction;
-    await mpRepository.upsert(newMp, ["transaction"]);
-    // match on timestamp and txn
+    console.log("upserting market price: ", newMp);
+    await mpRepository.save(newMp);
   }
 };
 

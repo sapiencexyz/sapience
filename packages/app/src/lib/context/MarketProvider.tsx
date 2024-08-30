@@ -250,7 +250,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     queryKey: ['prices', contractId],
     queryFn: async () => {
       const response = await fetch(
-        `${API_BASE_URL}/prices/chart-data?contractId=${contractId}&startTimestamp=${state.startTime}&endTimestamp=${state.endTime}`
+        `${API_BASE_URL}/prices/chart-data?contractId=${contractId}&epochId=${epoch}`
       );
       if (!response.ok) {
         throw new Error('Network response was not ok');

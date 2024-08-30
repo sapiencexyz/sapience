@@ -9,6 +9,7 @@ import { Between } from "typeorm";
 import { Event } from "./entity/Event";
 import { Transaction } from "./entity/Transaction";
 import { Epoch } from "./entity/Epoch";
+import { MarketPrice } from "./entity/MarketPrice";
 
 const PORT = 3001;
 
@@ -19,6 +20,7 @@ const startServer = async () => {
   const epochRepository = dataSource.getRepository(Epoch);
   const priceRepository = dataSource.getRepository(Price);
   const marketRepository = dataSource.getRepository(Market);
+  const marketPriceRepository = dataSource.getRepository(MarketPrice);
   const transactionRepository = dataSource.getRepository(Transaction);
 
   const app = express();
@@ -49,92 +51,64 @@ const startServer = async () => {
     console.log(`Server is running on port ${PORT}`);
   });
 
-  // Get all price data points between specified timestamps and filtered by market
-  app.get("/prices", async (req, res) => {
-    const { startTimestamp, endTimestamp, contractId } = req.query;
-    const [chainId, address] = (contractId as string).split(":");
-    const where: any = {};
-
-    if (startTimestamp && endTimestamp) {
-      where.timestamp = Between(Number(startTimestamp), Number(endTimestamp));
-    }
-
-    if (chainId && address) {
-      const market = await marketRepository.findOne({
-        where: { chainId: Number(chainId), address: String(address) },
-      });
-      if (!market) {
-        return res.status(404).json({ error: "Market not found" });
-      }
-      where.market = market;
-    }
-
-    const prices = await priceRepository.find({
-      where,
-      relations: ["market"],
-      order: { timestamp: "ASC" },
-    });
-    res.json(prices);
-  });
-
-  // Get data for rendering candlestick/boxplot charts filtered by contractId
+  // Get market price data for rendering candlestick/boxplot charts filtered by contractId
   app.get("/prices/chart-data", async (req, res) => {
-    // TODO: GET MARKET PRICE
-    const { startTimestamp, endTimestamp, contractId } = req.query;
-    const [chainId, address] = (contractId as string).split(":");
-    const where: any = {};
-
-    if (startTimestamp && endTimestamp) {
-      where.timestamp = Between(Number(startTimestamp), Number(endTimestamp));
-    }
-
-    if (chainId && address) {
-      const market = await marketRepository.findOne({
-        where: { chainId: Number(chainId), address: String(address) },
-      });
-      if (!market) {
-        return res.status(404).json({ error: "Market not found" });
-      }
-      where.market = market;
-    }
-
-    const prices = await priceRepository.find({
-      where,
-      relations: ["market"],
-      order: { timestamp: "ASC" },
-    });
-
-    if (prices.length === 0) {
-      return res.status(404).json({
-        error: "No data found for the specified range and market",
-      });
-    }
-
-    // Group prices by date (ignoring time)
-    const groupedPrices = prices.reduce(
-      (acc, price) => {
-        const date = new Date(Number(price.timestamp) * 1000)
-          .toISOString()
-          .split("T")[0];
-        if (!acc[date]) {
-          acc[date] = [];
-        }
-        acc[date].push(price);
-        return acc;
+    const all = await marketPriceRepository.find({
+      relations: {
+        transaction: true,
       },
-      {} as Record<string, any[]>
-    );
-
-    // Create candlestick data from grouped prices
-    const chartData = Object.entries(groupedPrices).map(([date, prices]) => {
-      const open = prices[0].value;
-      const close = prices[prices.length - 1].value;
-      const high = Math.max(...prices.map((p) => Number(p.value)));
-      const low = Math.min(...prices.map((p) => Number(p.value)));
-      return { date, open, close, low, high };
     });
+    console.log("all market prices -", all);
+    const { contractId, epochId } = req.query;
 
-    res.json(chartData);
+    if (typeof contractId !== "string") {
+      return res.status(400).json({ error: "Invalid contractId" });
+    }
+    const [chainId, address] = contractId.split(":");
+
+    try {
+      const marketPrices = await marketPriceRepository
+        .createQueryBuilder("marketPrice")
+        .innerJoinAndSelect("marketPrice.transaction", "transaction")
+        .innerJoinAndSelect("transaction.event", "event")
+        .innerJoinAndSelect("event.epoch", "epoch")
+        .innerJoinAndSelect("epoch.market", "market")
+        .where("market.chainId = :chainId", { chainId })
+        .andWhere("market.address = :address", { address })
+        .andWhere("epoch.epochId = :epochId", { epochId })
+        .orderBy("marketPrice.timestamp", "DESC")
+        .getMany();
+
+      console.log("marketPrices = ", marketPrices);
+
+      // Group prices by date (ignoring time)
+      const groupedPrices = marketPrices.reduce(
+        (acc, price) => {
+          const date = new Date(Number(price.timestamp) * 1000)
+            .toISOString()
+            .split("T")[0];
+          if (!acc[date]) {
+            acc[date] = [];
+          }
+          acc[date].push(price);
+          return acc;
+        },
+        {} as Record<string, any[]>
+      );
+
+      // Create candlestick data from grouped prices
+      const chartData = Object.entries(groupedPrices).map(([date, prices]) => {
+        const open = prices[0].value;
+        const close = prices[prices.length - 1].value;
+        const high = Math.max(...prices.map((p) => Number(p.value)));
+        const low = Math.min(...prices.map((p) => Number(p.value)));
+        return { date, open, close, low, high };
+      });
+      res.json(chartData);
+    } catch (error) {
+      console.error("Error fetching market prices:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
   });
 
   // Get average price over a specified time period filtered by market

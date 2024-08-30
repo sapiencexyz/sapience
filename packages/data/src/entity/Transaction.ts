@@ -37,9 +37,8 @@ export enum TransactionType {
 
 @Entity()
 export class Transaction {
-  @OneToOne(() => MarketPrice, (mp) => mp.transaction, {
-    cascade: true,
-  })
+  @OneToOne(() => MarketPrice, (mp) => mp.transaction)
+  @JoinColumn()
   marketPrice: MarketPrice;
 
   @OneToOne(() => Event, (event) => event.transaction, {
@@ -74,9 +73,7 @@ export class Transaction {
 
   // AfterInsert AfterUpdate and AfterRemove to update the associated Position based on positionId
   @AfterInsert()
-  async afterInsert() {
-    // await upsertMarketPrice(this);
-  }
+  async afterInsert() {}
 
   @AfterUpdate()
   afterUpdate() {

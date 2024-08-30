@@ -69,6 +69,7 @@ const CandlestickChart: React.FC = () => {
   const grayColor = colors.gray?.[800] ?? '#808080';
 
   const { averagePrice, prices } = useContext(MarketContext);
+  console.log('prices', prices);
 
   const yAxisDomain = [
     Math.min(...prices.map((p) => p.low)),
