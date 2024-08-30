@@ -34,7 +34,7 @@ jobs:
         id: simulate-deploy
         run: |
           set -eo pipefail
-          pnpm run simulate-deploy:sepolia 2>&1 | tee deploy_output.log
+          pnpm run simulate-deploy:sepolia > deploy_output.log 2>&1
           
           echo "DEPLOY_OUTPUT<<EOF" >> $GITHUB_OUTPUT
           cat deploy_output.log >> $GITHUB_OUTPUT
