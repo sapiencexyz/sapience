@@ -3,7 +3,7 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import {IFoilStructs} from "./IFoilStructs.sol";
 
-interface IEpochConfigurationModule {
+interface IConfigurationModule {
     function initializeMarket(
         address owner,
         address collateralAsset,

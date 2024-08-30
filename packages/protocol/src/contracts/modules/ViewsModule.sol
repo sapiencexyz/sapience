@@ -2,10 +2,10 @@
 pragma solidity >=0.8.25 <0.9.0;
 
 import "../storage/Epoch.sol";
-import "../interfaces/IEpochViewsModule.sol";
+import "../interfaces/IViewsModule.sol";
 import "../interfaces/IFoilStructs.sol";
 
-contract EpochViewsModule is IEpochViewsModule {
+contract ViewsModule is IViewsModule {
     function getMarket()
         external
         view

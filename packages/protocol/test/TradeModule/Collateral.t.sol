@@ -30,12 +30,14 @@ contract TradePositionCollateral is TestTrade {
     address tokenB;
     IUniswapV3Pool uniCastedPool;
     uint256 feeRate;
-    int24 LOWERTICK = 12200; //3.31
-    int24 UPPERTICK = 12400; //3.52
-    uint256 collateralForOrders = 10 ether;
+    int24 LP_LOWER_TICK = 12200; //3.31
+    int24 LP_UPPER_TICK = 12400; //3.52
+    uint256 COLLATERAL_FOR_ORDERS = 10 ether;
+    uint160 INITIAL_PRICE_SQRT = 146497135921788803112962621440; // 3.419
 
     function setUp() public {
-        uint160 startingSqrtPriceX96 = 146497135921788803112962621440; // 3.419
+        uint160 startingSqrtPriceX96 = INITIAL_PRICE_SQRT;
+
         (foil, ) = createEpoch(5200, 28200, startingSqrtPriceX96); // 1.709 to 17.09 (1.6819839204636384 to 16.774485460620674)
 
         lp1 = TestUser.createUser("LP1", 10_000_000 ether);
@@ -51,11 +53,38 @@ contract TradePositionCollateral is TestTrade {
             foil,
             pool,
             epochId,
-            collateralForOrders * 100_000,
-            LOWERTICK,
-            UPPERTICK
+            COLLATERAL_FOR_ORDERS * 100_000,
+            LP_LOWER_TICK,
+            LP_UPPER_TICK
         ); // enough to keep price stable (no slippage)
         vm.stopPrank();
+    }
+
+    function test_views_wip_Only() public {
+        uint256 longSize = foil.getLongSizeForCollateral(epochId, 1 ether);
+        console2.log("requiredCollateral", longSize);
+        uint256 shortSize = foil.getShortSizeForCollateral(epochId, 1 ether);
+        console2.log("requiredCollateral", shortSize);
+
+        // create a long position with 1 ether collateral as trader1
+        vm.startPrank(trader1);
+        vm.expectRevert();
+        foil.createTraderPosition(epochId, .99 ether, int256(longSize), 0);
+
+        uint256 longPositionId = foil.createTraderPosition(
+            epochId,
+            1 ether,
+            int256(longSize),
+            0
+        );
+        vm.stopPrank();
+
+        Position.Data memory position = foil.getPosition(longPositionId);
+        assertEq(position.depositedCollateralAmount, 1 ether);
+        console2.log(
+            "position.depositedCollateralAmount",
+            position.depositedCollateralAmount
+        );
     }
 
     function test_createTraderPosition_long_RevertIf_NotEnoughCollateral()
