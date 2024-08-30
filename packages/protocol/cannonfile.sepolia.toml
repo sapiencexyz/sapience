@@ -27,41 +27,45 @@ source="usdc-token"
 [deploy.ReentrancyGuard]
 artifact = "ReentrancyGuard"
 
-[deploy.EpochConfigurationModule]
-artifact="EpochConfigurationModule"
+[deploy.ConfigurationModule]
+artifact="ConfigurationModule"
 libraries.ReentrancyGuard="<%= contracts.ReentrancyGuard.address %>"
 
-[deploy.EpochLiquidityModule]
-artifact="EpochLiquidityModule"
+[deploy.LiquidityModule]
+artifact="LiquidityModule"
 
-[deploy.EpochUMASettlementModule]
-artifact="EpochUMASettlementModule"
+[deploy.UMASettlementModule]
+artifact="UMASettlementModule"
 
-[deploy.EpochTradeModule]
-artifact="EpochTradeModule"
+[deploy.TradeModule]
+artifact="TradeModule"
 
-[deploy.EpochNftModule]
-artifact="EpochNftModule"
+[deploy.TradeViewsModule]
+artifact="TradeViewsModule"
 
-[deploy.EpochViewsModule]
-artifact="EpochViewsModule"
+[deploy.NftModule]
+artifact="NftModule"
 
-[deploy.EpochERC165Module]
-artifact="EpochERC165Module"
+[deploy.ViewsModule]
+artifact="ViewsModule"
 
-[deploy.EpochSettlementModule]
-artifact="EpochSettlementModule"
+[deploy.ERC165Module]
+artifact="ERC165Module"
+
+[deploy.SettlementModule]
+artifact="SettlementModule"
 
 [router.Foil]
 contracts=[
-  "EpochConfigurationModule",
-  "EpochLiquidityModule",
-  "EpochUMASettlementModule",
-  "EpochTradeModule",
-  "EpochNftModule",
-  "EpochViewsModule",
-  "EpochERC165Module",
-  "EpochSettlementModule"
+  "ConfigurationModule",
+  "LiquidityModule",
+  "UMASettlementModule",
+  "TradeModule",
+  "TradeViewsModule",
+  "NftModule",
+  "ViewsModule",
+  "ERC165Module",
+  "SettlementModule"
 ]
 
 [invoke.initializeMarket]

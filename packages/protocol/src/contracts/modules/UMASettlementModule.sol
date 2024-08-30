@@ -5,10 +5,10 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Epoch} from "../storage/Epoch.sol";
 import {Market} from "../storage/Market.sol";
-import {IEpochUMASettlementModule} from "../interfaces/IEpochUMASettlementModule.sol";
+import {IUMASettlementModule} from "../interfaces/IUMASettlementModule.sol";
 import {OptimisticOracleV3Interface} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 
-contract EpochUMASettlementModule is IEpochUMASettlementModule, ReentrancyGuard {
+contract UMASettlementModule is IUMASettlementModule, ReentrancyGuard {
     using Epoch for Epoch.Data;
 
     function submitSettlementPrice(
@@ -18,7 +18,10 @@ contract EpochUMASettlementModule is IEpochUMASettlementModule, ReentrancyGuard 
         Market.Data storage market = Market.load();
         Epoch.Data storage epoch = Epoch.loadValid(epochId);
 
-        require(block.timestamp > epoch.endTime, "Market activity is still allowed");
+        require(
+            block.timestamp > epoch.endTime,
+            "Market activity is still allowed"
+        );
         require(
             msg.sender == market.owner,
             "Only owner can call this function"
@@ -86,7 +89,10 @@ contract EpochUMASettlementModule is IEpochUMASettlementModule, ReentrancyGuard 
         Epoch.Data storage epoch = Epoch.load(epochId);
 
         require(assertionId == epoch.assertionId, "Invalid assertionId");
-        require(block.timestamp > epoch.endTime, "Market activity is still allowed");
+        require(
+            block.timestamp > epoch.endTime,
+            "Market activity is still allowed"
+        );
         require(
             msg.sender == address(market.optimisticOracleV3),
             "Invalid caller"
@@ -95,10 +101,14 @@ contract EpochUMASettlementModule is IEpochUMASettlementModule, ReentrancyGuard 
 
         Epoch.Settlement storage settlement = epoch.settlement;
 
-        if(!epoch.settlement.disputed) {
+        if (!epoch.settlement.disputed) {
             epoch.setSettlementPriceInRange(settlement.settlementPriceD18);
             epoch.settled = true;
-            emit MarketSettled(epochId, assertionId, settlement.settlementPriceD18);
+            emit MarketSettled(
+                epochId,
+                assertionId,
+                settlement.settlementPriceD18
+            );
         }
     }
 
@@ -108,7 +118,10 @@ contract EpochUMASettlementModule is IEpochUMASettlementModule, ReentrancyGuard 
         uint256 epochId = market.epochIdByAssertionId[assertionId];
         Epoch.Data storage epoch = Epoch.load(epochId);
 
-        require(block.timestamp > epoch.endTime, "Market activity is still allowed");
+        require(
+            block.timestamp > epoch.endTime,
+            "Market activity is still allowed"
+        );
         require(
             msg.sender == address(market.optimisticOracleV3),
             "Invalid caller"

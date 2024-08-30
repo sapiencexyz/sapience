@@ -4,7 +4,7 @@ pragma solidity >=0.8.2 <0.9.0;
 import {IFoilStructs} from "./IFoilStructs.sol";
 import {Position} from "../storage/Position.sol";
 
-interface IEpochViewsModule {
+interface IViewsModule {
     function getMarket()
         external
         view

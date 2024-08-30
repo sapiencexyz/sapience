@@ -7,19 +7,18 @@ import {TestEpoch} from "../helpers/TestEpoch.sol";
 import {IFoilStructs} from "../../src/contracts/interfaces/IFoilStructs.sol";
 import {IMintableToken} from "../../src/contracts/external/IMintableToken.sol";
 import {IFoil} from "../../src/contracts/interfaces/IFoil.sol";
-import {EpochSettlementModule} from "../../src/contracts/modules/EpochSettlementModule.sol";
-import {EpochTradeModule} from "../../src/contracts/modules/EpochTradeModule.sol";
+import {SettlementModule} from "../../src/contracts/modules/SettlementModule.sol";
+import {TradeModule} from "../../src/contracts/modules/TradeModule.sol";
 import {Market} from "../../src/contracts/storage/Market.sol";
 import {Position} from "../../src/contracts/storage/Position.sol";
 import {Epoch} from "../../src/contracts/storage/Epoch.sol";
 import {Errors} from "../../src/contracts/storage/Errors.sol";
 import {IFoil} from "../../src/contracts/interfaces/IFoil.sol";
+
 contract SettleLPTest is TestEpoch {
     using Cannon for Vm;
 
     IFoil public foil;
-    EpochSettlementModule public epochSettlementModule;
-    EpochTradeModule public epochTradeModule;
     uint256 epochId;
     address pool;
     address tokenA;

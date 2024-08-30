@@ -3,18 +3,20 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import "./IFoilStructs.sol";
 import "../storage/Position.sol";
-import "./IEpochLiquidityModule.sol";
-import "./IEpochTradeModule.sol";
-import "./IEpochConfigurationModule.sol";
-import "./IEpochViewsModule.sol";
-import "./IEpochUMASettlementModule.sol";
-import "./IEpochSettlementModule.sol";
+import "./ILiquidityModule.sol";
+import "./ITradeModule.sol";
+import "./ITradeViewsModule.sol";
+import "./IConfigurationModule.sol";
+import "./IViewsModule.sol";
+import "./IUMASettlementModule.sol";
+import "./ISettlementModule.sol";
 
 interface IFoil is
-    IEpochLiquidityModule,
-    IEpochTradeModule,
-    IEpochConfigurationModule,
-    IEpochViewsModule,
-    IEpochUMASettlementModule,
-    IEpochSettlementModule
+    ILiquidityModule,
+    ITradeModule,
+    ITradeViewsModule,
+    IConfigurationModule,
+    IViewsModule,
+    IUMASettlementModule,
+    ISettlementModule
 {}

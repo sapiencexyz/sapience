@@ -4,7 +4,7 @@ pragma solidity >=0.8.2 <0.9.0;
 import {IFoilStructs} from "./IFoilStructs.sol";
 import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePositionManager.sol";
 
-interface IEpochLiquidityModule {
+interface ILiquidityModule {
     event LiquidityPositionCreated(
         uint256 indexed positionId,
         uint256 collateralAmount,

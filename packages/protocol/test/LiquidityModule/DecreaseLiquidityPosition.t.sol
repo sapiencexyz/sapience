@@ -13,7 +13,7 @@ import {DecimalPrice} from "../../src/contracts/libraries/DecimalPrice.sol";
 import {IFoilStructs} from "../../src/contracts/interfaces/IFoilStructs.sol";
 import {Errors} from "../../src/contracts/storage/Errors.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import {IEpochLiquidityModule} from "../../src/contracts/interfaces/IEpochLiquidityModule.sol";
+import {ILiquidityModule} from "../../src/contracts/interfaces/ILiquidityModule.sol";
 import {Position} from "../../src/contracts/storage/Position.sol";
 
 contract DecreaseLiquidityPosition is TestEpoch {
