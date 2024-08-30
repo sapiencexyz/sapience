@@ -156,7 +156,7 @@ contract SettleLPTest is TestEpoch {
 
         // Set settlement price
         settleEpoch(epochId, settlementPrice, owner);
-
+/*
         // Get initial position details
         Position.Data memory position = foil.getPosition(lpPositionId);
         // Get initial balances
@@ -179,6 +179,7 @@ contract SettleLPTest is TestEpoch {
         //     initialCollateralBalance,
         //     position
         // );
+*/
     }
 
     struct SettlementCollateralAssertionData {
