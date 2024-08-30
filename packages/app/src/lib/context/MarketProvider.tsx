@@ -13,7 +13,7 @@ import type { Chain } from 'viem/chains';
 import { useReadContracts, useReadContract } from 'wagmi';
 
 import useFoilDeployment from '../components/foil/useFoilDeployment';
-import { API_BASE_URL } from '../constants/constants';
+import { API_BASE_URL, TOKEN_DECIMALS } from '../constants/constants';
 import erc20ABI from '../erc20abi.json';
 import { renderContractErrorToast } from '../util/util';
 
@@ -57,7 +57,7 @@ export const MarketContext = createContext<MarketContextType>({
   address: '',
   collateralAsset: '',
   collateralAssetTicker: '',
-  collateralAssetDecimals: 18,
+  collateralAssetDecimals: TOKEN_DECIMALS,
   averagePrice: 0,
   startTime: 0,
   endTime: 0,
@@ -126,14 +126,14 @@ export const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
         const token0 = new Token(
           chainId,
           token0Address as string,
-          18,
+          TOKEN_DECIMALS,
           'TOKEN0',
           'Token 0'
         );
         const token1 = new Token(
           chainId,
           token1Address as string,
-          18,
+          TOKEN_DECIMALS,
           'TOKEN1',
           'Token 1'
         );
@@ -180,7 +180,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     address: '',
     collateralAsset: '',
     collateralAssetTicker: '',
-    collateralAssetDecimals: 18,
+    collateralAssetDecimals: TOKEN_DECIMALS,
     averagePrice: 0,
     startTime: 0,
     endTime: 0,

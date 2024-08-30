@@ -217,6 +217,7 @@ export default function TraderPosition({}) {
         finalSize,
         slippage,
         referencePriceFunctionResult.data as bigint,
+        collateralAssetDecimals,
         !isLong
       );
       console.log('tokenAmountLimit', tokenAmountLimit);
@@ -226,7 +227,7 @@ export default function TraderPosition({}) {
         parseUnits(collateral.toString(), collateralAssetDecimals),
         finalSize,
         // tokenAmountLimit,
-        parseUnits('0', 18),
+        parseUnits('0', collateralAssetDecimals),
       ];
       console.log('args', args);
       if (nftId === 0) {
