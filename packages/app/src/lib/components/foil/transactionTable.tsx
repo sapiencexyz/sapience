@@ -54,7 +54,7 @@ export default function TransactoinTable() {
       const { finalPrice } = transaction.event.logData.args;
       return formatUnits(finalPrice, collateralAssetDecimals);
     }
-    return 'N/A';
+    return '-';
   };
 
   return (

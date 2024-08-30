@@ -40,7 +40,7 @@ export class Position {
   quoteToken: string; // vETH tokenamount 1
 
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
-  collateral: string; // ETH  needs to be added
+  collateral: string; // ETH
 
   @Column({
     type: "numeric",
