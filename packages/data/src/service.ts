@@ -10,6 +10,7 @@ import { Event } from "./entity/Event";
 import { Transaction } from "./entity/Transaction";
 import { Epoch } from "./entity/Epoch";
 import { MarketPrice } from "./entity/MarketPrice";
+import { formatUnits } from "viem";
 
 const PORT = 3001;
 
@@ -90,6 +91,7 @@ const startServer = async () => {
           if (!acc[date]) {
             acc[date] = [];
           }
+          price.value = formatUnits(BigInt(price.value), 18);
           acc[date].push(price);
           return acc;
         },
@@ -218,6 +220,7 @@ const startServer = async () => {
     const all = await transactionRepository.find({
       relations: {
         position: true,
+        event: true,
       },
     });
     console.log("all txns -", all);
@@ -234,6 +237,7 @@ const startServer = async () => {
         .innerJoinAndSelect("transaction.position", "position")
         .innerJoinAndSelect("position.epoch", "epoch")
         .innerJoinAndSelect("epoch.market", "market")
+        .innerJoinAndSelect("transaction.event", "event") // Join Event data
         .where("market.chainId = :chainId", { chainId })
         .andWhere("market.address = :address", { address })
         .andWhere("epoch.epochId = :epochId", { epochId })

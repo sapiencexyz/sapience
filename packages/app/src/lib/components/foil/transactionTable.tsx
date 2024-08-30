@@ -7,14 +7,18 @@ import {
   Tbody,
   Td,
 } from '@chakra-ui/react';
+import type { Transaction } from '@data/entity/Transaction';
 import { useQuery } from '@tanstack/react-query';
 import { useContext } from 'react';
+import { formatUnits } from 'viem';
 
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { MarketContext } from '~/lib/context/MarketProvider';
+import { TransactionType } from '~/lib/interfaces/interfaces';
 
 export default function TransactoinTable() {
-  const { chainId, address, epoch } = useContext(MarketContext);
+  const { chainId, address, epoch, collateralAssetDecimals } =
+    useContext(MarketContext);
   const contractId = `${chainId}:${address}`;
   const useTransactions = () => {
     return useQuery({
@@ -43,6 +47,17 @@ export default function TransactoinTable() {
     return <div>Error: {error.message}</div>;
   }
 
+  const getFinalPrice = (transaction: Transaction) => {
+    if (
+      transaction.type === TransactionType.LONG ||
+      transaction.type === TransactionType.SHORT
+    ) {
+      const { finalPrice } = transaction.event.logData.args;
+      return formatUnits(finalPrice, collateralAssetDecimals);
+    }
+    return 'N/A';
+  };
+
   return (
     <TableContainer mb={4}>
       <Table variant="simple" size="sm">
@@ -53,6 +68,7 @@ export default function TransactoinTable() {
             <Th>Base Token Change</Th>
             <Th>Quote Token Change</Th>
             <Th>Type</Th>
+            <Th>Price</Th>
           </Tr>
         </Thead>
         <Tbody>
@@ -64,6 +80,7 @@ export default function TransactoinTable() {
                 <Td>{row.baseTokenDelta}</Td>
                 <Td>{row.quoteTokenDelta}</Td>
                 <Td>{row.type}</Td>
+                <Td>{getFinalPrice(row)}</Td>
               </Tr>
             ))}
         </Tbody>

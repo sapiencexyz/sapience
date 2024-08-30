@@ -16,3 +16,10 @@ export interface FoilPosition {
   vGasAmount: bigint;
   currentTokenAmount: bigint;
 }
+
+export enum TransactionType {
+  ADD_LIQUIDITY = 'addLiquidity',
+  REMOVE_LIQUIDITY = 'removeLiquidity',
+  LONG = 'long',
+  SHORT = 'short',
+}
