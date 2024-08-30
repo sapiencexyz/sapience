@@ -333,9 +333,7 @@ export default function TraderPosition({}) {
    * @param newVal - new value of the collateral input
    */
   const handleCollateralChange = (newVal: string) => {
-    console.log('collateral change!');
     const refPrice = referencePriceFunctionResult?.data;
-    console.log('ref price -', refPrice);
     if (!refPrice) return;
     const newCollateral = parseFloat(newVal || '0');
     setCollateral(newCollateral);
@@ -369,6 +367,15 @@ export default function TraderPosition({}) {
     refetchTokens();
     refetchPosition();
     // to do ....refetch states....
+  };
+
+  const getSecondInputValue = () => {
+    if (isSizeInput) return Number(collateral);
+    if (isLong && longSizeRead.data)
+      return formatUnits(longSizeRead.data as bigint, collateralAssetDecimals);
+    if (shortSizeRead.data)
+      return formatUnits(shortSizeRead.data as bigint, collateralAssetDecimals);
+    return size;
   };
 
   return (
@@ -414,7 +421,7 @@ export default function TraderPosition({}) {
         </Text>
       </FormControl>
       <FormControl mb={4}>
-        <Text>
+        {/* <Text>
           Long Size from Read Function:{' '}
           {longSizeRead.data !== undefined &&
             formatUnits(longSizeRead.data as bigint, collateralAssetDecimals)}
@@ -424,29 +431,9 @@ export default function TraderPosition({}) {
           {shortSizeRead.data !== undefined &&
             formatUnits(shortSizeRead.data as bigint, collateralAssetDecimals)}
         </Text>
-        <Text>Size from original formula: {size}</Text>
+        <Text>Size from original formula: {size}</Text> */}
         <InputGroup>
-          <Input
-            readOnly
-            value={
-              isSizeInput
-                ? Number(collateral)
-                : Number(
-                    isLong && longSizeRead.data
-                      ? formatUnits(
-                          longSizeRead.data as bigint,
-                          collateralAssetDecimals
-                        )
-                      : shortSizeRead.data
-                        ? formatUnits(
-                            shortSizeRead.data as bigint,
-                            collateralAssetDecimals
-                          )
-                        : 0
-                  )
-            }
-            type="number"
-          />
+          <Input readOnly value={getSecondInputValue()} type="number" />
           <InputRightAddon>
             {isSizeInput ? collateralAssetTicker : 'Ggas'}
           </InputRightAddon>
