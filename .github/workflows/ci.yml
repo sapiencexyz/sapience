@@ -32,6 +32,7 @@ jobs:
 
       - name: Test run
         run: pnpm run simulate-deploy:sepolia
+        working-directory: packages/protocol
 
       - name: Simulate deploy on Sepolia
         id: simulate-deploy
