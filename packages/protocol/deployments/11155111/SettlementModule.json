@@ -1,0 +1,127 @@
+{
+  "address": "0x45f55a543ECA58df95838c9F0C4cFAed960979a7",
+  "abi": [
+    {
+      "type": "function",
+      "name": "settlePosition",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "withdrawableCollateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "PositionSettled",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "withdrawnCollateral",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "EpochNotSettled",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidEpoch",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidPositionId",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidPositionKind",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NotAccountOwnerOrAuthorized",
+      "inputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "OverflowInt24ToUint256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowInt256ToUint256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowUint256ToInt256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PositionAlreadySettled",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    }
+  ],
+  "constructorArgs": [],
+  "linkedLibraries": {},
+  "deployTxnHash": "0xa8f2307c7aec1b06aba11f3506a91bc8e8ce982af64ebb81221d987a906b6e51",
+  "deployTxnBlockNumber": "6614029",
+  "deployTimestamp": "1725214524",
+  "sourceName": "src/contracts/modules/SettlementModule.sol",
+  "contractName": "SettlementModule",
+  "deployedOn": "deploy.SettlementModule",
+  "gasUsed": 1308313,
+  "gasCost": "1922756570"
+}
