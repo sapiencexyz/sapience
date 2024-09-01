@@ -152,18 +152,23 @@ async function initializeMarkets() {
 
 if (process.argv.length < 3) {
   initializeMarkets().then(() => {
-    Promise.all([
-      indexBaseFeePerGas(mainnetPublicClient, hardhat.id, FoilLocal.address),
+    let jobs = [
       indexBaseFeePerGas(mainnetPublicClient, sepolia.id, FoilSepolia.address),
       indexMarketEvents(
         sepoliaPublicClient,
         FoilSepolia as { address: string; abi: Abi }
       ),
-      indexMarketEvents(
-        cannonPublicClient,
-        FoilLocal as { address: string; abi: Abi }
-      ),
-    ]).catch((error) => {
+    ];
+    if(process.env.NODE_ENV === 'development'){
+      jobs = jobs.concat([
+        indexBaseFeePerGas(mainnetPublicClient, hardhat.id, FoilLocal.address),
+        indexMarketEvents(
+          cannonPublicClient,
+          FoilLocal as { address: string; abi: Abi }
+        )]
+      )
+    }
+    Promise.all(jobs).catch((error) => {
       console.error("Error running processes in parallel:", error);
     });
   });
