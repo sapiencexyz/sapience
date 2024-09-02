@@ -87,8 +87,9 @@ contract UmaSettleMarket is TestEpoch {
     }
 
     function test_settle_above_range() public {
-        (, , , , , , uint256 minPriceD18, uint256 maxPriceD18, , , ) = foil
+        (, , , , , , uint256 _minPriceD18, uint256 _maxPriceD18, , , ) = foil
             .getLatestEpoch();
+        _minPriceD18;
 
         vm.warp(endTime + 1);
 
@@ -99,7 +100,7 @@ contract UmaSettleMarket is TestEpoch {
         );
         bytes32 assertionId = foil.submitSettlementPrice(
             epochId,
-            maxPriceD18 + 1
+            _maxPriceD18 + 1
         );
         vm.stopPrank();
 
@@ -110,14 +111,15 @@ contract UmaSettleMarket is TestEpoch {
         (, , , , , , , , , uint256 settlementPriceD18, ) = foil
             .getLatestEpoch();
         assertTrue(
-            settlementPriceD18 == maxPriceD18,
+            settlementPriceD18 == _maxPriceD18,
             "The settlement price is the maximum"
         );
     }
 
     function test_settle_below_range() public {
-        (, , , , , , uint256 minPriceD18, uint256 maxPriceD18, , , ) = foil
+        (, , , , , , uint256 _minPriceD18, uint256 _maxPriceD18, , , ) = foil
             .getLatestEpoch();
+        _maxPriceD18;
 
         vm.warp(endTime + 1);
 
@@ -128,7 +130,7 @@ contract UmaSettleMarket is TestEpoch {
         );
         bytes32 assertionId = foil.submitSettlementPrice(
             epochId,
-            minPriceD18 - 1
+            _minPriceD18 - 1
         );
         vm.stopPrank();
 
@@ -139,7 +141,7 @@ contract UmaSettleMarket is TestEpoch {
         (, , , , , , , , , uint256 settlementPriceD18, ) = foil
             .getLatestEpoch();
         assertTrue(
-            settlementPriceD18 == minPriceD18,
+            settlementPriceD18 == _minPriceD18,
             "The settlement price is the minimum"
         );
     }
@@ -153,10 +155,7 @@ contract UmaSettleMarket is TestEpoch {
             epochParams.bondAmount
         );
         vm.expectRevert("Market activity is still allowed");
-        bytes32 assertionId = foil.submitSettlementPrice(
-            epochId,
-            minPriceD18 - 1
-        );
+        foil.submitSettlementPrice(epochId, minPriceD18 - 1);
         vm.stopPrank();
     }
 
@@ -181,7 +180,7 @@ contract UmaSettleMarket is TestEpoch {
             epochParams.bondAmount
         );
         vm.expectRevert("Market already settled");
-        bytes32 assertionId2 = foil.submitSettlementPrice(epochId, 10 ether);
+        foil.submitSettlementPrice(epochId, 10 ether);
         vm.stopPrank();
     }
 
