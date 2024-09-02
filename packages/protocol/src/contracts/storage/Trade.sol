@@ -249,14 +249,4 @@ library Trade {
             return epoch.getCurrentPoolPrice();
         }
     }
-
-    function deltaPriceMultiplier(
-        uint256 price0D18,
-        uint256 price1D18,
-        uint256 feeD18
-    ) internal pure returns (uint256) {
-        return
-            price0D18.mulDecimal(DecimalMath.UNIT + feeD18) -
-            price1D18.mulDecimal(DecimalMath.UNIT - feeD18);
-    }
 }

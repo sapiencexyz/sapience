@@ -258,6 +258,7 @@ contract DecreaseLiquidityPosition is TestEpoch {
             ,
             uint128 initialLiquidity
         ) = getCurrentPositionTokenAmounts(positionId, MIN_TICK, MAX_TICK);
+        initialLiquidity;
 
         // Calculate amounts to increase
         uint256 increaseAmount0 = initialAmount0 / 2; // Increase by 50%
@@ -308,6 +309,8 @@ contract DecreaseLiquidityPosition is TestEpoch {
                     minEthAmount: 0
                 })
             );
+
+        collateralAmount;
 
         // Get updated position
         Position.Data memory updatedPosition = foil.getPosition(positionId);

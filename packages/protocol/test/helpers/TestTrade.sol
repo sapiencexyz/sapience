@@ -200,6 +200,7 @@ contract TestTrade is TestEpoch {
         int24 lowerTick,
         int24 upperTick
     ) internal {
+        pool;
         (
             uint256 amountTokenA,
             uint256 amountTokenB,

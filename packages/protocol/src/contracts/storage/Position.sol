@@ -282,7 +282,7 @@ library Position {
         int256 currentPositionStaticBalance = totalTokens.toInt() -
             totalDebt.toInt();
         uint256 unadjustedCollateral = modDeltaPositionSize.mulDecimal(
-            Trade.deltaPriceMultiplier(price, lowestPrice, fee)
+            deltaPriceMultiplier(price, lowestPrice, fee)
         );
 
         if (
@@ -313,7 +313,7 @@ library Position {
         int256 currentPositionStaticBalance = totalTokens.toInt() -
             totalDebt.toInt();
         uint256 unadjustedCollateral = modDeltaPositionSize.mulDecimal(
-            Trade.deltaPriceMultiplier(highestPrice, price, fee)
+            deltaPriceMultiplier(highestPrice, price, fee)
         );
 
         if (
@@ -358,7 +358,7 @@ library Position {
             currentPositionStaticBalance).toUint();
 
         modPositionSize = adjustedCollateral.divDecimal(
-            Trade.deltaPriceMultiplier(price, lowestPrice, fee)
+            deltaPriceMultiplier(price, lowestPrice, fee)
         );
     }
 
@@ -391,7 +391,77 @@ library Position {
             currentPositionStaticBalance).toUint();
 
         modPositionSize = adjustedCollateral.divDecimal(
-            Trade.deltaPriceMultiplier(highestPrice, price, fee)
+            deltaPriceMultiplier(highestPrice, price, fee)
+        );
+    }
+
+    function getLongSizeForCollateral(
+        uint256 epochId,
+        uint256 collateral
+    ) internal view returns (uint256 modPositionSize) {
+        /*
+        S = C / ( Ph(1+fee) - Pe(1-fee))
+
+        Where 
+        Pe = entry price (current price)
+        Ph = highest price set in market
+        C = collateral
+        Fee = Fee as D18 1/100 (1% in uni is 1000) => fee * 1e12
+        */
+        uint256 price = Trade.getReferencePrice(epochId);
+        uint256 highestPrice = Epoch.load(epochId).maxPriceD18;
+        uint256 fee = Epoch.load(epochId).feeRateD18; // scaled to 1e18 fee
+
+        modPositionSize = collateral.divDecimal(
+            deltaPriceMultiplier(highestPrice, price, fee)
+        );
+    }
+
+    function getShortSizeForCollateral(
+        uint256 epochId,
+        uint256 collateral
+    ) internal view returns (uint256 modPositionSize) {
+        /*
+        S = C / (Pe(1+fee) - Pl (1-fee))
+
+        Where
+        Pe = entry price (current price)
+        Pl = lowest price set in market
+        C = collateral
+        Fee = Fee as D18 1/100 (1% in uni is 1000) => fee * 1e12
+        */
+        uint256 price = Trade.getReferencePrice(epochId);
+        uint256 lowestPrice = Epoch.load(epochId).minPriceD18;
+        uint256 fee = Epoch.load(epochId).feeRateD18; // scaled to 1e18 fee
+
+        modPositionSize = collateral.divDecimal(
+            deltaPriceMultiplier(price, lowestPrice, fee)
+        );
+    }
+
+    function getCollateralForLongSize(
+        uint256 epochId,
+        uint256 _positionSize
+    ) internal view returns (uint256 collateral) {
+        uint256 price = Trade.getReferencePrice(epochId);
+        uint256 lowestPrice = Epoch.load(epochId).minPriceD18;
+        uint256 fee = uint256(Epoch.load(epochId).params.feeRate) * 1e12; // scaled to 1e18 fee
+
+        collateral = _positionSize.mulDecimal(
+            deltaPriceMultiplier(price, lowestPrice, fee)
+        );
+    }
+
+    function getCollateralForShortSize(
+        uint256 epochId,
+        uint256 _positionSize
+    ) internal view returns (uint256 collateral) {
+        uint256 price = Trade.getReferencePrice(epochId);
+        uint256 highestPrice = Epoch.load(epochId).maxPriceD18;
+        uint256 fee = uint256(Epoch.load(epochId).params.feeRate) * 1e12; // scaled to 1e18 fee
+
+        collateral = _positionSize.mulDecimal(
+            deltaPriceMultiplier(highestPrice, price, fee)
         );
     }
 
@@ -410,5 +480,15 @@ library Position {
             self.borrowedVGas.mulDecimal(
                 priceD18.mulDecimal(DecimalMath.UNIT + feeD18)
             );
+    }
+
+    function deltaPriceMultiplier(
+        uint256 price0D18,
+        uint256 price1D18,
+        uint256 feeD18
+    ) internal pure returns (uint256) {
+        return
+            price0D18.mulDecimal(DecimalMath.UNIT + feeD18) -
+            price1D18.mulDecimal(DecimalMath.UNIT - feeD18);
     }
 }

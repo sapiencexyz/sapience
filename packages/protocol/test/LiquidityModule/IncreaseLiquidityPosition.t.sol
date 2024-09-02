@@ -210,6 +210,7 @@ contract IncreaseLiquidityPosition is TestEpoch {
                     minEthAmount: 0
                 })
             );
+        addedLiquidity;
 
         uint256 finalBalance = collateralAsset.balanceOf(lp1);
         uint256 actualTransferred = initialBalance - finalBalance;
