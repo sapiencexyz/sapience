@@ -103,6 +103,7 @@ async function indexMarketEventsRangeCommand(
   );
 }
 
+// TODO: Get this data from smart contract queries
 async function initializeMarkets() {
   await initializeDataSource();
   const marketRepository = dataSource.getRepository(Market);
@@ -158,16 +159,12 @@ if (process.argv.length < 3) {
         sepoliaPublicClient,
         FoilSepolia as { address: string; abi: Abi }
       ),
+      indexBaseFeePerGas(mainnetPublicClient, hardhat.id, FoilLocal.address),
+      indexMarketEvents(
+        cannonPublicClient,
+        FoilLocal as { address: string; abi: Abi }
+      ),
     ];
-    if (process.env.NODE_ENV === "development") {
-      jobs = jobs.concat([
-        indexBaseFeePerGas(mainnetPublicClient, hardhat.id, FoilLocal.address),
-        indexMarketEvents(
-          cannonPublicClient,
-          FoilLocal as { address: string; abi: Abi }
-        ),
-      ]);
-    }
     Promise.all(jobs).catch((error) => {
       console.error("Error running processes in parallel:", error);
     });

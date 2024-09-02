@@ -218,14 +218,12 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     }));
   }, [chainId, address, epoch]);
 
-  const contractId = `${chainId}:${address}`;
-
   // Fetch average price using React Query
   const { data: price } = useQuery({
-    queryKey: ['averagePrice', contractId],
+    queryKey: ['averagePrice', `${state.chainId}:${state.address}`],
     queryFn: async () => {
       const response = await fetch(
-        `${API_BASE_URL}/prices/average?contractId=${contractId}&startTime=${state.startTime}&endTime=${state.endTime}`
+        `${API_BASE_URL}/prices/average?contractId=${state.chainId}:${state.address}&epochId=${state.epoch}`
       );
       if (!response.ok) {
         throw new Error('Network response was not ok');
@@ -237,7 +235,6 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
 
   useEffect(() => {
     if (price) {
-      console.log('avg', price.average);
       setState((currentState) => ({
         ...currentState,
         averagePrice: price.average,
@@ -247,10 +244,10 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
 
   // Fetch prices using React Query
   const { data: prices } = useQuery({
-    queryKey: ['prices', contractId],
+    queryKey: ['prices', `${state.chainId}:${state.address}`],
     queryFn: async () => {
       const response = await fetch(
-        `${API_BASE_URL}/prices/chart-data?contractId=${contractId}&epochId=${epoch}`
+        `${API_BASE_URL}/prices/chart-data?contractId=${state.chainId}:${state.address}&epochId=${state.epoch}`
       );
       if (!response.ok) {
         throw new Error('Network response was not ok');

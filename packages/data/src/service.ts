@@ -60,7 +60,7 @@ const startServer = async () => {
         transaction: true,
       },
     });
-    console.log("all market prices -", all);
+
     const { contractId, epochId } = req.query;
 
     if (typeof contractId !== "string") {
@@ -116,27 +116,47 @@ const startServer = async () => {
 
   // Get average price over a specified time period filtered by market
   app.get("/prices/average", async (req, res) => {
-    const { startTimestamp, endTimestamp, contractId } = req.query;
+    const { contractId, epochId } = req.query;
     const [chainId, address] = (contractId as string).split(":");
-    const where: any = {};
-
-    if (startTimestamp && endTimestamp) {
-      where.timestamp = Between(Number(startTimestamp), Number(endTimestamp));
-    }
-
-    if (chainId && address) {
-      const market = await marketRepository.findOne({
-        where: { chainId: Number(chainId), address: String(address) },
-      });
-      if (!market) {
-        return res.status(404).json({ error: "Market not found" });
+  
+    // Find the market
+    const market = await marketRepository.findOne({
+      where: {
+        chainId: Number(chainId),
+        address: address
       }
-      where.market = market;
+    });
+  
+    if (!market) {
+      return res.status(404).json({ error: "Market not found" });
     }
-
+  
+    // Find the epoch within the market
+    const epoch = await epochRepository.findOne({
+      where: {
+        market: { id: market.id },
+        epochId: Number(epochId)
+      }
+    });
+  
+    if (!epoch) {
+      return res.status(404).json({ error: "Epoch not found" });
+    }
+  
+    const startTimestamp = epoch.startTimestamp;
+    const endTimestamp = epoch.endTimestamp;
+  
+    // Construct the where clause
+    const where: any = {
+      market: { id: market.id }
+    };
+  
+    if (startTimestamp && endTimestamp) {
+      where.timestamp = Between(startTimestamp, endTimestamp);
+    }
+  
     const prices = await priceRepository.find({
       where,
-      relations: ["market"],
       order: { timestamp: "ASC" },
     });
 
@@ -162,7 +182,7 @@ const startServer = async () => {
     // Handle the last price point
     const lastPrice = prices[prices.length - 1];
     const endTime = endTimestamp
-      ? BigInt(endTimestamp as string)
+      ? BigInt(endTimestamp)
       : BigInt(lastPrice.timestamp);
     const timeDiff = endTime - BigInt(lastPrice.timestamp);
 
