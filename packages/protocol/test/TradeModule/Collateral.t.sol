@@ -60,7 +60,7 @@ contract TradePositionCollateral is TestTrade {
         vm.stopPrank();
     }
 
-    function test_views_wip_Only() public {
+    function test_views_wip_Skip() public {
         uint256 longSize = foil.getLongSizeForCollateral(epochId, 1 ether);
         console2.log("requiredCollateral", longSize);
         uint256 shortSize = foil.getShortSizeForCollateral(epochId, 1 ether);
