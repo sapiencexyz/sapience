@@ -736,7 +736,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
             value={lowPrice}
             onChange={(e) => setLowPrice(Number(e.target.value))}
           />
-          <InputRightAddon>{collateralAssetTicker}/Ggas</InputRightAddon>
+          <InputRightAddon>Ggas/{collateralAssetTicker}</InputRightAddon>
         </InputGroup>
       </FormControl>
       <FormControl mb={4}>
@@ -749,7 +749,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
             value={highPrice}
             onChange={(e) => setHighPrice(Number(e.target.value))}
           />
-          <InputRightAddon>{collateralAssetTicker}/Ggas</InputRightAddon>
+          <InputRightAddon>Ggas/{collateralAssetTicker}</InputRightAddon>
         </InputGroup>
       </FormControl>
 
