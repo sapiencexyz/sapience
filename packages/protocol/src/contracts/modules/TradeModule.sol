@@ -106,8 +106,7 @@ contract TradeModule is ITradeModule {
         position.reconcileTokens();
 
         if (
-            !sameSide(position.currentTokenAmount, tokenAmount) ||
-            tokenAmount == 0
+            !sameSide(position.positionSize(), tokenAmount) || tokenAmount == 0
         ) {
             // go to zero before moving to the other side
             _closePosition(position);
@@ -184,7 +183,7 @@ contract TradeModule is ITradeModule {
         // Refund excess vEth sent
         position.borrowedVEth -= refundAmountVEth;
 
-        position.updateBalance(tokenAmount, 0, tokenAmountVGas.toInt());
+        position.updateBalance(0, tokenAmountVGas.toInt());
     }
 
     /**
@@ -223,7 +222,7 @@ contract TradeModule is ITradeModule {
             });
         (uint256 tokenAmountVEth, ) = Trade.swapTokensExactIn(params);
 
-        position.updateBalance(tokenAmount, tokenAmountVEth.toInt(), 0);
+        position.updateBalance(tokenAmountVEth.toInt(), 0);
     }
 
     /**
@@ -257,10 +256,9 @@ contract TradeModule is ITradeModule {
             );
         }
 
-        if (tokenAmount > position.currentTokenAmount) {
+        if (tokenAmount > position.positionSize()) {
             // Increase the position (LONG)
-            uint256 delta = (tokenAmount - position.currentTokenAmount)
-                .toUint();
+            uint256 delta = (tokenAmount - position.positionSize()).toUint();
             // with the collateral get vEth (Loan)
             uint256 highestPrice = Epoch.load(position.epochId).maxPriceD18;
             uint256 vEthToSwap = highestPrice.mulDecimal(uint(tokenAmount)); // Taking the max that can be required
@@ -284,12 +282,12 @@ contract TradeModule is ITradeModule {
             vEthToSwap -= refundAmountVEth;
             position.borrowedVEth += vEthToSwap;
 
-            position.updateBalance(delta.toInt(), 0, tokenAmountVGas.toInt());
+            position.updateBalance(0, tokenAmountVGas.toInt());
         } else {
             // Reduce the position (LONG)
             // Need to sell vGas and use it to pay the debt
 
-            int256 delta = (tokenAmount - position.currentTokenAmount);
+            int256 delta = (tokenAmount - position.positionSize());
             int256 deltaEth; // usually is going to be zero
 
             Trade.SwapTokensExactInParams memory params = Trade
@@ -316,7 +314,7 @@ contract TradeModule is ITradeModule {
                 position.borrowedVEth = 0;
             }
 
-            position.updateBalance(delta, deltaEth, delta);
+            position.updateBalance(deltaEth, delta);
         }
     }
 
@@ -346,10 +344,9 @@ contract TradeModule is ITradeModule {
     ) internal {
         uint256 tokenAmountAbs = (tokenAmount * -1).toUint();
         uint256 tokenAmountLimitAbs = (tokenAmountLimit * -1).toUint();
-        uint256 currentTokenAmountAbs = (position.currentTokenAmount * -1)
-            .toUint();
+        uint256 currentTokenAmountAbs = (position.positionSize() * -1).toUint();
 
-        if (tokenAmount < position.currentTokenAmount) {
+        if (tokenAmount < position.positionSize()) {
             // Increase the position (SHORT)
 
             uint256 delta = tokenAmountAbs - currentTokenAmountAbs;
@@ -370,11 +367,7 @@ contract TradeModule is ITradeModule {
             // with the vGas get vEth (Swap)
             (uint256 tokenAmountVEth, ) = Trade.swapTokensExactIn(params);
 
-            position.updateBalance(
-                delta.toInt() * -1,
-                tokenAmountVEth.toInt(),
-                0
-            );
+            position.updateBalance(tokenAmountVEth.toInt(), 0);
         } else {
             // Decrease the position (SHORT)
             uint256 delta = currentTokenAmountAbs - tokenAmountAbs;
@@ -405,13 +398,11 @@ contract TradeModule is ITradeModule {
                 position.depositedCollateralAmount -= remainingDebt;
 
                 position.updateBalance(
-                    delta.toInt(),
                     -(position.vEthAmount).toInt(), // reduce all vEth
                     0
                 );
             } else {
                 position.updateBalance(
-                    delta.toInt(),
                     -(consumedVEth).toInt(), // reduce all vEth
                     0
                 );
@@ -446,7 +437,7 @@ contract TradeModule is ITradeModule {
      * then the remaining collateral can be withdrawn
      */
     function _closePosition(Position.Data storage position) internal {
-        if (position.currentTokenAmount > 0) {
+        if (position.positionSize() > 0) {
             // Close LONG position
             Trade.SwapTokensExactInParams memory params = Trade
                 .SwapTokensExactInParams({

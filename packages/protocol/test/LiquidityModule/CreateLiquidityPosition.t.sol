@@ -173,6 +173,9 @@ contract CreateLiquidityPosition is TestEpoch {
                     minAmountTokenB: 0
                 })
             );
+        id;
+        uniswapNftId;
+        liquidity;
 
         uint256 foilFinalBalance = collateralAsset.balanceOf(address(foil));
         uint256 lpFinalBalance = collateralAsset.balanceOf(lp1);

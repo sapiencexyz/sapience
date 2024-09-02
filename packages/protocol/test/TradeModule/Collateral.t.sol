@@ -239,8 +239,8 @@ contract TradePositionCollateral is TestTrade {
         vm.startPrank(trader1);
         uint256 positionId = createInitialPosition(initialPositionIsLong);
         Position.Data memory position = foil.getPosition(positionId);
-        uint256 preBorrowedEth = position.borrowedVEth;
-        int256 preSize = position.currentTokenAmount;
+        // uint256 preBorrowedEth = position.borrowedVEth;
+        // int256 preSize = foil.getPositionSize(positionId);
 
         foil.modifyTraderPosition(
             positionId,

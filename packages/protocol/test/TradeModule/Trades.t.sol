@@ -61,6 +61,7 @@ contract TradePositionBasic is TestTrade {
         vm.startPrank(trader1);
         // Set position size
         uint256 liq = IUniswapV3Pool(pool).liquidity();
+        liq;
 
         positionId = foil.createTraderPosition(
             // Create Long position (with enough collateral)
@@ -122,7 +123,7 @@ contract TradePositionBasic is TestTrade {
             currentStateData.foilCollateral +
             collateralForOrder;
         expectedStateData.depositedCollateralAmount = collateralForOrder;
-        expectedStateData.currentTokenAmount = positionSize;
+        expectedStateData.positionSize = positionSize;
         expectedStateData.vEthAmount = 0;
         expectedStateData.vGasAmount = uint256(positionSize);
         expectedStateData.borrowedVEth = tokens + fee;
@@ -158,7 +159,7 @@ contract TradePositionBasic is TestTrade {
             currentStateData.foilCollateral +
             collateralForOrder;
         expectedStateData.depositedCollateralAmount = collateralForOrder * 2;
-        expectedStateData.currentTokenAmount = positionSize * 2;
+        expectedStateData.positionSize = positionSize * 2;
         expectedStateData.vEthAmount = 0;
         expectedStateData.vGasAmount = uint256(positionSize) * 2;
         expectedStateData.borrowedVEth =
@@ -193,7 +194,7 @@ contract TradePositionBasic is TestTrade {
         expectedStateData.foilCollateral = currentStateData.foilCollateral;
         expectedStateData.depositedCollateralAmount = currentStateData
             .depositedCollateralAmount;
-        expectedStateData.currentTokenAmount = positionSize;
+        expectedStateData.positionSize = positionSize;
         expectedStateData.vEthAmount = 0;
         expectedStateData.vGasAmount = uint256(positionSize);
         expectedStateData.borrowedVEth =
@@ -237,7 +238,7 @@ contract TradePositionBasic is TestTrade {
             collateralForOrder +
             accumulatedFee;
         expectedStateData.depositedCollateralAmount = 0;
-        expectedStateData.currentTokenAmount = 0;
+        expectedStateData.positionSize = 0;
         expectedStateData.vEthAmount = 0;
         expectedStateData.vGasAmount = 0;
         expectedStateData.borrowedVEth = 0;
@@ -303,7 +304,7 @@ contract TradePositionBasic is TestTrade {
             currentStateData.foilCollateral +
             collateralForOrder;
         expectedStateData.depositedCollateralAmount = collateralForOrder;
-        expectedStateData.currentTokenAmount = positionSize;
+        expectedStateData.positionSize = positionSize;
         expectedStateData.vEthAmount = 0;
         expectedStateData.vGasAmount = uint256(positionSize);
         expectedStateData.borrowedVEth = tokens + fee;
@@ -344,7 +345,7 @@ contract TradePositionBasic is TestTrade {
         expectedStateData.foilCollateral = currentStateData.foilCollateral;
         expectedStateData.depositedCollateralAmount = currentStateData
             .depositedCollateralAmount;
-        expectedStateData.currentTokenAmount = positionSize * -1;
+        expectedStateData.positionSize = positionSize * -1;
         expectedStateData.vEthAmount = tokens - fee;
         expectedStateData.vGasAmount = 0;
         expectedStateData.borrowedVEth = 0;
@@ -415,7 +416,7 @@ contract TradePositionBasic is TestTrade {
             currentStateData.foilCollateral +
             collateralForOrder;
         expectedStateData.depositedCollateralAmount = collateralForOrder;
-        expectedStateData.currentTokenAmount = -1 * positionSize;
+        expectedStateData.positionSize = -1 * positionSize;
         expectedStateData.vEthAmount = tokens - fee;
         expectedStateData.vGasAmount = 0;
         expectedStateData.borrowedVEth = 0;
@@ -451,7 +452,7 @@ contract TradePositionBasic is TestTrade {
             currentStateData.foilCollateral +
             collateralForOrder;
         expectedStateData.depositedCollateralAmount = collateralForOrder * 2;
-        expectedStateData.currentTokenAmount = positionSize * -2;
+        expectedStateData.positionSize = positionSize * -2;
         expectedStateData.vEthAmount =
             currentStateData.vEthAmount +
             tokens -
@@ -486,7 +487,7 @@ contract TradePositionBasic is TestTrade {
         expectedStateData.foilCollateral = currentStateData.foilCollateral;
         expectedStateData.depositedCollateralAmount = currentStateData
             .depositedCollateralAmount;
-        expectedStateData.currentTokenAmount = positionSize * -1;
+        expectedStateData.positionSize = positionSize * -1;
         expectedStateData.vEthAmount =
             currentStateData.vEthAmount -
             tokens -
@@ -530,7 +531,7 @@ contract TradePositionBasic is TestTrade {
             collateralForOrder +
             accumulatedFee;
         expectedStateData.depositedCollateralAmount = 0;
-        expectedStateData.currentTokenAmount = 0;
+        expectedStateData.positionSize = 0;
         expectedStateData.vEthAmount = 0;
         expectedStateData.vGasAmount = 0;
         expectedStateData.borrowedVEth = 0;
@@ -596,7 +597,7 @@ contract TradePositionBasic is TestTrade {
             currentStateData.foilCollateral +
             collateralForOrder;
         expectedStateData.depositedCollateralAmount = collateralForOrder;
-        expectedStateData.currentTokenAmount = -1 * positionSize;
+        expectedStateData.positionSize = -1 * positionSize;
         expectedStateData.vEthAmount = tokens - fee;
         expectedStateData.vGasAmount = 0;
         expectedStateData.borrowedVEth = 0;
@@ -638,7 +639,7 @@ contract TradePositionBasic is TestTrade {
         expectedStateData.foilCollateral = currentStateData.foilCollateral;
         expectedStateData.depositedCollateralAmount = currentStateData
             .depositedCollateralAmount;
-        expectedStateData.currentTokenAmount = positionSize;
+        expectedStateData.positionSize = positionSize;
         expectedStateData.vEthAmount = 0;
         expectedStateData.vGasAmount = uint256(positionSize);
         expectedStateData.borrowedVEth = tokens + fee;

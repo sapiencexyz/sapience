@@ -30,7 +30,6 @@ library Position {
         // Position data (owned tokens and position size)
         uint256 vEthAmount;
         uint256 vGasAmount;
-        int256 currentTokenAmount;
         uint256 uniswapPositionId; // uniswap nft id
         bool isSettled;
     }
@@ -73,17 +72,14 @@ library Position {
 
     function updateBalance(
         Data storage self,
-        int256 deltaTokenAmount,
         int256 vEthDeltaAmount,
         int256 vGasDeltaAmount
     ) internal {
-        self.currentTokenAmount += deltaTokenAmount;
         self.vEthAmount = uint256(self.vEthAmount.toInt() + vEthDeltaAmount);
         self.vGasAmount = uint256(self.vGasAmount.toInt() + vGasDeltaAmount);
     }
 
     function resetBalance(Data storage self) internal {
-        self.currentTokenAmount = 0;
         self.vEthAmount = 0;
         self.vGasAmount = 0;
     }
@@ -215,15 +211,13 @@ library Position {
         return self.depositedCollateralAmount;
     }
 
+    function positionSize(Data storage self) internal view returns (int256) {
+        return self.vGasAmount.toInt() - self.borrowedVGas.toInt();
+    }
+
     function reconcileTokens(Data storage self) internal {
         reconcileGasTokens(self);
         reconcileEthTokens(self);
-
-        // Size of the position is the amount of vGas and direction depends on the kind
-        // TODO remove currentTokenAmount and get it from the position size
-        self.currentTokenAmount =
-            self.vGasAmount.toInt() -
-            self.borrowedVGas.toInt();
     }
 
     function reconcileGasTokens(Data storage self) internal {
@@ -244,10 +238,6 @@ library Position {
             self.borrowedVEth -= self.vEthAmount;
             self.vEthAmount = 0;
         }
-    }
-
-    function positionSize(Data storage self) internal view returns (int256) {
-        return self.vGasAmount.toInt() - self.borrowedVGas.toInt();
     }
 
     function getCollateralForTargetSize(
