@@ -11,6 +11,7 @@ import { Transaction } from "./entity/Transaction";
 import { Epoch } from "./entity/Epoch";
 import { MarketPrice } from "./entity/MarketPrice";
 import { formatUnits } from "viem";
+import { formatDbBigInt, TOKEN_PRECISION } from "./util/dbUtil";
 
 const PORT = 3001;
 
@@ -91,7 +92,7 @@ const startServer = async () => {
           if (!acc[date]) {
             acc[date] = [];
           }
-          price.value = formatUnits(BigInt(price.value), 18);
+          price.value = formatUnits(BigInt(price.value), TOKEN_PRECISION);
           acc[date].push(price);
           return acc;
         },
@@ -210,6 +211,14 @@ const startServer = async () => {
         where,
         relations: ["epoch", "epoch.market"],
       });
+      // format the data
+      for (const position of positions) {
+        position.baseToken = formatDbBigInt(position.baseToken);
+        position.quoteToken = formatDbBigInt(position.quoteToken);
+        position.collateral = formatDbBigInt(position.collateral);
+        position.profitLoss = formatDbBigInt(position.profitLoss);
+        position.unclaimedFees = formatDbBigInt(position.unclaimedFees);
+      }
       res.json(positions);
     } catch (error) {
       console.error("Error fetching positions:", error);
@@ -243,6 +252,16 @@ const startServer = async () => {
         .andWhere("epoch.epochId = :epochId", { epochId })
         .getMany();
 
+      // format data
+      for (const transaction of transactions) {
+        transaction.baseTokenDelta = formatDbBigInt(transaction.baseTokenDelta);
+        transaction.quoteTokenDelta = formatDbBigInt(
+          transaction.quoteTokenDelta
+        );
+        transaction.collateralDelta = formatDbBigInt(
+          transaction.collateralDelta
+        );
+      }
       res.json(transactions);
     } catch (error) {
       console.error("Error fetching transactions:", error);

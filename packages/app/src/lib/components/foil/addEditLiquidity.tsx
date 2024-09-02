@@ -62,7 +62,6 @@ interface Props {
 }
 
 function getTokenAmountsFromLiquidity(
-  sqrtPriceX96: JSBI,
   tickLower: number,
   tickUpper: number,
   liquidity: JSBI
@@ -139,7 +138,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
       abi: INONFUNGIBLE_POSITION_MANAGER.abi,
       address: uniswapPositionManagerAddress,
       functionName: 'positions',
-      args: [positionData?.id],
+      args: [positionData?.id || BigInt('0')],
       query: {
         enabled: Boolean(
           uniswapPositionManagerAddress !== '0x' && positionData?.id && isEdit
@@ -576,7 +575,12 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
    * handle decreasing liquidity position
    */
   const handleDecreaseLiquidity = () => {
-    if (!liquidity || !pool) return;
+    console.log('decreasing liquidity');
+    if (!liquidity) {
+      console.log('noliquidity found');
+      resetAfterError();
+      return;
+    }
 
     // Convert liquidity and newLiquidity to JSBI
     const liquidityJSBI = JSBI.BigInt(liquidity.toString());
@@ -587,7 +591,6 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
 
     // Get amounts for total liquidity, not just the new liquidity
     const { amount0, amount1 } = getTokenAmountsFromLiquidity(
-      pool.sqrtRatioX96,
       tickLower,
       tickUpper,
       liquidityJSBI

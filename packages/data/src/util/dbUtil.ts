@@ -9,9 +9,10 @@ import {
   TradePositionEventLog,
 } from "../interfaces/interfaces";
 import { MarketPrice } from "../entity/MarketPrice";
+import { formatUnits } from "viem";
 
 export const NUMERIC_PRECISION = 78;
-export const DECIMAL_PRECISION = 18;
+export const TOKEN_PRECISION = 18;
 export const DECIMAL_SCALE = 15;
 
 // TODO GET FEE FROM CONTRACT
@@ -31,6 +32,7 @@ export const upsertTransactionPositionPriceFromEvent = async (event: Event) => {
 
   const newTransaction = new Transaction();
   newTransaction.event = event;
+  console.log("event name -", event.logData.eventName);
 
   // set to true if the Event does not require a transaction (i.e. a Transfer event)
   let skipTransaction = false;
@@ -51,27 +53,15 @@ export const upsertTransactionPositionPriceFromEvent = async (event: Event) => {
       break;
     case EventType.LiquidityPositionDecreased:
       console.log("Decreasing liquidity position from event: ", event);
-      newTransaction.type = TransactionType.REMOVE_LIQUIDITY;
+      await updateTransactionFromLiquidityModifiedEvent(
+        newTransaction,
+        event,
+        true
+      );
       break;
     case EventType.LiquidityPositionIncreased:
       console.log("Increasing liquidity position from event: ", event);
-      newTransaction.type = TransactionType.ADD_LIQUIDITY;
-      const eventArgsIncreaseLiquidity = event.logData
-        .args as LiquidityPositionModifiedEventLog;
-      const prevPosition = await positionRepository.findOne({
-        where: { positionId: Number(eventArgsIncreaseLiquidity.positionId) },
-      });
-      if (!prevPosition) {
-        throw new Error(
-          `Position not found: ${eventArgsIncreaseLiquidity.positionId}`
-        );
-      }
-      const collateralDeltaBigInt =
-        BigInt(eventArgsIncreaseLiquidity.collateralAmount) -
-        BigInt(prevPosition.collateral);
-      newTransaction.baseTokenDelta = eventArgsIncreaseLiquidity.amount0;
-      newTransaction.quoteTokenDelta = eventArgsIncreaseLiquidity.amount1;
-      newTransaction.collateralDelta = collateralDeltaBigInt.toString();
+      await updateTransactionFromLiquidityModifiedEvent(newTransaction, event);
       break;
     case EventType.TraderPositionCreated:
       console.log("TRADER POSITION CREATED");
@@ -102,6 +92,7 @@ export const upsertTransactionPositionPriceFromEvent = async (event: Event) => {
       EventType.LiquidityPositionCreated,
       EventType.TraderPositionCreated,
       EventType.LiquidityPositionIncreased,
+      EventType.LiquidityPositionDecreased,
     ].includes(event.logData.eventName as EventType)
   ) {
     console.log("Saving new transaction: ", newTransaction);
@@ -111,6 +102,13 @@ export const upsertTransactionPositionPriceFromEvent = async (event: Event) => {
   }
 };
 
+/**
+ * Creates or modifies a Position in the database based on the given Transaction.
+ * Looks up the original position in the database and calculates the delta of
+ * collateral, base token, and quote token. If the position doesn't exist, it
+ * creates a new one.
+ * @param transaction the Transaction to use for creating/modifying the position
+ */
 export const createOrModifyPosition = async (transaction: Transaction) => {
   const positionRepository = dataSource.getRepository(Position);
 
@@ -185,115 +183,51 @@ export const upsertMarketPrice = async (transaction: Transaction) => {
   }
 };
 
-export const upsertPositionFromLiquidityEvent = async (event: Event) => {
-  await initializeDataSource();
-
+/**
+ * Updates a Transaction with the relevant information from a LiquidityPositionModifiedEventLog event.
+ * If isDecrease is true, sets the Transaction type to REMOVE_LIQUIDITY, else sets it to ADD_LIQUIDITY.
+ * Looks up the original position in the database and calculates the delta of collateral.
+ * Sets the baseTokenDelta, quoteTokenDelta, and collateralDelta fields of the Transaction.
+ * @param newTransaction the Transaction to update
+ * @param event the Event containing the LiquidityPositionModifiedEventLog args
+ * @param isDecrease whether the event is a decrease or increase in liquidity
+ */
+const updateTransactionFromLiquidityModifiedEvent = async (
+  newTransaction: Transaction,
+  event: Event,
+  isDecrease?: boolean
+) => {
   const positionRepository = dataSource.getRepository(Position);
-
-  // create new position
-  const eventArgs = event.logData.args as LiquidityPositionCreatedEventLog;
-
-  const newPosition = new Position();
-  newPosition.positionId = Number(eventArgs.positionId);
-  newPosition.baseToken = eventArgs.addedAmount0;
-  newPosition.quoteToken = eventArgs.addedAmount1;
-  newPosition.collateral = eventArgs.collateralAmount;
-  newPosition.profitLoss = "0"; // TODO
-  newPosition.isLP = true;
-  newPosition.epoch = event.epoch;
-  newPosition.highPrice = tickToPrice(eventArgs.upperTick).toString();
-  newPosition.lowPrice = tickToPrice(eventArgs.lowerTick).toString();
-  newPosition.unclaimedFees = "0"; // TODO
-  await positionRepository.upsert(newPosition, ["epoch", "positionId"]);
-
-  // create txn based on position:
-  await createTxnFromLiquidityPositionCreatedEvent(event, newPosition);
+  newTransaction.type = isDecrease
+    ? TransactionType.REMOVE_LIQUIDITY
+    : TransactionType.ADD_LIQUIDITY;
+  const eventArgsModifyLiquidity = event.logData
+    .args as LiquidityPositionModifiedEventLog;
+  const originalPosition = await positionRepository.findOne({
+    where: { positionId: Number(eventArgsModifyLiquidity.positionId) },
+  });
+  if (!originalPosition) {
+    throw new Error(
+      `Position not found: ${eventArgsModifyLiquidity.positionId}`
+    );
+  }
+  const collateralDeltaBigInt =
+    BigInt(eventArgsModifyLiquidity.collateralAmount) -
+    BigInt(originalPosition.collateral);
+  newTransaction.baseTokenDelta = eventArgsModifyLiquidity.amount0;
+  newTransaction.quoteTokenDelta = eventArgsModifyLiquidity.amount1;
+  newTransaction.collateralDelta = collateralDeltaBigInt.toString();
 };
 
 /**
- * Creates a new Transaction from a LiquidityPositionCreatedEventLog, and upserts it to the database.
- * @param event The Event object containing the LiquidityPositionCreatedEventLog.
- * @param position The Position object associated with the event.
+ * Format a BigInt value from the DB to a string with 3 decimal places.
+ * @param value - a string representation of a BigInt value
+ * @returns a string representation of the value with 3 decimal places
  */
-const createTxnFromLiquidityPositionCreatedEvent = async (
-  event: Event,
-  position: Position
-) => {
-  const transactionRepository = dataSource.getRepository(Transaction);
-  const eventArgs = event.logData.args as LiquidityPositionCreatedEventLog;
-
-  const newTransaction = new Transaction();
-  newTransaction.type = TransactionType.ADD_LIQUIDITY;
-  newTransaction.position = position;
-  newTransaction.event = event;
-  newTransaction.baseTokenDelta = eventArgs.addedAmount0;
-  newTransaction.quoteTokenDelta = eventArgs.addedAmount1;
-  newTransaction.collateralDelta = eventArgs.collateralAmount;
-
-  await transactionRepository.save(newTransaction);
+export const formatDbBigInt = (value: string) => {
+  if (Number(value) === 0) {
+    return "0";
+  }
+  const formatted = formatUnits(BigInt(value), TOKEN_PRECISION);
+  return Number(formatted).toFixed(3);
 };
-
-// function getTransactionTypeFromEvent(
-//   event: Event
-// ): TransactionType | undefined {
-//   const eventName = event.logData.eventName;
-//   if (
-//     eventName === EventType.LiquidityPositionCreated ||
-//     eventName === EventType.LiquidityPositionIncreased
-//   ) {
-//     return TransactionType.ADD_LIQUIDITY;
-//   }
-//   if (
-//     eventName === EventType.LiquidityPositionDecreased ||
-//     eventName === EventType.LiquidityPositionClosed
-//   ) {
-//     return TransactionType.REMOVE_LIQUIDITY;
-//   }
-//   if (
-//     eventName == EventType.TraderPositionCreated ||
-//     eventName === EventType.TraderPositionModified
-//   ) {
-//     const eventArgs = event.logData.args as TradePositionEventLog;
-//     if (BigInt(eventArgs.vGasAmount) > 0n) {
-//       return TransactionType.LONG;
-//     } else {
-//       return TransactionType.SHORT;
-//     }
-//   }
-//   return;
-// }
-
-// export const upsertTxnFromEvent = async (event: Event) => {
-//   const transactionType = getTransactionTypeFromEvent(event);
-//   if (!transactionType) {
-//     // no transaction associated with event
-//     return;
-//   }
-//   await initializeDataSource();
-//   const transactionRepository = dataSource.getRepository(Transaction);
-
-//   // create new transaction
-//   const newTransaction = new Transaction();
-//   newTransaction.type = transactionType;
-
-//   // handle Liquidity Transactions
-//   if (
-//     transactionType === TransactionType.ADD_LIQUIDITY ||
-//     transactionType === TransactionType.REMOVE_LIQUIDITY
-//   ) {
-//     const eventArgs = event.logData.args as LiquidityPositionCreatedEventLog;
-//     newTransaction.baseTokenDelta = BigInt(eventArgs.addedAmount0);
-//     newTransaction.quoteTokenDelta = BigInt(eventArgs.addedAmount1);
-//     newTransaction.collateralDelta = BigInt(eventArgs.collateralAmount);
-//   } else {
-//     // handle Trade Transactions
-//     const eventArgs = event.logData.args as TradePositionEventLog;
-//     newTransaction.baseTokenDelta = BigInt(eventArgs.vEthAmount);
-//     newTransaction.quoteTokenDelta = BigInt(eventArgs.vGasAmount);
-//     newTransaction.collateralDelta = BigInt(eventArgs.collateralAmount);
-//     newTransaction.marketPrice = new MarketPrice();
-//     newTransaction.marketPrice.value = BigInt(eventArgs.finalPrice);
-//   }
-
-//   await transactionRepository.save(newTransaction);
-// };
