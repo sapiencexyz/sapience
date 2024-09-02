@@ -3,7 +3,10 @@
 pragma solidity >=0.8.2 <0.9.0;
 
 import "./Epoch.sol";
-import {SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
+import "./Trade.sol";
+
+import {SafeCastU256, SafeCastI256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
+import {DecimalMath} from "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
 import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
 import {PositionKey} from "../libraries/PositionKey.sol";
 import {ERC721Storage} from "./ERC721Storage.sol";
@@ -11,6 +14,9 @@ import {Errors} from "./Errors.sol";
 
 library Position {
     using SafeCastU256 for uint256;
+    using SafeCastI256 for int256;
+    using DecimalMath for uint256;
+
     using Epoch for Epoch.Data;
 
     struct Data {
@@ -209,27 +215,210 @@ library Position {
         return self.depositedCollateralAmount;
     }
 
-    function consolidateDebtsAndTokens(Data storage self) internal {
-        if (self.borrowedVEth > self.vEthAmount) {
-            self.borrowedVEth -= self.vEthAmount;
-            self.vEthAmount = 0;
-        } else {
-            self.vEthAmount -= self.borrowedVEth;
-            self.borrowedVEth = 0;
-        }
-
-        if (self.borrowedVGas > self.vGasAmount) {
-            self.borrowedVGas -= self.vGasAmount;
-            self.vGasAmount = 0;
-        } else {
-            self.vGasAmount -= self.borrowedVGas;
-            self.borrowedVGas = 0;
-        }
+    function reconcileTokens(Data storage self) internal {
+        reconcileGasTokens(self);
+        reconcileEthTokens(self);
 
         // Size of the position is the amount of vGas and direction depends on the kind
         // TODO remove currentTokenAmount and get it from the position size
         self.currentTokenAmount =
             self.vGasAmount.toInt() -
             self.borrowedVGas.toInt();
+    }
+
+    function reconcileGasTokens(Data storage self) internal {
+        if (self.vGasAmount > self.borrowedVGas) {
+            self.vGasAmount -= self.borrowedVGas;
+            self.borrowedVGas = 0;
+        } else {
+            self.borrowedVGas -= self.vGasAmount;
+            self.vGasAmount = 0;
+        }
+    }
+
+    function reconcileEthTokens(Data storage self) internal {
+        if (self.vEthAmount > self.borrowedVEth) {
+            self.vEthAmount -= self.borrowedVEth;
+            self.borrowedVEth = 0;
+        } else {
+            self.borrowedVEth -= self.vEthAmount;
+            self.vEthAmount = 0;
+        }
+    }
+
+    function positionSize(Data storage self) internal view returns (int256) {
+        return self.vGasAmount.toInt() - self.borrowedVGas.toInt();
+    }
+
+    function getCollateralForTargetSize(
+        Data storage self,
+        int256 targetSize
+    ) internal returns (uint256) {
+        reconcileGasTokens(self);
+
+        int256 deltaPositionSize = targetSize - positionSize(self);
+        uint256 modDeltaPositionSize = deltaPositionSize > 0
+            ? deltaPositionSize.toUint()
+            : (-1 * deltaPositionSize).toUint();
+
+        uint256 minPriceCollateralRequirement = getCollateralForMinPriceDelta(
+            self,
+            modDeltaPositionSize
+        );
+        uint256 maxPriceCollateralRequirement = getCollateralForMaxPriceDelta(
+            self,
+            modDeltaPositionSize
+        );
+
+        return
+            minPriceCollateralRequirement > maxPriceCollateralRequirement
+                ? minPriceCollateralRequirement
+                : maxPriceCollateralRequirement;
+    }
+
+    function getCollateralForMinPriceDelta(
+        Data storage self,
+        uint256 modDeltaPositionSize
+    ) internal view returns (uint256 collateral) {
+        uint256 price = Trade.getReferencePrice(self.epochId);
+        uint256 lowestPrice = Epoch.load(self.epochId).minPriceD18;
+        uint256 fee = Epoch.load(self.epochId).feeRateD18;
+
+        (uint256 totalTokens, uint256 totalDebt) = getPositionBalancesAtPrice(
+            self,
+            lowestPrice,
+            fee
+        );
+        int256 currentPositionStaticBalance = totalTokens.toInt() -
+            totalDebt.toInt();
+        uint256 unadjustedCollateral = modDeltaPositionSize.mulDecimal(
+            Trade.deltaPriceMultiplier(price, lowestPrice, fee)
+        );
+
+        if (
+            currentPositionStaticBalance > 0 &&
+            currentPositionStaticBalance.toUint() > unadjustedCollateral
+        ) {
+            // Balance at lowest price is greater than the debt, so there's no need to adjust the collateral
+            return 0;
+        }
+        return
+            (unadjustedCollateral.toInt() - currentPositionStaticBalance)
+                .toUint();
+    }
+
+    function getCollateralForMaxPriceDelta(
+        Data storage self,
+        uint256 modDeltaPositionSize
+    ) internal view returns (uint256 collateral) {
+        uint256 price = Trade.getReferencePrice(self.epochId);
+        uint256 highestPrice = Epoch.load(self.epochId).minPriceD18;
+        uint256 fee = Epoch.load(self.epochId).feeRateD18;
+
+        (uint256 totalTokens, uint256 totalDebt) = getPositionBalancesAtPrice(
+            self,
+            highestPrice,
+            fee
+        );
+        int256 currentPositionStaticBalance = totalTokens.toInt() -
+            totalDebt.toInt();
+        uint256 unadjustedCollateral = modDeltaPositionSize.mulDecimal(
+            Trade.deltaPriceMultiplier(highestPrice, price, fee)
+        );
+
+        if (
+            currentPositionStaticBalance > 0 &&
+            currentPositionStaticBalance.toUint() > unadjustedCollateral
+        ) {
+            // Balance at lowest price is greater than the debt, so there's no need to adjust the collateral
+            return 0;
+        }
+
+        return
+            (unadjustedCollateral.toInt() - currentPositionStaticBalance)
+                .toUint();
+    }
+
+    function getLongDeltaForCollateral(
+        Data storage self,
+        uint256 newCollateral
+    ) internal view returns (uint256 modPositionSize) {
+        uint256 price = Trade.getReferencePrice(self.epochId);
+        uint256 lowestPrice = Epoch.load(self.epochId).minPriceD18;
+        uint256 fee = Epoch.load(self.epochId).feeRateD18;
+
+        (uint256 totalTokens, uint256 totalDebt) = getPositionBalancesAtPrice(
+            self,
+            lowestPrice,
+            fee
+        );
+
+        int256 currentPositionStaticBalance = totalTokens.toInt() -
+            totalDebt.toInt();
+
+        if (
+            currentPositionStaticBalance < 0 &&
+            (-1 * currentPositionStaticBalance).toUint() > newCollateral
+        ) {
+            // not enough collateral to go on that direction
+            return 0;
+        }
+
+        uint256 adjustedCollateral = (newCollateral.toInt() +
+            currentPositionStaticBalance).toUint();
+
+        modPositionSize = adjustedCollateral.divDecimal(
+            Trade.deltaPriceMultiplier(price, lowestPrice, fee)
+        );
+    }
+
+    function getShortDeltaForCollateral(
+        Data storage self,
+        uint256 newCollateral
+    ) internal view returns (uint256 modPositionSize) {
+        uint256 price = Trade.getReferencePrice(self.epochId);
+        uint256 highestPrice = Epoch.load(self.epochId).maxPriceD18;
+        uint256 fee = Epoch.load(self.epochId).feeRateD18; // scaled to 1e18 fee
+
+        (uint256 totalTokens, uint256 totalDebt) = getPositionBalancesAtPrice(
+            self,
+            highestPrice,
+            fee
+        );
+
+        int256 currentPositionStaticBalance = totalTokens.toInt() -
+            totalDebt.toInt();
+
+        if (
+            currentPositionStaticBalance < 0 &&
+            (-1 * currentPositionStaticBalance).toUint() > newCollateral
+        ) {
+            // not enough collateral to go on that direction
+            return 0;
+        }
+
+        uint256 adjustedCollateral = (newCollateral.toInt() +
+            currentPositionStaticBalance).toUint();
+
+        modPositionSize = adjustedCollateral.divDecimal(
+            Trade.deltaPriceMultiplier(highestPrice, price, fee)
+        );
+    }
+
+    function getPositionBalancesAtPrice(
+        Data storage self,
+        uint256 priceD18,
+        uint256 feeD18
+    ) internal view returns (uint256 totalTokens, uint256 totalDebt) {
+        totalTokens =
+            self.vEthAmount +
+            self.vGasAmount.mulDecimal(
+                priceD18.mulDecimal(DecimalMath.UNIT - feeD18)
+            );
+        totalDebt =
+            self.borrowedVEth +
+            self.borrowedVGas.mulDecimal(
+                priceD18.mulDecimal(DecimalMath.UNIT + feeD18)
+            );
     }
 }

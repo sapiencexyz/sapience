@@ -103,7 +103,7 @@ contract TradeModule is ITradeModule {
         uint256 initialPrice = Trade.getReferencePrice(position.epochId);
 
         // Ensures that the position only have single side tokens
-        position.consolidateDebtsAndTokens();
+        position.reconcileTokens();
 
         if (
             !sameSide(position.currentTokenAmount, tokenAmount) ||
@@ -167,22 +167,19 @@ contract TradeModule is ITradeModule {
         position.borrowedVEth += vEthToSwap;
 
         // with the vEth get vGas (Swap)
-        SwapTokensExactOutParams memory params = SwapTokensExactOutParams({
-            epochId: position.epochId,
-            availableAmountInVEth: vEthToSwap,
-            availableAmountInVGas: 0,
-            amountInLimitVEth: tokenAmountLimit.toUint().to160(),
-            amountInLimitVGas: 0,
-            expectedAmountOutVEth: 0,
-            expectedAmountOutVGas: tokenAmount.toUint()
-        });
+        Trade.SwapTokensExactOutParams memory params = Trade
+            .SwapTokensExactOutParams({
+                epochId: position.epochId,
+                availableAmountInVEth: vEthToSwap,
+                availableAmountInVGas: 0,
+                amountInLimitVEth: tokenAmountLimit.toUint().to160(),
+                amountInLimitVGas: 0,
+                expectedAmountOutVEth: 0,
+                expectedAmountOutVGas: tokenAmount.toUint()
+            });
 
-        (
-            uint256 refundAmountVEth,
-            ,
-            ,
-            uint256 tokenAmountVGas
-        ) = swapTokensExactOut(params);
+        (uint256 refundAmountVEth, , , uint256 tokenAmountVGas) = Trade
+            .swapTokensExactOut(params);
 
         // Refund excess vEth sent
         position.borrowedVEth -= refundAmountVEth;
@@ -216,14 +213,15 @@ contract TradeModule is ITradeModule {
         position.borrowedVGas += vGasLoan;
 
         // with the vGas get vEth (Swap)
-        SwapTokensExactInParams memory params = SwapTokensExactInParams({
-            epochId: position.epochId,
-            amountInVEth: 0,
-            amountInVGas: (tokenAmount * -1).toUint(),
-            amountOutLimitVEth: (tokenAmountLimit * -1).toUint(),
-            amountOutLimitVGas: 0
-        });
-        (uint256 tokenAmountVEth, ) = swapTokensExactIn(params);
+        Trade.SwapTokensExactInParams memory params = Trade
+            .SwapTokensExactInParams({
+                epochId: position.epochId,
+                amountInVEth: 0,
+                amountInVGas: (tokenAmount * -1).toUint(),
+                amountOutLimitVEth: (tokenAmountLimit * -1).toUint(),
+                amountOutLimitVGas: 0
+            });
+        (uint256 tokenAmountVEth, ) = Trade.swapTokensExactIn(params);
 
         position.updateBalance(tokenAmount, tokenAmountVEth.toInt(), 0);
     }
@@ -268,23 +266,20 @@ contract TradeModule is ITradeModule {
             uint256 vEthToSwap = highestPrice.mulDecimal(uint(tokenAmount)); // Taking the max that can be required
             // Todo adjust for the fee. Edge case when the price is almost at max
 
-            SwapTokensExactOutParams memory params = SwapTokensExactOutParams({
-                epochId: position.epochId,
-                availableAmountInVEth: vEthToSwap,
-                availableAmountInVGas: 0,
-                amountInLimitVEth: tokenAmountLimit.toUint().to160(),
-                amountInLimitVGas: 0,
-                expectedAmountOutVEth: 0,
-                expectedAmountOutVGas: delta
-            });
+            Trade.SwapTokensExactOutParams memory params = Trade
+                .SwapTokensExactOutParams({
+                    epochId: position.epochId,
+                    availableAmountInVEth: vEthToSwap,
+                    availableAmountInVGas: 0,
+                    amountInLimitVEth: tokenAmountLimit.toUint().to160(),
+                    amountInLimitVGas: 0,
+                    expectedAmountOutVEth: 0,
+                    expectedAmountOutVGas: delta
+                });
 
             // with the vEth get vGas (Swap)
-            (
-                uint256 refundAmountVEth,
-                ,
-                ,
-                uint256 tokenAmountVGas
-            ) = swapTokensExactOut(params);
+            (uint256 refundAmountVEth, , , uint256 tokenAmountVGas) = Trade
+                .swapTokensExactOut(params);
             // Adjust the delta loan with the refund
             vEthToSwap -= refundAmountVEth;
             position.borrowedVEth += vEthToSwap;
@@ -297,16 +292,17 @@ contract TradeModule is ITradeModule {
             int256 delta = (tokenAmount - position.currentTokenAmount);
             int256 deltaEth; // usually is going to be zero
 
-            SwapTokensExactInParams memory params = SwapTokensExactInParams({
-                epochId: position.epochId,
-                amountInVEth: 0,
-                amountInVGas: (delta * -1).toUint(),
-                amountOutLimitVEth: tokenAmountLimit.toUint(),
-                amountOutLimitVGas: 0
-            });
+            Trade.SwapTokensExactInParams memory params = Trade
+                .SwapTokensExactInParams({
+                    epochId: position.epochId,
+                    amountInVEth: 0,
+                    amountInVGas: (delta * -1).toUint(),
+                    amountOutLimitVEth: tokenAmountLimit.toUint(),
+                    amountOutLimitVGas: 0
+                });
 
             // with the vGas get vEth (Swap)
-            (uint256 tokenAmountVEth, ) = swapTokensExactIn(params);
+            (uint256 tokenAmountVEth, ) = Trade.swapTokensExactIn(params);
 
             // Pay debt with vEth
             if (position.borrowedVEth > tokenAmountVEth) {
@@ -362,16 +358,17 @@ contract TradeModule is ITradeModule {
             uint256 vGasLoan = delta;
             position.borrowedVGas += vGasLoan;
 
-            SwapTokensExactInParams memory params = SwapTokensExactInParams({
-                epochId: position.epochId,
-                amountInVEth: 0,
-                amountInVGas: vGasLoan,
-                amountOutLimitVEth: tokenAmountLimitAbs,
-                amountOutLimitVGas: 0
-            });
+            Trade.SwapTokensExactInParams memory params = Trade
+                .SwapTokensExactInParams({
+                    epochId: position.epochId,
+                    amountInVEth: 0,
+                    amountInVGas: vGasLoan,
+                    amountOutLimitVEth: tokenAmountLimitAbs,
+                    amountOutLimitVGas: 0
+                });
 
             // with the vGas get vEth (Swap)
-            (uint256 tokenAmountVEth, ) = swapTokensExactIn(params);
+            (uint256 tokenAmountVEth, ) = Trade.swapTokensExactIn(params);
 
             position.updateBalance(
                 delta.toInt() * -1,
@@ -385,18 +382,19 @@ contract TradeModule is ITradeModule {
                 position.vEthAmount;
             position.borrowedVGas -= delta;
 
-            SwapTokensExactOutParams memory params = SwapTokensExactOutParams({
-                epochId: position.epochId,
-                availableAmountInVEth: availableVEth,
-                availableAmountInVGas: 0,
-                amountInLimitVEth: tokenAmountLimitAbs.to160(),
-                amountInLimitVGas: 0,
-                expectedAmountOutVEth: 0,
-                expectedAmountOutVGas: delta
-            });
+            Trade.SwapTokensExactOutParams memory params = Trade
+                .SwapTokensExactOutParams({
+                    epochId: position.epochId,
+                    availableAmountInVEth: availableVEth,
+                    availableAmountInVGas: 0,
+                    amountInLimitVEth: tokenAmountLimitAbs.to160(),
+                    amountInLimitVGas: 0,
+                    expectedAmountOutVEth: 0,
+                    expectedAmountOutVGas: delta
+                });
 
             // with the vEth get vGas (Swap)
-            (uint256 refundAmountVEth, , , ) = swapTokensExactOut(params);
+            (uint256 refundAmountVEth, , , ) = Trade.swapTokensExactOut(params);
 
             uint256 consumedVEth = availableVEth - refundAmountVEth;
 
@@ -450,16 +448,17 @@ contract TradeModule is ITradeModule {
     function _closePosition(Position.Data storage position) internal {
         if (position.currentTokenAmount > 0) {
             // Close LONG position
-            SwapTokensExactInParams memory params = SwapTokensExactInParams({
-                epochId: position.epochId,
-                amountInVEth: 0,
-                amountInVGas: position.vGasAmount,
-                amountOutLimitVEth: 0,
-                amountOutLimitVGas: 0
-            });
+            Trade.SwapTokensExactInParams memory params = Trade
+                .SwapTokensExactInParams({
+                    epochId: position.epochId,
+                    amountInVEth: 0,
+                    amountInVGas: position.vGasAmount,
+                    amountOutLimitVEth: 0,
+                    amountOutLimitVGas: 0
+                });
 
             // with the vGas get vEth (Swap)
-            (uint256 tokenAmountVEth, ) = swapTokensExactIn(params);
+            (uint256 tokenAmountVEth, ) = Trade.swapTokensExactIn(params);
 
             if (position.borrowedVEth > tokenAmountVEth) {
                 // Not enough vEth to pay the debt
@@ -477,16 +476,17 @@ contract TradeModule is ITradeModule {
             position.borrowedVEth = 0;
         } else {
             // Close SHORT position
-            SwapTokensExactInParams memory params = SwapTokensExactInParams({
-                epochId: position.epochId,
-                amountInVEth: position.vEthAmount,
-                amountInVGas: 0,
-                amountOutLimitVEth: 0,
-                amountOutLimitVGas: 0
-            });
+            Trade.SwapTokensExactInParams memory params = Trade
+                .SwapTokensExactInParams({
+                    epochId: position.epochId,
+                    amountInVEth: position.vEthAmount,
+                    amountInVGas: 0,
+                    amountOutLimitVEth: 0,
+                    amountOutLimitVGas: 0
+                });
 
             // with the vEth get vGas (Swap)
-            (, uint256 tokenAmountVGas) = swapTokensExactIn(params);
+            (, uint256 tokenAmountVGas) = Trade.swapTokensExactIn(params);
 
             if (position.borrowedVGas > tokenAmountVGas) {
                 // Not enough vGas to pay the debt
@@ -496,8 +496,8 @@ contract TradeModule is ITradeModule {
                 position.depositedCollateralAmount = 0; // used all as vEth in the line above
 
                 // Use collateral (as vEth) to get vGas
-                SwapTokensExactOutParams
-                    memory secondSwapParams = SwapTokensExactOutParams({
+                Trade.SwapTokensExactOutParams memory secondSwapParams = Trade
+                    .SwapTokensExactOutParams({
                         epochId: position.epochId,
                         availableAmountInVEth: vEth,
                         availableAmountInVGas: 0,
@@ -508,7 +508,7 @@ contract TradeModule is ITradeModule {
                     });
 
                 // with the vEth get vGas (Swap)
-                (uint256 refundAmountVEth, , , ) = swapTokensExactOut(
+                (uint256 refundAmountVEth, , , ) = Trade.swapTokensExactOut(
                     secondSwapParams
                 );
                 position.depositedCollateralAmount = refundAmountVEth;
@@ -517,8 +517,8 @@ contract TradeModule is ITradeModule {
                 // Sell it back and convert to collateral
                 uint256 extraGas = tokenAmountVGas - position.borrowedVGas;
 
-                SwapTokensExactInParams
-                    memory secondSwapParams = SwapTokensExactInParams({
+                Trade.SwapTokensExactInParams memory secondSwapParams = Trade
+                    .SwapTokensExactInParams({
                         epochId: position.epochId,
                         amountInVEth: 0,
                         amountInVGas: extraGas,
@@ -527,7 +527,7 @@ contract TradeModule is ITradeModule {
                     });
 
                 // with the vGas get vEth (Swap)
-                (uint256 tokenAmountVEth, ) = swapTokensExactIn(
+                (uint256 tokenAmountVEth, ) = Trade.swapTokensExactIn(
                     secondSwapParams
                 );
 
@@ -538,232 +538,6 @@ contract TradeModule is ITradeModule {
             position.borrowedVGas = 0;
         }
         position.resetBalance();
-    }
-
-    struct SwapTokensExactInParams {
-        uint256 epochId;
-        uint256 amountInVEth;
-        uint256 amountInVGas;
-        uint256 amountOutLimitVEth;
-        uint256 amountOutLimitVGas;
-    }
-
-    function swapTokensExactIn(
-        SwapTokensExactInParams memory params
-    ) internal returns (uint256 amountOutVEth, uint256 amountOutVGas) {
-        if (params.amountInVEth > 0 && params.amountInVGas > 0) {
-            revert("Only one token can be traded at a time");
-        }
-
-        if (params.amountInVEth == 0 && params.amountInVGas == 0) {
-            revert("At least one token should be traded");
-        }
-
-        Market.Data storage market = Market.load();
-        Epoch.Data storage epoch = Epoch.load(params.epochId);
-
-        if (epoch.settled) {
-            (amountOutVEth, amountOutVGas) = _afterSettlementSwapExactIn(
-                epoch,
-                params.amountInVEth,
-                params.amountInVGas
-            );
-        } else {
-            ISwapRouter.ExactInputSingleParams memory swapParams;
-            swapParams.fee = epoch.params.feeRate;
-            swapParams.recipient = address(this);
-            swapParams.deadline = block.timestamp;
-
-            if (params.amountInVEth > 0) {
-                swapParams.tokenIn = address(epoch.ethToken);
-                swapParams.tokenOut = address(epoch.gasToken);
-                swapParams.amountIn = params.amountInVEth;
-                swapParams.amountOutMinimum = params.amountOutLimitVGas;
-                // TODO -- We also set the sqrtPriceLimitx96 to be 0 to ensure we swap our exact input amount.
-                swapParams.sqrtPriceLimitX96 = 0;
-            } else {
-                swapParams.tokenIn = address(epoch.gasToken);
-                swapParams.tokenOut = address(epoch.ethToken);
-                swapParams.amountIn = params.amountInVGas;
-                swapParams.amountOutMinimum = params.amountOutLimitVEth;
-                // TODO -- We also set the sqrtPriceLimitx96 to be 0 to ensure we swap our exact input amount.
-                swapParams.sqrtPriceLimitX96 = 0;
-            }
-
-            uint256 amountOut = market.uniswapSwapRouter.exactInputSingle(
-                swapParams
-            );
-
-            if (params.amountInVEth > 0) {
-                amountOutVGas = amountOut;
-            } else {
-                amountOutVEth = amountOut;
-            }
-        }
-    }
-
-    struct SwapTokensExactOutParams {
-        uint256 epochId;
-        uint256 availableAmountInVEth;
-        uint256 availableAmountInVGas;
-        uint160 amountInLimitVEth;
-        uint160 amountInLimitVGas;
-        uint256 expectedAmountOutVEth;
-        uint256 expectedAmountOutVGas;
-    }
-
-    function swapTokensExactOut(
-        SwapTokensExactOutParams memory params
-    )
-        internal
-        returns (
-            uint256 refundAmountVEth,
-            uint256 refundAmountVGas,
-            uint256 tokenAmountVEth,
-            uint256 tokenAmountVGas
-        )
-    {
-        if (
-            params.expectedAmountOutVEth > 0 && params.expectedAmountOutVGas > 0
-        ) {
-            revert Errors.InvalidData("Only one token can be traded at a time");
-        }
-
-        if (
-            params.expectedAmountOutVEth == 0 &&
-            params.expectedAmountOutVGas == 0
-        ) {
-            revert Errors.InvalidData("At least one token should be traded");
-        }
-
-        Market.Data storage market = Market.load();
-        Epoch.Data storage epoch = Epoch.load(params.epochId);
-
-        if (epoch.settled) {
-            uint256 requiredAmountInVEth;
-            uint256 requiredAmountInVGas;
-            (
-                requiredAmountInVEth,
-                requiredAmountInVGas
-            ) = _afterSettlementSwapExactOut(
-                epoch,
-                params.expectedAmountOutVEth,
-                params.expectedAmountOutVGas
-            );
-
-            if (requiredAmountInVEth > params.availableAmountInVEth) {
-                revert Errors.InsufficientVEth(
-                    requiredAmountInVEth,
-                    params.availableAmountInVEth
-                );
-            }
-
-            refundAmountVEth =
-                params.availableAmountInVEth -
-                requiredAmountInVEth;
-
-            refundAmountVGas =
-                params.availableAmountInVGas -
-                requiredAmountInVGas;
-        } else {
-            address tokenIn;
-            address tokenOut;
-            uint256 amountOut;
-            // uint160 sqrtPriceLimitX96;
-            uint256 amountInMaximum;
-
-            if (params.expectedAmountOutVEth > 0) {
-                tokenIn = address(epoch.gasToken);
-                tokenOut = address(epoch.ethToken);
-                amountOut = params.expectedAmountOutVEth;
-                amountInMaximum = params.amountInLimitVGas == 0
-                    ? type(uint256).max
-                    : params.amountInLimitVGas;
-            } else {
-                tokenIn = address(epoch.ethToken);
-                tokenOut = address(epoch.gasToken);
-                amountOut = params.expectedAmountOutVGas;
-                amountInMaximum = params.amountInLimitVEth == 0
-                    ? type(uint256).max
-                    : params.amountInLimitVEth;
-            }
-
-            ISwapRouter.ExactOutputSingleParams memory swapParams = ISwapRouter
-                .ExactOutputSingleParams({
-                    tokenIn: tokenIn,
-                    tokenOut: tokenOut,
-                    fee: epoch.params.feeRate,
-                    recipient: address(this),
-                    deadline: block.timestamp,
-                    amountOut: amountOut,
-                    amountInMaximum: amountInMaximum,
-                    sqrtPriceLimitX96: 0
-                });
-
-            uint256 amountIn = market.uniswapSwapRouter.exactOutputSingle(
-                swapParams
-            );
-
-            tokenAmountVEth = params.expectedAmountOutVEth;
-            tokenAmountVGas = params.expectedAmountOutVGas;
-
-            if (params.expectedAmountOutVEth > 0) {
-                if (params.availableAmountInVGas > amountIn) {
-                    refundAmountVGas = params.availableAmountInVGas - amountIn;
-                } else {
-                    revert Errors.InsufficientVGas(
-                        amountIn,
-                        params.availableAmountInVGas
-                    );
-                }
-                refundAmountVGas = params.availableAmountInVGas - amountIn;
-            } else {
-                if (params.availableAmountInVEth > amountIn) {
-                    refundAmountVEth = params.availableAmountInVEth - amountIn;
-                } else {
-                    revert Errors.InsufficientVEth(
-                        amountIn,
-                        params.availableAmountInVEth
-                    );
-                }
-            }
-        }
-    }
-
-    function _afterSettlementSwapExactIn(
-        Epoch.Data storage epoch,
-        uint256 amountInVEth,
-        uint256 amountInVGas
-    ) internal view returns (uint256 amountOutVEth, uint256 amountOutVGas) {
-        if (amountInVEth > 0) {
-            amountOutVEth = 0;
-            amountOutVGas = amountInVEth.divDecimal(epoch.settlementPriceD18);
-        } else {
-            amountOutVEth = amountInVGas.mulDecimal(epoch.settlementPriceD18);
-            amountOutVGas = 0;
-        }
-    }
-
-    function _afterSettlementSwapExactOut(
-        Epoch.Data storage epoch,
-        uint256 amountOutVEth,
-        uint256 amountOutVGas
-    )
-        internal
-        view
-        returns (uint256 requiredAmountInVEth, uint256 requiredAmountInVGas)
-    {
-        if (amountOutVGas > 0) {
-            requiredAmountInVEth = amountOutVGas.mulDecimal(
-                epoch.settlementPriceD18
-            );
-            requiredAmountInVGas = 0;
-        } else {
-            requiredAmountInVEth = 0;
-            requiredAmountInVGas = amountOutVEth.divDecimal(
-                epoch.settlementPriceD18
-            );
-        }
     }
 
     function increaseSize(

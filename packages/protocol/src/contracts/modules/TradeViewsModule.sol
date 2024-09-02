@@ -48,10 +48,10 @@ contract TradeViewsModule is ITradeViewsModule {
         */
         uint256 price = Trade.getReferencePrice(epochId);
         uint256 lowestPrice = Epoch.load(epochId).minPriceD18;
-        uint256 fee = uint256(Epoch.load(epochId).params.feeRate) * 1e12; // scaled to 1e18 fee
+        uint256 fee = Epoch.load(epochId).feeRateD18; // scaled to 1e18 fee
 
         positionSize = collateral.divDecimal(
-            deltaPriceMultiplier(price, lowestPrice, fee)
+            Trade.deltaPriceMultiplier(price, lowestPrice, fee)
         );
     }
 
@@ -73,10 +73,10 @@ contract TradeViewsModule is ITradeViewsModule {
         */
         uint256 price = Trade.getReferencePrice(epochId);
         uint256 highestPrice = Epoch.load(epochId).maxPriceD18;
-        uint256 fee = uint256(Epoch.load(epochId).params.feeRate) * 1e12; // scaled to 1e18 fee
+        uint256 fee = Epoch.load(epochId).feeRateD18; // scaled to 1e18 fee
 
         modPositionSize = collateral.divDecimal(
-            deltaPriceMultiplier(highestPrice, price, fee)
+            Trade.deltaPriceMultiplier(highestPrice, price, fee)
         );
     }
 
@@ -92,7 +92,7 @@ contract TradeViewsModule is ITradeViewsModule {
         uint256 fee = uint256(Epoch.load(epochId).params.feeRate) * 1e12; // scaled to 1e18 fee
 
         collateral = positionSize.mulDecimal(
-            deltaPriceMultiplier(price, lowestPrice, fee)
+            Trade.deltaPriceMultiplier(price, lowestPrice, fee)
         );
     }
 
@@ -108,17 +108,7 @@ contract TradeViewsModule is ITradeViewsModule {
         uint256 fee = uint256(Epoch.load(epochId).params.feeRate) * 1e12; // scaled to 1e18 fee
 
         collateral = positionSize.mulDecimal(
-            deltaPriceMultiplier(highestPrice, price, fee)
+            Trade.deltaPriceMultiplier(highestPrice, price, fee)
         );
-    }
-
-    function deltaPriceMultiplier(
-        uint256 price0D18,
-        uint256 price1D18,
-        uint256 feeD18
-    ) internal pure returns (uint256) {
-        return
-            price0D18.mulDecimal(DecimalMath.UNIT + feeD18) -
-            price1D18.mulDecimal(DecimalMath.UNIT - feeD18);
     }
 }
