@@ -1,3 +1,4 @@
+import { format } from 'date-fns';
 import type React from 'react';
 import { useContext, useEffect, useRef, useState } from 'react';
 import {
@@ -69,12 +70,8 @@ const CandlestickChart: React.FC = () => {
   const grayColor = colors.gray?.[800] ?? '#808080';
 
   const { averagePrice, prices } = useContext(MarketContext);
-  console.log('prices', prices);
 
-  const yAxisDomain = [
-    Math.min(...prices.map((p) => p.low)),
-    Math.max(...prices.map((p) => p.high)),
-  ];
+  const yAxisDomain = [0, Math.max(...prices.map((p) => p.high)) + 1];
 
   const chartRef = useRef(null);
   const [gridHeight, setGridHeight] = useState(0);
@@ -101,12 +98,19 @@ const CandlestickChart: React.FC = () => {
     }
   }, [prices]);
 
+  const formatXAxisTick = (dateString: string) => {
+    const date = new Date(dateString);
+    return format(date, 'MMM d');
+  };
+
+  const formatYAxisTick = (value: number) => value.toFixed(2);
+
   return (
     <ResponsiveContainer height="100%" width="100%">
       <ComposedChart data={prices} ref={chartRef}>
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="date" />
-        <YAxis domain={yAxisDomain} />
+        <XAxis dataKey="date" tickFormatter={formatXAxisTick} />
+        <YAxis domain={yAxisDomain} tickFormatter={formatYAxisTick} />
         <Bar
           dataKey="candles"
           // eslint-disable-next-line @typescript-eslint/no-explicit-any, react/no-unstable-nested-components

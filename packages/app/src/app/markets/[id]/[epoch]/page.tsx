@@ -42,7 +42,7 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
             <Tab>Trader Positions</Tab>
             <Tab>LP Positions</Tab>
           </TabList>
-          <TabPanels>
+          <TabPanels pt={4}>
             <TabPanel>
               <TransactionTable />
             </TabPanel>

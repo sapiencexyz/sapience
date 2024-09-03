@@ -63,11 +63,11 @@ export default function TransactoinTable() {
         <Thead>
           <Tr>
             <Th>Position ID</Th>
+            <Th>Type</Th>
             <Th>Collateral Change</Th>
             <Th>Base Token Change</Th>
             <Th>Quote Token Change</Th>
-            <Th>Type</Th>
-            <Th>Price</Th>
+            {/* <Th>Price</Th> */}
           </Tr>
         </Thead>
         <Tbody>
@@ -75,11 +75,11 @@ export default function TransactoinTable() {
             transactions.map((row: any) => (
               <Tr key={row.id}>
                 <Td>{row.position.positionId}</Td>
+                <Td>{row.type}</Td>
                 <Td>{row.collateralDelta}</Td>
                 <Td>{row.baseTokenDelta}</Td>
                 <Td>{row.quoteTokenDelta}</Td>
-                <Td>{row.type}</Td>
-                <Td>{getFinalPrice(row)}</Td>
+                {/* <Td>{getFinalPrice(row)}</Td> */}
               </Tr>
             ))}
         </Tbody>

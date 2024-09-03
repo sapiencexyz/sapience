@@ -56,7 +56,7 @@ export default function TraderPositionsTable() {
             {/* <Th>Gain/Loss</Th> */}
             <Th>High Price</Th>
             <Th>Low Price</Th>
-            <Th>Unclaimed Fees</Th>
+            {/* <Th>Unclaimed Fees</Th> */}
           </Tr>
         </Thead>
         <Tbody>
@@ -71,7 +71,7 @@ export default function TraderPositionsTable() {
                 {/* <Td>{row.profitLoss.toString()}</Td> */}
                 <Td>{row.highPrice.toString()}</Td>
                 <Td>{row.lowPrice.toString()}</Td>
-                <Td>{row.unclaimedFees.toString()}</Td>
+                {/* <Td>{row.unclaimedFees.toString()}</Td> */}
               </Tr>
             ))}
         </Tbody>

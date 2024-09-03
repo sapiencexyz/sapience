@@ -40,7 +40,6 @@ const startServer = async () => {
       ) {
         callback(null, true);
       } else {
-        console.log("process.env.NODE_ENV =", process.env.NODE_ENV);
         callback(new Error("Not allowed by CORS"));
       }
     },
@@ -118,43 +117,43 @@ const startServer = async () => {
   app.get("/prices/average", async (req, res) => {
     const { contractId, epochId } = req.query;
     const [chainId, address] = (contractId as string).split(":");
-  
+
     // Find the market
     const market = await marketRepository.findOne({
       where: {
         chainId: Number(chainId),
-        address: address
-      }
+        address: address,
+      },
     });
-  
+
     if (!market) {
       return res.status(404).json({ error: "Market not found" });
     }
-  
+
     // Find the epoch within the market
     const epoch = await epochRepository.findOne({
       where: {
         market: { id: market.id },
-        epochId: Number(epochId)
-      }
+        epochId: Number(epochId),
+      },
     });
-  
+
     if (!epoch) {
       return res.status(404).json({ error: "Epoch not found" });
     }
-  
+
     const startTimestamp = epoch.startTimestamp;
     const endTimestamp = epoch.endTimestamp;
-  
+
     // Construct the where clause
     const where: any = {
-      market: { id: market.id }
+      market: { id: market.id },
     };
-  
+
     if (startTimestamp && endTimestamp) {
       where.timestamp = Between(startTimestamp, endTimestamp);
     }
-  
+
     const prices = await priceRepository.find({
       where,
       order: { timestamp: "ASC" },
@@ -200,7 +199,6 @@ const startServer = async () => {
     const all = await positionRepository.find({
       relations: ["epoch", "epoch.market", "transactions"],
     });
-    console.log("all positions -", all);
 
     if (typeof contractId !== "string") {
       return res.status(400).json({ error: "Invalid contractId" });
@@ -252,7 +250,7 @@ const startServer = async () => {
         event: true,
       },
     });
-    console.log("all txns -", all);
+
     const { contractId, epochId } = req.query;
 
     if (typeof contractId !== "string") {

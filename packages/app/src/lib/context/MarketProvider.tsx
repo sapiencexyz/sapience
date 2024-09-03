@@ -4,10 +4,10 @@ import { Token } from '@uniswap/sdk-core';
 import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import type { FeeAmount } from '@uniswap/v3-sdk';
 import { Pool } from '@uniswap/v3-sdk';
-import JSBI from 'jsbi';
 import type { ReactNode } from 'react';
 import type React from 'react';
 import { createContext, useEffect, useState } from 'react';
+import { formatEther } from 'viem';
 import * as Chains from 'viem/chains';
 import type { Chain } from 'viem/chains';
 import { useReadContracts, useReadContract } from 'wagmi';
@@ -17,6 +17,14 @@ import { API_BASE_URL, TOKEN_DECIMALS } from '../constants/constants';
 import erc20ABI from '../erc20abi.json';
 import { renderContractErrorToast } from '../util/util';
 
+const gweiToEther = (gweiValue: bigint): string => {
+  // First, convert gwei to wei (multiply by 10^9)
+  const weiValue = gweiValue * BigInt(1e9);
+  // Then use formatEther to convert wei to ether
+  return formatEther(weiValue);
+};
+
+// Types and Interfaces
 interface MarketContextType {
   chain?: Chain;
   address: string;
@@ -42,7 +50,6 @@ interface MarketContextType {
   foilData: any;
   chainId: number;
   error?: string;
-  marketPrice: number;
   liquidity: number;
 }
 
@@ -53,6 +60,7 @@ interface MarketProviderProps {
   children: ReactNode;
 }
 
+// Context creation
 export const MarketContext = createContext<MarketContextType>({
   chain: undefined,
   address: '',
@@ -67,17 +75,16 @@ export const MarketContext = createContext<MarketContextType>({
   prices: [],
   pool: null,
   poolAddress: '0x',
-  uniswapPositionManagerAddress: `0x`,
+  uniswapPositionManagerAddress: '0x',
   epoch: 0,
   foilData: {},
   chainId: 0,
-  marketPrice: 0,
   liquidity: 0,
 });
 
-export const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
+// Custom hooks
+const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
   const [pool, setPool] = useState<Pool | null>(null);
-  const [marketPrice, setMarketPrice] = useState<number>(0);
   const [liquidity, setLiquidity] = useState<string>('0');
 
   const { data, isError, isLoading } = useReadContracts({
@@ -115,7 +122,6 @@ export const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
     ],
   });
 
-  // New hook to fetch token0 balance
   const { data: token0Balance, refetch: refetchToken0Balance } =
     useReadContract({
       address: data?.[0].result as `0x${string}`,
@@ -126,7 +132,7 @@ export const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
     });
 
   useEffect(() => {
-    if (data && token0Balance) {
+    if (data && token0Balance !== undefined) {
       const token0Address = data[0].result;
       const token1Address = data[1].result;
       const fee = data[2].result;
@@ -161,25 +167,17 @@ export const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
         );
 
         setPool(poolInstance);
-        setLiquidity(token0Balance.toString());
 
-        // Calculate the market price
-        const sqrtRatioX96 = JSBI.BigInt(sqrtPriceX96.toString());
-        const ratioX192 = JSBI.multiply(sqrtRatioX96, sqrtRatioX96);
-        const shiftedRatioX192 = JSBI.leftShift(ratioX192, JSBI.BigInt(64));
-        const token1Decimals = JSBI.BigInt(10 ** token1.decimals);
-        const token0Decimals = JSBI.BigInt(10 ** token0.decimals);
-        const price = JSBI.divide(
-          JSBI.multiply(shiftedRatioX192, token1Decimals),
-          JSBI.multiply(JSBI.BigInt(2 ** 192), token0Decimals)
-        );
+        const formattedToken0Balance = (
+          Number(token0Balance) /
+          10 ** token0.decimals
+        ).toLocaleString();
 
-        setMarketPrice(Number(price.toString()) / 10 ** token1.decimals);
+        setLiquidity(formattedToken0Balance);
       }
     }
   }, [data, token0Balance, chainId]);
 
-  // Refetch token0 balance at the same interval as other queries
   useEffect(() => {
     const intervalId = setInterval(() => {
       refetchToken0Balance();
@@ -188,9 +186,10 @@ export const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
     return () => clearInterval(intervalId);
   }, [refetchToken0Balance]);
 
-  return { pool, marketPrice, liquidity, isError, isLoading };
+  return { pool, liquidity, isError, isLoading };
 };
 
+// Main component
 export const MarketProvider: React.FC<MarketProviderProps> = ({
   chainId,
   address,
@@ -216,11 +215,75 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     epoch: 0,
     foilData: {},
     chainId,
-    marketPrice: 0,
     liquidity: 0,
   });
 
-  // Set chainId and address from the URL
+  const { foilData } = useFoilDeployment(chainId);
+
+  // Custom hooks for data fetching
+  const { data: price } = useQuery({
+    queryKey: ['averagePrice', `${state.chainId}:${state.address}`],
+    queryFn: async () => {
+      const response = await fetch(
+        `${API_BASE_URL}/prices/average?contractId=${state.chainId}:${state.address}&epochId=${state.epoch}`
+      );
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    },
+    refetchInterval: 60000,
+  });
+
+  const { data: prices } = useQuery({
+    queryKey: ['prices', `${state.chainId}:${state.address}`],
+    queryFn: async () => {
+      const response = await fetch(
+        `${API_BASE_URL}/prices/chart-data?contractId=${state.chainId}:${state.address}&epochId=${state.epoch}`
+      );
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    },
+    refetchInterval: 60000,
+  });
+
+  const marketViewFunctionResult = useReadContract({
+    chainId,
+    abi: foilData.abi,
+    address: foilData?.address as `0x${string}`,
+    functionName: 'getMarket',
+  }) as any;
+
+  const epochViewFunctionResult = useReadContract({
+    chainId,
+    abi: foilData.abi,
+    address: foilData?.address as `0x${string}`,
+    functionName: 'getEpoch',
+    args: [epoch],
+  }) as any;
+
+  const collateralTickerFunctionResult = useReadContract({
+    chainId,
+    abi: erc20ABI,
+    address: state.collateralAsset as `0x${string}`,
+    functionName: 'symbol',
+  });
+
+  const collateralDecimalsFunctionResult = useReadContract({
+    chainId,
+    abi: erc20ABI,
+    address: state.collateralAsset as `0x${string}`,
+    functionName: 'decimals',
+  });
+
+  const { pool, liquidity, isError, isLoading } = useUniswapPool(
+    chainId,
+    state.poolAddress
+  );
+
+  // Effect hooks
   useEffect(() => {
     const chain = Object.entries(Chains).find((chainOption) => {
       if (chainId === 13370 && chainOption[0] === 'localhost') {
@@ -242,44 +305,40 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     }));
   }, [chainId, address, epoch]);
 
-  // Fetch average price using React Query
-  const { data: price } = useQuery({
-    queryKey: ['averagePrice', `${state.chainId}:${state.address}`],
-    queryFn: async () => {
-      const response = await fetch(
-        `${API_BASE_URL}/prices/average?contractId=${state.chainId}:${state.address}&epochId=${state.epoch}`
-      );
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      return response.json();
-    },
-    refetchInterval: 60000, // Refetch every 60 seconds
+  // This will need to be abstracted
+  const stEthPerTokenResult = useReadContract({
+    chainId,
+    abi: [
+      {
+        inputs: [],
+        name: 'stEthPerToken',
+        outputs: [
+          {
+            internalType: 'uint256',
+            name: '',
+            type: 'uint256',
+          },
+        ],
+        stateMutability: 'view',
+        type: 'function',
+      },
+    ],
+    address: state.collateralAsset as `0x${string}`,
+    functionName: 'stEthPerToken',
   });
 
   useEffect(() => {
-    if (price) {
+    if (price && stEthPerTokenResult.data) {
+      const stEthPerToken = gweiToEther(stEthPerTokenResult.data as bigint);
+
+      const wstEthPrice = price.average * Number(stEthPerToken);
+
       setState((currentState) => ({
         ...currentState,
-        averagePrice: price.average,
+        averagePrice: wstEthPrice / 10 ** 18,
       }));
     }
-  }, [price]);
-
-  // Fetch prices using React Query
-  const { data: prices } = useQuery({
-    queryKey: ['prices', `${state.chainId}:${state.address}`],
-    queryFn: async () => {
-      const response = await fetch(
-        `${API_BASE_URL}/prices/chart-data?contractId=${state.chainId}:${state.address}&epochId=${state.epoch}`
-      );
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      return response.json();
-    },
-    refetchInterval: 60000, // Refetch every 60 seconds
-  });
+  }, [price, stEthPerTokenResult.data]);
 
   useEffect(() => {
     if (prices) {
@@ -290,8 +349,6 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     }
   }, [prices]);
 
-  const { foilData } = useFoilDeployment(chainId);
-
   useEffect(() => {
     setState((currentState) => ({
       ...currentState,
@@ -299,15 +356,6 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     }));
   }, [foilData]);
 
-  // Get data about the market from Foil
-  const marketViewFunctionResult = useReadContract({
-    chainId,
-    abi: foilData.abi,
-    address: foilData?.address as `0x${string}`,
-    functionName: 'getMarket',
-  }) as any;
-
-  // show error from getMarket call if any
   useEffect(() => {
     if (marketViewFunctionResult.error) {
       renderContractErrorToast(
@@ -315,24 +363,19 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
         toast,
         'Unable to get market data'
       );
-      setState((prev) => {
-        return {
-          ...prev,
-          error: marketViewFunctionResult.error?.message,
-        };
-      });
+      setState((prev) => ({
+        ...prev,
+        error: marketViewFunctionResult.error?.message,
+      }));
     } else {
-      setState((prev) => {
-        return {
-          ...prev,
-          error: undefined,
-        };
-      });
+      setState((prev) => ({
+        ...prev,
+        error: undefined,
+      }));
     }
-  }, [marketViewFunctionResult.error]);
+  }, [marketViewFunctionResult.error, toast]);
 
   useEffect(() => {
-    console.log('marketViewFunctionResult', marketViewFunctionResult?.data);
     if (marketViewFunctionResult.data !== undefined) {
       setState((currentState) => ({
         ...currentState,
@@ -348,17 +391,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     }
   }, [marketViewFunctionResult.data]);
 
-  // Get data about the epoch from Foil
-  const epochViewFunctionResult = useReadContract({
-    chainId,
-    abi: foilData.abi,
-    address: foilData?.address as `0x${string}`,
-    functionName: 'getEpoch',
-    args: [epoch],
-  }) as any;
-
   useEffect(() => {
-    console.log('epochViewFunctionResult', epochViewFunctionResult?.data);
     if (epochViewFunctionResult.data !== undefined) {
       setState((currentState) => ({
         ...currentState,
@@ -369,30 +402,15 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     }
   }, [epochViewFunctionResult.data]);
 
-  // Fetch pool data when poolAddress is updated
-  const { pool, marketPrice, liquidity, isError, isLoading } = useUniswapPool(
-    chainId,
-    state.poolAddress
-  );
-
   useEffect(() => {
     if (pool) {
       setState((currentState) => ({
         ...currentState,
         pool,
-        marketPrice,
         liquidity: Number(liquidity),
       }));
     }
-  }, [pool, marketPrice, liquidity]);
-
-  // Fetch Collateral Ticker
-  const collateralTickerFunctionResult = useReadContract({
-    chainId,
-    abi: erc20ABI,
-    address: state.collateralAsset as `0x${string}`,
-    functionName: 'symbol',
-  });
+  }, [pool, liquidity]);
 
   useEffect(() => {
     if (collateralTickerFunctionResult.data !== undefined) {
@@ -402,14 +420,6 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
       }));
     }
   }, [collateralTickerFunctionResult.data]);
-
-  // Fetch Collateral Decimals
-  const collateralDecimalsFunctionResult = useReadContract({
-    chainId,
-    abi: erc20ABI,
-    address: state.collateralAsset as `0x${string}`,
-    functionName: 'decimals',
-  });
 
   useEffect(() => {
     if (collateralDecimalsFunctionResult.data !== undefined) {

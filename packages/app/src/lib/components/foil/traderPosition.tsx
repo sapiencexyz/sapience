@@ -226,7 +226,7 @@ export default function TraderPosition({}) {
         epoch,
         parseUnits(collateral.toString(), collateralAssetDecimals),
         finalSize,
-        // tokenAmountLimit,
+        //tokenAmountLimit,
         parseUnits('0', collateralAssetDecimals),
       ];
       console.log('args', args);
@@ -246,7 +246,8 @@ export default function TraderPosition({}) {
             nftId,
             parseUnits(collateral.toString(), collateralAssetDecimals),
             finalSize, // target amount
-            tokenAmountLimit, // get limit
+            // tokenAmountLimit, // get limit
+            parseUnits('0', collateralAssetDecimals),
           ],
         });
       }

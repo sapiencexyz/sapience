@@ -11,14 +11,14 @@
     "simulate-deploy:sepolia": "cannon build cannonfile.sepolia.toml --chain-id 11155111 --dry-run"
   },
   "devDependencies": {
-    "@types/chai": "^4.3.16",
+    "@types/chai": "^4.3.19",
     "@types/mocha": "^10.0.7",
-    "@types/node": "^20.14.13",
+    "@types/node": "^20.16.3",
     "chai": "^4.5.0",
     "forge-std": "github:foundry-rs/forge-std#master",
-    "mocha": "^10.7.0",
+    "mocha": "^10.7.3",
     "mocha-junit-reporter": "^2.2.1",
-    "solidity-coverage": "^0.8.12",
+    "solidity-coverage": "^0.8.13",
     "ts-node": "^10.9.2",
     "typechain": "^8.3.2",
     "typescript": "^5.5.4"
@@ -29,6 +29,6 @@
     "@uma/core": "^2.59.1",
     "@uniswap/v3-core": "^1.0.1",
     "@uniswap/v3-periphery": "^1.4.4",
-    "@usecannon/cli": "^2.16.6"
+    "@usecannon/cli": "^2.16.7"
   }
 }
