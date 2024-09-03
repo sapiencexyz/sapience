@@ -1,4 +1,4 @@
-import dataSource, { initializeDataSource } from "../db";
+import dataSource from "../db";
 import { Event } from "../entity/Event";
 import { Position } from "../entity/Position";
 import { Transaction, TransactionType } from "../entity/Transaction";
@@ -20,7 +20,7 @@ const FEE = 0.0001;
 const tickToPrice = (tick: number): number => (1 + FEE) ** tick;
 
 const getTradeTypeFromEvent = (eventArgs: TradePositionEventLog) => {
-  if (eventArgs.finalPrice > eventArgs.initialPrice) {
+  if (BigInt(eventArgs.finalPrice) > BigInt(eventArgs.initialPrice)) {
     return TransactionType.LONG;
   }
   return TransactionType.SHORT;
@@ -28,24 +28,17 @@ const getTradeTypeFromEvent = (eventArgs: TradePositionEventLog) => {
 
 export const upsertTransactionPositionPriceFromEvent = async (event: Event) => {
   const transactionRepository = dataSource.getRepository(Transaction);
-  const positionRepository = dataSource.getRepository(Position);
 
   const newTransaction = new Transaction();
   newTransaction.event = event;
-  console.log("event name -", event.logData.eventName);
 
   // set to true if the Event does not require a transaction (i.e. a Transfer event)
   let skipTransaction = false;
-  // TODO - figure out signed deltas
+
   switch (event.logData.eventName) {
     case EventType.LiquidityPositionCreated:
       console.log("Creating liquidity position from event: ", event);
-      newTransaction.type = TransactionType.ADD_LIQUIDITY;
-      const eventArgsAddLiquidity = event.logData
-        .args as LiquidityPositionCreatedEventLog;
-      newTransaction.baseTokenDelta = eventArgsAddLiquidity.addedAmount0;
-      newTransaction.quoteTokenDelta = eventArgsAddLiquidity.addedAmount1;
-      newTransaction.collateralDelta = eventArgsAddLiquidity.collateralAmount;
+      updateTransactionFromAddLiquidityEvent(newTransaction, event);
       break;
     case EventType.LiquidityPositionClosed:
       console.log("Closing liquidity position from event: ", event);
@@ -64,37 +57,19 @@ export const upsertTransactionPositionPriceFromEvent = async (event: Event) => {
       await updateTransactionFromLiquidityModifiedEvent(newTransaction, event);
       break;
     case EventType.TraderPositionCreated:
-      console.log("TRADER POSITION CREATED");
       console.log("Creating trader position from event: ", event);
-      newTransaction.type = getTradeTypeFromEvent(
-        event.logData.args as TradePositionEventLog
-      );
-
-      const eventArgsCreateTrade = event.logData.args as TradePositionEventLog;
-      newTransaction.baseTokenDelta = eventArgsCreateTrade.vGasAmount;
-      newTransaction.quoteTokenDelta = eventArgsCreateTrade.vEthAmount;
-      newTransaction.collateralDelta = eventArgsCreateTrade.collateralAmount;
+      await updateTransactionFromTradeModifiedEvent(newTransaction, event);
       break;
     case EventType.TraderPositionModified:
       console.log("Modifying trader position from event: ", event);
-      newTransaction.type = getTradeTypeFromEvent(
-        event.logData.args as TradePositionEventLog
-      );
+      await updateTransactionFromTradeModifiedEvent(newTransaction, event);
       break;
     default:
       skipTransaction = true;
       break;
   }
 
-  if (
-    !skipTransaction &&
-    [
-      EventType.LiquidityPositionCreated,
-      EventType.TraderPositionCreated,
-      EventType.LiquidityPositionIncreased,
-      EventType.LiquidityPositionDecreased,
-    ].includes(event.logData.eventName as EventType)
-  ) {
+  if (!skipTransaction) {
     console.log("Saving new transaction: ", newTransaction);
     await transactionRepository.save(newTransaction);
     await createOrModifyPosition(newTransaction);
@@ -104,9 +79,6 @@ export const upsertTransactionPositionPriceFromEvent = async (event: Event) => {
 
 /**
  * Creates or modifies a Position in the database based on the given Transaction.
- * Looks up the original position in the database and calculates the delta of
- * collateral, base token, and quote token. If the position doesn't exist, it
- * creates a new one.
  * @param transaction the Transaction to use for creating/modifying the position
  */
 export const createOrModifyPosition = async (transaction: Transaction) => {
@@ -158,11 +130,7 @@ export const createOrModifyPosition = async (transaction: Transaction) => {
 };
 
 /**
- * Upsert a MarketPrice given a Transaction. If the Transaction is a long or
- * short, it will upsert a MarketPrice with the timestamp and value from the
- * Transaction's event log arguments. If the MarketPrice already exists, it
- * will be updated with the new timestamp and value.
- *
+ * Upsert a MarketPrice given a Transaction.
  * @param transaction the Transaction to upsert a MarketPrice for
  */
 export const upsertMarketPrice = async (transaction: Transaction) => {
@@ -185,9 +153,6 @@ export const upsertMarketPrice = async (transaction: Transaction) => {
 
 /**
  * Updates a Transaction with the relevant information from a LiquidityPositionModifiedEventLog event.
- * If isDecrease is true, sets the Transaction type to REMOVE_LIQUIDITY, else sets it to ADD_LIQUIDITY.
- * Looks up the original position in the database and calculates the delta of collateral.
- * Sets the baseTokenDelta, quoteTokenDelta, and collateralDelta fields of the Transaction.
  * @param newTransaction the Transaction to update
  * @param event the Event containing the LiquidityPositionModifiedEventLog args
  * @param isDecrease whether the event is a decrease or increase in liquidity
@@ -204,7 +169,11 @@ const updateTransactionFromLiquidityModifiedEvent = async (
   const eventArgsModifyLiquidity = event.logData
     .args as LiquidityPositionModifiedEventLog;
   const originalPosition = await positionRepository.findOne({
-    where: { positionId: Number(eventArgsModifyLiquidity.positionId) },
+    where: {
+      positionId: Number(eventArgsModifyLiquidity.positionId),
+      epoch: { epochId: event.epoch.epochId },
+    },
+    relations: ["epoch"],
   });
   if (!originalPosition) {
     throw new Error(
@@ -219,6 +188,60 @@ const updateTransactionFromLiquidityModifiedEvent = async (
   newTransaction.collateralDelta = collateralDeltaBigInt.toString();
 };
 
+/**
+ * Updates a Transaction with the relevant information from a LiquidityPositionCreatedEventLog event.
+ * @param newTransaction the Transaction to update
+ * @param event the Event containing the LiquidityPositionCreatedEventLog args
+ */
+const updateTransactionFromAddLiquidityEvent = (
+  newTransaction: Transaction,
+  event: Event
+) => {
+  newTransaction.type = TransactionType.ADD_LIQUIDITY;
+  const eventArgsAddLiquidity = event.logData
+    .args as LiquidityPositionCreatedEventLog;
+  newTransaction.baseTokenDelta = eventArgsAddLiquidity.addedAmount0;
+  newTransaction.quoteTokenDelta = eventArgsAddLiquidity.addedAmount1;
+  newTransaction.collateralDelta = eventArgsAddLiquidity.collateralAmount;
+};
+
+/**
+ * Updates a Transaction with the relevant information from a TradePositionModifiedEventLog event.
+ * @param newTransaction the Transaction to update
+ * @param event the Event containing the TradePositionModifiedEventLog args
+ */
+const updateTransactionFromTradeModifiedEvent = async (
+  newTransaction: Transaction,
+  event: Event
+) => {
+  const eventArgsCreateTrade = event.logData.args as TradePositionEventLog;
+  const positionRepository = dataSource.getRepository(Position);
+  newTransaction.type = getTradeTypeFromEvent(
+    event.logData.args as TradePositionEventLog
+  );
+
+  const initialPosition = await positionRepository.findOne({
+    where: {
+      positionId: Number(eventArgsCreateTrade.positionId),
+      epoch: { epochId: event.epoch.epochId },
+    },
+    relations: ["epoch"],
+  });
+  console.log("initialPosition", initialPosition);
+  const baseTokenInitial = initialPosition ? initialPosition.baseToken : "0";
+  const quoteTokenInitial = initialPosition ? initialPosition.quoteToken : "0";
+  const collateralInitial = initialPosition ? initialPosition.collateral : "0";
+
+  newTransaction.baseTokenDelta = (
+    BigInt(eventArgsCreateTrade.vGasAmount) - BigInt(baseTokenInitial)
+  ).toString();
+  newTransaction.quoteTokenDelta = (
+    BigInt(eventArgsCreateTrade.vEthAmount) - BigInt(quoteTokenInitial)
+  ).toString();
+  newTransaction.collateralDelta = (
+    BigInt(eventArgsCreateTrade.collateralAmount) - BigInt(collateralInitial)
+  ).toString();
+};
 /**
  * Format a BigInt value from the DB to a string with 3 decimal places.
  * @param value - a string representation of a BigInt value
