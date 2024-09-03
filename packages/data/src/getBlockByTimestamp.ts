@@ -1,4 +1,5 @@
 import { createPublicClient, http, Block, Chain } from "viem";
+import { TOKEN_PRECISION } from "./util/dbUtil";
 
 // Function to create a custom chain configuration
 function createCustomChain(rpcUrl: string): Chain {
@@ -10,7 +11,7 @@ function createCustomChain(rpcUrl: string): Chain {
       public: { http: [rpcUrl] },
     },
     nativeCurrency: {
-      decimals: 18,
+      decimals: TOKEN_PRECISION,
       name: "Ether",
       symbol: "ETH",
     },

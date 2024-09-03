@@ -31,4 +31,10 @@ export class Epoch {
 
   @Column()
   epochId: number;
+
+  @Column({ type: 'bigint', nullable: true })
+  startTimestamp: number | null;
+
+  @Column({ type: 'bigint', nullable: true })
+  endTimestamp: number | null;
 }

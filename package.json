@@ -10,7 +10,7 @@
     "dev:app": "pnpm --filter app run dev",
     "dev:docs": "pnpm --filter docs run dev",
     "dev:website": "pnpm --filter website run dev",
-    "dev:data": "concurrently \"pnpm --filter data run dev:service\" \"pnpm --filter data run dev:worker\""
+    "dev:data": "concurrently \"NODE_ENV=development pnpm --filter data run dev:service\" \"NODE_ENV=development pnpm --filter data run dev:worker\""
   },
   "keywords": [],
   "author": "",

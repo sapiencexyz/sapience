@@ -1,12 +1,11 @@
 /* eslint-disable import/no-extraneous-dependencies */
 
+import FoilTestnet from '@/protocol/deployments/11155111/Foil.json';
+import FoilLocal from '@/protocol/deployments/13370/Foil.json';
 import { Box, Flex, Image } from '@chakra-ui/react';
 import Link from 'next/link';
 
 import ConnectButton from '../components/ConnectButton';
-
-import FoilTestnet from '@/protocol/deployments/11155111/Foil.json';
-import FoilLocal from '@/protocol/deployments/13370/Foil.json';
 
 const Header = () => {
   return (

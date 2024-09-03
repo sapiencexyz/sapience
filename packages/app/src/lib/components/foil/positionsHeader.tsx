@@ -35,20 +35,8 @@ const PositionsHeader = () => {
     averagePrice,
     pool,
     marketPrice,
+    liquidity,
   } = useContext(MarketContext);
-
-  // Calculate token amounts
-  const sqrtPriceX96BigInt = JSBI.BigInt(pool?.sqrtRatioX96.toString() || 1);
-  const liquidityBigInt = JSBI.BigInt(pool?.liquidity.toString() || 0);
-
-  const token0Amount = SqrtPriceMath.getAmount0Delta(
-    sqrtPriceX96BigInt,
-    JSBI.add(sqrtPriceX96BigInt, JSBI.BigInt(1)), // Slightly higher price
-    liquidityBigInt,
-    false
-  );
-
-  console.log('context', useContext(MarketContext));
 
   let relativeTime = '';
   let formattedTime = '';
@@ -214,7 +202,7 @@ const PositionsHeader = () => {
             />
           </StatLabel>
           <StatNumber>
-            {token0Amount.toString()} {/* <Text as="span">Ggas</Text> */}
+            {liquidity.toString()} {/* <Text as="span">Ggas</Text> */}
           </StatNumber>
           {/*
           <StatHelpText>

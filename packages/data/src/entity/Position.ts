@@ -9,7 +9,7 @@ import {
 } from "typeorm";
 import { Transaction } from "./Transaction";
 import {
-  DECIMAL_PRECISION,
+  TOKEN_PRECISION,
   DECIMAL_SCALE,
   NUMERIC_PRECISION,
 } from "../util/dbUtil";
@@ -44,7 +44,7 @@ export class Position {
 
   @Column({
     type: "numeric",
-    precision: DECIMAL_PRECISION, // Total number of significant digits
+    precision: TOKEN_PRECISION, // Total number of significant digits
     scale: DECIMAL_SCALE, // Number of digits after the decimal point
   })
   profitLoss: string; // ETH  will calculate off chain, start at 0
@@ -55,7 +55,7 @@ export class Position {
   @Column({
     type: "numeric",
     nullable: true,
-    precision: DECIMAL_PRECISION, // Total number of significant digits
+    precision: TOKEN_PRECISION, // Total number of significant digits
     scale: DECIMAL_SCALE, // Number of digits after the decimal point
   })
   highPrice: string;
@@ -63,7 +63,7 @@ export class Position {
   @Column({
     type: "numeric",
     nullable: true,
-    precision: DECIMAL_PRECISION, // Total number of significant digits
+    precision: TOKEN_PRECISION, // Total number of significant digits
     scale: DECIMAL_SCALE, // Number of digits after the decimal point
   })
   lowPrice: string;
@@ -71,7 +71,7 @@ export class Position {
   @Column({
     type: "numeric",
     nullable: true,
-    precision: DECIMAL_PRECISION, // Total number of significant digits
+    precision: TOKEN_PRECISION, // Total number of significant digits
     scale: DECIMAL_SCALE, // Number of digits after the decimal point
   })
   unclaimedFees: string; // ETH
