@@ -713,6 +713,15 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     setDepositAmount(value);
   };
 
+  const getButtonText = () => {
+    if (isEdit && isDecrease) {
+      return depositAmount != 0
+        ? 'Decrease Liquidity'
+        : 'Close Liquidity Position';
+    }
+    return 'Add Liquidity';
+  };
+
   return (
     <form onSubmit={handleFormSubmit}>
       <Box mb={4}>
@@ -814,7 +823,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
           isLoading={pendingTxn}
           isDisabled={pendingTxn}
         >
-          {isEdit && isDecrease ? 'Decrease' : 'Add'} Liquidity
+          {getButtonText()}
         </Button>
       ) : (
         <Button width="full" variant="brand" type="submit">
