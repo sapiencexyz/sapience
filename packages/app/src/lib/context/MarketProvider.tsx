@@ -7,6 +7,7 @@ import { Pool } from '@uniswap/v3-sdk';
 import type { ReactNode } from 'react';
 import type React from 'react';
 import { createContext, useEffect, useState } from 'react';
+import { formatEther } from 'viem';
 import * as Chains from 'viem/chains';
 import type { Chain } from 'viem/chains';
 import { useReadContracts, useReadContract } from 'wagmi';
@@ -15,6 +16,13 @@ import useFoilDeployment from '../components/foil/useFoilDeployment';
 import { API_BASE_URL, TOKEN_DECIMALS } from '../constants/constants';
 import erc20ABI from '../erc20abi.json';
 import { renderContractErrorToast } from '../util/util';
+
+const gweiToEther = (gweiValue: bigint): string => {
+  // First, convert gwei to wei (multiply by 10^9)
+  const weiValue = gweiValue * BigInt(1e9);
+  // Then use formatEther to convert wei to ether
+  return formatEther(weiValue);
+};
 
 // Types and Interfaces
 interface MarketContextType {
@@ -297,14 +305,40 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     }));
   }, [chainId, address, epoch]);
 
+  // This will need to be abstracted
+  const stEthPerTokenResult = useReadContract({
+    chainId,
+    abi: [
+      {
+        inputs: [],
+        name: 'stEthPerToken',
+        outputs: [
+          {
+            internalType: 'uint256',
+            name: '',
+            type: 'uint256',
+          },
+        ],
+        stateMutability: 'view',
+        type: 'function',
+      },
+    ],
+    address: state.collateralAsset as `0x${string}`,
+    functionName: 'stEthPerToken',
+  });
+
   useEffect(() => {
-    if (price) {
+    if (price && stEthPerTokenResult.data) {
+      const stEthPerToken = gweiToEther(stEthPerTokenResult.data as bigint);
+
+      const wstEthPrice = price.average * Number(stEthPerToken);
+
       setState((currentState) => ({
         ...currentState,
-        averagePrice: price.average,
+        averagePrice: wstEthPrice / 10 ** 18,
       }));
     }
-  }, [price]);
+  }, [price, stEthPerTokenResult.data]);
 
   useEffect(() => {
     if (prices) {

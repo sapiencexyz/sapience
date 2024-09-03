@@ -131,7 +131,7 @@ const PositionsHeader = () => {
             />
           </StatLabel>
           <StatNumber>
-            {averagePrice}{' '}
+            {averagePrice.toLocaleString()}{' '}
             <Text fontSize="sm" as="span">
               Ggas/wstETH
             </Text>
