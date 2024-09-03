@@ -132,7 +132,7 @@ const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
     });
 
   useEffect(() => {
-    if (data && token0Balance) {
+    if (data && token0Balance !== undefined) {
       const token0Address = data[0].result;
       const token1Address = data[1].result;
       const fee = data[2].result;
@@ -176,7 +176,7 @@ const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
         setLiquidity(formattedToken0Balance);
       }
     }
-  }, [data, pool, token0Balance, chainId]);
+  }, [data, token0Balance, chainId]);
 
   useEffect(() => {
     const intervalId = setInterval(() => {
