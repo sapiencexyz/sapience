@@ -15,8 +15,8 @@
     "vocs": "latest"
   },
   "devDependencies": {
-    "@types/react": "latest",
-    "typescript": "latest"
+    "@types/react": "^18.3.5",
+    "typescript": "^5.5.4"
   },
   "engines": {
     "node": ">=20.14.x",

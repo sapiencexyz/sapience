@@ -14,11 +14,10 @@ import {
   StatLabel,
   StatNumber,
 } from '@chakra-ui/react';
-import { SqrtPriceMath } from '@uniswap/v3-sdk';
+import { tickToPrice } from '@uniswap/v3-sdk';
 import { format, formatDistanceToNow } from 'date-fns';
-import JSBI from 'jsbi';
 import { useContext } from 'react';
-import { FaRegEye, FaRegChartBar, FaCubes } from 'react-icons/fa';
+import { FaRegChartBar, FaCubes } from 'react-icons/fa';
 import { IoDocumentTextOutline } from 'react-icons/io5';
 
 import { MarketContext } from '~/lib/context/MarketProvider';
@@ -46,9 +45,12 @@ const PositionsHeader = () => {
     relativeTime = formatDistanceToNow(date);
     formattedTime = format(date, 'PPpp');
   }
+
+  const tickToPrice = (tick: number): number => 1.0001 ** tick;
+
   return (
     <Flex gap={6} mb={9} alignItems="center" direction="column">
-      <Flex w="100%" alignItems="center">
+      <Flex w="100%" alignItems="end">
         <Heading>
           {chain?.name} Gas Market{' '}
           <Text ml={1.5} as="span" fontWeight="200" color="gray.600">
@@ -62,7 +64,7 @@ const PositionsHeader = () => {
             color="gray.800"
             isExternal
             _hover={{ textDecoration: 'none' }}
-            mr={6}
+            mr={5}
             href={`${chain?.blockExplorers?.default.url}/address/${address}`}
           >
             <Flex display="inline-flex" alignItems="center">
@@ -85,7 +87,7 @@ const PositionsHeader = () => {
             color="gray.800"
             isExternal
             _hover={{ textDecoration: 'none' }}
-            mr={6}
+            mr={5}
             href={`${chain?.blockExplorers?.default.url}/address/${collateralAsset}`}
           >
             <Flex display="inline-flex" alignItems="center">
@@ -103,43 +105,17 @@ const PositionsHeader = () => {
             </Flex>
           </Link>
 
-          {/*
-          <Link
-            fontSize="sm"
-            color="gray.800"
-            isExternal
-            _hover={{ textDecoration: 'none' }}
-            href={`${chain?.blockExplorers?.default.url}/address/${resolver}`}
-          >
-            <Flex display="inline-flex" alignItems="center">
-              <Box display="inline-block" mr="1">
-                <FaRegEye />
-              </Box>
-
-              <Text
-                borderBottom="1px dotted"
-                borderRadius="1px"
-                fontWeight="500"
-                as="span"
-              >
-                Resolver
-              </Text>
-            </Flex>
-          </Link>
-          */}
-
           {pool && (
-            <Box fontSize="sm" color="gray.800" mt={1}>
-              <Flex display="inline-flex" alignItems="center">
-                <Box display="inline-block" mr="1">
-                  <FaRegChartBar />
-                </Box>
-                <Text as="span" fontWeight="500" mr={1}>
-                  Allowed Range (Ticks):
-                </Text>{' '}
-                {baseAssetMinPriceTick}- {baseAssetMaxPriceTick}
-              </Flex>
-            </Box>
+            <Flex display="inline-flex" align="center" fontSize="sm">
+              <Box display="inline-block" mr="1">
+                <FaRegChartBar />
+              </Box>
+              <Text as="span" fontWeight="500" mr={1}>
+                Allowed Range:
+              </Text>{' '}
+              {tickToPrice(baseAssetMinPriceTick).toLocaleString()}-
+              {tickToPrice(baseAssetMaxPriceTick).toLocaleString()} Ggas/wstETH
+            </Flex>
           )}
         </Box>
       </Flex>
