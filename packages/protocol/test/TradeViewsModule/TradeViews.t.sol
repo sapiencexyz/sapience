@@ -15,7 +15,7 @@ import {Position} from "../../src/contracts/storage/Position.sol";
 
 import "forge-std/console2.sol";
 
-contract TradeViews is TestTrade {
+contract TradeViews_Only is TestTrade {
     using Cannon for Vm;
     using DecimalMath for uint256;
     using SafeCastI256 for int256;
@@ -26,26 +26,30 @@ contract TradeViews is TestTrade {
     address trader1;
     uint256 epochId;
     address pool;
-    address tokenA;
-    address tokenB;
-    IUniswapV3Pool uniCastedPool;
     uint256 feeRate;
-    int24 LP_LOWER_TICK = 12200; //3.31
-    int24 LP_UPPER_TICK = 12400; //3.52
+    uint256 minPriceD18;
+    uint256 maxPriceD18;
+    int24 EPOCH_LOWER_TICK = 16000; //5 (4.952636224061651)
+    int24 EPOCH_UPPER_TICK = 29800; //20 (19.68488357413147)
+    int24 LP_LOWER_TICK = 23000; // (9.973035566235849)
+    int24 LP_UPPER_TICK = 23200; // (10.174494074987374)
     uint256 COLLATERAL_FOR_ORDERS = 10 ether;
-    uint160 INITIAL_PRICE_SQRT = 146497135921788803112962621440; // 3.419
+    uint160 INITIAL_PRICE_SQRT = 250541448375047931186413801569; // 10 (9999999999999999999)
 
     function setUp() public {
-        uint160 startingSqrtPriceX96 = INITIAL_PRICE_SQRT;
-
-        (foil, ) = createEpoch(5200, 28200, startingSqrtPriceX96); // 1.709 to 17.09 (1.6819839204636384 to 16.774485460620674)
+        (foil, ) = createEpoch(
+            EPOCH_LOWER_TICK,
+            EPOCH_UPPER_TICK,
+            INITIAL_PRICE_SQRT
+        ); // 1.709 to 17.09 (1.6819839204636384 to 16.774485460620674)
 
         lp1 = TestUser.createUser("LP1", 10_000_000 ether);
         trader1 = TestUser.createUser("Trader1", 10_000_000 ether);
 
-        (epochId, , , pool, tokenA, tokenB, , , , , ) = foil.getLatestEpoch();
+        (epochId, , , pool, , , minPriceD18, maxPriceD18, , , ) = foil
+            .getLatestEpoch();
 
-        uniCastedPool = IUniswapV3Pool(pool);
+        IUniswapV3Pool uniCastedPool = IUniswapV3Pool(pool);
         feeRate = uint256(uniCastedPool.fee()) * 1e12;
 
         vm.startPrank(lp1);
@@ -60,28 +64,53 @@ contract TradeViews is TestTrade {
         vm.stopPrank();
     }
 
-    function test_getReferencePrice() public {
+    function test_getReferencePrice() public view {
         uint256 price = foil.getReferencePrice(epochId);
-        console.log("price: ", price);
+        assertEq(price, 9999999999999999999);
     }
 
-    function test_getLongSizeForCollateral() public {
+    function test_fuzz_getLongSizeForCollateral(
+        uint128 collateralLimited
+    ) public view {
+        uint256 collateral = collateralLimited;
+        // S = C / ( Ph(1+fee) - Pe(1-fee))
+        uint256 onePlusFee = 1e18 + feeRate;
+        uint256 oneMinusFee = 1e18 - feeRate;
+        uint256 price = foil.getReferencePrice(epochId);
+
+        uint256 expectedSize = collateral.divDecimal(
+            maxPriceD18.mulDecimal(onePlusFee) - price.mulDecimal(oneMinusFee)
+        );
         uint256 modPositionSize = foil.getLongSizeForCollateral(
             epochId,
-            10 ether
+            collateral
         );
-        console.log("modPositionSize: ", modPositionSize);
+
+        assertEq(modPositionSize, expectedSize);
     }
 
-    function test_getShortSizeForCollateral() public {
+    function test_fuzz_getShortSizeForCollateral(
+        uint128 collateralLimited
+    ) public view {
+        uint256 collateral = collateralLimited;
+        // S = C / ( Pe(1+fee) - Pl(1-fee))
+        uint256 onePlusFee = 1e18 + feeRate;
+        uint256 oneMinusFee = 1e18 - feeRate;
+        uint256 price = foil.getReferencePrice(epochId);
+
+        uint256 expectedSize = collateral.divDecimal(
+            price.mulDecimal(onePlusFee) - minPriceD18.mulDecimal(oneMinusFee)
+        );
+
         uint256 modPositionSize = foil.getShortSizeForCollateral(
             epochId,
-            10 ether
+            collateral
         );
-        console.log("modPositionSize: ", modPositionSize);
+
+        assertEq(modPositionSize, expectedSize);
     }
 
-    function test_getLongDeltaForCollateral() public {
+    function test_getLongDeltaForCollateral() public view {
         // create an initial long position with 1 ether collateral as trader1
         // uint256 modPositionSize = foil.getLongDeltaForCollateral(
         //     epochId,
@@ -90,7 +119,7 @@ contract TradeViews is TestTrade {
         // console.log("modPositionSize: ", modPositionSize);
     }
 
-    function test_getShortDeltaForCollateral() public {
+    function test_getShortDeltaForCollateral() public view {
         // create an initial short position with 1 ether collateral as trader1
         // uint256 modPositionSize = foil.getShortDeltaForCollateral(
         //     epochId,
@@ -99,19 +128,47 @@ contract TradeViews is TestTrade {
         // console.log("modPositionSize: ", modPositionSize);
     }
 
-    function test_getCollateralForLongSize() public {
-        uint256 modPositionSize = foil.getCollateralForLongSize(
-            epochId,
-            10 ether
+    function test_fuzz_getCollateralForLongSize(
+        uint128 sizeLimited
+    ) public view {
+        uint256 modSize = sizeLimited;
+        // C = S * ( Pe(1+fee) - Pl(1-fee))
+
+        uint256 onePlusFee = 1e18 + feeRate;
+        uint256 oneMinusFee = 1e18 - feeRate;
+        uint256 price = foil.getReferencePrice(epochId);
+
+        uint256 expectedCollateral = modSize.mulDecimal(
+            price.mulDecimal(onePlusFee) - minPriceD18.mulDecimal(oneMinusFee)
         );
-        console.log("modPositionSize: ", modPositionSize);
+
+        uint256 requiredCollateral = foil.getCollateralForLongSize(
+            epochId,
+            modSize
+        );
+
+        assertEq(requiredCollateral, expectedCollateral);
     }
 
-    function test_getCollateralForShortSize() public {
-        uint256 modPositionSize = foil.getCollateralForShortSize(
-            epochId,
-            10 ether
+    function test_fuzz_getCollateralForShortSize(
+        uint128 sizeLimited
+    ) public view {
+        uint256 modSize = sizeLimited;
+        // C = S * ( Ph(1+fee) - Pe(1-fee))
+
+        uint256 onePlusFee = 1e18 + feeRate;
+        uint256 oneMinusFee = 1e18 - feeRate;
+        uint256 price = foil.getReferencePrice(epochId);
+
+        uint256 expectedCollateral = modSize.mulDecimal(
+            maxPriceD18.mulDecimal(onePlusFee) - price.mulDecimal(oneMinusFee)
         );
-        console.log("modPositionSize: ", modPositionSize);
+
+        uint256 requiredCollateral = foil.getCollateralForShortSize(
+            epochId,
+            modSize
+        );
+
+        assertEq(requiredCollateral, expectedCollateral);
     }
 }

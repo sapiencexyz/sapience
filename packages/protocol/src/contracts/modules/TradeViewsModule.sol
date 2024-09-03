@@ -47,7 +47,7 @@ contract TradeViewsModule is ITradeViewsModule {
         uint256 epochId,
         uint256 collateral
     ) external view override returns (uint256 modPositionSize) {
-        return Position.getLongSizeForCollateral(epochId, collateral);
+        return Position.getShortSizeForCollateral(epochId, collateral);
     }
 
     /**
