@@ -8,6 +8,7 @@ import JSBI from 'jsbi';
 import type { ReactNode } from 'react';
 import type React from 'react';
 import { createContext, useEffect, useState } from 'react';
+import { formatEther, parseEther } from 'viem';
 import * as Chains from 'viem/chains';
 import type { Chain } from 'viem/chains';
 import { useReadContracts, useReadContract } from 'wagmi';
@@ -163,7 +164,13 @@ const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
         );
 
         setPool(poolInstance);
-        setLiquidity(token0Balance.toString());
+
+        const formattedToken0Balance = (
+          Number(token0Balance) /
+          10 ** token0.decimals
+        ).toLocaleString();
+
+        setLiquidity(formattedToken0Balance);
         setMarketPrice(
           calculateMarketPrice(
             JSBI.BigInt(sqrtPriceX96.toString()),

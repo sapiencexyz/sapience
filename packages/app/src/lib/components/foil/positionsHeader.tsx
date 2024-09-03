@@ -133,7 +133,10 @@ const PositionsHeader = () => {
             />
           </StatLabel>
           <StatNumber>
-            {averagePrice} {/* <Text as="span">gwei</Text> */}
+            {averagePrice}{' '}
+            <Text fontSize="sm" as="span">
+              gwei
+            </Text>
           </StatNumber>
           {/*
           <StatHelpText>
@@ -155,8 +158,10 @@ const PositionsHeader = () => {
             />
           </StatLabel>
           <StatNumber>
-            {marketPrice.toFixed(2)}
-            {/*  <Text as="span">gwei</Text> */}
+            {marketPrice.toLocaleString()}{' '}
+            <Text fontSize="sm" as="span">
+              Ggas/wstETH
+            </Text>
           </StatNumber>
           {/*
           <StatHelpText>
@@ -178,7 +183,10 @@ const PositionsHeader = () => {
             />
           </StatLabel>
           <StatNumber>
-            {liquidity.toString()} {/* <Text as="span">Ggas</Text> */}
+            {liquidity}{' '}
+            <Text fontSize="sm" as="span">
+              Ggas
+            </Text>
           </StatNumber>
           {/*
           <StatHelpText>
