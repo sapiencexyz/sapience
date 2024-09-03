@@ -15,7 +15,7 @@ import {Position} from "../../src/contracts/storage/Position.sol";
 
 import "forge-std/console2.sol";
 
-contract TradeViews_Only is TestTrade {
+contract TradeViews is TestTrade {
     using Cannon for Vm;
     using DecimalMath for uint256;
     using SafeCastI256 for int256;
@@ -27,6 +27,9 @@ contract TradeViews_Only is TestTrade {
     uint256 epochId;
     address pool;
     uint256 feeRate;
+    uint256 onePlusFee;
+    uint256 oneMinusFee;
+
     uint256 minPriceD18;
     uint256 maxPriceD18;
     int24 EPOCH_LOWER_TICK = 16000; //5 (4.952636224061651)
@@ -62,6 +65,9 @@ contract TradeViews_Only is TestTrade {
             LP_UPPER_TICK
         ); // enough to keep price stable (no slippage)
         vm.stopPrank();
+
+        onePlusFee = 1e18 + feeRate;
+        oneMinusFee = 1e18 - feeRate;
     }
 
     function test_getReferencePrice() public view {
@@ -74,9 +80,11 @@ contract TradeViews_Only is TestTrade {
         uint256 price = foil.getReferencePrice(epochId);
 
         uint256 expectedSize = collateral.divDecimal(
-            maxPriceD18.mulDecimal(1e18 + feeRate) -
-                price.mulDecimal(1e18 - feeRate)
+            price.mulDecimal(onePlusFee) - minPriceD18.mulDecimal(oneMinusFee)
         );
+        if (expectedSize > 0) {
+            expectedSize = expectedSize - 1;
+        }
 
         uint256 modPositionSize = foil.getLongSizeForCollateral(
             epochId,
@@ -96,9 +104,11 @@ contract TradeViews_Only is TestTrade {
         uint256 price = foil.getReferencePrice(epochId);
 
         uint256 expectedSize = collateral.divDecimal(
-            price.mulDecimal(1e18 + feeRate) -
-                minPriceD18.mulDecimal(1e18 - feeRate)
+            maxPriceD18.mulDecimal(onePlusFee) - price.mulDecimal(oneMinusFee)
         );
+        if (expectedSize > 0) {
+            expectedSize = expectedSize - 1;
+        }
 
         uint256 modPositionSize = foil.getShortSizeForCollateral(
             epochId,
@@ -115,55 +125,161 @@ contract TradeViews_Only is TestTrade {
 
     function test_fuzz_getLongSizeForCollateral(
         uint128 collateralLimited
-    ) public view {
+    ) public {
+        vm.assume(collateralLimited > 0);
         uint256 collateral = collateralLimited;
-        // S = C / ( Ph(1+fee) - Pe(1-fee))
-        uint256 onePlusFee = 1e18 + feeRate;
-        uint256 oneMinusFee = 1e18 - feeRate;
-        uint256 price = foil.getReferencePrice(epochId);
-
-        uint256 expectedSize = collateral.divDecimal(
-            maxPriceD18.mulDecimal(onePlusFee) - price.mulDecimal(oneMinusFee)
-        );
-        uint256 modPositionSize = foil.getLongSizeForCollateral(
-            epochId,
-            collateral
-        );
-
-        assertEq(modPositionSize, expectedSize);
-    }
-
-    function test_fuzz_getShortSizeForCollateral(
-        uint128 collateralLimited
-    ) public view {
-        uint256 collateral = collateralLimited;
-        // S = C / ( Pe(1+fee) - Pl(1-fee))
-        uint256 onePlusFee = 1e18 + feeRate;
-        uint256 oneMinusFee = 1e18 - feeRate;
+        // S = C / (Pe(1+fee) - Pl (1-fee))
         uint256 price = foil.getReferencePrice(epochId);
 
         uint256 expectedSize = collateral.divDecimal(
             price.mulDecimal(onePlusFee) - minPriceD18.mulDecimal(oneMinusFee)
         );
+        if (expectedSize > 0) {
+            expectedSize = expectedSize - 1;
+        }
+
+        uint256 modPositionSize = foil.getLongSizeForCollateral(
+            epochId,
+            collateral
+        );
+
+        assertEq(modPositionSize, expectedSize, "expected size from quote");
+
+        if (collateral > 100 && collateral < 1000 ether) {
+            // now try to open a position with this size and collateral if collateral makes sense for the config
+            vm.startPrank(trader1);
+            uint256 positionId = foil.createTraderPosition(
+                epochId,
+                collateral,
+                int256(modPositionSize),
+                0
+            );
+            vm.stopPrank();
+            int256 positionSize = foil.getPositionSize(positionId);
+            assertEq(positionSize, int256(expectedSize), "position size");
+        }
+    }
+
+    function test_fuzz_getShortSizeForCollateral(
+        uint128 collateralLimited
+    ) public {
+        vm.assume(collateralLimited > 0);
+        uint256 collateral = collateralLimited;
+        // S = C / ( Ph(1+fee) - Pe(1-fee))
+        uint256 price = foil.getReferencePrice(epochId);
+
+        uint256 expectedSize = (collateral).divDecimal(
+            maxPriceD18.mulDecimal(onePlusFee) - price.mulDecimal(oneMinusFee)
+        );
+        if (expectedSize > 0) {
+            expectedSize = expectedSize - 1;
+        }
 
         uint256 modPositionSize = foil.getShortSizeForCollateral(
             epochId,
             collateral
         );
 
-        assertEq(modPositionSize, expectedSize);
+        assertEq(modPositionSize, expectedSize, "expected size from quote");
+
+        if (collateral > 100 && collateral < 1000 ether) {
+            // now try to open a position with this size and collateral if collateral makes sense for the config
+            vm.startPrank(trader1);
+            uint256 positionId = foil.createTraderPosition(
+                epochId,
+                collateral,
+                int256(modPositionSize) * -1,
+                0
+            );
+            vm.stopPrank();
+            int256 positionSize = foil.getPositionSize(positionId);
+            assertEq(positionSize, int256(expectedSize) * -1, "position size");
+        }
+    }
+
+    function test_manual_Skip() public {
+        vm.startPrank(trader1);
+        foil.createTraderPosition(epochId, 6463, -3300, 0);
+        vm.stopPrank();
     }
 
     function test_fuzz_getLongDeltaForCollateral_fromLong(
         uint128 _initialPositionCollateral,
-        uint128 _afterCollateral // bool _initialIsLong
+        uint128 _afterCollateral
+    ) public {
+        vm.assume(_initialPositionCollateral < 10 ether);
+        vm.assume(_initialPositionCollateral > 1000);
+
+        uint256 initialPositionCollateral = _initialPositionCollateral;
+        uint256 afterCollateral = _afterCollateral;
+        bool initialIsLong = true;
+
+        vm.startPrank(trader1);
+
+        uint256 positionId = initialTrade(
+            initialPositionCollateral,
+            initialIsLong
+        );
+
+        (
+            uint256 tokensValueAtMinPrice,
+            uint256 debtValueAtMinPrice
+        ) = getPositionBalancesAtPrice(positionId, minPriceD18);
+
+        int256 balanceAtMinPrice = int256(tokensValueAtMinPrice) -
+            int256(debtValueAtMinPrice);
+
+        int256 adjustedCollateralAtMinPrice = int256(afterCollateral) +
+            balanceAtMinPrice;
+
+        if (adjustedCollateralAtMinPrice < 0) {
+            // Do nothing, not enough collateral
+            return;
+        }
+
+        uint256 price = foil.getReferencePrice(epochId);
+
+        uint256 expectedSize = uint256(adjustedCollateralAtMinPrice).divDecimal(
+            price.mulDecimal(onePlusFee) - minPriceD18.mulDecimal(oneMinusFee)
+        );
+        if (expectedSize == 0) {
+            return;
+        }
+        expectedSize = expectedSize - 1;
+
+        uint256 modPositionSize = foil.getLongDeltaForCollateral(
+            positionId,
+            afterCollateral
+        );
+
+        assertEq(modPositionSize, expectedSize);
+
+        if (afterCollateral > 100 && afterCollateral < 1000 ether) {
+            // now try to open a position with this size and collateral if collateral makes sense for the config
+            vm.startPrank(trader1);
+            foil.modifyTraderPosition(
+                positionId,
+                afterCollateral,
+                int256(modPositionSize),
+                0
+            );
+            vm.stopPrank();
+            int256 positionSize = foil.getPositionSize(positionId);
+            assertEq(positionSize, int256(expectedSize), "position size");
+        }
+        vm.stopPrank();
+    }
+
+    function test_fuzz_getShortDeltaForCollateral_fromShort(
+        uint128 _initialPositionCollateral,
+        uint128 _afterCollateral
     ) public {
         vm.assume(_initialPositionCollateral < 10 ether);
         vm.assume(_initialPositionCollateral > 10000);
 
         uint256 initialPositionCollateral = _initialPositionCollateral;
         uint256 afterCollateral = _afterCollateral;
-        bool initialIsLong = true;
+        bool initialIsLong = false;
 
         vm.startPrank(trader1);
 
@@ -183,60 +299,20 @@ contract TradeViews_Only is TestTrade {
         int256 adjustedCollateralAtMaxPrice = int256(afterCollateral) +
             balanceAtMaxPrice;
 
-        uint256 onePlusFee = 1e18 + feeRate;
-        uint256 oneMinusFee = 1e18 - feeRate;
+        if (adjustedCollateralAtMaxPrice < 0) {
+            // Do nothing, not enough collateral
+            return;
+        }
+
         uint256 price = foil.getReferencePrice(epochId);
 
         uint256 expectedSize = uint256(adjustedCollateralAtMaxPrice).divDecimal(
             maxPriceD18.mulDecimal(onePlusFee) - price.mulDecimal(oneMinusFee)
         );
-
-        uint256 modPositionSize = foil.getLongDeltaForCollateral(
-            positionId,
-            afterCollateral
-        );
-        vm.stopPrank();
-
-        assertEq(modPositionSize, expectedSize);
-    }
-
-    function test_getShortDeltaForCollateral_Onlyy(
-        uint128 _initialPositionCollateral,
-        uint128 _afterCollateral // bool _initialIsLong
-    ) public {
-        vm.assume(_initialPositionCollateral < 10 ether);
-        vm.assume(_initialPositionCollateral > 10000);
-
-        // TODO
-        uint256 initialPositionCollateral = _initialPositionCollateral;
-        uint256 afterCollateral = _afterCollateral;
-        bool initialIsLong = true;
-
-        vm.startPrank(trader1);
-
-        uint256 positionId = initialTrade(
-            initialPositionCollateral,
-            initialIsLong
-        );
-
-        (
-            uint256 debtValueAtMinPrice,
-            uint256 tokensValueAtMinPrice
-        ) = getPositionBalancesAtPrice(positionId, minPriceD18);
-
-        int256 balanceAtMinPrice = int256(tokensValueAtMinPrice) -
-            int256(debtValueAtMinPrice);
-
-        int256 adjustedCollateralAtMinPrice = int256(afterCollateral) +
-            balanceAtMinPrice;
-
-        uint256 onePlusFee = 1e18 + feeRate;
-        uint256 oneMinusFee = 1e18 - feeRate;
-        uint256 price = foil.getReferencePrice(epochId);
-
-        uint256 expectedSize = uint256(adjustedCollateralAtMinPrice).divDecimal(
-            price.mulDecimal(onePlusFee) - minPriceD18.mulDecimal(oneMinusFee)
-        );
+        if (expectedSize == 0) {
+            return;
+        }
+        expectedSize = expectedSize - 1;
 
         uint256 modPositionSize = foil.getShortDeltaForCollateral(
             positionId,
@@ -244,7 +320,22 @@ contract TradeViews_Only is TestTrade {
         );
         vm.stopPrank();
 
-        assertEq(modPositionSize, expectedSize);
+        assertEq(modPositionSize, expectedSize, "Expected size");
+
+        if (afterCollateral > 100 && afterCollateral < 1000 ether) {
+            // now try to open a position with this size and collateral if collateral makes sense for the config
+            vm.startPrank(trader1);
+            foil.modifyTraderPosition(
+                positionId,
+                afterCollateral,
+                int256(modPositionSize) * -1,
+                0
+            );
+            vm.stopPrank();
+            int256 positionSize = foil.getPositionSize(positionId);
+            assertEq(positionSize, int256(expectedSize) * -1, "position size");
+        }
+        vm.stopPrank();
     }
 
     function test_fuzz_getCollateralForLongSize(
@@ -253,20 +344,18 @@ contract TradeViews_Only is TestTrade {
         uint256 modSize = sizeLimited;
         // C = S * ( Pe(1+fee) - Pl(1-fee))
 
-        uint256 onePlusFee = 1e18 + feeRate;
-        uint256 oneMinusFee = 1e18 - feeRate;
         uint256 price = foil.getReferencePrice(epochId);
 
         uint256 expectedCollateral = modSize.mulDecimal(
-            maxPriceD18.mulDecimal(onePlusFee) - price.mulDecimal(oneMinusFee)
-        );
+            price.mulDecimal(onePlusFee) - minPriceD18.mulDecimal(oneMinusFee)
+        ) + 1;
 
         uint256 requiredCollateral = foil.getCollateralForLongSize(
             epochId,
             modSize
         );
 
-        assertEq(requiredCollateral, expectedCollateral);
+        assertEq(requiredCollateral, expectedCollateral, "Expected");
     }
 
     function test_fuzz_getCollateralForShortSize(
@@ -275,33 +364,27 @@ contract TradeViews_Only is TestTrade {
         uint256 modSize = sizeLimited;
         // C = S * ( Ph(1+fee) - Pe(1-fee))
 
-        uint256 onePlusFee = 1e18 + feeRate;
-        uint256 oneMinusFee = 1e18 - feeRate;
         uint256 price = foil.getReferencePrice(epochId);
 
         uint256 expectedCollateral = modSize.mulDecimal(
-            price.mulDecimal(onePlusFee) - minPriceD18.mulDecimal(oneMinusFee)
-        );
+            maxPriceD18.mulDecimal(onePlusFee) - price.mulDecimal(oneMinusFee)
+        ) + 1;
 
         uint256 requiredCollateral = foil.getCollateralForShortSize(
             epochId,
             modSize
         );
 
-        assertEq(requiredCollateral, expectedCollateral);
+        assertEq(requiredCollateral, expectedCollateral, "Expected");
     }
 
     function initialTrade(
         uint256 collateral,
         bool isLong
     ) internal returns (uint256) {
-        console2.log("collateral: ", collateral);
-        console2.log("isLong: ", isLong);
         uint256 positionSize = isLong
             ? foil.getLongSizeForCollateral(epochId, collateral)
             : foil.getShortSizeForCollateral(epochId, collateral);
-
-        console2.log("positionSize: ", positionSize);
 
         uint256 positionId = foil.createTraderPosition(
             epochId,
@@ -318,8 +401,6 @@ contract TradeViews_Only is TestTrade {
         uint256 price
     ) public returns (uint256 tokensValue, uint256 debtValue) {
         Position.Data memory position = foil.getPosition(positionId);
-        uint256 onePlusFee = 1e18 + feeRate;
-        uint256 oneMinusFee = 1e18 - feeRate;
 
         tokensValue =
             position.vEthAmount +

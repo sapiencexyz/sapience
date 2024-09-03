@@ -334,6 +334,42 @@ library Position {
         uint256 newCollateral
     ) internal view returns (uint256 modPositionSize) {
         uint256 price = Trade.getReferencePrice(self.epochId);
+        uint256 lowestPrice = Epoch.load(self.epochId).minPriceD18;
+        uint256 fee = Epoch.load(self.epochId).feeRateD18; // scaled to 1e18 fee
+
+        (uint256 totalTokens, uint256 totalDebt) = getPositionBalancesAtPrice(
+            self,
+            lowestPrice,
+            fee
+        );
+        int256 currentPositionStaticBalance = totalTokens.toInt() -
+            totalDebt.toInt();
+
+        if (
+            currentPositionStaticBalance < 0 &&
+            int256(newCollateral) < -1 * currentPositionStaticBalance
+        ) {
+            // not enough collateral to go on that direction
+            return 0;
+        }
+
+        uint256 adjustedCollateral = (newCollateral.toInt() +
+            currentPositionStaticBalance).toUint();
+
+        modPositionSize = adjustedCollateral.divDecimal(
+            deltaPriceMultiplier(price, lowestPrice, fee)
+        );
+        // reduce by 1 (1 wei) to avoid rounding errors
+        if (modPositionSize > 0) {
+            modPositionSize = modPositionSize - 1;
+        }
+    }
+
+    function getShortDeltaForCollateral(
+        Data storage self,
+        uint256 newCollateral
+    ) internal view returns (uint256 modPositionSize) {
+        uint256 price = Trade.getReferencePrice(self.epochId);
         uint256 highestPrice = Epoch.load(self.epochId).maxPriceD18;
         uint256 fee = Epoch.load(self.epochId).feeRateD18;
 
@@ -346,78 +382,24 @@ library Position {
         int256 currentPositionStaticBalance = totalTokens.toInt() -
             totalDebt.toInt();
 
-        if (
-            currentPositionStaticBalance < 0 &&
-            (-1 * currentPositionStaticBalance).toUint() > newCollateral
-        ) {
+        int256 adjustedCollateral = newCollateral.toInt() +
+            currentPositionStaticBalance;
+
+        if (adjustedCollateral < 0) {
             // not enough collateral to go on that direction
             return 0;
         }
 
-        uint256 adjustedCollateral = (newCollateral.toInt() +
-            currentPositionStaticBalance).toUint();
-
-        modPositionSize = adjustedCollateral.divDecimal(
+        modPositionSize = adjustedCollateral.toUint().divDecimal(
             deltaPriceMultiplier(highestPrice, price, fee)
         );
-    }
-
-    function getShortDeltaForCollateral(
-        Data storage self,
-        uint256 newCollateral
-    ) internal view returns (uint256 modPositionSize) {
-        uint256 price = Trade.getReferencePrice(self.epochId);
-        uint256 lowestPrice = Epoch.load(self.epochId).minPriceD18;
-        uint256 fee = Epoch.load(self.epochId).feeRateD18; // scaled to 1e18 fee
-
-        (uint256 totalTokens, uint256 totalDebt) = getPositionBalancesAtPrice(
-            self,
-            lowestPrice,
-            fee
-        );
-
-        int256 currentPositionStaticBalance = totalTokens.toInt() -
-            totalDebt.toInt();
-
-        if (
-            currentPositionStaticBalance < 0 &&
-            (-1 * currentPositionStaticBalance).toUint() > newCollateral
-        ) {
-            // not enough collateral to go on that direction
-            return 0;
+        // reduce by 1 (1 wei) to avoid rounding errors
+        if (modPositionSize > 0) {
+            modPositionSize = modPositionSize - 1;
         }
-
-        uint256 adjustedCollateral = (newCollateral.toInt() +
-            currentPositionStaticBalance).toUint();
-
-        modPositionSize = adjustedCollateral.divDecimal(
-            deltaPriceMultiplier(lowestPrice, price, fee)
-        );
     }
 
     function getLongSizeForCollateral(
-        uint256 epochId,
-        uint256 collateral
-    ) internal view returns (uint256 modPositionSize) {
-        /*
-        S = C / ( Ph(1+fee) - Pe(1-fee))
-
-        Where 
-        Pe = entry price (current price)
-        Ph = highest price set in market
-        C = collateral
-        Fee = Fee as D18 1/100 (1% in uni is 1000) => fee * 1e12
-        */
-        uint256 price = Trade.getReferencePrice(epochId);
-        uint256 highestPrice = Epoch.load(epochId).maxPriceD18;
-        uint256 fee = Epoch.load(epochId).feeRateD18; // scaled to 1e18 fee
-
-        modPositionSize = collateral.divDecimal(
-            deltaPriceMultiplier(highestPrice, price, fee)
-        );
-    }
-
-    function getShortSizeForCollateral(
         uint256 epochId,
         uint256 collateral
     ) internal view returns (uint256 modPositionSize) {
@@ -437,6 +419,38 @@ library Position {
         modPositionSize = collateral.divDecimal(
             deltaPriceMultiplier(price, lowestPrice, fee)
         );
+
+        // reduce by 1 (1 wei) to avoid rounding errors
+        if (modPositionSize > 0) {
+            modPositionSize = modPositionSize - 1;
+        }
+    }
+
+    function getShortSizeForCollateral(
+        uint256 epochId,
+        uint256 collateral
+    ) internal view returns (uint256 modPositionSize) {
+        /*
+        S = C / ( Ph(1+fee) - Pe(1-fee))
+
+        Where 
+        Pe = entry price (current price)
+        Ph = highest price set in market
+        C = collateral
+        Fee = Fee as D18 1/100 (1% in uni is 1000) => fee * 1e12
+        */
+        uint256 price = Trade.getReferencePrice(epochId);
+        uint256 highestPrice = Epoch.load(epochId).maxPriceD18;
+        uint256 fee = Epoch.load(epochId).feeRateD18; // scaled to 1e18 fee
+
+        modPositionSize = (collateral).divDecimal(
+            deltaPriceMultiplier(highestPrice, price, fee)
+        );
+
+        // reduce by 1 (1 wei) to avoid rounding errors
+        if (modPositionSize > 0) {
+            modPositionSize = modPositionSize - 1;
+        }
     }
 
     function getCollateralForLongSize(
@@ -444,12 +458,14 @@ library Position {
         uint256 _positionSize
     ) internal view returns (uint256 collateral) {
         uint256 price = Trade.getReferencePrice(epochId);
-        uint256 highestPrice = Epoch.load(epochId).maxPriceD18;
+        uint256 lowestPrice = Epoch.load(epochId).minPriceD18;
         uint256 fee = uint256(Epoch.load(epochId).params.feeRate) * 1e12; // scaled to 1e18 fee
 
-        collateral = _positionSize.mulDecimal(
-            deltaPriceMultiplier(highestPrice, price, fee)
-        );
+        collateral =
+            _positionSize.mulDecimal(
+                deltaPriceMultiplier(price, lowestPrice, fee)
+            ) +
+            1;
     }
 
     function getCollateralForShortSize(
@@ -457,12 +473,14 @@ library Position {
         uint256 _positionSize
     ) internal view returns (uint256 collateral) {
         uint256 price = Trade.getReferencePrice(epochId);
-        uint256 lowestPrice = Epoch.load(epochId).minPriceD18;
+        uint256 highestPrice = Epoch.load(epochId).maxPriceD18;
         uint256 fee = uint256(Epoch.load(epochId).params.feeRate) * 1e12; // scaled to 1e18 fee
 
-        collateral = _positionSize.mulDecimal(
-            deltaPriceMultiplier(price, lowestPrice, fee)
-        );
+        collateral =
+            _positionSize.mulDecimal(
+                deltaPriceMultiplier(highestPrice, price, fee)
+            ) +
+            1;
     }
 
     function getPositionBalancesAtPrice(
