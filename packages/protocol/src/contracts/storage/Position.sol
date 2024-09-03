@@ -444,11 +444,11 @@ library Position {
         uint256 _positionSize
     ) internal view returns (uint256 collateral) {
         uint256 price = Trade.getReferencePrice(epochId);
-        uint256 lowestPrice = Epoch.load(epochId).minPriceD18;
+        uint256 highestPrice = Epoch.load(epochId).maxPriceD18;
         uint256 fee = uint256(Epoch.load(epochId).params.feeRate) * 1e12; // scaled to 1e18 fee
 
         collateral = _positionSize.mulDecimal(
-            deltaPriceMultiplier(price, lowestPrice, fee)
+            deltaPriceMultiplier(highestPrice, price, fee)
         );
     }
 
@@ -457,11 +457,11 @@ library Position {
         uint256 _positionSize
     ) internal view returns (uint256 collateral) {
         uint256 price = Trade.getReferencePrice(epochId);
-        uint256 highestPrice = Epoch.load(epochId).maxPriceD18;
+        uint256 lowestPrice = Epoch.load(epochId).minPriceD18;
         uint256 fee = uint256(Epoch.load(epochId).params.feeRate) * 1e12; // scaled to 1e18 fee
 
         collateral = _positionSize.mulDecimal(
-            deltaPriceMultiplier(highestPrice, price, fee)
+            deltaPriceMultiplier(price, lowestPrice, fee)
         );
     }
 

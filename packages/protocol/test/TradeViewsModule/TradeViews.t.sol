@@ -69,6 +69,50 @@ contract TradeViews_Only is TestTrade {
         assertEq(price, 9999999999999999999);
     }
 
+    function test_longBackAndForth() public view {
+        uint256 collateral = 10 ether;
+        uint256 price = foil.getReferencePrice(epochId);
+
+        uint256 expectedSize = collateral.divDecimal(
+            maxPriceD18.mulDecimal(1e18 + feeRate) -
+                price.mulDecimal(1e18 - feeRate)
+        );
+
+        uint256 modPositionSize = foil.getLongSizeForCollateral(
+            epochId,
+            collateral
+        );
+        assertEq(modPositionSize, expectedSize);
+
+        uint256 requiredCollateral = foil.getCollateralForLongSize(
+            epochId,
+            modPositionSize
+        );
+        assertApproxEqAbsDecimal(requiredCollateral, collateral, 100, 18);
+    }
+
+    function test_shortBackAndForth() public view {
+        uint256 collateral = 10 ether;
+        uint256 price = foil.getReferencePrice(epochId);
+
+        uint256 expectedSize = collateral.divDecimal(
+            price.mulDecimal(1e18 + feeRate) -
+                minPriceD18.mulDecimal(1e18 - feeRate)
+        );
+
+        uint256 modPositionSize = foil.getShortSizeForCollateral(
+            epochId,
+            collateral
+        );
+        assertEq(modPositionSize, expectedSize);
+
+        uint256 requiredCollateral = foil.getCollateralForShortSize(
+            epochId,
+            modPositionSize
+        );
+        assertApproxEqAbsDecimal(requiredCollateral, collateral, 100, 18);
+    }
+
     function test_fuzz_getLongSizeForCollateral(
         uint128 collateralLimited
     ) public view {
@@ -139,7 +183,7 @@ contract TradeViews_Only is TestTrade {
         uint256 price = foil.getReferencePrice(epochId);
 
         uint256 expectedCollateral = modSize.mulDecimal(
-            price.mulDecimal(onePlusFee) - minPriceD18.mulDecimal(oneMinusFee)
+            maxPriceD18.mulDecimal(onePlusFee) - price.mulDecimal(oneMinusFee)
         );
 
         uint256 requiredCollateral = foil.getCollateralForLongSize(
@@ -161,7 +205,7 @@ contract TradeViews_Only is TestTrade {
         uint256 price = foil.getReferencePrice(epochId);
 
         uint256 expectedCollateral = modSize.mulDecimal(
-            maxPriceD18.mulDecimal(onePlusFee) - price.mulDecimal(oneMinusFee)
+            price.mulDecimal(onePlusFee) - minPriceD18.mulDecimal(oneMinusFee)
         );
 
         uint256 requiredCollateral = foil.getCollateralForShortSize(
