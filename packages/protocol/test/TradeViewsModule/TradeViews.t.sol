@@ -154,22 +154,108 @@ contract TradeViews_Only is TestTrade {
         assertEq(modPositionSize, expectedSize);
     }
 
-    function test_getLongDeltaForCollateral() public view {
-        // create an initial long position with 1 ether collateral as trader1
-        // uint256 modPositionSize = foil.getLongDeltaForCollateral(
-        //     epochId,
-        //     10 ether
-        // );
-        // console.log("modPositionSize: ", modPositionSize);
+    function test_fuzzy_getLongDeltaForCollateral_fromLong_Onlyy(
+        uint128 _initialPositionCollateral,
+        uint128 _afterCollateral
+    ) public {
+        // TODO fix
+        uint256 initialPositionCollateral = _initialPositionCollateral;
+        uint256 afterCollateral = _afterCollateral;
+        bool initialIsLong = true;
+
+        vm.startPrank(trader1);
+
+        uint256 positionId = initialTrade(
+            initialPositionCollateral,
+            initialIsLong
+        );
+
+        (
+            uint256 debtValueAtMaxPrice,
+            uint256 tokensValueAtMaxPrice
+        ) = getPositionBalancesAtPrice(positionId, maxPriceD18);
+
+        int256 balanceAtMaxPrice = int256(tokensValueAtMaxPrice) -
+            int256(debtValueAtMaxPrice);
+
+        int256 adjustedCollateralAtMaxPrice = int256(afterCollateral) +
+            balanceAtMaxPrice;
+
+        uint256 onePlusFee = 1e18 + feeRate;
+        uint256 oneMinusFee = 1e18 - feeRate;
+        uint256 price = foil.getReferencePrice(epochId);
+
+        uint256 expectedSize = uint256(adjustedCollateralAtMaxPrice).divDecimal(
+            maxPriceD18.mulDecimal(onePlusFee) - price.mulDecimal(oneMinusFee)
+        );
+
+        uint256 modPositionSize = foil.getLongDeltaForCollateral(
+            positionId,
+            afterCollateral
+        );
+        vm.stopPrank();
+
+        assertEq(modPositionSize, expectedSize);
     }
 
-    function test_getShortDeltaForCollateral() public view {
-        // create an initial short position with 1 ether collateral as trader1
-        // uint256 modPositionSize = foil.getShortDeltaForCollateral(
-        //     epochId,
-        //     100 ether
-        // );
-        // console.log("modPositionSize: ", modPositionSize);
+    function test_getShortDeltaForCollateral() public {
+        // TODO
+        uint256 initialPositionCollateral = 1 ether;
+        bool initialIsLong = true;
+        uint256 afterCollateral = 2 ether;
+
+        vm.startPrank(trader1);
+
+        uint256 positionId = initialTrade(
+            initialPositionCollateral,
+            initialIsLong
+        );
+
+        // (
+        //     uint256 debtValueAtMinPrice,
+        //     uint256 tokensValueAtMinPrice
+        // ) = getPositionBalancesAtPrice(positionId, minPriceD18);
+
+        // int256 balanceAtMinPrice = int256(tokensValueAtMinPrice) -
+        //     int256(debtValueAtMinPrice);
+
+        (
+            uint256 debtValueAtMaxPrice,
+            uint256 tokensValueAtMaxPrice
+        ) = getPositionBalancesAtPrice(positionId, maxPriceD18);
+
+        int256 balanceAtMaxPrice = int256(tokensValueAtMaxPrice) -
+            int256(debtValueAtMaxPrice);
+
+        // int256 adjustedCollateralAtMinPrice = int256(afterCollateral) +
+        //     balanceAtMinPrice;
+        int256 adjustedCollateralAtMaxPrice = int256(afterCollateral) +
+            balanceAtMaxPrice;
+
+        // console2.log("debtValueAtMinPrice    : ", debtValueAtMinPrice);
+        // console2.log("tokensValueAtMinPrice  : ", tokensValueAtMinPrice);
+        console2.log("debtValueAtMaxPrice    : ", debtValueAtMaxPrice);
+        console2.log("tokensValueAtMaxPrice  : ", tokensValueAtMaxPrice);
+        // console2.log("balanceAtMinPrice      : ", balanceAtMinPrice);
+        console2.log("balanceAtMaxPrice      : ", balanceAtMaxPrice);
+        // console2.log("adjCollateralAtMinPrice: ", adjustedCollateralAtMinPrice);
+        console2.log("adjCollateralAtMaxPrice: ", adjustedCollateralAtMaxPrice);
+
+        uint256 onePlusFee = 1e18 + feeRate;
+        uint256 oneMinusFee = 1e18 - feeRate;
+        uint256 price = foil.getReferencePrice(epochId);
+
+        uint256 expectedSize = uint256(adjustedCollateralAtMaxPrice).divDecimal(
+            maxPriceD18.mulDecimal(onePlusFee) - price.mulDecimal(oneMinusFee)
+        );
+
+        console2.log("expectedSize           : ", expectedSize);
+        uint256 modPositionSize = foil.getLongDeltaForCollateral(
+            positionId,
+            afterCollateral
+        );
+        console2.log("modPositionSize        : ", modPositionSize);
+        vm.stopPrank();
     }
 
     function test_fuzz_getCollateralForLongSize(
@@ -214,5 +300,39 @@ contract TradeViews_Only is TestTrade {
         );
 
         assertEq(requiredCollateral, expectedCollateral);
+    }
+
+    function initialTrade(
+        uint256 collateral,
+        bool isLong
+    ) internal returns (uint256) {
+        uint256 positionSize = isLong
+            ? foil.getLongSizeForCollateral(epochId, collateral)
+            : foil.getShortSizeForCollateral(epochId, collateral);
+
+        uint256 positionId = foil.createTraderPosition(
+            epochId,
+            collateral,
+            isLong ? int256(positionSize) : int256(positionSize) * -1,
+            0
+        );
+
+        return positionId;
+    }
+
+    function getPositionBalancesAtPrice(
+        uint256 positionId,
+        uint256 price
+    ) public returns (uint256 debtValue, uint256 tokensValue) {
+        Position.Data memory position = foil.getPosition(positionId);
+        uint256 onePlusFee = 1e18 + feeRate;
+        uint256 oneMinusFee = 1e18 - feeRate;
+
+        debtValue =
+            position.borrowedVEth +
+            position.borrowedVGas.mulDecimal(price.mulDecimal(onePlusFee));
+        tokensValue =
+            position.vEthAmount +
+            position.vGasAmount.mulDecimal(price.mulDecimal(oneMinusFee));
     }
 }

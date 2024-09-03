@@ -334,41 +334,8 @@ library Position {
         uint256 newCollateral
     ) internal view returns (uint256 modPositionSize) {
         uint256 price = Trade.getReferencePrice(self.epochId);
-        uint256 lowestPrice = Epoch.load(self.epochId).minPriceD18;
-        uint256 fee = Epoch.load(self.epochId).feeRateD18;
-
-        (uint256 totalTokens, uint256 totalDebt) = getPositionBalancesAtPrice(
-            self,
-            lowestPrice,
-            fee
-        );
-
-        int256 currentPositionStaticBalance = totalTokens.toInt() -
-            totalDebt.toInt();
-
-        if (
-            currentPositionStaticBalance < 0 &&
-            (-1 * currentPositionStaticBalance).toUint() > newCollateral
-        ) {
-            // not enough collateral to go on that direction
-            return 0;
-        }
-
-        uint256 adjustedCollateral = (newCollateral.toInt() +
-            currentPositionStaticBalance).toUint();
-
-        modPositionSize = adjustedCollateral.divDecimal(
-            deltaPriceMultiplier(price, lowestPrice, fee)
-        );
-    }
-
-    function getShortDeltaForCollateral(
-        Data storage self,
-        uint256 newCollateral
-    ) internal view returns (uint256 modPositionSize) {
-        uint256 price = Trade.getReferencePrice(self.epochId);
         uint256 highestPrice = Epoch.load(self.epochId).maxPriceD18;
-        uint256 fee = Epoch.load(self.epochId).feeRateD18; // scaled to 1e18 fee
+        uint256 fee = Epoch.load(self.epochId).feeRateD18;
 
         (uint256 totalTokens, uint256 totalDebt) = getPositionBalancesAtPrice(
             self,
@@ -392,6 +359,39 @@ library Position {
 
         modPositionSize = adjustedCollateral.divDecimal(
             deltaPriceMultiplier(highestPrice, price, fee)
+        );
+    }
+
+    function getShortDeltaForCollateral(
+        Data storage self,
+        uint256 newCollateral
+    ) internal view returns (uint256 modPositionSize) {
+        uint256 price = Trade.getReferencePrice(self.epochId);
+        uint256 lowestPrice = Epoch.load(self.epochId).minPriceD18;
+        uint256 fee = Epoch.load(self.epochId).feeRateD18; // scaled to 1e18 fee
+
+        (uint256 totalTokens, uint256 totalDebt) = getPositionBalancesAtPrice(
+            self,
+            lowestPrice,
+            fee
+        );
+
+        int256 currentPositionStaticBalance = totalTokens.toInt() -
+            totalDebt.toInt();
+
+        if (
+            currentPositionStaticBalance < 0 &&
+            (-1 * currentPositionStaticBalance).toUint() > newCollateral
+        ) {
+            // not enough collateral to go on that direction
+            return 0;
+        }
+
+        uint256 adjustedCollateral = (newCollateral.toInt() +
+            currentPositionStaticBalance).toUint();
+
+        modPositionSize = adjustedCollateral.divDecimal(
+            deltaPriceMultiplier(lowestPrice, price, fee)
         );
     }
 
