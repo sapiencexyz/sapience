@@ -14,7 +14,6 @@ import {
   StatLabel,
   StatNumber,
 } from '@chakra-ui/react';
-import { tickToPrice } from '@uniswap/v3-sdk';
 import { format, formatDistanceToNow } from 'date-fns';
 import { useContext } from 'react';
 import { FaRegChartBar, FaCubes } from 'react-icons/fa';
@@ -33,7 +32,6 @@ const PositionsHeader = () => {
     baseAssetMaxPriceTick,
     averagePrice,
     pool,
-    marketPrice,
     liquidity,
   } = useContext(MarketContext);
 
@@ -135,7 +133,7 @@ const PositionsHeader = () => {
           <StatNumber>
             {averagePrice}{' '}
             <Text fontSize="sm" as="span">
-              gwei
+              Ggas/wstETH
             </Text>
           </StatNumber>
           {/*
@@ -158,7 +156,7 @@ const PositionsHeader = () => {
             />
           </StatLabel>
           <StatNumber>
-            {marketPrice.toLocaleString()}{' '}
+            {pool?.token0Price.toSignificant(3)}{' '}
             <Text fontSize="sm" as="span">
               Ggas/wstETH
             </Text>

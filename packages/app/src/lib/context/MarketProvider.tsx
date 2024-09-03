@@ -4,11 +4,9 @@ import { Token } from '@uniswap/sdk-core';
 import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import type { FeeAmount } from '@uniswap/v3-sdk';
 import { Pool } from '@uniswap/v3-sdk';
-import JSBI from 'jsbi';
 import type { ReactNode } from 'react';
 import type React from 'react';
 import { createContext, useEffect, useState } from 'react';
-import { formatEther, parseEther } from 'viem';
 import * as Chains from 'viem/chains';
 import type { Chain } from 'viem/chains';
 import { useReadContracts, useReadContract } from 'wagmi';
@@ -44,7 +42,6 @@ interface MarketContextType {
   foilData: any;
   chainId: number;
   error?: string;
-  marketPrice: number;
   liquidity: number;
 }
 
@@ -74,14 +71,12 @@ export const MarketContext = createContext<MarketContextType>({
   epoch: 0,
   foilData: {},
   chainId: 0,
-  marketPrice: 0,
   liquidity: 0,
 });
 
 // Custom hooks
 const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
   const [pool, setPool] = useState<Pool | null>(null);
-  const [marketPrice, setMarketPrice] = useState<number>(0);
   const [liquidity, setLiquidity] = useState<string>('0');
 
   const { data, isError, isLoading } = useReadContracts({
@@ -171,16 +166,9 @@ const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
         ).toLocaleString();
 
         setLiquidity(formattedToken0Balance);
-        setMarketPrice(
-          calculateMarketPrice(
-            JSBI.BigInt(sqrtPriceX96.toString()),
-            token0,
-            token1
-          )
-        );
       }
     }
-  }, [data, token0Balance, chainId]);
+  }, [data, pool, token0Balance, chainId]);
 
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -190,25 +178,7 @@ const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
     return () => clearInterval(intervalId);
   }, [refetchToken0Balance]);
 
-  return { pool, marketPrice, liquidity, isError, isLoading };
-};
-
-// Utility functions
-const calculateMarketPrice = (
-  sqrtPriceX96: JSBI,
-  token0: Token,
-  token1: Token
-) => {
-  const ratioX192 = JSBI.multiply(sqrtPriceX96, sqrtPriceX96);
-  const shiftedRatioX192 = JSBI.leftShift(ratioX192, JSBI.BigInt(64));
-  const token1Decimals = JSBI.BigInt(10 ** token1.decimals);
-  const token0Decimals = JSBI.BigInt(10 ** token0.decimals);
-  const price = JSBI.divide(
-    JSBI.multiply(shiftedRatioX192, token1Decimals),
-    JSBI.multiply(JSBI.BigInt(2 ** 192), token0Decimals)
-  );
-
-  return Number(price.toString()) / 10 ** token1.decimals;
+  return { pool, liquidity, isError, isLoading };
 };
 
 // Main component
@@ -237,7 +207,6 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     epoch: 0,
     foilData: {},
     chainId,
-    marketPrice: 0,
     liquidity: 0,
   });
 
@@ -301,7 +270,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     functionName: 'decimals',
   });
 
-  const { pool, marketPrice, liquidity, isError, isLoading } = useUniswapPool(
+  const { pool, liquidity, isError, isLoading } = useUniswapPool(
     chainId,
     state.poolAddress
   );
@@ -404,11 +373,10 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
       setState((currentState) => ({
         ...currentState,
         pool,
-        marketPrice,
         liquidity: Number(liquidity),
       }));
     }
-  }, [pool, marketPrice, liquidity]);
+  }, [pool, liquidity]);
 
   useEffect(() => {
     if (collateralTickerFunctionResult.data !== undefined) {
