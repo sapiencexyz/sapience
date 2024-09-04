@@ -715,7 +715,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
 
   const getButtonText = () => {
     if (isEdit && isDecrease) {
-      return depositAmount != 0
+      return depositAmount !== 0
         ? 'Decrease Liquidity'
         : 'Close Liquidity Position';
     }

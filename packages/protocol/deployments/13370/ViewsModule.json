@@ -1,5 +1,5 @@
 {
-  "address": "0x6A68435329c284c0CB50C25f0f3669Ee225Ca606",
+  "address": "0x10a0B3e79977dFF30c2E5e59552bB5aCA4f61007",
   "abi": [
     {
       "type": "function",
@@ -334,11 +334,6 @@
               "internalType": "uint256"
             },
             {
-              "name": "currentTokenAmount",
-              "type": "int256",
-              "internalType": "int256"
-            },
-            {
               "name": "uniswapPositionId",
               "type": "uint256",
               "internalType": "uint256"
@@ -354,19 +349,43 @@
       "stateMutability": "pure"
     },
     {
+      "type": "function",
+      "name": "getPositionSize",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
       "type": "error",
       "name": "NoEpochsCreated",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowUint256ToInt256",
       "inputs": []
     }
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xa4a9988ba93d672a791f0decdd50277adecf94a9d91f2b0a4bd3343036d10818",
+  "deployTxnHash": "0xc92da58434c67459f9475fb8e77fe14a3904c030c4d24514c6c514410cd643ee",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1725214292",
+  "deployTimestamp": "1725412240",
   "sourceName": "src/contracts/modules/ViewsModule.sol",
   "contractName": "ViewsModule",
   "deployedOn": "deploy.ViewsModule",
-  "gasUsed": 642455,
-  "gasCost": "1000098198"
+  "gasUsed": 681947,
+  "gasCost": "1000098426"
 }

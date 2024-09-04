@@ -25,10 +25,10 @@
   "linkedLibraries": {},
   "deployTxnHash": "0xcb9aaf0f8501e48c39f58945b6f1acc9fbdc498aded3f2daa0d9c6f199cc6b1b",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1725214292",
+  "deployTimestamp": "1725412240",
   "sourceName": "src/contracts/modules/ERC165Module.sol",
   "contractName": "ERC165Module",
   "deployedOn": "deploy.ERC165Module",
   "gasUsed": 109841,
-  "gasCost": "1000230418"
+  "gasCost": "1000230430"
 }

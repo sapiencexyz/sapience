@@ -1,5 +1,5 @@
 {
-  "address": "0x1509ea7e71bf5325f4fe26e8a9c6e396df1a38b0",
+  "address": "0x3861ed43cca43ba944cb167bc1b00f526b05bd9b",
   "abi": [
     {
       "type": "function",
@@ -1234,6 +1234,30 @@
     },
     {
       "type": "function",
+      "name": "getLongDeltaForCollateral",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "modPositionSize",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "getLongSizeForCollateral",
       "inputs": [
         {
@@ -1269,6 +1293,30 @@
       "outputs": [
         {
           "name": "price18Digits",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getShortDeltaForCollateral",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "modPositionSize",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -2050,11 +2098,6 @@
               "internalType": "uint256"
             },
             {
-              "name": "currentTokenAmount",
-              "type": "int256",
-              "internalType": "int256"
-            },
-            {
               "name": "uniswapPositionId",
               "type": "uint256",
               "internalType": "uint256"
@@ -2068,6 +2111,25 @@
         }
       ],
       "stateMutability": "pure"
+    },
+    {
+      "type": "function",
+      "name": "getPositionSize",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "stateMutability": "view"
     },
     {
       "type": "error",
@@ -2133,11 +2195,11 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0xf554c6a787c794547d7e7d9ffda259bc52952bbe6f99504d2061e48773827b1d",
-  "deployTxnBlockNumber": "6614035",
-  "deployTimestamp": "1725214608",
+  "deployTxnHash": "0xfbf2902e9d00c58459917a7342a90f9d5f3c29b362f5773fd20b2a4c1c28f502",
+  "deployTxnBlockNumber": "6628541",
+  "deployTimestamp": "1725413064",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
-  "gasUsed": 484042,
-  "gasCost": "2164884568"
+  "gasUsed": 513643,
+  "gasCost": "5990573451"
 }

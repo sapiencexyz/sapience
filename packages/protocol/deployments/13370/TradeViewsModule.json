@@ -1,5 +1,5 @@
 {
-  "address": "0xC4c015d93DbE92F26c3775D971bBA988DACb4495",
+  "address": "0xc4a476441a7468B0aF30dbCc93eFc55710D0206F",
   "abi": [
     {
       "type": "function",
@@ -51,6 +51,30 @@
     },
     {
       "type": "function",
+      "name": "getLongDeltaForCollateral",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "modPositionSize",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "getLongSizeForCollateral",
       "inputs": [
         {
@@ -94,6 +118,30 @@
     },
     {
       "type": "function",
+      "name": "getShortDeltaForCollateral",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "modPositionSize",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "getShortSizeForCollateral",
       "inputs": [
         {
@@ -115,16 +163,37 @@
         }
       ],
       "stateMutability": "view"
+    },
+    {
+      "type": "error",
+      "name": "InvalidPositionId",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "OverflowInt256ToUint256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowUint256ToInt256",
+      "inputs": []
     }
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x1d827d16faea250171accfdfd2308a285c35a0da5d5e732521401db55813e276",
+  "deployTxnHash": "0xf27f0b3b5d9fc83b7fe9e5f11b7454865ea10dba5468e9e739eeb683a818376a",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1725214292",
+  "deployTimestamp": "1725412240",
   "sourceName": "src/contracts/modules/TradeViewsModule.sol",
   "contractName": "TradeViewsModule",
   "deployedOn": "deploy.TradeViewsModule",
-  "gasUsed": 371521,
-  "gasCost": "1000126929"
+  "gasUsed": 599757,
+  "gasCost": "1000126949"
 }
