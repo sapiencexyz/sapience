@@ -7,41 +7,18 @@ import {
   Tbody,
   Td,
 } from '@chakra-ui/react';
-import { useQuery } from '@tanstack/react-query';
-import { useContext } from 'react';
+import React from 'react';
 
-import { API_BASE_URL } from '~/lib/constants/constants';
-import { MarketContext } from '~/lib/context/MarketProvider';
-
-export default function TraderPositionsTable() {
-  const { address, chainId } = useContext(MarketContext);
-  const contractId = `${chainId}:${address}`;
-  const usePositions = () => {
-    return useQuery({
-      queryKey: ['traderPositions', contractId],
-      queryFn: async () => {
-        const response = await fetch(
-          `${API_BASE_URL}/positions?contractId=${contractId}&isLP=false`
-        );
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        return response.json();
-      },
-      refetchInterval: 60000, // Refetch every 60 seconds
-    });
-  };
-
-  const {
-    data: positions,
-    error,
-    isLoading,
-  }: {
-    data: any;
-    error: any;
-    isLoading: boolean;
-  } = usePositions();
-
+interface Props {
+  isLoading: boolean;
+  error: Error | null;
+  positions: any[];
+}
+const TraderPositionsTable: React.FC<Props> = ({
+  isLoading,
+  error,
+  positions,
+}) => {
   if (isLoading) {
     return <div>Loading...</div>;
   }
@@ -80,4 +57,6 @@ export default function TraderPositionsTable() {
       </Table>
     </TableContainer>
   );
-}
+};
+
+export default TraderPositionsTable;

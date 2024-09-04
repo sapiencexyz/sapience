@@ -8,6 +8,7 @@ import {
   TabPanel,
   TabPanels,
   Tabs,
+  Button,
 } from '@chakra-ui/react';
 
 import Chart from '~/lib/components/chart';
@@ -17,10 +18,89 @@ import TraderPositionsTable from '~/lib/components/foil/traderPositionsTable';
 import TransactionTable from '~/lib/components/foil/transactionTable';
 import MarketSidebar from '~/lib/components/foil/marketSidebar';
 import { MarketProvider } from '~/lib/context/MarketProvider';
+import { useQuery } from '@tanstack/react-query';
+import { API_BASE_URL } from '~/lib/constants/constants';
+import { RepeatIcon } from '@chakra-ui/icons';
 
+const POLLING_INTERVAL = 60000; // Refetch every 60 seconds
 const Market = ({ params }: { params: { id: string; epoch: string } }) => {
   const [chainId, marketAddress] = params.id.split('%3A');
   const { epoch } = params;
+  const contractId = `${chainId}:${marketAddress}`;
+
+  const useTransactions = () => {
+    return useQuery({
+      queryKey: ['transactions', contractId, epoch],
+      queryFn: async () => {
+        const response = await fetch(
+          `${API_BASE_URL}/transactions?contractId=${contractId}&epochId=${epoch}`
+        );
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      },
+      refetchInterval: POLLING_INTERVAL,
+    });
+  };
+  const {
+    data: transactions,
+    error: useTransactionsError,
+    isLoading: isLoadingTransactions,
+    refetch: refetchTransactions,
+  } = useTransactions();
+
+  const useTradePositions = () => {
+    return useQuery({
+      queryKey: ['traderPositions', contractId],
+      queryFn: async () => {
+        const response = await fetch(
+          `${API_BASE_URL}/positions?contractId=${contractId}&isLP=false`
+        );
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      },
+      refetchInterval: POLLING_INTERVAL,
+    });
+  };
+
+  const {
+    data: tradePositions,
+    error: tradePositionsError,
+    isLoading: isLoadingTradePositions,
+    refetch: refetchTradePositions,
+  } = useTradePositions();
+
+  const useLiquidityPositions = () => {
+    return useQuery({
+      queryKey: ['liquidityPositions', contractId],
+      queryFn: async () => {
+        const response = await fetch(
+          `${API_BASE_URL}/positions?contractId=${contractId}&isLP=true`
+        );
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      },
+      refetchInterval: POLLING_INTERVAL,
+    });
+  };
+
+  const {
+    data: lpPositions,
+    error: lpPositionsError,
+    isLoading: isLoadingLpPositions,
+    refetch: refetchLpPositions,
+  } = useLiquidityPositions();
+
+  const refetchData = () => {
+    refetchTransactions();
+    refetchTradePositions();
+    refetchLpPositions();
+  };
 
   return (
     <MarketProvider
@@ -37,20 +117,41 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
           <MarketSidebar />
         </Flex>
         <Tabs>
-          <TabList>
-            <Tab>Transactions</Tab>
-            <Tab>Trader Positions</Tab>
-            <Tab>LP Positions</Tab>
-          </TabList>
+          <Flex justify="space-between" align="center">
+            <TabList>
+              <Tab>Transactions</Tab>
+              <Tab>Trader Positions</Tab>
+              <Tab>LP Positions</Tab>
+            </TabList>
+            <Button
+              size={'sm'}
+              onClick={refetchData}
+              rightIcon={<RepeatIcon />}
+            >
+              Refresh
+            </Button>
+          </Flex>
           <TabPanels pt={4}>
             <TabPanel>
-              <TransactionTable />
+              <TransactionTable
+                isLoading={isLoadingTransactions}
+                error={useTransactionsError}
+                transactions={transactions}
+              />
             </TabPanel>
             <TabPanel>
-              <TraderPositionsTable />
+              <TraderPositionsTable
+                isLoading={isLoadingTradePositions}
+                error={tradePositionsError}
+                positions={tradePositions}
+              />
             </TabPanel>
             <TabPanel>
-              <LiquidityPositionsTable />
+              <LiquidityPositionsTable
+                isLoading={isLoadingLpPositions}
+                error={lpPositionsError}
+                positions={lpPositions}
+              />
             </TabPanel>
           </TabPanels>
         </Tabs>

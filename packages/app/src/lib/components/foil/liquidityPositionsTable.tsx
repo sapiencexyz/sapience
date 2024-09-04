@@ -7,32 +7,17 @@ import {
   Tbody,
   Td,
 } from '@chakra-ui/react';
-import { useQuery } from '@tanstack/react-query';
-import { useContext } from 'react';
 
-import { API_BASE_URL } from '~/lib/constants/constants';
-import { MarketContext } from '~/lib/context/MarketProvider';
-
-export default function TraderPositionsTable() {
-  const { chainId, address } = useContext(MarketContext);
-  const contractId = `${chainId}:${address}`;
-  const usePositions = () => {
-    return useQuery({
-      queryKey: ['liquidityPositions', contractId],
-      queryFn: async () => {
-        const response = await fetch(
-          `${API_BASE_URL}/positions?contractId=${contractId}&isLP=true`
-        );
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        return response.json();
-      },
-      refetchInterval: 60000, // Refetch every 60 seconds
-    });
-  };
-
-  const { data: positions, error, isLoading } = usePositions();
+interface Props {
+  isLoading: boolean;
+  error: Error | null;
+  positions: any[];
+}
+const LiquidityPositionsTable: React.FC<Props> = ({
+  isLoading,
+  error,
+  positions,
+}) => {
   console.log('positions = ', positions);
 
   if (isLoading) {
@@ -78,4 +63,6 @@ export default function TraderPositionsTable() {
       </Table>
     </TableContainer>
   );
-}
+};
+
+export default LiquidityPositionsTable;

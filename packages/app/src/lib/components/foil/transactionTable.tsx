@@ -7,36 +7,23 @@ import {
   Tbody,
   Td,
 } from '@chakra-ui/react';
-import { useQuery } from '@tanstack/react-query';
 import { useContext } from 'react';
 import { formatUnits } from 'viem';
 
-import { API_BASE_URL } from '~/lib/constants/constants';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import { TransactionType } from '~/lib/interfaces/interfaces';
 
-export default function TransactoinTable() {
-  const { chainId, address, epoch, collateralAssetDecimals } =
-    useContext(MarketContext);
-  const contractId = `${chainId}:${address}`;
-  const useTransactions = () => {
-    return useQuery({
-      queryKey: ['transactions', contractId, epoch],
-      queryFn: async () => {
-        const response = await fetch(
-          `${API_BASE_URL}/transactions?contractId=${contractId}&epochId=${epoch}`
-        );
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        return response.json();
-      },
-      refetchInterval: 60000, // Refetch every 60 seconds
-    });
-  };
-
-  const { data: transactions, error, isLoading } = useTransactions();
-  console.log('transactions = ', transactions);
+interface Props {
+  isLoading: boolean;
+  error: Error | null;
+  transactions: any[];
+}
+const TransactionTable: React.FC<Props> = ({
+  isLoading,
+  error,
+  transactions,
+}) => {
+  const { collateralAssetDecimals } = useContext(MarketContext);
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -86,4 +73,6 @@ export default function TransactoinTable() {
       </Table>
     </TableContainer>
   );
-}
+};
+
+export default TransactionTable;
