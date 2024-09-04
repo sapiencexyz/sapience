@@ -3,7 +3,7 @@ version="0.9"
 
 [var.settings]
 owner="0xE006B58cA5aB7ba53863012dc3067A14b965C1da"
-startTime = "1723479600" # Mon Aug 12 2024 16:20:00 GMT+0000
+startTime = "1725466800"  # Wed Sep 04 2024 16:20:00 GMT+0000
 endTime = "1726405200" # Sunday, September 15, 2024 9:00:00 AM GMT-04:00
 baseAssetMinPriceTick = "5200" # 1.709
 baseAssetMaxPriceTick = "28200" # 17.09
