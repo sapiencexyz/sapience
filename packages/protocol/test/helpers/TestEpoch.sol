@@ -128,8 +128,7 @@ contract TestEpoch is TestUser {
         )
     {
         IFoil foil = IFoil(vm.getAddress("Foil"));
-        (uint256 epochId, , , address pool, , , , , , , ) = foil
-            .getLatestEpoch();
+        (, , , address pool, , , , , , , ) = foil.getLatestEpoch();
         (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
 
         (, , address positionManager, , , ) = foil.getMarket();
@@ -178,6 +177,7 @@ contract TestEpoch is TestUser {
     function getOwedTokens(
         uint256 uniswapPositionId
     ) internal returns (uint256 owed0, uint256 owed1) {
+        uniswapPositionId;
         console2.log("IN GETOWEDTOKENS");
         IFoil foil = IFoil(vm.getAddress("Foil"));
 

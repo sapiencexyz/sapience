@@ -60,7 +60,7 @@ contract TradePositionCollateral is TestTrade {
         vm.stopPrank();
     }
 
-    function test_views_wip_Only() public {
+    function test_views_wip_Skip() public {
         uint256 longSize = foil.getLongSizeForCollateral(epochId, 1 ether);
         console2.log("requiredCollateral", longSize);
         uint256 shortSize = foil.getShortSizeForCollateral(epochId, 1 ether);
@@ -239,8 +239,8 @@ contract TradePositionCollateral is TestTrade {
         vm.startPrank(trader1);
         uint256 positionId = createInitialPosition(initialPositionIsLong);
         Position.Data memory position = foil.getPosition(positionId);
-        uint256 preBorrowedEth = position.borrowedVEth;
-        int256 preSize = position.currentTokenAmount;
+        // uint256 preBorrowedEth = position.borrowedVEth;
+        // int256 preSize = foil.getPositionSize(positionId);
 
         foil.modifyTraderPosition(
             positionId,

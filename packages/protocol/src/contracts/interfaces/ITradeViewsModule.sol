@@ -36,6 +36,28 @@ interface ITradeViewsModule {
     ) external view returns (uint256 modPositionSize);
 
     /**
+     * @notice Gets the position delta size (to Long position) for a given collateral amount to modify the current position
+     * @param positionId the positon id
+     * @param collateral the amount of collateral that would be used
+     * @return modPositionSize the absolut position size in vgas token amount
+     */
+    function getLongDeltaForCollateral(
+        uint256 positionId,
+        uint256 collateral
+    ) external view returns (uint256 modPositionSize);
+
+    /**
+     * @notice Gets the position delta size (to Short position) for a given collateral amount to modify the current position
+     * @param positionId the epoch id
+     * @param collateral the amount of collateral that would be used
+     * @return modPositionSize the absolut position size in vgas token amount
+     */
+    function getShortDeltaForCollateral(
+        uint256 positionId,
+        uint256 collateral
+    ) external view returns (uint256 modPositionSize);
+
+    /**
      * @notice Gets the required collateral for a Long position as a new position
      * @param epochId the epoch id
      * @param positionSize long position size

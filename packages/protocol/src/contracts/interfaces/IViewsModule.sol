@@ -55,4 +55,6 @@ interface IViewsModule {
     function getPosition(
         uint256 positionId
     ) external returns (Position.Data memory);
+
+    function getPositionSize(uint256 positionId) external returns (int256);
 }

@@ -239,7 +239,7 @@ contract TradePositionSlippage is TestTrade {
         uint256 positionId = createInitialPosition(initialPositionSize);
         Position.Data memory position = foil.getPosition(positionId);
         uint256 preBorrowedEth = position.borrowedVEth;
-        int256 preSize = position.currentTokenAmount;
+        // int256 preSize = foil.getPositionSize(positionId);
 
         uint256 sentCollateral = (
             newPositionSize > 0
@@ -270,7 +270,10 @@ contract TradePositionSlippage is TestTrade {
                 );
             }
         } else {
-            assertGe(position.currentTokenAmount, newPositionSlippageParam);
+            assertGe(
+                foil.getPositionSize(positionId),
+                newPositionSlippageParam
+            );
         }
     }
 

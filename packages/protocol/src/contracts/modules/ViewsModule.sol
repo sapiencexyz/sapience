@@ -2,10 +2,13 @@
 pragma solidity >=0.8.25 <0.9.0;
 
 import "../storage/Epoch.sol";
+import "../storage/Position.sol";
 import "../interfaces/IViewsModule.sol";
 import "../interfaces/IFoilStructs.sol";
 
 contract ViewsModule is IViewsModule {
+    using Position for Position.Data;
+
     function getMarket()
         external
         view
@@ -108,5 +111,12 @@ contract ViewsModule is IViewsModule {
         uint256 positionId
     ) external pure override returns (Position.Data memory) {
         return Position.load(positionId);
+    }
+
+    function getPositionSize(
+        uint256 positionId
+    ) external view override returns (int256) {
+        Position.Data storage position = Position.load(positionId);
+        return position.positionSize();
     }
 }

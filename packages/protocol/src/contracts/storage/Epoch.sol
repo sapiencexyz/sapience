@@ -3,6 +3,8 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
+
 import "../external/VirtualToken.sol";
 import "../libraries/DecimalPrice.sol";
 import "../libraries/Quote.sol";
@@ -14,6 +16,8 @@ import "./Market.sol";
 // import "forge-std/console2.sol";
 
 library Epoch {
+    using DecimalMath for uint256;
+
     struct Settlement {
         uint256 settlementPriceD18;
         uint256 submissionTime;
@@ -37,6 +41,7 @@ library Epoch {
         uint160 sqrtPriceMaxX96;
         uint256 minPriceD18;
         uint256 maxPriceD18;
+        uint256 feeRateD18;
         uint256 id;
     }
 
@@ -107,6 +112,7 @@ library Epoch {
         epoch.params.bondCurrency = epochParams.bondCurrency;
         epoch.params.bondAmount = epochParams.bondAmount;
         epoch.params.priceUnit = epochParams.priceUnit;
+        epoch.feeRateD18 = uint256(epochParams.feeRate) * 1e12;
 
         VirtualToken tokenA = new VirtualToken(
             address(this),
@@ -253,39 +259,53 @@ library Epoch {
         uint256 loanEthAmount
     ) internal view {
         validateOwnedAndDebtAtPrice(
+            self,
             collateralAmount,
             ownedGasAmount,
             ownedEthAmount,
             loanGasAmount,
             loanEthAmount,
-            self.sqrtPriceMinX96
+            self.minPriceD18
         );
 
         validateOwnedAndDebtAtPrice(
+            self,
             collateralAmount,
             ownedGasAmount,
             ownedEthAmount,
             loanGasAmount,
             loanEthAmount,
-            self.sqrtPriceMaxX96
+            self.maxPriceD18
         );
     }
 
     function validateOwnedAndDebtAtPrice(
+        Data storage self,
         uint256 collateralAmount,
         uint256 ownedGasAmount,
         uint256 ownedEthAmount,
         uint256 loanGasAmount,
         uint256 loanEthAmount,
-        uint160 price
-    ) internal pure {
-        // TODO: use fees
-        uint256 totalDebtValue = Quote.quoteGasToEth(loanGasAmount, price) +
-            loanEthAmount;
+        uint256 price
+    ) internal view {
+        // Get total debt
+        uint256 adjustedPrice = self.settled
+            ? price.mulDecimal((DecimalMath.UNIT + self.feeRateD18))
+            : price;
+        uint256 totalDebtValue = Quote.quoteGasToEthWithPrice(
+            loanGasAmount,
+            adjustedPrice
+        ) + loanEthAmount;
 
-        // TODO: use fees
-        uint256 totalOwnedValue = Quote.quoteGasToEth(ownedGasAmount, price) +
-            ownedEthAmount;
+        // Get total credit
+        adjustedPrice = self.settled
+            ? price.mulDecimal((DecimalMath.UNIT - self.feeRateD18))
+            : price;
+        uint256 totalOwnedValue = Quote.quoteGasToEthWithPrice(
+            ownedGasAmount,
+            adjustedPrice
+        ) + ownedEthAmount;
+
         if (totalDebtValue > totalOwnedValue + collateralAmount) {
             revert Errors.InsufficientCollateral(
                 totalDebtValue - totalOwnedValue,

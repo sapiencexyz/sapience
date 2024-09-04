@@ -37,22 +37,7 @@ contract TradeViewsModule is ITradeViewsModule {
         uint256 epochId,
         uint256 collateral
     ) external view override returns (uint256 positionSize) {
-        /*
-        S = C / (Pe(1+fee) - Pl (1-fee))
-
-        Where
-        Pe = entry price (current price)
-        Pl = lowest price set in market
-        C = collateral
-        Fee = Fee as D18 1/100 (1% in uni is 1000) => fee * 1e12
-        */
-        uint256 price = Trade.getReferencePrice(epochId);
-        uint256 lowestPrice = Epoch.load(epochId).minPriceD18;
-        uint256 fee = uint256(Epoch.load(epochId).params.feeRate) * 1e12; // scaled to 1e18 fee
-
-        positionSize = collateral.divDecimal(
-            deltaPriceMultiplier(price, lowestPrice, fee)
-        );
+        return Position.getLongSizeForCollateral(epochId, collateral);
     }
 
     /**
@@ -62,22 +47,7 @@ contract TradeViewsModule is ITradeViewsModule {
         uint256 epochId,
         uint256 collateral
     ) external view override returns (uint256 modPositionSize) {
-        /*
-        S = C / ( Ph(1+fee) - Pe(1-fee))
-
-        Where 
-        Pe = entry price (current price)
-        Ph = highest price set in market
-        C = collateral
-        Fee = Fee as D18 1/100 (1% in uni is 1000) => fee * 1e12
-        */
-        uint256 price = Trade.getReferencePrice(epochId);
-        uint256 highestPrice = Epoch.load(epochId).maxPriceD18;
-        uint256 fee = uint256(Epoch.load(epochId).params.feeRate) * 1e12; // scaled to 1e18 fee
-
-        modPositionSize = collateral.divDecimal(
-            deltaPriceMultiplier(highestPrice, price, fee)
-        );
+        return Position.getShortSizeForCollateral(epochId, collateral);
     }
 
     /**
@@ -87,13 +57,7 @@ contract TradeViewsModule is ITradeViewsModule {
         uint256 epochId,
         uint256 positionSize
     ) external view override returns (uint256 collateral) {
-        uint256 price = Trade.getReferencePrice(epochId);
-        uint256 lowestPrice = Epoch.load(epochId).minPriceD18;
-        uint256 fee = uint256(Epoch.load(epochId).params.feeRate) * 1e12; // scaled to 1e18 fee
-
-        collateral = positionSize.mulDecimal(
-            deltaPriceMultiplier(price, lowestPrice, fee)
-        );
+        return Position.getCollateralForLongSize(epochId, positionSize);
     }
 
     /**
@@ -103,22 +67,32 @@ contract TradeViewsModule is ITradeViewsModule {
         uint256 epochId,
         uint256 positionSize
     ) external view override returns (uint256 collateral) {
-        uint256 price = Trade.getReferencePrice(epochId);
-        uint256 highestPrice = Epoch.load(epochId).maxPriceD18;
-        uint256 fee = uint256(Epoch.load(epochId).params.feeRate) * 1e12; // scaled to 1e18 fee
-
-        collateral = positionSize.mulDecimal(
-            deltaPriceMultiplier(highestPrice, price, fee)
-        );
+        return Position.getCollateralForShortSize(epochId, positionSize);
     }
 
-    function deltaPriceMultiplier(
-        uint256 price0D18,
-        uint256 price1D18,
-        uint256 feeD18
-    ) internal pure returns (uint256) {
+    /**
+     * @inheritdoc ITradeViewsModule
+     */
+    function getLongDeltaForCollateral(
+        uint256 positionId,
+        uint256 collateral
+    ) external view override returns (uint256 modPositionSize) {
         return
-            price0D18.mulDecimal(DecimalMath.UNIT + feeD18) -
-            price1D18.mulDecimal(DecimalMath.UNIT - feeD18);
+            Position.loadValid(positionId).getLongDeltaForCollateral(
+                collateral
+            );
+    }
+
+    /**
+     * @inheritdoc ITradeViewsModule
+     */
+    function getShortDeltaForCollateral(
+        uint256 positionId,
+        uint256 collateral
+    ) external view override returns (uint256 modPositionSize) {
+        return
+            Position.loadValid(positionId).getShortDeltaForCollateral(
+                collateral
+            );
     }
 }

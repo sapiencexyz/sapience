@@ -17,6 +17,7 @@ contract TestTrade is TestEpoch {
     using DecimalMath for int256;
     using SafeCastU256 for uint256;
     using SafeCastI256 for int256;
+    using Position for Position.Data;
 
     uint256 constant dust = 1e8;
 
@@ -27,7 +28,7 @@ contract TestTrade is TestEpoch {
         uint256 borrowedVGas;
         uint256 vEthAmount;
         uint256 vGasAmount;
-        int256 currentTokenAmount; // position size
+        int256 positionSize;
         uint256 depositedCollateralAmount;
     }
 
@@ -41,9 +42,9 @@ contract TestTrade is TestEpoch {
             .depositedCollateralAmount;
         stateData.vEthAmount = position.vEthAmount;
         stateData.vGasAmount = position.vGasAmount;
-        stateData.currentTokenAmount = position.currentTokenAmount;
         stateData.borrowedVEth = position.borrowedVEth;
         stateData.borrowedVGas = position.borrowedVGas;
+        stateData.positionSize = foil.getPositionSize(positionId);
     }
 
     function fillCollateralStateData(
@@ -51,7 +52,7 @@ contract TestTrade is TestEpoch {
         IFoil foil,
         IMintableToken collateralAsset,
         StateData memory stateData
-    ) public {
+    ) public view {
         stateData.userCollateral = collateralAsset.balanceOf(user);
         stateData.foilCollateral = collateralAsset.balanceOf(address(foil));
     }
@@ -85,10 +86,10 @@ contract TestTrade is TestEpoch {
             string.concat(stage, " depositedCollateralAmount")
         );
         assertApproxEqRel(
-            currentStateData.currentTokenAmount,
-            expectedStateData.currentTokenAmount,
+            currentStateData.positionSize,
+            expectedStateData.positionSize,
             0.01 ether,
-            string.concat(stage, " currentTokenAmount")
+            string.concat(stage, " positionSize")
         );
         assertApproxEqRel(
             currentStateData.vEthAmount,
@@ -164,32 +165,10 @@ contract TestTrade is TestEpoch {
         console2.log("      >> vEthAmount        : ", position.vEthAmount);
         console2.log("      >> vGasAmount        : ", position.vGasAmount);
         console2.log(
-            "      >> currentTokenAmount: ",
-            position.currentTokenAmount
+            "      >> positionSize: ",
+            foil.getPositionSize(positionId)
         );
     }
-
-    // function pnl(
-    //     int256 initialSize,
-    //     uint256 initialPrice,
-    //     int256 finalSize,
-    //     uint256 finalPrice
-    // ) public pure returns (int256 resultPnl) {
-    //     int256 deltaSize = finalSize - initialSize;
-    //     int256 deltaPrice = finalPrice.toInt() - initialPrice.toInt();
-    //     resultPnl =
-    //         deltaSize.mulDecimal(finalPrice.toInt()) -
-    //         deltaSize.mulDecimal(initialPrice.toInt());
-
-    //     // console2.log(" >>> PnL");
-    //     // console2.log("    >> initialSize: ", initialSize);
-    //     // console2.log("    >> initialPrice: ", initialPrice);
-    //     // console2.log("    >> finalSize: ", finalSize);
-    //     // console2.log("    >> finalPrice: ", finalPrice);
-    //     // console2.log("    >> deltaSize: ", deltaSize);
-    //     // console2.log("    >> deltaPrice: ", deltaPrice);
-    //     // console2.log("    >> resultPnl: ", resultPnl);
-    // }
 
     function logPositionAndAccount(IFoil foil, uint256 positionId) public {
         Position.Data memory position = foil.getPosition(positionId);
@@ -208,8 +187,8 @@ contract TestTrade is TestEpoch {
         console2.log("      >> vEthAmount        : ", position.vEthAmount);
         console2.log("      >> vGasAmount        : ", position.vGasAmount);
         console2.log(
-            "      >> currentTokenAmount: ",
-            position.currentTokenAmount
+            "      >> positionSize: ",
+            foil.getPositionSize(positionId)
         );
     }
 
@@ -221,6 +200,7 @@ contract TestTrade is TestEpoch {
         int24 lowerTick,
         int24 upperTick
     ) internal {
+        pool;
         (
             uint256 amountTokenA,
             uint256 amountTokenB,
