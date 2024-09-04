@@ -330,11 +330,11 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
   useEffect(() => {
     if (price && stEthPerTokenResult.data) {
       const stEthPerToken = gweiToEther(stEthPerTokenResult.data as bigint);
-      const wstEthPrice = price.average / Number(stEthPerToken);
+      const averageIndexPriceinWstEth = price.average / Number(stEthPerToken);
 
       setState((currentState) => ({
         ...currentState,
-        averagePrice: wstEthPrice,
+        averagePrice: averageIndexPriceinWstEth,
       }));
     }
   }, [price, stEthPerTokenResult.data]);

@@ -69,3 +69,4 @@ contracts=[
   "ExposedInternalFunctions",
   "SettlementModule"
 ]
+highlight=true

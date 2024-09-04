@@ -67,6 +67,7 @@ contracts=[
   "ERC165Module",
   "SettlementModule"
 ]
+highlight=true
 
 [invoke.initializeMarket]
 target="Foil"

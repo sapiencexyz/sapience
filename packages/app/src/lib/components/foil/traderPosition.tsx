@@ -28,7 +28,6 @@ import { useLoading } from '~/lib/context/LoadingContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
-import { getTokenAmountLimit } from '~/lib/util/positionUtil';
 import {
   convertHundredthsOfBipToPercent,
   renderContractErrorToast,
@@ -144,6 +143,9 @@ export default function TraderPosition({}) {
     functionName: 'getLongSizeForCollateral',
     chainId,
     args: [epoch, parseUnits(collateral.toString(), collateralAssetDecimals)],
+    query: {
+      enabled: nftId === 0 && isLong,
+    },
   });
 
   const shortSizeRead = useReadContract({
@@ -152,6 +154,31 @@ export default function TraderPosition({}) {
     functionName: 'getShortSizeForCollateral',
     chainId,
     args: [epoch, parseUnits(collateral.toString(), collateralAssetDecimals)],
+    query: {
+      enabled: nftId === 0 && !isLong,
+    },
+  });
+
+  const longDeltaRead = useReadContract({
+    abi: foilData.abi,
+    address: foilData.address as `0x${string}`,
+    functionName: 'getLongDeltaForCollateral',
+    chainId,
+    args: [epoch, parseUnits(collateral.toString(), collateralAssetDecimals)],
+    query: {
+      enabled: nftId !== 0 && isLong,
+    },
+  });
+
+  const shortDeltaRead = useReadContract({
+    abi: foilData.abi,
+    address: foilData.address as `0x${string}`,
+    functionName: 'getShortDeltaForCollateral',
+    chainId,
+    args: [epoch, parseUnits(collateral.toString(), collateralAssetDecimals)],
+    query: {
+      enabled: nftId !== 0 && !isLong,
+    },
   });
 
   const collateralAmountFunctionResult = useReadContract({
@@ -209,33 +236,17 @@ export default function TraderPosition({}) {
 
   useEffect(() => {
     if (transactionStep === 2) {
-      const finalSize = isLong
-        ? (longSizeRead.data as bigint)
-        : BigInt(-1) * (shortSizeRead.data as bigint);
-
-      const tokenAmountLimit = getTokenAmountLimit(
-        finalSize,
-        slippage,
-        referencePriceFunctionResult.data as bigint,
-        collateralAssetDecimals,
-        !isLong
-      );
-      console.log('tokenAmountLimit', tokenAmountLimit);
-
-      const args = [
-        epoch,
-        parseUnits(collateral.toString(), collateralAssetDecimals),
-        finalSize,
-        // tokenAmountLimit,
-        parseUnits('0', collateralAssetDecimals),
-      ];
-      console.log('args', args);
       if (nftId === 0) {
         writeContract({
           abi: foilData.abi,
           address: foilData.address as `0x${string}`,
           functionName: 'createTraderPosition',
-          args,
+          args: [
+            epoch,
+            parseUnits(collateral.toString(), collateralAssetDecimals),
+            isLong ? longSizeRead.data : shortSizeRead.data,
+            parseUnits('0', collateralAssetDecimals), // TOOD: impl slippage
+          ],
         });
       } else {
         writeContract({
@@ -245,9 +256,8 @@ export default function TraderPosition({}) {
           args: [
             nftId,
             parseUnits(collateral.toString(), collateralAssetDecimals),
-            finalSize, // target amount
-            // tokenAmountLimit, // get limit
-            parseUnits('0', collateralAssetDecimals),
+            isLong ? longDeltaRead.data : shortDeltaRead.data,
+            parseUnits('0', collateralAssetDecimals), // TOOD: impl slippage
           ],
         });
       }
