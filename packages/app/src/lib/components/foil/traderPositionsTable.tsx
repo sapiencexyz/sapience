@@ -68,10 +68,10 @@ export default function TraderPositionsTable() {
           {positions &&
             positions.map((row: any) => (
               <Tr key={row.id}>
-                <Td>{row.positionId.toString()}</Td>
-                <Td>{row.collateral.toString()}</Td>
-                <Td>{row.baseToken.toString()}</Td>
-                <Td>{row.quoteToken.toString()}</Td>
+                <Td>#{row.positionId.toString()}</Td>
+                <Td>{row.collateral.toString()} wstETH</Td>
+                <Td>{row.baseToken.toString()} Ggas</Td>
+                <Td>{row.quoteToken.toString()} ETH</Td>
                 {/* <Td>TODO</Td> */}
                 {/* <Td>{row.profitLoss.toString()}</Td> */}
               </Tr>

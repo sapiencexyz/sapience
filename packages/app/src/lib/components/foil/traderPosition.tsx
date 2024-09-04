@@ -86,7 +86,7 @@ export default function TraderPosition({}) {
   const [option, setOption] = useState('Long');
   const [slippage, setSlippage] = useState<number>(0.5);
   const [transactionStep, setTransactionStep] = useState(0);
-  const [isSizeInput, setIsSizeInput] = useState(false);
+  const [isSizeInput, setIsSizeInput] = useState(true);
   const [pendingTxn, setPendingTxn] = useState(false);
   const account = useAccount();
   const { isConnected } = account;
