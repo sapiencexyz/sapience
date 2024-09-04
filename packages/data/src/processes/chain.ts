@@ -69,6 +69,7 @@ export const indexBaseFeePerGasRange = async (
 
   for (let blockNumber = start; blockNumber <= end; blockNumber++) {
     try {
+      console.log("Indexing gas from block ", blockNumber);
       const block = await publicClient.getBlock({
         blockNumber: BigInt(blockNumber),
       });

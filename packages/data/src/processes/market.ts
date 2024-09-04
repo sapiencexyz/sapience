@@ -101,7 +101,7 @@ export const indexMarketEventsRange = async (
   }
 
   for (let blockNumber = start; blockNumber <= end; blockNumber++) {
-    console.log(`Processing block ${blockNumber}`);
+    console.log("Indexing market events from block ", blockNumber);
     try {
       const logs = await publicClient.getLogs({
         address: contractAddress as `0x${string}`,

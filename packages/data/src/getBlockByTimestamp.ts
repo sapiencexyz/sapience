@@ -1,4 +1,4 @@
-import { createPublicClient, http, Block, Chain } from "viem";
+import { createPublicClient, http, Block, Chain, PublicClient } from "viem";
 import { TOKEN_PRECISION } from "./util/dbUtil";
 
 // Function to create a custom chain configuration
@@ -19,7 +19,7 @@ function createCustomChain(rpcUrl: string): Chain {
 }
 
 // Function to create a public client using the provided RPC URL
-function createClient(rpcUrl: string) {
+function createClient(rpcUrl: string): PublicClient {
   const customChain = createCustomChain(rpcUrl);
   return createPublicClient({
     chain: customChain,
@@ -27,7 +27,7 @@ function createClient(rpcUrl: string) {
   });
 }
 
-async function getBlockByTimestamp(
+export default async function getBlockByTimestamp(
   client: ReturnType<typeof createClient>,
   timestamp: number
 ): Promise<Block> {
@@ -69,6 +69,7 @@ async function getBlockByTimestamp(
   return closestBlock!;
 }
 
+if (require.main === module) {
 // Get the RPC URL and timestamp from the command line arguments
 const args = process.argv.slice(2);
 if (args.length !== 2) {
@@ -93,3 +94,4 @@ getBlockByTimestamp(client, timestamp)
     );
   })
   .catch(console.error);
+}

@@ -1,6 +1,5 @@
 import dataSource, { initializeDataSource } from "./db";
-import { Abi, Chain, createPublicClient, http, webSocket } from "viem";
-import * as chains from "viem/chains";
+import { Abi, createPublicClient, http, webSocket } from "viem";
 import { indexBaseFeePerGas, indexBaseFeePerGasRange } from "./processes/chain";
 import { indexMarketEvents, indexMarketEventsRange } from "./processes/market"; // Assuming you have this function
 import { mainnet, sepolia, hardhat } from "viem/chains";
@@ -8,6 +7,7 @@ import FoilLocal from "@/protocol/deployments/13370/Foil.json";
 import FoilSepolia from "@/protocol/deployments/11155111/Foil.json";
 import { Market } from "./entity/Market";
 import { Epoch } from "./entity/Epoch";
+import getBlockByTimestamp from "./getBlockByTimestamp";
 
 const mainnetPublicClient = createPublicClient({
   chain: mainnet,
@@ -28,80 +28,6 @@ export const cannonPublicClient = createPublicClient({
   chain: hardhat,
   transport: http("http://localhost:8545"),
 });
-
-function findChainById(chainId: number): Chain | undefined {
-  const availableChains = Object.values(chains);
-  return availableChains.find((chain) => chain.id === chainId);
-}
-
-async function createViemPublicClient(providerUrl: string) {
-  const transport = http(providerUrl);
-
-  // Create a temporary client to get the chain ID
-  const tempClient = createPublicClient({
-    chain: mainnet, // Temporary chain, will be overridden
-    transport,
-  });
-
-  // Call the eth_chainId method to get the chain ID
-  const chainIdHex = await tempClient.request({ method: "eth_chainId" });
-  const chainId = parseInt(chainIdHex, 16);
-
-  // Find the corresponding chain configuration
-  const chain = findChainById(chainId);
-
-  if (!chain) {
-    throw new Error(`Unsupported or unknown chain ID: ${chainId}`);
-  }
-
-  // Create the final client with the correct chain
-  const client = createPublicClient({
-    chain,
-    transport,
-  });
-
-  return client;
-}
-
-async function indexBaseFeePerGasRangeCommand(
-  startBlock: number,
-  endBlock: number,
-  rpcUrl: string,
-  contractAddress: string
-) {
-  console.log(
-    `Indexing base fee per gas from block ${startBlock} to ${endBlock} for contract ${contractAddress} using ${rpcUrl}`
-  );
-  const client = await createViemPublicClient(rpcUrl);
-  const [chainId, address] = contractAddress.split(":");
-  await indexBaseFeePerGasRange(
-    client,
-    startBlock,
-    endBlock,
-    parseInt(chainId),
-    address
-  );
-}
-
-async function indexMarketEventsRangeCommand(
-  startBlock: number,
-  endBlock: number,
-  rpcUrl: string,
-  contractAddress: string,
-  contractAbi: Abi
-) {
-  console.log(
-    `Indexing market events from block ${startBlock} to ${endBlock} for contract ${contractAddress} using ${rpcUrl}`
-  );
-  const client = await createViemPublicClient(rpcUrl);
-  await indexMarketEventsRange(
-    client,
-    startBlock,
-    endBlock,
-    contractAddress,
-    contractAbi
-  );
-}
 
 // TODO: Get this data from smart contract queries
 async function initializeMarkets() {
@@ -177,21 +103,44 @@ if (process.argv.length < 3) {
   });
 } else {
   const args = process.argv.slice(2);
-  if (args[0] === "index-sepolia") {
-    Promise.all([
-      indexBaseFeePerGasRangeCommand(
-        20413376,
-        20428947,
-        "https://ethereum-rpc.publicnode.com",
-        `${sepolia.id}:${FoilSepolia.address}`
-      ),
-      indexMarketEventsRangeCommand(
-        6506300,
-        6606300,
-        "https://ethereum-sepolia-rpc.publicnode.com",
-        FoilSepolia.address,
-        FoilSepolia.abi as Abi
-      ),
-    ]);
+  if (args[0] === "reindex-testnet") {
+    console.log("Reindexing Testnet!");
+
+    async function getBlockRanges() {
+      // Pull start/end dates from database eventually
+      const gasStart = await getBlockByTimestamp(mainnetPublicClient, 1723479600);
+      const gasEnd = await getBlockByTimestamp(mainnetPublicClient, 1726405200)  || await mainnetPublicClient.getBlock();
+      const marketStart = await getBlockByTimestamp(sepoliaPublicClient, 1723479600);
+      const marketEnd = await getBlockByTimestamp(sepoliaPublicClient, 1726405200) || await sepoliaPublicClient.getBlock();
+      return { gasStart: gasStart.number, gasEnd: gasEnd.number, marketStart: marketStart.number, marketEnd: marketEnd.number };
+    }
+  
+    getBlockRanges().then(({ gasStart, gasEnd, marketStart, marketEnd }) => {
+      console.log(`Reindexing gas between blocks ${gasStart} and ${gasEnd}`);
+      console.log(`Reindexing market between blocks ${marketStart} and ${marketEnd}`);
+
+      Promise.all([
+        indexBaseFeePerGasRange(
+          mainnetPublicClient,
+          Number(gasStart), 
+          Number(gasEnd),
+          sepolia.id,
+          FoilSepolia.address
+        ),
+        indexMarketEventsRange(
+          sepoliaPublicClient,
+          Number(marketStart),
+          Number(marketEnd),
+          FoilSepolia.address,
+          FoilSepolia.abi as Abi
+        )
+      ]).then(() => {
+        console.log("Done!");
+      }).catch(error => {
+        console.error("An error occurred:", error);
+      });
+    }).catch(error => {
+      console.error("Error getting block ranges:", error);
+    });
   }
 }

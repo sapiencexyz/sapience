@@ -5,12 +5,14 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
+    "dev": "concurrently \"pnpm run dev:service\" \"pnpm run dev:worker\"",
     "dev:service": "ts-node-dev src/service.ts",
     "dev:worker": "ts-node-dev src/worker.ts",
+    "start": "concurrently \"pnpm run start:service\" \"pnpm run start:worker\"",
     "start:service": "ts-node src/service.ts",
     "start:worker": "ts-node src/worker.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "index-sepolia": "ts-node-dev src/worker.ts index-sepolia"
+    "reindex-testnet": "ts-node src/worker.ts reindex-testnet"
   },
   "keywords": [],
   "author": "",
