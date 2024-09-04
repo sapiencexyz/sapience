@@ -78,7 +78,7 @@ export default function TransactoinTable() {
                 <Td>{row.type}</Td>
                 <Td>{row.collateralDelta} wstETH</Td>
                 <Td>{row.baseTokenDelta} Ggas</Td>
-                <Td>{row.quoteTokenDelta} ETH</Td>
+                <Td>{row.quoteTokenDelta} wstETH</Td>
                 {/* <Td>{getFinalPrice(row)}</Td> */}
               </Tr>
             ))}

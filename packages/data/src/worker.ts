@@ -35,6 +35,22 @@ async function initializeMarkets() {
   const marketRepository = dataSource.getRepository(Market);
   const epochRepository = dataSource.getRepository(Epoch);
 
+  // Helper function to create or find epoch
+  async function createOrFindEpoch(market: Market) {
+    let epoch = await epochRepository.findOne({
+      where: { market: { id: market.id }, epochId: 1 },
+    });
+
+    if (!epoch) {
+      epoch = new Epoch();
+      epoch.epochId = 1;
+      epoch.market = market;
+      await epochRepository.save(epoch);
+    }
+
+    return epoch;
+  }
+
   // LOCAL
   let localMarket = await marketRepository.findOne({
     where: { address: FoilLocal.address, chainId: hardhat.id },
@@ -45,12 +61,8 @@ async function initializeMarkets() {
     localMarket.address = FoilLocal.address;
     localMarket.chainId = hardhat.id;
     localMarket = await marketRepository.save(localMarket);
-
-    const localEpoch = new Epoch();
-    localEpoch.epochId = 1;
-    localEpoch.market = localMarket;
-    await epochRepository.save(localEpoch);
   }
+  await createOrFindEpoch(localMarket);
 
   // SEPOLIA
   let sepoliaMarket = await marketRepository.findOne({
@@ -62,12 +74,8 @@ async function initializeMarkets() {
     sepoliaMarket.address = FoilSepolia.address;
     sepoliaMarket.chainId = sepolia.id;
     sepoliaMarket = await marketRepository.save(sepoliaMarket);
-
-    const sepoliaEpoch = new Epoch();
-    sepoliaEpoch.epochId = 1;
-    sepoliaEpoch.market = sepoliaMarket;
-    await epochRepository.save(sepoliaEpoch);
   }
+  await createOrFindEpoch(sepoliaMarket);
 
   const allEpochs = await epochRepository.find({ relations: ["market"] });
   console.log("All Epochs:", allEpochs);

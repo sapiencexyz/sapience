@@ -66,7 +66,7 @@ export default function TraderPositionsTable() {
                 <Td>#{row.positionId.toString()}</Td>
                 <Td>{row.collateral.toString()} wstETH</Td>
                 <Td>{row.baseToken.toString()} Ggas</Td>
-                <Td>{row.quoteToken.toString()} ETH</Td>
+                <Td>{row.quoteToken.toString()} wstETH</Td>
                 {/* <Td>TODO</Td> */}
                 {/* <Td>{row.profitLoss.toString()}</Td> */}
                 <Td>{row.highPrice.toString()} Ggas/wstETH</Td>
