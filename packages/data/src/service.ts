@@ -12,6 +12,7 @@ import { Epoch } from "./entity/Epoch";
 import { MarketPrice } from "./entity/MarketPrice";
 import { formatUnits } from "viem";
 import { formatDbBigInt, TOKEN_PRECISION } from "./util/dbUtil";
+import { reindexTestnet } from "./worker";
 
 const PORT = 3001;
 
@@ -50,6 +51,14 @@ const startServer = async () => {
 
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
+  });
+
+  app.get('/reindex-testnet', async (req, res) => {
+    try {
+        await reindexTestnet();
+    } catch (error) {
+        res.status(500).send(`Error reindexing testnet: ${error}`);
+    }
   });
 
   // Get market price data for rendering candlestick/boxplot charts filtered by contractId

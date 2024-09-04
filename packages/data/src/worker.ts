@@ -77,6 +77,47 @@ async function initializeMarkets() {
   console.log("First epoch in market:", allMarkets[0].epochs);
 }
 
+export async function reindexTestnet() {
+  console.log("Reindexing Testnet!");
+
+  async function getBlockRanges() {
+    // Pull start/end dates from database eventually
+    const gasStart = await getBlockByTimestamp(mainnetPublicClient, 1723479600);
+    const gasEnd = await getBlockByTimestamp(mainnetPublicClient, 1726405200)  || await mainnetPublicClient.getBlock();
+    const marketStart = await getBlockByTimestamp(sepoliaPublicClient, 1723479600);
+    const marketEnd = await getBlockByTimestamp(sepoliaPublicClient, 1726405200) || await sepoliaPublicClient.getBlock();
+    return { gasStart: gasStart.number, gasEnd: gasEnd.number, marketStart: marketStart.number, marketEnd: marketEnd.number };
+  }
+
+  getBlockRanges().then(({ gasStart, gasEnd, marketStart, marketEnd }) => {
+    console.log(`Reindexing gas between blocks ${gasStart} and ${gasEnd}`);
+    console.log(`Reindexing market between blocks ${marketStart} and ${marketEnd}`);
+
+    Promise.all([
+      indexBaseFeePerGasRange(
+        mainnetPublicClient,
+        Number(gasStart), 
+        Number(gasEnd),
+        sepolia.id,
+        FoilSepolia.address
+      ),
+      indexMarketEventsRange(
+        sepoliaPublicClient,
+        Number(marketStart),
+        Number(marketEnd),
+        FoilSepolia.address,
+        FoilSepolia.abi as Abi
+      )
+    ]).then(() => {
+      console.log("Done!");
+    }).catch(error => {
+      console.error("An error occurred:", error);
+    });
+  }).catch(error => {
+    console.error("Error getting block ranges:", error);
+  });
+}
+
 if (process.argv.length < 3) {
   initializeMarkets().then(() => {
     let jobs = [
@@ -104,43 +145,6 @@ if (process.argv.length < 3) {
 } else {
   const args = process.argv.slice(2);
   if (args[0] === "reindex-testnet") {
-    console.log("Reindexing Testnet!");
-
-    async function getBlockRanges() {
-      // Pull start/end dates from database eventually
-      const gasStart = await getBlockByTimestamp(mainnetPublicClient, 1723479600);
-      const gasEnd = await getBlockByTimestamp(mainnetPublicClient, 1726405200)  || await mainnetPublicClient.getBlock();
-      const marketStart = await getBlockByTimestamp(sepoliaPublicClient, 1723479600);
-      const marketEnd = await getBlockByTimestamp(sepoliaPublicClient, 1726405200) || await sepoliaPublicClient.getBlock();
-      return { gasStart: gasStart.number, gasEnd: gasEnd.number, marketStart: marketStart.number, marketEnd: marketEnd.number };
-    }
-  
-    getBlockRanges().then(({ gasStart, gasEnd, marketStart, marketEnd }) => {
-      console.log(`Reindexing gas between blocks ${gasStart} and ${gasEnd}`);
-      console.log(`Reindexing market between blocks ${marketStart} and ${marketEnd}`);
-
-      Promise.all([
-        indexBaseFeePerGasRange(
-          mainnetPublicClient,
-          Number(gasStart), 
-          Number(gasEnd),
-          sepolia.id,
-          FoilSepolia.address
-        ),
-        indexMarketEventsRange(
-          sepoliaPublicClient,
-          Number(marketStart),
-          Number(marketEnd),
-          FoilSepolia.address,
-          FoilSepolia.abi as Abi
-        )
-      ]).then(() => {
-        console.log("Done!");
-      }).catch(error => {
-        console.error("An error occurred:", error);
-      });
-    }).catch(error => {
-      console.error("Error getting block ranges:", error);
-    });
+    reindexTestnet();
   }
 }
