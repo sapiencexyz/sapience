@@ -382,10 +382,10 @@
   "linkedLibraries": {},
   "deployTxnHash": "0xc92da58434c67459f9475fb8e77fe14a3904c030c4d24514c6c514410cd643ee",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1725412240",
+  "deployTimestamp": "1725572417",
   "sourceName": "src/contracts/modules/ViewsModule.sol",
   "contractName": "ViewsModule",
   "deployedOn": "deploy.ViewsModule",
   "gasUsed": 681947,
-  "gasCost": "1000098426"
+  "gasCost": "1000098512"
 }

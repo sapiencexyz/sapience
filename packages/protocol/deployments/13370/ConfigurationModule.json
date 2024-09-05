@@ -408,12 +408,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xd0380d0f08abb2def3e75086319b98f9dcb04c0a7f7255809335fca5b41291c6",
+  "deployTxnHash": "0x468efa6d6e7f8cece25307b3f31fd4475dfd7256c2422c230377da93d18445da",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1725565260",
+  "deployTimestamp": "1725572418",
   "sourceName": "src/contracts/modules/ConfigurationModule.sol",
   "contractName": "ConfigurationModule",
   "deployedOn": "deploy.ConfigurationModule",
   "gasUsed": 2115046,
-  "gasCost": "1000295134"
+  "gasCost": "1000258373"
 }

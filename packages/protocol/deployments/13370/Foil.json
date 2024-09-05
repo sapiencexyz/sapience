@@ -2380,12 +2380,12 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0x137b649b953b97de02383e83e275af4544aab0a88119975f60762c1969df9b38",
+  "deployTxnHash": "0xe27a0f414d47bf03e5b28b772fbab1e64cb883fc0bc31a494266fc93da6678cc",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1725565268",
+  "deployTimestamp": "1725572426",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
   "highlight": true,
   "gasUsed": 516510,
-  "gasCost": "1000079209"
+  "gasCost": "1000026087"
 }

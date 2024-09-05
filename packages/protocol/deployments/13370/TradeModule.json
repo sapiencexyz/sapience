@@ -395,10 +395,10 @@
   "linkedLibraries": {},
   "deployTxnHash": "0x9938036a7435c0bd8f9b2fa188be79f8675fce4fba4b9ef078d198fe0c2cf93c",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1725412240",
+  "deployTimestamp": "1725572417",
   "sourceName": "src/contracts/modules/TradeModule.sol",
   "contractName": "TradeModule",
   "deployedOn": "deploy.TradeModule",
   "gasUsed": 2114271,
-  "gasCost": "1000142220"
+  "gasCost": "1000142345"
 }
