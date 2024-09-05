@@ -121,7 +121,25 @@ export default function TraderPosition({}) {
   const isLong = option === 'Long';
   const fee = convertHundredthsOfBipToPercent(pool?.fee || 0) + 0.01; // TODO FIGURE OUT WHAT THIS SHOULD BE
 
-  /// //// READ CONTRACT HOOKS ///////
+  // collateral amount for current address/account
+  const collateralAmountFunctionResult = useReadContract({
+    abi: erc20ABI,
+    address: collateralAsset as `0x${string}`,
+    functionName: 'balanceOf',
+    args: [account.address],
+    chainId,
+  });
+
+  // Reference price
+  const referencePriceFunctionResult = useReadContract({
+    abi: foilData.abi,
+    address: foilData.address as `0x${string}`,
+    functionName: 'getReferencePrice',
+    chainId,
+    args: [epoch],
+  });
+
+  // Position Data
   const { data: positionData, refetch: refetchPosition } = useReadContract({
     abi: foilData.abi,
     address: foilData.address as `0x${string}`,
@@ -132,14 +150,36 @@ export default function TraderPosition({}) {
     },
   }) as { data: FoilPosition; refetch: any; isRefetching: boolean };
 
-  const referencePriceFunctionResult = useReadContract({
-    abi: foilData.abi,
-    address: foilData.address as `0x${string}`,
-    functionName: 'getReferencePrice',
-    chainId,
-    args: [epoch],
-  });
+  const originalSize = useMemo(() => {
+    if (!positionData) return '0';
+    console.log('POSITION DATA = ', positionData);
+    const _size =
+      positionData.vGasAmount > BigInt(0)
+        ? positionData.vGasAmount
+        : positionData.borrowedVGas;
+    return formatUnits(_size, collateralAssetDecimals);
+  }, [positionData, collateralAssetDecimals]);
 
+  // Collateral info from position
+  const originalCollateral = positionData
+    ? formatUnits(
+        positionData.depositedCollateralAmount,
+        collateralAssetDecimals
+      )
+    : '0';
+
+  // Signed Delta in collateral
+  const collateralDeltaRawValue =
+    parseUnits(collateral.toString(), collateralAssetDecimals) -
+    parseUnits(originalCollateral, collateralAssetDecimals);
+
+  // UNSIGNED Delta in collateral
+  const unsignedCollateralDelta =
+    collateralDeltaRawValue > BigInt(0)
+      ? collateralDeltaRawValue
+      : BigInt(-1) * collateralDeltaRawValue;
+
+  // Long and short sizes from read functions
   const longSizeRead = useReadContract({
     abi: foilData.abi,
     address: foilData.address as `0x${string}`,
@@ -150,7 +190,6 @@ export default function TraderPosition({}) {
       enabled: nftId === 0 && isLong,
     },
   });
-
   const shortSizeRead = useReadContract({
     abi: foilData.abi,
     address: foilData.address as `0x${string}`,
@@ -162,35 +201,37 @@ export default function TraderPosition({}) {
     },
   });
 
+  // Long and short deltas
   const longDeltaRead = useReadContract({
     abi: foilData.abi,
     address: foilData.address as `0x${string}`,
     functionName: 'getLongDeltaForCollateral',
     chainId,
-    args: [epoch, parseUnits(collateral.toString(), collateralAssetDecimals)],
+    args: [epoch, unsignedCollateralDelta],
     query: {
-      enabled: nftId !== 0 && isLong,
+      // enabled: nftId !== 0 && isLong,
+      enabled: nftId !== 0,
     },
   });
-
   const shortDeltaRead = useReadContract({
     abi: foilData.abi,
     address: foilData.address as `0x${string}`,
     functionName: 'getShortDeltaForCollateral',
     chainId,
-    args: [epoch, parseUnits(collateral.toString(), collateralAssetDecimals)],
+    args: [epoch, unsignedCollateralDelta],
     query: {
-      enabled: nftId !== 0 && !isLong,
+      // enabled: nftId !== 0 && !isLong,
+      enabled: nftId !== 0,
     },
   });
 
-  const collateralAmountFunctionResult = useReadContract({
-    abi: erc20ABI,
-    address: collateralAsset as `0x${string}`,
-    functionName: 'balanceOf',
-    args: [account.address],
-    chainId,
-  });
+  // DEBUG
+  console.log('*********');
+  console.log('collateral', collateral);
+  console.log('collateralDeltaRawValue ', collateralDeltaRawValue);
+  console.log('unsignedCollateralDelta', unsignedCollateralDelta);
+  console.log('longDeltaRead', longDeltaRead.data);
+  console.log('shortDeltaRead', shortDeltaRead.data);
 
   /// //// WRITE CONTRACT HOOKS ///////
   const { data: hash, writeContract } = useWriteContract({
@@ -240,11 +281,11 @@ export default function TraderPosition({}) {
   useEffect(() => {
     if (transactionStep === 2) {
       if (nftId === 0) {
-        const originalSize: bigint = isLong
+        const unbufferedSize: bigint = isLong
           ? (longSizeRead.data as bigint)
           : (shortSizeRead.data as bigint) * BigInt('-1');
         const bufferedSize: bigint =
-          (originalSize * (PERCENT_MULTIPLIER - TEMP_BUFFER)) /
+          (unbufferedSize * (PERCENT_MULTIPLIER - TEMP_BUFFER)) /
           PERCENT_MULTIPLIER;
 
         writeContract({
@@ -259,23 +300,46 @@ export default function TraderPosition({}) {
           ],
         });
       } else {
-        const originalSizeDelta: bigint = isLong
+        const isOriginalPositionLong = positionData.vGasAmount > BigInt(0);
+        const isLongDeltaRead = () => {
+          // original position is long but user changes tab to short
+          if (isOriginalPositionLong && !isLong) {
+            return false;
+          }
+          // original position is long, check if user is increasing size
+          if (isOriginalPositionLong && isLong) {
+            return collateralDeltaRawValue > BigInt(0);
+          }
+          // original position is short but user changes tab to long
+          if (!isOriginalPositionLong && isLong) {
+            return true;
+          }
+          // original position is long, check if user is increasing size
+          if (!isOriginalPositionLong && !isLong) {
+            return collateralDeltaRawValue > BigInt(0);
+          }
+          return true;
+        };
+        const originalSizeDelta: bigint = isLongDeltaRead()
           ? (longDeltaRead.data as bigint)
           : (shortDeltaRead.data as bigint) * BigInt('-1');
         const bufferedSizeDelta: bigint =
           (originalSizeDelta * (PERCENT_MULTIPLIER - TEMP_BUFFER)) /
           PERCENT_MULTIPLIER;
 
+        const args = [
+          nftId,
+          parseUnits(collateral.toString(), collateralAssetDecimals),
+          bufferedSizeDelta,
+          parseUnits('0', collateralAssetDecimals), // TOOD: impl slippage
+        ];
+        console.log('args = ', args);
+
         writeContract({
           abi: foilData.abi,
           address: foilData.address as `0x${string}`,
           functionName: 'modifyTraderPosition',
-          args: [
-            nftId,
-            parseUnits(collateral.toString(), collateralAssetDecimals),
-            bufferedSizeDelta,
-            parseUnits('0', collateralAssetDecimals), // TOOD: impl slippage
-          ],
+          args,
         });
       }
       setTransactionStep(3);
@@ -309,21 +373,6 @@ export default function TraderPosition({}) {
       setOption(positionData.vGasAmount > BigInt(0) ? 'Long' : 'Short');
     }
   }, [isEdit, positionData]);
-
-  /// /// MEMOIZED FUNCTIONS ///////
-  const originalCollateral = useMemo(() => {
-    if (!positionData) return '0';
-    return formatUnits(
-      positionData.depositedCollateralAmount,
-      collateralAssetDecimals
-    );
-  }, [positionData, collateralAssetDecimals]);
-
-  const originalSize = useMemo(() => {
-    if (!positionData) return '0';
-    console.log('POSITION DATA = ', positionData);
-    return formatUnits(positionData.vEthAmount, collateralAssetDecimals);
-  }, [positionData, collateralAssetDecimals]);
 
   /// /// HANDLERS //////
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
