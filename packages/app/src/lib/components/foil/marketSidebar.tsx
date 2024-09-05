@@ -12,12 +12,7 @@ export default function MarketSidebar() {
   const expired = endTime < Math.floor(Date.now() / 1000);
 
   return (
-    <Box
-      border="1px solid"
-      borderColor="gray.300"
-      borderRadius="md"
-      maxWidth="380px"
-    >
+    <Box border="1px solid" borderColor="gray.300" borderRadius="md" w="100%">
       {expired ? (
         <Settle />
       ) : (

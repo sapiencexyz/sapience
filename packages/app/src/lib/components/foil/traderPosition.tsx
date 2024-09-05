@@ -226,14 +226,6 @@ export default function TraderPosition({}) {
     },
   });
 
-  // DEBUG
-  console.log('*********');
-  console.log('collateral', collateral);
-  console.log('collateralDeltaRawValue ', collateralDeltaRawValue);
-  console.log('unsignedCollateralDelta', unsignedCollateralDelta);
-  console.log('longDeltaRead', longDeltaRead.data);
-  console.log('shortDeltaRead', shortDeltaRead.data);
-
   /// //// WRITE CONTRACT HOOKS ///////
   const { data: hash, writeContract } = useWriteContract({
     mutation: {
@@ -288,6 +280,13 @@ export default function TraderPosition({}) {
         const bufferedSize: bigint =
           (unbufferedSize * (PERCENT_MULTIPLIER - TEMP_BUFFER)) /
           PERCENT_MULTIPLIER;
+
+        console.log([
+          epoch,
+          parseUnits(collateral.toString(), collateralAssetDecimals),
+          bufferedSize,
+          parseUnits('0', collateralAssetDecimals), // TOOD: impl slippage
+        ]);
 
         writeContract({
           abi: foilData.abi,

@@ -112,22 +112,29 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
     >
       <Flex direction="column" alignItems="left" mb={8} w="full" py={8}>
         <PositionsHeader />
-        <Flex width="100%" gap={12} mb={12}>
-          <Box height="100%" flex="2">
+        <Flex
+          width="100%"
+          gap={8}
+          mb={12}
+          flexDirection={{ base: 'column', md: 'row' }}
+        >
+          <Box width={{ base: '100%', md: '66.66%' }} mb={{ base: 6, md: 0 }}>
             <Chart />
           </Box>
-          <MarketSidebar />
+          <Box
+            width={{ base: '100%', md: '33.33%' }}
+            maxWidth={{ base: 'none', md: '400px' }}
+          >
+            <MarketSidebar />
+          </Box>
         </Flex>
         <Tabs>
           <Flex justify="space-between" align="center">
-            <TabList>
+            <TabList w="100%">
               <Tab>Transactions</Tab>
               <Tab>Trader Positions</Tab>
               <Tab>LP Positions</Tab>
             </TabList>
-            <Button size="sm" onClick={refetchData} rightIcon={<RepeatIcon />}>
-              Refresh
-            </Button>
           </Flex>
           <TabPanels pt={4}>
             <TabPanel>
@@ -153,6 +160,15 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
             </TabPanel>
           </TabPanels>
         </Tabs>
+
+        <Button
+          mt={4}
+          size="sm"
+          onClick={refetchData}
+          leftIcon={<RepeatIcon />}
+        >
+          Refresh
+        </Button>
       </Flex>
     </MarketProvider>
   );

@@ -1,5 +1,4 @@
-'use client';
-
+/* eslint-disable sonarjs/no-duplicate-string */
 import { InfoOutlineIcon } from '@chakra-ui/icons';
 import {
   Box,
@@ -13,9 +12,10 @@ import {
   StatHelpText,
   StatLabel,
   StatNumber,
+  useBreakpointValue,
 } from '@chakra-ui/react';
 import { format, formatDistanceToNow } from 'date-fns';
-import { useContext } from 'react';
+import React, { useContext } from 'react';
 import { FaRegChartBar, FaCubes } from 'react-icons/fa';
 import { IoDocumentTextOutline } from 'react-icons/io5';
 
@@ -35,6 +35,9 @@ const PositionsHeader = () => {
     liquidity,
   } = useContext(MarketContext);
 
+  const isMobile = useBreakpointValue({ base: true, md: false });
+  const isTablet = useBreakpointValue({ base: false, md: true, lg: false });
+
   let relativeTime = '';
   let formattedTime = '';
   if (endTime) {
@@ -47,63 +50,72 @@ const PositionsHeader = () => {
   const tickToPrice = (tick: number): number => 1.0001 ** tick;
 
   return (
-    <Flex gap={6} mb={9} alignItems="center" direction="column">
-      <Flex w="100%" alignItems="end">
-        <Heading>
+    <Flex gap={6} mb={9} alignItems="center" direction="column" width="100%">
+      <Flex
+        w="100%"
+        alignItems="flex-start"
+        flexDirection={{ base: 'column', lg: 'row' }}
+      >
+        <Heading mb={0} alignSelf={{ base: 'flex-start', lg: 'flex-end' }}>
           {chain?.name} Gas Market{' '}
           <Text ml={1.5} as="span" fontWeight="200" color="gray.600">
             Epoch {epoch}
           </Text>
         </Heading>
 
-        <Box ml="auto">
-          <Link
-            fontSize="sm"
-            color="gray.800"
-            isExternal
-            _hover={{ textDecoration: 'none' }}
-            mr={5}
-            href={`${chain?.blockExplorers?.default.url}/address/${address}`}
-          >
-            <Flex display="inline-flex" alignItems="center">
-              <Box display="inline-block" mr="1">
-                <IoDocumentTextOutline />
-              </Box>
-              <Text
-                borderBottom="1px dotted"
-                borderRadius="1px"
-                fontWeight="500"
-                as="span"
-              >
-                Contract
-              </Text>
-            </Flex>
-          </Link>
+        <Flex
+          flexDirection="column"
+          alignItems={{ base: 'flex-start', lg: 'flex-end' }}
+          mt={{ base: 4, lg: 'auto' }}
+          mb={{ base: 0, lg: 1 }}
+          ml={{ lg: 'auto' }}
+          width={{ base: '100%', lg: 'auto' }}
+        >
+          <Flex flexWrap="wrap" gap={{ base: 2, lg: 6 }}>
+            <Link
+              fontSize="sm"
+              color="gray.800"
+              isExternal
+              _hover={{ textDecoration: 'none' }}
+              href={`${chain?.blockExplorers?.default.url}/address/${address}`}
+            >
+              <Flex display="inline-flex" alignItems="center">
+                <Box display="inline-block" mr="1">
+                  <IoDocumentTextOutline />
+                </Box>
+                <Text
+                  borderBottom="1px dotted"
+                  borderRadius="1px"
+                  fontWeight="500"
+                  as="span"
+                >
+                  Contract
+                </Text>
+              </Flex>
+            </Link>
 
-          <Link
-            fontSize="sm"
-            color="gray.800"
-            isExternal
-            _hover={{ textDecoration: 'none' }}
-            mr={5}
-            href={`${chain?.blockExplorers?.default.url}/address/${collateralAsset}`}
-          >
-            <Flex display="inline-flex" alignItems="center">
-              <Box display="inline-block" mr="1">
-                <FaCubes />
-              </Box>
-              <Text
-                borderBottom="1px dotted"
-                borderRadius="1px"
-                fontWeight="500"
-                as="span"
-              >
-                Collateral
-              </Text>
-            </Flex>
-          </Link>
+            <Link
+              fontSize="sm"
+              color="gray.800"
+              isExternal
+              _hover={{ textDecoration: 'none' }}
+              href={`${chain?.blockExplorers?.default.url}/address/${collateralAsset}`}
+            >
+              <Flex display="inline-flex" alignItems="center">
+                <Box display="inline-block" mr="1">
+                  <FaCubes />
+                </Box>
+                <Text
+                  borderBottom="1px dotted"
+                  borderRadius="1px"
+                  fontWeight="500"
+                  as="span"
+                >
+                  Collateral
+                </Text>
+              </Flex>
+            </Link>
 
-          {pool && (
             <Flex display="inline-flex" align="center" fontSize="sm">
               <Box display="inline-block" mr="1">
                 <FaRegChartBar />
@@ -114,12 +126,17 @@ const PositionsHeader = () => {
               {tickToPrice(baseAssetMinPriceTick).toLocaleString()}-
               {tickToPrice(baseAssetMaxPriceTick).toLocaleString()} Ggas/wstETH
             </Flex>
-          )}
-        </Box>
+          </Flex>
+        </Flex>
       </Flex>
 
-      <StatGroup gap={6} w="100%">
-        <Stat>
+      <Flex
+        gap={6}
+        w="100%"
+        flexDirection={{ base: 'column', md: 'row' }}
+        flexWrap="wrap"
+      >
+        <Stat width={{ base: '100%', md: 'calc(50% - 12px)', lg: 'auto' }}>
           <StatLabel fontSize="md">
             Index Price
             <InfoOutlineIcon
@@ -144,7 +161,7 @@ const PositionsHeader = () => {
           */}
         </Stat>
 
-        <Stat>
+        <Stat width={{ base: '100%', md: 'calc(50% - 12px)', lg: 'auto' }}>
           <StatLabel fontSize="md">
             Market Price
             <InfoOutlineIcon
@@ -169,7 +186,7 @@ const PositionsHeader = () => {
           */}
         </Stat>
 
-        <Stat>
+        <Stat width={{ base: '100%', md: 'calc(50% - 12px)', lg: 'auto' }}>
           <StatLabel fontSize="md">
             Liquidity
             <InfoOutlineIcon
@@ -194,14 +211,14 @@ const PositionsHeader = () => {
           */}
         </Stat>
 
-        <Stat>
+        <Stat width={{ base: '100%', md: 'calc(50% - 12px)', lg: 'auto' }}>
           <StatLabel fontSize="md">Ends In</StatLabel>
           <StatNumber>{relativeTime}</StatNumber>
           {/*
           <StatHelpText>{formattedTime} UTC</StatHelpText>
           */}
         </Stat>
-      </StatGroup>
+      </Flex>
     </Flex>
   );
 };
