@@ -106,6 +106,9 @@ export default function TraderPosition({}) {
     chainId,
   } = useContext(MarketContext);
 
+  const PERCENT_MULTIPLIER = parseUnits('1', collateralAssetDecimals);
+  const TEMP_BUFFER = (BigInt(10) * PERCENT_MULTIPLIER) / BigInt(100); // 0.1 as BigInt
+
   const { getRootProps, getRadioProps } = useRadioGroup({
     name: 'positionType',
     defaultValue: 'Long',
@@ -237,6 +240,13 @@ export default function TraderPosition({}) {
   useEffect(() => {
     if (transactionStep === 2) {
       if (nftId === 0) {
+        const originalSize: bigint = isLong
+          ? (longSizeRead.data as bigint)
+          : (shortSizeRead.data as bigint) * BigInt('-1');
+        const bufferedSize: bigint =
+          (originalSize * (PERCENT_MULTIPLIER - TEMP_BUFFER)) /
+          PERCENT_MULTIPLIER;
+
         writeContract({
           abi: foilData.abi,
           address: foilData.address as `0x${string}`,
@@ -244,11 +254,18 @@ export default function TraderPosition({}) {
           args: [
             epoch,
             parseUnits(collateral.toString(), collateralAssetDecimals),
-            isLong ? longSizeRead.data : shortSizeRead.data,
+            bufferedSize,
             parseUnits('0', collateralAssetDecimals), // TOOD: impl slippage
           ],
         });
       } else {
+        const originalSizeDelta: bigint = isLong
+          ? (longDeltaRead.data as bigint)
+          : (shortDeltaRead.data as bigint) * BigInt('-1');
+        const bufferedSizeDelta: bigint =
+          (originalSizeDelta * (PERCENT_MULTIPLIER - TEMP_BUFFER)) /
+          PERCENT_MULTIPLIER;
+
         writeContract({
           abi: foilData.abi,
           address: foilData.address as `0x${string}`,
@@ -256,7 +273,7 @@ export default function TraderPosition({}) {
           args: [
             nftId,
             parseUnits(collateral.toString(), collateralAssetDecimals),
-            isLong ? longDeltaRead.data : shortDeltaRead.data,
+            bufferedSizeDelta,
             parseUnits('0', collateralAssetDecimals), // TOOD: impl slippage
           ],
         });
@@ -288,7 +305,8 @@ export default function TraderPosition({}) {
 
   useEffect(() => {
     if (isEdit && positionData) {
-      setOption(positionData.currentTokenAmount >= 0 ? 'Long' : 'Short');
+      console.log('positionData = ', positionData);
+      setOption(positionData.vGasAmount > BigInt(0) ? 'Long' : 'Short');
     }
   }, [isEdit, positionData]);
 
@@ -303,10 +321,8 @@ export default function TraderPosition({}) {
 
   const originalSize = useMemo(() => {
     if (!positionData) return '0';
-    return formatUnits(
-      positionData.currentTokenAmount,
-      collateralAssetDecimals
-    );
+    console.log('POSITION DATA = ', positionData);
+    return formatUnits(positionData.vEthAmount, collateralAssetDecimals);
   }, [positionData, collateralAssetDecimals]);
 
   /// /// HANDLERS //////

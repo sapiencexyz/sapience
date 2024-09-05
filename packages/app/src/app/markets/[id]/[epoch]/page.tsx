@@ -1,5 +1,6 @@
 'use client';
 
+import { RepeatIcon } from '@chakra-ui/icons';
 import {
   Flex,
   Box,
@@ -10,17 +11,16 @@ import {
   Tabs,
   Button,
 } from '@chakra-ui/react';
+import { useQuery } from '@tanstack/react-query';
 
 import Chart from '~/lib/components/chart';
 import LiquidityPositionsTable from '~/lib/components/foil/liquidityPositionsTable';
+import MarketSidebar from '~/lib/components/foil/marketSidebar';
 import PositionsHeader from '~/lib/components/foil/positionsHeader';
 import TraderPositionsTable from '~/lib/components/foil/traderPositionsTable';
 import TransactionTable from '~/lib/components/foil/transactionTable';
-import MarketSidebar from '~/lib/components/foil/marketSidebar';
-import { MarketProvider } from '~/lib/context/MarketProvider';
-import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '~/lib/constants/constants';
-import { RepeatIcon } from '@chakra-ui/icons';
+import { MarketProvider } from '~/lib/context/MarketProvider';
 
 const POLLING_INTERVAL = 60000; // Refetch every 60 seconds
 const Market = ({ params }: { params: { id: string; epoch: string } }) => {
@@ -123,11 +123,7 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
               <Tab>Trader Positions</Tab>
               <Tab>LP Positions</Tab>
             </TabList>
-            <Button
-              size={'sm'}
-              onClick={refetchData}
-              rightIcon={<RepeatIcon />}
-            >
+            <Button size="sm" onClick={refetchData} rightIcon={<RepeatIcon />}>
               Refresh
             </Button>
           </Flex>

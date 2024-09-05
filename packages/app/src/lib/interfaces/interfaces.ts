@@ -14,7 +14,7 @@ export interface FoilPosition {
   // Position data (owned tokens and position size)
   vEthAmount: bigint;
   vGasAmount: bigint;
-  currentTokenAmount: bigint;
+  // currentTokenAmount: bigint;
 }
 
 export enum TransactionType {
