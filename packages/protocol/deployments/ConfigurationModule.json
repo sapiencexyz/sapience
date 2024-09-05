@@ -1,5 +1,5 @@
 {
-  "address": "0x4525EF08f2eB8827206933D01F86447cc9Afb934",
+  "address": "0xb0cc5EAC3eA14116318B3F67113697f7EbC47644",
   "abi": [
     {
       "type": "function",
@@ -124,7 +124,7 @@
           "internalType": "address"
         },
         {
-          "name": "epochParms",
+          "name": "epochParams",
           "type": "tuple",
           "internalType": "struct IFoilStructs.EpochParams",
           "components": [
@@ -168,6 +168,191 @@
       ],
       "outputs": [],
       "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "EpochCreated",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "startTime",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "endTime",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "startingSqrtPriceX96",
+          "type": "uint160",
+          "indexed": false,
+          "internalType": "uint160"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "MarketInitialized",
+      "inputs": [
+        {
+          "name": "owner",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "collateralAsset",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapPositionManager",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapSwapRouter",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "optimisticOracleV3",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "epochParams",
+          "type": "tuple",
+          "indexed": false,
+          "internalType": "struct IFoilStructs.EpochParams",
+          "components": [
+            {
+              "name": "baseAssetMinPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "baseAssetMaxPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "feeRate",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "assertionLiveness",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "bondAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "priceUnit",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ]
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "MarketUpdated",
+      "inputs": [
+        {
+          "name": "owner",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapPositionManager",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapSwapRouter",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "optimisticOracleV3",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "epochParams",
+          "type": "tuple",
+          "indexed": false,
+          "internalType": "struct IFoilStructs.EpochParams",
+          "components": [
+            {
+              "name": "baseAssetMinPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "baseAssetMaxPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "feeRate",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "assertionLiveness",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "bondAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "priceUnit",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ]
+        }
+      ],
+      "anonymous": false
     },
     {
       "type": "error",
@@ -223,12 +408,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x0e5b85cd0d3d5d971df15273385a472c7297621e0512b8099d1aa2985c816548",
+  "deployTxnHash": "0x468efa6d6e7f8cece25307b3f31fd4475dfd7256c2422c230377da93d18445da",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1725214293",
+  "deployTimestamp": "1725559699",
   "sourceName": "src/contracts/modules/ConfigurationModule.sol",
   "contractName": "ConfigurationModule",
   "deployedOn": "deploy.ConfigurationModule",
-  "gasUsed": 2016221,
+  "gasUsed": 2115046,
   "gasCost": "1000258373"
 }
