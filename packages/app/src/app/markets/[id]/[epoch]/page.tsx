@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable sonarjs/no-duplicate-string */
+
 import { RepeatIcon } from '@chakra-ui/icons';
 import {
   Flex,
