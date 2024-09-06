@@ -1,6 +1,35 @@
 {
-  "address": "0x5cC3A4F9F4af34e89B81a05Ea16E55aF1bD8919f",
+  "address": "0xfdC0cd3137FE2D67D95fb2E8BF92bc1720333Baa",
   "abi": [
+    {
+      "type": "function",
+      "name": "createTraderPosition",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "size",
+          "type": "int256",
+          "internalType": "int256"
+        },
+        {
+          "name": "collateralDeltaLimit",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
     {
       "type": "function",
       "name": "createTraderPosition",
@@ -62,6 +91,77 @@
       ],
       "outputs": [],
       "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "modifyTraderPosition",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "size",
+          "type": "int256",
+          "internalType": "int256"
+        },
+        {
+          "name": "collateralDeltaLimit",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "quoteCreateTraderPosition",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "size",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "collateralDelta",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "quoteModifyTraderPosition",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "size",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "collateralDelta",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "stateMutability": "view"
     },
     {
       "type": "event",
@@ -393,12 +493,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x9938036a7435c0bd8f9b2fa188be79f8675fce4fba4b9ef078d198fe0c2cf93c",
+  "deployTxnHash": "0x9d919ca2f63f1131794bc25ab3eed99685b290e3d325602b8301e281ae990531",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1725572417",
+  "deployTimestamp": "1725656543",
   "sourceName": "src/contracts/modules/TradeModule.sol",
   "contractName": "TradeModule",
   "deployedOn": "deploy.TradeModule",
-  "gasUsed": 2114271,
-  "gasCost": "1000142345"
+  "gasUsed": 2154250,
+  "gasCost": "1000337295"
 }
