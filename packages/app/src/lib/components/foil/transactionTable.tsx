@@ -7,7 +7,9 @@ import {
   Tbody,
   Td,
 } from '@chakra-ui/react';
-import { useContext } from 'react';
+import { formatDistanceToNow } from 'date-fns';
+import type React from 'react';
+import { useContext, useMemo } from 'react';
 import { formatUnits } from 'viem';
 
 import { MarketContext } from '~/lib/context/MarketProvider';
@@ -18,12 +20,20 @@ interface Props {
   error: Error | null;
   transactions: any[];
 }
+
 const TransactionTable: React.FC<Props> = ({
   isLoading,
   error,
   transactions,
 }) => {
   const { collateralAssetDecimals } = useContext(MarketContext);
+
+  const sortedTransactions = useMemo(() => {
+    if (!transactions) return [];
+    return [...transactions].sort(
+      (a, b) => b.event.timestamp - a.event.timestamp
+    );
+  }, [transactions]);
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -49,6 +59,7 @@ const TransactionTable: React.FC<Props> = ({
       <Table variant="simple" size="sm">
         <Thead>
           <Tr>
+            <Th>Time</Th>
             <Th>Position</Th>
             <Th>Type</Th>
             <Th>Collateral Change</Th>
@@ -58,17 +69,21 @@ const TransactionTable: React.FC<Props> = ({
           </Tr>
         </Thead>
         <Tbody>
-          {transactions &&
-            transactions.map((row: any) => (
-              <Tr key={row.id}>
-                <Td>#{row.position.positionId}</Td>
-                <Td>{row.type}</Td>
-                <Td>{row.collateralDelta} wstETH</Td>
-                <Td>{row.baseTokenDelta} Ggas</Td>
-                <Td>{row.quoteTokenDelta} wstETH</Td>
-                {/* <Td>{getFinalPrice(row)}</Td> */}
-              </Tr>
-            ))}
+          {sortedTransactions.map((row: any) => (
+            <Tr key={row.id}>
+              <Td>
+                {formatDistanceToNow(new Date(row.event.timestamp * 1000), {
+                  addSuffix: true,
+                })}
+              </Td>
+              <Td>#{row.position.positionId}</Td>
+              <Td>{row.type}</Td>
+              <Td>{row.collateralDelta} wstETH</Td>
+              <Td>{row.baseTokenDelta} Ggas</Td>
+              <Td>{row.quoteTokenDelta} wstETH</Td>
+              {/* <Td>{getFinalPrice(row)}</Td> */}
+            </Tr>
+          ))}
         </Tbody>
       </Table>
     </TableContainer>

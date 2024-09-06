@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import type React from 'react';
-import { useContext, useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState, useMemo } from 'react';
 import {
   ResponsiveContainer,
   XAxis,
@@ -14,20 +14,22 @@ import {
 import { MarketContext } from '~/lib/context/MarketProvider';
 import { colors } from '~/lib/styles/theme/colors';
 
-const CustomBarShape = ({
+const CustomBarShape: React.FC<{
+  x: number;
+  // y: number;
+  width: number;
+  // height: number;
+  payload: any;
+  yAxisDomain: [number, number];
+  chartHeight: number;
+  gridOffsetFromParent: number;
+}> = ({
   x,
   width,
   payload,
   yAxisDomain,
   chartHeight,
   gridOffsetFromParent,
-}: {
-  x: number;
-  width: number;
-  payload: any;
-  yAxisDomain: any;
-  chartHeight: number;
-  gridOffsetFromParent: number;
 }) => {
   const candleColor = payload.open < payload.close ? '#3FBC44' : '#FF0000';
 
@@ -71,15 +73,17 @@ const CandlestickChart: React.FC = () => {
 
   const { averagePrice, prices } = useContext(MarketContext);
 
-  const yAxisDomain = [0, Math.max(...prices.map((p) => p.high)) + 1];
-
-  const chartRef = useRef(null);
-  const [gridHeight, setGridHeight] = useState(0);
+  const [yAxisDomain, setYAxisDomain] = useState<[number, number]>([0, 0]);
+  const [chartDimensions, setChartDimensions] = useState({
+    width: 0,
+    height: 0,
+  });
   const [gridOffsetFromParent, setGridOffsetFromParent] = useState(0);
 
-  useEffect(() => {
+  const chartRef = useRef(null);
+
+  const updateChartDimensions = () => {
     if (chartRef.current) {
-      // Access the parent container and the CartesianGrid's bounding boxes
       const parentElement = (chartRef.current as any).container;
       const gridElement = parentElement.querySelector(
         '.recharts-cartesian-grid'
@@ -89,14 +93,27 @@ const CandlestickChart: React.FC = () => {
         const gridRect = gridElement.getBoundingClientRect();
         const parentRect = parentElement.getBoundingClientRect();
 
-        // Calculate the height of the CartesianGrid
-        setGridHeight(gridRect.height);
-
-        // Calculate the offset from the top of the parent container
+        setChartDimensions({
+          width: gridRect.width,
+          height: gridRect.height,
+        });
         setGridOffsetFromParent(gridRect.top - parentRect.top);
       }
     }
+  };
+
+  useEffect(() => {
+    setYAxisDomain([0, Math.max(...prices.map((p) => p.high)) + 1]);
   }, [prices]);
+
+  useEffect(() => {
+    updateChartDimensions();
+    window.addEventListener('resize', updateChartDimensions);
+
+    return () => {
+      window.removeEventListener('resize', updateChartDimensions);
+    };
+  }, []);
 
   const formatXAxisTick = (dateString: string) => {
     const date = new Date(dateString);
@@ -105,26 +122,33 @@ const CandlestickChart: React.FC = () => {
 
   const formatYAxisTick = (value: number) => value.toFixed(2);
 
+  const renderShape = useMemo(() => {
+    return (props: any) => (
+      <CustomBarShape
+        {...props}
+        yAxisDomain={yAxisDomain}
+        chartHeight={chartDimensions.height}
+        gridOffsetFromParent={gridOffsetFromParent}
+      />
+    );
+  }, [yAxisDomain, chartDimensions.height, gridOffsetFromParent]);
+
+  // Temporary hack, doesn't seem to rendering after initial resizing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      updateChartDimensions();
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <ResponsiveContainer height="100%" width="100%">
       <ComposedChart data={prices} ref={chartRef}>
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="date" tickFormatter={formatXAxisTick} />
         <YAxis domain={yAxisDomain} tickFormatter={formatYAxisTick} />
-        <Bar
-          dataKey="candles"
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any, react/no-unstable-nested-components
-          shape={(props: any) => {
-            return (
-              <CustomBarShape
-                {...props}
-                yAxisDomain={yAxisDomain}
-                chartHeight={gridHeight}
-                gridOffsetFromParent={gridOffsetFromParent}
-              />
-            );
-          }}
-        />
+        <Bar dataKey="candles" shape={renderShape} />
         <ReferenceLine
           y={averagePrice}
           label="Average Price"
