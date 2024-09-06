@@ -108,7 +108,7 @@ export default function TraderPosition({}) {
   } = useContext(MarketContext);
 
   const PERCENT_MULTIPLIER = parseUnits('1', collateralAssetDecimals);
-  const TEMP_BUFFER = (BigInt(10) * PERCENT_MULTIPLIER) / BigInt(100); // 0.1 as BigInt
+  const TEMP_BUFFER = (BigInt(20) * PERCENT_MULTIPLIER) / BigInt(100); // 0.2 as BigInt
 
   const { getRootProps, getRadioProps } = useRadioGroup({
     name: 'positionType',
