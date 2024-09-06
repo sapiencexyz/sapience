@@ -1,15 +1,10 @@
 /* eslint-disable sonarjs/cognitive-complexity */
 import {
   Flex,
-  FormControl,
-  Input,
-  InputGroup,
-  InputRightAddon,
   Box,
   useRadio,
   useRadioGroup,
   Button,
-  FormLabel,
   Text,
   useToast,
 } from '@chakra-ui/react';
@@ -24,22 +19,17 @@ import {
 } from 'wagmi';
 
 import erc20ABI from '../../erc20abi.json';
-import { TOKEN_DECIMALS } from '~/lib/constants/constants';
 import { useLoading } from '~/lib/context/LoadingContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
-import {
-  convertHundredthsOfBipToPercent,
-  renderContractErrorToast,
-  renderToast,
-} from '~/lib/util/util';
+import { renderContractErrorToast, renderToast } from '~/lib/util/util';
 
 import PositionSelector from './positionSelector';
+import SizeInput from './sizeInput';
 import SlippageTolerance from './slippageTolerance';
 
 const tradeOptions = ['Long', 'Short'];
-const PRECISION = 12;
 
 function RadioCard(props: any) {
   const { getInputProps, getRadioProps } = useRadio(props);
@@ -86,7 +76,6 @@ export default function TraderPosition({}) {
   const [option, setOption] = useState('Long');
   const [slippage, setSlippage] = useState<number>(0.5);
   const [transactionStep, setTransactionStep] = useState(0);
-  const [isSizeInput, setIsSizeInput] = useState(true);
   const [pendingTxn, setPendingTxn] = useState(false);
   const account = useAccount();
   const { isConnected } = account;
@@ -108,6 +97,7 @@ export default function TraderPosition({}) {
   } = useContext(MarketContext);
 
   const PERCENT_MULTIPLIER = parseUnits('1', collateralAssetDecimals);
+  const TEMP_BUFFER_DECIMAL = 12;
   const TEMP_BUFFER = (BigInt(20) * PERCENT_MULTIPLIER) / BigInt(100); // 0.2 as BigInt
 
   const { getRootProps, getRadioProps } = useRadioGroup({
@@ -120,7 +110,10 @@ export default function TraderPosition({}) {
   const toast = useToast();
 
   const isLong = option === 'Long';
-  const fee = convertHundredthsOfBipToPercent(pool?.fee || 0) + 0.01; // TODO FIGURE OUT WHAT THIS SHOULD BE
+
+  const refPrice = pool?.token0Price.toSignificant(3) || 1;
+  const _collateral = parseFloat(`${size / Number(refPrice)}`);
+  const bufferedCollateral = _collateral * (1 + TEMP_BUFFER_DECIMAL);
 
   // collateral amount for current address/account
   const collateralAmountFunctionResult = useReadContract({
@@ -129,15 +122,6 @@ export default function TraderPosition({}) {
     functionName: 'balanceOf',
     args: [account.address],
     chainId,
-  });
-
-  // Reference price
-  const referencePriceFunctionResult = useReadContract({
-    abi: foilData.abi,
-    address: foilData.address as `0x${string}`,
-    functionName: 'getReferencePrice',
-    chainId,
-    args: [epoch],
   });
 
   // Position Data
@@ -150,16 +134,6 @@ export default function TraderPosition({}) {
       enabled: isEdit,
     },
   }) as { data: FoilPosition; refetch: any; isRefetching: boolean };
-
-  const originalSize = useMemo(() => {
-    if (!positionData) return '0';
-    console.log('POSITION DATA = ', positionData);
-    const _size =
-      positionData.vGasAmount > BigInt(0)
-        ? positionData.vGasAmount
-        : positionData.borrowedVGas;
-    return formatUnits(_size, collateralAssetDecimals);
-  }, [positionData, collateralAssetDecimals]);
 
   // Collateral info from position
   const originalCollateral = positionData
@@ -274,30 +248,18 @@ export default function TraderPosition({}) {
   useEffect(() => {
     if (transactionStep === 2) {
       if (nftId === 0) {
-        const unbufferedSize: bigint = isLong
-          ? (longSizeRead.data as bigint)
-          : (shortSizeRead.data as bigint) * BigInt('-1');
-        const bufferedSize: bigint =
-          (unbufferedSize * (PERCENT_MULTIPLIER - TEMP_BUFFER)) /
-          PERCENT_MULTIPLIER;
-
-        console.log([
+        const args = [
           epoch,
-          parseUnits(collateral.toString(), collateralAssetDecimals),
-          bufferedSize,
+          parseUnits(bufferedCollateral.toString(), collateralAssetDecimals),
+          parseUnits(size.toString(), collateralAssetDecimals),
           parseUnits('0', collateralAssetDecimals), // TOOD: impl slippage
-        ]);
-
+        ];
+        console.log('args -', args);
         writeContract({
           abi: foilData.abi,
           address: foilData.address as `0x${string}`,
           functionName: 'createTraderPosition',
-          args: [
-            epoch,
-            parseUnits(collateral.toString(), collateralAssetDecimals),
-            bufferedSize,
-            parseUnits('0', collateralAssetDecimals), // TOOD: impl slippage
-          ],
+          args,
         });
       } else {
         const isOriginalPositionLong = positionData.vGasAmount > BigInt(0);
@@ -385,46 +347,15 @@ export default function TraderPosition({}) {
       functionName: 'approve',
       args: [
         foilData.address,
-        parseUnits(collateral.toString(), collateralAssetDecimals),
+        parseUnits(bufferedCollateral.toString(), collateralAssetDecimals),
       ],
     }); // Start the transaction sequence
     setTransactionStep(1);
   };
 
-  /**
-   * Update size and collateral based on the new size input
-   * @param newVal - new value of the size input
-   */
-  const handleSizeChange = (newVal: string) => {
-    const refPrice = referencePriceFunctionResult?.data;
-    if (!refPrice) return;
-    const newSize = parseFloat(newVal || '0');
-    setSize(newSize);
-    const refPriceNumber = formatUnits(refPrice as bigint, TOKEN_DECIMALS);
-    const newCollateral =
-      parseFloat(`${newSize * (1 + fee)}`) * parseFloat(refPriceNumber);
-    setCollateral(parseFloat(newCollateral.toFixed(PRECISION)));
-  };
-
-  /**
-   * Update size and collateral based on the new collateral input
-   * @param newVal - new value of the collateral input
-   */
-  const handleCollateralChange = (newVal: string) => {
-    const refPrice = referencePriceFunctionResult?.data;
-    if (!refPrice) return;
-    const newCollateral = parseFloat(newVal || '0');
-    setCollateral(newCollateral);
-    const refPriceNumber = formatUnits(refPrice as bigint, TOKEN_DECIMALS);
-    const newSize = (newCollateral * (1 - fee)) / parseFloat(refPriceNumber);
-    setSize(parseFloat(newSize.toFixed(PRECISION)));
-  };
-
   const handleSlippageChange = (newSlippage: number) => {
     setSlippage(newSlippage);
   };
-
-  const handleUpdateIsSizeInput = () => setIsSizeInput(!isSizeInput);
 
   const resetAfterError = () => {
     setTransactionStep(0);
@@ -447,15 +378,6 @@ export default function TraderPosition({}) {
     // to do ....refetch states....
   };
 
-  const getSecondInputValue = () => {
-    if (isSizeInput) return Number(collateral);
-    if (isLong && longSizeRead.data)
-      return formatUnits(longSizeRead.data as bigint, collateralAssetDecimals);
-    if (shortSizeRead.data)
-      return formatUnits(shortSizeRead.data as bigint, collateralAssetDecimals);
-    return size;
-  };
-
   return (
     <form onSubmit={handleSubmit}>
       <PositionSelector
@@ -474,57 +396,7 @@ export default function TraderPosition({}) {
           );
         })}
       </Flex>
-      <FormControl mb={4}>
-        <FormLabel>Size</FormLabel>
-        <InputGroup>
-          <Input
-            borderRight="none"
-            value={isSizeInput ? Number(size) : Number(collateral)}
-            type="number"
-            onWheel={(e) => e.currentTarget.blur()}
-            onChange={(e) =>
-              isSizeInput
-                ? handleSizeChange(e.target.value)
-                : handleCollateralChange(e.target.value)
-            }
-          />
-          <InputRightAddon bg="none">
-            <Button
-              px={3}
-              h="1.75rem"
-              size="sm"
-              onClick={handleUpdateIsSizeInput}
-            >
-              {isSizeInput ? 'Ggas' : collateralAssetTicker}
-            </Button>
-          </InputRightAddon>
-        </InputGroup>
-        <Text hidden={!isEdit} fontSize="small">
-          Original value: {isSizeInput ? originalSize : originalCollateral}
-        </Text>
-      </FormControl>
-      <FormControl mb={4}>
-        {/* <Text>
-          Long Size from Read Function:{' '}
-          {longSizeRead.data !== undefined &&
-            formatUnits(longSizeRead.data as bigint, collateralAssetDecimals)}
-        </Text>
-        <Text>
-          Short Size from Read Function:{' '}
-          {shortSizeRead.data !== undefined &&
-            formatUnits(shortSizeRead.data as bigint, collateralAssetDecimals)}
-        </Text>
-        <Text>Size from original formula: {size}</Text> */}
-        <InputGroup>
-          <Input readOnly value={getSecondInputValue()} type="number" />
-          <InputRightAddon>
-            {isSizeInput ? collateralAssetTicker : 'Ggas'}
-          </InputRightAddon>
-        </InputGroup>
-        <Text hidden={!isEdit} fontSize="small">
-          Original value: {!isSizeInput ? originalSize : originalCollateral}
-        </Text>
-      </FormControl>
+      <SizeInput nftId={nftId} size={size} setSize={setSize} />
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
       <Box mb="4">
         {/*
