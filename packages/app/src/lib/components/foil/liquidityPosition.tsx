@@ -2,7 +2,7 @@
 
 import { InfoOutlineIcon } from '@chakra-ui/icons';
 import { Box, Button, Divider, Heading, Text } from '@chakra-ui/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAccount } from 'wagmi';
 
 import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';
@@ -15,10 +15,21 @@ const LiquidityPosition = () => {
   const { address } = useAccount();
   const { tokenIds, refetch } = useTokenIdsOfOwner(address as `0x${string}`);
 
+  useEffect(() => {
+    if (tokenIds) {
+      setNftId(tokenIds[tokenIds.length - 1]);
+    }
+  }, [tokenIds]);
+
   return (
     <Box>
       <Box>
-        <PositionSelector isLP onChange={setNftId} nftIds={tokenIds} />
+        <PositionSelector
+          isLP
+          onChange={setNftId}
+          nftIds={tokenIds}
+          value={nftId}
+        />
       </Box>
       <AddEditLiquidity nftId={nftId} refetchTokens={refetch} />
       <Box hidden={nftId === 0}>

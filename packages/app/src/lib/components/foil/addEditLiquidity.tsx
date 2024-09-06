@@ -544,10 +544,6 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   const refetchStates = () => {
     // reset form states
     setTxnSuccessMsg('');
-    setDepositAmount(0);
-    setLowPrice(tickToPrice(baseAssetMinPriceTick));
-    setHighPrice(tickToPrice(baseAssetMaxPriceTick));
-    setSlippage(0.5);
     setTxnStep(0);
     setPendingTxn(false);
     setIsLoading(false);

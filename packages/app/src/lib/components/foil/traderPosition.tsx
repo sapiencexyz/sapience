@@ -458,7 +458,12 @@ export default function TraderPosition({}) {
 
   return (
     <form onSubmit={handleSubmit}>
-      <PositionSelector isLP={false} onChange={setNftId} nftIds={tokenIds} />
+      <PositionSelector
+        isLP={false}
+        onChange={setNftId}
+        nftIds={tokenIds}
+        value={nftId}
+      />
       <Flex {...group} gap={4} mb={4}>
         {tradeOptions.map((value) => {
           const radio = getRadioProps({ value });

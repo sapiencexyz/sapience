@@ -17,6 +17,7 @@ interface AccountSelectorProps {
   isLP: boolean;
   onChange: Dispatch<SetStateAction<number>>;
   nftIds: number[];
+  value: number;
 }
 
 const useIsLps = (ids: number[]) => {
@@ -48,6 +49,7 @@ const AccountSelector: React.FC<AccountSelectorProps> = ({
   isLP,
   onChange,
   nftIds,
+  value,
 }) => {
   const isLps = useIsLps(nftIds);
   const filteredNfts = nftIds.filter((_, index) =>
@@ -63,7 +65,7 @@ const AccountSelector: React.FC<AccountSelectorProps> = ({
     <Box>
       <FormControl mb={6}>
         <FormLabel>Position</FormLabel>
-        <Select onChange={handleAccountChange}>
+        <Select onChange={handleAccountChange} value={value}>
           {filteredNfts.map((id) => (
             <option key={id} value={id}>
               {id}
