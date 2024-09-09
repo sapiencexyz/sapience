@@ -56,4 +56,26 @@ interface ITradeModule {
         int256 tokenAmount,
         int256 tokenAmountLimit
     ) external;
+
+    function createTraderPosition(
+        uint256 epochId,
+        int256 size,
+        uint256 collateralDeltaLimit
+    ) external returns (uint256 positionId);
+
+    function modifyTraderPosition(
+        uint256 positionId,
+        int256 size,
+        uint256 collateralDeltaLimit
+    ) external;
+
+    function quoteCreateTraderPosition(
+        uint256 epochId,
+        int256 size
+    ) external view returns (int256 collateralDelta);
+
+    function quoteModifyTraderPosition(
+        uint256 positionId,
+        int256 size
+    ) external  view returns (int256 collateralDelta);
 }

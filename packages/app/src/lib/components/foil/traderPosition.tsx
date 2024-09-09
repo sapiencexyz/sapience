@@ -1,4 +1,4 @@
-/* eslint-disable sonarjs/cognitive-complexity */
+import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import {
   Flex,
   Box,
@@ -7,8 +7,9 @@ import {
   Button,
   Text,
   useToast,
+  Tooltip,
 } from '@chakra-ui/react';
-import { useState, useEffect, useContext, useMemo } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import type { AbiFunction, WriteContractErrorType } from 'viem';
 import { formatUnits, parseUnits } from 'viem';
 import {
@@ -22,7 +23,6 @@ import erc20ABI from '../../erc20abi.json';
 import { useLoading } from '~/lib/context/LoadingContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';
-import type { FoilPosition } from '~/lib/interfaces/interfaces';
 import { renderContractErrorToast, renderToast } from '~/lib/util/util';
 
 import PositionSelector from './positionSelector';
@@ -71,15 +71,14 @@ function RadioCard(props: any) {
 
 export default function TraderPosition({}) {
   const [nftId, setNftId] = useState(0);
-  const [collateral, setCollateral] = useState<number>(0);
   const [size, setSize] = useState<number>(0);
   const [option, setOption] = useState('Long');
   const [slippage, setSlippage] = useState<number>(0.5);
-  const [transactionStep, setTransactionStep] = useState(0);
   const [pendingTxn, setPendingTxn] = useState(false);
+  const [collateralDelta, setCollateralDelta] = useState<bigint>(BigInt(0));
+
   const account = useAccount();
-  const { isConnected } = account;
-  const { address } = useAccount();
+  const { isConnected, address } = account;
   const { tokenIds, refetch: refetchTokens } = useTokenIdsOfOwner(
     address as `0x${string}`
   );
@@ -91,14 +90,12 @@ export default function TraderPosition({}) {
     collateralAssetTicker,
     collateralAssetDecimals,
     epoch,
-    pool,
     foilData,
     chainId,
+    pool,
   } = useContext(MarketContext);
 
-  const PERCENT_MULTIPLIER = parseUnits('1', collateralAssetDecimals);
-  const TEMP_BUFFER_DECIMAL = 12;
-  const TEMP_BUFFER = (BigInt(20) * PERCENT_MULTIPLIER) / BigInt(100); // 0.2 as BigInt
+  const refPrice = pool?.token0Price.toSignificant(3);
 
   const { getRootProps, getRadioProps } = useRadioGroup({
     name: 'positionType',
@@ -111,96 +108,52 @@ export default function TraderPosition({}) {
 
   const isLong = option === 'Long';
 
-  const refPrice = pool?.token0Price.toSignificant(3) || 1;
-  const _collateral = parseFloat(`${size / Number(refPrice)}`);
-  const bufferedCollateral = _collateral * (1 + TEMP_BUFFER_DECIMAL);
-
-  // collateral amount for current address/account
-  const collateralAmountFunctionResult = useReadContract({
+  // Collateral balance for current address/account
+  const { data: collateralBalance } = useReadContract({
     abi: erc20ABI,
     address: collateralAsset as `0x${string}`,
     functionName: 'balanceOf',
-    args: [account.address],
+    args: [address],
     chainId,
   });
 
-  // Position Data
-  const { data: positionData, refetch: refetchPosition } = useReadContract({
-    abi: foilData.abi,
-    address: foilData.address as `0x${string}`,
-    functionName: 'getPosition',
-    args: [nftId],
-    query: {
-      enabled: isEdit,
-    },
-  }) as { data: FoilPosition; refetch: any; isRefetching: boolean };
-
-  // Collateral info from position
-  const originalCollateral = positionData
-    ? formatUnits(
-        positionData.depositedCollateralAmount,
-        collateralAssetDecimals
-      )
-    : '0';
-
-  // Signed Delta in collateral
-  const collateralDeltaRawValue =
-    parseUnits(collateral.toString(), collateralAssetDecimals) -
-    parseUnits(originalCollateral, collateralAssetDecimals);
-
-  // UNSIGNED Delta in collateral
-  const unsignedCollateralDelta =
-    collateralDeltaRawValue > BigInt(0)
-      ? collateralDeltaRawValue
-      : BigInt(-1) * collateralDeltaRawValue;
-
-  // Long and short sizes from read functions
-  const longSizeRead = useReadContract({
-    abi: foilData.abi,
-    address: foilData.address as `0x${string}`,
-    functionName: 'getLongSizeForCollateral',
+  // Allowance check
+  const { data: allowance } = useReadContract({
+    abi: erc20ABI,
+    address: collateralAsset as `0x${string}`,
+    functionName: 'allowance',
+    args: [address, foilData.address],
     chainId,
-    args: [epoch, parseUnits(collateral.toString(), collateralAssetDecimals)],
-    query: {
-      enabled: nftId === 0 && isLong,
-    },
-  });
-  const shortSizeRead = useReadContract({
-    abi: foilData.abi,
-    address: foilData.address as `0x${string}`,
-    functionName: 'getShortSizeForCollateral',
-    chainId,
-    args: [epoch, parseUnits(collateral.toString(), collateralAssetDecimals)],
-    query: {
-      enabled: nftId === 0 && !isLong,
-    },
   });
 
-  // Long and short deltas
-  const longDeltaRead = useReadContract({
+  // Quote functions
+  const quoteCreatePositionResult = useReadContract({
     abi: foilData.abi,
     address: foilData.address as `0x${string}`,
-    functionName: 'getLongDeltaForCollateral',
+    functionName: 'quoteCreateTraderPosition',
+    args: [
+      epoch,
+      parseUnits(size.toString(), collateralAssetDecimals) *
+        (isLong ? BigInt(1) : BigInt(-1)),
+    ],
     chainId,
-    args: [epoch, unsignedCollateralDelta],
-    query: {
-      // enabled: nftId !== 0 && isLong,
-      enabled: nftId !== 0,
-    },
-  });
-  const shortDeltaRead = useReadContract({
-    abi: foilData.abi,
-    address: foilData.address as `0x${string}`,
-    functionName: 'getShortDeltaForCollateral',
-    chainId,
-    args: [epoch, unsignedCollateralDelta],
-    query: {
-      // enabled: nftId !== 0 && !isLong,
-      enabled: nftId !== 0,
-    },
+    query: { enabled: !isEdit && size !== 0 },
   });
 
-  /// //// WRITE CONTRACT HOOKS ///////
+  const quoteModifyPositionResult = useReadContract({
+    abi: foilData.abi,
+    address: foilData.address as `0x${string}`,
+    functionName: 'quoteModifyTraderPosition',
+    args: [
+      nftId,
+      parseUnits(size.toString(), collateralAssetDecimals) *
+        (isLong ? BigInt(1) : BigInt(-1)),
+    ],
+    chainId,
+    query: { enabled: isEdit },
+  });
+
+  // Write contract hooks
   const { data: hash, writeContract } = useWriteContract({
     mutation: {
       onError: (error) => {
@@ -220,6 +173,7 @@ export default function TraderPosition({}) {
       },
     },
   });
+
   const { data: approveHash, writeContract: approveWrite } = useWriteContract({
     mutation: {
       onError: (error) => {
@@ -230,6 +184,13 @@ export default function TraderPosition({}) {
         );
         resetAfterError();
       },
+      onSuccess: () => {
+        renderToast(
+          toast,
+          'Approval transaction submitted. Waiting for confirmation...',
+          'info'
+        );
+      },
     },
   });
 
@@ -237,87 +198,6 @@ export default function TraderPosition({}) {
   const { isSuccess: approveSuccess } = useWaitForTransactionReceipt({
     hash: approveHash,
   });
-
-  /// //// USE EFFECTS ///////
-  useEffect(() => {
-    if (approveSuccess && transactionStep === 1) {
-      setTransactionStep(2); // Move to the next step once approve is confirmed
-    }
-  }, [approveSuccess, transactionStep]);
-
-  useEffect(() => {
-    if (transactionStep === 2) {
-      if (nftId === 0) {
-        const args = [
-          epoch,
-          parseUnits(bufferedCollateral.toString(), collateralAssetDecimals),
-          parseUnits(size.toString(), collateralAssetDecimals),
-          parseUnits('0', collateralAssetDecimals), // TOOD: impl slippage
-        ];
-        console.log('args -', args);
-        writeContract({
-          abi: foilData.abi,
-          address: foilData.address as `0x${string}`,
-          functionName: 'createTraderPosition',
-          args,
-        });
-      } else {
-        const isOriginalPositionLong = positionData.vGasAmount > BigInt(0);
-        const isLongDeltaRead = () => {
-          // original position is long but user changes tab to short
-          if (isOriginalPositionLong && !isLong) {
-            return false;
-          }
-          // original position is long, check if user is increasing size
-          if (isOriginalPositionLong && isLong) {
-            return collateralDeltaRawValue > BigInt(0);
-          }
-          // original position is short but user changes tab to long
-          if (!isOriginalPositionLong && isLong) {
-            return true;
-          }
-          // original position is long, check if user is increasing size
-          if (!isOriginalPositionLong && !isLong) {
-            return collateralDeltaRawValue > BigInt(0);
-          }
-          return true;
-        };
-        const originalSizeDelta: bigint = isLongDeltaRead()
-          ? (longDeltaRead.data as bigint)
-          : (shortDeltaRead.data as bigint) * BigInt('-1');
-        const bufferedSizeDelta: bigint =
-          (originalSizeDelta * (PERCENT_MULTIPLIER - TEMP_BUFFER)) /
-          PERCENT_MULTIPLIER;
-
-        const args = [
-          nftId,
-          parseUnits(collateral.toString(), collateralAssetDecimals),
-          bufferedSizeDelta,
-          parseUnits('0', collateralAssetDecimals), // TOOD: impl slippage
-        ];
-        console.log('args = ', args);
-
-        writeContract({
-          abi: foilData.abi,
-          address: foilData.address as `0x${string}`,
-          functionName: 'modifyTraderPosition',
-          args,
-        });
-      }
-      setTransactionStep(3);
-    }
-  }, [
-    transactionStep,
-    writeContract,
-    nftId,
-    collateral,
-    size,
-    option,
-    collateralAssetDecimals,
-    foilData.abi,
-    foilData.address,
-    pool,
-  ]);
 
   useEffect(() => {
     if (isConfirmed) {
@@ -330,27 +210,81 @@ export default function TraderPosition({}) {
   }, [isConfirmed]);
 
   useEffect(() => {
-    if (isEdit && positionData) {
-      console.log('positionData = ', positionData);
-      setOption(positionData.vGasAmount > BigInt(0) ? 'Long' : 'Short');
+    if (approveSuccess) {
+      handleSubmit();
     }
-  }, [isEdit, positionData]);
+  }, [approveSuccess]);
 
-  /// /// HANDLERS //////
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  useEffect(() => {
+    const quoteResult = isEdit
+      ? quoteModifyPositionResult.data
+      : quoteCreatePositionResult.data;
+    if (quoteResult) {
+      setCollateralDelta(quoteResult as bigint);
+    }
+  }, [isEdit, quoteCreatePositionResult.data, quoteModifyPositionResult.data]);
+
+  const handleSubmit = (e?: React.FormEvent<HTMLFormElement>) => {
+    if (e) e.preventDefault();
     setPendingTxn(true);
     setIsLoading(true);
-    approveWrite({
-      abi: erc20ABI as AbiFunction[],
-      address: collateralAsset as `0x${string}`,
-      functionName: 'approve',
-      args: [
-        foilData.address,
-        parseUnits(bufferedCollateral.toString(), collateralAssetDecimals),
-      ],
-    }); // Start the transaction sequence
-    setTransactionStep(1);
+
+    const sizeInTokens =
+      parseUnits(size.toString(), collateralAssetDecimals) *
+      (isLong ? BigInt(1) : BigInt(-1));
+
+    // Calculate collateralDeltaLimit using refPrice
+    const collateralDeltaLimit = calculateCollateralDeltaLimit(
+      collateralDelta,
+      slippage,
+      refPrice
+    );
+
+    if (allowance && collateralDeltaLimit > (allowance as bigint)) {
+      approveWrite({
+        abi: erc20ABI as AbiFunction[],
+        address: collateralAsset as `0x${string}`,
+        functionName: 'approve',
+        args: [foilData.address, collateralDeltaLimit],
+      });
+    } else if (isEdit) {
+      writeContract({
+        abi: foilData.abi,
+        address: foilData.address as `0x${string}`,
+        functionName: 'modifyTraderPosition',
+        args: [nftId, sizeInTokens, collateralDeltaLimit],
+      });
+    } else {
+      writeContract({
+        abi: foilData.abi,
+        address: foilData.address as `0x${string}`,
+        functionName: 'createTraderPosition',
+        args: [epoch, sizeInTokens, collateralDeltaLimit],
+      });
+    }
+  };
+
+  const calculateCollateralDeltaLimit = (
+    collateralDelta: bigint,
+    slippage: number,
+    refPrice: string | undefined
+  ) => {
+    if (!refPrice) {
+      // Fallback to the original calculation if refPrice is not available
+      return (
+        (collateralDelta * BigInt(Math.floor((100 + slippage) * 100))) /
+        BigInt(10000)
+      );
+    }
+
+    const refPriceBigInt = BigInt(Math.floor(parseFloat(refPrice) * 1e18)); // Convert to BigInt with 18 decimals precision
+    const slippageFactor = BigInt(Math.floor((100 + slippage) * 1e16)); // Convert slippage to BigInt with 18 decimals precision
+
+    // Calculate the limit based on the reference price and slippage
+    return (
+      (collateralDelta * refPriceBigInt * slippageFactor) /
+      (BigInt(100) * BigInt(1e18))
+    );
   };
 
   const handleSlippageChange = (newSlippage: number) => {
@@ -358,25 +292,35 @@ export default function TraderPosition({}) {
   };
 
   const resetAfterError = () => {
-    setTransactionStep(0);
     setPendingTxn(false);
     setIsLoading(false);
   };
 
   const resetAfterSuccess = () => {
-    // reset form states
     setSize(0);
-    setCollateral(0);
     setSlippage(0.5);
-
-    setTransactionStep(0);
     setPendingTxn(false);
     setIsLoading(false);
-
     refetchTokens();
-    refetchPosition();
-    // to do ....refetch states....
   };
+
+  const formatBalance = (balance: bigint) => {
+    return Number(formatUnits(balance, collateralAssetDecimals)).toFixed(4);
+  };
+
+  const currentBalance = collateralBalance
+    ? formatBalance(collateralBalance as bigint)
+    : '0';
+  const estimatedNewBalance = collateralBalance
+    ? formatBalance((collateralBalance as bigint) - collateralDelta)
+    : '0';
+  const minResultingBalance =
+    collateralBalance && refPrice
+      ? formatBalance(
+          (collateralBalance as bigint) -
+            calculateCollateralDeltaLimit(collateralDelta, slippage, refPrice)
+        )
+      : '0';
 
   return (
     <form onSubmit={handleSubmit}>
@@ -398,26 +342,18 @@ export default function TraderPosition({}) {
       </Flex>
       <SizeInput nftId={nftId} size={size} setSize={setSize} />
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
-      <Box mb="4">
-        {/*
-        <Text fontSize="sm" color="gray.500" mb={0.5}>
-          Position: X Ggas to X Ggas
+      <Box mb={4}>
+        <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
+          Estimated Wallet Balance Adjustment{' '}
+          <Tooltip label="Your slippage tolerance sets a maximum limit on how much additional collateral Foil can use, protecting you from unexpected market changes between submitting and processing your transaction.">
+            <QuestionOutlineIcon transform="translateY(-1px)" ml={0.5} />
+          </Tooltip>
         </Text>
-        */}
-        {isConnected && (
-          <Text fontSize="sm" color="gray.500" mb="0.5">
-            Wallet Balance:{' '}
-            {collateralAmountFunctionResult?.data
-              ? Number(
-                  formatUnits(
-                    BigInt(collateralAmountFunctionResult.data.toString()),
-                    collateralAssetDecimals
-                  )
-                ).toFixed(2)
-              : null}{' '}
-            {collateralAssetTicker}
-          </Text>
-        )}
+        <Text fontSize="sm" color="gray.600">
+          {currentBalance} {collateralAssetTicker} → {estimatedNewBalance}{' '}
+          {collateralAssetTicker} (Min. {minResultingBalance}{' '}
+          {collateralAssetTicker})
+        </Text>
       </Box>
       {isConnected ? (
         <Button
@@ -427,7 +363,7 @@ export default function TraderPosition({}) {
           isLoading={pendingTxn}
           isDisabled={pendingTxn}
         >
-          Trade
+          {isEdit ? 'Update Position' : 'Create Position'}
         </Button>
       ) : (
         <Button width="full" variant="brand" type="submit">
