@@ -26,7 +26,7 @@ contract UMASettlementModule is IUMASettlementModule, ReentrancyGuard {
             msg.sender == market.owner,
             "Only owner can call this function"
         );
-        require(!epoch.settled, "Market already settled");
+        require(!epoch.settled, "Market epoch already settled");
 
         IERC20 bondCurrency = IERC20(epoch.params.bondCurrency);
         OptimisticOracleV3Interface optimisticOracleV3 = market
