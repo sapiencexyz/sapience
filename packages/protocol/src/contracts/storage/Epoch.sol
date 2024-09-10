@@ -201,7 +201,7 @@ library Epoch {
         int24 lowerTick,
         int24 upperTick
     ) internal view {
-        validateEpochNotSettled(self);
+        validateEpochNotExpired(self);
 
         int24 minTick = self.params.baseAssetMinPriceTick;
         int24 maxTick = self.params.baseAssetMaxPriceTick;
@@ -209,7 +209,7 @@ library Epoch {
         if (upperTick > maxTick) revert Errors.InvalidRange(upperTick, maxTick);
     }
 
-    function validateEpochNotSettled(Data storage self) internal view {
+    function validateEpochNotExpired(Data storage self) internal view {
         if (self.settled || block.timestamp >= self.endTime) {
             revert Errors.ExpiredEpoch();
         }
