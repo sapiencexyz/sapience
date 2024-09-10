@@ -32,4 +32,9 @@ library Errors {
     error InvalidPositionKind();
     error InvalidRange(int24 requestedTick, int24 boundedTick);
     error PositionAlreadySettled(uint256 positionId);
+    error InvalidBaseAssetMinPriceTick(int24 minPriceTick, int24 tickSpacing);
+    error InvalidBaseAssetMaxPriceTick(int24 maxPriceTick, int24 tickSpacing);
+    error InvalidPriceTickRange(int24 minPriceTick, int24 maxPriceTick);
+    error InvalidTickSpacing(int24 feeRate);
+
 }
