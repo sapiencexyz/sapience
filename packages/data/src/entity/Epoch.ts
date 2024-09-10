@@ -10,6 +10,7 @@ import {
 import { Market } from "./Market";
 import { Event } from "./Event";
 import { Position } from "./Position";
+import { NUMERIC_PRECISION } from "../util/dbUtil";
 
 @Entity()
 @Unique(["market", "epochId"])
@@ -32,9 +33,9 @@ export class Epoch {
   @Column()
   epochId: number;
 
-  @Column({ type: 'bigint', nullable: true })
-  startTimestamp: number | null;
+  @Column("varchar", { length: NUMERIC_PRECISION, nullable: true })
+  startTimestamp: string | null;
 
-  @Column({ type: 'bigint', nullable: true })
-  endTimestamp: number | null;
+  @Column("varchar", { length: NUMERIC_PRECISION, nullable: true })
+  endTimestamp: string | null;
 }

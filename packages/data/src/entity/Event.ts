@@ -44,6 +44,7 @@ export class Event {
   // All should fail without crashing
   @AfterInsert()
   async afterInsert() {
+    console.log("Event inserted: " + this.id);
     // Upsert associated Transaction
     await upsertTransactionPositionPriceFromEvent(this);
   }
