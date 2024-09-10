@@ -42,6 +42,8 @@ library Market {
             revert Errors.MarketAlreadyCreated();
         }
 
+        require(epochParams.assertionLiveness >= 6 hours, "assertionLiveness must be at least six hours");
+
         market.owner = owner;
         market.collateralAsset = IERC20(collateralAsset);
         market.uniswapPositionManager = INonfungiblePositionManager(
@@ -62,6 +64,9 @@ library Market {
         IFoilStructs.EpochParams memory epochParams
     ) internal returns (Data storage market) {
         market = load();
+
+
+        require(epochParams.assertionLiveness >= 6 hours, "assertionLiveness must be at least six hours");
 
         market.owner = owner;
         market.uniswapPositionManager = INonfungiblePositionManager(
