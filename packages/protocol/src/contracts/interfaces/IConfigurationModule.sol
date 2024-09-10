@@ -14,7 +14,6 @@ interface IConfigurationModule {
     );
 
     event MarketUpdated(
-        address owner,
         address uniswapPositionManager,
         address uniswapSwapRouter,
         address optimisticOracleV3,
@@ -27,6 +26,11 @@ interface IConfigurationModule {
         uint256 endTime,
         uint160 startingSqrtPriceX96
     );
+    
+    event OwnershipTransferStarted(
+        address indexed previousOwner,
+        address indexed newOwner
+    );
 
     function initializeMarket(
         address owner,
@@ -38,7 +42,6 @@ interface IConfigurationModule {
     ) external;
 
     function updateMarket(
-        address owner,
         address uniswapPositionManager,
         address uniswapSwapRouter,
         address optimisticOracleV3,
