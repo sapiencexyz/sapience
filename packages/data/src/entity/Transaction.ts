@@ -13,12 +13,7 @@ import {
 import { Event } from "./Event";
 import { Position } from "./Position";
 import { MarketPrice } from "./MarketPrice";
-import {
-  createOrModifyPosition,
-  NUMERIC_PRECISION,
-  upsertMarketPrice,
-} from "../util/dbUtil";
-// Read contractIds (chainId:address) from foilconfig.json ?
+import { NUMERIC_PRECISION } from "../util/dbUtil";
 
 export enum TransactionType {
   ADD_LIQUIDITY = "addLiquidity",
@@ -26,14 +21,6 @@ export enum TransactionType {
   LONG = "long",
   SHORT = "short",
 }
-/**
-/* Alternatively:
-/* setBaseTokenAmount, with baseTokenAmountSet event
-/* setQuoteTokenAmount, with quoteTokenAmountSet event
-/* setLiquidityAmount, with liquidityAmountSet event
-/* setCollateralAmount, with collateralAmountSet event
-/* In this case, the event just emits the parameters and they're recorded verbatim.
-**/
 
 @Entity()
 export class Transaction {
@@ -41,9 +28,7 @@ export class Transaction {
   @JoinColumn()
   marketPrice: MarketPrice;
 
-  @OneToOne(() => Event, (event) => event.transaction, {
-    cascade: true,
-  })
+  @OneToOne(() => Event, (event) => event.transaction)
   @JoinColumn()
   event: Event;
 
@@ -63,10 +48,10 @@ export class Transaction {
   type: TransactionType;
 
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
-  baseTokenDelta: string; // vGas make sure signed
+  baseTokenDelta: string; // vGas (signed)
 
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
-  quoteTokenDelta: string; // vETH make sure these are signed
+  quoteTokenDelta: string; // vETH (signed)
 
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
   collateralDelta: string; // ETH

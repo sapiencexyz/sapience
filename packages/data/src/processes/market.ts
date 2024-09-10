@@ -5,7 +5,12 @@ import { Market } from "../entity/Market";
 import { Epoch } from "../entity/Epoch";
 import { Abi, decodeEventLog, Log, PublicClient } from "viem";
 import { Repository } from "typeorm";
-import { EventType } from "../interfaces/interfaces";
+import {
+  EpochCreated,
+  EventType,
+  MarketUpdated,
+} from "../interfaces/interfaces";
+import { upsertTransactionPositionPriceFromEvent } from "../util/dbUtil";
 
 const bigintReplacer = (key: string, value: any) => {
   if (typeof value === "bigint") {
@@ -176,31 +181,54 @@ const handleEventUpsert = async (
       `Market not found for chainId ${chainId} and address ${address}`
     );
   }
-  console.log("Market found:", market);
+  if (logData.eventName === "MarketUpdated") {
+    console.log("updating market: ", logData);
+    // update market
+    const marketUpdatedArgs = logData.args as MarketUpdated;
+    market.optimisticOracleV3 = marketUpdatedArgs.optimisticOracleV3;
+    market.uniswapPositionManager = marketUpdatedArgs.uniswapPositionManager;
+    market.uniswapSwapRouter = marketUpdatedArgs.uniswapSwapRouter;
+    market.epochParams = {
+      baseAssetMinPriceTick: Number(
+        marketUpdatedArgs.epochParams.baseAssetMinPriceTick
+      ),
+      baseAssetMaxPriceTick: Number(
+        marketUpdatedArgs.epochParams.baseAssetMaxPriceTick
+      ),
+      feeRate: Number(marketUpdatedArgs.epochParams.feeRate),
+      assertionLiveness: marketUpdatedArgs?.epochParams?.assertionLiveness,
+      bondCurrency: marketUpdatedArgs?.epochParams?.bondCurrency,
+      bondAmount: marketUpdatedArgs?.epochParams?.bondAmount,
+      priceUnit: marketUpdatedArgs?.epochParams?.priceUnit,
+    };
+    await marketRepository.save(market);
+  }
+
   let epoch = market.epochs.find((e) => e.epochId === epochId);
 
-  // Find or create the epoch
-  // let epoch = await epochRepository.findOne({
-  //   where: { market: { id: market.id }, epochId },
-  //   relations: ["market"],
-  // });
-  if (!epoch) {
-    const allE = await epochRepository.find({ relations: ["market"] });
-    console.log("allE", allE);
-    const allE2 = await epochRepository.find({
-      where: { market: { id: market.id } },
-      relations: ["market"],
-    });
-    console.log("allE with market", allE2);
+  if (logData.eventName === "EpochCreated") {
+    // create new epoch
+    console.log("creating epoch: ", logData);
+    const epochCreatedArgs = logData.args as EpochCreated;
+    const newEpoch = new Epoch();
+    epochCreatedArgs.epochId = epochCreatedArgs.epochId;
+    newEpoch.market = market;
+    newEpoch.startTimestamp = epochCreatedArgs.startTime;
+    newEpoch.endTimestamp = epochCreatedArgs.endTime;
+    /// get epoch params from market...
+    epoch = await epochRepository.save(newEpoch);
+  } else if (!epoch) {
     // get latest epoch id from repository
     epoch =
       (await epochRepository.findOne({
         where: { market: { id: market.id } },
         order: { epochId: "DESC" },
       })) || undefined;
-    if (!epoch) {
-      throw new Error(`No epochs found for market ${market.address}`);
-    }
+  }
+
+  // throw if epoch not found/created properly
+  if (!epoch) {
+    throw new Error(`No epochs found for market ${market.address}`);
   }
 
   // Create a new Event entity
@@ -211,6 +239,6 @@ const handleEventUpsert = async (
   newEvent.logIndex = logIndex;
   newEvent.logData = logData;
 
-  // Upsert the event
-  await eventRepository.upsert(newEvent, ["epoch", "blockNumber", "logIndex"]);
+  // Insertthe event
+  await eventRepository.insert(newEvent);
 };

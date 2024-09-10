@@ -49,3 +49,28 @@ export enum PositionKind {
   Liquidity,
   Trade,
 }
+
+export interface EpochParams {
+  baseAssetMinPriceTick: string;
+  baseAssetMaxPriceTick: string;
+  feeRate: string;
+  assertionLiveness: string;
+  bondCurrency: string;
+  bondAmount: string;
+  priceUnit: string;
+}
+
+export interface MarketUpdated {
+  owner: string;
+  uniswapPositionManager: string;
+  uniswapSwapRouter: string;
+  optimisticOracleV3: string;
+  epochParams: EpochParams;
+}
+
+export interface EpochCreated {
+  epochId: string;
+  startTime: string;
+  endTime: string;
+  startingSqrtPriceX96: string;
+}
