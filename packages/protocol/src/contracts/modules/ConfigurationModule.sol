@@ -28,6 +28,7 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuard {
         address collateralAsset,
         address uniswapPositionManager,
         address uniswapSwapRouter,
+        address uniswapQuoter,
         address optimisticOracleV3,
         IFoilStructs.EpochParams memory epochParams
     ) external override {
@@ -36,27 +37,43 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuard {
             collateralAsset,
             uniswapPositionManager,
             uniswapSwapRouter,
+            uniswapQuoter,
             optimisticOracleV3,
             epochParams
         );
-        emit MarketInitialized(owner, collateralAsset, uniswapPositionManager, uniswapSwapRouter, optimisticOracleV3, epochParams);
+        emit MarketInitialized(
+            owner,
+            collateralAsset,
+            uniswapPositionManager,
+            uniswapSwapRouter,
+            uniswapQuoter,
+            optimisticOracleV3,
+            epochParams
+        );
     }
 
     function updateMarket(
-        address owner,
         address uniswapPositionManager,
         address uniswapSwapRouter,
+        address uniswapQuoter,
         address optimisticOracleV3,
         IFoilStructs.EpochParams memory epochParams
     ) external override onlyOwner {
         Market.updateValid(
-            owner, // should be nominate/accept
             uniswapPositionManager,
             uniswapSwapRouter,
+            uniswapQuoter,
             optimisticOracleV3,
             epochParams
         );
-        emit MarketUpdated(owner, uniswapPositionManager, uniswapSwapRouter, optimisticOracleV3, epochParams);
+
+        emit MarketUpdated(
+            uniswapPositionManager,
+            uniswapSwapRouter,
+            uniswapQuoter,
+            optimisticOracleV3,
+            epochParams
+        );
     }
 
     function createEpoch(
@@ -71,5 +88,29 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuard {
 
         Epoch.createValid(newEpochId, startTime, endTime, startingSqrtPriceX96);
         emit EpochCreated(newEpochId, startTime, endTime, startingSqrtPriceX96);
+    }
+
+    function transferOwnership(address newOwner) external onlyOwner {
+        Market.Data storage market = Market.loadValid();
+        address oldOwner = market.owner;
+        market.transferOwnership(newOwner);
+        emit OwnershipTransferStarted(oldOwner, newOwner);
+    }
+
+    function acceptOwnership() external {
+        Market.Data storage market = Market.loadValid();
+        address oldOwner = market.owner;
+        market.acceptOwnership();
+        emit OwnershipTransferred(oldOwner, msg.sender);
+    }
+
+    function pendingOwner() external view returns (address) {
+        Market.Data storage market = Market.loadValid();
+        return market.pendingOwner();
+    }
+
+    function owner() external view returns (address) {
+        Market.Data storage market = Market.loadValid();
+        return market.owner;
     }
 }

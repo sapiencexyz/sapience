@@ -179,12 +179,15 @@ contract NftModule is IERC721Enumerable {
         return ERC721EnumerableStorage.load().ownedTokens[owner][index];
     }
 
+    /**
+     * @dev Returns the total amount of tokens stored by the contract.
+     */
     function totalSupply() public view virtual override returns (uint256) {
         return ERC721EnumerableStorage.totalSupply();
     }
 
     /**
-     * @dev Returns the total amount of tokens stored by the contract.
+     * @dev Returns the token identifier for the `_index`th NFT
      */
     function tokenByIndex(
         uint256 index

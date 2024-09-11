@@ -78,6 +78,9 @@ export class Market {
   @Column({ type: "varchar", nullable: true })
   optimisticOracleV3: string | null;
 
+  @Column({ type: "varchar", nullable: true })
+  collateralAsset: string | null;
+
   @Column(() => EpochParams)
   epochParams: EpochParams;
 }

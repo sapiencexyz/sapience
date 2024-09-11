@@ -25,6 +25,10 @@ library Errors {
         uint256 amountRequired,
         uint256 collateralAvailable
     );
+    error CollateralLimitReached(
+        uint256 collateralRequired,
+        uint256 maxCollateral
+    );
     error IndexOverrun(uint256 requestedIndex, uint256 length);
     error NotAccountOwnerOrAuthorized(uint256 tokenId, address sender);
     error InsufficientVEth(uint256 amount, uint256 vEth);
@@ -32,4 +36,5 @@ library Errors {
     error InvalidPositionKind();
     error InvalidRange(int24 requestedTick, int24 boundedTick);
     error PositionAlreadySettled(uint256 positionId);
+    error OwnableUnauthorizedAccount(address sender);
 }
