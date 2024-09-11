@@ -28,6 +28,7 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuard {
         address collateralAsset,
         address uniswapPositionManager,
         address uniswapSwapRouter,
+        address uniswapQuoter,
         address optimisticOracleV3,
         IFoilStructs.EpochParams memory epochParams
     ) external override {
@@ -36,16 +37,26 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuard {
             collateralAsset,
             uniswapPositionManager,
             uniswapSwapRouter,
+            uniswapQuoter,
             optimisticOracleV3,
             epochParams
         );
-        emit MarketInitialized(owner, collateralAsset, uniswapPositionManager, uniswapSwapRouter, optimisticOracleV3, epochParams);
+        emit MarketInitialized(
+            owner,
+            collateralAsset,
+            uniswapPositionManager,
+            uniswapSwapRouter,
+            uniswapQuoter,
+            optimisticOracleV3,
+            epochParams
+        );
     }
 
     function updateMarket(
         address owner,
         address uniswapPositionManager,
         address uniswapSwapRouter,
+        address uniswapQuoter,
         address optimisticOracleV3,
         IFoilStructs.EpochParams memory epochParams
     ) external override onlyOwner {
@@ -53,10 +64,18 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuard {
             owner, // should be nominate/accept
             uniswapPositionManager,
             uniswapSwapRouter,
+            uniswapQuoter,
             optimisticOracleV3,
             epochParams
         );
-        emit MarketUpdated(owner, uniswapPositionManager, uniswapSwapRouter, optimisticOracleV3, epochParams);
+        emit MarketUpdated(
+            owner,
+            uniswapPositionManager,
+            uniswapSwapRouter,
+            uniswapQuoter,
+            optimisticOracleV3,
+            epochParams
+        );
     }
 
     function createEpoch(

@@ -1,102 +1,6 @@
 {
-  "address": "0xc4a476441a7468B0aF30dbCc93eFc55710D0206F",
+  "address": "0x60Fe6DC54ce16f5C8ee9DeA428d073144E389456",
   "abi": [
-    {
-      "type": "function",
-      "name": "getCollateralForLongSize",
-      "inputs": [
-        {
-          "name": "epochId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "positionSize",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "collateral",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
-      "name": "getCollateralForShortSize",
-      "inputs": [
-        {
-          "name": "epochId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "positionSize",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "collateral",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
-      "name": "getLongDeltaForCollateral",
-      "inputs": [
-        {
-          "name": "positionId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "collateral",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "modPositionSize",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
-      "name": "getLongSizeForCollateral",
-      "inputs": [
-        {
-          "name": "epochId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "collateral",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "positionSize",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "stateMutability": "view"
-    },
     {
       "type": "function",
       "name": "getReferencePrice",
@@ -115,85 +19,16 @@
         }
       ],
       "stateMutability": "view"
-    },
-    {
-      "type": "function",
-      "name": "getShortDeltaForCollateral",
-      "inputs": [
-        {
-          "name": "positionId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "collateral",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "modPositionSize",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
-      "name": "getShortSizeForCollateral",
-      "inputs": [
-        {
-          "name": "epochId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "collateral",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "modPositionSize",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "error",
-      "name": "InvalidPositionId",
-      "inputs": [
-        {
-          "name": "positionId",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ]
-    },
-    {
-      "type": "error",
-      "name": "OverflowInt256ToUint256",
-      "inputs": []
-    },
-    {
-      "type": "error",
-      "name": "OverflowUint256ToInt256",
-      "inputs": []
     }
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xf27f0b3b5d9fc83b7fe9e5f11b7454865ea10dba5468e9e739eeb683a818376a",
+  "deployTxnHash": "0x865883d644fd4b633d14099470cc116e6647b193835e58cf3bf5def92c5df1be",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1725572417",
+  "deployTimestamp": "1726085629",
   "sourceName": "src/contracts/modules/TradeViewsModule.sol",
   "contractName": "TradeViewsModule",
   "deployedOn": "deploy.TradeViewsModule",
-  "gasUsed": 599757,
-  "gasCost": "1000127060"
+  "gasUsed": 219276,
+  "gasCost": "1000126750"
 }

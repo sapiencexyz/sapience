@@ -8,75 +8,77 @@ import {Errors} from "./Errors.sol";
 import {ISwapRouter} from "../interfaces/external/ISwapRouter.sol";
 import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
 
+// import "forge-std/console2.sol";
+
 library Trade {
     using Epoch for Epoch.Data;
     using DecimalMath for uint256;
 
-    struct SwapTokensExactInParams {
-        uint256 epochId;
-        uint256 amountInVEth;
-        uint256 amountInVGas;
-        uint256 amountOutLimitVEth;
-        uint256 amountOutLimitVGas;
-    }
-
-    struct SwapTokensExactOutParams {
-        uint256 epochId;
-        uint256 availableAmountInVEth;
-        uint256 availableAmountInVGas;
-        uint160 amountInLimitVEth;
-        uint160 amountInLimitVGas;
-        uint256 expectedAmountOutVEth;
-        uint256 expectedAmountOutVGas;
-    }
-
-    function swapTokensExactIn(
-        SwapTokensExactInParams memory params
+    function swapOrQuoteTokensExactIn(
+        Epoch.Data storage epoch,
+        uint256 amountInVEth,
+        uint256 amountInVGas,
+        bool isQuote
     ) internal returns (uint256 amountOutVEth, uint256 amountOutVGas) {
-        if (params.amountInVEth > 0 && params.amountInVGas > 0) {
-            revert("Only one token can be traded at a time");
+        if (amountInVEth > 0 && amountInVGas > 0) {
+            revert Errors.InvalidData("Only one token can be traded at a time");
         }
 
-        if (params.amountInVEth == 0 && params.amountInVGas == 0) {
-            revert("At least one token should be traded");
+        if (amountInVEth == 0 && amountInVGas == 0) {
+            revert Errors.InvalidData("At least one token should be traded");
         }
-
-        Market.Data storage market = Market.load();
-        Epoch.Data storage epoch = Epoch.load(params.epochId);
 
         if (epoch.settled) {
             (amountOutVEth, amountOutVGas) = _afterSettlementSwapExactIn(
                 epoch,
-                params.amountInVEth,
-                params.amountInVGas
+                amountInVEth,
+                amountInVGas
             );
         } else {
-            ISwapRouter.ExactInputSingleParams memory swapParams;
-            swapParams.fee = epoch.params.feeRate;
-            swapParams.recipient = address(this);
-            swapParams.deadline = block.timestamp;
+            Market.Data storage market = Market.load();
+            address tokenIn;
+            address tokenOut;
+            uint256 amountIn;
+            uint256 amountOut;
 
-            if (params.amountInVEth > 0) {
-                swapParams.tokenIn = address(epoch.ethToken);
-                swapParams.tokenOut = address(epoch.gasToken);
-                swapParams.amountIn = params.amountInVEth;
-                swapParams.amountOutMinimum = params.amountOutLimitVGas;
-                // TODO -- We also set the sqrtPriceLimitx96 to be 0 to ensure we swap our exact input amount.
-                swapParams.sqrtPriceLimitX96 = 0;
+            if (amountInVEth > 0) {
+                tokenIn = address(epoch.ethToken);
+                tokenOut = address(epoch.gasToken);
+                amountIn = amountInVEth;
             } else {
-                swapParams.tokenIn = address(epoch.gasToken);
-                swapParams.tokenOut = address(epoch.ethToken);
-                swapParams.amountIn = params.amountInVGas;
-                swapParams.amountOutMinimum = params.amountOutLimitVEth;
-                // TODO -- We also set the sqrtPriceLimitx96 to be 0 to ensure we swap our exact input amount.
-                swapParams.sqrtPriceLimitX96 = 0;
+                tokenIn = address(epoch.gasToken);
+                tokenOut = address(epoch.ethToken);
+                amountIn = amountInVGas;
             }
 
-            uint256 amountOut = market.uniswapSwapRouter.exactInputSingle(
-                swapParams
-            );
+            if (isQuote) {
+                amountOut = market.uniswapQuoter.quoteExactInputSingle(
+                    tokenIn,
+                    tokenOut,
+                    epoch.params.feeRate,
+                    amountIn,
+                    0
+                );
+            } else {
+                ISwapRouter.ExactInputSingleParams
+                    memory swapParams = ISwapRouter.ExactInputSingleParams({
+                        fee: epoch.params.feeRate,
+                        recipient: address(this),
+                        deadline: block.timestamp,
+                        tokenIn: tokenIn,
+                        tokenOut: tokenOut,
+                        amountIn: amountIn,
+                        // Notice, not limiting the trade in any way since we are limiting the collateral required afterwards.
+                        amountOutMinimum: 0,
+                        sqrtPriceLimitX96: 0
+                    });
 
-            if (params.amountInVEth > 0) {
+                amountOut = market.uniswapSwapRouter.exactInputSingle(
+                    swapParams
+                );
+            }
+
+            if (amountInVEth > 0) {
                 amountOutVGas = amountOut;
             } else {
                 amountOutVEth = amountOut;
@@ -84,120 +86,79 @@ library Trade {
         }
     }
 
-    function swapTokensExactOut(
-        SwapTokensExactOutParams memory params
+    function swapOrQuoteTokensExactOut(
+        Epoch.Data storage epoch,
+        uint256 expectedAmountOutVEth,
+        uint256 expectedAmountOutVGas,
+        bool isQuote
     )
         internal
-        returns (
-            uint256 refundAmountVEth,
-            uint256 refundAmountVGas,
-            uint256 tokenAmountVEth,
-            uint256 tokenAmountVGas
-        )
+        returns (uint256 requiredAmountInVEth, uint256 requiredAmountInVGas)
     {
-        if (
-            params.expectedAmountOutVEth > 0 && params.expectedAmountOutVGas > 0
-        ) {
+        if (expectedAmountOutVEth > 0 && expectedAmountOutVGas > 0) {
             revert Errors.InvalidData("Only one token can be traded at a time");
         }
 
-        if (
-            params.expectedAmountOutVEth == 0 &&
-            params.expectedAmountOutVGas == 0
-        ) {
+        if (expectedAmountOutVEth == 0 && expectedAmountOutVGas == 0) {
             revert Errors.InvalidData("At least one token should be traded");
         }
 
-        Market.Data storage market = Market.load();
-        Epoch.Data storage epoch = Epoch.load(params.epochId);
-
         if (epoch.settled) {
-            uint256 requiredAmountInVEth;
-            uint256 requiredAmountInVGas;
             (
                 requiredAmountInVEth,
                 requiredAmountInVGas
             ) = _afterSettlementSwapExactOut(
                 epoch,
-                params.expectedAmountOutVEth,
-                params.expectedAmountOutVGas
+                expectedAmountOutVEth,
+                expectedAmountOutVGas
             );
-
-            if (requiredAmountInVEth > params.availableAmountInVEth) {
-                revert Errors.InsufficientVEth(
-                    requiredAmountInVEth,
-                    params.availableAmountInVEth
-                );
-            }
-
-            refundAmountVEth =
-                params.availableAmountInVEth -
-                requiredAmountInVEth;
-
-            refundAmountVGas =
-                params.availableAmountInVGas -
-                requiredAmountInVGas;
         } else {
+            Market.Data storage market = Market.load();
             address tokenIn;
             address tokenOut;
             uint256 amountOut;
-            // uint160 sqrtPriceLimitX96;
-            uint256 amountInMaximum;
+            uint256 amountIn;
 
-            if (params.expectedAmountOutVEth > 0) {
+            if (expectedAmountOutVEth > 0) {
                 tokenIn = address(epoch.gasToken);
                 tokenOut = address(epoch.ethToken);
-                amountOut = params.expectedAmountOutVEth;
-                amountInMaximum = params.amountInLimitVGas == 0
-                    ? type(uint256).max
-                    : params.amountInLimitVGas;
+                amountOut = expectedAmountOutVEth;
             } else {
                 tokenIn = address(epoch.ethToken);
                 tokenOut = address(epoch.gasToken);
-                amountOut = params.expectedAmountOutVGas;
-                amountInMaximum = params.amountInLimitVEth == 0
-                    ? type(uint256).max
-                    : params.amountInLimitVEth;
+                amountOut = expectedAmountOutVGas;
             }
 
-            ISwapRouter.ExactOutputSingleParams memory swapParams = ISwapRouter
-                .ExactOutputSingleParams({
-                    tokenIn: tokenIn,
-                    tokenOut: tokenOut,
-                    fee: epoch.params.feeRate,
-                    recipient: address(this),
-                    deadline: block.timestamp,
-                    amountOut: amountOut,
-                    amountInMaximum: amountInMaximum,
-                    sqrtPriceLimitX96: 0
-                });
-
-            uint256 amountIn = market.uniswapSwapRouter.exactOutputSingle(
-                swapParams
-            );
-
-            tokenAmountVEth = params.expectedAmountOutVEth;
-            tokenAmountVGas = params.expectedAmountOutVGas;
-
-            if (params.expectedAmountOutVEth > 0) {
-                if (params.availableAmountInVGas > amountIn) {
-                    refundAmountVGas = params.availableAmountInVGas - amountIn;
-                } else {
-                    revert Errors.InsufficientVGas(
-                        amountIn,
-                        params.availableAmountInVGas
-                    );
-                }
-                refundAmountVGas = params.availableAmountInVGas - amountIn;
+            if (isQuote) {
+                amountIn = market.uniswapQuoter.quoteExactOutputSingle(
+                    tokenIn,
+                    tokenOut,
+                    epoch.params.feeRate,
+                    amountOut,
+                    0
+                );
             } else {
-                if (params.availableAmountInVEth > amountIn) {
-                    refundAmountVEth = params.availableAmountInVEth - amountIn;
-                } else {
-                    revert Errors.InsufficientVEth(
-                        amountIn,
-                        params.availableAmountInVEth
-                    );
-                }
+                ISwapRouter.ExactOutputSingleParams
+                    memory swapParams = ISwapRouter.ExactOutputSingleParams({
+                        tokenIn: tokenIn,
+                        tokenOut: tokenOut,
+                        amountOut: amountOut,
+                        fee: epoch.params.feeRate,
+                        recipient: address(this),
+                        deadline: block.timestamp,
+                        // Notice, not limiting the trade in any way since we are limiting the collateral required afterwards.
+                        sqrtPriceLimitX96: 0,
+                        amountInMaximum: type(uint256).max
+                    });
+
+                amountIn = market.uniswapSwapRouter.exactOutputSingle(
+                    swapParams
+                );
+            }
+            if (expectedAmountOutVEth > 0) {
+                requiredAmountInVGas = amountIn;
+            } else {
+                requiredAmountInVEth = amountIn;
             }
         }
     }
