@@ -9,6 +9,7 @@ interface IConfigurationModule {
         address collateralAsset,
         address uniswapPositionManager,
         address uniswapSwapRouter,
+        address uniswapQuoter,
         address optimisticOracleV3,
         IFoilStructs.EpochParams epochParams
     );
@@ -17,6 +18,7 @@ interface IConfigurationModule {
         address owner,
         address uniswapPositionManager,
         address uniswapSwapRouter,
+        address uniswapQuoter,
         address optimisticOracleV3,
         IFoilStructs.EpochParams epochParams
     );
@@ -33,6 +35,7 @@ interface IConfigurationModule {
         address collateralAsset,
         address uniswapPositionManager,
         address uniswapSwapRouter,
+        address uniswapQuoter,
         address optimisticOracleV3,
         IFoilStructs.EpochParams memory epochParams
     ) external;
@@ -41,6 +44,7 @@ interface IConfigurationModule {
         address owner,
         address uniswapPositionManager,
         address uniswapSwapRouter,
+        address uniswapQuoter,
         address optimisticOracleV3,
         IFoilStructs.EpochParams memory epochParams
     ) external;
