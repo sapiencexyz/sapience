@@ -48,10 +48,6 @@ contract TestEpoch is TestUser {
         IFoil(vm.getAddress("Foil")).initializeMarket(
             owner,
             vm.getAddress("CollateralAsset.Token"),
-            vm.getAddress("Uniswap.NonfungiblePositionManager"),
-            vm.getAddress("Uniswap.SwapRouter"),
-            vm.getAddress("Uniswap.Quoter"),
-            vm.getAddress("UMA.OptimisticOracleV3"),
             IFoilStructs.EpochParams({
                 baseAssetMinPriceTick: minTick,
                 baseAssetMaxPriceTick: maxTick,
@@ -59,7 +55,11 @@ contract TestEpoch is TestUser {
                 assertionLiveness: 3600,
                 bondCurrency: vm.getAddress("BondCurrency.Token"),
                 bondAmount: BOND_AMOUNT,
-                priceUnit: "wstGwei/gas"
+                priceUnit: "wstGwei/gas",
+                uniswapPositionManager: vm.getAddress("Uniswap.NonfungiblePositionManager"),
+                uniswapSwapRouter: vm.getAddress("Uniswap.SwapRouter"),
+                uniswapQuoter: vm.getAddress("Uniswap.Quoter"),
+                optimisticOracleV3: vm.getAddress("UMA.OptimisticOracleV3")
             })
         );
 
@@ -129,10 +129,8 @@ contract TestEpoch is TestUser {
         )
     {
         IFoil foil = IFoil(vm.getAddress("Foil"));
-        (, , , address pool, , , , , , , ) = foil.getLatestEpoch();
+        (, , , address pool, , , , , , , IFoilStructs.EpochParams memory epochParams) = foil.getLatestEpoch();
         (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
-
-        (, , address positionManager, , , ) = foil.getMarket();
 
         (
             ,
@@ -147,7 +145,7 @@ contract TestEpoch is TestUser {
             ,
             tokensOwed0,
             tokensOwed1
-        ) = INonfungiblePositionManager(positionManager).positions(
+        ) = INonfungiblePositionManager(epochParams.uniswapPositionManager).positions(
             uniswapPositionId
         );
 
@@ -184,7 +182,7 @@ contract TestEpoch is TestUser {
 
         OwedTokensData memory data;
 
-        (, , data.positionManager, , , ) = foil.getMarket();
+        (, , epochParams) = foil.getMarket();
 
         // Fetch the current fee growth global values
         data.feeGrowthGlobal0X128 = IUniswapV3Pool(data.pool)

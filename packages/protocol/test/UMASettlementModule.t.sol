@@ -33,7 +33,7 @@ contract UmaSettleMarket is TestEpoch {
         uint160 startingSqrtPriceX96 = 250541448375047931186413801569; // 10
         (foil, ) = createEpoch(16000, 29800, startingSqrtPriceX96);
 
-        (owner, , , , optimisticOracleV3, ) = foil.getMarket();
+        (owner, ,) = foil.getMarket();
         (
             epochId,
             ,

@@ -30,55 +30,31 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuard {
     }
 
     function initializeMarket(
-        address owner,
+        address initialOwner,
         address collateralAsset,
-        address uniswapPositionManager,
-        address uniswapSwapRouter,
-        address uniswapQuoter,
-        address optimisticOracleV3,
         IFoilStructs.EpochParams memory epochParams
     ) external override {
         require(msg.sender == initializer, "Only initializer can call this function");
         Market.createValid(
-            owner,
+            initialOwner,
             collateralAsset,
-            uniswapPositionManager,
-            uniswapSwapRouter,
-            uniswapQuoter,
-            optimisticOracleV3,
             epochParams
         );
         emit MarketInitialized(
-            owner,
+            initialOwner,
             collateralAsset,
-            uniswapPositionManager,
-            uniswapSwapRouter,
-            uniswapQuoter,
-            optimisticOracleV3,
             epochParams
         );
     }
 
     function updateMarket(
-        address uniswapPositionManager,
-        address uniswapSwapRouter,
-        address uniswapQuoter,
-        address optimisticOracleV3,
         IFoilStructs.EpochParams memory epochParams
     ) external override onlyOwner {
         Market.updateValid(
-            uniswapPositionManager,
-            uniswapSwapRouter,
-            uniswapQuoter,
-            optimisticOracleV3,
             epochParams
         );
 
         emit MarketUpdated(
-            uniswapPositionManager,
-            uniswapSwapRouter,
-            uniswapQuoter,
-            optimisticOracleV3,
             epochParams
         );
     }
@@ -89,7 +65,7 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuard {
         uint160 startingSqrtPriceX96
     ) external override onlyOwner {
         // load the market to check if it's already created
-        Market.Data storage market = Market.loadValid();
+        Market.Data storage market = Market.load();
 
         uint256 newEpochId = market.getNewEpochId();
 
@@ -98,26 +74,26 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuard {
     }
 
     function transferOwnership(address newOwner) external onlyOwner {
-        Market.Data storage market = Market.loadValid();
+        Market.Data storage market = Market.load();
         address oldOwner = market.owner;
         market.transferOwnership(newOwner);
         emit OwnershipTransferStarted(oldOwner, newOwner);
     }
 
     function acceptOwnership() external {
-        Market.Data storage market = Market.loadValid();
+        Market.Data storage market = Market.load();
         address oldOwner = market.owner;
         market.acceptOwnership();
         emit OwnershipTransferred(oldOwner, msg.sender);
     }
 
     function pendingOwner() external view returns (address) {
-        Market.Data storage market = Market.loadValid();
-        return market.pendingOwner();
+        Market.Data storage market = Market.load();
+        return market.pendingOwner;
     }
 
     function owner() external view returns (address) {
-        Market.Data storage market = Market.loadValid();
+        Market.Data storage market = Market.load();
         return market.owner;
     }
 }
