@@ -3,15 +3,19 @@ import { Event } from "../entity/Event";
 import { Position } from "../entity/Position";
 import { Transaction, TransactionType } from "../entity/Transaction";
 import {
+  EpochCreatedEventLog,
   EventType,
   LiquidityPositionClosedEventLog,
   LiquidityPositionCreatedEventLog,
   LiquidityPositionModifiedEventLog,
+  MarketCreatedUpdatedEventLog,
   TradePositionEventLog,
 } from "../interfaces/interfaces";
 import { MarketPrice } from "../entity/MarketPrice";
 import { formatUnits } from "viem";
 import { LessThanOrEqual } from "typeorm";
+import { Market } from "../entity/Market";
+import { Epoch } from "../entity/Epoch";
 
 export const NUMERIC_PRECISION = 78;
 export const TOKEN_PRECISION = 18;
@@ -336,4 +340,64 @@ const isLpPosition = (
     return true;
   }
   return false;
+};
+
+/**
+ * Creates or updates a Market entity in the database from a MarketCreatedUpdatedEventLog event.
+ * If originalMarket is provided, it will be updated with the new data. Otherwise, a new Market entity will be created.
+ * @param eventArgs The event log data from the MarketCreatedUpdatedEventLog event.
+ * @param chainId The chain id of the market.
+ * @param address The address of the market.
+ * @param originalMarket The original Market entity to be updated, if any.
+ * @returns The saved Market entity.
+ */
+export const createOrUpdateMarketFromEvent = async (
+  eventArgs: MarketCreatedUpdatedEventLog,
+  chainId: number,
+  address: string,
+  originalMarket?: Market
+) => {
+  const marketRepository = dataSource.getRepository(Market);
+
+  let market = originalMarket || new Market();
+  market.chainId = chainId;
+  market.address = address;
+  market.optimisticOracleV3 = eventArgs.optimisticOracleV3;
+  market.uniswapPositionManager = eventArgs.uniswapPositionManager;
+  market.uniswapSwapRouter = eventArgs.uniswapSwapRouter;
+  if (eventArgs.collateralAsset) {
+    market.collateralAsset = eventArgs.collateralAsset;
+  }
+  market.epochParams = {
+    baseAssetMinPriceTick: Number(eventArgs.epochParams.baseAssetMinPriceTick),
+    baseAssetMaxPriceTick: Number(eventArgs.epochParams.baseAssetMaxPriceTick),
+    feeRate: Number(eventArgs.epochParams.feeRate),
+    assertionLiveness: eventArgs?.epochParams?.assertionLiveness,
+    bondCurrency: eventArgs?.epochParams?.bondCurrency,
+    bondAmount: eventArgs?.epochParams?.bondAmount,
+    priceUnit: eventArgs?.epochParams?.priceUnit,
+  };
+  const newMarket = await marketRepository.save(market);
+  return newMarket;
+};
+
+/**
+ * Creates a new Epoch from a given event
+ * @param eventArgs The event arguments from the EpochCreated event.
+ * @param market The market associated with the epoch.
+ * @returns The newly created or updated epoch.
+ */
+export const createEpochFromEvent = async (
+  eventArgs: EpochCreatedEventLog,
+  market: Market
+) => {
+  const epochRepository = dataSource.getRepository(Epoch);
+  const newEpoch = new Epoch();
+  newEpoch.epochId = Number(eventArgs.epochId);
+  newEpoch.market = market;
+  newEpoch.startTimestamp = eventArgs.startTime;
+  newEpoch.endTimestamp = eventArgs.endTime;
+  newEpoch.startingSqrtPriceX96 = eventArgs.startingSqrtPriceX96;
+  const epoch = await epochRepository.save(newEpoch);
+  return epoch;
 };

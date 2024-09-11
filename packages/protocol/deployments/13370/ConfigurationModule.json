@@ -1,5 +1,5 @@
 {
-  "address": "0xb0cc5EAC3eA14116318B3F67113697f7EbC47644",
+  "address": "0x687Dc7139e95985DEC0e2Df59F90511CBCabD2b7",
   "abi": [
     {
       "type": "function",
@@ -45,6 +45,11 @@
         },
         {
           "name": "uniswapSwapRouter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapQuoter",
           "type": "address",
           "internalType": "address"
         },
@@ -115,6 +120,11 @@
         },
         {
           "name": "uniswapSwapRouter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapQuoter",
           "type": "address",
           "internalType": "address"
         },
@@ -229,6 +239,12 @@
           "internalType": "address"
         },
         {
+          "name": "uniswapQuoter",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
           "name": "optimisticOracleV3",
           "type": "address",
           "indexed": false,
@@ -298,6 +314,12 @@
         },
         {
           "name": "uniswapSwapRouter",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapQuoter",
           "type": "address",
           "indexed": false,
           "internalType": "address"
@@ -408,12 +430,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x468efa6d6e7f8cece25307b3f31fd4475dfd7256c2422c230377da93d18445da",
+  "deployTxnHash": "0xf7b8cdd5e1d5ed3e60c64ceddf469abda4e579048569a867d6a833be87b941f1",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1725572418",
+  "deployTimestamp": "1726085630",
   "sourceName": "src/contracts/modules/ConfigurationModule.sol",
   "contractName": "ConfigurationModule",
   "deployedOn": "deploy.ConfigurationModule",
-  "gasUsed": 2115046,
+  "gasUsed": 2144206,
   "gasCost": "1000258373"
 }

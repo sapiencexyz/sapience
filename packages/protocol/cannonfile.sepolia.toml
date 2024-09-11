@@ -1,5 +1,5 @@
 name="foil"
-version="0.10"
+version="0.11"
 
 [var.settings]
 owner="0xE006B58cA5aB7ba53863012dc3067A14b965C1da"
@@ -77,6 +77,7 @@ args=[
   "<%= imports.wstETH.contracts.Token.address %>",
   "0x1238536071E1c677A632429e3655c799b22cDA52",
   "0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD",
+  "0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3",
   "<%= settings.optimisticOracleV3 %>",
   { baseAssetMinPriceTick = "<%= settings.baseAssetMinPriceTick %>", baseAssetMaxPriceTick = "<%= settings.baseAssetMaxPriceTick %>", feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.USDC.contracts.Token.address %>", bondAmount = "<%= settings.bondAmount %>", priceUnit = "<%= settings.priceUnit %>" }
 ]
