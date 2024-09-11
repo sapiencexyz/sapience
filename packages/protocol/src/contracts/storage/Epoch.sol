@@ -12,11 +12,14 @@ import "../external/univ3/LiquidityAmounts.sol";
 import "./Debt.sol";
 import "./Errors.sol";
 import "./Market.sol";
+import {SafeCastI256, SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 
 // import "forge-std/console2.sol";
 
 library Epoch {
     using DecimalMath for uint256;
+    using SafeCastI256 for int256;
+    using SafeCastU256 for uint256;
 
     struct Settlement {
         uint256 settlementPriceD18;
@@ -83,7 +86,7 @@ library Epoch {
             revert Errors.EpochAlreadyStarted();
         }
 
-        if (startTime == 0) {
+        if (startTime < block.timestamp) {
             revert Errors.InvalidData("startTime");
         }
 
@@ -201,7 +204,7 @@ library Epoch {
         int24 lowerTick,
         int24 upperTick
     ) internal view {
-        validateEpochNotSettled(self);
+        validateEpochNotExpired(self);
 
         int24 minTick = self.params.baseAssetMinPriceTick;
         int24 maxTick = self.params.baseAssetMaxPriceTick;
@@ -209,7 +212,7 @@ library Epoch {
         if (upperTick > maxTick) revert Errors.InvalidRange(upperTick, maxTick);
     }
 
-    function validateEpochNotSettled(Data storage self) internal view {
+    function validateEpochNotExpired(Data storage self) internal view {
         if (self.settled || block.timestamp >= self.endTime) {
             revert Errors.ExpiredEpoch();
         }
@@ -237,6 +240,46 @@ library Epoch {
         if (self.settled) {
             revert Errors.EpochSettled();
         }
+    }
+
+    /**
+     * @notice Gets the reuired collateral amount to cover the loan amounts
+     *
+     * @param self Epoch storage
+     * @param ownedGasAmount Amount of gas owned by the trader
+     * @param ownedEthAmount Amount of eth owned by the trader
+     * @param loanGasAmount Amount of gas loaned by the trader
+     * @param loanEthAmount Amount of eth loaned by the trader
+     */
+    function getCollateralRequirementsForTrade(
+        Data storage self,
+        uint256 ownedGasAmount,
+        uint256 ownedEthAmount,
+        uint256 loanGasAmount,
+        uint256 loanEthAmount
+    ) internal view returns (uint256 requiredCollateral) {
+        uint256 requiredCollateralAtMinPrice = getCollateralRequiredAtPrice(
+            self,
+            ownedGasAmount,
+            ownedEthAmount,
+            loanGasAmount,
+            loanEthAmount,
+            self.minPriceD18
+        );
+
+        uint256 requiredCollateralAtMaxPrice = getCollateralRequiredAtPrice(
+            self,
+            ownedGasAmount,
+            ownedEthAmount,
+            loanGasAmount,
+            loanEthAmount,
+            self.maxPriceD18
+        );
+
+        requiredCollateral = requiredCollateralAtMinPrice >
+            requiredCollateralAtMaxPrice
+            ? requiredCollateralAtMinPrice
+            : requiredCollateralAtMaxPrice;
     }
 
     /**
@@ -279,6 +322,59 @@ library Epoch {
         );
     }
 
+    function getCollateralRequiredAtPrice(
+        Data storage self,
+        uint256 ownedGasAmount,
+        uint256 ownedEthAmount,
+        uint256 loanGasAmount,
+        uint256 loanEthAmount,
+        uint256 price
+    ) internal view returns (uint256 requiredCollateral) {
+        uint256 gasAmount;
+        uint256 ethAmount;
+        uint256 gasDebt;
+        uint256 ethDebt;
+
+        // Consolidate to only trade what is needed
+        if (ownedGasAmount > loanGasAmount) {
+            gasAmount = ownedGasAmount - loanGasAmount;
+            gasDebt = 0;
+        } else {
+            gasAmount = 0;
+            gasDebt = loanGasAmount - ownedGasAmount;
+        }
+
+        if (ownedEthAmount > loanEthAmount) {
+            ethAmount = ownedEthAmount - loanEthAmount;
+            ethDebt = 0;
+        } else {
+            ethAmount = 0;
+            ethDebt = loanEthAmount - ownedEthAmount;
+        }
+
+        // Get total debt
+        uint256 adjustedPrice = self.settled
+            ? price.mulDecimal((DecimalMath.UNIT + self.feeRateD18))
+            : price;
+        uint256 totalDebtValue = Quote.quoteGasToEthWithPrice(
+            gasDebt,
+            adjustedPrice
+        ) + ethDebt;
+
+        // Get total credit
+        adjustedPrice = self.settled
+            ? price.mulDecimal((DecimalMath.UNIT - self.feeRateD18))
+            : price;
+        uint256 totalOwnedValue = Quote.quoteGasToEthWithPrice(
+            gasAmount,
+            adjustedPrice
+        ) + ethAmount;
+
+        requiredCollateral = totalDebtValue > totalOwnedValue
+            ? totalDebtValue - totalOwnedValue
+            : 0;
+    }
+
     function validateOwnedAndDebtAtPrice(
         Data storage self,
         uint256 collateralAmount,
@@ -288,27 +384,18 @@ library Epoch {
         uint256 loanEthAmount,
         uint256 price
     ) internal view {
-        // Get total debt
-        uint256 adjustedPrice = self.settled
-            ? price.mulDecimal((DecimalMath.UNIT + self.feeRateD18))
-            : price;
-        uint256 totalDebtValue = Quote.quoteGasToEthWithPrice(
-            loanGasAmount,
-            adjustedPrice
-        ) + loanEthAmount;
-
-        // Get total credit
-        adjustedPrice = self.settled
-            ? price.mulDecimal((DecimalMath.UNIT - self.feeRateD18))
-            : price;
-        uint256 totalOwnedValue = Quote.quoteGasToEthWithPrice(
+        uint256 requiredCollateral = getCollateralRequiredAtPrice(
+            self,
             ownedGasAmount,
-            adjustedPrice
-        ) + ownedEthAmount;
+            ownedEthAmount,
+            loanGasAmount,
+            loanEthAmount,
+            price
+        );
 
-        if (totalDebtValue > totalOwnedValue + collateralAmount) {
+        if (requiredCollateral > collateralAmount) {
             revert Errors.InsufficientCollateral(
-                totalDebtValue - totalOwnedValue,
+                requiredCollateral,
                 collateralAmount
             );
         }

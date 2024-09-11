@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.25 <0.9.0;
 
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Epoch} from "../storage/Epoch.sol";
@@ -9,6 +10,7 @@ import {IUMASettlementModule} from "../interfaces/IUMASettlementModule.sol";
 import {OptimisticOracleV3Interface} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 
 contract UMASettlementModule is IUMASettlementModule, ReentrancyGuard {
+    using SafeERC20 for IERC20;
     using Epoch for Epoch.Data;
 
     function submitSettlementPrice(
@@ -18,21 +20,13 @@ contract UMASettlementModule is IUMASettlementModule, ReentrancyGuard {
         Market.Data storage market = Market.load();
         Epoch.Data storage epoch = Epoch.loadValid(epochId);
 
-        require(
-            block.timestamp > epoch.endTime,
-            "Market activity is still allowed"
-        );
-        require(
-            msg.sender == market.owner,
-            "Only owner can call this function"
-        );
-        require(!epoch.settled, "Market already settled");
+        validateSubmission(epoch, market, msg.sender);
 
         IERC20 bondCurrency = IERC20(epoch.params.bondCurrency);
         OptimisticOracleV3Interface optimisticOracleV3 = market
             .optimisticOracleV3;
 
-        bondCurrency.transferFrom(
+        bondCurrency.safeTransferFrom(
             msg.sender,
             address(this),
             epoch.params.bondAmount
@@ -84,20 +78,10 @@ contract UMASettlementModule is IUMASettlementModule, ReentrancyGuard {
         bool assertedTruthfully
     ) external {
         Market.Data storage market = Market.load();
-
         uint256 epochId = market.epochIdByAssertionId[assertionId];
         Epoch.Data storage epoch = Epoch.load(epochId);
 
-        require(assertionId == epoch.assertionId, "Invalid assertionId");
-        require(
-            block.timestamp > epoch.endTime,
-            "Market activity is still allowed"
-        );
-        require(
-            msg.sender == address(market.optimisticOracleV3),
-            "Invalid caller"
-        );
-        require(!epoch.settled, "Market already settled");
+        validateCallback(epoch, market, msg.sender, assertionId);
 
         Epoch.Settlement storage settlement = epoch.settlement;
 
@@ -114,22 +98,48 @@ contract UMASettlementModule is IUMASettlementModule, ReentrancyGuard {
 
     function assertionDisputedCallback(bytes32 assertionId) external {
         Market.Data storage market = Market.load();
-
         uint256 epochId = market.epochIdByAssertionId[assertionId];
         Epoch.Data storage epoch = Epoch.load(epochId);
 
-        require(
-            block.timestamp > epoch.endTime,
-            "Market activity is still allowed"
-        );
-        require(
-            msg.sender == address(market.optimisticOracleV3),
-            "Invalid caller"
-        );
+        validateCallback(epoch, market, msg.sender, assertionId);
 
         Epoch.Settlement storage settlement = epoch.settlement;
         settlement.disputed = true;
 
         emit SettlementDisputed(epochId, block.timestamp);
+    }
+
+    function validateSubmission(
+        Epoch.Data storage epoch, 
+        Market.Data storage market, 
+        address caller
+    ) internal view {
+        require(
+            block.timestamp > epoch.endTime,
+            "Market epoch activity is still allowed"
+        );
+        require(!epoch.settled, "Market epoch already settled");
+        require(
+            caller == market.owner,
+            "Only owner can call this function"
+        );
+    }
+
+    function validateCallback(
+        Epoch.Data storage epoch, 
+        Market.Data storage market, 
+        address caller,
+        bytes32 assertionId
+    ) internal view {
+        require(
+            block.timestamp > epoch.endTime,
+            "Market epoch activity is still allowed"
+        );
+        require(!epoch.settled, "Market epoch already settled");
+        require(
+            caller == address(market.optimisticOracleV3),
+            "Invalid caller"
+        );
+        require(assertionId == epoch.assertionId, "Invalid assertionId");
     }
 }

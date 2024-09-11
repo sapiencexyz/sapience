@@ -60,15 +60,16 @@ export interface EpochParams {
   priceUnit: string;
 }
 
-export interface MarketUpdated {
+export interface MarketCreatedUpdatedEventLog {
   owner: string;
   uniswapPositionManager: string;
+  collateralAsset?: string;
   uniswapSwapRouter: string;
   optimisticOracleV3: string;
   epochParams: EpochParams;
 }
 
-export interface EpochCreated {
+export interface EpochCreatedEventLog {
   epochId: string;
   startTime: string;
   endTime: string;

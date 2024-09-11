@@ -1,18 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import "../interfaces/external/INonfungiblePositionManager.sol";
 import "../interfaces/external/ISwapRouter.sol";
+import "../interfaces/external/IUniswapV3Quoter.sol";
 import "./Errors.sol";
 import "../interfaces/IFoilStructs.sol";
 
 library Market {
+    using SafeERC20 for IERC20;
+
     struct Data {
         address owner;
+        address pendingOwner;
         IERC20 collateralAsset;
         INonfungiblePositionManager uniswapPositionManager;
         ISwapRouter uniswapSwapRouter;
+        IUniswapV3Quoter uniswapQuoter;
         OptimisticOracleV3Interface optimisticOracleV3;
         IFoilStructs.EpochParams epochParams;
         uint256 lastEpochId; // index of the last epoch
@@ -32,10 +38,12 @@ library Market {
         address collateralAsset,
         address uniswapPositionManager,
         address uniswapSwapRouter,
+        address uniswapQuoter,
         address optimisticOracleV3,
         IFoilStructs.EpochParams memory epochParams
     ) internal returns (Data storage market) {
         validateTickSpacing(epochParams);
+        require(epochParams.assertionLiveness >= 6 hours, "assertionLiveness must be at least six hours");
 
         market = load();
 
@@ -50,6 +58,7 @@ library Market {
             uniswapPositionManager
         );
         market.uniswapSwapRouter = ISwapRouter(uniswapSwapRouter);
+        market.uniswapQuoter = IUniswapV3Quoter(uniswapQuoter);
         market.optimisticOracleV3 = OptimisticOracleV3Interface(
             optimisticOracleV3
         );
@@ -57,21 +66,22 @@ library Market {
     }
 
     function updateValid(
-        address owner,
         address uniswapPositionManager,
         address uniswapSwapRouter,
+        address uniswapQuoter,
         address optimisticOracleV3,
         IFoilStructs.EpochParams memory epochParams
     ) internal returns (Data storage market) {
         validateTickSpacing(epochParams);
+        require(epochParams.assertionLiveness >= 6 hours, "assertionLiveness must be at least six hours");
 
         market = load();
 
-        market.owner = owner;
         market.uniswapPositionManager = INonfungiblePositionManager(
             uniswapPositionManager
         );
         market.uniswapSwapRouter = ISwapRouter(uniswapSwapRouter);
+        market.uniswapQuoter = IUniswapV3Quoter(uniswapQuoter);
         market.optimisticOracleV3 = OptimisticOracleV3Interface(
             optimisticOracleV3
         );
@@ -126,6 +136,24 @@ library Market {
         address user,
         uint256 amount
     ) internal {
-        self.collateralAsset.transfer(user, amount);
+        self.collateralAsset.safeTransfer(user, amount);
+    }
+    
+    function transferOwnership(Data storage self, address newOwner) internal {
+        self.pendingOwner = newOwner;
+    }
+
+    function acceptOwnership(Data storage self) internal {
+        address sender = msg.sender;
+        if (self.pendingOwner != sender) {
+            revert Errors.OwnableUnauthorizedAccount(sender);
+        }
+        address oldOwner = self.owner;
+        self.owner = sender;
+        delete self.pendingOwner;
+    }
+
+    function pendingOwner(Data storage self) internal view returns (address) {
+        return self.pendingOwner;
     }
 }
