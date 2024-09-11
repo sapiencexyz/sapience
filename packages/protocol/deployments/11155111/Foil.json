@@ -1,5 +1,5 @@
 {
-  "address": "0x5bc6b62e156431757d3b3ce70d888e99f4fcec63",
+  "address": "0x80fe138b9f5c8a2b1b8cb140e477857c333d811e",
   "abi": [
     {
       "type": "function",
@@ -45,6 +45,11 @@
         },
         {
           "name": "uniswapSwapRouter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapQuoter",
           "type": "address",
           "internalType": "address"
         },
@@ -115,6 +120,11 @@
         },
         {
           "name": "uniswapSwapRouter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapQuoter",
           "type": "address",
           "internalType": "address"
         },
@@ -229,6 +239,12 @@
           "internalType": "address"
         },
         {
+          "name": "uniswapQuoter",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
           "name": "optimisticOracleV3",
           "type": "address",
           "indexed": false,
@@ -298,6 +314,12 @@
         },
         {
           "name": "uniswapSwapRouter",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapQuoter",
           "type": "address",
           "indexed": false,
           "internalType": "address"
@@ -1131,19 +1153,14 @@
           "internalType": "uint256"
         },
         {
-          "name": "collateralAmount",
+          "name": "size",
+          "type": "int256",
+          "internalType": "int256"
+        },
+        {
+          "name": "maxCollateral",
           "type": "uint256",
           "internalType": "uint256"
-        },
-        {
-          "name": "tokenAmount",
-          "type": "int256",
-          "internalType": "int256"
-        },
-        {
-          "name": "tokenAmountLimit",
-          "type": "int256",
-          "internalType": "int256"
         }
       ],
       "outputs": [
@@ -1165,22 +1182,65 @@
           "internalType": "uint256"
         },
         {
-          "name": "collateralAmount",
+          "name": "size",
+          "type": "int256",
+          "internalType": "int256"
+        },
+        {
+          "name": "maxCollateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "quoteCreateTraderPosition",
+      "inputs": [
+        {
+          "name": "epochId",
           "type": "uint256",
           "internalType": "uint256"
         },
         {
-          "name": "tokenAmount",
-          "type": "int256",
-          "internalType": "int256"
-        },
-        {
-          "name": "tokenAmountLimit",
+          "name": "size",
           "type": "int256",
           "internalType": "int256"
         }
       ],
-      "outputs": [],
+      "outputs": [
+        {
+          "name": "requiredCollateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "quoteModifyTraderPosition",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "size",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "requiredCollateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
       "stateMutability": "nonpayable"
     },
     {
@@ -1307,6 +1367,22 @@
     },
     {
       "type": "error",
+      "name": "CollateralLimitReached",
+      "inputs": [
+        {
+          "name": "collateralRequired",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "maxCollateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "EpochNotSettled",
       "inputs": [
         {
@@ -1333,139 +1409,6 @@
       "inputs": []
     },
     {
-      "type": "error",
-      "name": "InsufficientVEth",
-      "inputs": [
-        {
-          "name": "amount",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "vEth",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ]
-    },
-    {
-      "type": "error",
-      "name": "InsufficientVGas",
-      "inputs": [
-        {
-          "name": "amount",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "vGas",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ]
-    },
-    {
-      "type": "error",
-      "name": "OverflowUint256ToUint160",
-      "inputs": []
-    },
-    {
-      "type": "function",
-      "name": "getCollateralForLongSize",
-      "inputs": [
-        {
-          "name": "epochId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "positionSize",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "collateral",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
-      "name": "getCollateralForShortSize",
-      "inputs": [
-        {
-          "name": "epochId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "positionSize",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "collateral",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
-      "name": "getLongDeltaForCollateral",
-      "inputs": [
-        {
-          "name": "positionId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "collateral",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "modPositionSize",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
-      "name": "getLongSizeForCollateral",
-      "inputs": [
-        {
-          "name": "epochId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "collateral",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "positionSize",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
       "type": "function",
       "name": "getReferencePrice",
       "inputs": [
@@ -1478,54 +1421,6 @@
       "outputs": [
         {
           "name": "price18Digits",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
-      "name": "getShortDeltaForCollateral",
-      "inputs": [
-        {
-          "name": "positionId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "collateral",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "modPositionSize",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
-      "name": "getShortSizeForCollateral",
-      "inputs": [
-        {
-          "name": "epochId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "collateral",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "modPositionSize",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -2380,12 +2275,12 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0xbee7f8680cf7f90b397f862b5015254914d301329fc9947522fb35e94457f92c",
-  "deployTxnBlockNumber": "6639517",
-  "deployTimestamp": "1725572856",
+  "deployTxnHash": "0x2788da2cf4abe12c8979a82bfbd70b3c3984bd472d301544624482081e8e0261",
+  "deployTxnBlockNumber": "6674015",
+  "deployTimestamp": "1726085568",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
   "highlight": true,
-  "gasUsed": 513643,
-  "gasCost": "457648392"
+  "gasUsed": 471270,
+  "gasCost": "2036543359"
 }

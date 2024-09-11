@@ -1,11 +1,11 @@
 {
-  "address": "0xEd2437B477f67e71381fAb8dB271b26ABD4986cE",
+  "address": "0xA3e4a6B0cefA6c6441fAfA295D0Fb83f9e828c76",
   "abi": [
     {
       "type": "constructor",
       "inputs": [
         {
-          "name": "_finderAddress",
+          "name": "_finder",
           "type": "address",
           "internalType": "address"
         },
@@ -331,16 +331,16 @@
     }
   ],
   "constructorArgs": [
-    "0x20b32B0b1f7946Dc5335bf9Fe409D33FaB4f7387",
-    "0x4b6Ad469Fc85Bf3917E288e1CE973C0F3382dC71"
+    "0x781Afa9e4e0Aae32c2B52f7471B897C28a1b72D0",
+    "0xCd8aF2f698547f9666B50dB0668735f47cb5dCEB"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0xb37f69b3204268b02b9e92f2eed84e405db9eae7209af57457defe34241f8ec0",
+  "deployTxnHash": "0x84c4481aab1472d332470916dfedec0314fdc0c3e711cbfa51a1a67533836d00",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1722024171",
-  "sourceName": "node_modules/@uma/core/contracts/data-verification-mechanism/test/MockOracleAncillary.sol",
-  "contractName": "MockOracleAncillary",
+  "deployTimestamp": "1725839516",
+  "sourceName": "src/UMA/src/MockOracleAncillaryOverride.sol",
+  "contractName": "MockOracleAncillaryOverride",
   "deployedOn": "deploy.MockOracleAncillary",
-  "gasUsed": 1060225,
-  "gasCost": "1588404202"
+  "gasUsed": 1060208,
+  "gasCost": "1588404337"
 }

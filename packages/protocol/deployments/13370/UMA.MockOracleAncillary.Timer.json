@@ -1,5 +1,5 @@
 {
-  "address": "0x4b6Ad469Fc85Bf3917E288e1CE973C0F3382dC71",
+  "address": "0xCd8aF2f698547f9666B50dB0668735f47cb5dCEB",
   "abi": [
     {
       "type": "function",
@@ -30,12 +30,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x29b7ae3d95bb5bbf8d49183656651fd97d2f53d56735b7e2fd7d063f6346bf55",
+  "deployTxnHash": "0x99dfb5f3c29b27b8a1b5394922c0b63a0b8d99c33f32afc6a041f62be0de63b5",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1722024170",
-  "sourceName": "src/UMA/Timer.sol",
-  "contractName": "Timer",
+  "deployTimestamp": "1725839514",
+  "sourceName": "src/UMA/src/TimerOverride.sol",
+  "contractName": "TimerOverride",
   "deployedOn": "deploy.Timer",
-  "gasUsed": 112718,
-  "gasCost": "1877375775"
+  "gasUsed": 112726,
+  "gasCost": "1877375909"
 }
