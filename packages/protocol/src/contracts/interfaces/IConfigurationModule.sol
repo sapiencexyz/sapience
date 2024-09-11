@@ -9,6 +9,7 @@ interface IConfigurationModule {
         address collateralAsset,
         address uniswapPositionManager,
         address uniswapSwapRouter,
+        address uniswapQuoter,
         address optimisticOracleV3,
         IFoilStructs.EpochParams epochParams
     );
@@ -17,6 +18,7 @@ interface IConfigurationModule {
         address owner,
         address uniswapPositionManager,
         address uniswapSwapRouter,
+        address uniswapQuoter,
         address optimisticOracleV3,
         IFoilStructs.EpochParams epochParams
     );
@@ -28,11 +30,21 @@ interface IConfigurationModule {
         uint160 startingSqrtPriceX96
     );
 
+    /**
+     * @notice Initializes a market
+     * @param owner Address of a market owner, which can update the configurations and submit a settlement price
+     * @param collateralAsset Address of the collateral used by the market. This cannot be a rebase token.
+     * @param uniswapPositionManager Address of the Uniswap V3 position manager
+     * @param uniswapSwapRouter Address of the Uniswap V3 swap router
+     * @param optimisticOracleV3 Address of UMA's OOV3
+     * @param epochParams Parameters used when new epochs are created
+     */
     function initializeMarket(
         address owner,
         address collateralAsset,
         address uniswapPositionManager,
         address uniswapSwapRouter,
+        address uniswapQuoter,
         address optimisticOracleV3,
         IFoilStructs.EpochParams memory epochParams
     ) external;
@@ -41,6 +53,7 @@ interface IConfigurationModule {
         address owner,
         address uniswapPositionManager,
         address uniswapSwapRouter,
+        address uniswapQuoter,
         address optimisticOracleV3,
         IFoilStructs.EpochParams memory epochParams
     ) external;

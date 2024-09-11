@@ -1,5 +1,5 @@
 {
-  "address": "0xfdC0cd3137FE2D67D95fb2E8BF92bc1720333Baa",
+  "address": "0xD63E2cE776EbAA64D6b1D976f5C7cD19c27226A4",
   "abi": [
     {
       "type": "function",
@@ -16,7 +16,7 @@
           "internalType": "int256"
         },
         {
-          "name": "collateralDeltaLimit",
+          "name": "maxCollateral",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -28,68 +28,6 @@
           "internalType": "uint256"
         }
       ],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
-      "name": "createTraderPosition",
-      "inputs": [
-        {
-          "name": "epochId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "collateralAmount",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "tokenAmount",
-          "type": "int256",
-          "internalType": "int256"
-        },
-        {
-          "name": "tokenAmountLimit",
-          "type": "int256",
-          "internalType": "int256"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "positionId",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
-      "name": "modifyTraderPosition",
-      "inputs": [
-        {
-          "name": "positionId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "collateralAmount",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "tokenAmount",
-          "type": "int256",
-          "internalType": "int256"
-        },
-        {
-          "name": "tokenAmountLimit",
-          "type": "int256",
-          "internalType": "int256"
-        }
-      ],
-      "outputs": [],
       "stateMutability": "nonpayable"
     },
     {
@@ -107,7 +45,7 @@
           "internalType": "int256"
         },
         {
-          "name": "collateralDeltaLimit",
+          "name": "maxCollateral",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -132,12 +70,12 @@
       ],
       "outputs": [
         {
-          "name": "collateralDelta",
-          "type": "int256",
-          "internalType": "int256"
+          "name": "requiredCollateral",
+          "type": "uint256",
+          "internalType": "uint256"
         }
       ],
-      "stateMutability": "view"
+      "stateMutability": "nonpayable"
     },
     {
       "type": "function",
@@ -156,12 +94,12 @@
       ],
       "outputs": [
         {
-          "name": "collateralDelta",
-          "type": "int256",
-          "internalType": "int256"
+          "name": "requiredCollateral",
+          "type": "uint256",
+          "internalType": "uint256"
         }
       ],
-      "stateMutability": "view"
+      "stateMutability": "nonpayable"
     },
     {
       "type": "event",
@@ -312,6 +250,22 @@
     },
     {
       "type": "error",
+      "name": "CollateralLimitReached",
+      "inputs": [
+        {
+          "name": "collateralRequired",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "maxCollateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "EpochNotSettled",
       "inputs": [
         {
@@ -348,38 +302,6 @@
         },
         {
           "name": "collateralAvailable",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ]
-    },
-    {
-      "type": "error",
-      "name": "InsufficientVEth",
-      "inputs": [
-        {
-          "name": "amount",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "vEth",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ]
-    },
-    {
-      "type": "error",
-      "name": "InsufficientVGas",
-      "inputs": [
-        {
-          "name": "amount",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "vGas",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -466,11 +388,6 @@
     },
     {
       "type": "error",
-      "name": "OverflowUint256ToUint160",
-      "inputs": []
-    },
-    {
-      "type": "error",
       "name": "PositionAlreadyCreated",
       "inputs": []
     },
@@ -493,12 +410,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x9d919ca2f63f1131794bc25ab3eed99685b290e3d325602b8301e281ae990531",
+  "deployTxnHash": "0xf110461b3d3ba16f3d042a1ef2dddd03e9d4115e1f5ca80cd76cba8b0a1d8b2c",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1725656543",
+  "deployTimestamp": "1726085629",
   "sourceName": "src/contracts/modules/TradeModule.sol",
   "contractName": "TradeModule",
   "deployedOn": "deploy.TradeModule",
-  "gasUsed": 2154250,
-  "gasCost": "1000337295"
+  "gasUsed": 1824510,
+  "gasCost": "1000142383"
 }
