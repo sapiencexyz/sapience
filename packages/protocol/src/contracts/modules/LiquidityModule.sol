@@ -29,6 +29,7 @@ contract LiquidityModule is ReentrancyGuard, ILiquidityModule {
     {
         id = ERC721EnumerableStorage.totalSupply() + 1;
         Position.Data storage position = Position.createValid(id);
+        ERC721Storage._checkOnERC721Received(address(this), msg.sender, id, "");
         ERC721Storage._mint(msg.sender, id);
 
         Epoch.Data storage epoch = Epoch.loadValid(params.epochId);
@@ -98,7 +99,7 @@ contract LiquidityModule is ReentrancyGuard, ILiquidityModule {
         Position.Data storage position = Position.loadValid(params.positionId);
         Epoch.Data storage epoch = Epoch.loadValid(position.epochId);
 
-        epoch.validateEpochNotSettled();
+        epoch.validateEpochNotExpired();
         position.preValidateLp();
         (
             stack.previousAmount0,
@@ -171,7 +172,7 @@ contract LiquidityModule is ReentrancyGuard, ILiquidityModule {
         Position.Data storage position = Position.loadValid(params.positionId);
         Epoch.Data storage epoch = Epoch.loadValid(position.epochId);
 
-        epoch.validateEpochNotSettled();
+        epoch.validateEpochNotExpired();
         position.preValidateLp();
 
         (
@@ -330,6 +331,7 @@ contract LiquidityModule is ReentrancyGuard, ILiquidityModule {
         Position.Data storage position
     )
         internal
+        nonReentrant
         returns (
             uint256 collectedAmount0,
             uint256 collectedAmount1,

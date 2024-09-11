@@ -28,6 +28,7 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuard {
         address collateralAsset,
         address uniswapPositionManager,
         address uniswapSwapRouter,
+        address uniswapQuoter,
         address optimisticOracleV3,
         IFoilStructs.EpochParams memory epochParams
     ) external override {
@@ -36,25 +37,43 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuard {
             collateralAsset,
             uniswapPositionManager,
             uniswapSwapRouter,
+            uniswapQuoter,
             optimisticOracleV3,
             epochParams
         );
-        emit MarketInitialized(owner, collateralAsset, uniswapPositionManager, uniswapSwapRouter, optimisticOracleV3, epochParams);
+        emit MarketInitialized(
+            owner,
+            collateralAsset,
+            uniswapPositionManager,
+            uniswapSwapRouter,
+            uniswapQuoter,
+            optimisticOracleV3,
+            epochParams
+        );
     }
 
     function updateMarket(
         address uniswapPositionManager,
         address uniswapSwapRouter,
+        address uniswapQuoter,
         address optimisticOracleV3,
         IFoilStructs.EpochParams memory epochParams
     ) external override onlyOwner {
         Market.updateValid(
             uniswapPositionManager,
             uniswapSwapRouter,
+            uniswapQuoter,
             optimisticOracleV3,
             epochParams
         );
-        emit MarketUpdated(uniswapPositionManager, uniswapSwapRouter, optimisticOracleV3, epochParams);
+
+        emit MarketUpdated(
+            uniswapPositionManager,
+            uniswapSwapRouter,
+            uniswapQuoter,
+            optimisticOracleV3,
+            epochParams
+        );
     }
 
     function createEpoch(

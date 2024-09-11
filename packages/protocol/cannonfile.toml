@@ -1,5 +1,5 @@
 name="foil"
-version="0.10"
+version="0.11"
 
 [var.settings]
 owner = "0xEB045D78d273107348b0300c01D29B7552D622ab"
@@ -88,6 +88,7 @@ args=[
   "<%= imports.CollateralAsset.contracts.Token.address %>",
   "<%= imports.Uniswap.contracts.NonfungiblePositionManager.address %>",
   "<%= imports.Uniswap.contracts.SwapRouter.address %>",
+  "<%= imports.Uniswap.contracts.Quoter.address %>",
   "<%= imports.UMA.contracts.OptimisticOracleV3.address %>",
   { baseAssetMinPriceTick = "<%= settings.baseAssetMinPriceTick %>", baseAssetMaxPriceTick = "<%= settings.baseAssetMaxPriceTick %>", feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.BondCurrency.contracts.Token.address %>", bondAmount= "<%= settings.bondAmount %>", priceUnit= "<%= settings.priceUnit %>" }
 ]

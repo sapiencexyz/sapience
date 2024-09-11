@@ -1,5 +1,5 @@
 {
-  "address": "0xAe60B56FaCA3118A07BC4b3D449f7aDc6b5c9864",
+  "address": "0xe555EA8656f5C8b31D4a0848D8525ca1e99294Db",
   "abi": [
     {
       "type": "function",
@@ -45,6 +45,11 @@
         },
         {
           "name": "uniswapSwapRouter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapQuoter",
           "type": "address",
           "internalType": "address"
         },
@@ -115,6 +120,11 @@
         },
         {
           "name": "uniswapSwapRouter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapQuoter",
           "type": "address",
           "internalType": "address"
         },
@@ -229,6 +239,12 @@
           "internalType": "address"
         },
         {
+          "name": "uniswapQuoter",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
           "name": "optimisticOracleV3",
           "type": "address",
           "indexed": false,
@@ -298,6 +314,12 @@
         },
         {
           "name": "uniswapSwapRouter",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "uniswapQuoter",
           "type": "address",
           "indexed": false,
           "internalType": "address"
@@ -408,12 +430,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x87f3229ae3e43e8c2756aca3822f3bb3586c800a4a54d38a82a27d88dd5bfcfd",
-  "deployTxnBlockNumber": "6639516",
-  "deployTimestamp": "1725572832",
+  "deployTxnHash": "0x9bb93a94f8d71d9ed0924831053fd52ff9e3a48ad8f3878e70cbbef607e43609",
+  "deployTxnBlockNumber": "6674014",
+  "deployTimestamp": "1726085556",
   "sourceName": "src/contracts/modules/ConfigurationModule.sol",
   "contractName": "ConfigurationModule",
   "deployedOn": "deploy.ConfigurationModule",
-  "gasUsed": 2115046,
-  "gasCost": "442558019"
+  "gasUsed": 2144206,
+  "gasCost": "2111966327"
 }

@@ -10,6 +10,9 @@ import {TestTrade} from "../helpers/TestTrade.sol";
 import {TestEpoch} from "../helpers/TestEpoch.sol";
 import {TestUser} from "../helpers/TestUser.sol";
 import {DecimalPrice} from "../../src/contracts/libraries/DecimalPrice.sol";
+import {SafeCastI256, SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
+import {Position} from "../../src/contracts/storage/Position.sol";
+
 import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
@@ -18,6 +21,21 @@ import "forge-std/console2.sol";
 contract TradePositionBasic is TestTrade {
     using Cannon for Vm;
     using DecimalMath for uint256;
+    using DecimalMath for int256;
+    using SafeCastI256 for int256;
+    using SafeCastU256 for uint256;
+
+    // helper struct
+    struct StateData {
+        uint256 userCollateral;
+        uint256 foilCollateral;
+        uint256 borrowedVEth;
+        uint256 borrowedVGas;
+        uint256 vEthAmount;
+        uint256 vGasAmount;
+        int256 positionSize;
+        uint256 depositedCollateralAmount;
+    }
 
     IFoil foil;
     IMintableToken collateralAsset;
@@ -30,16 +48,29 @@ contract TradePositionBasic is TestTrade {
     address tokenB;
     IUniswapV3Pool uniCastedPool;
     uint256 feeRate;
-    int24 LOWERTICK = 12200;
-    int24 UPPERTICK = 12400;
+    int24 EPOCH_LOWER_TICK = 16000; //5 (4.952636224061651)
+    int24 EPOCH_UPPER_TICK = 29800; //20 (19.68488357413147)
+    int24 LP_LOWER_TICK = 23000; // (9.973035566235849)
+    int24 LP_UPPER_TICK = 23200; // (10.174494074987374)
+    uint256 COLLATERAL_FOR_ORDERS = 10 ether;
+    uint160 INITIAL_PRICE_SQRT = 250541448375047931186413801569; // 10 (9999999999999999999)
+    uint256 INITIAL_PRICE_D18 = 10 ether;
+    uint256 INITIAL_PRICE_PLUS_FEE_D18 = 10.1 ether;
+    uint256 INITIAL_PRICE_MINUS_FEE_D18 = 9.9 ether;
+    uint256 PLUS_FEE_MULTIPLIER_D18 = 1.01 ether;
+    uint256 MINUS_FEE_MULTIPLIER_D18 = 0.99 ether;
 
     function setUp() public {
         collateralAsset = IMintableToken(
             vm.getAddress("CollateralAsset.Token")
         );
 
-        uint160 startingSqrtPriceX96 = 146497135921788803112962621440; // 3.419
-        (foil, ) = createEpoch(5200, 28200, startingSqrtPriceX96);
+        uint160 startingSqrtPriceX96 = INITIAL_PRICE_SQRT;
+        (foil, ) = createEpoch(
+            EPOCH_LOWER_TICK,
+            EPOCH_UPPER_TICK,
+            startingSqrtPriceX96
+        );
 
         lp1 = TestUser.createUser("LP1", 10_000_000 ether);
         trader1 = TestUser.createUser("Trader1", 10_000_000 ether);
@@ -48,618 +79,634 @@ contract TradePositionBasic is TestTrade {
 
         uniCastedPool = IUniswapV3Pool(pool);
         feeRate = uint256(uniCastedPool.fee()) * 1e12;
-    }
 
-    function test_tradeWildJake_Skip() public {
-        uint256 positionId;
-        vm.startPrank(lp1);
-
-        addLiquidity(foil, pool, epochId, 0.004 ether, 5200, 28200);
-        addLiquidity(foil, pool, epochId, 0.003 ether, 5200, 28200);
-        vm.stopPrank();
-
-        vm.startPrank(trader1);
-        // Set position size
-        uint256 liq = IUniswapV3Pool(pool).liquidity();
-        liq;
-
-        positionId = foil.createTraderPosition(
-            // Create Long position (with enough collateral)
-            epochId,
-            4934123598537506,
-            438725000000000,
-            434337750000000
-        );
-
-        console2.log(" >>> Position", positionId);
-        logPositionAndAccount(foil, positionId);
-        vm.stopPrank();
-    }
-
-    function test_tradeLong() public {
-        uint256 referencePrice;
-        uint256 positionId;
-        uint256 collateralForOrder = 10 ether;
-        int256 positionSize;
-        uint256 tokens;
-        uint256 fee;
-        uint256 accumulatedFee;
-
-        StateData memory expectedStateData;
-        StateData memory currentStateData;
-
+        // Add liquidity
         vm.startPrank(lp1);
         addLiquidity(
             foil,
             pool,
             epochId,
-            collateralForOrder * 100_000,
-            LOWERTICK,
-            UPPERTICK
+            COLLATERAL_FOR_ORDERS * 100_000,
+            LP_LOWER_TICK,
+            LP_UPPER_TICK
         ); // enough to keep price stable (no slippage)
         vm.stopPrank();
+    }
+
+    function test_fuzz_create_Long(uint256 position) public {
+        vm.assume(position > 1000);
+        vm.assume(position < 10 ether);
+        StateData memory latestStateData;
+        StateData memory expectedStateData;
+        int256 positionSize = position.toInt();
+
+        fillCollateralStateData(trader1, latestStateData);
 
         vm.startPrank(trader1);
-
-        // Set position size
-        positionSize = int256(collateralForOrder / 100);
-
-        fillCollateralStateData(
-            trader1,
-            foil,
-            collateralAsset,
-            currentStateData
+        // quote and open a long
+        uint256 requiredCollateral = foil.quoteCreateTraderPosition(
+            epochId,
+            positionSize
         );
+        // Send more collateral than required, just checking the position can be created/modified
+        uint256 positionId = foil.createTraderPosition(
+            epochId,
+            positionSize,
+            requiredCollateral * 2
+        );
+        vm.stopPrank();
 
-        referencePrice = foil.getReferencePrice(epochId);
-        tokens = uint256(positionSize).mulDecimal(referencePrice);
-        fee = tokens.mulDecimal(feeRate);
-        accumulatedFee += fee;
-
+        // Set expected state
         expectedStateData.userCollateral =
-            currentStateData.userCollateral -
-            collateralForOrder;
+            latestStateData.userCollateral -
+            requiredCollateral;
         expectedStateData.foilCollateral =
-            currentStateData.foilCollateral +
-            collateralForOrder;
-        expectedStateData.depositedCollateralAmount = collateralForOrder;
+            latestStateData.foilCollateral +
+            requiredCollateral;
+        expectedStateData.depositedCollateralAmount = requiredCollateral;
         expectedStateData.positionSize = positionSize;
         expectedStateData.vEthAmount = 0;
         expectedStateData.vGasAmount = uint256(positionSize);
-        expectedStateData.borrowedVEth = tokens + fee;
+        expectedStateData.borrowedVEth = uint256(positionSize).mulDecimal(
+            INITIAL_PRICE_PLUS_FEE_D18
+        );
         expectedStateData.borrowedVGas = 0;
 
-        // Create Long position (with enough collateral)
-        positionId = foil.createTraderPosition(
-            epochId,
-            collateralForOrder,
-            positionSize,
-            0
-        );
-
-        currentStateData = assertPosition(
+        // Check position makes sense
+        latestStateData = assertPosition(
             trader1,
-            foil,
             positionId,
-            collateralAsset,
             expectedStateData,
             "Create Long"
         );
+    }
 
-        // Modify Long position (increase it)
-        referencePrice = foil.getReferencePrice(epochId);
-        tokens = uint256(positionSize).mulDecimal(referencePrice);
-        fee = tokens.mulDecimal(feeRate);
-        accumulatedFee += fee;
+    function test_fuzz_create_Short(uint256 position) public {
+        vm.assume(position > 1000);
+        vm.assume(position < 10 ether);
 
+        StateData memory latestStateData;
+        StateData memory expectedStateData;
+        uint256 positionSizeMod = position;
+        int256 positionSize = position.toInt() * -1;
+
+        fillCollateralStateData(trader1, latestStateData);
+
+        vm.startPrank(trader1);
+        // quote and open a long
+        uint256 requiredCollateral = foil.quoteCreateTraderPosition(
+            epochId,
+            positionSize
+        );
+        // Send more collateral than required, just checking the position can be created/modified
+        uint256 positionId = foil.createTraderPosition(
+            epochId,
+            positionSize,
+            requiredCollateral * 2
+        );
+        vm.stopPrank();
+
+        // Set expected state
         expectedStateData.userCollateral =
-            currentStateData.userCollateral -
-            collateralForOrder;
+            latestStateData.userCollateral -
+            requiredCollateral;
         expectedStateData.foilCollateral =
-            currentStateData.foilCollateral +
-            collateralForOrder;
-        expectedStateData.depositedCollateralAmount = collateralForOrder * 2;
-        expectedStateData.positionSize = positionSize * 2;
-        expectedStateData.vEthAmount = 0;
-        expectedStateData.vGasAmount = uint256(positionSize) * 2;
-        expectedStateData.borrowedVEth =
-            currentStateData.borrowedVEth +
-            tokens +
-            fee;
-        expectedStateData.borrowedVGas = 0;
+            latestStateData.foilCollateral +
+            requiredCollateral;
+        expectedStateData.depositedCollateralAmount = requiredCollateral;
+        expectedStateData.positionSize = positionSize;
+        expectedStateData.vEthAmount = positionSizeMod.mulDecimal(
+            INITIAL_PRICE_MINUS_FEE_D18
+        );
+        expectedStateData.borrowedVGas = positionSizeMod;
 
+        // Check position makes sense
+        latestStateData = assertPosition(
+            trader1,
+            positionId,
+            expectedStateData,
+            "Create Short"
+        );
+    }
+
+    function test_fuzz_modify_Long2Long(
+        uint256 startPosition,
+        uint256 endPosition
+    ) public {
+        vm.assume(startPosition > 1000);
+        vm.assume(endPosition > 1000);
+        vm.assume(startPosition < 10 ether);
+        vm.assume(endPosition < 10 ether);
+        vm.assume(startPosition < endPosition || startPosition > endPosition);
+
+        StateData memory latestStateData;
+        StateData memory expectedStateData;
+        int256 initialPositionSize = startPosition.toInt();
+        int256 positionSize = endPosition.toInt();
+
+        int256 deltaPositionSize = positionSize - initialPositionSize;
+        uint256 directionPrice = deltaPositionSize > 0
+            ? INITIAL_PRICE_PLUS_FEE_D18
+            : INITIAL_PRICE_MINUS_FEE_D18;
+        uint256 positionId;
+
+        vm.startPrank(trader1);
+        positionId = addPreTrade(foil, epochId, initialPositionSize);
+        fillCollateralStateData(trader1, latestStateData);
+        fillPositionState(positionId, latestStateData);
+
+        // quote and open a long
+        uint256 requiredCollateral = foil.quoteModifyTraderPosition(
+            positionId,
+            positionSize
+        );
+
+        // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
             positionId,
-            2 * collateralForOrder,
-            2 * positionSize,
-            0
+            positionSize,
+            requiredCollateral * 2
         );
+        vm.stopPrank();
 
-        currentStateData = assertPosition(
-            trader1,
-            foil,
-            positionId,
-            collateralAsset,
-            expectedStateData,
-            "Increase Long"
-        );
+        int256 deltaCollateral = requiredCollateral.toInt() -
+            latestStateData.depositedCollateralAmount.toInt();
 
-        // Modify Long position (decrease it)
-        referencePrice = foil.getReferencePrice(epochId);
-        tokens = uint256(positionSize).mulDecimal(referencePrice);
-        fee = tokens.mulDecimal(feeRate);
-        accumulatedFee += fee;
-
-        expectedStateData.userCollateral = currentStateData.userCollateral;
-        expectedStateData.foilCollateral = currentStateData.foilCollateral;
-        expectedStateData.depositedCollateralAmount = currentStateData
-            .depositedCollateralAmount;
+        // Set expected state
+        expectedStateData.userCollateral = (latestStateData
+            .userCollateral
+            .toInt() - deltaCollateral).toUint();
+        expectedStateData.foilCollateral = (latestStateData
+            .foilCollateral
+            .toInt() + deltaCollateral).toUint();
+        expectedStateData.depositedCollateralAmount = requiredCollateral;
         expectedStateData.positionSize = positionSize;
         expectedStateData.vEthAmount = 0;
         expectedStateData.vGasAmount = uint256(positionSize);
-        expectedStateData.borrowedVEth =
-            currentStateData.borrowedVEth -
-            tokens +
-            fee; // discounting here because we are charging the fee on the vETH we get back
+        expectedStateData.borrowedVEth = (latestStateData.borrowedVEth.toInt() +
+            deltaPositionSize.mulDecimal(directionPrice.toInt())).toUint();
         expectedStateData.borrowedVGas = 0;
 
+        // Check position makes sense
+        latestStateData = assertPosition(
+            trader1,
+            positionId,
+            expectedStateData,
+            "Long2Long"
+        );
+    }
+
+    function test_fuzz_modify_Short2Short(
+        uint256 startPosition,
+        uint256 endPosition
+    ) public {
+        vm.assume(startPosition > 1000);
+        vm.assume(endPosition > 1000);
+        vm.assume(startPosition < 10 ether);
+        vm.assume(endPosition < 10 ether);
+        vm.assume(startPosition < endPosition || startPosition > endPosition);
+
+        StateData memory latestStateData;
+        StateData memory expectedStateData;
+        int256 initialPositionSize = startPosition.toInt() * -1;
+        int256 positionSize = endPosition.toInt() * -1;
+
+        int256 deltaPositionSize = positionSize - initialPositionSize;
+        uint256 feeMultiplier = deltaPositionSize > 0
+            ? PLUS_FEE_MULTIPLIER_D18
+            : MINUS_FEE_MULTIPLIER_D18;
+
+        uint256 positionId;
+
+        vm.startPrank(trader1);
+        positionId = addPreTrade(foil, epochId, initialPositionSize);
+        fillCollateralStateData(trader1, latestStateData);
+        fillPositionState(positionId, latestStateData);
+
+        // quote and open a long
+        uint256 requiredCollateral = foil.quoteModifyTraderPosition(
+            positionId,
+            positionSize
+        );
+
+        // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
             positionId,
-            2 * collateralForOrder, // keep same collateral
             positionSize,
+            requiredCollateral * 2
+        );
+
+        vm.stopPrank();
+
+        uint256 price = foil.getReferencePrice(epochId).mulDecimal(
+            feeMultiplier
+        );
+        int256 deltaCollateral = requiredCollateral.toInt() -
+            latestStateData.depositedCollateralAmount.toInt();
+        int256 deltaEth = (latestStateData.vEthAmount.toInt() -
+            deltaPositionSize.mulDecimal(price.toInt()));
+
+        // Set expected state
+        expectedStateData.userCollateral = (latestStateData
+            .userCollateral
+            .toInt() - deltaCollateral).toUint();
+        expectedStateData.foilCollateral = (latestStateData
+            .foilCollateral
+            .toInt() + deltaCollateral).toUint();
+
+        expectedStateData.depositedCollateralAmount = requiredCollateral;
+        expectedStateData.positionSize = positionSize;
+        expectedStateData.vEthAmount = deltaEth > 0 ? deltaEth.toUint() : 0;
+        expectedStateData.vGasAmount = 0;
+        expectedStateData.borrowedVEth = deltaEth < 0
+            ? (deltaEth * -1).toUint()
+            : 0;
+        expectedStateData.borrowedVGas = uint256(positionSize * -1);
+
+        // Check position makes sense
+        latestStateData = assertPosition(
+            trader1,
+            positionId,
+            expectedStateData,
+            "Short2Short"
+        );
+    }
+
+    function test_fuzz_modify_Long2Short(
+        uint256 startPosition,
+        uint256 endPosition
+    ) public {
+        vm.assume(startPosition > 1000);
+        vm.assume(endPosition > 1000);
+        vm.assume(startPosition < 10 ether);
+        vm.assume(endPosition < 10 ether);
+        vm.assume(startPosition < endPosition || startPosition > endPosition);
+
+        StateData memory latestStateData;
+        StateData memory expectedStateData;
+        int256 initialPositionSize = startPosition.toInt();
+        int256 positionSize = endPosition.toInt() * -1;
+
+        int256 deltaPositionSize = positionSize - initialPositionSize;
+        uint256 feeMultiplier = deltaPositionSize > 0
+            ? PLUS_FEE_MULTIPLIER_D18
+            : MINUS_FEE_MULTIPLIER_D18;
+
+        uint256 positionId;
+
+        vm.startPrank(trader1);
+        positionId = addPreTrade(foil, epochId, initialPositionSize);
+        fillCollateralStateData(trader1, latestStateData);
+        fillPositionState(positionId, latestStateData);
+
+        // quote and open a long
+        uint256 requiredCollateral = foil.quoteModifyTraderPosition(
+            positionId,
+            positionSize
+        );
+
+        // Send more collateral than required, just checking the position can be created/modified
+        foil.modifyTraderPosition(
+            positionId,
+            positionSize,
+            requiredCollateral * 2
+        );
+
+        vm.stopPrank();
+
+        uint256 price = foil.getReferencePrice(epochId).mulDecimal(
+            feeMultiplier
+        );
+        int256 deltaCollateral = requiredCollateral.toInt() -
+            latestStateData.depositedCollateralAmount.toInt();
+        int256 expectedNetEth = (latestStateData.vEthAmount.toInt() -
+            latestStateData.borrowedVEth.toInt()) -
+            deltaPositionSize.mulDecimal(price.toInt());
+
+        // Set expected state
+        expectedStateData.userCollateral = (latestStateData
+            .userCollateral
+            .toInt() - deltaCollateral).toUint();
+        expectedStateData.foilCollateral = (latestStateData
+            .foilCollateral
+            .toInt() + deltaCollateral).toUint();
+
+        expectedStateData.depositedCollateralAmount = requiredCollateral;
+        expectedStateData.positionSize = positionSize;
+        expectedStateData.vEthAmount = expectedNetEth > 0
+            ? expectedNetEth.toUint()
+            : 0;
+        expectedStateData.vGasAmount = 0;
+        expectedStateData.borrowedVEth = expectedNetEth < 0
+            ? (expectedNetEth * -1).toUint()
+            : 0;
+        expectedStateData.borrowedVGas = uint256(positionSize * -1);
+
+        // Check position makes sense
+        latestStateData = assertPosition(
+            trader1,
+            positionId,
+            expectedStateData,
+            "Long2Short"
+        );
+    }
+
+    function test_fuzz_modify_Short2Long(
+        uint256 startPosition,
+        uint256 endPosition
+    ) public {
+        vm.assume(startPosition > 1000);
+        vm.assume(endPosition > 1000);
+        vm.assume(startPosition < 10 ether);
+        vm.assume(endPosition < 10 ether);
+        vm.assume(startPosition < endPosition || startPosition > endPosition);
+
+        StateData memory latestStateData;
+        StateData memory expectedStateData;
+        int256 initialPositionSize = startPosition.toInt() * -1;
+        int256 positionSize = endPosition.toInt();
+
+        int256 deltaPositionSize = positionSize - initialPositionSize;
+        uint256 feeMultiplier = deltaPositionSize > 0
+            ? PLUS_FEE_MULTIPLIER_D18
+            : MINUS_FEE_MULTIPLIER_D18;
+
+        uint256 positionId;
+
+        vm.startPrank(trader1);
+        positionId = addPreTrade(foil, epochId, initialPositionSize);
+        fillCollateralStateData(trader1, latestStateData);
+        fillPositionState(positionId, latestStateData);
+
+        // quote and open a long
+        uint256 requiredCollateral = foil.quoteModifyTraderPosition(
+            positionId,
+            positionSize
+        );
+
+        // Send more collateral than required, just checking the position can be created/modified
+        foil.modifyTraderPosition(
+            positionId,
+            positionSize,
+            requiredCollateral * 2
+        );
+
+        vm.stopPrank();
+
+        uint256 price = foil.getReferencePrice(epochId).mulDecimal(
+            feeMultiplier
+        );
+        int256 deltaCollateral = requiredCollateral.toInt() -
+            latestStateData.depositedCollateralAmount.toInt();
+        int256 expectedNetEth = (latestStateData.vEthAmount.toInt() -
+            latestStateData.borrowedVEth.toInt()) -
+            deltaPositionSize.mulDecimal(price.toInt());
+
+        // Set expected state
+        expectedStateData.userCollateral = (latestStateData
+            .userCollateral
+            .toInt() - deltaCollateral).toUint();
+        expectedStateData.foilCollateral = (latestStateData
+            .foilCollateral
+            .toInt() + deltaCollateral).toUint();
+
+        expectedStateData.depositedCollateralAmount = requiredCollateral;
+        expectedStateData.positionSize = positionSize;
+        expectedStateData.vEthAmount = expectedNetEth > 0
+            ? expectedNetEth.toUint()
+            : 0;
+        expectedStateData.vGasAmount = uint256(positionSize);
+        expectedStateData.borrowedVEth = expectedNetEth < 0
+            ? (expectedNetEth * -1).toUint()
+            : 0;
+        expectedStateData.borrowedVGas = 0;
+
+        // Check position makes sense
+        latestStateData = assertPosition(
+            trader1,
+            positionId,
+            expectedStateData,
+            "Short2Long"
+        );
+    }
+
+    function test_fuzz_close_Long(uint256 startPosition) public {
+        vm.assume(startPosition > 1000);
+        vm.assume(startPosition < 10 ether);
+
+        StateData memory latestStateData;
+        StateData memory expectedStateData;
+        int256 initialPositionSize = startPosition.toInt();
+
+        int256 deltaPositionSize = -1 * initialPositionSize;
+        uint256 feeMultiplier = deltaPositionSize > 0
+            ? PLUS_FEE_MULTIPLIER_D18
+            : MINUS_FEE_MULTIPLIER_D18;
+
+        uint256 positionId;
+
+        vm.startPrank(trader1);
+        positionId = addPreTrade(foil, epochId, initialPositionSize);
+        fillCollateralStateData(trader1, latestStateData);
+        fillPositionState(positionId, latestStateData);
+
+        // quote and open a long
+        uint256 requiredCollateral = foil.quoteModifyTraderPosition(
+            positionId,
             0
         );
 
-        currentStateData = assertPosition(
-            trader1,
-            foil,
-            positionId,
-            collateralAsset,
-            expectedStateData,
-            "Decrease Long"
+        // Send more collateral than required, just checking the position can be created/modified
+        foil.modifyTraderPosition(positionId, 0, requiredCollateral * 2);
+
+        vm.stopPrank();
+
+        uint256 price = foil.getReferencePrice(epochId).mulDecimal(
+            feeMultiplier
         );
+        int256 deltaCollateral = requiredCollateral.toInt() -
+            latestStateData.depositedCollateralAmount.toInt();
+        int256 expectedNetEth = (latestStateData.vEthAmount.toInt() -
+            latestStateData.borrowedVEth.toInt()) -
+            deltaPositionSize.mulDecimal(price.toInt());
 
-        // Modify Long position (close it)
-        referencePrice = foil.getReferencePrice(epochId);
-        // fee for closing the position
-        fee = currentStateData.vGasAmount.mulDecimal(referencePrice).mulDecimal(
-                feeRate
-            );
-        accumulatedFee += fee;
+        // Set expected state
+        expectedStateData.userCollateral = (latestStateData
+            .userCollateral
+            .toInt() - deltaCollateral).toUint();
+        expectedStateData.foilCollateral = (latestStateData
+            .foilCollateral
+            .toInt() + deltaCollateral).toUint();
 
-        expectedStateData.userCollateral =
-            currentStateData.userCollateral +
-            2 *
-            collateralForOrder -
-            accumulatedFee;
-        expectedStateData.foilCollateral =
-            currentStateData.foilCollateral -
-            2 *
-            collateralForOrder +
-            accumulatedFee;
-        expectedStateData.depositedCollateralAmount = 0;
+        expectedStateData.depositedCollateralAmount = requiredCollateral;
         expectedStateData.positionSize = 0;
-        expectedStateData.vEthAmount = 0;
+        expectedStateData.vEthAmount = expectedNetEth > 0
+            ? expectedNetEth.toUint()
+            : 0;
         expectedStateData.vGasAmount = 0;
-        expectedStateData.borrowedVEth = 0;
+        expectedStateData.borrowedVEth = expectedNetEth < 0
+            ? (expectedNetEth * -1).toUint()
+            : 0;
         expectedStateData.borrowedVGas = 0;
 
-        foil.modifyTraderPosition(positionId, 0 ether, 0, 0);
-
-        assertPosition(
+        // Check position makes sense
+        latestStateData = assertPosition(
             trader1,
-            foil,
             positionId,
-            collateralAsset,
             expectedStateData,
             "Close Long"
         );
-        vm.stopPrank();
     }
 
-    function test_tradeLongCrossSides() public {
-        uint256 referencePrice;
-        uint256 positionId;
-        uint256 collateralForOrder = 10 ether;
-        int256 positionSize;
-        uint256 tokens;
-        uint256 fee;
-        uint256 accumulatedFee;
+    function test_fuzz_close_Short(uint256 startPosition) public {
+        vm.assume(startPosition > 1000);
+        vm.assume(startPosition < 10 ether);
 
+        StateData memory latestStateData;
         StateData memory expectedStateData;
-        StateData memory currentStateData;
+        int256 initialPositionSize = startPosition.toInt() * -1;
 
-        vm.startPrank(lp1);
-        addLiquidity(
-            foil,
-            pool,
-            epochId,
-            collateralForOrder * 100_000,
-            LOWERTICK,
-            UPPERTICK
-        ); // enough to keep price stable (no slippage)
-        vm.stopPrank();
+        int256 deltaPositionSize = -1 * initialPositionSize;
+        uint256 feeMultiplier = deltaPositionSize > 0
+            ? PLUS_FEE_MULTIPLIER_D18
+            : MINUS_FEE_MULTIPLIER_D18;
+
+        uint256 positionId;
 
         vm.startPrank(trader1);
+        positionId = addPreTrade(foil, epochId, initialPositionSize);
+        fillCollateralStateData(trader1, latestStateData);
+        fillPositionState(positionId, latestStateData);
 
-        // Set position size
-        positionSize = int256(collateralForOrder / 100);
-
-        fillCollateralStateData(
-            trader1,
-            foil,
-            collateralAsset,
-            currentStateData
-        );
-
-        referencePrice = foil.getReferencePrice(epochId);
-        tokens = uint256(positionSize).mulDecimal(referencePrice);
-        fee = tokens.mulDecimal(feeRate);
-        accumulatedFee += fee;
-
-        expectedStateData.userCollateral =
-            currentStateData.userCollateral -
-            collateralForOrder;
-        expectedStateData.foilCollateral =
-            currentStateData.foilCollateral +
-            collateralForOrder;
-        expectedStateData.depositedCollateralAmount = collateralForOrder;
-        expectedStateData.positionSize = positionSize;
-        expectedStateData.vEthAmount = 0;
-        expectedStateData.vGasAmount = uint256(positionSize);
-        expectedStateData.borrowedVEth = tokens + fee;
-        expectedStateData.borrowedVGas = 0;
-
-        // Create Long position (with enough collateral)
-        positionId = foil.createTraderPosition(
-            epochId,
-            collateralForOrder,
-            positionSize,
+        // quote and open a long
+        uint256 requiredCollateral = foil.quoteModifyTraderPosition(
+            positionId,
             0
         );
 
-        currentStateData = assertPosition(
-            trader1,
-            foil,
-            positionId,
-            collateralAsset,
-            expectedStateData,
-            "Create Long"
-        );
+        // Send more collateral than required, just checking the position can be created/modified
+        foil.modifyTraderPosition(positionId, 0, requiredCollateral * 2);
 
-        // Modify Long position (change side)
-        referencePrice = foil.getReferencePrice(epochId);
-        // change sides means closing the long order and opening a short order
-        // fee for closing the position
-        fee = currentStateData.vGasAmount.mulDecimal(referencePrice).mulDecimal(
-                feeRate
-            );
-        accumulatedFee += fee;
-
-        // tokens and fee for opening the short order
-        tokens = uint256(positionSize).mulDecimal(referencePrice);
-        fee = tokens.mulDecimal(feeRate);
-        accumulatedFee += fee;
-
-        expectedStateData.userCollateral = currentStateData.userCollateral;
-        expectedStateData.foilCollateral = currentStateData.foilCollateral;
-        expectedStateData.depositedCollateralAmount = currentStateData
-            .depositedCollateralAmount;
-        expectedStateData.positionSize = positionSize * -1;
-        expectedStateData.vEthAmount = tokens - fee;
-        expectedStateData.vGasAmount = 0;
-        expectedStateData.borrowedVEth = 0;
-        expectedStateData.borrowedVGas = uint256(positionSize);
-
-        foil.modifyTraderPosition(
-            positionId,
-            collateralForOrder,
-            -1 * positionSize,
-            0
-        );
-
-        currentStateData = assertPosition(
-            trader1,
-            foil,
-            positionId,
-            collateralAsset,
-            expectedStateData,
-            "Change sides Long"
-        );
-        vm.stopPrank();
-    }
-
-    function test_tradeShort() public {
-        uint256 referencePrice;
-        uint256 positionId;
-        uint256 collateralForOrder = 10 ether;
-        int256 positionSize;
-        uint256 tokens;
-        uint256 fee;
-        uint256 accumulatedFee;
-
-        StateData memory expectedStateData;
-        StateData memory currentStateData;
-
-        vm.startPrank(lp1);
-        addLiquidity(
-            foil,
-            pool,
-            epochId,
-            collateralForOrder * 100_000,
-            LOWERTICK,
-            UPPERTICK
-        ); // enough to keep price stable (no slippage)
         vm.stopPrank();
 
-        vm.startPrank(trader1);
-
-        // Set position size
-        positionSize = int256(collateralForOrder / 100);
-
-        fillCollateralStateData(
-            trader1,
-            foil,
-            collateralAsset,
-            currentStateData
+        uint256 price = foil.getReferencePrice(epochId).mulDecimal(
+            feeMultiplier
         );
+        int256 deltaCollateral = requiredCollateral.toInt() -
+            latestStateData.depositedCollateralAmount.toInt();
+        int256 expectedNetEth = (latestStateData.vEthAmount.toInt() -
+            latestStateData.borrowedVEth.toInt()) -
+            deltaPositionSize.mulDecimal(price.toInt());
 
-        referencePrice = foil.getReferencePrice(epochId);
-        tokens = uint256(positionSize).mulDecimal(referencePrice);
-        fee = tokens.mulDecimal(feeRate);
-        accumulatedFee += fee;
+        // Set expected state
+        expectedStateData.userCollateral = (latestStateData
+            .userCollateral
+            .toInt() - deltaCollateral).toUint();
+        expectedStateData.foilCollateral = (latestStateData
+            .foilCollateral
+            .toInt() + deltaCollateral).toUint();
 
-        expectedStateData.userCollateral =
-            currentStateData.userCollateral -
-            collateralForOrder;
-        expectedStateData.foilCollateral =
-            currentStateData.foilCollateral +
-            collateralForOrder;
-        expectedStateData.depositedCollateralAmount = collateralForOrder;
-        expectedStateData.positionSize = -1 * positionSize;
-        expectedStateData.vEthAmount = tokens - fee;
-        expectedStateData.vGasAmount = 0;
-        expectedStateData.borrowedVEth = 0;
-        expectedStateData.borrowedVGas = uint256(positionSize);
-
-        // Create Long position (with enough collateral)
-        positionId = foil.createTraderPosition(
-            epochId,
-            collateralForOrder,
-            -1 * positionSize,
-            0
-        );
-
-        currentStateData = assertPosition(
-            trader1,
-            foil,
-            positionId,
-            collateralAsset,
-            expectedStateData,
-            "Create Short"
-        );
-
-        // Modify Short position (increase it)
-        referencePrice = foil.getReferencePrice(epochId);
-        tokens = uint256(positionSize).mulDecimal(referencePrice);
-        fee = tokens.mulDecimal(feeRate);
-        accumulatedFee += fee;
-
-        expectedStateData.userCollateral =
-            currentStateData.userCollateral -
-            collateralForOrder;
-        expectedStateData.foilCollateral =
-            currentStateData.foilCollateral +
-            collateralForOrder;
-        expectedStateData.depositedCollateralAmount = collateralForOrder * 2;
-        expectedStateData.positionSize = positionSize * -2;
-        expectedStateData.vEthAmount =
-            currentStateData.vEthAmount +
-            tokens -
-            fee;
-        expectedStateData.vGasAmount = 0;
-        expectedStateData.borrowedVEth = 0;
-        expectedStateData.borrowedVGas = uint256(positionSize) * 2;
-
-        foil.modifyTraderPosition(
-            positionId,
-            2 * collateralForOrder,
-            -2 * positionSize,
-            0
-        );
-
-        currentStateData = assertPosition(
-            trader1,
-            foil,
-            positionId,
-            collateralAsset,
-            expectedStateData,
-            "Increase Short"
-        );
-
-        // Modify Short position (decrease it)
-        referencePrice = foil.getReferencePrice(epochId);
-        tokens = uint256(positionSize).mulDecimal(referencePrice);
-        fee = tokens.mulDecimal(feeRate);
-        accumulatedFee += fee;
-
-        expectedStateData.userCollateral = currentStateData.userCollateral;
-        expectedStateData.foilCollateral = currentStateData.foilCollateral;
-        expectedStateData.depositedCollateralAmount = currentStateData
-            .depositedCollateralAmount;
-        expectedStateData.positionSize = positionSize * -1;
-        expectedStateData.vEthAmount =
-            currentStateData.vEthAmount -
-            tokens -
-            fee;
-        expectedStateData.vGasAmount = 0;
-        expectedStateData.borrowedVEth = 0;
-        expectedStateData.borrowedVGas = uint256(positionSize);
-
-        foil.modifyTraderPosition(
-            positionId,
-            2 * collateralForOrder, // keep same collateral
-            -1 * positionSize,
-            0
-        );
-
-        currentStateData = assertPosition(
-            trader1,
-            foil,
-            positionId,
-            collateralAsset,
-            expectedStateData,
-            "Decrease Short"
-        );
-
-        // Modify Short position (close it)
-        referencePrice = foil.getReferencePrice(epochId);
-        // fee for closing the position
-        fee = currentStateData.vGasAmount.mulDecimal(referencePrice).mulDecimal(
-                feeRate
-            );
-        accumulatedFee += fee;
-
-        expectedStateData.userCollateral =
-            currentStateData.userCollateral +
-            2 *
-            collateralForOrder -
-            accumulatedFee;
-        expectedStateData.foilCollateral =
-            currentStateData.foilCollateral -
-            2 *
-            collateralForOrder +
-            accumulatedFee;
-        expectedStateData.depositedCollateralAmount = 0;
+        expectedStateData.depositedCollateralAmount = requiredCollateral;
         expectedStateData.positionSize = 0;
-        expectedStateData.vEthAmount = 0;
+        expectedStateData.vEthAmount = expectedNetEth > 0
+            ? expectedNetEth.toUint()
+            : 0;
         expectedStateData.vGasAmount = 0;
-        expectedStateData.borrowedVEth = 0;
+        expectedStateData.borrowedVEth = expectedNetEth < 0
+            ? (expectedNetEth * -1).toUint()
+            : 0;
         expectedStateData.borrowedVGas = 0;
 
-        foil.modifyTraderPosition(positionId, 0 ether, 0, 0);
-
-        assertPosition(
+        // Check position makes sense
+        latestStateData = assertPosition(
             trader1,
-            foil,
             positionId,
-            collateralAsset,
             expectedStateData,
-            "Close Short"
+            "Close short"
         );
-        vm.stopPrank();
     }
 
-    function test_tradeShortCrossSides() public {
-        uint256 referencePrice;
-        uint256 positionId;
-        uint256 collateralForOrder = 10 ether;
-        int256 positionSize;
-        uint256 tokens;
-        uint256 fee;
-        uint256 accumulatedFee;
+    // //////////////// //
+    // Helper functions //
+    // //////////////// //
 
-        StateData memory expectedStateData;
-        StateData memory currentStateData;
-
-        vm.startPrank(lp1);
-        addLiquidity(
-            foil,
-            pool,
-            epochId,
-            collateralForOrder * 100_000,
-            LOWERTICK,
-            UPPERTICK
-        ); // enough to keep price stable (no slippage)
-        vm.stopPrank();
-
-        vm.startPrank(trader1);
-
-        // Set position size
-        positionSize = int256(collateralForOrder / 100);
-
-        fillCollateralStateData(
-            trader1,
-            foil,
-            collateralAsset,
-            currentStateData
-        );
-
-        referencePrice = foil.getReferencePrice(epochId);
-        tokens = uint256(positionSize).mulDecimal(referencePrice);
-        fee = tokens.mulDecimal(feeRate);
-        accumulatedFee += fee;
-
-        expectedStateData.userCollateral =
-            currentStateData.userCollateral -
-            collateralForOrder;
-        expectedStateData.foilCollateral =
-            currentStateData.foilCollateral +
-            collateralForOrder;
-        expectedStateData.depositedCollateralAmount = collateralForOrder;
-        expectedStateData.positionSize = -1 * positionSize;
-        expectedStateData.vEthAmount = tokens - fee;
-        expectedStateData.vGasAmount = 0;
-        expectedStateData.borrowedVEth = 0;
-        expectedStateData.borrowedVGas = uint256(positionSize);
-
-        // Create Short position (with enough collateral)
-        positionId = foil.createTraderPosition(
-            epochId,
-            collateralForOrder,
-            -1 * positionSize,
-            0
-        );
-
-        currentStateData = assertPosition(
-            trader1,
-            foil,
-            positionId,
-            collateralAsset,
-            expectedStateData,
-            "Create Short"
-        );
-
-        // Modify Short position (change side)
-        referencePrice = foil.getReferencePrice(epochId);
-        // change sides means closing the short order and opening a long order
-
-        // fee for closing the position
-        fee = currentStateData.vEthAmount.mulDecimal(referencePrice).mulDecimal(
-                feeRate
-            );
-        accumulatedFee += fee;
-
-        // tokens and fee for opening the long order
-        tokens = uint256(positionSize).mulDecimal(referencePrice);
-        fee = tokens.mulDecimal(feeRate);
-        accumulatedFee += fee;
-
-        expectedStateData.userCollateral = currentStateData.userCollateral;
-        expectedStateData.foilCollateral = currentStateData.foilCollateral;
-        expectedStateData.depositedCollateralAmount = currentStateData
+    function fillPositionState(
+        uint256 positionId,
+        StateData memory stateData
+    ) public {
+        Position.Data memory position = foil.getPosition(positionId);
+        stateData.depositedCollateralAmount = position
             .depositedCollateralAmount;
-        expectedStateData.positionSize = positionSize;
-        expectedStateData.vEthAmount = 0;
-        expectedStateData.vGasAmount = uint256(positionSize);
-        expectedStateData.borrowedVEth = tokens + fee;
-        expectedStateData.borrowedVGas = 0;
+        stateData.vEthAmount = position.vEthAmount;
+        stateData.vGasAmount = position.vGasAmount;
+        stateData.borrowedVEth = position.borrowedVEth;
+        stateData.borrowedVGas = position.borrowedVGas;
+        stateData.positionSize = foil.getPositionSize(positionId);
+    }
 
-        foil.modifyTraderPosition(
-            positionId,
-            collateralForOrder,
-            positionSize,
-            0
-        );
+    function fillCollateralStateData(
+        address user,
+        StateData memory stateData
+    ) public view {
+        stateData.userCollateral = collateralAsset.balanceOf(user);
+        stateData.foilCollateral = collateralAsset.balanceOf(address(foil));
+    }
 
-        currentStateData = assertPosition(
-            trader1,
-            foil,
-            positionId,
-            collateralAsset,
-            expectedStateData,
-            "Change sides Short"
+    function assertPosition(
+        address user,
+        uint256 positionId,
+        StateData memory expectedStateData,
+        string memory stage
+    ) public returns (StateData memory currentStateData) {
+        fillCollateralStateData(user, currentStateData);
+        fillPositionState(positionId, currentStateData);
+
+        assertApproxEqRel(
+            currentStateData.userCollateral,
+            expectedStateData.userCollateral,
+            0.0000001 ether,
+            string.concat(stage, " userCollateral")
         );
-        vm.stopPrank();
+        assertApproxEqRel(
+            currentStateData.foilCollateral,
+            expectedStateData.foilCollateral,
+            0.0000001 ether,
+            string.concat(stage, " foilCollateral")
+        );
+        assertEq(
+            currentStateData.depositedCollateralAmount,
+            expectedStateData.depositedCollateralAmount,
+            string.concat(stage, " depositedCollateralAmount")
+        );
+        assertApproxEqRel(
+            currentStateData.positionSize,
+            expectedStateData.positionSize,
+            0.01 ether,
+            string.concat(stage, " positionSize")
+        );
+        assertApproxEqRel(
+            currentStateData.vGasAmount,
+            expectedStateData.vGasAmount,
+            0.001 ether,
+            string.concat(stage, " vGasAmount")
+        );
+        assertApproxEqRel(
+            currentStateData.borrowedVGas,
+            expectedStateData.borrowedVGas,
+            0.001 ether,
+            string.concat(stage, " borrowedVGas")
+        );
+        assertApproxEqRel(
+            currentStateData.vEthAmount,
+            expectedStateData.vEthAmount,
+            0.05 ether,
+            string.concat(stage, " vEthAmount")
+        );
+        assertApproxEqRel(
+            currentStateData.borrowedVEth,
+            expectedStateData.borrowedVEth,
+            0.05 ether,
+            string.concat(stage, " borrowedVEth")
+        );
     }
 }
