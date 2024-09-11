@@ -30,69 +30,69 @@ contract TradeViewsModule is ITradeViewsModule {
         return Trade.getReferencePrice(epochId);
     }
 
-    /**
-     * @inheritdoc ITradeViewsModule
-     */
-    function getLongSizeForCollateral(
-        uint256 epochId,
-        uint256 collateral
-    ) external view override returns (uint256 positionSize) {
-        return Position.getLongSizeForCollateral(epochId, collateral);
-    }
+    // /**
+    //  * @inheritdoc ITradeViewsModule
+    //  */
+    // function getLongSizeForCollateral(
+    //     uint256 epochId,
+    //     uint256 collateral
+    // ) external view override returns (uint256 positionSize) {
+    //     return Position.getLongSizeForCollateral(epochId, collateral);
+    // }
 
-    /**
-     * @inheritdoc ITradeViewsModule
-     */
-    function getShortSizeForCollateral(
-        uint256 epochId,
-        uint256 collateral
-    ) external view override returns (uint256 modPositionSize) {
-        return Position.getShortSizeForCollateral(epochId, collateral);
-    }
+    // /**
+    //  * @inheritdoc ITradeViewsModule
+    //  */
+    // function getShortSizeForCollateral(
+    //     uint256 epochId,
+    //     uint256 collateral
+    // ) external view override returns (uint256 modPositionSize) {
+    //     return Position.getShortSizeForCollateral(epochId, collateral);
+    // }
 
-    /**
-     * @inheritdoc ITradeViewsModule
-     */
-    function getCollateralForLongSize(
-        uint256 epochId,
-        uint256 positionSize
-    ) external view override returns (uint256 collateral) {
-        return Position.getCollateralForLongSize(epochId, positionSize);
-    }
+    // /**
+    //  * @inheritdoc ITradeViewsModule
+    //  */
+    // function getCollateralForLongSize(
+    //     uint256 epochId,
+    //     uint256 positionSize
+    // ) external view override returns (uint256 collateral) {
+    //     return Position.getCollateralForLongSize(epochId, positionSize);
+    // }
 
-    /**
-     * @inheritdoc ITradeViewsModule
-     */
-    function getCollateralForShortSize(
-        uint256 epochId,
-        uint256 positionSize
-    ) external view override returns (uint256 collateral) {
-        return Position.getCollateralForShortSize(epochId, positionSize);
-    }
+    // /**
+    //  * @inheritdoc ITradeViewsModule
+    //  */
+    // function getCollateralForShortSize(
+    //     uint256 epochId,
+    //     uint256 positionSize
+    // ) external view override returns (uint256 collateral) {
+    //     return Position.getCollateralForShortSize(epochId, positionSize);
+    // }
 
-    /**
-     * @inheritdoc ITradeViewsModule
-     */
-    function getLongDeltaForCollateral(
-        uint256 positionId,
-        uint256 collateral
-    ) external view override returns (uint256 modPositionSize) {
-        return
-            Position.loadValid(positionId).getLongDeltaForCollateral(
-                collateral
-            );
-    }
+    // /**
+    //  * @inheritdoc ITradeViewsModule
+    //  */
+    // function getLongDeltaForCollateral(
+    //     uint256 positionId,
+    //     uint256 collateral
+    // ) external view override returns (uint256 modPositionSize) {
+    //     return
+    //         Position.loadValid(positionId).getLongDeltaForCollateral(
+    //             collateral
+    //         );
+    // }
 
-    /**
-     * @inheritdoc ITradeViewsModule
-     */
-    function getShortDeltaForCollateral(
-        uint256 positionId,
-        uint256 collateral
-    ) external view override returns (uint256 modPositionSize) {
-        return
-            Position.loadValid(positionId).getShortDeltaForCollateral(
-                collateral
-            );
-    }
+    // /**
+    //  * @inheritdoc ITradeViewsModule
+    //  */
+    // function getShortDeltaForCollateral(
+    //     uint256 positionId,
+    //     uint256 collateral
+    // ) external view override returns (uint256 modPositionSize) {
+    //     return
+    //         Position.loadValid(positionId).getShortDeltaForCollateral(
+    //             collateral
+    //         );
+    // }
 }
