@@ -42,6 +42,8 @@ library Market {
         address optimisticOracleV3,
         IFoilStructs.EpochParams memory epochParams
     ) internal returns (Data storage market) {
+        require(epochParams.assertionLiveness >= 6 hours, "assertionLiveness must be at least six hours");
+        
         market = load();
 
         // can only be called once
@@ -69,6 +71,8 @@ library Market {
         address optimisticOracleV3,
         IFoilStructs.EpochParams memory epochParams
     ) internal returns (Data storage market) {
+        require(epochParams.assertionLiveness >= 6 hours, "assertionLiveness must be at least six hours");
+        
         market = load();
 
         market.uniswapPositionManager = INonfungiblePositionManager(
