@@ -38,4 +38,12 @@ export class Epoch {
 
   @Column("varchar", { length: NUMERIC_PRECISION, nullable: true })
   endTimestamp: string | null;
+
+  @Column({
+    type: "numeric",
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
+  startingSqrtPriceX96: string | null;
 }
