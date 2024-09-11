@@ -29,6 +29,7 @@ contract LiquidityModule is ReentrancyGuard, ILiquidityModule {
     {
         id = ERC721EnumerableStorage.totalSupply() + 1;
         Position.Data storage position = Position.createValid(id);
+        ERC721Storage._checkOnERC721Received(address(this), msg.sender, id, "");
         ERC721Storage._mint(msg.sender, id);
 
         Epoch.Data storage epoch = Epoch.loadValid(params.epochId);
