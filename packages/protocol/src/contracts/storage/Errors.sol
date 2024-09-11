@@ -36,4 +36,5 @@ library Errors {
     error InvalidPositionKind();
     error InvalidRange(int24 requestedTick, int24 boundedTick);
     error PositionAlreadySettled(uint256 positionId);
+    error OwnableUnauthorizedAccount(address sender);
 }

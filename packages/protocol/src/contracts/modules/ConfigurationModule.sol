@@ -53,7 +53,6 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuard {
     }
 
     function updateMarket(
-        address owner,
         address uniswapPositionManager,
         address uniswapSwapRouter,
         address uniswapQuoter,
@@ -61,15 +60,14 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuard {
         IFoilStructs.EpochParams memory epochParams
     ) external override onlyOwner {
         Market.updateValid(
-            owner, // should be nominate/accept
             uniswapPositionManager,
             uniswapSwapRouter,
             uniswapQuoter,
             optimisticOracleV3,
             epochParams
         );
+
         emit MarketUpdated(
-            owner,
             uniswapPositionManager,
             uniswapSwapRouter,
             uniswapQuoter,
@@ -90,5 +88,29 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuard {
 
         Epoch.createValid(newEpochId, startTime, endTime, startingSqrtPriceX96);
         emit EpochCreated(newEpochId, startTime, endTime, startingSqrtPriceX96);
+    }
+
+    function transferOwnership(address newOwner) external onlyOwner {
+        Market.Data storage market = Market.loadValid();
+        address oldOwner = market.owner;
+        market.transferOwnership(newOwner);
+        emit OwnershipTransferStarted(oldOwner, newOwner);
+    }
+
+    function acceptOwnership() external {
+        Market.Data storage market = Market.loadValid();
+        address oldOwner = market.owner;
+        market.acceptOwnership();
+        emit OwnershipTransferred(oldOwner, msg.sender);
+    }
+
+    function pendingOwner() external view returns (address) {
+        Market.Data storage market = Market.loadValid();
+        return market.pendingOwner();
+    }
+
+    function owner() external view returns (address) {
+        Market.Data storage market = Market.loadValid();
+        return market.owner;
     }
 }

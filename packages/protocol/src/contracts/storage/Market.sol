@@ -14,6 +14,7 @@ library Market {
 
     struct Data {
         address owner;
+        address pendingOwner;
         IERC20 collateralAsset;
         INonfungiblePositionManager uniswapPositionManager;
         ISwapRouter uniswapSwapRouter;
@@ -62,7 +63,6 @@ library Market {
     }
 
     function updateValid(
-        address owner,
         address uniswapPositionManager,
         address uniswapSwapRouter,
         address uniswapQuoter,
@@ -71,7 +71,6 @@ library Market {
     ) internal returns (Data storage market) {
         market = load();
 
-        market.owner = owner;
         market.uniswapPositionManager = INonfungiblePositionManager(
             uniswapPositionManager
         );
@@ -102,5 +101,23 @@ library Market {
         uint256 amount
     ) internal {
         self.collateralAsset.safeTransfer(user, amount);
+    }
+    
+    function transferOwnership(Data storage self, address newOwner) internal {
+        self.pendingOwner = newOwner;
+    }
+
+    function acceptOwnership(Data storage self) internal {
+        address sender = msg.sender;
+        if (self.pendingOwner != sender) {
+            revert Errors.OwnableUnauthorizedAccount(sender);
+        }
+        address oldOwner = self.owner;
+        self.owner = sender;
+        delete self.pendingOwner;
+    }
+
+    function pendingOwner(Data storage self) internal view returns (address) {
+        return self.pendingOwner;
     }
 }

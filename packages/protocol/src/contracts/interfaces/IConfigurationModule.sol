@@ -15,7 +15,6 @@ interface IConfigurationModule {
     );
 
     event MarketUpdated(
-        address owner,
         address uniswapPositionManager,
         address uniswapSwapRouter,
         address uniswapQuoter,
@@ -28,6 +27,11 @@ interface IConfigurationModule {
         uint256 startTime,
         uint256 endTime,
         uint160 startingSqrtPriceX96
+    );
+    
+    event OwnershipTransferStarted(
+        address indexed previousOwner,
+        address indexed newOwner
     );
 
     /**
@@ -50,7 +54,6 @@ interface IConfigurationModule {
     ) external;
 
     function updateMarket(
-        address owner,
         address uniswapPositionManager,
         address uniswapSwapRouter,
         address uniswapQuoter,
