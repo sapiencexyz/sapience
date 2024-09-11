@@ -42,8 +42,9 @@ library Market {
         address optimisticOracleV3,
         IFoilStructs.EpochParams memory epochParams
     ) internal returns (Data storage market) {
+        validateTickSpacing(epochParams);
         require(epochParams.assertionLiveness >= 6 hours, "assertionLiveness must be at least six hours");
-        
+
         market = load();
 
         // can only be called once
@@ -71,8 +72,9 @@ library Market {
         address optimisticOracleV3,
         IFoilStructs.EpochParams memory epochParams
     ) internal returns (Data storage market) {
+        validateTickSpacing(epochParams);
         require(epochParams.assertionLiveness >= 6 hours, "assertionLiveness must be at least six hours");
-        
+
         market = load();
 
         market.uniswapPositionManager = INonfungiblePositionManager(
@@ -84,6 +86,36 @@ library Market {
             optimisticOracleV3
         );
         market.epochParams = epochParams;
+    }
+
+    function validateTickSpacing(IFoilStructs.EpochParams memory epochParams) internal pure {
+        int24 tickSpacing = getTickSpacingForFee(epochParams.feeRate);
+
+        if (epochParams.baseAssetMinPriceTick % tickSpacing != 0){
+            revert Errors.InvalidBaseAssetMinPriceTick(epochParams.baseAssetMinPriceTick, tickSpacing);
+        }
+       
+        if (epochParams.baseAssetMaxPriceTick % tickSpacing != 0) {
+            revert Errors.InvalidBaseAssetMaxPriceTick(epochParams.baseAssetMaxPriceTick, tickSpacing);
+        }
+
+        if (epochParams.baseAssetMinPriceTick >= epochParams.baseAssetMaxPriceTick) {
+            revert Errors.InvalidPriceTickRange(epochParams.baseAssetMinPriceTick, epochParams.baseAssetMaxPriceTick);
+        }
+    }
+
+    function getTickSpacingForFee(uint24 fee) internal pure returns (int24) {
+        if (fee == 100) {
+            return 1;
+        } else if (fee == 500) {
+            return 10;
+        } else if (fee == 3000) {
+            return 60;
+        } else if (fee == 10000) {
+            return 200;
+        } else {
+            revert Errors.InvalidTickSpacing(fee);
+        }
     }
 
     function loadValid() internal view returns (Data storage market) {
