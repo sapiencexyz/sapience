@@ -182,7 +182,7 @@ contract TestEpoch is TestUser {
 
         OwedTokensData memory data;
 
-        (, , epochParams) = foil.getMarket();
+        (, , IFoilStructs.EpochParams memory epochParams) = foil.getMarket();
 
         // Fetch the current fee growth global values
         data.feeGrowthGlobal0X128 = IUniswapV3Pool(data.pool)
@@ -197,7 +197,7 @@ contract TestEpoch is TestUser {
 
         bytes32 positionKey = keccak256(
             abi.encodePacked(
-                address(data.positionManager),
+                address(epochParams.uniswapPositionManager),
                 data.tickLower,
                 data.tickUpper
             )
