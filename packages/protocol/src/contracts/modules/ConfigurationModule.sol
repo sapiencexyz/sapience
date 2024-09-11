@@ -12,6 +12,12 @@ import "../storage/Epoch.sol";
 contract ConfigurationModule is IConfigurationModule, ReentrancyGuard {
     using Market for Market.Data;
 
+    address immutable initializer;
+
+    constructor() {
+        initializer = msg.sender;
+    }
+
     modifier onlyOwner() {
         Market.Data storage market = Market.load();
         if (msg.sender != market.owner) {
@@ -32,6 +38,7 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuard {
         address optimisticOracleV3,
         IFoilStructs.EpochParams memory epochParams
     ) external override {
+        require(msg.sender == initializer, "Only initializer can call this function");
         Market.createValid(
             owner,
             collateralAsset,
