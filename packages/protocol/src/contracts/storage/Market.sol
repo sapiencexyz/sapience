@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import "../interfaces/external/INonfungiblePositionManager.sol";
 import "../interfaces/external/ISwapRouter.sol";
@@ -9,6 +10,8 @@ import "./Errors.sol";
 import "../interfaces/IFoilStructs.sol";
 
 library Market {
+    using SafeERC20 for IERC20;
+
     struct Data {
         address owner;
         IERC20 collateralAsset;
@@ -98,6 +101,6 @@ library Market {
         address user,
         uint256 amount
     ) internal {
-        self.collateralAsset.transfer(user, amount);
+        self.collateralAsset.safeTransfer(user, amount);
     }
 }

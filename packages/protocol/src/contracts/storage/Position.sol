@@ -5,6 +5,7 @@ pragma solidity >=0.8.2 <0.9.0;
 import "./Epoch.sol";
 import "./Trade.sol";
 
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {SafeCastU256, SafeCastI256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 import {DecimalMath} from "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
 import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
@@ -16,6 +17,7 @@ library Position {
     using SafeCastU256 for uint256;
     using SafeCastI256 for int256;
     using DecimalMath for uint256;
+    using SafeERC20 for IERC20;
 
     using Epoch for Epoch.Data;
 
@@ -87,13 +89,13 @@ library Position {
     function updateCollateral(Data storage self, uint256 amount) internal {
         IERC20 collateralAsset = Market.load().collateralAsset;
         if (amount > self.depositedCollateralAmount) {
-            collateralAsset.transferFrom(
+            collateralAsset.safeTransferFrom(
                 msg.sender,
                 address(this),
                 amount - self.depositedCollateralAmount
             );
         } else {
-            collateralAsset.transfer(
+            collateralAsset.safeTransfer(
                 msg.sender,
                 self.depositedCollateralAmount - amount
             );
