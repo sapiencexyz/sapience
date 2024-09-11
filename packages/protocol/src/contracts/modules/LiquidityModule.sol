@@ -98,7 +98,7 @@ contract LiquidityModule is ReentrancyGuard, ILiquidityModule {
         Position.Data storage position = Position.loadValid(params.positionId);
         Epoch.Data storage epoch = Epoch.loadValid(position.epochId);
 
-        epoch.validateEpochNotSettled();
+        epoch.validateEpochNotExpired();
         position.preValidateLp();
         (
             stack.previousAmount0,
@@ -171,7 +171,7 @@ contract LiquidityModule is ReentrancyGuard, ILiquidityModule {
         Position.Data storage position = Position.loadValid(params.positionId);
         Epoch.Data storage epoch = Epoch.loadValid(position.epochId);
 
-        epoch.validateEpochNotSettled();
+        epoch.validateEpochNotExpired();
         position.preValidateLp();
 
         (
