@@ -86,7 +86,7 @@ library Epoch {
             revert Errors.EpochAlreadyStarted();
         }
 
-        if (startTime == 0) {
+        if (startTime < block.timestamp) {
             revert Errors.InvalidData("startTime");
         }
 
