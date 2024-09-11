@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.25 <0.9.0;
 
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Epoch} from "../storage/Epoch.sol";
@@ -9,6 +10,7 @@ import {IUMASettlementModule} from "../interfaces/IUMASettlementModule.sol";
 import {OptimisticOracleV3Interface} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 
 contract UMASettlementModule is IUMASettlementModule, ReentrancyGuard {
+    using SafeERC20 for IERC20;
     using Epoch for Epoch.Data;
 
     function submitSettlementPrice(
@@ -32,7 +34,7 @@ contract UMASettlementModule is IUMASettlementModule, ReentrancyGuard {
         OptimisticOracleV3Interface optimisticOracleV3 = market
             .optimisticOracleV3;
 
-        bondCurrency.transferFrom(
+        bondCurrency.safeTransferFrom(
             msg.sender,
             address(this),
             epoch.params.bondAmount
