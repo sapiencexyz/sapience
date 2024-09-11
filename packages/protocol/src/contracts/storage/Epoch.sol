@@ -9,6 +9,7 @@ import "../external/VirtualToken.sol";
 import "../libraries/DecimalPrice.sol";
 import "../libraries/Quote.sol";
 import "../external/univ3/LiquidityAmounts.sol";
+import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePositionManager.sol";
 import "./Debt.sol";
 import "./Errors.sol";
 import "./Market.sol";
@@ -140,7 +141,7 @@ library Epoch {
         // create & initialize pool
         epoch.pool = IUniswapV3Pool(
             IUniswapV3Factory(
-                INonfungiblePositionManager(market.uniswapPositionManager)
+                INonfungiblePositionManager(market.epochParams.uniswapPositionManager)
                     .factory()
             ).createPool(
                     address(epoch.gasToken),
@@ -172,21 +173,21 @@ library Epoch {
 
         // approve to uniswapPositionManager
         epoch.ethToken.approve(
-            address(market.uniswapPositionManager),
+            address(market.epochParams.uniswapPositionManager),
             type(uint256).max
         );
         epoch.gasToken.approve(
-            address(market.uniswapPositionManager),
+            address(market.epochParams.uniswapPositionManager),
             type(uint256).max
         );
 
         // approve to uniswapSwapRouter
         epoch.ethToken.approve(
-            address(market.uniswapSwapRouter),
+            address(market.epochParams.uniswapSwapRouter),
             type(uint256).max
         );
         epoch.gasToken.approve(
-            address(market.uniswapSwapRouter),
+            address(market.epochParams.uniswapSwapRouter),
             type(uint256).max
         );
     }

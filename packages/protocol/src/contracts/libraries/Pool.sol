@@ -7,6 +7,7 @@ import "../external/univ3/TickMath.sol";
 import "../storage/Market.sol";
 import "../storage/Epoch.sol";
 import "../storage/Position.sol";
+import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePositionManager.sol";
 
 library Pool {
     function getCurrentPositionTokenAmounts(
@@ -25,8 +26,8 @@ library Pool {
         )
     {
         // get liquidity given tokenId
-        (, , , , , lowerTick, upperTick, liquidity, , , , ) = market
-            .uniswapPositionManager
+        (, , , , , lowerTick, upperTick, liquidity, , , , ) = INonfungiblePositionManager(epoch.params
+            .uniswapPositionManager)
             .positions(position.uniswapPositionId);
         (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(epoch.pool).slot0();
         uint160 sqrtPriceAX96 = uint160(TickMath.getSqrtRatioAtTick(lowerTick));

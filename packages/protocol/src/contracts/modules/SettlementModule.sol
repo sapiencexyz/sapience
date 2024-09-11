@@ -82,8 +82,9 @@ contract SettlementModule is ISettlementModule {
         position.vEthAmount += currentAmount1;
 
         // Collect fees from the Uniswap position
-        (uint256 amount0, uint256 amount1) = market
-            .uniswapPositionManager
+        (uint256 amount0, uint256 amount1) = INonfungiblePositionManager(epoch
+            .params
+            .uniswapPositionManager)
             .collect(
                 INonfungiblePositionManager.CollectParams({
                     tokenId: position.uniswapPositionId,

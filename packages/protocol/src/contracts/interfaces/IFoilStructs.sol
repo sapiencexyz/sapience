@@ -50,5 +50,9 @@ interface IFoilStructs {
         address bondCurrency;
         uint256 bondAmount;
         bytes32 priceUnit;
+        address uniswapPositionManager;
+        address uniswapSwapRouter;
+        address uniswapQuoter;
+        address optimisticOracleV3;
     }
 }

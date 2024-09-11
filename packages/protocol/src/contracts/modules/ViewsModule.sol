@@ -16,9 +16,6 @@ contract ViewsModule is IViewsModule {
         returns (
             address owner,
             address collateralAsset,
-            address uniswapPositionManager,
-            address uniswapSwapRouter,
-            address optimisticOracleV3,
             IFoilStructs.EpochParams memory epochParams
         )
     {
@@ -26,9 +23,6 @@ contract ViewsModule is IViewsModule {
         return (
             market.owner,
             address(market.collateralAsset),
-            address(market.uniswapPositionManager),
-            address(market.uniswapSwapRouter),
-            address(market.optimisticOracleV3),
             market.epochParams
         );
     }

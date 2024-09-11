@@ -11,9 +11,6 @@ interface IViewsModule {
         returns (
             address owner,
             address collateralAsset,
-            address uniswapPositionManager,
-            address uniswapSwapRouter,
-            address optimisticOracleV3,
             IFoilStructs.EpochParams memory epochParams
         );
 

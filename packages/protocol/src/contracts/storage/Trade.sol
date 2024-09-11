@@ -6,6 +6,7 @@ import {Epoch} from "./Epoch.sol";
 import {Market} from "./Market.sol";
 import {Errors} from "./Errors.sol";
 import {ISwapRouter} from "../interfaces/external/ISwapRouter.sol";
+import {IUniswapV3Quoter} from "../interfaces/external/IUniswapV3Quoter.sol";
 import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
 
 // import "forge-std/console2.sol";
@@ -52,7 +53,7 @@ library Trade {
             }
 
             if (isQuote) {
-                amountOut = market.uniswapQuoter.quoteExactInputSingle(
+                amountOut = IUniswapV3Quoter(epoch.params.uniswapQuoter).quoteExactInputSingle(
                     tokenIn,
                     tokenOut,
                     epoch.params.feeRate,
@@ -73,7 +74,7 @@ library Trade {
                         sqrtPriceLimitX96: 0
                     });
 
-                amountOut = market.uniswapSwapRouter.exactInputSingle(
+                amountOut = ISwapRouter(epoch.params.uniswapSwapRouter).exactInputSingle(
                     swapParams
                 );
             }
@@ -130,7 +131,7 @@ library Trade {
             }
 
             if (isQuote) {
-                amountIn = market.uniswapQuoter.quoteExactOutputSingle(
+                amountIn = IUniswapV3Quoter(epoch.params.uniswapQuoter).quoteExactOutputSingle(
                     tokenIn,
                     tokenOut,
                     epoch.params.feeRate,
@@ -151,7 +152,7 @@ library Trade {
                         amountInMaximum: type(uint256).max
                     });
 
-                amountIn = market.uniswapSwapRouter.exactOutputSingle(
+                amountIn = ISwapRouter(epoch.params.uniswapSwapRouter).exactOutputSingle(
                     swapParams
                 );
             }
