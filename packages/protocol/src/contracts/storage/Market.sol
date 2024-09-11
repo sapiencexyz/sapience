@@ -2,6 +2,7 @@
 pragma solidity >=0.8.2 <0.9.0;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import "./Errors.sol";
 import "../interfaces/IFoilStructs.sol";
@@ -31,8 +32,7 @@ library Market {
         address collateralAsset,
         IFoilStructs.EpochParams memory epochParams
     ) internal returns (Data storage market) {
-        validateTickSpacing(epochParams);
-        require(epochParams.assertionLiveness >= 6 hours, "assertionLiveness must be at least six hours");
+        validateEpochParams(epochParams);
 
         market = load();
 
@@ -57,15 +57,14 @@ library Market {
     function updateValid(
         IFoilStructs.EpochParams memory epochParams
     ) internal returns (Data storage market) {
-        validateTickSpacing(epochParams);
-        require(epochParams.assertionLiveness >= 6 hours, "assertionLiveness must be at least six hours");
+        validateEpochParams(epochParams);
 
         market = load();
 
         market.epochParams = epochParams;
     }
 
-    function validateTickSpacing(IFoilStructs.EpochParams memory epochParams) internal pure {
+    function validateEpochParams(IFoilStructs.EpochParams memory epochParams) internal view {
         int24 tickSpacing = getTickSpacingForFee(epochParams.feeRate);
 
         if (epochParams.baseAssetMinPriceTick % tickSpacing != 0){
@@ -78,6 +77,21 @@ library Market {
 
         if (epochParams.baseAssetMinPriceTick >= epochParams.baseAssetMaxPriceTick) {
             revert Errors.InvalidPriceTickRange(epochParams.baseAssetMinPriceTick, epochParams.baseAssetMaxPriceTick);
+        }
+
+        require(epochParams.assertionLiveness >= 6 hours, "assertionLiveness must be at least six hours");
+        require(epochParams.bondCurrency != address(0), "bondCurrency must be a non-zero address");
+        require(epochParams.bondAmount > 0, "bondAmount must be greater than 0");
+        require(epochParams.priceUnit.length > 0, "priceUnit must be non-empty");
+        require(epochParams.uniswapPositionManager != address(0), "uniswapPositionManager must be a non-zero address");
+        require(epochParams.uniswapSwapRouter != address(0), "uniswapSwapRouter must be a non-zero address");
+        require(epochParams.uniswapQuoter != address(0), "uniswapQuoter must be a non-zero address");
+        require(epochParams.optimisticOracleV3 != address(0), "optimisticOracleV3 must be a non-zero address");
+
+        try IERC20Metadata(epochParams.bondCurrency).decimals() returns (uint8 decimals) {
+            require(decimals == 18, "bondCurrency must have 18 decimals");
+        } catch {
+            revert("bondCurrency must be an ERC-20 token with a decimals() function");
         }
     }
 
