@@ -34,6 +34,8 @@ library Market {
     ) internal returns (Data storage market) {
         validateEpochParams(epochParams);
 
+        require(IERC20Metadata(collateralAsset).decimals() == 18, "collateralAsset must have 18 decimals");
+
         market = load();
 
         // can only be called once
@@ -87,12 +89,6 @@ library Market {
         require(epochParams.uniswapSwapRouter != address(0), "uniswapSwapRouter must be a non-zero address");
         require(epochParams.uniswapQuoter != address(0), "uniswapQuoter must be a non-zero address");
         require(epochParams.optimisticOracleV3 != address(0), "optimisticOracleV3 must be a non-zero address");
-
-        try IERC20Metadata(epochParams.bondCurrency).decimals() returns (uint8 decimals) {
-            require(decimals == 18, "bondCurrency must have 18 decimals");
-        } catch {
-            revert("bondCurrency must be an ERC-20 token with a decimals() function");
-        }
     }
 
     function getTickSpacingForFee(uint24 fee) internal pure returns (int24) {

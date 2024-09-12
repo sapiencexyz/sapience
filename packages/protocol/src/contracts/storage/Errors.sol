@@ -41,4 +41,5 @@ library Errors {
     error InvalidPriceTickRange(int24 minPriceTick, int24 maxPriceTick);
     error InvalidTickSpacing(uint24 feeRate);
     error OwnableUnauthorizedAccount(address sender);
+    error OnlyInitializer(address sender, address initializer);
 }

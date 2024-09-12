@@ -6,8 +6,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../interfaces/IConfigurationModule.sol";
 import "../storage/Market.sol";
 import "../storage/Epoch.sol";
-
-// import "forge-std/console2.sol";
+import "../storage/Errors.sol";
 
 contract ConfigurationModule is IConfigurationModule, ReentrancyGuard {
     using Market for Market.Data;
@@ -34,7 +33,9 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuard {
         address collateralAsset,
         IFoilStructs.EpochParams memory epochParams
     ) external override {
-        require(msg.sender == initializer, "Only initializer can call this function");
+        if (msg.sender != initializer) {
+            revert Errors.OnlyInitializer(msg.sender, initializer);
+        }
         Market.createValid(
             initialOwner,
             collateralAsset,
