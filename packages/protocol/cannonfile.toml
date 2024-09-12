@@ -9,7 +9,7 @@ baseAssetMinPriceTick = "5200" # 1.709
 baseAssetMaxPriceTick = "28200" # 17.09
 feeRate = "10000" # 1%
 startingSqrtPriceX96 = "146497135921788803112962621440" # 3.419
-assertionLiveness = "3600"
+assertionLiveness = "21600" # 6 hours
 bondAmount = "5000000000"
 priceUnit = "<%= formatBytes32String('wstGwei/gas') %>"
 depends=[]

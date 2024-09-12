@@ -1,5 +1,5 @@
 {
-  "address": "0x62cbAE01135a553e52c6C7644Ba000773dd0ed94",
+  "address": "0x243f712169799D367303D6D852F14114aF71be17",
   "abi": [
     {
       "type": "function",
@@ -127,6 +127,33 @@
     },
     {
       "type": "error",
+      "name": "AddressEmptyCode",
+      "inputs": [
+        {
+          "name": "target",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "AddressInsufficientBalance",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "FailedInnerCall",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "InvalidEpoch",
       "inputs": []
     },
@@ -134,16 +161,27 @@
       "type": "error",
       "name": "ReentrancyGuardReentrantCall",
       "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "SafeERC20FailedOperation",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
     }
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xf7cb5f8fb3ab9d44497dfd3bdf9c590dcb0c8ab84414bac29509bcab5810fe23",
+  "deployTxnHash": "0x31cfaa6058aee9bf9192f3ab226b67f40db2d89391676c8fd38fb5db8d4570a2",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1725559698",
+  "deployTimestamp": "1726108512",
   "sourceName": "src/contracts/modules/UMASettlementModule.sol",
   "contractName": "UMASettlementModule",
   "deployedOn": "deploy.UMASettlementModule",
-  "gasUsed": 724842,
-  "gasCost": "1000098212"
+  "gasUsed": 814555,
+  "gasCost": "1000098412"
 }

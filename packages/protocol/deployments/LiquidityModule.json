@@ -1,5 +1,5 @@
 {
-  "address": "0x7Fa8896Ff83381C90a3d3B8BD65db3eb2B1fCeB2",
+  "address": "0x58190361D6C2BBEdfE75DD8dC21B55559F6098f6",
   "abi": [
     {
       "type": "function",
@@ -463,7 +463,34 @@
     },
     {
       "type": "error",
+      "name": "AddressEmptyCode",
+      "inputs": [
+        {
+          "name": "target",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "AddressInsufficientBalance",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "ExpiredEpoch",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "FailedInnerCall",
       "inputs": []
     },
     {
@@ -589,6 +616,17 @@
     },
     {
       "type": "error",
+      "name": "SafeERC20FailedOperation",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "TokenAlreadyMinted",
       "inputs": [
         {
@@ -606,12 +644,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x9ca2a90cf7f361074dad0767b2fef33994f282bf68c847692c887f65b494c50a",
+  "deployTxnHash": "0xe1127de8c055a9b24d1ecd3a5c9b7625f6a52d8d125c67167b6dbe930fd4ea52",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1725559698",
+  "deployTimestamp": "1726108512",
   "sourceName": "src/contracts/modules/LiquidityModule.sol",
   "contractName": "LiquidityModule",
   "deployedOn": "deploy.LiquidityModule",
-  "gasUsed": 2856568,
-  "gasCost": "1000177439"
+  "gasUsed": 2974631,
+  "gasCost": "1000178241"
 }

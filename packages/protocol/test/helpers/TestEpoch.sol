@@ -45,6 +45,7 @@ contract TestEpoch is TestUser {
         int24 maxTick
     ) public returns (address) {
         address owner = createUser("Owner", 10_000_000 ether);
+        vm.startPrank(0xE676Ca39EaEF5d63253C141B3AF324910b5f30C7);
         IFoil(vm.getAddress("Foil")).initializeMarket(
             owner,
             vm.getAddress("CollateralAsset.Token"),
@@ -52,7 +53,7 @@ contract TestEpoch is TestUser {
                 baseAssetMinPriceTick: minTick,
                 baseAssetMaxPriceTick: maxTick,
                 feeRate: 10000,
-                assertionLiveness: 3600,
+                assertionLiveness: 21600,
                 bondCurrency: vm.getAddress("BondCurrency.Token"),
                 bondAmount: BOND_AMOUNT,
                 priceUnit: "wstGwei/gas",
@@ -62,6 +63,7 @@ contract TestEpoch is TestUser {
                 optimisticOracleV3: vm.getAddress("UMA.OptimisticOracleV3")
             })
         );
+        vm.stopPrank();
 
         return owner;
     }
