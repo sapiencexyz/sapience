@@ -1227,12 +1227,12 @@
     "0x91ae842A5Ffd8d12023116943e72A606179294f3"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x4708b927134964476efff4d303de8eae5a8cb05478b707a3e1c09545fba3b751",
+  "deployTxnHash": "0x601d112f61b2330c30c3a394ec85e4238521fdc0aaf78d23fec10e715c7d6530",
   "deployTxnBlockNumber": "12",
-  "deployTimestamp": "1726146209",
+  "deployTimestamp": "1726180358",
   "sourceName": "contracts/NonfungiblePositionManager.sol",
   "contractName": "NonfungiblePositionManager",
   "deployedOn": "deploy.NonfungiblePositionManager",
   "gasUsed": 5473120,
-  "gasCost": "1000546754"
+  "gasCost": "1001211034"
 }

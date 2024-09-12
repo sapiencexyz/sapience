@@ -143,12 +143,12 @@
       "NFTDescriptor": "0x42B24A95702b9986e82d421cC3568932790A48Ec"
     }
   },
-  "deployTxnHash": "0x96179b647d0cbee5551c3371cc02fac27fe0904e3ab4eca33f07fe207e74d9bf",
+  "deployTxnHash": "0x0b01101dc6d22c5234c9698d748d51dd6f846373b5aadac0e7170290ba559642",
   "deployTxnBlockNumber": "8",
-  "deployTimestamp": "1726146209",
+  "deployTimestamp": "1726180358",
   "sourceName": "contracts/NonfungibleTokenPositionDescriptor.sol",
   "contractName": "NonfungibleTokenPositionDescriptor",
   "deployedOn": "deploy.NonfungibleTokenPositionDescriptor",
   "gasUsed": 1198675,
-  "gasCost": "1000916503"
+  "gasCost": "1002030012"
 }
