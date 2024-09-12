@@ -1,5 +1,5 @@
 {
-  "address": "0x182cf60f07e881a73a6ac3a8952213c3702184ff",
+  "address": "0x7d2fbdc386f5b2f402feeabb333c26b5eff9cbbe",
   "abi": [
     {
       "type": "constructor",
@@ -485,17 +485,6 @@
     },
     {
       "type": "error",
-      "name": "InvalidData",
-      "inputs": [
-        {
-          "name": "message",
-          "type": "string",
-          "internalType": "string"
-        }
-      ]
-    },
-    {
-      "type": "error",
       "name": "InvalidMarket",
       "inputs": []
     },
@@ -582,6 +571,38 @@
       "type": "error",
       "name": "TokensAlreadyCreated",
       "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "endTimeTooEarly",
+      "inputs": [
+        {
+          "name": "startTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "endTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "startTimeTooEarly",
+      "inputs": [
+        {
+          "name": "startTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "blockTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
     },
     {
       "type": "function",
@@ -1603,6 +1624,17 @@
       "inputs": []
     },
     {
+      "type": "error",
+      "name": "InvalidData",
+      "inputs": [
+        {
+          "name": "message",
+          "type": "string",
+          "internalType": "string"
+        }
+      ]
+    },
+    {
       "type": "function",
       "name": "getReferencePrice",
       "inputs": [
@@ -2553,12 +2585,12 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0xb1aea2bec2d5d559166326047ffbab8e3b803d8470300d3d9899f063d7188ce4",
+  "deployTxnHash": "0x68e519d58abde3422a183a966aeeb4aadaf25eb943f5276c6d330a08b613cd1f",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1726111900",
+  "deployTimestamp": "1726112144",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
   "highlight": true,
   "gasUsed": 524966,
-  "gasCost": "1000026251"
+  "gasCost": "1000026249"
 }

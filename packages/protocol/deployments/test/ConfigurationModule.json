@@ -485,17 +485,6 @@
     },
     {
       "type": "error",
-      "name": "InvalidData",
-      "inputs": [
-        {
-          "name": "message",
-          "type": "string",
-          "internalType": "string"
-        }
-      ]
-    },
-    {
-      "type": "error",
       "name": "InvalidMarket",
       "inputs": []
     },
@@ -582,16 +571,48 @@
       "type": "error",
       "name": "TokensAlreadyCreated",
       "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "endTimeTooEarly",
+      "inputs": [
+        {
+          "name": "startTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "endTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "startTimeTooEarly",
+      "inputs": [
+        {
+          "name": "startTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "blockTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
     }
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xafae8e590a1c5eb8681d018879ae21fed368beb4a35e67b126066ebc83d480fc",
+  "deployTxnHash": "0xe918de2bf384c2aacb2a1baa5b7f8a1e207cd894e2f0359dc4cab8ad65f9cb28",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1726111891",
+  "deployTimestamp": "1726112135",
   "sourceName": "src/contracts/modules/ConfigurationModule.sol",
   "contractName": "ConfigurationModule",
   "deployedOn": "deploy.ConfigurationModule",
-  "gasUsed": 2599731,
+  "gasUsed": 2592174,
   "gasCost": "1000295134"
 }
