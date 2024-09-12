@@ -116,6 +116,12 @@ library Epoch {
         epoch.params.bondCurrency = epochParams.bondCurrency;
         epoch.params.bondAmount = epochParams.bondAmount;
         epoch.params.priceUnit = epochParams.priceUnit;
+        epoch.params.uniswapPositionManager = epochParams
+            .uniswapPositionManager;
+        epoch.params.uniswapSwapRouter = epochParams.uniswapSwapRouter;
+        epoch.params.uniswapQuoter = epochParams.uniswapQuoter;
+        epoch.params.optimisticOracleV3 = epochParams.optimisticOracleV3;
+
         epoch.feeRateD18 = uint256(epochParams.feeRate) * 1e12;
 
         VirtualToken tokenA = new VirtualToken(
@@ -141,8 +147,9 @@ library Epoch {
         // create & initialize pool
         epoch.pool = IUniswapV3Pool(
             IUniswapV3Factory(
-                INonfungiblePositionManager(market.epochParams.uniswapPositionManager)
-                    .factory()
+                INonfungiblePositionManager(
+                    market.epochParams.uniswapPositionManager
+                ).factory()
             ).createPool(
                     address(epoch.gasToken),
                     address(epoch.ethToken),
