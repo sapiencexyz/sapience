@@ -1,5 +1,5 @@
 {
-  "address": "0x43d18C728a31061F6B27fb3900Cd271c44C0A498",
+  "address": "0x5755607e98FaB28f931Fc5C2B1891925ef15B06F",
   "abi": [
     {
       "type": "function",
@@ -58,12 +58,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xc6084bf081d604ae8399b465f0572041c1786e562c4be7e485c3e9efcfd7e14b",
+  "deployTxnHash": "0xacd086038306e1d75b1c758de3a7eb51b1d124a2ba95d5344de70dfb5d66f6c8",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1726112134",
+  "deployTimestamp": "1726168146",
   "sourceName": "src/contracts/ mocks/ExposedInternalFunctions.sol",
   "contractName": "ExposedInternalFunctions",
   "deployedOn": "deploy.ExposedInternalFunctions",
   "gasUsed": 401974,
-  "gasCost": "1000264618"
+  "gasCost": "1000202949"
 }

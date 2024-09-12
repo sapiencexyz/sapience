@@ -154,7 +154,7 @@ contract UmaSettleMarket is TestEpoch {
             address(foil),
             epochParams.bondAmount
         );
-        vm.expectRevert("Market activity is still allowed");
+        vm.expectRevert("Market epoch activity is still allowed");
         foil.submitSettlementPrice(epochId, minPriceD18 - 1);
         vm.stopPrank();
     }
