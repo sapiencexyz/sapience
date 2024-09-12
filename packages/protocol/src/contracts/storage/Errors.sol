@@ -42,4 +42,6 @@ library Errors {
     error InvalidTickSpacing(uint24 feeRate);
     error OwnableUnauthorizedAccount(address sender);
     error OnlyInitializer(address sender, address initializer);
+    error startTimeTooEarly(uint256 startTime, uint256 blockTime);
+    error endTimeTooEarly(uint256 startTime, uint256 endTime);
 }

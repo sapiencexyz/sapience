@@ -4,7 +4,7 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "dev": "cannon build --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 --keep-alive --port 8545 --no-cors --write-deployments ./deployments/13370",
+    "dev": "cannon build --keep-alive --port 8545 --no-cors --write-deployments ./deployments/13370",
     "test": "cannon test cannonfile.test.toml ",
     "deploy:sepolia": "cannon build cannonfile.sepolia.toml --chain-id 11155111 --write-deployments ./deployments/11155111",
     "simulate-deploy:sepolia": "cannon build cannonfile.sepolia.toml --chain-id 11155111 --dry-run"

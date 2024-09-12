@@ -1,6 +1,18 @@
 {
-  "address": "0x687Dc7139e95985DEC0e2Df59F90511CBCabD2b7",
+  "address": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
   "abi": [
+    {
+      "type": "constructor",
+      "inputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "acceptOwnership",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
     {
       "type": "function",
       "name": "createEpoch",
@@ -29,32 +41,12 @@
       "name": "initializeMarket",
       "inputs": [
         {
-          "name": "owner",
+          "name": "initialOwner",
           "type": "address",
           "internalType": "address"
         },
         {
           "name": "collateralAsset",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "uniswapPositionManager",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "uniswapSwapRouter",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "uniswapQuoter",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "optimisticOracleV3",
           "type": "address",
           "internalType": "address"
         },
@@ -97,8 +89,67 @@
               "name": "priceUnit",
               "type": "bytes32",
               "internalType": "bytes32"
+            },
+            {
+              "name": "uniswapPositionManager",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapSwapRouter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapQuoter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "optimisticOracleV3",
+              "type": "address",
+              "internalType": "address"
             }
           ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "owner",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "pendingOwner",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "transferOwnership",
+      "inputs": [
+        {
+          "name": "newOwner",
+          "type": "address",
+          "internalType": "address"
         }
       ],
       "outputs": [],
@@ -109,31 +160,6 @@
       "name": "updateMarket",
       "inputs": [
         {
-          "name": "owner",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "uniswapPositionManager",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "uniswapSwapRouter",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "uniswapQuoter",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "optimisticOracleV3",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
           "name": "epochParams",
           "type": "tuple",
           "internalType": "struct IFoilStructs.EpochParams",
@@ -172,6 +198,26 @@
               "name": "priceUnit",
               "type": "bytes32",
               "internalType": "bytes32"
+            },
+            {
+              "name": "uniswapPositionManager",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapSwapRouter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapQuoter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "optimisticOracleV3",
+              "type": "address",
+              "internalType": "address"
             }
           ]
         }
@@ -215,7 +261,7 @@
       "name": "MarketInitialized",
       "inputs": [
         {
-          "name": "owner",
+          "name": "initialOwner",
           "type": "address",
           "indexed": false,
           "internalType": "address"
@@ -227,30 +273,6 @@
           "internalType": "address"
         },
         {
-          "name": "uniswapPositionManager",
-          "type": "address",
-          "indexed": false,
-          "internalType": "address"
-        },
-        {
-          "name": "uniswapSwapRouter",
-          "type": "address",
-          "indexed": false,
-          "internalType": "address"
-        },
-        {
-          "name": "uniswapQuoter",
-          "type": "address",
-          "indexed": false,
-          "internalType": "address"
-        },
-        {
-          "name": "optimisticOracleV3",
-          "type": "address",
-          "indexed": false,
-          "internalType": "address"
-        },
-        {
           "name": "epochParams",
           "type": "tuple",
           "indexed": false,
@@ -290,6 +312,26 @@
               "name": "priceUnit",
               "type": "bytes32",
               "internalType": "bytes32"
+            },
+            {
+              "name": "uniswapPositionManager",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapSwapRouter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapQuoter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "optimisticOracleV3",
+              "type": "address",
+              "internalType": "address"
             }
           ]
         }
@@ -301,36 +343,6 @@
       "name": "MarketUpdated",
       "inputs": [
         {
-          "name": "owner",
-          "type": "address",
-          "indexed": false,
-          "internalType": "address"
-        },
-        {
-          "name": "uniswapPositionManager",
-          "type": "address",
-          "indexed": false,
-          "internalType": "address"
-        },
-        {
-          "name": "uniswapSwapRouter",
-          "type": "address",
-          "indexed": false,
-          "internalType": "address"
-        },
-        {
-          "name": "uniswapQuoter",
-          "type": "address",
-          "indexed": false,
-          "internalType": "address"
-        },
-        {
-          "name": "optimisticOracleV3",
-          "type": "address",
-          "indexed": false,
-          "internalType": "address"
-        },
-        {
           "name": "epochParams",
           "type": "tuple",
           "indexed": false,
@@ -370,8 +382,66 @@
               "name": "priceUnit",
               "type": "bytes32",
               "internalType": "bytes32"
+            },
+            {
+              "name": "uniswapPositionManager",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapSwapRouter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapQuoter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "optimisticOracleV3",
+              "type": "address",
+              "internalType": "address"
             }
           ]
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "OwnershipTransferStarted",
+      "inputs": [
+        {
+          "name": "previousOwner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "newOwner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "OwnershipTransferred",
+      "inputs": [
+        {
+          "name": "previousOwner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "newOwner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
         }
       ],
       "anonymous": false
@@ -383,12 +453,33 @@
     },
     {
       "type": "error",
-      "name": "InvalidData",
+      "name": "InvalidBaseAssetMaxPriceTick",
       "inputs": [
         {
-          "name": "message",
-          "type": "string",
-          "internalType": "string"
+          "name": "maxPriceTick",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "tickSpacing",
+          "type": "int24",
+          "internalType": "int24"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidBaseAssetMinPriceTick",
+      "inputs": [
+        {
+          "name": "minPriceTick",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "tickSpacing",
+          "type": "int24",
+          "internalType": "int24"
         }
       ]
     },
@@ -396,6 +487,33 @@
       "type": "error",
       "name": "InvalidMarket",
       "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidPriceTickRange",
+      "inputs": [
+        {
+          "name": "minPriceTick",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "maxPriceTick",
+          "type": "int24",
+          "internalType": "int24"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidTickSpacing",
+      "inputs": [
+        {
+          "name": "feeRate",
+          "type": "uint24",
+          "internalType": "uint24"
+        }
+      ]
     },
     {
       "type": "error",
@@ -409,6 +527,22 @@
     },
     {
       "type": "error",
+      "name": "OnlyInitializer",
+      "inputs": [
+        {
+          "name": "sender",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "initializer",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "OnlyOwner",
       "inputs": []
     },
@@ -419,6 +553,17 @@
     },
     {
       "type": "error",
+      "name": "OwnableUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "sender",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "ReentrancyGuardReentrantCall",
       "inputs": []
     },
@@ -426,16 +571,48 @@
       "type": "error",
       "name": "TokensAlreadyCreated",
       "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "endTimeTooEarly",
+      "inputs": [
+        {
+          "name": "startTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "endTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "startTimeTooEarly",
+      "inputs": [
+        {
+          "name": "startTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "blockTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
     }
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xf7b8cdd5e1d5ed3e60c64ceddf469abda4e579048569a867d6a833be87b941f1",
+  "deployTxnHash": "0x097677e838db4f5bfb4f7f6c513d6fe9c3d55b4b677fe90b25dce3e81e2ac276",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1726085630",
+  "deployTimestamp": "1726111177",
   "sourceName": "src/contracts/modules/ConfigurationModule.sol",
   "contractName": "ConfigurationModule",
   "deployedOn": "deploy.ConfigurationModule",
-  "gasUsed": 2144206,
+  "gasUsed": 2592174,
   "gasCost": "1000258373"
 }

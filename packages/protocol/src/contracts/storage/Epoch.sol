@@ -88,11 +88,11 @@ library Epoch {
         }
 
         if (startTime < block.timestamp) {
-            revert Errors.InvalidData("startTime");
+            revert Errors.startTimeTooEarly(startTime, block.timestamp);
         }
 
         if (endTime <= startTime) {
-            revert Errors.InvalidData("endTime");
+            revert Errors.endTimeTooEarly(startTime, endTime);
         }
 
         if (
