@@ -3,8 +3,8 @@ version="0.11"
 
 [var.settings]
 owner = "0xEB045D78d273107348b0300c01D29B7552D622ab"
-startTime = "1725466800"  # Wed Sep 04 2024 16:20:00 GMT+0000
-endTime = "1726405200" # Sunday, September 15, 2024 9:00:00 AM GMT-04:00
+startTime = "1727111096"
+endTime = "1730111096"
 baseAssetMinPriceTick = "5200" # 1.709
 baseAssetMaxPriceTick = "28200" # 17.09
 feeRate = "10000" # 1%
@@ -41,6 +41,7 @@ artifact = "ReentrancyGuard"
 [deploy.ConfigurationModule]
 artifact="ConfigurationModule"
 libraries.ReentrancyGuard="<%= contracts.ReentrancyGuard.address %>"
+from="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
 
 [deploy.LiquidityModule]
 artifact="LiquidityModule"
@@ -83,6 +84,7 @@ highlight=true
 [invoke.initializeMarket]
 target="Foil"
 func="initializeMarket"
+from="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
 args=[
   "<%= settings.owner %>",
   "<%= imports.CollateralAsset.contracts.Token.address %>",

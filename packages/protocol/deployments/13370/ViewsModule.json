@@ -1,5 +1,5 @@
 {
-  "address": "0xcadBEf21e5706f5351Eb99b08537D17FEE67dD3D",
+  "address": "0x8059F3660f1b02BC14676EA7036BE6E0E50b990e",
   "abi": [
     {
       "type": "function",
@@ -96,6 +96,26 @@
               "name": "priceUnit",
               "type": "bytes32",
               "internalType": "bytes32"
+            },
+            {
+              "name": "uniswapPositionManager",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapSwapRouter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapQuoter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "optimisticOracleV3",
+              "type": "address",
+              "internalType": "address"
             }
           ]
         }
@@ -196,6 +216,26 @@
               "name": "priceUnit",
               "type": "bytes32",
               "internalType": "bytes32"
+            },
+            {
+              "name": "uniswapPositionManager",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapSwapRouter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapQuoter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "optimisticOracleV3",
+              "type": "address",
+              "internalType": "address"
             }
           ]
         }
@@ -214,21 +254,6 @@
         },
         {
           "name": "collateralAsset",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "uniswapPositionManager",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "uniswapSwapRouter",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "optimisticOracleV3",
           "type": "address",
           "internalType": "address"
         },
@@ -271,6 +296,26 @@
               "name": "priceUnit",
               "type": "bytes32",
               "internalType": "bytes32"
+            },
+            {
+              "name": "uniswapPositionManager",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapSwapRouter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapQuoter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "optimisticOracleV3",
+              "type": "address",
+              "internalType": "address"
             }
           ]
         }
@@ -380,12 +425,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xc5e0ae6432d3dc3f7dbc87e6b67a8e7951985c3fe6e69fdd95f97bfcdf68059c",
+  "deployTxnHash": "0xc4b0aa37f1de229221cf1065a029e04790bdc9e8437e23d9e9af32114ba8fa1e",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1726085629",
+  "deployTimestamp": "1726111176",
   "sourceName": "src/contracts/modules/ViewsModule.sol",
   "contractName": "ViewsModule",
   "deployedOn": "deploy.ViewsModule",
-  "gasUsed": 681959,
-  "gasCost": "1000097918"
+  "gasUsed": 797247,
+  "gasCost": "1000098791"
 }
