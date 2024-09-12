@@ -178,10 +178,10 @@
   "linkedLibraries": {},
   "deployTxnHash": "0x31cfaa6058aee9bf9192f3ab226b67f40db2d89391676c8fd38fb5db8d4570a2",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1726108512",
+  "deployTimestamp": "1726111890",
   "sourceName": "src/contracts/modules/UMASettlementModule.sol",
   "contractName": "UMASettlementModule",
   "deployedOn": "deploy.UMASettlementModule",
   "gasUsed": 814555,
-  "gasCost": "1000098412"
+  "gasCost": "1000128338"
 }

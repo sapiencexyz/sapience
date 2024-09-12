@@ -25,10 +25,10 @@
   "linkedLibraries": {},
   "deployTxnHash": "0xf57bb656ef9c564f472bbd719145f75a2dd746a7142140282b082d6b390b8e6a",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1726108512",
+  "deployTimestamp": "1726111890",
   "sourceName": "src/contracts/modules/TradeViewsModule.sol",
   "contractName": "TradeViewsModule",
   "deployedOn": "deploy.TradeViewsModule",
   "gasUsed": 219276,
-  "gasCost": "1000112236"
+  "gasCost": "1000146366"
 }
