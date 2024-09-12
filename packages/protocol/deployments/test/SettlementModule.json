@@ -156,10 +156,10 @@
   "linkedLibraries": {},
   "deployTxnHash": "0x7856f3b11094d77f88d088d82ad339f3527116f5d7c883317d1d60deacc32310",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1726108512",
+  "deployTimestamp": "1726111890",
   "sourceName": "src/contracts/modules/SettlementModule.sol",
   "contractName": "SettlementModule",
   "deployedOn": "deploy.SettlementModule",
   "gasUsed": 1401266,
-  "gasCost": "1000141924"
+  "gasCost": "1000185082"
 }

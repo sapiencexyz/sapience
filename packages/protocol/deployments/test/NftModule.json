@@ -465,10 +465,10 @@
   "linkedLibraries": {},
   "deployTxnHash": "0x12e4796d952871a717ceb3dbd07478b43a9aee2d37ab915f34dc46660c731ce1",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1726108512",
+  "deployTimestamp": "1726111890",
   "sourceName": "src/contracts/modules/NftModule.sol",
   "contractName": "NftModule",
   "deployedOn": "deploy.NftModule",
   "gasUsed": 1190314,
-  "gasCost": "1000160380"
+  "gasCost": "1000209151"
 }
