@@ -114,7 +114,7 @@ contract TestTrade is TestEpoch {
         foil.createLiquidityPosition(params);
     }
 
-    function addPreTrade(
+    function addTraderPosition(
         IFoil foil,
         uint256 epochId,
         int256 positionSize

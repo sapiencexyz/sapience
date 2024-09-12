@@ -6,7 +6,7 @@ import "cannon-std/Cannon.sol";
 import {IFoil} from "../../src/contracts/interfaces/IFoil.sol";
 import {IMintableToken} from "../../src/contracts/external/IMintableToken.sol";
 import {TickMath} from "../../src/contracts/external/univ3/TickMath.sol";
-import {TestEpoch} from "../helpers/TestEpoch.sol";
+import {TestTrade} from "../helpers/TestTrade.sol";
 import {Epoch} from "../../src/contracts/storage/Epoch.sol";
 import {TestUser} from "../helpers/TestUser.sol";
 import {DecimalPrice} from "../../src/contracts/libraries/DecimalPrice.sol";
@@ -16,7 +16,7 @@ import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Po
 import {ILiquidityModule} from "../../src/contracts/interfaces/ILiquidityModule.sol";
 import {Position} from "../../src/contracts/storage/Position.sol";
 
-contract DecreaseLiquidityPosition is TestEpoch {
+contract DecreaseLiquidityPosition is TestTrade {
     using Cannon for Vm;
 
     IFoil foil;
@@ -29,7 +29,6 @@ contract DecreaseLiquidityPosition is TestEpoch {
     address tokenB;
     int24 constant MIN_TICK = 16000;
     int24 constant MAX_TICK = 29800;
-    uint256 constant dust = 1e8;
     uint256 constant INITIAL_LP_BALANCE = 100_000_000 ether;
     uint256 constant INITIAL_COLLATERAL_AMOUNT = 100 ether;
     uint256 positionId;
@@ -119,14 +118,9 @@ contract DecreaseLiquidityPosition is TestEpoch {
         address trader = createUser("Trader", 1000 ether);
         vm.startPrank(trader);
 
-        // TODO FIX
-        // uint256 positionSize = foil.getLongSizeForCollateral(epochId, 50 ether);
-        // foil.createTraderPosition(
-        //     epochId,
-        //     70 ether, // TODO: needs more eth than what the function returns
-        //     int256(positionSize),
-        //     0
-        // );
+        // TODO notice this is a long position, not short => is buying bas
+        addTraderPosition(foil, epochId, 1 ether);
+
         vm.stopPrank();
     }
 
