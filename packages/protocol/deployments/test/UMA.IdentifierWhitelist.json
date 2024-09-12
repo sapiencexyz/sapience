@@ -127,12 +127,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xf5f4747c64610d12167bdef3dfc528f3671373ac0ee4242e88bcbf5870d1bc6e",
+  "deployTxnHash": "0x007998bc0334a1ab0c531481b523ccadb5565fbe9f3be20b7ea0d01d2d27c423",
   "deployTxnBlockNumber": "8",
-  "deployTimestamp": "1726168528",
-  "sourceName": "src/UMA/src/IdentifierWhitelist.sol",
-  "contractName": "IdentifierWhitelist",
+  "deployTimestamp": "1726180844",
+  "sourceName": "src/UMA/src/IdentifierWhitelistOverride.sol",
+  "contractName": "IdentifierWhitelistOverride",
   "deployedOn": "deploy.IdentifierWhitelist",
   "gasUsed": 270473,
-  "gasCost": "1092223313"
+  "gasCost": "1092219337"
 }

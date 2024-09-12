@@ -29,6 +29,7 @@ contract UmaSettleMarket is TestEpoch {
 
     function setUp() public {
         bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
+        optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
 
         uint160 startingSqrtPriceX96 = 250541448375047931186413801569; // 10
         (foil, ) = createEpoch(16000, 29800, startingSqrtPriceX96);
@@ -179,7 +180,7 @@ contract UmaSettleMarket is TestEpoch {
             address(foil),
             epochParams.bondAmount
         );
-        vm.expectRevert("Market already settled");
+        vm.expectRevert("Market epoch already settled");
         foil.submitSettlementPrice(epochId, 10 ether);
         vm.stopPrank();
     }

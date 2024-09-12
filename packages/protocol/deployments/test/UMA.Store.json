@@ -598,12 +598,12 @@
     "0x0000000000000000000000000000000000000000"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x26731ff0a5870ca1acfdcde598238992368abfb59e207c34bfb7768b1923f97b",
+  "deployTxnHash": "0x48152e8a778b577823a630ef837a04bddc31fdee1ccc285e71c18e18babca7dd",
   "deployTxnBlockNumber": "9",
-  "deployTimestamp": "1726168529",
-  "sourceName": "src/UMA/src/Store.sol",
-  "contractName": "Store",
+  "deployTimestamp": "1726180845",
+  "sourceName": "src/UMA/src/StoreOverride.sol",
+  "contractName": "StoreOverride",
   "deployedOn": "deploy.Store",
   "gasUsed": 1562662,
-  "gasCost": "1080903265"
+  "gasCost": "1080899777"
 }

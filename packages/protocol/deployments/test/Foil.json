@@ -1,9 +1,15 @@
 {
-  "address": "0x4da8c1cc939b361ea7c82a205dd87e7f8b1c6823",
+  "address": "0xd896a88596ec30157a44a53698299b048b363f00",
   "abi": [
     {
       "type": "constructor",
-      "inputs": [],
+      "inputs": [
+        {
+          "name": "_initializer",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
       "stateMutability": "nonpayable"
     },
     {
@@ -1654,6 +1660,11 @@
       "stateMutability": "view"
     },
     {
+      "type": "constructor",
+      "inputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
       "type": "function",
       "name": "approve",
       "inputs": [
@@ -2585,12 +2596,12 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0xa03c125156bc6459593dac47b32e65d02a64ffce725492439015dfe44658ea9c",
+  "deployTxnHash": "0x447f1cda85ef22745e576313d6e715b85fb4a76dd2919061fe7ecf19f84899ec",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1726168156",
+  "deployTimestamp": "1726179827",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
   "highlight": true,
   "gasUsed": 524918,
-  "gasCost": "1000020132"
+  "gasCost": "1000020135"
 }

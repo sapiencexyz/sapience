@@ -646,10 +646,10 @@
   "linkedLibraries": {},
   "deployTxnHash": "0xe5d2aa77a7db6e248501d444f806aa64e258ee6e4be9b941afc33e7c0a900f78",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1726168146",
+  "deployTimestamp": "1726179817",
   "sourceName": "src/contracts/modules/LiquidityModule.sol",
   "contractName": "LiquidityModule",
   "deployedOn": "deploy.LiquidityModule",
   "gasUsed": 2974631,
-  "gasCost": "1000178261"
+  "gasCost": "1000178286"
 }

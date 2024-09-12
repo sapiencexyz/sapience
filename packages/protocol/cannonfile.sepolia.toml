@@ -29,6 +29,7 @@ artifact = "ReentrancyGuard"
 
 [deploy.ConfigurationModule]
 artifact="ConfigurationModule"
+args=["<%= settings.owner %>"]
 libraries.ReentrancyGuard="<%= contracts.ReentrancyGuard.address %>"
 
 [deploy.LiquidityModule]
@@ -72,6 +73,7 @@ highlight=true
 [invoke.initializeMarket]
 target="Foil"
 func="initializeMarket"
+from="<%= settings.owner %>"
 args=[
   "<%= settings.owner %>",
   "<%= imports.wstETH.contracts.Token.address %>",

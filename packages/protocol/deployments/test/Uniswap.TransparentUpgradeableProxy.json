@@ -139,12 +139,12 @@
     "0x"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x69de81675df8fcfc23c74ab2cd79d59fd2e2c152464421566e64a6d0911d7d36",
+  "deployTxnHash": "0x9559588322c03175c5bb0e21b3a28524d429771e27fe3541e75597c1b5d22f65",
   "deployTxnBlockNumber": "10",
-  "deployTimestamp": "1726168523",
+  "deployTimestamp": "1726180839",
   "sourceName": "@openzeppelin/contracts/proxy/TransparentUpgradeableProxy.sol",
   "contractName": "TransparentUpgradeableProxy",
   "deployedOn": "deploy.TransparentUpgradeableProxy",
   "gasUsed": 653588,
-  "gasCost": "1000709709"
+  "gasCost": "1000709794"
 }

@@ -317,13 +317,13 @@
     "18"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x429401d946f11983d6f3713d072d714b4d65ea140798d565674db1e4d6bbc197",
+  "deployTxnHash": "0xa2cb1d34b4d34ac809452bbc63ad994b3fc2614c89c26a31268bca51f6faf666",
   "deployTxnBlockNumber": "2",
-  "deployTimestamp": "1726146212",
+  "deployTimestamp": "1726180361",
   "sourceName": "src/MintableTokenPermissionlessMint.sol",
   "contractName": "MintableTokenPermissionlessMint",
   "deployedOn": "contract.Token",
   "highlight": true,
   "gasUsed": 639860,
-  "gasCost": "1586181641"
+  "gasCost": "1000437934"
 }
