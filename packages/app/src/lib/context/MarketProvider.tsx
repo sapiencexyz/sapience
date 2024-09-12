@@ -13,8 +13,10 @@ import type { Chain } from 'viem/chains';
 import { useReadContracts, useReadContract } from 'wagmi';
 
 import useFoilDeployment from '../components/foil/useFoilDeployment';
+import { BLANK_MARKET } from '../constants';
 import { API_BASE_URL, TOKEN_DECIMALS } from '../constants/constants';
 import erc20ABI from '../erc20abi.json';
+import type { EpochParams } from '../interfaces/interfaces';
 import { renderContractErrorToast } from '../util/util';
 
 const gweiToEther = (gweiValue: bigint): string => {
@@ -25,7 +27,7 @@ const gweiToEther = (gweiValue: bigint): string => {
 };
 
 // Types and Interfaces
-interface MarketContextType {
+export interface MarketContextType {
   chain?: Chain;
   address: string;
   collateralAsset: string;
@@ -33,8 +35,6 @@ interface MarketContextType {
   averagePrice: number;
   startTime: number;
   endTime: number;
-  baseAssetMinPriceTick: number;
-  baseAssetMaxPriceTick: number;
   prices: Array<{
     date: string;
     open: number;
@@ -42,8 +42,8 @@ interface MarketContextType {
     low: number;
     high: number;
   }>;
+  epochParams: EpochParams;
   poolAddress: `0x${string}`;
-  uniswapPositionManagerAddress: `0x${string}`;
   pool: Pool | null;
   collateralAssetDecimals: number;
   epoch: number;
@@ -51,6 +51,7 @@ interface MarketContextType {
   chainId: number;
   error?: string;
   liquidity: number;
+  owner?: string;
 }
 
 interface MarketProviderProps {
@@ -61,26 +62,7 @@ interface MarketProviderProps {
 }
 
 // Context creation
-export const MarketContext = createContext<MarketContextType>({
-  chain: undefined,
-  address: '',
-  collateralAsset: '',
-  collateralAssetTicker: '',
-  collateralAssetDecimals: TOKEN_DECIMALS,
-  averagePrice: 0,
-  startTime: 0,
-  endTime: 0,
-  baseAssetMinPriceTick: 0,
-  baseAssetMaxPriceTick: 0,
-  prices: [],
-  pool: null,
-  poolAddress: '0x',
-  uniswapPositionManagerAddress: '0x',
-  epoch: 0,
-  foilData: {},
-  chainId: 0,
-  liquidity: 0,
-});
+export const MarketContext = createContext<MarketContextType>(BLANK_MARKET);
 
 // Custom hooks
 const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
@@ -197,26 +179,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
   epoch,
 }) => {
   const toast = useToast();
-  const [state, setState] = useState<MarketContextType>({
-    chain: undefined,
-    address: '',
-    collateralAsset: '',
-    collateralAssetTicker: '',
-    collateralAssetDecimals: TOKEN_DECIMALS,
-    averagePrice: 0,
-    startTime: 0,
-    endTime: 0,
-    baseAssetMinPriceTick: 0,
-    baseAssetMaxPriceTick: 0,
-    prices: [],
-    pool: null,
-    poolAddress: '0x',
-    uniswapPositionManagerAddress: '0x',
-    epoch: 0,
-    foilData: {},
-    chainId,
-    liquidity: 0,
-  });
+  const [state, setState] = useState<MarketContextType>(BLANK_MARKET);
 
   const { foilData } = useFoilDeployment(chainId);
 
@@ -376,16 +339,16 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
 
   useEffect(() => {
     if (marketViewFunctionResult.data !== undefined) {
+      console.log(
+        'marketViewFunctionResult data: ',
+        marketViewFunctionResult.data
+      );
+      const epochParams: EpochParams = marketViewFunctionResult.data[2];
       setState((currentState) => ({
         ...currentState,
         owner: marketViewFunctionResult?.data[0],
         collateralAsset: marketViewFunctionResult?.data[1],
-        uniswapPositionManagerAddress: marketViewFunctionResult?.data[2],
-        baseAssetMinPriceTick:
-          marketViewFunctionResult?.data[5].baseAssetMinPriceTick,
-        baseAssetMaxPriceTick:
-          marketViewFunctionResult?.data[5].baseAssetMaxPriceTick,
-        feeRate: marketViewFunctionResult?.data[5].feeRate,
+        epochParams,
       }));
     }
   }, [marketViewFunctionResult.data]);

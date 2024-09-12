@@ -23,3 +23,18 @@ export enum TransactionType {
   LONG = 'long',
   SHORT = 'short',
 }
+
+// TODO: Share this interface with data package in monorepo
+export interface EpochParams {
+  assertionLiveness: bigint;
+  baseAssetMaxPriceTick: number;
+  baseAssetMinPriceTick: number;
+  bondAmount: bigint;
+  bondCurrency: string;
+  feeRate: number;
+  optimisticOracleV3: string;
+  priceUnit: string;
+  uniswapPositionManager: `0x${string}`;
+  uniswapQuoter: `0x${string}`;
+  uniswapSwapRouter: `0x${string}`;
+}

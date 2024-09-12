@@ -28,8 +28,7 @@ const PositionsHeader = () => {
     address,
     endTime,
     collateralAsset,
-    baseAssetMinPriceTick,
-    baseAssetMaxPriceTick,
+    epochParams,
     averagePrice,
     pool,
     liquidity,
@@ -41,8 +40,10 @@ const PositionsHeader = () => {
   let relativeTime = '';
   let formattedTime = '';
   if (endTime) {
-    const dateMilliseconds = Number(endTime) * 1000;
+    const dateMilliseconds = Number(endTime) / 1000;
     const date = new Date(dateMilliseconds);
+    console.log('endTime: ', endTime);
+    console.log('date: ', date);
     relativeTime = formatDistanceToNow(date);
     formattedTime = format(date, 'PPpp');
   }
@@ -123,8 +124,9 @@ const PositionsHeader = () => {
               <Text as="span" fontWeight="500" mr={1}>
                 Allowed Range:
               </Text>{' '}
-              {tickToPrice(baseAssetMinPriceTick).toLocaleString()}-
-              {tickToPrice(baseAssetMaxPriceTick).toLocaleString()} Ggas/wstETH
+              {tickToPrice(epochParams.baseAssetMinPriceTick).toLocaleString()}-
+              {tickToPrice(epochParams.baseAssetMaxPriceTick).toLocaleString()}{' '}
+              Ggas/wstETH
             </Flex>
           </Flex>
         </Flex>
