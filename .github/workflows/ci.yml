@@ -85,6 +85,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Forge build
+        run: forge build
+        working-directory: packages/protocol
+
       - name: Smart contract tests
-        run: pnpm run test2
+        run: pnpm run test
         working-directory: packages/protocol
