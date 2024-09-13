@@ -42,7 +42,12 @@ contract TradeModule is ITradeModule {
         // Mint position NFT and initialize position
         positionId = ERC721EnumerableStorage.totalSupply() + 1;
         Position.Data storage position = Position.createValid(positionId);
-        ERC721Storage._checkOnERC721Received(address(this), msg.sender, positionId, "");
+        ERC721Storage._checkOnERC721Received(
+            address(this),
+            msg.sender,
+            positionId,
+            ""
+        );
         ERC721Storage._mint(msg.sender, positionId);
         position.epochId = epochId;
         position.kind = IFoilStructs.PositionKind.Trade;
@@ -122,6 +127,7 @@ contract TradeModule is ITradeModule {
         }
 
         Epoch.Data storage epoch = Epoch.load(position.epochId);
+
         // check settlement state
         if (size == 0) {
             // closing, can happen at any time
@@ -151,22 +157,72 @@ contract TradeModule is ITradeModule {
             ) = _moveToShortDirection(position, epoch, deltaSize);
         }
 
-        // Check if the collateral is within the limit
-        if (requiredCollateralAmount > maxCollateral) {
-            revert Errors.CollateralLimitReached(
-                requiredCollateralAmount,
-                maxCollateral
-            );
+        if (size == 0) {
+            // Closing the position. No need to check collateral limit
+            // We need to:
+            // 1. Reconcile the tokens
+            position.reconcileTokens();
+
+            // 2. Confirm no vgas tokens
+            if (position.vGasAmount > 0) {
+                // Notice. This error should not happen. If it's here it means something went wrong
+                revert Errors.InvalidData(
+                    "Cannot close position with vGas tokens"
+                );
+            }
+            if (position.borrowedVGas > 0) {
+                // Notice. This error should not happen. If it's here it means something went wrong
+                revert Errors.InvalidData(
+                    "Cannot close position with borrowed vGas tokens"
+                );
+            }
+
+            // 3. Confirm collateral is enough to pay for borrowed veth
+            if (position.borrowedVEth > 0) {
+                uint256 collateralRequired = position.getRequiredCollateral();
+                if (collateralRequired > position.depositedCollateralAmount) {
+                    // Notice. This error should not happen. If it's here it means something went wrong
+                    revert Errors.InsufficientCollateral(
+                        collateralRequired,
+                        position.depositedCollateralAmount
+                    );
+                }
+            }
+
+            // 4. Reconcile collateral
+            position.reconcileCollateral();
+
+            // 5. Transfer the released collateral to the trader (pnl)
+            position.updateCollateral(0);
+
+            // Now the position should be closed. All the vToken and collateral values set to zero
+        } else {
+            // Not closing, proced as a normal trade
+
+            // Check if the collateral is within the limit
+            if (requiredCollateralAmount > maxCollateral) {
+                revert Errors.CollateralLimitReached(
+                    requiredCollateralAmount,
+                    maxCollateral
+                );
+            }
+
+            // Ensures that the position only have single side tokens
+            position.reconcileTokens();
+
+            if (size == 0) {
+                // close position
+                // gas should be zero, reconcile vEth tokens to collateral
+                assert(position.vGasAmount == 0);
+                assert(position.borrowedVGas == 0);
+            }
+
+            // Transfer the locked collateral to the market or viceversa
+            position.updateCollateral(requiredCollateralAmount);
+
+            // Validate after trading that collateral is enough
+            position.afterTradeCheck();
         }
-
-        // Ensures that the position only have single side tokens
-        position.reconcileTokens();
-
-        // Transfer the locked collateral to the market or viceversa
-        position.updateCollateral(requiredCollateralAmount);
-
-        // Validate after trading that collateral is enough
-        position.afterTradeCheck();
 
         uint256 finalPrice = Trade.getReferencePrice(position.epochId);
 
