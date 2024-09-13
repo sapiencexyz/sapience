@@ -29,7 +29,7 @@ library Position {
         uint256 depositedCollateralAmount; // configured collateral
         uint256 borrowedVEth;
         uint256 borrowedVGas;
-        // Position data (owned tokens and position size)
+        // Position data (owned tokens)
         uint256 vEthAmount;
         uint256 vGasAmount;
         uint256 uniswapPositionId; // uniswap nft id
@@ -72,25 +72,14 @@ library Position {
         return position;
     }
 
-    function updateBalance(
-        Data storage self,
-        int256 vEthDeltaAmount,
-        int256 vGasDeltaAmount
-    ) internal {
-        self.vEthAmount = uint256(self.vEthAmount.toInt() + vEthDeltaAmount);
-        self.vGasAmount = uint256(self.vGasAmount.toInt() + vGasDeltaAmount);
-    }
-
-    function resetBalance(Data storage self) internal {
-        self.vEthAmount = 0;
-        self.vGasAmount = 0;
-    }
-
     function updateCollateral(Data storage self, uint256 amount) internal {
         IERC20 collateralAsset = Market.load().collateralAsset;
         if (amount > self.depositedCollateralAmount) {
             uint256 transferAmount = amount - self.depositedCollateralAmount;
-            require(transferAmount > 0, "Collateral transfer amount must be greater than 0");
+            require(
+                transferAmount > 0,
+                "Collateral transfer amount must be greater than 0"
+            );
             collateralAsset.safeTransferFrom(
                 msg.sender,
                 address(this),
@@ -98,11 +87,11 @@ library Position {
             );
         } else {
             uint256 transferAmount = self.depositedCollateralAmount - amount;
-            require(transferAmount > 0, "Collateral transfer amount must be greater than 0");
-            collateralAsset.safeTransfer(
-                msg.sender,
-                transferAmount
+            require(
+                transferAmount > 0,
+                "Collateral transfer amount must be greater than 0"
             );
+            collateralAsset.safeTransfer(msg.sender, transferAmount);
         }
 
         self.depositedCollateralAmount = amount;
@@ -243,6 +232,18 @@ library Position {
         } else {
             self.borrowedVEth -= self.vEthAmount;
             self.vEthAmount = 0;
+        }
+    }
+
+    function reconcileCollateral(Data storage self) internal {
+        if (self.vEthAmount > 0) {
+            self.depositedCollateralAmount += self.vEthAmount;
+            self.vEthAmount = 0;
+        }
+
+        if (self.borrowedVEth > 0) {
+            self.depositedCollateralAmount -= self.borrowedVEth;
+            self.borrowedVEth = 0;
         }
     }
 
