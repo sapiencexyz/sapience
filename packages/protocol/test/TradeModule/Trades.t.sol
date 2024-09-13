@@ -66,6 +66,7 @@ contract TradePositionBasic is TestTrade {
         );
 
         uint160 startingSqrtPriceX96 = INITIAL_PRICE_SQRT;
+
         (foil, ) = createEpoch(
             EPOCH_LOWER_TICK,
             EPOCH_UPPER_TICK,
@@ -211,7 +212,7 @@ contract TradePositionBasic is TestTrade {
         uint256 positionId;
 
         vm.startPrank(trader1);
-        positionId = addPreTrade(foil, epochId, initialPositionSize);
+        positionId = addTraderPosition(foil, epochId, initialPositionSize);
         fillCollateralStateData(trader1, latestStateData);
         fillPositionState(positionId, latestStateData);
 
@@ -279,7 +280,7 @@ contract TradePositionBasic is TestTrade {
         uint256 positionId;
 
         vm.startPrank(trader1);
-        positionId = addPreTrade(foil, epochId, initialPositionSize);
+        positionId = addTraderPosition(foil, epochId, initialPositionSize);
         fillCollateralStateData(trader1, latestStateData);
         fillPositionState(positionId, latestStateData);
 
@@ -355,7 +356,7 @@ contract TradePositionBasic is TestTrade {
         uint256 positionId;
 
         vm.startPrank(trader1);
-        positionId = addPreTrade(foil, epochId, initialPositionSize);
+        positionId = addTraderPosition(foil, epochId, initialPositionSize);
         fillCollateralStateData(trader1, latestStateData);
         fillPositionState(positionId, latestStateData);
 
@@ -434,7 +435,7 @@ contract TradePositionBasic is TestTrade {
         uint256 positionId;
 
         vm.startPrank(trader1);
-        positionId = addPreTrade(foil, epochId, initialPositionSize);
+        positionId = addTraderPosition(foil, epochId, initialPositionSize);
         fillCollateralStateData(trader1, latestStateData);
         fillPositionState(positionId, latestStateData);
 
@@ -506,7 +507,7 @@ contract TradePositionBasic is TestTrade {
         uint256 positionId;
 
         vm.startPrank(trader1);
-        positionId = addPreTrade(foil, epochId, initialPositionSize);
+        positionId = addTraderPosition(foil, epochId, initialPositionSize);
         fillCollateralStateData(trader1, latestStateData);
         fillPositionState(positionId, latestStateData);
 
@@ -574,7 +575,7 @@ contract TradePositionBasic is TestTrade {
         uint256 positionId;
 
         vm.startPrank(trader1);
-        positionId = addPreTrade(foil, epochId, initialPositionSize);
+        positionId = addTraderPosition(foil, epochId, initialPositionSize);
         fillCollateralStateData(trader1, latestStateData);
         fillPositionState(positionId, latestStateData);
 

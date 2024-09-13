@@ -45,12 +45,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xfc12a3773449174923c78a1feadba7978399f300645c87e81ccbff382efbef7a",
+  "deployTxnHash": "0xce671aad084c61d8aaa16d2b272d8ae7d8c409a9601ab21c8e89f89d05236bdb",
   "deployTxnBlockNumber": "6",
-  "deployTimestamp": "1726146213",
+  "deployTimestamp": "1726241817",
   "sourceName": "contracts/lens/TickLens.sol",
   "contractName": "TickLens",
   "deployedOn": "deploy.TickLens",
   "gasUsed": 352108,
-  "gasCost": "1002791535"
+  "gasCost": "1006183133"
 }

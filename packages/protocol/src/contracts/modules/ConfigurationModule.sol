@@ -13,8 +13,8 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuard {
 
     address immutable initializer;
 
-    constructor() {
-        initializer = msg.sender;
+    constructor(address _initializer) {
+        initializer = _initializer;
     }
 
     modifier onlyOwner() {

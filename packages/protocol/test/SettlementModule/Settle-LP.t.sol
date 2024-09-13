@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
-import {TestEpoch} from "../helpers/TestEpoch.sol";
+import {TestTrade} from "../helpers/TestTrade.sol";
 import {IFoilStructs} from "../../src/contracts/interfaces/IFoilStructs.sol";
 import {IMintableToken} from "../../src/contracts/external/IMintableToken.sol";
 import {IFoil} from "../../src/contracts/interfaces/IFoil.sol";
@@ -15,7 +15,7 @@ import {Epoch} from "../../src/contracts/storage/Epoch.sol";
 import {Errors} from "../../src/contracts/storage/Errors.sol";
 import {IFoil} from "../../src/contracts/interfaces/IFoil.sol";
 
-contract SettleLPTest is TestEpoch {
+contract SettleLPTest is TestTrade {
     using Cannon for Vm;
 
     IFoil public foil;
@@ -33,7 +33,6 @@ contract SettleLPTest is TestEpoch {
     IMintableToken collateralAsset;
     int24 constant MIN_TICK = 16000;
     int24 constant MAX_TICK = 29800;
-    uint256 constant dust = 1e8;
     uint256 constant settlementPrice = 10 ether;
 
     function setUp() public {
@@ -90,14 +89,7 @@ contract SettleLPTest is TestEpoch {
         uint256 amount
     ) internal returns (uint256 traderPositionId) {
         vm.startPrank(trader);
-        // TODO Fix
-        // uint256 positionSize = foil.getLongSizeForCollateral(epochId, amount);
-        // traderPositionId = foil.createTraderPosition(
-        //     epochId,
-        //     amount + 10 ether,
-        //     int256(positionSize),
-        //     0
-        // );
+        traderPositionId = addTraderPosition(foil, epochId, int256(amount));
         vm.stopPrank();
     }
 
@@ -106,14 +98,7 @@ contract SettleLPTest is TestEpoch {
         uint256 amount
     ) internal returns (uint256 traderPositionId) {
         vm.startPrank(trader);
-        // TODO Fix
-        // uint256 positionSize = foil.getShortSizeForCollateral(epochId, amount);
-        // traderPositionId = foil.createTraderPosition(
-        //     epochId,
-        //     amount + 10 ether,
-        //     -int256(positionSize),
-        //     0
-        // );
+        traderPositionId = addTraderPosition(foil, epochId, -int256(amount));
         vm.stopPrank();
     }
 
@@ -157,7 +142,6 @@ contract SettleLPTest is TestEpoch {
 
         // Set settlement price
         settleEpoch(epochId, settlementPrice, owner);
-        /*
         // Get initial position details
         Position.Data memory position = foil.getPosition(lpPositionId);
         // Get initial balances
@@ -180,7 +164,6 @@ contract SettleLPTest is TestEpoch {
         //     initialCollateralBalance,
         //     position
         // );
-*/
     }
 
     struct SettlementCollateralAssertionData {

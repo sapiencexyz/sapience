@@ -178,12 +178,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x4d612fc517ab52dc45fcbc1a74c6cdce64c5790b50090504518ea50869ffc70c",
+  "deployTxnHash": "0xe39c5e7f14f75e74f9ae055e3cce86de40ec847816ca29e7434078d15a17ff7f",
   "deployTxnBlockNumber": "6",
-  "deployTimestamp": "1726146212",
-  "sourceName": "node_modules/@uma/core/contracts/common/implementation/AddressWhitelist.sol",
-  "contractName": "AddressWhitelist",
+  "deployTimestamp": "1726241816",
+  "sourceName": "src/UMA/src/AddressWhitelistOverride.sol",
+  "contractName": "AddressWhitelistOverride",
   "deployedOn": "deploy.AddressWhitelist",
-  "gasUsed": 543265,
-  "gasCost": "1119510426"
+  "gasUsed": 538716,
+  "gasCost": "1264678676"
 }

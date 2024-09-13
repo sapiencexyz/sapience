@@ -131,12 +131,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x06c789d249937ab605a6189823da71da69db689805e6446d0ba26a6d2e024c96",
+  "deployTxnHash": "0x08e5b8d6fce5652901a28300d55833d2febf96e303694927dfe8124d43428edd",
   "deployTxnBlockNumber": "7",
-  "deployTimestamp": "1726146213",
-  "sourceName": "src/UMA/src/Finder.sol",
-  "contractName": "Finder",
+  "deployTimestamp": "1726241817",
+  "sourceName": "src/UMA/src/FinderOverride.sol",
+  "contractName": "FinderOverride",
   "deployedOn": "deploy.Finder",
   "gasUsed": 285093,
-  "gasCost": "1105112672"
+  "gasCost": "1232782064"
 }

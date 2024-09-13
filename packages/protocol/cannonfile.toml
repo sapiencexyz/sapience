@@ -1,8 +1,8 @@
 name="foil"
-version="0.11"
+version="0.12"
 
 [var.settings]
-owner = "0xEB045D78d273107348b0300c01D29B7552D622ab"
+owner = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
 startTime = "<%= timestamp %>"
 endTime = "<%= timestamp + 604800 %>"
 baseAssetMinPriceTick = "5200" # 1.709
@@ -41,7 +41,7 @@ artifact = "ReentrancyGuard"
 [deploy.ConfigurationModule]
 artifact="ConfigurationModule"
 libraries.ReentrancyGuard="<%= contracts.ReentrancyGuard.address %>"
-from="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+args=["<%= settings.owner %>"]
 
 [deploy.LiquidityModule]
 artifact="LiquidityModule"
@@ -84,7 +84,7 @@ highlight=true
 [invoke.initializeMarket]
 target="Foil"
 func="initializeMarket"
-from="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+from="<%= settings.owner %>"
 args=[
   "<%= settings.owner %>",
   "<%= imports.CollateralAsset.contracts.Token.address %>",
@@ -96,6 +96,7 @@ depends=["router.Foil"]
 [invoke.createEpoch]
 target="Foil"
 func="createEpoch"
+from="<%= settings.owner %>"
 args=[
   "<%= settings.startTime %>",
   "<%= settings.endTime %>",
@@ -106,5 +107,5 @@ depends=["invoke.initializeMarket"]
 [invoke.gimmeTokens]
 target="CollateralAsset.Token"
 func="mint"
-args=["<%= parseEther('1000') %>", "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"]
+args=["<%= parseEther('1000') %>", "<%= settings.owner %>"]
 depends=["clone.CollateralAsset"]

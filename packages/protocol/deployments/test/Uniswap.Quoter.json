@@ -198,12 +198,12 @@
     "0x071C46222236E75E6B822A1886611b43c8FBcab2"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x653224fc93d2ffe36a5e5b4e4431040d0ef2821b7430037c5f7eb3820bd3e312",
+  "deployTxnHash": "0x7b4dbc4e3430f53133514b280fb0a52516bae13c98e7d07227a360396f2a81f5",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1726112136",
+  "deployTimestamp": "1726180840",
   "sourceName": "contracts/lens/Quoter.sol",
   "contractName": "Quoter",
   "deployedOn": "deploy.Quoter",
   "gasUsed": 1050171,
-  "gasCost": "1001641836"
+  "gasCost": "1001642033"
 }
