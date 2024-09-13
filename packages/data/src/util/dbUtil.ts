@@ -372,9 +372,9 @@ export const createOrUpdateMarketFromEvent = async (
     baseAssetMinPriceTick: Number(eventArgs.epochParams.baseAssetMinPriceTick),
     baseAssetMaxPriceTick: Number(eventArgs.epochParams.baseAssetMaxPriceTick),
     feeRate: Number(eventArgs.epochParams.feeRate),
-    assertionLiveness: eventArgs?.epochParams?.assertionLiveness,
+    assertionLiveness: eventArgs?.epochParams?.assertionLiveness.toString(),
     bondCurrency: eventArgs?.epochParams?.bondCurrency,
-    bondAmount: eventArgs?.epochParams?.bondAmount,
+    bondAmount: eventArgs?.epochParams?.bondAmount.toString(),
     priceUnit: eventArgs?.epochParams?.priceUnit,
   };
   const newMarket = await marketRepository.save(market);
