@@ -1,7 +1,6 @@
 # 👽 Foil
 
 - Start the protocol on a local node
-  - First delete the deployment directory `packages/protocol/deployments/13370`
   - `pnpm run dev:protocol` and press `i` to interact with it
 - Start the app
   - `pnpm run dev:app` and access at http://localhost:3000
@@ -17,6 +16,5 @@
 
 - Go to `/packages/protocol`
 - Increment the version number in the cannonfiles
-- Update the sepolia cannonfile's `startTime` to a [timestamp slightly in the future](https://www.unixtimestamp.com/index.php) and an `endTime` past that.
 - Run `pnpm simulate-deploy:sepolia` to verify there are no issues
 - Run `CANNON_PRIVATE_KEY=x CANNON_PROVIDER_URL=y pnpm deploy:sepolia` (or set those values in a `.env` file)

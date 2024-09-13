@@ -25,7 +25,7 @@
   "linkedLibraries": {},
   "deployTxnHash": "0xd66a2013a6f0fa6d30badf6fe798833e305b84b014e607021bad09010431ef65",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1726180357",
+  "deployTimestamp": "1726241812",
   "sourceName": "src/contracts/modules/TradeViewsModule.sol",
   "contractName": "TradeViewsModule",
   "deployedOn": "deploy.TradeViewsModule",

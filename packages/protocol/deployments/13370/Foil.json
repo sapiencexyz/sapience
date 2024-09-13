@@ -2554,7 +2554,7 @@
   "deployedOn": "router.Foil",
   "deployTxnHash": "0xe34bbeef165b8173918119b4e159307d2b7faeadcc606d15f8de166bdd24b7df",
   "deployTxnBlockNumber": "3",
-  "deployTimestamp": "1726180366",
+  "deployTimestamp": "1726241821",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
   "highlight": true,

@@ -450,7 +450,7 @@
   "linkedLibraries": {},
   "deployTxnHash": "0xf2f7d8a4417b5ab11ae886714a32caaa8220780ca49e6ae6fc006f6827aa973e",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1726180357",
+  "deployTimestamp": "1726241812",
   "sourceName": "src/contracts/modules/TradeModule.sol",
   "contractName": "TradeModule",
   "deployedOn": "deploy.TradeModule",

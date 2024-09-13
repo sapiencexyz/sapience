@@ -617,7 +617,7 @@
   "linkedLibraries": {},
   "deployTxnHash": "0x57b575f9da1d733074b1d73f17bc091b52d76d468ef8ac7fd1ee9195945bfcc8",
   "deployTxnBlockNumber": "2",
-  "deployTimestamp": "1726180360",
+  "deployTimestamp": "1726241815",
   "sourceName": "src/contracts/modules/ConfigurationModule.sol",
   "contractName": "ConfigurationModule",
   "deployedOn": "deploy.ConfigurationModule",

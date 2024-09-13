@@ -1,5 +1,5 @@
 name="foil"
-version="0.11"
+version="0.12"
 
 [var.settings]
 owner = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"

@@ -1,5 +1,5 @@
 {
-  "address": "0x538B47C749f11E348b4Fa6E43706F3D45A3Ae7c1",
+  "address": "0xfA13daD60E74a9c7eD1f66Dc1dB895391E7c14d2",
   "abi": [
     {
       "type": "function",
@@ -23,12 +23,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x952dfb03c9bd8215061d10dbe19c7bb064288c89817de33b2eca15846e3ca40e",
-  "deployTxnBlockNumber": "6674010",
-  "deployTimestamp": "1726085472",
+  "deployTxnHash": "0x07a055a61863339e5a2290b6fbb38c9efe08471239565eb428392c28b6a8083a",
+  "deployTxnBlockNumber": "6684680",
+  "deployTimestamp": "1726242192",
   "sourceName": "src/contracts/modules/TradeViewsModule.sol",
   "contractName": "TradeViewsModule",
   "deployedOn": "deploy.TradeViewsModule",
   "gasUsed": 219276,
-  "gasCost": "1858234302"
+  "gasCost": "3778262789"
 }

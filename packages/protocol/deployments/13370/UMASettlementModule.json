@@ -178,7 +178,7 @@
   "linkedLibraries": {},
   "deployTxnHash": "0x6a6d3a3bbb2132051f38aeaae0884c9e000ed0a058a01cc472d17ed7f9a4a028",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1726180357",
+  "deployTimestamp": "1726241812",
   "sourceName": "src/contracts/modules/UMASettlementModule.sol",
   "contractName": "UMASettlementModule",
   "deployedOn": "deploy.UMASettlementModule",

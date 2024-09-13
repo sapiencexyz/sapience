@@ -427,7 +427,7 @@
   "linkedLibraries": {},
   "deployTxnHash": "0x400a44051c183c950d391cfb24aa323e48c907c2cb43b33913366d3ad79bd856",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1726180357",
+  "deployTimestamp": "1726241812",
   "sourceName": "src/contracts/modules/ViewsModule.sol",
   "contractName": "ViewsModule",
   "deployedOn": "deploy.ViewsModule",
