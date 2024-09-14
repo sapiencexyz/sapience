@@ -34,7 +34,10 @@ library Market {
     ) internal returns (Data storage market) {
         validateEpochParams(epochParams);
 
-        require(IERC20Metadata(collateralAsset).decimals() == 18, "collateralAsset must have 18 decimals");
+        require(
+            IERC20Metadata(collateralAsset).decimals() == 18,
+            "collateralAsset must have 18 decimals"
+        );
 
         market = load();
 
@@ -66,29 +69,67 @@ library Market {
         market.epochParams = epochParams;
     }
 
-    function validateEpochParams(IFoilStructs.EpochParams memory epochParams) internal view {
+    function validateEpochParams(
+        IFoilStructs.EpochParams memory epochParams
+    ) internal pure {
         int24 tickSpacing = getTickSpacingForFee(epochParams.feeRate);
 
-        if (epochParams.baseAssetMinPriceTick % tickSpacing != 0){
-            revert Errors.InvalidBaseAssetMinPriceTick(epochParams.baseAssetMinPriceTick, tickSpacing);
+        if (epochParams.baseAssetMinPriceTick % tickSpacing != 0) {
+            revert Errors.InvalidBaseAssetMinPriceTick(
+                epochParams.baseAssetMinPriceTick,
+                tickSpacing
+            );
         }
-       
+
         if (epochParams.baseAssetMaxPriceTick % tickSpacing != 0) {
-            revert Errors.InvalidBaseAssetMaxPriceTick(epochParams.baseAssetMaxPriceTick, tickSpacing);
+            revert Errors.InvalidBaseAssetMaxPriceTick(
+                epochParams.baseAssetMaxPriceTick,
+                tickSpacing
+            );
         }
 
-        if (epochParams.baseAssetMinPriceTick >= epochParams.baseAssetMaxPriceTick) {
-            revert Errors.InvalidPriceTickRange(epochParams.baseAssetMinPriceTick, epochParams.baseAssetMaxPriceTick);
+        if (
+            epochParams.baseAssetMinPriceTick >=
+            epochParams.baseAssetMaxPriceTick
+        ) {
+            revert Errors.InvalidPriceTickRange(
+                epochParams.baseAssetMinPriceTick,
+                epochParams.baseAssetMaxPriceTick
+            );
         }
 
-        require(epochParams.assertionLiveness >= 6 hours, "assertionLiveness must be at least six hours");
-        require(epochParams.bondCurrency != address(0), "bondCurrency must be a non-zero address");
-        require(epochParams.bondAmount > 0, "bondAmount must be greater than 0");
-        require(epochParams.priceUnit.length > 0, "priceUnit must be non-empty");
-        require(epochParams.uniswapPositionManager != address(0), "uniswapPositionManager must be a non-zero address");
-        require(epochParams.uniswapSwapRouter != address(0), "uniswapSwapRouter must be a non-zero address");
-        require(epochParams.uniswapQuoter != address(0), "uniswapQuoter must be a non-zero address");
-        require(epochParams.optimisticOracleV3 != address(0), "optimisticOracleV3 must be a non-zero address");
+        require(
+            epochParams.assertionLiveness >= 6 hours,
+            "assertionLiveness must be at least six hours"
+        );
+        require(
+            epochParams.bondCurrency != address(0),
+            "bondCurrency must be a non-zero address"
+        );
+        require(
+            epochParams.bondAmount > 0,
+            "bondAmount must be greater than 0"
+        );
+        require(
+            epochParams.priceUnit.length > 0,
+            "priceUnit must be non-empty"
+        );
+        require(
+            epochParams.uniswapPositionManager != address(0),
+            "uniswapPositionManager must be a non-zero address"
+        );
+        require(
+            epochParams.uniswapSwapRouter != address(0),
+            "uniswapSwapRouter must be a non-zero address"
+        );
+        require(
+            epochParams.uniswapQuoter != address(0),
+            "uniswapQuoter must be a non-zero address"
+        );
+        require(
+            epochParams.optimisticOracleV3 != address(0),
+            "optimisticOracleV3 must be a non-zero address"
+        );
     }
 
     function getTickSpacingForFee(uint24 fee) internal pure returns (int24) {
@@ -117,7 +158,7 @@ library Market {
     ) internal {
         self.collateralAsset.safeTransfer(user, amount);
     }
-    
+
     function transferOwnership(Data storage self, address newOwner) internal {
         self.pendingOwner = newOwner;
     }
