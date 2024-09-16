@@ -1,7 +1,7 @@
 'use client';
 
 // eslint-disable-next-line import/no-extraneous-dependencies
-import INONFUNGIBLE_POSITION_MANAGER from '@/protocol/deployments/13370/Uniswap.NonfungiblePositionManager.json';
+import INONFUNGIBLE_POSITION_MANAGER from '../../interfaces/Uniswap.NonfungiblePositionManager.json';
 import {
   Box,
   FormControl,
