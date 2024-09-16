@@ -24,6 +24,32 @@ contract LiquidityModule is ReentrancyGuard, ILiquidityModule {
         int24 upperTick;
     }
 
+    struct DecreaseEventParams {
+        uint256 epochId;
+        uint256 positionId;
+        uint256 collateralAmount;
+        uint128 liquidity;
+        uint256 amount0;
+        uint256 amount1;
+    }
+
+    struct IncreaseEventParams {
+        uint256 epochId;
+        uint256 positionId;
+        uint256 collateralAmount;
+        uint128 liquidity;
+        uint256 amount0;
+        uint256 amount1;
+    }
+
+    struct CloseEventParams {
+        uint256 epochId;
+        uint256 positionId;
+        IFoilStructs.PositionKind kind;
+        uint256 collectedAmount0;
+        uint256 collectedAmount1;
+    }
+
     function createLiquidityPosition(
         IFoilStructs.LiquidityMintParams memory params
     )
@@ -64,68 +90,6 @@ contract LiquidityModule is ReentrancyGuard, ILiquidityModule {
         }));
     }
 
-    function _mintUniswapPosition(Epoch.Data storage epoch, IFoilStructs.LiquidityMintParams memory params)
-        internal
-        returns (uint256 uniswapNftId, uint128 liquidity, uint256 addedAmount0, uint256 addedAmount1)
-    {
-        (uniswapNftId, liquidity, addedAmount0, addedAmount1) = INonfungiblePositionManager(epoch
-            .params
-            .uniswapPositionManager)
-            .mint(
-                INonfungiblePositionManager.MintParams({
-                    token0: address(epoch.gasToken),
-                    token1: address(epoch.ethToken),
-                    fee: epoch.params.feeRate,
-                    tickLower: params.lowerTick,
-                    tickUpper: params.upperTick,
-                    amount0Desired: params.amountTokenA,
-                    amount1Desired: params.amountTokenB,
-                    amount0Min: params.minAmountTokenA,
-                    amount1Min: params.minAmountTokenB,
-                    recipient: address(this),
-                    deadline: block.timestamp
-                })
-            );
-    }
-
-    function _updatePosition(
-        Position.Data storage position,
-        Epoch.Data storage epoch,
-        IFoilStructs.LiquidityMintParams memory params,
-        uint256 uniswapNftId,
-        uint128 liquidity,
-        uint256 addedAmount0,
-        uint256 addedAmount1
-    ) internal returns (uint256 collateralAmount) {
-        collateralAmount = position.updateValidLp(
-            epoch,
-            Position.UpdateLpParams({
-                uniswapNftId: uniswapNftId,
-                liquidity: liquidity,
-                additionalCollateral: params.collateralAmount,
-                additionalLoanAmount0: addedAmount0,
-                additionalLoanAmount1: addedAmount1,
-                lowerTick: params.lowerTick,
-                upperTick: params.upperTick,
-                tokensOwed0: 0,
-                tokensOwed1: 0
-            })
-        );
-    }
-
-    function _emitLiquidityPositionCreated(CreateEventParams memory params) internal {
-        emit LiquidityPositionCreated(
-            params.epochId,
-            params.positionId,
-            params.collateralAmount,
-            params.liquidity,
-            params.amount0,
-            params.amount1,
-            params.lowerTick,
-            params.upperTick
-        );
-    }
-
     function decreaseLiquidityPosition(
         IFoilStructs.LiquidityDecreaseParams memory params
     )
@@ -151,54 +115,36 @@ contract LiquidityModule is ReentrancyGuard, ILiquidityModule {
             stack.previousLiquidity
         ) = Pool.getCurrentPositionTokenAmounts(market, epoch, position);
 
-        stack.decreaseParams = INonfungiblePositionManager
-            .DecreaseLiquidityParams({
-                tokenId: position.uniswapPositionId,
-                liquidity: params.liquidity,
-                amount0Min: params.minGasAmount,
-                amount1Min: params.minEthAmount,
-                deadline: block.timestamp
-            });
-
-        (amount0, amount1) = INonfungiblePositionManager(epoch
-            .params
-            .uniswapPositionManager).decreaseLiquidity(
-            stack.decreaseParams
-        );
+        (amount0, amount1) = _decreaseUniswapLiquidity(epoch, position, params, stack.previousLiquidity);
 
         if (params.liquidity == stack.previousLiquidity) {
             return _closeLiquidityPosition(market, position);
         } else {
-            // get tokens owed
-            (, , , , , , , , , , stack.tokensOwed0, stack.tokensOwed1) = INonfungiblePositionManager(epoch
-            .params
-            .uniswapPositionManager)
-                .positions(position.uniswapPositionId);
-
-            collateralAmount = position.updateValidLp(
+            collateralAmount = _updatePosition(
+                position,
                 epoch,
                 Position.UpdateLpParams({
                     uniswapNftId: position.uniswapPositionId,
                     liquidity: stack.previousLiquidity - params.liquidity,
                     additionalCollateral: 0,
-                    additionalLoanAmount0: 0, // tokensOwed0 represents the returned tokens
-                    additionalLoanAmount1: 0, // tokensOwed1 represents the returned tokens
+                    additionalLoanAmount0: 0,
+                    additionalLoanAmount1: 0,
                     lowerTick: stack.lowerTick,
                     upperTick: stack.upperTick,
-                    tokensOwed0: stack.tokensOwed0,
-                    tokensOwed1: stack.tokensOwed1
+                    tokensOwed0: amount0,
+                    tokensOwed1: amount1
                 })
             );
         }
 
-        emit LiquidityPositionDecreased(
-            epoch.id,
-            position.id,
-            position.depositedCollateralAmount,
-            params.liquidity,
-            amount0,
-            amount1
-        );
+        _emitLiquidityPositionDecreased(DecreaseEventParams({
+            epochId: epoch.id,
+            positionId: position.id,
+            collateralAmount: position.depositedCollateralAmount,
+            liquidity: params.liquidity,
+            amount0: amount0,
+            amount1: amount1
+        }));
     }
 
     function increaseLiquidityPosition(
@@ -231,50 +177,32 @@ contract LiquidityModule is ReentrancyGuard, ILiquidityModule {
             stack.previousLiquidity
         ) = Pool.getCurrentPositionTokenAmounts(market, epoch, position);
 
-        stack.increaseParams = INonfungiblePositionManager
-            .IncreaseLiquidityParams({
-                tokenId: position.uniswapPositionId,
-                amount0Desired: params.gasTokenAmount,
-                amount1Desired: params.ethTokenAmount,
-                amount0Min: params.minGasAmount,
-                amount1Min: params.minEthAmount,
-                deadline: block.timestamp
-            });
+        (liquidity, amount0, amount1) = _increaseUniswapLiquidity(epoch, position, params);
 
-        (liquidity, amount0, amount1) = INonfungiblePositionManager(epoch
-            .params
-            .uniswapPositionManager)
-            .increaseLiquidity(stack.increaseParams);
-
-        // get tokens owed
-        (, , , , , , , , , , stack.tokensOwed0, stack.tokensOwed1) = INonfungiblePositionManager(epoch
-            .params
-            .uniswapPositionManager)
-            .positions(position.uniswapPositionId);
-
-        collateralAmount = position.updateValidLp(
+        collateralAmount = _updatePosition(
+            position,
             epoch,
             Position.UpdateLpParams({
                 uniswapNftId: position.uniswapPositionId,
                 liquidity: stack.previousLiquidity + liquidity,
                 additionalCollateral: params.collateralAmount,
-                additionalLoanAmount0: amount0, // these are the added tokens to the position
+                additionalLoanAmount0: amount0,
                 additionalLoanAmount1: amount1,
                 lowerTick: stack.lowerTick,
                 upperTick: stack.upperTick,
-                tokensOwed0: stack.tokensOwed0,
-                tokensOwed1: stack.tokensOwed1
+                tokensOwed0: 0,
+                tokensOwed1: 0
             })
         );
 
-        emit LiquidityPositionIncreased(
-            epoch.id,
-            position.id,
-            position.depositedCollateralAmount,
-            liquidity,
-            amount0,
-            amount1
-        );
+        _emitLiquidityPositionIncreased(IncreaseEventParams({
+            epochId: epoch.id,
+            positionId: position.id,
+            collateralAmount: position.depositedCollateralAmount,
+            liquidity: liquidity,
+            amount0: amount0,
+            amount1: amount1
+        }));
     }
 
     function getTokenAmounts(
@@ -441,12 +369,131 @@ contract LiquidityModule is ReentrancyGuard, ILiquidityModule {
         collateralAmount = position.depositedCollateralAmount;
 
         // Emit an event for the closed position
+        _emitLiquidityPositionClosed(CloseEventParams({
+            epochId: epoch.id,
+            positionId: position.id,
+            kind: position.kind,
+            collectedAmount0: collectedAmount0,
+            collectedAmount1: collectedAmount1
+        }));
+    }
+
+    function _mintUniswapPosition(Epoch.Data storage epoch, IFoilStructs.LiquidityMintParams memory params)
+        internal
+        returns (uint256 uniswapNftId, uint128 liquidity, uint256 addedAmount0, uint256 addedAmount1)
+    {
+        (uniswapNftId, liquidity, addedAmount0, addedAmount1) = INonfungiblePositionManager(epoch
+            .params
+            .uniswapPositionManager)
+            .mint(
+                INonfungiblePositionManager.MintParams({
+                    token0: address(epoch.gasToken),
+                    token1: address(epoch.ethToken),
+                    fee: epoch.params.feeRate,
+                    tickLower: params.lowerTick,
+                    tickUpper: params.upperTick,
+                    amount0Desired: params.amountTokenA,
+                    amount1Desired: params.amountTokenB,
+                    amount0Min: params.minAmountTokenA,
+                    amount1Min: params.minAmountTokenB,
+                    recipient: address(this),
+                    deadline: block.timestamp
+                })
+            );
+    }
+
+    function _decreaseUniswapLiquidity(
+        Epoch.Data storage epoch,
+        Position.Data storage position,
+        IFoilStructs.LiquidityDecreaseParams memory params,
+        uint128 previousLiquidity
+    )
+        internal
+        returns (uint256 amount0, uint256 amount1)
+    {
+        INonfungiblePositionManager.DecreaseLiquidityParams memory decreaseParams = INonfungiblePositionManager
+            .DecreaseLiquidityParams({
+                tokenId: position.uniswapPositionId,
+                liquidity: params.liquidity,
+                amount0Min: params.minGasAmount,
+                amount1Min: params.minEthAmount,
+                deadline: block.timestamp
+            });
+
+        (amount0, amount1) = INonfungiblePositionManager(epoch.params.uniswapPositionManager).decreaseLiquidity(decreaseParams);
+    }
+
+    function _increaseUniswapLiquidity(
+        Epoch.Data storage epoch,
+        Position.Data storage position,
+        IFoilStructs.LiquidityIncreaseParams memory params
+    )
+        internal
+        returns (uint128 liquidity, uint256 amount0, uint256 amount1)
+    {
+        INonfungiblePositionManager.IncreaseLiquidityParams memory increaseParams = INonfungiblePositionManager
+            .IncreaseLiquidityParams({
+                tokenId: position.uniswapPositionId,
+                amount0Desired: params.gasTokenAmount,
+                amount1Desired: params.ethTokenAmount,
+                amount0Min: params.minGasAmount,
+                amount1Min: params.minEthAmount,
+                deadline: block.timestamp
+            });
+
+        (liquidity, amount0, amount1) = INonfungiblePositionManager(epoch.params.uniswapPositionManager).increaseLiquidity(increaseParams);
+    }
+
+    function _updatePosition(
+        Position.Data storage position,
+        Epoch.Data storage epoch,
+        Position.UpdateLpParams memory params
+    ) internal returns (uint256 collateralAmount) {
+        collateralAmount = position.updateValidLp(epoch, params);
+    }
+
+    function _emitLiquidityPositionCreated(CreateEventParams memory params) internal {
+        emit LiquidityPositionCreated(
+            params.epochId,
+            params.positionId,
+            params.collateralAmount,
+            params.liquidity,
+            params.amount0,
+            params.amount1,
+            params.lowerTick,
+            params.upperTick
+        );
+    }
+
+    function _emitLiquidityPositionDecreased(DecreaseEventParams memory params) internal {
+        emit LiquidityPositionDecreased(
+            params.epochId,
+            params.positionId,
+            params.collateralAmount,
+            params.liquidity,
+            params.amount0,
+            params.amount1
+        );
+    }
+
+    function _emitLiquidityPositionIncreased(IncreaseEventParams memory params) internal {
+        emit LiquidityPositionIncreased(
+            params.epochId,
+            params.positionId,
+            params.collateralAmount,
+            params.liquidity,
+            params.amount0,
+            params.amount1
+        );
+    }
+
+    function _emitLiquidityPositionClosed(CloseEventParams memory params) internal {
         emit LiquidityPositionClosed(
-            epoch.id,
-            position.id,
-            position.kind,
-            collectedAmount0,
-            collectedAmount1
+            params.epochId,
+            params.positionId,
+            params.kind,
+            params.collectedAmount0,
+            params.collectedAmount1
         );
     }
 }
