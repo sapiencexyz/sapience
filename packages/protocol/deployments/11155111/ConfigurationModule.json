@@ -1,5 +1,5 @@
 {
-  "address": "0x6f719309a5Af2b27Ef3f148Ad7c82e32a8690d80",
+  "address": "0x6e69FA4B43Ab605534E796FF840Aec43e41F7597",
   "abi": [
     {
       "type": "constructor",
@@ -37,6 +37,11 @@
           "name": "startingSqrtPriceX96",
           "type": "uint160",
           "internalType": "uint160"
+        },
+        {
+          "name": "salt",
+          "type": "uint256",
+          "internalType": "uint256"
         }
       ],
       "outputs": [],
@@ -615,12 +620,12 @@
     "0xE006B58cA5aB7ba53863012dc3067A14b965C1da"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0xb84d294b5db61191811492a461880c1957e7dae8bb2d466bb2a9a44354748017",
-  "deployTxnBlockNumber": "6685722",
-  "deployTimestamp": "1726257336",
+  "deployTxnHash": "0xd9726f664cf05285b79764185a8a50d552e03d03768a945bb19a8ed3d64933d2",
+  "deployTxnBlockNumber": "6704821",
+  "deployTimestamp": "1726517664",
   "sourceName": "src/contracts/modules/ConfigurationModule.sol",
   "contractName": "ConfigurationModule",
   "deployedOn": "deploy.ConfigurationModule",
-  "gasUsed": 2613113,
-  "gasCost": "130117877"
+  "gasUsed": 2619806,
+  "gasCost": "5243955310"
 }

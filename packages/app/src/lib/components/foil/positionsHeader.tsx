@@ -34,13 +34,10 @@ const PositionsHeader = () => {
     liquidity,
   } = useContext(MarketContext);
 
-  const isMobile = useBreakpointValue({ base: true, md: false });
-  const isTablet = useBreakpointValue({ base: false, md: true, lg: false });
-
   let relativeTime = '';
   let formattedTime = '';
   if (endTime) {
-    const dateMilliseconds = Number(endTime) / 1000000;
+    const dateMilliseconds = Number(endTime) * 1000;
     const date = new Date(dateMilliseconds);
     relativeTime = formatDistanceToNow(date);
     formattedTime = format(date, 'PPpp');

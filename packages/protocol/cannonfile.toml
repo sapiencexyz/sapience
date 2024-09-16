@@ -1,10 +1,10 @@
 name="foil"
-version="0.13"
+version="<%= package.version %>"
 
 [var.settings]
 owner = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
-startTime = "<%= timestamp %>"
-endTime = "<%= timestamp + 604800 %>"
+startTime = "<%= parseInt(timestamp) %>"
+endTime = "<%= parseInt(timestamp) + 604800 %>"
 baseAssetMinPriceTick = "5200" # 1.709
 baseAssetMaxPriceTick = "28200" # 17.09
 feeRate = "10000" # 1%

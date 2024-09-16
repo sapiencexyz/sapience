@@ -12,7 +12,6 @@ library Errors {
     error NoEpochsCreated();
     error InvalidEpoch();
     error InvalidMarket();
-    error EpochNotStarted(uint256 epochId);
     error EpochNotSettled(uint256 epochId);
     error EpochAlreadyStarted();
     error EpochSettled();

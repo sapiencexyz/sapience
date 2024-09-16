@@ -1,5 +1,5 @@
 {
-  "address": "0xEDe4F1d1Cc13492e3f79576408fD91eD6B440Cb9",
+  "address": "0x35e1a5204D4Ed644897467d79E579275611e9927",
   "abi": [
     {
       "type": "function",
@@ -47,6 +47,11 @@
             },
             {
               "name": "minAmountTokenB",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "deadline",
               "type": "uint256",
               "internalType": "uint256"
             }
@@ -113,6 +118,11 @@
             },
             {
               "name": "minEthAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "deadline",
               "type": "uint256",
               "internalType": "uint256"
             }
@@ -252,6 +262,11 @@
             },
             {
               "name": "minEthAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "deadline",
               "type": "uint256",
               "internalType": "uint256"
             }
@@ -644,12 +659,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x782fb4ce76681fd8d886823fdb193fb5875b46e05eb6247bd085c1195d21116d",
-  "deployTxnBlockNumber": "6685713",
-  "deployTimestamp": "1726257204",
+  "deployTxnHash": "0xb3f93a1a4bead969f3e75f2f4a4e1fd3e4d754296800c7c8ff1f5a6ab24f349c",
+  "deployTxnBlockNumber": "6704813",
+  "deployTimestamp": "1726517556",
   "sourceName": "src/contracts/modules/LiquidityModule.sol",
   "contractName": "LiquidityModule",
   "deployedOn": "deploy.LiquidityModule",
-  "gasUsed": 2974619,
-  "gasCost": "128235810"
+  "gasUsed": 3015741,
+  "gasCost": "5683605523"
 }

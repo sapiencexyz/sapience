@@ -2,17 +2,17 @@
   "name": "@foil/protocol",
   "license": "UNLICENSED",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.15",
   "scripts": {
     "dev": "cannon build --keep-alive --port 8545 --no-cors --write-deployments ./deployments/13370",
-    "test": "cannon test cannonfile.test.toml",
+    "test": "cannon test cannonfile.test.toml -- -vv",
     "deploy:sepolia": "cannon build cannonfile.sepolia.toml --chain-id 11155111 --write-deployments ./deployments/11155111",
     "simulate-deploy:sepolia": "cannon build cannonfile.sepolia.toml --chain-id 11155111 --dry-run"
   },
   "devDependencies": {
     "@types/chai": "^4.3.19",
-    "@types/mocha": "^10.0.7",
-    "@types/node": "^20.16.3",
+    "@types/mocha": "^10.0.8",
+    "@types/node": "^20.16.5",
     "chai": "^4.5.0",
     "forge-std": "github:foundry-rs/forge-std#master",
     "mocha": "^10.7.3",
@@ -20,14 +20,14 @@
     "solidity-coverage": "^0.8.13",
     "ts-node": "^10.9.2",
     "typechain": "^8.3.2",
-    "typescript": "^5.5.4"
+    "typescript": "^5.6.2"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.0.2",
-    "@synthetixio/core-contracts": "^3.6.0",
+    "@synthetixio/core-contracts": "^3.6.1",
     "@uma/core": "^2.59.1",
     "@uniswap/v3-core": "^1.0.1",
     "@uniswap/v3-periphery": "^1.4.4",
-    "@usecannon/cli": "^2.17.0"
+    "@usecannon/cli": "^2.17.1"
   }
 }
