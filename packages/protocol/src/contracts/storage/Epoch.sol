@@ -214,20 +214,12 @@ library Epoch {
     }
 
     function validateSettlementSanity(Data storage self) internal view {
-        if (block.timestamp < self.startTime) {
-            revert Errors.EpochNotStarted(self.startTime);
-        }
-
         if (block.timestamp >= self.endTime && !self.settled) {
             revert Errors.EpochNotSettled(self.endTime);
         }
     }
 
     function validateNotSettled(Data storage self) internal view {
-        if (block.timestamp < self.startTime) {
-            revert Errors.EpochNotStarted(self.startTime);
-        }
-
         if (block.timestamp >= self.endTime && !self.settled) {
             revert Errors.EpochNotSettled(self.endTime);
         }
