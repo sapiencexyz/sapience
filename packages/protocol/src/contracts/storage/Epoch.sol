@@ -57,20 +57,6 @@ library Epoch {
         }
     }
 
-    function updateDebtPosition(
-        Data storage self,
-        uint256 tokenId,
-        uint256 tokenAmount0,
-        uint256 tokenAmount1,
-        uint128 liquidity
-    ) internal {
-        self.lpDebtPositions[tokenId] = Debt.Data({
-            tokenAmount0: tokenAmount0,
-            tokenAmount1: tokenAmount1,
-            liquidity: liquidity
-        });
-    }
-
     function createValid(
         uint256 id,
         uint256 startTime,

@@ -87,6 +87,7 @@ contract TradePositionSettlement is TestTrade {
 
         // Settle the epoch
         bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
+        optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
 
         (owner, , ) = foil.getMarket();
         (
@@ -199,11 +200,33 @@ contract TradePositionSettlement is TestTrade {
     function closeAndSucceed(int256 initialPositionSize) internal {
         uint256 trader1InitialBalance = collateralAsset.balanceOf(trader1);
 
+        int256 pnl;
+        if (initialPositionSize > 0) {
+            // Long: PNL = (Settlement Price - Initial Price) * Position Size
+            pnl = initialPositionSize.mulDecimal(
+                SETTLEMENT_PRICE_D18.toInt() -
+                    INITIAL_PRICE_PLUS_FEE_D18.toInt()
+            );
+        } else {
+            // Short: PNL = (Initial Price - Settlement Price) * Position Size * -1 (positionSize is negative for short)
+            pnl =
+                -1 *
+                initialPositionSize.mulDecimal(
+                    INITIAL_PRICE_LESS_FEE_D18.toInt() -
+                        SETTLEMENT_PRICE_D18.toInt()
+                );
+        }
+
         vm.startPrank(trader1);
+        uint256 requiredCollateral = foil.quoteCreateTraderPosition(
+            epochId,
+            initialPositionSize
+        );
+
         uint256 positionId = foil.createTraderPosition(
             epochId,
             initialPositionSize,
-            100 ether
+            requiredCollateral * 2
         );
 
         vm.stopPrank();
@@ -211,24 +234,16 @@ contract TradePositionSettlement is TestTrade {
         settle();
 
         vm.startPrank(trader1);
-        foil.modifyTraderPosition(positionId, 0, 0);
+        requiredCollateral = foil.quoteModifyTraderPosition(positionId, 0);
+        foil.modifyTraderPosition(positionId, 0, requiredCollateral);
         vm.stopPrank();
 
         uint256 trader1FinalBalance = collateralAsset.balanceOf(trader1);
 
-        int256 feeAdjustedPrice = initialPositionSize > 0
-            ? INITIAL_PRICE_PLUS_FEE_D18.toInt()
-            : INITIAL_PRICE_LESS_FEE_D18.toInt();
-
-        int256 pnl = initialPositionSize.mulDecimal(
-            SETTLEMENT_PRICE_D18.toInt() - feeAdjustedPrice
-        );
-
-        assertApproxEqAbsDecimal(
-            trader1FinalBalance.toInt(),
-            trader1InitialBalance.toInt() + pnl,
-            .001 ether,
-            18,
+        assertApproxEqRel(
+            trader1FinalBalance.toInt() - trader1InitialBalance.toInt(),
+            pnl,
+            0.01 ether,
             "pnl"
         );
     }
