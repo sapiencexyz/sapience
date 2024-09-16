@@ -21,6 +21,7 @@ contract TestEpoch is TestUser {
 
     uint256 constant BOND_AMOUNT = 5 ether;
     uint256 internal constant Q128 = 0x100000000000000000000000000000000;
+    uint256 constant CREATE_EPOCH_SALT = 4;
 
     function createEpoch(
         int24 minTick,
@@ -34,7 +35,8 @@ contract TestEpoch is TestUser {
         foil.createEpoch(
             block.timestamp,
             block.timestamp + 30 days,
-            startingSqrtPriceX96
+            startingSqrtPriceX96,
+            CREATE_EPOCH_SALT
         );
 
         return (foil, owner);
@@ -57,7 +59,9 @@ contract TestEpoch is TestUser {
                 bondCurrency: vm.getAddress("BondCurrency.Token"),
                 bondAmount: BOND_AMOUNT,
                 priceUnit: "wstGwei/gas",
-                uniswapPositionManager: vm.getAddress("Uniswap.NonfungiblePositionManager"),
+                uniswapPositionManager: vm.getAddress(
+                    "Uniswap.NonfungiblePositionManager"
+                ),
                 uniswapSwapRouter: vm.getAddress("Uniswap.SwapRouter"),
                 uniswapQuoter: vm.getAddress("Uniswap.Quoter"),
                 optimisticOracleV3: vm.getAddress("UMA.OptimisticOracleV3")
@@ -131,7 +135,19 @@ contract TestEpoch is TestUser {
         )
     {
         IFoil foil = IFoil(vm.getAddress("Foil"));
-        (, , , address pool, , , , , , , IFoilStructs.EpochParams memory epochParams) = foil.getLatestEpoch();
+        (
+            ,
+            ,
+            ,
+            address pool,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            IFoilStructs.EpochParams memory epochParams
+        ) = foil.getLatestEpoch();
         (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
 
         (
@@ -147,9 +163,8 @@ contract TestEpoch is TestUser {
             ,
             tokensOwed0,
             tokensOwed1
-        ) = INonfungiblePositionManager(epochParams.uniswapPositionManager).positions(
-            uniswapPositionId
-        );
+        ) = INonfungiblePositionManager(epochParams.uniswapPositionManager)
+            .positions(uniswapPositionId);
 
         (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
             sqrtPriceX96,

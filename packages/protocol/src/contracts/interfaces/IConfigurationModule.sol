@@ -10,9 +10,7 @@ interface IConfigurationModule {
         IFoilStructs.EpochParams epochParams
     );
 
-    event MarketUpdated(
-        IFoilStructs.EpochParams epochParams
-    );
+    event MarketUpdated(IFoilStructs.EpochParams epochParams);
 
     event EpochCreated(
         uint epochId,
@@ -20,12 +18,12 @@ interface IConfigurationModule {
         uint256 endTime,
         uint160 startingSqrtPriceX96
     );
-    
+
     event OwnershipTransferStarted(
         address indexed previousOwner,
         address indexed newOwner
     );
-    
+
     event OwnershipTransferred(
         address indexed previousOwner,
         address indexed newOwner
@@ -43,13 +41,12 @@ interface IConfigurationModule {
         IFoilStructs.EpochParams memory epochParams
     ) external;
 
-    function updateMarket(
-        IFoilStructs.EpochParams memory epochParams
-    ) external;
+    function updateMarket(IFoilStructs.EpochParams memory epochParams) external;
 
     function createEpoch(
         uint256 startTime,
         uint256 endTime,
-        uint160 startingSqrtPriceX96
+        uint160 startingSqrtPriceX96,
+        uint256 create2Salt
     ) external;
 }
