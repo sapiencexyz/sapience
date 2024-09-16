@@ -1,6 +1,5 @@
-/* eslint-disable import/no-extraneous-dependencies */
-import FoilTestnet from '@/protocol/deployments/11155111/Foil.json';
-import FoilLocal from '@/protocol/deployments/13370/Foil.json';
+import React, { useState, useEffect } from 'react';
+import useFoilDeployment from '../components/foil/useFoilDeployment';
 import { HamburgerIcon } from '@chakra-ui/icons';
 import {
   Box,
@@ -17,15 +16,16 @@ import {
   useDisclosure,
 } from '@chakra-ui/react';
 import Link from 'next/link';
-import React, { useState } from 'react';
 
 import ConnectButton from '../components/ConnectButton';
 
 const Header = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [isMobile, setIsMobile] = useState(false);
+  const { foilData: testnetFoilData } = useFoilDeployment(11155111);
+  const { foilData: localFoilData } = useFoilDeployment(13370);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
     window.addEventListener('resize', checkMobile);
@@ -35,12 +35,14 @@ const Header = () => {
   // eslint-disable-next-line react/no-unstable-nested-components
   const NavLinks = () => (
     <>
-      {process.env.NODE_ENV === 'development' && (
-        <Link href={`/markets/13370:${FoilLocal.address}/1`}>Local Market</Link>
+      {process.env.NODE_ENV === 'development' && localFoilData?.address && (
+        <Link href={`/markets/13370:${localFoilData.address}/1`}>Local Market</Link>
       )}
-      <Link href={`/markets/11155111:${FoilTestnet.address}/1`}>
-        Testnet Market
-      </Link>
+      {testnetFoilData?.address && (
+        <Link href={`/markets/11155111:${testnetFoilData.address}/1`}>
+          Testnet Market
+        </Link>
+      )}
       <Link href="https://docs.foil.xyz">Docs</Link>
     </>
   );
