@@ -382,10 +382,10 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
         collateralAsset: marketViewFunctionResult?.data[1],
         uniswapPositionManagerAddress: marketViewFunctionResult?.data[2],
         baseAssetMinPriceTick:
-          marketViewFunctionResult?.data[5].baseAssetMinPriceTick,
+          marketViewFunctionResult?.data[2].baseAssetMinPriceTick,
         baseAssetMaxPriceTick:
-          marketViewFunctionResult?.data[5].baseAssetMaxPriceTick,
-        feeRate: marketViewFunctionResult?.data[5].feeRate,
+          marketViewFunctionResult?.data[2].baseAssetMaxPriceTick,
+        feeRate: marketViewFunctionResult?.data[2].feeRate,
       }));
     }
   }, [marketViewFunctionResult.data]);
