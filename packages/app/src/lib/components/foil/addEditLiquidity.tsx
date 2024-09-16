@@ -491,7 +491,12 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   }, [uniswapPosition]);
 
   /// /// HANDLERS //////
+  const getCurrentDeadline = (): bigint => {
+    return BigInt(Math.floor(Date.now() / 1000) + 1800); // 30 minutes from now
+  };
+
   const handleCreateOrIncreaseLiquidity = () => {
+    const deadline = getCurrentDeadline();
     if (isEdit) {
       increaseLiquidity({
         address: foilData.address as `0x${string}`,
@@ -500,11 +505,12 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
         args: [
           {
             positionId: nftId,
-            collateralAmount: collateralAmountDelta, // total desired
-            gasTokenAmount: baseTokenDelta, // generated with delta
+            collateralAmount: collateralAmountDelta,
+            gasTokenAmount: baseTokenDelta,
             ethTokenAmount: quoteTokenDelta,
             minGasAmount: minAmountBaseTokenDelta,
             minEthAmount: minAmountQuoteTokenDelta,
+            deadline,
           },
         ],
         chainId,
@@ -533,6 +539,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
               minAmountTokenB.toString(),
               TOKEN_DECIMALS
             ),
+            deadline,
           },
         ],
         chainId,
@@ -632,6 +639,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
       minEthAmount: parsedMinAmount1.toString(),
     });
 
+    const deadline = getCurrentDeadline();
     decreaseLiquidity({
       address: foilData.address as `0x${string}`,
       abi: foilData.abi,
@@ -642,6 +650,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
           liquidity: liquidityToRemove.toString(),
           minGasAmount: parsedMinAmount0,
           minEthAmount: parsedMinAmount1,
+          deadline,
         },
       ],
       chainId,

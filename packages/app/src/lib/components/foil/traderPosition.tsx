@@ -240,6 +240,9 @@ export default function TraderPosition({}) {
       refPrice
     );
 
+    // Set deadline to 30 minutes from now
+    const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
+
     if (allowance && collateralDeltaLimit > (allowance as bigint)) {
       approveWrite({
         abi: erc20ABI as AbiFunction[],
@@ -252,14 +255,14 @@ export default function TraderPosition({}) {
         abi: foilData.abi,
         address: foilData.address as `0x${string}`,
         functionName: 'modifyTraderPosition',
-        args: [nftId, sizeInTokens, collateralDeltaLimit],
+        args: [nftId, sizeInTokens, collateralDeltaLimit, deadline],
       });
     } else {
       writeContract({
         abi: foilData.abi,
         address: foilData.address as `0x${string}`,
         functionName: 'createTraderPosition',
-        args: [epoch, sizeInTokens, collateralDeltaLimit],
+        args: [epoch, sizeInTokens, collateralDeltaLimit, deadline],
       });
     }
   };
