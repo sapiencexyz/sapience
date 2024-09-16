@@ -59,7 +59,8 @@ contract CreateLiquidityPosition is TestEpoch {
                 lowerTick: 16000,
                 upperTick: 29800,
                 minAmountTokenA: 0,
-                minAmountTokenB: 0
+                minAmountTokenB: 0,
+                deadline: block.timestamp + 30 minutes
             })
         );
     }
@@ -84,7 +85,8 @@ contract CreateLiquidityPosition is TestEpoch {
                 lowerTick: lowerTick,
                 upperTick: MAX_TICK,
                 minAmountTokenA: 0,
-                minAmountTokenB: 0
+                minAmountTokenB: 0,
+                deadline: block.timestamp + 30 minutes
             })
         );
     }
@@ -109,7 +111,8 @@ contract CreateLiquidityPosition is TestEpoch {
                 lowerTick: MIN_TICK,
                 upperTick: upperTick,
                 minAmountTokenA: 0,
-                minAmountTokenB: 0
+                minAmountTokenB: 0,
+                deadline: block.timestamp + 30 minutes
             })
         );
     }
@@ -130,7 +133,8 @@ contract CreateLiquidityPosition is TestEpoch {
                 lowerTick: MIN_TICK,
                 upperTick: MAX_TICK,
                 minAmountTokenA: 0,
-                minAmountTokenB: 0
+                minAmountTokenB: 0,
+                deadline: block.timestamp + 30 minutes
             })
         );
     }
@@ -170,7 +174,8 @@ contract CreateLiquidityPosition is TestEpoch {
                     lowerTick: LOWER_TICK,
                     upperTick: UPPER_TICK,
                     minAmountTokenA: 0,
-                    minAmountTokenB: 0
+                    minAmountTokenB: 0,
+                deadline: block.timestamp + 30 minutes
                 })
             );
         id;
@@ -235,7 +240,8 @@ contract CreateLiquidityPosition is TestEpoch {
                 lowerTick: lowerTick,
                 upperTick: upperTick,
                 minAmountTokenA: 0,
-                minAmountTokenB: 0
+                minAmountTokenB: 0,
+                deadline: block.timestamp + 30 minutes
             })
         );
         vm.stopPrank();
@@ -301,7 +307,8 @@ contract CreateLiquidityPosition is TestEpoch {
                     lowerTick: lowerTick,
                     upperTick: upperTick,
                     minAmountTokenA: 0,
-                    minAmountTokenB: 0
+                    minAmountTokenB: 0,
+                    deadline: block.timestamp + 30 minutes
                 })
             );
         vm.stopPrank();

@@ -68,7 +68,8 @@ contract DecreaseLiquidityPosition is TestTrade {
                 lowerTick: MIN_TICK,
                 upperTick: MAX_TICK,
                 minAmountTokenA: 0,
-                minAmountTokenB: 0
+                minAmountTokenB: 0,
+                deadline: block.timestamp + 30 minutes
             })
         );
         vm.stopPrank();
@@ -89,7 +90,8 @@ contract DecreaseLiquidityPosition is TestTrade {
                 positionId: invalidPositionId,
                 liquidity: 500,
                 minGasAmount: 0,
-                minEthAmount: 0
+                minEthAmount: 0,
+                deadline: block.timestamp + 30 minutes
             })
         );
         vm.stopPrank();
@@ -108,7 +110,8 @@ contract DecreaseLiquidityPosition is TestTrade {
                 positionId: positionId,
                 liquidity: 500,
                 minGasAmount: 0,
-                minEthAmount: 0
+                minEthAmount: 0,
+                deadline: block.timestamp + 30 minutes
             })
         );
     }
@@ -170,7 +173,8 @@ contract DecreaseLiquidityPosition is TestTrade {
                     positionId: positionId,
                     liquidity: liquidityToDecrease,
                     minGasAmount: 0,
-                    minEthAmount: 0
+                    minEthAmount: 0,
+                    deadline: block.timestamp + 30 minutes
                 })
             );
 
@@ -267,7 +271,8 @@ contract DecreaseLiquidityPosition is TestTrade {
                 gasTokenAmount: increaseAmount0,
                 ethTokenAmount: increaseAmount1,
                 minGasAmount: 0,
-                minEthAmount: 0
+                minEthAmount: 0,
+                deadline: block.timestamp + 30 minutes
             })
         );
         vm.stopPrank();
@@ -301,7 +306,8 @@ contract DecreaseLiquidityPosition is TestTrade {
                     positionId: positionId,
                     liquidity: initialLiquidity,
                     minGasAmount: 0,
-                    minEthAmount: 0
+                    minEthAmount: 0,
+                    deadline: block.timestamp + 30 minutes
                 })
             );
 

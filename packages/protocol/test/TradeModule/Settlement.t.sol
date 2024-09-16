@@ -111,7 +111,7 @@ contract TradePositionSettlement is TestTrade {
         settle();
         vm.startPrank(trader1);
         vm.expectRevert(Errors.EpochSettled.selector);
-        foil.createTraderPosition(epochId, 1 ether, 100 ether);
+        foil.createTraderPosition(epochId, 1 ether, 100 ether, block.timestamp + 30 minutes);
         vm.stopPrank();
     }
 
@@ -143,7 +143,7 @@ contract TradePositionSettlement is TestTrade {
         settle();
         vm.startPrank(trader1);
         vm.expectRevert(Errors.EpochSettled.selector);
-        foil.createTraderPosition(epochId, -1 ether, 100 ether);
+        foil.createTraderPosition(epochId, -1 ether, 100 ether, block.timestamp + 30 minutes);
         vm.stopPrank();
     }
 
@@ -183,7 +183,8 @@ contract TradePositionSettlement is TestTrade {
         uint256 positionId = foil.createTraderPosition(
             epochId,
             initialPositionSize,
-            100 ether
+            100 ether,
+            block.timestamp + 30 minutes
         );
 
         vm.stopPrank();
@@ -192,7 +193,7 @@ contract TradePositionSettlement is TestTrade {
 
         vm.startPrank(trader1);
         vm.expectRevert(Errors.EpochSettled.selector);
-        foil.modifyTraderPosition(positionId, newPositionSize, 200 ether);
+        foil.modifyTraderPosition(positionId, newPositionSize, 200 ether, block.timestamp + 30 minutes);
 
         vm.stopPrank();
     }
@@ -226,7 +227,8 @@ contract TradePositionSettlement is TestTrade {
         uint256 positionId = foil.createTraderPosition(
             epochId,
             initialPositionSize,
-            requiredCollateral * 2
+            requiredCollateral * 2,
+            block.timestamp + 30 minutes
         );
 
         vm.stopPrank();
@@ -235,7 +237,7 @@ contract TradePositionSettlement is TestTrade {
 
         vm.startPrank(trader1);
         requiredCollateral = foil.quoteModifyTraderPosition(positionId, 0);
-        foil.modifyTraderPosition(positionId, 0, requiredCollateral);
+        foil.modifyTraderPosition(positionId, 0, requiredCollateral, block.timestamp + 30 minutes);
         vm.stopPrank();
 
         uint256 trader1FinalBalance = collateralAsset.balanceOf(trader1);
