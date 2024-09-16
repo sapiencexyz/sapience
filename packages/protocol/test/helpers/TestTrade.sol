@@ -108,7 +108,8 @@ contract TestTrade is TestEpoch {
                 lowerTick: lowerTick,
                 upperTick: upperTick,
                 minAmountTokenA: 0,
-                minAmountTokenB: 0
+                minAmountTokenB: 0,
+                deadline: block.timestamp + 30 minutes
             });
 
         foil.createLiquidityPosition(params);
@@ -126,7 +127,8 @@ contract TestTrade is TestEpoch {
         positionId = foil.createTraderPosition(
             epochId,
             positionSize,
-            requiredCollateral * 2
+            requiredCollateral * 2,
+            block.timestamp + 30 minutes
         );
     }
 }

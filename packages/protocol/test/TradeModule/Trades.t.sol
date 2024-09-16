@@ -113,7 +113,8 @@ contract TradePositionBasic is TestTrade {
         uint256 positionId = foil.createTraderPosition(
             epochId,
             positionSize,
-            requiredCollateral * 2
+            requiredCollateral * 2,
+            block.timestamp + 30 minutes
         );
         vm.stopPrank();
 
@@ -162,7 +163,8 @@ contract TradePositionBasic is TestTrade {
         uint256 positionId = foil.createTraderPosition(
             epochId,
             positionSize,
-            requiredCollateral * 2
+            requiredCollateral * 2,
+            block.timestamp + 30 minutes
         );
         vm.stopPrank();
 
@@ -224,7 +226,8 @@ contract TradePositionBasic is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             positionSize,
-            requiredCollateral * 2
+            requiredCollateral * 2,
+            block.timestamp + 30 minutes
         );
         vm.stopPrank();
 
@@ -291,7 +294,8 @@ contract TradePositionBasic is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             positionSize,
-            requiredCollateral * 2
+            requiredCollateral * 2,
+            block.timestamp + 30 minutes
         );
 
         vm.stopPrank();
@@ -366,7 +370,8 @@ contract TradePositionBasic is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             positionSize,
-            requiredCollateral * 2
+            requiredCollateral * 2,
+            block.timestamp + 30 minutes
         );
 
         vm.stopPrank();
@@ -444,7 +449,8 @@ contract TradePositionBasic is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             positionSize,
-            requiredCollateral * 2
+            requiredCollateral * 2,
+            block.timestamp + 30 minutes
         );
 
         vm.stopPrank();
@@ -512,7 +518,7 @@ contract TradePositionBasic is TestTrade {
         );
 
         // Send more collateral than required, just checking the position can be created/modified
-        foil.modifyTraderPosition(positionId, 0, requiredCollateral * 2);
+        foil.modifyTraderPosition(positionId, 0, requiredCollateral * 2, block.timestamp + 30 minutes);
 
         vm.stopPrank();
 
@@ -572,7 +578,7 @@ contract TradePositionBasic is TestTrade {
         );
 
         // Send more collateral than required, just checking the position can be created/modified
-        foil.modifyTraderPosition(positionId, 0, requiredCollateral * 2);
+        foil.modifyTraderPosition(positionId, 0, requiredCollateral * 2, block.timestamp + 30 minutes);
 
         vm.stopPrank();
 

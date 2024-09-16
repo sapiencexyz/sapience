@@ -78,7 +78,8 @@ contract SettleLPTest is TestTrade {
                 lowerTick: MIN_TICK,
                 upperTick: MAX_TICK,
                 minAmountTokenA: 0,
-                minAmountTokenB: 0
+                minAmountTokenB: 0,
+                deadline: block.timestamp + 30 minutes
             })
         );
         vm.stopPrank();

@@ -28,8 +28,11 @@ contract TradeModule is ITradeModule {
     function createTraderPosition(
         uint256 epochId,
         int256 size,
-        uint256 maxCollateral
+        uint256 maxCollateral,
+        uint256 deadline
     ) external returns (uint256 positionId) {
+        require(block.timestamp <= deadline, 'Transaction too old');
+
         if (size == 0) {
             revert Errors.InvalidData("Size cannot be 0");
         }
@@ -109,8 +112,11 @@ contract TradeModule is ITradeModule {
     function modifyTraderPosition(
         uint256 positionId,
         int256 size,
-        uint256 maxCollateral
+        uint256 maxCollateral,
+        uint256 deadline
     ) external {
+        require(block.timestamp <= deadline, 'Transaction too old');
+
         if (ERC721Storage._ownerOf(positionId) != msg.sender) {
             revert Errors.NotAccountOwnerOrAuthorized(positionId, msg.sender);
         }

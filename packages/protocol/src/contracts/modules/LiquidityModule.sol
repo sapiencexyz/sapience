@@ -27,6 +27,8 @@ contract LiquidityModule is ReentrancyGuard, ILiquidityModule {
             uint256 addedAmount1
         )
     {
+        require(block.timestamp <= params.deadline, 'Transaction too old');
+
         id = ERC721EnumerableStorage.totalSupply() + 1;
         Position.Data storage position = Position.createValid(id);
         ERC721Storage._checkOnERC721Received(address(this), msg.sender, id, "");
@@ -88,6 +90,8 @@ contract LiquidityModule is ReentrancyGuard, ILiquidityModule {
         override
         returns (uint256 amount0, uint256 amount1, uint256 collateralAmount)
     {
+        require(block.timestamp <= params.deadline, 'Transaction too old');
+
         DecreaseLiquidityPositionStack memory stack;
 
         Market.Data storage market = Market.load();
@@ -164,6 +168,8 @@ contract LiquidityModule is ReentrancyGuard, ILiquidityModule {
             uint256 collateralAmount
         )
     {
+        require(block.timestamp <= params.deadline, 'Transaction too old');
+
         IncreaseLiquidityPositionStack memory stack;
 
         Market.Data storage market = Market.load();
