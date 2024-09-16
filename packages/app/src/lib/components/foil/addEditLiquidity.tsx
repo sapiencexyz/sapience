@@ -1,7 +1,6 @@
 'use client';
 
 // eslint-disable-next-line import/no-extraneous-dependencies
-import INONFUNGIBLE_POSITION_MANAGER from '../../interfaces/Uniswap.NonfungiblePositionManager.json';
 import {
   Box,
   FormControl,
@@ -36,6 +35,7 @@ import {
 } from 'wagmi';
 
 import erc20ABI from '../../erc20abi.json';
+import INONFUNGIBLE_POSITION_MANAGER from '../../interfaces/Uniswap.NonfungiblePositionManager.json';
 import { getNewLiquidity } from '../../util/positionUtil';
 import { renderContractErrorToast, renderToast } from '../../util/util';
 import { TOKEN_DECIMALS } from '~/lib/constants/constants';

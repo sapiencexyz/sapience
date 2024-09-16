@@ -1,5 +1,3 @@
-import React, { useState, useEffect } from 'react';
-import useFoilDeployment from '../components/foil/useFoilDeployment';
 import { HamburgerIcon } from '@chakra-ui/icons';
 import {
   Box,
@@ -16,8 +14,10 @@ import {
   useDisclosure,
 } from '@chakra-ui/react';
 import Link from 'next/link';
+import React, { useState, useEffect } from 'react';
 
 import ConnectButton from '../components/ConnectButton';
+import useFoilDeployment from '../components/foil/useFoilDeployment';
 
 const Header = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -36,7 +36,9 @@ const Header = () => {
   const NavLinks = () => (
     <>
       {process.env.NODE_ENV === 'development' && localFoilData?.address && (
-        <Link href={`/markets/13370:${localFoilData.address}/1`}>Local Market</Link>
+        <Link href={`/markets/13370:${localFoilData.address}/1`}>
+          Local Market
+        </Link>
       )}
       {testnetFoilData?.address && (
         <Link href={`/markets/11155111:${testnetFoilData.address}/1`}>

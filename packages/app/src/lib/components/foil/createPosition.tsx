@@ -3,8 +3,9 @@ import { IconButton, useToast } from '@chakra-ui/react';
 import * as React from 'react';
 import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 
-import useFoilDeployment from './useFoilDeployment';
 import { MarketContext } from '~/lib/context/MarketProvider';
+
+import useFoilDeployment from './useFoilDeployment';
 
 export default function CreatePosition() {
   const { data: hash, error, isPending, writeContract } = useWriteContract();

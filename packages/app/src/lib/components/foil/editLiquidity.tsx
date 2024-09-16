@@ -20,10 +20,9 @@ import {
 } from 'wagmi';
 
 import erc20ABI from '../../erc20abi.json';
+import { MarketContext } from '~/lib/context/MarketProvider';
 
 import useFoilDeployment from './useFoilDeployment';
-
-import { MarketContext } from '~/lib/context/MarketProvider';
 
 const EditLiquidity = () => {
   const account = useAccount();
