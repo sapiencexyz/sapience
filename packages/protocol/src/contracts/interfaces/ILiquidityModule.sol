@@ -6,6 +6,7 @@ import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePo
 
 interface ILiquidityModule {
     event LiquidityPositionCreated(
+        uint256 indexed epochId,
         uint256 indexed positionId,
         uint256 collateralAmount,
         uint128 liquidity,
@@ -16,6 +17,7 @@ interface ILiquidityModule {
     );
 
     event LiquidityPositionDecreased(
+        uint256 indexed epochId,
         uint256 indexed positionId,
         uint256 collateralAmount,
         uint128 liquidity,
@@ -24,6 +26,7 @@ interface ILiquidityModule {
     );
 
     event LiquidityPositionIncreased(
+        uint256 indexed epochId,
         uint256 indexed positionId,
         uint256 collateralAmount,
         uint128 liquidity,
@@ -32,6 +35,7 @@ interface ILiquidityModule {
     );
 
     event LiquidityPositionClosed(
+        uint256 indexed epochId,
         uint256 indexed positionId,
         IFoilStructs.PositionKind kind,
         uint256 collectedAmount0,

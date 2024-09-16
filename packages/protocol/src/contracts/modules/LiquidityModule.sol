@@ -13,6 +13,17 @@ contract LiquidityModule is ReentrancyGuard, ILiquidityModule {
     using Epoch for Epoch.Data;
     using Market for Market.Data;
 
+    struct CreateEventParams {
+        uint256 epochId;
+        uint256 positionId;
+        uint256 collateralAmount;
+        uint128 liquidity;
+        uint256 amount0;
+        uint256 amount1;
+        int24 lowerTick;
+        int24 upperTick;
+    }
+
     function createLiquidityPosition(
         IFoilStructs.LiquidityMintParams memory params
     )
@@ -37,6 +48,26 @@ contract LiquidityModule is ReentrancyGuard, ILiquidityModule {
         Epoch.Data storage epoch = Epoch.loadValid(params.epochId);
         epoch.validateLp(params.lowerTick, params.upperTick);
 
+        (uniswapNftId, liquidity, addedAmount0, addedAmount1) = _mintUniswapPosition(epoch, params);
+
+        collateralAmount = _updatePosition(position, epoch, params, uniswapNftId, liquidity, addedAmount0, addedAmount1);
+
+        _emitLiquidityPositionCreated(CreateEventParams({
+            epochId: epoch.id,
+            positionId: id,
+            collateralAmount: position.depositedCollateralAmount,
+            liquidity: liquidity,
+            amount0: addedAmount0,
+            amount1: addedAmount1,
+            lowerTick: params.lowerTick,
+            upperTick: params.upperTick
+        }));
+    }
+
+    function _mintUniswapPosition(Epoch.Data storage epoch, IFoilStructs.LiquidityMintParams memory params)
+        internal
+        returns (uint256 uniswapNftId, uint128 liquidity, uint256 addedAmount0, uint256 addedAmount1)
+    {
         (uniswapNftId, liquidity, addedAmount0, addedAmount1) = INonfungiblePositionManager(epoch
             .params
             .uniswapPositionManager)
@@ -55,7 +86,17 @@ contract LiquidityModule is ReentrancyGuard, ILiquidityModule {
                     deadline: block.timestamp
                 })
             );
+    }
 
+    function _updatePosition(
+        Position.Data storage position,
+        Epoch.Data storage epoch,
+        IFoilStructs.LiquidityMintParams memory params,
+        uint256 uniswapNftId,
+        uint128 liquidity,
+        uint256 addedAmount0,
+        uint256 addedAmount1
+    ) internal returns (uint256 collateralAmount) {
         collateralAmount = position.updateValidLp(
             epoch,
             Position.UpdateLpParams({
@@ -70,14 +111,16 @@ contract LiquidityModule is ReentrancyGuard, ILiquidityModule {
                 tokensOwed1: 0
             })
         );
+    }
 
-        // emit event
+    function _emitLiquidityPositionCreated(CreateEventParams memory params) internal {
         emit LiquidityPositionCreated(
-            id,
-            position.depositedCollateralAmount,
-            liquidity,
-            addedAmount0,
-            addedAmount1,
+            params.epochId,
+            params.positionId,
+            params.collateralAmount,
+            params.liquidity,
+            params.amount0,
+            params.amount1,
             params.lowerTick,
             params.upperTick
         );
@@ -149,6 +192,7 @@ contract LiquidityModule is ReentrancyGuard, ILiquidityModule {
         }
 
         emit LiquidityPositionDecreased(
+            epoch.id,
             position.id,
             position.depositedCollateralAmount,
             params.liquidity,
@@ -224,6 +268,7 @@ contract LiquidityModule is ReentrancyGuard, ILiquidityModule {
         );
 
         emit LiquidityPositionIncreased(
+            epoch.id,
             position.id,
             position.depositedCollateralAmount,
             liquidity,
@@ -397,6 +442,7 @@ contract LiquidityModule is ReentrancyGuard, ILiquidityModule {
 
         // Emit an event for the closed position
         emit LiquidityPositionClosed(
+            epoch.id,
             position.id,
             position.kind,
             collectedAmount0,
