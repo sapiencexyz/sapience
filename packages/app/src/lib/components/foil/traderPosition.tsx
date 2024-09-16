@@ -280,9 +280,12 @@ export default function TraderPosition({}) {
       refPrice,
       !isLong
     );
-
     console.log('collateralDeltaLimit', collateralDeltaLimit);
     console.log('allowance', allowance);
+
+    // Set deadline to 30 minutes from now
+    const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
+
     if (
       !approved &&
       allowance &&
@@ -299,14 +302,14 @@ export default function TraderPosition({}) {
         abi: foilData.abi,
         address: foilData.address as `0x${string}`,
         functionName: 'modifyTraderPosition',
-        args: [nftId, sizeInTokens, collateralDeltaLimit],
+        args: [nftId, sizeInTokens, collateralDeltaLimit, deadline],
       });
     } else {
       writeContract({
         abi: foilData.abi,
         address: foilData.address as `0x${string}`,
         functionName: 'createTraderPosition',
-        args: [epoch, sizeInTokens, collateralDeltaLimit],
+        args: [epoch, sizeInTokens, collateralDeltaLimit, deadline],
       });
     }
   };

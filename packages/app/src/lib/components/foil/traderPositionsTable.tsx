@@ -7,7 +7,7 @@ import {
   Tbody,
   Td,
 } from '@chakra-ui/react';
-import React from 'react';
+import type React from 'react';
 
 interface Props {
   isLoading: boolean;

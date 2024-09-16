@@ -7,6 +7,7 @@ interface IFoilStructs {
         Liquidity,
         Trade
     }
+
     struct LiquidityMintParams {
         uint256 epochId;
         uint256 amountTokenA;
@@ -16,6 +17,7 @@ interface IFoilStructs {
         int24 upperTick;
         uint256 minAmountTokenA;
         uint256 minAmountTokenB;
+        uint256 deadline;
     }
 
     struct LiquidityDecreaseParams {
@@ -23,6 +25,7 @@ interface IFoilStructs {
         uint128 liquidity;
         uint256 minGasAmount;
         uint256 minEthAmount;
+        uint256 deadline;
     }
 
     struct LiquidityIncreaseParams {
@@ -32,14 +35,7 @@ interface IFoilStructs {
         uint256 ethTokenAmount;
         uint256 minGasAmount;
         uint256 minEthAmount;
-    }
-
-    struct TraderPositionParams {
-        uint256 positionId;
-        uint256 amountTokenA;
-        uint256 amountTokenB;
-        uint256 collateralAmount;
-        int256 size;
+        uint256 deadline;
     }
 
     struct EpochParams {

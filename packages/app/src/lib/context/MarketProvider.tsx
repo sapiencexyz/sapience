@@ -13,8 +13,11 @@ import type { Chain } from 'viem/chains';
 import { useReadContracts, useReadContract } from 'wagmi';
 
 import useFoilDeployment from '../components/foil/useFoilDeployment';
-import { BLANK_MARKET } from '../constants';
-import { API_BASE_URL, TOKEN_DECIMALS } from '../constants/constants';
+import {
+  API_BASE_URL,
+  BLANK_MARKET,
+  TOKEN_DECIMALS,
+} from '../constants/constants';
 import erc20ABI from '../erc20abi.json';
 import type { EpochParams } from '../interfaces/interfaces';
 import { renderContractErrorToast } from '../util/util';

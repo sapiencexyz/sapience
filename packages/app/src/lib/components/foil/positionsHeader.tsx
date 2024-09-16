@@ -40,7 +40,7 @@ const PositionsHeader = () => {
   let relativeTime = '';
   let formattedTime = '';
   if (endTime) {
-    const dateMilliseconds = Number(endTime) / 1000;
+    const dateMilliseconds = Number(endTime) / 1000000;
     const date = new Date(dateMilliseconds);
     relativeTime = formatDistanceToNow(date);
     formattedTime = format(date, 'PPpp');

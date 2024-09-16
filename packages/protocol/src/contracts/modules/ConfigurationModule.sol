@@ -36,41 +36,36 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuard {
         if (msg.sender != initializer) {
             revert Errors.OnlyInitializer(msg.sender, initializer);
         }
-        Market.createValid(
-            initialOwner,
-            collateralAsset,
-            epochParams
-        );
-        emit MarketInitialized(
-            initialOwner,
-            collateralAsset,
-            epochParams
-        );
+        Market.createValid(initialOwner, collateralAsset, epochParams);
+        emit MarketInitialized(initialOwner, collateralAsset, epochParams);
     }
 
     function updateMarket(
         IFoilStructs.EpochParams memory epochParams
     ) external override onlyOwner {
-        Market.updateValid(
-            epochParams
-        );
+        Market.updateValid(epochParams);
 
-        emit MarketUpdated(
-            epochParams
-        );
+        emit MarketUpdated(epochParams);
     }
 
     function createEpoch(
         uint256 startTime,
         uint256 endTime,
-        uint160 startingSqrtPriceX96
+        uint160 startingSqrtPriceX96,
+        uint256 salt
     ) external override onlyOwner {
         // load the market to check if it's already created
         Market.Data storage market = Market.load();
 
         uint256 newEpochId = market.getNewEpochId();
 
-        Epoch.createValid(newEpochId, startTime, endTime, startingSqrtPriceX96);
+        Epoch.createValid(
+            newEpochId,
+            startTime,
+            endTime,
+            startingSqrtPriceX96,
+            salt
+        );
         emit EpochCreated(newEpochId, startTime, endTime, startingSqrtPriceX96);
     }
 

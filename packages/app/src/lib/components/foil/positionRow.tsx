@@ -1,8 +1,10 @@
 import { Tr, Td, Text, StatNumber, Stat } from '@chakra-ui/react';
-import { useReadContract } from 'wagmi';
-import useFoilDeployment from './useFoilDeployment';
 import { useContext } from 'react';
+import { useReadContract } from 'wagmi';
+
 import { MarketContext } from '~/lib/context/MarketProvider';
+
+import useFoilDeployment from './useFoilDeployment';
 
 // import PositionEdit from './positionEdit';
 

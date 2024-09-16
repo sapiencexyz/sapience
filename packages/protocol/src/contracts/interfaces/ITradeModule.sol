@@ -31,13 +31,15 @@ interface ITradeModule {
     function createTraderPosition(
         uint256 epochId,
         int256 size,
-        uint256 maxCollateral
+        uint256 maxCollateral,
+        uint256 deadline
     ) external returns (uint256 positionId);
 
     function modifyTraderPosition(
         uint256 positionId,
         int256 size,
-        uint256 maxCollateral
+        uint256 maxCollateral,
+        uint256 deadline
     ) external;
 
     function quoteCreateTraderPosition(
