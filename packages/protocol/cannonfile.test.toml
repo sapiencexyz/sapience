@@ -1,5 +1,5 @@
 name="foil-test"
-version="0.13"
+version="<%= package.version %>"
 
 [clone.Uniswap]
 source="uniswap"

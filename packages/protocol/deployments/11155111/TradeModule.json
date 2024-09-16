@@ -1,5 +1,5 @@
 {
-  "address": "0xC1056Fc7032B707E89a63FC7D34FCd52eeB9abc2",
+  "address": "0x48FD76C3A8b42F26B7D8DDbe4557EBe2Bc740318",
   "abi": [
     {
       "type": "function",
@@ -17,6 +17,11 @@
         },
         {
           "name": "maxCollateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "deadline",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -46,6 +51,11 @@
         },
         {
           "name": "maxCollateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "deadline",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -448,12 +458,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xb5eb123a93797f5cef04e4c1a8f871014a3c93da22d912966e5d6eb3f012305d",
-  "deployTxnBlockNumber": "6685718",
-  "deployTimestamp": "1726257264",
+  "deployTxnHash": "0x17567e22cc98970872272d1802645cca2430161938c9c51f5bf6af05cd139e8b",
+  "deployTxnBlockNumber": "6704581",
+  "deployTimestamp": "1726514316",
   "sourceName": "src/contracts/modules/TradeModule.sol",
   "contractName": "TradeModule",
   "deployedOn": "deploy.TradeModule",
-  "gasUsed": 2128233,
-  "gasCost": "130125490"
+  "gasUsed": 2092416,
+  "gasCost": "6611328504"
 }
