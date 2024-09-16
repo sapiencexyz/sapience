@@ -31,7 +31,7 @@ contract TradeModule is ITradeModule {
         uint256 maxCollateral,
         uint256 deadline
     ) external returns (uint256 positionId) {
-        require(block.timestamp <= deadline, 'Transaction too old');
+        require(block.timestamp <= deadline, "Transaction too old");
 
         if (size == 0) {
             revert Errors.InvalidData("Size cannot be 0");
@@ -92,7 +92,6 @@ contract TradeModule is ITradeModule {
 
         uint256 finalPrice = Trade.getReferencePrice(epochId);
 
-        // TODO - check event data
         emit TraderPositionCreated(
             epochId,
             positionId,
@@ -115,7 +114,7 @@ contract TradeModule is ITradeModule {
         uint256 maxCollateral,
         uint256 deadline
     ) external {
-        require(block.timestamp <= deadline, 'Transaction too old');
+        require(block.timestamp <= deadline, "Transaction too old");
 
         if (ERC721Storage._ownerOf(positionId) != msg.sender) {
             revert Errors.NotAccountOwnerOrAuthorized(positionId, msg.sender);
@@ -134,14 +133,8 @@ contract TradeModule is ITradeModule {
 
         Epoch.Data storage epoch = Epoch.load(position.epochId);
 
-        // check settlement state
-        if (size == 0) {
-            // closing, can happen at any time
-            epoch.validateSettlementSanity();
-        } else {
-            // not closing, can only happen if not settled
-            epoch.validateNotSettled();
-        }
+        // check if epoch is not settled
+        epoch.validateNotSettled();
 
         uint256 initialPrice = Trade.getReferencePrice(position.epochId);
 
@@ -232,7 +225,6 @@ contract TradeModule is ITradeModule {
 
         uint256 finalPrice = Trade.getReferencePrice(position.epochId);
 
-        // TODO - check event data
         emit TraderPositionCreated(
             position.epochId,
             positionId,
@@ -281,6 +273,9 @@ contract TradeModule is ITradeModule {
         }
 
         Position.Data storage position = Position.loadValid(positionId);
+
+        // check if epoch is not settled
+        Epoch.load(position.epochId).validateNotSettled();
 
         if (position.kind != IFoilStructs.PositionKind.Trade) {
             revert Errors.InvalidPositionKind();
