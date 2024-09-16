@@ -51,13 +51,17 @@ export enum PositionKind {
 }
 
 export interface EpochParams {
-  baseAssetMinPriceTick: string;
-  baseAssetMaxPriceTick: string;
-  feeRate: string;
-  assertionLiveness: string;
+  assertionLiveness: bigint;
+  baseAssetMaxPriceTick: number;
+  baseAssetMinPriceTick: number;
+  bondAmount: bigint;
   bondCurrency: string;
-  bondAmount: string;
+  feeRate: number;
+  optimisticOracleV3: string;
   priceUnit: string;
+  uniswapPositionManager: string;
+  uniswapQuoter: string;
+  uniswapSwapRouter: string;
 }
 
 export interface MarketCreatedUpdatedEventLog {

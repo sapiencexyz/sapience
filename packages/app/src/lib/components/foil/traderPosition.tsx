@@ -17,12 +17,19 @@ import {
   useWriteContract,
   useAccount,
   useReadContract,
+  useSimulateContract,
 } from 'wagmi';
 
 import erc20ABI from '../../erc20abi.json';
+import {
+  calculateCollateralDeltaLimit,
+  formatBalance,
+  getMinResultBalance,
+} from '../../util/tradeUtil';
 import { useLoading } from '~/lib/context/LoadingContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';
+import type { FoilPosition } from '~/lib/interfaces/interfaces';
 import { renderContractErrorToast, renderToast } from '~/lib/util/util';
 
 import PositionSelector from './positionSelector';
@@ -72,7 +79,7 @@ function RadioCard(props: any) {
 export default function TraderPosition({}) {
   const [nftId, setNftId] = useState(0);
   const [size, setSize] = useState<number>(0);
-  const [option, setOption] = useState('Long');
+  const [option, setOption] = useState<'Long' | 'Short'>('Long');
   const [slippage, setSlippage] = useState<number>(0.5);
   const [pendingTxn, setPendingTxn] = useState(false);
   const [collateralDelta, setCollateralDelta] = useState<bigint>(BigInt(0));
@@ -100,13 +107,24 @@ export default function TraderPosition({}) {
   const { getRootProps, getRadioProps } = useRadioGroup({
     name: 'positionType',
     defaultValue: 'Long',
-    onChange: setOption,
+    onChange: (value) => setOption(value as 'Long' | 'Short'),
     value: option,
   });
   const group = getRootProps();
   const toast = useToast();
 
   const isLong = option === 'Long';
+
+  // position data
+  const { data: positionData, refetch: refetchPositionData } = useReadContract({
+    abi: foilData.abi,
+    address: foilData.address as `0x${string}`,
+    functionName: 'getPosition',
+    args: [nftId],
+    query: {
+      enabled: isEdit,
+    },
+  }) as { data: FoilPosition; refetch: any; isRefetching: boolean };
 
   // Collateral balance for current address/account
   const { data: collateralBalance } = useReadContract({
@@ -118,7 +136,7 @@ export default function TraderPosition({}) {
   });
 
   // Allowance check
-  const { data: allowance } = useReadContract({
+  const { data: allowance, refetch: refetchAllowance } = useReadContract({
     abi: erc20ABI,
     address: collateralAsset as `0x${string}`,
     functionName: 'allowance',
@@ -127,7 +145,7 @@ export default function TraderPosition({}) {
   });
 
   // Quote functions
-  const quoteCreatePositionResult = useReadContract({
+  const quoteCreatePositionResult = useSimulateContract({
     abi: foilData.abi,
     address: foilData.address as `0x${string}`,
     functionName: 'quoteCreateTraderPosition',
@@ -140,7 +158,7 @@ export default function TraderPosition({}) {
     query: { enabled: !isEdit && size !== 0 },
   });
 
-  const quoteModifyPositionResult = useReadContract({
+  const quoteModifyPositionResult = useSimulateContract({
     abi: foilData.abi,
     address: foilData.address as `0x${string}`,
     functionName: 'quoteModifyTraderPosition',
@@ -211,20 +229,41 @@ export default function TraderPosition({}) {
 
   useEffect(() => {
     if (approveSuccess) {
-      handleSubmit();
+      const handleSuccess = async () => {
+        await refetchAllowance();
+        handleSubmit(undefined, true);
+      };
+      handleSuccess();
     }
   }, [approveSuccess]);
 
   useEffect(() => {
     const quoteResult = isEdit
-      ? quoteModifyPositionResult.data
-      : quoteCreatePositionResult.data;
+      ? quoteModifyPositionResult.data?.result
+      : quoteCreatePositionResult.data?.result;
     if (quoteResult) {
-      setCollateralDelta(quoteResult as bigint);
+      setCollateralDelta(quoteResult as unknown as bigint);
+    } else {
+      setCollateralDelta(BigInt(0));
     }
   }, [isEdit, quoteCreatePositionResult.data, quoteModifyPositionResult.data]);
 
-  const handleSubmit = (e?: React.FormEvent<HTMLFormElement>) => {
+  useEffect(() => {
+    if (quoteCreatePositionResult.error) {
+      toast({
+        title: `Unable to get required collateral amount for size ${size}`,
+        description: quoteCreatePositionResult.error.message,
+        status: 'error',
+        duration: 9000,
+        isClosable: true,
+      });
+    }
+  }, [quoteCreatePositionResult]);
+
+  const handleSubmit = (
+    e?: React.FormEvent<HTMLFormElement>,
+    approved?: boolean
+  ) => {
     if (e) e.preventDefault();
     setPendingTxn(true);
     setIsLoading(true);
@@ -235,15 +274,23 @@ export default function TraderPosition({}) {
 
     // Calculate collateralDeltaLimit using refPrice
     const collateralDeltaLimit = calculateCollateralDeltaLimit(
+      collateralAssetDecimals,
       collateralDelta,
       slippage,
-      refPrice
+      refPrice,
+      !isLong
     );
+    console.log('collateralDeltaLimit', collateralDeltaLimit);
+    console.log('allowance', allowance);
 
     // Set deadline to 30 minutes from now
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
 
-    if (allowance && collateralDeltaLimit > (allowance as bigint)) {
+    if (
+      !approved &&
+      allowance &&
+      collateralDeltaLimit > (allowance as bigint)
+    ) {
       approveWrite({
         abi: erc20ABI as AbiFunction[],
         address: collateralAsset as `0x${string}`,
@@ -267,29 +314,6 @@ export default function TraderPosition({}) {
     }
   };
 
-  const calculateCollateralDeltaLimit = (
-    collateralDelta: bigint,
-    slippage: number,
-    refPrice: string | undefined
-  ) => {
-    if (!refPrice) {
-      // Fallback to the original calculation if refPrice is not available
-      return (
-        (collateralDelta * BigInt(Math.floor((100 + slippage) * 100))) /
-        BigInt(10000)
-      );
-    }
-
-    const refPriceBigInt = BigInt(Math.floor(parseFloat(refPrice) * 1e18)); // Convert to BigInt with 18 decimals precision
-    const slippageFactor = BigInt(Math.floor((100 + slippage) * 1e16)); // Convert slippage to BigInt with 18 decimals precision
-
-    // Calculate the limit based on the reference price and slippage
-    return (
-      (collateralDelta * refPriceBigInt * slippageFactor) /
-      (BigInt(100) * BigInt(1e18))
-    );
-  };
-
   const handleSlippageChange = (newSlippage: number) => {
     setSlippage(newSlippage);
   };
@@ -305,25 +329,49 @@ export default function TraderPosition({}) {
     setPendingTxn(false);
     setIsLoading(false);
     refetchTokens();
-  };
-
-  const formatBalance = (balance: bigint) => {
-    return Number(formatUnits(balance, collateralAssetDecimals)).toFixed(4);
+    refetchPositionData();
   };
 
   const currentBalance = collateralBalance
-    ? formatBalance(collateralBalance as bigint)
+    ? formatBalance(collateralAssetDecimals, collateralBalance as bigint)
     : '0';
   const estimatedNewBalance = collateralBalance
-    ? formatBalance((collateralBalance as bigint) - collateralDelta)
+    ? formatBalance(
+        collateralAssetDecimals,
+        (collateralBalance as bigint) - collateralDelta
+      )
     : '0';
-  const minResultingBalance =
-    collateralBalance && refPrice
-      ? formatBalance(
-          (collateralBalance as bigint) -
-            calculateCollateralDeltaLimit(collateralDelta, slippage, refPrice)
-        )
-      : '0';
+
+  const minResultingBalance = getMinResultBalance(
+    collateralBalance,
+    refPrice,
+    collateralAssetDecimals,
+    collateralDelta,
+    slippage
+  );
+
+  const renderCollateralChange = () => {
+    const isLoading = isEdit
+      ? quoteModifyPositionResult.isFetching
+      : quoteCreatePositionResult.isFetching;
+    if (isLoading) {
+      return (
+        <Text fontSize="small" mt={2} fontStyle="italic">
+          Loading collateral change...
+        </Text>
+      );
+    }
+    if (collateralDelta !== BigInt(0)) {
+      return (
+        <Text fontSize="small" mt={2} fontStyle="italic">
+          Collateral Change:{' '}
+          {Number(
+            formatUnits(collateralDelta, collateralAssetDecimals)
+          ).toFixed(4)}
+        </Text>
+      );
+    }
+  };
 
   return (
     <form onSubmit={handleSubmit}>
@@ -343,7 +391,13 @@ export default function TraderPosition({}) {
           );
         })}
       </Flex>
-      <SizeInput nftId={nftId} size={size} setSize={setSize} />
+      <SizeInput
+        nftId={nftId}
+        size={size}
+        setSize={setSize}
+        setOption={setOption}
+        positionData={positionData}
+      />
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
       <Box mb={4}>
         <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
@@ -357,6 +411,7 @@ export default function TraderPosition({}) {
           {collateralAssetTicker} (Min. {minResultingBalance}{' '}
           {collateralAssetTicker})
         </Text>
+        {renderCollateralChange()}
       </Box>
       {isConnected ? (
         <Button

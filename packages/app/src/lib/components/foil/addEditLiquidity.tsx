@@ -90,9 +90,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     epoch,
     pool,
     collateralAsset,
-    baseAssetMinPriceTick,
-    uniswapPositionManagerAddress,
-    baseAssetMaxPriceTick,
+    epochParams,
     collateralAssetTicker,
     collateralAssetDecimals,
     chainId,
@@ -104,9 +102,11 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   const { isConnected } = account;
 
   const [depositAmount, setDepositAmount] = useState(0);
-  const [lowPrice, setLowPrice] = useState(tickToPrice(baseAssetMinPriceTick));
+  const [lowPrice, setLowPrice] = useState(
+    tickToPrice(epochParams.baseAssetMaxPriceTick)
+  );
   const [highPrice, setHighPrice] = useState(
-    tickToPrice(baseAssetMaxPriceTick)
+    tickToPrice(epochParams.baseAssetMinPriceTick)
   );
   const [txnStep, setTxnStep] = useState<number>(0);
   const [slippage, setSlippage] = useState<number>(0.5);
@@ -136,12 +136,14 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   const { data: uniswapPosition, error: uniswapPositionError } =
     useReadContract({
       abi: INONFUNGIBLE_POSITION_MANAGER.abi,
-      address: uniswapPositionManagerAddress,
+      address: epochParams.uniswapPositionManager,
       functionName: 'positions',
       args: [positionData?.id || BigInt('0')],
       query: {
         enabled: Boolean(
-          uniswapPositionManagerAddress !== '0x' && positionData?.id && isEdit
+          epochParams.uniswapPositionManager !== '0x' &&
+            positionData?.id &&
+            isEdit
         ),
       },
       chainId,
@@ -168,7 +170,11 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     chainId,
   });
 
-  const { data: tokenAmounts, error: tokenAmountsError } = useReadContract({
+  const {
+    data: tokenAmounts,
+    error: tokenAmountsError,
+    isFetching,
+  } = useReadContract({
     address: foilData.address,
     abi: foilData.abi,
     functionName: 'getTokenAmounts',
@@ -411,6 +417,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   }, [depositAmount, positionData, collateralAssetDecimals]);
 
   useEffect(() => {
+    console.log('positionData', positionData);
     if (isEdit && positionData) {
       const currentCollateral = Number(
         formatUnits(
@@ -470,15 +477,16 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
 
   useEffect(() => {
     if (isEdit) return;
-    setLowPrice(tickToPrice(baseAssetMinPriceTick));
-  }, [baseAssetMinPriceTick, isEdit]);
+    setLowPrice(tickToPrice(epochParams.baseAssetMinPriceTick));
+  }, [epochParams.baseAssetMinPriceTick, isEdit]);
 
   useEffect(() => {
     if (isEdit) return;
-    setHighPrice(tickToPrice(baseAssetMaxPriceTick));
-  }, [baseAssetMaxPriceTick, isEdit]);
+    setHighPrice(tickToPrice(epochParams.baseAssetMaxPriceTick));
+  }, [epochParams.baseAssetMaxPriceTick, isEdit]);
 
   useEffect(() => {
+    console.log('uniswapPosition: ', uniswapPosition);
     if (!uniswapPosition) return;
     const uniswapData = uniswapPosition as any[];
     const lowerTick = uniswapData[5];
@@ -530,8 +538,8 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
               depositAmount.toString(),
               collateralAssetDecimals
             ),
-            lowerTick: BigInt(tickLower),
-            upperTick: BigInt(tickUpper),
+            lowerTick: tickLower,
+            upperTick: tickUpper,
             minAmountTokenA: parseUnits(
               minAmountTokenA.toString(),
               TOKEN_DECIMALS
@@ -677,6 +685,10 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
       positionData?.depositedCollateralAmount || 0
     );
     const calculatedDelta = newDepositAmountBigInt - currentDepositAmountBigInt;
+    console.log('newDepositAmountBigInt', newDepositAmountBigInt);
+    console.log('currentDepositAmountBigInt', currentDepositAmountBigInt);
+    console.log('calculatedDelta', calculatedDelta);
+    console.log('collateralAmountDelta', collateralAmountDelta);
 
     // Use the calculated delta if it differs from the state (shouldn't happen, but just in case)
     const finalDelta =
@@ -694,6 +706,13 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
       finalDelta,
       collateralAssetDecimals
     );
+    console.log('***********');
+    console.log('allowance', allowance);
+    console.log(
+      'collateralAmountDeltaFormatted',
+      collateralAmountDeltaFormatted
+    );
+    console.log('FINAL DELTA =', finalDelta);
 
     if (
       allowance &&

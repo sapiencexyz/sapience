@@ -28,8 +28,7 @@ const PositionsHeader = () => {
     address,
     endTime,
     collateralAsset,
-    baseAssetMinPriceTick,
-    baseAssetMaxPriceTick,
+    epochParams,
     averagePrice,
     pool,
     liquidity,
@@ -120,8 +119,9 @@ const PositionsHeader = () => {
               <Text as="span" fontWeight="500" mr={1}>
                 Allowed Range:
               </Text>{' '}
-              {tickToPrice(baseAssetMinPriceTick).toLocaleString()}-
-              {tickToPrice(baseAssetMaxPriceTick).toLocaleString()} Ggas/wstETH
+              {tickToPrice(epochParams.baseAssetMinPriceTick).toLocaleString()}-
+              {tickToPrice(epochParams.baseAssetMaxPriceTick).toLocaleString()}{' '}
+              Ggas/wstETH
             </Flex>
           </Flex>
         </Flex>

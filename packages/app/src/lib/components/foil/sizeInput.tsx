@@ -11,9 +11,8 @@ import {
   Button,
 } from '@chakra-ui/react';
 import type { Dispatch, SetStateAction } from 'react';
-import { useContext, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { formatUnits } from 'viem';
-import { useReadContract } from 'wagmi';
 
 import { MarketContext } from '../../context/MarketProvider';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
@@ -22,10 +21,18 @@ interface Props {
   nftId: number;
   size: number;
   setSize: Dispatch<SetStateAction<number>>;
+  setOption: Dispatch<SetStateAction<'Long' | 'Short'>>;
+  positionData: FoilPosition;
 }
 
-const SizeInput: React.FC<Props> = ({ nftId, size, setSize }) => {
-  const { collateralAssetTicker, pool, foilData, collateralAssetDecimals } =
+const SizeInput: React.FC<Props> = ({
+  nftId,
+  size,
+  setSize,
+  setOption,
+  positionData,
+}) => {
+  const { collateralAssetTicker, pool, collateralAssetDecimals } =
     useContext(MarketContext);
   const [collateral, setCollateral] = useState<number>(0);
   const [isGgasInput, setIsGgasInput] = useState(true);
@@ -33,15 +40,11 @@ const SizeInput: React.FC<Props> = ({ nftId, size, setSize }) => {
   const refPrice = pool?.token0Price.toSignificant(3);
   const isEdit = nftId > 0;
 
-  const { data: positionData } = useReadContract({
-    abi: foilData.abi,
-    address: foilData.address as `0x${string}`,
-    functionName: 'getPosition',
-    args: [nftId],
-    query: {
-      enabled: isEdit,
-    },
-  }) as { data: FoilPosition; refetch: any; isRefetching: boolean };
+  useEffect(() => {
+    if (isEdit && positionData) {
+      setOption(positionData.vGasAmount > BigInt(0) ? 'Long' : 'Short');
+    }
+  }, [isEdit, positionData]);
 
   const originalCollateral = positionData
     ? formatUnits(
@@ -52,7 +55,6 @@ const SizeInput: React.FC<Props> = ({ nftId, size, setSize }) => {
 
   const originalSize = useMemo(() => {
     if (!positionData) return '0';
-    console.log('POSITION DATA = ', positionData);
     const _size =
       positionData.vGasAmount > BigInt(0)
         ? positionData.vGasAmount
@@ -67,7 +69,6 @@ const SizeInput: React.FC<Props> = ({ nftId, size, setSize }) => {
    * @param newVal - new value of the size input
    */
   const handleSizeChange = (newVal: string) => {
-    console.log('ref price is', refPrice);
     if (!refPrice) return;
     const newSize = parseFloat(newVal || '0');
     setSize(newSize);
@@ -118,7 +119,7 @@ const SizeInput: React.FC<Props> = ({ nftId, size, setSize }) => {
           Original value: {isGgasInput ? originalSize : originalCollateral}
         </Text>
       </FormControl>
-      <FormControl mb={4}>
+      <FormControl>
         <InputGroup>
           <Input
             readOnly

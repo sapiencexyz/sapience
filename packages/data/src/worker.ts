@@ -82,7 +82,6 @@ async function initializeMarkets() {
 
   const allMarkets = await marketRepository.find({ relations: ["epochs"] });
   console.log("All Markets:", allMarkets);
-  console.log("First epoch in market:", allMarkets[0].epochs);
 }
 
 export async function reindexTestnet() {
