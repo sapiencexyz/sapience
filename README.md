@@ -21,4 +21,4 @@
 - `git add .`
 - `git commit -m "Foil v<version-number>"`
 - `git tag v<version-number>`
-- `git push origin main`
+- `git push`

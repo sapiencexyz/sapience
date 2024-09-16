@@ -289,10 +289,10 @@ contract TradeModule is ITradeModule {
 
         // check settlement state
         if (size == 0) {
-            // closing, can happen at any time
+            // closing cannot happen after endTime, before settlement
             Epoch.load(position.epochId).validateSettlementSanity();
         } else {
-            // not closing, can only happen if not settled
+            // trading (not closing), can only happen if before endTime
             Epoch.load(position.epochId).validateNotSettled();
         }
 
