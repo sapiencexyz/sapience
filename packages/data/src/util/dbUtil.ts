@@ -212,18 +212,23 @@ const updateTransactionFromLiquidityModifiedEvent = async (
     : TransactionType.ADD_LIQUIDITY;
   const eventArgsModifyLiquidity = event.logData
     .args as LiquidityPositionModifiedEventLog;
+  console.log("eventArgsModifyLiquidity", eventArgsModifyLiquidity);
   const originalPosition = await positionRepository.findOne({
     where: {
       positionId: Number(eventArgsModifyLiquidity.positionId),
-      epoch: { epochId: event.epoch.epochId },
+      epoch: {
+        epochId: event.epoch.epochId,
+        market: { address: event.epoch.market.address },
+      },
     },
-    relations: ["epoch"],
+    relations: ["epoch", "epoch.market"],
   });
   if (!originalPosition) {
     throw new Error(
       `Position not found: ${eventArgsModifyLiquidity.positionId}`
     );
   }
+  console.log("originalPosition", originalPosition);
   const collateralDeltaBigInt =
     BigInt(eventArgsModifyLiquidity.collateralAmount) -
     BigInt(originalPosition.collateral);

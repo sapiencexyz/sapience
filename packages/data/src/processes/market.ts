@@ -58,6 +58,7 @@ export const indexMarketEvents = async (
 
       // Extract epochId from logData (adjust this based on your event structure)
       const epochId = logData.args?.epochId || 0;
+      console.log("logData is", logData);
 
       await handleEventUpsert(
         eventRepository,
@@ -177,7 +178,7 @@ const handleEventUpsert = async (
   // Find or create the market
   let market = await marketRepository.findOne({
     where: { chainId, address },
-    relations: ["epochs"],
+    relations: ["epochs", "epochs.market"],
   });
 
   if (logData.eventName === "MarketInitialized") {
@@ -209,7 +210,10 @@ const handleEventUpsert = async (
   }
 
   // handle epoch
+  console.log("epochId: ", epochId);
   let epoch = market.epochs.find((e) => e.epochId === epochId);
+  console.log("found epoch: ", epoch);
+
   if (logData.eventName === "EpochCreated") {
     // create new epoch
     console.log("creating epoch: ", logData);
@@ -221,8 +225,10 @@ const handleEventUpsert = async (
       (await epochRepository.findOne({
         where: { market: { id: market.id } },
         order: { epochId: "DESC" },
+        relations: ["market"],
       })) || undefined;
   }
+  console.log("found epoch is now", epoch);
 
   // throw if epoch not found/created properly
   if (!epoch) {
