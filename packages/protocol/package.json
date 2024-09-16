@@ -2,10 +2,10 @@
   "name": "@foil/protocol",
   "license": "UNLICENSED",
   "private": true,
-  "version": "0.14",
+  "version": "0.15",
   "scripts": {
     "dev": "cannon build --keep-alive --port 8545 --no-cors --write-deployments ./deployments/13370",
-    "test": "cannon test cannonfile.test.toml",
+    "test": "cannon test cannonfile.test.toml -- -vv",
     "deploy:sepolia": "cannon build cannonfile.sepolia.toml --chain-id 11155111 --write-deployments ./deployments/11155111",
     "simulate-deploy:sepolia": "cannon build cannonfile.sepolia.toml --chain-id 11155111 --dry-run"
   },

@@ -1,5 +1,5 @@
 {
-  "address": "0xeca5405acceb42ac1e7c39732b1451b2fbf15364",
+  "address": "0x0f5749844460d6b94a55ee87cc1833e3369226b8",
   "abi": [
     {
       "type": "constructor",
@@ -1645,17 +1645,6 @@
     },
     {
       "type": "error",
-      "name": "EpochNotStarted",
-      "inputs": [
-        {
-          "name": "epochId",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ]
-    },
-    {
-      "type": "error",
       "name": "EpochSettled",
       "inputs": []
     },
@@ -2582,12 +2571,12 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0x13ac1a5f18700109277fb9ff0c539557b730756b30aff06ae743abfce11d4f25",
-  "deployTxnBlockNumber": "6704586",
-  "deployTimestamp": "1726514412",
+  "deployTxnHash": "0xafb180ffcaaf6c17a9abedc87aa62e4a564383fd3a9a13972945c6b719c809ea",
+  "deployTxnBlockNumber": "6704822",
+  "deployTimestamp": "1726517676",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
   "highlight": true,
-  "gasUsed": 513643,
-  "gasCost": "7387599951"
+  "gasUsed": 513571,
+  "gasCost": "5753710557"
 }

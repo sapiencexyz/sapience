@@ -391,6 +391,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
   }, [marketViewFunctionResult.data]);
 
   useEffect(() => {
+    console.log('epochViewFunctionResult.data', epochViewFunctionResult.data);
     if (epochViewFunctionResult.data !== undefined) {
       setState((currentState) => ({
         ...currentState,
