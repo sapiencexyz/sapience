@@ -146,6 +146,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
       },
       chainId,
     });
+  console.log('uniswapPositionManagerAddress', uniswapPositionManagerAddress);
 
   const { data: collateralAmountData, refetch: refetchCollateralAmount } =
     useReadContract({

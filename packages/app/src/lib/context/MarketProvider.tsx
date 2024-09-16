@@ -380,7 +380,8 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
         ...currentState,
         owner: marketViewFunctionResult?.data[0],
         collateralAsset: marketViewFunctionResult?.data[1],
-        uniswapPositionManagerAddress: marketViewFunctionResult?.data[2],
+        uniswapPositionManagerAddress:
+          marketViewFunctionResult?.data[2].uniswapPositionManager,
         baseAssetMinPriceTick:
           marketViewFunctionResult?.data[2].baseAssetMinPriceTick,
         baseAssetMaxPriceTick:
