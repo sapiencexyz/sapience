@@ -100,8 +100,8 @@ from="<%= settings.owner %>"
 args=[
   "<%= settings.startTime %>",
   "<%= settings.endTime %>",
-  "<%= settings.startingSqrtPriceX96 %>"
-  "4",
+  "<%= settings.startingSqrtPriceX96 %>",
+  "4"
 ]
 depends=["invoke.initializeMarket"]
 

@@ -88,6 +88,7 @@ func="createEpoch"
 args=[
   "<%= settings.startTime %>",
   "<%= settings.endTime %>",
-  "<%= settings.startingSqrtPriceX96 %>"
+  "<%= settings.startingSqrtPriceX96 %>",
+  "4"
 ]
 depends=["invoke.initializeMarket"]

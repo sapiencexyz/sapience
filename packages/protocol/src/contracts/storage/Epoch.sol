@@ -62,7 +62,7 @@ library Epoch {
         uint256 startTime,
         uint256 endTime,
         uint160 startingSqrtPriceX96,
-        uint256 create2Salt
+        uint256 salt
     ) internal returns (Data storage epoch) {
         Market.Data storage market = Market.loadValid();
         IFoilStructs.EpochParams storage epochParams = market.epochParams;
@@ -111,13 +111,13 @@ library Epoch {
 
         epoch.feeRateD18 = uint256(epochParams.feeRate) * 1e12;
 
-        VirtualToken tokenA = new VirtualToken{salt: bytes32(create2Salt)}(
+        VirtualToken tokenA = new VirtualToken{salt: bytes32(salt)}(
             address(this),
             "Token A",
             "tknA"
         );
 
-        VirtualToken tokenB = new VirtualToken{salt: bytes32(create2Salt + 1)}(
+        VirtualToken tokenB = new VirtualToken{salt: bytes32(salt + 1)}(
             address(this),
             "Token B",
             "tknB"

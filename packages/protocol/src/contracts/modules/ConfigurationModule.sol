@@ -52,7 +52,7 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuard {
         uint256 startTime,
         uint256 endTime,
         uint160 startingSqrtPriceX96,
-        uint256 create2Salt
+        uint256 salt
     ) external override onlyOwner {
         // load the market to check if it's already created
         Market.Data storage market = Market.load();
@@ -64,7 +64,7 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuard {
             startTime,
             endTime,
             startingSqrtPriceX96,
-            create2Salt
+            salt
         );
         emit EpochCreated(newEpochId, startTime, endTime, startingSqrtPriceX96);
     }

@@ -47,6 +47,6 @@ interface IConfigurationModule {
         uint256 startTime,
         uint256 endTime,
         uint160 startingSqrtPriceX96,
-        uint256 create2Salt
+        uint256 salt
     ) external;
 }
