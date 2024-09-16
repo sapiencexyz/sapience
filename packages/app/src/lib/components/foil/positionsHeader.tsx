@@ -42,8 +42,6 @@ const PositionsHeader = () => {
   if (endTime) {
     const dateMilliseconds = Number(endTime) / 1000;
     const date = new Date(dateMilliseconds);
-    console.log('endTime: ', endTime);
-    console.log('date: ', date);
     relativeTime = formatDistanceToNow(date);
     formattedTime = format(date, 'PPpp');
   }

@@ -5,7 +5,13 @@ import {
   InputGroup,
   Select,
 } from '@chakra-ui/react';
-import { useContext, useMemo, type Dispatch, type SetStateAction } from 'react';
+import {
+  useContext,
+  useEffect,
+  useMemo,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
 import type React from 'react';
 import { useReadContracts } from 'wagmi';
 
@@ -13,7 +19,7 @@ import { MarketContext } from '~/lib/context/MarketProvider';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
 import { PositionKind } from '~/lib/interfaces/interfaces';
 
-interface AccountSelectorProps {
+interface PositionSelectorProps {
   isLP: boolean;
   onChange: Dispatch<SetStateAction<number>>;
   nftIds: number[];
@@ -45,16 +51,21 @@ const useIsLps = (ids: number[]) => {
   return isLps;
 };
 
-const AccountSelector: React.FC<AccountSelectorProps> = ({
+const PositionSelector: React.FC<PositionSelectorProps> = ({
   isLP,
   onChange,
   nftIds,
   value,
 }) => {
   const isLps = useIsLps(nftIds);
-  const filteredNfts = nftIds.filter((_, index) =>
-    isLP ? isLps[index] : !isLps[index]
+  const filteredNfts = useMemo(
+    () => nftIds.filter((_, index) => (isLP ? isLps[index] : !isLps[index])),
+    [nftIds, isLps, isLP]
   );
+
+  useEffect(() => {
+    onChange(filteredNfts[filteredNfts.length - 1]);
+  }, [filteredNfts]);
 
   const handleAccountChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedAccount = Number(event.target.value);
@@ -80,4 +91,4 @@ const AccountSelector: React.FC<AccountSelectorProps> = ({
   );
 };
 
-export default AccountSelector;
+export default PositionSelector;

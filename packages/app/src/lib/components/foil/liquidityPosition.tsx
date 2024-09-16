@@ -1,8 +1,7 @@
 'use client';
 
-import { InfoOutlineIcon } from '@chakra-ui/icons';
 import { Box, Button, Divider, Heading, Text } from '@chakra-ui/react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useAccount } from 'wagmi';
 
 import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';
@@ -14,12 +13,6 @@ const LiquidityPosition = () => {
   const [nftId, setNftId] = useState(0);
   const { address } = useAccount();
   const { tokenIds, refetch } = useTokenIdsOfOwner(address as `0x${string}`);
-
-  useEffect(() => {
-    if (tokenIds) {
-      setNftId(tokenIds[tokenIds.length - 1]);
-    }
-  }, [tokenIds]);
 
   return (
     <Box>

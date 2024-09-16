@@ -51,7 +51,7 @@ export interface MarketContextType {
   chainId: number;
   error?: string;
   liquidity: number;
-  owner?: string;
+  owner: string;
 }
 
 interface MarketProviderProps {

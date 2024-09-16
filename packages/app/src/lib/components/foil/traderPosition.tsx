@@ -281,6 +281,8 @@ export default function TraderPosition({}) {
       !isLong
     );
 
+    console.log('collateralDeltaLimit', collateralDeltaLimit);
+    console.log('allowance', allowance);
     if (
       !approved &&
       allowance &&
