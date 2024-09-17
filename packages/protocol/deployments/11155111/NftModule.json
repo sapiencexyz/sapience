@@ -1,5 +1,5 @@
 {
-  "address": "0x87AEB286aDC561677d02C2271C3C1e51Ce92Bf78",
+  "address": "0xD9Ff0A96eF66F2390e2E772bcF3B07D323F329B2",
   "abi": [
     {
       "type": "constructor",
@@ -463,12 +463,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x8a1e619645333214936908e3eab4f48da1d73b16f18f93fb9b270798d291bc7a",
-  "deployTxnBlockNumber": "6710293",
-  "deployTimestamp": "1726592124",
+  "deployTxnHash": "0x60f9d0b67b79a2943f351065a98bc057fe3e804a678ce7a12fb4baa3ccc4d41f",
+  "deployTxnBlockNumber": "6710350",
+  "deployTimestamp": "1726592964",
   "sourceName": "src/contracts/modules/NftModule.sol",
   "contractName": "NftModule",
   "deployedOn": "deploy.NftModule",
   "gasUsed": 1190314,
-  "gasCost": "5775163462"
+  "gasCost": "5499588506"
 }

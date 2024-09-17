@@ -1,5 +1,5 @@
 {
-  "address": "0x088B66eC6C51Afcc942a5db3930Bb40401b332BA",
+  "address": "0xdc528E2e842F38bC2Cc497318d9D5dfB7F274f1C",
   "abi": [
     {
       "type": "function",
@@ -425,12 +425,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x792958e39b6444f54bb68eda0dc50ebc4894ae17937b2dbcbdaeccc5366c8146",
-  "deployTxnBlockNumber": "6710299",
-  "deployTimestamp": "1726592220",
+  "deployTxnHash": "0x20f456c53c70445559a560b7b0d1a480f8089afb995ada250c28e8eb2a6716eb",
+  "deployTxnBlockNumber": "6710355",
+  "deployTimestamp": "1726593036",
   "sourceName": "src/contracts/modules/ViewsModule.sol",
   "contractName": "ViewsModule",
   "deployedOn": "deploy.ViewsModule",
   "gasUsed": 797247,
-  "gasCost": "5655077404"
+  "gasCost": "5308971266"
 }
