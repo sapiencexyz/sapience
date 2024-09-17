@@ -1,5 +1,5 @@
 {
-  "address": "0x1fe78A1E80c43E3e5805c77638729f55303a87af",
+  "address": "0x57C750E4BeF77E329e58474b9E421140DbF022fF",
   "abi": [
     {
       "type": "function",
@@ -182,12 +182,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xce4231811641bf82b587248f8f6f9b4e7eadc12ee5aabd5047d9935522a7de03",
-  "deployTxnBlockNumber": "6710128",
-  "deployTimestamp": "1726589868",
+  "deployTxnHash": "0x338b58ebd4ac2ea22fc34c6aec7f62b128880374550dbabe1d2c1b7bb9bb6860",
+  "deployTxnBlockNumber": "6710294",
+  "deployTimestamp": "1726592136",
   "sourceName": "src/contracts/modules/SettlementModule.sol",
   "contractName": "SettlementModule",
   "deployedOn": "deploy.SettlementModule",
   "gasUsed": 1426710,
-  "gasCost": "5172227896"
+  "gasCost": "5543389853"
 }
