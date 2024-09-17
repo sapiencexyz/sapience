@@ -111,7 +111,12 @@ contract TradePositionSettlement is TestTrade {
         settle();
         vm.startPrank(trader1);
         vm.expectRevert(Errors.EpochSettled.selector);
-        foil.createTraderPosition(epochId, 1 ether, 100 ether, block.timestamp + 30 minutes);
+        foil.createTraderPosition(
+            epochId,
+            1 ether,
+            100 ether,
+            block.timestamp + 30 minutes
+        );
         vm.stopPrank();
     }
 
@@ -124,7 +129,7 @@ contract TradePositionSettlement is TestTrade {
     }
 
     function test_modifyTraderPosition_long_close_UsesSettlementPrice() public {
-        closeAndSucceed(1 ether);
+        closeAndRevert(1 ether);
     }
 
     function test_modifyTraderPosition_long_cross_greater_RevertIf_Settled()
@@ -143,7 +148,12 @@ contract TradePositionSettlement is TestTrade {
         settle();
         vm.startPrank(trader1);
         vm.expectRevert(Errors.EpochSettled.selector);
-        foil.createTraderPosition(epochId, -1 ether, 100 ether, block.timestamp + 30 minutes);
+        foil.createTraderPosition(
+            epochId,
+            -1 ether,
+            100 ether,
+            block.timestamp + 30 minutes
+        );
         vm.stopPrank();
     }
 
@@ -160,7 +170,7 @@ contract TradePositionSettlement is TestTrade {
     function test_modifyTraderPosition_short_close_UsesSettlementPrice()
         public
     {
-        closeAndSucceed(-1 ether);
+        closeAndRevert(-1 ether);
     }
 
     function test_modifyTraderPosition_short_cross_greater_RevertIf_Settled()
@@ -193,8 +203,42 @@ contract TradePositionSettlement is TestTrade {
 
         vm.startPrank(trader1);
         vm.expectRevert(Errors.EpochSettled.selector);
-        foil.modifyTraderPosition(positionId, newPositionSize, 200 ether, block.timestamp + 30 minutes);
+        foil.modifyTraderPosition(
+            positionId,
+            newPositionSize,
+            200 ether,
+            block.timestamp + 30 minutes
+        );
 
+        vm.stopPrank();
+    }
+
+    function closeAndRevert(int256 initialPositionSize) internal {
+        vm.startPrank(trader1);
+        uint256 requiredCollateral = foil.quoteCreateTraderPosition(
+            epochId,
+            initialPositionSize
+        );
+
+        uint256 positionId = foil.createTraderPosition(
+            epochId,
+            initialPositionSize,
+            requiredCollateral * 2,
+            block.timestamp + 30 minutes
+        );
+
+        vm.stopPrank();
+
+        settle();
+
+        vm.startPrank(trader1);
+        vm.expectRevert(Errors.EpochSettled.selector);
+        foil.modifyTraderPosition(
+            positionId,
+            0,
+            requiredCollateral,
+            block.timestamp + 30 minutes
+        );
         vm.stopPrank();
     }
 
@@ -237,7 +281,12 @@ contract TradePositionSettlement is TestTrade {
 
         vm.startPrank(trader1);
         requiredCollateral = foil.quoteModifyTraderPosition(positionId, 0);
-        foil.modifyTraderPosition(positionId, 0, requiredCollateral, block.timestamp + 30 minutes);
+        foil.modifyTraderPosition(
+            positionId,
+            0,
+            requiredCollateral,
+            block.timestamp + 30 minutes
+        );
         vm.stopPrank();
 
         uint256 trader1FinalBalance = collateralAsset.balanceOf(trader1);
