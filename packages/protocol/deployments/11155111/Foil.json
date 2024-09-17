@@ -1,5 +1,5 @@
 {
-  "address": "0x6f7213e5cd7d16d7e9e22e8eebd30e2acb3d9154",
+  "address": "0xc6c59ce9029e14d01db6fe6903c65faf1833e1ed",
   "abi": [
     {
       "type": "constructor",
@@ -2618,12 +2618,12 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0x3fee0243e93732be29970f15ae7a87104c933c976315d4d2ee5785dcedb1d36f",
-  "deployTxnBlockNumber": "6710710",
-  "deployTimestamp": "1726597800",
+  "deployTxnHash": "0xf243922e6a55e86aafff3c35479b87611a02458405a1e572041d6a0966d6ac75",
+  "deployTxnBlockNumber": "6711251",
+  "deployTimestamp": "1726605432",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
   "highlight": true,
-  "gasUsed": 513571,
-  "gasCost": "7886060445"
+  "gasUsed": 513643,
+  "gasCost": "20930041107"
 }
