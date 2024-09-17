@@ -1,5 +1,5 @@
 {
-  "address": "0x8aC20aaAD6E9ECBC63172A0cB8EF920e75c5BF20",
+  "address": "0x3698E5F19D1eAaCce95EE6EeA747e4784aAAeDcc",
   "abi": [
     {
       "type": "function",
@@ -706,12 +706,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xc98aea2d43942f8bef7b973821287352af6c145a1b0ae0d8909e567b87d686d7",
-  "deployTxnBlockNumber": "6710348",
-  "deployTimestamp": "1726592940",
+  "deployTxnHash": "0xf0b84438bfae218055e6e627ffd7b7db28013d4b5a01738acba8465ab10b7435",
+  "deployTxnBlockNumber": "6710406",
+  "deployTimestamp": "1726593732",
   "sourceName": "src/contracts/modules/LiquidityModule.sol",
   "contractName": "LiquidityModule",
   "deployedOn": "deploy.LiquidityModule",
   "gasUsed": 3017812,
-  "gasCost": "5077417506"
+  "gasCost": "8219045591"
 }
