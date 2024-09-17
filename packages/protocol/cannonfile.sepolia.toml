@@ -73,7 +73,7 @@ from="<%= settings.owner %>"
 args=[
   "<%= settings.owner %>",
   "<%= imports.wstETH.contracts.Token.address %>",
-  { baseAssetMinPriceTick = "<%= settings.baseAssetMinPriceTick %>", baseAssetMaxPriceTick = "<%= settings.baseAssetMaxPriceTick %>", feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.USDC.contracts.Token.address %>", bondAmount = "<%= settings.bondAmount %>", priceUnit = "<%= settings.priceUnit %>", uniswapPositionManager = "0x1238536071E1c677A632429e3655c799b22cDA52", uniswapSwapRouter = "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E", uniswapQuoter = "0x0e5924A1fa53f66c2A239Ea1e99D945aFDba339d", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>" }
+  { baseAssetMinPriceTick = "<%= settings.baseAssetMinPriceTick %>", baseAssetMaxPriceTick = "<%= settings.baseAssetMaxPriceTick %>", feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.USDC.contracts.Token.address %>", bondAmount = "<%= settings.bondAmount %>", priceUnit = "<%= settings.priceUnit %>", uniswapPositionManager = "0x1238536071E1c677A632429e3655c799b22cDA52", uniswapSwapRouter = "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E", uniswapQuoter = "0xC0499C71624d8eD01DAd75Fc29d8dB8889F0096C", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>" }
 ]
 depends=["router.Foil"]
 
