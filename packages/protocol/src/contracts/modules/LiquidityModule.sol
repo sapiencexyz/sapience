@@ -367,7 +367,6 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         Position.Data storage position
     )
         internal
-        nonReentrant
         returns (
             uint256 collectedAmount0,
             uint256 collectedAmount1,
