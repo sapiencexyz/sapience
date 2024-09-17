@@ -3,11 +3,24 @@ import { Abi, createPublicClient, http, webSocket } from "viem";
 import { indexBaseFeePerGas, indexBaseFeePerGasRange } from "./processes/chain";
 import { indexMarketEvents, indexMarketEventsRange } from "./processes/market"; // Assuming you have this function
 import { mainnet, sepolia, hardhat } from "viem/chains";
-import FoilLocal from "@/protocol/deployments/13370/Foil.json";
-import FoilSepolia from "@/protocol/deployments/11155111/Foil.json";
 import { Market } from "./entity/Market";
 import { Epoch } from "./entity/Epoch";
 import getBlockByTimestamp from "./getBlockByTimestamp";
+
+let FoilLocal: { address: string; abi: Abi } | undefined;
+let FoilSepolia: { address: string; abi: Abi } | undefined;
+
+try {
+  FoilLocal = require("@/protocol/deployments/13370/Foil.json");
+} catch (error) {
+  console.warn("FoilLocal not available");
+}
+
+try {
+  FoilSepolia = require("@/protocol/deployments/11155111/Foil.json");
+} catch (error) {
+  console.warn("FoilSepolia not available");
+}
 
 const mainnetPublicClient = createPublicClient({
   chain: mainnet,
@@ -52,30 +65,34 @@ async function initializeMarkets() {
   }
 
   // LOCAL
-  let localMarket = await marketRepository.findOne({
-    where: { address: FoilLocal.address, chainId: hardhat.id },
-    relations: ["epochs"],
-  });
-  if (!localMarket) {
-    localMarket = new Market();
-    localMarket.address = FoilLocal.address;
-    localMarket.chainId = hardhat.id;
-    localMarket = await marketRepository.save(localMarket);
+  if (FoilLocal) {
+    let localMarket = await marketRepository.findOne({
+      where: { address: FoilLocal.address, chainId: hardhat.id },
+      relations: ["epochs"],
+    });
+    if (!localMarket) {
+      localMarket = new Market();
+      localMarket.address = FoilLocal.address;
+      localMarket.chainId = hardhat.id;
+      localMarket = await marketRepository.save(localMarket);
+    }
+    await createOrFindEpoch(localMarket);
   }
-  await createOrFindEpoch(localMarket);
 
   // SEPOLIA
-  let sepoliaMarket = await marketRepository.findOne({
-    where: { address: FoilSepolia.address, chainId: sepolia.id },
-    relations: ["epochs"],
-  });
-  if (!sepoliaMarket) {
-    sepoliaMarket = new Market();
-    sepoliaMarket.address = FoilSepolia.address;
-    sepoliaMarket.chainId = sepolia.id;
-    sepoliaMarket = await marketRepository.save(sepoliaMarket);
+  if (FoilSepolia) {
+    let sepoliaMarket = await marketRepository.findOne({
+      where: { address: FoilSepolia.address, chainId: sepolia.id },
+      relations: ["epochs"],
+    });
+    if (!sepoliaMarket) {
+      sepoliaMarket = new Market();
+      sepoliaMarket.address = FoilSepolia.address;
+      sepoliaMarket.chainId = sepolia.id;
+      sepoliaMarket = await marketRepository.save(sepoliaMarket);
+    }
+    await createOrFindEpoch(sepoliaMarket);
   }
-  await createOrFindEpoch(sepoliaMarket);
 
   const allEpochs = await epochRepository.find({ relations: ["market"] });
   console.log("All Epochs:", allEpochs);
@@ -85,6 +102,11 @@ async function initializeMarkets() {
 }
 
 export async function reindexTestnet() {
+  if (!FoilSepolia) {
+    console.error("FoilSepolia not available. Cannot reindex testnet.");
+    return;
+  }
+
   console.log("Reindexing Testnet!");
 
   async function getBlockRanges() {
@@ -145,27 +167,29 @@ export async function reindexTestnet() {
 
 if (process.argv.length < 3) {
   initializeMarkets().then(() => {
-    let jobs = [
-      indexBaseFeePerGas(mainnetPublicClient, sepolia.id, FoilSepolia.address),
-      indexMarketEvents(
-        sepoliaPublicClient,
-        FoilSepolia as { address: string; abi: Abi }
-      ),
-    ];
+    let jobs = [];
 
-    if (process.env.NODE_ENV !== "production") {
-      jobs = jobs.concat([
-        indexBaseFeePerGas(mainnetPublicClient, hardhat.id, FoilLocal.address),
-        indexMarketEvents(
-          cannonPublicClient,
-          FoilLocal as { address: string; abi: Abi }
-        ),
-      ]);
+    if (FoilSepolia) {
+      jobs.push(
+        indexBaseFeePerGas(mainnetPublicClient, sepolia.id, FoilSepolia.address),
+        indexMarketEvents(sepoliaPublicClient, FoilSepolia)
+      );
     }
 
-    Promise.all(jobs).catch((error) => {
-      console.error("Error running processes in parallel:", error);
-    });
+    if (process.env.NODE_ENV !== "production" && FoilLocal) {
+      jobs.push(
+        indexBaseFeePerGas(mainnetPublicClient, hardhat.id, FoilLocal.address),
+        indexMarketEvents(cannonPublicClient, FoilLocal)
+      );
+    }
+
+    if (jobs.length > 0) {
+      Promise.all(jobs).catch((error) => {
+        console.error("Error running processes in parallel:", error);
+      });
+    } else {
+      console.warn("No jobs to run. Make sure FoilLocal or FoilSepolia are available.");
+    }
   });
 } else {
   const args = process.argv.slice(2);
