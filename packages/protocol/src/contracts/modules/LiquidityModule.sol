@@ -8,13 +8,25 @@ import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
 import {ILiquidityModule} from "../interfaces/ILiquidityModule.sol";
 import {Pool} from "../libraries/Pool.sol";
 
+// Add this struct at the contract level
+struct LiquidityPositionCreatedEventData {
+    uint256 epochId;
+    uint256 positionId;
+    uint256 depositedCollateralAmount;
+    uint128 liquidity;
+    uint256 addedAmount0;
+    uint256 addedAmount1;
+    int24 lowerTick;
+    int24 upperTick;
+}
+
 contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
     using Position for Position.Data;
     using Epoch for Epoch.Data;
     using Market for Market.Data;
 
     function createLiquidityPosition(
-        IFoilStructs.LiquidityMintParams memory params
+        IFoilStructs.LiquidityMintParams calldata params
     )
         external
         nonReentrant
@@ -72,15 +84,28 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             })
         );
 
-        // emit event
+        _emitLiquidityPositionCreated(LiquidityPositionCreatedEventData({
+            epochId: epoch.id,
+            positionId: id,
+            depositedCollateralAmount: position.depositedCollateralAmount,
+            liquidity: liquidity,
+            addedAmount0: addedAmount0,
+            addedAmount1: addedAmount1,
+            lowerTick: params.lowerTick,
+            upperTick: params.upperTick
+        }));
+    }
+
+    function _emitLiquidityPositionCreated(LiquidityPositionCreatedEventData memory eventData) internal {
         emit LiquidityPositionCreated(
-            id,
-            position.depositedCollateralAmount,
-            liquidity,
-            addedAmount0,
-            addedAmount1,
-            params.lowerTick,
-            params.upperTick
+            eventData.epochId,
+            eventData.positionId,
+            eventData.depositedCollateralAmount,
+            eventData.liquidity,
+            eventData.addedAmount0,
+            eventData.addedAmount1,
+            eventData.lowerTick,
+            eventData.upperTick
         );
     }
 
@@ -151,6 +176,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         }
 
         emit LiquidityPositionDecreased(
+            epoch.id,
             position.id,
             position.depositedCollateralAmount,
             params.liquidity,
@@ -227,6 +253,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         );
 
         emit LiquidityPositionIncreased(
+            epoch.id,
             position.id,
             position.depositedCollateralAmount,
             liquidity,
@@ -400,6 +427,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
 
         // Emit an event for the closed position
         emit LiquidityPositionClosed(
+            epoch.id,
             position.id,
             position.kind,
             collectedAmount0,

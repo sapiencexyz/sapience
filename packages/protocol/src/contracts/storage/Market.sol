@@ -168,7 +168,6 @@ library Market {
         if (self.pendingOwner != sender) {
             revert Errors.OwnableUnauthorizedAccount(sender);
         }
-        address oldOwner = self.owner;
         self.owner = sender;
         delete self.pendingOwner;
     }
