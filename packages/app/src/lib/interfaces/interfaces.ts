@@ -14,6 +14,8 @@ export interface FoilPosition {
   // Position data (owned tokens and position size)
   vEthAmount: bigint;
   vGasAmount: bigint;
+  isSettled: boolean;
+  uniswapPositionId: string;
   // currentTokenAmount: bigint;
 }
 

@@ -103,10 +103,10 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
 
   const [depositAmount, setDepositAmount] = useState(0);
   const [lowPrice, setLowPrice] = useState(
-    tickToPrice(epochParams.baseAssetMaxPriceTick)
+    tickToPrice(epochParams.baseAssetMinPriceTick)
   );
   const [highPrice, setHighPrice] = useState(
-    tickToPrice(epochParams.baseAssetMinPriceTick)
+    tickToPrice(epochParams.baseAssetMaxPriceTick)
   );
   const [txnStep, setTxnStep] = useState<number>(0);
   const [slippage, setSlippage] = useState<number>(0.5);
@@ -138,11 +138,11 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
       abi: INONFUNGIBLE_POSITION_MANAGER.abi,
       address: epochParams.uniswapPositionManager,
       functionName: 'positions',
-      args: [positionData?.id || BigInt('0')],
+      args: [positionData?.uniswapPositionId || BigInt('0')],
       query: {
         enabled: Boolean(
           epochParams.uniswapPositionManager !== '0x' &&
-            positionData?.id &&
+            positionData?.uniswapPositionId &&
             isEdit
         ),
       },
@@ -762,6 +762,11 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
             <InputRightAddon>{collateralAssetTicker}</InputRightAddon>
           </InputGroup>
         </FormControl>
+        {isFetching && (
+          <Text fontSize="small" fontStyle="italic">
+            Fetching token amounts...
+          </Text>
+        )}
       </Box>
       <FormControl mb={4}>
         <FormLabel>Low Price</FormLabel>
