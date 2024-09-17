@@ -71,7 +71,6 @@ export const MarketContext = createContext<MarketContextType>(BLANK_MARKET);
 const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
   const [pool, setPool] = useState<Pool | null>(null);
   const [liquidity, setLiquidity] = useState<string>('0');
-
   const { data, isError, isLoading } = useReadContracts({
     contracts: [
       {
@@ -152,11 +151,10 @@ const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
         );
 
         setPool(poolInstance);
-
         const formattedToken0Balance = (
           Number(token0Balance) /
           10 ** token0.decimals
-        ).toLocaleString();
+        ).toFixed(4);
 
         setLiquidity(formattedToken0Balance);
       }
@@ -244,10 +242,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     functionName: 'decimals',
   });
 
-  const { pool, liquidity, isError, isLoading } = useUniswapPool(
-    chainId,
-    state.poolAddress
-  );
+  const { pool, liquidity } = useUniswapPool(chainId, state.poolAddress);
 
   // Effect hooks
   useEffect(() => {

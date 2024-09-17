@@ -250,13 +250,17 @@ export default function TraderPosition({}) {
 
   useEffect(() => {
     if (quoteCreatePositionResult.error) {
-      toast({
-        title: `Unable to get required collateral amount for size ${size}`,
-        description: quoteCreatePositionResult.error.message,
-        status: 'error',
-        duration: 9000,
-        isClosable: true,
-      });
+      console.log(
+        'quoteCreatePositionResult.error.message:',
+        quoteCreatePositionResult.error.message
+      );
+      // toast({
+      //   title: `Unable to get required collateral amount for size ${size}`,
+      //   description: quoteCreatePositionResult.error.message,
+      //   status: 'error',
+      //   duration: 9000,
+      //   isClosable: true,
+      // });
     }
   }, [quoteCreatePositionResult]);
 
