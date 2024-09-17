@@ -118,7 +118,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
     function modifyTraderPosition(
         uint256 positionId,
         int256 size,
-        uint256 maxCollateral,
+        uint256 maxCollateral, // TODO C-09 int256 maxCollateralDelta and use it also for expected collateral profits
         uint256 deadline
     ) external nonReentrant {
         require(block.timestamp <= deadline, "Transaction too old");
@@ -281,6 +281,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         uint256 positionId,
         int256 size
     ) external returns (uint256 requiredCollateral) {
+        // TODO C-09 return an int256 expectedCollateralDelta
         if (ERC721Storage._ownerOf(positionId) != msg.sender) {
             revert Errors.NotAccountOwnerOrAuthorized(positionId, msg.sender);
         }
