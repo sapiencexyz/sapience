@@ -148,7 +148,6 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
       },
       chainId,
     });
-  console.log('uniswapPositionManagerAddress', uniswapPositionManagerAddress);
 
   const { data: collateralAmountData, refetch: refetchCollateralAmount } =
     useReadContract({
@@ -343,6 +342,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     return (quoteTokenDelta * numerator) / denominator;
   }, [quoteTokenDelta, slippage]);
 
+  // same as token0/tokenA/gasToken
   const baseToken = useMemo(() => {
     const tokenAmountsAny = tokenAmounts as any[]; // there's some abitype project, i think
     if (!tokenAmountsAny) return 0;
