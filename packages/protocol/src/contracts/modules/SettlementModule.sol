@@ -12,16 +12,16 @@ import {ERC721Storage} from "../storage/ERC721Storage.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {ISettlementModule} from "../interfaces/ISettlementModule.sol";
 import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePositionManager.sol";
-
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {console2} from "forge-std/console2.sol";
 
-contract SettlementModule is ISettlementModule {
+contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
     using Position for Position.Data;
     using Market for Market.Data;
 
     function settlePosition(
         uint256 positionId
-    ) external override returns (uint256 withdrawableCollateral) {
+    ) external nonReentrant override returns (uint256 withdrawableCollateral) {
         console2.log("settlePosition");
 
         Position.Data storage position = Position.loadValid(positionId);

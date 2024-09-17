@@ -2,14 +2,14 @@
 pragma solidity >=0.8.25 <0.9.0;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Epoch} from "../storage/Epoch.sol";
 import {Market} from "../storage/Market.sol";
 import {IUMASettlementModule} from "../interfaces/IUMASettlementModule.sol";
 import {OptimisticOracleV3Interface} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 
-contract UMASettlementModule is IUMASettlementModule, ReentrancyGuard {
+contract UMASettlementModule is IUMASettlementModule, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
     using Epoch for Epoch.Data;
 
@@ -76,7 +76,7 @@ contract UMASettlementModule is IUMASettlementModule, ReentrancyGuard {
     function assertionResolvedCallback(
         bytes32 assertionId,
         bool assertedTruthfully
-    ) external {
+    ) external nonReentrant {
         Market.Data storage market = Market.load();
         uint256 epochId = market.epochIdByAssertionId[assertionId];
         Epoch.Data storage epoch = Epoch.load(epochId);
@@ -96,7 +96,7 @@ contract UMASettlementModule is IUMASettlementModule, ReentrancyGuard {
         }
     }
 
-    function assertionDisputedCallback(bytes32 assertionId) external {
+    function assertionDisputedCallback(bytes32 assertionId) external nonReentrant {
         Market.Data storage market = Market.load();
         uint256 epochId = market.epochIdByAssertionId[assertionId];
         Epoch.Data storage epoch = Epoch.load(epochId);

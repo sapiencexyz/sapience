@@ -24,13 +24,9 @@ source="wsteth-token"
 [pull.USDC]
 source="usdc-token"
 
-[deploy.ReentrancyGuard]
-artifact = "ReentrancyGuard"
-
 [deploy.ConfigurationModule]
 artifact="ConfigurationModule"
 args=["<%= settings.owner %>"]
-libraries.ReentrancyGuard="<%= contracts.ReentrancyGuard.address %>"
 
 [deploy.LiquidityModule]
 artifact="LiquidityModule"

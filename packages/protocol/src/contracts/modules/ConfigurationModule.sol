@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.25 <0.9.0;
 
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "../interfaces/IConfigurationModule.sol";
 import "../storage/Market.sol";
 import "../storage/Epoch.sol";
 import "../storage/Errors.sol";
 
-contract ConfigurationModule is IConfigurationModule, ReentrancyGuard {
+contract ConfigurationModule is IConfigurationModule, ReentrancyGuardUpgradeable {
     using Market for Market.Data;
 
-    address immutable initializer;
+    address immutable marketInitializer;
 
-    constructor(address _initializer) {
-        initializer = _initializer;
+    constructor(address _marketInitializer) {
+        marketInitializer = _marketInitializer;
     }
 
     modifier onlyOwner() {
@@ -31,9 +31,9 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuard {
         address initialOwner,
         address collateralAsset,
         IFoilStructs.EpochParams memory epochParams
-    ) external override {
-        if (msg.sender != initializer) {
-            revert Errors.OnlyInitializer(msg.sender, initializer);
+    ) external nonReentrant override {
+        if (msg.sender != marketInitializer) {
+            revert Errors.OnlyInitializer(msg.sender, marketInitializer);
         }
         Market.createValid(initialOwner, collateralAsset, epochParams);
         emit MarketInitialized(initialOwner, collateralAsset, epochParams);
@@ -52,7 +52,7 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuard {
         uint256 endTime,
         uint160 startingSqrtPriceX96,
         uint256 salt
-    ) external override onlyOwner {
+    ) external nonReentrant override onlyOwner {
         // load the market to check if it's already created
         Market.Data storage market = Market.load();
 
@@ -68,14 +68,14 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuard {
         emit EpochCreated(newEpochId, startTime, endTime, startingSqrtPriceX96);
     }
 
-    function transferOwnership(address newOwner) external onlyOwner {
+    function transferOwnership(address newOwner) external nonReentrant onlyOwner {
         Market.Data storage market = Market.load();
         address oldOwner = market.owner;
         market.transferOwnership(newOwner);
         emit OwnershipTransferStarted(oldOwner, newOwner);
     }
 
-    function acceptOwnership() external {
+    function acceptOwnership() external nonReentrant {
         Market.Data storage market = Market.load();
         address oldOwner = market.owner;
         market.acceptOwnership();

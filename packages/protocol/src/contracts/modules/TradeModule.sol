@@ -5,6 +5,7 @@ import "../storage/Position.sol";
 import "../storage/ERC721Storage.sol";
 import "../storage/Trade.sol";
 import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {SafeCastI256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 import {SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 import {ITradeModule} from "../interfaces/ITradeModule.sol";
@@ -15,7 +16,7 @@ import "forge-std/console2.sol";
  * @title Module for trade positions.
  * @dev See ITradeModule.
  */
-contract TradeModule is ITradeModule {
+contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
     using Epoch for Epoch.Data;
     using Position for Position.Data;
     using DecimalMath for uint256;
@@ -30,7 +31,7 @@ contract TradeModule is ITradeModule {
         int256 size,
         uint256 maxCollateral,
         uint256 deadline
-    ) external returns (uint256 positionId) {
+    ) external nonReentrant returns (uint256 positionId) {
         require(block.timestamp <= deadline, "Transaction too old");
 
         if (size == 0) {
@@ -113,7 +114,7 @@ contract TradeModule is ITradeModule {
         int256 size,
         uint256 maxCollateral,
         uint256 deadline
-    ) external {
+    ) external nonReentrant {
         require(block.timestamp <= deadline, "Transaction too old");
 
         if (ERC721Storage._ownerOf(positionId) != msg.sender) {

@@ -2,13 +2,13 @@
 pragma solidity >=0.8.25 <0.9.0;
 
 import "../storage/ERC721EnumerableStorage.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "../storage/Position.sol";
 import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
 import {ILiquidityModule} from "../interfaces/ILiquidityModule.sol";
 import {Pool} from "../libraries/Pool.sol";
 
-contract LiquidityModule is ReentrancyGuard, ILiquidityModule {
+contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
     using Position for Position.Data;
     using Epoch for Epoch.Data;
     using Market for Market.Data;
@@ -17,6 +17,7 @@ contract LiquidityModule is ReentrancyGuard, ILiquidityModule {
         IFoilStructs.LiquidityMintParams memory params
     )
         external
+        nonReentrant
         override
         returns (
             uint256 id,
@@ -87,6 +88,7 @@ contract LiquidityModule is ReentrancyGuard, ILiquidityModule {
         IFoilStructs.LiquidityDecreaseParams memory params
     )
         external
+        nonReentrant
         override
         returns (uint256 amount0, uint256 amount1, uint256 collateralAmount)
     {
@@ -161,6 +163,7 @@ contract LiquidityModule is ReentrancyGuard, ILiquidityModule {
         IFoilStructs.LiquidityIncreaseParams memory params
     )
         external
+        nonReentrant
         returns (
             uint128 liquidity,
             uint256 amount0,
