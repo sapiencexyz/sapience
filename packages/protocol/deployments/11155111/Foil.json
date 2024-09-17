@@ -1,11 +1,11 @@
 {
-  "address": "0x0f5749844460d6b94a55ee87cc1833e3369226b8",
+  "address": "0xe89026634bd3ad3883b02949b4c94bc3cff2ff45",
   "abi": [
     {
       "type": "constructor",
       "inputs": [
         {
-          "name": "_initializer",
+          "name": "_marketInitializer",
           "type": "address",
           "internalType": "address"
         }
@@ -269,6 +269,19 @@
     },
     {
       "type": "event",
+      "name": "Initialized",
+      "inputs": [
+        {
+          "name": "version",
+          "type": "uint64",
+          "indexed": false,
+          "internalType": "uint64"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
       "name": "MarketInitialized",
       "inputs": [
         {
@@ -496,6 +509,11 @@
     },
     {
       "type": "error",
+      "name": "InvalidInitialization",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "InvalidMarket",
       "inputs": []
     },
@@ -534,6 +552,11 @@
     {
       "type": "error",
       "name": "MarketNotInitialized",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NotInitializing",
       "inputs": []
     },
     {
@@ -916,6 +939,12 @@
       "name": "LiquidityPositionClosed",
       "inputs": [
         {
+          "name": "epochId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
           "name": "positionId",
           "type": "uint256",
           "indexed": true,
@@ -946,6 +975,12 @@
       "type": "event",
       "name": "LiquidityPositionCreated",
       "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
         {
           "name": "positionId",
           "type": "uint256",
@@ -996,6 +1031,12 @@
       "name": "LiquidityPositionDecreased",
       "inputs": [
         {
+          "name": "epochId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
           "name": "positionId",
           "type": "uint256",
           "indexed": true,
@@ -1032,6 +1073,12 @@
       "type": "event",
       "name": "LiquidityPositionIncreased",
       "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
         {
           "name": "positionId",
           "type": "uint256",
@@ -2571,12 +2618,12 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0xafb180ffcaaf6c17a9abedc87aa62e4a564383fd3a9a13972945c6b719c809ea",
-  "deployTxnBlockNumber": "6704822",
-  "deployTimestamp": "1726517676",
+  "deployTxnHash": "0xbee72302d35a1ff99eb6d996482d0135578a65d3072460d15488acf3fd3b5193",
+  "deployTxnBlockNumber": "6709856",
+  "deployTimestamp": "1726586244",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
   "highlight": true,
-  "gasUsed": 513571,
-  "gasCost": "5753710557"
+  "gasUsed": 513631,
+  "gasCost": "5135348211"
 }

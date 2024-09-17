@@ -1,11 +1,11 @@
 {
-  "address": "0x6e69FA4B43Ab605534E796FF840Aec43e41F7597",
+  "address": "0x4564bA576D45D337FdD471204E9a843dc07A98ca",
   "abi": [
     {
       "type": "constructor",
       "inputs": [
         {
-          "name": "_initializer",
+          "name": "_marketInitializer",
           "type": "address",
           "internalType": "address"
         }
@@ -269,6 +269,19 @@
     },
     {
       "type": "event",
+      "name": "Initialized",
+      "inputs": [
+        {
+          "name": "version",
+          "type": "uint64",
+          "indexed": false,
+          "internalType": "uint64"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
       "name": "MarketInitialized",
       "inputs": [
         {
@@ -496,6 +509,11 @@
     },
     {
       "type": "error",
+      "name": "InvalidInitialization",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "InvalidMarket",
       "inputs": []
     },
@@ -534,6 +552,11 @@
     {
       "type": "error",
       "name": "MarketNotInitialized",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NotInitializing",
       "inputs": []
     },
     {
@@ -620,12 +643,12 @@
     "0xE006B58cA5aB7ba53863012dc3067A14b965C1da"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0xd9726f664cf05285b79764185a8a50d552e03d03768a945bb19a8ed3d64933d2",
-  "deployTxnBlockNumber": "6704821",
-  "deployTimestamp": "1726517664",
+  "deployTxnHash": "0xa24cedc72684bbee2eb3d9630cb92cb93fc2f58a005a75f9dedbe2733feddaed",
+  "deployTxnBlockNumber": "6709853",
+  "deployTimestamp": "1726586208",
   "sourceName": "src/contracts/modules/ConfigurationModule.sol",
   "contractName": "ConfigurationModule",
   "deployedOn": "deploy.ConfigurationModule",
-  "gasUsed": 2619806,
-  "gasCost": "5243955310"
+  "gasUsed": 2647086,
+  "gasCost": "5733831252"
 }

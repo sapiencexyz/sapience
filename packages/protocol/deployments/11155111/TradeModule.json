@@ -1,5 +1,5 @@
 {
-  "address": "0x74094980093E226D232947739b56eC745Ea1a28b",
+  "address": "0xD540Bc07759aCc4C6C80F2BBaB96D0eADd6F92a6",
   "abi": [
     {
       "type": "function",
@@ -110,6 +110,19 @@
         }
       ],
       "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "Initialized",
+      "inputs": [
+        {
+          "name": "version",
+          "type": "uint64",
+          "indexed": false,
+          "internalType": "uint64"
+        }
+      ],
+      "anonymous": false
     },
     {
       "type": "event",
@@ -346,6 +359,11 @@
     },
     {
       "type": "error",
+      "name": "InvalidInitialization",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "InvalidParameter",
       "inputs": [
         {
@@ -394,6 +412,11 @@
     },
     {
       "type": "error",
+      "name": "NotInitializing",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "OverflowInt256ToUint256",
       "inputs": []
     },
@@ -415,6 +438,11 @@
     {
       "type": "error",
       "name": "PositionAlreadyCreated",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ReentrancyGuardReentrantCall",
       "inputs": []
     },
     {
@@ -447,12 +475,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x9782bbb1a6db02655cdbff03cb15a88ce51925d8a0e66af120e2652a36eec022",
-  "deployTxnBlockNumber": "6704817",
-  "deployTimestamp": "1726517616",
+  "deployTxnHash": "0xb8d1df41c06c7d5bbedc56b6ee71d6bf7a30e0917e22615c1a145b4f1e8c1792",
+  "deployTxnBlockNumber": "6709843",
+  "deployTimestamp": "1726586064",
   "sourceName": "src/contracts/modules/TradeModule.sol",
   "contractName": "TradeModule",
   "deployedOn": "deploy.TradeModule",
-  "gasUsed": 2075168,
-  "gasCost": "5259450017"
+  "gasUsed": 2110134,
+  "gasCost": "6234722641"
 }

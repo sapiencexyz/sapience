@@ -1,5 +1,5 @@
 {
-  "address": "0x5c5aFd917767907a4812Ffd7D15316D09809361E",
+  "address": "0xC5a1927264De7475706407d411835E3566A08DB5",
   "abi": [
     {
       "type": "function",
@@ -55,6 +55,19 @@
         }
       ],
       "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "Initialized",
+      "inputs": [
+        {
+          "name": "version",
+          "type": "uint64",
+          "indexed": false,
+          "internalType": "uint64"
+        }
+      ],
+      "anonymous": false
     },
     {
       "type": "event",
@@ -159,6 +172,16 @@
     },
     {
       "type": "error",
+      "name": "InvalidInitialization",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NotInitializing",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "ReentrancyGuardReentrantCall",
       "inputs": []
     },
@@ -176,12 +199,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x85397435edf469c1358d1dddf229c2052de3725492eb330dcf8fe968309c014a",
-  "deployTxnBlockNumber": "6704819",
-  "deployTimestamp": "1726517640",
+  "deployTxnHash": "0x45f33cba406a075c0f2b9dba1615a98ccf60522c81d7b418f4c3151cf6059c8f",
+  "deployTxnBlockNumber": "6709845",
+  "deployTimestamp": "1726586088",
   "sourceName": "src/contracts/modules/UMASettlementModule.sol",
   "contractName": "UMASettlementModule",
   "deployedOn": "deploy.UMASettlementModule",
-  "gasUsed": 814555,
-  "gasCost": "5094347754"
+  "gasUsed": 817853,
+  "gasCost": "5826749564"
 }

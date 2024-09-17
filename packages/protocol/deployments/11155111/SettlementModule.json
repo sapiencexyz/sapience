@@ -1,5 +1,5 @@
 {
-  "address": "0xd9F77dfa918Fba68369AA168979F52281B36344E",
+  "address": "0x34F7b45ff27AdA0EbD0141F79e0dcF3a37B9E77e",
   "abi": [
     {
       "type": "function",
@@ -19,6 +19,19 @@
         }
       ],
       "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "Initialized",
+      "inputs": [
+        {
+          "name": "version",
+          "type": "uint64",
+          "indexed": false,
+          "internalType": "uint64"
+        }
+      ],
+      "anonymous": false
     },
     {
       "type": "event",
@@ -84,6 +97,11 @@
     },
     {
       "type": "error",
+      "name": "InvalidInitialization",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "InvalidPositionId",
       "inputs": [
         {
@@ -116,6 +134,11 @@
     },
     {
       "type": "error",
+      "name": "NotInitializing",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "OverflowInt24ToUint256",
       "inputs": []
     },
@@ -142,6 +165,11 @@
     },
     {
       "type": "error",
+      "name": "ReentrancyGuardReentrantCall",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "SafeERC20FailedOperation",
       "inputs": [
         {
@@ -154,12 +182,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xfcd1b8b309f43fb961946d53751d578d57c99f07058c1aad7c0829775065125a",
-  "deployTxnBlockNumber": "6704816",
-  "deployTimestamp": "1726517604",
+  "deployTxnHash": "0xbc74431a071ec993cf2b4108d5fd0133a4e016b2929bae438bd538d02799f226",
+  "deployTxnBlockNumber": "6709842",
+  "deployTimestamp": "1726586052",
   "sourceName": "src/contracts/modules/SettlementModule.sol",
   "contractName": "SettlementModule",
   "deployedOn": "deploy.SettlementModule",
-  "gasUsed": 1401266,
-  "gasCost": "5590559092"
+  "gasUsed": 1426710,
+  "gasCost": "6068012728"
 }

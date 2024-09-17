@@ -1,5 +1,5 @@
 {
-  "address": "0x35e1a5204D4Ed644897467d79E579275611e9927",
+  "address": "0x55F1297CA70B946C029bD8BefF754695F8142E63",
   "abi": [
     {
       "type": "function",
@@ -299,8 +299,27 @@
     },
     {
       "type": "event",
+      "name": "Initialized",
+      "inputs": [
+        {
+          "name": "version",
+          "type": "uint64",
+          "indexed": false,
+          "internalType": "uint64"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
       "name": "LiquidityPositionClosed",
       "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
         {
           "name": "positionId",
           "type": "uint256",
@@ -332,6 +351,12 @@
       "type": "event",
       "name": "LiquidityPositionCreated",
       "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
         {
           "name": "positionId",
           "type": "uint256",
@@ -382,6 +407,12 @@
       "name": "LiquidityPositionDecreased",
       "inputs": [
         {
+          "name": "epochId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
           "name": "positionId",
           "type": "uint256",
           "indexed": true,
@@ -418,6 +449,12 @@
       "type": "event",
       "name": "LiquidityPositionIncreased",
       "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
         {
           "name": "positionId",
           "type": "uint256",
@@ -531,6 +568,11 @@
     },
     {
       "type": "error",
+      "name": "InvalidInitialization",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "InvalidParameter",
       "inputs": [
         {
@@ -592,6 +634,11 @@
           "internalType": "address"
         }
       ]
+    },
+    {
+      "type": "error",
+      "name": "NotInitializing",
+      "inputs": []
     },
     {
       "type": "error",
@@ -659,12 +706,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xb3f93a1a4bead969f3e75f2f4a4e1fd3e4d754296800c7c8ff1f5a6ab24f349c",
-  "deployTxnBlockNumber": "6704813",
-  "deployTimestamp": "1726517556",
+  "deployTxnHash": "0xe84dbbca9fa67c529a907f2e331aca7c652bdb93777f7eca894777be7055a1a5",
+  "deployTxnBlockNumber": "6709840",
+  "deployTimestamp": "1726586004",
   "sourceName": "src/contracts/modules/LiquidityModule.sol",
   "contractName": "LiquidityModule",
   "deployedOn": "deploy.LiquidityModule",
-  "gasUsed": 3015741,
-  "gasCost": "5683605523"
+  "gasUsed": 3017812,
+  "gasCost": "6224188128"
 }
