@@ -62,18 +62,21 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         uint256 requiredCollateralAmount;
         uint256 vEthAmount;
         uint256 vGasAmount;
+        uint256 tradeRatioD18;
 
         if (size > 0) {
             (
                 vEthAmount,
                 vGasAmount,
-                requiredCollateralAmount
+                requiredCollateralAmount,
+                tradeRatioD18
             ) = _moveToLongDirection(position, epoch, size);
         } else {
             (
                 vEthAmount,
                 vGasAmount,
-                requiredCollateralAmount
+                requiredCollateralAmount,
+                tradeRatioD18
             ) = _moveToShortDirection(position, epoch, size);
         }
 
@@ -93,6 +96,8 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
         uint256 finalPrice = Trade.getReferencePrice(epochId);
 
+        epoch.validateCurrentPoolPriceInRange();
+
         emit TraderPositionCreated(
             epochId,
             positionId,
@@ -102,7 +107,8 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             position.borrowedVEth,
             position.borrowedVGas,
             initialPrice,
-            finalPrice
+            finalPrice,
+            tradeRatioD18
         );
     }
 
@@ -112,7 +118,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
     function modifyTraderPosition(
         uint256 positionId,
         int256 size,
-        uint256 maxCollateral,
+        uint256 maxCollateral, // TODO C-09 int256 maxCollateralDelta and use it also for expected collateral profits
         uint256 deadline
     ) external nonReentrant {
         require(block.timestamp <= deadline, "Transaction too old");
@@ -142,18 +148,21 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         uint256 requiredCollateralAmount;
         uint256 vEthAmount;
         uint256 vGasAmount;
+        uint256 tradeRatioD18;
 
         if (deltaSize > 0) {
             (
                 vEthAmount,
                 vGasAmount,
-                requiredCollateralAmount
+                requiredCollateralAmount,
+                tradeRatioD18
             ) = _moveToLongDirection(position, epoch, deltaSize);
         } else {
             (
                 vEthAmount,
                 vGasAmount,
-                requiredCollateralAmount
+                requiredCollateralAmount,
+                tradeRatioD18
             ) = _moveToShortDirection(position, epoch, deltaSize);
         }
 
@@ -226,6 +235,8 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
         uint256 finalPrice = Trade.getReferencePrice(position.epochId);
 
+        epoch.validateCurrentPoolPriceInRange();
+
         emit TraderPositionCreated(
             position.epochId,
             positionId,
@@ -235,7 +246,8 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             position.borrowedVEth,
             position.borrowedVGas,
             initialPrice,
-            finalPrice
+            finalPrice,
+            tradeRatioD18
         );
     }
 
@@ -269,6 +281,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         uint256 positionId,
         int256 size
     ) external returns (uint256 requiredCollateral) {
+        // TODO C-09 return an int256 expectedCollateralDelta
         if (ERC721Storage._ownerOf(positionId) != msg.sender) {
             revert Errors.NotAccountOwnerOrAuthorized(positionId, msg.sender);
         }
@@ -404,7 +417,8 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         returns (
             uint256 vEthDebt,
             uint256 vGasTokens,
-            uint256 collateralRequired
+            uint256 collateralRequired,
+            uint256 tradeRatioD18
         )
     {
         vGasTokens = deltaSize.toUint();
@@ -423,6 +437,13 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
         // get required collateral from the position
         collateralRequired = position.getRequiredCollateral();
+
+        // get average trade ratio (price)
+        if (vGasTokens == 0) {
+            tradeRatioD18 = 0;
+        } else {
+            tradeRatioD18 = requiredAmountInVEth.divDecimal(vGasTokens);
+        }
     }
 
     function _moveToShortDirection(
@@ -434,7 +455,8 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         returns (
             uint256 vEthTokens,
             uint256 vGasDebt,
-            uint256 collateralRequired
+            uint256 collateralRequired,
+            uint256 tradeRatioD18
         )
     {
         vGasDebt = (deltaSize * -1).toUint();
@@ -453,5 +475,12 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
         // get required collateral from the position
         collateralRequired = position.getRequiredCollateral();
+
+        // get average trade ratio (price)
+        if (vGasDebt == 0) {
+            tradeRatioD18 = 0;
+        } else {
+            tradeRatioD18 = amountOutVEth.divDecimal(vGasDebt);
+        }
     }
 }

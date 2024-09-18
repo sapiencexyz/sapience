@@ -177,25 +177,39 @@ library Position {
         Data storage self,
         uint256 settlementPriceD18
     ) internal returns (uint256 collateralAmountReturned) {
-        // convert everything to ETH
+        self.isSettled = true;
+
+        // 1- reconcile gas tokens
+        reconcileGasTokens(self);
+
+        // 2- convert everything to ETH
         if (self.vGasAmount > 0) {
-            self.vEthAmount += (self.vGasAmount * settlementPriceD18) / 1e18;
+            self.vEthAmount += self.vGasAmount.mulDecimal(settlementPriceD18);
         }
         if (self.borrowedVGas > 0) {
-            self.borrowedVEth +=
-                (self.borrowedVGas * settlementPriceD18) /
-                1e18;
+            self.borrowedVEth += self.borrowedVGas.mulDecimal(
+                settlementPriceD18
+            );
+            // round up
+            self.borrowedVEth += mulmod(
+                self.borrowedVGas,
+                settlementPriceD18,
+                1e18
+            ) > 0
+                ? 1
+                : 0;
         }
+
+        // 3- reconcile eth tokens
+        reconcileEthTokens(self);
+
         console2.log("self.vGasAmount", self.vGasAmount);
         console2.log("self.borrowedVGas", self.borrowedVGas);
         console2.log("self.vEthAmount", self.vEthAmount);
         console2.log("self.borrowedVEth", self.borrowedVEth);
 
-        self.isSettled = true;
-
-        self.depositedCollateralAmount =
-            (self.depositedCollateralAmount + self.vEthAmount) -
-            self.borrowedVEth;
+        // 4- reconcile collateral
+        reconcileCollateral(self);
 
         console2.log(
             "self.depositedCollateralAmount",

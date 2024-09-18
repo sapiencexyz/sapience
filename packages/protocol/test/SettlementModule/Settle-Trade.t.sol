@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.2 <0.9.0;
+pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
@@ -21,7 +21,7 @@ import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
 
 import "forge-std/console2.sol";
 
-contract TradePositionSettlement is TestTrade {
+contract SettleTradeTest is TestTrade {
     using Cannon for Vm;
     using DecimalMath for uint256;
     using DecimalMath for int256;
@@ -107,142 +107,15 @@ contract TradePositionSettlement is TestTrade {
         bondCurrency.mint(epochParams.bondAmount * 2, owner);
     }
 
-    function test_createTraderPosition_long_RevertIf_Settled() public {
-        settle();
-        vm.startPrank(trader1);
-        vm.expectRevert(Errors.EpochSettled.selector);
-        foil.createTraderPosition(
-            epochId,
-            1 ether,
-            100 ether,
-            block.timestamp + 30 minutes
-        );
-        vm.stopPrank();
-    }
-
-    function test_modifyTraderPosition_long_increase_RevertIf_Settled() public {
-        modifyAndRevert(1 ether, 2 ether);
-    }
-
-    function test_modifyTraderPosition_long_reduce_RevertIf_Settled() public {
-        modifyAndRevert(1 ether, .5 ether);
-    }
-
     function test_modifyTraderPosition_long_close_UsesSettlementPrice() public {
-        closeAndRevert(1 ether);
+        settleAndSucced(1 ether);
     }
-
-    function test_modifyTraderPosition_long_cross_greater_RevertIf_Settled()
-        public
-    {
-        modifyAndRevert(1 ether, -2 ether);
-    }
-
-    function test_modifyTraderPosition_long_cross_lower_RevertIf_Settled()
-        public
-    {
-        modifyAndRevert(1 ether, -.5 ether);
-    }
-
-    function test_createTraderPosition_short_RevertIf_Settled() public {
-        settle();
-        vm.startPrank(trader1);
-        vm.expectRevert(Errors.EpochSettled.selector);
-        foil.createTraderPosition(
-            epochId,
-            -1 ether,
-            100 ether,
-            block.timestamp + 30 minutes
-        );
-        vm.stopPrank();
-    }
-
-    function test_modifyTraderPosition_short_increase_RevertIf_Settled()
-        public
-    {
-        modifyAndRevert(-1 ether, -2 ether);
-    }
-
-    function test_modifyTraderPosition_short_reduce_RevertIf_Settled() public {
-        modifyAndRevert(-1 ether, -.5 ether);
-    }
-
     function test_modifyTraderPosition_short_close_UsesSettlementPrice()
         public
     {
-        closeAndRevert(-1 ether);
+        settleAndSucced(-1 ether);
     }
-
-    function test_modifyTraderPosition_short_cross_greater_RevertIf_Settled()
-        public
-    {
-        modifyAndRevert(-1 ether, 2 ether);
-    }
-
-    function test_modifyTraderPosition_short_cross_lower_RevertIf_Settled()
-        public
-    {
-        modifyAndRevert(-1 ether, .5 ether);
-    }
-
-    function modifyAndRevert(
-        int256 initialPositionSize,
-        int256 newPositionSize
-    ) internal {
-        vm.startPrank(trader1);
-        uint256 positionId = foil.createTraderPosition(
-            epochId,
-            initialPositionSize,
-            100 ether,
-            block.timestamp + 30 minutes
-        );
-
-        vm.stopPrank();
-
-        settle();
-
-        vm.startPrank(trader1);
-        vm.expectRevert(Errors.EpochSettled.selector);
-        foil.modifyTraderPosition(
-            positionId,
-            newPositionSize,
-            200 ether,
-            block.timestamp + 30 minutes
-        );
-
-        vm.stopPrank();
-    }
-
-    function closeAndRevert(int256 initialPositionSize) internal {
-        vm.startPrank(trader1);
-        uint256 requiredCollateral = foil.quoteCreateTraderPosition(
-            epochId,
-            initialPositionSize
-        );
-
-        uint256 positionId = foil.createTraderPosition(
-            epochId,
-            initialPositionSize,
-            requiredCollateral * 2,
-            block.timestamp + 30 minutes
-        );
-
-        vm.stopPrank();
-
-        settle();
-
-        vm.startPrank(trader1);
-        vm.expectRevert(Errors.EpochSettled.selector);
-        foil.modifyTraderPosition(
-            positionId,
-            0,
-            requiredCollateral,
-            block.timestamp + 30 minutes
-        );
-        vm.stopPrank();
-    }
-
-    function closeAndSucceed(int256 initialPositionSize) internal {
+    function settleAndSucced(int256 initialPositionSize) internal {
         uint256 trader1InitialBalance = collateralAsset.balanceOf(trader1);
 
         int256 pnl;
@@ -280,13 +153,7 @@ contract TradePositionSettlement is TestTrade {
         settle();
 
         vm.startPrank(trader1);
-        requiredCollateral = foil.quoteModifyTraderPosition(positionId, 0);
-        foil.modifyTraderPosition(
-            positionId,
-            0,
-            requiredCollateral,
-            block.timestamp + 30 minutes
-        );
+        foil.settlePosition(positionId);
         vm.stopPrank();
 
         uint256 trader1FinalBalance = collateralAsset.balanceOf(trader1);

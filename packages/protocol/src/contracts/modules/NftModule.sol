@@ -10,16 +10,6 @@ import "../storage/ERC721EnumerableStorage.sol";
 contract NftModule is IERC721Enumerable {
     constructor() {}
 
-    // TODO Move to a module with just that function
-    // function supportsInterface(
-    //     bytes4 interfaceId
-    // ) public view virtual override returns (bool) {
-    //     return
-    //         interfaceId == this.supportsInterface.selector || // ERC165
-    //         interfaceId == type(IERC721).interfaceId ||
-    //         interfaceId == type(IERC721Metadata).interfaceId;
-    // }
-
     function balanceOf(
         address holder
     ) public view virtual override returns (uint256 balance) {

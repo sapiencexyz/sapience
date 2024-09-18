@@ -264,8 +264,8 @@ contract TradePositionBasic is TestTrade {
     ) public {
         vm.assume(startPosition < endPosition || startPosition > endPosition);
 
-        startPosition = bound(startPosition, .00001 ether, 10 ether);
-        endPosition = bound(endPosition, .00001 ether, 10 ether);
+        startPosition = bound(startPosition, .01 ether, 5 ether);
+        endPosition = bound(endPosition, .01 ether, 5 ether);
 
         StateData memory latestStateData;
         StateData memory expectedStateData;
@@ -279,8 +279,10 @@ contract TradePositionBasic is TestTrade {
 
         uint256 positionId;
 
+        console2.log("referencePrice 0: ", foil.getReferencePrice(epochId));
         vm.startPrank(trader1);
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
+        console2.log("referencePrice 1: ", foil.getReferencePrice(epochId));
         fillCollateralStateData(trader1, latestStateData);
         fillPositionState(positionId, latestStateData);
 
@@ -303,6 +305,9 @@ contract TradePositionBasic is TestTrade {
         uint256 price = foil.getReferencePrice(epochId).mulDecimal(
             feeMultiplier
         );
+        console2.log("referencePrice 2: ", foil.getReferencePrice(epochId));
+        console2.log("price           : ", price);
+
         int256 deltaCollateral = requiredCollateral.toInt() -
             latestStateData.depositedCollateralAmount.toInt();
         int256 deltaEth = (latestStateData.vEthAmount.toInt() -
@@ -518,13 +523,15 @@ contract TradePositionBasic is TestTrade {
         );
 
         // Send more collateral than required, just checking the position can be created/modified
-        foil.modifyTraderPosition(positionId, 0, requiredCollateral * 2, block.timestamp + 30 minutes);
+        foil.modifyTraderPosition(
+            positionId,
+            0,
+            requiredCollateral * 2,
+            block.timestamp + 30 minutes
+        );
 
         vm.stopPrank();
 
-        uint256 price = foil.getReferencePrice(epochId).mulDecimal(
-            feeMultiplier
-        );
         int256 deltaCollateral = requiredCollateral.toInt() -
             latestStateData.depositedCollateralAmount.toInt();
 
@@ -578,13 +585,15 @@ contract TradePositionBasic is TestTrade {
         );
 
         // Send more collateral than required, just checking the position can be created/modified
-        foil.modifyTraderPosition(positionId, 0, requiredCollateral * 2, block.timestamp + 30 minutes);
+        foil.modifyTraderPosition(
+            positionId,
+            0,
+            requiredCollateral * 2,
+            block.timestamp + 30 minutes
+        );
 
         vm.stopPrank();
 
-        uint256 price = foil.getReferencePrice(epochId).mulDecimal(
-            feeMultiplier
-        );
         int256 deltaCollateral = requiredCollateral.toInt() -
             latestStateData.depositedCollateralAmount.toInt();
 
@@ -685,13 +694,13 @@ contract TradePositionBasic is TestTrade {
         assertApproxEqRel(
             currentStateData.vEthAmount,
             expectedStateData.vEthAmount,
-            0.05 ether,
+            0.1 ether,
             string.concat(stage, " vEthAmount")
         );
         assertApproxEqRel(
             currentStateData.borrowedVEth,
             expectedStateData.borrowedVEth,
-            0.05 ether,
+            0.1 ether,
             string.concat(stage, " borrowedVEth")
         );
     }

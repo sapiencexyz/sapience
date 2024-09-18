@@ -13,7 +13,8 @@ interface ITradeModule {
         uint256 borrowedVEth,
         uint256 borrowedVGas,
         uint256 initialPrice,
-        uint256 finalPrice
+        uint256 finalPrice,
+        uint256 tradeRatio
     );
 
     event TraderPositionModified(
@@ -25,7 +26,8 @@ interface ITradeModule {
         uint256 borrowedVEth,
         uint256 borrowedVGas,
         uint256 initialPrice,
-        uint256 finalPrice
+        uint256 finalPrice,
+        uint256 tradeRatio
     );
 
     function createTraderPosition(

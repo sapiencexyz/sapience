@@ -75,11 +75,11 @@ library Epoch {
         }
 
         if (startTime < block.timestamp) {
-            revert Errors.startTimeTooEarly(startTime, block.timestamp);
+            revert Errors.StartTimeTooEarly(startTime, block.timestamp);
         }
 
         if (endTime <= startTime) {
-            revert Errors.endTimeTooEarly(startTime, endTime);
+            revert Errors.EndTimeTooEarly(startTime, endTime);
         }
 
         if (
@@ -394,6 +394,21 @@ library Epoch {
         (uint160 sqrtPriceX96, , , , , , ) = self.pool.slot0();
 
         return DecimalPrice.sqrtRatioX96ToPrice(sqrtPriceX96);
+    }
+
+    function validateCurrentPoolPriceInRange(Data storage self) internal view {
+        (uint160 sqrtPriceX96, , , , , , ) = self.pool.slot0();
+
+        if (
+            sqrtPriceX96 < self.sqrtPriceMinX96 ||
+            sqrtPriceX96 > self.sqrtPriceMaxX96
+        ) {
+            revert Errors.PoolPriceOutOfRange(
+                sqrtPriceX96,
+                self.sqrtPriceMinX96,
+                self.sqrtPriceMaxX96
+            );
+        }
     }
 
     function requiredCollateralForLiquidity(
