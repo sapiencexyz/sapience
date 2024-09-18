@@ -33,10 +33,10 @@ export class Position {
   @Column()
   positionId: number;
 
-  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
+  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0, nullable: true })
   baseToken: string; // vGas tokenamount 0
 
-  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
+  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0, nullable: true })
   quoteToken: string; // vETH tokenamount 1
 
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0, nullable: true })
