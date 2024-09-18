@@ -121,10 +121,10 @@ export const createOrModifyPosition = async (transaction: Transaction) => {
   position.isLP = isLpPosition(transaction, existingPosition);
   position.positionId = Number(eventArgs.positionId);
 
-  position.baseToken = eventArgs.baseToken.toString();
-  position.quoteToken = eventArgs.quoteToken.toString();
-  position.borrowedBaseToken = eventArgs.borrowedBaseToken.toString();
-  position.borrowedQuoteToken = eventArgs.borrowedQuoteToken.toString();
+  position.baseToken = eventArgs.baseToken?.toString();
+  position.quoteToken = eventArgs.quoteToken?.toString();
+  position.borrowedBaseToken = eventArgs.borrowedBaseToken?.toString();
+  position.borrowedQuoteToken = eventArgs.borrowedQuoteToken?.toString();
 
   position.collateral = (
     BigInt(originalCollateral) + BigInt(transaction.collateralDelta)
