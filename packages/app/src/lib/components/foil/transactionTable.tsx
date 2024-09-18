@@ -6,6 +6,7 @@ import {
   Th,
   Tbody,
   Td,
+  Text,
 } from '@chakra-ui/react';
 import { formatDistanceToNow } from 'date-fns';
 import type React from 'react';
@@ -73,7 +74,11 @@ const TransactionTable: React.FC<Props> = ({
               <Td>
                 {row.quoteTokenDelta}
               </Td>
-              <Td>{formatUnits(row.tradeRatioD18, collateralAssetDecimals)}</Td>
+              <Td>
+                {row.type == 'long' || row.type == 'short'
+                  ? (formatUnits(row.tradeRatioD18, collateralAssetDecimals))
+                  : <Text color="gray.500">N/A</Text>}
+              </Td>
             </Tr>
           ))}
         </Tbody>
