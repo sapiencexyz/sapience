@@ -26,7 +26,6 @@ const TraderPositionsTable: React.FC<Props> = ({
   if (error) {
     return <div>Error: {error.message}</div>;
   }
-  console.log('trade positions = ', positions);
 
   return (
     <TableContainer mb={4}>

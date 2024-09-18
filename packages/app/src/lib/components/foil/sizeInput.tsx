@@ -3,7 +3,6 @@
 import {
   Box,
   FormControl,
-  Text,
   FormLabel,
   Input,
   InputGroup,
@@ -11,7 +10,7 @@ import {
   Button,
 } from '@chakra-ui/react';
 import type { Dispatch, SetStateAction } from 'react';
-import { useContext, useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { formatUnits } from 'viem';
 
 import { MarketContext } from '../../context/MarketProvider';
@@ -21,17 +20,10 @@ interface Props {
   nftId: number;
   size: number;
   setSize: Dispatch<SetStateAction<number>>;
-  setOption: Dispatch<SetStateAction<'Long' | 'Short'>>;
   positionData: FoilPosition;
 }
 
-const SizeInput: React.FC<Props> = ({
-  nftId,
-  size,
-  setSize,
-  setOption,
-  positionData,
-}) => {
+const SizeInput: React.FC<Props> = ({ nftId, size, setSize, positionData }) => {
   const { collateralAssetTicker, pool, collateralAssetDecimals } =
     useContext(MarketContext);
   const [collateral, setCollateral] = useState<number>(0);
@@ -42,25 +34,18 @@ const SizeInput: React.FC<Props> = ({
 
   useEffect(() => {
     if (isEdit && positionData) {
-      setOption(positionData.vGasAmount > BigInt(0) ? 'Long' : 'Short');
+      const _sizeBigInt =
+        positionData.vGasAmount > BigInt(0)
+          ? positionData.vGasAmount
+          : positionData.borrowedVGas;
+      const _size = parseFloat(
+        formatUnits(_sizeBigInt, collateralAssetDecimals)
+      );
+      handleSizeChange(`${_size}`);
+    } else {
+      handleSizeChange('0');
     }
   }, [isEdit, positionData]);
-
-  const originalCollateral = positionData
-    ? formatUnits(
-        positionData.depositedCollateralAmount,
-        collateralAssetDecimals
-      )
-    : '0';
-
-  const originalSize = useMemo(() => {
-    if (!positionData) return '0';
-    const _size =
-      positionData.vGasAmount > BigInt(0)
-        ? positionData.vGasAmount
-        : positionData.borrowedVGas;
-    return formatUnits(_size, collateralAssetDecimals);
-  }, [positionData, collateralAssetDecimals]);
 
   const handleUpdateInputType = () => setIsGgasInput(!isGgasInput);
 
@@ -115,9 +100,6 @@ const SizeInput: React.FC<Props> = ({
             </Button>
           </InputRightAddon>
         </InputGroup>
-        <Text hidden={!isEdit} fontSize="small">
-          Original value: {isGgasInput ? originalSize : originalCollateral}
-        </Text>
       </FormControl>
       <FormControl>
         <InputGroup>
@@ -130,9 +112,6 @@ const SizeInput: React.FC<Props> = ({
             {isGgasInput ? collateralAssetTicker : 'Ggas'}
           </InputRightAddon>
         </InputGroup>
-        <Text hidden={!isEdit} fontSize="small">
-          Original value: {!isGgasInput ? originalSize : originalCollateral}
-        </Text>
       </FormControl>
     </Box>
   );

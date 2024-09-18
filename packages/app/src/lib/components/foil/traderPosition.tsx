@@ -8,8 +8,9 @@ import {
   Text,
   useToast,
   Tooltip,
+  Spinner,
 } from '@chakra-ui/react';
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useMemo } from 'react';
 import type { AbiFunction, WriteContractErrorType } from 'viem';
 import { formatUnits, parseUnits } from 'viem';
 import {
@@ -126,6 +127,24 @@ export default function TraderPosition({}) {
     },
   }) as { data: FoilPosition; refetch: any; isRefetching: boolean };
 
+  useEffect(() => {
+    if (positionData && isEdit) {
+      setOption(positionData.vGasAmount > BigInt(0) ? 'Long' : 'Short');
+    } else {
+      setOption('Long');
+    }
+  }, [positionData, isEdit]);
+  const originalPositionSize: number = useMemo(() => {
+    if (isEdit && positionData) {
+      const _sizeBigInt =
+        positionData.vGasAmount > BigInt(0)
+          ? positionData.vGasAmount
+          : positionData.borrowedVGas;
+      return parseFloat(formatUnits(_sizeBigInt, collateralAssetDecimals));
+    }
+    return 0;
+  }, [positionData, isEdit, collateralAssetDecimals]);
+
   // Collateral balance for current address/account
   const { data: collateralBalance } = useReadContract({
     abi: erc20ABI,
@@ -168,8 +187,39 @@ export default function TraderPosition({}) {
         (isLong ? BigInt(1) : BigInt(-1)),
     ],
     chainId,
-    query: { enabled: isEdit },
+    query: { enabled: isEdit && size !== originalPositionSize },
   });
+
+  const quoteError = useMemo(() => {
+    if (
+      quoteModifyPositionResult?.error &&
+      isEdit &&
+      size !== originalPositionSize
+    ) {
+      console.log(
+        'quoteModifyPositionResult.error.message:',
+        quoteModifyPositionResult.error.message
+      );
+      return quoteModifyPositionResult.error;
+    }
+    if (quoteCreatePositionResult.error) {
+      console.log(
+        'quoteCreatePositionResult.error.message:',
+        quoteCreatePositionResult.error.message
+      );
+      return quoteCreatePositionResult.error;
+    }
+  }, [
+    quoteCreatePositionResult,
+    quoteModifyPositionResult,
+    size,
+    originalPositionSize,
+    isEdit,
+  ]);
+
+  const isLoadingCollateralChange = isEdit
+    ? quoteModifyPositionResult.isFetching
+    : quoteCreatePositionResult.isFetching;
 
   // Write contract hooks
   const { data: hash, writeContract } = useWriteContract({
@@ -247,24 +297,6 @@ export default function TraderPosition({}) {
       setCollateralDelta(BigInt(0));
     }
   }, [isEdit, quoteCreatePositionResult.data, quoteModifyPositionResult.data]);
-
-  useEffect(() => {
-    if (quoteCreatePositionResult.error) {
-      console.log(
-        'quoteCreatePositionResult.error.message:',
-        quoteCreatePositionResult.error.message
-      );
-    }
-  }, [quoteCreatePositionResult]);
-
-  useEffect(() => {
-    if (quoteModifyPositionResult.error) {
-      console.log(
-        'quoteModifyPositionResult.error.message:',
-        quoteModifyPositionResult.error.message
-      );
-    }
-  }, [quoteModifyPositionResult]);
 
   const handleSubmit = (
     e?: React.FormEvent<HTMLFormElement>,
@@ -363,29 +395,6 @@ export default function TraderPosition({}) {
     slippage
   );
 
-  const renderCollateralChange = () => {
-    const isLoading = isEdit
-      ? quoteModifyPositionResult.isFetching
-      : quoteCreatePositionResult.isFetching;
-    if (isLoading) {
-      return (
-        <Text fontSize="small" mt={2} fontStyle="italic">
-          Loading collateral change...
-        </Text>
-      );
-    }
-    if (collateralDelta !== BigInt(0)) {
-      return (
-        <Text fontSize="small" mt={2} fontStyle="italic">
-          Collateral Change:{' '}
-          {Number(
-            formatUnits(collateralDelta, collateralAssetDecimals)
-          ).toFixed(4)}
-        </Text>
-      );
-    }
-  };
-
   return (
     <form onSubmit={handleSubmit}>
       <PositionSelector
@@ -408,31 +417,35 @@ export default function TraderPosition({}) {
         nftId={nftId}
         size={size}
         setSize={setSize}
-        setOption={setOption}
         positionData={positionData}
       />
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
-      <Box mb={4}>
+      <Box mb={4} minH="20px">
         <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
           Estimated Wallet Balance Adjustment{' '}
           <Tooltip label="Your slippage tolerance sets a maximum limit on how much additional collateral Foil can use, protecting you from unexpected market changes between submitting and processing your transaction.">
             <QuestionOutlineIcon transform="translateY(-1px)" ml={0.5} />
           </Tooltip>
         </Text>
-        <Text fontSize="sm" color="gray.600">
-          {currentBalance} {collateralAssetTicker} → {estimatedNewBalance}{' '}
-          {collateralAssetTicker} (Min. {minResultingBalance}{' '}
-          {collateralAssetTicker})
-        </Text>
-        {renderCollateralChange()}
+        {isLoadingCollateralChange ? (
+          <Spinner />
+        ) : (
+          <Text fontSize="sm" color="gray.600">
+            {currentBalance} {collateralAssetTicker} → {estimatedNewBalance}{' '}
+            {collateralAssetTicker} (Min. {minResultingBalance}{' '}
+            {collateralAssetTicker})
+          </Text>
+        )}
       </Box>
       {isConnected ? (
         <Button
           width="full"
           variant="brand"
           type="submit"
-          isLoading={pendingTxn}
-          isDisabled={pendingTxn}
+          isLoading={pendingTxn || isLoadingCollateralChange}
+          isDisabled={
+            pendingTxn || isLoadingCollateralChange || Boolean(quoteError)
+          }
         >
           {isEdit ? 'Update Position' : 'Create Position'}
         </Button>

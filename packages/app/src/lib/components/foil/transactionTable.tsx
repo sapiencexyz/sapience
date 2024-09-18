@@ -10,10 +10,7 @@ import {
 } from '@chakra-ui/react';
 import { formatDistanceToNow } from 'date-fns';
 import type React from 'react';
-import { useContext, useMemo } from 'react';
-import { formatUnits } from 'viem';
-
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { useMemo } from 'react';
 
 interface Props {
   isLoading: boolean;
@@ -26,8 +23,6 @@ const TransactionTable: React.FC<Props> = ({
   error,
   transactions,
 }) => {
-  const { collateralAssetDecimals } = useContext(MarketContext);
-
   const sortedTransactions = useMemo(() => {
     if (!transactions) return [];
     return [...transactions].sort(
