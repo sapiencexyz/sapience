@@ -1,5 +1,5 @@
 {
-  "address": "0xc6c59ce9029e14d01db6fe6903c65faf1833e1ed",
+  "address": "0xf4daf22c01d3ee382dbbaf5c8b7e7fe2a4be73c0",
   "abi": [
     {
       "type": "constructor",
@@ -472,6 +472,22 @@
     },
     {
       "type": "error",
+      "name": "EndTimeTooEarly",
+      "inputs": [
+        {
+          "name": "startTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "endTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "EpochAlreadyStarted",
       "inputs": []
     },
@@ -603,28 +619,7 @@
     },
     {
       "type": "error",
-      "name": "TokensAlreadyCreated",
-      "inputs": []
-    },
-    {
-      "type": "error",
-      "name": "endTimeTooEarly",
-      "inputs": [
-        {
-          "name": "startTime",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "endTime",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ]
-    },
-    {
-      "type": "error",
-      "name": "startTimeTooEarly",
+      "name": "StartTimeTooEarly",
       "inputs": [
         {
           "name": "startTime",
@@ -637,6 +632,11 @@
           "internalType": "uint256"
         }
       ]
+    },
+    {
+      "type": "error",
+      "name": "TokensAlreadyCreated",
+      "inputs": []
     },
     {
       "type": "function",
@@ -1598,6 +1598,12 @@
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
+        },
+        {
+          "name": "tradeRatio",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
         }
       ],
       "anonymous": false
@@ -1659,6 +1665,12 @@
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
+        },
+        {
+          "name": "tradeRatio",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
         }
       ],
       "anonymous": false
@@ -1703,6 +1715,27 @@
           "name": "message",
           "type": "string",
           "internalType": "string"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "PoolPriceOutOfRange",
+      "inputs": [
+        {
+          "name": "poolPrice",
+          "type": "uint160",
+          "internalType": "uint160"
+        },
+        {
+          "name": "minPrice",
+          "type": "uint160",
+          "internalType": "uint160"
+        },
+        {
+          "name": "maxPrice",
+          "type": "uint160",
+          "internalType": "uint160"
         }
       ]
     },
@@ -2618,12 +2651,12 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0xf243922e6a55e86aafff3c35479b87611a02458405a1e572041d6a0966d6ac75",
-  "deployTxnBlockNumber": "6711251",
-  "deployTimestamp": "1726605432",
+  "deployTxnHash": "0xbe9758eedcec5bd4e117ae6f05a8f2ce146765f3fbc76c11be311b00a5e5de7e",
+  "deployTxnBlockNumber": "6716589",
+  "deployTimestamp": "1726682376",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
   "highlight": true,
   "gasUsed": 513643,
-  "gasCost": "20930041107"
+  "gasCost": "15349853579"
 }

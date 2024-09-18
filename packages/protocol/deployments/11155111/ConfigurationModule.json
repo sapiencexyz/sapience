@@ -1,5 +1,5 @@
 {
-  "address": "0xDF3Fc08FC32A8c5eb5c3F644B6C24d113E1a7515",
+  "address": "0x5ce10f10D6C6AB2ad1488E8847CA33d6b24401Ce",
   "abi": [
     {
       "type": "constructor",
@@ -472,6 +472,22 @@
     },
     {
       "type": "error",
+      "name": "EndTimeTooEarly",
+      "inputs": [
+        {
+          "name": "startTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "endTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "EpochAlreadyStarted",
       "inputs": []
     },
@@ -603,28 +619,7 @@
     },
     {
       "type": "error",
-      "name": "TokensAlreadyCreated",
-      "inputs": []
-    },
-    {
-      "type": "error",
-      "name": "endTimeTooEarly",
-      "inputs": [
-        {
-          "name": "startTime",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "endTime",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ]
-    },
-    {
-      "type": "error",
-      "name": "startTimeTooEarly",
+      "name": "StartTimeTooEarly",
       "inputs": [
         {
           "name": "startTime",
@@ -637,18 +632,23 @@
           "internalType": "uint256"
         }
       ]
+    },
+    {
+      "type": "error",
+      "name": "TokensAlreadyCreated",
+      "inputs": []
     }
   ],
   "constructorArgs": [
     "0xE006B58cA5aB7ba53863012dc3067A14b965C1da"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0xb5b2fa456e764ea7e84912483843f7d27725b538014a40d88c7240c3359105e0",
-  "deployTxnBlockNumber": "6711250",
-  "deployTimestamp": "1726605420",
+  "deployTxnHash": "0x18f520333138e80fbfbf19e1ff5b780c800f9ad520952296b3e6f6ebb5063821",
+  "deployTxnBlockNumber": "6716588",
+  "deployTimestamp": "1726682364",
   "sourceName": "src/contracts/modules/ConfigurationModule.sol",
   "contractName": "ConfigurationModule",
   "deployedOn": "deploy.ConfigurationModule",
   "gasUsed": 2647086,
-  "gasCost": "20700538413"
+  "gasCost": "15041435258"
 }

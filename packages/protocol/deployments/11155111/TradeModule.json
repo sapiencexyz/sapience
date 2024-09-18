@@ -1,5 +1,5 @@
 {
-  "address": "0xfAf4EA7338c893ED1ce1303B9464F1cD670D52F3",
+  "address": "0x54EB22cE8A2144FAa6d782cD5e373fc6971e6089",
   "abi": [
     {
       "type": "function",
@@ -181,6 +181,12 @@
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
+        },
+        {
+          "name": "tradeRatio",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
         }
       ],
       "anonymous": false
@@ -239,6 +245,12 @@
         },
         {
           "name": "finalPrice",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "tradeRatio",
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
@@ -437,6 +449,27 @@
     },
     {
       "type": "error",
+      "name": "PoolPriceOutOfRange",
+      "inputs": [
+        {
+          "name": "poolPrice",
+          "type": "uint160",
+          "internalType": "uint160"
+        },
+        {
+          "name": "minPrice",
+          "type": "uint160",
+          "internalType": "uint160"
+        },
+        {
+          "name": "maxPrice",
+          "type": "uint160",
+          "internalType": "uint160"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "PositionAlreadyCreated",
       "inputs": []
     },
@@ -475,12 +508,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xc181fd882d9491d2f1d83ce153ac3e34395ab5b21b77e3bf9d75a14eb4578929",
-  "deployTxnBlockNumber": "6711246",
-  "deployTimestamp": "1726605360",
+  "deployTxnHash": "0x5b76f177f1fd3316b7e4f70507af6e20182e340da619a268a00b138e3a54c2d0",
+  "deployTxnBlockNumber": "6716584",
+  "deployTimestamp": "1726682316",
   "sourceName": "src/contracts/modules/TradeModule.sol",
   "contractName": "TradeModule",
   "deployedOn": "deploy.TradeModule",
-  "gasUsed": 2110134,
-  "gasCost": "19544091169"
+  "gasUsed": 2186519,
+  "gasCost": "14855809989"
 }
