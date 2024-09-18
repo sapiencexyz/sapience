@@ -17,7 +17,7 @@ export interface TradePositionEventLog {
   borrowedVGas: string;
   initialPrice: string;
   finalPrice: string;
-  tradeRatioD18: string;
+  tradeRatio: string;
 }
 
 export interface LiquidityPositionCreatedEventLog {

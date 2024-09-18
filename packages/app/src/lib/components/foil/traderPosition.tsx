@@ -151,7 +151,7 @@ export default function TraderPosition({}) {
     functionName: 'quoteCreateTraderPosition',
     args: [
       epoch,
-      parseUnits(size.toFixed(0), collateralAssetDecimals) *
+      parseUnits(`${size}`, collateralAssetDecimals) *
         (isLong ? BigInt(1) : BigInt(-1)),
     ],
     chainId,
@@ -164,7 +164,7 @@ export default function TraderPosition({}) {
     functionName: 'quoteModifyTraderPosition',
     args: [
       nftId,
-      parseUnits(size.toFixed(0), collateralAssetDecimals) *
+      parseUnits(`${size}`, collateralAssetDecimals) *
         (isLong ? BigInt(1) : BigInt(-1)),
     ],
     chainId,
@@ -254,15 +254,17 @@ export default function TraderPosition({}) {
         'quoteCreatePositionResult.error.message:',
         quoteCreatePositionResult.error.message
       );
-      // toast({
-      //   title: `Unable to get required collateral amount for size ${size}`,
-      //   description: quoteCreatePositionResult.error.message,
-      //   status: 'error',
-      //   duration: 9000,
-      //   isClosable: true,
-      // });
     }
   }, [quoteCreatePositionResult]);
+
+  useEffect(() => {
+    if (quoteModifyPositionResult.error) {
+      console.log(
+        'quoteModifyPositionResult.error.message:',
+        quoteModifyPositionResult.error.message
+      );
+    }
+  }, [quoteModifyPositionResult]);
 
   const handleSubmit = (
     e?: React.FormEvent<HTMLFormElement>,
@@ -273,7 +275,7 @@ export default function TraderPosition({}) {
     setIsLoading(true);
 
     const sizeInTokens =
-      parseUnits(size.toFixed(0), collateralAssetDecimals) *
+      parseUnits(`${size}`, collateralAssetDecimals) *
       (isLong ? BigInt(1) : BigInt(-1));
 
     // Calculate collateralDeltaLimit using refPrice
@@ -284,8 +286,13 @@ export default function TraderPosition({}) {
       refPrice,
       !isLong
     );
+    console.log('********************');
+    console.log('collateralDelta', collateralDelta);
     console.log('collateralDeltaLimit', collateralDeltaLimit);
     console.log('allowance', allowance);
+    console.log('sizeInTokens', sizeInTokens);
+    console.log('refPrice', refPrice);
+    console.log('********************');
 
     // Set deadline to 30 minutes from now
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
@@ -295,6 +302,7 @@ export default function TraderPosition({}) {
       allowance &&
       collateralDeltaLimit > (allowance as bigint)
     ) {
+      console.log('approving...');
       approveWrite({
         abi: erc20ABI as AbiFunction[],
         address: collateralAsset as `0x${string}`,
@@ -309,6 +317,7 @@ export default function TraderPosition({}) {
         args: [nftId, sizeInTokens, collateralDeltaLimit, deadline],
       });
     } else {
+      console.log('creating trade position....');
       writeContract({
         abi: foilData.abi,
         address: foilData.address as `0x${string}`,

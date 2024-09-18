@@ -14,7 +14,9 @@ export const calculateCollateralDeltaLimit = (
   refPrice: string | undefined,
   isShort?: boolean
 ) => {
-  if (!refPrice) {
+  const MIN_REF_PRICE = 1e9;
+
+  if (!refPrice || parseFloat(refPrice) < MIN_REF_PRICE) {
     // Fallback to the original calculation if refPrice is not available
     return (
       (collateralDelta * BigInt(Math.floor((100 + slippage) * 100))) /

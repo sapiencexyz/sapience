@@ -68,16 +68,14 @@ const TransactionTable: React.FC<Props> = ({
               <Td>#{row.position.positionId}</Td>
               <Td>{row.type}</Td>
               <Td>{row.collateralDelta}</Td>
+              <Td>{row.baseTokenDelta}</Td>
+              <Td>{row.quoteTokenDelta}</Td>
               <Td>
-                {row.baseTokenDelta}
-              </Td>
-              <Td>
-                {row.quoteTokenDelta}
-              </Td>
-              <Td>
-                {row.type == 'long' || row.type == 'short'
-                  ? (formatUnits(row.tradeRatioD18, collateralAssetDecimals))
-                  : <Text color="gray.500">N/A</Text>}
+                {row.type === 'long' || row.type === 'short' ? (
+                  row.tradeRatioD18
+                ) : (
+                  <Text color="gray.500">N/A</Text>
+                )}
               </Td>
             </Tr>
           ))}
