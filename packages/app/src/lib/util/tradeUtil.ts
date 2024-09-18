@@ -24,8 +24,12 @@ export const calculateCollateralDeltaLimit = (
   const collateralDeltaInt = parseFloat(
     formatUnits(collateralDelta, collateralAssetDecimals)
   );
-  const slippageFactor = isShort ? 1 - slippage / 100 : 1 + slippage / 100;
-  const cdl = collateralDeltaInt * parseFloat(refPrice) * slippageFactor;
+  const slippageFactor: number = isShort
+    ? 1 - slippage / 100
+    : 1 + slippage / 100;
+
+  const cdl: number =
+    collateralDeltaInt * parseFloat(refPrice) * slippageFactor;
   return parseUnits(cdl.toString(), collateralAssetDecimals);
 };
 

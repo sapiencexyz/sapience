@@ -224,6 +224,17 @@ const updateTransactionFromLiquidityModifiedEvent = async (
     relations: ["epoch", "epoch.market"],
   });
   if (!originalPosition) {
+    // get position from contract?
+    /**
+     * // i.e:
+    const test = sepoliaPublicClient.readContract({
+      address: FoilSepolia.address
+      abi: FoilSepolia.abi,
+      functionName: "getPosition",
+      args: [eventArgsModifyLiquidity.positionId],
+    })
+      **/
+
     throw new Error(
       `Position not found: ${eventArgsModifyLiquidity.positionId}`
     );
@@ -272,7 +283,10 @@ const updateTransactionFromTradeModifiedEvent = async (
   const initialPosition = await positionRepository.findOne({
     where: {
       positionId: Number(eventArgsCreateTrade.positionId),
-      epoch: { epochId: event.epoch.epochId },
+      epoch: {
+        epochId: event.epoch.epochId,
+        market: { address: event.epoch.market.address },
+      },
     },
     relations: ["epoch"],
   });
@@ -301,7 +315,8 @@ export const formatDbBigInt = (value: string) => {
     return "0";
   }
   const formatted = formatUnits(BigInt(value), TOKEN_PRECISION);
-  return Number(formatted).toFixed(3);
+  const number = Number(formatted);
+  return number < 0.001 ? number.toPrecision(1) : number.toFixed(3);
 };
 
 export const didMarketPriceChangeSincePositionOpen = async (

@@ -417,7 +417,6 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   }, [depositAmount, positionData, collateralAssetDecimals]);
 
   useEffect(() => {
-    console.log('positionData', positionData);
     if (isEdit && positionData) {
       const currentCollateral = Number(
         formatUnits(
@@ -486,7 +485,6 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   }, [epochParams.baseAssetMaxPriceTick, isEdit]);
 
   useEffect(() => {
-    console.log('uniswapPosition: ', uniswapPosition);
     if (!uniswapPosition) return;
     const uniswapData = uniswapPosition as any[];
     const lowerTick = uniswapData[5];
