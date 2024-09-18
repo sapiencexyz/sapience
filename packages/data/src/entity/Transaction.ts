@@ -56,6 +56,9 @@ export class Transaction {
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
   collateralDelta: string; // ETH
 
+  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
+  tradeRatioD18: string;
+
   // AfterInsert AfterUpdate and AfterRemove to update the associated Position based on positionId
   @AfterInsert()
   async afterInsert() {}

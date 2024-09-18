@@ -311,6 +311,8 @@ const updateTransactionFromTradeModifiedEvent = async (
   newTransaction.collateralDelta = (
     BigInt(eventArgsCreateTrade.collateralAmount) - BigInt(collateralInitial)
   ).toString();
+
+  newTransaction.tradeRatioD18 = eventArgsCreateTrade.tradeRatioD18;
 };
 /**
  * Format a BigInt value from the DB to a string with 3 decimal places.

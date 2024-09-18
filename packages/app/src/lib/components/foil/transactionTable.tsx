@@ -13,7 +13,6 @@ import { useContext, useMemo } from 'react';
 import { formatUnits } from 'viem';
 
 import { MarketContext } from '~/lib/context/MarketProvider';
-import { TransactionType } from '~/lib/interfaces/interfaces';
 
 interface Props {
   isLoading: boolean;
@@ -43,17 +42,6 @@ const TransactionTable: React.FC<Props> = ({
     return <div>Error: {error.message}</div>;
   }
 
-  const getFinalPrice = (transaction: any) => {
-    if (
-      transaction.type === TransactionType.LONG ||
-      transaction.type === TransactionType.SHORT
-    ) {
-      const { finalPrice } = transaction.event.logData.args;
-      return formatUnits(finalPrice, collateralAssetDecimals);
-    }
-    return '-';
-  };
-
   return (
     <TableContainer mb={4}>
       <Table variant="simple" size="sm">
@@ -62,10 +50,10 @@ const TransactionTable: React.FC<Props> = ({
             <Th>Time</Th>
             <Th>Position</Th>
             <Th>Type</Th>
-            <Th>Collateral Change</Th>
-            <Th>Base Token Change</Th>
-            <Th>Quote Token Change</Th>
-            {/* <Th>Price</Th> */}
+            <Th>Collateral</Th>
+            <Th>Ggas</Th>
+            <Th>wstETH</Th>
+            <Th>Price</Th>
           </Tr>
         </Thead>
         <Tbody>
@@ -78,10 +66,14 @@ const TransactionTable: React.FC<Props> = ({
               </Td>
               <Td>#{row.position.positionId}</Td>
               <Td>{row.type}</Td>
-              <Td>{row.collateralDelta} wstETH</Td>
-              <Td>{row.baseTokenDelta} Ggas</Td>
-              <Td>{row.quoteTokenDelta} wstETH</Td>
-              {/* <Td>{getFinalPrice(row)}</Td> */}
+              <Td>{row.collateralDelta}</Td>
+              <Td>
+                {row.baseTokenDelta}
+              </Td>
+              <Td>
+                {row.quoteTokenDelta}
+              </Td>
+              <Td>{formatUnits(row.tradeRatioD18, collateralAssetDecimals)}</Td>
             </Tr>
           ))}
         </Tbody>

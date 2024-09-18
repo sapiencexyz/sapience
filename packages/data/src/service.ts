@@ -6,7 +6,6 @@ import { Position } from "./entity/Position";
 import { Market } from "./entity/Market";
 import express from "express";
 import { Between } from "typeorm";
-import { Event } from "./entity/Event";
 import { Transaction } from "./entity/Transaction";
 import { Epoch } from "./entity/Epoch";
 import { MarketPrice } from "./entity/MarketPrice";
@@ -18,7 +17,6 @@ const PORT = 3001;
 const startServer = async () => {
   await initializeDataSource();
   const positionRepository = dataSource.getRepository(Position);
-  const eventRepository = dataSource.getRepository(Event);
   const epochRepository = dataSource.getRepository(Epoch);
   const priceRepository = dataSource.getRepository(Price);
   const marketRepository = dataSource.getRepository(Market);
@@ -284,6 +282,7 @@ const startServer = async () => {
         transaction.collateralDelta = formatDbBigInt(
           transaction.collateralDelta
         );
+        transaction.tradeRatioD18 = formatDbBigInt(transaction.tradeRatioD18);
       }
       res.json(transactions);
     } catch (error) {
