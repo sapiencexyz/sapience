@@ -52,12 +52,6 @@ const startServer = async () => {
 
   // Get market price data for rendering candlestick/boxplot charts filtered by contractId
   app.get("/prices/chart-data", async (req, res) => {
-    const all = await marketPriceRepository.find({
-      relations: {
-        transaction: true,
-      },
-    });
-
     const { contractId, epochId } = req.query;
 
     if (typeof contractId !== "string") {
@@ -199,10 +193,6 @@ const startServer = async () => {
   app.get("/positions", async (req, res) => {
     const { isLP, contractId } = req.query;
 
-    const all = await positionRepository.find({
-      relations: ["epoch", "epoch.market", "transactions"],
-    });
-
     if (typeof contractId !== "string") {
       return res.status(400).json({ error: "Invalid contractId" });
     }
@@ -236,6 +226,8 @@ const startServer = async () => {
       for (const position of positions) {
         position.baseToken = formatDbBigInt(position.baseToken);
         position.quoteToken = formatDbBigInt(position.quoteToken);
+        position.borrowedBaseToken = formatDbBigInt(position.borrowedBaseToken);
+        position.borrowedQuoteToken = formatDbBigInt(position.borrowedQuoteToken);
         position.collateral = formatDbBigInt(position.collateral);
         position.profitLoss = formatDbBigInt(position.profitLoss);
         position.unclaimedFees = formatDbBigInt(position.unclaimedFees);
@@ -247,13 +239,6 @@ const startServer = async () => {
     }
   });
   app.get("/transactions", async (req, res) => {
-    const all = await transactionRepository.find({
-      relations: {
-        position: true,
-        event: true,
-      },
-    });
-
     const { contractId, epochId } = req.query;
 
     if (typeof contractId !== "string") {

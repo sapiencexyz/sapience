@@ -108,10 +108,6 @@ export const createOrModifyPosition = async (transaction: Transaction) => {
     ],
   });
 
-  const originalBaseToken = existingPosition ? existingPosition.baseToken : "0";
-  const originalQuoteToken = existingPosition
-    ? existingPosition.quoteToken
-    : "0";
   const originalCollateral = existingPosition
     ? existingPosition.collateral
     : "0";
@@ -124,12 +120,12 @@ export const createOrModifyPosition = async (transaction: Transaction) => {
 
   position.isLP = isLpPosition(transaction, existingPosition);
   position.positionId = Number(eventArgs.positionId);
-  position.baseToken = (
-    BigInt(originalBaseToken) + BigInt(transaction.baseTokenDelta)
-  ).toString();
-  position.quoteToken = (
-    BigInt(originalQuoteToken) + BigInt(transaction.quoteTokenDelta)
-  ).toString();
+
+  position.baseToken = eventArgs.baseToken.toString();
+  position.quoteToken = eventArgs.quoteToken.toString();
+  position.borrowedBaseToken = eventArgs.borrowedBaseToken.toString();
+  position.borrowedQuoteToken = eventArgs.borrowedQuoteToken.toString();
+
   position.collateral = (
     BigInt(originalCollateral) + BigInt(transaction.collateralDelta)
   ).toString(); //TODO: figure out what to do with a lp closed and changed to trade position
@@ -297,7 +293,7 @@ const updateTransactionFromTradeModifiedEvent = async (
     },
     relations: ["epoch"],
   });
-  console.log("initialPosition", initialPosition);
+
   const baseTokenInitial = initialPosition ? initialPosition.baseToken : "0";
   const quoteTokenInitial = initialPosition ? initialPosition.quoteToken : "0";
   const collateralInitial = initialPosition ? initialPosition.collateral : "0";

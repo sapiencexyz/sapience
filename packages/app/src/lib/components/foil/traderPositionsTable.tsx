@@ -34,10 +34,7 @@ const TraderPositionsTable: React.FC<Props> = ({
           <Tr>
             <Th>ID</Th>
             <Th>Collateral</Th>
-            <Th>Base Token</Th>
-            <Th>Quote Token</Th>
-            {/* <Th>Net Position</Th> */}
-            {/* <Th>Gain/Loss</Th> */}
+            <Th>Size</Th>
           </Tr>
         </Thead>
         <Tbody>
@@ -46,10 +43,7 @@ const TraderPositionsTable: React.FC<Props> = ({
               <Tr key={row.id}>
                 <Td>#{row.positionId.toString()}</Td>
                 <Td>{row.collateral.toString()} wstETH</Td>
-                <Td>{row.baseToken.toString()} Ggas</Td>
-                <Td>{row.quoteToken.toString()} wstETH</Td>
-                {/* <Td>TODO</Td> */}
-                {/* <Td>{row.profitLoss.toString()}</Td> */}
+                <Td>{(row.baseToken - row.borrowedBaseToken).toString()} Ggas</Td>
               </Tr>
             ))}
         </Tbody>

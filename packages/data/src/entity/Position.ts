@@ -39,6 +39,12 @@ export class Position {
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
   quoteToken: string; // vETH tokenamount 1
 
+  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0, nullable: true })
+  borrowedBaseToken: string;
+
+  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0, nullable: true })
+  borrowedQuoteToken: string;
+
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
   collateral: string; // ETH
 
