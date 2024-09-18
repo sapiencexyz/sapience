@@ -93,12 +93,16 @@ export const createOrModifyPosition = async (transaction: Transaction) => {
 
   const existingPosition = await positionRepository.findOne({
     where: {
-      epoch: { id: transaction.event.epoch.id },
+      epoch: {
+        id: transaction.event.epoch.id,
+        market: { address: transaction.event.epoch.market.address },
+      },
       positionId: transaction.event.logData.args.positionId,
     },
     relations: [
       "transactions",
       "epoch",
+      "epoch.market",
       "transactions.event",
       "transactions.marketPrice",
     ],
@@ -181,9 +185,12 @@ const updateTransactionFromLiquidityClosedEvent = async (
   const originalPosition = await positionRepository.findOne({
     where: {
       positionId: Number(eventArgs.positionId),
-      epoch: { epochId: event.epoch.epochId },
+      epoch: {
+        epochId: event.epoch.epochId,
+        market: { address: event.epoch.market.address },
+      },
     },
-    relations: ["epoch"],
+    relations: ["epoch", "epoch.market"],
   });
   if (!originalPosition) {
     throw new Error(`Position not found: ${eventArgs.positionId}`);
@@ -224,9 +231,9 @@ const updateTransactionFromLiquidityModifiedEvent = async (
     relations: ["epoch", "epoch.market"],
   });
   if (!originalPosition) {
-    // get position from contract?
+    // if position not found, get position from contract?
     /**
-     * // i.e:
+     i.e:
     const test = sepoliaPublicClient.readContract({
       address: FoilSepolia.address
       abi: FoilSepolia.abi,
@@ -316,7 +323,7 @@ export const formatDbBigInt = (value: string) => {
   }
   const formatted = formatUnits(BigInt(value), TOKEN_PRECISION);
   const number = Number(formatted);
-  return number < 0.001 ? number.toPrecision(1) : number.toFixed(3);
+  return number.toFixed(4);
 };
 
 export const didMarketPriceChangeSincePositionOpen = async (
