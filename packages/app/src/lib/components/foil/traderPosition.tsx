@@ -151,7 +151,7 @@ export default function TraderPosition({}) {
     functionName: 'quoteCreateTraderPosition',
     args: [
       epoch,
-      parseUnits(size.toString(), collateralAssetDecimals) *
+      parseUnits(size.toFixed(0), collateralAssetDecimals) *
         (isLong ? BigInt(1) : BigInt(-1)),
     ],
     chainId,
@@ -164,7 +164,7 @@ export default function TraderPosition({}) {
     functionName: 'quoteModifyTraderPosition',
     args: [
       nftId,
-      parseUnits(size.toString(), collateralAssetDecimals) *
+      parseUnits(size.toFixed(0), collateralAssetDecimals) *
         (isLong ? BigInt(1) : BigInt(-1)),
     ],
     chainId,
@@ -273,7 +273,7 @@ export default function TraderPosition({}) {
     setIsLoading(true);
 
     const sizeInTokens =
-      parseUnits(size.toString(), collateralAssetDecimals) *
+      parseUnits(size.toFixed(0), collateralAssetDecimals) *
       (isLong ? BigInt(1) : BigInt(-1));
 
     // Calculate collateralDeltaLimit using refPrice
