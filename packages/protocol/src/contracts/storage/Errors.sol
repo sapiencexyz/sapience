@@ -22,8 +22,8 @@ library Errors {
         uint256 collateralAvailable
     );
     error CollateralLimitReached(
-        uint256 collateralRequired,
-        uint256 maxCollateral
+        int256 collateralRequired,
+        int256 maxCollateral
     );
     error IndexOverrun(uint256 requestedIndex, uint256 length);
     error NotAccountOwnerOrAuthorized(uint256 tokenId, address sender);

@@ -30,6 +30,13 @@ interface ITradeModule {
         uint256 tradeRatio
     );
 
+    /** @dev Create a new trader position.
+     * @param epochId The epoch id.
+     * @param size The position size.
+     * @param maxCollateral The maximum collateral that can be deposited.
+     * @param deadline The deadline for the transaction.
+     * @return positionId The position id.
+     */
     function createTraderPosition(
         uint256 epochId,
         int256 size,
@@ -37,10 +44,16 @@ interface ITradeModule {
         uint256 deadline
     ) external returns (uint256 positionId);
 
+    /** @dev Modify an existing trader position.
+     * @param positionId The position id.
+     * @param size The new position size.
+     * @param deltaCollateralLimit The change in the collateral limit. Positive for adding collateral, negative for reomving (closing a position means minimum profit to withdraw)
+     * @param deadline The deadline for the transaction.
+     */
     function modifyTraderPosition(
         uint256 positionId,
         int256 size,
-        uint256 maxCollateral,
+        int256 deltaCollateralLimit,
         uint256 deadline
     ) external;
 

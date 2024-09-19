@@ -226,7 +226,7 @@ contract TradePositionBasic is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             positionSize,
-            requiredCollateral * 2,
+            (requiredCollateral * 2).toInt(),
             block.timestamp + 30 minutes
         );
         vm.stopPrank();
@@ -296,7 +296,7 @@ contract TradePositionBasic is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             positionSize,
-            requiredCollateral * 2,
+            (requiredCollateral * 2).toInt(),
             block.timestamp + 30 minutes
         );
 
@@ -375,7 +375,7 @@ contract TradePositionBasic is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             positionSize,
-            requiredCollateral * 2,
+            (requiredCollateral * 2).toInt(),
             block.timestamp + 30 minutes
         );
 
@@ -454,7 +454,7 @@ contract TradePositionBasic is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             positionSize,
-            requiredCollateral * 2,
+            (requiredCollateral * 2).toInt(),
             block.timestamp + 30 minutes
         );
 
@@ -504,11 +504,6 @@ contract TradePositionBasic is TestTrade {
         StateData memory expectedStateData;
         int256 initialPositionSize = startPosition.toInt();
 
-        int256 deltaPositionSize = -1 * initialPositionSize;
-        uint256 feeMultiplier = deltaPositionSize > 0
-            ? PLUS_FEE_MULTIPLIER_D18
-            : MINUS_FEE_MULTIPLIER_D18;
-
         uint256 positionId;
 
         vm.startPrank(trader1);
@@ -526,7 +521,7 @@ contract TradePositionBasic is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             0,
-            requiredCollateral * 2,
+            (requiredCollateral * 2).toInt(),
             block.timestamp + 30 minutes
         );
 
@@ -566,11 +561,6 @@ contract TradePositionBasic is TestTrade {
         StateData memory expectedStateData;
         int256 initialPositionSize = startPosition.toInt() * -1;
 
-        int256 deltaPositionSize = -1 * initialPositionSize;
-        uint256 feeMultiplier = deltaPositionSize > 0
-            ? PLUS_FEE_MULTIPLIER_D18
-            : MINUS_FEE_MULTIPLIER_D18;
-
         uint256 positionId;
 
         vm.startPrank(trader1);
@@ -588,7 +578,7 @@ contract TradePositionBasic is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             0,
-            requiredCollateral * 2,
+            (requiredCollateral * 2).toInt(),
             block.timestamp + 30 minutes
         );
 

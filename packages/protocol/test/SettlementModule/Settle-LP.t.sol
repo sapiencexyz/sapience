@@ -150,6 +150,9 @@ contract SettleLPTest is TestTrade {
         (uint256 owed0, uint256 owed1) = getOwedTokens(
             position.uniswapPositionId
         );
+        initialCollateralBalance; // silence warnings
+        owed0; // silence warnings
+        owed1; // silence warnings
 
         // Settle LP position
         vm.prank(lp1);
