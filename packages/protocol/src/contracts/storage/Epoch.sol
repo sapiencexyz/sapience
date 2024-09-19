@@ -360,6 +360,9 @@ library Epoch {
         requiredCollateral = totalDebtValue > totalOwnedValue
             ? totalDebtValue - totalOwnedValue
             : 0;
+
+        // Adding 2 wei to prevent round up errors. Insignificant amount for normal operations but to prevent potential issues
+        requiredCollateral += 2;
     }
 
     function validateOwnedAndDebtAtPrice(
@@ -445,6 +448,9 @@ library Epoch {
             collateralRequirementAtMax
             ? collateralRequirementAtMin
             : collateralRequirementAtMax;
+
+        // Adding 2 wei to prevent round up errors. Insignificant amount for normal operations but to prevent potential issues
+        requiredCollateral += 2;
     }
 
     function collateralRequirementAtMinTick(
