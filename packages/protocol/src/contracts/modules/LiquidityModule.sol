@@ -29,8 +29,8 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         IFoilStructs.LiquidityMintParams calldata params
     )
         external
-        nonReentrant
         override
+        nonReentrant
         returns (
             uint256 id,
             uint256 collateralAmount,
@@ -40,7 +40,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             uint256 addedAmount1
         )
     {
-        require(block.timestamp <= params.deadline, 'Transaction too old');
+        require(block.timestamp <= params.deadline, "Transaction too old");
 
         id = ERC721EnumerableStorage.totalSupply() + 1;
         Position.Data storage position = Position.createValid(id);
@@ -50,9 +50,12 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         Epoch.Data storage epoch = Epoch.loadValid(params.epochId);
         epoch.validateLp(params.lowerTick, params.upperTick);
 
-        (uniswapNftId, liquidity, addedAmount0, addedAmount1) = INonfungiblePositionManager(epoch
-            .params
-            .uniswapPositionManager)
+        (
+            uniswapNftId,
+            liquidity,
+            addedAmount0,
+            addedAmount1
+        ) = INonfungiblePositionManager(epoch.params.uniswapPositionManager)
             .mint(
                 INonfungiblePositionManager.MintParams({
                     token0: address(epoch.gasToken),
@@ -84,19 +87,23 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             })
         );
 
-        _emitLiquidityPositionCreated(LiquidityPositionCreatedEventData({
-            epochId: epoch.id,
-            positionId: id,
-            depositedCollateralAmount: position.depositedCollateralAmount,
-            liquidity: liquidity,
-            addedAmount0: addedAmount0,
-            addedAmount1: addedAmount1,
-            lowerTick: params.lowerTick,
-            upperTick: params.upperTick
-        }));
+        _emitLiquidityPositionCreated(
+            LiquidityPositionCreatedEventData({
+                epochId: epoch.id,
+                positionId: id,
+                depositedCollateralAmount: position.depositedCollateralAmount,
+                liquidity: liquidity,
+                addedAmount0: addedAmount0,
+                addedAmount1: addedAmount1,
+                lowerTick: params.lowerTick,
+                upperTick: params.upperTick
+            })
+        );
     }
 
-    function _emitLiquidityPositionCreated(LiquidityPositionCreatedEventData memory eventData) internal {
+    function _emitLiquidityPositionCreated(
+        LiquidityPositionCreatedEventData memory eventData
+    ) internal {
         emit LiquidityPositionCreated(
             eventData.epochId,
             eventData.positionId,
@@ -113,11 +120,11 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         IFoilStructs.LiquidityDecreaseParams memory params
     )
         external
-        nonReentrant
         override
+        nonReentrant
         returns (uint256 amount0, uint256 amount1, uint256 collateralAmount)
     {
-        require(block.timestamp <= params.deadline, 'Transaction too old');
+        require(block.timestamp <= params.deadline, "Transaction too old");
 
         DecreaseLiquidityPositionStack memory stack;
 
@@ -144,19 +151,28 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 deadline: block.timestamp
             });
 
-        (amount0, amount1) = INonfungiblePositionManager(epoch
-            .params
-            .uniswapPositionManager).decreaseLiquidity(
-            stack.decreaseParams
-        );
+        (amount0, amount1) = INonfungiblePositionManager(
+            epoch.params.uniswapPositionManager
+        ).decreaseLiquidity(stack.decreaseParams);
 
         if (params.liquidity == stack.previousLiquidity) {
             return _closeLiquidityPosition(market, position);
         } else {
             // get tokens owed
-            (, , , , , , , , , , stack.tokensOwed0, stack.tokensOwed1) = INonfungiblePositionManager(epoch
-            .params
-            .uniswapPositionManager)
+            (
+                ,
+                ,
+                ,
+                ,
+                ,
+                ,
+                ,
+                ,
+                ,
+                ,
+                stack.tokensOwed0,
+                stack.tokensOwed1
+            ) = INonfungiblePositionManager(epoch.params.uniswapPositionManager)
                 .positions(position.uniswapPositionId);
 
             collateralAmount = position.updateValidLp(
@@ -197,7 +213,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             uint256 collateralAmount
         )
     {
-        require(block.timestamp <= params.deadline, 'Transaction too old');
+        require(block.timestamp <= params.deadline, "Transaction too old");
 
         IncreaseLiquidityPositionStack memory stack;
 
@@ -226,15 +242,25 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 deadline: block.timestamp
             });
 
-        (liquidity, amount0, amount1) = INonfungiblePositionManager(epoch
-            .params
-            .uniswapPositionManager)
-            .increaseLiquidity(stack.increaseParams);
+        (liquidity, amount0, amount1) = INonfungiblePositionManager(
+            epoch.params.uniswapPositionManager
+        ).increaseLiquidity(stack.increaseParams);
 
         // get tokens owed
-        (, , , , , , , , , , stack.tokensOwed0, stack.tokensOwed1) = INonfungiblePositionManager(epoch
-            .params
-            .uniswapPositionManager)
+        (
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            stack.tokensOwed0,
+            stack.tokensOwed1
+        ) = INonfungiblePositionManager(epoch.params.uniswapPositionManager)
             .positions(position.uniswapPositionId);
 
         collateralAmount = position.updateValidLp(
@@ -297,6 +323,8 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             unitLiquidity,
             unitAmount0,
             unitAmount1,
+            0,
+            0,
             sqrtPriceAX96,
             sqrtPriceBX96
         );
@@ -335,9 +363,21 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             stack.previousLiquidity
         ) = Pool.getCurrentPositionTokenAmounts(market, epoch, position);
 
-        (, , , , , , , , , , stack.tokensOwed0, stack.tokensOwed1) = INonfungiblePositionManager(epoch
-            .params
-            .uniswapPositionManager).positions(position.uniswapPositionId);
+        (
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            stack.tokensOwed0,
+            stack.tokensOwed1
+        ) = INonfungiblePositionManager(epoch.params.uniswapPositionManager)
+            .positions(position.uniswapPositionId);
 
         (uint160 sqrtPriceX96, , , , , , ) = epoch.pool.slot0();
 
@@ -355,8 +395,10 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         return
             epoch.requiredCollateralForLiquidity(
                 stack.previousLiquidity + liquidityDelta,
-                position.borrowedVGas + amount0 - stack.tokensOwed0,
-                position.borrowedVEth + amount1 - stack.tokensOwed1,
+                position.borrowedVGas + amount0,
+                position.borrowedVEth + amount1,
+                stack.tokensOwed0,
+                stack.tokensOwed1,
                 sqrtPriceAX96,
                 sqrtPriceBX96
             );
@@ -375,9 +417,9 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
     {
         Epoch.Data storage epoch = Epoch.loadValid(position.epochId);
         // Collect fees and remaining tokens
-        (collectedAmount0, collectedAmount1) = INonfungiblePositionManager(epoch
-            .params
-            .uniswapPositionManager).collect(
+        (collectedAmount0, collectedAmount1) = INonfungiblePositionManager(
+            epoch.params.uniswapPositionManager
+        ).collect(
                 INonfungiblePositionManager.CollectParams({
                     tokenId: position.uniswapPositionId,
                     recipient: address(this),
@@ -386,7 +428,9 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 })
             );
         // Burn the Uniswap position
-        INonfungiblePositionManager(epoch.params.uniswapPositionManager).burn(position.uniswapPositionId);
+        INonfungiblePositionManager(epoch.params.uniswapPositionManager).burn(
+            position.uniswapPositionId
+        );
         position.uniswapPositionId = 0;
 
         if (collectedAmount0 > position.borrowedVGas) {

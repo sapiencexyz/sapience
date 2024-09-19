@@ -143,19 +143,12 @@ library Position {
         self.borrowedVGas += params.additionalLoanAmount0;
         self.borrowedVEth += params.additionalLoanAmount1;
 
-        (uint256 loanAmount0, uint256 loanAmount1) = (
-            self.borrowedVGas > params.tokensOwed0
-                ? self.borrowedVGas - params.tokensOwed0
-                : 0,
-            self.borrowedVEth > params.tokensOwed1
-                ? self.borrowedVEth - params.tokensOwed1
-                : 0
-        );
-
         requiredCollateral = epoch.requiredCollateralForLiquidity(
             params.liquidity,
-            loanAmount0,
-            loanAmount1,
+            self.borrowedVGas, // as loanAmount0
+            self.borrowedVEth, // as loanAmount1
+            params.tokensOwed0,
+            params.tokensOwed1,
             TickMath.getSqrtRatioAtTick(params.lowerTick),
             TickMath.getSqrtRatioAtTick(params.upperTick)
         );

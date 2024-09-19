@@ -416,6 +416,8 @@ library Epoch {
         uint128 liquidity,
         uint256 loanAmount0,
         uint256 loanAmount1,
+        uint256 tokensOwed0,
+        uint256 tokensOwed1,
         uint160 sqrtPriceAX96,
         uint160 sqrtPriceBX96
     ) internal view returns (uint256 requiredCollateral) {
@@ -425,7 +427,9 @@ library Epoch {
             sqrtPriceAX96,
             sqrtPriceBX96,
             loanAmount0,
-            loanAmount1
+            loanAmount1,
+            tokensOwed0,
+            tokensOwed1
         );
         uint256 collateralRequirementAtMax = collateralRequirementAtMaxTick(
             self,
@@ -433,7 +437,9 @@ library Epoch {
             sqrtPriceAX96,
             sqrtPriceBX96,
             loanAmount0,
-            loanAmount1
+            loanAmount1,
+            tokensOwed0,
+            tokensOwed1
         );
         requiredCollateral = collateralRequirementAtMin >
             collateralRequirementAtMax
@@ -447,23 +453,42 @@ library Epoch {
         uint160 sqrtPriceAX96,
         uint160 sqrtPriceBX96,
         uint256 loanAmount0,
-        uint256 loanAmount1
+        uint256 loanAmount1,
+        uint256 tokensOwed0,
+        uint256 tokensOwed1
     ) internal view returns (uint256) {
         uint256 maxAmount0 = LiquidityAmounts.getAmount0ForLiquidity(
             sqrtPriceAX96,
             sqrtPriceBX96,
             liquidity
         );
-        uint256 availableAmount0 = maxAmount0 > loanAmount0
-            ? maxAmount0 - loanAmount0
-            : 0;
-        uint256 availableAmount1 = Quote.quoteGasToEth(
-            availableAmount0,
-            self.sqrtPriceMinX96
+
+        uint256 liquidityAmount0ConvertedTo1 = Quote.quoteGasToEthWithPrice(
+            maxAmount0,
+            self.minPriceD18
         );
 
-        return
-            loanAmount1 > availableAmount1 ? loanAmount1 - availableAmount1 : 0;
+        uint256 creditEth = liquidityAmount0ConvertedTo1 + tokensOwed1;
+        uint256 debitEth = loanAmount1;
+
+        // Adjust debit or credit with new loan amount balance
+        if (loanAmount0 > tokensOwed0) {
+            uint256 net0ConvertedTo1 = Quote.quoteGasToEthWithPrice(
+                loanAmount0 - tokensOwed0,
+                self.minPriceD18
+            );
+
+            debitEth += net0ConvertedTo1;
+        } else {
+            uint256 net0ConvertedTo1 = Quote.quoteGasToEthWithPrice(
+                tokensOwed0 - loanAmount0,
+                self.minPriceD18
+            );
+
+            creditEth += net0ConvertedTo1;
+        }
+
+        return debitEth > creditEth ? debitEth - creditEth : 0;
     }
 
     function collateralRequirementAtMaxTick(
@@ -472,17 +497,37 @@ library Epoch {
         uint160 sqrtPriceAX96,
         uint160 sqrtPriceBX96,
         uint256 loanAmount0,
-        uint256 loanAmount1
+        uint256 loanAmount1,
+        uint256 tokensOwed0,
+        uint256 tokensOwed1
     ) internal view returns (uint256) {
         uint256 maxAmount1 = LiquidityAmounts.getAmount1ForLiquidity(
             sqrtPriceAX96,
             sqrtPriceBX96,
             liquidity
         );
-        uint256 totalLoanAmountInEth = loanAmount1 +
-            Quote.quoteGasToEth(loanAmount0, self.sqrtPriceMaxX96);
 
-        return totalLoanAmountInEth - maxAmount1;
+        uint256 creditEth = maxAmount1 + tokensOwed1;
+        uint256 debitEth = loanAmount1;
+
+        // Adjust debit or credit with new loan amount balance
+        if (loanAmount0 > tokensOwed0) {
+            uint256 net0ConvertedTo1 = Quote.quoteGasToEthWithPrice(
+                loanAmount0 - tokensOwed0,
+                self.maxPriceD18
+            );
+
+            debitEth += net0ConvertedTo1;
+        } else {
+            uint256 net0ConvertedTo1 = Quote.quoteGasToEthWithPrice(
+                tokensOwed0 - loanAmount0,
+                self.minPriceD18 // Use min price to avoid profit masking an insolvent position at an intermediate tick
+            );
+
+            creditEth += net0ConvertedTo1;
+        }
+
+        return debitEth > creditEth ? debitEth - creditEth : 0;
     }
 
     function setSettlementPriceInRange(
