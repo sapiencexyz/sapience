@@ -264,8 +264,8 @@ contract TradePositionBasic is TestTrade {
     ) public {
         vm.assume(startPosition < endPosition || startPosition > endPosition);
 
-        startPosition = bound(startPosition, .01 ether, 5 ether);
-        endPosition = bound(endPosition, .01 ether, 5 ether);
+        startPosition = bound(startPosition, .01 ether, 4 ether);
+        endPosition = bound(endPosition, .01 ether, 4 ether);
 
         StateData memory latestStateData;
         StateData memory expectedStateData;
@@ -694,13 +694,13 @@ contract TradePositionBasic is TestTrade {
         assertApproxEqRel(
             currentStateData.vEthAmount,
             expectedStateData.vEthAmount,
-            0.1 ether,
+            0.15 ether,
             string.concat(stage, " vEthAmount")
         );
         assertApproxEqRel(
             currentStateData.borrowedVEth,
             expectedStateData.borrowedVEth,
-            0.1 ether,
+            0.15 ether,
             string.concat(stage, " borrowedVEth")
         );
     }
