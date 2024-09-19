@@ -445,17 +445,30 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             position.depositedCollateralAmount +=
                 collectedAmount1 -
                 position.borrowedVEth;
+            position.borrowedVEth = 0;
         } else {
-            position.depositedCollateralAmount -=
-                position.borrowedVEth -
-                collectedAmount1;
+            if (
+                position.depositedCollateralAmount <
+                position.borrowedVEth - collectedAmount1
+            ) {
+                position.borrowedVEth -= collectedAmount1;
+            } else {
+                position.depositedCollateralAmount -=
+                    position.borrowedVEth -
+                    collectedAmount1;
+                position.borrowedVEth = 0;
+            }
         }
 
         position.borrowedVEth = 0; // eth is fully paid
 
         // if gas amounts, transition to trader and let user trade through pool
         // otherwise withdraw collateral to user
-        if (position.borrowedVGas == 0 && position.vGasAmount == 0) {
+        if (
+            position.borrowedVGas == 0 &&
+            position.vGasAmount == 0 &&
+            position.borrowedVEth == 0
+        ) {
             market.withdrawCollateral(
                 ERC721Storage._ownerOf(position.id),
                 position.depositedCollateralAmount
