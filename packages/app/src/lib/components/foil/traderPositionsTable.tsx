@@ -43,7 +43,9 @@ const TraderPositionsTable: React.FC<Props> = ({
               <Tr key={row.id}>
                 <Td>#{row.positionId.toString()}</Td>
                 <Td>{row.collateral.toString()} wstETH</Td>
-                <Td>{(row.baseToken - row.borrowedBaseToken).toString()} Ggas</Td>
+                <Td>
+                  {(row.baseToken - row.borrowedBaseToken).toString()} Ggas
+                </Td>
               </Tr>
             ))}
         </Tbody>
