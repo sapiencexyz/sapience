@@ -25,9 +25,22 @@ library Pool {
             uint128 liquidity
         )
     {
+        market; // silence warnings
         // get liquidity given tokenId
-        (, , , , , lowerTick, upperTick, liquidity, , , , ) = INonfungiblePositionManager(epoch.params
-            .uniswapPositionManager)
+        (
+            ,
+            ,
+            ,
+            ,
+            ,
+            lowerTick,
+            upperTick,
+            liquidity,
+            ,
+            ,
+            ,
+
+        ) = INonfungiblePositionManager(epoch.params.uniswapPositionManager)
             .positions(position.uniswapPositionId);
         (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(epoch.pool).slot0();
         uint160 sqrtPriceAX96 = uint160(TickMath.getSqrtRatioAtTick(lowerTick));

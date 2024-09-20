@@ -29,7 +29,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
     function createTraderPosition(
         uint256 epochId,
         int256 size,
-        uint256 maxCollateral,
+        uint256 deltaCollateralLimit,
         uint256 deadline
     ) external nonReentrant returns (uint256 positionId) {
         require(block.timestamp <= deadline, "Transaction too old");
@@ -81,10 +81,10 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         }
 
         // Check if the collateral is within the limit
-        if (requiredCollateralAmount > maxCollateral) {
+        if (requiredCollateralAmount > deltaCollateralLimit) {
             revert Errors.CollateralLimitReached(
-                requiredCollateralAmount,
-                maxCollateral
+                requiredCollateralAmount.toInt(),
+                deltaCollateralLimit.toInt()
             );
         }
 
@@ -118,7 +118,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
     function modifyTraderPosition(
         uint256 positionId,
         int256 size,
-        uint256 maxCollateral, // TODO C-09 int256 maxCollateralDelta and use it also for expected collateral profits
+        int256 deltaCollateralLimit, // TODO C-09 int256 maxCollateralDelta and use it also for expected collateral profits
         uint256 deadline
     ) external nonReentrant {
         require(block.timestamp <= deadline, "Transaction too old");
@@ -202,19 +202,14 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             position.reconcileCollateral();
 
             // 5. Transfer the released collateral to the trader (pnl)
-            position.updateCollateral(0);
+            int256 deltaCollateral = position.updateCollateral(0);
+
+            // Check if the collateral is within the limit
+            _checkDeltaCollateralLimit(deltaCollateral, deltaCollateralLimit);
 
             // Now the position should be closed. All the vToken and collateral values set to zero
         } else {
             // Not closing, proced as a normal trade
-
-            // Check if the collateral is within the limit
-            if (requiredCollateralAmount > maxCollateral) {
-                revert Errors.CollateralLimitReached(
-                    requiredCollateralAmount,
-                    maxCollateral
-                );
-            }
 
             // Ensures that the position only have single side tokens
             position.reconcileTokens();
@@ -227,7 +222,12 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             }
 
             // Transfer the locked collateral to the market or viceversa
-            position.updateCollateral(requiredCollateralAmount);
+            int256 deltaCollateral = position.updateCollateral(
+                requiredCollateralAmount
+            );
+
+            // Check if the collateral is within the limit
+            _checkDeltaCollateralLimit(deltaCollateral, deltaCollateralLimit);
 
             // Validate after trading that collateral is enough
             position.afterTradeCheck();
@@ -251,6 +251,27 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         );
     }
 
+    function _checkDeltaCollateralLimit(
+        int256 deltaCollateral,
+        int256 deltaCollateralLimit
+    ) internal pure {
+        if (
+            deltaCollateralLimit > 0 && deltaCollateral > deltaCollateralLimit
+        ) {
+            revert Errors.CollateralLimitReached(
+                deltaCollateral,
+                deltaCollateralLimit
+            );
+        }
+        if (
+            deltaCollateralLimit < 0 && deltaCollateral < deltaCollateralLimit
+        ) {
+            revert Errors.CollateralLimitReached(
+                deltaCollateral,
+                deltaCollateralLimit
+            );
+        }
+    }
     /**
      * @inheritdoc ITradeModule
      */

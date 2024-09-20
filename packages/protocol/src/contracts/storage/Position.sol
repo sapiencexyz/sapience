@@ -71,27 +71,28 @@ library Position {
         return position;
     }
 
-    function updateCollateral(Data storage self, uint256 amount) internal {
+    function updateCollateral(
+        Data storage self,
+        uint256 amount
+    ) internal returns (int256 deltaCollateral) {
         IERC20 collateralAsset = Market.load().collateralAsset;
-        if (amount > self.depositedCollateralAmount) {
-            uint256 transferAmount = amount - self.depositedCollateralAmount;
-            require(
-                transferAmount > 0,
-                "Collateral transfer amount must be greater than 0"
-            );
+        deltaCollateral =
+            amount.toInt() -
+            self.depositedCollateralAmount.toInt();
+
+        if (deltaCollateral > 0) {
             collateralAsset.safeTransferFrom(
                 msg.sender,
                 address(this),
-                transferAmount
+                deltaCollateral.toUint()
             );
-        } else {
-            uint256 transferAmount = self.depositedCollateralAmount - amount;
-            require(
-                transferAmount > 0,
-                "Collateral transfer amount must be greater than 0"
+        } else if (deltaCollateral < 0) {
+            collateralAsset.safeTransfer(
+                msg.sender,
+                (deltaCollateral * -1).toUint()
             );
-            collateralAsset.safeTransfer(msg.sender, transferAmount);
         }
+        // do nothing if deltaCollateral == 0
 
         self.depositedCollateralAmount = amount;
     }

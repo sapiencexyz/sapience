@@ -236,67 +236,10 @@ contract TradePositionSettlement is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             0,
-            requiredCollateral,
+            requiredCollateral.toInt(),
             block.timestamp + 30 minutes
         );
         vm.stopPrank();
-    }
-
-    function closeAndSucceed(int256 initialPositionSize) internal {
-        uint256 trader1InitialBalance = collateralAsset.balanceOf(trader1);
-
-        int256 pnl;
-        if (initialPositionSize > 0) {
-            // Long: PNL = (Settlement Price - Initial Price) * Position Size
-            pnl = initialPositionSize.mulDecimal(
-                SETTLEMENT_PRICE_D18.toInt() -
-                    INITIAL_PRICE_PLUS_FEE_D18.toInt()
-            );
-        } else {
-            // Short: PNL = (Initial Price - Settlement Price) * Position Size * -1 (positionSize is negative for short)
-            pnl =
-                -1 *
-                initialPositionSize.mulDecimal(
-                    INITIAL_PRICE_LESS_FEE_D18.toInt() -
-                        SETTLEMENT_PRICE_D18.toInt()
-                );
-        }
-
-        vm.startPrank(trader1);
-        uint256 requiredCollateral = foil.quoteCreateTraderPosition(
-            epochId,
-            initialPositionSize
-        );
-
-        uint256 positionId = foil.createTraderPosition(
-            epochId,
-            initialPositionSize,
-            requiredCollateral * 2,
-            block.timestamp + 30 minutes
-        );
-
-        vm.stopPrank();
-
-        settle();
-
-        vm.startPrank(trader1);
-        requiredCollateral = foil.quoteModifyTraderPosition(positionId, 0);
-        foil.modifyTraderPosition(
-            positionId,
-            0,
-            requiredCollateral,
-            block.timestamp + 30 minutes
-        );
-        vm.stopPrank();
-
-        uint256 trader1FinalBalance = collateralAsset.balanceOf(trader1);
-
-        assertApproxEqRel(
-            trader1FinalBalance.toInt() - trader1InitialBalance.toInt(),
-            pnl,
-            0.01 ether,
-            "pnl"
-        );
     }
 
     function settle() internal {
