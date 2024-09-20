@@ -1,4 +1,4 @@
-import { formatUnits, parseUnits } from 'viem';
+import { formatUnits, parseEther, parseUnits } from 'viem';
 
 export const formatBalance = (
   collateralAssetDecimals: number,
@@ -36,7 +36,7 @@ export const calculateCollateralDeltaLimit = (
 };
 
 export const getMinResultBalance = (
-  collateralBalance: any,
+  collateralBalance: bigint | undefined,
   refPrice: string | undefined,
   collateralAssetDecimals: number,
   collateralDelta: bigint,
@@ -49,8 +49,11 @@ export const getMinResultBalance = (
       slippage,
       refPrice
     );
-    const balance = (collateralBalance as bigint) - collateralDeltaLimit;
-    return formatBalance(collateralAssetDecimals, balance);
+
+    const balance =
+      collateralBalance - collateralDeltaLimit;
+
+    return balance;
   }
   return '0';
 };

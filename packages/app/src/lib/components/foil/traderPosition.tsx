@@ -292,7 +292,7 @@ export default function TraderPosition({}) {
     const quoteResult = isEdit
       ? quoteModifyPositionResult.data?.result
       : quoteCreatePositionResult.data?.result;
-    if (quoteResult) {
+    if (quoteResult !== undefined) {
       setCollateralDelta(quoteResult as unknown as bigint);
     } else {
       setCollateralDelta(BigInt(0));
@@ -311,7 +311,6 @@ export default function TraderPosition({}) {
       parseUnits(`${size}`, collateralAssetDecimals) *
       (isLong ? BigInt(1) : BigInt(-1));
 
-    // Calculate collateralDeltaLimit using refPrice
     const collateralDeltaLimit = calculateCollateralDeltaLimit(
       collateralAssetDecimals,
       collateralDelta,
@@ -390,7 +389,7 @@ export default function TraderPosition({}) {
     : '0';
 
   const minResultingBalance = getMinResultBalance(
-    collateralBalance,
+    BigInt(collateralBalance as string || 0),
     refPrice,
     collateralAssetDecimals,
     collateralDelta,
@@ -422,25 +421,24 @@ export default function TraderPosition({}) {
         positionData={positionData}
       />
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
+      {!isLoadingCollateralChange && (
       <Box mb={4} minH="20px">
         <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
           Estimated Wallet Balance Adjustment{' '}
-          <Tooltip label="Your slippage tolerance sets a maximum limit on how much additional collateral Foil can use, protecting you from unexpected market changes between submitting and processing your transaction.">
+          <Tooltip label="Your slippage tolerance sets a maximum limit on how much additional collateral Foil can use or the minimum amount of collateral you will receive back, protecting you from unexpected market changes between submitting and processing your transaction.">
             <QuestionOutlineIcon transform="translateY(-1px)" ml={0.5} />
           </Tooltip>
         </Text>
-        {isLoadingCollateralChange ? (
-          <Spinner />
-        ) : (
           <Text fontSize="sm" color="gray.600">
             <NumberDisplay value={currentBalance} /> {collateralAssetTicker} →{' '}
             <NumberDisplay value={estimatedNewBalance} />{' '}
-            {collateralAssetTicker} (Min.{' '}
+            {collateralAssetTicker} (
+            {collateralDelta >= BigInt(0) ? 'Min.' : 'Max.'}{' '}
             <NumberDisplay value={minResultingBalance} />{' '}
             {collateralAssetTicker})
           </Text>
-        )}
       </Box>
+        )}
       {isConnected ? (
         <Button
           width="full"
