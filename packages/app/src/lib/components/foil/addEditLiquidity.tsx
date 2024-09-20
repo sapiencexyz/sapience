@@ -43,6 +43,7 @@ import { useLoading } from '~/lib/context/LoadingContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
 
+import NumberDisplay from './numberDisplay';
 import SlippageTolerance from './slippageTolerance';
 
 const tickSpacingDefault = 200; // TODO 1% - Hardcoded for now, should be retrieved with pool.tickSpacing()
@@ -825,12 +826,12 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
 
       <Box mb="4">
         <Text fontSize="sm" color="gray.500" mb="0.5">
-          Base Token: {baseToken.toPrecision(3)} vGas (min:{' '}
-          {minAmountTokenA.toPrecision(3)})
+          Base Token: <NumberDisplay value={baseToken} /> vGas (min:{' '}
+          <NumberDisplay value={minAmountTokenA} />)
         </Text>
         <Text fontSize="sm" color="gray.500" mb="0.5">
-          Quote Token: {quoteToken.toPrecision(3)} vGwei (min:{' '}
-          {minAmountTokenB.toPrecision(3)})
+          Quote Token: <NumberDisplay value={quoteToken} /> vGwei (min:{' '}
+          <NumberDisplay value={minAmountTokenB} />)
         </Text>
         <Text display="none" fontSize="sm" color="gray.500" mb="0.5">
           Net Position: X Ggas
@@ -839,9 +840,9 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
         walletBalance !== null &&
         walletBalanceAfter !== null ? (
           <Text fontSize="sm" color="gray.500" mb="0.5">
-            Wallet Balance: {Number(walletBalance).toFixed(2)}{' '}
-            {collateralAssetTicker} → {walletBalanceAfter}{' '}
-            {collateralAssetTicker}
+            Wallet Balance: <NumberDisplay value={walletBalance} />{' '}
+            {collateralAssetTicker} →{' '}
+            <NumberDisplay value={walletBalanceAfter} /> {collateralAssetTicker}
           </Text>
         ) : null}
       </Box>

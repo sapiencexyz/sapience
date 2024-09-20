@@ -8,6 +8,8 @@ import {
   Td,
 } from '@chakra-ui/react';
 
+import NumberDisplay from './numberDisplay';
+
 interface Props {
   isLoading: boolean;
   error: Error | null;
@@ -49,13 +51,23 @@ const LiquidityPositionsTable: React.FC<Props> = ({
             positions.map((row: any) => (
               <Tr key={row.id}>
                 <Td>#{row.positionId.toString()}</Td>
-                <Td>{row.collateral.toString()} wstETH</Td>
-                <Td>{row.baseToken.toString()} Ggas</Td>
-                <Td>{row.quoteToken.toString()} wstETH</Td>
+                <Td>
+                  <NumberDisplay value={row.collateral} /> wstETH
+                </Td>
+                <Td>
+                  <NumberDisplay value={row.baseToken} /> Ggas
+                </Td>
+                <Td>
+                  <NumberDisplay value={row.quoteToken} /> wstETH
+                </Td>
                 {/* <Td>TODO</Td> */}
                 {/* <Td>{row.profitLoss.toString()}</Td> */}
-                <Td>{row.highPrice.toString()} Ggas/wstETH</Td>
-                <Td>{row.lowPrice.toString()} Ggas/wstETH</Td>
+                <Td>
+                  <NumberDisplay value={row.highPrice} /> Ggas/wstETH
+                </Td>
+                <Td>
+                  <NumberDisplay value={row.lowPrice} /> Ggas/wstETH
+                </Td>
                 {/* <Td>{row.unclaimedFees.toString()}</Td> */}
               </Tr>
             ))}
