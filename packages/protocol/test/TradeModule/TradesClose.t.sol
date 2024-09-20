@@ -42,6 +42,7 @@ contract TradePositionClose is TestTrade {
 
     address lp1;
     address trader1;
+    address trader2;
     uint256 epochId;
     address pool;
     address tokenA;
@@ -50,8 +51,8 @@ contract TradePositionClose is TestTrade {
     uint256 feeRate;
     int24 EPOCH_LOWER_TICK = 16000; //5 (4.952636224061651)
     int24 EPOCH_UPPER_TICK = 29800; //20 (19.68488357413147)
-    int24 LP_LOWER_TICK = 23000; // (9.973035566235849)
-    int24 LP_UPPER_TICK = 23200; // (10.174494074987374)
+    int24 LP_LOWER_TICK = 16000; // (9.973035566235849)
+    int24 LP_UPPER_TICK = 29800; // (10.174494074987374)
     uint256 COLLATERAL_FOR_ORDERS = 10 ether;
     uint160 INITIAL_PRICE_SQRT = 250541448375047931186413801569; // 10 (9999999999999999999)
     uint256 INITIAL_PRICE_D18 = 10 ether;
@@ -75,6 +76,7 @@ contract TradePositionClose is TestTrade {
 
         lp1 = TestUser.createUser("LP1", 10_000_000_000 ether);
         trader1 = TestUser.createUser("Trader1", 10_000_000 ether);
+        trader2 = TestUser.createUser("Trader2", 10_000_000 ether);
 
         (epochId, , , pool, tokenA, tokenB, , , , , ) = foil.getLatestEpoch();
 
@@ -87,7 +89,7 @@ contract TradePositionClose is TestTrade {
             foil,
             pool,
             epochId,
-            COLLATERAL_FOR_ORDERS * 10_000_000,
+            COLLATERAL_FOR_ORDERS * 100_000,
             LP_LOWER_TICK,
             LP_UPPER_TICK
         ); // enough to keep price stable (no slippage)
@@ -95,21 +97,26 @@ contract TradePositionClose is TestTrade {
     }
 
     function test_close_long_loss() public {
-        // int256 positionSize = 1 ether;
-        // vm.startPrank(trader1);
-        // // quote and open a long
-        // uint256 requiredCollateral = foil.quoteCreateTraderPosition(
-        //     epochId,
-        //     positionSize
-        // );
-        // // Send more collateral than required, just checking the position can be created/modified
-        // uint256 positionId = foil.createTraderPosition(
-        //     epochId,
-        //     positionSize,
-        //     requiredCollateral * 2,
-        //     block.timestamp + 30 minutes
-        // );
-        // vm.stopPrank();
+        int256 positionSize = 1 ether;
+        console2.log("referencePrice 0: ", foil.getReferencePrice(epochId));
+
+        vm.startPrank(trader1);
+        // quote and open a long
+        uint256 requiredCollateral = foil.quoteCreateTraderPosition(
+            epochId,
+            positionSize
+        );
+        // Send more collateral than required, just checking the position can be created/modified
+        uint256 positionId = foil.createTraderPosition(
+            epochId,
+            positionSize,
+            requiredCollateral * 2,
+            block.timestamp + 30 minutes
+        );
+        vm.stopPrank();
+        console2.log("referencePrice 1: ", foil.getReferencePrice(epochId));
+        movePrice(.1 ether, positionSize * -100, 1000);
+        console2.log("referencePrice 2: ", foil.getReferencePrice(epochId));
     }
 
     function test_close_long_profit() public {}
@@ -121,6 +128,47 @@ contract TradePositionClose is TestTrade {
     // //////////////// //
     // Helper functions //
     // //////////////// //
+
+    function movePrice(
+        uint256 expectedRatio,
+        int256 size,
+        uint256 maxIterations
+    ) internal {
+        uint256 initialPrice = foil.getReferencePrice(epochId);
+        uint256 currentPrice;
+        uint256 deltaPrice;
+        uint256 priceRatio;
+
+        vm.startPrank(trader2);
+
+        for (uint256 i = 0; i < maxIterations; i++) {
+            // quote and open a long
+            uint256 requiredCollateral = foil.quoteCreateTraderPosition(
+                epochId,
+                size
+            );
+            // Send more collateral than required, just checking the position can be created/modified
+            foil.createTraderPosition(
+                epochId,
+                size,
+                requiredCollateral * 2,
+                block.timestamp + 30 minutes
+            );
+
+            currentPrice = foil.getReferencePrice(epochId);
+            deltaPrice = currentPrice > initialPrice
+                ? currentPrice - initialPrice
+                : initialPrice - currentPrice;
+            priceRatio = deltaPrice.divDecimal(initialPrice);
+            if (priceRatio >= expectedRatio) {
+                console2.log("found at: ", i);
+                break;
+            }
+        }
+        vm.startPrank(trader2);
+
+        console2.log("priceRatio: ", priceRatio);
+    }
 
     function getPnl(int256 initialPositionSize) internal {
         // uint256 trader1InitialBalance = collateralAsset.balanceOf(trader1);

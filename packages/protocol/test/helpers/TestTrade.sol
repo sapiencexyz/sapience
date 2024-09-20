@@ -104,7 +104,7 @@ contract TestTrade is TestEpoch {
                 epochId: epochId,
                 amountTokenA: amountTokenA,
                 amountTokenB: amountTokenB,
-                collateralAmount: collateralAmount + dust,
+                collateralAmount: collateralAmount * 2,
                 lowerTick: lowerTick,
                 upperTick: upperTick,
                 minAmountTokenA: 0,
