@@ -12,6 +12,8 @@ import { formatDistanceToNow } from 'date-fns';
 import type React from 'react';
 import { useMemo } from 'react';
 
+import NumberDisplay from './numberDisplay';
+
 interface Props {
   isLoading: boolean;
   error: Error | null;
@@ -62,12 +64,18 @@ const TransactionTable: React.FC<Props> = ({
               </Td>
               <Td>#{row.position.positionId}</Td>
               <Td>{row.type}</Td>
-              <Td>{row.collateralDelta}</Td>
-              <Td>{row.baseTokenDelta}</Td>
-              <Td>{row.quoteTokenDelta}</Td>
+              <Td>
+                <NumberDisplay value={row.collateralDelta} />
+              </Td>
+              <Td>
+                <NumberDisplay value={row.baseTokenDelta} />
+              </Td>
+              <Td>
+                <NumberDisplay value={row.quoteTokenDelta} />
+              </Td>
               <Td>
                 {row.type === 'long' || row.type === 'short' ? (
-                  row.tradeRatioD18
+                  <NumberDisplay value={row.tradeRatioD18} />
                 ) : (
                   <Text color="gray.500">N/A</Text>
                 )}

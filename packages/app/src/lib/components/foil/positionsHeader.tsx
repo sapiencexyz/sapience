@@ -21,6 +21,8 @@ import { IoDocumentTextOutline } from 'react-icons/io5';
 
 import { MarketContext } from '~/lib/context/MarketProvider';
 
+import NumberDisplay from './numberDisplay';
+
 const PositionsHeader = () => {
   const {
     chain,
@@ -145,7 +147,7 @@ const PositionsHeader = () => {
             />
           </StatLabel>
           <StatNumber>
-            {averagePrice.toLocaleString()}{' '}
+            <NumberDisplay value={averagePrice} />{' '}
             <Text fontSize="sm" as="span">
               Ggas/wstETH
             </Text>
@@ -170,7 +172,9 @@ const PositionsHeader = () => {
             />
           </StatLabel>
           <StatNumber>
-            {pool?.token0Price.toSignificant(3)}{' '}
+            <NumberDisplay
+              value={pool?.token0Price.toSignificant(999999) || 0}
+            />{' '}
             <Text fontSize="sm" as="span">
               Ggas/wstETH
             </Text>
@@ -195,7 +199,7 @@ const PositionsHeader = () => {
             />
           </StatLabel>
           <StatNumber>
-            {liquidity}{' '}
+            <NumberDisplay value={liquidity} />{' '}
             <Text fontSize="sm" as="span">
               Ggas
             </Text>

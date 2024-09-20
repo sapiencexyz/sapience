@@ -9,6 +9,8 @@ import {
 } from '@chakra-ui/react';
 import type React from 'react';
 
+import NumberDisplay from './numberDisplay';
+
 interface Props {
   isLoading: boolean;
   error: Error | null;
@@ -42,9 +44,14 @@ const TraderPositionsTable: React.FC<Props> = ({
             positions.map((row: any) => (
               <Tr key={row.id}>
                 <Td>#{row.positionId.toString()}</Td>
-                <Td>{row.collateral.toString()} wstETH</Td>
                 <Td>
-                  {(row.baseToken - row.borrowedBaseToken).toString()} Ggas
+                  <NumberDisplay value={row.collateral} /> wstETH
+                </Td>
+                <Td>
+                  <NumberDisplay
+                    value={row.baseToken - row.borrowedBaseToken}
+                  />{' '}
+                  Ggas
                 </Td>
               </Tr>
             ))}

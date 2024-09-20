@@ -24,7 +24,6 @@ import {
 import erc20ABI from '../../erc20abi.json';
 import {
   calculateCollateralDeltaLimit,
-  formatBalance,
   getMinResultBalance,
 } from '../../util/tradeUtil';
 import { useLoading } from '~/lib/context/LoadingContext';
@@ -33,6 +32,7 @@ import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
 import { renderContractErrorToast, renderToast } from '~/lib/util/util';
 
+import NumberDisplay from './numberDisplay';
 import PositionSelector from './positionSelector';
 import SizeInput from './sizeInput';
 import SlippageTolerance from './slippageTolerance';
@@ -380,12 +380,12 @@ export default function TraderPosition({}) {
   };
 
   const currentBalance = collateralBalance
-    ? formatBalance(collateralAssetDecimals, collateralBalance as bigint)
+    ? formatUnits(collateralBalance as bigint, collateralAssetDecimals)
     : '0';
   const estimatedNewBalance = collateralBalance
-    ? formatBalance(
-        collateralAssetDecimals,
-        (collateralBalance as bigint) - collateralDelta
+    ? formatUnits(
+        (collateralBalance as bigint) - collateralDelta,
+        collateralAssetDecimals
       )
     : '0';
 
@@ -433,8 +433,10 @@ export default function TraderPosition({}) {
           <Spinner />
         ) : (
           <Text fontSize="sm" color="gray.600">
-            {currentBalance} {collateralAssetTicker} → {estimatedNewBalance}{' '}
-            {collateralAssetTicker} (Min. {minResultingBalance}{' '}
+            <NumberDisplay value={currentBalance} /> {collateralAssetTicker} →{' '}
+            <NumberDisplay value={estimatedNewBalance} />{' '}
+            {collateralAssetTicker} (Min.{' '}
+            <NumberDisplay value={minResultingBalance} />{' '}
             {collateralAssetTicker})
           </Text>
         )}
