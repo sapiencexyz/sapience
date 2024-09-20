@@ -37,4 +37,5 @@ export const BLANK_MARKET: MarketContextType = {
     uniswapQuoter: '0x',
     uniswapSwapRouter: '0x',
   },
+  refetchUniswapData: () => {},
 };

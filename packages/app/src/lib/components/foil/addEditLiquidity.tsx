@@ -95,6 +95,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     collateralAssetDecimals,
     chainId,
     foilData,
+    refetchUniswapData,
   } = useContext(MarketContext);
   const { setIsLoading } = useLoading();
   const toast = useToast();
@@ -566,6 +567,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     refetchCollateralAmount();
     refetchTokens();
     refetchPosition();
+    refetchUniswapData();
   };
 
   const resetAfterError = () => {
