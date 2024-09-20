@@ -1,24 +1,18 @@
 import { useToast } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
-import { Token } from '@uniswap/sdk-core';
-import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
-import type { FeeAmount } from '@uniswap/v3-sdk';
-import { Pool } from '@uniswap/v3-sdk';
+import type { Pool } from '@uniswap/v3-sdk';
 import type { ReactNode } from 'react';
 import type React from 'react';
 import { createContext, useEffect, useState } from 'react';
 import { formatEther } from 'viem';
 import * as Chains from 'viem/chains';
 import type { Chain } from 'viem/chains';
-import { useReadContracts, useReadContract } from 'wagmi';
+import { useReadContract } from 'wagmi';
 
 import useFoilDeployment from '../components/foil/useFoilDeployment';
-import {
-  API_BASE_URL,
-  BLANK_MARKET,
-  TOKEN_DECIMALS,
-} from '../constants/constants';
+import { API_BASE_URL, BLANK_MARKET } from '../constants/constants';
 import erc20ABI from '../erc20abi.json';
+import { useUniswapPool } from '../hooks/useUniswapPool';
 import type { EpochParams } from '../interfaces/interfaces';
 import { renderContractErrorToast } from '../util/util';
 
@@ -55,6 +49,7 @@ export interface MarketContextType {
   error?: string;
   liquidity: number;
   owner: string;
+  refetchUniswapData: () => void;
 }
 
 interface MarketProviderProps {
@@ -66,111 +61,6 @@ interface MarketProviderProps {
 
 // Context creation
 export const MarketContext = createContext<MarketContextType>(BLANK_MARKET);
-
-// Custom hooks
-const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
-  const [pool, setPool] = useState<Pool | null>(null);
-  const [liquidity, setLiquidity] = useState<string>('0');
-  const { data, isError, isLoading } = useReadContracts({
-    contracts: [
-      {
-        address: poolAddress,
-        abi: IUniswapV3PoolABI.abi,
-        functionName: 'token0',
-        chainId,
-      },
-      {
-        address: poolAddress,
-        abi: IUniswapV3PoolABI.abi,
-        functionName: 'token1',
-        chainId,
-      },
-      {
-        address: poolAddress,
-        abi: IUniswapV3PoolABI.abi,
-        functionName: 'fee',
-        chainId,
-      },
-      {
-        address: poolAddress,
-        abi: IUniswapV3PoolABI.abi,
-        functionName: 'liquidity',
-        chainId,
-      },
-      {
-        address: poolAddress,
-        abi: IUniswapV3PoolABI.abi,
-        functionName: 'slot0',
-        chainId,
-      },
-    ],
-  });
-
-  const { data: token0Balance, refetch: refetchToken0Balance } =
-    useReadContract({
-      address: data?.[0].result as `0x${string}`,
-      abi: erc20ABI,
-      functionName: 'balanceOf',
-      args: [poolAddress],
-      chainId,
-    });
-
-  useEffect(() => {
-    if (data && token0Balance !== undefined) {
-      const token0Address = data[0].result;
-      const token1Address = data[1].result;
-      const fee = data[2].result;
-      const uniswapLiquidity = data[3].result;
-      const slot0 = data[4].result as any[];
-
-      if (token0Address && token1Address) {
-        const [sqrtPriceX96, tick] = slot0;
-
-        const token0 = new Token(
-          chainId,
-          token0Address as string,
-          TOKEN_DECIMALS,
-          'TOKEN0',
-          'Token 0'
-        );
-        const token1 = new Token(
-          chainId,
-          token1Address as string,
-          TOKEN_DECIMALS,
-          'TOKEN1',
-          'Token 1'
-        );
-
-        const poolInstance = new Pool(
-          token0,
-          token1,
-          fee as FeeAmount,
-          sqrtPriceX96.toString(),
-          (uniswapLiquidity as any).toString(),
-          tick
-        );
-
-        setPool(poolInstance);
-        const formattedToken0Balance = (
-          Number(token0Balance) /
-          10 ** token0.decimals
-        ).toFixed(4);
-
-        setLiquidity(formattedToken0Balance);
-      }
-    }
-  }, [data, token0Balance, chainId]);
-
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      refetchToken0Balance();
-    }, 60000); // Refetch every 60 seconds
-
-    return () => clearInterval(intervalId);
-  }, [refetchToken0Balance]);
-
-  return { pool, liquidity, isError, isLoading };
-};
 
 // Main component
 export const MarketProvider: React.FC<MarketProviderProps> = ({
@@ -196,6 +86,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
       }
       return response.json();
     },
+    enabled: state.chainId !== 0,
     refetchInterval: 60000,
   });
 
@@ -242,7 +133,10 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     functionName: 'decimals',
   });
 
-  const { pool, liquidity } = useUniswapPool(chainId, state.poolAddress);
+  const { pool, liquidity, refetchUniswapData } = useUniswapPool(
+    chainId,
+    state.poolAddress
+  );
 
   // Effect hooks
   useEffect(() => {
@@ -392,6 +286,8 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
   }, [collateralDecimalsFunctionResult.data]);
 
   return (
-    <MarketContext.Provider value={state}>{children}</MarketContext.Provider>
+    <MarketContext.Provider value={{ ...state, refetchUniswapData }}>
+      {children}
+    </MarketContext.Provider>
   );
 };

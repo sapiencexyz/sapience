@@ -92,8 +92,8 @@ const startServer = async () => {
 
       // Create candlestick data from grouped prices
       const chartData = Object.entries(groupedPrices).map(([date, prices]) => {
-        const open = prices[0].value;
-        const close = prices[prices.length - 1].value;
+        const close = prices[0].value;
+        const open = prices[prices.length - 1].value;
         const high = Math.max(...prices.map((p) => Number(p.value)));
         const low = Math.min(...prices.map((p) => Number(p.value)));
         return { date, open, close, low, high };
@@ -227,7 +227,9 @@ const startServer = async () => {
         position.baseToken = formatDbBigInt(position.baseToken);
         position.quoteToken = formatDbBigInt(position.quoteToken);
         position.borrowedBaseToken = formatDbBigInt(position.borrowedBaseToken);
-        position.borrowedQuoteToken = formatDbBigInt(position.borrowedQuoteToken);
+        position.borrowedQuoteToken = formatDbBigInt(
+          position.borrowedQuoteToken
+        );
         position.collateral = formatDbBigInt(position.collateral);
         position.profitLoss = formatDbBigInt(position.profitLoss);
         position.unclaimedFees = formatDbBigInt(position.unclaimedFees);
