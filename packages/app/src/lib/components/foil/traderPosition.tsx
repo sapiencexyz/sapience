@@ -101,6 +101,7 @@ export default function TraderPosition({}) {
     foilData,
     chainId,
     pool,
+    refetchUniswapData,
   } = useContext(MarketContext);
 
   const refPrice = pool?.token0Price.toSignificant(3);
@@ -375,6 +376,7 @@ export default function TraderPosition({}) {
     setIsLoading(false);
     refetchTokens();
     refetchPositionData();
+    refetchUniswapData();
   };
 
   const currentBalance = collateralBalance
