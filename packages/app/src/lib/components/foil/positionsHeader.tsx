@@ -172,9 +172,7 @@ const PositionsHeader = () => {
             />
           </StatLabel>
           <StatNumber>
-            <NumberDisplay
-              value={pool?.token0Price.toSignificant(18) || 0}
-            />{' '}
+            <NumberDisplay value={pool?.token0Price.toSignificant(18) || 0} />{' '}
             <Text fontSize="sm" as="span">
               Ggas/wstETH
             </Text>

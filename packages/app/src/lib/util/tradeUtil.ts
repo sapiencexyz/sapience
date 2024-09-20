@@ -50,10 +50,7 @@ export const getMinResultBalance = (
       refPrice
     );
 
-    const balance =
-      collateralBalance - collateralDeltaLimit;
-
-    return balance;
+    return collateralBalance - collateralDeltaLimit;
   }
   return '0';
 };

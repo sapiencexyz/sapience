@@ -389,7 +389,7 @@ export default function TraderPosition({}) {
     : '0';
 
   const minResultingBalance = getMinResultBalance(
-    BigInt(collateralBalance as string || 0),
+    BigInt((collateralBalance as string) || 0),
     refPrice,
     collateralAssetDecimals,
     collateralDelta,
@@ -422,13 +422,13 @@ export default function TraderPosition({}) {
       />
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
       {!isLoadingCollateralChange && (
-      <Box mb={4} minH="20px">
-        <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
-          Estimated Wallet Balance Adjustment{' '}
-          <Tooltip label="Your slippage tolerance sets a maximum limit on how much additional collateral Foil can use or the minimum amount of collateral you will receive back, protecting you from unexpected market changes between submitting and processing your transaction.">
-            <QuestionOutlineIcon transform="translateY(-1px)" ml={0.5} />
-          </Tooltip>
-        </Text>
+        <Box mb={4} minH="20px">
+          <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
+            Estimated Wallet Balance Adjustment{' '}
+            <Tooltip label="Your slippage tolerance sets a maximum limit on how much additional collateral Foil can use or the minimum amount of collateral you will receive back, protecting you from unexpected market changes between submitting and processing your transaction.">
+              <QuestionOutlineIcon transform="translateY(-1px)" ml={0.5} />
+            </Tooltip>
+          </Text>
           <Text fontSize="sm" color="gray.600">
             <NumberDisplay value={currentBalance} /> {collateralAssetTicker} →{' '}
             <NumberDisplay value={estimatedNewBalance} />{' '}
@@ -437,8 +437,8 @@ export default function TraderPosition({}) {
             <NumberDisplay value={minResultingBalance} />{' '}
             {collateralAssetTicker})
           </Text>
-      </Box>
-        )}
+        </Box>
+      )}
       {isConnected ? (
         <Button
           width="full"
