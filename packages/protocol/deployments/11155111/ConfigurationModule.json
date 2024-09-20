@@ -1,5 +1,5 @@
 {
-  "address": "0x2b3102106C911b928058DCC2577b0781a5425891",
+  "address": "0xccBCfAaCcAf18fc607371633a0bEA9Ef474b91Bc",
   "abi": [
     {
       "type": "constructor",
@@ -643,12 +643,12 @@
     "0xE006B58cA5aB7ba53863012dc3067A14b965C1da"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0xd2b40b625aaa2e574e0b48049edd9a754fa244c055f8f2ec7d5a56634baf83ce",
-  "deployTxnBlockNumber": "6721732",
-  "deployTimestamp": "1726756272",
+  "deployTxnHash": "0x8a2161a5aa97a1a738f179f455c361ebdeb20cc982894388552db78a5badf20f",
+  "deployTxnBlockNumber": "6728650",
+  "deployTimestamp": "1726856412",
   "sourceName": "src/contracts/modules/ConfigurationModule.sol",
   "contractName": "ConfigurationModule",
   "deployedOn": "deploy.ConfigurationModule",
-  "gasUsed": 2647086,
-  "gasCost": "33566393457"
+  "gasUsed": 2647062,
+  "gasCost": "15770935774"
 }

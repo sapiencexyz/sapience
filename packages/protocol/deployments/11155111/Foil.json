@@ -1,5 +1,5 @@
 {
-  "address": "0x977afe42d34c5b91e88d1577e8dbb1f2bf10fe22",
+  "address": "0x5b1f30741d453e9976b49a61b4a91a46e8f62cfa",
   "abi": [
     {
       "type": "constructor",
@@ -1446,7 +1446,7 @@
           "internalType": "int256"
         },
         {
-          "name": "maxCollateral",
+          "name": "deltaCollateralLimit",
           "type": "uint256",
           "internalType": "uint256"
         },
@@ -1480,9 +1480,9 @@
           "internalType": "int256"
         },
         {
-          "name": "maxCollateral",
-          "type": "uint256",
-          "internalType": "uint256"
+          "name": "deltaCollateralLimit",
+          "type": "int256",
+          "internalType": "int256"
         },
         {
           "name": "deadline",
@@ -1681,13 +1681,13 @@
       "inputs": [
         {
           "name": "collateralRequired",
-          "type": "uint256",
-          "internalType": "uint256"
+          "type": "int256",
+          "internalType": "int256"
         },
         {
           "name": "maxCollateral",
-          "type": "uint256",
-          "internalType": "uint256"
+          "type": "int256",
+          "internalType": "int256"
         }
       ]
     },
@@ -2651,12 +2651,12 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0x760e4192e453f336ab6f762e7b2798a872ab8f672295b096ed96081340d8ce7d",
-  "deployTxnBlockNumber": "6721733",
-  "deployTimestamp": "1726756284",
+  "deployTxnHash": "0x38da9d8bf9042a4e2b8999cf0b2dbc7123e5f28b2a98dc00d2cd7f581407a5dd",
+  "deployTxnBlockNumber": "6728652",
+  "deployTimestamp": "1726856436",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
   "highlight": true,
-  "gasUsed": 513607,
-  "gasCost": "34576913053"
+  "gasUsed": 513583,
+  "gasCost": "16368410407"
 }

@@ -1,5 +1,5 @@
 {
-  "address": "0x4C26Cd93f8F39CfCB3a0ECB53cB77F3F895A8efc",
+  "address": "0xe7FfCc322bBeA37BBe7496CC1a7635126de099EA",
   "abi": [
     {
       "type": "function",
@@ -16,7 +16,7 @@
           "internalType": "int256"
         },
         {
-          "name": "maxCollateral",
+          "name": "deltaCollateralLimit",
           "type": "uint256",
           "internalType": "uint256"
         },
@@ -50,9 +50,9 @@
           "internalType": "int256"
         },
         {
-          "name": "maxCollateral",
-          "type": "uint256",
-          "internalType": "uint256"
+          "name": "deltaCollateralLimit",
+          "type": "int256",
+          "internalType": "int256"
         },
         {
           "name": "deadline",
@@ -311,13 +311,13 @@
       "inputs": [
         {
           "name": "collateralRequired",
-          "type": "uint256",
-          "internalType": "uint256"
+          "type": "int256",
+          "internalType": "int256"
         },
         {
           "name": "maxCollateral",
-          "type": "uint256",
-          "internalType": "uint256"
+          "type": "int256",
+          "internalType": "int256"
         }
       ]
     },
@@ -508,12 +508,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x112832aab4d30d7db97573a26aa618e808d4284f45821461ca3da35b1b34c662",
-  "deployTxnBlockNumber": "6721728",
-  "deployTimestamp": "1726756224",
+  "deployTxnHash": "0xeab9d31f4f9b9d36ae432e868d33151dd5ea91eba0565947b8a458e78805a0d1",
+  "deployTxnBlockNumber": "6728649",
+  "deployTimestamp": "1726856400",
   "sourceName": "src/contracts/modules/TradeModule.sol",
   "contractName": "TradeModule",
   "deployedOn": "deploy.TradeModule",
-  "gasUsed": 2189312,
-  "gasCost": "36866067778"
+  "gasUsed": 2188640,
+  "gasCost": "15557164584"
 }
