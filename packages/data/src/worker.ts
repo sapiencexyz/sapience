@@ -82,6 +82,7 @@ async function initializeMarkets() {
   }
 }
 
+// TODO: confirm whether reindexing picks up initial contract events of epoch creation and market initialization
 export async function reindexNetwork(
   client: PublicClient,
   contractDeployment: ContractDeployment | undefined,
