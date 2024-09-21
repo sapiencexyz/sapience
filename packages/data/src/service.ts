@@ -10,7 +10,8 @@ import { Transaction } from "./entity/Transaction";
 import { Epoch } from "./entity/Epoch";
 import { MarketPrice } from "./entity/MarketPrice";
 import { formatUnits } from "viem";
-import { formatDbBigInt, TOKEN_PRECISION } from "./util/dbUtil";
+import { formatDbBigInt } from "./util/dbUtil";
+import { TOKEN_PRECISION } from "./constants";
 
 const PORT = 3001;
 

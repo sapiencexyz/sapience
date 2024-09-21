@@ -8,7 +8,7 @@ import {
 } from "typeorm";
 import { Epoch } from "./Epoch";
 import { Price } from "./Price";
-import { NUMERIC_PRECISION } from "../util/dbUtil";
+import { NUMERIC_PRECISION } from "../constants";
 
 class EpochParams {
   @Column("int", { nullable: true })

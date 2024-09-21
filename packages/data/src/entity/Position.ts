@@ -12,7 +12,7 @@ import {
   TOKEN_PRECISION,
   DECIMAL_SCALE,
   NUMERIC_PRECISION,
-} from "../util/dbUtil";
+} from "../constants";
 import { Epoch } from "./Epoch";
 
 @Entity()
@@ -33,16 +33,36 @@ export class Position {
   @Column()
   positionId: number;
 
-  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0, nullable: true })
+  @Column({
+    type: "numeric",
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
   baseToken: string; // vGas tokenamount 0
 
-  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0, nullable: true })
+  @Column({
+    type: "numeric",
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
   quoteToken: string; // vETH tokenamount 1
 
-  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0, nullable: true })
+  @Column({
+    type: "numeric",
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
   borrowedBaseToken: string;
 
-  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0, nullable: true })
+  @Column({
+    type: "numeric",
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
   borrowedQuoteToken: string;
 
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
