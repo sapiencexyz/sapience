@@ -1,14 +1,21 @@
 import dataSource, { initializeDataSource } from "./db";
-import { Abi, createPublicClient, http, webSocket } from "viem";
+import { Abi, PublicClient } from "viem";
 import { indexBaseFeePerGas, indexBaseFeePerGasRange } from "./processes/chain";
 import { indexMarketEvents, indexMarketEventsRange } from "./processes/market"; // Assuming you have this function
-import { mainnet, sepolia, hardhat } from "viem/chains";
+import { sepolia, hardhat } from "viem/chains";
 import { Market } from "./entity/Market";
 import { Epoch } from "./entity/Epoch";
-import getBlockByTimestamp from "./getBlockByTimestamp";
+import {
+  cannonPublicClient,
+  getBlockRanges,
+  getTimestampsForReindex,
+  mainnetPublicClient,
+  sepoliaPublicClient,
+} from "./util/reindexUtil";
+import { ContractDeployment } from "./interfaces/interfaces";
 
-let FoilLocal: { address: string; abi: Abi } | undefined;
-let FoilSepolia: { address: string; abi: Abi } | undefined;
+let FoilLocal: ContractDeployment | undefined;
+let FoilSepolia: ContractDeployment | undefined;
 
 try {
   FoilLocal = require("@/protocol/deployments/13370/Foil.json");
@@ -21,26 +28,6 @@ try {
 } catch (error) {
   console.warn("FoilSepolia not available");
 }
-
-const mainnetPublicClient = createPublicClient({
-  chain: mainnet,
-  transport: process.env.INFURA_API_KEY
-    ? webSocket(`wss://mainnet.infura.io/ws/v3/${process.env.INFURA_API_KEY}`)
-    : http(),
-});
-
-const sepoliaPublicClient = createPublicClient({
-  chain: sepolia,
-  transport: process.env.INFURA_API_KEY
-    ? webSocket(`wss://sepolia.infura.io/ws/v3/${process.env.INFURA_API_KEY}`)
-    : http(),
-});
-
-hardhat.id = 13370 as any;
-export const cannonPublicClient = createPublicClient({
-  chain: hardhat,
-  transport: http("http://localhost:8545"),
-});
 
 // TODO: Get this data from smart contract queries
 async function initializeMarkets() {
@@ -93,44 +80,47 @@ async function initializeMarkets() {
     }
     await createOrFindEpoch(sepoliaMarket);
   }
-
-  const allEpochs = await epochRepository.find({ relations: ["market"] });
-  console.log("All Epochs:", allEpochs);
-
-  const allMarkets = await marketRepository.find({ relations: ["epochs"] });
-  console.log("All Markets:", allMarkets);
 }
 
-export async function reindexTestnet() {
-  if (!FoilSepolia) {
-    console.error("FoilSepolia not available. Cannot reindex testnet.");
+export async function reindexNetwork(
+  client: PublicClient,
+  contractDeployment: ContractDeployment | undefined,
+  chainId: number,
+  epoch?: number,
+  startTime?: number,
+  endTime?: number
+) {
+  if (!contractDeployment) {
+    console.error(`Deployment package not available. Cannot reindex network.`);
     return;
   }
+  await initializeDataSource();
 
-  console.log("Reindexing Testnet!");
+  //  check for hardcoded timestamps
+  let startTimestamp: number | null | undefined = startTime;
+  let endTimestamp: number | null | undefined = endTime;
 
-  async function getBlockRanges() {
-    // Pull start/end dates from database eventually
-    const gasStart = await getBlockByTimestamp(mainnetPublicClient, 1723479600);
-    const gasEnd =
-      (await getBlockByTimestamp(mainnetPublicClient, 1726405200)) ||
-      (await mainnetPublicClient.getBlock());
-    const marketStart = await getBlockByTimestamp(
-      sepoliaPublicClient,
-      1723479600
+  // if no start/end timestamps are provided, get them from the database or contract
+  if (!startTimestamp || !endTimestamp) {
+    const timestamps = await getTimestampsForReindex(
+      client,
+      contractDeployment,
+      chainId,
+      epoch
     );
-    const marketEnd =
-      (await getBlockByTimestamp(sepoliaPublicClient, 1726405200)) ||
-      (await sepoliaPublicClient.getBlock());
-    return {
-      gasStart: gasStart.number,
-      gasEnd: gasEnd.number,
-      marketStart: marketStart.number,
-      marketEnd: marketEnd.number,
-    };
+    startTimestamp = timestamps.startTimestamp;
+    endTimestamp = timestamps.endTimestamp;
   }
 
-  getBlockRanges()
+  // if not there throw error
+  if (!startTimestamp || !endTimestamp) {
+    throw new Error("Invalid timestamps");
+  }
+
+  console.log("startTimestamp", startTimestamp);
+  console.log("endTimestamp", endTimestamp);
+
+  getBlockRanges(startTimestamp, endTimestamp, client)
     .then(({ gasStart, gasEnd, marketStart, marketEnd }) => {
       console.log(`Reindexing gas between blocks ${gasStart} and ${gasEnd}`);
       console.log(
@@ -142,15 +132,15 @@ export async function reindexTestnet() {
           mainnetPublicClient,
           Number(gasStart),
           Number(gasEnd),
-          sepolia.id,
-          FoilSepolia.address
+          chainId,
+          contractDeployment.address
         ),
         indexMarketEventsRange(
-          sepoliaPublicClient,
+          client,
           Number(marketStart),
           Number(marketEnd),
-          FoilSepolia.address,
-          FoilSepolia.abi as Abi
+          contractDeployment.address,
+          contractDeployment.abi
         ),
       ])
         .then(() => {
@@ -171,7 +161,11 @@ if (process.argv.length < 3) {
 
     if (FoilSepolia) {
       jobs.push(
-        indexBaseFeePerGas(mainnetPublicClient, sepolia.id, FoilSepolia.address),
+        indexBaseFeePerGas(
+          mainnetPublicClient,
+          sepolia.id,
+          FoilSepolia.address
+        ),
         indexMarketEvents(sepoliaPublicClient, FoilSepolia)
       );
     }
@@ -188,12 +182,19 @@ if (process.argv.length < 3) {
         console.error("Error running processes in parallel:", error);
       });
     } else {
-      console.warn("No jobs to run. Make sure FoilLocal or FoilSepolia are available.");
+      console.warn(
+        "No jobs to run. Make sure FoilLocal or FoilSepolia are available."
+      );
     }
   });
 } else {
   const args = process.argv.slice(2);
+
   if (args[0] === "reindex-testnet") {
-    reindexTestnet();
+    console.log("Reindexing Testnet!");
+    reindexNetwork(sepoliaPublicClient, FoilSepolia, sepolia.id);
+  } else if (args[0] === "reindex-local") {
+    console.log("Reindexing Local!");
+    reindexNetwork(cannonPublicClient, FoilLocal, hardhat.id);
   }
 }

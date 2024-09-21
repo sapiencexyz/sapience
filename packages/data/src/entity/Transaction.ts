@@ -13,7 +13,7 @@ import {
 import { Event } from "./Event";
 import { Position } from "./Position";
 import { MarketPrice } from "./MarketPrice";
-import { NUMERIC_PRECISION } from "../util/dbUtil";
+import { NUMERIC_PRECISION } from "../constants";
 
 export enum TransactionType {
   ADD_LIQUIDITY = "addLiquidity",

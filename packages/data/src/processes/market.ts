@@ -9,10 +9,7 @@ import {
   EpochCreatedEventLog,
   MarketCreatedUpdatedEventLog,
 } from "../interfaces/interfaces";
-import {
-  createEpochFromEvent,
-  createOrUpdateMarketFromEvent,
-} from "src/util/dbUtil";
+import { createEpochFromEvent } from "../util/dbUtil";
 
 const bigintReplacer = (key: string, value: any) => {
   if (typeof value === "bigint") {
@@ -210,9 +207,7 @@ const handleEventUpsert = async (
   }
 
   // handle epoch
-  console.log("epochId: ", epochId);
   let epoch = market.epochs.find((e) => e.epochId === epochId);
-  console.log("found epoch: ", epoch);
 
   if (logData.eventName === "EpochCreated") {
     // create new epoch
@@ -221,6 +216,7 @@ const handleEventUpsert = async (
     epoch = await createEpochFromEvent(epochCreatedArgs, market);
   } else if (!epoch) {
     // get latest epoch id from repository
+    console.log("getting latest epoch from repository...");
     epoch =
       (await epochRepository.findOne({
         where: { market: { id: market.id } },
@@ -228,21 +224,74 @@ const handleEventUpsert = async (
         relations: ["market"],
       })) || undefined;
   }
-  console.log("found epoch is now", epoch);
+  console.log("event epoch:", epoch);
 
   // throw if epoch not found/created properly
   if (!epoch) {
     throw new Error(`No epochs found for market ${market.address}`);
   }
 
-  // Create a new Event entity
-  const newEvent = new Event();
-  newEvent.epoch = epoch;
-  newEvent.blockNumber = blockNumber.toString();
-  newEvent.timestamp = timeStamp.toString();
-  newEvent.logIndex = logIndex;
-  newEvent.logData = logData;
+  // check if event has already been processed
+  const existingEvent = await eventRepository.findOne({
+    where: {
+      epoch: { id: epoch.id },
+      blockNumber: blockNumber.toString(),
+      logIndex,
+    },
+    relations: ["epoch"],
+  });
+  if (!existingEvent) {
+    console.log("inserting new event");
+    // Create a new Event entity
+    const newEvent = new Event();
+    newEvent.epoch = epoch;
+    newEvent.blockNumber = blockNumber.toString();
+    newEvent.timestamp = timeStamp.toString();
+    newEvent.logIndex = logIndex;
+    newEvent.logData = logData;
 
-  // Insertthe event
-  await eventRepository.insert(newEvent);
+    // insert the event
+    await eventRepository.insert(newEvent);
+  } else {
+    console.log("Event already processed");
+  }
+};
+
+/**
+ * Creates or updates a Market entity in the database from a MarketCreatedUpdatedEventLog event.
+ * If originalMarket is provided, it will be updated with the new data. Otherwise, a new Market entity will be created.
+ * @param eventArgs The event log data from the MarketCreatedUpdatedEventLog event.
+ * @param chainId The chain id of the market.
+ * @param address The address of the market.
+ * @param originalMarket The original Market entity to be updated, if any.
+ * @returns The saved Market entity.
+ */
+const createOrUpdateMarketFromEvent = async (
+  eventArgs: MarketCreatedUpdatedEventLog,
+  chainId: number,
+  address: string,
+  originalMarket?: Market
+) => {
+  const marketRepository = dataSource.getRepository(Market);
+
+  let market = originalMarket || new Market();
+  market.chainId = chainId;
+  market.address = address;
+  market.optimisticOracleV3 = eventArgs.optimisticOracleV3;
+  market.uniswapPositionManager = eventArgs.uniswapPositionManager;
+  market.uniswapSwapRouter = eventArgs.uniswapSwapRouter;
+  if (eventArgs.collateralAsset) {
+    market.collateralAsset = eventArgs.collateralAsset;
+  }
+  market.epochParams = {
+    baseAssetMinPriceTick: Number(eventArgs.epochParams.baseAssetMinPriceTick),
+    baseAssetMaxPriceTick: Number(eventArgs.epochParams.baseAssetMaxPriceTick),
+    feeRate: Number(eventArgs.epochParams.feeRate),
+    assertionLiveness: eventArgs?.epochParams?.assertionLiveness.toString(),
+    bondCurrency: eventArgs?.epochParams?.bondCurrency,
+    bondAmount: eventArgs?.epochParams?.bondAmount.toString(),
+    priceUnit: eventArgs?.epochParams?.priceUnit,
+  };
+  const newMarket = await marketRepository.save(market);
+  return newMarket;
 };

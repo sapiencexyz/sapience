@@ -8,7 +8,6 @@ import {
   LiquidityPositionClosedEventLog,
   LiquidityPositionCreatedEventLog,
   LiquidityPositionModifiedEventLog,
-  MarketCreatedUpdatedEventLog,
   TradePositionEventLog,
 } from "../interfaces/interfaces";
 import { MarketPrice } from "../entity/MarketPrice";
@@ -16,13 +15,9 @@ import { formatUnits } from "viem";
 import { LessThanOrEqual } from "typeorm";
 import { Market } from "../entity/Market";
 import { Epoch } from "../entity/Epoch";
-
-export const NUMERIC_PRECISION = 78;
-export const TOKEN_PRECISION = 18;
-export const DECIMAL_SCALE = 15;
+import { FEE, TOKEN_PRECISION } from "../constants";
 
 // TODO GET FEE FROM CONTRACT
-const FEE = 0.0001;
 const tickToPrice = (tick: number): number => (1 + FEE) ** tick;
 
 const getTradeTypeFromEvent = (eventArgs: TradePositionEventLog) => {
@@ -123,8 +118,10 @@ export const createOrModifyPosition = async (transaction: Transaction) => {
 
   position.baseToken = eventArgs.baseToken?.toString() || position.baseToken;
   position.quoteToken = eventArgs.quoteToken?.toString() || position.quoteToken;
-  position.borrowedBaseToken = eventArgs.borrowedBaseToken?.toString() || position.borrowedBaseToken;
-  position.borrowedQuoteToken = eventArgs.borrowedQuoteToken?.toString() || position.borrowedQuoteToken;
+  position.borrowedBaseToken =
+    eventArgs.borrowedBaseToken?.toString() || position.borrowedBaseToken;
+  position.borrowedQuoteToken =
+    eventArgs.borrowedQuoteToken?.toString() || position.borrowedQuoteToken;
 
   position.collateral = (
     BigInt(originalCollateral) + BigInt(transaction.collateralDelta)
@@ -368,45 +365,6 @@ const isLpPosition = (
 };
 
 /**
- * Creates or updates a Market entity in the database from a MarketCreatedUpdatedEventLog event.
- * If originalMarket is provided, it will be updated with the new data. Otherwise, a new Market entity will be created.
- * @param eventArgs The event log data from the MarketCreatedUpdatedEventLog event.
- * @param chainId The chain id of the market.
- * @param address The address of the market.
- * @param originalMarket The original Market entity to be updated, if any.
- * @returns The saved Market entity.
- */
-export const createOrUpdateMarketFromEvent = async (
-  eventArgs: MarketCreatedUpdatedEventLog,
-  chainId: number,
-  address: string,
-  originalMarket?: Market
-) => {
-  const marketRepository = dataSource.getRepository(Market);
-
-  let market = originalMarket || new Market();
-  market.chainId = chainId;
-  market.address = address;
-  market.optimisticOracleV3 = eventArgs.optimisticOracleV3;
-  market.uniswapPositionManager = eventArgs.uniswapPositionManager;
-  market.uniswapSwapRouter = eventArgs.uniswapSwapRouter;
-  if (eventArgs.collateralAsset) {
-    market.collateralAsset = eventArgs.collateralAsset;
-  }
-  market.epochParams = {
-    baseAssetMinPriceTick: Number(eventArgs.epochParams.baseAssetMinPriceTick),
-    baseAssetMaxPriceTick: Number(eventArgs.epochParams.baseAssetMaxPriceTick),
-    feeRate: Number(eventArgs.epochParams.feeRate),
-    assertionLiveness: eventArgs?.epochParams?.assertionLiveness.toString(),
-    bondCurrency: eventArgs?.epochParams?.bondCurrency,
-    bondAmount: eventArgs?.epochParams?.bondAmount.toString(),
-    priceUnit: eventArgs?.epochParams?.priceUnit,
-  };
-  const newMarket = await marketRepository.save(market);
-  return newMarket;
-};
-
-/**
  * Creates a new Epoch from a given event
  * @param eventArgs The event arguments from the EpochCreated event.
  * @param market The market associated with the epoch.
@@ -417,7 +375,14 @@ export const createEpochFromEvent = async (
   market: Market
 ) => {
   const epochRepository = dataSource.getRepository(Epoch);
-  const newEpoch = new Epoch();
+  // first check if there's an existing epoch in the database before creating a new one
+  const existingEpoch = await epochRepository.findOne({
+    where: {
+      epochId: Number(eventArgs.epochId),
+      market: { address: market.address, chainId: market.chainId },
+    },
+  });
+  const newEpoch = existingEpoch || new Epoch();
   newEpoch.epochId = Number(eventArgs.epochId);
   newEpoch.market = market;
   newEpoch.startTimestamp = eventArgs.startTime;
