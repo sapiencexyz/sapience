@@ -56,7 +56,13 @@ const PositionsHeader = () => {
       >
         <Heading mb={0} alignSelf={{ base: 'flex-start', lg: 'flex-end' }}>
           {chain?.name} Gas Market{' '}
-          <Text ml={1.5} as="span" fontWeight="200" color="gray.600" fontSize="sm">
+          <Text
+            ml={1.5}
+            as="span"
+            fontWeight="200"
+            color="gray.600"
+            fontSize="sm"
+          >
             Epoch {epoch}
           </Text>
         </Heading>

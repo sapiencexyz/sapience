@@ -1,15 +1,9 @@
 'use client';
 
 import { RepeatIcon } from '@chakra-ui/icons';
-import {
-  Flex,
-  Box,
-  Heading,
-  Button,
-  Spinner,
-  Text,
-} from '@chakra-ui/react';
+import { Flex, Box, Heading, Button, Spinner, Text } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
+
 import NumberDisplay from '~/lib/components/foil/numberDisplay';
 import TransactionTable from '~/lib/components/foil/transactionTable';
 import { API_BASE_URL } from '~/lib/constants/constants';
@@ -48,7 +42,11 @@ const useTransactions = (contractId: string, positionId: string) => {
   });
 };
 
-const PositionPage = ({ params }: { params: { id: string; position: string } }) => {
+const PositionPage = ({
+  params,
+}: {
+  params: { id: string; position: string };
+}) => {
   const { id, position } = params;
   const [chainId, marketAddress] = id.split('%3A'); // Decoded contractId
   const positionId = position;
@@ -74,13 +72,15 @@ const PositionPage = ({ params }: { params: { id: string; position: string } }) 
     refetchTransactions();
   };
 
-  return (
-    <Flex direction="column" alignItems="left" mb={8} w="full" py={8}>
-      {isLoadingPosition ? (
-        <Spinner />
-      ) : positionError ? (
-        <Text>Error: {(positionError as Error).message}</Text>
-      ) : positionData ? (
+  const renderPositionData = () => {
+    if (isLoadingPosition) {
+      return <Spinner />;
+    }
+    if (positionError) {
+      return <Text>Error: {(positionError as Error).message}</Text>;
+    }
+    if (positionData) {
+      return (
         <Box mb={8}>
           <Heading mb={4}>Position #{positionId}</Heading>
           <Text>
@@ -90,22 +90,27 @@ const PositionPage = ({ params }: { params: { id: string; position: string } }) 
             Base Token: <NumberDisplay value={positionData.baseToken} /> Ggas
           </Text>
           <Text>
-            Quote Token: <NumberDisplay value={positionData.quoteToken} /> wstETH
+            Quote Token: <NumberDisplay value={positionData.quoteToken} />{' '}
+            wstETH
           </Text>
         </Box>
-      ) : null}
+      );
+    }
+    return null;
+  };
 
-      <Button
-        mt={4}
-        size="sm"
-        onClick={refetchData}
-        leftIcon={<RepeatIcon />}
-      >
+  return (
+    <Flex direction="column" alignItems="left" mb={8} w="full" py={8}>
+      {renderPositionData()}
+
+      <Button mt={4} size="sm" onClick={refetchData} leftIcon={<RepeatIcon />}>
         Refresh
       </Button>
 
       <Box mt={8}>
-        <Heading size="md" mb={4}>Transactions</Heading>
+        <Heading size="md" mb={4}>
+          Transactions
+        </Heading>
         <TransactionTable
           isLoading={isLoadingTransactions}
           error={transactionsError as Error | null}

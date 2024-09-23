@@ -1,5 +1,6 @@
 'use client';
 
+import { ArrowUpDownIcon } from '@chakra-ui/icons';
 import {
   Box,
   FormControl,
@@ -15,7 +16,6 @@ import { formatUnits } from 'viem';
 
 import { MarketContext } from '../../context/MarketProvider';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
-import { ArrowUpDownIcon } from '@chakra-ui/icons';
 
 interface Props {
   nftId: number;
