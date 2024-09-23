@@ -119,7 +119,7 @@ const PositionsHeader = () => {
                 <FaRegChartBar />
               </Box>
               <Text as="span" fontWeight="500" mr={1}>
-                Allowed Range:
+                Contract Price Range:
               </Text>{' '}
               {tickToPrice(epochParams.baseAssetMinPriceTick).toLocaleString()}-
               {tickToPrice(epochParams.baseAssetMaxPriceTick).toLocaleString()}{' '}

@@ -15,6 +15,7 @@ import { formatUnits } from 'viem';
 
 import { MarketContext } from '../../context/MarketProvider';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
+import { ArrowUpDownIcon } from '@chakra-ui/icons';
 
 interface Props {
   nftId: number;
@@ -82,6 +83,7 @@ const SizeInput: React.FC<Props> = ({ nftId, size, setSize, positionData }) => {
             borderRight="none"
             value={isGgasInput ? Number(size) : Number(collateral)}
             type="number"
+            min={0}
             onWheel={(e) => e.currentTarget.blur()}
             onChange={(e) =>
               isGgasInput
@@ -95,6 +97,7 @@ const SizeInput: React.FC<Props> = ({ nftId, size, setSize, positionData }) => {
               h="1.75rem"
               size="sm"
               onClick={handleUpdateInputType}
+              rightIcon={<ArrowUpDownIcon h={2.5} />}
             >
               {isGgasInput ? 'Ggas' : collateralAssetTicker}
             </Button>

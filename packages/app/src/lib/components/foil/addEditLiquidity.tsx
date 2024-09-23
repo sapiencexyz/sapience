@@ -756,6 +756,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
           <InputGroup>
             <Input
               type="number"
+              min={0}
               value={depositAmount}
               onWheel={(e) => e.currentTarget.blur()}
               onChange={handleDepositAmountChange}
@@ -787,6 +788,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
         <InputGroup>
           <Input
             type="number"
+            min={0}
             disabled={isEdit}
             onWheel={(e) => e.currentTarget.blur()}
             value={highPrice}
@@ -826,11 +828,11 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
 
       <Box mb="4">
         <Text fontSize="sm" color="gray.500" mb="0.5">
-          Base Token: <NumberDisplay value={baseToken} /> vGas (min:{' '}
+          Base Token: <NumberDisplay value={baseToken} /> vGGas (min:{' '}
           <NumberDisplay value={minAmountTokenA} />)
         </Text>
         <Text fontSize="sm" color="gray.500" mb="0.5">
-          Quote Token: <NumberDisplay value={quoteToken} /> vGwei (min:{' '}
+          Quote Token: <NumberDisplay value={quoteToken} /> vWstETH (min:{' '}
           <NumberDisplay value={minAmountTokenB} />)
         </Text>
         <Text display="none" fontSize="sm" color="gray.500" mb="0.5">
