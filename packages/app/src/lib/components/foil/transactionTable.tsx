@@ -7,6 +7,7 @@ import {
   Tbody,
   Td,
   Text,
+  Link,
 } from '@chakra-ui/react';
 import { formatDistanceToNow } from 'date-fns';
 import type React from 'react';
@@ -18,12 +19,14 @@ interface Props {
   isLoading: boolean;
   error: Error | null;
   transactions: any[];
+  contractId: string;
 }
 
 const TransactionTable: React.FC<Props> = ({
   isLoading,
   error,
   transactions,
+  contractId,
 }) => {
   const sortedTransactions = useMemo(() => {
     if (!transactions) return [];
@@ -62,7 +65,13 @@ const TransactionTable: React.FC<Props> = ({
                   addSuffix: true,
                 })}
               </Td>
-              <Td>#{row.position.positionId}</Td>
+              <Td>
+                <Link
+                  href={`/markets/${contractId}/positions/${row.position.positionId}`}
+                >
+                  #{row.position.positionId}
+                </Link>
+              </Td>
               <Td>{row.type}</Td>
               <Td>
                 <NumberDisplay value={row.collateralDelta} />

@@ -6,6 +6,7 @@ import {
   Th,
   Tbody,
   Td,
+  Link,
 } from '@chakra-ui/react';
 import type React from 'react';
 
@@ -15,11 +16,13 @@ interface Props {
   isLoading: boolean;
   error: Error | null;
   positions: any[];
+  contractId: string;
 }
 const TraderPositionsTable: React.FC<Props> = ({
   isLoading,
   error,
   positions,
+  contractId,
 }) => {
   if (isLoading) {
     return <div>Loading...</div>;
@@ -34,7 +37,7 @@ const TraderPositionsTable: React.FC<Props> = ({
       <Table variant="simple" size="sm">
         <Thead>
           <Tr>
-            <Th>ID</Th>
+            <Th>Position</Th>
             <Th>Collateral</Th>
             <Th>Size</Th>
           </Tr>
@@ -43,7 +46,13 @@ const TraderPositionsTable: React.FC<Props> = ({
           {positions &&
             positions.map((row: any) => (
               <Tr key={row.id}>
-                <Td>#{row.positionId.toString()}</Td>
+                <Td>
+                  <Link
+                    href={`/markets/${contractId}/positions/${row.positionId}`}
+                  >
+                    #{row.positionId.toString()}
+                  </Link>
+                </Td>
                 <Td>
                   <NumberDisplay value={row.collateral} /> wstETH
                 </Td>

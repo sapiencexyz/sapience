@@ -142,6 +142,7 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
                 isLoading={isLoadingTransactions}
                 error={useTransactionsError}
                 transactions={transactions}
+                contractId={contractId}
               />
             </TabPanel>
             <TabPanel>
@@ -149,6 +150,7 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
                 isLoading={isLoadingTradePositions}
                 error={tradePositionsError}
                 positions={tradePositions}
+                contractId={contractId}
               />
             </TabPanel>
             <TabPanel>
@@ -156,6 +158,7 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
                 isLoading={isLoadingLpPositions}
                 error={lpPositionsError}
                 positions={lpPositions}
+                contractId={contractId}
               />
             </TabPanel>
           </TabPanels>

@@ -1,5 +1,6 @@
 'use client';
 
+import { ArrowUpDownIcon } from '@chakra-ui/icons';
 import {
   Box,
   FormControl,
@@ -85,6 +86,8 @@ const SizeInput: React.FC<Props> = ({
             borderRight="none"
             value={isGgasInput ? Number(sizeChange) : Number(collateralChange)}
             type="number"
+            min={0}
+            step="any"
             onWheel={(e) => e.currentTarget.blur()}
             onChange={(e) =>
               isGgasInput
@@ -98,6 +101,7 @@ const SizeInput: React.FC<Props> = ({
               h="1.75rem"
               size="sm"
               onClick={handleUpdateInputType}
+              rightIcon={<ArrowUpDownIcon h={2.5} />}
             >
               {isGgasInput ? 'Ggas' : collateralAssetTicker}
             </Button>
@@ -109,6 +113,7 @@ const SizeInput: React.FC<Props> = ({
           <Input
             readOnly
             value={isGgasInput ? collateralChange : sizeChange}
+            bg="blackAlpha.100"
             type="number"
           />
           <InputRightAddon>

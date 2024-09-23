@@ -241,8 +241,57 @@ const startServer = async () => {
       res.status(500).json({ error: "Internal server error" });
     }
   });
+
+  // Get a single position by positionId
+  app.get('/positions/:positionId', async (req, res) => {
+    const { positionId } = req.params;
+    const { contractId } = req.query;
+
+    if (typeof positionId !== 'string' || typeof contractId !== 'string') {
+      return res.status(400).json({ error: 'Invalid parameters' });
+    }
+
+    const [chainId, address] = contractId.split(':');
+
+    try {
+      const market = await marketRepository.findOne({
+        where: { chainId: Number(chainId), address: String(address) },
+      });
+
+      if (!market) {
+        return res.status(404).json({ error: 'Market not found' });
+      }
+
+      const position = await positionRepository.findOne({
+        where: {
+          positionId: Number(positionId),
+          epoch: { market: { id: market.id } },
+        },
+        relations: ['epoch', 'epoch.market'],
+      });
+
+      if (!position) {
+        return res.status(404).json({ error: 'Position not found' });
+      }
+
+      // Format the data
+      position.baseToken = formatDbBigInt(position.baseToken);
+      position.quoteToken = formatDbBigInt(position.quoteToken);
+      position.borrowedBaseToken = formatDbBigInt(position.borrowedBaseToken);
+      position.borrowedQuoteToken = formatDbBigInt(position.borrowedQuoteToken);
+      position.collateral = formatDbBigInt(position.collateral);
+      position.profitLoss = formatDbBigInt(position.profitLoss);
+      position.unclaimedFees = formatDbBigInt(position.unclaimedFees);
+
+      res.json(position);
+    } catch (error) {
+      console.error('Error fetching position:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   app.get("/transactions", async (req, res) => {
-    const { contractId, epochId } = req.query;
+    const { contractId, epochId, positionId } = req.query;
 
     if (typeof contractId !== "string") {
       return res.status(400).json({ error: "Invalid contractId" });
@@ -250,16 +299,24 @@ const startServer = async () => {
     const [chainId, address] = contractId.split(":");
 
     try {
-      const transactions = await transactionRepository
+      const queryBuilder = transactionRepository
         .createQueryBuilder("transaction")
         .innerJoinAndSelect("transaction.position", "position")
         .innerJoinAndSelect("position.epoch", "epoch")
         .innerJoinAndSelect("epoch.market", "market")
         .innerJoinAndSelect("transaction.event", "event") // Join Event data
         .where("market.chainId = :chainId", { chainId })
-        .andWhere("market.address = :address", { address })
-        .andWhere("epoch.epochId = :epochId", { epochId })
-        .getMany();
+        .andWhere("market.address = :address", { address });
+
+      if (epochId) {
+        queryBuilder.andWhere("epoch.epochId = :epochId", { epochId });
+      }
+
+      if (positionId) {
+        queryBuilder.andWhere("position.positionId = :positionId", { positionId });
+      }
+      
+      const transactions = await queryBuilder.getMany();
 
       // format data
       for (const transaction of transactions) {

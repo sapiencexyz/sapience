@@ -1,12 +1,10 @@
 import {
-  Box,
   Button,
   FormControl,
   FormLabel,
   HStack,
   NumberInput,
   NumberInputField,
-  Text,
 } from '@chakra-ui/react';
 import type React from 'react';
 import { useState, useEffect } from 'react';

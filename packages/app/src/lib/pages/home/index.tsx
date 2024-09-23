@@ -11,7 +11,7 @@ const Home = () => {
   const router = useRouter();
 
   useEffect(() => {
-    router.push(`/markets/11155111:${FoilTestnet.address}/1`);
+    router.push(`/markets/11155111:${FoilTestnet.address}/epochs/1`);
   }, [router]);
 
   return (

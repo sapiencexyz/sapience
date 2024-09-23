@@ -56,7 +56,13 @@ const PositionsHeader = () => {
       >
         <Heading mb={0} alignSelf={{ base: 'flex-start', lg: 'flex-end' }}>
           {chain?.name} Gas Market{' '}
-          <Text ml={1.5} as="span" fontWeight="200" color="gray.600">
+          <Text
+            ml={1.5}
+            as="span"
+            fontWeight="200"
+            color="gray.600"
+            fontSize="sm"
+          >
             Epoch {epoch}
           </Text>
         </Heading>
@@ -119,7 +125,7 @@ const PositionsHeader = () => {
                 <FaRegChartBar />
               </Box>
               <Text as="span" fontWeight="500" mr={1}>
-                Allowed Range:
+                Contract Price Range:
               </Text>{' '}
               {tickToPrice(epochParams.baseAssetMinPriceTick).toLocaleString()}-
               {tickToPrice(epochParams.baseAssetMaxPriceTick).toLocaleString()}{' '}
