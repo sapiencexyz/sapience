@@ -15,11 +15,13 @@ interface Props {
   isLoading: boolean;
   error: Error | null;
   positions: any[];
+  contractId: string;
 }
 const LiquidityPositionsTable: React.FC<Props> = ({
   isLoading,
   error,
   positions,
+  contractId,
 }) => {
   console.log('positions = ', positions);
 
@@ -53,7 +55,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({
               <Tr key={row.id}>
                 <Td>
                   <Link
-                    href={`/markets/${row.epoch.market.chainId}:${row.epoch.market.address}/positions/${row.positionId}`}
+                    href={`/markets/${contractId}/positions/${row.positionId}`}
                   >
                     #{row.positionId.toString()}
                   </Link>

@@ -115,6 +115,7 @@ const PositionPage = ({
           isLoading={isLoadingTransactions}
           error={transactionsError as Error | null}
           transactions={transactions}
+          contractId={contractId}
         />
       </Box>
     </Flex>

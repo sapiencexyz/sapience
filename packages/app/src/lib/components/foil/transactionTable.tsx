@@ -19,12 +19,14 @@ interface Props {
   isLoading: boolean;
   error: Error | null;
   transactions: any[];
+  contractId: string;
 }
 
 const TransactionTable: React.FC<Props> = ({
   isLoading,
   error,
   transactions,
+  contractId,
 }) => {
   const sortedTransactions = useMemo(() => {
     if (!transactions) return [];
@@ -65,7 +67,7 @@ const TransactionTable: React.FC<Props> = ({
               </Td>
               <Td>
                 <Link
-                  href={`/markets/${row.epoch.market.chainId}:${row.epoch.market.address}/positions/${row.positionId}`}
+                  href={`/markets/${contractId}/positions/${row.positionId}`}
                 >
                   #{row.position.positionId}
                 </Link>
