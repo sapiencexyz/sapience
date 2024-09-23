@@ -214,13 +214,6 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             // Ensures that the position only have single side tokens
             position.reconcileTokens();
 
-            if (size == 0) {
-                // close position
-                // gas should be zero, reconcile vEth tokens to collateral
-                assert(position.vGasAmount == 0);
-                assert(position.borrowedVGas == 0);
-            }
-
             // Transfer the locked collateral to the market or viceversa
             int256 deltaCollateral = position.updateCollateral(
                 requiredCollateralAmount

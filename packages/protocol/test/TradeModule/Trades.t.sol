@@ -279,10 +279,8 @@ contract TradePositionBasic is TestTrade {
 
         uint256 positionId;
 
-        console2.log("referencePrice 0: ", foil.getReferencePrice(epochId));
         vm.startPrank(trader1);
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
-        console2.log("referencePrice 1: ", foil.getReferencePrice(epochId));
         fillCollateralStateData(trader1, latestStateData);
         fillPositionState(positionId, latestStateData);
 
@@ -305,8 +303,6 @@ contract TradePositionBasic is TestTrade {
         uint256 price = foil.getReferencePrice(epochId).mulDecimal(
             feeMultiplier
         );
-        console2.log("referencePrice 2: ", foil.getReferencePrice(epochId));
-        console2.log("price           : ", price);
 
         int256 deltaCollateral = requiredCollateral.toInt() -
             latestStateData.depositedCollateralAmount.toInt();
@@ -681,16 +677,16 @@ contract TradePositionBasic is TestTrade {
             0.001 ether,
             string.concat(stage, " borrowedVGas")
         );
-        assertApproxEqRel(
+        assertApproxEqAbs(
             currentStateData.vEthAmount,
             expectedStateData.vEthAmount,
-            0.15 ether,
+            0.025 ether,
             string.concat(stage, " vEthAmount")
         );
-        assertApproxEqRel(
+        assertApproxEqAbs(
             currentStateData.borrowedVEth,
             expectedStateData.borrowedVEth,
-            0.15 ether,
+            0.025 ether,
             string.concat(stage, " borrowedVEth")
         );
     }
