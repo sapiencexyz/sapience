@@ -757,6 +757,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
             <Input
               type="number"
               min={0}
+              step="any"
               value={depositAmount}
               onWheel={(e) => e.currentTarget.blur()}
               onChange={handleDepositAmountChange}
@@ -775,6 +776,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
         <InputGroup>
           <Input
             type="number"
+            step="any"
             disabled={isEdit}
             onWheel={(e) => e.currentTarget.blur()}
             value={lowPrice}
@@ -789,6 +791,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
           <Input
             type="number"
             min={0}
+            step="any"
             disabled={isEdit}
             onWheel={(e) => e.currentTarget.blur()}
             value={highPrice}

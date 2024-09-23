@@ -84,6 +84,7 @@ const SizeInput: React.FC<Props> = ({ nftId, size, setSize, positionData }) => {
             value={isGgasInput ? Number(size) : Number(collateral)}
             type="number"
             min={0}
+            step="any"
             onWheel={(e) => e.currentTarget.blur()}
             onChange={(e) =>
               isGgasInput
