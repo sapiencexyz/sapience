@@ -118,7 +118,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
     function modifyTraderPosition(
         uint256 positionId,
         int256 size,
-        int256 deltaCollateralLimit, // TODO C-09 int256 maxCollateralDelta and use it also for expected collateral profits
+        int256 deltaCollateralLimit,
         uint256 deadline
     ) external nonReentrant {
         require(block.timestamp <= deadline, "Transaction too old");

@@ -12,76 +12,79 @@ import {
 } from '@chakra-ui/react';
 import type { Dispatch, SetStateAction } from 'react';
 import { useContext, useEffect, useState } from 'react';
-import { formatUnits } from 'viem';
 
 import { MarketContext } from '../../context/MarketProvider';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
 
 interface Props {
   nftId: number;
-  size: number;
   setSize: Dispatch<SetStateAction<number>>;
   positionData: FoilPosition;
+  originalPositionSize: number;
+  isLong: boolean;
 }
 
-const SizeInput: React.FC<Props> = ({ nftId, size, setSize, positionData }) => {
-  const { collateralAssetTicker, pool, collateralAssetDecimals } =
-    useContext(MarketContext);
-  const [collateral, setCollateral] = useState<number>(0);
+const SizeInput: React.FC<Props> = ({
+  nftId,
+  setSize,
+  positionData,
+  originalPositionSize,
+  isLong,
+}) => {
+  const { collateralAssetTicker, pool } = useContext(MarketContext);
+  const [collateralChange, setCollateralChange] = useState<number>(0);
+  const [sizeChange, setSizeChange] = useState<number>(0);
   const [isGgasInput, setIsGgasInput] = useState(true);
 
   const refPrice = pool?.token0Price.toSignificant(3);
   const isEdit = nftId > 0;
 
   useEffect(() => {
-    if (isEdit && positionData) {
-      const _sizeBigInt =
-        positionData.vGasAmount > BigInt(0)
-          ? positionData.vGasAmount
-          : positionData.borrowedVGas;
-      const _size = parseFloat(
-        formatUnits(_sizeBigInt, collateralAssetDecimals)
-      );
-      handleSizeChange(`${_size}`);
-    } else {
-      handleSizeChange('0');
-    }
-  }, [isEdit, positionData]);
+    handleSizeChange('0');
+  }, [nftId, positionData]);
+
+  useEffect(() => {
+    handleSizeChange(sizeChange.toString());
+  }, [isLong]);
 
   const handleUpdateInputType = () => setIsGgasInput(!isGgasInput);
 
   /**
-   * Update size and collateral based on the new size input
+   * Update size and collateralChange based on the new size input
    * @param newVal - new value of the size input
    */
   const handleSizeChange = (newVal: string) => {
     if (!refPrice) return;
-    const newSize = parseFloat(newVal || '0');
-    setSize(newSize);
-    const newCollateral = parseFloat(`${newSize / Number(refPrice)}`);
-    setCollateral(newCollateral);
+    const newSizeChange = parseFloat(newVal || '0');
+    setSizeChange(newSizeChange);
+    const sign = isLong ? 1 : -1;
+    setSize(originalPositionSize + sign * newSizeChange);
+    const newCollateral = parseFloat(`${newSizeChange / Number(refPrice)}`);
+    setCollateralChange(newCollateral);
   };
 
   /**
-   * Update size and collateral based on the new collateral input
-   * @param newVal - new value of the collateral input
+   * Update size and collateralChange based on the new collateralChange input
+   * @param newVal - new value of the collateralChange input
    */
   const handleCollateralChange = (newVal: string) => {
     if (!refPrice) return;
     const newCollateral = parseFloat(newVal || '0');
-    setCollateral(newCollateral);
-    const newSize = parseFloat(`${newCollateral * Number(refPrice)}`);
-    setSize(newSize);
+    setCollateralChange(newCollateral);
+    const newSizeChange = parseFloat(`${newCollateral * Number(refPrice)}`);
+    setSizeChange(newSizeChange);
+    const sign = isLong ? 1 : -1;
+    setSize(originalPositionSize + sign * newSizeChange);
   };
 
   return (
     <Box mb={4}>
       <FormControl mb={4}>
-        <FormLabel>Size</FormLabel>
+        <FormLabel>Size {isEdit ? 'Change' : ''}</FormLabel>
         <InputGroup>
           <Input
             borderRight="none"
-            value={isGgasInput ? Number(size) : Number(collateral)}
+            value={isGgasInput ? Number(sizeChange) : Number(collateralChange)}
             type="number"
             min={0}
             step="any"
@@ -109,8 +112,8 @@ const SizeInput: React.FC<Props> = ({ nftId, size, setSize, positionData }) => {
         <InputGroup>
           <Input
             readOnly
+            value={isGgasInput ? collateralChange : sizeChange}
             bg="blackAlpha.100"
-            value={isGgasInput ? collateral : size}
             type="number"
           />
           <InputRightAddon>
