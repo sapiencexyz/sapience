@@ -70,7 +70,7 @@ const startServer = async () => {
         .where("market.chainId = :chainId", { chainId })
         .andWhere("market.address = :address", { address })
         .andWhere("epoch.epochId = :epochId", { epochId })
-        .orderBy("marketPrice.timestamp", "DESC")
+        .orderBy("marketPrice.timestamp", "ASC")
         .getMany();
 
       console.log("marketPrices = ", marketPrices);
@@ -93,8 +93,8 @@ const startServer = async () => {
 
       // Create candlestick data from grouped prices
       const chartData = Object.entries(groupedPrices).map(([date, prices]) => {
-        const close = prices[0].value;
-        const open = prices[prices.length - 1].value;
+        const open = prices[0].value;
+        const close = prices[prices.length - 1].value;
         const high = Math.max(...prices.map((p) => Number(p.value)));
         const low = Math.min(...prices.map((p) => Number(p.value)));
         return { date, open, close, low, high };
