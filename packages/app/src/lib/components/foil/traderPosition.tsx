@@ -26,6 +26,7 @@ import {
   calculateCollateralDeltaLimit,
   getMinResultBalance,
 } from '../../util/tradeUtil';
+import { DECIMAL_PRECISION_DISPLAY } from '~/lib/constants/constants';
 import { useLoading } from '~/lib/context/LoadingContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';
@@ -137,12 +138,17 @@ export default function TraderPosition({}) {
   }, [positionData, isEdit]);
   const originalPositionSize: number = useMemo(() => {
     if (isEdit && positionData) {
+      const sideFactor = positionData.vGasAmount > BigInt(0) ? 1 : -1;
       const _sizeBigInt =
         positionData.vGasAmount > BigInt(0)
           ? positionData.vGasAmount
           : positionData.borrowedVGas;
-      return parseFloat(formatUnits(_sizeBigInt, collateralAssetDecimals));
+      return (
+        sideFactor *
+        parseFloat(formatUnits(_sizeBigInt, collateralAssetDecimals))
+      );
     }
+
     return 0;
   }, [positionData, isEdit, collateralAssetDecimals]);
 
@@ -169,11 +175,7 @@ export default function TraderPosition({}) {
     abi: foilData.abi,
     address: foilData.address as `0x${string}`,
     functionName: 'quoteCreateTraderPosition',
-    args: [
-      epoch,
-      parseUnits(`${size}`, collateralAssetDecimals) *
-        (isLong ? BigInt(1) : BigInt(-1)),
-    ],
+    args: [epoch, parseUnits(`${size}`, collateralAssetDecimals)],
     chainId,
     query: { enabled: !isEdit && size !== 0 },
   });
@@ -182,11 +184,7 @@ export default function TraderPosition({}) {
     abi: foilData.abi,
     address: foilData.address as `0x${string}`,
     functionName: 'quoteModifyTraderPosition',
-    args: [
-      nftId,
-      parseUnits(`${size}`, collateralAssetDecimals) *
-        (isLong ? BigInt(1) : BigInt(-1)),
-    ],
+    args: [nftId, parseUnits(`${size}`, collateralAssetDecimals)],
     chainId,
     query: { enabled: isEdit && size !== originalPositionSize },
   });
@@ -307,9 +305,7 @@ export default function TraderPosition({}) {
     setPendingTxn(true);
     setIsLoading(true);
 
-    const sizeInTokens =
-      parseUnits(`${size}`, collateralAssetDecimals) *
-      (isLong ? BigInt(1) : BigInt(-1));
+    const sizeInTokens = parseUnits(`${size}`, collateralAssetDecimals);
 
     const collateralDeltaLimit = calculateCollateralDeltaLimit(
       collateralAssetDecimals,
@@ -416,13 +412,14 @@ export default function TraderPosition({}) {
       </Flex>
       <SizeInput
         nftId={nftId}
-        size={size}
+        originalPositionSize={originalPositionSize}
         setSize={setSize}
+        isLong={isLong}
         positionData={positionData}
       />
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
       {!isLoadingCollateralChange && (
-        <Box mb={4} minH="20px">
+        <Box mb={2} minH="20px">
           <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
             Estimated Wallet Balance Adjustment{' '}
             <Tooltip label="Your slippage tolerance sets a maximum limit on how much additional collateral Foil can use or the minimum amount of collateral you will receive back, protecting you from unexpected market changes between submitting and processing your transaction.">
@@ -439,6 +436,10 @@ export default function TraderPosition({}) {
           </Text>
         </Box>
       )}
+      <Text fontSize="sm" color="gray.600" mb={4}>
+        Size: {originalPositionSize.toFixed(DECIMAL_PRECISION_DISPLAY)} →{' '}
+        {size.toFixed(DECIMAL_PRECISION_DISPLAY)}{' '}
+      </Text>
       {isConnected ? (
         <Button
           width="full"
