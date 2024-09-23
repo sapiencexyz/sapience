@@ -7,6 +7,7 @@ import {
   Tbody,
   Td,
   Text,
+  Link,
 } from '@chakra-ui/react';
 import { formatDistanceToNow } from 'date-fns';
 import type React from 'react';
@@ -62,7 +63,13 @@ const TransactionTable: React.FC<Props> = ({
                   addSuffix: true,
                 })}
               </Td>
-              <Td>#{row.position.positionId}</Td>
+              <Td>
+                <Link
+                  href={`/markets/${row.epoch.market.chainId}:${row.epoch.market.address}/positions/${row.positionId}`}
+                >
+                  #{row.position.positionId}
+                </Link>
+              </Td>
               <Td>{row.type}</Td>
               <Td>
                 <NumberDisplay value={row.collateralDelta} />

@@ -8,7 +8,6 @@ import {
   Td,
   Link,
 } from '@chakra-ui/react';
-import NextLink from 'next/link';
 import type React from 'react';
 
 import NumberDisplay from './numberDisplay';
@@ -47,7 +46,6 @@ const TraderPositionsTable: React.FC<Props> = ({
               <Tr key={row.id}>
                 <Td>
                   <Link
-                    as={NextLink}
                     href={`/markets/${row.epoch.market.chainId}:${row.epoch.market.address}/positions/${row.positionId}`}
                   >
                     #{row.positionId.toString()}
