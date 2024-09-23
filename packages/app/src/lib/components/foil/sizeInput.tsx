@@ -108,6 +108,7 @@ const SizeInput: React.FC<Props> = ({ nftId, size, setSize, positionData }) => {
         <InputGroup>
           <Input
             readOnly
+            bg="blackAlpha.100"
             value={isGgasInput ? collateral : size}
             type="number"
           />
