@@ -6,7 +6,9 @@ import {
   Th,
   Tbody,
   Td,
+  Link,
 } from '@chakra-ui/react';
+import NextLink from 'next/link';
 import type React from 'react';
 
 import NumberDisplay from './numberDisplay';
@@ -43,7 +45,14 @@ const TraderPositionsTable: React.FC<Props> = ({
           {positions &&
             positions.map((row: any) => (
               <Tr key={row.id}>
-                <Td>#{row.positionId.toString()}</Td>
+                <Td>
+                  <Link
+                    as={NextLink}
+                    href={`/markets/${row.epoch.market.chainId}:${row.epoch.market.address}/positions/${row.positionId}`}
+                  >
+                    #{row.positionId.toString()}
+                  </Link>
+                </Td>
                 <Td>
                   <NumberDisplay value={row.collateral} /> wstETH
                 </Td>
