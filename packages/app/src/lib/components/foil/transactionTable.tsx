@@ -67,7 +67,7 @@ const TransactionTable: React.FC<Props> = ({
               </Td>
               <Td>
                 <Link
-                  href={`/markets/${contractId}/positions/${row.positionId}`}
+                  href={`/markets/${contractId}/positions/${row.position.positionId}`}
                 >
                   #{row.position.positionId}
                 </Link>

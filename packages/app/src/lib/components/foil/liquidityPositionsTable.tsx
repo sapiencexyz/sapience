@@ -38,7 +38,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({
       <Table variant="simple" size="sm">
         <Thead>
           <Tr>
-            <Th>ID</Th>
+            <Th>Position</Th>
             <Th>Collateral</Th>
             <Th>Base Token</Th>
             <Th>Quote Token</Th>

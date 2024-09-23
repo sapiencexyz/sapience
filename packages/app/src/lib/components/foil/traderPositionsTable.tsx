@@ -37,7 +37,7 @@ const TraderPositionsTable: React.FC<Props> = ({
       <Table variant="simple" size="sm">
         <Thead>
           <Tr>
-            <Th>ID</Th>
+            <Th>Position</Th>
             <Th>Collateral</Th>
             <Th>Size</Th>
           </Tr>
