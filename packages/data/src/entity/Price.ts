@@ -1,4 +1,4 @@
-import { NUMERIC_PRECISION } from "../util/dbUtil";
+import { NUMERIC_PRECISION } from "../constants";
 import {
   Entity,
   PrimaryGeneratedColumn,

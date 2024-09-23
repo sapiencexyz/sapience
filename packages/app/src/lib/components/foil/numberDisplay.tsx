@@ -31,7 +31,7 @@ const NumberDisplay: React.FC<NumberDisplayProps> = ({ value }) => {
     return roundedValue.toString().replace(/\.?0+$/, '');
   };
 
-  const displayValue = formatNumber(value);
+  const displayValue = formatNumber(value || 0);
 
   return <Tooltip label={value.toString()}>{displayValue}</Tooltip>;
 };

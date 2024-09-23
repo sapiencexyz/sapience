@@ -1,3 +1,5 @@
+import { Abi } from "viem";
+
 export enum EventType {
   LiquidityPositionCreated = "LiquidityPositionCreated",
   LiquidityPositionIncreased = "LiquidityPositionIncreased",
@@ -79,4 +81,9 @@ export interface EpochCreatedEventLog {
   startTime: string;
   endTime: string;
   startingSqrtPriceX96: string;
+}
+
+export interface ContractDeployment {
+  address: string;
+  abi: Abi;
 }

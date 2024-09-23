@@ -10,7 +10,7 @@ import {
 import { Market } from "./Market";
 import { Event } from "./Event";
 import { Position } from "./Position";
-import { NUMERIC_PRECISION } from "../util/dbUtil";
+import { NUMERIC_PRECISION } from "../constants";
 
 @Entity()
 @Unique(["market", "epochId"])

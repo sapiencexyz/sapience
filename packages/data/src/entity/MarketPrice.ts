@@ -8,7 +8,7 @@ import {
   JoinColumn,
 } from "typeorm";
 import { Transaction } from "./Transaction";
-import { NUMERIC_PRECISION } from "../util/dbUtil";
+import { NUMERIC_PRECISION } from "../constants";
 
 @Entity()
 export class MarketPrice {
