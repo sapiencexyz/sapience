@@ -6,7 +6,7 @@ import {
   Th,
   Tbody,
   Td,
-  Text,
+  Image,
   Link,
   Box,
   Spinner,
@@ -52,7 +52,13 @@ const TransactionTable: React.FC<Props> = ({
       </Box>
     );
   }
+/*
+  // get chain from market context provider
 
+  const txHash = row.event.logData.transactionHash;
+  // get transaction link from etherscan, use viem chains to find the blocker explorer url
+  const txLink = `${chain?.blockExplorers?.default.url}/tx/${txHash}`;
+*/
   return (
     <TableContainer mb={4}>
       <Table variant="simple" size="sm">
@@ -65,6 +71,7 @@ const TransactionTable: React.FC<Props> = ({
             <Th>Ggas</Th>
             <Th>wstETH</Th>
             <Th>Price</Th>
+            <Th />
           </Tr>
         </Thead>
         <Tbody>
@@ -93,11 +100,19 @@ const TransactionTable: React.FC<Props> = ({
                 <NumberDisplay value={row.quoteTokenDelta} />
               </Td>
               <Td>
-                {row.type === 'long' || row.type === 'short' ? (
-                  <NumberDisplay value={row.tradeRatioD18} />
-                ) : (
-                  <Text color="gray.500">N/A</Text>
-                )}
+                <NumberDisplay value={row.tradeRatioD18 || 0} />
+              </Td>
+              <Td>
+                <Link isExternal href={`https://sepolia.etherscan.io/tx/${row.event.logData.transactionHash}`}>
+                <Image 
+                  src="/etherscan.svg" 
+                  alt="Etherscan" 
+                  width={5} 
+                  height={5} 
+                  opacity={0.85}
+
+                />
+                </Link>
               </Td>
             </Tr>
           ))}

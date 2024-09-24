@@ -125,7 +125,7 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
             </Flex>
             <Box
               width={{ base: '100%' }}
-              maxWidth={{ base: 'none', md: '400px' }}
+              maxWidth={{ base: 'none', md: '360px' }}
               pb={8}
             >
               <MarketSidebar />

@@ -1,3 +1,4 @@
+import { MinusIcon } from '@chakra-ui/icons';
 import { Tooltip } from '@chakra-ui/react';
 import type React from 'react';
 
@@ -33,7 +34,7 @@ const NumberDisplay: React.FC<NumberDisplayProps> = ({ value }) => {
 
   const displayValue = formatNumber(value || 0);
 
-  return <Tooltip label={value.toString()}>{displayValue}</Tooltip>;
+  return displayValue.length ? <Tooltip label={value.toString()}>{displayValue}</Tooltip> : <MinusIcon opacity={0.2} />;
 };
 
 export default NumberDisplay;
