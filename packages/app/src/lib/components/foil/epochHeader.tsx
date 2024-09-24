@@ -39,7 +39,11 @@ const PositionsHeader = () => {
         px={6}
         py={4}
       >
-        <Heading mb={0} alignSelf={{ base: 'flex-start', lg: 'flex-end' }}>
+        <Heading
+          size="lg"
+          mb={0}
+          alignSelf={{ base: 'flex-start', lg: 'flex-end' }}
+        >
           {chain?.name} Gas Market{' '}
         </Heading>
 
