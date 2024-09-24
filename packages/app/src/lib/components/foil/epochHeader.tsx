@@ -1,19 +1,5 @@
 /* eslint-disable sonarjs/no-duplicate-string */
-import { InfoOutlineIcon } from '@chakra-ui/icons';
-import {
-  Box,
-  Heading,
-  Link,
-  Flex,
-  Text,
-  Stat,
-  StatArrow,
-  StatGroup,
-  StatHelpText,
-  StatLabel,
-  StatNumber,
-  useBreakpointValue,
-} from '@chakra-ui/react';
+import { Box, Heading, Link, Flex, Text } from '@chakra-ui/react';
 import { format, formatDistanceToNow } from 'date-fns';
 import React, { useContext } from 'react';
 import { FaRegChartBar, FaCubes, FaRegCalendar } from 'react-icons/fa';
@@ -21,20 +7,9 @@ import { IoDocumentTextOutline } from 'react-icons/io5';
 
 import { MarketContext } from '~/lib/context/MarketProvider';
 
-import NumberDisplay from './numberDisplay';
-
 const PositionsHeader = () => {
-  const {
-    chain,
-    address,
-    collateralAsset,
-    epochParams,
-    startTime,
-    endTime,
-    averagePrice,
-    pool,
-    liquidity,
-  } = useContext(MarketContext);
+  const { chain, address, collateralAsset, epochParams, startTime, endTime } =
+    useContext(MarketContext);
 
   let relativeTime = '';
   let formattedTime = '';
@@ -56,7 +31,7 @@ const PositionsHeader = () => {
   const tickToPrice = (tick: number): number => 1.0001 ** tick;
 
   return (
-    <Flex alignItems="center" direction="column" width="100%" pb={6}>
+    <Flex alignItems="center" direction="column" width="100%">
       <Flex
         w="100%"
         alignItems="flex-start"
@@ -143,97 +118,6 @@ const PositionsHeader = () => {
             </Flex>
           </Flex>
         </Flex>
-      </Flex>
-
-      <Flex
-        px={6}
-        gap={6}
-        w="100%"
-        flexDirection={{ base: 'column', md: 'row' }}
-        flexWrap="wrap"
-      >
-        <Stat width={{ base: '100%', md: 'calc(50% - 12px)', lg: 'auto' }}>
-          <StatLabel fontSize="md">
-            Index Price
-            <InfoOutlineIcon
-              display="none"
-              transform="translateY(-2.5px)"
-              color="gray.600"
-              height="4"
-              ml={1.5}
-            />
-          </StatLabel>
-          <StatNumber>
-            <NumberDisplay value={averagePrice} />{' '}
-            <Text fontSize="sm" as="span">
-              Ggas/wstETH
-            </Text>
-          </StatNumber>
-          {/*
-          <StatHelpText>
-            <StatArrow type="decrease" color="red.500" />
-            9.36% (24hr)
-          </StatHelpText>
-          */}
-        </Stat>
-
-        <Stat width={{ base: '100%', md: 'calc(50% - 12px)', lg: 'auto' }}>
-          <StatLabel fontSize="md">
-            Market Price
-            <InfoOutlineIcon
-              display="none"
-              transform="translateY(-2px)"
-              color="gray.600"
-              height="4"
-              ml={1.5}
-            />
-          </StatLabel>
-          <StatNumber>
-            <NumberDisplay value={pool?.token0Price.toSignificant(18) || 0} />{' '}
-            <Text fontSize="sm" as="span">
-              Ggas/wstETH
-            </Text>
-          </StatNumber>
-          {/*
-          <StatHelpText>
-            <StatArrow type="decrease" color="red.500" />
-            3.36% (24hr)
-          </StatHelpText>
-          */}
-        </Stat>
-
-        <Stat width={{ base: '100%', md: 'calc(50% - 12px)', lg: 'auto' }}>
-          <StatLabel fontSize="md">
-            Liquidity
-            <InfoOutlineIcon
-              display="none"
-              transform="translateY(-2px)"
-              color="gray.600"
-              height="4"
-              ml={1.5}
-            />
-          </StatLabel>
-          <StatNumber>
-            <NumberDisplay value={liquidity} />{' '}
-            <Text fontSize="sm" as="span">
-              Ggas
-            </Text>
-          </StatNumber>
-          {/*
-          <StatHelpText>
-            <StatArrow type="increase" color="green.400" />
-            23.36%
-          </StatHelpText>
-          */}
-        </Stat>
-
-        <Stat width={{ base: '100%', md: 'calc(50% - 12px)', lg: 'auto' }}>
-          <StatLabel fontSize="md">Ends In</StatLabel>
-          <StatNumber>{relativeTime}</StatNumber>
-          {/*
-          <StatHelpText>{formattedTime} UTC</StatHelpText>
-          */}
-        </Stat>
       </Flex>
     </Flex>
   );

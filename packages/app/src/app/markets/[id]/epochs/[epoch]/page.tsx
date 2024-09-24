@@ -2,7 +2,6 @@
 
 /* eslint-disable sonarjs/no-duplicate-string */
 
-import { RepeatIcon } from '@chakra-ui/icons';
 import {
   Flex,
   Box,
@@ -11,14 +10,14 @@ import {
   TabPanel,
   TabPanels,
   Tabs,
-  Button,
 } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 
 import Chart from '~/lib/components/chart';
+import EpochHeader from '~/lib/components/foil/epochHeader';
 import LiquidityPositionsTable from '~/lib/components/foil/liquidityPositionsTable';
 import MarketSidebar from '~/lib/components/foil/marketSidebar';
-import PositionsHeader from '~/lib/components/foil/positionsHeader';
+import Stats from '~/lib/components/foil/stats';
 import TraderPositionsTable from '~/lib/components/foil/traderPositionsTable';
 import TransactionTable from '~/lib/components/foil/transactionTable';
 import { API_BASE_URL } from '~/lib/constants/constants';
@@ -72,7 +71,6 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
     data: tradePositions,
     error: tradePositionsError,
     isLoading: isLoadingTradePositions,
-    refetch: refetchTradePositions,
   } = useTradePositions();
 
   const useLiquidityPositions = () => {
@@ -95,14 +93,7 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
     data: lpPositions,
     error: lpPositionsError,
     isLoading: isLoadingLpPositions,
-    refetch: refetchLpPositions,
   } = useLiquidityPositions();
-
-  const refetchData = () => {
-    refetchTransactions();
-    refetchTradePositions();
-    refetchLpPositions();
-  };
 
   return (
     <MarketProvider
@@ -116,18 +107,22 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
         h="calc(100vh - 64px)"
         overflow="hidden"
       >
-        <PositionsHeader />
+        <EpochHeader />
         <Flex direction="column" flex={1} overflow="hidden">
           <Flex
-            gap={8}
-            px={6}
-            flexDirection={{ base: 'column', md: 'row' }}
-            overflow="hidden"
+            direction="column"
             flex={1}
+            overflow="hidden"
+            px={6}
+            gap={8}
+            flexDirection={{ base: 'column', md: 'row' }}
           >
-            <Box width={{ base: '100%' }} overflow="auto">
-              <Chart />
-            </Box>
+            <Flex direction="column" w="100%" h="100%">
+              <Stats />
+              <Box flex={1} overflow="hidden">
+                <Chart />
+              </Box>
+            </Flex>
             <Box
               width={{ base: '100%' }}
               maxWidth={{ base: 'none', md: '400px' }}
