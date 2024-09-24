@@ -1,4 +1,4 @@
-import { Box, Tab, TabList, TabPanel, TabPanels, Tabs } from '@chakra-ui/react';
+import { Box, Tab, TabList, TabPanel, TabPanels, Tabs, Spinner, Center } from '@chakra-ui/react';
 import { useContext } from 'react';
 
 import { MarketContext } from '~/lib/context/MarketProvider';
@@ -10,6 +10,25 @@ import TraderPosition from './traderPosition';
 export default function MarketSidebar() {
   const { endTime } = useContext(MarketContext);
   const expired = endTime < Math.floor(Date.now() / 1000);
+
+  if (endTime === 0) {
+    return (
+      <Box
+        height="100%"
+        border="1px solid"
+        borderColor="gray.300"
+        borderRadius="md"
+        w="100%"
+        flex={1}
+        display="flex"
+        flexDirection="column"
+      >
+        <Center height="100%">
+          <Spinner size="xl" opacity={0.5} />
+        </Center>
+      </Box>
+    );
+  }
 
   return (
     <Box
