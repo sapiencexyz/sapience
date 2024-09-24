@@ -61,9 +61,8 @@ const Header = () => {
     >
       <Flex
         margin="0 auto"
-        maxWidth="container.lg"
         align="center"
-        px={3}
+        px={6}
         justifyContent="space-between"
       >
         <Box display="inline-block" as={Link} href="/">

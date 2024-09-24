@@ -7,6 +7,8 @@ import {
   Tbody,
   Td,
   Link,
+  Box,
+  Spinner,
 } from '@chakra-ui/react';
 
 import NumberDisplay from './numberDisplay';
@@ -26,11 +28,19 @@ const LiquidityPositionsTable: React.FC<Props> = ({
   console.log('positions = ', positions);
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <Box textAlign="center" py={12}>
+        <Spinner opacity={0.5} />
+      </Box>
+    );
   }
 
   if (error) {
-    return <div>Error: {error.message}</div>;
+    return (
+      <Box textAlign="center" py={12}>
+        Error: {error.message}
+      </Box>
+    );
   }
 
   return (

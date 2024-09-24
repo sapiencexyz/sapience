@@ -16,7 +16,7 @@ import {
 } from '@chakra-ui/react';
 import { format, formatDistanceToNow } from 'date-fns';
 import React, { useContext } from 'react';
-import { FaRegChartBar, FaCubes } from 'react-icons/fa';
+import { FaRegChartBar, FaCubes, FaRegCalendar } from 'react-icons/fa';
 import { IoDocumentTextOutline } from 'react-icons/io5';
 
 import { MarketContext } from '~/lib/context/MarketProvider';
@@ -26,11 +26,11 @@ import NumberDisplay from './numberDisplay';
 const PositionsHeader = () => {
   const {
     chain,
-    epoch,
     address,
-    endTime,
     collateralAsset,
     epochParams,
+    startTime,
+    endTime,
     averagePrice,
     pool,
     liquidity,
@@ -38,33 +38,33 @@ const PositionsHeader = () => {
 
   let relativeTime = '';
   let formattedTime = '';
+  let endTimeString = '';
+  let startTimeString = '';
+  if (startTime) {
+    const dateMilliseconds = Number(startTime) * 1000;
+    const date = new Date(dateMilliseconds);
+    startTimeString = format(date, 'PPpp');
+  }
   if (endTime) {
     const dateMilliseconds = Number(endTime) * 1000;
     const date = new Date(dateMilliseconds);
     relativeTime = formatDistanceToNow(date);
     formattedTime = format(date, 'PPpp');
+    endTimeString = format(date, 'PPpp');
   }
 
   const tickToPrice = (tick: number): number => 1.0001 ** tick;
 
   return (
-    <Flex gap={6} mb={9} alignItems="center" direction="column" width="100%">
+    <Flex alignItems="center" direction="column" width="100%" pb={6}>
       <Flex
         w="100%"
         alignItems="flex-start"
         flexDirection={{ base: 'column', lg: 'row' }}
+        p={6}
       >
         <Heading mb={0} alignSelf={{ base: 'flex-start', lg: 'flex-end' }}>
           {chain?.name} Gas Market{' '}
-          <Text
-            ml={1.5}
-            as="span"
-            fontWeight="200"
-            color="gray.600"
-            fontSize="sm"
-          >
-            Epoch {epoch}
-          </Text>
         </Heading>
 
         <Flex
@@ -131,11 +131,22 @@ const PositionsHeader = () => {
               {tickToPrice(epochParams.baseAssetMaxPriceTick).toLocaleString()}{' '}
               Ggas/wstETH
             </Flex>
+
+            <Flex display="inline-flex" align="center" fontSize="sm">
+              <Box display="inline-block" mr="1">
+                <FaRegCalendar opacity={0.8} />
+              </Box>
+              <Text as="span" fontWeight="500" mr={1}>
+                Period:
+              </Text>{' '}
+              {startTimeString} - {endTimeString}
+            </Flex>
           </Flex>
         </Flex>
       </Flex>
 
       <Flex
+        px={6}
         gap={6}
         w="100%"
         flexDirection={{ base: 'column', md: 'row' }}

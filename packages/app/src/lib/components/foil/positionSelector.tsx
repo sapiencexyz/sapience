@@ -73,21 +73,26 @@ const PositionSelector: React.FC<PositionSelectorProps> = ({
   };
 
   return (
-    <Box>
-      <FormControl mb={6}>
-        <FormLabel>Position</FormLabel>
-        <Select onChange={handleAccountChange} value={value}>
-          {filteredNfts.map((id) => (
-            <option key={id} value={id}>
-              {id}
-            </option>
-          ))}
-          <option key="new" value={0}>
-            New Position
+    <FormControl mb={6} display="flex" alignItems="center">
+      <FormLabel mb={0} mr={3} flexShrink={0}>
+        Position
+      </FormLabel>
+      <Select
+        borderRadius="md"
+        onChange={handleAccountChange}
+        value={value}
+        size="sm"
+      >
+        {filteredNfts.map((id) => (
+          <option key={id} value={id}>
+            {id}
           </option>
-        </Select>
-      </FormControl>
-    </Box>
+        ))}
+        <option key="new" value={0}>
+          New Position
+        </option>
+      </Select>
+    </FormControl>
   );
 };
 

@@ -7,6 +7,8 @@ import {
   Tbody,
   Td,
   Link,
+  Box,
+  Spinner,
 } from '@chakra-ui/react';
 import type React from 'react';
 
@@ -25,11 +27,19 @@ const TraderPositionsTable: React.FC<Props> = ({
   contractId,
 }) => {
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <Box textAlign="center" py={12}>
+        <Spinner opacity={0.5} />
+      </Box>
+    );
   }
 
   if (error) {
-    return <div>Error: {error.message}</div>;
+    return (
+      <Box textAlign="center" py={12}>
+        Error: {error.message}
+      </Box>
+    );
   }
 
   return (

@@ -8,7 +8,7 @@ import NumberDisplay from '~/lib/components/foil/numberDisplay';
 import TransactionTable from '~/lib/components/foil/transactionTable';
 import { API_BASE_URL } from '~/lib/constants/constants';
 
-const POLLING_INTERVAL = 60000; // Refetch every 60 seconds
+const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
 
 const usePosition = (contractId: string, positionId: string) => {
   return useQuery({
@@ -102,10 +102,6 @@ const PositionPage = ({
   return (
     <Flex direction="column" alignItems="left" mb={8} w="full" py={8}>
       {renderPositionData()}
-
-      <Button mt={4} size="sm" onClick={refetchData} leftIcon={<RepeatIcon />}>
-        Refresh
-      </Button>
 
       <Box mt={8}>
         <Heading size="md" mb={4}>

@@ -16,7 +16,7 @@ const APP_NAME = 'Foil';
 
 export const metadata: Metadata = {
   title: { default: APP_NAME, template: '%s | Foil' },
-  description: 'Next.js + chakra-ui + TypeScript template',
+  description: 'Foil App',
   applicationName: APP_NAME,
   appleWebApp: {
     capable: true,
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     },
   },
   twitter: {
-    creator: '@sozonome',
+    creator: '@foilxyz',
     card: 'summary_large_image',
   },
 };

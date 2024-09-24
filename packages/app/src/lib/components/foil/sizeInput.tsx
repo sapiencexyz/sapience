@@ -148,7 +148,7 @@ const SizeInput: React.FC<Props> = ({
           <Input
             readOnly
             value={isGgasInput ? collateralChange : sizeChange}
-            bg="blackAlpha.100"
+            bg="blackAlpha.50"
             type="number"
           />
           <InputRightAddon>

@@ -8,6 +8,8 @@ import {
   Td,
   Text,
   Link,
+  Box,
+  Spinner,
 } from '@chakra-ui/react';
 import { formatDistanceToNow } from 'date-fns';
 import type React from 'react';
@@ -36,11 +38,19 @@ const TransactionTable: React.FC<Props> = ({
   }, [transactions]);
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <Box textAlign="center" py={12}>
+        <Spinner opacity={0.5} />
+      </Box>
+    );
   }
 
   if (error) {
-    return <div>Error: {error.message}</div>;
+    return (
+      <Box textAlign="center" py={12}>
+        Error: {error.message}
+      </Box>
+    );
   }
 
   return (

@@ -12,16 +12,25 @@ export default function MarketSidebar() {
   const expired = endTime < Math.floor(Date.now() / 1000);
 
   return (
-    <Box border="1px solid" borderColor="gray.300" borderRadius="md" w="100%">
+    <Box
+      height="100%"
+      border="1px solid"
+      borderColor="gray.300"
+      borderRadius="md"
+      w="100%"
+      flex={1}
+      display="flex"
+      flexDirection="column"
+    >
       {expired ? (
         <Settle />
       ) : (
-        <Tabs isFitted>
+        <Tabs isFitted display="flex" flexDirection="column" height="100%">
           <TabList>
             <Tab pt={4}>Trade</Tab>
             <Tab pt={4}>Provide&nbsp;Liquidity</Tab>
           </TabList>
-          <TabPanels>
+          <TabPanels flex={1} overflow="auto">
             <TabPanel p={6}>
               <TraderPosition />
             </TabPanel>

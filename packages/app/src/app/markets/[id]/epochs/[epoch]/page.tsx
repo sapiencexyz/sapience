@@ -24,7 +24,7 @@ import TransactionTable from '~/lib/components/foil/transactionTable';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { MarketProvider } from '~/lib/context/MarketProvider';
 
-const POLLING_INTERVAL = 60000; // Refetch every 60 seconds
+const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
 const Market = ({ params }: { params: { id: string; epoch: string } }) => {
   const [chainId, marketAddress] = params.id.split('%3A');
   const { epoch } = params;
@@ -110,68 +110,73 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
       address={marketAddress}
       epoch={Number(epoch)}
     >
-      <Flex direction="column" alignItems="left" mb={8} w="full" py={8}>
+      <Flex
+        direction="column"
+        w="full"
+        h="calc(100vh - 64px)"
+        overflow="hidden"
+      >
         <PositionsHeader />
-        <Flex
-          width="100%"
-          gap={8}
-          mb={12}
-          flexDirection={{ base: 'column', md: 'row' }}
-        >
-          <Box width={{ base: '100%', md: '66.66%' }} mb={{ base: 6, md: 0 }}>
-            <Chart />
-          </Box>
-          <Box
-            width={{ base: '100%', md: '33.33%' }}
-            maxWidth={{ base: 'none', md: '400px' }}
+        <Flex direction="column" flex={1} overflow="hidden">
+          <Flex
+            gap={8}
+            px={6}
+            flexDirection={{ base: 'column', md: 'row' }}
+            overflow="hidden"
+            flex={1}
           >
-            <MarketSidebar />
-          </Box>
-        </Flex>
-        <Tabs>
-          <Flex justify="space-between" align="center">
-            <TabList w="100%">
-              <Tab>Transactions</Tab>
-              <Tab>Trader Positions</Tab>
-              <Tab>LP Positions</Tab>
-            </TabList>
+            <Box width={{ base: '100%' }} overflow="auto">
+              <Chart />
+            </Box>
+            <Box
+              width={{ base: '100%' }}
+              maxWidth={{ base: 'none', md: '400px' }}
+              pb={8}
+            >
+              <MarketSidebar />
+            </Box>
           </Flex>
-          <TabPanels pt={4}>
-            <TabPanel>
-              <TransactionTable
-                isLoading={isLoadingTransactions}
-                error={useTransactionsError}
-                transactions={transactions}
-                contractId={contractId}
-              />
-            </TabPanel>
-            <TabPanel>
-              <TraderPositionsTable
-                isLoading={isLoadingTradePositions}
-                error={tradePositionsError}
-                positions={tradePositions}
-                contractId={contractId}
-              />
-            </TabPanel>
-            <TabPanel>
-              <LiquidityPositionsTable
-                isLoading={isLoadingLpPositions}
-                error={lpPositionsError}
-                positions={lpPositions}
-                contractId={contractId}
-              />
-            </TabPanel>
-          </TabPanels>
-        </Tabs>
-
-        <Button
-          mt={4}
-          size="sm"
-          onClick={refetchData}
-          leftIcon={<RepeatIcon />}
-        >
-          Refresh
-        </Button>
+          <Flex
+            borderTop="1px solid"
+            borderColor="gray.200"
+            height="172px"
+            pt={1}
+          >
+            <Tabs display="flex" flexDirection="column" width="100%">
+              <TabList>
+                <Tab>Transactions</Tab>
+                <Tab>Trader Positions</Tab>
+                <Tab>LP Positions</Tab>
+              </TabList>
+              <TabPanels flexGrow={1} overflow="auto">
+                <TabPanel>
+                  <TransactionTable
+                    isLoading={isLoadingTransactions}
+                    error={useTransactionsError}
+                    transactions={transactions}
+                    contractId={contractId}
+                  />
+                </TabPanel>
+                <TabPanel>
+                  <TraderPositionsTable
+                    isLoading={isLoadingTradePositions}
+                    error={tradePositionsError}
+                    positions={tradePositions}
+                    contractId={contractId}
+                  />
+                </TabPanel>
+                <TabPanel>
+                  <LiquidityPositionsTable
+                    isLoading={isLoadingLpPositions}
+                    error={lpPositionsError}
+                    positions={lpPositions}
+                    contractId={contractId}
+                  />
+                </TabPanel>
+              </TabPanels>
+            </Tabs>
+          </Flex>
+        </Flex>
       </Flex>
     </MarketProvider>
   );
