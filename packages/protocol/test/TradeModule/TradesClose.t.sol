@@ -98,7 +98,6 @@ contract TradePositionClose is TestTrade {
 
     function test_close_long_loss() public {
         int256 positionSize = 1 ether;
-        console2.log("referencePrice 0: ", foil.getReferencePrice(epochId));
 
         vm.startPrank(trader1);
         // quote and open a long
@@ -107,16 +106,14 @@ contract TradePositionClose is TestTrade {
             positionSize
         );
         // Send more collateral than required, just checking the position can be created/modified
-        uint256 positionId = foil.createTraderPosition(
+        foil.createTraderPosition(
             epochId,
             positionSize,
             requiredCollateral * 2,
             block.timestamp + 30 minutes
         );
         vm.stopPrank();
-        console2.log("referencePrice 1: ", foil.getReferencePrice(epochId));
         movePrice(.1 ether, positionSize * -100, 1000);
-        console2.log("referencePrice 2: ", foil.getReferencePrice(epochId));
     }
 
     function test_close_long_profit() public {}
