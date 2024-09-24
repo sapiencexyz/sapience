@@ -52,7 +52,7 @@ const TransactionTable: React.FC<Props> = ({
       </Box>
     );
   }
-/*
+  /*
   // get chain from market context provider
 
   const txHash = row.event.logData.transactionHash;
@@ -103,15 +103,17 @@ const TransactionTable: React.FC<Props> = ({
                 <NumberDisplay value={row.tradeRatioD18 || 0} />
               </Td>
               <Td>
-                <Link isExternal href={`https://sepolia.etherscan.io/tx/${row.event.logData.transactionHash}`}>
-                <Image 
-                  src="/etherscan.svg" 
-                  alt="Etherscan" 
-                  width={5} 
-                  height={5} 
-                  opacity={0.85}
-
-                />
+                <Link
+                  isExternal
+                  href={`https://sepolia.etherscan.io/tx/${row.event.logData.transactionHash}`}
+                >
+                  <Image
+                    src="/etherscan.svg"
+                    alt="Etherscan"
+                    width={5}
+                    height={5}
+                    opacity={0.85}
+                  />
                 </Link>
               </Td>
             </Tr>

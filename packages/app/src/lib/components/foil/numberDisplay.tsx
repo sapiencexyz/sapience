@@ -34,7 +34,11 @@ const NumberDisplay: React.FC<NumberDisplayProps> = ({ value }) => {
 
   const displayValue = formatNumber(value || 0);
 
-  return displayValue.length ? <Tooltip label={value.toString()}>{displayValue}</Tooltip> : <MinusIcon opacity={0.2} />;
+  return displayValue.length ? (
+    <Tooltip label={value.toString()}>{displayValue}</Tooltip>
+  ) : (
+    <MinusIcon opacity={0.2} />
+  );
 };
 
 export default NumberDisplay;
