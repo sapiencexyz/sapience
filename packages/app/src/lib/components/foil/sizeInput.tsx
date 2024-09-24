@@ -9,11 +9,17 @@ import {
   InputGroup,
   InputRightAddon,
   Button,
+  Text,
 } from '@chakra-ui/react';
+import Quoter from '@uniswap/v3-periphery/artifacts/contracts/lens/Quoter.sol/Quoter.json';
 import type { Dispatch, SetStateAction } from 'react';
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
+import type { ReadContractErrorType } from 'viem';
+import { formatUnits, parseUnits } from 'viem';
+import { useReadContract } from 'wagmi';
 
 import { MarketContext } from '../../context/MarketProvider';
+import { DECIMAL_PRECISION_DISPLAY } from '~/lib/constants/constants';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
 
 interface Props {
@@ -31,7 +37,13 @@ const SizeInput: React.FC<Props> = ({
   originalPositionSize,
   isLong,
 }) => {
-  const { collateralAssetTicker, pool } = useContext(MarketContext);
+  const {
+    collateralAssetTicker,
+    pool,
+    epochParams,
+    collateralAssetDecimals,
+    chainId,
+  } = useContext(MarketContext);
   const [collateralChange, setCollateralChange] = useState<number>(0);
   const [sizeChange, setSizeChange] = useState<number>(0);
   const [isGgasInput, setIsGgasInput] = useState(true);
@@ -48,6 +60,29 @@ const SizeInput: React.FC<Props> = ({
   }, [isLong]);
 
   const handleUpdateInputType = () => setIsGgasInput(!isGgasInput);
+
+  const { data: quotePriceData } = useReadContract({
+    abi: Quoter.abi,
+    address: epochParams.uniswapQuoter,
+    functionName: 'quoteExactInputSingle',
+    args: [
+      pool?.token0.address,
+      pool?.token1.address,
+      pool?.fee,
+      parseUnits(`${Math.abs(sizeChange)}`, collateralAssetDecimals),
+      0,
+    ],
+    chainId,
+    query: {
+      enabled: !!sizeChange && !!pool,
+    },
+  }) as { data: bigint | undefined; error: ReadContractErrorType | null };
+
+  const formattedQuotePrice = useMemo(() => {
+    if (!quotePriceData) return '';
+    const rawNumber = formatUnits(quotePriceData, collateralAssetDecimals);
+    return Number(rawNumber).toFixed(DECIMAL_PRECISION_DISPLAY);
+  }, [quotePriceData, collateralAssetDecimals]);
 
   /**
    * Update size and collateralChange based on the new size input
@@ -121,6 +156,11 @@ const SizeInput: React.FC<Props> = ({
           </InputRightAddon>
         </InputGroup>
       </FormControl>
+      {formattedQuotePrice && (
+        <Text fontSize="sm" color="gray.600" mt={2}>
+          Est. Fill Price: {formattedQuotePrice} vWstEth/vGGas
+        </Text>
+      )}
     </Box>
   );
 };
