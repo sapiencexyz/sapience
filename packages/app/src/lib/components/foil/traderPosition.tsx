@@ -85,6 +85,7 @@ export default function TraderPosition({}) {
   const [slippage, setSlippage] = useState<number>(0.5);
   const [pendingTxn, setPendingTxn] = useState(false);
   const [collateralDelta, setCollateralDelta] = useState<bigint>(BigInt(0));
+  const [quoteError, setQuoteError] = useState<string | null>(null);
 
   const account = useAccount();
   const { isConnected, address } = account;
@@ -189,28 +190,21 @@ export default function TraderPosition({}) {
     query: { enabled: isEdit && size !== originalPositionSize },
   });
 
-  const quoteError = useMemo(() => {
+  useEffect(() => {
     if (
       quoteModifyPositionResult?.error &&
       isEdit &&
       size !== originalPositionSize
     ) {
-      console.log(
-        'quoteModifyPositionResult.error.message:',
-        quoteModifyPositionResult.error.message
-      );
-      return quoteModifyPositionResult.error;
-    }
-    if (quoteCreatePositionResult.error) {
-      console.log(
-        'quoteCreatePositionResult.error.message:',
-        quoteCreatePositionResult.error.message
-      );
-      return quoteCreatePositionResult.error;
+      setQuoteError(quoteModifyPositionResult.error.message);
+    } else if (quoteCreatePositionResult.error && !isEdit) {
+      setQuoteError(quoteCreatePositionResult.error.message);
+    } else {
+      setQuoteError(null);
     }
   }, [
-    quoteCreatePositionResult,
-    quoteModifyPositionResult,
+    quoteCreatePositionResult.error,
+    quoteModifyPositionResult?.error,
     size,
     originalPositionSize,
     isEdit,
@@ -416,10 +410,30 @@ export default function TraderPosition({}) {
         setSize={setSize}
         isLong={isLong}
         positionData={positionData}
+        error={Boolean(quoteError)}
       />
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
+      {isConnected ? (
+        <Button
+          width="full"
+          variant="brand"
+          type="submit"
+          isLoading={pendingTxn || isLoadingCollateralChange}
+          isDisabled={
+            pendingTxn || isLoadingCollateralChange || Boolean(quoteError)
+          }
+          mb={4}
+          size="lg"
+        >
+          {isEdit ? 'Update Position' : 'Create Position'}
+        </Button>
+      ) : (
+        <Button width="full" variant="brand" type="submit" mb={4} size="lg">
+          Connect Wallet
+        </Button>
+      )}
       {!isLoadingCollateralChange && (
-        <Box mb={2} minH="20px">
+        <Box mb={2}>
           <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
             Estimated Wallet Balance Adjustment{' '}
             <Tooltip label="Your slippage tolerance sets a maximum limit on how much additional collateral Foil can use or the minimum amount of collateral you will receive back, protecting you from unexpected market changes between submitting and processing your transaction.">
@@ -436,26 +450,16 @@ export default function TraderPosition({}) {
           </Text>
         </Box>
       )}
-      <Text fontSize="sm" color="gray.600" mb={4}>
-        Size: {originalPositionSize.toFixed(DECIMAL_PRECISION_DISPLAY)} →{' '}
-        {size.toFixed(DECIMAL_PRECISION_DISPLAY)}{' '}
-      </Text>
-      {isConnected ? (
-        <Button
-          width="full"
-          variant="brand"
-          type="submit"
-          isLoading={pendingTxn || isLoadingCollateralChange}
-          isDisabled={
-            pendingTxn || isLoadingCollateralChange || Boolean(quoteError)
-          }
-        >
-          {isEdit ? 'Update Position' : 'Create Position'}
-        </Button>
-      ) : (
-        <Button width="full" variant="brand" type="submit">
-          Connect Wallet
-        </Button>
+      {isEdit && (
+        <Box>
+          <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
+            Position Size
+          </Text>
+          <Text fontSize="sm" color="gray.600" mb={0.5}>
+            <NumberDisplay value={originalPositionSize} /> →{' '}
+            <NumberDisplay value={size} />
+          </Text>
+        </Box>
       )}
     </form>
   );
