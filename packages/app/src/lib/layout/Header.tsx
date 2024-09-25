@@ -7,7 +7,6 @@ import {
   VStack,
   Drawer,
   DrawerBody,
-  DrawerHeader,
   DrawerOverlay,
   DrawerContent,
   DrawerCloseButton,
@@ -36,8 +35,22 @@ const Header = () => {
   const NavLinks = () => (
     <>
       {process.env.NODE_ENV === 'development' && localFoilData?.address && (
+        <Link
+          href={`/markets/13370:${localFoilData.address}/epochs/1/subscribe`}
+        >
+          Local Subscription
+        </Link>
+      )}
+      {process.env.NODE_ENV === 'development' && localFoilData?.address && (
         <Link href={`/markets/13370:${localFoilData.address}/epochs/1`}>
           Local Market
+        </Link>
+      )}
+      {testnetFoilData?.address && (
+        <Link
+          href={`/markets/11155111:${testnetFoilData.address}/epochs/1/subscribe`}
+        >
+          Testnet Subscription
         </Link>
       )}
       {testnetFoilData?.address && (
@@ -80,7 +93,6 @@ const Header = () => {
               <DrawerOverlay />
               <DrawerContent>
                 <DrawerCloseButton />
-                <DrawerHeader>Menu</DrawerHeader>
                 <DrawerBody>
                   <VStack spacing={4} align="stretch">
                     <NavLinks />

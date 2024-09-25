@@ -85,6 +85,10 @@ export default function TraderPosition({}) {
   const [slippage, setSlippage] = useState<number>(0.5);
   const [pendingTxn, setPendingTxn] = useState(false);
   const [collateralDelta, setCollateralDelta] = useState<bigint>(BigInt(0));
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [estimatedFillPrice, setEstimatedFillPrice] = useState<string | null>(
+    null
+  );
 
   const account = useAccount();
   const { isConnected, address } = account;
@@ -189,28 +193,21 @@ export default function TraderPosition({}) {
     query: { enabled: isEdit && size !== originalPositionSize },
   });
 
-  const quoteError = useMemo(() => {
+  useEffect(() => {
     if (
       quoteModifyPositionResult?.error &&
       isEdit &&
       size !== originalPositionSize
     ) {
-      console.log(
-        'quoteModifyPositionResult.error.message:',
-        quoteModifyPositionResult.error.message
-      );
-      return quoteModifyPositionResult.error;
-    }
-    if (quoteCreatePositionResult.error) {
-      console.log(
-        'quoteCreatePositionResult.error.message:',
-        quoteCreatePositionResult.error.message
-      );
-      return quoteCreatePositionResult.error;
+      setQuoteError(quoteModifyPositionResult.error.message);
+    } else if (quoteCreatePositionResult.error && !isEdit) {
+      setQuoteError(quoteCreatePositionResult.error.message);
+    } else {
+      setQuoteError(null);
     }
   }, [
-    quoteCreatePositionResult,
-    quoteModifyPositionResult,
+    quoteCreatePositionResult.error,
+    quoteModifyPositionResult?.error,
     size,
     originalPositionSize,
     isEdit,
@@ -296,6 +293,26 @@ export default function TraderPosition({}) {
       setCollateralDelta(BigInt(0));
     }
   }, [isEdit, quoteCreatePositionResult.data, quoteModifyPositionResult.data]);
+
+  useEffect(() => {
+    const quoteResult = isEdit
+      ? quoteModifyPositionResult.data?.result
+      : quoteCreatePositionResult.data?.result;
+    if (quoteResult !== undefined && size !== 0) {
+      const fillPrice =
+        (quoteResult as unknown as bigint) /
+        BigInt(Math.abs(Math.round(size * 10 ** 18)));
+      setEstimatedFillPrice(formatUnits(fillPrice, collateralAssetDecimals));
+    } else {
+      setEstimatedFillPrice(null);
+    }
+  }, [
+    isEdit,
+    quoteCreatePositionResult.data,
+    quoteModifyPositionResult.data,
+    size,
+    collateralAssetDecimals,
+  ]);
 
   const handleSubmit = (
     e?: React.FormEvent<HTMLFormElement>,
@@ -416,30 +433,9 @@ export default function TraderPosition({}) {
         setSize={setSize}
         isLong={isLong}
         positionData={positionData}
+        error={Boolean(quoteError)}
       />
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
-      {!isLoadingCollateralChange && (
-        <Box mb={2} minH="20px">
-          <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
-            Estimated Wallet Balance Adjustment{' '}
-            <Tooltip label="Your slippage tolerance sets a maximum limit on how much additional collateral Foil can use or the minimum amount of collateral you will receive back, protecting you from unexpected market changes between submitting and processing your transaction.">
-              <QuestionOutlineIcon transform="translateY(-1px)" ml={0.5} />
-            </Tooltip>
-          </Text>
-          <Text fontSize="sm" color="gray.600">
-            <NumberDisplay value={currentBalance} /> {collateralAssetTicker} →{' '}
-            <NumberDisplay value={estimatedNewBalance} />{' '}
-            {collateralAssetTicker} (
-            {collateralDelta >= BigInt(0) ? 'Min.' : 'Max.'}{' '}
-            <NumberDisplay value={minResultingBalance} />{' '}
-            {collateralAssetTicker})
-          </Text>
-        </Box>
-      )}
-      <Text fontSize="sm" color="gray.600" mb={4}>
-        Size: {originalPositionSize.toFixed(DECIMAL_PRECISION_DISPLAY)} →{' '}
-        {size.toFixed(DECIMAL_PRECISION_DISPLAY)}{' '}
-      </Text>
       {isConnected ? (
         <Button
           width="full"
@@ -449,14 +445,58 @@ export default function TraderPosition({}) {
           isDisabled={
             pendingTxn || isLoadingCollateralChange || Boolean(quoteError)
           }
+          mb={4}
+          size="lg"
         >
           {isEdit ? 'Update Position' : 'Create Position'}
         </Button>
       ) : (
-        <Button width="full" variant="brand" type="submit">
+        <Button width="full" variant="brand" type="submit" mb={4} size="lg">
           Connect Wallet
         </Button>
       )}
+      <Flex gap={2} flexDir="column">
+        {!isLoadingCollateralChange && (
+          <Box>
+            <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
+              Estimated Wallet Balance Adjustment{' '}
+              <Tooltip label="Your slippage tolerance sets a maximum limit on how much additional collateral Foil can use or the minimum amount of collateral you will receive back, protecting you from unexpected market changes between submitting and processing your transaction.">
+                <QuestionOutlineIcon transform="translateY(-1px)" ml={0.5} />
+              </Tooltip>
+            </Text>
+            <Text fontSize="sm" color="gray.600">
+              <NumberDisplay value={currentBalance} /> {collateralAssetTicker} →{' '}
+              <NumberDisplay value={estimatedNewBalance} />{' '}
+              {collateralAssetTicker} (
+              {collateralDelta >= BigInt(0) ? 'Min.' : 'Max.'}{' '}
+              <NumberDisplay value={minResultingBalance} />{' '}
+              {collateralAssetTicker})
+            </Text>
+          </Box>
+        )}
+        {isEdit && (
+          <Box>
+            <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
+              Position Size
+            </Text>
+            <Text fontSize="sm" color="gray.600" mb={0.5}>
+              <NumberDisplay value={originalPositionSize} /> vGGas →{' '}
+              <NumberDisplay value={size} /> vGGas
+            </Text>
+          </Box>
+        )}
+        {estimatedFillPrice && (
+          <Box>
+            <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
+              Estimated Fill Price
+            </Text>
+            <Text fontSize="sm" color="gray.600" mb={0.5}>
+              <NumberDisplay value={estimatedFillPrice} />{' '}
+              {collateralAssetTicker}/vGGas
+            </Text>
+          </Box>
+        )}
+      </Flex>
     </form>
   );
 }

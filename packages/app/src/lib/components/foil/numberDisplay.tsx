@@ -28,6 +28,10 @@ const NumberDisplay: React.FC<NumberDisplayProps> = ({ value }) => {
       return 'Invalid number';
     }
 
+    if (Math.abs(numValue) < 0.0001 && numValue !== 0) {
+      return '0.0000';
+    }
+
     const roundedValue = Number(numValue.toFixed(4));
     return roundedValue.toString().replace(/\.?0+$/, '');
   };

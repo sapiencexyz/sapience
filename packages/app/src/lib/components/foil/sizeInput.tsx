@@ -9,7 +9,7 @@ import {
   InputGroup,
   InputRightAddon,
   Button,
-  Text,
+  FormErrorMessage,
 } from '@chakra-ui/react';
 import Quoter from '@uniswap/v3-periphery/artifacts/contracts/lens/Quoter.sol/Quoter.json';
 import type { Dispatch, SetStateAction } from 'react';
@@ -28,6 +28,7 @@ interface Props {
   positionData: FoilPosition;
   originalPositionSize: number;
   isLong: boolean;
+  error: boolean;
 }
 
 const SizeInput: React.FC<Props> = ({
@@ -36,6 +37,7 @@ const SizeInput: React.FC<Props> = ({
   positionData,
   originalPositionSize,
   isLong,
+  error,
 }) => {
   const {
     collateralAssetTicker,
@@ -124,7 +126,7 @@ const SizeInput: React.FC<Props> = ({
 
   return (
     <Box mb={4}>
-      <FormControl mb={4}>
+      <FormControl mb={4} isInvalid={error}>
         <FormLabel>Size {isEdit ? 'Change' : ''}</FormLabel>
         <InputGroup>
           <Input
@@ -152,6 +154,11 @@ const SizeInput: React.FC<Props> = ({
             </Button>
           </InputRightAddon>
         </InputGroup>
+        {error && (
+          <FormErrorMessage>
+            The protocol cannot generate a quote for this order.
+          </FormErrorMessage>
+        )}
       </FormControl>
       <FormControl>
         <InputGroup>
@@ -166,11 +173,6 @@ const SizeInput: React.FC<Props> = ({
           </InputRightAddon>
         </InputGroup>
       </FormControl>
-      {formattedQuotePrice && (
-        <Text fontSize="sm" color="gray.600" mt={2}>
-          Est. Fill Price: {formattedQuotePrice} vWstEth/vGGas
-        </Text>
-      )}
     </Box>
   );
 };
