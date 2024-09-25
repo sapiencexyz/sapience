@@ -9,7 +9,6 @@ import {
   InputGroup,
   InputRightAddon,
   Button,
-  Text,
   FormErrorMessage,
 } from '@chakra-ui/react';
 import Quoter from '@uniswap/v3-periphery/artifacts/contracts/lens/Quoter.sol/Quoter.json';
@@ -174,11 +173,6 @@ const SizeInput: React.FC<Props> = ({
           </InputRightAddon>
         </InputGroup>
       </FormControl>
-      {formattedQuotePrice && (
-        <Text fontSize="sm" color="gray.600" mt={2}>
-          Est. Fill Price: {formattedQuotePrice} vWstEth/vGGas
-        </Text>
-      )}
     </Box>
   );
 };
