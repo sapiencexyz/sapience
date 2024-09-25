@@ -107,7 +107,7 @@ const TraderPositionsTable: React.FC<Props> = ({
                     Ggas
                   </Td>
                   <Td>
-                    <NumberDisplay value={pnl} precision={6} /> wstETH
+                    <NumberDisplay value={pnl} /> wstETH
                   </Td>
                 </Tr>
               );
