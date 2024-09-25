@@ -1,21 +1,25 @@
 'use client';
 
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import {
+  useToast,
+  Text,
+  Heading,
+  FormControl,
+  InputGroup,
+  Input,
+  InputRightAddon,
+  FormErrorMessage,
   Flex,
   Box,
   Button,
-  Text,
-  useToast,
-  Tooltip,
-  Heading,
-  FormControl,
-  Input,
-  InputGroup,
-  InputRightAddon,
-  FormErrorMessage,
 } from '@chakra-ui/react';
-import { useState, useEffect, useContext } from 'react';
+import {
+  type FC,
+  type FormEvent,
+  useState,
+  useEffect,
+  useContext,
+} from 'react';
 import React from 'react';
 import type { AbiFunction, WriteContractErrorType } from 'viem';
 import { formatUnits, parseUnits } from 'viem';
@@ -37,9 +41,8 @@ import { MarketContext } from '~/lib/context/MarketProvider';
 import { renderContractErrorToast, renderToast } from '~/lib/util/util';
 
 import NumberDisplay from './numberDisplay';
-import SizeInput from './sizeInput';
 
-export default function Subscribe({}) {
+const Subscribe: FC = () => {
   const [size, setSize] = useState<number>(0);
   const slippage = 0.5;
   const [pendingTxn, setPendingTxn] = useState(false);
@@ -203,10 +206,7 @@ export default function Subscribe({}) {
     }
   }, [quoteCreatePositionResult.data, size, collateralAssetDecimals]);
 
-  const handleSubmit = (
-    e?: React.FormEvent<HTMLFormElement>,
-    approved?: boolean
-  ) => {
+  const handleSubmit = (e?: FormEvent<HTMLFormElement>, approved?: boolean) => {
     if (e) e.preventDefault();
     setPendingTxn(true);
     setIsLoading(true);
@@ -362,4 +362,6 @@ export default function Subscribe({}) {
       )}
     </form>
   );
-}
+};
+
+export default Subscribe;
