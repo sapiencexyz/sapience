@@ -54,8 +54,8 @@ const LiquidityPositionsTable: React.FC<Props> = ({
             <Th>Quote Token</Th>
             {/* <Th>Net Position</Th> */}
             {/* <Th>Gain/Loss</Th> */}
-            <Th>High Price</Th>
             <Th>Low Price</Th>
+            <Th>High Price</Th>
             {/* <Th>Unclaimed Fees</Th> */}
           </Tr>
         </Thead>
@@ -79,15 +79,13 @@ const LiquidityPositionsTable: React.FC<Props> = ({
                 <Td>
                   <NumberDisplay value={row.quoteToken} /> wstETH
                 </Td>
-                {/* <Td>TODO</Td> */}
-                {/* <Td>{row.profitLoss.toString()}</Td> */}
-                <Td>
-                  <NumberDisplay value={row.highPrice} /> Ggas/wstETH
-                </Td>
                 <Td>
                   <NumberDisplay value={row.lowPrice} /> Ggas/wstETH
                 </Td>
-                {/* <Td>{row.unclaimedFees.toString()}</Td> */}
+                <Td>
+                  <NumberDisplay value={row.highPrice} /> Ggas/wstETH
+                </Td>
+                {/* <Td>{row.profitLoss.toString()}</Td> */}
               </Tr>
             ))}
         </Tbody>

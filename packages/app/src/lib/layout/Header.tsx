@@ -7,7 +7,6 @@ import {
   VStack,
   Drawer,
   DrawerBody,
-  DrawerHeader,
   DrawerOverlay,
   DrawerContent,
   DrawerCloseButton,
@@ -80,7 +79,6 @@ const Header = () => {
               <DrawerOverlay />
               <DrawerContent>
                 <DrawerCloseButton />
-                <DrawerHeader>Menu</DrawerHeader>
                 <DrawerBody>
                   <VStack spacing={4} align="stretch">
                     <NavLinks />
