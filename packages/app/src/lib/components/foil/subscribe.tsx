@@ -16,7 +16,7 @@ import {
   FormErrorMessage,
 } from '@chakra-ui/react';
 import { useState, useEffect, useContext } from 'react';
-import type React, { useMemo } from 'react';
+import React from 'react';
 import type { AbiFunction, WriteContractErrorType } from 'viem';
 import { formatUnits, parseUnits } from 'viem';
 import {
@@ -32,11 +32,8 @@ import {
   calculateCollateralDeltaLimit,
   getMinResultBalance,
 } from '../../util/tradeUtil';
-import { DECIMAL_PRECISION_DISPLAY } from '~/lib/constants/constants';
 import { useLoading } from '~/lib/context/LoadingContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
-import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';
-import type { FoilPosition } from '~/lib/interfaces/interfaces';
 import { renderContractErrorToast, renderToast } from '~/lib/util/util';
 
 import NumberDisplay from './numberDisplay';
