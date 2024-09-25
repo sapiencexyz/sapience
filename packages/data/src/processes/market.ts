@@ -231,6 +231,14 @@ const handleEventUpsert = async (
     throw new Error(`No epochs found for market ${market.address}`);
   }
 
+  // process market settled events
+  if (logData.eventName === "MarketSettled") {
+    console.log("Market settled event: ", logData);
+    epoch.settled = true;
+    epoch.settlementPriceD18 = logData.args.settlementPriceD18;
+    await epochRepository.save(epoch);
+  }
+
   // check if event has already been processed
   const existingEvent = await eventRepository.findOne({
     where: {
@@ -277,9 +285,6 @@ const createOrUpdateMarketFromEvent = async (
   let market = originalMarket || new Market();
   market.chainId = chainId;
   market.address = address;
-  market.optimisticOracleV3 = eventArgs.optimisticOracleV3;
-  market.uniswapPositionManager = eventArgs.uniswapPositionManager;
-  market.uniswapSwapRouter = eventArgs.uniswapSwapRouter;
   if (eventArgs.collateralAsset) {
     market.collateralAsset = eventArgs.collateralAsset;
   }
@@ -291,6 +296,10 @@ const createOrUpdateMarketFromEvent = async (
     bondCurrency: eventArgs?.epochParams?.bondCurrency,
     bondAmount: eventArgs?.epochParams?.bondAmount.toString(),
     priceUnit: eventArgs?.epochParams?.priceUnit,
+    uniswapPositionManager: eventArgs?.epochParams?.uniswapPositionManager,
+    uniswapSwapRouter: eventArgs?.epochParams?.uniswapSwapRouter,
+    uniswapQuoter: eventArgs?.epochParams?.uniswapQuoter,
+    optimisticOracleV3: eventArgs?.epochParams?.optimisticOracleV3,
   };
   const newMarket = await marketRepository.save(market);
   return newMarket;

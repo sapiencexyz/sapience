@@ -9,7 +9,10 @@ import {Market} from "../storage/Market.sol";
 import {IUMASettlementModule} from "../interfaces/IUMASettlementModule.sol";
 import {OptimisticOracleV3Interface} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 
-contract UMASettlementModule is IUMASettlementModule, ReentrancyGuardUpgradeable {
+contract UMASettlementModule is
+    IUMASettlementModule,
+    ReentrancyGuardUpgradeable
+{
     using SafeERC20 for IERC20;
     using Epoch for Epoch.Data;
 
@@ -23,8 +26,9 @@ contract UMASettlementModule is IUMASettlementModule, ReentrancyGuardUpgradeable
         validateSubmission(epoch, market, msg.sender);
 
         IERC20 bondCurrency = IERC20(epoch.params.bondCurrency);
-        OptimisticOracleV3Interface optimisticOracleV3 = OptimisticOracleV3Interface(epoch.params
-            .optimisticOracleV3);
+        OptimisticOracleV3Interface optimisticOracleV3 = OptimisticOracleV3Interface(
+                epoch.params.optimisticOracleV3
+            );
 
         bondCurrency.safeTransferFrom(
             msg.sender,
@@ -96,7 +100,9 @@ contract UMASettlementModule is IUMASettlementModule, ReentrancyGuardUpgradeable
         }
     }
 
-    function assertionDisputedCallback(bytes32 assertionId) external nonReentrant {
+    function assertionDisputedCallback(
+        bytes32 assertionId
+    ) external nonReentrant {
         Market.Data storage market = Market.load();
         uint256 epochId = market.epochIdByAssertionId[assertionId];
         Epoch.Data storage epoch = Epoch.load(epochId);
@@ -110,8 +116,8 @@ contract UMASettlementModule is IUMASettlementModule, ReentrancyGuardUpgradeable
     }
 
     function validateSubmission(
-        Epoch.Data storage epoch, 
-        Market.Data storage market, 
+        Epoch.Data storage epoch,
+        Market.Data storage market,
         address caller
     ) internal view {
         require(
@@ -119,10 +125,7 @@ contract UMASettlementModule is IUMASettlementModule, ReentrancyGuardUpgradeable
             "Market epoch activity is still allowed"
         );
         require(!epoch.settled, "Market epoch already settled");
-        require(
-            caller == market.owner,
-            "Only owner can call this function"
-        );
+        require(caller == market.owner, "Only owner can call this function");
     }
 
     function validateCallback(
@@ -130,18 +133,16 @@ contract UMASettlementModule is IUMASettlementModule, ReentrancyGuardUpgradeable
         address caller,
         bytes32 assertionId
     ) internal view {
-        OptimisticOracleV3Interface optimisticOracleV3 = OptimisticOracleV3Interface(epoch.params
-            .optimisticOracleV3);
+        OptimisticOracleV3Interface optimisticOracleV3 = OptimisticOracleV3Interface(
+                epoch.params.optimisticOracleV3
+            );
 
         require(
             block.timestamp > epoch.endTime,
             "Market epoch activity is still allowed"
         );
         require(!epoch.settled, "Market epoch already settled");
-        require(
-            caller == address(optimisticOracleV3),
-            "Invalid caller"
-        );
+        require(caller == address(optimisticOracleV3), "Invalid caller");
         require(assertionId == epoch.assertionId, "Invalid assertionId");
     }
 }

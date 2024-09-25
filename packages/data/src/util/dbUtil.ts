@@ -382,12 +382,15 @@ export const createEpochFromEvent = async (
       market: { address: market.address, chainId: market.chainId },
     },
   });
+
   const newEpoch = existingEpoch || new Epoch();
   newEpoch.epochId = Number(eventArgs.epochId);
   newEpoch.market = market;
   newEpoch.startTimestamp = eventArgs.startTime;
   newEpoch.endTimestamp = eventArgs.endTime;
   newEpoch.startingSqrtPriceX96 = eventArgs.startingSqrtPriceX96;
+  newEpoch.epochParams = market.epochParams;
+
   const epoch = await epochRepository.save(newEpoch);
   return epoch;
 };
