@@ -188,11 +188,12 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
             // 3. Confirm collateral is enough to pay for borrowed veth
             if (position.borrowedVEth > 0) {
-                uint256 collateralRequired = position.getRequiredCollateral();
-                if (collateralRequired > position.depositedCollateralAmount) {
+                if (
+                    position.borrowedVEth > position.depositedCollateralAmount
+                ) {
                     // Notice. This error should not happen. If it's here it means something went wrong
                     revert Errors.InsufficientCollateral(
-                        collateralRequired,
+                        position.borrowedVEth,
                         position.depositedCollateralAmount
                     );
                 }
