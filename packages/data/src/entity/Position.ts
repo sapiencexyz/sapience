@@ -68,13 +68,6 @@ export class Position {
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
   collateral: string; // ETH
 
-  @Column({
-    type: "numeric",
-    precision: TOKEN_PRECISION, // Total number of significant digits
-    scale: DECIMAL_SCALE, // Number of digits after the decimal point
-  })
-  profitLoss: string; // ETH  will calculate off chain, start at 0
-
   @Column()
   isLP: boolean; // true for event name
 

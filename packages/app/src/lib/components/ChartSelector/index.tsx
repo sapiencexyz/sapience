@@ -7,7 +7,6 @@ import {
   MenuList,
   MenuItem,
   Icon,
-  useColorModeValue,
 } from '@chakra-ui/react';
 import { useState } from 'react';
 import type React from 'react';
@@ -26,14 +25,6 @@ const ChartSelector: React.FC<CustomDropdownProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  //   const bg = useColorModeValue('gray.800', 'gray.800');
-  //   const hoverBg = useColorModeValue('gray.700', 'gray.700');
-  //   const textColor = useColorModeValue('white', 'white');
-
-  const bg = useColorModeValue('gray.200', 'gray.700');
-  const selectedBg = useColorModeValue('gray.300', 'gray.600');
-  const hoverBg = useColorModeValue('gray.250', 'gray.650');
-
   const handleSelect = (option: ChartType) => {
     setChartType(option);
     setIsOpen(false);
@@ -44,24 +35,22 @@ const ChartSelector: React.FC<CustomDropdownProps> = ({
       <MenuButton
         as={Button}
         rightIcon={isOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
-        bg={bg}
-        //  color={textColor}
-        _hover={{ bg: hoverBg }}
-        _active={{ bg: hoverBg }}
+        bg="gray.100"
+        _hover={{ bg: 'gray.200' }}
+        _active={{ bg: 'gray.200' }}
         onClick={() => setIsOpen(!isOpen)}
         borderRadius="full"
-        px={4}
-        py={2}
+        size="sm"
       >
         {chartType}
       </MenuButton>
-      <MenuList bg={bg} borderColor={hoverBg} borderWidth={1}>
+      <MenuList bg="gray.100" borderColor="gray.200" borderWidth={1}>
         {Object.values(ChartType).map((option) => (
           <MenuItem
             key={option}
             onClick={() => handleSelect(option as ChartType)}
-            bg={bg}
-            _hover={{ bgColor: selectedBg }}
+            bg="gray.100"
+            _hover={{ bg: 'gray.200' }}
           >
             <Box
               display="flex"
@@ -71,7 +60,7 @@ const ChartSelector: React.FC<CustomDropdownProps> = ({
               fontWeight={option === chartType ? 'bold' : 'normal'}
             >
               {option}
-              {option === chartType && <Icon as={CheckIcon} color="black" />}
+              {option === chartType && <Icon as={CheckIcon} />}
             </Box>
           </MenuItem>
         ))}

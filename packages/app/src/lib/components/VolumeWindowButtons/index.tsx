@@ -1,4 +1,4 @@
-import { Button, ButtonGroup, useColorModeValue } from '@chakra-ui/react';
+import { Button, ButtonGroup } from '@chakra-ui/react';
 import type React from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 
@@ -13,10 +13,6 @@ const VolumeWindowSelector: React.FC<VolumeWindowSelectorProps> = ({
   setSelectedWindow,
   selectedWindow,
 }) => {
-  const bg = useColorModeValue('gray.200', 'gray.700');
-  const selectedBg = useColorModeValue('gray.300', 'gray.600');
-  const hoverBg = useColorModeValue('gray.250', 'gray.650');
-
   const handleSelect = (window: VolumeWindow) => {
     setSelectedWindow(window);
   };
@@ -27,15 +23,14 @@ const VolumeWindowSelector: React.FC<VolumeWindowSelectorProps> = ({
       isAttached
       variant="outline"
       borderRadius="full"
-      bg={bg}
-      p={1}
+      bg="gray.100"
     >
       {Object.values(VolumeWindow).map((window) => (
         <Button
           key={window}
           onClick={() => handleSelect(window)}
-          bg={selectedWindow === window ? selectedBg : 'transparent'}
-          _hover={{ bg: hoverBg }}
+          bg={selectedWindow === window ? 'gray.200' : 'transparent'}
+          _hover={{ bg: 'gray.250' }}
           borderRadius="full"
           fontWeight={selectedWindow === window ? 'bold' : 'normal'}
         >

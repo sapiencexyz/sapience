@@ -1,3 +1,4 @@
+import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import {
   TableContainer,
   Table,
@@ -9,8 +10,12 @@ import {
   Link,
   Box,
   Spinner,
+  Tooltip,
 } from '@chakra-ui/react';
 import type React from 'react';
+import { useContext } from 'react';
+
+import { MarketContext } from '../../context/MarketProvider';
 
 import NumberDisplay from './numberDisplay';
 
@@ -26,6 +31,8 @@ const TraderPositionsTable: React.FC<Props> = ({
   positions,
   contractId,
 }) => {
+  const { pool } = useContext(MarketContext);
+
   if (isLoading) {
     return (
       <Box textAlign="center" py={12}>
@@ -42,6 +49,25 @@ const TraderPositionsTable: React.FC<Props> = ({
     );
   }
 
+  const calculatePnL = (position: any) => {
+    const vEthToken = parseFloat(position.quoteToken);
+    const borrowedVEth = parseFloat(position.borrowedQuoteToken);
+    const vGasToken = parseFloat(position.baseToken);
+    const borrowedVGas = parseFloat(position.borrowedBaseToken);
+    const marketPrice = parseFloat(pool?.token0Price?.toSignificant(18) || '0');
+
+    console.log(
+      position,
+      vEthToken,
+      borrowedVEth,
+      vGasToken,
+      borrowedVGas,
+      marketPrice
+    );
+
+    return vEthToken - borrowedVEth + (vGasToken - borrowedVGas) * marketPrice;
+  };
+
   return (
     <TableContainer mb={4}>
       <Table variant="simple" size="sm">
@@ -50,30 +76,42 @@ const TraderPositionsTable: React.FC<Props> = ({
             <Th>Position</Th>
             <Th>Collateral</Th>
             <Th>Size</Th>
+            <Th>
+              Profit/Loss{' '}
+              <Tooltip label="This is an estimate that does not take into account slippage or fees.">
+                <QuestionOutlineIcon transform="translateY(-1px)" />
+              </Tooltip>
+            </Th>
           </Tr>
         </Thead>
         <Tbody>
           {positions &&
-            positions.map((row: any) => (
-              <Tr key={row.id}>
-                <Td>
-                  <Link
-                    href={`/markets/${contractId}/positions/${row.positionId}`}
-                  >
-                    #{row.positionId.toString()}
-                  </Link>
-                </Td>
-                <Td>
-                  <NumberDisplay value={row.collateral} /> wstETH
-                </Td>
-                <Td>
-                  <NumberDisplay
-                    value={row.baseToken - row.borrowedBaseToken}
-                  />{' '}
-                  Ggas
-                </Td>
-              </Tr>
-            ))}
+            positions.map((row: any) => {
+              const pnl = calculatePnL(row);
+              return (
+                <Tr key={row.id}>
+                  <Td>
+                    <Link
+                      href={`/markets/${contractId}/positions/${row.positionId}`}
+                    >
+                      #{row.positionId.toString()}
+                    </Link>
+                  </Td>
+                  <Td>
+                    <NumberDisplay value={row.collateral} /> wstETH
+                  </Td>
+                  <Td>
+                    <NumberDisplay
+                      value={row.baseToken - row.borrowedBaseToken}
+                    />{' '}
+                    Ggas
+                  </Td>
+                  <Td>
+                    <NumberDisplay value={pnl} precision={6} /> wstETH
+                  </Td>
+                </Tr>
+              );
+            })}
         </Tbody>
       </Table>
     </TableContainer>
