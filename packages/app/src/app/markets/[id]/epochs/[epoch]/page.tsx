@@ -10,25 +10,37 @@ import {
   TabPanel,
   TabPanels,
   Tabs,
+  HStack,
 } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 
+import BarChart from '~/lib/components/BarChart';
+import { data } from '~/lib/components/BarChart/mockData';
 import Chart from '~/lib/components/chart';
+import ChartSelector from '~/lib/components/ChartSelector';
 import EpochHeader from '~/lib/components/foil/epochHeader';
 import LiquidityPositionsTable from '~/lib/components/foil/liquidityPositionsTable';
 import MarketSidebar from '~/lib/components/foil/marketSidebar';
 import Stats from '~/lib/components/foil/stats';
 import TraderPositionsTable from '~/lib/components/foil/traderPositionsTable';
 import TransactionTable from '~/lib/components/foil/transactionTable';
+import VolumeWindowSelector from '~/lib/components/VolumeWindowButtons';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { MarketProvider } from '~/lib/context/MarketProvider';
+import { ChartType, VolumeWindow } from '~/lib/interfaces/interfaces';
 
 const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
+
 const Market = ({ params }: { params: { id: string; epoch: string } }) => {
+  const [selectedWindow, setSelectedWindow] = useState<VolumeWindow>(
+    VolumeWindow.D
+  );
+  const [chartType, setChartType] = useState<ChartType>(ChartType.PRICE);
+
   const [chainId, marketAddress] = params.id.split('%3A');
   const { epoch } = params;
   const contractId = `${chainId}:${marketAddress}`;
-
   const useTransactions = () => {
     return useQuery({
       queryKey: ['transactions', contractId, epoch],
@@ -108,20 +120,36 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
         overflow="hidden"
       >
         <EpochHeader />
-        <Flex direction="column" flex={1} overflow="hidden">
+        <Flex direction="column" flex={1} overflow="scroll">
           <Flex
             direction="column"
             flex={1}
-            overflow="hidden"
+            overflow="scroll"
             px={6}
             gap={8}
             flexDirection={{ base: 'column', md: 'row' }}
           >
             <Flex direction="column" w="100%" h="100%">
               <Stats />
-              <Box flex={1} overflow="hidden">
+              <HStack
+                justifyContent="space-between"
+                width="100%"
+                justify="center"
+              >
+                <VolumeWindowSelector
+                  selectedWindow={selectedWindow}
+                  setSelectedWindow={setSelectedWindow}
+                />
+                <ChartSelector
+                  chartType={chartType}
+                  setChartType={setChartType}
+                />
+              </HStack>
+              {chartType === 'Price' ? (
                 <Chart />
-              </Box>
+              ) : (
+                <BarChart data={data} activeWindow={selectedWindow} />
+              )}
             </Flex>
             <Box
               width={{ base: '100%' }}

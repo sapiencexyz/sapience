@@ -40,3 +40,15 @@ export interface EpochParams {
   uniswapQuoter: `0x${string}`;
   uniswapSwapRouter: `0x${string}`;
 }
+export enum VolumeWindow {
+  H = '1H',
+  D = '1D',
+  W = '1W',
+  M = '1M',
+  Y = '1Y',
+}
+
+export enum ChartType {
+  VOLUME = 'Volume',
+  PRICE = 'Price',
+}

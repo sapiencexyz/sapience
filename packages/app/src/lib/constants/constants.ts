@@ -8,6 +8,8 @@ export const API_BASE_URL =
     ? 'http://localhost:3001'
     : 'https://api.foil.xyz';
 
+export const DEFAULT_CHART_HEIGHT = 300;
+
 export const BLANK_MARKET: MarketContextType = {
   chain: undefined,
   address: '',
