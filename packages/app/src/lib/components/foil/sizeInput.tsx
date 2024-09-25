@@ -61,17 +61,27 @@ const SizeInput: React.FC<Props> = ({
 
   const handleUpdateInputType = () => setIsGgasInput(!isGgasInput);
 
+  const longQuoteArgs = [
+    pool?.token1.address, // tokenIn -> GWeiToken/QuoteToken
+    pool?.token0.address, // tokenOut -> GasToken/BaseToken
+    pool?.fee,
+    parseUnits(`${sizeChange}`, collateralAssetDecimals),
+    0,
+  ];
+  const shortQuoteArgs = [
+    pool?.token0.address, // tokenIn -> GasToken/BaseToken
+    pool?.token1.address, // tokenOut -> GWeiToken/QuoteToken
+    pool?.fee,
+    parseUnits(`${sizeChange}`, collateralAssetDecimals),
+    0,
+  ];
+  const quoteArgs = isLong ? longQuoteArgs : shortQuoteArgs;
+
   const { data: quotePriceData } = useReadContract({
     abi: Quoter.abi,
     address: epochParams.uniswapQuoter,
-    functionName: 'quoteExactInputSingle',
-    args: [
-      pool?.token0.address,
-      pool?.token1.address,
-      pool?.fee,
-      parseUnits(`${Math.abs(sizeChange)}`, collateralAssetDecimals),
-      0,
-    ],
+    functionName: isLong ? 'quoteExactOutputSingle' : 'quoteExactInputSingle',
+    args: quoteArgs,
     chainId,
     query: {
       enabled: !!sizeChange && !!pool,
