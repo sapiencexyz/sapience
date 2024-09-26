@@ -35,9 +35,6 @@ artifact="UMASettlementModule"
 [deploy.TradeModule]
 artifact="TradeModule"
 
-[deploy.TradeViewsModule]
-artifact="TradeViewsModule"
-
 [deploy.NftModule]
 artifact="NftModule"
 
@@ -59,7 +56,6 @@ contracts=[
   "LiquidityModule",
   "UMASettlementModule",
   "TradeModule",
-  "TradeViewsModule",
   "NftModule",
   "ViewsModule",
   "ERC165Module",
