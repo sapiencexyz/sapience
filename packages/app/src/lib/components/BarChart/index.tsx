@@ -1,4 +1,4 @@
-import { Box, Text } from '@chakra-ui/react';
+import { Box, Flex, Text } from '@chakra-ui/react';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import {
@@ -18,7 +18,6 @@ import {
   YAxis,
 } from 'recharts';
 
-import { DEFAULT_CHART_HEIGHT } from '~/lib/constants/constants';
 import { VolumeWindow } from '~/lib/interfaces/interfaces';
 import { formatAmount } from '~/lib/util/numberUtil';
 
@@ -28,16 +27,7 @@ export type LineChartProps = {
   data: any[];
   color?: string | undefined;
   height?: number | undefined;
-  minHeight?: number;
-  // setValue: Dispatch<SetStateAction<number | undefined>>; // used for value on hover
-  // setLabel: Dispatch<SetStateAction<string | undefined>>; // used for label of valye
-  // value?: number;
-  // label?: string;
   activeWindow?: VolumeWindow;
-  topLeft?: ReactNode | undefined;
-  topRight?: ReactNode | undefined;
-  bottomLeft?: ReactNode | undefined;
-  bottomRight?: ReactNode | undefined;
 } & React.HTMLAttributes<HTMLDivElement>;
 
 interface CustomTooltipProps {
@@ -90,17 +80,7 @@ const CustomTooltip: React.FC<
   );
 };
 
-const Chart = ({
-  data,
-  color = '#56B2A4',
-  activeWindow,
-  topLeft,
-  topRight,
-  bottomLeft,
-  bottomRight,
-  minHeight = DEFAULT_CHART_HEIGHT,
-  ...rest
-}: LineChartProps) => {
+const Chart = ({ data, color = '#56B2A4', activeWindow }: LineChartProps) => {
   const [value, setValue] = useState<number | undefined>();
   const [label, setLabel] = useState<string | undefined>();
 
@@ -110,21 +90,30 @@ const Chart = ({
   };
 
   return (
-    <Box minH={minHeight} {...rest} mt={5}>
-      <Box minH="50px">
+    <Flex flex={1} position="relative">
+      <Box
+        minH="50px"
+        w="fit-content"
+        position="absolute"
+        top={0}
+        left={0}
+        zIndex={2}
+        bgColor="white"
+        opacity={0.8}
+      >
         <Text> {value ? `${value.toLocaleString()}` : ''}</Text>
         <Text> {label ? `${label}` : ''}</Text>
       </Box>
 
-      <ResponsiveContainer width="100%" height="100%" minHeight={minHeight}>
+      <ResponsiveContainer width="100%" height="100%">
         <BarChart
           width={500}
           height={300}
           data={data}
           margin={{
-            top: 5,
-            right: 30,
-            left: 20,
+            top: 50,
+            right: 10,
+            left: 10,
             bottom: 5,
           }}
           onMouseLeave={() => {
@@ -160,7 +149,7 @@ const Chart = ({
           <Bar dataKey="value" fill={color} shape={renderCustomBar} />
         </BarChart>
       </ResponsiveContainer>
-    </Box>
+    </Flex>
   );
 };
 

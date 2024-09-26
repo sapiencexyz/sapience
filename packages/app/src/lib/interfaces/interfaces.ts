@@ -49,6 +49,7 @@ export enum VolumeWindow {
 }
 
 export enum ChartType {
-  VOLUME = 'Volume',
   PRICE = 'Price',
+  VOLUME = 'Volume',
+  LIQUIDITY = 'Liquidity',
 }

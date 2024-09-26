@@ -1,4 +1,3 @@
-import { Box } from '@chakra-ui/react';
 import { format } from 'date-fns';
 import type React from 'react';
 import { useContext, useEffect, useRef, useState, useMemo } from 'react';
@@ -12,7 +11,6 @@ import {
   ReferenceLine,
 } from 'recharts';
 
-import { DEFAULT_CHART_HEIGHT } from '../constants/constants';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import { colors } from '~/lib/styles/theme/colors';
 
@@ -87,7 +85,7 @@ const CandlestickChart: React.FC = () => {
   const updateChartDimensions = () => {
     if (chartRef.current) {
       const parentElement = (chartRef.current as any).container;
-      const gridElement = parentElement.querySelector(
+      const gridElement = parentElement?.querySelector(
         '.recharts-cartesian-grid'
       );
 
@@ -145,26 +143,24 @@ const CandlestickChart: React.FC = () => {
   }, []);
 
   return (
-    <Box mt={5}>
-      <ResponsiveContainer
-        height="100%"
-        width="100%"
-        minHeight={DEFAULT_CHART_HEIGHT}
+    <ResponsiveContainer height="95%" width="100%">
+      <ComposedChart
+        data={prices}
+        ref={chartRef}
+        margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
       >
-        <ComposedChart data={prices} ref={chartRef}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="date" tickFormatter={formatXAxisTick} />
-          <YAxis domain={yAxisDomain} tickFormatter={formatYAxisTick} />
-          <Bar dataKey="candles" shape={renderShape} />
-          <ReferenceLine
-            y={averagePrice}
-            label="Average Price"
-            stroke={grayColor}
-            strokeDasharray="3 3"
-          />
-        </ComposedChart>
-      </ResponsiveContainer>
-    </Box>
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="date" tickFormatter={formatXAxisTick} />
+        <YAxis domain={yAxisDomain} tickFormatter={formatYAxisTick} />
+        <Bar dataKey="candles" shape={renderShape} />
+        <ReferenceLine
+          y={averagePrice}
+          label="Average Price"
+          stroke={grayColor}
+          strokeDasharray="3 3"
+        />
+      </ComposedChart>
+    </ResponsiveContainer>
   );
 };
 

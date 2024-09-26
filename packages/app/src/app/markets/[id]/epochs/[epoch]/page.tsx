@@ -120,21 +120,37 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
         overflow="hidden"
       >
         <EpochHeader />
-        <Flex direction="column" flex={1} overflow="scroll">
+        <Flex direction="column" flex={1} overflow="hidden">
           <Flex
             direction="column"
             flex={1}
-            overflow="scroll"
+            overflow="hidden"
             px={6}
             gap={8}
             flexDirection={{ base: 'column', md: 'row' }}
           >
-            <Flex direction="column" w="100%" h="100%">
+            <Flex
+              direction="column"
+              w="100%"
+              h="100%"
+              overflow="hidden"
+              id="chart-stat-flex"
+            >
               <Stats />
+              <Flex flex={1}>
+                {chartType === 'Price' ? (
+                  <Chart />
+                ) : (
+                  <BarChart data={data} activeWindow={selectedWindow} />
+                )}
+              </Flex>
+
               <HStack
                 justifyContent="space-between"
                 width="100%"
                 justify="center"
+                mt={1}
+                mb={3}
               >
                 <VolumeWindowSelector
                   selectedWindow={selectedWindow}
@@ -145,11 +161,6 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
                   setChartType={setChartType}
                 />
               </HStack>
-              {chartType === 'Price' ? (
-                <Chart />
-              ) : (
-                <BarChart data={data} activeWindow={selectedWindow} />
-              )}
             </Flex>
             <Box
               width={{ base: '100%' }}
