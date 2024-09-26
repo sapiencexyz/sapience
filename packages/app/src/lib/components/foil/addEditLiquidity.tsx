@@ -765,11 +765,6 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
             <InputRightAddon>{collateralAssetTicker}</InputRightAddon>
           </InputGroup>
         </FormControl>
-        {isFetching && (
-          <Text fontSize="small" fontStyle="italic">
-            Fetching token amounts...
-          </Text>
-        )}
       </Box>
       <FormControl mb={4}>
         <FormLabel>Low Price</FormLabel>
@@ -856,8 +851,8 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
           width="full"
           variant="brand"
           type="submit"
-          isLoading={pendingTxn}
-          isDisabled={pendingTxn}
+          isLoading={pendingTxn || isFetching}
+          isDisabled={pendingTxn || isFetching}
         >
           {getButtonText()}
         </Button>
