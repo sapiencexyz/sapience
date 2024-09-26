@@ -33,7 +33,7 @@ export class Event {
   blockNumber: string;
 
   @Column({ type: "bigint" })
-  timestamp: string;
+  timestamp: string; //In seconds
 
   @Column()
   logIndex: number;

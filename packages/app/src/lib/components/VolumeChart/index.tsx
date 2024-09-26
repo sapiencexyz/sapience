@@ -1,12 +1,7 @@
 import { Box, Flex, Text } from '@chakra-ui/react';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
-import {
-  type Dispatch,
-  type SetStateAction,
-  type ReactNode,
-  useState,
-} from 'react';
+import { type Dispatch, type SetStateAction, useEffect, useState } from 'react';
 import type React from 'react';
 import type { TooltipProps } from 'recharts';
 import {
@@ -18,13 +13,14 @@ import {
   YAxis,
 } from 'recharts';
 
+import type { VolumeChartData } from '~/lib/interfaces/interfaces';
 import { VolumeWindow } from '~/lib/interfaces/interfaces';
 import { formatAmount } from '~/lib/util/numberUtil';
 
 dayjs.extend(utc);
 
-export type LineChartProps = {
-  data: any[];
+export type ChartProps = {
+  data: VolumeChartData[];
   color?: string | undefined;
   height?: number | undefined;
   activeWindow?: VolumeWindow;
@@ -60,13 +56,23 @@ const CustomBar = ({
 const CustomTooltip: React.FC<
   TooltipProps<number, string> & CustomTooltipProps
 > = ({ payload, setValue, setLabel }) => {
-  if (!payload || !payload[0]) return null;
-  const fee = payload?.[0]?.payload?.fee;
-  const timestamp = payload[0].payload.timestamp * 1000;
+  useEffect(() => {
+    if (payload && payload[0]) {
+      const start = payload[0].payload.startTimestamp;
+      const end = payload[0].payload.endTimestamp;
+      const startFormatted = dayjs(start).format('MMM D, h:mm A');
+      const endFormatted = dayjs(end).format('MMM D, h:mm A');
 
-  setValue(payload[0].value || 0);
-  setLabel(dayjs(timestamp).format('MMM D, YYYY, h:mm A'));
+      setValue(payload[0].payload.volume || 0);
+      setLabel(`${startFormatted} - ${endFormatted}`);
+    }
+  }, [payload, setLabel, setValue]);
+
+  if (!payload || !payload[0]) return null;
+
+  const fee = payload?.[0]?.payload?.fee;
   if (!fee) return null;
+
   return (
     <div
       style={{
@@ -80,13 +86,42 @@ const CustomTooltip: React.FC<
   );
 };
 
-const Chart = ({ data, color = '#56B2A4', activeWindow }: LineChartProps) => {
+const VolumeChart = ({ data, color = '#56B2A4', activeWindow }: ChartProps) => {
   const [value, setValue] = useState<number | undefined>();
   const [label, setLabel] = useState<string | undefined>();
 
   const renderCustomBar = (props: any) => {
     const { x, y, width, height } = props;
     return <CustomBar x={x} y={y} width={width} height={height} fill={color} />;
+  };
+
+  const formatXAxis = (timestamp: number) => {
+    const date = dayjs(timestamp);
+    if (activeWindow === VolumeWindow.D || activeWindow === VolumeWindow.H) {
+      // For daily or hourly view, return the time
+      return date.format('hh:mm A');
+    }
+    // For other views, return the date
+    return date.format('MMM DD');
+  };
+
+  const getXTicksToShow = (data: VolumeChartData[]) => {
+    if (activeWindow === VolumeWindow.W) {
+      // For weekly view, show only one tick per day
+      const uniqueDays = new Set();
+      return data
+        .filter((item) => {
+          const day = dayjs(item.endTimestamp).startOf('day').valueOf();
+          if (!uniqueDays.has(day)) {
+            uniqueDays.add(day);
+            return true;
+          }
+          return false;
+        })
+        .map((item) => item.endTimestamp);
+    }
+    // For other views, show all ticks
+    return undefined;
   };
 
   return (
@@ -130,27 +165,22 @@ const Chart = ({ data, color = '#56B2A4', activeWindow }: LineChartProps) => {
             }
           />
           <XAxis
-            dataKey="timestamp"
+            dataKey="endTimestamp"
             axisLine={false}
             tickLine={false}
-            tickFormatter={(time) => {
-              const date = dayjs(time * 1000);
-              return activeWindow === VolumeWindow.D ||
-                activeWindow === VolumeWindow.H
-                ? date.format('hh:mm A')
-                : date.format('MMM DD');
-            }}
+            tickFormatter={formatXAxis}
+            ticks={getXTicksToShow(data)}
             minTickGap={10}
           />
           <Tooltip
             contentStyle={{}}
             content={<CustomTooltip setLabel={setLabel} setValue={setValue} />}
           />
-          <Bar dataKey="value" fill={color} shape={renderCustomBar} />
+          <Bar dataKey="volume" fill={color} shape={renderCustomBar} />
         </BarChart>
       </ResponsiveContainer>
     </Flex>
   );
 };
 
-export default Chart;
+export default VolumeChart;

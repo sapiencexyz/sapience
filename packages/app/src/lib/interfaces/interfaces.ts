@@ -53,3 +53,9 @@ export enum ChartType {
   VOLUME = 'Volume',
   LIQUIDITY = 'Liquidity',
 }
+
+export interface VolumeChartData {
+  startTimestamp: number;
+  endTimestamp: number;
+  volume: number;
+}

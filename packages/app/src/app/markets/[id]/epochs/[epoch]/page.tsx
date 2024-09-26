@@ -13,10 +13,8 @@ import {
   HStack,
 } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
-import BarChart from '~/lib/components/BarChart';
-import { data } from '~/lib/components/BarChart/mockData';
 import Chart from '~/lib/components/chart';
 import ChartSelector from '~/lib/components/ChartSelector';
 import EpochHeader from '~/lib/components/foil/epochHeader';
@@ -25,6 +23,7 @@ import MarketSidebar from '~/lib/components/foil/marketSidebar';
 import Stats from '~/lib/components/foil/stats';
 import TraderPositionsTable from '~/lib/components/foil/traderPositionsTable';
 import TransactionTable from '~/lib/components/foil/transactionTable';
+import VolumeChart from '~/lib/components/VolumeChart';
 import VolumeWindowSelector from '~/lib/components/VolumeWindowButtons';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { MarketProvider } from '~/lib/context/MarketProvider';
@@ -36,11 +35,12 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
   const [selectedWindow, setSelectedWindow] = useState<VolumeWindow>(
     VolumeWindow.D
   );
-  const [chartType, setChartType] = useState<ChartType>(ChartType.PRICE);
+  const [chartType, setChartType] = useState<ChartType>(ChartType.VOLUME);
 
   const [chainId, marketAddress] = params.id.split('%3A');
   const { epoch } = params;
   const contractId = `${chainId}:${marketAddress}`;
+
   const useTransactions = () => {
     return useQuery({
       queryKey: ['transactions', contractId, epoch],
@@ -56,6 +56,44 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
       refetchInterval: POLLING_INTERVAL,
     });
   };
+
+  const useVolume = () => {
+    return useQuery({
+      queryKey: ['volume', contractId, epoch],
+      queryFn: async () => {
+        const response = await fetch(
+          `${API_BASE_URL}/volume?contractId=${contractId}&epochId=${epoch}&timeWindow=${selectedWindow}`
+        );
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      },
+    });
+  };
+
+  const {
+    data: volume,
+    error: useVolumeError,
+    isLoading: isLoadingVolume,
+    refetch: refetchVolume,
+  } = useVolume();
+
+  useEffect(() => {
+    refetchVolume();
+  }, [selectedWindow]);
+
+  useEffect(() => {
+    console.log('...isLoadingVolume', isLoadingVolume);
+    if (useVolumeError) {
+      console.error('useVolumeError =', useVolumeError);
+    }
+
+    if (volume) {
+      console.log('volume =', volume);
+    }
+  }, [volume, useVolumeError, isLoadingVolume]);
+
   const {
     data: transactions,
     error: useTransactionsError,
@@ -141,7 +179,7 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
                 {chartType === 'Price' ? (
                   <Chart />
                 ) : (
-                  <BarChart data={data} activeWindow={selectedWindow} />
+                  <VolumeChart data={volume} activeWindow={selectedWindow} />
                 )}
               </Flex>
 

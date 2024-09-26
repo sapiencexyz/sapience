@@ -314,7 +314,7 @@ export default function TraderPosition({}) {
     collateralAssetDecimals,
   ]);
 
-  const handleSubmit = (
+  const handleSubmit = async (
     e?: React.FormEvent<HTMLFormElement>,
     approved?: boolean
   ) => {
@@ -342,6 +342,10 @@ export default function TraderPosition({}) {
     // Set deadline to 30 minutes from now
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
 
+    if (!allowance) {
+      console.log('refetching  allowance...');
+      await refetchAllowance();
+    }
     if (
       !approved &&
       allowance &&

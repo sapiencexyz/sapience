@@ -87,3 +87,11 @@ export interface ContractDeployment {
   address: string;
   abi: Abi;
 }
+
+export enum VolumeWindow {
+  H = "1H",
+  D = "1D",
+  W = "1W",
+  M = "1M",
+  Y = "1Y",
+}

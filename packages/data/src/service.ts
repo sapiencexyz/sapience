@@ -12,6 +12,12 @@ import { MarketPrice } from "./entity/MarketPrice";
 import { formatUnits } from "viem";
 import { formatDbBigInt } from "./util/dbUtil";
 import { TOKEN_PRECISION } from "./constants";
+import {
+  getStartTimestampFromVolumeWindow,
+  getTransactionsInTimeRange,
+  groupTransactionsByTimeWindow,
+} from "./util/transactionUtil";
+import { VolumeWindow } from "./interfaces/interfaces";
 
 const PORT = 3001;
 
@@ -331,6 +337,58 @@ const startServer = async () => {
         transaction.tradeRatioD18 = formatDbBigInt(transaction.tradeRatioD18);
       }
       res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/volume", async (req, res) => {
+    const { timeWindow, contractId, epochId } = req.query;
+
+    if (
+      typeof contractId !== "string" ||
+      typeof timeWindow !== "string" ||
+      typeof epochId !== "string"
+    ) {
+      return res.status(400).json({ error: "Invalid request parameters" });
+    }
+    const [chainId, address] = contractId.split(":");
+
+    try {
+      const endTimestamp = Math.floor(Date.now() / 1000);
+      const startTimestamp = getStartTimestampFromVolumeWindow(
+        timeWindow as VolumeWindow
+      );
+      const transactions = await getTransactionsInTimeRange(
+        startTimestamp,
+        endTimestamp,
+        chainId,
+        address
+      );
+      const groupedTransactions = groupTransactionsByTimeWindow(
+        transactions,
+        timeWindow as VolumeWindow
+      );
+
+      const volume = groupedTransactions.map((group) => {
+        return {
+          startTimestamp: group.startTimestamp,
+          endTimestamp: group.endTimestamp,
+          volume: group.transactions.reduce((sum, transaction) => {
+            // Convert baseTokenDelta to BigNumber and get its absolute value
+            const absBaseTokenDelta = Math.abs(
+              parseFloat(
+                formatUnits(BigInt(transaction.baseTokenDelta), TOKEN_PRECISION)
+              )
+            );
+
+            // Add to the sum
+            return sum + absBaseTokenDelta;
+          }, 0),
+        };
+      });
+      res.json(volume);
     } catch (error) {
       console.error("Error fetching transactions:", error);
       res.status(500).json({ error: "Internal server error" });
