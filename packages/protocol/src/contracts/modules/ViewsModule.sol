@@ -3,6 +3,7 @@ pragma solidity >=0.8.25 <0.9.0;
 
 import "../storage/Epoch.sol";
 import "../storage/Position.sol";
+import "../storage/Trade.sol";
 import "../interfaces/IViewsModule.sol";
 import "../interfaces/IFoilStructs.sol";
 
@@ -112,5 +113,27 @@ contract ViewsModule is IViewsModule {
     ) external view override returns (int256) {
         Position.Data storage position = Position.load(positionId);
         return position.positionSize();
+    }
+
+    /**
+     * @inheritdoc IViewsModule
+     */
+    function getSqrtPriceX96(
+        uint256 epochId
+    ) external view override returns (uint160 sqrtPriceX96) {
+        Epoch.Data storage epoch = Epoch.load(epochId);
+
+        if (!epoch.settled) {
+            (sqrtPriceX96, , , , , , ) = epoch.pool.slot0();
+        }
+    }
+
+    /**
+     * @inheritdoc IViewsModule
+     */
+    function getReferencePrice(
+        uint256 epochId
+    ) external view override returns (uint256 price18Digits) {
+        return Trade.getReferencePrice(epochId);
     }
 }

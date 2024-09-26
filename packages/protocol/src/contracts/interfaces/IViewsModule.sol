@@ -54,4 +54,22 @@ interface IViewsModule {
     ) external returns (Position.Data memory);
 
     function getPositionSize(uint256 positionId) external returns (int256);
+
+    /**
+     * @notice Gets the current reference price
+     * @param epochId id of the epoch to get the reference price
+     * @return sqrtPriceX96 the pool's current sqrt price or zero if the epoch is settled
+     */
+    function getSqrtPriceX96(
+        uint256 epochId
+    ) external view returns (uint160 sqrtPriceX96);
+
+    /**
+     * @notice Gets the current reference price
+     * @param epochId id of the epoch to get the reference price
+     * @return price18Digits the reference price in 18 digits
+     */
+    function getReferencePrice(
+        uint256 epochId
+    ) external view returns (uint256 price18Digits);
 }
