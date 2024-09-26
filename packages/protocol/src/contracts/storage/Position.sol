@@ -137,17 +137,27 @@ library Position {
         Data storage self,
         Epoch.Data storage epoch,
         UpdateLpParams memory params
-    ) internal returns (uint256 requiredCollateral) {
+    )
+        internal
+        returns (
+            uint256 requiredCollateral,
+            uint256 loanAmount0,
+            uint256 loanAmount1
+        )
+    {
         self.kind = IFoilStructs.PositionKind.Liquidity;
         self.epochId = epoch.id;
         self.uniswapPositionId = params.uniswapNftId;
         self.borrowedVGas += params.additionalLoanAmount0;
         self.borrowedVEth += params.additionalLoanAmount1;
 
+        loanAmount0 = self.borrowedVGas;
+        loanAmount1 = self.borrowedVEth;
+
         requiredCollateral = epoch.requiredCollateralForLiquidity(
             params.liquidity,
-            self.borrowedVGas, // as loanAmount0
-            self.borrowedVEth, // as loanAmount1
+            loanAmount0,
+            loanAmount1,
             params.tokensOwed0,
             params.tokensOwed1,
             TickMath.getSqrtRatioAtTick(params.lowerTick),

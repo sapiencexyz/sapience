@@ -21,8 +21,10 @@ interface ILiquidityModule {
         uint256 indexed positionId,
         uint256 collateralAmount,
         uint128 liquidity,
-        uint256 amount0,
-        uint256 amount1
+        uint256 decreasedAmount0,
+        uint256 decreasedAmount1,
+        uint256 loanAmount0,
+        uint256 loanAmount1
     );
 
     event LiquidityPositionIncreased(
@@ -30,8 +32,10 @@ interface ILiquidityModule {
         uint256 indexed positionId,
         uint256 collateralAmount,
         uint128 liquidity,
-        uint256 amount0,
-        uint256 amount1
+        uint256 increasedAmount0,
+        uint256 increasedAmount1,
+        uint256 loanAmount0,
+        uint256 loanAmount1
     );
 
     event LiquidityPositionClosed(
