@@ -36,7 +36,7 @@ const startServer = async () => {
       } else if (
         origin &&
         (/^https?:\/\/([a-zA-Z0-9-]+\.)*foil\.xyz$/.test(origin) ||
-         /^https?:\/\/localhost(:\d+)?$/.test(origin)) // so noah can test against prod locally
+          /^https?:\/\/localhost(:\d+)?$/.test(origin)) // so noah can test against prod locally
       ) {
         callback(null, true);
       } else {
@@ -233,7 +233,6 @@ const startServer = async () => {
           position.borrowedQuoteToken
         );
         position.collateral = formatDbBigInt(position.collateral);
-        position.profitLoss = formatDbBigInt(position.profitLoss);
         position.unclaimedFees = formatDbBigInt(position.unclaimedFees);
       }
       res.json(positions);
@@ -244,15 +243,15 @@ const startServer = async () => {
   });
 
   // Get a single position by positionId
-  app.get('/positions/:positionId', async (req, res) => {
+  app.get("/positions/:positionId", async (req, res) => {
     const { positionId } = req.params;
     const { contractId } = req.query;
 
-    if (typeof positionId !== 'string' || typeof contractId !== 'string') {
-      return res.status(400).json({ error: 'Invalid parameters' });
+    if (typeof positionId !== "string" || typeof contractId !== "string") {
+      return res.status(400).json({ error: "Invalid parameters" });
     }
 
-    const [chainId, address] = contractId.split(':');
+    const [chainId, address] = contractId.split(":");
 
     try {
       const market = await marketRepository.findOne({
@@ -260,7 +259,7 @@ const startServer = async () => {
       });
 
       if (!market) {
-        return res.status(404).json({ error: 'Market not found' });
+        return res.status(404).json({ error: "Market not found" });
       }
 
       const position = await positionRepository.findOne({
@@ -268,11 +267,11 @@ const startServer = async () => {
           positionId: Number(positionId),
           epoch: { market: { id: market.id } },
         },
-        relations: ['epoch', 'epoch.market'],
+        relations: ["epoch", "epoch.market"],
       });
 
       if (!position) {
-        return res.status(404).json({ error: 'Position not found' });
+        return res.status(404).json({ error: "Position not found" });
       }
 
       // Format the data
@@ -281,13 +280,12 @@ const startServer = async () => {
       position.borrowedBaseToken = formatDbBigInt(position.borrowedBaseToken);
       position.borrowedQuoteToken = formatDbBigInt(position.borrowedQuoteToken);
       position.collateral = formatDbBigInt(position.collateral);
-      position.profitLoss = formatDbBigInt(position.profitLoss);
       position.unclaimedFees = formatDbBigInt(position.unclaimedFees);
 
       res.json(position);
     } catch (error) {
-      console.error('Error fetching position:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      console.error("Error fetching position:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 
@@ -314,9 +312,11 @@ const startServer = async () => {
       }
 
       if (positionId) {
-        queryBuilder.andWhere("position.positionId = :positionId", { positionId });
+        queryBuilder.andWhere("position.positionId = :positionId", {
+          positionId,
+        });
       }
-      
+
       const transactions = await queryBuilder.getMany();
 
       // format data

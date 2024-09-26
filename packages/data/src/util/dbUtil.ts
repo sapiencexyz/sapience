@@ -131,7 +131,6 @@ export const createOrModifyPosition = async (transaction: Transaction) => {
     position.lowPrice = tickToPrice(eventArgs.lowerTick).toString();
   }
   position.epoch = transaction.event.epoch;
-  position.profitLoss = "0"; //TODO
   position.unclaimedFees = "0"; //TODO
   position.transactions = position.transactions || [];
   position.transactions.push(transaction);
