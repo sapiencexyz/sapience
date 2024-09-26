@@ -1,5 +1,5 @@
 {
-  "address": "0x9020eC9EFb925dc83EB1b7D6782aE4840f67117A",
+  "address": "0xC206d19b5E4845117bbA7c178Fcf48B79c907Ce1",
   "abi": [
     {
       "type": "function",
@@ -413,6 +413,44 @@
       "stateMutability": "view"
     },
     {
+      "type": "function",
+      "name": "getReferencePrice",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "price18Digits",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getSqrtPriceX96",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "sqrtPriceX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
       "type": "error",
       "name": "NoEpochsCreated",
       "inputs": []
@@ -425,12 +463,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x24a41c96135c2438580f4224d59ca1092253ea054fed8a47ec6ef2deec46a8dd",
-  "deployTxnBlockNumber": "6728611",
-  "deployTimestamp": "1726855860",
+  "deployTxnHash": "0xb72fbbe1be3c268d65847fe4ba67b26cbe2d9f8cdc0e5cfddab8883ab176977b",
+  "deployTxnBlockNumber": "6763772",
+  "deployTimestamp": "1727363688",
   "sourceName": "src/contracts/modules/ViewsModule.sol",
   "contractName": "ViewsModule",
   "deployedOn": "deploy.ViewsModule",
-  "gasUsed": 797235,
-  "gasCost": "14958169063"
+  "gasUsed": 965855,
+  "gasCost": "435430990176"
 }

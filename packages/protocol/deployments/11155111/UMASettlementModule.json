@@ -1,5 +1,5 @@
 {
-  "address": "0x9db8205F80deF7a381AFBA0cdf86b34234ceD326",
+  "address": "0xF9a8F6f33221424409c8903c4c9C6058570cc732",
   "abi": [
     {
       "type": "function",
@@ -199,12 +199,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xc95c2cdbfdc0f2f042812f2c21aa556f7c627262a1e4bd95a8210d7428fdd2f2",
-  "deployTxnBlockNumber": "6728610",
-  "deployTimestamp": "1726855848",
+  "deployTxnHash": "0x3d8e0600770586ddf4a180dfcc155439eff88056333fb045165c12e7b6406fc5",
+  "deployTxnBlockNumber": "6763758",
+  "deployTimestamp": "1727363496",
   "sourceName": "src/contracts/modules/UMASettlementModule.sol",
   "contractName": "UMASettlementModule",
   "deployedOn": "deploy.UMASettlementModule",
   "gasUsed": 817853,
-  "gasCost": "14303405956"
+  "gasCost": "459547013656"
 }

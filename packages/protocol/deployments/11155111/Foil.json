@@ -1,5 +1,5 @@
 {
-  "address": "0x5b1f30741d453e9976b49a61b4a91a46e8f62cfa",
+  "address": "0x2a4729fee62a6aafbc64e4974861fe3d53ac035d",
   "abi": [
     {
       "type": "constructor",
@@ -768,12 +768,12 @@
       ],
       "outputs": [
         {
-          "name": "amount0",
+          "name": "decreasedAmount0",
           "type": "uint256",
           "internalType": "uint256"
         },
         {
-          "name": "amount1",
+          "name": "decreasedAmount1",
           "type": "uint256",
           "internalType": "uint256"
         },
@@ -1055,13 +1055,25 @@
           "internalType": "uint128"
         },
         {
-          "name": "amount0",
+          "name": "decreasedAmount0",
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
         },
         {
-          "name": "amount1",
+          "name": "decreasedAmount1",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "loanAmount0",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "loanAmount1",
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
@@ -1098,13 +1110,25 @@
           "internalType": "uint128"
         },
         {
-          "name": "amount0",
+          "name": "increasedAmount0",
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
         },
         {
-          "name": "amount1",
+          "name": "increasedAmount1",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "loanAmount0",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "loanAmount1",
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
@@ -1738,25 +1762,6 @@
           "internalType": "uint160"
         }
       ]
-    },
-    {
-      "type": "function",
-      "name": "getReferencePrice",
-      "inputs": [
-        {
-          "name": "epochId",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "price18Digits",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "stateMutability": "view"
     },
     {
       "type": "constructor",
@@ -2588,6 +2593,44 @@
       "stateMutability": "view"
     },
     {
+      "type": "function",
+      "name": "getReferencePrice",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "price18Digits",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getSqrtPriceX96",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "sqrtPriceX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
       "type": "error",
       "name": "NoEpochsCreated",
       "inputs": []
@@ -2651,12 +2694,12 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0x38da9d8bf9042a4e2b8999cf0b2dbc7123e5f28b2a98dc00d2cd7f581407a5dd",
-  "deployTxnBlockNumber": "6728652",
-  "deployTimestamp": "1726856436",
+  "deployTxnHash": "0xa532ef288c024b528fb4ff77411661f88ec09e3994cffd4332fdbd60be0950c5",
+  "deployTxnBlockNumber": "6763774",
+  "deployTimestamp": "1727363724",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
   "highlight": true,
-  "gasUsed": 513583,
-  "gasCost": "16368410407"
+  "gasUsed": 522100,
+  "gasCost": "508678765508"
 }

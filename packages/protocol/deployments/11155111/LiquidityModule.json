@@ -1,5 +1,5 @@
 {
-  "address": "0x0bAcD680f2006773d6A3A17C9df002e6C7deDf56",
+  "address": "0x92727289fCbc12F1a8bAe1E0Efb341059B0152Ab",
   "abi": [
     {
       "type": "function",
@@ -131,12 +131,12 @@
       ],
       "outputs": [
         {
-          "name": "amount0",
+          "name": "decreasedAmount0",
           "type": "uint256",
           "internalType": "uint256"
         },
         {
-          "name": "amount1",
+          "name": "decreasedAmount1",
           "type": "uint256",
           "internalType": "uint256"
         },
@@ -431,13 +431,25 @@
           "internalType": "uint128"
         },
         {
-          "name": "amount0",
+          "name": "decreasedAmount0",
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
         },
         {
-          "name": "amount1",
+          "name": "decreasedAmount1",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "loanAmount0",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "loanAmount1",
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
@@ -474,13 +486,25 @@
           "internalType": "uint128"
         },
         {
-          "name": "amount0",
+          "name": "increasedAmount0",
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
         },
         {
-          "name": "amount1",
+          "name": "increasedAmount1",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "loanAmount0",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "loanAmount1",
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
@@ -716,12 +740,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x22e3f3e08ca9b676934c95b9a99837c354afed3f87e13a2321c070bdc00191f6",
-  "deployTxnBlockNumber": "6728604",
-  "deployTimestamp": "1726855740",
+  "deployTxnHash": "0x327c250417ff33ec0c71216d8595060af21e6ca0b4e9655da2548f24dcfe56f0",
+  "deployTxnBlockNumber": "6763754",
+  "deployTimestamp": "1727363424",
   "sourceName": "src/contracts/modules/LiquidityModule.sol",
   "contractName": "LiquidityModule",
   "deployedOn": "deploy.LiquidityModule",
-  "gasUsed": 3038757,
-  "gasCost": "12831089246"
+  "gasUsed": 3057266,
+  "gasCost": "415615213274"
 }
