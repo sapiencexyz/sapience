@@ -24,6 +24,21 @@ interface Props {
   contractId: string;
 }
 
+const getTypeDisplay = (type: string) => {
+  switch (type) {
+    case 'long':
+      return 'Long';
+    case 'short':
+      return 'Short';
+    case 'addLiquidity':
+      return 'Add Liquidity';
+    case 'removeLiquidity':
+      return 'Remove Liquidity';
+    default:
+      return type;
+  }
+};
+
 const TransactionTable: React.FC<Props> = ({
   isLoading,
   error,
@@ -52,13 +67,7 @@ const TransactionTable: React.FC<Props> = ({
       </Box>
     );
   }
-  /*
-  // get chain from market context provider
 
-  const txHash = row.event.logData.transactionHash;
-  // get transaction link from etherscan, use viem chains to find the blocker explorer url
-  const txLink = `${chain?.blockExplorers?.default.url}/tx/${txHash}`;
-*/
   return (
     <TableContainer mb={4}>
       <Table variant="simple" size="sm">
@@ -85,11 +94,12 @@ const TransactionTable: React.FC<Props> = ({
               <Td>
                 <Link
                   href={`/markets/${contractId}/positions/${row.position.positionId}`}
+                  textDecoration="underline"
                 >
                   #{row.position.positionId}
                 </Link>
               </Td>
-              <Td>{row.type}</Td>
+              <Td>{getTypeDisplay(row.type)}</Td>
               <Td>
                 <NumberDisplay value={row.collateralDelta} />
               </Td>
