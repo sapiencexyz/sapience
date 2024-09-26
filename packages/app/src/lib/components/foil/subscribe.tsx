@@ -196,7 +196,7 @@ const Subscribe: FC = () => {
       stEthPerToken
     ) {
       const fillPrice =
-        (quoteCreatePositionResult.data.result as bigint) /
+        BigInt(quoteCreatePositionResult.data.result[0] || 0) /
         BigInt(Math.floor(size));
       const fillPriceInEth =
         Number(formatUnits(fillPrice, collateralAssetDecimals)) * stEthPerToken;
