@@ -20,14 +20,14 @@ const SubscribePage = ({
       address={marketAddress}
       epoch={Number(epoch)}
     >
-      <Flex w="100%" py={6}>
+      <Flex w="100%" p={6}>
         <Box
           m="auto"
           border="1px solid"
           borderColor="gray.300"
           borderRadius="md"
           p={6}
-          maxWidth="480px"
+          maxWidth="432px"
         >
           <Subscribe />
         </Box>

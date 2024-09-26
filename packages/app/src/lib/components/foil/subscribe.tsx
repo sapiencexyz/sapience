@@ -1,5 +1,6 @@
 'use client';
 
+import { InfoOutlineIcon } from '@chakra-ui/icons';
 import {
   useToast,
   Text,
@@ -12,6 +13,7 @@ import {
   Flex,
   Box,
   Button,
+  Tooltip,
 } from '@chakra-ui/react';
 import {
   type FC,
@@ -295,10 +297,15 @@ const Subscribe: FC = () => {
         Ethereum Gas Subscription
       </Heading>
       <Text mb={4}>
-        Enter an amount of gas you expect to use between {formattedStartTime}{' '}
-        and {formattedEndTime}. If the average gas price in this time exceeds
+        Enter the amount of gas you expect to use between {formattedStartTime}{' '}
+        and {formattedEndTime}.{' '}
+        <Tooltip
+          label="If the average gas price in this time exceeds
         the quote you’re provided, you will be able to redeem a rebate from Foil
-        at the end of this period.
+        at the end of this period."
+        >
+          <InfoOutlineIcon opacity={0.7} transform="translateY(-2.5px)" />
+        </Tooltip>
       </Text>
       <FormControl mb={4} isInvalid={Boolean(quoteError)}>
         <InputGroup>
@@ -319,28 +326,21 @@ const Subscribe: FC = () => {
         )}
       </FormControl>
 
-      <Flex gap={4} flexDir="row" w="100%" mb={4}>
-        <Box w="100%">
-          <Text color="gray.600" fontWeight="semibold" mb={0.5}>
-            Quote
-          </Text>
-          <Text color="gray.600" mb={0.5}>
-            <NumberDisplay value={estimatedFillPrice || 0} />{' '}
-            {collateralAssetTicker}/vGGas
-          </Text>
-        </Box>
-        <Box w="100%">
-          <Text color="gray.600" fontWeight="semibold" mb={0.5}>
-            Cost (Max)
-          </Text>
-          <Text color="gray.600">
-            <NumberDisplay
-              value={formatUnits(collateralDelta, collateralAssetDecimals)}
-            />{' '}
-            {collateralAssetTicker}
-          </Text>
-        </Box>
-      </Flex>
+      <Box bg="gray.50" p={5} borderRadius="md" mb={4}>
+        <Text color="gray.600" fontWeight="semibold" mb={1}>
+          Quote
+        </Text>
+        <Text fontSize="lg" display="inline-block" mr={3}>
+          <NumberDisplay
+            value={formatUnits(collateralDelta, collateralAssetDecimals)}
+          />{' '}
+          {collateralAssetTicker}
+        </Text>
+        <Text fontSize="sm" display="inline-block" color="gray.600" mb={0.5}>
+          <NumberDisplay value={estimatedFillPrice || 0} />{' '}
+          {collateralAssetTicker}/vGGas
+        </Text>
+      </Box>
 
       {isConnected ? (
         <Button
