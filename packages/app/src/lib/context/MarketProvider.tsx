@@ -50,6 +50,7 @@ export interface MarketContextType {
   liquidity: number;
   owner: string;
   refetchUniswapData: () => void;
+  stEthPerToken: number | undefined;
 }
 
 interface MarketProviderProps {
@@ -184,12 +185,15 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
 
   useEffect(() => {
     if (price && stEthPerTokenResult.data) {
-      const stEthPerToken = gweiToEther(stEthPerTokenResult.data as bigint);
-      const averageIndexPriceinWstEth = price.average / Number(stEthPerToken);
+      const stEthPerToken = Number(
+        gweiToEther(stEthPerTokenResult.data as bigint)
+      );
+      const averageIndexPriceinWstEth = price.average / stEthPerToken;
 
       setState((currentState) => ({
         ...currentState,
         averagePrice: averageIndexPriceinWstEth,
+        stEthPerToken, // This is now a number
       }));
     }
   }, [price, stEthPerTokenResult.data]);
