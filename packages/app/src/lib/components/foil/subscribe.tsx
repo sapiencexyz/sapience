@@ -196,11 +196,11 @@ const Subscribe: FC = () => {
       stEthPerToken
     ) {
       const fillPrice =
-        BigInt(quoteCreatePositionResult.data.result[0] || 0) /
+        BigInt(quoteCreatePositionResult.data?.result as unknown as bigint) /
         BigInt(Math.floor(size));
       const fillPriceInEth =
         Number(formatUnits(fillPrice, collateralAssetDecimals)) * stEthPerToken;
-      setEstimatedFillPrice(fillPriceInEth.toFixed(9));
+      setEstimatedFillPrice(fillPriceInEth.toString());
     } else {
       setEstimatedFillPrice(null);
     }
@@ -285,6 +285,8 @@ const Subscribe: FC = () => {
     const newSize = parseFloat(newVal || '0');
     setSize(newSize);
   };
+
+  console.log('stEthPerToken', stEthPerToken);
 
   return (
     <form onSubmit={handleSubmit}>

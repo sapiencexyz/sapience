@@ -184,16 +184,26 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
   });
 
   useEffect(() => {
+    if (stEthPerTokenResult.data) {
+      setState((currentState) => ({
+        ...currentState,
+        stEthPerToken: Number(gweiToEther(stEthPerTokenResult.data as bigint)),
+      }));
+    }
+  }, [stEthPerTokenResult.data]);
+
+  useEffect(() => {
     if (price && stEthPerTokenResult.data) {
       const stEthPerToken = Number(
         gweiToEther(stEthPerTokenResult.data as bigint)
       );
+
       const averageIndexPriceinWstEth = price.average / stEthPerToken;
 
       setState((currentState) => ({
         ...currentState,
         averagePrice: averageIndexPriceinWstEth,
-        stEthPerToken, // This is now a number
+        stEthPerToken,
       }));
     }
   }, [price, stEthPerTokenResult.data]);
