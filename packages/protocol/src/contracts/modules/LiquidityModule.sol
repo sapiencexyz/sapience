@@ -72,7 +72,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 })
             );
 
-        collateralAmount = position.updateValidLp(
+        (collateralAmount, , ) = position.updateValidLp(
             epoch,
             Position.UpdateLpParams({
                 uniswapNftId: uniswapNftId,
@@ -122,7 +122,11 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         external
         override
         nonReentrant
-        returns (uint256 amount0, uint256 amount1, uint256 collateralAmount)
+        returns (
+            uint256 decreasedAmount0,
+            uint256 decreasedAmount1,
+            uint256 collateralAmount
+        )
     {
         require(block.timestamp <= params.deadline, "Transaction too old");
 
@@ -151,9 +155,12 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 deadline: block.timestamp
             });
 
-        (amount0, amount1) = INonfungiblePositionManager(
+        (decreasedAmount0, decreasedAmount1) = INonfungiblePositionManager(
             epoch.params.uniswapPositionManager
         ).decreaseLiquidity(stack.decreaseParams);
+
+        uint256 loanAmount0;
+        uint256 loanAmount1;
 
         if (params.liquidity == stack.previousLiquidity) {
             return _closeLiquidityPosition(market, position);
@@ -175,20 +182,21 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             ) = INonfungiblePositionManager(epoch.params.uniswapPositionManager)
                 .positions(position.uniswapPositionId);
 
-            collateralAmount = position.updateValidLp(
-                epoch,
-                Position.UpdateLpParams({
-                    uniswapNftId: position.uniswapPositionId,
-                    liquidity: stack.previousLiquidity - params.liquidity,
-                    additionalCollateral: 0,
-                    additionalLoanAmount0: 0, // tokensOwed0 represents the returned tokens
-                    additionalLoanAmount1: 0, // tokensOwed1 represents the returned tokens
-                    lowerTick: stack.lowerTick,
-                    upperTick: stack.upperTick,
-                    tokensOwed0: stack.tokensOwed0,
-                    tokensOwed1: stack.tokensOwed1
-                })
-            );
+            (collateralAmount, loanAmount0, loanAmount1) = position
+                .updateValidLp(
+                    epoch,
+                    Position.UpdateLpParams({
+                        uniswapNftId: position.uniswapPositionId,
+                        liquidity: stack.previousLiquidity - params.liquidity,
+                        additionalCollateral: 0,
+                        additionalLoanAmount0: 0, // tokensOwed0 represents the returned tokens
+                        additionalLoanAmount1: 0, // tokensOwed1 represents the returned tokens
+                        lowerTick: stack.lowerTick,
+                        upperTick: stack.upperTick,
+                        tokensOwed0: stack.tokensOwed0,
+                        tokensOwed1: stack.tokensOwed1
+                    })
+                );
         }
 
         emit LiquidityPositionDecreased(
@@ -196,8 +204,10 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             position.id,
             position.depositedCollateralAmount,
             params.liquidity,
-            amount0,
-            amount1
+            decreasedAmount0,
+            decreasedAmount1,
+            loanAmount0,
+            loanAmount1
         );
     }
 
@@ -263,7 +273,10 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         ) = INonfungiblePositionManager(epoch.params.uniswapPositionManager)
             .positions(position.uniswapPositionId);
 
-        collateralAmount = position.updateValidLp(
+        uint256 loanAmount0;
+        uint256 loanAmount1;
+
+        (collateralAmount, loanAmount0, loanAmount1) = position.updateValidLp(
             epoch,
             Position.UpdateLpParams({
                 uniswapNftId: position.uniswapPositionId,
@@ -284,7 +297,9 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             position.depositedCollateralAmount,
             liquidity,
             amount0,
-            amount1
+            amount1,
+            loanAmount0,
+            loanAmount1
         );
     }
 
