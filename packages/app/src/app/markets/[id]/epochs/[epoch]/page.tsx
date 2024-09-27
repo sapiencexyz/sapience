@@ -173,8 +173,11 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
               overflow="hidden"
               id="chart-stat-flex"
             >
-              <Stats />
-              <Flex flex={1}>
+              <Box flexShrink={0}>
+                <Stats />
+              </Box>
+
+              <Flex flex={1} id="chart-flex" minHeight={0}>
                 {chartType === 'Price' ? (
                   <Chart />
                 ) : (
@@ -184,13 +187,13 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
                   />
                 )}
               </Flex>
-
               <HStack
                 justifyContent="space-between"
                 width="100%"
                 justify="center"
                 mt={1}
                 mb={3}
+                flexShrink={0}
               >
                 <VolumeWindowSelector
                   selectedWindow={selectedWindow}
