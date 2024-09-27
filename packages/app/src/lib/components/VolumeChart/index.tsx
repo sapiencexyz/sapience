@@ -1,7 +1,13 @@
 import { Box, Flex, Text } from '@chakra-ui/react';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
-import { type Dispatch, type SetStateAction, useEffect, useState } from 'react';
+import {
+  type Dispatch,
+  type SetStateAction,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import type React from 'react';
 import type { TooltipProps } from 'recharts';
 import {
@@ -16,19 +22,20 @@ import {
 import type { VolumeChartData } from '~/lib/interfaces/interfaces';
 import { VolumeWindow } from '~/lib/interfaces/interfaces';
 import { formatAmount } from '~/lib/util/numberUtil';
+import { getDisplayTextForVolumeWindow } from '~/lib/util/util';
 
 dayjs.extend(utc);
 
 export type ChartProps = {
   data: VolumeChartData[];
+  activeWindow: VolumeWindow;
   color?: string | undefined;
   height?: number | undefined;
-  activeWindow?: VolumeWindow;
 } & React.HTMLAttributes<HTMLDivElement>;
 
 interface CustomTooltipProps {
-  setValue: Dispatch<SetStateAction<number | undefined>>; // used for value on hover
-  setLabel: Dispatch<SetStateAction<string | undefined>>; // used for label of value
+  setValue: Dispatch<SetStateAction<number>>; // used for value on hover
+  setLabel: Dispatch<SetStateAction<string>>; // used for label of value
 }
 const CustomBar = ({
   x,
@@ -87,8 +94,26 @@ const CustomTooltip: React.FC<
 };
 
 const VolumeChart = ({ data, color = '#56B2A4', activeWindow }: ChartProps) => {
-  const [value, setValue] = useState<number | undefined>();
-  const [label, setLabel] = useState<string | undefined>();
+  const volumeOverTimeframe = useMemo(() => {
+    return data.reduce((sum, item) => {
+      return sum + item.volume;
+    }, 0);
+  }, [data]);
+
+  const timePeriodLabel = useMemo(() => {
+    return getDisplayTextForVolumeWindow(activeWindow);
+  }, [activeWindow]);
+
+  const [value, setValue] = useState<number>(volumeOverTimeframe);
+  const [label, setLabel] = useState<string>(timePeriodLabel);
+
+  useEffect(() => {
+    setValue(volumeOverTimeframe);
+  }, [volumeOverTimeframe]);
+
+  useEffect(() => {
+    setLabel(timePeriodLabel);
+  }, [timePeriodLabel]);
 
   const renderCustomBar = (props: any) => {
     const { x, y, width, height } = props;
@@ -136,8 +161,11 @@ const VolumeChart = ({ data, color = '#56B2A4', activeWindow }: ChartProps) => {
         bgColor="white"
         opacity={0.8}
       >
-        <Text> {value ? `${value.toLocaleString()}` : ''}</Text>
-        <Text> {label ? `${label}` : ''}</Text>
+        <Text> {value ? `${value.toLocaleString()} Ggas` : '0 Ggas'}</Text>
+        <Text fontSize="sm" color="gray.500">
+          {' '}
+          {label ? `${label}` : ''}
+        </Text>
       </Box>
 
       <ResponsiveContainer width="100%" height="100%">
@@ -152,8 +180,8 @@ const VolumeChart = ({ data, color = '#56B2A4', activeWindow }: ChartProps) => {
             bottom: 5,
           }}
           onMouseLeave={() => {
-            if (setLabel) setLabel(undefined);
-            if (setValue) setValue(undefined);
+            if (setLabel) setLabel(timePeriodLabel);
+            if (setValue) setValue(volumeOverTimeframe);
           }}
         >
           <YAxis

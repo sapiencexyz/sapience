@@ -84,7 +84,6 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
   }, [selectedWindow]);
 
   useEffect(() => {
-    console.log('...isLoadingVolume', isLoadingVolume);
     if (useVolumeError) {
       console.error('useVolumeError =', useVolumeError);
     }
@@ -92,7 +91,7 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
     if (volume) {
       console.log('volume =', volume);
     }
-  }, [volume, useVolumeError, isLoadingVolume]);
+  }, [volume, useVolumeError]);
 
   const {
     data: transactions,
@@ -179,7 +178,10 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
                 {chartType === 'Price' ? (
                   <Chart />
                 ) : (
-                  <VolumeChart data={volume} activeWindow={selectedWindow} />
+                  <VolumeChart
+                    data={volume || []}
+                    activeWindow={selectedWindow}
+                  />
                 )}
               </Flex>
 
