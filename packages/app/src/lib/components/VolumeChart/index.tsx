@@ -19,6 +19,7 @@ import {
   YAxis,
 } from 'recharts';
 
+import { DECIMAL_PRECISION_DISPLAY } from '~/lib/constants/constants';
 import type { VolumeChartData } from '~/lib/interfaces/interfaces';
 import { VolumeWindow } from '~/lib/interfaces/interfaces';
 import { formatAmount } from '~/lib/util/numberUtil';
@@ -188,8 +189,8 @@ const VolumeChart = ({ data, color = '#56B2A4', activeWindow }: ChartProps) => {
             orientation="right"
             tickLine={false}
             axisLine={false}
-            tickFormatter={(price) =>
-              price === 0 ? '' : `${formatAmount(price)}`
+            tickFormatter={(volume: number) =>
+              volume === 0 ? '' : `${volume.toFixed(DECIMAL_PRECISION_DISPLAY)}`
             }
           />
           <XAxis
