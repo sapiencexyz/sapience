@@ -116,12 +116,18 @@ export const createOrModifyPosition = async (transaction: Transaction) => {
   position.isLP = isLpPosition(transaction, existingPosition);
   position.positionId = Number(eventArgs.positionId);
 
-  position.baseToken = eventArgs.baseToken?.toString() || position.baseToken;
-  position.quoteToken = eventArgs.quoteToken?.toString() || position.quoteToken;
+  position.baseToken =
+    eventArgs.vGasAmount?.toString() ||
+    eventArgs.loanAmount0?.toString() ||
+    position.baseToken;
+  position.quoteToken =
+    eventArgs.vEthAmount?.toString() ||
+    eventArgs.loanAmount1?.toString() ||
+    position.quoteToken;
   position.borrowedBaseToken =
-    eventArgs.borrowedBaseToken?.toString() || position.borrowedBaseToken;
+    eventArgs.borrowedVGas?.toString() || position.borrowedBaseToken;
   position.borrowedQuoteToken =
-    eventArgs.borrowedQuoteToken?.toString() || position.borrowedQuoteToken;
+    eventArgs.borrowedVEth?.toString() || position.borrowedQuoteToken;
 
   position.collateral = (
     BigInt(originalCollateral) + BigInt(transaction.collateralDelta)
@@ -241,9 +247,15 @@ const updateTransactionFromLiquidityModifiedEvent = async (
   console.log("originalPosition", originalPosition);
   const collateralDeltaBigInt =
     BigInt(eventArgsModifyLiquidity.collateralAmount) -
-    BigInt(originalPosition.collateral);
-  newTransaction.baseTokenDelta = eventArgsModifyLiquidity.amount0;
-  newTransaction.quoteTokenDelta = eventArgsModifyLiquidity.amount1;
+    BigInt(originalPosition.collateral ?? "0");
+  newTransaction.baseTokenDelta = (
+    BigInt(eventArgsModifyLiquidity.loanAmount0) -
+    BigInt(originalPosition.borrowedBaseToken ?? "0")
+  ).toString();
+  newTransaction.quoteTokenDelta = (
+    BigInt(eventArgsModifyLiquidity.loanAmount1) -
+    BigInt(originalPosition.borrowedQuoteToken ?? "0")
+  ).toString();
   newTransaction.collateralDelta = collateralDeltaBigInt.toString();
 };
 
@@ -295,10 +307,14 @@ const updateTransactionFromTradeModifiedEvent = async (
   const collateralInitial = initialPosition ? initialPosition.collateral : "0";
 
   newTransaction.baseTokenDelta = (
-    BigInt(eventArgsCreateTrade.vGasAmount) - BigInt(baseTokenInitial)
+    BigInt(eventArgsCreateTrade.vGasAmount) -
+    BigInt(eventArgsCreateTrade.borrowedVGas) -
+    BigInt(baseTokenInitial)
   ).toString();
   newTransaction.quoteTokenDelta = (
-    BigInt(eventArgsCreateTrade.vEthAmount) - BigInt(quoteTokenInitial)
+    BigInt(eventArgsCreateTrade.vEthAmount) -
+    BigInt(eventArgsCreateTrade.borrowedVEth) -
+    BigInt(quoteTokenInitial)
   ).toString();
   newTransaction.collateralDelta = (
     BigInt(eventArgsCreateTrade.collateralAmount) - BigInt(collateralInitial)
@@ -306,6 +322,7 @@ const updateTransactionFromTradeModifiedEvent = async (
 
   newTransaction.tradeRatioD18 = eventArgsCreateTrade.tradeRatio;
 };
+
 /**
  * Format a BigInt value from the DB to a string with 3 decimal places.
  * @param value - a string representation of a BigInt value
