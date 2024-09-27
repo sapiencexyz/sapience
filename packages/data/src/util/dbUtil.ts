@@ -244,18 +244,19 @@ const updateTransactionFromLiquidityModifiedEvent = async (
       `Position not found: ${eventArgsModifyLiquidity.positionId}`
     );
   }
-  console.log("originalPosition", originalPosition);
   const collateralDeltaBigInt =
     BigInt(eventArgsModifyLiquidity.collateralAmount) -
     BigInt(originalPosition.collateral ?? "0");
-  newTransaction.baseTokenDelta = (
-    BigInt(eventArgsModifyLiquidity.loanAmount0) -
-    BigInt(originalPosition.borrowedBaseToken ?? "0")
-  ).toString();
-  newTransaction.quoteTokenDelta = (
-    BigInt(eventArgsModifyLiquidity.loanAmount1) -
-    BigInt(originalPosition.borrowedQuoteToken ?? "0")
-  ).toString();
+  newTransaction.baseTokenDelta = isDecrease
+    ? (
+        BigInt(event.logData.args.decreasedAmount0 ?? "0") * BigInt(-1)
+      ).toString()
+    : (event.logData.args.increasedAmount0 ?? "0");
+  newTransaction.quoteTokenDelta = isDecrease
+    ? (
+        BigInt(event.logData.args.decreasedAmount1 ?? "0") * BigInt(-1)
+      ).toString()
+    : (event.logData.args.increasedAmount1 ?? "0");
   newTransaction.collateralDelta = collateralDeltaBigInt.toString();
 };
 
