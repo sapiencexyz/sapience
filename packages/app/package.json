@@ -4,7 +4,7 @@
   "private": true,
   "author": "",
   "scripts": {
-    "dev": "next dev --port 3000",
+    "dev": "NODE_ENV=development next dev --port 3000",
     "build": "next build",
     "build:turbo": "turbo run build",
     "postbuild": "next-sitemap --config next-sitemap.config.js",
