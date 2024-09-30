@@ -43,7 +43,9 @@ interface ILiquidityModule {
         uint256 indexed positionId,
         IFoilStructs.PositionKind kind,
         uint256 collectedAmount0,
-        uint256 collectedAmount1
+        uint256 collectedAmount1,
+        uint256 loanAmount0,
+        uint256 loanAmount1
     );
 
     function createLiquidityPosition(
