@@ -42,6 +42,7 @@ library ERC721EnumerableStorage {
 
     /**
      * @dev Returns the token identifier for the `_index`th NFT
+     * @notice index is offset by +1 at creation time
      */
     function tokenByIndex(uint256 index) public view returns (uint256) {
         if (index > totalSupply()) {
