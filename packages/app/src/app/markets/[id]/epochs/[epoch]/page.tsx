@@ -35,7 +35,7 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
   const [selectedWindow, setSelectedWindow] = useState<VolumeWindow>(
     VolumeWindow.D
   );
-  const [chartType, setChartType] = useState<ChartType>(ChartType.VOLUME);
+  const [chartType, setChartType] = useState<ChartType>(ChartType.PRICE);
 
   const [chainId, marketAddress] = params.id.split('%3A');
   const { epoch } = params;
