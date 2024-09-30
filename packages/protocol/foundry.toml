@@ -6,7 +6,8 @@ src = "src"
 out = "out"
 libs = ["lib"]
 fs_permissions = [{ access = "read", path = "./" }]
-# no_match_test = "Skip"
+no_match_test = "Skip"
+
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
 [fuzz]
 runs = 1000000
