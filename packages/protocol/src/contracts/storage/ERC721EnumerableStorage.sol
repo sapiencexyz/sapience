@@ -41,7 +41,7 @@ library ERC721EnumerableStorage {
     }
 
     /**
-     * @dev Returns the total amount of tokens stored by the contract.
+     * @dev Returns the token identifier for the `_index`th NFT
      */
     function tokenByIndex(uint256 index) public view returns (uint256) {
         if (index > totalSupply()) {
