@@ -255,7 +255,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
       },
     });
 
-  const { data: decreaseLiqudiityHash, writeContract: decreaseLiquidity } =
+  const { data: decreaseLiquidityHash, writeContract: decreaseLiquidity } =
     useWriteContract({
       mutation: {
         onError: (error) => {
@@ -282,7 +282,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
     hash: increaseLiquidityHash,
   });
   const { isSuccess: decreaseLiquiditySuccess } = useWaitForTransactionReceipt({
-    hash: decreaseLiqudiityHash,
+    hash: decreaseLiquidityHash,
   });
 
   /// ///// MEMOIZED VALUES ////////
@@ -442,19 +442,28 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
   // handle successful add/increase liquidity
   useEffect(() => {
     if (addLiquiditySuccess) {
-      setTxnSuccessMsg('successfully added liquidity');
+      setTxnSuccessMsg('Successfully added liquidity');
     }
   }, [addLiquiditySuccess]);
 
   useEffect(() => {
     if (increaseLiquiditySuccess) {
-      setTxnSuccessMsg('successfully increased liquidity');
+      setTxnSuccessMsg('Successfully increased liquidity');
     }
   }, [increaseLiquiditySuccess]);
 
   useEffect(() => {
     if (decreaseLiquiditySuccess) {
-      setTxnSuccessMsg('successfully decreased liquidity');
+      setTxnSuccessMsg('Successfully decreased liquidity');
+      if (depositAmount === 0) {
+        toast({
+          title:
+            'If your LP position accrued a profit or loss, it has been converted to a trade position.',
+          status: 'info',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
     }
   }, [decreaseLiquiditySuccess]);
 
