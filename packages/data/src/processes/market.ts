@@ -9,7 +9,7 @@ import {
   EpochCreatedEventLog,
   MarketCreatedUpdatedEventLog,
 } from "../interfaces/interfaces";
-import { createEpochFromEvent } from "../util/dbUtil";
+import { createEpochFromEvent } from "../util/eventUtil";
 
 const bigintReplacer = (key: string, value: any) => {
   if (typeof value === "bigint") {
