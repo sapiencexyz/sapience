@@ -106,12 +106,21 @@ interface ILiquidityModule {
         uint160 sqrtPriceBX96
     )
         external
-        view
-        returns (uint256 amount0, uint256 amount1, uint128 liquidity);
+        returns (
+            // view //@audit changed by fuzzer
+            uint256 amount0,
+            uint256 amount1,
+            uint128 liquidity
+        );
 
     function getCollateralRequirementForAdditionalTokens(
         uint256 positionId,
         uint256 amount0,
         uint256 amount1
-    ) external view returns (uint256);
+    )
+        external
+        returns (
+            // ) external view returns (uint256); //@audit changed by fuzzer
+            uint256
+        );
 }

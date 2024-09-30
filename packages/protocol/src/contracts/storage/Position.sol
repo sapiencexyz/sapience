@@ -35,6 +35,23 @@ library Position {
         bool isSettled;
     }
 
+    //prev struct
+    //   struct Data {
+    //         uint256 id;
+    //         IFoilStructs.PositionKind kind;
+    //         uint256 epochId;
+    //         // Accounting data (debt and deposited collateral)
+    //         uint256 depositedCollateralAmount; // configured collateral
+    //         uint256 borrowedVEth;
+    //         uint256 borrowedVGas;
+    //         // Position data (owned tokens and position size)
+    //         uint256 vEthAmount;
+    //         uint256 vGasAmount;
+    //         int256 currentTokenAmount;
+    //         uint256 uniswapPositionId; // uniswap nft id
+    //         bool isSettled;
+    //     }
+
     function load(
         uint256 positionId
     ) internal pure returns (Data storage position) {

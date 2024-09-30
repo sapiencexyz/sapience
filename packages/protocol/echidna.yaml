@@ -1,0 +1,44 @@
+cryticArgs: [ "--solc-args", "optimize-runs=20"]
+# cryticArgs: ['--solc-args--optimize: false"']
+# cryticArgs:  [ "--solc-remaps", "@uniswap/=node_modules/@uniswap @uma/=node_modules/@uma @openzeppelin/=node_modules/@openzeppelin/ @openzeppelin/contracts-v4/=node_modules/@openzeppelin/contracts-v4 forge-std/=node_modules/forge-std/src/ lib/=lib/ @perimetersec/=lib/ v3-core/=uniswapv3/v3-core/ foilInterfaces/=src/contracts/interfaces/ foilIStorage/=src/contracts/storage foilILibs/=src/contracts/libraries @synthetixio/core-contracts/=node_modules/@synthetixio/core-contracts/ @openzeppelin/contracts-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable"]
+
+workers: 4
+
+testMode: assertion
+
+corpusDir: echidna-corpus
+
+testLimit: 100000000000
+# testLimit: 1000000
+codeSize: 0x8000
+
+shrinkLimit: 5000
+
+seqLen: 100
+
+propMaxGas: 1000000000
+testMaxGas: 1000000000
+
+
+
+deployer: "0xfffff"
+sender:
+  [
+    "0x10000",
+    "0x20000",
+    "0x30000",
+  ]
+# Initial Ether balance of contractAddr
+balanceContract: 0xffffffffffffffffffffffffffffffffffffffffffffffff
+# maximum value to send to payable functions
+maxValue: 100000000000000000000000000000 # 100000000000 eth
+
+# allows only valid orders
+# maxTimeDelay: 6
+
+# seed: 883771614506616433
+# seed: 7477410103401019355
+# format: text 
+
+
+  

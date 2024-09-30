@@ -1,3 +1,8 @@
 [submodule "packages/protocol/lib/cannon-std"]
 	path = packages/protocol/lib/cannon-std
 	url = https://github.com/usecannon/cannon-std
+[submodule "packages/protocol/lib/fuzzlib"]
+	path = packages/protocol/lib/fuzzlib
+	url = https://github.com/perimetersec/fuzzlib
+[submodule "lib/fuzzlib"]
+	branch = main

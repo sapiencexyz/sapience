@@ -17,6 +17,9 @@ library Market {
         uint256 lastEpochId;
         IFoilStructs.EpochParams epochParams;
         mapping(bytes32 => uint256) epochIdByAssertionId;
+        // **
+        //NOTE: ASSERTIONS INSIDE ORIGINAL CODE
+        address foil; //@audit added by fuzzer
     }
 
     function load() internal pure returns (Data storage market) {
@@ -30,7 +33,9 @@ library Market {
     function createValid(
         address owner,
         address collateralAsset,
-        IFoilStructs.EpochParams memory epochParams
+        IFoilStructs.EpochParams memory epochParams,
+        //NOTE: ASSERTIONS INSIDE ORIGINAL CODE
+        address foil //@audit added by fuzzer
     ) internal returns (Data storage market) {
         validateEpochParams(epochParams);
 
@@ -49,6 +54,9 @@ library Market {
         market.owner = owner;
         market.collateralAsset = IERC20(collateralAsset);
         market.epochParams = epochParams;
+
+        //added by fuzzer
+        market.foil = foil;
     }
 
     function loadValid() internal view returns (Data storage market) {
@@ -58,7 +66,6 @@ library Market {
             revert Errors.InvalidMarket();
         }
     }
-
     function updateValid(
         IFoilStructs.EpochParams memory epochParams
     ) internal returns (Data storage market) {

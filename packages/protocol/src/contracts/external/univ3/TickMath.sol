@@ -245,7 +245,7 @@ library TickMath {
         tick = tickLow == tickHi
             ? tickLow
             : getSqrtRatioAtTick(tickHi) <= sqrtPriceX96
-            ? tickHi
-            : tickLow;
+                ? tickHi
+                : tickLow;
     }
 }

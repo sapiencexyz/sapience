@@ -22,6 +22,9 @@ library Epoch {
     using SafeCastI256 for int256;
     using SafeCastU256 for uint256;
 
+    event Reason(string reason); //@audit added by fuzzer
+    event LogUint(string msg, uint value); //@audit added by fuzzer
+
     struct Settlement {
         uint256 settlementPriceD18;
         uint256 submissionTime;
@@ -286,8 +289,9 @@ library Epoch {
         uint256 ownedGasAmount,
         uint256 ownedEthAmount,
         uint256 loanGasAmount,
-        uint256 loanEthAmount
+        uint256 loanEthAmount // ) internal view {
     ) internal view {
+        //@audit changed by fuzzer
         validateOwnedAndDebtAtPrice(
             self,
             collateralAmount,
@@ -423,7 +427,14 @@ library Epoch {
         uint256 tokensOwed1,
         uint160 sqrtPriceAX96,
         uint160 sqrtPriceBX96
-    ) internal view returns (uint256 requiredCollateral) {
+    )
+        internal
+        returns (
+            // ) internal view returns (uint256 requiredCollateral) {
+            uint256 requiredCollateral
+        )
+    {
+        //@audit changed by fuzzer
         uint256 collateralRequirementAtMin = collateralRequirementAtMinTick(
             self,
             liquidity,
@@ -451,6 +462,17 @@ library Epoch {
 
         // Adding 2 wei to prevent round up errors. Insignificant amount for normal operations but to prevent potential issues
         requiredCollateral += 2;
+
+        //
+        //NOTE: ASSERTIONS INSIDE ORIGINAL CODE START
+        //#2
+        emit Reason(
+            "EPOCH_01: Position with non zero loan amount for lp should always have non-zero collateral required"
+        );
+        if (loanAmount0 != 0 || loanAmount1 != 0) {
+            assert(requiredCollateral != 0);
+        }
+        //NOTE: ASSERTIONS INSIDE ORIGINAL CODE END
     }
 
     function collateralRequirementAtMinTick(
