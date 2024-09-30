@@ -18,3 +18,5 @@ packages/protocol/deployments/test
 **/coverage.json
 
 .DS_Store
+/packages/protocol/echidna-corpus
+/packages/protocol/crytic-export
