@@ -19,6 +19,7 @@ const tickToPrice = (tick: number): number => (1 + FEE) ** tick;
 
 export const upsertTransactionPositionPriceFromEvent = async (event: Event) => {
   const transactionRepository = dataSource.getRepository(Transaction);
+  const positionRepository = dataSource.getRepository(Position);
 
   const newTransaction = new Transaction();
   newTransaction.event = event;
@@ -56,6 +57,11 @@ export const upsertTransactionPositionPriceFromEvent = async (event: Event) => {
       console.log("Modifying trader position from event: ", event);
       await updateTransactionFromTradeModifiedEvent(newTransaction, event);
       break;
+    case EventType.Transfer:
+      console.log("Handling Transfer event: ", event);
+      await handleTransferEvent(event);
+      skipTransaction = true;
+      break;
     default:
       skipTransaction = true;
       break;
@@ -66,6 +72,30 @@ export const upsertTransactionPositionPriceFromEvent = async (event: Event) => {
     await transactionRepository.save(newTransaction);
     await createOrModifyPosition(newTransaction);
     await upsertMarketPrice(newTransaction);
+  }
+};
+
+/**
+ * Handles a Transfer event by updating the owner of the corresponding Position.
+ * @param event The Transfer event
+ */
+const handleTransferEvent = async (event: Event) => {
+  const positionRepository = dataSource.getRepository(Position);
+  const { from, to, tokenId } = event.logData.args;
+
+  const position = await positionRepository.findOne({
+    where: {
+      positionId: Number(tokenId),
+      epoch: { id: event.epoch.id },
+    },
+  });
+
+  if (position) {
+    position.owner = to;
+    await positionRepository.save(position);
+    console.log(`Updated owner of position ${tokenId} to ${to}`);
+  } else {
+    console.log(`Position ${tokenId} not found for Transfer event`);
   }
 };
 

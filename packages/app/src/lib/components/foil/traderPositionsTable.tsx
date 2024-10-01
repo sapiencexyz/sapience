@@ -17,6 +17,7 @@ import { useContext } from 'react';
 
 import { MarketContext } from '../../context/MarketProvider';
 
+import Address from './address';
 import NumberDisplay from './numberDisplay';
 
 interface Props {
@@ -65,6 +66,7 @@ const TraderPositionsTable: React.FC<Props> = ({
         <Thead>
           <Tr>
             <Th>Position</Th>
+            <Th>Owner</Th>
             <Th>Collateral</Th>
             <Th>Size</Th>
             <Th>
@@ -88,6 +90,9 @@ const TraderPositionsTable: React.FC<Props> = ({
                     >
                       #{row.positionId.toString()}
                     </Link>
+                  </Td>
+                  <Td>
+                    <Address value={row.collateral} />
                   </Td>
                   <Td>
                     <NumberDisplay value={row.collateral} /> wstETH
