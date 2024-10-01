@@ -285,7 +285,7 @@ const Subscribe: FC = () => {
   };
 
   const handleSizeChange = (newVal: string) => {
-    const newSize = parseInt(newVal || '0');
+    const newSize = parseInt(newVal || '0', 10);
     setSize(newSize);
   };
 
