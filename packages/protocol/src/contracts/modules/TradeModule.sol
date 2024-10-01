@@ -328,7 +328,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         }
     }
 
-    struct QuoteRuntine {
+    struct QuoteRuntime {
         uint256 vGasTrade;
         uint256 vEthTrade;
         int256 afterTradeDeltaCollateral;
@@ -353,7 +353,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
                 );
         }
 
-        QuoteRuntine memory runtime;
+        QuoteRuntime memory runtime;
 
         runtime.vGasTrade = deltaSize.toUint();
         (runtime.vEthTrade, ) = Trade.swapOrQuoteTokensExactOut(
@@ -418,7 +418,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
                 );
         }
 
-        QuoteRuntine memory runtime;
+        QuoteRuntime memory runtime;
 
         runtime.vGasTrade = (deltaSize * -1).toUint();
         (runtime.vEthTrade, ) = Trade.swapOrQuoteTokensExactIn(
