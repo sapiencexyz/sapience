@@ -18,7 +18,12 @@ import {
   Flex,
   useToast,
 } from '@chakra-ui/react';
-import { TickMath, SqrtPriceMath } from '@uniswap/v3-sdk';
+import {
+  TickMath,
+  SqrtPriceMath,
+  priceToClosestTick,
+  tickToPrice,
+} from '@uniswap/v3-sdk';
 import JSBI from 'jsbi';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import type { WriteContractErrorType } from 'viem';
@@ -47,12 +52,12 @@ import SlippageTolerance from './slippageTolerance';
 
 const tickSpacingDefault = 200; // TODO 1% - Hardcoded for now, should be retrieved with pool.tickSpacing()
 
-const priceToTick = (price: number, tickSpacing: number): number => {
+const priceToTickFoil = (price: number, tickSpacing: number): number => {
   const tick = Math.log(price) / Math.log(1.0001);
   return Math.round(tick / tickSpacing) * tickSpacing;
 };
 
-const tickToPrice = (tick: number): number => 1.0001 ** tick;
+const tickToPriceFoil = (tick: number): number => 1.0001 ** tick;
 
 function getTokenAmountsFromLiquidity(
   tickLower: number,
@@ -99,18 +104,32 @@ const AddEditLiquidity: React.FC = () => {
 
   const [depositAmount, setDepositAmount] = useState(0);
   const [lowPrice, setLowPrice] = useState(
-    tickToPrice(epochParams.baseAssetMinPriceTick)
+    tickToPriceFoil(epochParams.baseAssetMinPriceTick)
   );
   const [highPrice, setHighPrice] = useState(
-    tickToPrice(epochParams.baseAssetMaxPriceTick)
+    tickToPriceFoil(epochParams.baseAssetMaxPriceTick)
   );
+  const [lowPriceUni, setLowPriceUni] = useState(0);
+  const [highPriceUni, setHighPriceUni] = useState(0);
+
   const [txnStep, setTxnStep] = useState<number>(0);
   const [slippage, setSlippage] = useState<number>(0.5);
   const [pendingTxn, setPendingTxn] = useState(false);
   const [txnSuccessMsg, setTxnSuccessMsg] = useState('');
 
-  const tickLower = priceToTick(lowPrice, tickSpacingDefault);
-  const tickUpper = priceToTick(highPrice, tickSpacingDefault);
+  /// TODO
+  const tickLowerUni = useMemo(() => {
+    if (!pool?.token0Price) return 0;
+    return priceToClosestTick(pool?.token0Price);
+  }, [pool?.token0Price]);
+  const tickHigherUni = useMemo(() => {
+    if (!pool?.token0Price) return 0;
+    return priceToClosestTick(pool?.token0Price);
+  }, [pool?.token0Price]);
+
+  const tickSpacing = pool ? pool?.tickSpacing : tickSpacingDefault;
+  const tickLower = priceToTickFoil(lowPrice, tickSpacing);
+  const tickUpper = priceToTickFoil(highPrice, tickSpacing);
   const isEdit = nftId > 0;
 
   const [collateralAmountDelta, setCollateralAmountDelta] = useState<bigint>(
@@ -484,13 +503,30 @@ const AddEditLiquidity: React.FC = () => {
 
   useEffect(() => {
     if (isEdit) return;
-    setLowPrice(tickToPrice(epochParams.baseAssetMinPriceTick));
-  }, [epochParams.baseAssetMinPriceTick, isEdit]);
+    if (pool?.token0 && pool?.token1) {
+      const lpUni = tickToPrice(
+        pool?.token0,
+        pool?.token1,
+        epochParams.baseAssetMinPriceTick
+      );
+      const hpUni = tickToPrice(
+        pool?.token0,
+        pool?.token1,
+        epochParams.baseAssetMaxPriceTick
+      );
+      setLowPriceUni(Number(lpUni.toSignificant(collateralAssetDecimals)));
+      setHighPriceUni(Number(hpUni.toSignificant(collateralAssetDecimals)));
+    }
 
-  useEffect(() => {
-    if (isEdit) return;
-    setHighPrice(tickToPrice(epochParams.baseAssetMaxPriceTick));
-  }, [epochParams.baseAssetMaxPriceTick, isEdit]);
+    setLowPrice(tickToPriceFoil(epochParams.baseAssetMinPriceTick));
+    setHighPrice(tickToPriceFoil(epochParams.baseAssetMaxPriceTick));
+  }, [
+    epochParams,
+    isEdit,
+    pool?.token0,
+    pool?.token1,
+    collateralAssetDecimals,
+  ]);
 
   useEffect(() => {
     if (!uniswapPosition) return;
@@ -498,10 +534,18 @@ const AddEditLiquidity: React.FC = () => {
     const lowerTick = uniswapData[5];
     const upperTick = uniswapData[6];
     if (lowerTick) {
-      setLowPrice(tickToPrice(lowerTick));
+      setLowPrice(tickToPriceFoil(lowerTick));
+      if (pool?.token0 && pool?.token1) {
+        const lpUni = tickToPrice(pool?.token0, pool?.token1, lowerTick);
+        setLowPriceUni(Number(lpUni.toSignificant(collateralAssetDecimals)));
+      }
     }
     if (upperTick) {
-      setHighPrice(tickToPrice(upperTick));
+      setHighPrice(tickToPriceFoil(upperTick));
+      if (pool?.token0 && pool?.token1) {
+        const hpUni = tickToPrice(pool?.token0, pool?.token1, upperTick);
+        setHighPriceUni(Number(hpUni.toSignificant(collateralAssetDecimals)));
+      }
     }
   }, [uniswapPosition]);
 
@@ -787,6 +831,14 @@ const AddEditLiquidity: React.FC = () => {
       </Button>
     );
   };
+
+  useEffect(() => {
+    console.log('&&&&&&&&&&&&&&');
+    console.log('lowPrice', lowPrice);
+    console.log('highPrice', highPrice);
+    console.log('lowPriceUni', lowPriceUni);
+    console.log('highPriceUni', highPriceUni);
+  }, [lowPrice, highPrice, lowPriceUni, highPriceUni]);
 
   return (
     <form onSubmit={handleFormSubmit}>

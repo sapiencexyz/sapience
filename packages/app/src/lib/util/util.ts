@@ -3,6 +3,13 @@ import type { ReadContractErrorType, WriteContractErrorType } from 'viem';
 
 import { VolumeWindow } from '../interfaces/interfaces';
 
+export const priceToTick = (price: number, tickSpacing: number): number => {
+  const tick = Math.log(price) / Math.log(1.0001);
+  return Math.round(tick / tickSpacing) * tickSpacing;
+};
+
+export const tickToPrice = (tick: number): number => 1.0001 ** tick;
+
 export const renderContractErrorToast = (
   error: ReadContractErrorType | WriteContractErrorType | null,
   toast: (options?: UseToastOptions) => ToastId,

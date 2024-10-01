@@ -6,6 +6,26 @@ export const DECIMAL_PRECISION_DISPLAY = 4;
 
 export const MIN_BIG_INT_SIZE = BigInt(10);
 
+export const TiCK_SPACING_DEFAULT = 200; // TODO 1% - Hardcoded for now, should be retrieved with pool.tickSpacing()
+export const FEE_TIERS = {
+  small: {
+    feeRate: 0.0001,
+    tickSpacing: 1,
+  },
+  medium: {
+    feeRate: 0.0005,
+    tickSpacing: 10,
+  },
+  large: {
+    feeRate: 0.003,
+    tickSpacing: 50,
+  },
+  xlarge: {
+    feeRate: 0.01,
+    tickSpacing: 200,
+  },
+};
+
 export const API_BASE_URL =
   process.env.NODE_ENV === 'development'
     ? 'http://localhost:3001'
