@@ -335,7 +335,7 @@ contract TradePositionBasic is TestTrade {
         );
     }
 
-    function test_fuzz_modify_Long2Short_Only(
+    function test_fuzz_modify_Long2Short(
         uint256 startPosition,
         uint256 endPosition
     ) public {
@@ -361,9 +361,6 @@ contract TradePositionBasic is TestTrade {
         fillCollateralStateData(trader1, latestStateData);
         fillPositionState(positionId, latestStateData);
 
-        console2.log(" >>> PositionAccountingData PRE");
-        log_positionAccounting(foil, positionId);
-
         // quote and open a long
         uint256 requiredCollateral = foil.quoteModifyTraderPosition(
             positionId,
@@ -379,9 +376,6 @@ contract TradePositionBasic is TestTrade {
         );
 
         vm.stopPrank();
-        console2.log(" >>> PositionAccountingData AFTER");
-        console2.log(" >>> requiredCollateral: ", requiredCollateral);
-        log_positionAccounting(foil, positionId);
 
         uint256 price = foil.getReferencePrice(epochId).mulDecimal(
             feeMultiplier
