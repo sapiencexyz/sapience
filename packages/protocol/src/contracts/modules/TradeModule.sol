@@ -328,6 +328,15 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         }
     }
 
+    struct QuoteRuntine {
+        uint256 vGasTrade;
+        uint256 vEthTrade;
+        int256 afterTradeDeltaCollateral;
+        uint256 afterTradePositionVEth;
+        uint256 afterTradePositionVGas;
+        uint256 extraCollateralToClose;
+    }
+
     function _quoteModifyLongDirection(
         Position.Data storage position,
         int256 deltaSize
@@ -344,56 +353,53 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
                 );
         }
 
-        uint256 vGasDeltaTokens = deltaSize.toUint();
+        QuoteRuntine memory runtime;
 
-        (uint256 requiredAmountInVEth, ) = Trade.swapOrQuoteTokensExactOut(
+        runtime.vGasTrade = deltaSize.toUint();
+        (runtime.vEthTrade, ) = Trade.swapOrQuoteTokensExactOut(
             epoch,
             0,
-            vGasDeltaTokens,
+            runtime.vGasTrade,
             true
         );
 
+        // get average trade ratio (price)
+        require(runtime.vGasTrade > 0, "Invalid trade size - 0 tokens traded");
+
         // adjust vEth and vGas amounts if the position was in the short direction (change sides)
-        uint256 extraCollateralToClose;
+        runtime.afterTradePositionVEth = position.vEthAmount;
+        runtime.afterTradePositionVGas = position.borrowedVGas;
         if (
-            position.borrowedVGas > 0 && vGasDeltaTokens > position.borrowedVGas
+            position.borrowedVGas > 0 &&
+            runtime.vGasTrade > position.borrowedVGas
         ) {
             (
-                vGasDeltaTokens,
-                requiredAmountInVEth,
-                extraCollateralToClose,
+                runtime.vGasTrade,
+                runtime.vEthTrade,
+                runtime.extraCollateralToClose,
 
             ) = _getTradeResultsAfterClose(
-                vGasDeltaTokens,
-                requiredAmountInVEth,
+                runtime.vGasTrade,
+                runtime.vEthTrade,
                 position.borrowedVGas,
                 position.vEthAmount
             );
-            // uint256 tradeRatioD18 = requiredAmountInVEth.divDecimal(
-            //     vGasDeltaTokens
-            // );
-            // uint256 vEthRequiredToClose = position.borrowedVGas.mulDecimal(
-            //     tradeRatioD18
-            // );
-            // if (requiredAmountInVEth > vEthRequiredToClose) {
-            //     requiredAmountInVEth -= vEthRequiredToClose;
-            // } else {
-            //     extraCollateralToClose =
-            //         vEthRequiredToClose -
-            //         requiredAmountInVEth;
-            //     requiredAmountInVEth = 0;
-            // }
-            // vGasDeltaTokens -= position.borrowedVGas;
+
+            runtime.afterTradeDeltaCollateral = (position
+                .depositedCollateralAmount
+                .toInt() - runtime.extraCollateralToClose.toInt());
+            runtime.afterTradePositionVGas = 0;
+            runtime.afterTradePositionVEth = 0;
         }
 
-        requiredCollateral =
-            epoch.getCollateralRequirementsForTrade(
-                position.vGasAmount + vGasDeltaTokens,
-                position.vEthAmount,
-                position.borrowedVGas,
-                position.borrowedVEth + requiredAmountInVEth
-            ) +
-            extraCollateralToClose;
+        requiredCollateral = (epoch
+            .getCollateralRequirementsForTrade(
+                position.vGasAmount + runtime.vGasTrade,
+                runtime.afterTradePositionVEth,
+                runtime.afterTradePositionVGas,
+                position.borrowedVEth + runtime.vEthTrade
+            )
+            .toInt() + runtime.afterTradeDeltaCollateral).toUint();
     }
 
     function _quoteModifyShortDirection(
@@ -412,50 +418,52 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
                 );
         }
 
-        uint256 vGasDeltaDebt = (deltaSize * -1).toUint();
+        QuoteRuntine memory runtime;
 
-        (uint256 amountOutVEth, ) = Trade.swapOrQuoteTokensExactIn(
+        runtime.vGasTrade = (deltaSize * -1).toUint();
+        (runtime.vEthTrade, ) = Trade.swapOrQuoteTokensExactIn(
             epoch,
             0,
-            vGasDeltaDebt,
+            runtime.vGasTrade,
             true
         );
 
+        // get average trade ratio (price)
+        require(runtime.vGasTrade > 0, "Invalid trade size - 0 tokens traded");
+
         // adjust vEth and vGas amounts if the position was in the long direction (change sides)
-        uint256 extraCollateralToClose;
-        if (position.vGasAmount > 0 && vGasDeltaDebt > position.vGasAmount) {
+        runtime.afterTradePositionVEth = position.borrowedVEth;
+        runtime.afterTradePositionVGas = position.vGasAmount;
+        if (
+            position.vGasAmount > 0 && runtime.vGasTrade > position.vGasAmount
+        ) {
             (
-                vGasDeltaDebt,
-                amountOutVEth,
-                extraCollateralToClose,
+                runtime.vGasTrade,
+                runtime.vEthTrade,
+                runtime.extraCollateralToClose,
 
             ) = _getTradeResultsAfterClose(
-                vGasDeltaDebt,
-                amountOutVEth,
+                runtime.vGasTrade,
+                runtime.vEthTrade,
                 position.vGasAmount,
                 position.borrowedVEth
             );
-            // uint256 tradeRatioD18 = amountOutVEth.divDecimal(vGasDeltaDebt);
-            // uint256 vEthFromClose = position.vGasAmount.mulDecimal(
-            //     tradeRatioD18
-            // );
-            // if (vEthFromClose > position.borrowedVEth) {
-            //     amountOutVEth -= position.borrowedVEth;
-            // } else {
-            //     extraCollateralToClose = position.borrowedVEth - vEthFromClose;
-            //     amountOutVEth = 0;
-            // }
-            // vGasDeltaDebt -= position.vGasAmount;
+
+            runtime.afterTradeDeltaCollateral = (position
+                .depositedCollateralAmount
+                .toInt() - runtime.extraCollateralToClose.toInt());
+            runtime.afterTradePositionVGas = 0;
+            runtime.afterTradePositionVEth = 0;
         }
 
-        requiredCollateral =
-            epoch.getCollateralRequirementsForTrade(
-                position.vGasAmount,
-                position.vEthAmount + amountOutVEth,
-                position.borrowedVGas + vGasDeltaDebt,
-                position.borrowedVEth
-            ) +
-            extraCollateralToClose;
+        requiredCollateral = (epoch
+            .getCollateralRequirementsForTrade(
+                runtime.afterTradePositionVGas,
+                position.vEthAmount + runtime.vEthTrade,
+                position.borrowedVGas + runtime.vGasTrade,
+                runtime.afterTradePositionVEth
+            )
+            .toInt() + runtime.afterTradeDeltaCollateral).toUint();
     }
 
     function _quoteCreateLongPosition(
@@ -525,17 +533,13 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             false
         );
 
-        vEthDebt = requiredAmountInVEth;
-
         // get average trade ratio (price)
         require(vGasTokens > 0, "Invalid trade size - 0 tokens traded");
 
-        uint256 extraCollateralRequiredToClose;
-        // uint256 vEthRequiredToClose;
         // Check if the trade changed sides and update the position accordingly
+        uint256 extraCollateralToClose;
         if (position.borrowedVGas > 0 && vGasTokens > position.borrowedVGas) {
             // it changed sides from short to long, first we need to pay the debt and then we can move to the other side
-            uint256 extraCollateralToClose;
             (
                 vGasTokens,
                 requiredAmountInVEth,
@@ -549,7 +553,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             );
 
             if (extraCollateralToClose > position.depositedCollateralAmount) {
-                extraCollateralRequiredToClose =
+                extraCollateralToClose =
                     extraCollateralToClose -
                     position.depositedCollateralAmount;
                 position.depositedCollateralAmount = 0;
@@ -558,47 +562,21 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
                 position.depositedCollateralAmount -= extraCollateralToClose;
             }
 
-            // // fist we need to get how much vEth is required to move from short to zero (close the position)
-            // vEthRequiredToClose = position.borrowedVGas.mulDecimal(
-            //     tradeRatioD18
-            // );
-
-            // // check if there was enough vEth to pay the debt
-            // if (vEthRequiredToClose > position.vEthAmount) {
-            //     // if there's not enough vEth tokes to pay the debt we need to reduce the amount of collateral proportionally (lose position, use collateral to pay debt)
-            //     uint256 collateralRequiredToClose = vEthRequiredToClose -
-            //         position.vEthAmount;
-            //     if (
-            //         collateralRequiredToClose >
-            //         position.depositedCollateralAmount
-            //     ) {
-            //         extraCollateralRequiredToClose =
-            //             collateralRequiredToClose -
-            //             position.depositedCollateralAmount;
-            //         position.depositedCollateralAmount = 0;
-            //     } else {
-            //         // if there's enough collateral to pay the debt, we need to reduce the amount of collateral proportionally (lose position, use collateral to pay debt)
-            //         position
-            //             .depositedCollateralAmount -= collateralRequiredToClose;
-            //     }
-            // } else {
-            //     // if there's more vEth than required to pay the debt, we need to increase the amount of collateral proportionally (profit position, add profits to depositedCollateral)
-            //     position.depositedCollateralAmount +=
-            //         position.vEthAmount -
-            //         vEthRequiredToClose;
-            // }
-
-            position.vEthAmount = 0; // the positon was "closed" at this point
+            // the SHORT positon was "closed" at this point
+            position.vEthAmount = 0;
+            position.borrowedVGas = 0;
         }
 
         // Update the position vGas
-        position.vGasAmount += vGasTokens;
-        position.borrowedVEth += requiredAmountInVEth;
+        position.vGasAmount = vGasTokens;
+        position.borrowedVEth = requiredAmountInVEth;
 
         // get required collateral from the position
         collateralRequired =
             position.getRequiredCollateral() +
-            extraCollateralRequiredToClose;
+            extraCollateralToClose;
+
+        vEthDebt = requiredAmountInVEth;
     }
 
     function _moveToShortDirection(
@@ -622,62 +600,50 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             false
         );
 
-        vEthTokens = amountOutVEth;
-
         // get average trade ratio (price)
-        if (vGasDebt == 0) {
-            tradeRatioD18 = 0;
-        } else {
-            tradeRatioD18 = amountOutVEth.divDecimal(vGasDebt);
-        }
+        require(vGasDebt > 0, "Invalid trade size - 0 tokens traded");
 
-        uint256 extraCollateralRequiredToClose;
-        uint256 vEthFromClose;
+        uint256 extraCollateralToClose;
         // Check if the trade changed sides and update the position accordingly
         if (position.vGasAmount > 0 && vGasDebt > position.vGasAmount) {
             // it changed sides from short to long, first we need to pay the debt and then we can move to the other side
-            // fist we need to get how much vEth we received from closing the positon (move from long to zero)
-            vEthFromClose = position.vGasAmount.mulDecimal(tradeRatioD18);
 
-            // check if there is enough vEth to pay the debt
-            if (position.borrowedVEth > vEthFromClose) {
-                // if there's not enough vEth tokes to pay the debt we need to reduce the amount of collateral proportionally (lose position, use collateral to pay debt)
-                uint256 collateralRequiredToClose = position.borrowedVEth -
-                    vEthFromClose;
+            (
+                vGasDebt,
+                vEthTokens,
+                extraCollateralToClose,
+                tradeRatioD18
+            ) = _getTradeResultsAfterClose(
+                vGasDebt,
+                vEthTokens,
+                position.vGasAmount,
+                position.borrowedVEth
+            );
 
-                if (
-                    collateralRequiredToClose >
-                    position.depositedCollateralAmount
-                ) {
-                    extraCollateralRequiredToClose =
-                        collateralRequiredToClose -
-                        position.depositedCollateralAmount;
-                    position.depositedCollateralAmount = 0;
-                } else {
-                    // if there's enough collateral to pay the debt, we need to reduce the amount of collateral proportionally (lose position, use collateral to pay debt)
-                    position
-                        .depositedCollateralAmount -= collateralRequiredToClose;
-                }
+            if (extraCollateralToClose > position.depositedCollateralAmount) {
+                extraCollateralToClose =
+                    extraCollateralToClose -
+                    position.depositedCollateralAmount;
+                position.depositedCollateralAmount = 0;
             } else {
-                // if there's more vEth than required to pay the debt, we need to increase the amount of collateral proportionally (profit position, add profits to depositedCollateral)
-                position.depositedCollateralAmount +=
-                    vEthFromClose -
-                    position.borrowedVEth;
+                // if there's enough collateral to pay the debt, we need to reduce the amount of collateral proportionally (lose position, use collateral to pay debt)
+                position.depositedCollateralAmount -= extraCollateralToClose;
             }
 
-            position.borrowedVEth = 0; // the positon was "closed" at this point
+            // the LONG positon was "closed" at this point
+            position.borrowedVEth = 0;
+            position.vGasAmount = 0;
         }
-
-        // Update the position vGas and vEth
-        position.vEthAmount += vEthTokens > vEthFromClose
-            ? vEthTokens - vEthFromClose
-            : 0;
-        position.borrowedVGas += vGasDebt;
+        // Update the position vGas
+        position.borrowedVGas = vGasDebt;
+        position.vEthAmount = vEthTokens;
 
         // get required collateral from the position
         collateralRequired =
             position.getRequiredCollateral() +
-            extraCollateralRequiredToClose;
+            extraCollateralToClose;
+
+        vEthTokens = amountOutVEth;
     }
 
     function _getTradeResultsAfterClose(
@@ -687,6 +653,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         uint256 currentVEth
     )
         internal
+        pure
         returns (
             uint256 newVGas,
             uint256 newVEth,
