@@ -1,5 +1,5 @@
 {
-  "address": "0x0211E640A4581aFd542f3C5CA23C873FadC9f557",
+  "address": "0xDE5Cdb2c222C0CED0C3A47f4196e34539ac10875",
   "abi": [
     {
       "type": "function",
@@ -408,6 +408,17 @@
     },
     {
       "type": "error",
+      "name": "InvalidTradeSize",
+      "inputs": [
+        {
+          "name": "tradeSize",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "NotAccountOwnerOrAuthorized",
       "inputs": [
         {
@@ -508,12 +519,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x38f73c39128d6a19f6028ed5198a37029ba3711987d08d9669998337862371cc",
-  "deployTxnBlockNumber": "6763757",
-  "deployTimestamp": "1727363460",
+  "deployTxnHash": "0x865d0a96a1ab8e1086125e0f7e4e29ac1fc697cccb7affc41f9dd5a4aad32046",
+  "deployTxnBlockNumber": "6796801",
+  "deployTimestamp": "1727822076",
   "sourceName": "src/contracts/modules/TradeModule.sol",
   "contractName": "TradeModule",
   "deployedOn": "deploy.TradeModule",
-  "gasUsed": 2173553,
-  "gasCost": "452731288215"
+  "gasUsed": 2386264,
+  "gasCost": "179190776722"
 }

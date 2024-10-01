@@ -1,5 +1,5 @@
 {
-  "address": "0x2a4729fee62a6aafbc64e4974861fe3d53ac035d",
+  "address": "0x18a38ccb46a71989d9101f88fdbe4b47ab53edcc",
   "abi": [
     {
       "type": "constructor",
@@ -967,6 +967,18 @@
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
+        },
+        {
+          "name": "loanAmount0",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "loanAmount1",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
         }
       ],
       "anonymous": false
@@ -1739,6 +1751,17 @@
           "name": "message",
           "type": "string",
           "internalType": "string"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidTradeSize",
+      "inputs": [
+        {
+          "name": "tradeSize",
+          "type": "uint256",
+          "internalType": "uint256"
         }
       ]
     },
@@ -2694,12 +2717,12 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0xa532ef288c024b528fb4ff77411661f88ec09e3994cffd4332fdbd60be0950c5",
-  "deployTxnBlockNumber": "6763774",
-  "deployTimestamp": "1727363724",
+  "deployTxnHash": "0x787e7b0daf4c434ee31ef90eba6b985a94acd2e2b41b38eae84821e7ccda85a6",
+  "deployTxnBlockNumber": "6796807",
+  "deployTimestamp": "1727822172",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
   "highlight": true,
-  "gasUsed": 522100,
-  "gasCost": "508678765508"
+  "gasUsed": 522016,
+  "gasCost": "224840516540"
 }

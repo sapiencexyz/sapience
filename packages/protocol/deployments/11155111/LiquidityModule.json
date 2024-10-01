@@ -1,5 +1,5 @@
 {
-  "address": "0x92727289fCbc12F1a8bAe1E0Efb341059B0152Ab",
+  "address": "0xb856B1EECe1bDe7652E87205C2De7bCF7ee1F8BB",
   "abi": [
     {
       "type": "function",
@@ -340,6 +340,18 @@
         },
         {
           "name": "collectedAmount1",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "loanAmount0",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "loanAmount1",
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
@@ -740,12 +752,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x327c250417ff33ec0c71216d8595060af21e6ca0b4e9655da2548f24dcfe56f0",
-  "deployTxnBlockNumber": "6763754",
-  "deployTimestamp": "1727363424",
+  "deployTxnHash": "0xb62196ce96f086153fb2a2467fe7e6a7bc85710dcbfc3639d5636d30e3ef6c2b",
+  "deployTxnBlockNumber": "6796798",
+  "deployTimestamp": "1727822040",
   "sourceName": "src/contracts/modules/LiquidityModule.sol",
   "contractName": "LiquidityModule",
   "deployedOn": "deploy.LiquidityModule",
-  "gasUsed": 3057266,
-  "gasCost": "415615213274"
+  "gasUsed": 3060828,
+  "gasCost": "188799112799"
 }
