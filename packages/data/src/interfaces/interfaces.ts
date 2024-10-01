@@ -7,6 +7,7 @@ export enum EventType {
   LiquidityPositionClosed = "LiquidityPositionClosed",
   TraderPositionCreated = "TraderPositionCreated",
   TraderPositionModified = "TraderPositionModified",
+  Transfer = "Transfer",
 }
 
 export interface TradePositionEventLog {

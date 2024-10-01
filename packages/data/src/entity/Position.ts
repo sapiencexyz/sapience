@@ -33,6 +33,9 @@ export class Position {
   @Column()
   positionId: number;
 
+  @Column()
+  owner: string;
+
   @Column({
     type: "numeric",
     precision: NUMERIC_PRECISION,

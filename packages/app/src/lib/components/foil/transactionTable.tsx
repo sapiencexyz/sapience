@@ -13,7 +13,9 @@ import {
 } from '@chakra-ui/react';
 import { formatDistanceToNow } from 'date-fns';
 import type React from 'react';
-import { useMemo } from 'react';
+import { useMemo, useContext } from 'react';
+
+import { MarketContext } from '~/lib/context/MarketProvider';
 
 import NumberDisplay from './numberDisplay';
 
@@ -45,6 +47,8 @@ const TransactionTable: React.FC<Props> = ({
   transactions,
   contractId,
 }) => {
+  const { chain } = useContext(MarketContext);
+
   const sortedTransactions = useMemo(() => {
     if (!transactions) return [];
     return [...transactions].sort(
@@ -115,7 +119,7 @@ const TransactionTable: React.FC<Props> = ({
               <Td>
                 <Link
                   isExternal
-                  href={`https://sepolia.etherscan.io/tx/${row.event.logData.transactionHash}`}
+                  href={`${chain?.blockExplorers?.default.url}/tx/${row.event.logData.transactionHash}`}
                 >
                   <Image
                     src="/etherscan.svg"
