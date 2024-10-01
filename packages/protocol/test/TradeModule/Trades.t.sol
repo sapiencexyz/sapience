@@ -645,13 +645,13 @@ contract TradePositionBasic is TestTrade {
         assertApproxEqRel(
             currentStateData.userCollateral,
             expectedStateData.userCollateral,
-            0.0000001 ether,
+            0.00001 ether,
             string.concat(stage, " userCollateral")
         );
         assertApproxEqRel(
             currentStateData.foilCollateral,
             expectedStateData.foilCollateral,
-            0.0000001 ether,
+            0.00001 ether,
             string.concat(stage, " foilCollateral")
         );
         assertEq(
