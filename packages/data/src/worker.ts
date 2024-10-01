@@ -29,6 +29,30 @@ try {
   console.warn("FoilSepolia not available");
 }
 
+const MARKETS = [
+  {
+    name: 'LOCAL',
+    deployment: FoilLocal,
+    chainId: hardhat.id,
+    publicClient: cannonPublicClient,
+  },
+  {
+    name: 'SEPOLIA',
+    deployment: FoilSepolia,
+    chainId: sepolia.id,
+    publicClient: sepoliaPublicClient,
+  },
+  {
+    name: 'SEPOLIA-1',
+    deployment: {
+      address: '0x8e02dad04f53f43c40a2abd1dc49127a0ef80b30',
+      abi: FoilSepolia?.abi || {} as Abi
+    },
+    chainId: sepolia.id,
+    publicClient: sepoliaPublicClient,
+  },
+];
+
 // TODO: Get this data from smart contract queries
 async function initializeMarkets() {
   await initializeDataSource();
@@ -51,34 +75,26 @@ async function initializeMarkets() {
     return epoch;
   }
 
-  // LOCAL
-  if (FoilLocal) {
-    let localMarket = await marketRepository.findOne({
-      where: { address: FoilLocal.address, chainId: hardhat.id },
-      relations: ["epochs"],
-    });
-    if (!localMarket) {
-      localMarket = new Market();
-      localMarket.address = FoilLocal.address;
-      localMarket.chainId = hardhat.id;
-      localMarket = await marketRepository.save(localMarket);
-    }
-    await createOrFindEpoch(localMarket);
-  }
+  for (const marketConfig of MARKETS) {
+    const { deployment, chainId } = marketConfig;
 
-  // SEPOLIA
-  if (FoilSepolia) {
-    let sepoliaMarket = await marketRepository.findOne({
-      where: { address: FoilSepolia.address, chainId: sepolia.id },
-      relations: ["epochs"],
-    });
-    if (!sepoliaMarket) {
-      sepoliaMarket = new Market();
-      sepoliaMarket.address = FoilSepolia.address;
-      sepoliaMarket.chainId = sepolia.id;
-      sepoliaMarket = await marketRepository.save(sepoliaMarket);
+    if (deployment) {
+      let marketEntity = await marketRepository.findOne({
+        where: { address: deployment.address, chainId },
+        relations: ["epochs"],
+      });
+
+      if (!marketEntity) {
+        marketEntity = new Market();
+        marketEntity.address = deployment.address;
+        marketEntity.chainId = chainId;
+        marketEntity = await marketRepository.save(marketEntity);
+      }
+
+      await createOrFindEpoch(marketEntity);
+    } else {
+      console.warn(`Deployment for chain ID ${chainId} not available`);
     }
-    await createOrFindEpoch(sepoliaMarket);
   }
 }
 
@@ -158,24 +174,17 @@ export async function reindexNetwork(
 
 if (process.argv.length < 3) {
   initializeMarkets().then(() => {
-    let jobs = [];
+    const jobs = [];
 
-    if (FoilSepolia) {
-      jobs.push(
-        indexBaseFeePerGas(
-          mainnetPublicClient,
-          sepolia.id,
-          FoilSepolia.address
-        ),
-        indexMarketEvents(sepoliaPublicClient, FoilSepolia)
-      );
-    }
+    for (const marketConfig of MARKETS) {
+      const { deployment, chainId, publicClient } = marketConfig;
 
-    if (process.env.NODE_ENV !== "production" && FoilLocal) {
-      jobs.push(
-        indexBaseFeePerGas(mainnetPublicClient, hardhat.id, FoilLocal.address),
-        indexMarketEvents(cannonPublicClient, FoilLocal)
-      );
+      if (deployment && process.env.NODE_ENV !== 'production') {
+        jobs.push(
+          indexBaseFeePerGas(mainnetPublicClient, chainId, deployment.address),
+          indexMarketEvents(publicClient, deployment)
+        );
+      }
     }
 
     if (jobs.length > 0) {
@@ -183,19 +192,28 @@ if (process.argv.length < 3) {
         console.error("Error running processes in parallel:", error);
       });
     } else {
-      console.warn(
-        "No jobs to run. Make sure FoilLocal or FoilSepolia are available."
-      );
+      console.warn("No jobs to run. Make sure deployments are available.");
     }
   });
 } else {
   const args = process.argv.slice(2);
 
-  if (args[0] === "reindex-testnet") {
-    console.log("Reindexing Testnet!");
-    reindexNetwork(sepoliaPublicClient, FoilSepolia, sepolia.id);
-  } else if (args[0] === "reindex-local") {
-    console.log("Reindexing Local!");
-    reindexNetwork(cannonPublicClient, FoilLocal, hardhat.id);
+  if (args[0] === "reindex") {
+    const targetMarketName = args[1]?.toUpperCase();
+
+    const marketConfig = MARKETS.find(
+      (market) => market.name === targetMarketName
+    );
+
+    if (marketConfig && marketConfig.deployment) {
+      console.log(`Reindexing ${marketConfig.name} network!`);
+      reindexNetwork(
+        marketConfig.publicClient,
+        marketConfig.deployment,
+        marketConfig.chainId
+      );
+    } else {
+      console.error(`Market ${targetMarketName} not found or deployment missing.`);
+    }
   }
 }
