@@ -257,7 +257,6 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
             height={`${tableFlexHeight}px`}
             pt={1}
             position="relative"
-            cursor="ns-resize"
           >
             <Box
               ref={resizeRef}
