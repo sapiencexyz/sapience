@@ -184,7 +184,7 @@ library Position {
         self.isSettled = true;
 
         // 1- reconcile gas tokens
-        reconcileGasTokens(self);
+        _reconcileGasTokens(self);
 
         // 2- convert everything to ETH
         if (self.vGasAmount > 0) {
@@ -205,7 +205,7 @@ library Position {
         }
 
         // 3- reconcile eth tokens
-        reconcileEthTokens(self);
+        _reconcileEthTokens(self);
 
         console2.log("self.vGasAmount", self.vGasAmount);
         console2.log("self.borrowedVGas", self.borrowedVGas);
@@ -228,11 +228,11 @@ library Position {
     }
 
     function reconcileTokens(Data storage self) internal {
-        reconcileGasTokens(self);
-        reconcileEthTokens(self);
+        _reconcileGasTokens(self);
+        _reconcileEthTokens(self);
     }
 
-    function reconcileGasTokens(Data storage self) internal {
+    function _reconcileGasTokens(Data storage self) private {
         if (self.vGasAmount > self.borrowedVGas) {
             self.vGasAmount -= self.borrowedVGas;
             self.borrowedVGas = 0;
@@ -242,7 +242,7 @@ library Position {
         }
     }
 
-    function reconcileEthTokens(Data storage self) internal {
+    function _reconcileEthTokens(Data storage self) private {
         if (self.vEthAmount > self.borrowedVEth) {
             self.vEthAmount -= self.borrowedVEth;
             self.borrowedVEth = 0;
