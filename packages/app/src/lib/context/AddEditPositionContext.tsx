@@ -6,7 +6,7 @@ import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
 import { PositionKind } from '~/lib/interfaces/interfaces';
 
-interface LiquidityPositionContextType {
+interface AddEditPositionContextType {
   nftId: number;
   setNftId: (id: number) => void;
   tokenIds: number[];
@@ -14,11 +14,11 @@ interface LiquidityPositionContextType {
   refreshPositions: () => Promise<void>;
 }
 
-const LiquidityPositionContext = createContext<
-  LiquidityPositionContextType | undefined
+const AddEditPositionContext = createContext<
+  AddEditPositionContextType | undefined
 >(undefined);
 
-export const LiquidityPositionProvider: React.FC<{
+export const AddEditPositionProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
   const [nftId, setNftId] = useState(0);
@@ -51,19 +51,19 @@ export const LiquidityPositionProvider: React.FC<{
   }, [refetchTokenIds, refetchPositions]);
 
   return (
-    <LiquidityPositionContext.Provider
+    <AddEditPositionContext.Provider
       value={{ nftId, setNftId, tokenIds, isLps, refreshPositions }}
     >
       {children}
-    </LiquidityPositionContext.Provider>
+    </AddEditPositionContext.Provider>
   );
 };
 
-export const useLiquidityPosition = () => {
-  const context = useContext(LiquidityPositionContext);
+export const useAddEditPosition = () => {
+  const context = useContext(AddEditPositionContext);
   if (context === undefined) {
     throw new Error(
-      'useLiquidityPosition must be used within a LiquidityPositionProvider'
+      'useAddEditPosition must be used within a AddEditPositionProvider'
     );
   }
   return context;
