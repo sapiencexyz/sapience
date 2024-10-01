@@ -25,7 +25,7 @@ import {
   getMinResultBalance,
 } from '../../util/tradeUtil';
 import RadioCard from '../RadioCard';
-import { MIN_BIG_INT_SIZE } from '~/lib/constants/constants';
+import { MIN_BIG_INT_SIZE, TOKEN_DECIMALS } from '~/lib/constants/constants';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { useLoading } from '~/lib/context/LoadingContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
@@ -138,7 +138,7 @@ export default function AddEditTrade({}) {
     functionName: 'quoteCreateTraderPosition',
     args: [epoch, parseUnits(`${size}`, collateralAssetDecimals)],
     chainId,
-    query: { enabled: !isEdit && Math.abs(size) >= 2e12 },
+    query: { enabled: !isEdit && size > 0 },
   });
 
   const quoteModifyPositionResult = useSimulateContract({
