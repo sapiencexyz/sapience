@@ -13,7 +13,7 @@ import {
   HStack,
 } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import Chart from '~/lib/components/chart';
 import ChartSelector from '~/lib/components/ChartSelector';
@@ -35,11 +35,48 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
   const [selectedWindow, setSelectedWindow] = useState<VolumeWindow>(
     VolumeWindow.D
   );
+  const [tableFlexHeight, setTableFlexHeight] = useState(172);
+  const resizeRef = useRef<HTMLDivElement>(null);
   const [chartType, setChartType] = useState<ChartType>(ChartType.PRICE);
 
   const [chainId, marketAddress] = params.id.split('%3A');
   const { epoch } = params;
   const contractId = `${chainId}:${marketAddress}`;
+
+  // useEffect to handle table resize
+  useEffect(() => {
+    const resizeElement = resizeRef.current;
+    let startY: number;
+    let startHeight: number;
+
+    const onMouseMove = (e: MouseEvent) => {
+      const deltaY = startY - e.clientY;
+      const newHeight = Math.max(50, startHeight + deltaY);
+      setTableFlexHeight(newHeight);
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    const onMouseDown = (e: MouseEvent) => {
+      startY = e.clientY;
+      startHeight = tableFlexHeight;
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    };
+
+    if (resizeElement) {
+      resizeElement.addEventListener('mousedown', onMouseDown);
+    }
+
+    return () => {
+      if (resizeElement) {
+        resizeElement.removeEventListener('mousedown', onMouseDown);
+      }
+    };
+  }, [tableFlexHeight]);
 
   const useTransactions = () => {
     return useQuery({
@@ -214,11 +251,23 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
             </Box>
           </Flex>
           <Flex
+            id="table-flex"
             borderTop="1px solid"
             borderColor="gray.200"
-            height="172px"
+            height={`${tableFlexHeight}px`}
             pt={1}
+            position="relative"
+            cursor="ns-resize"
           >
+            <Box
+              ref={resizeRef}
+              position="absolute"
+              top="-5px"
+              left="0"
+              right="0"
+              height="10px"
+              cursor="ns-resize"
+            />
             <Tabs display="flex" flexDirection="column" width="100%">
               <TabList>
                 <Tab>Transactions</Tab>
