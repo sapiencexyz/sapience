@@ -18,7 +18,12 @@ import PositionSelector from './positionSelector';
 
 export default function Settle() {
   const { address, isConnected } = useAccount();
-  const { foilData, chainId } = useContext(MarketContext);
+
+  const {
+    address: marketAddress,
+    foilData,
+    chainId,
+  } = useContext(MarketContext);
   const { nftId, setNftId } = useAddEditPosition();
   const [withdrawableCollateral, setWithdrawableCollateral] = useState<bigint>(
     BigInt(0)
@@ -30,7 +35,7 @@ export default function Settle() {
     useTokenIdsOfOwner(address as `0x${string}`);
 
   const { data: positionData } = useReadContract({
-    address: foilData.address as `0x${string}`,
+    address: marketAddress as `0x${string}`,
     abi: foilData.abi,
     functionName: 'getPosition',
     args: [nftId],

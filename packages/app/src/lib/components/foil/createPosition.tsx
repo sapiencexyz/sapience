@@ -5,14 +5,11 @@ import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 
 import { MarketContext } from '~/lib/context/MarketProvider';
 
-import useFoilDeployment from './useFoilDeployment';
-
 export default function CreatePosition() {
   const { data: hash, error, isPending, writeContract } = useWriteContract();
   const toast = useToast();
 
-  const { chain } = React.useContext(MarketContext);
-  const { foilData } = useFoilDeployment(chain?.id);
+  const { address: marketAddress, foilData } = React.useContext(MarketContext);
 
   React.useEffect(() => {
     if (error) {
@@ -38,7 +35,7 @@ export default function CreatePosition() {
     e.preventDefault();
     writeContract({
       abi: foilData.abi,
-      address: foilData.address as `0x${string}`,
+      address: marketAddress as `0x${string}`,
       functionName: 'createAccount',
       args: [],
     });

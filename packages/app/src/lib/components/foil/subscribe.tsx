@@ -59,17 +59,18 @@ const Subscribe: FC = () => {
   const { switchChain } = useSwitchChain();
 
   const {
-    collateralAsset,
-    collateralAssetTicker,
-    collateralAssetDecimals,
-    epoch,
-    foilData,
+    address: marketAddress,
     chainId,
+    epoch,
+    collateralAsset,
+    foilData,
+    stEthPerToken,
+    collateralAssetDecimals,
+    collateralAssetTicker,
     pool,
     refetchUniswapData,
     startTime,
     endTime,
-    stEthPerToken,
   } = useContext(MarketContext);
 
   const refPrice = pool?.token0Price.toSignificant(3);
@@ -102,7 +103,7 @@ const Subscribe: FC = () => {
   // Quote function
   const quoteCreatePositionResult = useSimulateContract({
     abi: foilData.abi,
-    address: foilData.address as `0x${string}`,
+    address: marketAddress as `0x${string}`,
     functionName: 'quoteCreateTraderPosition',
     args: [epoch, BigInt(Math.floor(sizeInGigagas))],
     chainId,
@@ -259,13 +260,13 @@ const Subscribe: FC = () => {
         abi: erc20ABI as AbiFunction[],
         address: collateralAsset as `0x${string}`,
         functionName: 'approve',
-        args: [foilData.address, collateralDeltaLimit],
+        args: [marketAddress, collateralDeltaLimit],
       });
     } else {
       console.log('creating trade position....');
       writeContract({
         abi: foilData.abi,
-        address: foilData.address as `0x${string}`,
+        address: marketAddress as `0x${string}`,
         functionName: 'createTraderPosition',
         args: [epoch, sizeInTokens, collateralDeltaLimit, deadline],
       });

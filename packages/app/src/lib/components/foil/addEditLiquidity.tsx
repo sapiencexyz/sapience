@@ -91,6 +91,7 @@ const AddEditLiquidity: React.FC = () => {
     chainId,
     foilData,
     refetchUniswapData,
+    address: marketAddress,
   } = useContext(MarketContext);
   const { setIsLoading } = useLoading();
   const toast = useToast();
@@ -123,7 +124,7 @@ const AddEditLiquidity: React.FC = () => {
   /// //// READ CONTRACT HOOKS ///////
   const { data: positionData, refetch: refetchPosition } = useReadContract({
     abi: foilData.abi,
-    address: foilData.address as `0x${string}`,
+    address: marketAddress as `0x${string}`,
     functionName: 'getPosition',
     args: [nftId],
     query: {
@@ -161,9 +162,9 @@ const AddEditLiquidity: React.FC = () => {
     abi: erc20ABI,
     address: collateralAsset as `0x${string}`,
     functionName: 'allowance',
-    args: [account.address, foilData.address],
+    args: [account.address, marketAddress],
     query: {
-      enabled: Boolean(isConnected && foilData.address),
+      enabled: Boolean(isConnected && marketAddress),
     },
     chainId,
   });

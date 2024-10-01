@@ -108,14 +108,14 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
   const marketViewFunctionResult = useReadContract({
     chainId,
     abi: foilData.abi,
-    address: foilData?.address as `0x${string}`,
+    address: state.address as `0x${string}`,
     functionName: 'getMarket',
   }) as any;
 
   const epochViewFunctionResult = useReadContract({
     chainId,
     abi: foilData.abi,
-    address: foilData?.address as `0x${string}`,
+    address: state.address as `0x${string}`,
     functionName: 'getEpoch',
     args: [epoch],
   }) as any;

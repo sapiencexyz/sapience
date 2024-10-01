@@ -58,6 +58,7 @@ export default function AddEditTrade() {
   const isEdit = nftId > 0;
 
   const {
+    address: marketAddress,
     collateralAsset,
     collateralAssetTicker,
     collateralAssetDecimals,
@@ -84,7 +85,7 @@ export default function AddEditTrade() {
   // position data
   const { data: positionData, refetch: refetchPositionData } = useReadContract({
     abi: foilData.abi,
-    address: foilData.address as `0x${string}`,
+    address: marketAddress as `0x${string}`,
     functionName: 'getPosition',
     args: [nftId],
     query: {
@@ -129,14 +130,14 @@ export default function AddEditTrade() {
     abi: erc20ABI,
     address: collateralAsset as `0x${string}`,
     functionName: 'allowance',
-    args: [address, foilData.address],
+    args: [address, marketAddress],
     chainId,
   });
 
   // Quote functions
   const quoteCreatePositionResult = useSimulateContract({
     abi: foilData.abi,
-    address: foilData.address as `0x${string}`,
+    address: marketAddress as `0x${string}`,
     functionName: 'quoteCreateTraderPosition',
     args: [epoch, parseUnits(`${size}`, collateralAssetDecimals)],
     chainId,
@@ -145,7 +146,7 @@ export default function AddEditTrade() {
 
   const quoteModifyPositionResult = useSimulateContract({
     abi: foilData.abi,
-    address: foilData.address as `0x${string}`,
+    address: marketAddress as `0x${string}`,
     functionName: 'quoteModifyTraderPosition',
     args: [nftId, parseUnits(`${size}`, collateralAssetDecimals)],
     chainId,
@@ -315,12 +316,12 @@ export default function AddEditTrade() {
         abi: erc20ABI as AbiFunction[],
         address: collateralAsset as `0x${string}`,
         functionName: 'approve',
-        args: [foilData.address, collateralDeltaLimit],
+        args: [marketAddress, collateralDeltaLimit],
       });
     } else if (isEdit) {
       writeContract({
         abi: foilData.abi,
-        address: foilData.address as `0x${string}`,
+        address: marketAddress as `0x${string}`,
         functionName: 'modifyTraderPosition',
         args: [nftId, sizeInTokens, collateralDeltaLimit, deadline],
       });
@@ -328,7 +329,7 @@ export default function AddEditTrade() {
       console.log('creating trade position....');
       writeContract({
         abi: foilData.abi,
-        address: foilData.address as `0x${string}`,
+        address: marketAddress as `0x${string}`,
         functionName: 'createTraderPosition',
         args: [epoch, sizeInTokens, collateralDeltaLimit, deadline],
       });
