@@ -45,7 +45,7 @@ const MARKETS = [
   {
     name: 'SEPOLIA-1',
     deployment: {
-      address: '0x8e02dad04f53f43c40a2abd1dc49127a0ef80b30',
+      address: '0xfb17d7f02f4d29d900838f80605091e3778e38ee',
       abi: FoilSepolia?.abi || {} as Abi
     },
     chainId: sepolia.id,
