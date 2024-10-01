@@ -25,7 +25,7 @@ import {
   getMinResultBalance,
 } from '../../util/tradeUtil';
 import RadioCard from '../RadioCard';
-import { MIN_BIG_INT_SIZE, TOKEN_DECIMALS } from '~/lib/constants/constants';
+import { MIN_BIG_INT_SIZE } from '~/lib/constants/constants';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { useLoading } from '~/lib/context/LoadingContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
@@ -38,7 +38,7 @@ import SlippageTolerance from './slippageTolerance';
 
 const tradeOptions = ['Long', 'Short'];
 
-export default function AddEditTrade({}) {
+export default function AddEditTrade() {
   const { nftId, refreshPositions } = useAddEditPosition();
   const [size, setSize] = useState<number>(0);
   const [option, setOption] = useState<'Long' | 'Short'>('Long');

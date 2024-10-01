@@ -190,10 +190,6 @@ const isLpPosition = (transaction: Transaction) => {
       eventName === EventType.LiquidityPositionClosed &&
       `${transaction.event.logData.args.kind}` === "2"
     ) {
-      console.log(
-        "transaction.event.logData.args.kind -",
-        transaction.event.logData.args.kind
-      );
       return false;
     }
     return true;
