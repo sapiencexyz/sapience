@@ -10,7 +10,6 @@ import {
   Input,
   InputRightAddon,
   FormErrorMessage,
-  Flex,
   Box,
   Button,
   Tooltip,
@@ -24,13 +23,15 @@ import {
 } from 'react';
 import React from 'react';
 import type { AbiFunction, WriteContractErrorType } from 'viem';
-import { formatUnits, parseUnits, parseEther } from 'viem';
+import { formatUnits } from 'viem';
 import {
   useWaitForTransactionReceipt,
   useWriteContract,
   useAccount,
   useReadContract,
   useSimulateContract,
+  useChainId,
+  useSwitchChain,
 } from 'wagmi';
 
 import erc20ABI from '../../erc20abi.json';
@@ -54,6 +55,8 @@ const Subscribe: FC = () => {
   const account = useAccount();
   const { isConnected, address } = account;
   const { setIsLoading } = useLoading();
+  const currentChainId = useChainId();
+  const { switchChain } = useSwitchChain();
 
   const {
     collateralAsset,
@@ -197,7 +200,7 @@ const Subscribe: FC = () => {
     ) {
       const fillPrice =
         BigInt(quoteCreatePositionResult.data?.result as unknown as bigint) /
-        BigInt(Math.floor(size));
+        BigInt(size);
       const fillPriceInEth =
         Number(formatUnits(fillPrice, collateralAssetDecimals)) * stEthPerToken;
       setEstimatedFillPrice(fillPriceInEth.toString());
@@ -282,11 +285,59 @@ const Subscribe: FC = () => {
   };
 
   const handleSizeChange = (newVal: string) => {
-    const newSize = parseFloat(newVal || '0');
+    const newSize = parseInt(newVal || '0');
     setSize(newSize);
   };
 
   console.log('stEthPerToken', stEthPerToken);
+
+  const renderActionButton = () => {
+    if (!isConnected) {
+      return (
+        <Button
+          isLoading={pendingTxn || isLoadingCollateralChange}
+          isDisabled={pendingTxn || isLoadingCollateralChange}
+          width="full"
+          variant="brand"
+          type="submit"
+          size="lg"
+        >
+          Connect Wallet
+        </Button>
+      );
+    }
+
+    if (currentChainId !== chainId) {
+      return (
+        <Button
+          width="full"
+          variant="brand"
+          size="lg"
+          onClick={() => switchChain({ chainId })}
+        >
+          Switch Network
+        </Button>
+      );
+    }
+
+    return (
+      <Button
+        width="full"
+        variant="brand"
+        type="submit"
+        isLoading={pendingTxn || isLoadingCollateralChange}
+        isDisabled={
+          pendingTxn ||
+          isLoadingCollateralChange ||
+          Boolean(quoteError) ||
+          size <= 0
+        }
+        size="lg"
+      >
+        Create Subscription
+      </Button>
+    );
+  };
 
   return (
     <form onSubmit={handleSubmit}>
@@ -310,7 +361,7 @@ const Subscribe: FC = () => {
             value={size}
             type="number"
             min={0}
-            step="any"
+            step="1"
             onWheel={(e) => e.currentTarget.blur()}
             onChange={(e) => handleSizeChange(e.target.value)}
           />
@@ -338,34 +389,7 @@ const Subscribe: FC = () => {
         </Text>
       </Box>
 
-      {isConnected ? (
-        <Button
-          width="full"
-          variant="brand"
-          type="submit"
-          isLoading={pendingTxn || isLoadingCollateralChange}
-          isDisabled={
-            pendingTxn ||
-            isLoadingCollateralChange ||
-            Boolean(quoteError) ||
-            size <= 0
-          }
-          size="lg"
-        >
-          Create Subscription
-        </Button>
-      ) : (
-        <Button
-          isLoading={pendingTxn || isLoadingCollateralChange}
-          isDisabled={pendingTxn || isLoadingCollateralChange}
-          width="full"
-          variant="brand"
-          type="submit"
-          size="lg"
-        >
-          Connect Wallet
-        </Button>
-      )}
+      {renderActionButton()}
     </form>
   );
 };
