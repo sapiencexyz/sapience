@@ -92,8 +92,8 @@ contract NftModule is IERC721Enumerable {
         }
 
         ERC721Storage.load().operatorApprovals[ERC2771Context._msgSender()][
-                operator
-            ] = approved;
+            operator
+        ] = approved;
 
         emit ApprovalForAll(ERC2771Context._msgSender(), operator, approved);
     }
@@ -178,11 +178,12 @@ contract NftModule is IERC721Enumerable {
 
     /**
      * @dev Returns the token identifier for the `_index`th NFT
+     * @notice index is offset by +1 at creation time
      */
     function tokenByIndex(
         uint256 index
     ) public view virtual override returns (uint256) {
-        if (index >= totalSupply()) {
+        if (index > totalSupply()) {
             revert IndexOverrun(index, totalSupply());
         }
         return ERC721EnumerableStorage.load().allTokens[index];
