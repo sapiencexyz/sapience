@@ -10,7 +10,5 @@ export default defineConfig({
   contracts: [
     Foil
   ],
-  plugins: [actions({
-    overridePackageName: 'wagmi', 
-  })],
+  plugins: [actions()],
 })
