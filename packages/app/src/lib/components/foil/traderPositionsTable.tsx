@@ -56,15 +56,6 @@ const TraderPositionsTable: React.FC<Props> = ({
     const borrowedVGas = parseFloat(position.borrowedBaseToken);
     const marketPrice = parseFloat(pool?.token0Price?.toSignificant(18) || '0');
 
-    console.log(
-      position,
-      vEthToken,
-      borrowedVEth,
-      vGasToken,
-      borrowedVGas,
-      marketPrice
-    );
-
     return vEthToken - borrowedVEth + (vGasToken - borrowedVGas) * marketPrice;
   };
 
