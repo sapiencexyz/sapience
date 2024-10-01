@@ -364,7 +364,9 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         );
 
         // get average trade ratio (price)
-        require(runtime.vGasTrade > 0, "Invalid trade size - 0 tokens traded");
+        if (runtime.vGasTrade == 0) {
+            revert Errors.InvalidTradeSize(0);
+        }
 
         // adjust vEth and vGas amounts if the position was in the short direction (change sides)
         runtime.afterTradePositionVEth = position.vEthAmount;
@@ -429,7 +431,9 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         );
 
         // get average trade ratio (price)
-        require(runtime.vGasTrade > 0, "Invalid trade size - 0 tokens traded");
+        if (runtime.vGasTrade == 0) {
+            revert Errors.InvalidTradeSize(0);
+        }
 
         // adjust vEth and vGas amounts if the position was in the long direction (change sides)
         runtime.afterTradePositionVEth = position.borrowedVEth;
