@@ -17,6 +17,8 @@ import {
   useAccount,
   useReadContract,
   useSimulateContract,
+  useChainId,
+  useSwitchChain,
 } from 'wagmi';
 
 import erc20ABI from '../../erc20abi.json';
@@ -370,6 +372,49 @@ export default function AddEditTrade() {
     slippage
   );
 
+  const currentChainId = useChainId();
+  const { switchChain } = useSwitchChain();
+
+  const renderActionButton = () => {
+    if (!isConnected) {
+      return (
+        <Button width="full" variant="brand" type="submit" mb={4} size="lg">
+          Connect Wallet
+        </Button>
+      );
+    }
+
+    if (currentChainId !== chainId) {
+      return (
+        <Button
+          width="full"
+          variant="brand"
+          mb={4}
+          size="lg"
+          onClick={() => switchChain({ chainId })}
+        >
+          Switch Network
+        </Button>
+      );
+    }
+
+    return (
+      <Button
+        width="full"
+        variant="brand"
+        type="submit"
+        isLoading={pendingTxn || isLoadingCollateralChange}
+        isDisabled={
+          pendingTxn || isLoadingCollateralChange || Boolean(quoteError)
+        }
+        mb={4}
+        size="lg"
+      >
+        {isEdit ? 'Update Position' : 'Create Position'}
+      </Button>
+    );
+  };
+
   return (
     <form onSubmit={handleSubmit}>
       <Flex {...group} gap={4} mb={4}>
@@ -391,25 +436,7 @@ export default function AddEditTrade() {
         error={Boolean(quoteError)}
       />
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
-      {isConnected ? (
-        <Button
-          width="full"
-          variant="brand"
-          type="submit"
-          isLoading={pendingTxn || isLoadingCollateralChange}
-          isDisabled={
-            pendingTxn || isLoadingCollateralChange || Boolean(quoteError)
-          }
-          mb={4}
-          size="lg"
-        >
-          {isEdit ? 'Update Position' : 'Create Position'}
-        </Button>
-      ) : (
-        <Button width="full" variant="brand" type="submit" mb={4} size="lg">
-          Connect Wallet
-        </Button>
-      )}
+      {renderActionButton()}
       <Flex gap={2} flexDir="column">
         {!isLoadingCollateralChange && (
           <Box>
