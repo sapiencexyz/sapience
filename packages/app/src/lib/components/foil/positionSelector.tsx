@@ -1,10 +1,4 @@
-import {
-  Box,
-  FormControl,
-  FormLabel,
-  InputGroup,
-  Select,
-} from '@chakra-ui/react';
+import { FormControl, FormLabel, Select } from '@chakra-ui/react';
 import {
   useContext,
   useEffect,
@@ -24,12 +18,13 @@ interface PositionSelectorProps {
   onChange: Dispatch<SetStateAction<number>>;
   nftIds: number[];
   value: number;
+  refreshTrigger: number;
 }
 
 const useIsLps = (ids: number[]) => {
   const { foilData } = useContext(MarketContext);
 
-  const tokensInfo = useReadContracts({
+  const { data, refetch } = useReadContracts({
     contracts: ids.map((i) => {
       return {
         abi: foilData.abi,
@@ -41,14 +36,14 @@ const useIsLps = (ids: number[]) => {
   });
 
   const isLps: boolean[] = useMemo(() => {
-    if (!tokensInfo.data) return [];
-    return tokensInfo.data.map((resp) => {
+    if (!data) return [];
+    return data.map((resp) => {
       const position = resp.result as FoilPosition;
       return position.kind === PositionKind.Liquidity;
     });
-  }, [tokensInfo.data]);
+  }, [data]);
 
-  return isLps;
+  return { isLps, refetch };
 };
 
 const PositionSelector: React.FC<PositionSelectorProps> = ({
@@ -56,12 +51,17 @@ const PositionSelector: React.FC<PositionSelectorProps> = ({
   onChange,
   nftIds,
   value,
+  refreshTrigger,
 }) => {
-  const isLps = useIsLps(nftIds);
+  const { isLps, refetch } = useIsLps(nftIds);
   const filteredNfts = useMemo(
     () => nftIds.filter((_, index) => (isLP ? isLps[index] : !isLps[index])),
     [nftIds, isLps, isLP]
   );
+
+  useEffect(() => {
+    refetch();
+  }, [refreshTrigger]);
 
   useEffect(() => {
     onChange(filteredNfts[filteredNfts.length - 1]);

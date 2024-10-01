@@ -18,14 +18,10 @@ import {
   Flex,
   useToast,
 } from '@chakra-ui/react';
-import type {
-  QueryObserverResult,
-  RefetchOptions,
-} from '@tanstack/react-query';
 import { TickMath, SqrtPriceMath } from '@uniswap/v3-sdk';
 import JSBI from 'jsbi';
 import { useContext, useEffect, useMemo, useState } from 'react';
-import type { ReadContractErrorType, WriteContractErrorType } from 'viem';
+import type { WriteContractErrorType } from 'viem';
 import { formatUnits, parseUnits } from 'viem';
 import {
   useWriteContract,
@@ -56,10 +52,8 @@ const priceToTick = (price: number, tickSpacing: number): number => {
 const tickToPrice = (tick: number): number => 1.0001 ** tick;
 
 interface Props {
-  refetchTokens: (
-    options?: RefetchOptions
-  ) => Promise<QueryObserverResult<unknown, ReadContractErrorType>>;
   nftId: number;
+  handleTokenRefresh: () => Promise<void>;
 }
 
 function getTokenAmountsFromLiquidity(
@@ -86,7 +80,7 @@ function getTokenAmountsFromLiquidity(
   return { amount0, amount1 };
 }
 
-const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
+const AddEditLiquidity: React.FC<Props> = ({ nftId, handleTokenRefresh }) => {
   const {
     epoch,
     pool,
@@ -575,7 +569,7 @@ const AddEditLiquidity: React.FC<Props> = ({ nftId, refetchTokens }) => {
 
     // refetch contract data
     refetchCollateralAmount();
-    refetchTokens();
+    handleTokenRefresh();
     refetchPosition();
     refetchUniswapData();
   };

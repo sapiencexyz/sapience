@@ -13,6 +13,13 @@ const LiquidityPosition = () => {
   const [nftId, setNftId] = useState(0);
   const { address } = useAccount();
   const { tokenIds, refetch } = useTokenIdsOfOwner(address as `0x${string}`);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const handleRefresh = async () => {
+    await refetch();
+    // update thhe refresh trigger so force the position selector to refresh data about each nft
+    setRefreshTrigger((prev) => prev + 1);
+  };
 
   return (
     <Box>
@@ -22,9 +29,10 @@ const LiquidityPosition = () => {
           onChange={setNftId}
           nftIds={tokenIds}
           value={nftId}
+          refreshTrigger={refreshTrigger}
         />
       </Box>
-      <AddEditLiquidity nftId={nftId} refetchTokens={refetch} />
+      <AddEditLiquidity nftId={nftId} handleTokenRefresh={handleRefresh} />
     </Box>
   );
 };

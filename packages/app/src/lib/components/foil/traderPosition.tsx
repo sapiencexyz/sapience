@@ -26,7 +26,10 @@ import {
   calculateCollateralDeltaLimit,
   getMinResultBalance,
 } from '../../util/tradeUtil';
-import { DECIMAL_PRECISION_DISPLAY } from '~/lib/constants/constants';
+import {
+  DECIMAL_PRECISION_DISPLAY,
+  MIN_BIG_INT_SIZE,
+} from '~/lib/constants/constants';
 import { useLoading } from '~/lib/context/LoadingContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';
@@ -147,9 +150,11 @@ export default function TraderPosition({}) {
         positionData.vGasAmount > BigInt(0)
           ? positionData.vGasAmount
           : positionData.borrowedVGas;
+      const adjustedSize =
+        _sizeBigInt >= MIN_BIG_INT_SIZE ? _sizeBigInt : BigInt(0);
       return (
         sideFactor *
-        parseFloat(formatUnits(_sizeBigInt, collateralAssetDecimals))
+        parseFloat(formatUnits(adjustedSize, collateralAssetDecimals))
       );
     }
 
@@ -181,7 +186,7 @@ export default function TraderPosition({}) {
     functionName: 'quoteCreateTraderPosition',
     args: [epoch, parseUnits(`${size}`, collateralAssetDecimals)],
     chainId,
-    query: { enabled: !isEdit && size !== 0 },
+    query: { enabled: !isEdit && Math.abs(size) >= 2e12 },
   });
 
   const quoteModifyPositionResult = useSimulateContract({
@@ -420,6 +425,7 @@ export default function TraderPosition({}) {
         onChange={setNftId}
         nftIds={tokenIds}
         value={nftId}
+        refreshTrigger={0}
       />
       <Flex {...group} gap={4} mb={4}>
         {tradeOptions.map((value) => {

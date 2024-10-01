@@ -32,7 +32,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({
 }) => {
   const { pool } = useContext(MarketContext);
 
-  console.log('positions = ', positions);
+  // console.log('positions = ', positions);
 
   if (isLoading) {
     return (

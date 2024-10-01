@@ -99,13 +99,12 @@ export const createOrModifyPosition = async (transaction: Transaction) => {
   const eventArgs = transaction.event.logData.args; //as LiquidityPositionModifiedEventLog;
   const position = existingPosition || new Position();
 
-  console.log("eventArgs =", eventArgs);
-
   if (existingPosition) {
     console.log("existing position: ", existingPosition);
   }
+  console.log("eventArgs: =", eventArgs);
 
-  position.isLP = isLpPosition(transaction, existingPosition);
+  position.isLP = isLpPosition(transaction);
   position.positionId = Number(eventArgs.positionId);
 
   position.baseToken =
@@ -181,43 +180,21 @@ export const formatDbBigInt = (value: string) => {
   return number.toFixed(4);
 };
 
-export const didMarketPriceChangeSincePositionOpen = async (
-  position: Position,
-  transaction: Transaction
-) => {
-  const openingTxn = position.transactions.find((txn) => {
-    return txn.event.logData.eventName === EventType.LiquidityPositionCreated;
-  });
-  if (!openingTxn) {
-    return false;
-  }
-  const openingTimestamp = openingTxn.event.timestamp;
-  const marketPriceRepository = dataSource.getRepository(MarketPrice);
-  const marketPriceAtTimestamp = await marketPriceRepository.findOne({
-    where: { timestamp: LessThanOrEqual(openingTimestamp) },
-    order: { timestamp: "DESC" },
-  });
-  const prevMarketPrice = marketPriceAtTimestamp?.value;
-
-  const newMarketPrice: string = transaction.event.logData.args.finalPrice;
-
-  return newMarketPrice !== prevMarketPrice;
-};
-
-const isLpPosition = (
-  transaction: Transaction,
-  existingPosition: Position | null
-) => {
+const isLpPosition = (transaction: Transaction) => {
   if (transaction.type === TransactionType.ADD_LIQUIDITY) {
     return true;
   } else if (transaction.type === TransactionType.REMOVE_LIQUIDITY) {
     // for remove liquidity, check if the position closed and market price changed, which means it becomes a trade position
     const eventName = transaction.event.logData.eventName;
-    if (eventName === EventType.LiquidityPositionClosed && existingPosition) {
-      return !didMarketPriceChangeSincePositionOpen(
-        existingPosition,
-        transaction
+    if (
+      eventName === EventType.LiquidityPositionClosed &&
+      `${transaction.event.logData.args.kind}` === "2"
+    ) {
+      console.log(
+        "transaction.event.logData.args.kind -",
+        transaction.event.logData.args.kind
       );
+      return false;
     }
     return true;
   }
