@@ -189,6 +189,7 @@ library Position {
         // 2- convert everything to ETH
         if (self.vGasAmount > 0) {
             self.vEthAmount += self.vGasAmount.mulDecimal(settlementPriceD18);
+            self.vGasAmount = 0;
         }
         if (self.borrowedVGas > 0) {
             self.borrowedVEth += self.borrowedVGas.mulDecimal(
@@ -202,6 +203,8 @@ library Position {
             ) > 0
                 ? 1
                 : 0;
+
+            self.borrowedVGas = 0;
         }
 
         // 3- reconcile eth tokens
