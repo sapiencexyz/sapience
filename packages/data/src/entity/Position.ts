@@ -33,7 +33,7 @@ export class Position {
   @Column()
   positionId: number;
 
-  @Column()
+  @Column({ nullable: true })
   owner: string;
 
   @Column({
