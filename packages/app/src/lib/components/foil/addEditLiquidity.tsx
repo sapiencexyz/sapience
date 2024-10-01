@@ -28,6 +28,8 @@ import {
   useWaitForTransactionReceipt,
   useAccount,
   useReadContract,
+  useChainId,
+  useSwitchChain,
 } from 'wagmi';
 
 import erc20ABI from '../../erc20abi.json';
@@ -114,6 +116,9 @@ const AddEditLiquidity: React.FC = () => {
   const [collateralAmountDelta, setCollateralAmountDelta] = useState<bigint>(
     BigInt(0)
   );
+
+  const currentChainId = useChainId();
+  const { switchChain } = useSwitchChain();
 
   /// //// READ CONTRACT HOOKS ///////
   const { data: positionData, refetch: refetchPosition } = useReadContract({
@@ -749,6 +754,40 @@ const AddEditLiquidity: React.FC = () => {
     return 'Add Liquidity';
   };
 
+  const renderActionButton = () => {
+    if (!isConnected) {
+      return (
+        <Button width="full" variant="brand" type="submit">
+          Connect Wallet
+        </Button>
+      );
+    }
+
+    if (currentChainId !== chainId) {
+      return (
+        <Button
+          width="full"
+          variant="brand"
+          onClick={() => switchChain({ chainId })}
+        >
+          Switch Network
+        </Button>
+      );
+    }
+
+    return (
+      <Button
+        width="full"
+        variant="brand"
+        type="submit"
+        isLoading={pendingTxn || isFetching}
+        isDisabled={pendingTxn || isFetching}
+      >
+        {getButtonText()}
+      </Button>
+    );
+  };
+
   return (
     <form onSubmit={handleFormSubmit}>
       <Box mb={4}>
@@ -847,21 +886,7 @@ const AddEditLiquidity: React.FC = () => {
           </Text>
         ) : null}
       </Box>
-      {isConnected ? (
-        <Button
-          width="full"
-          variant="brand"
-          type="submit"
-          isLoading={pendingTxn || isFetching}
-          isDisabled={pendingTxn || isFetching}
-        >
-          {getButtonText()}
-        </Button>
-      ) : (
-        <Button width="full" variant="brand" type="submit">
-          Connect Wallet
-        </Button>
-      )}
+      {renderActionButton()}
     </form>
   );
 };
