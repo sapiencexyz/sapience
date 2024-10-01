@@ -89,9 +89,14 @@ const Header = () => {
               onClick={onOpen}
               variant="ghost"
             />
-            <Drawer isOpen={isOpen} placement="right" onClose={onClose}>
+            <Drawer
+              isOpen={isOpen}
+              placement="right"
+              onClose={onClose}
+              size="sm"
+            >
               <DrawerOverlay />
-              <DrawerContent>
+              <DrawerContent pt={4}>
                 <DrawerCloseButton />
                 <DrawerBody>
                   <VStack spacing={4} align="stretch">

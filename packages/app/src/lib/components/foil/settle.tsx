@@ -8,6 +8,7 @@ import {
   useWaitForTransactionReceipt,
 } from 'wagmi';
 
+import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';
 import { renderContractErrorToast, renderToast } from '~/lib/util/util';
@@ -18,7 +19,7 @@ import PositionSelector from './positionSelector';
 export default function Settle() {
   const { address, isConnected } = useAccount();
   const { foilData, chainId } = useContext(MarketContext);
-  const [selectedPositionId, setSelectedPositionId] = useState<number>(0);
+  const { nftId, setNftId } = useAddEditPosition();
   const [withdrawableCollateral, setWithdrawableCollateral] = useState<bigint>(
     BigInt(0)
   );
@@ -32,7 +33,7 @@ export default function Settle() {
     address: foilData.address as `0x${string}`,
     abi: foilData.abi,
     functionName: 'getPosition',
-    args: [selectedPositionId],
+    args: [nftId],
     chainId,
   });
 
@@ -47,10 +48,10 @@ export default function Settle() {
       renderToast(toast, 'Position settled successfully!', 'success');
       setIsSettling(false);
       refetch();
-      setSelectedPositionId(0);
+      setNftId(0);
       setWithdrawableCollateral(BigInt(0));
     }
-  }, [isConfirmed, toast, refetch]);
+  }, [isConfirmed, toast, refetch, setNftId]);
 
   useEffect(() => {
     if (positionData) {
@@ -59,7 +60,7 @@ export default function Settle() {
   }, [positionData]);
 
   const handleSettle = async () => {
-    if (selectedPositionId !== 0 && foilData) {
+    if (nftId !== 0 && foilData) {
       setIsSettling(true);
       try {
         await writeContract({
@@ -67,7 +68,7 @@ export default function Settle() {
           abi: foilData.abi,
           functionName: 'settlePosition',
           chainId,
-          args: [BigInt(selectedPositionId)],
+          args: [BigInt(nftId)],
         });
       } catch (error) {
         renderContractErrorToast(
@@ -94,12 +95,7 @@ export default function Settle() {
 
   return (
     <Box>
-      <PositionSelector
-        isLP={false}
-        onChange={setSelectedPositionId}
-        nftIds={tokenIds}
-        value={selectedPositionId}
-      />
+      <PositionSelector isLP={false} />
       {withdrawableCollateral > BigInt(0) && (
         <Text mb={4}>
           Withdrawable Collateral:{' '}
@@ -111,9 +107,7 @@ export default function Settle() {
         onClick={handleSettle}
         isLoading={isSettling}
         isDisabled={
-          selectedPositionId === 0 ||
-          isSettling ||
-          withdrawableCollateral === BigInt(0)
+          nftId === 0 || isSettling || withdrawableCollateral === BigInt(0)
         }
         variant="brand"
       >
