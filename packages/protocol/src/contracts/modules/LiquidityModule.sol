@@ -474,9 +474,6 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 position.borrowedVEth = 0;
             }
         }
-
-        position.borrowedVEth = 0; // eth is fully paid
-
         // if gas amounts, transition to trader and let user trade through pool
         // otherwise withdraw collateral to user
         if (
@@ -502,7 +499,9 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             position.id,
             position.kind,
             collectedAmount0,
-            collectedAmount1
+            collectedAmount1,
+            position.borrowedVGas,
+            position.borrowedVEth
         );
     }
 }
