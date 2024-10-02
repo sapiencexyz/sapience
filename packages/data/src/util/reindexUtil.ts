@@ -11,6 +11,9 @@ import { ContractDeployment } from "src/interfaces/interfaces";
 import { Epoch } from "src/entity/Epoch";
 import dataSource from "src/db";
 import { mainnet, sepolia, hardhat } from "viem/chains";
+import { Market } from "src/entity/Market";
+import { EpochParams } from "src/entity/EpochParams";
+import { get } from "http";
 
 if (require.main === module) {
   // Get the RPC URL and timestamp from the command line arguments
@@ -216,3 +219,92 @@ export async function getBlockRanges(
     marketEnd: marketEnd.number,
   };
 }
+
+export const createOrUpdateMarketFromContract = async (
+  client: PublicClient,
+  contractDeployment: ContractDeployment,
+  chainId: number
+) => {
+  const marketRepository = dataSource.getRepository(Market);
+  // get market and epoch from contract
+  const marketReadResult: any = await client.readContract({
+    address: contractDeployment.address as `0x${string}`,
+    abi: contractDeployment.abi,
+    functionName: "getMarket",
+  });
+  console.log("marketReadResult", marketReadResult);
+
+  // check if market already exists in db
+  let existingMarket = await marketRepository.findOne({
+    where: { address: contractDeployment.address, chainId },
+    relations: ["epochs"],
+  });
+  const updatedMarket = existingMarket || new Market();
+
+  // update market params appropriately
+  updatedMarket.address = contractDeployment.address;
+  updatedMarket.owner = marketReadResult[0];
+  updatedMarket.collateralAsset = marketReadResult[1];
+  const epochParamsRaw = marketReadResult[2];
+  const marketEpochParams: EpochParams = {
+    ...epochParamsRaw,
+    assertionLiveness: epochParamsRaw.assertionLiveness.toString(),
+    bondAmount: epochParamsRaw.bondAmount.toString(),
+  };
+  updatedMarket.epochParams = marketEpochParams;
+  await marketRepository.save(updatedMarket);
+  return updatedMarket;
+};
+
+export const createOrUpdateEpochFromContract = async (
+  client: PublicClient,
+  contractDeployment: ContractDeployment,
+  epoch: number,
+  market: Market,
+  getLatestEpoch?: boolean
+) => {
+  const epochRepository = dataSource.getRepository(Epoch);
+
+  const functionName = getLatestEpoch ? "getLatestEpoch" : "getEpoch";
+  const args = getLatestEpoch ? [] : [epoch];
+
+  // get epoch from contract
+  const epochReadResult: any = await client.readContract({
+    address: contractDeployment.address as `0x${string}`,
+    abi: contractDeployment.abi,
+    functionName,
+    args,
+  });
+  console.log("epochReadResult", epochReadResult);
+  const epochId = getLatestEpoch ? Number(epochReadResult[0]) : epoch;
+
+  // check if epoch already exists in db
+  let existingEpoch = await epochRepository.findOne({
+    where: {
+      market: { address: contractDeployment.address },
+      epochId,
+    },
+  });
+  const updatedEpoch = existingEpoch || new Epoch();
+
+  // update epoch params appropriately
+  if (getLatestEpoch) {
+    updatedEpoch.epochId = epochId;
+  }
+  const idxAdjustment = getLatestEpoch ? 1 : 0; // getLatestEpoch returns and extra param at 0 index
+
+  updatedEpoch.startTimestamp = epochReadResult[0 + idxAdjustment].toString();
+  updatedEpoch.endTimestamp = epochReadResult[1 + idxAdjustment].toString();
+  updatedEpoch.settled = epochReadResult[7 + idxAdjustment];
+  updatedEpoch.settlementPriceD18 =
+    epochReadResult[8 + idxAdjustment].toString();
+  const epochParamsRaw = epochReadResult[9 + idxAdjustment];
+  const epochParams: EpochParams = {
+    ...epochParamsRaw,
+    assertionLiveness: epochParamsRaw.assertionLiveness.toString(),
+    bondAmount: epochParamsRaw.bondAmount.toString(),
+  };
+  updatedEpoch.market = market;
+  updatedEpoch.epochParams = epochParams;
+  await epochRepository.save(updatedEpoch);
+};

@@ -7,12 +7,15 @@ import { Market } from "./entity/Market";
 import { Epoch } from "./entity/Epoch";
 import {
   cannonPublicClient,
+  createOrUpdateEpochFromContract,
+  createOrUpdateMarketFromContract,
   getBlockRanges,
   getTimestampsForReindex,
   mainnetPublicClient,
   sepoliaPublicClient,
 } from "./util/reindexUtil";
 import { ContractDeployment } from "./interfaces/interfaces";
+import { EpochParams } from "./entity/EpochParams";
 
 let FoilLocal: ContractDeployment | undefined;
 let FoilSepolia: ContractDeployment | undefined;
@@ -53,48 +56,18 @@ const MARKETS = [
   },
 ];
 
-// TODO: Get this data from smart contract queries
 async function initializeMarkets() {
   await initializeDataSource();
-  const marketRepository = dataSource.getRepository(Market);
-  const epochRepository = dataSource.getRepository(Epoch);
-
-  // Helper function to create or find epoch
-  async function createOrFindEpoch(market: Market) {
-    let epoch = await epochRepository.findOne({
-      where: { market: { id: market.id }, epochId: 1 },
-    });
-
-    if (!epoch) {
-      epoch = new Epoch();
-      epoch.epochId = 1;
-      epoch.market = market;
-      await epochRepository.save(epoch);
-    }
-
-    return epoch;
-  }
-
+  // TODO: optimize with promise.all
   for (const marketConfig of MARKETS) {
-    const { deployment, chainId } = marketConfig;
-
-    if (deployment) {
-      let marketEntity = await marketRepository.findOne({
-        where: { address: deployment.address, chainId },
-        relations: ["epochs"],
-      });
-
-      if (!marketEntity) {
-        marketEntity = new Market();
-        marketEntity.address = deployment.address;
-        marketEntity.chainId = chainId;
-        marketEntity = await marketRepository.save(marketEntity);
-      }
-
-      await createOrFindEpoch(marketEntity);
-    } else {
-      console.warn(`Deployment for chain ID ${chainId} not available`);
-    }
+    const { deployment, chainId, publicClient } = marketConfig;
+    if (!deployment) continue;
+    const market = await createOrUpdateMarketFromContract(
+      publicClient,
+      deployment,
+      chainId
+    );
+    await createOrUpdateEpochFromContract(publicClient, deployment, 1, market);
   }
 }
 
@@ -112,6 +85,29 @@ export async function reindexNetwork(
     return;
   }
   await initializeDataSource();
+
+  const market = await createOrUpdateMarketFromContract(
+    client,
+    contractDeployment,
+    chainId
+  );
+
+  if (epoch) {
+    await createOrUpdateEpochFromContract(
+      client,
+      contractDeployment,
+      epoch,
+      market
+    );
+  } else {
+    await createOrUpdateEpochFromContract(
+      client,
+      contractDeployment,
+      0,
+      market,
+      true
+    );
+  }
 
   //  check for hardcoded timestamps
   let startTimestamp: number | null | undefined = startTime;
@@ -201,6 +197,10 @@ if (process.argv.length < 3) {
 
   if (args[0] === "reindex") {
     const targetMarketName = args[1]?.toUpperCase();
+    // additional optional args for reindexing
+    const epoch = args[2] ? Number(args[2]) : undefined;
+    const startTime = args[3] ? Number(args[3]) : undefined;
+    const endTime = args[4] ? Number(args[4]) : undefined;
 
     const marketConfig = MARKETS.find(
       (market) => market.name === targetMarketName
@@ -211,7 +211,10 @@ if (process.argv.length < 3) {
       reindexNetwork(
         marketConfig.publicClient,
         marketConfig.deployment,
-        marketConfig.chainId
+        marketConfig.chainId,
+        epoch,
+        startTime,
+        endTime
       );
     } else {
       console.error(
