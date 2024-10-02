@@ -83,15 +83,18 @@ export default function AddEditTrade() {
 
   const isLong = option === 'Long';
 
-  const formErrorMsg = useMemo(() => {
+  const formError = useMemo(() => {
     if (!liquidity) {
       return 'Add liquidity before making a trade.';
+    }
+    if (isLong && size > liquidity) {
+      return 'Not enough liquidity to perform this trade.';
     }
     if (quoteError) {
       return 'The protocol cannot generate a quote for this order.';
     }
     return '';
-  }, [quoteError, liquidity]);
+  }, [quoteError, liquidity, size, isLong]);
 
   // position data
   const { data: positionData, refetch: refetchPositionData } = useReadContract({
@@ -419,13 +422,8 @@ export default function AddEditTrade() {
         width="full"
         variant="brand"
         type="submit"
-        isLoading={(pendingTxn || isLoadingCollateralChange) && liquidity > 0}
-        isDisabled={
-          !liquidity ||
-          pendingTxn ||
-          isLoadingCollateralChange ||
-          Boolean(quoteError)
-        }
+        isLoading={(pendingTxn || isLoadingCollateralChange) && !formError}
+        isDisabled={!!formError || pendingTxn || isLoadingCollateralChange}
         mb={4}
         size="lg"
       >
@@ -452,7 +450,7 @@ export default function AddEditTrade() {
         setSize={setSize}
         isLong={isLong}
         positionData={positionData}
-        error={formErrorMsg}
+        error={formError}
       />
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
       {renderActionButton()}
