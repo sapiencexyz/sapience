@@ -26,13 +26,18 @@ export const AddEditPositionProvider: React.FC<{
   const { tokenIds, refetch: refetchTokenIds } = useTokenIdsOfOwner(
     address as `0x${string}`
   );
-  const { foilData, address: marketAddress } = useContext(MarketContext);
+  const {
+    foilData,
+    address: marketAddress,
+    chainId,
+  } = useContext(MarketContext);
 
   const { data: positionsData, refetch: refetchPositions } = useReadContracts({
     contracts: tokenIds.map((i) => ({
       abi: foilData.abi,
       address: marketAddress as `0x${string}`,
       functionName: 'getPosition',
+      chainId,
       args: [i],
     })),
   });
