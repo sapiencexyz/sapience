@@ -197,20 +197,24 @@ export async function getBlockRanges(
     mainnetPublicClient,
     startTimestamp
   );
-  console.log("Got gas start. Getting gas end...");
+  console.log(`Got gas start: ${gasStart.number}. Getting gas end...`);
 
   const gasEnd =
     (await getBlockByTimestamp(mainnetPublicClient, endTimestamp)) ||
     (await mainnetPublicClient.getBlock());
-  console.log("Got gas end.  Getting market start....");
+  console.log(`Got gas end:  ${gasEnd.number}.  Getting market start....`);
 
   const marketStart = await getBlockByTimestamp(publicClient, startTimestamp);
-  console.log("Got market start. Getting market end....");
+  console.log(
+    `Got market start: ${marketStart.number}. Getting market end....`
+  );
 
   const marketEnd =
     (await getBlockByTimestamp(publicClient, endTimestamp)) ||
     (await publicClient.getBlock());
-  console.log("Finished getting block ranges.");
+  console.log(
+    `Got market end: ${marketEnd.number}. Finished getting block ranges.`
+  );
 
   return {
     gasStart: gasStart.number,
@@ -245,6 +249,7 @@ export const createOrUpdateMarketFromContract = async (
   updatedMarket.address = contractDeployment.address;
   updatedMarket.owner = marketReadResult[0];
   updatedMarket.collateralAsset = marketReadResult[1];
+  updatedMarket.chainId = chainId;
   const epochParamsRaw = marketReadResult[2];
   const marketEpochParams: EpochParams = {
     ...epochParamsRaw,
@@ -287,12 +292,9 @@ export const createOrUpdateEpochFromContract = async (
   });
   const updatedEpoch = existingEpoch || new Epoch();
 
-  // update epoch params appropriately
-  if (getLatestEpoch) {
-    updatedEpoch.epochId = epochId;
-  }
   const idxAdjustment = getLatestEpoch ? 1 : 0; // getLatestEpoch returns and extra param at 0 index
 
+  updatedEpoch.epochId = epochId;
   updatedEpoch.startTimestamp = epochReadResult[0 + idxAdjustment].toString();
   updatedEpoch.endTimestamp = epochReadResult[1 + idxAdjustment].toString();
   updatedEpoch.settled = epochReadResult[7 + idxAdjustment];
