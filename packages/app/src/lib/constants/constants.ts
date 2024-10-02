@@ -6,10 +6,7 @@ export const DECIMAL_PRECISION_DISPLAY = 4;
 
 export const MIN_BIG_INT_SIZE = BigInt(10);
 
-export const API_BASE_URL =
-  process.env.NODE_ENV === 'development'
-    ? 'http://localhost:3001'
-    : 'https://api.foil.xyz';
+export const API_BASE_URL = 'https://api.foil.xyz';
 
 export const BLANK_MARKET: MarketContextType = {
   chain: undefined,

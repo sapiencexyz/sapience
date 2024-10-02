@@ -232,10 +232,14 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
                 mb={3}
                 flexShrink={0}
               >
+                <Box>
+                  {/*
                 <VolumeWindowSelector
                   selectedWindow={selectedWindow}
                   setSelectedWindow={setSelectedWindow}
                 />
+                */}
+                </Box>
                 <ChartSelector
                   chartType={chartType}
                   setChartType={setChartType}

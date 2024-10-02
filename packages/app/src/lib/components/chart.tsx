@@ -1,4 +1,4 @@
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import type React from 'react';
 import { useContext, useEffect, useRef, useState, useMemo } from 'react';
 import {
@@ -9,6 +9,7 @@ import {
   ComposedChart,
   Bar,
   ReferenceLine,
+  Label,
 } from 'recharts';
 
 import { MarketContext } from '~/lib/context/MarketProvider';
@@ -69,7 +70,7 @@ const CustomBarShape: React.FC<{
 };
 
 const CandlestickChart: React.FC = () => {
-  const grayColor = colors.gray?.[800] ?? '#808080';
+  const grayColor = colors.gray?.[700] ?? '#808080';
 
   const { averagePrice, prices } = useContext(MarketContext);
 
@@ -102,8 +103,29 @@ const CandlestickChart: React.FC = () => {
     }
   };
 
+  const paddedPrices = useMemo(() => {
+    if (prices.length >= 10) return prices;
+
+    const lastDate =
+      prices.length > 0 ? new Date(prices[prices.length - 1].date) : new Date();
+
+    const emptyEntries = Array(10 - prices.length)
+      .fill(null)
+      .map((_, index) => ({
+        date: format(addDays(lastDate, index + 1), 'yyyy-MM-dd'),
+        open: null,
+        high: null,
+        low: null,
+        close: null,
+        candles: null,
+      }));
+
+    return [...prices, ...emptyEntries];
+  }, [prices]);
+
   useEffect(() => {
-    setYAxisDomain([0, Math.max(...prices.map((p) => p.high)) + 1]);
+    const validPrices = prices.filter((p) => p.high !== null);
+    setYAxisDomain([0, Math.max(...validPrices.map((p) => p.high)) + 1]);
   }, [prices]);
 
   useEffect(() => {
@@ -116,6 +138,7 @@ const CandlestickChart: React.FC = () => {
   }, []);
 
   const formatXAxisTick = (dateString: string) => {
+    if (!dateString) return '';
     const date = new Date(dateString);
     return format(date, 'MMM d');
   };
@@ -123,14 +146,19 @@ const CandlestickChart: React.FC = () => {
   const formatYAxisTick = (value: number) => value.toFixed(2);
 
   const renderShape = useMemo(() => {
-    return (props: any) => (
-      <CustomBarShape
-        {...props}
-        yAxisDomain={yAxisDomain}
-        chartHeight={chartDimensions.height}
-        gridOffsetFromParent={gridOffsetFromParent}
-      />
-    );
+    return (props: any) => {
+      if (props.payload.candles === null) {
+        return <g />;
+      }
+      return (
+        <CustomBarShape
+          {...props}
+          yAxisDomain={yAxisDomain}
+          chartHeight={chartDimensions.height}
+          gridOffsetFromParent={gridOffsetFromParent}
+        />
+      );
+    };
   }, [yAxisDomain, chartDimensions.height, gridOffsetFromParent]);
 
   // Temporary hack, doesn't seem to rendering after initial resizing
@@ -142,22 +170,36 @@ const CandlestickChart: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  const averagePriceLabel = (
+    <Label
+      value="Average Index Price"
+      position="top"
+      offset={-13}
+      fill={grayColor}
+      fontSize={12}
+    />
+  );
+
   return (
     <ResponsiveContainer height="95%" width="100%">
       <ComposedChart
-        data={prices}
+        data={paddedPrices}
         ref={chartRef}
-        margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
+        margin={{ top: 20, right: 0, bottom: 0, left: 0 }}
       >
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="date" tickFormatter={formatXAxisTick} />
+        <XAxis
+          dataKey="date"
+          tickFormatter={formatXAxisTick}
+          allowDataOverflow
+        />
         <YAxis domain={yAxisDomain} tickFormatter={formatYAxisTick} />
         <Bar dataKey="candles" shape={renderShape} />
         <ReferenceLine
           y={averagePrice}
-          label="Average Price"
           stroke={grayColor}
           strokeDasharray="3 3"
+          label={averagePriceLabel}
         />
       </ComposedChart>
     </ResponsiveContainer>

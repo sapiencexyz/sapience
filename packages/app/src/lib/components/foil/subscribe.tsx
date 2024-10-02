@@ -20,6 +20,7 @@ import {
   useState,
   useEffect,
   useContext,
+  useRef,
 } from 'react';
 import React from 'react';
 import type { AbiFunction, WriteContractErrorType } from 'viem';
@@ -43,7 +44,7 @@ import { renderContractErrorToast, renderToast } from '~/lib/util/util';
 import NumberDisplay from './numberDisplay';
 
 const Subscribe: FC = () => {
-  const [size, setSize] = useState<number>(0);
+  const [size, setSize] = useState<string>('');
   const slippage = 0.5;
   const [pendingTxn, setPendingTxn] = useState(false);
   const [collateralDelta, setCollateralDelta] = useState<bigint>(BigInt(0));
@@ -98,7 +99,7 @@ const Subscribe: FC = () => {
   });
 
   // Convert gas to gigagas for internal calculations
-  const sizeInGigagas = size * 1e9;
+  const sizeInGigagas = (size ? parseFloat(size) : 0) * 1e9;
 
   // Quote function
   const quoteCreatePositionResult = useSimulateContract({
@@ -107,7 +108,7 @@ const Subscribe: FC = () => {
     functionName: 'quoteCreateTraderPosition',
     args: [epoch, BigInt(Math.floor(sizeInGigagas))],
     chainId,
-    query: { enabled: size > 0 },
+    query: { enabled: size !== '' && parseFloat(size) > 0 },
   });
 
   useEffect(() => {
@@ -184,24 +185,15 @@ const Subscribe: FC = () => {
   }, [approveSuccess]);
 
   useEffect(() => {
-    if (quoteCreatePositionResult.data?.result !== undefined) {
-      setCollateralDelta(
-        quoteCreatePositionResult.data.result as unknown as bigint
-      );
-    } else {
-      setCollateralDelta(BigInt(0));
-    }
-  }, [quoteCreatePositionResult.data]);
-
-  useEffect(() => {
     if (
       quoteCreatePositionResult.data?.result !== undefined &&
-      size > 0 &&
+      size !== '' &&
+      parseFloat(size) > 0 &&
       stEthPerToken
     ) {
       const fillPrice =
         BigInt(quoteCreatePositionResult.data?.result as unknown as bigint) /
-        BigInt(size);
+        BigInt(parseFloat(size));
       const fillPriceInEth =
         Number(formatUnits(fillPrice, collateralAssetDecimals)) * stEthPerToken;
       setEstimatedFillPrice(fillPriceInEth.toString());
@@ -217,7 +209,7 @@ const Subscribe: FC = () => {
 
   const handleSubmit = (e?: FormEvent<HTMLFormElement>, approved?: boolean) => {
     if (e) e.preventDefault();
-    if (size <= 0) {
+    if (size === '' || parseFloat(size) <= 0) {
       toast({
         title: 'Invalid size',
         description: 'Please enter a positive gas amount.',
@@ -279,15 +271,28 @@ const Subscribe: FC = () => {
   };
 
   const resetAfterSuccess = () => {
-    setSize(0);
+    setSize('0');
     setPendingTxn(false);
     setIsLoading(false);
     refetchUniswapData();
   };
 
   const handleSizeChange = (newVal: string) => {
-    const newSize = parseInt(newVal || '0', 10);
-    setSize(newSize);
+    // Remove any non-digit characters
+    const sanitizedValue = newVal.replace(/[^\d]/g, '');
+
+    if (sanitizedValue !== newVal) {
+      // If the sanitized value is different, it means a non-digit was entered
+      toast({
+        title: 'Invalid input',
+        description: 'Please enter whole numbers only.',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+
+    setSize(sanitizedValue);
   };
 
   console.log('stEthPerToken', stEthPerToken);
@@ -331,7 +336,7 @@ const Subscribe: FC = () => {
           pendingTxn ||
           isLoadingCollateralChange ||
           Boolean(quoteError) ||
-          size <= 0
+          parseFloat(size) <= 0
         }
         size="lg"
       >
@@ -339,6 +344,14 @@ const Subscribe: FC = () => {
       </Button>
     );
   };
+
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, []);
 
   return (
     <form onSubmit={handleSubmit}>
@@ -359,12 +372,15 @@ const Subscribe: FC = () => {
       <FormControl mb={4} isInvalid={Boolean(quoteError)}>
         <InputGroup>
           <Input
+            ref={inputRef}
             value={size}
-            type="number"
+            type="text"
+            inputMode="numeric"
+            pattern="\d*"
             min={0}
-            step="1"
             onWheel={(e) => e.currentTarget.blur()}
             onChange={(e) => handleSizeChange(e.target.value)}
+            autoComplete="off"
           />
           <InputRightAddon>gas</InputRightAddon>
         </InputGroup>
