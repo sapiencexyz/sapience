@@ -36,7 +36,10 @@ import erc20ABI from '../../erc20abi.json';
 import INONFUNGIBLE_POSITION_MANAGER from '../../interfaces/Uniswap.NonfungiblePositionManager.json';
 import { getNewLiquidity } from '../../util/positionUtil';
 import { renderContractErrorToast, renderToast } from '../../util/util';
-import { TOKEN_DECIMALS } from '~/lib/constants/constants';
+import {
+  CREATE_LIQUIDITY_REDUCTION,
+  TOKEN_DECIMALS,
+} from '~/lib/constants/constants';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { useLoading } from '~/lib/context/LoadingContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
@@ -511,6 +514,9 @@ const AddEditLiquidity: React.FC = () => {
     return BigInt(Math.floor(Date.now() / 1000) + 1800); // 30 minutes from now
   };
 
+  const adjustedBaseToken = baseToken * (1 - CREATE_LIQUIDITY_REDUCTION);
+  const adjustedQuoteToken = quoteToken * (1 - CREATE_LIQUIDITY_REDUCTION);
+
   const handleCreateOrIncreaseLiquidity = () => {
     const deadline = getCurrentDeadline();
     if (isEdit) {
@@ -539,8 +545,14 @@ const AddEditLiquidity: React.FC = () => {
         args: [
           {
             epochId: epoch,
-            amountTokenA: parseUnits(baseToken.toString(), TOKEN_DECIMALS),
-            amountTokenB: parseUnits(quoteToken.toString(), TOKEN_DECIMALS),
+            amountTokenA: parseUnits(
+              adjustedBaseToken.toString(),
+              TOKEN_DECIMALS
+            ),
+            amountTokenB: parseUnits(
+              adjustedQuoteToken.toString(),
+              TOKEN_DECIMALS
+            ),
             collateralAmount: parseUnits(
               depositAmount.toString(),
               collateralAssetDecimals
@@ -870,6 +882,8 @@ const AddEditLiquidity: React.FC = () => {
           Base Token: <NumberDisplay value={baseToken} /> vGGas (min:{' '}
           <NumberDisplay value={minAmountTokenA} />)
         </Text>
+        Test Base Token: <NumberDisplay value={baseToken * 0.99999} /> vGGas
+        (min:{' '}
         <Text fontSize="sm" color="gray.500" mb="0.5">
           Quote Token: <NumberDisplay value={quoteToken} /> vWstETH (min:{' '}
           <NumberDisplay value={minAmountTokenB} />)
