@@ -28,7 +28,7 @@ interface Props {
   positionData: FoilPosition;
   originalPositionSize: number;
   isLong: boolean;
-  error: boolean;
+  error?: string;
 }
 
 const SizeInput: React.FC<Props> = ({
@@ -126,7 +126,7 @@ const SizeInput: React.FC<Props> = ({
 
   return (
     <Box mb={4}>
-      <FormControl mb={4} isInvalid={error}>
+      <FormControl mb={4} isInvalid={!!error}>
         <FormLabel>Size {isEdit ? 'Change' : ''}</FormLabel>
         <InputGroup>
           <Input
@@ -154,11 +154,7 @@ const SizeInput: React.FC<Props> = ({
             </Button>
           </InputRightAddon>
         </InputGroup>
-        {error && (
-          <FormErrorMessage>
-            The protocol cannot generate a quote for this order.
-          </FormErrorMessage>
-        )}
+        {error && <FormErrorMessage>{error}</FormErrorMessage>}
       </FormControl>
       <FormControl>
         <InputGroup>

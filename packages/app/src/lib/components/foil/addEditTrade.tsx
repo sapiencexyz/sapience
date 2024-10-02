@@ -66,6 +66,7 @@ export default function AddEditTrade() {
     foilData,
     chainId,
     pool,
+    liquidity,
     refetchUniswapData,
   } = useContext(MarketContext);
 
@@ -81,6 +82,16 @@ export default function AddEditTrade() {
   const toast = useToast();
 
   const isLong = option === 'Long';
+
+  const formErrorMsg = useMemo(() => {
+    if (!liquidity) {
+      return 'Add liquidity before making a trade.';
+    }
+    if (quoteError) {
+      return 'The protocol cannot generate a quote for this order.';
+    }
+    return '';
+  }, [quoteError, liquidity]);
 
   // position data
   const { data: positionData, refetch: refetchPositionData } = useReadContract({
@@ -308,6 +319,7 @@ export default function AddEditTrade() {
     if (!allowance) {
       console.log('refetching  allowance...');
       await refetchAllowance();
+      console.log('refetched  allowance =', allowance);
     }
     if (
       !approved &&
@@ -407,9 +419,12 @@ export default function AddEditTrade() {
         width="full"
         variant="brand"
         type="submit"
-        isLoading={pendingTxn || isLoadingCollateralChange}
+        isLoading={(pendingTxn || isLoadingCollateralChange) && liquidity > 0}
         isDisabled={
-          pendingTxn || isLoadingCollateralChange || Boolean(quoteError)
+          !liquidity ||
+          pendingTxn ||
+          isLoadingCollateralChange ||
+          Boolean(quoteError)
         }
         mb={4}
         size="lg"
@@ -437,7 +452,7 @@ export default function AddEditTrade() {
         setSize={setSize}
         isLong={isLong}
         positionData={positionData}
-        error={Boolean(quoteError)}
+        error={formErrorMsg}
       />
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
       {renderActionButton()}
