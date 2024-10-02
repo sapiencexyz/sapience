@@ -172,7 +172,7 @@ const CandlestickChart: React.FC = () => {
 
   const averagePriceLabel = (
     <Label
-      value="Average Price"
+      value="Average Index Price"
       position="top"
       offset={-13}
       fill={grayColor}
