@@ -1,4 +1,4 @@
-import { formatUnits, parseEther, parseUnits } from 'viem';
+import { formatUnits, parseUnits } from 'viem';
 
 export const formatBalance = (
   collateralAssetDecimals: number,
@@ -14,10 +14,9 @@ export const calculateCollateralDeltaLimit = (
   refPrice: string | undefined,
   isShort?: boolean
 ) => {
-  const MIN_REF_PRICE = 1e9;
-
+  const MIN_REF_PRICE = 1e-12;
   if (!refPrice || parseFloat(refPrice) < MIN_REF_PRICE) {
-    // Fallback to the original calculation if refPrice is not available
+    // Fallback to the original calculation if refPrice is not available or is too low
     return (
       (collateralDelta * BigInt(Math.floor((100 + slippage) * 100))) /
       BigInt(10000)

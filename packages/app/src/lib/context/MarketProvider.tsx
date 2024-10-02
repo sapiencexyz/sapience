@@ -220,7 +220,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
   useEffect(() => {
     setState((currentState) => ({
       ...currentState,
-      foilData: { address: foilData.address, abi: foilData.abi },
+      foilData: { address, abi: foilData.abi },
     }));
   }, [foilData]);
 
