@@ -31,22 +31,22 @@ try {
 
 const MARKETS = [
   {
-    name: 'LOCAL',
+    name: "LOCAL",
     deployment: FoilLocal,
     chainId: hardhat.id,
     publicClient: cannonPublicClient,
   },
   {
-    name: 'SEPOLIA',
+    name: "SEPOLIA",
     deployment: FoilSepolia,
     chainId: sepolia.id,
     publicClient: sepoliaPublicClient,
   },
   {
-    name: 'SEPOLIA-1',
+    name: "SEPOLIA-1",
     deployment: {
-      address: '0xfb17d7f02f4d29d900838f80605091e3778e38ee',
-      abi: FoilSepolia?.abi || {} as Abi
+      address: "0xfb17d7f02f4d29d900838f80605091e3778e38ee",
+      abi: FoilSepolia?.abi || ({} as Abi),
     },
     chainId: sepolia.id,
     publicClient: sepoliaPublicClient,
@@ -173,13 +173,14 @@ export async function reindexNetwork(
 }
 
 if (process.argv.length < 3) {
+  console.log("initializing markets...");
   initializeMarkets().then(() => {
     const jobs = [];
 
     for (const marketConfig of MARKETS) {
       const { deployment, chainId, publicClient } = marketConfig;
 
-      if (deployment && process.env.NODE_ENV !== 'production') {
+      if (deployment && process.env.NODE_ENV !== "production") {
         jobs.push(
           indexBaseFeePerGas(mainnetPublicClient, chainId, deployment.address),
           indexMarketEvents(publicClient, deployment)
@@ -213,7 +214,9 @@ if (process.argv.length < 3) {
         marketConfig.chainId
       );
     } else {
-      console.error(`Market ${targetMarketName} not found or deployment missing.`);
+      console.error(
+        `Market ${targetMarketName} not found or deployment missing.`
+      );
     }
   }
 }

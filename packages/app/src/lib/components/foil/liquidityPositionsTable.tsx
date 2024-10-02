@@ -96,7 +96,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({
                     </Link>
                   </Td>
                   <Td>
-                    <Address value={row.owner} />
+                    <Address value={row.owner || ''} />
                   </Td>
                   <Td>
                     <NumberDisplay value={row.collateral} /> wstETH
