@@ -35,6 +35,9 @@ export class Event {
   @Column({ type: "bigint" })
   timestamp: string; //In seconds
 
+  @Column({ nullable: true })
+  from: string;
+
   @Column()
   logIndex: number;
 

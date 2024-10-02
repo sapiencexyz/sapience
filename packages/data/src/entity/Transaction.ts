@@ -64,6 +64,9 @@ export class Transaction {
   })
   tradeRatioD18: string;
 
+  @Column({ nullable: true })
+  from: string;
+
   // AfterInsert AfterUpdate and AfterRemove to update the associated Position based on positionId
   @AfterInsert()
   async afterInsert() {}

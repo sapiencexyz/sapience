@@ -51,6 +51,7 @@ export const updateTransactionFromLiquidityClosedEvent = async (
   newTransaction.baseTokenDelta = eventArgs.collectedAmount0;
   newTransaction.quoteTokenDelta = eventArgs.collectedAmount1;
   newTransaction.collateralDelta = collateralDeltaBigInt.toString();
+  newTransaction.from = event.from;
 };
 
 /**
@@ -111,6 +112,7 @@ export const updateTransactionFromLiquidityModifiedEvent = async (
       ).toString()
     : (event.logData.args.increasedAmount1 ?? "0");
   newTransaction.collateralDelta = collateralDeltaBigInt.toString();
+  newTransaction.from = event.from;
 };
 
 /**
@@ -128,6 +130,7 @@ export const updateTransactionFromAddLiquidityEvent = (
   newTransaction.baseTokenDelta = eventArgsAddLiquidity.addedAmount0;
   newTransaction.quoteTokenDelta = eventArgsAddLiquidity.addedAmount1;
   newTransaction.collateralDelta = eventArgsAddLiquidity.collateralAmount;
+  newTransaction.from = event.from;
 };
 
 /**
@@ -175,6 +178,7 @@ export const updateTransactionFromTradeModifiedEvent = async (
   ).toString();
 
   newTransaction.tradeRatioD18 = eventArgsCreateTrade.tradeRatio;
+  newTransaction.from = event.from;
 };
 
 /**

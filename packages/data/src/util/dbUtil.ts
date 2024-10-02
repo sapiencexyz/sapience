@@ -127,12 +127,15 @@ export const createOrModifyPosition = async (transaction: Transaction) => {
     ? existingPosition.collateral
     : "0";
   const eventArgs = transaction.event.logData.args; //as LiquidityPositionModifiedEventLog;
+
   const position = existingPosition || new Position();
 
   if (existingPosition) {
     console.log("existing position: ", existingPosition);
   }
   console.log("eventArgs: =", eventArgs);
+
+  position.owner = transaction.event.from;
 
   position.isLP = isLpPosition(transaction);
   position.positionId = Number(eventArgs.positionId);

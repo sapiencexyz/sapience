@@ -52,6 +52,11 @@ export const indexMarketEvents = async (
 
       const logIndex = log.logIndex || 0;
       const logData = JSON.parse(serializedLog); // Parse back to JSON object
+      const from = (
+        await publicClient.getTransaction({
+          hash: logData.transactionHash,
+        })
+      ).from;
 
       // Extract epochId from logData (adjust this based on your event structure)
       const epochId = logData.args?.epochId || 0;
@@ -67,7 +72,8 @@ export const indexMarketEvents = async (
         blockNumber,
         block.timestamp,
         logIndex,
-        logData
+        logData,
+        from
       );
     }
   };
@@ -121,6 +127,7 @@ export const indexMarketEventsRange = async (
           data: log.data,
           topics: log.topics,
         });
+
         const serializedLog = JSON.stringify(decodedLog, bigintReplacer);
         const blockNumber = log.blockNumber;
         const block = await publicClient.getBlock({
@@ -128,6 +135,11 @@ export const indexMarketEventsRange = async (
         });
         const logIndex = log.logIndex || 0;
         const logData = JSON.parse(serializedLog);
+        const from = (
+          await publicClient.getTransaction({
+            hash: logData.transactionHash,
+          })
+        ).from;
 
         // Extract epochId from logData (adjust this based on your event structure)
         const epochId = logData.args?.epochId || 0;
@@ -142,7 +154,8 @@ export const indexMarketEventsRange = async (
           blockNumber,
           block.timestamp,
           logIndex,
-          logData
+          logData,
+          from
         );
       }
     } catch (error) {
@@ -161,7 +174,8 @@ const handleEventUpsert = async (
   blockNumber: bigint,
   timeStamp: bigint,
   logIndex: number,
-  logData: any
+  logData: any,
+  from: string
 ) => {
   console.log("Upserting event:", {
     chainId,
@@ -170,6 +184,7 @@ const handleEventUpsert = async (
     blockNumber,
     logIndex,
     logData,
+    from,
   });
 
   // Find or create the market
@@ -181,6 +196,10 @@ const handleEventUpsert = async (
   if (logData.eventName === "MarketInitialized") {
     console.log("creating market: ", logData);
     const marketCreatedArgs = logData.args as MarketCreatedUpdatedEventLog;
+    if (!marketCreatedArgs.owner) {
+      marketCreatedArgs.owner = from;
+    }
+
     market = await createOrUpdateMarketFromEvent(
       marketCreatedArgs,
       chainId,
@@ -257,6 +276,7 @@ const handleEventUpsert = async (
     newEvent.timestamp = timeStamp.toString();
     newEvent.logIndex = logIndex;
     newEvent.logData = logData;
+    newEvent.from = from;
 
     // insert the event
     await eventRepository.insert(newEvent);
