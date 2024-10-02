@@ -8,7 +8,12 @@ export const CREATE_LIQUIDITY_REDUCTION = 0.0001;
 
 export const MIN_BIG_INT_SIZE = BigInt(10);
 
-export const API_BASE_URL = 'https://api.foil.xyz';
+export const TICK_SPACING_DEFAULT = 200; // i.e. 1% - Hardcoded for now, should be retrieved with pool.tickSpacing()
+
+export const API_BASE_URL =
+  process.env.NODE_ENV === 'development'
+    ? 'http://localhost:3001'
+    : 'https://api.foil.xyz';
 
 export const BLANK_MARKET: MarketContextType = {
   chain: undefined,

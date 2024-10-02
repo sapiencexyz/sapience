@@ -38,6 +38,7 @@ import { getNewLiquidity } from '../../util/positionUtil';
 import { renderContractErrorToast, renderToast } from '../../util/util';
 import {
   CREATE_LIQUIDITY_REDUCTION,
+  TICK_SPACING_DEFAULT,
   TOKEN_DECIMALS,
 } from '~/lib/constants/constants';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
@@ -47,8 +48,6 @@ import type { FoilPosition } from '~/lib/interfaces/interfaces';
 
 import NumberDisplay from './numberDisplay';
 import SlippageTolerance from './slippageTolerance';
-
-const tickSpacingDefault = 200; // TODO 1% - Hardcoded for now, should be retrieved with pool.tickSpacing()
 
 const priceToTick = (price: number, tickSpacing: number): number => {
   const tick = Math.log(price) / Math.log(1.0001);
@@ -113,8 +112,9 @@ const AddEditLiquidity: React.FC = () => {
   const [pendingTxn, setPendingTxn] = useState(false);
   const [txnSuccessMsg, setTxnSuccessMsg] = useState('');
 
-  const tickLower = priceToTick(lowPrice, tickSpacingDefault);
-  const tickUpper = priceToTick(highPrice, tickSpacingDefault);
+  const tickSpacing = pool ? pool?.tickSpacing : TICK_SPACING_DEFAULT;
+  const tickLower = priceToTick(lowPrice, tickSpacing);
+  const tickUpper = priceToTick(highPrice, tickSpacing);
   const isEdit = nftId > 0;
 
   const [collateralAmountDelta, setCollateralAmountDelta] = useState<bigint>(
