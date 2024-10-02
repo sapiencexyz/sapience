@@ -1,5 +1,13 @@
-@uniswap/=node_modules/@uniswap
-@uma/=node_modules/@uma
-@openzeppelin/=node_modules/@openzeppelin
-@synthetixio/=node_modules/@synthetixio
+@uniswap/v3-core/=node_modules/@uniswap/v3-core/
+@uma/core/=node_modules/@uma/core/
+@openzeppelin/contracts-v4/=node_modules/@openzeppelin/contracts-v4/
+@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/
+@openzeppelin/contracts-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable/
 forge-std/=node_modules/forge-std/src/
+lib/=lib/
+@perimetersec/=lib/
+v3-core/=uniswapv3/v3-core/
+foilInterfaces/=src/contracts/interfaces/
+foilIStorage/=src/contracts/storage/
+foilILibs/=src/contracts/libraries/
+@synthetixio/core-contracts/=node_modules/@synthetixio/core-contracts/

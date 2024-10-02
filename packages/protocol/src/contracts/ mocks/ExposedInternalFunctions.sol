@@ -15,7 +15,13 @@ contract ExposedInternalFunctions {
         uint256 tokensOwed1,
         uint160 sqrtPriceAX96,
         uint160 sqrtPriceBX96
-    ) external view returns (uint256) {
+    )
+        external
+        returns (
+            // ) external view returns (uint256) { //@audit changed by fuzzer
+            uint256
+        )
+    {
         Epoch.Data storage epoch = Epoch.load(epochId);
         return
             epoch.requiredCollateralForLiquidity(

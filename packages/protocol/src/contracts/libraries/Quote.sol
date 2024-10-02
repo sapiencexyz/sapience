@@ -15,4 +15,18 @@ library Quote {
     ) internal pure returns (uint256) {
         return FullMath.mulDiv(gasAmount, price, 1e18);
     }
+
+    function quoteGasToEth(
+        //@audit added by fuzzer for compatibility
+        uint256 gasAmount,
+        uint160 sqrtRatioX96
+    ) internal pure returns (uint256) {
+        // TODO we can use the precalculated D18 price instead of srqtRatioX96 (or maybe another function)
+        return
+            FullMath.mulDiv(
+                gasAmount,
+                DecimalPrice.sqrtRatioX96ToPrice(sqrtRatioX96),
+                1e18
+            );
+    }
 }

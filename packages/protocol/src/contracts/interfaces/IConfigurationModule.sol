@@ -38,7 +38,8 @@ interface IConfigurationModule {
     function initializeMarket(
         address owner,
         address collateralAsset,
-        IFoilStructs.EpochParams memory epochParams
+        IFoilStructs.EpochParams memory epochParams,
+        address foil //@audit added by fuzzer
     ) external;
 
     function updateMarket(IFoilStructs.EpochParams memory epochParams) external;

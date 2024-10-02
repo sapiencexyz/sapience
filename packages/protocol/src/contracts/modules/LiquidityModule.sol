@@ -311,10 +311,10 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         uint160 sqrtPriceBX96
     )
         external
-        view
         override
         returns (uint256 amount0, uint256 amount1, uint128 liquidity)
     {
+        //@audit view removed by fuzzer
         Epoch.Data storage epoch = Epoch.load(epochId);
 
         // calculate for unit
@@ -363,7 +363,8 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         uint256 positionId,
         uint256 amount0,
         uint256 amount1
-    ) external view returns (uint256) {
+    ) external returns (uint256) {
+        //@audit view removed by fuzzer
         Market.Data storage market = Market.load();
         Position.Data storage position = Position.loadValid(positionId);
         Epoch.Data storage epoch = Epoch.loadValid(position.epochId);

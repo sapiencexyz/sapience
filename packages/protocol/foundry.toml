@@ -1,8 +1,13 @@
 [profile.default]
+optimizer = true   #optimizer was turned on to avoid stack too deep on setup
+optimizer_runs = 1
+
 src = "src"
 out = "out"
 libs = ["lib"]
-fs_permissions = [{ access = "read", path = "./"}]
+fs_permissions = [{ access = "read", path = "./" }]
 no_match_test = "Skip"
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
+[fuzz]
+runs = 1000000
