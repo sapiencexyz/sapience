@@ -24,7 +24,7 @@ import {
 } from 'react';
 import React from 'react';
 import type { AbiFunction, WriteContractErrorType } from 'viem';
-import { formatUnits } from 'viem';
+import { formatUnits, zeroAddress } from 'viem';
 import {
   useWaitForTransactionReceipt,
   useWriteContract,
@@ -33,6 +33,7 @@ import {
   useSimulateContract,
   useChainId,
   useSwitchChain,
+  useConnect,
 } from 'wagmi';
 
 import erc20ABI from '../../erc20abi.json';
@@ -58,6 +59,7 @@ const Subscribe: FC = () => {
   const { setIsLoading } = useLoading();
   const currentChainId = useChainId();
   const { switchChain } = useSwitchChain();
+  const { connect, connectors } = useConnect();
 
   const {
     address: marketAddress,
@@ -108,6 +110,7 @@ const Subscribe: FC = () => {
     functionName: 'quoteCreateTraderPosition',
     args: [epoch, BigInt(Math.floor(sizeInGigagas))],
     chainId,
+    account: address || zeroAddress,
     query: { enabled: size !== '' && parseFloat(size) > 0 },
   });
 
@@ -301,12 +304,10 @@ const Subscribe: FC = () => {
     if (!isConnected) {
       return (
         <Button
-          isLoading={pendingTxn || isLoadingCollateralChange}
-          isDisabled={pendingTxn || isLoadingCollateralChange}
           width="full"
           variant="brand"
-          type="submit"
           size="lg"
+          onClick={() => connect({ connector: connectors[0] })}
         >
           Connect Wallet
         </Button>

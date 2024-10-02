@@ -10,7 +10,7 @@ import {
 } from '@chakra-ui/react';
 import { useState, useEffect, useContext, useMemo } from 'react';
 import type { AbiFunction, WriteContractErrorType } from 'viem';
-import { formatUnits, parseUnits } from 'viem';
+import { formatUnits, parseUnits, zeroAddress } from 'viem';
 import {
   useWaitForTransactionReceipt,
   useWriteContract,
@@ -131,6 +131,7 @@ export default function AddEditTrade() {
     address: collateralAsset as `0x${string}`,
     functionName: 'allowance',
     args: [address, marketAddress],
+    account: address || zeroAddress,
     chainId,
   });
 
@@ -141,6 +142,7 @@ export default function AddEditTrade() {
     functionName: 'quoteCreateTraderPosition',
     args: [epoch, parseUnits(`${size}`, collateralAssetDecimals)],
     chainId,
+    account: address || zeroAddress,
     query: { enabled: !isEdit && size > 0 },
   });
 
@@ -150,6 +152,7 @@ export default function AddEditTrade() {
     functionName: 'quoteModifyTraderPosition',
     args: [nftId, parseUnits(`${size}`, collateralAssetDecimals)],
     chainId,
+    account: address || zeroAddress,
     query: { enabled: isEdit && size !== originalPositionSize },
   });
 
