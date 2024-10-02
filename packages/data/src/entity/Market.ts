@@ -18,9 +18,6 @@ export class Market {
   })
   epochs: Epoch[];
 
-  @OneToMany(() => Price, (price) => price.market)
-  prices: Price[];
-
   @PrimaryGeneratedColumn()
   id: number;
 

@@ -12,7 +12,7 @@ import { Event } from "./Event";
 import { Position } from "./Position";
 import { NUMERIC_PRECISION } from "../constants";
 import { EpochParams } from "./EpochParams";
-
+import { Price } from "./Price";
 @Entity()
 @Unique(["market", "epochId"])
 export class Epoch {
@@ -64,4 +64,7 @@ export class Epoch {
     nullable: true,
   })
   settled: boolean | null;
+
+  @ManyToOne(() => Price, (price) => price.epochs)
+  price: Price;
 }
