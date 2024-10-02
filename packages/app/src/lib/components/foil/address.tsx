@@ -11,7 +11,7 @@ const Address: React.FC<AddressProps> = ({ value }) => {
   const { chain } = useContext(MarketContext);
 
   const shortenAddress = (address: string) => {
-    return `${address.slice(0, 6)}....${address.slice(-4)}`;
+    return address ? `${address.slice(0, 6)}....${address.slice(-4)}` : '';
   };
 
   const etherscanUrl = `${chain?.blockExplorers?.default.url}/address/${value}`;
