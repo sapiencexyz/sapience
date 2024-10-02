@@ -92,7 +92,7 @@ const TraderPositionsTable: React.FC<Props> = ({
                     </Link>
                   </Td>
                   <Td>
-                    <Address value={row.collateral} />
+                    <Address value={row.owner} />
                   </Td>
                   <Td>
                     <NumberDisplay value={row.collateral} /> wstETH
