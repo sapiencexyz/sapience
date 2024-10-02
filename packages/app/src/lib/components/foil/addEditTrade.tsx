@@ -143,7 +143,7 @@ export default function AddEditTrade() {
     args: [epoch, parseUnits(`${size}`, collateralAssetDecimals)],
     chainId,
     account: address || zeroAddress,
-    query: { enabled: !isEdit && size > 0 },
+    query: { enabled: !isEdit && Math.abs(size) > 0 },
   });
 
   const quoteModifyPositionResult = useSimulateContract({
