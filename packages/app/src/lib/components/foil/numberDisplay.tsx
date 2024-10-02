@@ -33,7 +33,8 @@ const NumberDisplay: React.FC<NumberDisplayProps> = ({ value }) => {
     }
 
     const roundedValue = Number(numValue.toFixed(4));
-    return roundedValue.toString().replace(/\.?0+$/, '');
+
+    return roundedValue.toString();
   };
 
   const displayValue = formatNumber(value || 0);
