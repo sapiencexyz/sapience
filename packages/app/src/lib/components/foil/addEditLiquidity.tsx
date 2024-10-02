@@ -882,8 +882,6 @@ const AddEditLiquidity: React.FC = () => {
           Base Token: <NumberDisplay value={baseToken} /> vGGas (min:{' '}
           <NumberDisplay value={minAmountTokenA} />)
         </Text>
-        Test Base Token: <NumberDisplay value={baseToken * 0.99999} /> vGGas
-        (min:{' '}
         <Text fontSize="sm" color="gray.500" mb="0.5">
           Quote Token: <NumberDisplay value={quoteToken} /> vWstETH (min:{' '}
           <NumberDisplay value={minAmountTokenB} />)
