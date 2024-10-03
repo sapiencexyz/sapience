@@ -16,8 +16,6 @@ import {Position} from "../../src/contracts/storage/Position.sol";
 import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
-import "forge-std/console2.sol";
-
 contract TradePositionClose is TestTrade {
     using Cannon for Vm;
     using DecimalMath for uint256;
@@ -158,13 +156,10 @@ contract TradePositionClose is TestTrade {
                 : initialPrice - currentPrice;
             priceRatio = deltaPrice.divDecimal(initialPrice);
             if (priceRatio >= expectedRatio) {
-                console2.log("found at: ", i);
                 break;
             }
         }
         vm.startPrank(trader2);
-
-        console2.log("priceRatio: ", priceRatio);
     }
 
     function getPnl(int256 initialPositionSize) internal {

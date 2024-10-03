@@ -5,8 +5,6 @@ import "../interfaces/IERC721Enumerable.sol";
 import "../storage/ERC721Storage.sol";
 import "../storage/ERC721EnumerableStorage.sol";
 
-// import "forge-std/console2.sol";
-
 contract NftModule is IERC721Enumerable {
     constructor() {}
 

@@ -10,8 +10,6 @@ import {SafeCastI256} from "@synthetixio/core-contracts/contracts/utils/SafeCast
 import {SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 import {ITradeModule} from "../interfaces/ITradeModule.sol";
 
-import "forge-std/console2.sol";
-
 /**
  * @title Module for trade positions.
  * @dev See ITradeModule.
@@ -536,6 +534,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             vGasTokens,
             false
         );
+        vEthDebt = requiredAmountInVEth;
 
         // get average trade ratio (price)
         require(vGasTokens > 0, "Invalid trade size - 0 tokens traded");
@@ -564,6 +563,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             } else {
                 // if there's enough collateral to pay the debt, we need to reduce the amount of collateral proportionally (lose position, use collateral to pay debt)
                 position.depositedCollateralAmount -= extraCollateralToClose;
+                extraCollateralToClose = 0;
             }
 
             // the SHORT positon was "closed" at this point
@@ -572,15 +572,13 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         }
 
         // Update the position vGas
-        position.vGasAmount = vGasTokens;
-        position.borrowedVEth = requiredAmountInVEth;
+        position.vGasAmount += vGasTokens;
+        position.borrowedVEth += requiredAmountInVEth;
 
         // get required collateral from the position
         collateralRequired =
             position.getRequiredCollateral() +
             extraCollateralToClose;
-
-        vEthDebt = requiredAmountInVEth;
     }
 
     function _moveToShortDirection(
@@ -603,6 +601,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             vGasDebt,
             false
         );
+        vEthTokens = amountOutVEth;
 
         // get average trade ratio (price)
         require(vGasDebt > 0, "Invalid trade size - 0 tokens traded");
@@ -632,6 +631,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             } else {
                 // if there's enough collateral to pay the debt, we need to reduce the amount of collateral proportionally (lose position, use collateral to pay debt)
                 position.depositedCollateralAmount -= extraCollateralToClose;
+                extraCollateralToClose = 0;
             }
 
             // the LONG positon was "closed" at this point
@@ -639,8 +639,8 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             position.vGasAmount = 0;
         }
         // Update the position vGas
-        position.borrowedVGas = vGasDebt;
-        position.vEthAmount = vEthTokens;
+        position.borrowedVGas += vGasDebt;
+        position.vEthAmount += vEthTokens;
 
         // get required collateral from the position
         collateralRequired =

@@ -6,8 +6,6 @@ import {TickMath} from "../external/univ3/TickMath.sol";
 import {FullMath} from "../external/univ3/FullMath.sol";
 import {DecimalPrice} from "./DecimalPrice.sol";
 
-import "forge-std/console2.sol";
-
 library Quote {
     function quoteGasToEthWithPrice(
         uint256 gasAmount,

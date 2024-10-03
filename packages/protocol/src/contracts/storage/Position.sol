@@ -210,18 +210,8 @@ library Position {
         // 3- reconcile eth tokens
         _reconcileEthTokens(self);
 
-        console2.log("self.vGasAmount", self.vGasAmount);
-        console2.log("self.borrowedVGas", self.borrowedVGas);
-        console2.log("self.vEthAmount", self.vEthAmount);
-        console2.log("self.borrowedVEth", self.borrowedVEth);
-
         // 4- reconcile collateral
         reconcileCollateral(self);
-
-        console2.log(
-            "self.depositedCollateralAmount",
-            self.depositedCollateralAmount
-        );
 
         return self.depositedCollateralAmount;
     }
