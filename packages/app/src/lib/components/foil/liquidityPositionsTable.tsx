@@ -113,9 +113,9 @@ const LiquidityPositionsTable: React.FC<Props> = ({
                   <Td>
                     <NumberDisplay value={row.highPrice} /> Ggas/wstETH
                   </Td>
-                  <Td>
+                  {/* <Td>
                     <NumberDisplay value={pnl} /> wstETH
-                  </Td>
+                  </Td> */}
                 </Tr>
               );
             })}
