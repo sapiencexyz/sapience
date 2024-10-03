@@ -2,7 +2,7 @@
   "name": "@foil/protocol",
   "license": "UNLICENSED",
   "private": true,
-  "version": "0.29",
+  "version": "0.30",
   "scripts": {
     "dev": "cannon build --keep-alive --anvil.no-cors --anvil.port 8545 --write-deployments ./deployments/13370",
     "test": "cannon test cannonfile.test.toml -- -vv",
