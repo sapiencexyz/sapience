@@ -10,6 +10,8 @@ import {SafeCastI256} from "@synthetixio/core-contracts/contracts/utils/SafeCast
 import {SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 import {ITradeModule} from "../interfaces/ITradeModule.sol";
 
+import "forge-std/console2.sol";
+
 /**
  * @title Module for trade positions.
  * @dev See ITradeModule.
@@ -291,8 +293,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
     function quoteModifyTraderPosition(
         uint256 positionId,
         int256 size
-    ) external returns (uint256 requiredCollateral) {
-        // TODO C-09 return an int256 expectedCollateralDelta
+    ) external returns (int256 expectedCollateralDelta) {
         if (ERC721Storage._ownerOf(positionId) != msg.sender) {
             revert Errors.NotAccountOwnerOrAuthorized(positionId, msg.sender);
         }
@@ -317,9 +318,12 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
         // uint requiredCollateral;
         if (deltaSize > 0) {
-            requiredCollateral = _quoteModifyLongDirection(position, deltaSize);
+            expectedCollateralDelta = _quoteModifyLongDirection(
+                position,
+                deltaSize
+            );
         } else {
-            requiredCollateral = _quoteModifyShortDirection(
+            expectedCollateralDelta = _quoteModifyShortDirection(
                 position,
                 deltaSize
             );
@@ -333,12 +337,13 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         uint256 afterTradePositionVEth;
         uint256 afterTradePositionVGas;
         uint256 extraCollateralToClose;
+        int256 closePnL;
     }
 
     function _quoteModifyLongDirection(
         Position.Data storage position,
         int256 deltaSize
-    ) internal returns (uint256 requiredCollateral) {
+    ) internal returns (int256 expectedDeltaCollateral) {
         Epoch.Data storage epoch = Epoch.load(position.epochId);
 
         if (deltaSize == 0) {
@@ -377,6 +382,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
                 runtime.vGasTrade,
                 runtime.vEthTrade,
                 runtime.extraCollateralToClose,
+                runtime.closePnL,
 
             ) = _getTradeResultsAfterClose(
                 runtime.vGasTrade,
@@ -385,21 +391,20 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
                 position.vEthAmount
             );
 
-            runtime.afterTradeDeltaCollateral = (position
-                .depositedCollateralAmount
-                .toInt() - runtime.extraCollateralToClose.toInt());
             runtime.afterTradePositionVGas = 0;
             runtime.afterTradePositionVEth = 0;
         }
 
-        requiredCollateral = (epoch
-            .getCollateralRequirementsForTrade(
-                position.vGasAmount + runtime.vGasTrade,
-                runtime.afterTradePositionVEth,
-                runtime.afterTradePositionVGas,
-                position.borrowedVEth + runtime.vEthTrade
-            )
-            .toInt() + runtime.afterTradeDeltaCollateral).toUint();
+        expectedDeltaCollateral =
+            epoch
+                .getCollateralRequirementsForTrade(
+                    position.vGasAmount + runtime.vGasTrade,
+                    runtime.afterTradePositionVEth,
+                    runtime.afterTradePositionVGas,
+                    position.borrowedVEth + runtime.vEthTrade
+                )
+                .toInt() -
+            (position.depositedCollateralAmount.toInt() + runtime.closePnL);
     }
 
     function _quoteModifyShortDirection(
@@ -443,6 +448,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
                 runtime.vGasTrade,
                 runtime.vEthTrade,
                 runtime.extraCollateralToClose,
+                runtime.closePnL,
 
             ) = _getTradeResultsAfterClose(
                 runtime.vGasTrade,
@@ -451,21 +457,20 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
                 position.borrowedVEth
             );
 
-            runtime.afterTradeDeltaCollateral = (position
-                .depositedCollateralAmount
-                .toInt() - runtime.extraCollateralToClose.toInt());
             runtime.afterTradePositionVGas = 0;
             runtime.afterTradePositionVEth = 0;
         }
 
-        requiredCollateral = (epoch
-            .getCollateralRequirementsForTrade(
-                runtime.afterTradePositionVGas,
-                position.vEthAmount + runtime.vEthTrade,
-                position.borrowedVGas + runtime.vGasTrade,
-                runtime.afterTradePositionVEth
-            )
-            .toInt() + runtime.afterTradeDeltaCollateral).toUint();
+        requiredCollateral =
+            epoch
+                .getCollateralRequirementsForTrade(
+                    runtime.afterTradePositionVGas,
+                    position.vEthAmount + runtime.vEthTrade,
+                    position.borrowedVGas + runtime.vGasTrade,
+                    runtime.afterTradePositionVEth
+                )
+                .toInt() -
+            (position.depositedCollateralAmount + runtime.closePnL);
     }
 
     function _quoteCreateLongPosition(
@@ -547,6 +552,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
                 vGasTokens,
                 requiredAmountInVEth,
                 extraCollateralToClose,
+                ,
                 tradeRatioD18
             ) = _getTradeResultsAfterClose(
                 vGasTokens,
@@ -615,6 +621,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
                 vGasDebt,
                 vEthTokens,
                 extraCollateralToClose,
+                ,
                 tradeRatioD18
             ) = _getTradeResultsAfterClose(
                 vGasDebt,
@@ -662,12 +669,15 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             uint256 newVGas,
             uint256 newVEth,
             uint256 collateralAdjustment,
+            int256 closePnL,
             uint256 tradeRatioD18
         )
     {
         tradeRatioD18 = tradedVEth.divDecimal(tradedVGas);
-
         uint256 vEthToClose = currentVGas.mulDecimal(tradeRatioD18);
+
+        closePnL = currentVEth.toInt() - vEthToClose.toInt();
+        newVGas = tradedVGas - currentVGas;
 
         if (vEthToClose > currentVEth) {
             // notice tradedVGas > currentVGas if this function is called
@@ -678,6 +688,5 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             newVEth = tradedVEth - vEthToClose;
             collateralAdjustment = currentVEth - vEthToClose;
         }
-        newVGas = tradedVGas - currentVGas;
     }
 }
