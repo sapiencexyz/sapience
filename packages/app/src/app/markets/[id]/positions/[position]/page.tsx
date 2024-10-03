@@ -157,12 +157,12 @@ const PositionPage = ({
                 Ggas
               </ListItem>
             )}
-            <ListItem>
+            {/* <ListItem>
               Profit/Loss: <NumberDisplay value={pnl} /> wstETH{' '}
               <Tooltip label="This is an estimate that does not take into account slippage or fees.">
                 <QuestionOutlineIcon transform="translateY(-2px)" />
               </Tooltip>
-            </ListItem>
+            </ListItem> */}
           </UnorderedList>
         </Box>
       );
