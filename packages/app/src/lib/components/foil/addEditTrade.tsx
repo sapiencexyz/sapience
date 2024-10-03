@@ -323,7 +323,7 @@ export default function AddEditTrade() {
     }
     if (
       !approved &&
-      allowance &&
+      allowance !== undefined &&
       collateralDeltaLimit > (allowance as bigint)
     ) {
       console.log('approving...');
