@@ -101,8 +101,8 @@ contract TradeViews is TestTrade {
         int256 positionSize = -1 ether;
         uint256 price = foil.getReferencePrice(epochId);
 
-        uint256 deltaPrice = maxPriceD18.mulDecimal(oneMinusFee) -
-            price.mulDecimal(onePlusFee);
+        uint256 deltaPrice = maxPriceD18.mulDecimal(onePlusFee) -
+            price.mulDecimal(oneMinusFee);
         uint256 expectedCollateral = (positionSize * -1).toUint().mulDecimal(
             deltaPrice
         );
