@@ -7,7 +7,9 @@ import { AddEditPositionProvider } from '~/lib/context/AddEditPositionContext';
 import AddEditTrade from './addEditTrade';
 import PositionSelector from './positionSelector';
 
-const TradePosition = () => {
+const TradePosition: React.FC<{ showTraderConversionAlert: boolean }> = ({
+  showTraderConversionAlert,
+}) => {
   return (
     <AddEditPositionProvider>
       <Box>
