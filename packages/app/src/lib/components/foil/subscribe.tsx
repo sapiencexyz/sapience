@@ -307,8 +307,6 @@ const Subscribe: FC = () => {
     setSize(sanitizedValue);
   };
 
-  console.log('stEthPerToken', stEthPerToken);
-
   const renderActionButton = () => {
     if (!isConnected) {
       return (
