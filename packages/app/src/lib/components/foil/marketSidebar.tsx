@@ -8,7 +8,7 @@ import {
   Spinner,
   Center,
 } from '@chakra-ui/react';
-import { useContext } from 'react';
+import { useContext, useState } from 'react';
 
 import { MarketContext } from '~/lib/context/MarketProvider';
 
@@ -17,6 +17,7 @@ import Settle from './settle';
 import TraderPosition from './traderPosition';
 
 export default function MarketSidebar() {
+  const [tabIndex, setTabIndex] = useState(0);
   const { endTime } = useContext(MarketContext);
   const expired = endTime < Math.floor(Date.now() / 1000);
 
@@ -39,6 +40,13 @@ export default function MarketSidebar() {
     );
   }
 
+  const handleTabChange = (index: number, hasConvertedToTrader: boolean) => {
+    console.log('hasConvertedToTrader', hasConvertedToTrader);
+    if (hasConvertedToTrader) {
+      setTabIndex(index);
+    }
+  };
+
   return (
     <Box
       height="100%"
@@ -53,17 +61,24 @@ export default function MarketSidebar() {
       {expired ? (
         <Settle />
       ) : (
-        <Tabs isFitted display="flex" flexDirection="column" height="100%">
+        <Tabs
+          isFitted
+          display="flex"
+          flexDirection="column"
+          height="100%"
+          index={tabIndex}
+          onChange={(index) => setTabIndex(index)}
+        >
           <TabList>
             <Tab pt={4}>Trade</Tab>
             <Tab pt={4}>Provide&nbsp;Liquidity</Tab>
           </TabList>
           <TabPanels flex={1} overflow="auto">
             <TabPanel p={6}>
-              <TraderPosition />
+              <TraderPosition showTraderConversionAlert />
             </TabPanel>
             <TabPanel p={6}>
-              <LiquidityPosition />
+              <LiquidityPosition handleTabChange={handleTabChange} />
             </TabPanel>
           </TabPanels>
         </Tabs>

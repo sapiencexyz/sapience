@@ -7,12 +7,16 @@ import { AddEditPositionProvider } from '~/lib/context/AddEditPositionContext';
 import AddEditLiquidity from './addEditLiquidity';
 import PositionSelector from './positionSelector';
 
-const LiquidityPosition = () => {
+const LiquidityPosition = ({
+  handleTabChange,
+}: {
+  handleTabChange: (index: number, hasConvertedToTrader: boolean) => void;
+}) => {
   return (
     <AddEditPositionProvider>
       <Box>
         <PositionSelector isLP />
-        <AddEditLiquidity />
+        <AddEditLiquidity handleTabChange={handleTabChange} />
       </Box>
     </AddEditPositionProvider>
   );

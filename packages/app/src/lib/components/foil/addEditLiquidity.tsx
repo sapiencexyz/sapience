@@ -81,7 +81,9 @@ function getTokenAmountsFromLiquidity(
   return { amount0, amount1 };
 }
 
-const AddEditLiquidity: React.FC = () => {
+const AddEditLiquidity: React.FC<{
+  handleTabChange: (index: number, hasConvertedToTrader: boolean) => void;
+}> = ({ handleTabChange }) => {
   const { nftId, refreshPositions } = useAddEditPosition();
 
   const {
@@ -456,17 +458,24 @@ const AddEditLiquidity: React.FC = () => {
   useEffect(() => {
     if (decreaseLiquiditySuccess) {
       setTxnSuccessMsg('Successfully decreased liquidity');
-      if (depositAmount === 0) {
-        toast({
-          title:
-            'If your LP position accrued a profit or loss, it has been converted to a trade position.',
-          status: 'info',
-          duration: 5000,
-          isClosable: true,
-        });
-      }
+      // call getPositionData
+      refetchPosition();
     }
-  }, [decreaseLiquiditySuccess]);
+  }, [decreaseLiquiditySuccess, depositAmount, toast, refetchPosition]);
+
+  useEffect(() => {
+    // trader position so switch to trader tab
+    if (positionData && positionData.kind === 2) {
+      toast({
+        title:
+          'Your liquidity position has been closed and converted to a trader position with your accumulated position',
+        status: 'info',
+        duration: 5000,
+        isClosable: true,
+      });
+      handleTabChange(0, true);
+    }
+  }, [positionData, toast, handleTabChange]);
 
   // handle token amounts error
   useEffect(() => {
@@ -475,7 +484,7 @@ const AddEditLiquidity: React.FC = () => {
       toast,
       'Failed to fetch token amounts'
     );
-  }, [tokenAmountsError]);
+  }, [tokenAmountsError, toast]);
 
   // hanlde uniswap error
   useEffect(() => {
@@ -484,7 +493,7 @@ const AddEditLiquidity: React.FC = () => {
       toast,
       'Failed to get position from uniswap'
     );
-  }, [uniswapPositionError]);
+  }, [uniswapPositionError, toast]);
 
   useEffect(() => {
     if (isEdit) return;
