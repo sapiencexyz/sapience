@@ -16,8 +16,6 @@ import {Position} from "../../src/contracts/storage/Position.sol";
 import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
-import "forge-std/console2.sol";
-
 contract TradePositionBasic is TestTrade {
     using Cannon for Vm;
     using DecimalMath for uint256;

@@ -13,7 +13,6 @@ import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Po
 import {ISettlementModule} from "../interfaces/ISettlementModule.sol";
 import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePositionManager.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import {console2} from "forge-std/console2.sol";
 
 contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
     using Position for Position.Data;
@@ -21,9 +20,7 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
 
     function settlePosition(
         uint256 positionId
-    ) external nonReentrant override returns (uint256 withdrawableCollateral) {
-        console2.log("settlePosition");
-
+    ) external override nonReentrant returns (uint256 withdrawableCollateral) {
         Position.Data storage position = Position.loadValid(positionId);
         Epoch.Data storage epoch = Epoch.loadValid(position.epochId);
         Market.Data storage market = Market.load();
@@ -31,8 +28,6 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
         // Get the current price of the pool in decimal format
         (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(epoch.pool).slot0();
         uint256 priceInDecimal = DecimalPrice.sqrtRatioX96ToPrice(sqrtPriceX96);
-
-        console2.log("Current pool price:", priceInDecimal);
 
         if (ERC721Storage._ownerOf(positionId) != msg.sender) {
             revert Errors.NotAccountOwnerOrAuthorized(positionId, msg.sender);
@@ -47,8 +42,6 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
         if (position.isSettled) {
             revert Errors.PositionAlreadySettled(positionId);
         }
-
-        console2.log("settlePosition 2");
 
         // Perform settlement logic based on position kind
         if (position.kind == IFoilStructs.PositionKind.Liquidity) {
@@ -82,10 +75,9 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
         position.vEthAmount += currentAmount1;
 
         // Collect fees from the Uniswap position
-        (uint256 amount0, uint256 amount1) = INonfungiblePositionManager(epoch
-            .params
-            .uniswapPositionManager)
-            .collect(
+        (uint256 amount0, uint256 amount1) = INonfungiblePositionManager(
+            epoch.params.uniswapPositionManager
+        ).collect(
                 INonfungiblePositionManager.CollectParams({
                     tokenId: position.uniswapPositionId,
                     recipient: address(this),

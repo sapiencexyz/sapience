@@ -13,8 +13,6 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {Errors} from "../../src/contracts/storage/Errors.sol";
 import {Position} from "../../src/contracts/storage/Position.sol";
 
-import "forge-std/console2.sol";
-
 contract TradeViews is TestTrade {
     using Cannon for Vm;
     using DecimalMath for uint256;
