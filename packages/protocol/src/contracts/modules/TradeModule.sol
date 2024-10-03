@@ -564,6 +564,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             } else {
                 // if there's enough collateral to pay the debt, we need to reduce the amount of collateral proportionally (lose position, use collateral to pay debt)
                 position.depositedCollateralAmount -= extraCollateralToClose;
+                extraCollateralToClose = 0;
             }
 
             // the SHORT positon was "closed" at this point
@@ -632,6 +633,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             } else {
                 // if there's enough collateral to pay the debt, we need to reduce the amount of collateral proportionally (lose position, use collateral to pay debt)
                 position.depositedCollateralAmount -= extraCollateralToClose;
+                extraCollateralToClose = 0;
             }
 
             // the LONG positon was "closed" at this point
