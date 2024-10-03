@@ -29,6 +29,6 @@
     "@uma/core": "^2.59.1",
     "@uniswap/v3-core": "^1.0.1",
     "@uniswap/v3-periphery": "^1.4.4",
-    "@usecannon/cli": "^2.17.2"
+    "@usecannon/cli": "^2.18.0"
   }
 }

@@ -1,5 +1,6 @@
 name="foil"
 version="<%= package.version %>"
+privateSourceCode=true
 
 [var.settings]
 owner="0xE006B58cA5aB7ba53863012dc3067A14b965C1da"
