@@ -84,7 +84,7 @@ export default function AddEditTrade() {
   const isLong = option === 'Long';
 
   const formError = useMemo(() => {
-    if ((!liquidity || (isLong && size > liquidity)) && !isEdit) {
+    if (size > 0 && (!liquidity || (isLong && size > liquidity)) && !isEdit) {
       return 'Not enough liquidity to perform this trade.';
     }
     if (quoteError) {
@@ -429,7 +429,9 @@ export default function AddEditTrade() {
         variant="brand"
         type="submit"
         isLoading={(pendingTxn || isLoadingCollateralChange) && !formError}
-        isDisabled={!!formError || pendingTxn || isLoadingCollateralChange}
+        isDisabled={
+          !!formError || pendingTxn || isLoadingCollateralChange || size === 0
+        }
         mb={4}
         size="lg"
       >
