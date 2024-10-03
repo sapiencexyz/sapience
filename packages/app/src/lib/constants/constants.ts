@@ -8,7 +8,7 @@ export const CREATE_LIQUIDITY_REDUCTION = 0.0001;
 
 export const MIN_BIG_INT_SIZE = BigInt(10);
 
-export const API_BASE_URL = 'https://api.foil.xyz';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export const BLANK_MARKET: MarketContextType = {
   chain: undefined,
