@@ -27,7 +27,7 @@ import {
   getMinResultBalance,
 } from '../../util/tradeUtil';
 import RadioCard from '../RadioCard';
-import { MIN_BIG_INT_SIZE } from '~/lib/constants/constants';
+import { MIN_BIG_INT_SIZE, TOKEN_DECIMALS } from '~/lib/constants/constants';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { useLoading } from '~/lib/context/LoadingContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
@@ -151,7 +151,10 @@ export default function AddEditTrade() {
     abi: foilData.abi,
     address: marketAddress as `0x${string}`,
     functionName: 'quoteCreateTraderPosition',
-    args: [epoch, parseUnits(`${size}`, collateralAssetDecimals)],
+    args: [
+      epoch,
+      parseUnits(size.toFixed(TOKEN_DECIMALS), collateralAssetDecimals),
+    ],
     chainId,
     account: address || zeroAddress,
     query: { enabled: !isEdit && Math.abs(size) > 0 },
@@ -161,7 +164,10 @@ export default function AddEditTrade() {
     abi: foilData.abi,
     address: marketAddress as `0x${string}`,
     functionName: 'quoteModifyTraderPosition',
-    args: [nftId, parseUnits(`${size}`, collateralAssetDecimals)],
+    args: [
+      nftId,
+      parseUnits(size.toFixed(TOKEN_DECIMALS), collateralAssetDecimals),
+    ],
     chainId,
     account: address || zeroAddress,
     query: { enabled: isEdit && size !== originalPositionSize },
@@ -296,7 +302,10 @@ export default function AddEditTrade() {
     setPendingTxn(true);
     setIsLoading(true);
 
-    const sizeInTokens = parseUnits(`${size}`, collateralAssetDecimals);
+    const sizeInTokens = parseUnits(
+      size.toFixed(TOKEN_DECIMALS),
+      collateralAssetDecimals
+    );
 
     const collateralDeltaLimit = calculateCollateralDeltaLimit(
       collateralAssetDecimals,
