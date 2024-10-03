@@ -115,6 +115,15 @@ const Subscribe: FC = () => {
   });
 
   useEffect(() => {
+    const quoteResult = quoteCreatePositionResult.data?.result;
+    if (quoteResult !== undefined) {
+      setCollateralDelta(quoteResult as unknown as bigint);
+    } else {
+      setCollateralDelta(BigInt(0));
+    }
+  }, [quoteCreatePositionResult.data]);
+
+  useEffect(() => {
     if (quoteCreatePositionResult.error) {
       setQuoteError(quoteCreatePositionResult.error.message);
     } else {
