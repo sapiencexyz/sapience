@@ -37,7 +37,6 @@ import {
 } from 'wagmi';
 
 import erc20ABI from '../../erc20abi.json';
-import { calculateCollateralDeltaLimit } from '../../util/tradeUtil';
 import { useLoading } from '~/lib/context/LoadingContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import { renderContractErrorToast, renderToast } from '~/lib/util/util';

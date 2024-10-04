@@ -417,7 +417,7 @@ export default function AddEditTrade() {
     : '0';
   const estimatedNewBalance = collateralBalance
     ? formatUnits(
-        (collateralBalance as bigint) - quotedResultingPositionCollateral,
+        (collateralBalance as bigint) - (quotedResultingPositionCollateral - positionData?.depositedCollateralAmount),
         collateralAssetDecimals
       )
     : '0';
@@ -541,6 +541,24 @@ export default function AddEditTrade() {
               </Text>
             </Box>
           )}
+          <Box>
+            <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
+              Position Collateral
+            </Text>
+            <Text fontSize="sm" color="gray.600" mb={0.5}>
+              <NumberDisplay
+                value={positionData?.depositedCollateralAmount || 0}
+              />{' '}
+              {collateralAssetTicker} →{' '}
+              <NumberDisplay value={quotedResultingPositionCollateral} />{' '}
+              {collateralAssetTicker} (
+              {(positionData?.depositedCollateralAmount || 0) <
+              quotedResultingPositionCollateral
+                ? 'Min.'
+                : 'Max.'}{' '}
+              <NumberDisplay value={0} /> {collateralAssetTicker})
+            </Text>
+          </Box>
         {isEdit && (
           <Box>
             <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
@@ -557,24 +575,6 @@ export default function AddEditTrade() {
             </Text>
           </Box>
         )}
-        <Box>
-          <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
-            Position Collateral
-          </Text>
-          <Text fontSize="sm" color="gray.600" mb={0.5}>
-            <NumberDisplay
-              value={positionData?.depositedCollateralAmount || 0}
-            />{' '}
-            {collateralAssetTicker} →{' '}
-            <NumberDisplay value={quotedResultingPositionCollateral} />{' '}
-            {collateralAssetTicker} (
-            {(positionData?.depositedCollateralAmount || 0) <
-            quotedResultingPositionCollateral
-              ? 'Min.'
-              : 'Max.'}{' '}
-            <NumberDisplay value={0} /> {collateralAssetTicker})
-          </Text>
-        </Box>
         {estimatedFillPrice && (
           <Box>
             <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
