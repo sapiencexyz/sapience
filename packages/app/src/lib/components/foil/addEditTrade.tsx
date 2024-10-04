@@ -431,8 +431,7 @@ export default function AddEditTrade() {
     : '0';
 
   const walletBalanceLimit = parseUnits(walletBalance, collateralAssetDecimals) - collateralDeltaLimit;
-  console.log('yo', collateralDeltaLimit, (positionData?.depositedCollateralAmount || BigInt(0)))
-  const positionCollateralLimit = collateralDeltaLimit + (positionData?.depositedCollateralAmount || BigInt(0));
+  const positionCollateralLimit = (positionData?.depositedCollateralAmount || BigInt(0)) + collateralDeltaLimit;
 
   const currentChainId = useChainId();
   const { switchChain } = useSwitchChain();
@@ -528,9 +527,7 @@ export default function AddEditTrade() {
               <Text fontSize="sm" color="gray.600">
                 <NumberDisplay value={walletBalance} /> {collateralAssetTicker}{' '}
                 → <NumberDisplay value={quotedResultingWalletBalance} />{' '}
-                {collateralAssetTicker} (
-                {walletBalance < quotedResultingWalletBalance ? 'Min.' : 'Max.'}{' '}
-                <NumberDisplay value={formatUnits(walletBalanceLimit, collateralAssetDecimals)} />{' '}
+                {collateralAssetTicker} (Min. <NumberDisplay value={formatUnits(walletBalanceLimit, collateralAssetDecimals)} />{' '}
                 {collateralAssetTicker})
               </Text>
             </Box>
@@ -545,11 +542,7 @@ export default function AddEditTrade() {
               />{' '}
               {collateralAssetTicker} →{' '}
               <NumberDisplay value={formatUnits(quotedResultingPositionCollateral, collateralAssetDecimals)} />{' '}
-              {collateralAssetTicker} (
-              {(positionData?.depositedCollateralAmount || 0) <
-              quotedResultingPositionCollateral
-                ? 'Min.'
-                : 'Max.'}{' '}
+              {collateralAssetTicker} (Max.{' '}
               <NumberDisplay value={formatUnits(positionCollateralLimit, collateralAssetDecimals)} /> {collateralAssetTicker})
             </Text>
           </Box>
