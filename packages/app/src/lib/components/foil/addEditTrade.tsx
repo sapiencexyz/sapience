@@ -23,9 +23,7 @@ import {
 } from 'wagmi';
 
 import erc20ABI from '../../erc20abi.json';
-import {
-  calculateCollateralDeltaLimit,
-} from '../../util/tradeUtil';
+import { calculateCollateralDeltaLimit } from '../../util/tradeUtil';
 import RadioCard from '../RadioCard';
 import { MIN_BIG_INT_SIZE, TOKEN_DECIMALS } from '~/lib/constants/constants';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
@@ -397,13 +395,21 @@ export default function AddEditTrade() {
 
   const minResultingBalance = useMemo(() => {
     if (collateralBalance && quotedResultingPositionCollateral) {
-      const estimatedNewBalance = (collateralBalance as bigint) - quotedResultingPositionCollateral;
-      const slippageAmount = (estimatedNewBalance * BigInt(Math.floor(slippage * 100))) / BigInt(10000);
+      const estimatedNewBalance =
+        (collateralBalance as bigint) - quotedResultingPositionCollateral;
+      const slippageAmount =
+        (estimatedNewBalance * BigInt(Math.floor(slippage * 100))) /
+        BigInt(10000);
       const minResultingBalance = estimatedNewBalance - slippageAmount;
       return formatUnits(minResultingBalance, collateralAssetDecimals);
     }
     return '0';
-  }, [collateralBalance, quotedResultingPositionCollateral, slippage, collateralAssetDecimals]);
+  }, [
+    collateralBalance,
+    quotedResultingPositionCollateral,
+    slippage,
+    collateralAssetDecimals,
+  ]);
 
   const currentChainId = useChainId();
   const { switchChain } = useSwitchChain();
@@ -500,9 +506,7 @@ export default function AddEditTrade() {
                 <NumberDisplay value={currentBalance} /> {collateralAssetTicker}{' '}
                 → <NumberDisplay value={estimatedNewBalance} />{' '}
                 {collateralAssetTicker} (
-                {currentBalance >= estimatedNewBalance
-                  ? 'Min.'
-                  : 'Max.'}{' '}
+                {currentBalance >= estimatedNewBalance ? 'Min.' : 'Max.'}{' '}
                 <NumberDisplay value={minResultingBalance} />{' '}
                 {collateralAssetTicker})
               </Text>
@@ -529,7 +533,17 @@ export default function AddEditTrade() {
             Position Collateral
           </Text>
           <Text fontSize="sm" color="gray.600" mb={0.5}>
-            <NumberDisplay value={positionData?.depositedCollateralAmount || 0} /> wstETH → <NumberDisplay value={quotedResultingPositionCollateral} /> wstETH
+            <NumberDisplay
+              value={positionData?.depositedCollateralAmount || 0}
+            />{' '}
+            {collateralAssetTicker} →{' '}
+            <NumberDisplay value={quotedResultingPositionCollateral} />{' '}
+            {collateralAssetTicker} (
+            {(positionData?.depositedCollateralAmount || 0) <
+            quotedResultingPositionCollateral
+              ? 'Min.'
+              : 'Max.'}{' '}
+            <NumberDisplay value={0} /> {collateralAssetTicker})
           </Text>
         </Box>
         {estimatedFillPrice && (
