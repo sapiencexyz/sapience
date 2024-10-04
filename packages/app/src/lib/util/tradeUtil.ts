@@ -42,14 +42,13 @@ export const getMinResultBalance = (
   slippage: number
 ) => {
   if (collateralBalance && refPrice) {
-    const collateralDeltaLimit = calculateCollateralDeltaLimit(
-      collateralAssetDecimals,
-      collateralDelta,
-      slippage,
-      refPrice
-    );
+    const estimatedNewBalance = collateralBalance - collateralDelta;
+    const slippageAmount =
+      (estimatedNewBalance * BigInt(Math.floor(slippage * 100))) /
+      BigInt(10000);
+    const minResultingBalance = estimatedNewBalance - slippageAmount;
 
-    return collateralBalance - collateralDeltaLimit;
+    return formatUnits(minResultingBalance, collateralAssetDecimals);
   }
   return '0';
 };
