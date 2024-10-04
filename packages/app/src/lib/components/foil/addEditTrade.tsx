@@ -8,6 +8,7 @@ import {
   useToast,
   Tooltip,
 } from '@chakra-ui/react';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { useState, useEffect, useContext, useMemo } from 'react';
 import type { AbiFunction, WriteContractErrorType } from 'viem';
 import { formatUnits, parseUnits, zeroAddress } from 'viem';
@@ -400,10 +401,18 @@ export default function AddEditTrade() {
   const currentChainId = useChainId();
   const { switchChain } = useSwitchChain();
 
+  const { openConnectModal } = useConnectModal();
+
   const renderActionButton = () => {
     if (!isConnected) {
       return (
-        <Button width="full" variant="brand" type="submit" mb={4} size="lg">
+        <Button
+          width="full"
+          variant="brand"
+          mb={4}
+          size="lg"
+          onClick={openConnectModal}
+        >
           Connect Wallet
         </Button>
       );

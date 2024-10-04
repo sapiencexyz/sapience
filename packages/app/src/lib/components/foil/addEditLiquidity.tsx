@@ -18,6 +18,7 @@ import {
   Flex,
   useToast,
 } from '@chakra-ui/react';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { TickMath, SqrtPriceMath } from '@uniswap/v3-sdk';
 import JSBI from 'jsbi';
 import { useContext, useEffect, useMemo, useState } from 'react';
@@ -125,6 +126,7 @@ const AddEditLiquidity: React.FC<{
 
   const currentChainId = useChainId();
   const { switchChain } = useSwitchChain();
+  const { openConnectModal } = useConnectModal();
 
   /// //// READ CONTRACT HOOKS ///////
   const { data: positionData, refetch: refetchPosition } = useReadContract({
@@ -779,7 +781,7 @@ const AddEditLiquidity: React.FC<{
   const renderActionButton = () => {
     if (!isConnected) {
       return (
-        <Button width="full" variant="brand" type="submit">
+        <Button width="full" variant="brand" onClick={openConnectModal}>
           Connect Wallet
         </Button>
       );
