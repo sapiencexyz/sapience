@@ -463,32 +463,43 @@ export default function AddEditTrade() {
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
       {renderActionButton()}
       <Flex gap={2} flexDir="column">
-        {!isLoadingCollateralChange && (
-          <Box>
-            <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
-              Estimated Wallet Balance Adjustment{' '}
-              <Tooltip label="Your slippage tolerance sets a maximum limit on how much additional collateral Foil can use or the minimum amount of collateral you will receive back, protecting you from unexpected market changes between submitting and processing your transaction.">
-                <QuestionOutlineIcon transform="translateY(-1px)" ml={0.5} />
-              </Tooltip>
-            </Text>
-            <Text fontSize="sm" color="gray.600">
-              <NumberDisplay value={currentBalance} /> {collateralAssetTicker} →{' '}
-              <NumberDisplay value={estimatedNewBalance} />{' '}
-              {collateralAssetTicker} (
-              {collateralDelta >= BigInt(0) ? 'Min.' : 'Max.'}{' '}
-              <NumberDisplay value={minResultingBalance} />{' '}
-              {collateralAssetTicker})
-            </Text>
-          </Box>
-        )}
+        {!isLoadingCollateralChange &&
+          currentBalance !== estimatedNewBalance && (
+            <Box>
+              <Text
+                fontSize="sm"
+                color="gray.600"
+                fontWeight="semibold"
+                mb={0.5}
+              >
+                Estimated Wallet Balance Adjustment{' '}
+                <Tooltip label="Your slippage tolerance sets a maximum limit on how much additional collateral Foil can use or the minimum amount of collateral you will receive back, protecting you from unexpected market changes between submitting and processing your transaction.">
+                  <QuestionOutlineIcon transform="translateY(-1px)" ml={0.5} />
+                </Tooltip>
+              </Text>
+              <Text fontSize="sm" color="gray.600">
+                <NumberDisplay value={currentBalance} /> {collateralAssetTicker}{' '}
+                → <NumberDisplay value={estimatedNewBalance} />{' '}
+                {collateralAssetTicker} (
+                {collateralDelta >= BigInt(0) ? 'Min.' : 'Max.'}{' '}
+                <NumberDisplay value={minResultingBalance} />{' '}
+                {collateralAssetTicker})
+              </Text>
+            </Box>
+          )}
         {isEdit && (
           <Box>
             <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
               Position Size
             </Text>
             <Text fontSize="sm" color="gray.600" mb={0.5}>
-              <NumberDisplay value={originalPositionSize} /> vGGas →{' '}
-              <NumberDisplay value={size} /> vGGas
+              <NumberDisplay value={originalPositionSize} /> vGGas
+              {originalPositionSize !== size && (
+                <>
+                  {' '}
+                  → <NumberDisplay value={size} /> vGGas
+                </>
+              )}
             </Text>
           </Box>
         )}
