@@ -324,19 +324,22 @@ export default function AddEditTrade() {
     collateralAssetDecimals,
   ]);
 
-  const collateralDelta = quotedResultingPositionCollateral - (positionData?.depositedCollateralAmount ?? BigInt(0));
+  const collateralDelta =
+    quotedResultingPositionCollateral -
+    (positionData?.depositedCollateralAmount ?? BigInt(0));
 
   const collateralDeltaLimit = useMemo(() => {
     if (collateralDelta === BigInt(0)) return BigInt(0);
 
     const slippageMultiplier = BigInt(Math.floor((100 + slippage) * 100));
-    const slippageReductionMultiplier = BigInt(Math.floor((100 - slippage) * 100));
+    const slippageReductionMultiplier = BigInt(
+      Math.floor((100 - slippage) * 100)
+    );
 
     if (collateralDelta > BigInt(0)) {
       return (collateralDelta * slippageMultiplier) / BigInt(10000);
-    } else {
-      return (collateralDelta * slippageReductionMultiplier) / BigInt(10000);
     }
+    return (collateralDelta * slippageReductionMultiplier) / BigInt(10000);
   }, [collateralDelta, slippage]);
 
   const handleSubmit = async (
@@ -366,6 +369,11 @@ export default function AddEditTrade() {
     // Set deadline to 30 minutes from now
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
 
+    const absCollateralDeltaLimit =
+      collateralDeltaLimit < BigInt(0)
+        ? -collateralDeltaLimit
+        : collateralDeltaLimit;
+
     if (!allowance) {
       console.log('refetching  allowance...');
       await refetchAllowance();
@@ -388,7 +396,7 @@ export default function AddEditTrade() {
         abi: foilData.abi,
         address: marketAddress as `0x${string}`,
         functionName: 'modifyTraderPosition',
-        args: [nftId, sizeInTokens, collateralDeltaLimit, deadline],
+        args: [nftId, sizeInTokens, absCollateralDeltaLimit, deadline],
       });
     } else {
       console.log('creating trade position....');
@@ -396,7 +404,7 @@ export default function AddEditTrade() {
         abi: foilData.abi,
         address: marketAddress as `0x${string}`,
         functionName: 'createTraderPosition',
-        args: [epoch, sizeInTokens, collateralDeltaLimit, deadline],
+        args: [epoch, sizeInTokens, absCollateralDeltaLimit, deadline],
       });
     }
   };
@@ -430,8 +438,11 @@ export default function AddEditTrade() {
       )
     : '0';
 
-  const walletBalanceLimit = parseUnits(walletBalance, collateralAssetDecimals) - collateralDeltaLimit;
-  const positionCollateralLimit = (positionData?.depositedCollateralAmount || BigInt(0)) + collateralDeltaLimit;
+  const walletBalanceLimit =
+    parseUnits(walletBalance, collateralAssetDecimals) - collateralDeltaLimit;
+  const positionCollateralLimit =
+    (positionData?.depositedCollateralAmount || BigInt(0)) +
+    collateralDeltaLimit;
 
   const currentChainId = useChainId();
   const { switchChain } = useSwitchChain();
@@ -527,25 +538,45 @@ export default function AddEditTrade() {
               <Text fontSize="sm" color="gray.600">
                 <NumberDisplay value={walletBalance} /> {collateralAssetTicker}{' '}
                 → <NumberDisplay value={quotedResultingWalletBalance} />{' '}
-                {collateralAssetTicker} (Min. <NumberDisplay value={formatUnits(walletBalanceLimit, collateralAssetDecimals)} />{' '}
+                {collateralAssetTicker} (Min.{' '}
+                <NumberDisplay
+                  value={formatUnits(
+                    walletBalanceLimit,
+                    collateralAssetDecimals
+                  )}
+                />{' '}
                 {collateralAssetTicker})
               </Text>
             </Box>
           )}
-          <Box>
-            <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
-              Position Collateral
-            </Text>
-            <Text fontSize="sm" color="gray.600" mb={0.5}>
-              <NumberDisplay
-                value={formatUnits((positionData?.depositedCollateralAmount || BigInt(0)), collateralAssetDecimals)}
-              />{' '}
-              {collateralAssetTicker} →{' '}
-              <NumberDisplay value={formatUnits(quotedResultingPositionCollateral, collateralAssetDecimals)} />{' '}
-              {collateralAssetTicker} (Max.{' '}
-              <NumberDisplay value={formatUnits(positionCollateralLimit, collateralAssetDecimals)} /> {collateralAssetTicker})
-            </Text>
-          </Box>
+        <Box>
+          <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
+            Position Collateral
+          </Text>
+          <Text fontSize="sm" color="gray.600" mb={0.5}>
+            <NumberDisplay
+              value={formatUnits(
+                positionData?.depositedCollateralAmount || BigInt(0),
+                collateralAssetDecimals
+              )}
+            />{' '}
+            {collateralAssetTicker} →{' '}
+            <NumberDisplay
+              value={formatUnits(
+                quotedResultingPositionCollateral,
+                collateralAssetDecimals
+              )}
+            />{' '}
+            {collateralAssetTicker} (Max.{' '}
+            <NumberDisplay
+              value={formatUnits(
+                positionCollateralLimit,
+                collateralAssetDecimals
+              )}
+            />{' '}
+            {collateralAssetTicker})
+          </Text>
+        </Box>
         {isEdit && (
           <Box>
             <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
