@@ -422,15 +422,16 @@ export default function AddEditTrade() {
       )
     : '0';
 
-  const minResultingBalance = useMemo(() => {
+  // The min or max we will tolerate having in the wallet after the trade
+  const collateralBalanceLimit = useMemo(() => {
     if (collateralBalance && quotedResultingPositionCollateral) {
       const estimatedNewBalance =
         (collateralBalance as bigint) - quotedResultingPositionCollateral;
       const slippageAmount =
         (estimatedNewBalance * BigInt(Math.floor(slippage * 100))) /
         BigInt(10000);
-      const minResultingBalance = estimatedNewBalance - slippageAmount;
-      return formatUnits(minResultingBalance, collateralAssetDecimals);
+      const collateralBalanceLimit = estimatedNewBalance - slippageAmount;
+      return formatUnits(collateralBalanceLimit, collateralAssetDecimals);
     }
     return '0';
   }, [
@@ -536,7 +537,7 @@ export default function AddEditTrade() {
                 → <NumberDisplay value={estimatedNewBalance} />{' '}
                 {collateralAssetTicker} (
                 {currentBalance >= estimatedNewBalance ? 'Min.' : 'Max.'}{' '}
-                <NumberDisplay value={minResultingBalance} />{' '}
+                <NumberDisplay value={collateralBalanceLimit} />{' '}
                 {collateralAssetTicker})
               </Text>
             </Box>
