@@ -23,7 +23,6 @@ import {
 } from 'wagmi';
 
 import erc20ABI from '../../erc20abi.json';
-import { calculateCollateralDeltaLimit } from '../../util/tradeUtil';
 import RadioCard from '../RadioCard';
 import { MIN_BIG_INT_SIZE, TOKEN_DECIMALS } from '~/lib/constants/constants';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
@@ -37,6 +36,36 @@ import SizeInput from './sizeInput';
 import SlippageTolerance from './slippageTolerance';
 
 const tradeOptions = ['Long', 'Short'];
+
+const calculateCollateralDeltaLimit = (
+  collateralAssetDecimals: number,
+  collateralDelta: bigint,
+  slippage: number,
+  refPrice: string | undefined,
+  isShort?: boolean
+) => {
+  const MIN_REF_PRICE = 1e-12;
+  if (!refPrice || parseFloat(refPrice) < MIN_REF_PRICE) {
+    // Fallback to the original calculation if refPrice is not available or is too low
+    return (
+      (collateralDelta * BigInt(Math.floor((100 + slippage) * 100))) /
+      BigInt(10000)
+    );
+  }
+  const collateralDeltaInt = parseFloat(
+    formatUnits(collateralDelta, collateralAssetDecimals)
+  );
+  const slippageFactor: number = isShort
+    ? 1 - slippage / 100
+    : 1 + slippage / 100;
+
+  const cdl: number =
+    collateralDeltaInt * parseFloat(refPrice) * slippageFactor;
+  return parseUnits(
+    cdl.toFixed(collateralAssetDecimals),
+    collateralAssetDecimals
+  );
+};
 
 export default function AddEditTrade() {
   const { nftId, refreshPositions } = useAddEditPosition();
