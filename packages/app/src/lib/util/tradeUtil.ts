@@ -31,7 +31,10 @@ export const calculateCollateralDeltaLimit = (
 
   const cdl: number =
     collateralDeltaInt * parseFloat(refPrice) * slippageFactor;
-  return parseUnits(`${cdl}`, collateralAssetDecimals);
+  return parseUnits(
+    cdl.toFixed(collateralAssetDecimals),
+    collateralAssetDecimals
+  );
 };
 
 export const getMinResultBalance = (
