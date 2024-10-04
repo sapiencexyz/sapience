@@ -3,7 +3,7 @@ import { Tooltip } from '@chakra-ui/react';
 import type React from 'react';
 
 type NumberDisplayProps = {
-  value: bigint | number | string;
+  value: number | string;
 };
 
 const NumberDisplay: React.FC<NumberDisplayProps> = ({ value }) => {
