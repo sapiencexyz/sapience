@@ -235,20 +235,32 @@ const Subscribe: FC = () => {
 
     const sizeInTokens = BigInt(Math.floor(sizeInGigagas));
 
+    const calculateCollateralDeltaLimit = (
+      collateralDelta: bigint,
+      slippage: number
+    ) => {
+      if (collateralDelta === BigInt(0)) return BigInt(0);
+
+      const slippageMultiplier = BigInt(Math.floor((100 + slippage) * 100));
+      const slippageReductionMultiplier = BigInt(
+        Math.floor((100 - slippage) * 100)
+      );
+
+      if (collateralDelta > BigInt(0)) {
+        return (collateralDelta * slippageMultiplier) / BigInt(10000);
+      }
+      return (collateralDelta * slippageReductionMultiplier) / BigInt(10000);
+    };
+
     const collateralDeltaLimit = calculateCollateralDeltaLimit(
-      collateralAssetDecimals,
       collateralDelta,
-      slippage,
-      refPrice,
-      !isLong
+      slippage
     );
-    console.log('********************');
-    console.log('collateralDelta', collateralDelta);
-    console.log('collateralDeltaLimit', collateralDeltaLimit);
-    console.log('allowance', allowance);
-    console.log('sizeInTokens', sizeInTokens);
-    console.log('refPrice', refPrice);
-    console.log('********************');
+
+    const absCollateralDeltaLimit =
+      collateralDeltaLimit < BigInt(0)
+        ? -collateralDeltaLimit
+        : collateralDeltaLimit;
 
     // Set deadline to 30 minutes from now
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
@@ -267,7 +279,7 @@ const Subscribe: FC = () => {
         abi: foilData.abi,
         address: marketAddress as `0x${string}`,
         functionName: 'createTraderPosition',
-        args: [epoch, sizeInTokens, collateralDeltaLimit, deadline],
+        args: [epoch, sizeInTokens, absCollateralDeltaLimit, deadline],
       });
     }
   };
