@@ -430,7 +430,10 @@ export default function AddEditTrade() {
         type="submit"
         isLoading={(pendingTxn || isLoadingCollateralChange) && !formError}
         isDisabled={
-          !!formError || pendingTxn || isLoadingCollateralChange || size === 0
+          !!formError ||
+          pendingTxn ||
+          isLoadingCollateralChange ||
+          size === originalPositionSize
         }
         mb={4}
         size="lg"
