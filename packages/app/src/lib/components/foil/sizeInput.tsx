@@ -48,6 +48,8 @@ const SizeInput: React.FC<Props> = ({
   } = useContext(MarketContext);
   const [collateralChange, setCollateralChange] = useState<number>(0);
   const [sizeChange, setSizeChange] = useState<number>(0);
+  const [collateralInput, setCollateralInput] = useState<string>('0');
+  const [sizeInput, setSizeInput] = useState<string>('');
   const [isGgasInput, setIsGgasInput] = useState(true);
 
   const refPrice = pool?.token0Price.toSignificant(3);
@@ -58,7 +60,7 @@ const SizeInput: React.FC<Props> = ({
   }, [nftId, positionData]);
 
   useEffect(() => {
-    handleSizeChange(sizeChange.toString());
+    handleSizeChange(sizeInput);
   }, [isLong]);
 
   const handleUpdateInputType = () => setIsGgasInput(!isGgasInput);
@@ -85,8 +87,9 @@ const SizeInput: React.FC<Props> = ({
     functionName: isLong ? 'quoteExactOutputSingle' : 'quoteExactInputSingle',
     args: quoteArgs,
     chainId,
+    // Enable the query when sizeChange is a number (including 0) and pool is available
     query: {
-      enabled: !!sizeChange && !!pool,
+      enabled: sizeChange !== null && sizeChange >= 0 && !!pool,
     },
   }) as { data: bigint | undefined; error: ReadContractErrorType | null };
 
@@ -102,12 +105,31 @@ const SizeInput: React.FC<Props> = ({
    */
   const handleSizeChange = (newVal: string) => {
     if (!refPrice) return;
-    const newSizeChange = parseFloat(newVal || '0');
+    const numberPattern = /^(0|[1-9][0-9]*)(\.[0-9]*)?$|^$/;
+
+    if (newVal === '') {
+      // Allow empty input
+      setSizeInput('');
+      setSizeChange(0);
+      setSize(originalPositionSize);
+      setCollateralChange(0);
+      setCollateralInput('');
+      return;
+    }
+
+    if (!numberPattern.test(newVal)) {
+      // Invalid input, do not update state
+      return;
+    }
+
+    setSizeInput(newVal);
+    const newSizeChange = parseFloat(newVal);
     setSizeChange(newSizeChange);
     const sign = isLong ? 1 : -1;
     setSize(originalPositionSize + sign * newSizeChange);
-    const newCollateral = parseFloat(`${newSizeChange / Number(refPrice)}`);
+    const newCollateral = newSizeChange / Number(refPrice);
     setCollateralChange(newCollateral);
+    setCollateralInput(newCollateral.toString());
   };
 
   /**
@@ -116,12 +138,31 @@ const SizeInput: React.FC<Props> = ({
    */
   const handleCollateralChange = (newVal: string) => {
     if (!refPrice) return;
-    const newCollateral = parseFloat(newVal || '0');
+    const numberPattern = /^(0|[1-9][0-9]*)(\.[0-9]*)?$/;
+
+    if (newVal === '') {
+      // Allow empty input
+      setCollateralInput('');
+      setCollateralChange(0);
+      setSize(originalPositionSize);
+      setSizeChange(0);
+      setSizeInput('');
+      return;
+    }
+
+    if (!numberPattern.test(newVal)) {
+      // Invalid input, do not update state
+      return;
+    }
+
+    setCollateralInput(newVal);
+    const newCollateral = parseFloat(newVal);
     setCollateralChange(newCollateral);
-    const newSizeChange = parseFloat(`${newCollateral * Number(refPrice)}`);
+    const newSizeChange = newCollateral * Number(refPrice);
     setSizeChange(newSizeChange);
     const sign = isLong ? 1 : -1;
     setSize(originalPositionSize + sign * newSizeChange);
+    setSizeInput(newSizeChange.toString());
   };
 
   return (
@@ -131,8 +172,8 @@ const SizeInput: React.FC<Props> = ({
         <InputGroup>
           <Input
             borderRight="none"
-            value={isGgasInput ? Number(sizeChange) : Number(collateralChange)}
-            type="number"
+            value={isGgasInput ? sizeInput : collateralInput}
+            type="text"
             min={0}
             step="any"
             onWheel={(e) => e.currentTarget.blur()}
