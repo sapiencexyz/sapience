@@ -348,12 +348,14 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
         if (deltaSize == 0) {
             return
-                epoch.getCollateralRequirementsForTrade(
-                    position.vGasAmount,
-                    position.vEthAmount,
-                    position.borrowedVGas,
-                    position.borrowedVEth
-                );
+                epoch
+                    .getCollateralRequirementsForTrade(
+                        position.vGasAmount,
+                        position.vEthAmount,
+                        position.borrowedVGas,
+                        position.borrowedVEth
+                    )
+                    .toInt();
         }
 
         QuoteRuntime memory runtime;
@@ -410,17 +412,19 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
     function _quoteModifyShortDirection(
         Position.Data storage position,
         int256 deltaSize
-    ) internal returns (uint256 requiredCollateral) {
+    ) internal returns (int256 requiredCollateral) {
         Epoch.Data storage epoch = Epoch.load(position.epochId);
 
         if (deltaSize == 0) {
             return
-                epoch.getCollateralRequirementsForTrade(
-                    position.vGasAmount,
-                    position.vEthAmount,
-                    position.borrowedVGas,
-                    position.borrowedVEth
-                );
+                epoch
+                    .getCollateralRequirementsForTrade(
+                        position.vGasAmount,
+                        position.vEthAmount,
+                        position.borrowedVGas,
+                        position.borrowedVEth
+                    )
+                    .toInt();
         }
 
         QuoteRuntime memory runtime;
@@ -470,7 +474,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
                     runtime.afterTradePositionVEth
                 )
                 .toInt() -
-            (position.depositedCollateralAmount + runtime.closePnL);
+            (position.depositedCollateralAmount.toInt() + runtime.closePnL);
     }
 
     function _quoteCreateLongPosition(
