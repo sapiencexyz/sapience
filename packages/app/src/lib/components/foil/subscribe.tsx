@@ -190,7 +190,7 @@ const Subscribe: FC = () => {
     if (approveSuccess) {
       const handleSuccess = async () => {
         await refetchAllowance();
-        handleSubmit(undefined, true);
+        handleSubmit(undefined);
       };
       handleSuccess();
     }
@@ -219,7 +219,7 @@ const Subscribe: FC = () => {
     stEthPerToken,
   ]);
 
-  const handleSubmit = (e?: FormEvent<HTMLFormElement>, approved?: boolean) => {
+  const handleSubmit = (e?: FormEvent<HTMLFormElement>) => {
     if (e) e.preventDefault();
     if (size === '' || parseFloat(size) <= 0) {
       toast({
@@ -254,11 +254,7 @@ const Subscribe: FC = () => {
     // Set deadline to 30 minutes from now
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
 
-    if (
-      !approved &&
-      allowance &&
-      collateralDeltaLimit > (allowance as bigint)
-    ) {
+    if (collateralDeltaLimit > (allowance as bigint)) {
       console.log('approving...');
       approveWrite({
         abi: erc20ABI as AbiFunction[],
