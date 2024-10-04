@@ -47,7 +47,10 @@ export default function AddEditTrade() {
   const [option, setOption] = useState<'Long' | 'Short'>('Long');
   const [slippage, setSlippage] = useState<number>(0.5);
   const [pendingTxn, setPendingTxn] = useState(false);
-  const [collateralDelta, setCollateralDelta] = useState<bigint>(BigInt(0));
+  const [
+    quotedResultingPositionCollateral,
+    setQuotedResultingPositionCollateral,
+  ] = useState<bigint>(BigInt(0));
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [estimatedFillPrice, setEstimatedFillPrice] = useState<string | null>(
     null
@@ -269,9 +272,9 @@ export default function AddEditTrade() {
       ? quoteModifyPositionResult.data?.result
       : quoteCreatePositionResult.data?.result;
     if (quoteResult !== undefined) {
-      setCollateralDelta(quoteResult as unknown as bigint);
+      setQuotedResultingPositionCollateral(quoteResult as unknown as bigint);
     } else {
-      setCollateralDelta(BigInt(0));
+      setQuotedResultingPositionCollateral(BigInt(0));
     }
   }, [isEdit, quoteCreatePositionResult.data, quoteModifyPositionResult.data]);
 
@@ -310,13 +313,16 @@ export default function AddEditTrade() {
 
     const collateralDeltaLimit = calculateCollateralDeltaLimit(
       collateralAssetDecimals,
-      collateralDelta,
+      quotedResultingPositionCollateral,
       slippage,
       refPrice,
       !isLong
     );
     console.log('********************');
-    console.log('collateralDelta', collateralDelta);
+    console.log(
+      'quotedResultingPositionCollateral',
+      quotedResultingPositionCollateral
+    );
     console.log('collateralDeltaLimit', collateralDeltaLimit);
     console.log('allowance', allowance);
     console.log('sizeInTokens', sizeInTokens);
@@ -385,7 +391,7 @@ export default function AddEditTrade() {
     : '0';
   const estimatedNewBalance = collateralBalance
     ? formatUnits(
-        (collateralBalance as bigint) - collateralDelta,
+        (collateralBalance as bigint) - quotedResultingPositionCollateral,
         collateralAssetDecimals
       )
     : '0';
@@ -394,7 +400,7 @@ export default function AddEditTrade() {
     BigInt((collateralBalance as string) || 0),
     refPrice,
     collateralAssetDecimals,
-    collateralDelta,
+    quotedResultingPositionCollateral,
     slippage
   );
 
@@ -493,7 +499,9 @@ export default function AddEditTrade() {
                 <NumberDisplay value={currentBalance} /> {collateralAssetTicker}{' '}
                 → <NumberDisplay value={estimatedNewBalance} />{' '}
                 {collateralAssetTicker} (
-                {collateralDelta >= BigInt(0) ? 'Min.' : 'Max.'}{' '}
+                {quotedResultingPositionCollateral >= BigInt(0)
+                  ? 'Min.'
+                  : 'Max.'}{' '}
                 <NumberDisplay value={minResultingBalance} />{' '}
                 {collateralAssetTicker})
               </Text>
