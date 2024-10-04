@@ -96,7 +96,7 @@ const Subscribe: FC = () => {
     abi: erc20ABI,
     address: collateralAsset as `0x${string}`,
     functionName: 'allowance',
-    args: [address, foilData.address],
+    args: [address, marketAddress],
     chainId,
   });
 
