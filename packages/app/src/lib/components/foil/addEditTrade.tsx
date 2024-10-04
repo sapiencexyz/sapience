@@ -500,7 +500,7 @@ export default function AddEditTrade() {
                 <NumberDisplay value={currentBalance} /> {collateralAssetTicker}{' '}
                 → <NumberDisplay value={estimatedNewBalance} />{' '}
                 {collateralAssetTicker} (
-                {quotedResultingPositionCollateral >= BigInt(0)
+                {currentBalance >= estimatedNewBalance
                   ? 'Min.'
                   : 'Max.'}{' '}
                 <NumberDisplay value={minResultingBalance} />{' '}
