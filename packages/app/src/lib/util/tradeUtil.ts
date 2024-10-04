@@ -36,22 +36,3 @@ export const calculateCollateralDeltaLimit = (
     collateralAssetDecimals
   );
 };
-
-export const getMinResultBalance = (
-  collateralBalance: bigint | undefined,
-  refPrice: string | undefined,
-  collateralAssetDecimals: number,
-  collateralDelta: bigint,
-  slippage: number
-) => {
-  if (collateralBalance && refPrice) {
-    const estimatedNewBalance = collateralBalance - collateralDelta;
-    const slippageAmount =
-      (estimatedNewBalance * BigInt(Math.floor(slippage * 100))) /
-      BigInt(10000);
-    const minResultingBalance = estimatedNewBalance - slippageAmount;
-
-    return formatUnits(minResultingBalance, collateralAssetDecimals);
-  }
-  return '0';
-};

@@ -25,7 +25,6 @@ import {
 import erc20ABI from '../../erc20abi.json';
 import {
   calculateCollateralDeltaLimit,
-  getMinResultBalance,
 } from '../../util/tradeUtil';
 import RadioCard from '../RadioCard';
 import { MIN_BIG_INT_SIZE, TOKEN_DECIMALS } from '~/lib/constants/constants';
@@ -396,13 +395,15 @@ export default function AddEditTrade() {
       )
     : '0';
 
-  const minResultingBalance = getMinResultBalance(
-    BigInt((collateralBalance as string) || 0),
-    refPrice,
-    collateralAssetDecimals,
-    quotedResultingPositionCollateral,
-    slippage
-  );
+  const minResultingBalance = useMemo(() => {
+    if (collateralBalance && quotedResultingPositionCollateral) {
+      const estimatedNewBalance = (collateralBalance as bigint) - quotedResultingPositionCollateral;
+      const slippageAmount = (estimatedNewBalance * BigInt(Math.floor(slippage * 100))) / BigInt(10000);
+      const minResultingBalance = estimatedNewBalance - slippageAmount;
+      return formatUnits(minResultingBalance, collateralAssetDecimals);
+    }
+    return '0';
+  }, [collateralBalance, quotedResultingPositionCollateral, slippage, collateralAssetDecimals]);
 
   const currentChainId = useChainId();
   const { switchChain } = useSwitchChain();
@@ -490,7 +491,7 @@ export default function AddEditTrade() {
                 fontWeight="semibold"
                 mb={0.5}
               >
-                Estimated Wallet Balance Adjustment{' '}
+                Wallet Balance Adjustment{' '}
                 <Tooltip label="Your slippage tolerance sets a maximum limit on how much additional collateral Foil can use or the minimum amount of collateral you will receive back, protecting you from unexpected market changes between submitting and processing your transaction.">
                   <QuestionOutlineIcon transform="translateY(-1px)" ml={0.5} />
                 </Tooltip>
@@ -523,6 +524,14 @@ export default function AddEditTrade() {
             </Text>
           </Box>
         )}
+        <Box>
+          <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
+            Position Collateral
+          </Text>
+          <Text fontSize="sm" color="gray.600" mb={0.5}>
+            <NumberDisplay value={positionData?.depositedCollateralAmount || 0} /> wstETH → <NumberDisplay value={quotedResultingPositionCollateral} /> wstETH
+          </Text>
+        </Box>
         {estimatedFillPrice && (
           <Box>
             <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
