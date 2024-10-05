@@ -69,7 +69,7 @@ const calculateCollateralDeltaLimit = (
 
 export default function AddEditTrade() {
   const { nftId, refreshPositions } = useAddEditPosition();
-  const [size, setSize] = useState<number>(0);
+  const [size, setSize] = useState<bigint>(BigInt(0));
   const [option, setOption] = useState<'Long' | 'Short'>('Long');
   const [slippage, setSlippage] = useState<number>(0.5);
   const [pendingTxn, setPendingTxn] = useState(false);
@@ -114,7 +114,11 @@ export default function AddEditTrade() {
   const isLong = option === 'Long';
 
   const formError = useMemo(() => {
-    if (size > 0 && (!liquidity || (isLong && size > liquidity)) && !isEdit) {
+    if (
+      size > BigInt(0) &&
+      (!liquidity || (isLong && size > BigInt(liquidity))) &&
+      !isEdit
+    ) {
       return 'Not enough liquidity to perform this trade.';
     }
     if (quoteError) {
@@ -139,23 +143,20 @@ export default function AddEditTrade() {
       setOption(positionData.vGasAmount > BigInt(0) ? 'Long' : 'Short');
     }
   }, [positionData, isEdit]);
-  const originalPositionSize: number = useMemo(() => {
+  const originalPositionSize: bigint = useMemo(() => {
     if (isEdit && positionData) {
-      const sideFactor = positionData.vGasAmount > BigInt(0) ? 1 : -1;
+      const sideFactor = positionData.vGasAmount > BigInt(0) ? BigInt(1) : BigInt(-1);
       const _sizeBigInt =
         positionData.vGasAmount > BigInt(0)
           ? positionData.vGasAmount
           : positionData.borrowedVGas;
       const adjustedSize =
         _sizeBigInt >= MIN_BIG_INT_SIZE ? _sizeBigInt : BigInt(0);
-      return (
-        sideFactor *
-        parseFloat(formatUnits(adjustedSize, collateralAssetDecimals))
-      );
+      return sideFactor * adjustedSize;
     }
 
-    return 0;
-  }, [positionData, isEdit, collateralAssetDecimals]);
+    return BigInt(0);
+  }, [positionData, isEdit]);
 
   // Collateral balance for current address/account
   const { data: collateralBalance } = useReadContract({
@@ -181,23 +182,17 @@ export default function AddEditTrade() {
     abi: foilData.abi,
     address: marketAddress as `0x${string}`,
     functionName: 'quoteCreateTraderPosition',
-    args: [
-      epoch,
-      parseUnits(size.toFixed(TOKEN_DECIMALS), collateralAssetDecimals),
-    ],
+    args: [epoch, size],
     chainId,
     account: address || zeroAddress,
-    query: { enabled: !isEdit && Math.abs(size) > 0 },
+    query: { enabled: !isEdit && Math.abs(Number(size)) > 0 },
   });
 
   const quoteModifyPositionResult = useSimulateContract({
     abi: foilData.abi,
     address: marketAddress as `0x${string}`,
     functionName: 'quoteModifyTraderPosition',
-    args: [
-      nftId,
-      parseUnits(size.toFixed(TOKEN_DECIMALS), collateralAssetDecimals),
-    ],
+    args: [nftId, size],
     chainId,
     account: address || zeroAddress,
     query: { enabled: isEdit && size !== originalPositionSize },
@@ -308,9 +303,9 @@ export default function AddEditTrade() {
     const quoteResult = isEdit
       ? quoteModifyPositionResult.data?.result
       : quoteCreatePositionResult.data?.result;
-    if (quoteResult !== undefined && size !== 0) {
+    if (quoteResult !== undefined && size !== BigInt(0)) {
       const fillPrice =
-        Number(quoteResult) / (10 ** collateralAssetDecimals * Math.abs(size));
+        Number(quoteResult) / (10 ** collateralAssetDecimals * Number(size));
       setEstimatedFillPrice(fillPrice.toString());
     } else {
       setEstimatedFillPrice(null);
@@ -349,10 +344,7 @@ export default function AddEditTrade() {
     setPendingTxn(true);
     setIsLoading(true);
 
-    const sizeInTokens = parseUnits(
-      size.toFixed(TOKEN_DECIMALS),
-      collateralAssetDecimals
-    );
+    const sizeInTokens = size;
 
     console.log('********************');
     console.log(
@@ -418,7 +410,7 @@ export default function AddEditTrade() {
   };
 
   const resetAfterSuccess = () => {
-    setSize(0);
+    setSize(BigInt(0));
     setSlippage(0.5);
     setPendingTxn(false);
     setIsLoading(false);
@@ -582,11 +574,11 @@ export default function AddEditTrade() {
               Position Size
             </Text>
             <Text fontSize="sm" color="gray.600" mb={0.5}>
-              <NumberDisplay value={originalPositionSize} /> vGGas
+              <NumberDisplay value={formatUnits(originalPositionSize, TOKEN_DECIMALS)} /> vGGas
               {originalPositionSize !== size && (
                 <>
                   {' '}
-                  → <NumberDisplay value={size} /> vGGas
+                  → <NumberDisplay value={formatUnits(size, TOKEN_DECIMALS)} /> vGGas
                 </>
               )}
             </Text>
