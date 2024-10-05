@@ -49,25 +49,29 @@ const SizeInput: React.FC<Props> = ({
     handleSizeChange(sizeInput);
   }, [isLong]);
 
-  const handleUpdateInputType = () => setIsGasInput(!isGasInput);
+  const handleUpdateInputType = () => {
+    setIsGasInput(!isGasInput);
+    // Convert the current input value when switching units
+    if (sizeInput !== '') {
+      const currentValue = parseFloat(sizeInput);
+      const newValue = isGasInput ? currentValue * 1e9 : currentValue / 1e9;
+      setSizeInput(newValue.toString());
+    }
+  };
 
   const handleSizeChange = (newVal: string) => {
-    const numberPattern = isGasInput ? /^\d*$/ : /^(0|[1-9]\d*)(\.\d*)?$/;
+    const numberPattern = /^(0|[1-9]\d*)(\.\d*)?$/;
 
     if (newVal === '' || numberPattern.test(newVal)) {
       setSizeInput(newVal);
       const newSize = newVal === '' ? 0 : parseFloat(newVal);
       const sizeInGgas = isGasInput
-        ? BigInt(Math.floor(newSize * 1e9))
-        : BigInt(Math.floor(newSize * 1e18));
+        ? BigInt(Math.floor(newSize))
+        : BigInt(Math.floor(newSize * 1e9));
       const sign = isLong ? BigInt(1) : BigInt(-1);
       setSize(BigInt(originalPositionSize) + sign * sizeInGgas);
     }
   };
-
-  const displayedValue = isGasInput
-    ? sizeInput
-    : (Number(sizeInput) * 1e9).toFixed(9);
 
   return (
     <Box mb={4}>
@@ -77,11 +81,11 @@ const SizeInput: React.FC<Props> = ({
         </FormLabel>
         <InputGroup>
           <Input
-            value={displayedValue}
+            value={sizeInput}
             type="text"
-            inputMode={isGasInput ? 'numeric' : 'decimal'}
+            inputMode="decimal"
             min={0}
-            step={isGasInput ? '1' : 'any'}
+            step="any"
             onWheel={(e) => e.currentTarget.blur()}
             onChange={(e) => handleSizeChange(e.target.value)}
             borderRight="none"
