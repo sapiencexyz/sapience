@@ -10,7 +10,6 @@ import {
   InputRightAddon,
   Button,
   FormErrorMessage,
-  Text,
 } from '@chakra-ui/react';
 import type { Dispatch, SetStateAction } from 'react';
 import { useEffect, useState } from 'react';

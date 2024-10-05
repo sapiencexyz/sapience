@@ -192,13 +192,12 @@ const Subscribe: FC = () => {
   useEffect(() => {
     if (
       quoteCreatePositionResult.data?.result !== undefined &&
-      size !== '' &&
-      parseFloat(size) > 0 &&
+      size > BigInt(0) &&
       stEthPerToken
     ) {
       const fillPrice =
         BigInt(quoteCreatePositionResult.data?.result as unknown as bigint) /
-        BigInt(parseFloat(size));
+        size;
       const fillPriceInEth =
         Number(formatUnits(fillPrice, collateralAssetDecimals)) * stEthPerToken;
       setEstimatedFillPrice(fillPriceInEth.toString());

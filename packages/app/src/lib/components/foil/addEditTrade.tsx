@@ -116,7 +116,7 @@ export default function AddEditTrade() {
   const formError = useMemo(() => {
     if (
       size > BigInt(0) &&
-      (!liquidity || (isLong && size > BigInt(liquidity))) &&
+      (!liquidity || (isLong && size > BigInt(Math.floor(Number(liquidity))))) &&
       !isEdit
     ) {
       return 'Not enough liquidity to perform this trade.';
@@ -503,11 +503,12 @@ export default function AddEditTrade() {
       </Flex>
       <SizeInput
         nftId={nftId}
+        setSize={(newSize) => setSize(BigInt(Math.floor(Number(newSize))))}
         originalPositionSize={originalPositionSize}
-        setSize={setSize}
         isLong={isLong}
         positionData={positionData}
         error={formError}
+        label="Size"
       />
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
       {renderActionButton()}
