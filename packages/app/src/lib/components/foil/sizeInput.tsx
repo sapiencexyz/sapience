@@ -31,12 +31,12 @@ const SizeInput: React.FC<Props> = ({
   nftId,
   setSize,
   positionData,
-  originalPositionSize = 0,
+  originalPositionSize = BigInt(0),
   isLong = true,
   error,
   label = 'Size',
 }) => {
-  const [sizeInput, setSizeInput] = useState<string>('');
+  const [sizeInput, setSizeInput] = useState<string>('0');
   const [isGasInput, setIsGasInput] = useState(true);
 
   const isEdit = nftId && nftId > 0;
@@ -54,7 +54,7 @@ const SizeInput: React.FC<Props> = ({
     // Convert the current input value when switching units
     if (sizeInput !== '') {
       const currentValue = parseFloat(sizeInput);
-      const newValue = isGasInput ? currentValue * 1e9 : currentValue / 1e9;
+      const newValue = isGasInput ? currentValue / 1e9 : currentValue * 1e9;
       setSizeInput(newValue.toString());
     }
   };
@@ -65,11 +65,11 @@ const SizeInput: React.FC<Props> = ({
     if (newVal === '' || numberPattern.test(newVal)) {
       setSizeInput(newVal);
       const newSize = newVal === '' ? 0 : parseFloat(newVal);
-      const sizeInGgas = isGasInput
+      const sizeInGas = isGasInput
         ? BigInt(Math.floor(newSize))
         : BigInt(Math.floor(newSize * 1e9));
       const sign = isLong ? BigInt(1) : BigInt(-1);
-      setSize(BigInt(originalPositionSize) + sign * sizeInGgas);
+      setSize(originalPositionSize + sign * sizeInGas);
     }
   };
 
@@ -77,7 +77,7 @@ const SizeInput: React.FC<Props> = ({
     <Box mb={4}>
       <FormControl mb={4} isInvalid={!!error}>
         <FormLabel>
-          {label} {isEdit ? 'Change' : ''}
+          {label} {nftId && nftId > 0 ? 'Change' : ''}
         </FormLabel>
         <InputGroup>
           <Input
@@ -104,13 +104,6 @@ const SizeInput: React.FC<Props> = ({
         </InputGroup>
         {error && <FormErrorMessage>{error}</FormErrorMessage>}
       </FormControl>
-      <Text fontSize="sm" color="gray.600">
-        Equivalent:{' '}
-        {isGasInput
-          ? (Number(sizeInput) / 1e9).toFixed(9)
-          : (Number(sizeInput) * 1e9).toFixed(0)}{' '}
-        {isGasInput ? 'Ggas' : 'gas'}
-      </Text>
     </Box>
   );
 };

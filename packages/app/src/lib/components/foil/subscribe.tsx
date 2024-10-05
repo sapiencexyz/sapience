@@ -5,11 +5,6 @@ import {
   useToast,
   Text,
   Heading,
-  FormControl,
-  InputGroup,
-  Input,
-  InputRightAddon,
-  FormErrorMessage,
   Box,
   Button,
   Tooltip,
@@ -53,6 +48,8 @@ const Subscribe: FC = () => {
   const [estimatedFillPrice, setEstimatedFillPrice] = useState<string | null>(
     null
   );
+
+  console.log('size', size);
 
   const account = useAccount();
   const { isConnected, address } = account;
