@@ -47,12 +47,21 @@ const SizeInput: React.FC<Props> = ({
   }, [isLong]);
 
   const handleUpdateInputType = () => {
-    setIsGasInput(!isGasInput);
-    // Convert the current input value when switching units
+    const wasGasInput = isGasInput;
+    setIsGasInput(!wasGasInput);
+
     if (sizeInput !== '') {
       const currentValue = parseFloat(sizeInput);
-      const newValue = isGasInput ? currentValue / 1e9 : currentValue * 1e9;
-      setSizeInput(newValue.toString());
+      const newValue = wasGasInput
+        ? currentValue / 1e9 // Convert from gas to Ggas
+        : currentValue * 1e9; // Convert from Ggas to gas
+
+      // Format the new value to avoid scientific notation
+      const formattedValue = newValue.toLocaleString('fullwide', {
+        useGrouping: false,
+        maximumFractionDigits: 20,
+      });
+      setSizeInput(formattedValue);
     }
   };
 

@@ -116,7 +116,8 @@ export default function AddEditTrade() {
   }, [positionData, isEdit]);
   const originalPositionSize: bigint = useMemo(() => {
     if (isEdit && positionData) {
-      const sideFactor = positionData.vGasAmount > BigInt(0) ? BigInt(1) : BigInt(-1);
+      const sideFactor =
+        positionData.vGasAmount > BigInt(0) ? BigInt(1) : BigInt(-1);
       const _sizeBigInt =
         positionData.vGasAmount > BigInt(0)
           ? positionData.vGasAmount
@@ -318,8 +319,6 @@ export default function AddEditTrade() {
     if (e) e.preventDefault();
     setPendingTxn(true);
     setIsLoading(true);
-
-    // sizeInGgas is already calculated earlier
 
     console.log('********************');
     console.log(
@@ -551,11 +550,17 @@ export default function AddEditTrade() {
               Position Size
             </Text>
             <Text fontSize="sm" color="gray.600" mb={0.5}>
-              <NumberDisplay value={formatUnits(originalPositionSize, TOKEN_DECIMALS)} /> gas
+              <NumberDisplay
+                value={formatUnits(originalPositionSize, TOKEN_DECIMALS)}
+              />{' '}
+              gas
               {originalPositionSize !== size && (
                 <>
                   {' '}
-                  → <NumberDisplay value={formatUnits(size, TOKEN_DECIMALS)} /> gas
+                  → <NumberDisplay
+                    value={formatUnits(size, TOKEN_DECIMALS)}
+                  />{' '}
+                  gas
                 </>
               )}
             </Text>
