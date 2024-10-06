@@ -37,36 +37,6 @@ import SlippageTolerance from './slippageTolerance';
 
 const tradeOptions = ['Long', 'Short'];
 
-const calculateCollateralDeltaLimit = (
-  collateralAssetDecimals: number,
-  collateralDelta: bigint,
-  slippage: number,
-  refPrice: string | undefined,
-  isShort?: boolean
-) => {
-  const MIN_REF_PRICE = 1e-12;
-  if (!refPrice || parseFloat(refPrice) < MIN_REF_PRICE) {
-    // Fallback to the original calculation if refPrice is not available or is too low
-    return (
-      (collateralDelta * BigInt(Math.floor((100 + slippage) * 100))) /
-      BigInt(10000)
-    );
-  }
-  const collateralDeltaInt = parseFloat(
-    formatUnits(collateralDelta, collateralAssetDecimals)
-  );
-  const slippageFactor: number = isShort
-    ? 1 - slippage / 100
-    : 1 + slippage / 100;
-
-  const cdl: number =
-    collateralDeltaInt * parseFloat(refPrice) * slippageFactor;
-  return parseUnits(
-    cdl.toFixed(collateralAssetDecimals),
-    collateralAssetDecimals
-  );
-};
-
 export default function AddEditTrade() {
   const { nftId, refreshPositions } = useAddEditPosition();
   const [size, setSize] = useState<bigint>(BigInt(0));
@@ -116,7 +86,8 @@ export default function AddEditTrade() {
   const formError = useMemo(() => {
     if (
       size > BigInt(0) &&
-      (!liquidity || (isLong && size > BigInt(Math.floor(Number(liquidity))))) &&
+      (!liquidity ||
+        (isLong && parseFloat(formatUnits(size, 18)) > Number(liquidity))) &&
       !isEdit
     ) {
       return 'Not enough liquidity to perform this trade.';
@@ -178,11 +149,13 @@ export default function AddEditTrade() {
   });
 
   // Quote functions
+  const sizeInGgas = size * BigInt(1e9); // Convert size from gas to Ggas
+
   const quoteCreatePositionResult = useSimulateContract({
     abi: foilData.abi,
     address: marketAddress as `0x${string}`,
     functionName: 'quoteCreateTraderPosition',
-    args: [epoch, size],
+    args: [epoch, sizeInGgas],
     chainId,
     account: address || zeroAddress,
     query: { enabled: !isEdit && Math.abs(Number(size)) > 0 },
@@ -192,7 +165,7 @@ export default function AddEditTrade() {
     abi: foilData.abi,
     address: marketAddress as `0x${string}`,
     functionName: 'quoteModifyTraderPosition',
-    args: [nftId, size],
+    args: [nftId, sizeInGgas],
     chainId,
     account: address || zeroAddress,
     query: { enabled: isEdit && size !== originalPositionSize },
@@ -305,7 +278,8 @@ export default function AddEditTrade() {
       : quoteCreatePositionResult.data?.result;
     if (quoteResult !== undefined && size !== BigInt(0)) {
       const fillPrice =
-        Number(quoteResult) / (10 ** collateralAssetDecimals * Number(size));
+        Number(quoteResult) /
+        (10 ** collateralAssetDecimals * Number(sizeInGgas));
       setEstimatedFillPrice(fillPrice.toString());
     } else {
       setEstimatedFillPrice(null);
@@ -315,6 +289,7 @@ export default function AddEditTrade() {
     quoteCreatePositionResult.data,
     quoteModifyPositionResult.data,
     size,
+    sizeInGgas,
     collateralAssetDecimals,
   ]);
 
@@ -344,7 +319,7 @@ export default function AddEditTrade() {
     setPendingTxn(true);
     setIsLoading(true);
 
-    const sizeInTokens = size;
+    // sizeInGgas is already calculated earlier
 
     console.log('********************');
     console.log(
@@ -353,7 +328,8 @@ export default function AddEditTrade() {
     );
     console.log('collateralDeltaLimit', collateralDeltaLimit);
     console.log('allowance', allowance);
-    console.log('sizeInTokens', sizeInTokens);
+    console.log('sizeInGas', size);
+    console.log('sizeInGgas', sizeInGgas);
     console.log('refPrice', refPrice);
     console.log('********************');
 
@@ -387,7 +363,7 @@ export default function AddEditTrade() {
         abi: foilData.abi,
         address: marketAddress as `0x${string}`,
         functionName: 'modifyTraderPosition',
-        args: [nftId, sizeInTokens, absCollateralDeltaLimit, deadline],
+        args: [nftId, sizeInGgas, absCollateralDeltaLimit, deadline],
       });
     } else {
       console.log('creating trade position....');
@@ -395,7 +371,7 @@ export default function AddEditTrade() {
         abi: foilData.abi,
         address: marketAddress as `0x${string}`,
         functionName: 'createTraderPosition',
-        args: [epoch, sizeInTokens, absCollateralDeltaLimit, deadline],
+        args: [epoch, sizeInGgas, absCollateralDeltaLimit, deadline],
       });
     }
   };
@@ -503,8 +479,8 @@ export default function AddEditTrade() {
       </Flex>
       <SizeInput
         nftId={nftId}
-        setSize={(newSize) => setSize(BigInt(Math.floor(Number(newSize))))}
-        originalPositionSize={originalPositionSize}
+        setSize={setSize}
+        originalPositionSize={originalPositionSize} // Already in gas
         isLong={isLong}
         positionData={positionData}
         error={formError}
@@ -575,11 +551,11 @@ export default function AddEditTrade() {
               Position Size
             </Text>
             <Text fontSize="sm" color="gray.600" mb={0.5}>
-              <NumberDisplay value={formatUnits(originalPositionSize, TOKEN_DECIMALS)} /> vGGas
+              <NumberDisplay value={formatUnits(originalPositionSize, TOKEN_DECIMALS)} /> gas
               {originalPositionSize !== size && (
                 <>
                   {' '}
-                  → <NumberDisplay value={formatUnits(size, TOKEN_DECIMALS)} /> vGGas
+                  → <NumberDisplay value={formatUnits(size, TOKEN_DECIMALS)} /> gas
                 </>
               )}
             </Text>

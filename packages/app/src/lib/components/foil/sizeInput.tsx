@@ -38,8 +38,6 @@ const SizeInput: React.FC<Props> = ({
   const [sizeInput, setSizeInput] = useState<string>('0');
   const [isGasInput, setIsGasInput] = useState(true);
 
-  const isEdit = nftId && nftId > 0;
-
   useEffect(() => {
     handleSizeChange('0');
   }, [nftId, positionData]);
