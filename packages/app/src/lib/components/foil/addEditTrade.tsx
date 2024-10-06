@@ -485,6 +485,7 @@ export default function AddEditTrade() {
         positionData={positionData}
         error={formError}
         label="Size"
+        defaultToGas={false}
       />
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
       {renderActionButton()}

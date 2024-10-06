@@ -24,6 +24,7 @@ interface Props {
   isLong?: boolean;
   error?: string;
   label?: string;
+  defaultToGas?: boolean; // New prop
 }
 
 const SizeInput: React.FC<Props> = ({
@@ -34,9 +35,10 @@ const SizeInput: React.FC<Props> = ({
   isLong = true,
   error,
   label = 'Size',
+  defaultToGas = true,
 }) => {
   const [sizeInput, setSizeInput] = useState<string>('0');
-  const [isGasInput, setIsGasInput] = useState(true);
+  const [isGasInput, setIsGasInput] = useState(defaultToGas);
 
   useEffect(() => {
     handleSizeChange('0');
