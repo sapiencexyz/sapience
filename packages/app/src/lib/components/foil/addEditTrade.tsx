@@ -279,9 +279,10 @@ export default function AddEditTrade() {
       : quoteCreatePositionResult.data?.result;
     if (quoteResult !== undefined && size !== BigInt(0)) {
       const fillPrice =
-        Number(quoteResult) /
-        (10 ** collateralAssetDecimals * Number(sizeInGgas));
-      setEstimatedFillPrice(fillPrice.toString());
+        Number(
+          formatUnits(quoteResult as unknown as bigint, collateralAssetDecimals)
+        ) / Number(formatUnits(sizeInGgas, 18));
+      setEstimatedFillPrice(fillPrice.toFixed(6));
     } else {
       setEstimatedFillPrice(null);
     }
