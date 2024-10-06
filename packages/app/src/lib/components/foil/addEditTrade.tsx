@@ -574,8 +574,8 @@ export default function AddEditTrade() {
               Estimated Fill Price
             </Text>
             <Text fontSize="sm" color="gray.600" mb={0.5}>
-              <NumberDisplay value={estimatedFillPrice} />{' '}
-              {collateralAssetTicker}/vGGas
+              <NumberDisplay value={estimatedFillPrice} /> Ggas/
+              {collateralAssetTicker}
             </Text>
           </Box>
         )}
