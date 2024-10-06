@@ -274,26 +274,21 @@ export default function AddEditTrade() {
   }, [isEdit, quoteCreatePositionResult.data, quoteModifyPositionResult.data]);
 
   useEffect(() => {
-    const quoteResult = isEdit
-      ? quoteModifyPositionResult.data?.result
-      : quoteCreatePositionResult.data?.result;
-    if (quoteResult !== undefined && size !== BigInt(0)) {
-      const fillPrice =
-        Number(
-          formatUnits(quoteResult as unknown as bigint, collateralAssetDecimals)
-        ) / Number(formatUnits(sizeInGgas, 18));
+    if (
+      quoteCreatePositionResult.data?.result !== undefined &&
+      size > BigInt(0) &&
+      pool?.token0Price
+    ) {
+      const collateralDelta = BigInt(
+        quoteCreatePositionResult.data?.result as unknown as bigint
+      );
+      const sizeInWei = size * BigInt(1e9); // Convert gas to Ggas (wei)
+      const fillPrice = Number(collateralDelta) / Number(sizeInWei);
       setEstimatedFillPrice(fillPrice.toFixed(6));
     } else {
       setEstimatedFillPrice(null);
     }
-  }, [
-    isEdit,
-    quoteCreatePositionResult.data,
-    quoteModifyPositionResult.data,
-    size,
-    sizeInGgas,
-    collateralAssetDecimals,
-  ]);
+  }, [quoteCreatePositionResult.data, size, pool?.token0Price]);
 
   const collateralDelta =
     quotedResultingPositionCollateral -
