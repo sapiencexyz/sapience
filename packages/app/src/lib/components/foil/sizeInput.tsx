@@ -20,7 +20,6 @@ interface Props {
   nftId?: number;
   setSize: Dispatch<SetStateAction<bigint>>;
   positionData?: FoilPosition;
-  originalPositionSize?: bigint;
   isLong?: boolean;
   error?: string;
   label?: string;
@@ -31,7 +30,6 @@ const SizeInput: React.FC<Props> = ({
   nftId,
   setSize,
   positionData,
-  originalPositionSize = BigInt(0),
   isLong = true,
   error,
   label = 'Size',
@@ -77,7 +75,7 @@ const SizeInput: React.FC<Props> = ({
         ? BigInt(Math.floor(newSize))
         : BigInt(Math.floor(newSize * 1e9));
       const sign = isLong ? BigInt(1) : BigInt(-1);
-      setSize(originalPositionSize + sign * sizeInGas);
+      setSize(sign * sizeInGas);
     }
   };
 
