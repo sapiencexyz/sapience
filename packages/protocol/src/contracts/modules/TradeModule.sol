@@ -648,7 +648,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         vEthTokens = amountOutVEth;
 
         // get average trade ratio (price)
-        require(vGasDebt > 0, "Invalid trade size - 0 tokens traded");
+        require(vGasDebt > 0, Errors.InvalidTradeSize(0));
 
         uint256 extraCollateralToClose;
         // Check if the trade changed sides and update the position accordingly
@@ -713,6 +713,10 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         uint256 vEthToClose = currentVGas.mulDecimal(tradeRatioD18);
 
         newVGas = tradedVGas - currentVGas;
+
+        // tradedVEth is used first to compensate the required vEth to close the position
+        // and the rest is used to increase the position, but against what there was in currentVEth
+        // if there's not enough vEth to close the position, then we need to use a portion of the collateral
 
         if (vEthToClose > currentVEth) {
             // notice tradedVGas > currentVGas if this function is called
