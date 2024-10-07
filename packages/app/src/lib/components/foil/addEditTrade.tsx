@@ -51,6 +51,18 @@ export default function AddEditTrade() {
   const [estimatedFillPrice, setEstimatedFillPrice] = useState<string | null>(
     null
   );
+  const [sizeChangeInContractUnit, setSizeChangeInContractUnit] =
+    useState<bigint>(BigInt(0));
+  const [desiredSizeInContractUnit, setDesiredSizeInContractUnit] =
+    useState<bigint>(BigInt(0));
+  const [walletBalance, setWalletBalance] = useState<string>('0');
+  const [quotedResultingWalletBalance, setQuotedResultingWalletBalance] =
+    useState<string>('0');
+  const [walletBalanceLimit, setWalletBalanceLimit] = useState<bigint>(
+    BigInt(0)
+  );
+  const [positionCollateralLimit, setPositionCollateralLimit] =
+    useState<bigint>(BigInt(0));
 
   const account = useAccount();
   const { isConnected, address } = account;
@@ -116,7 +128,7 @@ export default function AddEditTrade() {
     }
   }, [positionData, isEdit]);
 
-  const originalPositionSize: bigint = useMemo(() => {
+  const originalPositionSizeInContractUnit: bigint = useMemo(() => {
     if (isEdit && positionData) {
       const sideFactor =
         positionData.vGasAmount > BigInt(0) ? BigInt(1) : BigInt(-1);
@@ -132,9 +144,14 @@ export default function AddEditTrade() {
     return BigInt(0);
   }, [positionData, isEdit]);
 
-  const sizeChangeInContractUnit = sizeChange * BigInt(1e9); // Convert sizeChange from gas to Ggas with 18 decimals
-  const desiredSizeInContractUnit =
-    originalPositionSize + sizeChangeInContractUnit;
+  useEffect(() => {
+    const newSizeChangeInContractUnit = sizeChange * BigInt(1e9); // Convert sizeChange from gas to Ggas with 18 decimals
+    setSizeChangeInContractUnit(newSizeChangeInContractUnit);
+
+    const newDesiredSizeInContractUnit =
+      originalPositionSizeInContractUnit + newSizeChangeInContractUnit;
+    setDesiredSizeInContractUnit(newDesiredSizeInContractUnit);
+  }, [sizeChange, originalPositionSizeInContractUnit]);
 
   // Collateral balance for current address/account
   const { data: collateralBalance } = useReadContract({
@@ -155,8 +172,11 @@ export default function AddEditTrade() {
     chainId,
   });
 
-  console.log('sizeChange', sizeChange);
-  console.log('originalPositionSize', originalPositionSize);
+  console.log('sizeChange', sizeChange); // this is the signed value from the size input
+  console.log(
+    'originalPositionSizeInContractUnit',
+    originalPositionSizeInContractUnit
+  );
   console.log('sizeChangeInContractUnit', sizeChangeInContractUnit);
   console.log('desiredSizeInContractUnit', desiredSizeInContractUnit);
 
@@ -196,7 +216,7 @@ export default function AddEditTrade() {
     quoteCreatePositionResult.error,
     quoteModifyPositionResult?.error,
     sizeChange,
-    originalPositionSize,
+    originalPositionSizeInContractUnit,
     isEdit,
   ]);
 
@@ -396,21 +416,37 @@ export default function AddEditTrade() {
     refetchUniswapData();
   };
 
-  const walletBalance = collateralBalance
-    ? formatUnits(collateralBalance as bigint, collateralAssetDecimals)
-    : '0';
-  const quotedResultingWalletBalance = collateralBalance
-    ? formatUnits(
+  useEffect(() => {
+    if (collateralBalance) {
+      const newWalletBalance = formatUnits(
+        collateralBalance as bigint,
+        collateralAssetDecimals
+      );
+      setWalletBalance(newWalletBalance);
+
+      const newQuotedResultingWalletBalance = formatUnits(
         (collateralBalance as bigint) - collateralDelta,
         collateralAssetDecimals
-      )
-    : '0';
+      );
+      setQuotedResultingWalletBalance(newQuotedResultingWalletBalance);
 
-  const walletBalanceLimit =
-    parseUnits(walletBalance, collateralAssetDecimals) - collateralDeltaLimit;
-  const positionCollateralLimit =
-    (positionData?.depositedCollateralAmount || BigInt(0)) +
-    collateralDeltaLimit;
+      const newWalletBalanceLimit =
+        parseUnits(newWalletBalance, collateralAssetDecimals) -
+        collateralDeltaLimit;
+      setWalletBalanceLimit(newWalletBalanceLimit);
+    }
+
+    const newPositionCollateralLimit =
+      (positionData?.depositedCollateralAmount || BigInt(0)) +
+      collateralDeltaLimit;
+    setPositionCollateralLimit(newPositionCollateralLimit);
+  }, [
+    collateralBalance,
+    collateralAssetDecimals,
+    collateralDelta,
+    collateralDeltaLimit,
+    positionData,
+  ]);
 
   const currentChainId = useChainId();
   const { switchChain } = useSwitchChain();
@@ -456,7 +492,7 @@ export default function AddEditTrade() {
           !!formError ||
           pendingTxn ||
           isLoadingCollateralChange ||
-          sizeChange === originalPositionSize
+          sizeChangeInContractUnit === BigInt(0)
         }
         mb={4}
         size="lg"
@@ -553,10 +589,13 @@ export default function AddEditTrade() {
             </Text>
             <Text fontSize="sm" color="gray.600" mb={0.5}>
               <NumberDisplay
-                value={formatUnits(originalPositionSize, TOKEN_DECIMALS)}
+                value={formatUnits(
+                  originalPositionSizeInContractUnit,
+                  TOKEN_DECIMALS
+                )}
               />{' '}
               Ggas
-              {/* originalPositionSize !== sizeChange && (
+              {/* originalPositionSizeInContractUnit !== sizeChangeInContractUnit && (
                 <>
                   {' '}
                   → <NumberDisplay
