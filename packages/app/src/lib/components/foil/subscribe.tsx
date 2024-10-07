@@ -5,11 +5,6 @@ import {
   useToast,
   Text,
   Heading,
-  FormControl,
-  InputGroup,
-  Input,
-  InputRightAddon,
-  FormErrorMessage,
   Box,
   Button,
   Tooltip,
@@ -42,9 +37,10 @@ import { MarketContext } from '~/lib/context/MarketProvider';
 import { renderContractErrorToast, renderToast } from '~/lib/util/util';
 
 import NumberDisplay from './numberDisplay';
+import SizeInput from './sizeInput';
 
 const Subscribe: FC = () => {
-  const [size, setSize] = useState<string>('');
+  const [size, setSize] = useState<bigint>(BigInt(0));
   const slippage = 0.5;
   const [pendingTxn, setPendingTxn] = useState(false);
   const [collateralDelta, setCollateralDelta] = useState<bigint>(BigInt(0));
@@ -52,6 +48,8 @@ const Subscribe: FC = () => {
   const [estimatedFillPrice, setEstimatedFillPrice] = useState<string | null>(
     null
   );
+
+  console.log('size', size);
 
   const account = useAccount();
   const { isConnected, address } = account;
@@ -75,11 +73,7 @@ const Subscribe: FC = () => {
     endTime,
   } = useContext(MarketContext);
 
-  const refPrice = pool?.token0Price.toSignificant(3);
-
   const toast = useToast();
-
-  const isLong = true;
 
   // Format start and end times
   const formatDate = (timestamp: number) => {
@@ -100,17 +94,17 @@ const Subscribe: FC = () => {
   });
 
   // Convert gas to gigagas for internal calculations
-  const sizeInGigagas = (size ? parseFloat(size) : 0) * 1e9;
+  const sizeInGigagas = size * BigInt(1e9);
 
   // Quote function
   const quoteCreatePositionResult = useSimulateContract({
     abi: foilData.abi,
     address: marketAddress as `0x${string}`,
     functionName: 'quoteCreateTraderPosition',
-    args: [epoch, BigInt(Math.floor(sizeInGigagas))],
+    args: [epoch, sizeInGigagas],
     chainId,
     account: address || zeroAddress,
-    query: { enabled: size !== '' && parseFloat(size) > 0 },
+    query: { enabled: size !== BigInt(0) },
   });
 
   useEffect(() => {
@@ -198,13 +192,12 @@ const Subscribe: FC = () => {
   useEffect(() => {
     if (
       quoteCreatePositionResult.data?.result !== undefined &&
-      size !== '' &&
-      parseFloat(size) > 0 &&
+      size > BigInt(0) &&
       stEthPerToken
     ) {
       const fillPrice =
         BigInt(quoteCreatePositionResult.data?.result as unknown as bigint) /
-        BigInt(parseFloat(size));
+        size;
       const fillPriceInEth =
         Number(formatUnits(fillPrice, collateralAssetDecimals)) * stEthPerToken;
       setEstimatedFillPrice(fillPriceInEth.toString());
@@ -220,7 +213,7 @@ const Subscribe: FC = () => {
 
   const handleSubmit = (e?: FormEvent<HTMLFormElement>, approved?: boolean) => {
     if (e) e.preventDefault();
-    if (size === '' || parseFloat(size) <= 0) {
+    if (size === BigInt(0)) {
       toast({
         title: 'Invalid size',
         description: 'Please enter a positive gas amount.',
@@ -233,7 +226,7 @@ const Subscribe: FC = () => {
     setPendingTxn(true);
     setIsLoading(true);
 
-    const sizeInTokens = BigInt(Math.floor(sizeInGigagas));
+    const sizeInTokens = sizeInGigagas;
 
     const calculateCollateralDeltaLimit = (
       collateralDelta: bigint,
@@ -290,28 +283,10 @@ const Subscribe: FC = () => {
   };
 
   const resetAfterSuccess = () => {
-    setSize('0');
+    setSize(BigInt(0));
     setPendingTxn(false);
     setIsLoading(false);
     refetchUniswapData();
-  };
-
-  const handleSizeChange = (newVal: string) => {
-    // Remove any non-digit characters
-    const sanitizedValue = newVal.replace(/[^\d]/g, '');
-
-    if (sanitizedValue !== newVal) {
-      // If the sanitized value is different, it means a non-digit was entered
-      toast({
-        title: 'Invalid input',
-        description: 'Please enter whole numbers only.',
-        status: 'warning',
-        duration: 3000,
-        isClosable: true,
-      });
-    }
-
-    setSize(sanitizedValue);
   };
 
   const renderActionButton = () => {
@@ -351,7 +326,7 @@ const Subscribe: FC = () => {
           pendingTxn ||
           isLoadingCollateralChange ||
           Boolean(quoteError) ||
-          parseFloat(size) <= 0
+          size <= BigInt(0)
         }
         size="lg"
       >
@@ -384,27 +359,11 @@ const Subscribe: FC = () => {
           <InfoOutlineIcon opacity={0.7} transform="translateY(-2.5px)" />
         </Tooltip>
       </Text>
-      <FormControl mb={4} isInvalid={Boolean(quoteError)}>
-        <InputGroup>
-          <Input
-            ref={inputRef}
-            value={size}
-            type="text"
-            inputMode="numeric"
-            pattern="\d*"
-            min={0}
-            onWheel={(e) => e.currentTarget.blur()}
-            onChange={(e) => handleSizeChange(e.target.value)}
-            autoComplete="off"
-          />
-          <InputRightAddon>gas</InputRightAddon>
-        </InputGroup>
-        {quoteError && (
-          <FormErrorMessage>
-            Foil cannot generate a quote for this order.
-          </FormErrorMessage>
-        )}
-      </FormControl>
+      <SizeInput
+        setSize={setSize}
+        error={quoteError || undefined}
+        label="Gas Amount"
+      />
 
       <Box bg="gray.50" p={5} borderRadius="md" mb={4}>
         <Text color="gray.600" fontWeight="semibold" mb={1}>
