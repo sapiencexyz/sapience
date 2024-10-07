@@ -359,8 +359,6 @@ contract TradePositionBasicFuzz is TestTrade {
         fillCollateralStateData(trader1, latestStateData);
         fillPositionState(positionId, latestStateData);
 
-        console2.log("POSITION CREATED");
-        log_positionAccounting(foil, positionId);
         // quote and open a long
         int256 requiredCollateral = foil.quoteModifyTraderPosition(
             positionId,
@@ -376,25 +374,11 @@ contract TradePositionBasicFuzz is TestTrade {
         );
 
         vm.stopPrank();
-        console2.log("POSITION UPDATED");
-        log_positionAccounting(foil, positionId);
-        console2.log(
-            "requiredCollateral                  : ",
-            requiredCollateral
-        );
-        console2.log(
-            "depositedCollateralAmount           : ",
-            latestStateData.depositedCollateralAmount
-        );
 
         uint256 price = foil.getReferencePrice(epochId).mulDecimal(
             feeMultiplier
         );
-        int256 deltaCollateral = requiredCollateral -
-            latestStateData.depositedCollateralAmount.toInt();
-        int256 expectedNetEth = (latestStateData.vEthAmount.toInt() -
-            latestStateData.borrowedVEth.toInt()) -
-            deltaPositionSize.mulDecimal(price.toInt());
+        int256 deltaCollateral = requiredCollateral;
 
         // Set expected state
         expectedStateData.userCollateral = (latestStateData
@@ -467,8 +451,7 @@ contract TradePositionBasicFuzz is TestTrade {
         uint256 price = foil.getReferencePrice(epochId).mulDecimal(
             feeMultiplier
         );
-        int256 deltaCollateral = requiredCollateral -
-            latestStateData.depositedCollateralAmount.toInt();
+        int256 deltaCollateral = requiredCollateral;
         int256 expectedNetEth = (latestStateData.vEthAmount.toInt() -
             latestStateData.borrowedVEth.toInt()) -
             deltaPositionSize.mulDecimal(price.toInt());

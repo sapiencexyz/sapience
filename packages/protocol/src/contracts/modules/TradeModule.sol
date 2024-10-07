@@ -10,7 +10,7 @@ import {SafeCastI256} from "@synthetixio/core-contracts/contracts/utils/SafeCast
 import {SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 import {ITradeModule} from "../interfaces/ITradeModule.sol";
 
-import "forge-std/console2.sol";
+// import "forge-std/console2.sol";
 
 /**
  * @title Module for trade positions.
@@ -406,7 +406,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
                     position.borrowedVEth + runtime.vEthTrade
                 )
                 .toInt() -
-            (position.depositedCollateralAmount.toInt() + runtime.closePnL);
+            (position.depositedCollateralAmount.toInt());
     }
 
     function _quoteModifyShortDirection(
@@ -474,7 +474,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
                     runtime.afterTradePositionVEth
                 )
                 .toInt() -
-            (position.depositedCollateralAmount.toInt() + runtime.closePnL);
+            (position.depositedCollateralAmount.toInt());
     }
 
     function _quoteCreateLongPosition(
