@@ -781,7 +781,12 @@ const AddEditLiquidity: React.FC<{
   const renderActionButton = () => {
     if (!isConnected) {
       return (
-        <Button width="full" variant="brand" onClick={openConnectModal}>
+        <Button
+          width="full"
+          size="lg"
+          variant="brand"
+          onClick={openConnectModal}
+        >
           Connect Wallet
         </Button>
       );
@@ -792,6 +797,7 @@ const AddEditLiquidity: React.FC<{
         <Button
           width="full"
           variant="brand"
+          size="lg"
           onClick={() => switchChain({ chainId })}
         >
           Switch Network
@@ -803,6 +809,7 @@ const AddEditLiquidity: React.FC<{
       <Button
         width="full"
         variant="brand"
+        size="lg"
         type="submit"
         isLoading={pendingTxn || isFetching}
         isDisabled={pendingTxn || isFetching}
@@ -888,7 +895,9 @@ const AddEditLiquidity: React.FC<{
       </Flex>
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
 
-      <Flex gap={2} flexDir="column" mb={4}>
+      {renderActionButton()}
+
+      <Flex gap={2} flexDir="column" mt={4}>
         <Box>
           <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
             Base Token
@@ -929,8 +938,6 @@ const AddEditLiquidity: React.FC<{
             </Box>
           )}
       </Flex>
-
-      {renderActionButton()}
     </form>
   );
 };
