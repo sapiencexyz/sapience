@@ -43,18 +43,7 @@ export default function AddEditTrade() {
   const [option, setOption] = useState<'Long' | 'Short'>('Long');
   const [slippage, setSlippage] = useState<number>(0.5);
   const [pendingTxn, setPendingTxn] = useState(false);
-  const [
-    quotedResultingPositionCollateral,
-    setQuotedResultingPositionCollateral,
-  ] = useState<bigint>(BigInt(0));
   const [quoteError, setQuoteError] = useState<string | null>(null);
-  const [estimatedFillPrice, setEstimatedFillPrice] = useState<string | null>(
-    null
-  );
-  const [sizeChangeInContractUnit, setSizeChangeInContractUnit] =
-    useState<bigint>(BigInt(0));
-  const [desiredSizeInContractUnit, setDesiredSizeInContractUnit] =
-    useState<bigint>(BigInt(0));
   const [walletBalance, setWalletBalance] = useState<string>('0');
   const [quotedResultingWalletBalance, setQuotedResultingWalletBalance] =
     useState<string>('0');
@@ -111,7 +100,7 @@ export default function AddEditTrade() {
     return '';
   }, [quoteError, liquidity, sizeChange, isLong]);
 
-  // position data
+  // Position data
   const { data: positionData, refetch: refetchPositionData } = useReadContract({
     abi: foilData.abi,
     address: marketAddress as `0x${string}`,
@@ -144,14 +133,13 @@ export default function AddEditTrade() {
     return BigInt(0);
   }, [positionData, isEdit]);
 
-  useEffect(() => {
-    const newSizeChangeInContractUnit = sizeChange * BigInt(1e9); // Convert sizeChange from gas to Ggas with 18 decimals
-    setSizeChangeInContractUnit(newSizeChangeInContractUnit);
+  const sizeChangeInContractUnit = useMemo(() => {
+    return sizeChange * BigInt(1e9); // Convert sizeChange from gas to Ggas with 18 decimals
+  }, [sizeChange]);
 
-    const newDesiredSizeInContractUnit =
-      originalPositionSizeInContractUnit + newSizeChangeInContractUnit;
-    setDesiredSizeInContractUnit(newDesiredSizeInContractUnit);
-  }, [sizeChange, originalPositionSizeInContractUnit]);
+  const desiredSizeInContractUnit = useMemo(() => {
+    return originalPositionSizeInContractUnit + sizeChangeInContractUnit;
+  }, [originalPositionSizeInContractUnit, sizeChangeInContractUnit]);
 
   // Collateral balance for current address/account
   const { data: collateralBalance } = useReadContract({
@@ -171,14 +159,6 @@ export default function AddEditTrade() {
     account: address || zeroAddress,
     chainId,
   });
-
-  console.log('sizeChange', sizeChange); // this is the signed value from the size input
-  console.log(
-    'originalPositionSizeInContractUnit',
-    originalPositionSizeInContractUnit
-  );
-  console.log('sizeChangeInContractUnit', sizeChangeInContractUnit);
-  console.log('desiredSizeInContractUnit', desiredSizeInContractUnit);
 
   const quoteCreatePositionResult = useSimulateContract({
     abi: foilData.abi,
@@ -215,8 +195,7 @@ export default function AddEditTrade() {
   }, [
     quoteCreatePositionResult.error,
     quoteModifyPositionResult?.error,
-    sizeChange,
-    originalPositionSizeInContractUnit,
+    sizeChangeInContractUnit,
     isEdit,
   ]);
 
@@ -290,18 +269,17 @@ export default function AddEditTrade() {
     }
   }, [approveSuccess]);
 
-  useEffect(() => {
+  const quotedResultingPositionCollateral = useMemo(() => {
     const quoteResult = isEdit
       ? quoteModifyPositionResult.data?.result
       : quoteCreatePositionResult.data?.result;
     if (quoteResult !== undefined) {
-      setQuotedResultingPositionCollateral(quoteResult as unknown as bigint);
-    } else {
-      setQuotedResultingPositionCollateral(BigInt(0));
+      return quoteResult as unknown as bigint;
     }
+    return BigInt(0);
   }, [isEdit, quoteCreatePositionResult.data, quoteModifyPositionResult.data]);
 
-  useEffect(() => {
+  const estimatedFillPrice = useMemo(() => {
     if (
       quoteCreatePositionResult.data?.result !== undefined &&
       sizeChange > BigInt(0) &&
@@ -312,15 +290,17 @@ export default function AddEditTrade() {
       );
       const sizeInWei = sizeChange * BigInt(1e9); // Convert gas to Ggas (wei)
       const fillPrice = Number(collateralDelta) / Number(sizeInWei);
-      setEstimatedFillPrice(fillPrice.toFixed(6));
-    } else {
-      setEstimatedFillPrice(null);
+      return fillPrice.toFixed(6);
     }
+    return null;
   }, [quoteCreatePositionResult.data, sizeChange, pool?.token0Price]);
 
-  const collateralDelta =
-    quotedResultingPositionCollateral -
-    (positionData?.depositedCollateralAmount ?? BigInt(0));
+  const collateralDelta = useMemo(() => {
+    return (
+      quotedResultingPositionCollateral -
+      (positionData?.depositedCollateralAmount ?? BigInt(0))
+    );
+  }, [quotedResultingPositionCollateral, positionData]);
 
   const collateralDeltaLimit = useMemo(() => {
     if (collateralDelta === BigInt(0)) return BigInt(0);
@@ -611,15 +591,6 @@ export default function AddEditTrade() {
                 )}
               />{' '}
               Ggas
-              {/* originalPositionSizeInContractUnit !== sizeChangeInContractUnit && (
-                <>
-                  {' '}
-                  → <NumberDisplay
-                    value={formatUnits(sizeChange, TOKEN_DECIMALS)}
-                  />{' '}
-                  gas
-                </>
-              ) */}
             </Text>
           </Box>
         )}
