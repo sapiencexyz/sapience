@@ -71,8 +71,6 @@ export default function AddEditTrade() {
     refetchUniswapData,
   } = useContext(MarketContext);
 
-  const refPrice = pool?.token0Price.toSignificant(3);
-
   const { getRootProps, getRadioProps } = useRadioGroup({
     name: 'positionType',
     defaultValue: 'Long',
@@ -506,26 +504,48 @@ export default function AddEditTrade() {
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
       {renderActionButton()}
       <Flex gap={2} flexDir="column">
+        {isEdit && (
+          <Box>
+            <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
+              Position Size
+            </Text>
+            <Text fontSize="sm" color="gray.600" mb={0.5}>
+              <NumberDisplay
+                value={formatUnits(
+                  originalPositionSizeInContractUnit,
+                  TOKEN_DECIMALS
+                )}
+              />{' '}
+              Ggas
+              {sizeChangeInContractUnit !== BigInt(0) && (
+                <>
+                  {' '}
+                  →{' '}
+                  <NumberDisplay
+                    value={formatUnits(
+                      desiredSizeInContractUnit,
+                      TOKEN_DECIMALS
+                    )}
+                  />{' '}
+                  Ggas
+                </>
+              )}
+            </Text>
+          </Box>
+        )}
         {!isLoadingCollateralChange && isConnected && (
           <Box>
             <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
               Wallet Balance
               {sizeChange !== BigInt(0) && (
-                <>
-                  {' '}
-                  Adjustment{' '}
-                  <Tooltip label="Your slippage tolerance sets a maximum limit on how much additional collateral Foil can use or the minimum amount of collateral you will receive back, protecting you from unexpected market changes between submitting and processing your transaction.">
-                    <QuestionOutlineIcon
-                      transform="translateY(-1px)"
-                      ml={0.5}
-                    />
-                  </Tooltip>
-                </>
+                <Tooltip label="Your slippage tolerance sets a maximum limit on how much additional collateral Foil can use or the minimum amount of collateral you will receive back, protecting you from unexpected market changes between submitting and processing your transaction.">
+                  <QuestionOutlineIcon transform="translateY(-1px)" ml={0.5} />
+                </Tooltip>
               )}
             </Text>
             <Text fontSize="sm" color="gray.600">
               <NumberDisplay value={walletBalance} /> {collateralAssetTicker}
-              {sizeChange !== BigInt(0) && (
+              {sizeChange !== BigInt(0) && !quoteError && (
                 <>
                   {' '}
                   → <NumberDisplay value={quotedResultingWalletBalance} />{' '}
@@ -555,7 +575,7 @@ export default function AddEditTrade() {
                 )}
               />{' '}
               {collateralAssetTicker}
-              {sizeChange !== BigInt(0) && (
+              {sizeChange !== BigInt(0) && !quoteError && (
                 <>
                   {' '}
                   →{' '}
@@ -575,22 +595,6 @@ export default function AddEditTrade() {
                   {collateralAssetTicker})
                 </>
               )}
-            </Text>
-          </Box>
-        )}
-        {isEdit && (
-          <Box>
-            <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
-              Position Size
-            </Text>
-            <Text fontSize="sm" color="gray.600" mb={0.5}>
-              <NumberDisplay
-                value={formatUnits(
-                  originalPositionSizeInContractUnit,
-                  TOKEN_DECIMALS
-                )}
-              />{' '}
-              Ggas
             </Text>
           </Box>
         )}
