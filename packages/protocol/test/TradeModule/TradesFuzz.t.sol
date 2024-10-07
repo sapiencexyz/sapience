@@ -215,7 +215,7 @@ contract TradePositionBasicFuzz is TestTrade {
         fillPositionState(positionId, latestStateData);
 
         // quote and open a long
-        int256 requiredCollateral = foil.quoteModifyTraderPosition(
+        int256 deltaCollateral = foil.quoteModifyTraderPosition(
             positionId,
             positionSize
         );
@@ -224,12 +224,12 @@ contract TradePositionBasicFuzz is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             positionSize,
-            requiredCollateral * 2,
+            deltaCollateral * 2,
             block.timestamp + 30 minutes
         );
         vm.stopPrank();
 
-        int256 deltaCollateral = requiredCollateral -
+        int256 requiredCollateral = deltaCollateral +
             latestStateData.depositedCollateralAmount.toInt();
 
         // Set expected state
@@ -239,7 +239,8 @@ contract TradePositionBasicFuzz is TestTrade {
         expectedStateData.foilCollateral = (latestStateData
             .foilCollateral
             .toInt() + deltaCollateral).toUint();
-        // expectedStateData.depositedCollateralAmount = requiredCollateral;
+        expectedStateData.depositedCollateralAmount = requiredCollateral
+            .toUint();
         expectedStateData.positionSize = positionSize;
         expectedStateData.vEthAmount = 0;
         expectedStateData.vGasAmount = uint256(positionSize);
@@ -283,7 +284,7 @@ contract TradePositionBasicFuzz is TestTrade {
         fillPositionState(positionId, latestStateData);
 
         // quote and open a long
-        int256 requiredCollateral = foil.quoteModifyTraderPosition(
+        int256 deltaCollateral = foil.quoteModifyTraderPosition(
             positionId,
             positionSize
         );
@@ -292,7 +293,7 @@ contract TradePositionBasicFuzz is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             positionSize,
-            requiredCollateral * 2,
+            deltaCollateral * 2,
             block.timestamp + 30 minutes
         );
 
@@ -302,7 +303,7 @@ contract TradePositionBasicFuzz is TestTrade {
             feeMultiplier
         );
 
-        int256 deltaCollateral = requiredCollateral -
+        int256 requiredCollateral = deltaCollateral +
             latestStateData.depositedCollateralAmount.toInt();
         int256 deltaEth = (latestStateData.vEthAmount.toInt() -
             deltaPositionSize.mulDecimal(price.toInt()));
@@ -315,7 +316,8 @@ contract TradePositionBasicFuzz is TestTrade {
             .foilCollateral
             .toInt() + deltaCollateral).toUint();
 
-        // expectedStateData.depositedCollateralAmount = requiredCollateral;
+        expectedStateData.depositedCollateralAmount = requiredCollateral
+            .toUint();
         expectedStateData.positionSize = positionSize;
         expectedStateData.vEthAmount = deltaEth > 0 ? deltaEth.toUint() : 0;
         expectedStateData.vGasAmount = 0;
@@ -360,7 +362,7 @@ contract TradePositionBasicFuzz is TestTrade {
         fillPositionState(positionId, latestStateData);
 
         // quote and open a long
-        int256 requiredCollateral = foil.quoteModifyTraderPosition(
+        int256 deltaCollateral = foil.quoteModifyTraderPosition(
             positionId,
             positionSize
         );
@@ -369,8 +371,28 @@ contract TradePositionBasicFuzz is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             positionSize,
-            requiredCollateral * 2,
+            deltaCollateral * 2,
             block.timestamp + 30 minutes
+        );
+
+        console2.log("deltaCollateral", deltaCollateral);
+        Position.Data memory position = foil.getPosition(positionId);
+        console2.log(
+            "PRE   depositedCollateralAmount",
+            latestStateData.depositedCollateralAmount
+        );
+        console2.log(
+            "POST  depositedCollateralAmount",
+            position.depositedCollateralAmount
+        );
+        console2.log(
+            "DELTA depositedCollateralAmount",
+            latestStateData.depositedCollateralAmount.toInt() -
+                position.depositedCollateralAmount.toInt()
+        );
+        console2.log(
+            "EXP   depositedCollateralAmount",
+            deltaCollateral + latestStateData.depositedCollateralAmount.toInt()
         );
 
         vm.stopPrank();
@@ -378,7 +400,11 @@ contract TradePositionBasicFuzz is TestTrade {
         uint256 price = foil.getReferencePrice(epochId).mulDecimal(
             feeMultiplier
         );
-        int256 deltaCollateral = requiredCollateral;
+        int256 requiredCollateral = deltaCollateral +
+            latestStateData.depositedCollateralAmount.toInt();
+        int256 expectedNetEth = (latestStateData.vEthAmount.toInt() -
+            latestStateData.borrowedVEth.toInt()) -
+            deltaPositionSize.mulDecimal(price.toInt());
 
         // Set expected state
         expectedStateData.userCollateral = (latestStateData
@@ -388,7 +414,8 @@ contract TradePositionBasicFuzz is TestTrade {
             .foilCollateral
             .toInt() + deltaCollateral).toUint();
 
-        // expectedStateData.depositedCollateralAmount = requiredCollateral;
+        expectedStateData.depositedCollateralAmount = requiredCollateral
+            .toUint();
         expectedStateData.positionSize = positionSize;
         expectedStateData.vEthAmount = uint256(positionSize * -1).mulDecimal(
             price
@@ -433,7 +460,7 @@ contract TradePositionBasicFuzz is TestTrade {
         fillPositionState(positionId, latestStateData);
 
         // quote and open a long
-        int256 requiredCollateral = foil.quoteModifyTraderPosition(
+        int256 deltaCollateral = foil.quoteModifyTraderPosition(
             positionId,
             positionSize
         );
@@ -442,7 +469,7 @@ contract TradePositionBasicFuzz is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             positionSize,
-            requiredCollateral * 2,
+            deltaCollateral * 2,
             block.timestamp + 30 minutes
         );
 
@@ -451,7 +478,8 @@ contract TradePositionBasicFuzz is TestTrade {
         uint256 price = foil.getReferencePrice(epochId).mulDecimal(
             feeMultiplier
         );
-        int256 deltaCollateral = requiredCollateral;
+        int256 requiredCollateral = deltaCollateral +
+            latestStateData.depositedCollateralAmount.toInt();
         int256 expectedNetEth = (latestStateData.vEthAmount.toInt() -
             latestStateData.borrowedVEth.toInt()) -
             deltaPositionSize.mulDecimal(price.toInt());
@@ -464,15 +492,12 @@ contract TradePositionBasicFuzz is TestTrade {
             .foilCollateral
             .toInt() + deltaCollateral).toUint();
 
-        // expectedStateData.depositedCollateralAmount = requiredCollateral;
+        expectedStateData.depositedCollateralAmount = requiredCollateral
+            .toUint();
         expectedStateData.positionSize = positionSize;
-        expectedStateData.vEthAmount = expectedNetEth > 0
-            ? expectedNetEth.toUint()
-            : 0;
+        expectedStateData.vEthAmount = 0;
         expectedStateData.vGasAmount = uint256(positionSize);
-        expectedStateData.borrowedVEth = expectedNetEth < 0
-            ? (expectedNetEth * -1).toUint()
-            : 0;
+        expectedStateData.borrowedVEth = (expectedNetEth * -1).toUint();
         expectedStateData.borrowedVGas = 0;
 
         // Check position makes sense
@@ -643,11 +668,12 @@ contract TradePositionBasicFuzz is TestTrade {
             0.00001 ether,
             string.concat(stage, " foilCollateral")
         );
-        // assertEq(
-        //     currentStateData.depositedCollateralAmount,
-        //     expectedStateData.depositedCollateralAmount,
-        //     string.concat(stage, " depositedCollateralAmount")
-        // );
+        assertApproxEqRel(
+            currentStateData.depositedCollateralAmount,
+            expectedStateData.depositedCollateralAmount,
+            0.025 ether,
+            string.concat(stage, " depositedCollateralAmount")
+        );
         assertApproxEqRel(
             currentStateData.positionSize,
             expectedStateData.positionSize,
