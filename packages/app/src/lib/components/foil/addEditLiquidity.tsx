@@ -888,28 +888,48 @@ const AddEditLiquidity: React.FC<{
       </Flex>
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
 
-      <Box mb="4">
-        <Text fontSize="sm" color="gray.500" mb="0.5">
-          Base Token: <NumberDisplay value={baseToken} /> vGGas (min:{' '}
-          <NumberDisplay value={minAmountTokenA} />)
-        </Text>
-        <Text fontSize="sm" color="gray.500" mb="0.5">
-          Quote Token: <NumberDisplay value={quoteToken} /> vWstETH (min:{' '}
-          <NumberDisplay value={minAmountTokenB} />)
-        </Text>
-        <Text display="none" fontSize="sm" color="gray.500" mb="0.5">
-          Net Position: X Ggas
-        </Text>
-        {isConnected &&
-        walletBalance !== null &&
-        walletBalanceAfter !== null ? (
-          <Text fontSize="sm" color="gray.500" mb="0.5">
-            Wallet Balance: <NumberDisplay value={walletBalance} />{' '}
-            {collateralAssetTicker} →{' '}
-            <NumberDisplay value={walletBalanceAfter} /> {collateralAssetTicker}
+      <Flex gap={2} flexDir="column" mb={4}>
+        <Box>
+          <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
+            Base Token
           </Text>
-        ) : null}
-      </Box>
+          <Text fontSize="sm" color="gray.600" mb={0.5}>
+            <NumberDisplay value={baseToken} /> vGGas (Min.{' '}
+            <NumberDisplay value={minAmountTokenA} />)
+          </Text>
+        </Box>
+
+        <Box>
+          <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
+            Quote Token
+          </Text>
+          <Text fontSize="sm" color="gray.600" mb={0.5}>
+            <NumberDisplay value={quoteToken} /> vWstETH (Min.{' '}
+            <NumberDisplay value={minAmountTokenB} />)
+          </Text>
+        </Box>
+
+        {isConnected &&
+          walletBalance !== null &&
+          walletBalanceAfter !== null && (
+            <Box>
+              <Text
+                fontSize="sm"
+                color="gray.600"
+                fontWeight="semibold"
+                mb={0.5}
+              >
+                Wallet Balance
+              </Text>
+              <Text fontSize="sm" color="gray.600" mb={0.5}>
+                <NumberDisplay value={walletBalance} /> {collateralAssetTicker}{' '}
+                → <NumberDisplay value={walletBalanceAfter} />{' '}
+                {collateralAssetTicker}
+              </Text>
+            </Box>
+          )}
+      </Flex>
+
       {renderActionButton()}
     </form>
   );
