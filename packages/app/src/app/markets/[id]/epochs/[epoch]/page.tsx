@@ -124,10 +124,6 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
     if (useVolumeError) {
       console.error('useVolumeError =', useVolumeError);
     }
-
-    if (volume) {
-      console.log('volume =', volume);
-    }
   }, [volume, useVolumeError]);
 
   const {

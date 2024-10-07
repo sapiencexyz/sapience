@@ -42,7 +42,8 @@ const startServer = async () => {
       } else if (
         origin &&
         (/^https?:\/\/([a-zA-Z0-9-]+\.)*foil\.xyz$/.test(origin) ||
-          /^https?:\/\/localhost(:\d+)?$/.test(origin)) // so noah can test against prod locally
+          /^https?:\/\/localhost(:\d+)?$/.test(origin) || // local testing
+          /^https?:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/.test(origin)) //staging sites
       ) {
         callback(null, true);
       } else {

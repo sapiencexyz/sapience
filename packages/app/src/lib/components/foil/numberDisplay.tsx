@@ -3,7 +3,7 @@ import { Tooltip } from '@chakra-ui/react';
 import type React from 'react';
 
 type NumberDisplayProps = {
-  value: bigint | number | string;
+  value: number | string;
 };
 
 const NumberDisplay: React.FC<NumberDisplayProps> = ({ value }) => {
@@ -29,7 +29,7 @@ const NumberDisplay: React.FC<NumberDisplayProps> = ({ value }) => {
     }
 
     if (Math.abs(numValue) < 0.0001 && numValue !== 0) {
-      return '0.0000';
+      return '<0.0001';
     }
 
     const roundedValue = Number(numValue.toFixed(4));

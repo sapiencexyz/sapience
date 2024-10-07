@@ -2,6 +2,9 @@ import { defineConfig } from 'vocs'
 
 export default defineConfig({
   title: 'Foil',
+  theme: { 
+    colorScheme: 'light'
+  }, 
   sidebar: [
     {
       text: 'Get Started',
@@ -45,6 +48,16 @@ export default defineConfig({
           text: 'Market Settlement',
           link: '/market-settlement', 
         },
+      ], 
+    } ,
+    { 
+      text: 'Technical Documentation', 
+      collapsed: false, 
+      items: [
+      { 
+        text: 'Deployments', 
+        link: 'https://usecannon.com/packages/foil',
+      },
       ], 
     }
   ]

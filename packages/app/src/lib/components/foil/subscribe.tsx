@@ -37,7 +37,6 @@ import {
 } from 'wagmi';
 
 import erc20ABI from '../../erc20abi.json';
-import { calculateCollateralDeltaLimit } from '../../util/tradeUtil';
 import { useLoading } from '~/lib/context/LoadingContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import { renderContractErrorToast, renderToast } from '~/lib/util/util';
@@ -96,7 +95,7 @@ const Subscribe: FC = () => {
     abi: erc20ABI,
     address: collateralAsset as `0x${string}`,
     functionName: 'allowance',
-    args: [address, foilData.address],
+    args: [address, marketAddress],
     chainId,
   });
 
@@ -113,6 +112,15 @@ const Subscribe: FC = () => {
     account: address || zeroAddress,
     query: { enabled: size !== '' && parseFloat(size) > 0 },
   });
+
+  useEffect(() => {
+    const quoteResult = quoteCreatePositionResult.data?.result;
+    if (quoteResult !== undefined) {
+      setCollateralDelta(quoteResult as unknown as bigint);
+    } else {
+      setCollateralDelta(BigInt(0));
+    }
+  }, [quoteCreatePositionResult.data]);
 
   useEffect(() => {
     if (quoteCreatePositionResult.error) {
@@ -227,29 +235,37 @@ const Subscribe: FC = () => {
 
     const sizeInTokens = BigInt(Math.floor(sizeInGigagas));
 
+    const calculateCollateralDeltaLimit = (
+      collateralDelta: bigint,
+      slippage: number
+    ) => {
+      if (collateralDelta === BigInt(0)) return BigInt(0);
+
+      const slippageMultiplier = BigInt(Math.floor((100 + slippage) * 100));
+      const slippageReductionMultiplier = BigInt(
+        Math.floor((100 - slippage) * 100)
+      );
+
+      if (collateralDelta > BigInt(0)) {
+        return (collateralDelta * slippageMultiplier) / BigInt(10000);
+      }
+      return (collateralDelta * slippageReductionMultiplier) / BigInt(10000);
+    };
+
     const collateralDeltaLimit = calculateCollateralDeltaLimit(
-      collateralAssetDecimals,
       collateralDelta,
-      slippage,
-      refPrice,
-      !isLong
+      slippage
     );
-    console.log('********************');
-    console.log('collateralDelta', collateralDelta);
-    console.log('collateralDeltaLimit', collateralDeltaLimit);
-    console.log('allowance', allowance);
-    console.log('sizeInTokens', sizeInTokens);
-    console.log('refPrice', refPrice);
-    console.log('********************');
+
+    const absCollateralDeltaLimit =
+      collateralDeltaLimit < BigInt(0)
+        ? -collateralDeltaLimit
+        : collateralDeltaLimit;
 
     // Set deadline to 30 minutes from now
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
 
-    if (
-      !approved &&
-      allowance &&
-      collateralDeltaLimit > (allowance as bigint)
-    ) {
+    if (!approved && collateralDeltaLimit > (allowance as bigint)) {
       console.log('approving...');
       approveWrite({
         abi: erc20ABI as AbiFunction[],
@@ -263,7 +279,7 @@ const Subscribe: FC = () => {
         abi: foilData.abi,
         address: marketAddress as `0x${string}`,
         functionName: 'createTraderPosition',
-        args: [epoch, sizeInTokens, collateralDeltaLimit, deadline],
+        args: [epoch, sizeInTokens, absCollateralDeltaLimit, deadline],
       });
     }
   };
@@ -297,8 +313,6 @@ const Subscribe: FC = () => {
 
     setSize(sanitizedValue);
   };
-
-  console.log('stEthPerToken', stEthPerToken);
 
   const renderActionButton = () => {
     if (!isConnected) {
