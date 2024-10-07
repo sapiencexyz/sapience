@@ -551,7 +551,7 @@ export default function AddEditTrade() {
                 value={formatUnits(originalPositionSize, TOKEN_DECIMALS)}
               />{' '}
               gas
-              {originalPositionSize !== size && (
+              {/* originalPositionSize !== size && (
                 <>
                   {' '}
                   → <NumberDisplay
@@ -559,7 +559,7 @@ export default function AddEditTrade() {
                   />{' '}
                   gas
                 </>
-              )}
+              ) */}
             </Text>
           </Box>
         )}
