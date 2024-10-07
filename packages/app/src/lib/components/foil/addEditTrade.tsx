@@ -535,22 +535,38 @@ export default function AddEditTrade() {
                 fontWeight="semibold"
                 mb={0.5}
               >
-                Wallet Balance Adjustment{' '}
-                <Tooltip label="Your slippage tolerance sets a maximum limit on how much additional collateral Foil can use or the minimum amount of collateral you will receive back, protecting you from unexpected market changes between submitting and processing your transaction.">
-                  <QuestionOutlineIcon transform="translateY(-1px)" ml={0.5} />
-                </Tooltip>
+                Wallet Balance
+                {sizeChange !== BigInt(0) && (
+                  <>
+                    {' '}
+                    Adjustment{' '}
+                    <Tooltip label="Your slippage tolerance sets a maximum limit on how much additional collateral Foil can use or the minimum amount of collateral you will receive back, protecting you from unexpected market changes between submitting and processing your transaction.">
+                      <QuestionOutlineIcon
+                        transform="translateY(-1px)"
+                        ml={0.5}
+                      />
+                    </Tooltip>
+                  </>
+                )}
               </Text>
               <Text fontSize="sm" color="gray.600">
-                <NumberDisplay value={walletBalance} /> {collateralAssetTicker}{' '}
-                → <NumberDisplay value={quotedResultingWalletBalance} />{' '}
-                {collateralAssetTicker} (Min.{' '}
-                <NumberDisplay
-                  value={formatUnits(
-                    walletBalanceLimit,
-                    collateralAssetDecimals
-                  )}
-                />{' '}
-                {collateralAssetTicker})
+                <NumberDisplay value={walletBalance} /> {collateralAssetTicker}
+                {sizeChange !== BigInt(0) && (
+                  <>
+                    {' '}
+                    → <NumberDisplay
+                      value={quotedResultingWalletBalance}
+                    />{' '}
+                    {collateralAssetTicker} (Min.{' '}
+                    <NumberDisplay
+                      value={formatUnits(
+                        walletBalanceLimit,
+                        collateralAssetDecimals
+                      )}
+                    />{' '}
+                    {collateralAssetTicker})
+                  </>
+                )}
               </Text>
             </Box>
           )}
@@ -565,21 +581,27 @@ export default function AddEditTrade() {
                 collateralAssetDecimals
               )}
             />{' '}
-            {collateralAssetTicker} →{' '}
-            <NumberDisplay
-              value={formatUnits(
-                quotedResultingPositionCollateral,
-                collateralAssetDecimals
-              )}
-            />{' '}
-            {collateralAssetTicker} (Max.{' '}
-            <NumberDisplay
-              value={formatUnits(
-                positionCollateralLimit,
-                collateralAssetDecimals
-              )}
-            />{' '}
-            {collateralAssetTicker})
+            {collateralAssetTicker}
+            {sizeChange !== BigInt(0) && (
+              <>
+                {' '}
+                →{' '}
+                <NumberDisplay
+                  value={formatUnits(
+                    quotedResultingPositionCollateral,
+                    collateralAssetDecimals
+                  )}
+                />{' '}
+                {collateralAssetTicker} (Max.{' '}
+                <NumberDisplay
+                  value={formatUnits(
+                    positionCollateralLimit,
+                    collateralAssetDecimals
+                  )}
+                />{' '}
+                {collateralAssetTicker})
+              </>
+            )}
           </Text>
         </Box>
         {isEdit && (
