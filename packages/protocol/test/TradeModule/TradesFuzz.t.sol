@@ -585,11 +585,9 @@ contract TradePositionBasicFuzz is TestTrade {
             requiredCollateral * 2,
             block.timestamp + 30 minutes
         );
-
         vm.stopPrank();
 
-        int256 deltaCollateral = requiredCollateral -
-            latestStateData.depositedCollateralAmount.toInt();
+        int256 deltaCollateral = requiredCollateral;
 
         // Set expected state
         expectedStateData.userCollateral = (latestStateData
