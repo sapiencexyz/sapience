@@ -526,84 +526,78 @@ export default function AddEditTrade() {
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
       {renderActionButton()}
       <Flex gap={2} flexDir="column">
-        {!isLoadingCollateralChange &&
-          walletBalance !== quotedResultingWalletBalance && (
-            <Box>
-              <Text
-                fontSize="sm"
-                color="gray.600"
-                fontWeight="semibold"
-                mb={0.5}
-              >
-                Wallet Balance
-                {sizeChange !== BigInt(0) && (
-                  <>
-                    {' '}
-                    Adjustment{' '}
-                    <Tooltip label="Your slippage tolerance sets a maximum limit on how much additional collateral Foil can use or the minimum amount of collateral you will receive back, protecting you from unexpected market changes between submitting and processing your transaction.">
-                      <QuestionOutlineIcon
-                        transform="translateY(-1px)"
-                        ml={0.5}
-                      />
-                    </Tooltip>
-                  </>
-                )}
-              </Text>
-              <Text fontSize="sm" color="gray.600">
-                <NumberDisplay value={walletBalance} /> {collateralAssetTicker}
-                {sizeChange !== BigInt(0) && (
-                  <>
-                    {' '}
-                    → <NumberDisplay
-                      value={quotedResultingWalletBalance}
-                    />{' '}
-                    {collateralAssetTicker} (Min.{' '}
-                    <NumberDisplay
-                      value={formatUnits(
-                        walletBalanceLimit,
-                        collateralAssetDecimals
-                      )}
-                    />{' '}
-                    {collateralAssetTicker})
-                  </>
-                )}
-              </Text>
-            </Box>
-          )}
-        <Box>
-          <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
-            Position Collateral
-          </Text>
-          <Text fontSize="sm" color="gray.600" mb={0.5}>
-            <NumberDisplay
-              value={formatUnits(
-                positionData?.depositedCollateralAmount || BigInt(0),
-                collateralAssetDecimals
+        {!isLoadingCollateralChange && isConnected && (
+          <Box>
+            <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
+              Wallet Balance
+              {sizeChange !== BigInt(0) && (
+                <>
+                  {' '}
+                  Adjustment{' '}
+                  <Tooltip label="Your slippage tolerance sets a maximum limit on how much additional collateral Foil can use or the minimum amount of collateral you will receive back, protecting you from unexpected market changes between submitting and processing your transaction.">
+                    <QuestionOutlineIcon
+                      transform="translateY(-1px)"
+                      ml={0.5}
+                    />
+                  </Tooltip>
+                </>
               )}
-            />{' '}
-            {collateralAssetTicker}
-            {sizeChange !== BigInt(0) && (
-              <>
-                {' '}
-                →{' '}
-                <NumberDisplay
-                  value={formatUnits(
-                    quotedResultingPositionCollateral,
-                    collateralAssetDecimals
-                  )}
-                />{' '}
-                {collateralAssetTicker} (Max.{' '}
-                <NumberDisplay
-                  value={formatUnits(
-                    positionCollateralLimit,
-                    collateralAssetDecimals
-                  )}
-                />{' '}
-                {collateralAssetTicker})
-              </>
-            )}
-          </Text>
-        </Box>
+            </Text>
+            <Text fontSize="sm" color="gray.600">
+              <NumberDisplay value={walletBalance} /> {collateralAssetTicker}
+              {sizeChange !== BigInt(0) && (
+                <>
+                  {' '}
+                  → <NumberDisplay value={quotedResultingWalletBalance} />{' '}
+                  {collateralAssetTicker} (Min.{' '}
+                  <NumberDisplay
+                    value={formatUnits(
+                      walletBalanceLimit,
+                      collateralAssetDecimals
+                    )}
+                  />{' '}
+                  {collateralAssetTicker})
+                </>
+              )}
+            </Text>
+          </Box>
+        )}
+        {!isLoadingCollateralChange && (
+          <Box>
+            <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
+              Position Collateral
+            </Text>
+            <Text fontSize="sm" color="gray.600" mb={0.5}>
+              <NumberDisplay
+                value={formatUnits(
+                  positionData?.depositedCollateralAmount || BigInt(0),
+                  collateralAssetDecimals
+                )}
+              />{' '}
+              {collateralAssetTicker}
+              {sizeChange !== BigInt(0) && (
+                <>
+                  {' '}
+                  →{' '}
+                  <NumberDisplay
+                    value={formatUnits(
+                      quotedResultingPositionCollateral,
+                      collateralAssetDecimals
+                    )}
+                  />{' '}
+                  {collateralAssetTicker} (Max.{' '}
+                  <NumberDisplay
+                    value={formatUnits(
+                      positionCollateralLimit,
+                      collateralAssetDecimals
+                    )}
+                  />{' '}
+                  {collateralAssetTicker})
+                </>
+              )}
+            </Text>
+          </Box>
+        )}
         {isEdit && (
           <Box>
             <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
