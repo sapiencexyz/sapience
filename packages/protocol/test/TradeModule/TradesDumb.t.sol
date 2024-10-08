@@ -532,7 +532,7 @@ contract TradePositionDumb is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             finalPositionSize,
-            requiredCollateral + 2,
+            requiredCollateral - 2,
             block.timestamp + 30 minutes
         );
 
