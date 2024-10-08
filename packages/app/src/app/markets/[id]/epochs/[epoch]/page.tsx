@@ -27,13 +27,13 @@ import VolumeChart from '~/lib/components/VolumeChart';
 import VolumeWindowSelector from '~/lib/components/VolumeWindowButtons';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { MarketProvider } from '~/lib/context/MarketProvider';
-import { ChartType, VolumeWindow } from '~/lib/interfaces/interfaces';
+import { ChartType, TimeWindow } from '~/lib/interfaces/interfaces';
 
 const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
 
 const Market = ({ params }: { params: { id: string; epoch: string } }) => {
-  const [selectedWindow, setSelectedWindow] = useState<VolumeWindow>(
-    VolumeWindow.D
+  const [selectedWindow, setSelectedWindow] = useState<TimeWindow>(
+    TimeWindow.D
   );
   const [tableFlexHeight, setTableFlexHeight] = useState(172);
   const resizeRef = useRef<HTMLDivElement>(null);
@@ -117,10 +117,6 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
   } = useVolume();
 
   useEffect(() => {
-    refetchVolume();
-  }, [selectedWindow]);
-
-  useEffect(() => {
     if (useVolumeError) {
       console.error('useVolumeError =', useVolumeError);
     }
@@ -177,6 +173,32 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
     isLoading: isLoadingLpPositions,
   } = useLiquidityPositions();
 
+  const usePrices = () => {
+    return useQuery({
+      queryKey: ['prices', `${chainId}:${marketAddress}`],
+      queryFn: async () => {
+        const response = await fetch(
+          `${API_BASE_URL}/prices/chart-data?contractId=${chainId}:${marketAddress}&epochId=${epoch}&timeWindow=${selectedWindow}`
+        );
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      },
+      refetchInterval: 60000,
+    });
+  };
+  const {
+    data: prices,
+    error: usePricesError,
+    isLoading: isLoadingPrices,
+    refetch: refetchPrices,
+  } = usePrices();
+
+  useEffect(() => {
+    refetchVolume();
+    refetchPrices();
+  }, [selectedWindow]);
   return (
     <MarketProvider
       chainId={Number(chainId)}
@@ -212,7 +234,7 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
 
               <Flex flex={1} id="chart-flex" minHeight={0}>
                 {chartType === 'Price' ? (
-                  <Chart />
+                  <Chart activeWindow={selectedWindow} data={prices || []} />
                 ) : (
                   <VolumeChart
                     data={volume || []}
@@ -229,12 +251,10 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
                 flexShrink={0}
               >
                 <Box>
-                  {/*
-                <VolumeWindowSelector
-                  selectedWindow={selectedWindow}
-                  setSelectedWindow={setSelectedWindow}
-                />
-                */}
+                  <VolumeWindowSelector
+                    selectedWindow={selectedWindow}
+                    setSelectedWindow={setSelectedWindow}
+                  />
                 </Box>
                 <ChartSelector
                   chartType={chartType}

@@ -32,13 +32,6 @@ export interface MarketContextType {
   averagePrice: number;
   startTime: number;
   endTime: number;
-  prices: Array<{
-    date: string;
-    open: number;
-    close: number;
-    low: number;
-    high: number;
-  }>;
   epochParams: EpochParams;
   poolAddress: `0x${string}`;
   pool: Pool | null;
@@ -88,20 +81,6 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
       return response.json();
     },
     enabled: state.chainId !== 0,
-    refetchInterval: 60000,
-  });
-
-  const { data: prices } = useQuery({
-    queryKey: ['prices', `${state.chainId}:${state.address}`],
-    queryFn: async () => {
-      const response = await fetch(
-        `${API_BASE_URL}/prices/chart-data?contractId=${state.chainId}:${state.address}&epochId=${state.epoch}`
-      );
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      return response.json();
-    },
     refetchInterval: 60000,
   });
 
@@ -207,15 +186,6 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
       }));
     }
   }, [price, stEthPerTokenResult.data]);
-
-  useEffect(() => {
-    if (prices) {
-      setState((currentState) => ({
-        ...currentState,
-        prices,
-      }));
-    }
-  }, [prices]);
 
   useEffect(() => {
     setState((currentState) => ({

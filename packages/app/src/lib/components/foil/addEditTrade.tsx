@@ -335,10 +335,11 @@ export default function AddEditTrade() {
       await refetchAllowance();
       console.log('refetched  allowance =', allowance);
     }
+    console.log('allowance =', allowance);
     if (
       !approved &&
       allowance !== undefined &&
-      collateralDeltaLimit > (allowance as bigint)
+      absCollateralDeltaLimit > (allowance as bigint)
     ) {
       console.log('approving...');
       approveWrite({
@@ -392,6 +393,7 @@ export default function AddEditTrade() {
     refreshPositions();
     refetchPositionData();
     refetchUniswapData();
+    refetchAllowance();
   };
 
   useEffect(() => {

@@ -1,7 +1,7 @@
 import type { ToastId, UseToastOptions } from '@chakra-ui/react';
 import type { ReadContractErrorType, WriteContractErrorType } from 'viem';
 
-import { VolumeWindow } from '../interfaces/interfaces';
+import { TimeWindow } from '../interfaces/interfaces';
 
 export const renderContractErrorToast = (
   error: ReadContractErrorType | WriteContractErrorType | null,
@@ -41,20 +41,20 @@ export function convertHundredthsOfBipToPercent(
   return (hundredthsOfBip * 0.0001) / 100;
 }
 
-export function getDisplayTextForVolumeWindow(volumeWindow: VolumeWindow) {
-  if (volumeWindow === VolumeWindow.H) {
+export function getDisplayTextForVolumeWindow(volumeWindow: TimeWindow) {
+  if (volumeWindow === TimeWindow.H) {
     return 'Past Hour';
   }
-  if (volumeWindow === VolumeWindow.D) {
+  if (volumeWindow === TimeWindow.D) {
     return 'Past Day';
   }
-  if (volumeWindow === VolumeWindow.W) {
+  if (volumeWindow === TimeWindow.W) {
     return 'Past Week';
   }
-  if (volumeWindow === VolumeWindow.M) {
+  if (volumeWindow === TimeWindow.M) {
     return 'Past Month';
   }
-  if (volumeWindow === VolumeWindow.Y) {
+  if (volumeWindow === TimeWindow.Y) {
     return 'Past Year';
   }
   return '';
