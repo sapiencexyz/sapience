@@ -63,6 +63,7 @@ const startServer = async () => {
   app.get("/markets", async (req, res) => {
     try {
       const markets = await marketRepository.find({
+        where: { public: true },
         relations: ["epochs"],
       });
 

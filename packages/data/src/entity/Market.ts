@@ -41,4 +41,10 @@ export class Market {
 
   @Column(() => EpochParams)
   epochParams: EpochParams;
+
+  @Column()
+  public: boolean;
+
+  @Column({ type: "varchar", nullable: true })
+  name: string | null;
 }

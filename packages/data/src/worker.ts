@@ -1,60 +1,16 @@
-import dataSource, { initializeDataSource } from "./db";
-import { Abi, PublicClient } from "viem";
+import { initializeDataSource } from "./db";
+import { PublicClient } from "viem";
 import { indexBaseFeePerGas, indexBaseFeePerGasRange } from "./processes/chain";
 import { indexMarketEvents, indexMarketEventsRange } from "./processes/market"; // Assuming you have this function
-import { sepolia, hardhat } from "viem/chains";
-import { Market } from "./entity/Market";
-import { Epoch } from "./entity/Epoch";
 import {
-  cannonPublicClient,
   createOrUpdateEpochFromContract,
   createOrUpdateMarketFromContract,
   getBlockRanges,
   getTimestampsForReindex,
   mainnetPublicClient,
-  sepoliaPublicClient,
 } from "./util/reindexUtil";
 import { ContractDeployment } from "./interfaces/interfaces";
-import { EpochParams } from "./entity/EpochParams";
-
-let FoilLocal: ContractDeployment | undefined;
-let FoilSepolia: ContractDeployment | undefined;
-
-try {
-  FoilLocal = require("@/protocol/deployments/13370/Foil.json");
-} catch (error) {
-  console.warn("FoilLocal not available");
-}
-
-try {
-  FoilSepolia = require("@/protocol/deployments/11155111/Foil.json");
-} catch (error) {
-  console.warn("FoilSepolia not available");
-}
-
-const MARKETS = [
-  {
-    name: "LOCAL",
-    deployment: FoilLocal,
-    chainId: hardhat.id,
-    publicClient: cannonPublicClient,
-  },
-  {
-    name: "SEPOLIA",
-    deployment: FoilSepolia,
-    chainId: sepolia.id,
-    publicClient: sepoliaPublicClient,
-  },
-  {
-    name: "SEPOLIA-1",
-    deployment: {
-      address: "0xfb17d7f02f4d29d900838f80605091e3778e38ee",
-      abi: FoilSepolia?.abi || ({} as Abi),
-    },
-    chainId: sepolia.id,
-    publicClient: sepoliaPublicClient,
-  },
-];
+import MARKETS from "./markets";
 
 async function initializeMarkets() {
   await initializeDataSource();
@@ -168,58 +124,25 @@ export async function reindexNetwork(
     });
 }
 
-if (process.argv.length < 3) {
-  console.log("initializing markets...");
-  initializeMarkets().then(() => {
-    const jobs = [];
+console.log("Initializing markets...");
+initializeMarkets().then(() => {
+  const jobs = [];
 
-    for (const marketConfig of MARKETS) {
-      const { deployment, chainId, publicClient } = marketConfig;
-
-      if (deployment && process.env.NODE_ENV !== "production") {
-        jobs.push(
-          indexBaseFeePerGas(mainnetPublicClient, chainId, deployment.address),
-          indexMarketEvents(publicClient, deployment)
-        );
-      }
-    }
-
-    if (jobs.length > 0) {
-      Promise.all(jobs).catch((error) => {
-        console.error("Error running processes in parallel:", error);
-      });
-    } else {
-      console.warn("No jobs to run. Make sure deployments are available.");
-    }
-  });
-} else {
-  const args = process.argv.slice(2);
-
-  if (args[0] === "reindex") {
-    const targetMarketName = args[1]?.toUpperCase();
-    // additional optional args for reindexing
-    const epoch = args[2] ? Number(args[2]) : undefined;
-    const startTime = args[3] ? Number(args[3]) : undefined;
-    const endTime = args[4] ? Number(args[4]) : undefined;
-
-    const marketConfig = MARKETS.find(
-      (market) => market.name === targetMarketName
-    );
-
-    if (marketConfig && marketConfig.deployment) {
-      console.log(`Reindexing ${marketConfig.name} network!`);
-      reindexNetwork(
-        marketConfig.publicClient,
-        marketConfig.deployment,
-        marketConfig.chainId,
-        epoch,
-        startTime,
-        endTime
-      );
-    } else {
-      console.error(
-        `Market ${targetMarketName} not found or deployment missing.`
+  for (const marketConfig of MARKETS) {
+    const { deployment, chainId, publicClient } = marketConfig;
+    if (deployment && process.env.NODE_ENV !== "production") {
+      jobs.push(
+        indexBaseFeePerGas(mainnetPublicClient, chainId, deployment.address),
+        indexMarketEvents(publicClient, deployment)
       );
     }
   }
-}
+
+  if (jobs.length > 0) {
+    Promise.all(jobs).catch((error) => {
+      console.error("Error running processes in parallel:", error);
+    });
+  } else {
+    console.warn("No jobs to run. Make sure deployments are available.");
+  }
+});

@@ -12,9 +12,6 @@
     "start:service": "ts-node src/service.ts",
     "start:worker": "ts-node src/worker.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "reindex-testnet": "ts-node src/worker.ts reindex SEPOLIA",
-    "reindex-testnet-1": "ts-node src/worker.ts reindex SEPOLIA-1",
-    "reindex-local": "ts-node src/worker.ts reindex local"
   },
   "keywords": [],
   "author": "",
