@@ -3,11 +3,12 @@ import {
   FormControl,
   FormLabel,
   HStack,
-  NumberInput,
-  NumberInputField,
+  Input,
+  InputGroup,
+  InputRightAddon,
 } from '@chakra-ui/react';
 import type React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface SlippageToleranceProps {
   onSlippageChange: (slippage: number) => void;
@@ -17,6 +18,17 @@ const SlippageTolerance: React.FC<SlippageToleranceProps> = ({
   onSlippageChange,
 }) => {
   const [slippage, setSlippage] = useState<number>(0.5);
+
+  const handleSlippageChange = useCallback(
+    (valueString: string) => {
+      const value = parseFloat(valueString);
+      if (!isNaN(value)) {
+        setSlippage(value);
+        onSlippageChange(value);
+      }
+    },
+    [onSlippageChange]
+  );
 
   useEffect(() => {
     onSlippageChange(slippage);
@@ -47,17 +59,17 @@ const SlippageTolerance: React.FC<SlippageToleranceProps> = ({
         >
           1.0%
         </Button>
-        <NumberInput
-          size="xs"
-          value={slippage}
-          min={0}
-          max={100}
-          step={0.1}
-          precision={2}
-          maxWidth="72px"
-        >
-          <NumberInputField />
-        </NumberInput>
+        <InputGroup size="xs" maxWidth="100px">
+          <Input
+            value={slippage}
+            onChange={(e) => handleSlippageChange(e.target.value)}
+            min={0}
+            max={100}
+            step={0.1}
+            type="number"
+          />
+          <InputRightAddon>%</InputRightAddon>
+        </InputGroup>
       </HStack>
     </FormControl>
   );

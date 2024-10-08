@@ -19,7 +19,6 @@ export const BLANK_MARKET: MarketContextType = {
   averagePrice: 0,
   startTime: 0,
   endTime: 0,
-  prices: [],
   pool: null,
   poolAddress: '0x',
   epoch: 0,

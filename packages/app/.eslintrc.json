@@ -20,6 +20,7 @@
     "@typescript-eslint/no-use-before-define": "off",
     "react/destructuring-assignment": "warn",
     "react-hooks/exhaustive-deps": "warn",
+    "react/no-array-index-key": "off",
     "no-restricted-syntax": "off",
     "no-empty-pattern": "warn",
     "no-restricted-globals": "warn",
