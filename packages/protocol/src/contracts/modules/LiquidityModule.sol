@@ -40,7 +40,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             uint256 addedAmount1
         )
     {
-        require(block.timestamp <= params.deadline, "Transaction too old");
+        require(block.timestamp <= params.deadline, Errors.TransactionTooOld());
 
         id = ERC721EnumerableStorage.totalSupply() + 1;
         Position.Data storage position = Position.createValid(id);
@@ -128,7 +128,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             uint256 collateralAmount
         )
     {
-        require(block.timestamp <= params.deadline, "Transaction too old");
+        require(block.timestamp <= params.deadline, Errors.TransactionTooOld());
 
         DecreaseLiquidityPositionStack memory stack;
 
@@ -223,7 +223,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             uint256 collateralAmount
         )
     {
-        require(block.timestamp <= params.deadline, "Transaction too old");
+        require(block.timestamp <= params.deadline, Errors.TransactionTooOld());
 
         IncreaseLiquidityPositionStack memory stack;
 
