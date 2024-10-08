@@ -1,5 +1,11 @@
 import type { DeepPartial, Theme } from '@chakra-ui/react';
 
+export const gray700 = '#808080';
+
+export const red500 = '#FF0000';
+
+export const green400 = '#3FBC44';
+
 /** extend additional color here */
 const extendedColors: DeepPartial<
   Record<string, Theme['colors']['blackAlpha']>
@@ -22,6 +28,7 @@ const overridenChakraColors: DeepPartial<Theme['colors']> = {
   gray: {
     50: '#F8F7F5', // "Foil Neutral"
     300: '#DAD8D1', // "Foil Rule"
+    700: gray700,
     800: '#2C2C2E', // "Foil Black"
   },
   red: {
