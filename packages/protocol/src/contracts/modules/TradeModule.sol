@@ -341,6 +341,48 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         uint256 positionDepositedCollateral;
     }
 
+    function _quoteCreateLongPosition(
+        Epoch.Data storage epoch,
+        int256 size
+    ) internal returns (uint256 collateralDelta) {
+        uint256 vGasTokens = size.toUint();
+
+        (uint256 requiredAmountInVEth, ) = Trade.swapOrQuoteTokensExactOut(
+            epoch,
+            0,
+            vGasTokens,
+            true
+        );
+
+        collateralDelta = epoch.getCollateralRequirementsForTrade(
+            vGasTokens,
+            0,
+            0,
+            requiredAmountInVEth
+        );
+    }
+
+    function _quoteCreateShortPosition(
+        Epoch.Data storage epoch,
+        int256 size
+    ) internal returns (uint256 collateralDelta) {
+        uint256 vGasDebt = (size * -1).toUint();
+
+        (uint256 amountOutVEth, ) = Trade.swapOrQuoteTokensExactIn(
+            epoch,
+            0,
+            vGasDebt,
+            true
+        );
+
+        collateralDelta = epoch.getCollateralRequirementsForTrade(
+            0,
+            amountOutVEth,
+            vGasDebt,
+            0
+        );
+    }
+
     function _quoteModifyLongDirection(
         Position.Data storage position,
         int256 deltaSize
@@ -419,7 +461,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
     function _quoteModifyShortDirection(
         Position.Data storage position,
         int256 deltaSize
-    ) internal returns (int256 requiredCollateral) {
+    ) internal returns (int256 expectedDeltaCollateral) {
         Epoch.Data storage epoch = Epoch.load(position.epochId);
 
         if (deltaSize == 0) {
@@ -478,7 +520,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         }
 
         // Notice: Long to Short   => if deltaCollateral is positive it means loses position, if negative it means wins position
-        requiredCollateral =
+        expectedDeltaCollateral =
             epoch
                 .getCollateralRequirementsForTrade(
                     runtime.afterTradePositionVGas,
@@ -488,48 +530,6 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
                 )
                 .toInt() -
             runtime.deltaCollateral;
-    }
-
-    function _quoteCreateLongPosition(
-        Epoch.Data storage epoch,
-        int256 size
-    ) internal returns (uint256 collateralDelta) {
-        uint256 vGasTokens = size.toUint();
-
-        (uint256 requiredAmountInVEth, ) = Trade.swapOrQuoteTokensExactOut(
-            epoch,
-            0,
-            vGasTokens,
-            true
-        );
-
-        collateralDelta = epoch.getCollateralRequirementsForTrade(
-            vGasTokens,
-            0,
-            0,
-            requiredAmountInVEth
-        );
-    }
-
-    function _quoteCreateShortPosition(
-        Epoch.Data storage epoch,
-        int256 size
-    ) internal returns (uint256 collateralDelta) {
-        uint256 vGasDebt = (size * -1).toUint();
-
-        (uint256 amountOutVEth, ) = Trade.swapOrQuoteTokensExactIn(
-            epoch,
-            0,
-            vGasDebt,
-            true
-        );
-
-        collateralDelta = epoch.getCollateralRequirementsForTrade(
-            0,
-            amountOutVEth,
-            vGasDebt,
-            0
-        );
     }
 
     /**
