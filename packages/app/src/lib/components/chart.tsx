@@ -21,8 +21,11 @@ import { formatXAxisTick, getXTicksToShow } from '../util/chartUtil';
 import { formatAmount } from '../util/numberUtil';
 import { getDisplayTextForVolumeWindow } from '../util/util';
 import { MarketContext } from '~/lib/context/MarketProvider';
-import { colors } from '~/lib/styles/theme/colors';
+import { colors, gray700, green400, red500 } from '~/lib/styles/theme/colors';
 
+const grayColor = colors.gray?.[700] || gray700;
+const redColor = colors.red?.[400] || red500;
+const greenColor = colors.green?.[400] || green400;
 const CustomBarShape: React.FC<{
   x: number;
   // y: number;
@@ -40,7 +43,7 @@ const CustomBarShape: React.FC<{
   chartHeight,
   gridOffsetFromParent,
 }) => {
-  const candleColor = payload.open < payload.close ? '#3FBC44' : '#FF0000';
+  const candleColor = payload.open < payload.close ? greenColor : redColor;
 
   const scaleY = (value: number) => {
     const scaled = (value - yAxisDomain[0]) / (yAxisDomain[1] - yAxisDomain[0]);
@@ -72,6 +75,9 @@ const CustomBarShape: React.FC<{
         width={width}
         height={barHeight}
         fill={candleColor}
+        stroke={grayColor}
+        strokeWidth={0.5}
+        rx="5px"
       />
     </>
   );
@@ -132,8 +138,6 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
     return getDisplayTextForVolumeWindow(activeWindow);
   }, [activeWindow]);
   const [label, setLabel] = useState<string>(timePeriodLabel);
-  const grayColor = colors.gray?.[700] ?? '#808080';
-
   const { averagePrice, pool } = useContext(MarketContext);
   const currPrice: string = useMemo(() => {
     return pool?.token0Price.toSignificant(18) || '0';
@@ -176,22 +180,10 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
     setYAxisDomain([0, Math.max(...validPrices.map((p) => p.high)) + 1]);
   }, [data]);
 
-  useEffect(() => {
-    updateChartDimensions();
-    window.addEventListener('resize', updateChartDimensions);
-
-    return () => {
-      window.removeEventListener('resize', updateChartDimensions);
-    };
-  }, []);
-
   const formatYAxisTick = (value: number) => value.toFixed(2);
 
   const renderShape = useMemo(() => {
     return (props: any) => {
-      if (props.payload.candles === null) {
-        return <g />;
-      }
       return (
         <CustomBarShape
           {...props}
@@ -246,11 +238,15 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
           {label ? `${label}` : ''}
         </Text>
       </Box>
-      <ResponsiveContainer height="95%" width="100%">
+      <ResponsiveContainer
+        height="95%"
+        width="100%"
+        onResize={updateChartDimensions}
+      >
         <ComposedChart
           data={data}
           ref={chartRef}
-          margin={{ top: 80, right: 0, bottom: 0, left: 0 }}
+          margin={{ top: 70, right: 0, bottom: 0, left: 0 }}
           onMouseLeave={() => {
             setLabel(timePeriodLabel);
             setValue('');
