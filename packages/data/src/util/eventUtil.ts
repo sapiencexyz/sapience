@@ -162,12 +162,10 @@ export const updateTransactionFromTradeModifiedEvent = async (
 
   newTransaction.baseTokenDelta = (
     BigInt(eventArgsCreateTrade.vGasAmount) -
-    BigInt(eventArgsCreateTrade.borrowedVGas) -
     BigInt(baseTokenInitial)
   ).toString();
   newTransaction.quoteTokenDelta = (
     BigInt(eventArgsCreateTrade.vEthAmount) -
-    BigInt(eventArgsCreateTrade.borrowedVEth) -
     BigInt(quoteTokenInitial)
   ).toString();
   newTransaction.collateralDelta = (
