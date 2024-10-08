@@ -18,6 +18,7 @@ import {
   Flex,
   useToast,
 } from '@chakra-ui/react';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { TickMath, SqrtPriceMath } from '@uniswap/v3-sdk';
 import JSBI from 'jsbi';
 import { useContext, useEffect, useMemo, useState } from 'react';
@@ -80,7 +81,9 @@ function getTokenAmountsFromLiquidity(
   return { amount0, amount1 };
 }
 
-const AddEditLiquidity: React.FC = () => {
+const AddEditLiquidity: React.FC<{
+  handleTabChange: (index: number, hasConvertedToTrader: boolean) => void;
+}> = ({ handleTabChange }) => {
   const { nftId, refreshPositions } = useAddEditPosition();
 
   const {
@@ -123,6 +126,7 @@ const AddEditLiquidity: React.FC = () => {
 
   const currentChainId = useChainId();
   const { switchChain } = useSwitchChain();
+  const { openConnectModal } = useConnectModal();
 
   /// //// READ CONTRACT HOOKS ///////
   const { data: positionData, refetch: refetchPosition } = useReadContract({
@@ -456,17 +460,24 @@ const AddEditLiquidity: React.FC = () => {
   useEffect(() => {
     if (decreaseLiquiditySuccess) {
       setTxnSuccessMsg('Successfully decreased liquidity');
-      if (depositAmount === 0) {
-        toast({
-          title:
-            'If your LP position accrued a profit or loss, it has been converted to a trade position.',
-          status: 'info',
-          duration: 5000,
-          isClosable: true,
-        });
-      }
+      // call getPositionData
+      refetchPosition();
     }
-  }, [decreaseLiquiditySuccess]);
+  }, [decreaseLiquiditySuccess, depositAmount, toast, refetchPosition]);
+
+  useEffect(() => {
+    // trader position so switch to trader tab
+    if (positionData && positionData.kind === 2) {
+      toast({
+        title:
+          'Your liquidity position has been closed and converted to a trader position with your accumulated position',
+        status: 'info',
+        duration: 5000,
+        isClosable: true,
+      });
+      handleTabChange(0, true);
+    }
+  }, [positionData, toast, handleTabChange]);
 
   // handle token amounts error
   useEffect(() => {
@@ -475,7 +486,7 @@ const AddEditLiquidity: React.FC = () => {
       toast,
       'Failed to fetch token amounts'
     );
-  }, [tokenAmountsError]);
+  }, [tokenAmountsError, toast]);
 
   // hanlde uniswap error
   useEffect(() => {
@@ -484,7 +495,7 @@ const AddEditLiquidity: React.FC = () => {
       toast,
       'Failed to get position from uniswap'
     );
-  }, [uniswapPositionError]);
+  }, [uniswapPositionError, toast]);
 
   useEffect(() => {
     if (isEdit) return;
@@ -770,7 +781,12 @@ const AddEditLiquidity: React.FC = () => {
   const renderActionButton = () => {
     if (!isConnected) {
       return (
-        <Button width="full" variant="brand" type="submit">
+        <Button
+          width="full"
+          size="lg"
+          variant="brand"
+          onClick={openConnectModal}
+        >
           Connect Wallet
         </Button>
       );
@@ -781,6 +797,7 @@ const AddEditLiquidity: React.FC = () => {
         <Button
           width="full"
           variant="brand"
+          size="lg"
           onClick={() => switchChain({ chainId })}
         >
           Switch Network
@@ -792,6 +809,7 @@ const AddEditLiquidity: React.FC = () => {
       <Button
         width="full"
         variant="brand"
+        size="lg"
         type="submit"
         isLoading={pendingTxn || isFetching}
         isDisabled={pendingTxn || isFetching}
@@ -877,29 +895,49 @@ const AddEditLiquidity: React.FC = () => {
       </Flex>
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
 
-      <Box mb="4">
-        <Text fontSize="sm" color="gray.500" mb="0.5">
-          Base Token: <NumberDisplay value={baseToken} /> vGGas (min:{' '}
-          <NumberDisplay value={minAmountTokenA} />)
-        </Text>
-        <Text fontSize="sm" color="gray.500" mb="0.5">
-          Quote Token: <NumberDisplay value={quoteToken} /> vWstETH (min:{' '}
-          <NumberDisplay value={minAmountTokenB} />)
-        </Text>
-        <Text display="none" fontSize="sm" color="gray.500" mb="0.5">
-          Net Position: X Ggas
-        </Text>
-        {isConnected &&
-        walletBalance !== null &&
-        walletBalanceAfter !== null ? (
-          <Text fontSize="sm" color="gray.500" mb="0.5">
-            Wallet Balance: <NumberDisplay value={walletBalance} />{' '}
-            {collateralAssetTicker} →{' '}
-            <NumberDisplay value={walletBalanceAfter} /> {collateralAssetTicker}
-          </Text>
-        ) : null}
-      </Box>
       {renderActionButton()}
+
+      <Flex gap={2} flexDir="column" mt={4}>
+        <Box>
+          <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
+            Base Token
+          </Text>
+          <Text fontSize="sm" color="gray.600" mb={0.5}>
+            <NumberDisplay value={baseToken} /> vGGas (Min.{' '}
+            <NumberDisplay value={minAmountTokenA} />)
+          </Text>
+        </Box>
+
+        <Box>
+          <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
+            Quote Token
+          </Text>
+          <Text fontSize="sm" color="gray.600" mb={0.5}>
+            <NumberDisplay value={quoteToken} /> vWstETH (Min.{' '}
+            <NumberDisplay value={minAmountTokenB} />)
+          </Text>
+        </Box>
+
+        {isConnected &&
+          walletBalance !== null &&
+          walletBalanceAfter !== null && (
+            <Box>
+              <Text
+                fontSize="sm"
+                color="gray.600"
+                fontWeight="semibold"
+                mb={0.5}
+              >
+                Wallet Balance
+              </Text>
+              <Text fontSize="sm" color="gray.600" mb={0.5}>
+                <NumberDisplay value={walletBalance} /> {collateralAssetTicker}{' '}
+                → <NumberDisplay value={walletBalanceAfter} />{' '}
+                {collateralAssetTicker}
+              </Text>
+            </Box>
+          )}
+      </Flex>
     </form>
   );
 };

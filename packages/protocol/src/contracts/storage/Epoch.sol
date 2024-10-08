@@ -15,8 +15,6 @@ import "./Errors.sol";
 import "./Market.sol";
 import {SafeCastI256, SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 
-// import "forge-std/console2.sol";
-
 library Epoch {
     using DecimalMath for uint256;
     using SafeCastI256 for int256;
@@ -341,8 +339,8 @@ library Epoch {
 
         // Get total debt
         uint256 adjustedPrice = self.settled
-            ? price.mulDecimal((DecimalMath.UNIT + self.feeRateD18))
-            : price;
+            ? price
+            : price.mulDecimal((DecimalMath.UNIT + self.feeRateD18));
         uint256 totalDebtValue = Quote.quoteGasToEthWithPrice(
             gasDebt,
             adjustedPrice
@@ -350,8 +348,8 @@ library Epoch {
 
         // Get total credit
         adjustedPrice = self.settled
-            ? price.mulDecimal((DecimalMath.UNIT - self.feeRateD18))
-            : price;
+            ? price
+            : price.mulDecimal((DecimalMath.UNIT - self.feeRateD18));
         uint256 totalOwnedValue = Quote.quoteGasToEthWithPrice(
             gasAmount,
             adjustedPrice

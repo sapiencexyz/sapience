@@ -13,11 +13,13 @@ import { formatUnits } from "viem";
 import { formatDbBigInt } from "./util/dbUtil";
 import { TOKEN_PRECISION } from "./constants";
 import {
-  getStartTimestampFromVolumeWindow,
+  getMarketPricesInTimeRange,
+  getStartTimestampFromTimeWindow,
   getTransactionsInTimeRange,
+  groupMarketPricesByTimeWindow,
   groupTransactionsByTimeWindow,
-} from "./util/transactionUtil";
-import { VolumeWindow } from "./interfaces/interfaces";
+} from "./util/serviceUtil";
+import { TimeWindow } from "./interfaces/interfaces";
 
 const PORT = 3001;
 
@@ -27,7 +29,6 @@ const startServer = async () => {
   const epochRepository = dataSource.getRepository(Epoch);
   const priceRepository = dataSource.getRepository(Price);
   const marketRepository = dataSource.getRepository(Market);
-  const marketPriceRepository = dataSource.getRepository(MarketPrice);
   const transactionRepository = dataSource.getRepository(Transaction);
 
   const app = express();
@@ -42,7 +43,8 @@ const startServer = async () => {
       } else if (
         origin &&
         (/^https?:\/\/([a-zA-Z0-9-]+\.)*foil\.xyz$/.test(origin) ||
-          /^https?:\/\/localhost(:\d+)?$/.test(origin)) // so noah can test against prod locally
+          /^https?:\/\/localhost(:\d+)?$/.test(origin) || // local testing
+          /^https?:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/.test(origin)) //staging sites
       ) {
         callback(null, true);
       } else {
@@ -60,51 +62,51 @@ const startServer = async () => {
 
   // Get market price data for rendering candlestick/boxplot charts filtered by contractId
   app.get("/prices/chart-data", async (req, res) => {
-    const { contractId, epochId } = req.query;
+    const { contractId, epochId, timeWindow } = req.query;
 
-    if (typeof contractId !== "string") {
-      return res.status(400).json({ error: "Invalid contractId" });
+    if (
+      typeof contractId !== "string" ||
+      typeof epochId !== "string" ||
+      typeof timeWindow !== "string"
+    ) {
+      return res.status(400).json({ error: "Invalid request parameters" });
     }
     const [chainId, address] = contractId.split(":");
 
     try {
-      const marketPrices = await marketPriceRepository
-        .createQueryBuilder("marketPrice")
-        .innerJoinAndSelect("marketPrice.transaction", "transaction")
-        .innerJoinAndSelect("transaction.event", "event")
-        .innerJoinAndSelect("event.epoch", "epoch")
-        .innerJoinAndSelect("epoch.market", "market")
-        .where("market.chainId = :chainId", { chainId })
-        .andWhere("market.address = :address", { address })
-        .andWhere("epoch.epochId = :epochId", { epochId })
-        .orderBy("marketPrice.timestamp", "ASC")
-        .getMany();
+      const endTimestamp = Math.floor(Date.now() / 1000);
+      const startTimestamp = getStartTimestampFromTimeWindow(
+        timeWindow as TimeWindow
+      );
 
-      console.log("marketPrices = ", marketPrices);
+      const marketPrices = await getMarketPricesInTimeRange(
+        startTimestamp,
+        endTimestamp,
+        chainId,
+        address,
+        epochId
+      );
 
-      // Group prices by date (ignoring time)
-      const groupedPrices = marketPrices.reduce(
-        (acc, price) => {
-          const date = new Date(Number(price.timestamp) * 1000)
-            .toISOString()
-            .split("T")[0];
-          if (!acc[date]) {
-            acc[date] = [];
-          }
-          price.value = formatUnits(BigInt(price.value), TOKEN_PRECISION);
-          acc[date].push(price);
-          return acc;
-        },
-        {} as Record<string, any[]>
+      const groupedPrices = groupMarketPricesByTimeWindow(
+        marketPrices,
+        timeWindow as TimeWindow
       );
 
       // Create candlestick data from grouped prices
-      const chartData = Object.entries(groupedPrices).map(([date, prices]) => {
-        const open = prices[0].value;
-        const close = prices[prices.length - 1].value;
+      const chartData = groupedPrices.map((group) => {
+        const prices = group.entities;
+        const open = prices[0]?.value || 0;
+        const close = prices[prices.length - 1]?.value || 0;
         const high = Math.max(...prices.map((p) => Number(p.value)));
         const low = Math.min(...prices.map((p) => Number(p.value)));
-        return { date, open, close, low, high };
+        return {
+          startTimestamp: group.startTimestamp,
+          endTimestamp: group.endTimestamp,
+          open,
+          close,
+          low,
+          high,
+        };
       });
       res.json(chartData);
     } catch (error) {
@@ -357,8 +359,8 @@ const startServer = async () => {
 
     try {
       const endTimestamp = Math.floor(Date.now() / 1000);
-      const startTimestamp = getStartTimestampFromVolumeWindow(
-        timeWindow as VolumeWindow
+      const startTimestamp = getStartTimestampFromTimeWindow(
+        timeWindow as TimeWindow
       );
       const transactions = await getTransactionsInTimeRange(
         startTimestamp,
@@ -368,14 +370,14 @@ const startServer = async () => {
       );
       const groupedTransactions = groupTransactionsByTimeWindow(
         transactions,
-        timeWindow as VolumeWindow
+        timeWindow as TimeWindow
       );
 
       const volume = groupedTransactions.map((group) => {
         return {
           startTimestamp: group.startTimestamp,
           endTimestamp: group.endTimestamp,
-          volume: group.transactions.reduce((sum, transaction) => {
+          volume: group.entities.reduce((sum, transaction) => {
             // Convert baseTokenDelta to BigNumber and get its absolute value
             const absBaseTokenDelta = Math.abs(
               parseFloat(

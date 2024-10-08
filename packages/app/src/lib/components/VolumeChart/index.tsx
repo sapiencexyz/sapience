@@ -20,16 +20,15 @@ import {
 } from 'recharts';
 
 import { DECIMAL_PRECISION_DISPLAY } from '~/lib/constants/constants';
-import type { VolumeChartData } from '~/lib/interfaces/interfaces';
-import { VolumeWindow } from '~/lib/interfaces/interfaces';
-import { formatAmount } from '~/lib/util/numberUtil';
+import type { VolumeChartData, TimeWindow } from '~/lib/interfaces/interfaces';
+import { formatXAxisTick, getXTicksToShow } from '~/lib/util/chartUtil';
 import { getDisplayTextForVolumeWindow } from '~/lib/util/util';
 
 dayjs.extend(utc);
 
 export type ChartProps = {
   data: VolumeChartData[];
-  activeWindow: VolumeWindow;
+  activeWindow: TimeWindow;
   color?: string | undefined;
   height?: number | undefined;
 } & React.HTMLAttributes<HTMLDivElement>;
@@ -121,35 +120,6 @@ const VolumeChart = ({ data, color = '#56B2A4', activeWindow }: ChartProps) => {
     return <CustomBar x={x} y={y} width={width} height={height} fill={color} />;
   };
 
-  const formatXAxis = (timestamp: number) => {
-    const date = dayjs(timestamp);
-    if (activeWindow === VolumeWindow.D || activeWindow === VolumeWindow.H) {
-      // For daily or hourly view, return the time
-      return date.format('hh:mm A');
-    }
-    // For other views, return the date
-    return date.format('MMM DD');
-  };
-
-  const getXTicksToShow = (data: VolumeChartData[]) => {
-    if (activeWindow === VolumeWindow.W) {
-      // For weekly view, show only one tick per day
-      const uniqueDays = new Set();
-      return data
-        .filter((item) => {
-          const day = dayjs(item.endTimestamp).startOf('day').valueOf();
-          if (!uniqueDays.has(day)) {
-            uniqueDays.add(day);
-            return true;
-          }
-          return false;
-        })
-        .map((item) => item.endTimestamp);
-    }
-    // For other views, show all ticks
-    return undefined;
-  };
-
   return (
     <Flex flex={1} position="relative">
       <Box
@@ -197,8 +167,10 @@ const VolumeChart = ({ data, color = '#56B2A4', activeWindow }: ChartProps) => {
             dataKey="endTimestamp"
             axisLine={false}
             tickLine={false}
-            tickFormatter={formatXAxis}
-            ticks={getXTicksToShow(data)}
+            tickFormatter={(timestamp) =>
+              formatXAxisTick(timestamp, activeWindow)
+            }
+            ticks={getXTicksToShow(data, activeWindow)}
             minTickGap={10}
           />
           <Tooltip

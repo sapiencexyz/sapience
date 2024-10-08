@@ -5,8 +5,6 @@ pragma solidity >=0.8.2 <0.9.0;
 import "./FullMath.sol";
 import "./FixedPoint96.sol";
 
-import "forge-std/console2.sol";
-
 /// @title Liquidity amount functions
 /// @notice Provides functions for computing liquidity amounts from token amounts and prices
 library LiquidityAmounts {

@@ -13,8 +13,6 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {Errors} from "../../src/contracts/storage/Errors.sol";
 import {Position} from "../../src/contracts/storage/Position.sol";
 
-import "forge-std/console2.sol";
-
 contract TradeViews is TestTrade {
     using Cannon for Vm;
     using DecimalMath for uint256;
@@ -103,8 +101,8 @@ contract TradeViews is TestTrade {
         int256 positionSize = -1 ether;
         uint256 price = foil.getReferencePrice(epochId);
 
-        uint256 deltaPrice = maxPriceD18.mulDecimal(oneMinusFee) -
-            price.mulDecimal(onePlusFee);
+        uint256 deltaPrice = maxPriceD18.mulDecimal(onePlusFee) -
+            price.mulDecimal(oneMinusFee);
         uint256 expectedCollateral = (positionSize * -1).toUint().mulDecimal(
             deltaPrice
         );

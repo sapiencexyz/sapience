@@ -19,8 +19,6 @@ import {IFoilStructs} from "../../src/contracts/interfaces/IFoilStructs.sol";
 import {MigrationMathUtils} from "../../src/contracts/external/univ3/MigrationMathUtils.sol";
 import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
 
-import "forge-std/console2.sol";
-
 contract SettleTradeTest is TestTrade {
     using Cannon for Vm;
     using DecimalMath for uint256;
@@ -115,6 +113,7 @@ contract SettleTradeTest is TestTrade {
     {
         settleAndSucced(-1 ether);
     }
+
     function settleAndSucced(int256 initialPositionSize) internal {
         uint256 trader1InitialBalance = collateralAsset.balanceOf(trader1);
 

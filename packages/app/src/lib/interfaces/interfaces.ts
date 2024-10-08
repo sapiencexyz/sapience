@@ -40,7 +40,7 @@ export interface EpochParams {
   uniswapQuoter: `0x${string}`;
   uniswapSwapRouter: `0x${string}`;
 }
-export enum VolumeWindow {
+export enum TimeWindow {
   H = '1H',
   D = '1D',
   W = '1W',
@@ -58,4 +58,13 @@ export interface VolumeChartData {
   startTimestamp: number;
   endTimestamp: number;
   volume: number;
+}
+
+export interface PriceChartData {
+  startTimestamp: number;
+  endTimestamp: number;
+  high: number;
+  low: number;
+  open: number;
+  close: number;
 }

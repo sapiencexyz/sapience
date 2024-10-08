@@ -11,8 +11,6 @@ import {TestEpoch} from "./helpers/TestEpoch.sol";
 import {TestUser} from "./helpers/TestUser.sol";
 import {DecimalPrice} from "../src/contracts/libraries/DecimalPrice.sol";
 
-import "forge-std/console2.sol";
-
 contract UmaSettleMarket is TestEpoch {
     using Cannon for Vm;
 

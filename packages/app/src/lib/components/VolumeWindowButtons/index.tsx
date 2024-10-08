@@ -2,18 +2,18 @@ import { Button, ButtonGroup } from '@chakra-ui/react';
 import type React from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 
-import { VolumeWindow } from '~/lib/interfaces/interfaces';
+import { TimeWindow } from '~/lib/interfaces/interfaces';
 
 interface VolumeWindowSelectorProps {
-  setSelectedWindow: Dispatch<SetStateAction<VolumeWindow>>;
-  selectedWindow: VolumeWindow;
+  setSelectedWindow: Dispatch<SetStateAction<TimeWindow>>;
+  selectedWindow: TimeWindow;
 }
 
 const VolumeWindowSelector: React.FC<VolumeWindowSelectorProps> = ({
   setSelectedWindow,
   selectedWindow,
 }) => {
-  const handleSelect = (window: VolumeWindow) => {
+  const handleSelect = (window: TimeWindow) => {
     setSelectedWindow(window);
   };
 
@@ -25,7 +25,7 @@ const VolumeWindowSelector: React.FC<VolumeWindowSelectorProps> = ({
       borderRadius="full"
       bg="gray.100"
     >
-      {Object.values(VolumeWindow).map((window) => (
+      {Object.values(TimeWindow).map((window) => (
         <Button
           key={window}
           onClick={() => handleSelect(window)}

@@ -89,7 +89,7 @@ export interface ContractDeployment {
   abi: Abi;
 }
 
-export enum VolumeWindow {
+export enum TimeWindow {
   H = "1H",
   D = "1D",
   W = "1W",

@@ -11,138 +11,92 @@ import {
   Button,
   FormErrorMessage,
 } from '@chakra-ui/react';
-import Quoter from '@uniswap/v3-periphery/artifacts/contracts/lens/Quoter.sol/Quoter.json';
 import type { Dispatch, SetStateAction } from 'react';
-import { useContext, useEffect, useMemo, useState } from 'react';
-import type { ReadContractErrorType } from 'viem';
-import { formatUnits, parseUnits } from 'viem';
-import { useReadContract } from 'wagmi';
+import { useEffect, useState } from 'react';
 
-import { MarketContext } from '../../context/MarketProvider';
-import { DECIMAL_PRECISION_DISPLAY } from '~/lib/constants/constants';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
 
 interface Props {
-  nftId: number;
-  setSize: Dispatch<SetStateAction<number>>;
-  positionData: FoilPosition;
-  originalPositionSize: number;
-  isLong: boolean;
+  nftId?: number;
+  setSize: Dispatch<SetStateAction<bigint>>;
+  positionData?: FoilPosition;
+  isLong?: boolean;
   error?: string;
+  label?: string;
+  defaultToGas?: boolean; // New prop
 }
 
 const SizeInput: React.FC<Props> = ({
   nftId,
   setSize,
   positionData,
-  originalPositionSize,
-  isLong,
+  isLong = true,
   error,
+  label = 'Size',
+  defaultToGas = true,
 }) => {
-  const {
-    collateralAssetTicker,
-    pool,
-    epochParams,
-    collateralAssetDecimals,
-    chainId,
-  } = useContext(MarketContext);
-  const [collateralChange, setCollateralChange] = useState<number>(0);
-  const [sizeChange, setSizeChange] = useState<number>(0);
-  const [isGgasInput, setIsGgasInput] = useState(true);
-
-  const refPrice = pool?.token0Price.toSignificant(3);
-  const isEdit = nftId > 0;
+  const [sizeInput, setSizeInput] = useState<string>('0');
+  const [isGasInput, setIsGasInput] = useState(defaultToGas);
 
   useEffect(() => {
     handleSizeChange('0');
   }, [nftId, positionData]);
 
   useEffect(() => {
-    handleSizeChange(sizeChange.toString());
+    handleSizeChange(sizeInput);
   }, [isLong]);
 
-  const handleUpdateInputType = () => setIsGgasInput(!isGgasInput);
+  const handleUpdateInputType = () => {
+    const wasGasInput = isGasInput;
+    setIsGasInput(!wasGasInput);
 
-  const longQuoteArgs = [
-    pool?.token1.address, // tokenIn -> GWeiToken/QuoteToken
-    pool?.token0.address, // tokenOut -> GasToken/BaseToken
-    pool?.fee,
-    parseUnits(`${sizeChange}`, collateralAssetDecimals),
-    0,
-  ];
-  const shortQuoteArgs = [
-    pool?.token0.address, // tokenIn -> GasToken/BaseToken
-    pool?.token1.address, // tokenOut -> GWeiToken/QuoteToken
-    pool?.fee,
-    parseUnits(`${sizeChange}`, collateralAssetDecimals),
-    0,
-  ];
-  const quoteArgs = isLong ? longQuoteArgs : shortQuoteArgs;
+    if (sizeInput !== '') {
+      const currentValue = parseFloat(sizeInput);
+      const newValue = wasGasInput
+        ? currentValue / 1e9 // Convert from gas to Ggas
+        : currentValue * 1e9; // Convert from Ggas to gas
 
-  const { data: quotePriceData } = useReadContract({
-    abi: Quoter.abi,
-    address: epochParams.uniswapQuoter,
-    functionName: isLong ? 'quoteExactOutputSingle' : 'quoteExactInputSingle',
-    args: quoteArgs,
-    chainId,
-    query: {
-      enabled: !!sizeChange && !!pool,
-    },
-  }) as { data: bigint | undefined; error: ReadContractErrorType | null };
-
-  const formattedQuotePrice = useMemo(() => {
-    if (!quotePriceData) return '';
-    const rawNumber = formatUnits(quotePriceData, collateralAssetDecimals);
-    return Number(rawNumber).toFixed(DECIMAL_PRECISION_DISPLAY);
-  }, [quotePriceData, collateralAssetDecimals]);
-
-  /**
-   * Update size and collateralChange based on the new size input
-   * @param newVal - new value of the size input
-   */
-  const handleSizeChange = (newVal: string) => {
-    if (!refPrice) return;
-    const newSizeChange = parseFloat(newVal || '0');
-    setSizeChange(newSizeChange);
-    const sign = isLong ? 1 : -1;
-    setSize(originalPositionSize + sign * newSizeChange);
-    const newCollateral = parseFloat(`${newSizeChange / Number(refPrice)}`);
-    setCollateralChange(newCollateral);
+      // Format the new value to avoid scientific notation
+      const formattedValue = newValue.toLocaleString('fullwide', {
+        useGrouping: false,
+        maximumFractionDigits: 20,
+      });
+      setSizeInput(formattedValue);
+    }
   };
 
-  /**
-   * Update size and collateralChange based on the new collateralChange input
-   * @param newVal - new value of the collateralChange input
-   */
-  const handleCollateralChange = (newVal: string) => {
-    if (!refPrice) return;
-    const newCollateral = parseFloat(newVal || '0');
-    setCollateralChange(newCollateral);
-    const newSizeChange = parseFloat(`${newCollateral * Number(refPrice)}`);
-    setSizeChange(newSizeChange);
-    const sign = isLong ? 1 : -1;
-    setSize(originalPositionSize + sign * newSizeChange);
+  const handleSizeChange = (newVal: string) => {
+    const numberPattern = /^(0|[1-9]\d*)(\.\d*)?$/;
+
+    if (newVal === '' || numberPattern.test(newVal)) {
+      setSizeInput(newVal);
+      const newSize = newVal === '' ? 0 : parseFloat(newVal);
+      const sizeInGas = isGasInput
+        ? BigInt(Math.floor(newSize))
+        : BigInt(Math.floor(newSize * 1e9));
+      const sign = isLong ? BigInt(1) : BigInt(-1);
+      setSize(sign * sizeInGas);
+    }
   };
 
   return (
     <Box mb={4}>
       <FormControl mb={4} isInvalid={!!error}>
-        <FormLabel>Size {isEdit ? 'Change' : ''}</FormLabel>
+        <FormLabel>
+          {label} {nftId && nftId > 0 ? 'Change' : ''}
+        </FormLabel>
         <InputGroup>
           <Input
-            borderRight="none"
-            value={isGgasInput ? Number(sizeChange) : Number(collateralChange)}
-            type="number"
+            value={sizeInput}
+            type="text"
+            inputMode="decimal"
             min={0}
             step="any"
             onWheel={(e) => e.currentTarget.blur()}
-            onChange={(e) =>
-              isGgasInput
-                ? handleSizeChange(e.target.value)
-                : handleCollateralChange(e.target.value)
-            }
+            onChange={(e) => handleSizeChange(e.target.value)}
+            borderRight="none"
           />
-          <InputRightAddon bg="none">
+          <InputRightAddon bg="none" px={1}>
             <Button
               px={3}
               h="1.75rem"
@@ -150,24 +104,11 @@ const SizeInput: React.FC<Props> = ({
               onClick={handleUpdateInputType}
               rightIcon={<ArrowUpDownIcon h={2.5} />}
             >
-              {isGgasInput ? 'Ggas' : collateralAssetTicker}
+              {isGasInput ? 'gas' : 'Ggas'}
             </Button>
           </InputRightAddon>
         </InputGroup>
         {error && <FormErrorMessage>{error}</FormErrorMessage>}
-      </FormControl>
-      <FormControl>
-        <InputGroup>
-          <Input
-            readOnly
-            value={isGgasInput ? collateralChange : sizeChange}
-            bg="blackAlpha.50"
-            type="number"
-          />
-          <InputRightAddon>
-            {isGgasInput ? collateralAssetTicker : 'Ggas'}
-          </InputRightAddon>
-        </InputGroup>
       </FormControl>
     </Box>
   );
