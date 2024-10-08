@@ -11,6 +11,9 @@ import { ContractDeployment } from "src/interfaces/interfaces";
 import { Epoch } from "src/entity/Epoch";
 import dataSource from "src/db";
 import { mainnet, sepolia, hardhat } from "viem/chains";
+import { Market } from "src/entity/Market";
+import { EpochParams } from "src/entity/EpochParams";
+import { get } from "http";
 
 if (require.main === module) {
   // Get the RPC URL and timestamp from the command line arguments
@@ -194,20 +197,24 @@ export async function getBlockRanges(
     mainnetPublicClient,
     startTimestamp
   );
-  console.log("Got gas start. Getting gas end...");
+  console.log(`Got gas start: ${gasStart.number}. Getting gas end...`);
 
   const gasEnd =
     (await getBlockByTimestamp(mainnetPublicClient, endTimestamp)) ||
     (await mainnetPublicClient.getBlock());
-  console.log("Got gas end.  Getting market start....");
+  console.log(`Got gas end:  ${gasEnd.number}.  Getting market start....`);
 
   const marketStart = await getBlockByTimestamp(publicClient, startTimestamp);
-  console.log("Got market start. Getting market end....");
+  console.log(
+    `Got market start: ${marketStart.number}. Getting market end....`
+  );
 
   const marketEnd =
     (await getBlockByTimestamp(publicClient, endTimestamp)) ||
     (await publicClient.getBlock());
-  console.log("Finished getting block ranges.");
+  console.log(
+    `Got market end: ${marketEnd.number}. Finished getting block ranges.`
+  );
 
   return {
     gasStart: gasStart.number,
@@ -216,3 +223,90 @@ export async function getBlockRanges(
     marketEnd: marketEnd.number,
   };
 }
+
+export const createOrUpdateMarketFromContract = async (
+  client: PublicClient,
+  contractDeployment: ContractDeployment,
+  chainId: number
+) => {
+  const marketRepository = dataSource.getRepository(Market);
+  // get market and epoch from contract
+  const marketReadResult: any = await client.readContract({
+    address: contractDeployment.address as `0x${string}`,
+    abi: contractDeployment.abi,
+    functionName: "getMarket",
+  });
+  console.log("marketReadResult", marketReadResult);
+
+  // check if market already exists in db
+  let existingMarket = await marketRepository.findOne({
+    where: { address: contractDeployment.address, chainId },
+    relations: ["epochs"],
+  });
+  const updatedMarket = existingMarket || new Market();
+
+  // update market params appropriately
+  updatedMarket.address = contractDeployment.address;
+  updatedMarket.owner = marketReadResult[0];
+  updatedMarket.collateralAsset = marketReadResult[1];
+  updatedMarket.chainId = chainId;
+  const epochParamsRaw = marketReadResult[2];
+  const marketEpochParams: EpochParams = {
+    ...epochParamsRaw,
+    assertionLiveness: epochParamsRaw.assertionLiveness.toString(),
+    bondAmount: epochParamsRaw.bondAmount.toString(),
+  };
+  updatedMarket.epochParams = marketEpochParams;
+  await marketRepository.save(updatedMarket);
+  return updatedMarket;
+};
+
+export const createOrUpdateEpochFromContract = async (
+  client: PublicClient,
+  contractDeployment: ContractDeployment,
+  epoch: number,
+  market: Market,
+  getLatestEpoch?: boolean
+) => {
+  const epochRepository = dataSource.getRepository(Epoch);
+
+  const functionName = getLatestEpoch ? "getLatestEpoch" : "getEpoch";
+  const args = getLatestEpoch ? [] : [epoch];
+
+  // get epoch from contract
+  const epochReadResult: any = await client.readContract({
+    address: contractDeployment.address as `0x${string}`,
+    abi: contractDeployment.abi,
+    functionName,
+    args,
+  });
+  console.log("epochReadResult", epochReadResult);
+  const epochId = getLatestEpoch ? Number(epochReadResult[0]) : epoch;
+
+  // check if epoch already exists in db
+  let existingEpoch = await epochRepository.findOne({
+    where: {
+      market: { address: contractDeployment.address },
+      epochId,
+    },
+  });
+  const updatedEpoch = existingEpoch || new Epoch();
+
+  const idxAdjustment = getLatestEpoch ? 1 : 0; // getLatestEpoch returns and extra param at 0 index
+
+  updatedEpoch.epochId = epochId;
+  updatedEpoch.startTimestamp = epochReadResult[0 + idxAdjustment].toString();
+  updatedEpoch.endTimestamp = epochReadResult[1 + idxAdjustment].toString();
+  updatedEpoch.settled = epochReadResult[7 + idxAdjustment];
+  updatedEpoch.settlementPriceD18 =
+    epochReadResult[8 + idxAdjustment].toString();
+  const epochParamsRaw = epochReadResult[9 + idxAdjustment];
+  const epochParams: EpochParams = {
+    ...epochParamsRaw,
+    assertionLiveness: epochParamsRaw.assertionLiveness.toString(),
+    bondAmount: epochParamsRaw.bondAmount.toString(),
+  };
+  updatedEpoch.market = market;
+  updatedEpoch.epochParams = epochParams;
+  await epochRepository.save(updatedEpoch);
+};

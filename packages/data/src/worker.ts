@@ -7,12 +7,15 @@ import { Market } from "./entity/Market";
 import { Epoch } from "./entity/Epoch";
 import {
   cannonPublicClient,
+  createOrUpdateEpochFromContract,
+  createOrUpdateMarketFromContract,
   getBlockRanges,
   getTimestampsForReindex,
   mainnetPublicClient,
   sepoliaPublicClient,
 } from "./util/reindexUtil";
 import { ContractDeployment } from "./interfaces/interfaces";
+import { EpochParams } from "./entity/EpochParams";
 
 let FoilLocal: ContractDeployment | undefined;
 let FoilSepolia: ContractDeployment | undefined;
@@ -29,56 +32,42 @@ try {
   console.warn("FoilSepolia not available");
 }
 
-// TODO: Get this data from smart contract queries
+const MARKETS = [
+  {
+    name: "LOCAL",
+    deployment: FoilLocal,
+    chainId: hardhat.id,
+    publicClient: cannonPublicClient,
+  },
+  {
+    name: "SEPOLIA",
+    deployment: FoilSepolia,
+    chainId: sepolia.id,
+    publicClient: sepoliaPublicClient,
+  },
+  {
+    name: "SEPOLIA-1",
+    deployment: {
+      address: "0xfb17d7f02f4d29d900838f80605091e3778e38ee",
+      abi: FoilSepolia?.abi || ({} as Abi),
+    },
+    chainId: sepolia.id,
+    publicClient: sepoliaPublicClient,
+  },
+];
+
 async function initializeMarkets() {
   await initializeDataSource();
-  const marketRepository = dataSource.getRepository(Market);
-  const epochRepository = dataSource.getRepository(Epoch);
-
-  // Helper function to create or find epoch
-  async function createOrFindEpoch(market: Market) {
-    let epoch = await epochRepository.findOne({
-      where: { market: { id: market.id }, epochId: 1 },
-    });
-
-    if (!epoch) {
-      epoch = new Epoch();
-      epoch.epochId = 1;
-      epoch.market = market;
-      await epochRepository.save(epoch);
-    }
-
-    return epoch;
-  }
-
-  // LOCAL
-  if (FoilLocal) {
-    let localMarket = await marketRepository.findOne({
-      where: { address: FoilLocal.address, chainId: hardhat.id },
-      relations: ["epochs"],
-    });
-    if (!localMarket) {
-      localMarket = new Market();
-      localMarket.address = FoilLocal.address;
-      localMarket.chainId = hardhat.id;
-      localMarket = await marketRepository.save(localMarket);
-    }
-    await createOrFindEpoch(localMarket);
-  }
-
-  // SEPOLIA
-  if (FoilSepolia) {
-    let sepoliaMarket = await marketRepository.findOne({
-      where: { address: FoilSepolia.address, chainId: sepolia.id },
-      relations: ["epochs"],
-    });
-    if (!sepoliaMarket) {
-      sepoliaMarket = new Market();
-      sepoliaMarket.address = FoilSepolia.address;
-      sepoliaMarket.chainId = sepolia.id;
-      sepoliaMarket = await marketRepository.save(sepoliaMarket);
-    }
-    await createOrFindEpoch(sepoliaMarket);
+  // TODO: optimize with promise.all
+  for (const marketConfig of MARKETS) {
+    const { deployment, chainId, publicClient } = marketConfig;
+    if (!deployment) continue;
+    const market = await createOrUpdateMarketFromContract(
+      publicClient,
+      deployment,
+      chainId
+    );
+    await createOrUpdateEpochFromContract(publicClient, deployment, 1, market);
   }
 }
 
@@ -96,6 +85,29 @@ export async function reindexNetwork(
     return;
   }
   await initializeDataSource();
+
+  const market = await createOrUpdateMarketFromContract(
+    client,
+    contractDeployment,
+    chainId
+  );
+
+  if (epoch) {
+    await createOrUpdateEpochFromContract(
+      client,
+      contractDeployment,
+      epoch,
+      market
+    );
+  } else {
+    await createOrUpdateEpochFromContract(
+      client,
+      contractDeployment,
+      0,
+      market,
+      true
+    );
+  }
 
   //  check for hardcoded timestamps
   let startTimestamp: number | null | undefined = startTime;
@@ -157,25 +169,19 @@ export async function reindexNetwork(
 }
 
 if (process.argv.length < 3) {
+  console.log("initializing markets...");
   initializeMarkets().then(() => {
-    let jobs = [];
+    const jobs = [];
 
-    if (FoilSepolia) {
-      jobs.push(
-        indexBaseFeePerGas(
-          mainnetPublicClient,
-          sepolia.id,
-          FoilSepolia.address
-        ),
-        indexMarketEvents(sepoliaPublicClient, FoilSepolia)
-      );
-    }
+    for (const marketConfig of MARKETS) {
+      const { deployment, chainId, publicClient } = marketConfig;
 
-    if (process.env.NODE_ENV !== "production" && FoilLocal) {
-      jobs.push(
-        indexBaseFeePerGas(mainnetPublicClient, hardhat.id, FoilLocal.address),
-        indexMarketEvents(cannonPublicClient, FoilLocal)
-      );
+      if (deployment && process.env.NODE_ENV !== "production") {
+        jobs.push(
+          indexBaseFeePerGas(mainnetPublicClient, chainId, deployment.address),
+          indexMarketEvents(publicClient, deployment)
+        );
+      }
     }
 
     if (jobs.length > 0) {
@@ -183,19 +189,37 @@ if (process.argv.length < 3) {
         console.error("Error running processes in parallel:", error);
       });
     } else {
-      console.warn(
-        "No jobs to run. Make sure FoilLocal or FoilSepolia are available."
-      );
+      console.warn("No jobs to run. Make sure deployments are available.");
     }
   });
 } else {
   const args = process.argv.slice(2);
 
-  if (args[0] === "reindex-testnet") {
-    console.log("Reindexing Testnet!");
-    reindexNetwork(sepoliaPublicClient, FoilSepolia, sepolia.id);
-  } else if (args[0] === "reindex-local") {
-    console.log("Reindexing Local!");
-    reindexNetwork(cannonPublicClient, FoilLocal, hardhat.id);
+  if (args[0] === "reindex") {
+    const targetMarketName = args[1]?.toUpperCase();
+    // additional optional args for reindexing
+    const epoch = args[2] ? Number(args[2]) : undefined;
+    const startTime = args[3] ? Number(args[3]) : undefined;
+    const endTime = args[4] ? Number(args[4]) : undefined;
+
+    const marketConfig = MARKETS.find(
+      (market) => market.name === targetMarketName
+    );
+
+    if (marketConfig && marketConfig.deployment) {
+      console.log(`Reindexing ${marketConfig.name} network!`);
+      reindexNetwork(
+        marketConfig.publicClient,
+        marketConfig.deployment,
+        marketConfig.chainId,
+        epoch,
+        startTime,
+        endTime
+      );
+    } else {
+      console.error(
+        `Market ${targetMarketName} not found or deployment missing.`
+      );
+    }
   }
 }

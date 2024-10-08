@@ -184,7 +184,8 @@ const handleEventUpsert = async (
     market = await createOrUpdateMarketFromEvent(
       marketCreatedArgs,
       chainId,
-      address
+      address,
+      market
     );
   }
 
@@ -278,7 +279,7 @@ const createOrUpdateMarketFromEvent = async (
   eventArgs: MarketCreatedUpdatedEventLog,
   chainId: number,
   address: string,
-  originalMarket?: Market
+  originalMarket?: Market | null
 ) => {
   const marketRepository = dataSource.getRepository(Market);
 
