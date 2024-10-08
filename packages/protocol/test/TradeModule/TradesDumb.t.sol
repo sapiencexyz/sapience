@@ -94,6 +94,8 @@ contract TradePositionDumb is TestTrade {
 
     function test_create_Long() public {
         int256 positionSize = 1 ether;
+        StateData memory initialStateData;
+        fillCollateralStateData(trader1, initialStateData);
 
         vm.startPrank(trader1);
         // quote and open a long
@@ -105,7 +107,7 @@ contract TradePositionDumb is TestTrade {
         uint256 positionId = foil.createTraderPosition(
             epochId,
             positionSize,
-            requiredCollateral * 2,
+            requiredCollateral + 2,
             block.timestamp + 30 minutes
         );
         vm.stopPrank();
@@ -119,6 +121,10 @@ contract TradePositionDumb is TestTrade {
             1 ether
         );
         expectedStateData.borrowedVGas = 0;
+        expectedStateData.depositedCollateralAmount = requiredCollateral;
+        expectedStateData.userCollateral =
+            initialStateData.userCollateral -
+            requiredCollateral;
 
         // Check position makes sense
         assertPosition(trader1, positionId, expectedStateData, "Create Long");
@@ -126,6 +132,8 @@ contract TradePositionDumb is TestTrade {
 
     function test_create_Short() public {
         int256 positionSize = -1 ether;
+        StateData memory initialStateData;
+        fillCollateralStateData(trader1, initialStateData);
 
         vm.startPrank(trader1);
         // quote and open a long
@@ -137,7 +145,7 @@ contract TradePositionDumb is TestTrade {
         uint256 positionId = foil.createTraderPosition(
             epochId,
             positionSize,
-            requiredCollateral * 2,
+            requiredCollateral + 2,
             block.timestamp + 30 minutes
         );
         vm.stopPrank();
@@ -151,6 +159,10 @@ contract TradePositionDumb is TestTrade {
         expectedStateData.vGasAmount = 0;
         expectedStateData.borrowedVEth = 0;
         expectedStateData.borrowedVGas = 1 ether;
+        expectedStateData.depositedCollateralAmount = requiredCollateral;
+        expectedStateData.userCollateral =
+            initialStateData.userCollateral -
+            requiredCollateral;
 
         // Check position makes sense
         assertPosition(trader1, positionId, expectedStateData, "Create Short");
@@ -178,7 +190,7 @@ contract TradePositionDumb is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             0,
-            requiredCollateral * 2,
+            requiredCollateral - 2,
             block.timestamp + 30 minutes
         );
 
@@ -224,7 +236,7 @@ contract TradePositionDumb is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             0,
-            requiredCollateral * 2,
+            requiredCollateral - 2,
             block.timestamp + 30 minutes
         );
 
@@ -262,6 +274,9 @@ contract TradePositionDumb is TestTrade {
         vm.startPrank(trader1);
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
 
+        fillCollateralStateData(trader1, initialStateData);
+        fillPositionState(positionId, initialStateData);
+
         // quote and close a long
         int256 requiredCollateral = foil.quoteModifyTraderPosition(
             positionId,
@@ -272,14 +287,11 @@ contract TradePositionDumb is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             finalPositionSize,
-            requiredCollateral * 2,
+            requiredCollateral + 2,
             block.timestamp + 30 minutes
         );
 
         vm.stopPrank();
-
-        int256 pnl = (INITIAL_PRICE_MINUS_FEE_D18.toInt() -
-            INITIAL_PRICE_PLUS_FEE_D18.toInt()).mulDecimal(initialPositionSize);
 
         expectedStateData.positionSize = finalPositionSize;
         expectedStateData.vEthAmount = 0;
@@ -288,6 +300,13 @@ contract TradePositionDumb is TestTrade {
             INITIAL_PRICE_PLUS_FEE_D18
         );
         expectedStateData.borrowedVGas = 0;
+
+        expectedStateData.depositedCollateralAmount = (initialStateData
+            .depositedCollateralAmount
+            .toInt() + requiredCollateral).toUint();
+        expectedStateData.userCollateral = (initialStateData
+            .userCollateral
+            .toInt() - requiredCollateral).toUint();
 
         // Check position makes sense
         assertPosition(
@@ -321,7 +340,7 @@ contract TradePositionDumb is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             finalPositionSize,
-            requiredCollateral * 2,
+            requiredCollateral - 2,
             block.timestamp + 30 minutes
         );
 
@@ -371,7 +390,7 @@ contract TradePositionDumb is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             finalPositionSize,
-            requiredCollateral * 2,
+            requiredCollateral + 2,
             block.timestamp + 30 minutes
         );
 
@@ -417,7 +436,7 @@ contract TradePositionDumb is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             finalPositionSize,
-            requiredCollateral * 2,
+            requiredCollateral - 2,
             block.timestamp + 30 minutes
         );
 
@@ -467,15 +486,11 @@ contract TradePositionDumb is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             finalPositionSize,
-            requiredCollateral * 2,
+            requiredCollateral + 2,
             block.timestamp + 30 minutes
         );
 
         vm.stopPrank();
-
-        uint partialVEth = initialPositionSize.toUint().mulDecimal(
-            INITIAL_PRICE_PLUS_FEE_D18
-        );
 
         expectedStateData.positionSize = finalPositionSize;
         expectedStateData.vEthAmount = INITIAL_PRICE_MINUS_FEE_D18.mulDecimal(
@@ -517,20 +532,18 @@ contract TradePositionDumb is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             finalPositionSize,
-            requiredCollateral * 2,
+            requiredCollateral + 2,
             block.timestamp + 30 minutes
         );
 
         vm.stopPrank();
 
-        uint partialVEth = (INITIAL_PRICE_PLUS_FEE_D18 -
-            INITIAL_PRICE_MINUS_FEE_D18).mulDecimal(1 ether);
         expectedStateData.positionSize = finalPositionSize;
         expectedStateData.vEthAmount = 0;
         expectedStateData.vGasAmount = (finalPositionSize).toUint();
-        expectedStateData.borrowedVEth =
-            INITIAL_PRICE_PLUS_FEE_D18.mulDecimal(1 ether) +
-            partialVEth;
+        expectedStateData.borrowedVEth = INITIAL_PRICE_PLUS_FEE_D18.mulDecimal(
+            1 ether
+        );
         expectedStateData.borrowedVGas = 0;
 
         // Check position makes sense
