@@ -60,6 +60,28 @@ const startServer = async () => {
     console.log(`Server is running on port ${PORT}`);
   });
 
+  app.get("/markets", async (req, res) => {
+    try {
+      const markets = await marketRepository.find({
+        relations: ["epochs"],
+      });
+
+      const formattedMarkets = markets.map(market => ({
+        ...market,
+        epochs: market.epochs.map(epoch => ({
+          ...epoch,
+          startTimestamp: Number(epoch.startTimestamp),
+          endTimestamp: Number(epoch.endTimestamp),
+        })),
+      }));
+
+      res.json(formattedMarkets);
+    } catch (error) {
+      console.error("Error fetching markets:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Get market price data for rendering candlestick/boxplot charts filtered by contractId
   app.get("/prices/chart-data", async (req, res) => {
     const { contractId, epochId, timeWindow } = req.query;
