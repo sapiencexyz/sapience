@@ -83,20 +83,31 @@ const handleTransferEvent = async (event: Event) => {
   const positionRepository = dataSource.getRepository(Position);
   const { from, to, tokenId } = event.logData.args;
 
-  const position = await positionRepository.findOne({
+  const existingPosition = await positionRepository.findOne({
     where: {
       positionId: Number(tokenId),
       epoch: { id: event.epoch.id },
     },
   });
 
-  if (position) {
-    position.owner = to;
-    await positionRepository.save(position);
-    console.log(`Updated owner of position ${tokenId} to ${to}`);
-  } else {
-    console.log(`Position ${tokenId} not found for Transfer event`);
+  const position = existingPosition || new Position();
+  // Fill position with minimun data to save it
+  if (!existingPosition) {
+    // Need to create an empty position
+    position.positionId = Number(tokenId);
+    position.epoch = event.epoch;
+    position.baseToken = "0";
+    position.quoteToken = "0";
+    position.borrowedBaseToken = "0";
+    position.borrowedQuoteToken = "0";
+    position.collateral = "0";
+    position.isLP = false;
+    position.transactions = position.transactions || [];
   }
+
+  position.owner = to;
+  await positionRepository.save(position);
+  console.log(`Updated owner of position ${tokenId} to ${to}`);
 };
 
 /**
