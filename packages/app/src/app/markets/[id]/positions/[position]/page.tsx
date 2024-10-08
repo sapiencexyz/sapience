@@ -135,6 +135,13 @@ const PositionPage = ({
               Quote Token: <NumberDisplay value={positionData.quoteToken} />{' '}
               wstETH
             </ListItem>
+            <ListItem>
+              Borrowed Base Token: <NumberDisplay value={positionData.borrowedBaseToken} /> Ggas
+            </ListItem>
+            <ListItem>
+              Borrowed Quote Token: <NumberDisplay value={positionData.borrowedQuoteToken} />{' '}
+              wstETH
+            </ListItem>
             {positionData.isLP ? (
               <>
                 <ListItem>
