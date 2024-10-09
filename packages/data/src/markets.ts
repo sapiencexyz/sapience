@@ -1,6 +1,6 @@
 import { mainnet, sepolia, cannon } from "viem/chains";
 import evmIndexer from "./processes/evmIndexer";
-import { Deployment, MarketDeployment } from "./interfaces/interfaces";
+import { Deployment, MarketInfo } from "./interfaces/interfaces";
 
 const safeRequire = (path: string): Deployment | null => {
   try {
@@ -10,7 +10,7 @@ const safeRequire = (path: string): Deployment | null => {
   }
 };
 
-const MARKETS: MarketDeployment[] = [
+const fullMarketList = [
   {
     name: "Development Gas Market",
     deployment: safeRequire("@/protocol/deployments/13370/Foil.json"),
@@ -27,4 +27,4 @@ const MARKETS: MarketDeployment[] = [
   },
 ];
 
-export default MARKETS;
+export default fullMarketList.filter((market) => market.deployment !== null) as MarketInfo[];

@@ -1,20 +1,11 @@
-import dataSource, { initializeDataSource, marketRepository } from "./db";
-import { PublicClient } from "viem";
+import { initializeDataSource } from "./db";
 import { indexBaseFeePerGas, indexBaseFeePerGasRange } from "./processes/chain";
 import {
   indexMarketEvents,
   indexMarketEventsRange,
   initializeMarket,
 } from "./util/marketUtil"; // Assuming you have this function
-import {
-  createOrUpdateEpochFromContract,
-  createOrUpdateMarketFromContract,
-  getBlockRanges,
-  getTimestampsForReindex,
-  mainnetPublicClient,
-} from "./util/reindexUtil";
 import MARKETS from "./markets";
-import { Market } from "./entity/Market";
 import EvmIndexer from "./processes/evmIndexer";
 
 async function main() {
@@ -30,7 +21,7 @@ async function main() {
       continue;
     }
 
-    await initializeMarket(deployment, m);
+    await initializeMarket(m);
 
     // call indexMarket(market.id)
     const indexerClient = new EvmIndexer(m.marketChainId);
@@ -71,27 +62,24 @@ main();
 // loop over blocks between deployBlockNumber and now (or end if we hit an error signfying we've caught up)
 // processBlockForMarket
 async function reindexMarket(marketAddress: string) {
-  const marketDeployment = MARKETS.find(
+  const marketInfo = MARKETS.find(
     (m) => m.deployment?.address === marketAddress
   );
-  if (!marketDeployment) {
+  if (!marketInfo) {
     throw new Error(`Market not found for address ${marketAddress}`);
   }
-  if (!marketDeployment.deployment) {
-    throw new Error(`Deployment not found for address ${marketAddress}`);
-  }
 
-  await initializeMarket(marketDeployment.deployment, marketDeployment);
-  const indexerClient = new EvmIndexer(marketDeployment.marketChainId);
+  await initializeMarket(marketInfo);
+  const indexerClient = new EvmIndexer(marketInfo.marketChainId);
   const deploymentBlockNumber =
-    marketDeployment.deployment.deployTxnBlockNumber;
+    marketInfo.deployment.deployTxnBlockNumber;
   const endBlock = await indexerClient.client.getBlockNumber();
   await indexMarketEventsRange(
     indexerClient.client,
     Number(deploymentBlockNumber),
     Number(endBlock),
     marketAddress,
-    marketDeployment.deployment.abi
+    marketInfo.deployment.abi
   );
 }
 

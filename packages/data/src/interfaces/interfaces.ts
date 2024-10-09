@@ -99,10 +99,10 @@ export enum TimeWindow {
   Y = "1Y",
 }
 
-export interface MarketDeployment {
+export interface MarketInfo {
   name: string;
   public: boolean;
-  deployment: Deployment | null;
+  deployment: Deployment;
   marketChainId: number;
   priceIndexer: EvmIndexer;
 }
