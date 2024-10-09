@@ -33,11 +33,11 @@ export class Market {
   @Column()
   chainId: number;
 
-  @Column({ type: "bigint" })
-  deployTimestamp: string;
+  @Column()
+  deployTimestamp: number;
 
-  @Column({ type: "bigint" })
-  deployTxnBlockNumber: string;
+  @Column()
+  deployTxnBlockNumber: number;
 
   @Column({ type: "varchar", nullable: true })
   owner: string | null;

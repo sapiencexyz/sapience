@@ -1,4 +1,4 @@
-import { PublicClient, createPublicClient, http, webSocket } from 'viem';
+import { Block, PublicClient, createPublicClient, http, webSocket } from 'viem';
 import { mainnet, sepolia, cannon } from 'viem/chains';
 
 const clientMap = new Map<number, PublicClient>();
@@ -58,6 +58,98 @@ export const bigintReplacer = (key: string, value: any) => {
   };
 
 
+export const getTimestampsForReindex = async (
+    client: PublicClient,
+    contractDeployment: Deployment,
+    chainId: number,
+    epochId?: number
+  ) => {
+    const now = Math.round(new Date().getTime() / 1000);
+  
+    // if no epoch is provided, get the latest one from the contract
+    if (!epochId) {
+      const latestEpoch: any = await client.readContract({
+        address: contractDeployment.address as `0x${string}`,
+        abi: contractDeployment.abi,
+        functionName: "getLatestEpoch",
+      });
+      epochId = Number(latestEpoch[0]);
+      return {
+        startTimestamp: Number(latestEpoch[1]),
+        endTimestamp: Math.min(Number(latestEpoch[2]), now),
+      };
+    }
+  
+    // get info from database
+    const epochRepository = dataSource.getRepository(Epoch);
+    const epoch = await epochRepository.findOne({
+      where: {
+        epochId,
+        market: { address: contractDeployment.address, chainId },
+      },
+      relations: ["market"],
+    });
+  
+    if (!epoch || !epoch.startTimestamp || !epoch.endTimestamp) {
+      // get info from contract
+      console.log("fetching epoch from contract to get timestamps...");
+      const epochContract: any = await client.readContract({
+        address: contractDeployment.address as `0x${string}`,
+        abi: contractDeployment.abi,
+        functionName: "getEpoch",
+        args: [`${epochId}`],
+      });
+      return {
+        startTimestamp: Number(epochContract[0]),
+        endTimestamp: Math.min(Number(epochContract[1]), now),
+      };
+    }
+  
+    return {
+      startTimestamp: Number(epoch.startTimestamp),
+      endTimestamp: Math.min(Number(epoch.endTimestamp), now),
+    };
+  };
+  
+  
+
+
+  export async function getBlockRanges(
+    startTimestamp: number,
+    endTimestamp: number,
+    publicClient: PublicClient
+  ) {  
+    console.log("Getting gas start...");
+    const gasStart = await getBlockByTimestamp(
+      mainnetPublicClient,
+      startTimestamp
+    );
+    console.log(`Got gas start: ${gasStart.number}. Getting gas end...`);
+  
+    const gasEnd =
+      (await getBlockByTimestamp(mainnetPublicClient, endTimestamp)) ||
+      (await mainnetPublicClient.getBlock());
+    console.log(`Got gas end:  ${gasEnd.number}.  Getting market start....`);
+  
+    const marketStart = await getBlockByTimestamp(publicClient, startTimestamp);
+    console.log(
+      `Got market start: ${marketStart.number}. Getting market end....`
+    );
+  
+    const marketEnd =
+      (await getBlockByTimestamp(publicClient, endTimestamp)) ||
+      (await publicClient.getBlock());
+    console.log(
+      `Got market end: ${marketEnd.number}. Finished getting block ranges.`
+    );
+  
+    return {
+      gasStart: gasStart.number,
+      gasEnd: gasEnd.number,
+      marketStart: marketStart.number,
+      marketEnd: marketEnd.number,
+    };
+  }
 
 export async function getBlockByTimestamp(
     client: ReturnType<typeof createClient>,

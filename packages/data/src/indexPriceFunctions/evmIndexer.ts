@@ -1,6 +1,7 @@
+import { IndexPrice } from "src/entity/IndexPrice";
 import { type Market } from "src/entity/Market";
-import { getProviderForChain } from "src/helpers";
-import { type PublicClient } from "viem";
+import { getBlockByTimestamp, getProviderForChain } from "src/helpers";
+import { Block, type PublicClient } from "viem";
 
 class EvmIndexer {
   public client: PublicClient;
@@ -9,28 +10,7 @@ class EvmIndexer {
     this.client = getProviderForChain(chainId);
   }
 
-  async getPriceFromBlock(blockNumber: bigint): Promise<bigint> {
-    const block = await this.client.getBlock({ blockNumber });
-    return block.baseFeePerGas || BigInt(0);
-  }
-
-  async watchBlocksForMarket(market: Market): Promise<bigint> {
-    // this calls getBaseFeePerGas
-    // we seperate out getBaseFeePerGas here because we might want to call it with a block number in the reindexing process
-    // somethingl like:  publicClient.watchBlocks({ this.getPriceFromBlock })
-    return this.getPriceFromBlock(BigInt(0));
-  }
-}
-
-export default EvmIndexer;
-
-/*
-SOMETHING LIKE THIS FOR ABOVE
-
-export const indexBaseFeePerGas = async (
-  market: Market
-) => {
-  const processBlock = async (block: Block) => {
+  async getPriceFromBlock(block: Block): Promise<bigint> {
     const value = block.baseFeePerGas || BigInt("0");
     const timestamp = block.timestamp.toString();
 
@@ -42,17 +22,44 @@ export const indexBaseFeePerGas = async (
       price.blockNumber = block.number.toString();
     }
     await indexPriceRepository.upsert(price, ["market", "timestamp"]);
-  };
+  }
 
-  // Start watching for new events
-  console.log(
-    `Watching base fee per gas on chain ID ${chainId} for market ${chainId}:${address}`
-  );
-  publicClient.watchBlocks({
-    onBlock: (block) => processBlock(block),
-    onError: (error) => console.error(error),
-  });
-};
+  async indexFromTimestamp(market: Market, timestamp: number): Promise<boolean> {
+    const initalBlock = await getBlockByTimestamp(this.client, timestamp);
+    const currentBlock = await this.client.getBlock();
 
+    for (let blockNumber = initalBlock.number; blockNumber <= currentBlock.number; blockNumber++) {
+      try {
+        console.log("Indexing gas from block ", blockNumber);
+        const block = await this.client.getBlock({
+          blockNumber: BigInt(blockNumber),
+        });
+        const value = block.baseFeePerGas || BigInt("0");
+        const timestamp = block.timestamp.toString();
+  
+        const price = new IndexPrice();
+        price.market = market;
+        price.timestamp = timestamp;
+        price.value = value.toString();
+        price.blockNumber = blockNumber.toString();
+  
+        await indexPriceRepository.upsert(price, ["market", "timestamp"]);
+      } catch (error) {
+        console.error(`Error processing block ${blockNumber}:`, error);
+      }
+    }
+    return true;
+  }
 
-*/
+  async watchBlocksForMarket(market: Market) {
+    console.log(
+      `Watching base fee per gas on chain ID ${this.client.chain?.id} for market ${market.chainId}:${market.address}`
+    );
+    this.client.watchBlocks({
+      onBlock: (block) => this.getPriceFromBlock(block),
+      onError: (error) => console.error(error),
+    });
+  }
+}
+
+export default EvmIndexer;

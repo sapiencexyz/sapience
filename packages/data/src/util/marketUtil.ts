@@ -11,12 +11,7 @@ import { Market } from "../entity/Market";
 import { Epoch } from "../entity/Epoch";
 import { Position } from "../entity/Position";
 import { Transaction, TransactionType } from "../entity/Transaction";
-import { Abi, decodeEventLog, Log, PublicClient, 
-  createPublicClient,
-  http,
-  Block,
-  Chain,
-  webSocket} from "viem";
+import { Abi, decodeEventLog, Log, PublicClient } from "viem";
 import {
   Deployment,
   EpochCreatedEventLog,
@@ -27,9 +22,6 @@ import {
   LiquidityPositionModifiedEventLog,
   TradePositionEventLog,
 } from "../interfaces/interfaces";
-import { TOKEN_PRECISION } from "../constants";
-import { mainnet, sepolia, hardhat, cannon } from "viem/chains";
-import EvmIndexer from "../indexPriceFunctions/evmIndexer";
 import { getProviderForChain, bigintReplacer } from "../helpers";
 
 export const initializeMarket = async (
@@ -43,8 +35,9 @@ export const initializeMarket = async (
   });
   const market = existingMarket || new Market();
 
-  // get market and epoch from contract
-  const marketReadResult: any = await marketInfo.priceIndexer.client.readContract({
+  const client = getProviderForChain(marketInfo.marketChainId);
+
+  const marketReadResult: any = await client.readContract({
     address: marketInfo.deployment.address as `0x${string}`,
     abi: marketInfo.deployment.abi,
     functionName: "getMarket",
@@ -53,7 +46,6 @@ export const initializeMarket = async (
 
   let updatedMarket = market;
   if (!updatedMarket) {
-    // check if market already exists in db
     let existingMarket = await marketRepository.findOne({
       where: { address: marketInfo.deployment.address, chainId: marketInfo.marketChainId },
       relations: ["epochs"],
@@ -61,12 +53,11 @@ export const initializeMarket = async (
     updatedMarket = existingMarket || new Market();
   }
 
-  // populate market data from markets file
   updatedMarket.name = marketInfo.name;
   updatedMarket.public = marketInfo.public;
   updatedMarket.address = marketInfo.deployment.address;
-  updatedMarket.deployTxnBlockNumber = marketInfo.deployment.deployTxnBlockNumber;
-  updatedMarket.deployTimestamp = marketInfo.deployment.deployTimestamp;
+  updatedMarket.deployTxnBlockNumber = Number(marketInfo.deployment.deployTxnBlockNumber);
+  updatedMarket.deployTimestamp = Number(marketInfo.deployment.deployTimestamp);
   updatedMarket.chainId = marketInfo.marketChainId;
   updatedMarket.owner = marketReadResult[0];
   updatedMarket.collateralAsset = marketReadResult[1];
@@ -127,97 +118,123 @@ export const indexMarketEvents = async (
   });
 };
 
-export const getTimestampsForReindex = async (
-  client: PublicClient,
-  contractDeployment: Deployment,
-  chainId: number,
-  epochId?: number
+export const reindexMarketEvents = async (
+  market: Market,
+  abi: Abi
 ) => {
-  const now = Math.round(new Date().getTime() / 1000);
+  await initializeDataSource();
+  const client = getProviderForChain(market.chainId);
+  
+  const startBlock = market.deployTxnBlockNumber;
+  const endBlock = await client.getBlockNumber();
 
-  // if no epoch is provided, get the latest one from the contract
-  if (!epochId) {
-    const latestEpoch: any = await client.readContract({
-      address: contractDeployment.address as `0x${string}`,
-      abi: contractDeployment.abi,
-      functionName: "getLatestEpoch",
-    });
-    epochId = Number(latestEpoch[0]);
-    return {
-      startTimestamp: Number(latestEpoch[1]),
-      endTimestamp: Math.min(Number(latestEpoch[2]), now),
-    };
-  }
-
-  // get info from database
-  const epochRepository = dataSource.getRepository(Epoch);
-  const epoch = await epochRepository.findOne({
-    where: {
-      epochId,
-      market: { address: contractDeployment.address, chainId },
-    },
-    relations: ["market"],
-  });
-
-  if (!epoch || !epoch.startTimestamp || !epoch.endTimestamp) {
-    // get info from contract
-    console.log("fetching epoch from contract to get timestamps...");
-    const epochContract: any = await client.readContract({
-      address: contractDeployment.address as `0x${string}`,
-      abi: contractDeployment.abi,
-      functionName: "getEpoch",
-      args: [`${epochId}`],
-    });
-    return {
-      startTimestamp: Number(epochContract[0]),
-      endTimestamp: Math.min(Number(epochContract[1]), now),
-    };
-  }
-
-  return {
-    startTimestamp: Number(epoch.startTimestamp),
-    endTimestamp: Math.min(Number(epoch.endTimestamp), now),
-  };
-};
-
-export async function getBlockRanges(
-  startTimestamp: number,
-  endTimestamp: number,
-  publicClient: PublicClient
-) {
-  // TODO: wrap these in a promise.all once rate limiting is resolved
-
-  console.log("Getting gas start...");
-  const gasStart = await getBlockByTimestamp(
-    mainnetPublicClient,
-    startTimestamp
-  );
-  console.log(`Got gas start: ${gasStart.number}. Getting gas end...`);
-
-  const gasEnd =
-    (await getBlockByTimestamp(mainnetPublicClient, endTimestamp)) ||
-    (await mainnetPublicClient.getBlock());
-  console.log(`Got gas end:  ${gasEnd.number}.  Getting market start....`);
-
-  const marketStart = await getBlockByTimestamp(publicClient, startTimestamp);
-  console.log(
-    `Got market start: ${marketStart.number}. Getting market end....`
-  );
-
-  const marketEnd =
-    (await getBlockByTimestamp(publicClient, endTimestamp)) ||
-    (await publicClient.getBlock());
-  console.log(
-    `Got market end: ${marketEnd.number}. Finished getting block ranges.`
-  );
-
-  return {
-    gasStart: gasStart.number,
-    gasEnd: gasEnd.number,
-    marketStart: marketStart.number,
-    marketEnd: marketEnd.number,
-  };
+  await indexMarketEventsRange(client, startBlock, Number(endBlock), market.address, abi);
 }
+
+
+/*
+// FOR REFERENCE, MAYBE DELETE
+
+export async function reindexNetwork(
+  client: PublicClient,
+  contractDeployment: ContractDeployment | undefined,
+  chainId: number,
+  epoch?: number,
+  startTime?: number,
+  endTime?: number
+) {
+  if (!contractDeployment) {
+    console.error(`Deployment package not available. Cannot reindex network.`);
+    return;
+  }
+  await initializeDataSource();
+
+  const market = await createOrUpdateMarketFromContract(
+    client,
+    contractDeployment,
+    chainId
+  );
+
+  if (epoch) {
+    await createOrUpdateEpochFromContract(
+      client,
+      contractDeployment,
+      epoch,
+      market
+    );
+  } else {
+    await createOrUpdateEpochFromContract(
+      client,
+      contractDeployment,
+      0,
+      market,
+      true
+    );
+  }
+
+  //  check for hardcoded timestamps
+  let startTimestamp: number | null | undefined = startTime;
+  let endTimestamp: number | null | undefined = endTime;
+
+  // if no start/end timestamps are provided, get them from the database or contract
+  if (!startTimestamp || !endTimestamp) {
+    const timestamps = await getTimestampsForReindex(
+      client,
+      contractDeployment,
+      chainId,
+      epoch
+    );
+    startTimestamp = timestamps.startTimestamp;
+    endTimestamp = timestamps.endTimestamp;
+  }
+
+  // if not there throw error
+  if (!startTimestamp || !endTimestamp) {
+    throw new Error("Invalid timestamps");
+  }
+
+  console.log("startTimestamp", startTimestamp);
+  console.log("endTimestamp", endTimestamp);
+
+  getBlockRanges(startTimestamp, endTimestamp, client)
+    .then(({ gasStart, gasEnd, marketStart, marketEnd }) => {
+      console.log(`Reindexing gas between blocks ${gasStart} and ${gasEnd}`);
+      console.log(
+        `Reindexing market between blocks ${marketStart} and ${marketEnd}`
+      );
+
+      Promise.all([
+        indexBaseFeePerGasRange(
+          mainnetPublicClient,
+          Number(gasStart),
+          Number(gasEnd),
+          chainId,
+          contractDeployment.address
+        ),
+        indexMarketEventsRange(
+          client,
+          Number(marketStart),
+          Number(marketEnd),
+          contractDeployment.address,
+          contractDeployment.abi
+        ),
+      ])
+        .then(() => {
+          console.log("Done!");
+        })
+        .catch((error) => {
+          console.error("An error occurred:", error);
+        });
+    })
+    .catch((error) => {
+      console.error("Error getting block ranges:", error);
+    });
+}
+*/
+
+
+
+
 
 export const createOrUpdateMarketFromContract = async (
   client: PublicClient,
