@@ -1,7 +1,7 @@
 import "reflect-metadata";
 import dataSource, { initializeDataSource } from "./db"; /// !IMPORTANT: Keep as top import to prevent issues with db initialization
 import cors from "cors";
-import { Price } from "./entity/IndexPrice";
+import { IndexPrice } from "./entity/IndexPrice";
 import { Position } from "./entity/Position";
 import { Market } from "./entity/Market";
 import express from "express";
@@ -27,7 +27,7 @@ const startServer = async () => {
   await initializeDataSource();
   const positionRepository = dataSource.getRepository(Position);
   const epochRepository = dataSource.getRepository(Epoch);
-  const priceRepository = dataSource.getRepository(Price);
+  const priceRepository = dataSource.getRepository(IndexPrice);
   const marketRepository = dataSource.getRepository(Market);
   const transactionRepository = dataSource.getRepository(Transaction);
 
@@ -67,9 +67,9 @@ const startServer = async () => {
         relations: ["epochs"],
       });
 
-      const formattedMarkets = markets.map(market => ({
+      const formattedMarkets = markets.map((market) => ({
         ...market,
-        epochs: market.epochs.map(epoch => ({
+        epochs: market.epochs.map((epoch) => ({
           ...epoch,
           startTimestamp: Number(epoch.startTimestamp),
           endTimestamp: Number(epoch.endTimestamp),

@@ -1,4 +1,4 @@
-import { initializeDataSource } from "./db";
+import dataSource, { initializeDataSource, marketRepository } from "./db";
 import { PublicClient } from "viem";
 import { indexBaseFeePerGas, indexBaseFeePerGasRange } from "./processes/chain";
 import { indexMarketEvents, indexMarketEventsRange } from "./processes/market"; // Assuming you have this function
@@ -9,52 +9,85 @@ import {
   getTimestampsForReindex,
   mainnetPublicClient,
 } from "./util/reindexUtil";
-import { ContractDeployment } from "./interfaces/interfaces";
 import MARKETS from "./markets";
-
+import { Market } from "./entity/Market";
+import EvmIndexer from "./processes/evmIndexer";
 
 async function main() {
   await initializeDataSource();
+  const indexJobs = [];
 
   // Loop over MARKETS and upsert Market data with the stuff in that file, for upsert findBy chainid and address
-    // upsert name, address, chainId, deployBlockNumber, deployTimestamp, public
-    // call getMarket to populate additional data
+  // upsert name, address, chainId, deployBlockNumber, deployTimestamp, public
+  // call getMarket to populate additional data
+  for (const m of MARKETS) {
+    const deployment = m.deployment;
+    if (!deployment) {
+      continue;
+    }
+
+    let existingMarket = await marketRepository.findOne({
+      where: { address: deployment.address, chainId: m.marketChainId },
+    });
+    const market = existingMarket || new Market();
+
+    // populate market data from markets file
+    market.name = m.name;
+    market.public = m.public;
+
+    // populate market data from contract and save to db
+    const indexerClient = new EvmIndexer(m.marketChainId);
+    await createOrUpdateMarketFromContract(
+      indexerClient.client,
+      deployment,
+      m.marketChainId,
+      market
+    );
+
+    // call indexMarket(market.id)
+    indexJobs.push(indexMarketEvents(indexerClient.client, deployment));
+    // call indexPrice(market.id)
+    const priceIndexerClient = m.priceIndexer.client;
+    indexJobs.push(
+      indexBaseFeePerGas(
+        priceIndexerClient,
+        m.marketChainId,
+        deployment.address
+      )
+    );
+  }
+  //TODO: optimize loop with promise.all
 
   // Loop over MARKETS and kick off market indexer and price indexer in a Promise, skip if market.deployment is null
-    // indexMarket(market.id)
-    // indexPrice(market.id)
+  // indexMarket(market.id)
+  // indexPrice(market.id)
 
+  await Promise.all(indexJobs);
 }
 
 main();
 
 // processBlockForMarket(market.id, Block)
-      // new epoch event and upsert an epoch to the database
-      // upsert trade, new lp event, etc.
+// new epoch event and upsert an epoch to the database
+// upsert trade, new lp event, etc.
 
 // indexMarket(market.id)
-  // get chainid/address from market entity in database
-  // start the listener
-    // listener sees new block, calls processBlockForMarket(market.id, blockNumber)
+// get chainid/address from market entity in database
+// start the listener
+// listener sees new block, calls processBlockForMarket(market.id, blockNumber)
 
 // reindexMarket(market.id)
-  // get deployBlockNumber from market entity in database
-  // get chainId/address from market entity in database
-  // loop over blocks between deployBlockNumber and now (or end if we hit an error signfying we've caught up)
-    // processBlockForMarket
-
+// get deployBlockNumber from market entity in database
+// get chainId/address from market entity in database
+// loop over blocks between deployBlockNumber and now (or end if we hit an error signfying we've caught up)
+// processBlockForMarket
 
 // indexPrice(market.id)
-  // market.priceIndexer.watchBlocks(market.chainId)
+// market.priceIndexer.watchBlocks(market.chainId)
 
 // reindexPrice(market.id)
-  // get starting block from market
-  // loop over blocks and call market.priceIndexer.getPriceFromBlock
-
-
-
-
-
+// get starting block from market
+// loop over blocks and call market.priceIndexer.getPriceFromBlock
 
 /*
 async function initializeMarkets() {

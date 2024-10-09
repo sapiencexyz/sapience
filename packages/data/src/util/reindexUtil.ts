@@ -6,14 +6,13 @@ import {
   PublicClient,
   webSocket,
 } from "viem";
-import { LOCAL_CHAIN_ID, TOKEN_PRECISION } from "../constants";
-import { ContractDeployment } from "src/interfaces/interfaces";
-import { Epoch } from "src/entity/Epoch";
-import dataSource from "src/db";
-import { mainnet, sepolia, hardhat } from "viem/chains";
-import { Market } from "src/entity/Market";
-import { EpochParams } from "src/entity/EpochParams";
-import { get } from "http";
+import { TOKEN_PRECISION } from "../constants";
+import { Deployment } from "../interfaces/interfaces";
+import { Epoch } from "../entity/Epoch";
+import dataSource, { marketRepository } from "../db";
+import { mainnet, sepolia, hardhat, cannon } from "viem/chains";
+import { Market } from "../entity/Market";
+import { EpochParams } from "../entity/EpochParams";
 
 if (require.main === module) {
   // Get the RPC URL and timestamp from the command line arguments
@@ -58,9 +57,8 @@ export const sepoliaPublicClient = createPublicClient({
     : http(),
 });
 
-hardhat.id = LOCAL_CHAIN_ID as any;
 export const cannonPublicClient = createPublicClient({
-  chain: hardhat,
+  chain: cannon,
   transport: http("http://localhost:8545"),
 });
 
@@ -134,7 +132,7 @@ async function getBlockByTimestamp(
 
 export const getTimestampsForReindex = async (
   client: PublicClient,
-  contractDeployment: ContractDeployment,
+  contractDeployment: Deployment,
   chainId: number,
   epochId?: number
 ) => {
@@ -226,10 +224,10 @@ export async function getBlockRanges(
 
 export const createOrUpdateMarketFromContract = async (
   client: PublicClient,
-  contractDeployment: ContractDeployment,
-  chainId: number
+  contractDeployment: Deployment,
+  chainId: number,
+  initialMarket?: Market
 ) => {
-  const marketRepository = dataSource.getRepository(Market);
   // get market and epoch from contract
   const marketReadResult: any = await client.readContract({
     address: contractDeployment.address as `0x${string}`,
@@ -238,18 +236,23 @@ export const createOrUpdateMarketFromContract = async (
   });
   console.log("marketReadResult", marketReadResult);
 
-  // check if market already exists in db
-  let existingMarket = await marketRepository.findOne({
-    where: { address: contractDeployment.address, chainId },
-    relations: ["epochs"],
-  });
-  const updatedMarket = existingMarket || new Market();
+  let updatedMarket = initialMarket;
+  if (!updatedMarket) {
+    // check if market already exists in db
+    let existingMarket = await marketRepository.findOne({
+      where: { address: contractDeployment.address, chainId },
+      relations: ["epochs"],
+    });
+    updatedMarket = existingMarket || new Market();
+  }
 
   // update market params appropriately
   updatedMarket.address = contractDeployment.address;
+  updatedMarket.deployTxnBlockNumber = contractDeployment.deployTxnBlockNumber;
+  updatedMarket.deployTimestamp = contractDeployment.deployTimestamp;
+  updatedMarket.chainId = chainId;
   updatedMarket.owner = marketReadResult[0];
   updatedMarket.collateralAsset = marketReadResult[1];
-  updatedMarket.chainId = chainId;
   const epochParamsRaw = marketReadResult[2];
   const marketEpochParams: EpochParams = {
     ...epochParamsRaw,
@@ -263,7 +266,7 @@ export const createOrUpdateMarketFromContract = async (
 
 export const createOrUpdateEpochFromContract = async (
   client: PublicClient,
-  contractDeployment: ContractDeployment,
+  contractDeployment: Deployment,
   epoch: number,
   market: Market,
   getLatestEpoch?: boolean

@@ -7,7 +7,7 @@ import {
   OneToMany,
 } from "typeorm";
 import { Epoch } from "./Epoch";
-import { Price } from "./IndexPrice";
+import { IndexPrice } from "./IndexPrice";
 import { EpochParams } from "./EpochParams";
 
 @Entity()
@@ -18,8 +18,8 @@ export class Market {
   })
   epochs: Epoch[];
 
-  @OneToMany(() => Price, (price) => price.market)
-  prices: Price[];
+  @OneToMany(() => IndexPrice, (price) => price.market)
+  prices: IndexPrice[];
 
   @PrimaryGeneratedColumn()
   id: number;
@@ -32,6 +32,12 @@ export class Market {
 
   @Column()
   chainId: number;
+
+  @Column({ type: "bigint" })
+  deployTimestamp: string;
+
+  @Column({ type: "bigint" })
+  deployTxnBlockNumber: string;
 
   @Column({ type: "varchar", nullable: true })
   owner: string | null;

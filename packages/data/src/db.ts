@@ -20,7 +20,15 @@ const devDataSource: DataSource = new DataSource({
   url: "postgresql://localhost",
   synchronize: true,
   logging: true,
-  entities: [IndexPrice, Position, Transaction, Event, Market, Epoch, MarketPrice],
+  entities: [
+    IndexPrice,
+    Position,
+    Transaction,
+    Event,
+    Market,
+    Epoch,
+    MarketPrice,
+  ],
 });
 
 const postgresDataSource: DataSource = new DataSource({
@@ -28,7 +36,15 @@ const postgresDataSource: DataSource = new DataSource({
   url: process.env.DATABASE_URL,
   synchronize: true,
   logging: true,
-  entities: [IndexPrice, Position, Transaction, Event, Market, Epoch, MarketPrice],
+  entities: [
+    IndexPrice,
+    Position,
+    Transaction,
+    Event,
+    Market,
+    Epoch,
+    MarketPrice,
+  ],
 });
 
 const dataSource = isProduction ? postgresDataSource : devDataSource;
@@ -46,5 +62,11 @@ export const initializeDataSource = async () => {
       });
   }
 };
+
+export const marketRepository = dataSource.getRepository(Market);
+export const epochRepository = dataSource.getRepository(Epoch);
+export const positionRepository = dataSource.getRepository(Position);
+export const transactionRepository = dataSource.getRepository(Transaction);
+export const eventRepository = dataSource.getRepository(Event);
 
 export default dataSource;

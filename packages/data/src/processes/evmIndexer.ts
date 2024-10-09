@@ -1,17 +1,32 @@
-import { createPublicClient, http, PublicClient } from "viem";
-import { mainnet, sepolia } from "viem/chains";
+import { createPublicClient, http, PublicClient, webSocket } from "viem";
+import { mainnet, sepolia, cannon } from "viem/chains";
 
 class EvmIndexer {
-  private client: PublicClient;
+  public client: PublicClient;
 
   constructor(chainId: number) {
     let chain;
+    let transport;
     switch (chainId) {
       case 1:
         chain = mainnet;
+        transport = process.env.INFURA_API_KEY
+          ? webSocket(
+              `wss://mainnet.infura.io/ws/v3/${process.env.INFURA_API_KEY}`
+            )
+          : http();
         break;
-      case 11155111:
+      case sepolia.id:
         chain = sepolia;
+        transport = process.env.INFURA_API_KEY
+          ? webSocket(
+              `wss://mainnet.infura.io/ws/v3/${process.env.INFURA_API_KEY}`
+            )
+          : http();
+        break;
+      case cannon.id:
+        chain = cannon;
+        transport = http(cannon.rpcUrls.default.http[0]);
         break;
       default:
         throw new Error(`Unsupported chain ID: ${chainId}`);
@@ -19,7 +34,7 @@ class EvmIndexer {
 
     this.client = createPublicClient({
       chain,
-      transport: http(),
+      transport,
     });
   }
 
@@ -31,7 +46,6 @@ class EvmIndexer {
   async watchBlocks(chainId: number): Promise<bigint> {
     // this calls getBaseFeePerGas
     // we seperate out getBaseFeePerGas here because we might want to call it with a block number in the reindexing process
-    
     // somethingl like:  publicClient.watchBlocks({ this.getPriceFromBlock })
   }
 }

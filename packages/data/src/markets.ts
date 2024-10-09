@@ -1,12 +1,7 @@
 import { type Abi } from "viem";
 import { mainnet, sepolia, cannon } from "viem/chains";
 import evmIndexer from "./processes/evmIndexer";
-
-interface Deployment {
-  address: string;
-  abi: Abi;
-  deployTimestamp: string;
-} 
+import { Deployment } from "./interfaces/interfaces";
 
 const safeRequire = (path: string): Deployment | null => {
   try {

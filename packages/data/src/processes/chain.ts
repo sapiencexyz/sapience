@@ -1,6 +1,6 @@
 import "tsconfig-paths/register";
 import dataSource, { initializeDataSource } from "../db";
-import { Price } from "../entity/IndexPrice";
+import { IndexPrice } from "../entity/IndexPrice";
 import { Block, PublicClient } from "viem";
 import { Market } from "src/entity/Market";
 
@@ -10,7 +10,7 @@ export const indexBaseFeePerGas = async (
   address: string
 ) => {
   await initializeDataSource();
-  const priceRepository = dataSource.getRepository(Price);
+  const priceRepository = dataSource.getRepository(IndexPrice);
   const marketRepository = dataSource.getRepository(Market);
 
   const market = await marketRepository.findOne({
@@ -27,7 +27,7 @@ export const indexBaseFeePerGas = async (
     const value = block.baseFeePerGas || BigInt("0");
     const timestamp = block.timestamp.toString();
 
-    const price = new Price();
+    const price = new IndexPrice();
     price.market = market;
     price.timestamp = timestamp;
     price.value = value.toString();
@@ -55,7 +55,7 @@ export const indexBaseFeePerGasRange = async (
   address: string
 ) => {
   await initializeDataSource();
-  const priceRepository = dataSource.getRepository(Price);
+  const priceRepository = dataSource.getRepository(IndexPrice);
   const marketRepository = dataSource.getRepository(Market);
 
   const market = await marketRepository.findOne({
@@ -76,7 +76,7 @@ export const indexBaseFeePerGasRange = async (
       const value = block.baseFeePerGas || BigInt("0");
       const timestamp = block.timestamp.toString();
 
-      const price = new Price();
+      const price = new IndexPrice();
       price.market = market;
       price.timestamp = timestamp;
       price.value = value.toString();

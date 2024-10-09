@@ -1,11 +1,16 @@
 import "tsconfig-paths/register";
-import dataSource, { initializeDataSource } from "../db";
+import dataSource, {
+  epochRepository,
+  eventRepository,
+  initializeDataSource,
+  marketRepository,
+} from "../db";
 import { Event } from "../entity/Event";
 import { Market } from "../entity/Market";
 import { Epoch } from "../entity/Epoch";
 import { Abi, decodeEventLog, Log, PublicClient } from "viem";
-import { Repository } from "typeorm";
 import {
+  Deployment,
   EpochCreatedEventLog,
   MarketCreatedUpdatedEventLog,
 } from "../interfaces/interfaces";
@@ -20,25 +25,10 @@ const bigintReplacer = (key: string, value: any) => {
 
 export const indexMarketEvents = async (
   publicClient: PublicClient,
-  Foil: { address: string; abi: Abi }
+  deployment: Deployment
 ) => {
   await initializeDataSource();
-  const eventRepository = dataSource.getRepository(Event);
-  const marketRepository = dataSource.getRepository(Market);
-  const epochRepository = dataSource.getRepository(Epoch);
   const chainId = await publicClient.getChainId();
-
-  // Ensure the market exists
-  let market = await marketRepository.findOne({
-    where: { chainId, address: Foil.address },
-  });
-  if (!market) {
-    // create market
-    market = new Market();
-    market.chainId = chainId;
-    market.address = Foil.address;
-    await marketRepository.save(market);
-  }
 
   // Process log data
   const processLogs = async (logs: Log[]) => {
@@ -58,11 +48,8 @@ export const indexMarketEvents = async (
       console.log("logData is", logData);
 
       await handleEventUpsert(
-        eventRepository,
-        marketRepository,
-        epochRepository,
         chainId,
-        Foil.address,
+        deployment.address,
         epochId,
         blockNumber,
         block.timestamp,
@@ -73,10 +60,10 @@ export const indexMarketEvents = async (
   };
 
   // Start watching for new events
-  console.log(`Watching contract events for ${Foil.address}`);
+  console.log(`Watching contract events for ${deployment.address}`);
   publicClient.watchContractEvent({
-    address: Foil.address as `0x${string}`,
-    abi: Foil.abi,
+    address: deployment.address as `0x${string}`,
+    abi: deployment.abi,
     onLogs: (logs) => processLogs(logs),
     onError: (error) => console.error(error),
   });
@@ -90,9 +77,6 @@ export const indexMarketEventsRange = async (
   contractAbi: Abi
 ) => {
   await initializeDataSource();
-  const eventRepository = dataSource.getRepository(Event);
-  const marketRepository = dataSource.getRepository(Market);
-  const epochRepository = dataSource.getRepository(Epoch);
   const chainId = await publicClient.getChainId();
 
   // Ensure the market exists
@@ -133,9 +117,6 @@ export const indexMarketEventsRange = async (
         const epochId = logData.args?.epochId || 0;
 
         await handleEventUpsert(
-          eventRepository,
-          marketRepository,
-          epochRepository,
           chainId,
           contractAddress,
           epochId,
@@ -152,9 +133,6 @@ export const indexMarketEventsRange = async (
 };
 
 const handleEventUpsert = async (
-  eventRepository: Repository<Event>,
-  marketRepository: Repository<Market>,
-  epochRepository: Repository<Epoch>,
   chainId: number,
   address: string,
   epochId: number,

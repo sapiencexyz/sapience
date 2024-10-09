@@ -84,11 +84,12 @@ export interface EpochCreatedEventLog {
   startingSqrtPriceX96: string;
 }
 
-export interface ContractDeployment {
+export interface Deployment {
   address: string;
   abi: Abi;
+  deployTimestamp: string;
+  deployTxnBlockNumber: string;
 }
-
 export enum TimeWindow {
   H = "1H",
   D = "1D",
