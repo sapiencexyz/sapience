@@ -15,6 +15,7 @@ import {Position} from "../../src/contracts/storage/Position.sol";
 
 import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import {IUniswapV3Quoter} from "../../src/contracts/interfaces/external/IUniswapV3Quoter.sol";
 
 contract TradePositionBasicFuzz is TestTrade {
     using Cannon for Vm;
@@ -45,6 +46,7 @@ contract TradePositionBasicFuzz is TestTrade {
     address tokenA;
     address tokenB;
     IUniswapV3Pool uniCastedPool;
+    IUniswapV3Quoter uniswapQuoter;
     uint256 feeRate;
     int24 EPOCH_LOWER_TICK = 16000; //5 (4.952636224061651)
     int24 EPOCH_UPPER_TICK = 29800; //20 (19.68488357413147)
@@ -78,6 +80,8 @@ contract TradePositionBasicFuzz is TestTrade {
 
         uniCastedPool = IUniswapV3Pool(pool);
         feeRate = uint256(uniCastedPool.fee()) * 1e12;
+
+        uniswapQuoter = IUniswapV3Quoter(vm.getAddress("Uniswap.Quoter"));
 
         // Add liquidity
         vm.startPrank(lp1);
@@ -257,7 +261,7 @@ contract TradePositionBasicFuzz is TestTrade {
         );
     }
 
-    function test_fuzz_modify_Short2Short(
+    function test_fuzz_modify_Short2Short_Only(
         uint256 startPosition,
         uint256 endPosition
     ) public {
@@ -265,6 +269,9 @@ contract TradePositionBasicFuzz is TestTrade {
 
         startPosition = bound(startPosition, .01 ether, 4 ether);
         endPosition = bound(endPosition, .01 ether, 4 ether);
+
+        startPosition = 1561316471298239909; // 1.5
+        endPosition = 29708930647394073; // 0.028
 
         StateData memory latestStateData;
         StateData memory expectedStateData;
@@ -278,16 +285,57 @@ contract TradePositionBasicFuzz is TestTrade {
 
         uint256 positionId;
 
+        uint256 amountIn = uniswapQuoter.quoteExactInputSingle(
+            tokenB,
+            tokenA,
+            uniCastedPool.fee(),
+            startPosition,
+            0
+        );
+
+        // IS HERE
+
+        console2.log("TEST Before 1st Trade: amountIn", amountIn);
+        console2.log("TEST Before 1st Trade: startPosition", startPosition);
+        console2.log(
+            "TEST Before 1st Trade: ratio",
+            amountIn.divDecimal(startPosition)
+        );
+
         vm.startPrank(trader1);
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
         fillCollateralStateData(trader1, latestStateData);
         fillPositionState(positionId, latestStateData);
 
+        log_positionAccounting(foil, positionId);
+
+        amountIn = uniswapQuoter.quoteExactInputSingle(
+            tokenB,
+            tokenA,
+            uniCastedPool.fee(),
+            startPosition - endPosition,
+            0
+        );
+
+        // IS HERE
+
+        console2.log("TEST After 1st Trade: amountIn", amountIn);
+        console2.log(
+            "TEST After 1st Trade: startPosition",
+            startPosition - endPosition
+        );
+        console2.log(
+            "TEST After 1st Trade: ratio",
+            amountIn.divDecimal(startPosition)
+        );
+
+        console2.log("AAAA 01");
         // quote and open a long
         int256 deltaCollateral = foil.quoteModifyTraderPosition(
             positionId,
             positionSize
         );
+        console2.log("AAAA 0");
 
         // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
@@ -303,28 +351,48 @@ contract TradePositionBasicFuzz is TestTrade {
             feeMultiplier
         );
 
-        int256 requiredCollateral = deltaCollateral +
-            latestStateData.depositedCollateralAmount.toInt();
+        console2.log("AAAA 1");
+        int256 requiredCollateral = latestStateData
+            .depositedCollateralAmount
+            .toInt() + deltaCollateral;
+        console2.log(
+            " AA >>> deltaCollateral                           ",
+            deltaCollateral
+        );
+        console2.log(
+            " AA >>> latestStateData.depositedCollateralAmount ",
+            latestStateData.depositedCollateralAmount
+        );
+        console2.log(
+            " AA >>> requiredCollateral                        ",
+            requiredCollateral
+        );
+
+        console2.log("AAAA 2");
         int256 deltaEth = (latestStateData.vEthAmount.toInt() -
             deltaPositionSize.mulDecimal(price.toInt()));
+        console2.log("AAAA 3");
 
         // Set expected state
         expectedStateData.userCollateral = (latestStateData
             .userCollateral
             .toInt() - deltaCollateral).toUint();
+        console2.log("AAAA 4");
         expectedStateData.foilCollateral = (latestStateData
             .foilCollateral
             .toInt() + deltaCollateral).toUint();
+        console2.log("AAAA 5");
 
-        expectedStateData.depositedCollateralAmount = requiredCollateral
-            .toUint();
+        expectedStateData.depositedCollateralAmount = deltaCollateral.toUint();
+        console2.log("AAAA 6");
         expectedStateData.positionSize = positionSize;
-        expectedStateData.vEthAmount = deltaEth > 0 ? deltaEth.toUint() : 0;
+        console2.log("AAAA 7");
+        expectedStateData.vEthAmount = (deltaEth * -1).toUint();
+        console2.log("AAAA 8");
         expectedStateData.vGasAmount = 0;
-        expectedStateData.borrowedVEth = deltaEth < 0
-            ? (deltaEth * -1).toUint()
-            : 0;
+        expectedStateData.borrowedVEth = 0;
         expectedStateData.borrowedVGas = uint256(positionSize * -1);
+        console2.log("AAAA 9");
 
         // Check position makes sense
         latestStateData = assertPosition(
@@ -333,6 +401,7 @@ contract TradePositionBasicFuzz is TestTrade {
             expectedStateData,
             "Short2Short"
         );
+        console2.log("AAAA 10");
     }
 
     function test_fuzz_modify_Long2Short_Skip(

@@ -9,6 +9,8 @@ import {ISwapRouter} from "../interfaces/external/ISwapRouter.sol";
 import {IUniswapV3Quoter} from "../interfaces/external/IUniswapV3Quoter.sol";
 import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
 
+import "forge-std/console2.sol";
+
 library Trade {
     using Epoch for Epoch.Data;
     using DecimalMath for uint256;
@@ -67,6 +69,7 @@ library Trade {
 
             amountOut = ISwapRouter(epoch.params.uniswapSwapRouter)
                 .exactInputSingle(swapParams);
+            console2.log("amountIn at trade (EXACT IN)", amountOut);
         }
 
         if (amountInVEth > 0) {
@@ -133,6 +136,7 @@ library Trade {
 
             amountIn = ISwapRouter(epoch.params.uniswapSwapRouter)
                 .exactOutputSingle(swapParams);
+            console2.log("amountIn at trade (EXACT OUT)", amountIn);
         }
         if (expectedAmountOutVEth > 0) {
             requiredAmountInVGas = amountIn;
