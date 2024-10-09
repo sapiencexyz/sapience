@@ -10,7 +10,7 @@ import { Transaction } from "./entity/Transaction";
 import { Epoch } from "./entity/Epoch";
 import { MarketPrice } from "./entity/MarketPrice";
 import { formatUnits } from "viem";
-import { formatDbBigInt } from "./util/dbUtil";
+import { formatDbBigInt } from "./controllers/dbUtil";
 import { TOKEN_PRECISION } from "./constants";
 import {
   getMarketPricesInTimeRange,
@@ -18,7 +18,7 @@ import {
   getTransactionsInTimeRange,
   groupMarketPricesByTimeWindow,
   groupTransactionsByTimeWindow,
-} from "./util/serviceUtil";
+} from "./serviceUtil";
 import { TimeWindow } from "./interfaces/interfaces";
 
 const PORT = 3001;

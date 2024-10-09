@@ -3,7 +3,7 @@ import {
   indexMarketEvents,
   initializeMarket,
   reindexMarketEvents,
-} from "./util/marketUtil";
+} from "./controllers/market";
 import { MARKET_INFO } from "./constants";
 import { Market } from "./entity/Market";
 

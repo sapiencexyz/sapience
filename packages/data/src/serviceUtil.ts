@@ -1,13 +1,13 @@
-import { MarketPrice } from "../entity/MarketPrice";
+import { MarketPrice } from "./entity/MarketPrice";
 import {
   ONE_DAY_MS,
   ONE_HOUR_MS,
   ONE_MINUTE_MS,
   TOKEN_PRECISION,
-} from "../constants";
-import dataSource from "../db";
-import { Transaction } from "../entity/Transaction";
-import { TimeWindow } from "../interfaces/interfaces";
+} from "./constants";
+import dataSource from "./db";
+import { Transaction } from "./entity/Transaction";
+import { TimeWindow } from "./interfaces/interfaces";
 import { formatUnits } from "viem";
 
 class EntityGroup<T> {

@@ -63,20 +63,4 @@ export class Transaction {
     nullable: true,
   })
   tradeRatioD18: string;
-
-  // AfterInsert AfterUpdate and AfterRemove to update the associated Position based on positionId
-  @AfterInsert()
-  async afterInsert() {}
-
-  @AfterUpdate()
-  afterUpdate() {
-    console.log(`TXN updated: ${this.id}`);
-    // Upsert associated MarketPrice and Position based on positionId
-  }
-
-  @AfterRemove()
-  afterRemove() {
-    console.log(`TXN removed: ${this.id}`);
-    // Delete associated MarketPrice and Position based on positionId
-  }
 }

@@ -1,5 +1,8 @@
-import { Block, PublicClient, createPublicClient, http, webSocket } from 'viem';
+import { Block, PublicClient, createPublicClient, formatUnits, http, webSocket } from 'viem';
 import { mainnet, sepolia, cannon } from 'viem/chains';
+import { TOKEN_PRECISION } from './constants';
+import { epochRepository } from './db';
+import { Deployment } from './interfaces/interfaces';
 
 const clientMap = new Map<number, PublicClient>();
 
@@ -48,8 +51,20 @@ export function getProviderForChain(chainId: number): PublicClient {
   return newClient;
 }
 
-
-
+/**
+ * Format a BigInt value from the DB to a string with 3 decimal places.
+ * @param value - a string representation of a BigInt value
+ * @returns a string representation of the value with 3 decimal places
+ */
+export const formatDbBigInt = (value: string) => {
+    if (Number(value) === 0) {
+      return "0";
+    }
+    const formatted = formatUnits(BigInt(value), TOKEN_PRECISION);
+    const number = Number(formatted);
+    return number.toFixed(4);
+  };
+  
 export const bigintReplacer = (key: string, value: any) => {
     if (typeof value === "bigint") {
       return value.toString(); // Convert BigInt to string
@@ -81,7 +96,6 @@ export const getTimestampsForReindex = async (
     }
   
     // get info from database
-    const epochRepository = dataSource.getRepository(Epoch);
     const epoch = await epochRepository.findOne({
       where: {
         epochId,
@@ -111,8 +125,6 @@ export const getTimestampsForReindex = async (
     };
   };
   
-  
-
 
   export async function getBlockRanges(
     startTimestamp: number,
@@ -152,7 +164,7 @@ export const getTimestampsForReindex = async (
   }
 
 export async function getBlockByTimestamp(
-    client: ReturnType<typeof createClient>,
+    client: PublicClient,
     timestamp: number
   ): Promise<Block> {
     // Get the latest block number
@@ -191,4 +203,4 @@ export async function getBlockByTimestamp(
     }
   
     return closestBlock!;
-  }
+}
