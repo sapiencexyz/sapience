@@ -1,46 +1,34 @@
-import { ContractDeployment } from "./interfaces/interfaces";
-import { sepolia, hardhat } from "viem/chains";
-import { Abi } from "viem";
-import { cannonPublicClient, sepoliaPublicClient } from "./util/reindexUtil";
+import { type Abi } from "viem";
+import { mainnet, sepolia, cannon } from "viem/chains";
+import baseFeePerGasIndexer from ...;
 
-let FoilLocal: ContractDeployment | undefined;
-let FoilSepolia: ContractDeployment | undefined;
+interface Deployment {
+  address: string;
+  abi: Abi;
+  deployTimestamp: string;
+} 
 
-try {
-  FoilLocal = require("@/protocol/deployments/13370/Foil.json");
-} catch (error) {
-  console.warn("FoilLocal not available");
-}
-
-try {
-  FoilSepolia = require("@/protocol/deployments/11155111/Foil.json");
-} catch (error) {
-  console.warn("FoilSepolia not available");
-}
+const safeRequire = (path: string): Deployment | null => {
+  try {
+    return require(path);
+  } catch {
+    return null;
+  }
+};
 
 export default [
   {
     name: "Development Gas Market",
-    deployment: FoilLocal,
-    chainId: hardhat.id,
-    publicClient: cannonPublicClient,
+    deployment: safeRequire("@/protocol/deployments/13370/Foil.json"),
+    marketChainId: cannon.id,
+    priceIndexer: baseFeePerGasIndexer(mainnet.id),
     public: true,
   },
   {
     name: "Ethereum Gas Market",
-    deployment: FoilSepolia,
-    chainId: sepolia.id,
-    publicClient: sepoliaPublicClient,
+    deployment: safeRequire("@/protocol/deployments/11155111/Foil.json"),
+    marketChainId: sepolia.id,
+    priceIndexer: baseFeePerGasIndexer(mainnet.id),
     public: true,
-  },
-  {
-    name: "Sepolia Gas Market (v2)",
-    deployment: {
-      address: "0xfb17d7f02f4d29d900838f80605091e3778e38ee",
-      abi: FoilSepolia?.abi || ({} as Abi),
-    },
-    chainId: sepolia.id,
-    publicClient: sepoliaPublicClient,
-    public: false,
   },
 ];
