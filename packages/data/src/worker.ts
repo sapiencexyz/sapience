@@ -5,44 +5,30 @@ import {
   indexMarketEventsRange,
   initializeMarket,
 } from "./util/marketUtil"; // Assuming you have this function
-import MARKETS from "./markets";
+import { MARKET_INFO } from "./constants";
 import EvmIndexer from "./processes/evmIndexer";
 
 async function main() {
   await initializeDataSource();
-  const indexJobs = [];
+  let jobs = [];
 
-  // Loop over MARKETS and upsert Market data with the stuff in that file, for upsert findBy chainid and address
-  // upsert name, address, chainId, deployBlockNumber, deployTimestamp, public
-  // call getMarket to populate additional data
-  for (const m of MARKETS) {
-    const deployment = m.deployment;
-    if (!deployment) {
-      continue;
-    }
-
+  for (const m of MARKET_INFO) {
     await initializeMarket(m);
 
-    // call indexMarket(market.id)
     const indexerClient = new EvmIndexer(m.marketChainId);
-    indexJobs.push(indexMarketEvents(indexerClient.client, deployment));
-    // call indexPrice(market.id)
+    jobs.push(indexMarketEvents(indexerClient.client, m.deployment));
+
     const priceIndexerClient = m.priceIndexer.client;
-    indexJobs.push(
+    jobs.push(
       indexBaseFeePerGas(
         priceIndexerClient,
         m.marketChainId,
-        deployment.address
+        m.deployment.address
       )
     );
   }
-  //TODO: optimize loop with promise.all
 
-  // Loop over MARKETS and kick off market indexer and price indexer in a Promise, skip if market.deployment is null
-  // indexMarket(market.id)
-  // indexPrice(market.id)
-
-  await Promise.all(indexJobs);
+  await Promise.all(jobs);
 }
 
 main();
@@ -62,7 +48,7 @@ main();
 // loop over blocks between deployBlockNumber and now (or end if we hit an error signfying we've caught up)
 // processBlockForMarket
 async function reindexMarket(marketAddress: string) {
-  const marketInfo = MARKETS.find(
+  const marketInfo = MARKET_INFO.find(
     (m) => m.deployment?.address === marketAddress
   );
   if (!marketInfo) {
@@ -88,7 +74,7 @@ async function reindexMarket(marketAddress: string) {
 
 // reindexPrice(market.id)
 async function reindexPrice(marketAddress: string) {
-  const marketDeployment = MARKETS.find(
+  const marketDeployment = MARKET_INFO.find(
     (m) => m.deployment?.address === marketAddress
   );
   if (!marketDeployment) {
@@ -115,7 +101,7 @@ async function reindexPrice(marketAddress: string) {
 async function initializeMarkets() {
   await initializeDataSource();
   // TODO: optimize with promise.all
-  for (const marketConfig of MARKETS) {
+  for (const marketConfig of MARKET_INFO) {
     const { deployment, chainId, publicClient } = marketConfig;
     if (!deployment) continue;
     const market = await createOrUpdateMarketFromContract(
@@ -228,7 +214,7 @@ console.log("Initializing markets...");
 initializeMarkets().then(() => {
   const jobs = [];
 
-  for (const marketConfig of MARKETS) {
+  for (const marketConfig of MARKET_INFO) {
     const { deployment, marketChainId, publicClient } = marketConfig;
     if (deployment && process.env.NODE_ENV !== "production") {
       jobs.push(
