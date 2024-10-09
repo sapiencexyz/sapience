@@ -259,10 +259,12 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
                 flexShrink={0}
               >
                 <Box>
-                  <VolumeWindowSelector
-                    selectedWindow={selectedWindow}
-                    setSelectedWindow={setSelectedWindow}
-                  />
+                  {chartType !== ChartType.LIQUIDITY && (
+                    <VolumeWindowSelector
+                      selectedWindow={selectedWindow}
+                      setSelectedWindow={setSelectedWindow}
+                    />
+                  )}
                 </Box>
                 <ChartSelector
                   chartType={chartType}
