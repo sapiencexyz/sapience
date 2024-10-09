@@ -6,6 +6,7 @@ import dataSource, {
   marketRepository,
 } from "../db";
 import { Event } from "../entity/Event";
+import { EpochParams } from "../entity/EpochParams";
 import { Market } from "../entity/Market";
 import { Epoch } from "../entity/Epoch";
 import { Abi, decodeEventLog, Log, PublicClient } from "viem";
@@ -13,8 +14,10 @@ import {
   Deployment,
   EpochCreatedEventLog,
   MarketCreatedUpdatedEventLog,
+  MarketDeployment,
 } from "../interfaces/interfaces";
-import { createEpochFromEvent } from "../util/eventUtil";
+import { createEpochFromEvent } from "./eventUtil";
+import EvmIndexer from "../processes/evmIndexer";
 
 const bigintReplacer = (key: string, value: any) => {
   if (typeof value === "bigint") {
@@ -47,7 +50,7 @@ export const indexMarketEvents = async (
       const epochId = logData.args?.epochId || 0;
       console.log("logData is", logData);
 
-      await handleEventUpsert(
+      await handleMarketEventUpsert(
         chainId,
         deployment.address,
         epochId,
@@ -71,26 +74,15 @@ export const indexMarketEvents = async (
 
 export const indexMarketEventsRange = async (
   publicClient: PublicClient,
-  start: number,
-  end: number,
+  startBlock: number,
+  endBlock: number,
   contractAddress: string,
   contractAbi: Abi
 ) => {
   await initializeDataSource();
   const chainId = await publicClient.getChainId();
 
-  // Ensure the market exists
-  let market = await marketRepository.findOne({
-    where: { chainId, address: contractAddress },
-  });
-  if (!market) {
-    market = new Market();
-    market.chainId = chainId;
-    market.address = contractAddress;
-    await marketRepository.save(market);
-  }
-
-  for (let blockNumber = start; blockNumber <= end; blockNumber++) {
+  for (let blockNumber = startBlock; blockNumber <= endBlock; blockNumber++) {
     console.log("Indexing market events from block ", blockNumber);
     try {
       const logs = await publicClient.getLogs({
@@ -116,7 +108,7 @@ export const indexMarketEventsRange = async (
         // Extract epochId from logData (adjust this based on your event structure)
         const epochId = logData.args?.epochId || 0;
 
-        await handleEventUpsert(
+        await handleMarketEventUpsert(
           chainId,
           contractAddress,
           epochId,
@@ -132,7 +124,7 @@ export const indexMarketEventsRange = async (
   }
 };
 
-const handleEventUpsert = async (
+const handleMarketEventUpsert = async (
   chainId: number,
   address: string,
   epochId: number,
@@ -282,4 +274,69 @@ const createOrUpdateMarketFromEvent = async (
   };
   const newMarket = await marketRepository.save(market);
   return newMarket;
+};
+
+export const initializeMarket = async (
+  deployment: Deployment,
+  m: MarketDeployment
+) => {
+  let existingMarket = await marketRepository.findOne({
+    where: { address: deployment.address, chainId: m.marketChainId },
+  });
+  const market = existingMarket || new Market();
+
+  // populate market data from markets file
+  market.name = m.name;
+  market.public = m.public;
+
+  // populate market data from contract and save to db
+  const indexerClient = new EvmIndexer(m.marketChainId);
+  await createOrUpdateMarketFromContract(
+    indexerClient.client,
+    deployment,
+    m.marketChainId,
+    market
+  );
+};
+
+export const createOrUpdateMarketFromContract = async (
+  client: PublicClient,
+  contractDeployment: Deployment,
+  chainId: number,
+  initialMarket?: Market
+) => {
+  // get market and epoch from contract
+  const marketReadResult: any = await client.readContract({
+    address: contractDeployment.address as `0x${string}`,
+    abi: contractDeployment.abi,
+    functionName: "getMarket",
+  });
+  console.log("marketReadResult", marketReadResult);
+
+  let updatedMarket = initialMarket;
+  if (!updatedMarket) {
+    // check if market already exists in db
+    let existingMarket = await marketRepository.findOne({
+      where: { address: contractDeployment.address, chainId },
+      relations: ["epochs"],
+    });
+    updatedMarket = existingMarket || new Market();
+  }
+
+  // update market params appropriately
+  updatedMarket.address = contractDeployment.address;
+  updatedMarket.deployTxnBlockNumber = contractDeployment.deployTxnBlockNumber;
+  updatedMarket.deployTimestamp = contractDeployment.deployTimestamp;
+  updatedMarket.chainId = chainId;
+  updatedMarket.owner = marketReadResult[0];
+  updatedMarket.collateralAsset = marketReadResult[1];
+  const epochParamsRaw = marketReadResult[2];
+  const marketEpochParams: EpochParams = {
+    ...epochParamsRaw,
+    assertionLiveness: epochParamsRaw.assertionLiveness.toString(),
+    bondAmount: epochParamsRaw.bondAmount.toString(),
+  };
+  updatedMarket.epochParams = marketEpochParams;
+  await marketRepository.save(updatedMarket);
+  return updatedMarket;
 };

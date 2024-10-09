@@ -47,6 +47,7 @@ class EvmIndexer {
     // this calls getBaseFeePerGas
     // we seperate out getBaseFeePerGas here because we might want to call it with a block number in the reindexing process
     // somethingl like:  publicClient.watchBlocks({ this.getPriceFromBlock })
+    return this.getPriceFromBlock(BigInt(0));
   }
 }
 

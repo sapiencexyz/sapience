@@ -68,5 +68,7 @@ export const epochRepository = dataSource.getRepository(Epoch);
 export const positionRepository = dataSource.getRepository(Position);
 export const transactionRepository = dataSource.getRepository(Transaction);
 export const eventRepository = dataSource.getRepository(Event);
+export const indexPriceRepository = dataSource.getRepository(IndexPrice);
+export const marketPriceRepository = dataSource.getRepository(MarketPrice);
 
 export default dataSource;

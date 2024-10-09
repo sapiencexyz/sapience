@@ -1,5 +1,9 @@
 import "tsconfig-paths/register";
-import dataSource, { initializeDataSource } from "../db";
+import dataSource, {
+  indexPriceRepository,
+  initializeDataSource,
+  marketRepository,
+} from "../db";
 import { IndexPrice } from "../entity/IndexPrice";
 import { Block, PublicClient } from "viem";
 import { Market } from "src/entity/Market";
@@ -9,10 +13,6 @@ export const indexBaseFeePerGas = async (
   chainId: number,
   address: string
 ) => {
-  await initializeDataSource();
-  const priceRepository = dataSource.getRepository(IndexPrice);
-  const marketRepository = dataSource.getRepository(Market);
-
   const market = await marketRepository.findOne({
     where: { chainId, address },
   });
@@ -34,7 +34,7 @@ export const indexBaseFeePerGas = async (
     if (block.number) {
       price.blockNumber = block.number.toString();
     }
-    await priceRepository.upsert(price, ["market", "timestamp"]);
+    await indexPriceRepository.upsert(price, ["market", "timestamp"]);
   };
 
   // Start watching for new events

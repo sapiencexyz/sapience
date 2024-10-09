@@ -1,3 +1,4 @@
+import EvmIndexer from "src/processes/evmIndexer";
 import { Abi } from "viem";
 
 export enum EventType {
@@ -96,4 +97,12 @@ export enum TimeWindow {
   W = "1W",
   M = "1M",
   Y = "1Y",
+}
+
+export interface MarketDeployment {
+  name: string;
+  public: boolean;
+  deployment: Deployment | null;
+  marketChainId: number;
+  priceIndexer: EvmIndexer;
 }

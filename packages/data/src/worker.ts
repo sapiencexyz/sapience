@@ -1,7 +1,11 @@
 import dataSource, { initializeDataSource, marketRepository } from "./db";
 import { PublicClient } from "viem";
 import { indexBaseFeePerGas, indexBaseFeePerGasRange } from "./processes/chain";
-import { indexMarketEvents, indexMarketEventsRange } from "./processes/market"; // Assuming you have this function
+import {
+  indexMarketEvents,
+  indexMarketEventsRange,
+  initializeMarket,
+} from "./util/marketUtil"; // Assuming you have this function
 import {
   createOrUpdateEpochFromContract,
   createOrUpdateMarketFromContract,
@@ -26,25 +30,10 @@ async function main() {
       continue;
     }
 
-    let existingMarket = await marketRepository.findOne({
-      where: { address: deployment.address, chainId: m.marketChainId },
-    });
-    const market = existingMarket || new Market();
-
-    // populate market data from markets file
-    market.name = m.name;
-    market.public = m.public;
-
-    // populate market data from contract and save to db
-    const indexerClient = new EvmIndexer(m.marketChainId);
-    await createOrUpdateMarketFromContract(
-      indexerClient.client,
-      deployment,
-      m.marketChainId,
-      market
-    );
+    await initializeMarket(deployment, m);
 
     // call indexMarket(market.id)
+    const indexerClient = new EvmIndexer(m.marketChainId);
     indexJobs.push(indexMarketEvents(indexerClient.client, deployment));
     // call indexPrice(market.id)
     const priceIndexerClient = m.priceIndexer.client;
@@ -81,11 +70,56 @@ main();
 // get chainId/address from market entity in database
 // loop over blocks between deployBlockNumber and now (or end if we hit an error signfying we've caught up)
 // processBlockForMarket
+async function reindexMarket(marketAddress: string) {
+  const marketDeployment = MARKETS.find(
+    (m) => m.deployment?.address === marketAddress
+  );
+  if (!marketDeployment) {
+    throw new Error(`Market not found for address ${marketAddress}`);
+  }
+  if (!marketDeployment.deployment) {
+    throw new Error(`Deployment not found for address ${marketAddress}`);
+  }
+
+  await initializeMarket(marketDeployment.deployment, marketDeployment);
+  const indexerClient = new EvmIndexer(marketDeployment.marketChainId);
+  const deploymentBlockNumber =
+    marketDeployment.deployment.deployTxnBlockNumber;
+  const endBlock = await indexerClient.client.getBlockNumber();
+  await indexMarketEventsRange(
+    indexerClient.client,
+    Number(deploymentBlockNumber),
+    Number(endBlock),
+    marketAddress,
+    marketDeployment.deployment.abi
+  );
+}
 
 // indexPrice(market.id)
 // market.priceIndexer.watchBlocks(market.chainId)
 
 // reindexPrice(market.id)
+async function reindexPrice(marketAddress: string) {
+  const marketDeployment = MARKETS.find(
+    (m) => m.deployment?.address === marketAddress
+  );
+  if (!marketDeployment) {
+    throw new Error(`Market not found for address ${marketAddress}`);
+  }
+  if (!marketDeployment.deployment) {
+    throw new Error(`Deployment not found for address ${marketAddress}`);
+  }
+  const priceIndexerClient = marketDeployment.priceIndexer.client;
+  const start = Number(marketDeployment.deployment.deployTxnBlockNumber);
+  const end = await priceIndexerClient.getBlockNumber();
+  await indexBaseFeePerGasRange(
+    priceIndexerClient,
+    start,
+    Number(end),
+    marketDeployment.marketChainId,
+    marketAddress
+  );
+}
 // get starting block from market
 // loop over blocks and call market.priceIndexer.getPriceFromBlock
 

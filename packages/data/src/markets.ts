@@ -1,7 +1,6 @@
-import { type Abi } from "viem";
 import { mainnet, sepolia, cannon } from "viem/chains";
 import evmIndexer from "./processes/evmIndexer";
-import { Deployment } from "./interfaces/interfaces";
+import { Deployment, MarketDeployment } from "./interfaces/interfaces";
 
 const safeRequire = (path: string): Deployment | null => {
   try {
@@ -11,7 +10,7 @@ const safeRequire = (path: string): Deployment | null => {
   }
 };
 
-export default [
+const MARKETS: MarketDeployment[] = [
   {
     name: "Development Gas Market",
     deployment: safeRequire("@/protocol/deployments/13370/Foil.json"),
@@ -27,3 +26,5 @@ export default [
     public: true,
   },
 ];
+
+export default MARKETS;
