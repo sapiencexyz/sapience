@@ -23,6 +23,7 @@
     "react/no-array-index-key": "off",
     "no-restricted-syntax": "off",
     "no-empty-pattern": "warn",
+    "no-plusplus": "off",
     "no-restricted-globals": "warn",
     "no-underscore-dangle": "off",
     "@typescript-eslint/consistent-type-imports": "warn",

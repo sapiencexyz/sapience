@@ -6,6 +6,10 @@ export const red500 = '#FF0000';
 
 export const green400 = '#3FBC44';
 
+export const turquoise = '#56B2A4';
+export const paleGreen = '#82ca9d';
+export const purple = '#8884d8';
+
 /** extend additional color here */
 const extendedColors: DeepPartial<
   Record<string, Theme['colors']['blackAlpha']>
