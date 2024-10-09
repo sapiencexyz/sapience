@@ -14,7 +14,8 @@ class EvmIndexer {
   private async storeBlockPrice(block: Block, market: Market) {
     const value = block.baseFeePerGas;
     if(!value || !block.number) {
-      return
+      console.error(`No baseFeePerGas for block ${block.number} on market ${market.chainId}:${market.address}`);
+      return;
     }
 
     const price = new IndexPrice();
