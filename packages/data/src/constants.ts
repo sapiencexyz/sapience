@@ -1,5 +1,5 @@
 import { mainnet, sepolia, cannon } from "viem/chains";
-import evmIndexer from "./processes/evmIndexer";
+import evmIndexer from "./indexPriceFunctions/evmIndexer";
 import { Deployment, MarketInfo } from "./interfaces/interfaces";
 
 export const NUMERIC_PRECISION = 78;
@@ -20,7 +20,7 @@ const safeRequire = (path: string): Deployment | null => {
   }
 };
 
-const fullMarketList = [
+const FULL_MARKET_LIST = [
   {
     name: "Development Gas Market",
     deployment: safeRequire("@/protocol/deployments/13370/Foil.json"),
@@ -37,4 +37,4 @@ const fullMarketList = [
   },
 ];
 
-export const MARKET_INFO = fullMarketList.filter((market) => market.deployment !== null) as MarketInfo[];
+export const MARKET_INFO = FULL_MARKET_LIST.filter((market) => market.deployment !== null) as MarketInfo[];

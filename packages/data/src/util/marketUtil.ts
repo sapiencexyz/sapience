@@ -29,14 +29,8 @@ import {
 } from "../interfaces/interfaces";
 import { TOKEN_PRECISION } from "../constants";
 import { mainnet, sepolia, hardhat, cannon } from "viem/chains";
-import EvmIndexer from "../processes/evmIndexer";
-
-const bigintReplacer = (key: string, value: any) => {
-  if (typeof value === "bigint") {
-    return value.toString(); // Convert BigInt to string
-  }
-  return value;
-};
+import EvmIndexer from "../indexPriceFunctions/evmIndexer";
+import { getProviderForChain, bigintReplacer } from "../helpers";
 
 export const initializeMarket = async (
   marketInfo: MarketInfo
@@ -87,92 +81,51 @@ export const initializeMarket = async (
   return updatedMarket;
 };
 
-export const mainnetPublicClient = createPublicClient({
-  chain: mainnet,
-  transport: process.env.INFURA_API_KEY
-    ? webSocket(`wss://mainnet.infura.io/ws/v3/${process.env.INFURA_API_KEY}`)
-    : http(),
-});
 
-export const sepoliaPublicClient = createPublicClient({
-  chain: sepolia,
-  transport: process.env.INFURA_API_KEY
-    ? webSocket(`wss://sepolia.infura.io/ws/v3/${process.env.INFURA_API_KEY}`)
-    : http(),
-});
+export const indexMarketEvents = async (
+  market: Market,
+  abi: Abi
+) => {
+  await initializeDataSource();
+  const client = getProviderForChain(market.chainId);
+  const chainId = await client.getChainId();
 
-export const cannonPublicClient = createPublicClient({
-  chain: cannon,
-  transport: http("http://localhost:8545"),
-});
+  const processLogs = async (logs: Log[]) => {
+    for (const log of logs) {
+      const serializedLog = JSON.stringify(log, bigintReplacer);
 
-// Function to create a custom chain configuration
-function createCustomChain(rpcUrl: string): Chain {
-  return {
-    id: 0,
-    name: "Custom",
-    rpcUrls: {
-      default: { http: [rpcUrl] },
-      public: { http: [rpcUrl] },
-    },
-    nativeCurrency: {
-      decimals: TOKEN_PRECISION,
-      name: "Ether",
-      symbol: "ETH",
-    },
+      const blockNumber = log.blockNumber || 0n;
+      const block = await client.getBlock({
+        blockNumber,
+      });
+
+      const logIndex = log.logIndex || 0;
+      const logData = JSON.parse(serializedLog); // Parse back to JSON object
+
+      // Extract epochId from logData (adjust this based on your event structure)
+      const epochId = logData.args?.epochId || 0;
+      console.log("logData is", logData);
+
+      await handleMarketEventUpsert(
+        chainId,
+        market.address,
+        epochId,
+        blockNumber,
+        block.timestamp,
+        logIndex,
+        logData
+      );
+    }
   };
-}
 
-// Function to create a public client using the provided RPC URL
-function createClient(rpcUrl: string): PublicClient {
-  const customChain = createCustomChain(rpcUrl);
-  return createPublicClient({
-    chain: customChain,
-    transport: http(),
+  console.log(`Watching contract events for ${market.chainId}:${market.address}`);
+  client.watchContractEvent({
+    address: market.address as `0x${string}`,
+    abi,
+    onLogs: (logs) => processLogs(logs),
+    onError: (error) => console.error(error),
   });
-}
-
-async function getBlockByTimestamp(
-  client: ReturnType<typeof createClient>,
-  timestamp: number
-): Promise<Block> {
-  // Get the latest block number
-  const latestBlockNumber = await client.getBlockNumber();
-
-  // Get the latest block using the block number
-  const latestBlock = await client.getBlock({ blockNumber: latestBlockNumber });
-
-  // Initialize the binary search range
-  let low = 0n;
-  let high = latestBlock.number;
-  let closestBlock: Block | null = null;
-
-  // Binary search for the block with the closest timestamp
-  while (low <= high) {
-    const mid = (low + high) / 2n;
-    const block = await client.getBlock({ blockNumber: mid });
-
-    if (block.timestamp < timestamp) {
-      low = mid + 1n;
-    } else {
-      high = mid - 1n;
-      closestBlock = block;
-    }
-  }
-
-  // If the closest block's timestamp is greater than the given timestamp, it is our match
-  // Otherwise, we need to get the next block (if it exists)
-  if (closestBlock?.number && closestBlock.timestamp < timestamp) {
-    const nextBlock = await client.getBlock({
-      blockNumber: closestBlock.number + 1n,
-    });
-    if (nextBlock) {
-      closestBlock = nextBlock;
-    }
-  }
-
-  return closestBlock!;
-}
+};
 
 export const getTimestampsForReindex = async (
   client: PublicClient,
@@ -356,53 +309,6 @@ export const createOrUpdateEpochFromContract = async (
   updatedEpoch.market = market;
   updatedEpoch.epochParams = epochParams;
   await epochRepository.save(updatedEpoch);
-};
-
-
-export const indexMarketEvents = async (
-  publicClient: PublicClient,
-  deployment: Deployment
-) => {
-  await initializeDataSource();
-  const chainId = await publicClient.getChainId();
-
-  // Process log data
-  const processLogs = async (logs: Log[]) => {
-    for (const log of logs) {
-      const serializedLog = JSON.stringify(log, bigintReplacer);
-
-      const blockNumber = log.blockNumber || 0n;
-      const block = await publicClient.getBlock({
-        blockNumber,
-      });
-
-      const logIndex = log.logIndex || 0;
-      const logData = JSON.parse(serializedLog); // Parse back to JSON object
-
-      // Extract epochId from logData (adjust this based on your event structure)
-      const epochId = logData.args?.epochId || 0;
-      console.log("logData is", logData);
-
-      await handleMarketEventUpsert(
-        chainId,
-        deployment.address,
-        epochId,
-        blockNumber,
-        block.timestamp,
-        logIndex,
-        logData
-      );
-    }
-  };
-
-  // Start watching for new events
-  console.log(`Watching contract events for ${deployment.address}`);
-  publicClient.watchContractEvent({
-    address: deployment.address as `0x${string}`,
-    abi: deployment.abi,
-    onLogs: (logs) => processLogs(logs),
-    onError: (error) => console.error(error),
-  });
 };
 
 export const indexMarketEventsRange = async (

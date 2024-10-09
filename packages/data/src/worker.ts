@@ -1,37 +1,74 @@
 import { initializeDataSource } from "./db";
-import { indexBaseFeePerGas, indexBaseFeePerGasRange } from "./processes/chain";
+import { indexBaseFeePerGas, indexBaseFeePerGasRange } from "./indexPriceFunctions/chain";
 import {
   indexMarketEvents,
   indexMarketEventsRange,
   initializeMarket,
 } from "./util/marketUtil"; // Assuming you have this function
 import { MARKET_INFO } from "./constants";
-import EvmIndexer from "./processes/evmIndexer";
+import EvmIndexer from "./indexPriceFunctions/evmIndexer";
 
 async function main() {
   await initializeDataSource();
   let jobs = [];
 
-  for (const m of MARKET_INFO) {
-    await initializeMarket(m);
-
-    const indexerClient = new EvmIndexer(m.marketChainId);
-    jobs.push(indexMarketEvents(indexerClient.client, m.deployment));
-
-    const priceIndexerClient = m.priceIndexer.client;
-    jobs.push(
-      indexBaseFeePerGas(
-        priceIndexerClient,
-        m.marketChainId,
-        m.deployment.address
-      )
-    );
+  for (const marketInfo of MARKET_INFO) {
+    const market = await initializeMarket(marketInfo);
+    jobs.push(indexMarketEvents(market, marketInfo.deployment.abi));
+    jobs.push(marketInfo.priceIndexer.watchBlocksForMarket(market));
   }
 
   await Promise.all(jobs);
 }
 
 main();
+
+/*
+SOMETHING LIKE THIS FOR REINDEXING
+
+export const indexBaseFeePerGasRange = async (
+  publicClient: PublicClient,
+  start: number,
+  end: number,
+  chainId: number,
+  address: string
+) => {
+  await initializeDataSource();
+  const priceRepository = dataSource.getRepository(IndexPrice);
+  const marketRepository = dataSource.getRepository(Market);
+
+  const market = await marketRepository.findOne({
+    where: { chainId, address },
+  });
+  if (!market) {
+    throw new Error(
+      `Market not found for chainId ${chainId} and address ${address}`
+    );
+  }
+
+  for (let blockNumber = start; blockNumber <= end; blockNumber++) {
+    try {
+      console.log("Indexing gas from block ", blockNumber);
+      const block = await publicClient.getBlock({
+        blockNumber: BigInt(blockNumber),
+      });
+      const value = block.baseFeePerGas || BigInt("0");
+      const timestamp = block.timestamp.toString();
+
+      const price = new IndexPrice();
+      price.market = market;
+      price.timestamp = timestamp;
+      price.value = value.toString();
+      price.blockNumber = blockNumber.toString();
+
+      await priceRepository.upsert(price, ["market", "timestamp"]);
+    } catch (error) {
+      console.error(`Error processing block ${blockNumber}:`, error);
+    }
+  }
+};
+
+*/
 
 // processBlockForMarket(market.id, Block)
 // new epoch event and upsert an epoch to the database

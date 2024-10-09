@@ -1,4 +1,4 @@
-import EvmIndexer from "src/processes/evmIndexer";
+import EvmIndexer from "src/indexPriceFunctions/evmIndexer";
 import { Abi } from "viem";
 
 export enum EventType {
