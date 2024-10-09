@@ -11,7 +11,7 @@ import { Market } from "./Market";
 
 @Entity()
 @Unique(["market", "timestamp"])
-export class Price {
+export class IndexPrice {
   @PrimaryGeneratedColumn()
   id: number;
 

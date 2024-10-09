@@ -1,6 +1,6 @@
 import { type Abi } from "viem";
 import { mainnet, sepolia, cannon } from "viem/chains";
-import baseFeePerGasIndexer from ...;
+import evmIndexer from "./processes/evmIndexer";
 
 interface Deployment {
   address: string;
@@ -21,14 +21,14 @@ export default [
     name: "Development Gas Market",
     deployment: safeRequire("@/protocol/deployments/13370/Foil.json"),
     marketChainId: cannon.id,
-    priceIndexer: baseFeePerGasIndexer(mainnet.id),
+    priceIndexer: new evmIndexer(mainnet.id),
     public: true,
   },
   {
     name: "Ethereum Gas Market",
     deployment: safeRequire("@/protocol/deployments/11155111/Foil.json"),
     marketChainId: sepolia.id,
-    priceIndexer: baseFeePerGasIndexer(mainnet.id),
+    priceIndexer: new evmIndexer(mainnet.id),
     public: true,
   },
 ];

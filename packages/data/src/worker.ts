@@ -12,6 +12,51 @@ import {
 import { ContractDeployment } from "./interfaces/interfaces";
 import MARKETS from "./markets";
 
+
+async function main() {
+  await initializeDataSource();
+
+  // Loop over MARKETS and upsert Market data with the stuff in that file, for upsert findBy chainid and address
+    // upsert name, address, chainId, deployBlockNumber, deployTimestamp, public
+    // call getMarket to populate additional data
+
+  // Loop over MARKETS and kick off market indexer and price indexer in a Promise, skip if market.deployment is null
+    // indexMarket(market.id)
+    // indexPrice(market.id)
+
+}
+
+main();
+
+// processBlockForMarket(market.id, Block)
+      // new epoch event and upsert an epoch to the database
+      // upsert trade, new lp event, etc.
+
+// indexMarket(market.id)
+  // get chainid/address from market entity in database
+  // start the listener
+    // listener sees new block, calls processBlockForMarket(market.id, blockNumber)
+
+// reindexMarket(market.id)
+  // get deployBlockNumber from market entity in database
+  // get chainId/address from market entity in database
+  // loop over blocks between deployBlockNumber and now (or end if we hit an error signfying we've caught up)
+    // processBlockForMarket
+
+
+// indexPrice(market.id)
+  // market.priceIndexer.watchBlocks(market.chainId)
+
+// reindexPrice(market.id)
+  // get starting block from market
+  // loop over blocks and call market.priceIndexer.getPriceFromBlock
+
+
+
+
+
+
+/*
 async function initializeMarkets() {
   await initializeDataSource();
   // TODO: optimize with promise.all
@@ -129,10 +174,10 @@ initializeMarkets().then(() => {
   const jobs = [];
 
   for (const marketConfig of MARKETS) {
-    const { deployment, chainId, publicClient } = marketConfig;
+    const { deployment, marketChainId, publicClient } = marketConfig;
     if (deployment && process.env.NODE_ENV !== "production") {
       jobs.push(
-        indexBaseFeePerGas(mainnetPublicClient, chainId, deployment.address),
+        indexBaseFeePerGas(mainnetPublicClient, marketChainId, deployment.address),
         indexMarketEvents(publicClient, deployment)
       );
     }
@@ -146,3 +191,4 @@ initializeMarkets().then(() => {
     console.warn("No jobs to run. Make sure deployments are available.");
   }
 });
+*/

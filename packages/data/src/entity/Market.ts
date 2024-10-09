@@ -7,7 +7,7 @@ import {
   OneToMany,
 } from "typeorm";
 import { Epoch } from "./Epoch";
-import { Price } from "./Price";
+import { Price } from "./IndexPrice";
 import { EpochParams } from "./EpochParams";
 
 @Entity()

@@ -1,6 +1,6 @@
 import { DataSource } from "typeorm";
 import { Position } from "./entity/Position";
-import { Price } from "./entity/Price";
+import { IndexPrice } from "./entity/IndexPrice";
 import { Transaction } from "./entity/Transaction";
 import { Event } from "./entity/Event";
 import { Market } from "./entity/Market";
@@ -20,7 +20,7 @@ const devDataSource: DataSource = new DataSource({
   url: "postgresql://localhost",
   synchronize: true,
   logging: true,
-  entities: [Price, Position, Transaction, Event, Market, Epoch, MarketPrice],
+  entities: [IndexPrice, Position, Transaction, Event, Market, Epoch, MarketPrice],
 });
 
 const postgresDataSource: DataSource = new DataSource({
@@ -28,7 +28,7 @@ const postgresDataSource: DataSource = new DataSource({
   url: process.env.DATABASE_URL,
   synchronize: true,
   logging: true,
-  entities: [Price, Position, Transaction, Event, Market, Epoch, MarketPrice],
+  entities: [IndexPrice, Position, Transaction, Event, Market, Epoch, MarketPrice],
 });
 
 const dataSource = isProduction ? postgresDataSource : devDataSource;

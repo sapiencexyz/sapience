@@ -1,7 +1,7 @@
 import "reflect-metadata";
 import dataSource, { initializeDataSource } from "./db"; /// !IMPORTANT: Keep as top import to prevent issues with db initialization
 import cors from "cors";
-import { Price } from "./entity/Price";
+import { Price } from "./entity/IndexPrice";
 import { Position } from "./entity/Position";
 import { Market } from "./entity/Market";
 import express from "express";

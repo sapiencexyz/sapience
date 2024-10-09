@@ -1,6 +1,6 @@
 import "tsconfig-paths/register";
 import dataSource, { initializeDataSource } from "../db";
-import { Price } from "../entity/Price";
+import { Price } from "../entity/IndexPrice";
 import { Block, PublicClient } from "viem";
 import { Market } from "src/entity/Market";
 
