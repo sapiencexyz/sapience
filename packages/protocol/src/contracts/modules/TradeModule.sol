@@ -162,6 +162,24 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         // Ensures that the position only have single side tokens
         position.reconcileTokens();
 
+        // Adjust the collateral with the PnL
+        if (outputParams.closePnL >= 0) {
+            position.depositedCollateralAmount += outputParams
+                .closePnL
+                .toUint();
+        } else {
+            // If closePnL is negative, it means that the position is in a loss
+            // and the collateral should be reduced
+            uint256 collateralToReturn = (outputParams.closePnL * -1).toUint();
+            if (collateralToReturn > position.depositedCollateralAmount) {
+                revert Errors.InsufficientCollateral(
+                    collateralToReturn,
+                    position.depositedCollateralAmount
+                );
+            }
+            position.depositedCollateralAmount -= collateralToReturn;
+        }
+
         if (size == 0) {
             // Closing the position. No need to check collateral limit
             // We need to:
@@ -198,6 +216,16 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             // 4. Transfer the released collateral to the trader (pnl)
             int256 deltaCollateral = position.updateCollateral(0);
 
+            console2.log("UPDATE: DELTA COLLATERAL", deltaCollateral);
+            console2.log(
+                "UPDATE: DELTA COLLATERAL LIMIT",
+                deltaCollateralLimit
+            );
+            console2.log(
+                "UPDATE: OUTPUT COLLATERAL",
+                outputParams.requiredCollateral
+            );
+            console2.log("UPDATE: OUTPUT CLOSE PNL", outputParams.closePnL);
             // Check if the collateral is within the limit
             _checkDeltaCollateralLimit(deltaCollateral, deltaCollateralLimit);
 
@@ -210,6 +238,16 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
                 outputParams.requiredCollateral
             );
 
+            console2.log("UPDATE: DELTA COLLATERAL", deltaCollateral);
+            console2.log(
+                "UPDATE: DELTA COLLATERAL LIMIT",
+                deltaCollateralLimit
+            );
+            console2.log(
+                "UPDATE: OUTPUT COLLATERAL",
+                outputParams.requiredCollateral
+            );
+            console2.log("UPDATE: OUTPUT CLOSE PNL", outputParams.closePnL);
             // Check if the collateral is within the limit
             _checkDeltaCollateralLimit(deltaCollateral, deltaCollateralLimit);
 
@@ -337,15 +375,19 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
     struct QuoteRuntime {
         bool isLongDirection;
-        bool originalIsLong;
-        int256 vEthFromZero;
         uint256 tradedVGas;
         uint256 tradedVEth;
-        uint256 positionVGas;
-        uint256 positionVEth;
-        uint256 tradeRatioD18;
-        int256 deltaCollateral;
-        uint256 extraCollateralRequired;
+        int256 signedTradedVGas;
+        int256 signedTradedVEth;
+        uint256 tradeRatioD18; // tradedVEth / tradedVGas
+        int256 vEthToZero; // required vEth to close the initial position (to zero)
+        int256 vEthFromZero; // vEth involved in the transaction from zero to target size
+        // bool originalIsLong;
+        // int256 vEthFromZero;
+        // uint256 positionVGas;
+        // uint256 positionVEth;
+        // int256 deltaCollateral;
+        // uint256 extraCollateralRequired;
     }
 
     struct QuoteOrTradeInputParams {
@@ -361,6 +403,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         uint256 tradeRatioD18;
         uint256 requiredCollateral;
         int256 expectedDeltaCollateral;
+        int256 closePnL; // PnL from initial position to zero
     }
 
     function _quoteOrTrade(
@@ -377,16 +420,16 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
         // 1- Get or quote the transacted tokens (vEth and vGas)
         if (runtime.isLongDirection) {
-            console2.log("LONG DIRECTION TRADE/QUOTE");
-            console2.log(" ==== STEP ", params.isQuote ? "QUOTE" : "TRADE");
+            console2.log("LONG DIRECTION ", params.isQuote ? "QUOTE" : "TRADE");
             // Pick the right values based on the direction
+            runtime.signedTradedVGas = params.deltaSize;
             runtime.tradedVGas = params.deltaSize.toUint();
-            runtime.positionVGas = params.oldPosition.borrowedVGas;
-            runtime.positionVEth = params.oldPosition.vEthAmount;
+            // runtime.positionVGas = params.oldPosition.borrowedVGas;
+            // runtime.positionVEth = params.oldPosition.vEthAmount;
 
             console2.log(" ==== tradedVGas", runtime.tradedVGas);
-            console2.log(" ==== positionVGas", runtime.positionVGas);
-            console2.log(" ==== positionVEth", runtime.positionVEth);
+            // console2.log(" ==== positionVGas", runtime.positionVGas);
+            // console2.log(" ==== positionVEth", runtime.positionVEth);
 
             // Long direction; Quote or Trade
             (runtime.tradedVEth, ) = Trade.swapOrQuoteTokensExactOut(
@@ -395,18 +438,23 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
                 runtime.tradedVGas,
                 params.isQuote
             );
+            runtime.signedTradedVEth = runtime.tradedVEth.toInt();
+
             console2.log(" ==== tradedVEth", runtime.tradedVEth);
         } else {
-            console2.log("SHORT TRADE");
+            console2.log(
+                "SHORT DIRECTION ",
+                params.isQuote ? "QUOTE" : "TRADE"
+            );
             // Pick the right values based on the direction
+            runtime.signedTradedVGas = params.deltaSize;
             runtime.tradedVGas = (params.deltaSize * -1).toUint();
-            runtime.positionVGas = params.oldPosition.vGasAmount;
-            runtime.positionVEth = params.oldPosition.borrowedVEth;
+            // runtime.positionVGas = params.oldPosition.vGasAmount;
+            // runtime.positionVEth = params.oldPosition.borrowedVEth;
 
-            console2.log(" ==== STEP ", params.isQuote ? "QUOTE" : "TRADE");
             console2.log(" ==== tradedVGas", runtime.tradedVGas);
-            console2.log(" ==== positionVGas", runtime.positionVGas);
-            console2.log(" ==== positionVEth", runtime.positionVEth);
+            // console2.log(" ==== positionVGas", runtime.positionVGas);
+            // console2.log(" ==== positionVEth", runtime.positionVEth);
 
             // Short direction; Quote or Trade
             (runtime.tradedVEth, ) = Trade.swapOrQuoteTokensExactIn(
@@ -415,6 +463,8 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
                 runtime.tradedVGas,
                 params.isQuote
             );
+            runtime.signedTradedVEth = runtime.tradedVEth.toInt() * -1;
+
             console2.log(" ==== tradedVEth", runtime.tradedVEth);
         }
 
@@ -424,137 +474,64 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         }
 
         console2.log(" ==== BEFORE 2");
-        // 2- Reconcile the collateral and vEth for the position doing a closure as a intermediate state, accrue pnl and then apply the change to the new size from zero.
-        (
-            runtime.vEthFromZero,
-            runtime.deltaCollateral,
-            output.tradeRatioD18
-        ) = _getVirtualTokensAtZeroSize(
-            runtime.tradedVGas,
-            runtime.tradedVEth,
-            params.initialSize,
-            params.targetSize,
-            runtime.positionVEth
+        // 2- Get PnL and vEth involved in the transaction from initial size to zero (intermediate close the position).
+        runtime.tradeRatioD18 = runtime.tradedVEth.divDecimal(
+            runtime.tradedVGas
         );
+        // vEth to compensate the gas (either to pay borrowedVGas or borrowerVEth paid from the vGas tokens from the close trade)
+        runtime.vEthToZero = (params.initialSize * -1).mulDecimal(
+            runtime.tradeRatioD18.toInt()
+        );
+        // net vEth from oritinal positon minus the vEth to zero
+        output.closePnL =
+            params.oldPosition.vEthAmount.toInt() -
+            params.oldPosition.borrowedVEth.toInt() -
+            runtime.vEthToZero;
+        // vEth from the trade that wasn't used to close the initial position (should be same as targetSize*tradeRatio, but there can be some rounding errors)
+        runtime.vEthFromZero = runtime.signedTradedVEth - runtime.vEthToZero;
+
+        console2.log(" ==  >> tradedVEth       ", runtime.tradedVEth);
+        console2.log(" ==  >> tradedVGas       ", runtime.tradedVGas);
+        console2.log(" ==  >> tradeRatioD18    ", runtime.tradeRatioD18);
+        console2.log(" ==  >> vEthToZero       ", runtime.vEthToZero);
+        console2.log(" ==  >> vEthFromZero     ", runtime.vEthFromZero);
+        console2.log(" ==  >> closePnL         ", output.closePnL);
+        console2.log(" ==  >> signedTradedVEth ", runtime.signedTradedVEth);
+        console2.log(" ==  >> signedTradedVGas ", runtime.signedTradedVGas);
+
         console2.log(" ==== AFTER 2");
 
-        int256 directionalDeltaCollateral;
-
-        if (params.initialSize > 0) {
-            // close long
-            params.oldPosition.vGasAmount = 0;
-            params.oldPosition.borrowedVEth = 0;
-        } else {
-            // close short
-            params.oldPosition.borrowedVGas = 0;
-            params.oldPosition.vEthAmount = 0;
-        }
-
-        if (runtime.isLongDirection) {
-            directionalDeltaCollateral = runtime.deltaCollateral * -1;
-        } else {
-            directionalDeltaCollateral = runtime.deltaCollateral;
-        }
-
-        console2.log(
-            " ==== directionalDeltaCollateral",
-            directionalDeltaCollateral
-        );
-
-        uint256 deltaCollateralModulus = runtime.deltaCollateral >= 0
-            ? runtime.deltaCollateral.toUint()
-            : (runtime.deltaCollateral * -1).toUint();
-
-        console2.log(" ==== deltaCollateralModulus", deltaCollateralModulus);
-
-        if (directionalDeltaCollateral >= 0) {
-            output.position.depositedCollateralAmount += deltaCollateralModulus;
-        } else {
-            if (
-                deltaCollateralModulus >
-                output.position.depositedCollateralAmount
-            ) {
-                output.position.depositedCollateralAmount = 0;
-                runtime.extraCollateralRequired = (deltaCollateralModulus -
-                    output.position.depositedCollateralAmount);
-            } else {
-                output
-                    .position
-                    .depositedCollateralAmount -= deltaCollateralModulus;
-            }
-        }
-
-        console2.log(" ==== BEFORE 3");
-
-        // 3- Update the `in memory` position with the new values
+        // 3- Regenerate the new position after the trade and closure
         if (params.targetSize > 0) {
             // End position is LONG
             output.position.vGasAmount = params.targetSize.toUint();
             output.position.vEthAmount = 0;
             output.position.borrowedVGas = 0;
-            output.position.borrowedVEth =
-                params.oldPosition.borrowedVEth +
-                runtime.tradedVEth;
+            output.position.borrowedVEth = runtime.vEthFromZero > 0
+                ? runtime.vEthFromZero.toUint()
+                : (runtime.vEthFromZero * -1).toUint();
         } else {
             // End position is SHORT
             output.position.vGasAmount = 0;
-            output.position.vEthAmount =
-                params.oldPosition.vEthAmount +
-                runtime.tradedVEth;
+            output.position.vEthAmount = runtime.vEthFromZero > 0
+                ? runtime.vEthFromZero.toUint()
+                : (runtime.vEthFromZero * -1).toUint();
             output.position.borrowedVGas = (params.targetSize * -1).toUint();
             output.position.borrowedVEth = 0;
         }
 
-        console2.log(" ==== AFTER 3");
-
         // 4- Get the required collateral for the trade\quote
-        output.requiredCollateral =
-            epoch.getCollateralRequirementsForTrade(
-                output.position.vGasAmount,
-                output.position.vEthAmount,
-                output.position.borrowedVGas,
-                output.position.borrowedVEth
-            ) +
-            runtime.extraCollateralRequired;
+
+        output.requiredCollateral = epoch.getCollateralRequirementsForTrade(
+            output.position.vGasAmount,
+            output.position.vEthAmount,
+            output.position.borrowedVGas,
+            output.position.borrowedVEth
+        );
 
         output.expectedDeltaCollateral =
             output.requiredCollateral.toInt() -
-            output.position.depositedCollateralAmount.toInt();
-    }
-
-    function _getVirtualTokensAtZeroSize(
-        uint256 tradedVGas,
-        uint256 tradedVEth,
-        int256 initialSizeVGas,
-        int256 finalSizeVGas,
-        uint256 currentVEth
-    )
-        internal
-        pure
-        returns (
-            int256 vEthFromZero,
-            int256 deltaCollateralToZero,
-            uint256 tradeRatioD18
-        )
-    {
-        console2.log("IN _getVirtualTokensAtZeroSize");
-        console2.log("tradedVGas", tradedVGas);
-        console2.log("tradedVEth", tradedVEth);
-        console2.log("initialSizeVGas", initialSizeVGas);
-        console2.log("finalSizeVGas", finalSizeVGas);
-        console2.log("currentVEth", currentVEth);
-
-        tradeRatioD18 = tradedVEth.divDecimal(tradedVGas);
-        console2.log("tradeRatioD18", tradeRatioD18);
-
-        int256 vEthToZero = initialSizeVGas.mulDecimal(tradeRatioD18.toInt());
-        console2.log("vEthToZero", vEthToZero);
-        vEthFromZero = tradedVEth.toInt() - vEthToZero;
-        console2.log("vEthFromZero", vEthFromZero);
-        int256 netVEth = vEthFromZero + vEthToZero;
-        console2.log("netVEth", netVEth);
-
-        deltaCollateralToZero = currentVEth.toInt() - vEthToZero;
-        console2.log("deltaCollateralToZero", deltaCollateralToZero);
+            params.oldPosition.depositedCollateralAmount.toInt() -
+            output.closePnL;
     }
 }

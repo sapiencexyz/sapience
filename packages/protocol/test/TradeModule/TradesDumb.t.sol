@@ -278,7 +278,7 @@ contract TradePositionDumb is TestTrade {
         fillPositionState(positionId, initialStateData);
 
         // quote and close a long
-        int256 requiredCollateral = foil.quoteModifyTraderPosition(
+        int256 requiredDeltaCollateral = foil.quoteModifyTraderPosition(
             positionId,
             finalPositionSize
         );
@@ -287,7 +287,7 @@ contract TradePositionDumb is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             finalPositionSize,
-            requiredCollateral + 2,
+            requiredDeltaCollateral + 2,
             block.timestamp + 30 minutes
         );
 
@@ -303,10 +303,10 @@ contract TradePositionDumb is TestTrade {
 
         expectedStateData.depositedCollateralAmount = (initialStateData
             .depositedCollateralAmount
-            .toInt() + requiredCollateral).toUint();
+            .toInt() + requiredDeltaCollateral).toUint();
         expectedStateData.userCollateral = (initialStateData
             .userCollateral
-            .toInt() - requiredCollateral).toUint();
+            .toInt() - requiredDeltaCollateral).toUint();
 
         // Check position makes sense
         assertPosition(
@@ -592,10 +592,11 @@ contract TradePositionDumb is TestTrade {
 
         if (expectedStateData.userCollateral != 0) {
             fillCollateralStateData(user, currentStateData);
-            assertApproxEqRel(
+            // assertApproxEqRel(
+            assertEq(
                 currentStateData.userCollateral,
                 expectedStateData.userCollateral,
-                0.00001 ether,
+                // 0.0000001 ether,
                 string.concat(stage, " userCollateral")
             );
             assertEq(

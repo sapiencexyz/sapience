@@ -261,7 +261,7 @@ contract TradePositionBasicFuzz is TestTrade {
         );
     }
 
-    function test_fuzz_modify_Short2Short_Only(
+    function test_fuzz_modify_Short2Short(
         uint256 startPosition,
         uint256 endPosition
     ) public {
