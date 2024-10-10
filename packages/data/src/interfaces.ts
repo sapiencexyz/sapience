@@ -1,5 +1,5 @@
-import EvmIndexer from "../indexPriceFunctions/evmIndexer";
 import { Abi } from "viem";
+import EvmIndexer from "./indexPriceFunctions/evmIndexer";
 
 export enum EventType {
   LiquidityPositionCreated = "LiquidityPositionCreated",
@@ -9,6 +9,10 @@ export enum EventType {
   TraderPositionCreated = "TraderPositionCreated",
   TraderPositionModified = "TraderPositionModified",
   Transfer = "Transfer",
+  MarketInitialized = "MarketInitialized",
+  MarketUpdated = "MarketUpdated",
+  EpochCreated = "EpochCreated",
+  EpochSettled = "EpochSettled",
 }
 
 export interface TradePositionEventLog {

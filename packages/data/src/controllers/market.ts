@@ -11,9 +11,24 @@ import { Event } from "../models/Event";
 import { Market } from "../models/Market";
 import { Transaction, TransactionType } from "../models/Transaction";
 import { Abi, decodeEventLog, Log } from "viem";
-import { EpochCreatedEventLog, EventType, MarketCreatedUpdatedEventLog, MarketInfo } from "../interfaces";
+import {
+  EpochCreatedEventLog,
+  EventType,
+  MarketCreatedUpdatedEventLog,
+  MarketInfo,
+} from "../interfaces";
 import { getProviderForChain, bigintReplacer } from "../helpers";
-import { createEpochFromEvent, createOrModifyPosition, createOrUpdateMarketFromEvent, handleTransferEvent, updateTransactionFromAddLiquidityEvent, updateTransactionFromLiquidityClosedEvent, updateTransactionFromLiquidityModifiedEvent, updateTransactionFromTradeModifiedEvent, upsertMarketPrice } from "./marketHelpers";
+import {
+  createEpochFromEvent,
+  createOrModifyPosition,
+  createOrUpdateMarketFromEvent,
+  handleTransferEvent,
+  updateTransactionFromAddLiquidityEvent,
+  updateTransactionFromLiquidityClosedEvent,
+  updateTransactionFromLiquidityModifiedEvent,
+  updateTransactionFromTradeModifiedEvent,
+  upsertMarketPrice,
+} from "./marketHelpers";
 
 // Called when the process starts, upserts markets in the database to match those in the constants.ts file
 export const initializeMarket = async (marketInfo: MarketInfo) => {
@@ -183,77 +198,29 @@ const upsertEvent = async (
     logData,
   });
 
-  // Find market and/or epoch associated with the event
+  // // Find market and/or epoch associated with the event
   let market = await marketRepository.findOne({
     where: { chainId, address },
-    relations: ["epochs", "epochs.market"],
   });
-  let epoch = market?.epochs.find((e) => e.epochId === epochId);
 
-  switch (logData.eventName) {
-    case "MarketInitialized":
-      console.log("initializing market. LogData: ", logData);
-      const marketCreatedArgs = logData.args as MarketCreatedUpdatedEventLog;
-      market = await createOrUpdateMarketFromEvent(
-        marketCreatedArgs,
-        chainId,
-        address,
-        market
-      );
-      break;
-    case "MarketUpdated":
-      console.log("updating market. LogData: ", logData);
-      const marketUpdatedArgs = logData.args as MarketCreatedUpdatedEventLog;
-      market = await createOrUpdateMarketFromEvent(
-        marketUpdatedArgs,
-        chainId,
-        address,
-        market
-      );
-      break;
-    case "EpochCreated":
-      console.log("creating epoch. LogData: ", logData);
-      if (!market) {
-        throw new Error(
-          `Market not found for chainId ${chainId} and address ${address}. Cannot create epoch in db from event.`
-        );
-      }
-      const epochCreatedArgs = logData.args as EpochCreatedEventLog;
-      epoch = await createEpochFromEvent(epochCreatedArgs, market);
-      break;
-    case "MarketSettled":
-      console.log("Market settled event. LogData: ", logData);
-      if (!epoch) {
-        throw new Error(
-          `Epoch with id ${epochId} not found for market address ${address} chainId ${chainId}. Cannot update epoch in db from event.`
-        );
-      }
-      epoch.settled = true;
-      epoch.settlementPriceD18 = logData.args.settlementPriceD18;
-      epoch = await epochRepository.save(epoch);
-      break;
-    default:
-      break;
-  }
-
-  // throw if epoch not found/created properly since we need it for the Event
-  if (!epoch) {
+  // marketInitialized should handle creating the market, throw if not found
+  if (!market) {
     throw new Error(
-      `Epoch with id ${epochId} not found for market address ${address} chainId ${chainId}. Cannot upsert event into db.`
+      `Market not found for chainId ${chainId} and address ${address}. Cannot upsert event into db.`
     );
   }
 
   console.log("inserting new event..");
   // Create a new Event entity
   const newEvent = new Event();
-  newEvent.epoch = epoch;
+  newEvent.market = market;
   newEvent.blockNumber = blockNumber.toString();
   newEvent.timestamp = timeStamp.toString();
   newEvent.logIndex = logIndex;
   newEvent.logData = logData;
 
   // insert the event
-  await eventRepository.upsert(newEvent, ["epoch", "blockNumber", "logIndex"]);
+  await eventRepository.upsert(newEvent, ["market", "blockNumber", "logIndex"]);
 };
 
 // Triggered by the callback in the Event model, this upserts related entities (Transaction, Position, MarketPrice).
@@ -264,7 +231,59 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
   // set to true if the Event does not require a transaction (i.e. a Transfer event)
   let skipTransaction = false;
 
+  const chainId = event.market.chainId;
+  const address = event.market.address;
+  const market = event.market;
+
   switch (event.logData.eventName) {
+    case EventType.MarketInitialized:
+      console.log("initializing market. LogData: ", event.logData);
+      const marketCreatedArgs = event.logData
+        .args as MarketCreatedUpdatedEventLog;
+      await createOrUpdateMarketFromEvent(
+        marketCreatedArgs,
+        chainId,
+        address,
+        market
+      );
+      skipTransaction = true;
+      break;
+    case EventType.MarketUpdated:
+      console.log("updating market. LogData: ", event.logData);
+      const marketUpdatedArgs = event.logData
+        .args as MarketCreatedUpdatedEventLog;
+      await createOrUpdateMarketFromEvent(
+        marketUpdatedArgs,
+        chainId,
+        address,
+        market
+      );
+      skipTransaction = true;
+      break;
+    case EventType.EpochCreated:
+      console.log("creating epoch. LogData: ", event.logData);
+      const epochCreatedArgs = event.logData.args as EpochCreatedEventLog;
+      await createEpochFromEvent(epochCreatedArgs, market);
+      skipTransaction = true;
+      break;
+    case EventType.EpochSettled:
+      console.log("Market settled event. LogData: ", event.logData);
+      const epoch = await epochRepository.findOne({
+        where: {
+          market: { address, chainId },
+          epochId: event.logData.args.epochId,
+        },
+        relations: ["market"],
+      });
+      if (epoch) {
+        epoch.settled = true;
+        epoch.settlementPriceD18 = event.logData.args.settlementPriceD18;
+        await epochRepository.save(epoch);
+      } else {
+        console.error("Epoch not found for market: ", market);
+      }
+      skipTransaction = true;
+      break;
     case EventType.LiquidityPositionCreated:
       console.log("Creating liquidity position from event: ", event);
       updateTransactionFromAddLiquidityEvent(newTransaction, event);
@@ -272,27 +291,44 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
     case EventType.LiquidityPositionClosed:
       console.log("Closing liquidity position from event: ", event);
       newTransaction.type = TransactionType.REMOVE_LIQUIDITY;
-      await updateTransactionFromLiquidityClosedEvent(newTransaction, event);
+      await updateTransactionFromLiquidityClosedEvent(
+        newTransaction,
+        event,
+        event.logData.args.epochId
+      );
       break;
     case EventType.LiquidityPositionDecreased:
       console.log("Decreasing liquidity position from event: ", event);
       await updateTransactionFromLiquidityModifiedEvent(
         newTransaction,
         event,
+        event.logData.args.epochId,
         true
       );
       break;
     case EventType.LiquidityPositionIncreased:
       console.log("Increasing liquidity position from event: ", event);
-      await updateTransactionFromLiquidityModifiedEvent(newTransaction, event);
+      await updateTransactionFromLiquidityModifiedEvent(
+        newTransaction,
+        event,
+        event.logData.args.epochId
+      );
       break;
     case EventType.TraderPositionCreated:
       console.log("Creating trader position from event: ", event);
-      await updateTransactionFromTradeModifiedEvent(newTransaction, event);
+      await updateTransactionFromTradeModifiedEvent(
+        newTransaction,
+        event,
+        event.logData.args.epochId
+      );
       break;
     case EventType.TraderPositionModified:
       console.log("Modifying trader position from event: ", event);
-      await updateTransactionFromTradeModifiedEvent(newTransaction, event);
+      await updateTransactionFromTradeModifiedEvent(
+        newTransaction,
+        event,
+        event.logData.args.epochId
+      );
       break;
     case EventType.Transfer:
       console.log("Handling Transfer event: ", event);
@@ -307,7 +343,7 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
   if (!skipTransaction) {
     console.log("Saving new transaction: ", newTransaction);
     await transactionRepository.save(newTransaction);
-    await createOrModifyPosition(newTransaction);
+    await createOrModifyPosition(newTransaction, event.logData.args.epochId);
     await upsertMarketPrice(newTransaction);
   }
 };

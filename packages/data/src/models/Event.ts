@@ -11,16 +11,16 @@ import {
 } from "typeorm";
 import { upsertEntitiesFromEvent } from "../controllers/market";
 import { Transaction } from "./Transaction";
-import { Epoch } from "./Epoch";
+import { Market } from "./Market";
 
 @Entity()
-@Unique(["epoch", "blockNumber", "logIndex"])
+@Unique(["market", "blockNumber", "logIndex"])
 export class Event {
   @OneToOne(() => Transaction, (transaction) => transaction.event)
   transaction: Transaction;
 
-  @ManyToOne(() => Epoch, (epoch) => epoch.events)
-  epoch: Epoch;
+  @ManyToOne(() => Market, (market) => market.events)
+  market: Market;
 
   @PrimaryGeneratedColumn()
   id: number;

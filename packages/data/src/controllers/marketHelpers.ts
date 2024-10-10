@@ -31,30 +31,26 @@ import { MarketPrice } from "../models/MarketPrice";
 export const handleTransferEvent = async (event: Event) => {
   const { from, to, tokenId } = event.logData.args;
 
-  const existingPosition = await positionRepository.findOne({
+  let existingPosition = await positionRepository.findOne({
     where: {
       positionId: Number(tokenId),
-      epoch: { id: event.epoch.id },
+      epoch: {
+        market: {
+          address: event.market.address,
+          chainId: event.market.chainId,
+        },
+      },
     },
   });
 
-  const position = existingPosition || new Position();
-  // Fill position with minimun data to save it
   if (!existingPosition) {
-    // Need to create an empty position
-    position.positionId = Number(tokenId);
-    position.epoch = event.epoch;
-    position.baseToken = "0";
-    position.quoteToken = "0";
-    position.borrowedBaseToken = "0";
-    position.borrowedQuoteToken = "0";
-    position.collateral = "0";
-    position.isLP = false;
-    position.transactions = position.transactions || [];
+    // Ignore the transfer event until the position is created from another event
+    console.log("Position not found for transfer event: ", event);
+    return;
   }
 
-  position.owner = to;
-  await positionRepository.save(position);
+  existingPosition.owner = to;
+  await positionRepository.save(existingPosition);
   console.log(`Updated owner of position ${tokenId} to ${to}`);
 };
 
@@ -62,12 +58,15 @@ export const handleTransferEvent = async (event: Event) => {
  * Creates or modifies a Position in the database based on the given Transaction.
  * @param transaction the Transaction to use for creating/modifying the position
  */
-export const createOrModifyPosition = async (transaction: Transaction) => {
+export const createOrModifyPosition = async (
+  transaction: Transaction,
+  epochId: number
+) => {
   const existingPosition = await positionRepository.findOne({
     where: {
       epoch: {
-        id: transaction.event.epoch.id,
-        market: { address: transaction.event.epoch.market.address },
+        id: epochId,
+        market: { address: transaction.event.market.address },
       },
       positionId: transaction.event.logData.args.positionId,
     },
@@ -79,6 +78,22 @@ export const createOrModifyPosition = async (transaction: Transaction) => {
       "transactions.marketPrice",
     ],
   });
+
+  const epoch = await epochRepository.findOne({
+    where: {
+      id: epochId,
+      market: { address: transaction.event.market.address },
+    },
+  });
+  if (!epoch) {
+    console.error(
+      "Epoch not found: ",
+      epochId,
+      "market:",
+      transaction.event.market.address
+    );
+    return;
+  }
 
   const originalCollateral = existingPosition
     ? existingPosition.collateral
@@ -116,7 +131,7 @@ export const createOrModifyPosition = async (transaction: Transaction) => {
     position.highPriceTick = eventArgs.upperTick.toString();
     position.lowPriceTick = eventArgs.lowerTick.toString();
   }
-  position.epoch = transaction.event.epoch;
+  position.epoch = epoch;
   position.transactions = position.transactions || [];
   position.transactions.push(transaction);
 
@@ -307,7 +322,8 @@ export const getTradeTypeFromEvent = (eventArgs: TradePositionEventLog) => {
  */
 export const updateTransactionFromLiquidityClosedEvent = async (
   newTransaction: Transaction,
-  event: Event
+  event: Event,
+  epochId: number
 ) => {
   newTransaction.type = TransactionType.REMOVE_LIQUIDITY;
 
@@ -316,8 +332,8 @@ export const updateTransactionFromLiquidityClosedEvent = async (
     where: {
       positionId: Number(eventArgs.positionId),
       epoch: {
-        epochId: event.epoch.epochId,
-        market: { address: event.epoch.market.address },
+        epochId,
+        market: { address: event.market.address },
       },
     },
     relations: ["epoch", "epoch.market"],
@@ -341,6 +357,7 @@ export const updateTransactionFromLiquidityClosedEvent = async (
 export const updateTransactionFromLiquidityModifiedEvent = async (
   newTransaction: Transaction,
   event: Event,
+  epochId: number,
   isDecrease?: boolean
 ) => {
   newTransaction.type = isDecrease
@@ -353,8 +370,8 @@ export const updateTransactionFromLiquidityModifiedEvent = async (
     where: {
       positionId: Number(eventArgsModifyLiquidity.positionId),
       epoch: {
-        epochId: event.epoch.epochId,
-        market: { address: event.epoch.market.address },
+        epochId,
+        market: { address: event.market.address },
       },
     },
     relations: ["epoch", "epoch.market"],
@@ -404,7 +421,8 @@ export const updateTransactionFromAddLiquidityEvent = (
  */
 export const updateTransactionFromTradeModifiedEvent = async (
   newTransaction: Transaction,
-  event: Event
+  event: Event,
+  epochId: number
 ) => {
   const eventArgsCreateTrade = event.logData.args as TradePositionEventLog;
   newTransaction.type = getTradeTypeFromEvent(
@@ -415,8 +433,8 @@ export const updateTransactionFromTradeModifiedEvent = async (
     where: {
       positionId: Number(eventArgsCreateTrade.positionId),
       epoch: {
-        epochId: event.epoch.epochId,
-        market: { address: event.epoch.market.address },
+        epochId,
+        market: { address: event.market.address },
       },
     },
     relations: ["epoch"],

@@ -9,6 +9,7 @@ import {
 import { Epoch } from "./Epoch";
 import { IndexPrice } from "./IndexPrice";
 import { EpochParams } from "./EpochParams";
+import { Event } from "./Event";
 
 @Entity()
 @Unique(["address", "chainId"])
@@ -20,6 +21,9 @@ export class Market {
 
   @OneToMany(() => IndexPrice, (price) => price.market)
   prices: IndexPrice[];
+
+  @OneToMany(() => Event, (event) => event.market)
+  events: Event[];
 
   @PrimaryGeneratedColumn()
   id: number;
