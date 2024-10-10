@@ -1,5 +1,5 @@
 {
-  "address": "0x9ee193336A411a30da57b24F72483B52e2dd0059",
+  "address": "0x09698F75a689C86F95548B4C388EB44548773dF1",
   "abi": [
     {
       "type": "function",
@@ -83,6 +83,11 @@
           "name": "requiredCollateral",
           "type": "uint256",
           "internalType": "uint256"
+        },
+        {
+          "name": "fillPrice",
+          "type": "uint256",
+          "internalType": "uint256"
         }
       ],
       "stateMutability": "nonpayable"
@@ -104,7 +109,17 @@
       ],
       "outputs": [
         {
-          "name": "requiredCollateral",
+          "name": "expectedCollateralDelta",
+          "type": "int256",
+          "internalType": "int256"
+        },
+        {
+          "name": "closePnL",
+          "type": "int256",
+          "internalType": "int256"
+        },
+        {
+          "name": "fillPrice",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -513,18 +528,34 @@
     },
     {
       "type": "error",
+      "name": "TransactionExpired",
+      "inputs": [
+        {
+          "name": "deadline",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "blockTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "ZeroAddress",
       "inputs": []
     }
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xdcb3ed295e092c710b5d06aca269f8d753d0d8747fb3382183d60c4f19b61bb9",
-  "deployTxnBlockNumber": "6808039",
-  "deployTimestamp": "1727974440",
+  "deployTxnHash": "0x07d5c3582c323a2fc51861e639789f071192445e79238ac934216c5dc1cac1a0",
+  "deployTxnBlockNumber": "6851999",
+  "deployTimestamp": "1728588180",
   "sourceName": "src/contracts/modules/TradeModule.sol",
   "contractName": "TradeModule",
   "deployedOn": "deploy.TradeModule",
-  "gasUsed": 2411477,
-  "gasCost": "246237299172"
+  "gasUsed": 2435397,
+  "gasCost": "11578580098"
 }
