@@ -1,11 +1,9 @@
 import "tsconfig-paths/register";
 import {
   epochRepository,
-  eventRepository,
   marketPriceRepository,
   marketRepository,
   positionRepository,
-  transactionRepository,
 } from "../db";
 import { Event } from "../entity/Event";
 import { EpochParams } from "../entity/EpochParams";
@@ -27,66 +25,11 @@ import {
 import { tickToPrice } from "../helpers";
 import { MarketPrice } from "../entity/MarketPrice";
 
-export const handleEventAfterUpsert = async (event: Event) => {
-  const newTransaction = new Transaction();
-  newTransaction.event = event;
-
-  // set to true if the Event does not require a transaction (i.e. a Transfer event)
-  let skipTransaction = false;
-
-  switch (event.logData.eventName) {
-    case EventType.LiquidityPositionCreated:
-      console.log("Creating liquidity position from event: ", event);
-      updateTransactionFromAddLiquidityEvent(newTransaction, event);
-      break;
-    case EventType.LiquidityPositionClosed:
-      console.log("Closing liquidity position from event: ", event);
-      newTransaction.type = TransactionType.REMOVE_LIQUIDITY;
-      await updateTransactionFromLiquidityClosedEvent(newTransaction, event);
-      break;
-    case EventType.LiquidityPositionDecreased:
-      console.log("Decreasing liquidity position from event: ", event);
-      await updateTransactionFromLiquidityModifiedEvent(
-        newTransaction,
-        event,
-        true
-      );
-      break;
-    case EventType.LiquidityPositionIncreased:
-      console.log("Increasing liquidity position from event: ", event);
-      await updateTransactionFromLiquidityModifiedEvent(newTransaction, event);
-      break;
-    case EventType.TraderPositionCreated:
-      console.log("Creating trader position from event: ", event);
-      await updateTransactionFromTradeModifiedEvent(newTransaction, event);
-      break;
-    case EventType.TraderPositionModified:
-      console.log("Modifying trader position from event: ", event);
-      await updateTransactionFromTradeModifiedEvent(newTransaction, event);
-      break;
-    case EventType.Transfer:
-      console.log("Handling Transfer event: ", event);
-      await handleTransferEvent(event);
-      skipTransaction = true;
-      break;
-    default:
-      skipTransaction = true;
-      break;
-  }
-
-  if (!skipTransaction) {
-    console.log("Saving new transaction: ", newTransaction);
-    await transactionRepository.save(newTransaction);
-    await createOrModifyPosition(newTransaction);
-    await upsertMarketPrice(newTransaction);
-  }
-};
-
 /**
  * Handles a Transfer event by updating the owner of the corresponding Position.
  * @param event The Transfer event
  */
-const handleTransferEvent = async (event: Event) => {
+export const handleTransferEvent = async (event: Event) => {
   const { from, to, tokenId } = event.logData.args;
 
   const existingPosition = await positionRepository.findOne({

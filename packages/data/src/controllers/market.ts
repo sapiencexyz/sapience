@@ -4,14 +4,16 @@ import {
   eventRepository,
   initializeDataSource,
   marketRepository,
+  transactionRepository,
 } from "../db";
 import { EpochParams } from "../entity/EpochParams";
 import { Event } from "../entity/Event";
 import { Market } from "../entity/Market";
+import { Transaction, TransactionType } from "../entity/Transaction";
 import { Abi, decodeEventLog, Log, PublicClient } from "viem";
-import { EpochCreatedEventLog, MarketCreatedUpdatedEventLog, MarketInfo } from "../interfaces/interfaces";
+import { EpochCreatedEventLog, EventType, MarketCreatedUpdatedEventLog, MarketInfo } from "../interfaces/interfaces";
 import { getProviderForChain, bigintReplacer } from "../helpers";
-import { createEpochFromEvent, createOrUpdateMarketFromEvent } from "./marketHelpers";
+import { createEpochFromEvent, createOrModifyPosition, createOrUpdateMarketFromEvent, handleTransferEvent, updateTransactionFromAddLiquidityEvent, updateTransactionFromLiquidityClosedEvent, updateTransactionFromLiquidityModifiedEvent, updateTransactionFromTradeModifiedEvent, upsertMarketPrice } from "./marketHelpers";
 
 export const initializeMarket = async (marketInfo: MarketInfo) => {
   let existingMarket = await marketRepository.findOne({
@@ -267,4 +269,59 @@ const handleMarketEventUpsert = async (
 
   // insert the event
   await eventRepository.upsert(newEvent, ["epoch", "blockNumber", "logIndex"]);
+};
+
+export const handleEventAfterUpsert = async (event: Event) => {
+  const newTransaction = new Transaction();
+  newTransaction.event = event;
+
+  // set to true if the Event does not require a transaction (i.e. a Transfer event)
+  let skipTransaction = false;
+
+  switch (event.logData.eventName) {
+    case EventType.LiquidityPositionCreated:
+      console.log("Creating liquidity position from event: ", event);
+      updateTransactionFromAddLiquidityEvent(newTransaction, event);
+      break;
+    case EventType.LiquidityPositionClosed:
+      console.log("Closing liquidity position from event: ", event);
+      newTransaction.type = TransactionType.REMOVE_LIQUIDITY;
+      await updateTransactionFromLiquidityClosedEvent(newTransaction, event);
+      break;
+    case EventType.LiquidityPositionDecreased:
+      console.log("Decreasing liquidity position from event: ", event);
+      await updateTransactionFromLiquidityModifiedEvent(
+        newTransaction,
+        event,
+        true
+      );
+      break;
+    case EventType.LiquidityPositionIncreased:
+      console.log("Increasing liquidity position from event: ", event);
+      await updateTransactionFromLiquidityModifiedEvent(newTransaction, event);
+      break;
+    case EventType.TraderPositionCreated:
+      console.log("Creating trader position from event: ", event);
+      await updateTransactionFromTradeModifiedEvent(newTransaction, event);
+      break;
+    case EventType.TraderPositionModified:
+      console.log("Modifying trader position from event: ", event);
+      await updateTransactionFromTradeModifiedEvent(newTransaction, event);
+      break;
+    case EventType.Transfer:
+      console.log("Handling Transfer event: ", event);
+      await handleTransferEvent(event);
+      skipTransaction = true;
+      break;
+    default:
+      skipTransaction = true;
+      break;
+  }
+
+  if (!skipTransaction) {
+    console.log("Saving new transaction: ", newTransaction);
+    await transactionRepository.save(newTransaction);
+    await createOrModifyPosition(newTransaction);
+    await upsertMarketPrice(newTransaction);
+  }
 };
