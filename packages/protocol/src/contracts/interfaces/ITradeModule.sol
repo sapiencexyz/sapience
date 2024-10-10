@@ -65,16 +65,23 @@ interface ITradeModule {
     function quoteCreateTraderPosition(
         uint256 epochId,
         int256 size
-    ) external returns (uint256 requiredCollateral);
+    ) external returns (uint256 requiredCollateral, uint256 tradeRatioD18);
 
     /** @dev Quotes the required collateral to modify an existing trader position.
      * @param positionId The position id.
      * @param size The new position size.
      * @return expectedCollateralDelta The expected change in collateral. Negative means sender will receive some collateral back, positive some collateral needs to be collected.
      * @return closePnL The expected profit or loss from the original position.
+     * @return tradeRatioD18 The trade ratio (fill price).
      */
     function quoteModifyTraderPosition(
         uint256 positionId,
         int256 size
-    ) external returns (int256 expectedCollateralDelta, int256 closePnL);
+    )
+        external
+        returns (
+            int256 expectedCollateralDelta,
+            int256 closePnL,
+            uint256 tradeRatioD18
+        );
 }

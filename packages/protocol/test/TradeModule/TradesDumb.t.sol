@@ -99,7 +99,7 @@ contract TradePositionDumb is TestTrade {
 
         vm.startPrank(trader1);
         // quote and open a long
-        uint256 requiredCollateral = foil.quoteCreateTraderPosition(
+        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
             epochId,
             positionSize
         );
@@ -137,7 +137,7 @@ contract TradePositionDumb is TestTrade {
 
         vm.startPrank(trader1);
         // quote and open a long
-        uint256 requiredCollateral = foil.quoteCreateTraderPosition(
+        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
             epochId,
             positionSize
         );
@@ -181,7 +181,7 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredCollateral, ) = foil.quoteModifyTraderPosition(
+        (int256 requiredCollateral, , ) = foil.quoteModifyTraderPosition(
             positionId,
             0
         );
@@ -227,7 +227,7 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredCollateral, ) = foil.quoteModifyTraderPosition(
+        (int256 requiredCollateral, , ) = foil.quoteModifyTraderPosition(
             positionId,
             0
         );
@@ -277,7 +277,7 @@ contract TradePositionDumb is TestTrade {
         fillPositionState(positionId, initialStateData);
 
         // quote and close a long
-        (int256 requiredDeltaCollateral, int256 closePnL) = foil
+        (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
             .quoteModifyTraderPosition(positionId, finalPositionSize);
 
         // Send more collateral than required, just checking the position can be created/modified
@@ -329,7 +329,7 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredDeltaCollateral, int256 closePnL) = foil
+        (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
             .quoteModifyTraderPosition(positionId, finalPositionSize);
 
         // Send more collateral than required, just checking the position can be created/modified
@@ -378,7 +378,7 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredDeltaCollateral, int256 closePnL) = foil
+        (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
             .quoteModifyTraderPosition(positionId, finalPositionSize);
 
         // Send more collateral than required, just checking the position can be created/modified
@@ -422,7 +422,7 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredDeltaCollateral, int256 closePnL) = foil
+        (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
             .quoteModifyTraderPosition(positionId, finalPositionSize);
 
         // Send more collateral than required, just checking the position can be created/modified
@@ -471,7 +471,7 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredDeltaCollateral, int256 closePnL) = foil
+        (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
             .quoteModifyTraderPosition(positionId, finalPositionSize);
 
         // Send more collateral than required, just checking the position can be created/modified
@@ -515,7 +515,7 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredDeltaCollateral, int256 closePnL) = foil
+        (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
             .quoteModifyTraderPosition(positionId, finalPositionSize);
 
         // Send more collateral than required, just checking the position can be created/modified

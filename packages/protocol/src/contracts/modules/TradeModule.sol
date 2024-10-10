@@ -253,7 +253,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
     function quoteCreateTraderPosition(
         uint256 epochId,
         int256 size
-    ) external returns (uint256 requiredCollateral) {
+    ) external returns (uint256 requiredCollateral, uint256 tradeRatioD18) {
         if (size == 0) {
             revert Errors.InvalidData("Size cannot be 0");
         }
@@ -278,7 +278,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             inputParams
         );
 
-        return outputParams.requiredCollateral;
+        return (outputParams.requiredCollateral, outputParams.tradeRatioD18);
     }
 
     /**
@@ -287,7 +287,14 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
     function quoteModifyTraderPosition(
         uint256 positionId,
         int256 size
-    ) external returns (int256 expectedCollateralDelta, int256 closePnL) {
+    )
+        external
+        returns (
+            int256 expectedCollateralDelta,
+            int256 closePnL,
+            uint256 tradeRatioD18
+        )
+    {
         if (ERC721Storage._ownerOf(positionId) != msg.sender) {
             revert Errors.NotAccountOwnerOrAuthorized(positionId, msg.sender);
         }
@@ -322,7 +329,11 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             inputParams
         );
 
-        return (outputParams.expectedDeltaCollateral, outputParams.closePnL);
+        return (
+            outputParams.expectedDeltaCollateral,
+            outputParams.closePnL,
+            outputParams.tradeRatioD18
+        );
     }
 
     function _checkDeltaCollateralLimit(

@@ -120,15 +120,18 @@ contract TestTrade is TestEpoch {
         uint256 epochId,
         int256 positionSize
     ) internal returns (uint256 positionId) {
-        uint256 requiredCollateral = foil.quoteCreateTraderPosition(
+        console2.log("CCCCCCCC >>> addTraderPosition 1");
+        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
             epochId,
             positionSize
         );
+        console2.log("CCCCCCCC >>> addTraderPosition 2");
         positionId = foil.createTraderPosition(
             epochId,
             positionSize,
             requiredCollateral * 2,
             block.timestamp + 30 minutes
         );
+        console2.log("CCCCCCCC >>> addTraderPosition 3");
     }
 }

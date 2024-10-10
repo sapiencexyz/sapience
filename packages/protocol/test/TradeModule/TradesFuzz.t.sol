@@ -107,7 +107,7 @@ contract TradePositionBasicFuzz is TestTrade {
 
         vm.startPrank(trader1);
         // quote and open a long
-        uint256 requiredCollateral = foil.quoteCreateTraderPosition(
+        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
             epochId,
             positionSize
         );
@@ -157,7 +157,7 @@ contract TradePositionBasicFuzz is TestTrade {
 
         vm.startPrank(trader1);
         // quote and open a long
-        uint256 requiredCollateral = foil.quoteCreateTraderPosition(
+        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
             epochId,
             positionSize
         );
@@ -193,7 +193,7 @@ contract TradePositionBasicFuzz is TestTrade {
         );
     }
 
-    function test_fuzz_modify_Long2Long(
+    function test_fuzz_modify_Long2Long_Only(
         uint256 startPosition,
         uint256 endPosition
     ) public {
@@ -208,9 +208,6 @@ contract TradePositionBasicFuzz is TestTrade {
         int256 positionSize = endPosition.toInt();
 
         int256 deltaPositionSize = positionSize - initialPositionSize;
-        uint256 directionPrice = deltaPositionSize > 0
-            ? INITIAL_PRICE_PLUS_FEE_D18
-            : INITIAL_PRICE_MINUS_FEE_D18;
         uint256 positionId;
 
         vm.startPrank(trader1);
@@ -218,8 +215,11 @@ contract TradePositionBasicFuzz is TestTrade {
         fillCollateralStateData(trader1, latestStateData);
         fillPositionState(positionId, latestStateData);
 
+        // get actual trade price
+        uint256 tradeRatio = _getTradeRatio(deltaPositionSize);
+
         // quote and open a long
-        (int256 requiredDeltaCollateral, int256 closePnL) = foil
+        (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
             .quoteModifyTraderPosition(positionId, positionSize);
 
         // Send more collateral than required, just checking the position can be created/modified
@@ -231,9 +231,27 @@ contract TradePositionBasicFuzz is TestTrade {
         );
         vm.stopPrank();
 
+        console2.log(
+            "DDDD requiredDeltaCollateral                    ",
+            requiredDeltaCollateral
+        );
+        console2.log(
+            "DDDD closePnL                                   ",
+            closePnL
+        );
+        console2.log(
+            "DDDD latestStateData.depositedCollateralAmount  ",
+            latestStateData.depositedCollateralAmount
+        );
         int256 requiredCollateral = latestStateData
             .depositedCollateralAmount
-            .toInt() + requiredDeltaCollateral;
+            .toInt() +
+            requiredDeltaCollateral -
+            closePnL;
+        console2.log(
+            "DDDD requiredCollateral                         ",
+            requiredCollateral
+        );
 
         // Set expected state
         expectedStateData.userCollateral = (latestStateData
@@ -247,8 +265,7 @@ contract TradePositionBasicFuzz is TestTrade {
         expectedStateData.positionSize = positionSize;
         expectedStateData.vEthAmount = 0;
         expectedStateData.vGasAmount = uint256(positionSize);
-        expectedStateData.borrowedVEth = (latestStateData.borrowedVEth.toInt() +
-            deltaPositionSize.mulDecimal(directionPrice.toInt())).toUint();
+        expectedStateData.borrowedVEth = (endPosition.mulDecimal(tradeRatio));
         expectedStateData.borrowedVGas = 0;
 
         // Check position makes sense
@@ -269,18 +286,15 @@ contract TradePositionBasicFuzz is TestTrade {
         startPosition = bound(startPosition, .01 ether, 4 ether);
         endPosition = bound(endPosition, .01 ether, 4 ether);
 
-        startPosition = 1561316471298239909; // 1.5
-        endPosition = 29708930647394073; // 0.028
-
         StateData memory latestStateData;
         StateData memory expectedStateData;
         int256 initialPositionSize = startPosition.toInt() * -1;
         int256 positionSize = endPosition.toInt() * -1;
 
         int256 deltaPositionSize = positionSize - initialPositionSize;
-        uint256 feeMultiplier = deltaPositionSize > 0
-            ? PLUS_FEE_MULTIPLIER_D18
-            : MINUS_FEE_MULTIPLIER_D18;
+        uint256 directionPrice = deltaPositionSize > 0
+            ? INITIAL_PRICE_MINUS_FEE_D18
+            : INITIAL_PRICE_PLUS_FEE_D18;
 
         uint256 positionId;
 
@@ -303,34 +317,22 @@ contract TradePositionBasicFuzz is TestTrade {
 
         vm.startPrank(trader1);
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
+        console2.log("TEST Done  1st Trade: positionId", positionId);
         fillCollateralStateData(trader1, latestStateData);
         fillPositionState(positionId, latestStateData);
 
         log_positionAccounting(foil, positionId);
 
-        amountIn = uniswapQuoter.quoteExactInputSingle(
-            tokenB,
-            tokenA,
-            uniCastedPool.fee(),
-            startPosition - endPosition,
-            0
-        );
+        // get actual trade price
+        uint256 tradeRatio = _getTradeRatio(deltaPositionSize);
 
-        // IS HERE
+        // WORKING HERE
 
-        console2.log("TEST After 1st Trade: amountIn", amountIn);
-        console2.log(
-            "TEST After 1st Trade: startPosition",
-            startPosition - endPosition
-        );
-        console2.log(
-            "TEST After 1st Trade: ratio",
-            amountIn.divDecimal(startPosition)
-        );
+        console2.log("TEST After 1st Trade: tradeRatio", tradeRatio);
 
         console2.log("AAAA 01");
         // quote and open a long
-        (int256 requiredDeltaCollateral, int256 closePnL) = foil
+        (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
             .quoteModifyTraderPosition(positionId, positionSize);
         console2.log("AAAA 0");
 
@@ -338,20 +340,19 @@ contract TradePositionBasicFuzz is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             positionSize,
-            requiredDeltaCollateral * 2,
+            requiredDeltaCollateral,
             block.timestamp + 30 minutes
         );
 
         vm.stopPrank();
 
-        uint256 price = foil.getReferencePrice(epochId).mulDecimal(
-            feeMultiplier
-        );
-
         console2.log("AAAA 1");
         int256 requiredCollateral = latestStateData
             .depositedCollateralAmount
-            .toInt() + requiredDeltaCollateral;
+            .toInt() +
+            requiredDeltaCollateral +
+            closePnL;
+
         console2.log(
             " AA >>> deltaCollateral                           ",
             requiredDeltaCollateral
@@ -366,8 +367,7 @@ contract TradePositionBasicFuzz is TestTrade {
         );
 
         console2.log("AAAA 2");
-        int256 deltaEth = (latestStateData.vEthAmount.toInt() -
-            deltaPositionSize.mulDecimal(price.toInt()));
+        int256 deltaEth = latestStateData.vEthAmount.toInt() + closePnL;
         console2.log("AAAA 3");
 
         // Set expected state
@@ -380,12 +380,13 @@ contract TradePositionBasicFuzz is TestTrade {
             .toInt() + requiredDeltaCollateral).toUint();
         console2.log("AAAA 5");
 
-        expectedStateData.depositedCollateralAmount = requiredDeltaCollateral
+        expectedStateData.depositedCollateralAmount = requiredCollateral
             .toUint();
         console2.log("AAAA 6");
         expectedStateData.positionSize = positionSize;
         console2.log("AAAA 7");
-        expectedStateData.vEthAmount = (deltaEth * -1).toUint();
+        expectedStateData.vEthAmount = (endPosition.mulDecimal(tradeRatio));
+
         console2.log("AAAA 8");
         expectedStateData.vGasAmount = 0;
         expectedStateData.borrowedVEth = 0;
@@ -429,7 +430,7 @@ contract TradePositionBasicFuzz is TestTrade {
         fillPositionState(positionId, latestStateData);
 
         // quote and open a long
-        (int256 requiredDeltaCollateral, int256 closePnL) = foil
+        (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
             .quoteModifyTraderPosition(positionId, positionSize);
 
         // Send more collateral than required, just checking the position can be created/modified
@@ -526,7 +527,7 @@ contract TradePositionBasicFuzz is TestTrade {
         fillPositionState(positionId, latestStateData);
 
         // quote and open a long
-        (int256 requiredDeltaCollateral, int256 closePnL) = foil
+        (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
             .quoteModifyTraderPosition(positionId, positionSize);
 
         // Send more collateral than required, just checking the position can be created/modified
@@ -589,7 +590,7 @@ contract TradePositionBasicFuzz is TestTrade {
         fillPositionState(positionId, latestStateData);
 
         // quote and open a long
-        (int256 requiredDeltaCollateral, int256 closePnL) = foil
+        (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
             .quoteModifyTraderPosition(positionId, 0);
 
         // Send more collateral than required, just checking the position can be created/modified
@@ -644,7 +645,7 @@ contract TradePositionBasicFuzz is TestTrade {
         fillPositionState(positionId, latestStateData);
 
         // quote and open a long
-        (int256 requiredDeltaCollateral, int256 closePnL) = foil
+        (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
             .quoteModifyTraderPosition(positionId, 0);
 
         // Send more collateral than required, just checking the position can be created/modified
@@ -765,5 +766,33 @@ contract TradePositionBasicFuzz is TestTrade {
             0.025 ether,
             string.concat(stage, " borrowedVEth")
         );
+    }
+
+    function _getTradeRatio(
+        int256 deltaPositionSize
+    ) public returns (uint256 tradeRatio) {
+        // get actual trade price
+        if (deltaPositionSize > 0) {
+            uint256 amountIn = uniswapQuoter.quoteExactOutputSingle(
+                tokenA,
+                tokenB,
+                uniCastedPool.fee(),
+                deltaPositionSize.toUint(),
+                0
+            );
+            console2.log("amountIn at trade (EXACT OUT)", amountIn);
+
+            tradeRatio = amountIn.divDecimal(deltaPositionSize.toUint());
+        } else {
+            uint256 amountIn = uniswapQuoter.quoteExactInputSingle(
+                tokenB,
+                tokenA,
+                uniCastedPool.fee(),
+                (deltaPositionSize * -1).toUint(),
+                0
+            );
+            console2.log("amountIn at trade (EXACT IN )", amountIn);
+            tradeRatio = amountIn.divDecimal((deltaPositionSize * -1).toUint());
+        }
     }
 }
