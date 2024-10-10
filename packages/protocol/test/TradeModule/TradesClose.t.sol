@@ -99,7 +99,7 @@ contract TradePositionClose is TestTrade {
 
         vm.startPrank(trader1);
         // quote and open a long
-        uint256 requiredCollateral = foil.quoteCreateTraderPosition(
+        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
             epochId,
             positionSize
         );
@@ -138,7 +138,7 @@ contract TradePositionClose is TestTrade {
 
         for (uint256 i = 0; i < maxIterations; i++) {
             // quote and open a long
-            uint256 requiredCollateral = foil.quoteCreateTraderPosition(
+            (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
                 epochId,
                 size
             );
@@ -181,7 +181,7 @@ contract TradePositionClose is TestTrade {
         //         );
         // }
         // vm.startPrank(trader1);
-        // uint256 requiredCollateral = foil.quoteCreateTraderPosition(
+        // (uint256 requiredCollateral,) = foil.quoteCreateTraderPosition(
         //     epochId,
         //     initialPositionSize
         // );

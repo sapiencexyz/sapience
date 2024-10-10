@@ -44,4 +44,5 @@ library Errors {
         uint160 minPrice,
         uint160 maxPrice
     );
+    error TransactionExpired(uint256 deadline, uint256 blockTime);
 }

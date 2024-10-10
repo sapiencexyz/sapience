@@ -84,7 +84,7 @@ contract TradeViews is TestTrade {
             deltaPrice
         );
 
-        uint256 requiredCollateral = foil.quoteCreateTraderPosition(
+        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
             epochId,
             positionSize
         );
@@ -107,7 +107,7 @@ contract TradeViews is TestTrade {
             deltaPrice
         );
 
-        uint256 requiredCollateral = foil.quoteCreateTraderPosition(
+        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
             epochId,
             positionSize
         );
