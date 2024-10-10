@@ -21,17 +21,25 @@ library Position {
     using Epoch for Epoch.Data;
 
     struct Data {
+        // Unique identifier for the position
         uint256 id;
+        // Type of position (e.g., Trade, Liquidity)
         IFoilStructs.PositionKind kind;
+        // ID of the epoch this position belongs to
         uint256 epochId;
-        // Accounting data (debt and deposited collateral)
-        uint256 depositedCollateralAmount; // configured collateral
+        // User's collateral amount backing their positions
+        uint256 depositedCollateralAmount;
+        // Amount of virtual ETH borrowed
         uint256 borrowedVEth;
+        // Amount of virtual Gas borrowed
         uint256 borrowedVGas;
-        // Position data (owned tokens)
+        // Amount of accrued/bought virtual ETH
         uint256 vEthAmount;
+        // Amount of accrued/bought virtual Gas
         uint256 vGasAmount;
-        uint256 uniswapPositionId; // uniswap nft id
+        // ID of the associated Uniswap V3 LP position (not applicable to traders)
+        uint256 uniswapPositionId;
+        // Flag indicating if the position has been settled
         bool isSettled;
     }
 
@@ -184,7 +192,7 @@ library Position {
         self.isSettled = true;
 
         // 1- reconcile gas tokens
-        _reconcileGasTokens(self);
+        rebalanceGasTokens(self);
 
         // 2- convert everything to ETH
         if (self.vGasAmount > 0) {
@@ -207,11 +215,8 @@ library Position {
             self.borrowedVGas = 0;
         }
 
-        // 3- reconcile eth tokens
-        _reconcileEthTokens(self);
-
-        // 4- reconcile collateral
-        reconcileCollateral(self);
+        rebalanceEthTokens(self);
+        rebalanceCollateral(self);
 
         return self.depositedCollateralAmount;
     }
@@ -220,12 +225,18 @@ library Position {
         return self.vGasAmount.toInt() - self.borrowedVGas.toInt();
     }
 
-    function reconcileTokens(Data storage self) internal {
-        _reconcileGasTokens(self);
-        _reconcileEthTokens(self);
+    /**
+     * Rebalances the virtual tokens (ETH, GAS) between borrowed and accrued.
+     */
+    function rebalanceVirtualTokens(Data storage self) internal {
+        rebalanceGasTokens(self);
+        rebalanceEthTokens(self);
     }
 
-    function _reconcileGasTokens(Data storage self) private {
+    /**
+     * Rebalances the virtual gas tokens between borrowed and accrued.
+     */
+    function rebalanceGasTokens(Data storage self) internal {
         if (self.vGasAmount > self.borrowedVGas) {
             self.vGasAmount -= self.borrowedVGas;
             self.borrowedVGas = 0;
@@ -235,7 +246,10 @@ library Position {
         }
     }
 
-    function _reconcileEthTokens(Data storage self) private {
+    /**
+     * Rebalances the virtual eth tokens between borrowed and accrued.
+     */
+    function rebalanceEthTokens(Data storage self) private {
         if (self.vEthAmount > self.borrowedVEth) {
             self.vEthAmount -= self.borrowedVEth;
             self.borrowedVEth = 0;
@@ -245,7 +259,12 @@ library Position {
         }
     }
 
-    function reconcileCollateral(Data storage self) internal {
+    /**
+     * If accrued vETH, it's added to the deposited collateral.
+     * If borrowed vETH, it's subtracted from the deposited collateral.
+     * This function rebalances collateral against the virtual tokens, and resets the virtual tokens to 0.
+     */
+    function rebalanceCollateral(Data storage self) internal {
         if (self.vEthAmount > 0) {
             self.depositedCollateralAmount += self.vEthAmount;
             self.vEthAmount = 0;

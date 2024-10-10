@@ -1,6 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.8.11 <0.9.0;
 
+import "../interfaces/IERC721Enumerable.sol";
 import "./ERC721Storage.sol";
 import "./Errors.sol";
 
@@ -35,7 +36,10 @@ library ERC721EnumerableStorage {
         ERC721Storage.Data storage erc721Storage = ERC721Storage.load();
 
         if (erc721Storage.balanceOf[owner] <= index) {
-            revert Errors.IndexOverrun(index, erc721Storage.balanceOf[owner]);
+            revert IERC721Enumerable.IndexOverrun(
+                index,
+                erc721Storage.balanceOf[owner]
+            );
         }
         return load().ownedTokens[owner][index];
     }
@@ -46,7 +50,7 @@ library ERC721EnumerableStorage {
      */
     function tokenByIndex(uint256 index) public view returns (uint256) {
         if (index > totalSupply()) {
-            revert Errors.IndexOverrun(index, totalSupply());
+            revert IERC721Enumerable.IndexOverrun(index, totalSupply());
         }
         return load().allTokens[index];
     }

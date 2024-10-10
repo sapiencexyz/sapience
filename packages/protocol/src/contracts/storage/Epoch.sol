@@ -192,7 +192,7 @@ library Epoch {
         }
     }
 
-    function validateLp(
+    function validateLpRequirements(
         Data storage self,
         int24 lowerTick,
         int24 upperTick
