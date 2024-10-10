@@ -13,6 +13,7 @@ import {
   Tooltip,
 } from '@chakra-ui/react';
 import { useContext } from 'react';
+import { tickToPrice } from '~/lib/util/util';
 
 import { MarketContext } from '../../context/MarketProvider';
 
@@ -108,10 +109,10 @@ const LiquidityPositionsTable: React.FC<Props> = ({
                     <NumberDisplay value={row.quoteToken} /> wstETH
                   </Td>
                   <Td>
-                    <NumberDisplay value={row.lowPrice} /> Ggas/wstETH
+                    <NumberDisplay value={tickToPrice(row.lowPriceTick)} /> Ggas/wstETH
                   </Td>
                   <Td>
-                    <NumberDisplay value={row.highPrice} /> Ggas/wstETH
+                    <NumberDisplay value={tickToPrice(row.highPriceTick)} /> Ggas/wstETH
                   </Td>
                   {/* <Td>
                     <NumberDisplay value={pnl} /> wstETH

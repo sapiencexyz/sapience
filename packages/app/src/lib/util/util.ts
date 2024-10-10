@@ -59,3 +59,6 @@ export function getDisplayTextForVolumeWindow(volumeWindow: TimeWindow) {
   }
   return '';
 }
+
+// TODO: Adjust this based on fee rate on the market
+export const tickToPrice = (tick: number): number => 1.0001 ** tick;
