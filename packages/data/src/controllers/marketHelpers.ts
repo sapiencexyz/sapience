@@ -111,7 +111,7 @@ export const createOrModifyPosition = async (transaction: Transaction) => {
 
   position.collateral = (
     BigInt(originalCollateral) + BigInt(transaction.collateralDelta)
-  ).toString(); //TODO: figure out what to do with a lp closed and changed to trade position
+  ).toString();
   if (eventArgs.upperTick && eventArgs.lowerTick) {
     position.highPriceTick = eventArgs.upperTick.toString();
     position.lowPriceTick = eventArgs.lowerTick.toString();
