@@ -264,7 +264,6 @@ const startServer = async () => {
           position.borrowedQuoteToken
         );
         position.collateral = formatDbBigInt(position.collateral);
-        position.unclaimedFees = formatDbBigInt(position.unclaimedFees);
       }
       res.json(positions);
     } catch (error) {
@@ -311,7 +310,6 @@ const startServer = async () => {
       position.borrowedBaseToken = formatDbBigInt(position.borrowedBaseToken);
       position.borrowedQuoteToken = formatDbBigInt(position.borrowedQuoteToken);
       position.collateral = formatDbBigInt(position.collateral);
-      position.unclaimedFees = formatDbBigInt(position.unclaimedFees);
 
       res.json(position);
     } catch (error) {

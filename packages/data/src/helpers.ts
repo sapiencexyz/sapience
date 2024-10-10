@@ -1,6 +1,6 @@
 import { Block, PublicClient, createPublicClient, formatUnits, http, webSocket } from 'viem';
 import { mainnet, sepolia, cannon } from 'viem/chains';
-import { TOKEN_PRECISION } from './constants';
+import { FEE, TOKEN_PRECISION } from './constants';
 import { epochRepository } from './db';
 import { Deployment } from './interfaces/interfaces';
 
