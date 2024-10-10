@@ -15,6 +15,7 @@ import { EpochCreatedEventLog, EventType, MarketCreatedUpdatedEventLog, MarketIn
 import { getProviderForChain, bigintReplacer } from "../helpers";
 import { createEpochFromEvent, createOrModifyPosition, createOrUpdateMarketFromEvent, handleTransferEvent, updateTransactionFromAddLiquidityEvent, updateTransactionFromLiquidityClosedEvent, updateTransactionFromLiquidityModifiedEvent, updateTransactionFromTradeModifiedEvent, upsertMarketPrice } from "./marketHelpers";
 
+// Called when the process starts, upserts markets in the database to match those in the constants.ts file
 export const initializeMarket = async (marketInfo: MarketInfo) => {
   let existingMarket = await marketRepository.findOne({
     where: {
@@ -66,6 +67,7 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
   return updatedMarket;
 };
 
+// Called when the process starts after initialization. Watches events for a given market and calls upsertEvent for each one.
 export const indexMarketEvents = async (market: Market, abi: Abi) => {
   await initializeDataSource();
   const client = getProviderForChain(market.chainId);
@@ -110,6 +112,7 @@ export const indexMarketEvents = async (market: Market, abi: Abi) => {
   });
 };
 
+// Iterates over all blocks from the market's deploy block to the current block and calls upsertEvent for each one.
 export const reindexMarketEvents = async (market: Market, abi: Abi) => {
   await initializeDataSource();
   const client = getProviderForChain(market.chainId);
@@ -160,6 +163,7 @@ export const reindexMarketEvents = async (market: Market, abi: Abi) => {
   }
 };
 
+// Upserts an event into the database using the proper helper function.
 const upsertEvent = async (
   chainId: number,
   address: string,
@@ -252,6 +256,7 @@ const upsertEvent = async (
   await eventRepository.upsert(newEvent, ["epoch", "blockNumber", "logIndex"]);
 };
 
+// Triggered by the callback in the Event model, this upserts related entities (Transaction, Position, MarketPrice).
 export const upsertEntitiesFromEvent = async (event: Event) => {
   const newTransaction = new Transaction();
   newTransaction.event = event;
