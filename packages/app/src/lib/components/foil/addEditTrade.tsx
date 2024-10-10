@@ -428,6 +428,20 @@ export default function AddEditTrade() {
     positionData,
   ]);
 
+  console.log('******');
+  console.log('collateralBalance =', collateralBalance);
+  console.log('collateralAssetDecimals =', collateralAssetDecimals);
+  console.log('collateralDelta =', collateralDelta);
+  console.log('collateralDeltaLimit =', collateralDeltaLimit);
+  console.log('positionData =', positionData);
+  console.log('walletBalance =', walletBalance);
+  console.log('quotedResultingWalletBalance =', quotedResultingWalletBalance);
+  console.log('walletBalanceLimit =', walletBalanceLimit);
+  console.log('positionCollateralLimit =', positionCollateralLimit);
+  console.log('quotedFillPrice =', quotedFillPrice);
+  console.log('pool?.token0Price =', pool?.token0Price);
+  console.log('******');
+
   const currentChainId = useChainId();
   const { switchChain } = useSwitchChain();
 
