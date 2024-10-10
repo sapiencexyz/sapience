@@ -33,10 +33,9 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         uint256 deltaCollateralLimit,
         uint256 deadline
     ) external nonReentrant returns (uint256 positionId) {
-        require(
-            block.timestamp <= deadline,
-            Errors.TransactionExpired(deadline, block.timestamp)
-        );
+        if (block.timestamp > deadline) {
+            revert Errors.TransactionExpired(deadline, block.timestamp);
+        }
 
         if (size == 0) {
             revert Errors.InvalidData("Size cannot be 0");
@@ -120,10 +119,9 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         int256 deltaCollateralLimit,
         uint256 deadline
     ) external nonReentrant {
-        require(
-            block.timestamp <= deadline,
-            Errors.TransactionExpired(deadline, block.timestamp)
-        );
+        if (block.timestamp > deadline) {
+            revert Errors.TransactionExpired(deadline, block.timestamp);
+        }
 
         if (ERC721Storage._ownerOf(positionId) != msg.sender) {
             revert Errors.NotAccountOwnerOrAuthorized(positionId, msg.sender);
