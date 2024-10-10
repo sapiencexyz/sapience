@@ -271,13 +271,27 @@ export default function AddEditTrade() {
     const result = isEdit
       ? quoteModifyPositionResult.data?.result
       : quoteCreatePositionResult.data?.result;
-    return result || [BigInt(0), BigInt(0)];
+
+    if (!result) {
+      return [BigInt(0), BigInt(0)];
+    }
+
+    if (isEdit) {
+      const [expectedCollateralDelta, closePnL, fillPrice] = result;
+      return [expectedCollateralDelta, fillPrice];
+    }
+    const [requiredCollateral, fillPrice] = result;
+    return [requiredCollateral, fillPrice];
   }, [isEdit, quoteCreatePositionResult.data, quoteModifyPositionResult.data]);
 
-  console.log(
-    'quotedResultingPositionCollateral.data =',
-    quotedResultingPositionCollateral
-  );
+  const priceImpact: number = useMemo(() => {
+    if (pool?.token0Price && quotedFillPrice) {
+      const fillPrice = Number(quotedFillPrice) / 1e18;
+      const referencePrice = parseFloat(pool.token0Price.toSignificant(18));
+      return Math.abs((fillPrice / referencePrice - 1) * 100);
+    }
+    return 0;
+  }, [quotedFillPrice, pool]);
 
   const collateralDelta = useMemo(() => {
     return (
@@ -594,6 +608,16 @@ export default function AddEditTrade() {
             <Text fontSize="sm" color="gray.600" mb={0.5}>
               <NumberDisplay value={quotedFillPrice} /> Ggas/
               {collateralAssetTicker}
+            </Text>
+          </Box>
+        )}
+        {priceImpact !== 0 && (
+          <Box>
+            <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
+              Estimated Price Impact
+            </Text>
+            <Text fontSize="sm" color="gray.600" mb={0.5}>
+              {Number(priceImpact.toFixed(2)).toString()}%
             </Text>
           </Box>
         )}
