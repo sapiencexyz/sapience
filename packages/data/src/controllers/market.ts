@@ -3,7 +3,10 @@ import dataSource, {
   epochRepository,
   eventRepository,
   initializeDataSource,
+  marketPriceRepository,
   marketRepository,
+  positionRepository,
+  transactionRepository,
 } from "../db";
 import { Event } from "../entity/Event";
 import { EpochParams } from "../entity/EpochParams";
@@ -21,12 +24,13 @@ import {
   LiquidityPositionCreatedEventLog,
   LiquidityPositionModifiedEventLog,
   TradePositionEventLog,
+  EventType,
 } from "../interfaces/interfaces";
 import { getProviderForChain, bigintReplacer } from "../helpers";
+import { FEE } from "../constants";
+import { MarketPrice } from "../entity/MarketPrice";
 
-export const initializeMarket = async (
-  marketInfo: MarketInfo
-) => {
+export const initializeMarket = async (marketInfo: MarketInfo) => {
   let existingMarket = await marketRepository.findOne({
     where: {
       address: marketInfo.deployment.address,
@@ -47,7 +51,10 @@ export const initializeMarket = async (
   let updatedMarket = market;
   if (!updatedMarket) {
     let existingMarket = await marketRepository.findOne({
-      where: { address: marketInfo.deployment.address, chainId: marketInfo.marketChainId },
+      where: {
+        address: marketInfo.deployment.address,
+        chainId: marketInfo.marketChainId,
+      },
       relations: ["epochs"],
     });
     updatedMarket = existingMarket || new Market();
@@ -56,7 +63,9 @@ export const initializeMarket = async (
   updatedMarket.name = marketInfo.name;
   updatedMarket.public = marketInfo.public;
   updatedMarket.address = marketInfo.deployment.address;
-  updatedMarket.deployTxnBlockNumber = Number(marketInfo.deployment.deployTxnBlockNumber);
+  updatedMarket.deployTxnBlockNumber = Number(
+    marketInfo.deployment.deployTxnBlockNumber
+  );
   updatedMarket.deployTimestamp = Number(marketInfo.deployment.deployTimestamp);
   updatedMarket.chainId = marketInfo.marketChainId;
   updatedMarket.owner = marketReadResult[0];
@@ -72,11 +81,7 @@ export const initializeMarket = async (
   return updatedMarket;
 };
 
-
-export const indexMarketEvents = async (
-  market: Market,
-  abi: Abi
-) => {
+export const indexMarketEvents = async (market: Market, abi: Abi) => {
   await initializeDataSource();
   const client = getProviderForChain(market.chainId);
   const chainId = await client.getChainId();
@@ -109,7 +114,9 @@ export const indexMarketEvents = async (
     }
   };
 
-  console.log(`Watching contract events for ${market.chainId}:${market.address}`);
+  console.log(
+    `Watching contract events for ${market.chainId}:${market.address}`
+  );
   client.watchContractEvent({
     address: market.address as `0x${string}`,
     abi,
@@ -118,19 +125,21 @@ export const indexMarketEvents = async (
   });
 };
 
-export const reindexMarketEvents = async (
-  market: Market,
-  abi: Abi
-) => {
+export const reindexMarketEvents = async (market: Market, abi: Abi) => {
   await initializeDataSource();
   const client = getProviderForChain(market.chainId);
-  
+
   const startBlock = market.deployTxnBlockNumber;
   const endBlock = await client.getBlockNumber();
 
-  await indexMarketEventsRange(client, startBlock, Number(endBlock), market.address, abi);
-}
-
+  await indexMarketEventsRange(
+    client,
+    startBlock,
+    Number(endBlock),
+    market.address,
+    abi
+  );
+};
 
 /*
 // FOR REFERENCE, MAYBE DELETE
@@ -232,15 +241,10 @@ export async function reindexNetwork(
 }
 */
 
-
-
 // TODO GET FEE FROM CONTRACT
 const tickToPrice = (tick: number): number => (1 + FEE) ** tick;
 
-export const upsertTransactionPositionPriceFromEvent = async (event: Event) => {
-  const transactionRepository = dataSource.getRepository(Transaction);
-  const positionRepository = dataSource.getRepository(Position);
-
+export const handleEventAfterUpsert = async (event: Event) => {
   const newTransaction = new Transaction();
   newTransaction.event = event;
 
@@ -300,7 +304,6 @@ export const upsertTransactionPositionPriceFromEvent = async (event: Event) => {
  * @param event The Transfer event
  */
 const handleTransferEvent = async (event: Event) => {
-  const positionRepository = dataSource.getRepository(Position);
   const { from, to, tokenId } = event.logData.args;
 
   const existingPosition = await positionRepository.findOne({
@@ -335,8 +338,6 @@ const handleTransferEvent = async (event: Event) => {
  * @param transaction the Transaction to use for creating/modifying the position
  */
 export const createOrModifyPosition = async (transaction: Transaction) => {
-  const positionRepository = dataSource.getRepository(Position);
-
   const existingPosition = await positionRepository.findOne({
     where: {
       epoch: {
@@ -409,7 +410,6 @@ export const upsertMarketPrice = async (transaction: Transaction) => {
     transaction.type === TransactionType.SHORT
   ) {
     console.log("Upserting market price for transaction: ", transaction);
-    const mpRepository = dataSource.getRepository(MarketPrice);
     // upsert market price
     const newMp = new MarketPrice(); // might already get saved when upserting txn
     const finalPrice = transaction.event.logData.args.finalPrice;
@@ -417,7 +417,7 @@ export const upsertMarketPrice = async (transaction: Transaction) => {
     newMp.timestamp = transaction.event.timestamp;
     newMp.transaction = transaction;
     console.log("upserting market price: ", newMp);
-    await mpRepository.save(newMp);
+    await marketPriceRepository.save(newMp);
   }
 };
 
@@ -437,8 +437,6 @@ const isLpPosition = (transaction: Transaction) => {
   }
   return false;
 };
-
-
 
 export const createOrUpdateMarketFromContract = async (
   client: PublicClient,
@@ -466,8 +464,10 @@ export const createOrUpdateMarketFromContract = async (
 
   // update market params appropriately
   updatedMarket.address = contractDeployment.address;
-  updatedMarket.deployTxnBlockNumber = contractDeployment.deployTxnBlockNumber;
-  updatedMarket.deployTimestamp = contractDeployment.deployTimestamp;
+  updatedMarket.deployTxnBlockNumber = Number(
+    contractDeployment.deployTxnBlockNumber
+  );
+  updatedMarket.deployTimestamp = Number(contractDeployment.deployTimestamp);
   updatedMarket.chainId = chainId;
   updatedMarket.owner = marketReadResult[0];
   updatedMarket.collateralAsset = marketReadResult[1];
@@ -489,8 +489,6 @@ export const createOrUpdateEpochFromContract = async (
   market: Market,
   getLatestEpoch?: boolean
 ) => {
-  const epochRepository = dataSource.getRepository(Epoch);
-
   const functionName = getLatestEpoch ? "getLatestEpoch" : "getEpoch";
   const args = getLatestEpoch ? [] : [epoch];
 
@@ -593,107 +591,87 @@ const handleMarketEventUpsert = async (
   logIndex: number,
   logData: any
 ) => {
-  console.log("Upserting event:", {
+  console.log("handling event upsert:", {
     chainId,
     address,
     epochId,
     blockNumber,
+    timeStamp,
     logIndex,
     logData,
   });
 
-  // Find or create the market
+  // Find market and/or epoch associated with the event
   let market = await marketRepository.findOne({
     where: { chainId, address },
     relations: ["epochs", "epochs.market"],
   });
+  let epoch = market?.epochs.find((e) => e.epochId === epochId);
 
-  if (logData.eventName === "MarketInitialized") {
-    console.log("creating market: ", logData);
-    const marketCreatedArgs = logData.args as MarketCreatedUpdatedEventLog;
-    market = await createOrUpdateMarketFromEvent(
-      marketCreatedArgs,
-      chainId,
-      address,
-      market
-    );
+  switch (logData.eventName) {
+    case "MarketInitialized":
+      console.log("initializing market. LogData: ", logData);
+      const marketCreatedArgs = logData.args as MarketCreatedUpdatedEventLog;
+      market = await createOrUpdateMarketFromEvent(
+        marketCreatedArgs,
+        chainId,
+        address,
+        market
+      );
+      break;
+    case "MarketUpdated":
+      console.log("updating market. LogData: ", logData);
+      const marketUpdatedArgs = logData.args as MarketCreatedUpdatedEventLog;
+      market = await createOrUpdateMarketFromEvent(
+        marketUpdatedArgs,
+        chainId,
+        address,
+        market
+      );
+      break;
+    case "EpochCreated":
+      console.log("creating epoch. LogData: ", logData);
+      if (!market) {
+        throw new Error(
+          `Market not found for chainId ${chainId} and address ${address}. Cannot create epoch in db from event.`
+        );
+      }
+      const epochCreatedArgs = logData.args as EpochCreatedEventLog;
+      epoch = await createEpochFromEvent(epochCreatedArgs, market);
+      break;
+    case "MarketSettled":
+      console.log("Market settled event. LogData: ", logData);
+      if (!epoch) {
+        throw new Error(
+          `Epoch with id ${epochId} not found for market address ${address} chainId ${chainId}. Cannot update epoch in db from event.`
+        );
+      }
+      epoch.settled = true;
+      epoch.settlementPriceD18 = logData.args.settlementPriceD18;
+      epoch = await epochRepository.save(epoch);
+      break;
+    default:
+      break;
   }
 
-  if (!market) {
-    throw new Error(
-      `Market not found for chainId ${chainId} and address ${address}`
-    );
-  }
-
-  if (logData.eventName === "MarketUpdated") {
-    console.log("updating market: ", logData);
-    // update market
-    const marketUpdatedArgs = logData.args as MarketCreatedUpdatedEventLog;
-    market = await createOrUpdateMarketFromEvent(
-      marketUpdatedArgs,
-      chainId,
-      address,
-      market
-    );
-  }
-
-  // handle epoch
-  let epoch = market.epochs.find((e) => e.epochId === epochId);
-
-  if (logData.eventName === "EpochCreated") {
-    // create new epoch
-    console.log("creating epoch: ", logData);
-    const epochCreatedArgs = logData.args as EpochCreatedEventLog;
-    epoch = await createEpochFromEvent(epochCreatedArgs, market);
-  } else if (!epoch) {
-    // get latest epoch id from repository
-    console.log("getting latest epoch from repository...");
-    epoch =
-      (await epochRepository.findOne({
-        where: { market: { id: market.id } },
-        order: { epochId: "DESC" },
-        relations: ["market"],
-      })) || undefined;
-  }
-  console.log("event epoch:", epoch);
-
-  // throw if epoch not found/created properly
+  // throw if epoch not found/created properly since we need it for the Event
   if (!epoch) {
-    throw new Error(`No epochs found for market ${market.address}`);
+    throw new Error(
+      `Epoch with id ${epochId} not found for market address ${address} chainId ${chainId}. Cannot upsert event into db.`
+    );
   }
 
-  // process market settled events
-  if (logData.eventName === "MarketSettled") {
-    console.log("Market settled event: ", logData);
-    epoch.settled = true;
-    epoch.settlementPriceD18 = logData.args.settlementPriceD18;
-    await epochRepository.save(epoch);
-  }
+  console.log("inserting new event..");
+  // Create a new Event entity
+  const newEvent = new Event();
+  newEvent.epoch = epoch;
+  newEvent.blockNumber = blockNumber.toString();
+  newEvent.timestamp = timeStamp.toString();
+  newEvent.logIndex = logIndex;
+  newEvent.logData = logData;
 
-  // check if event has already been processed
-  const existingEvent = await eventRepository.findOne({
-    where: {
-      epoch: { id: epoch.id },
-      blockNumber: blockNumber.toString(),
-      logIndex,
-    },
-    relations: ["epoch"],
-  });
-  if (!existingEvent) {
-    console.log("inserting new event");
-    // Create a new Event entity
-    const newEvent = new Event();
-    newEvent.epoch = epoch;
-    newEvent.blockNumber = blockNumber.toString();
-    newEvent.timestamp = timeStamp.toString();
-    newEvent.logIndex = logIndex;
-    newEvent.logData = logData;
-
-    // insert the event
-    await eventRepository.insert(newEvent);
-  } else {
-    console.log("Event already processed");
-  }
+  // insert the event
+  await eventRepository.upsert(newEvent, ["epoch", "blockNumber", "logIndex"]);
 };
 
 /**
@@ -711,8 +689,6 @@ const createOrUpdateMarketFromEvent = async (
   address: string,
   originalMarket?: Market | null
 ) => {
-  const marketRepository = dataSource.getRepository(Market);
-
   let market = originalMarket || new Market();
   market.chainId = chainId;
   market.address = address;
@@ -753,7 +729,6 @@ export const updateTransactionFromLiquidityClosedEvent = async (
   newTransaction: Transaction,
   event: Event
 ) => {
-  const positionRepository = dataSource.getRepository(Position);
   newTransaction.type = TransactionType.REMOVE_LIQUIDITY;
 
   const eventArgs = event.logData.args as LiquidityPositionClosedEventLog;
@@ -788,7 +763,6 @@ export const updateTransactionFromLiquidityModifiedEvent = async (
   event: Event,
   isDecrease?: boolean
 ) => {
-  const positionRepository = dataSource.getRepository(Position);
   newTransaction.type = isDecrease
     ? TransactionType.REMOVE_LIQUIDITY
     : TransactionType.ADD_LIQUIDITY;
@@ -864,7 +838,6 @@ export const updateTransactionFromTradeModifiedEvent = async (
   event: Event
 ) => {
   const eventArgsCreateTrade = event.logData.args as TradePositionEventLog;
-  const positionRepository = dataSource.getRepository(Position);
   newTransaction.type = getTradeTypeFromEvent(
     event.logData.args as TradePositionEventLog
   );
@@ -885,12 +858,10 @@ export const updateTransactionFromTradeModifiedEvent = async (
   const collateralInitial = initialPosition ? initialPosition.collateral : "0";
 
   newTransaction.baseTokenDelta = (
-    BigInt(eventArgsCreateTrade.vGasAmount) -
-    BigInt(baseTokenInitial)
+    BigInt(eventArgsCreateTrade.vGasAmount) - BigInt(baseTokenInitial)
   ).toString();
   newTransaction.quoteTokenDelta = (
-    BigInt(eventArgsCreateTrade.vEthAmount) -
-    BigInt(quoteTokenInitial)
+    BigInt(eventArgsCreateTrade.vEthAmount) - BigInt(quoteTokenInitial)
   ).toString();
   newTransaction.collateralDelta = (
     BigInt(eventArgsCreateTrade.collateralAmount) - BigInt(collateralInitial)
@@ -909,7 +880,6 @@ export const createEpochFromEvent = async (
   eventArgs: EpochCreatedEventLog,
   market: Market
 ) => {
-  const epochRepository = dataSource.getRepository(Epoch);
   // first check if there's an existing epoch in the database before creating a new one
   const existingEpoch = await epochRepository.findOne({
     where: {

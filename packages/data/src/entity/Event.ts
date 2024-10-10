@@ -9,7 +9,7 @@ import {
   Unique,
   ManyToOne,
 } from "typeorm";
-import { upsertTransactionPositionPriceFromEvent } from "../controllers/market";
+import { handleEventAfterUpsert } from "../controllers/market";
 import { Transaction } from "./Transaction";
 import { Epoch } from "./Epoch";
 
@@ -43,12 +43,12 @@ export class Event {
   @AfterInsert()
   async afterInsert() {
     console.log("Event inserted: " + this.id);
-    await upsertTransactionPositionPriceFromEvent(this);
+    await handleEventAfterUpsert(this);
   }
 
   @AfterUpdate()
   async afterUpdate() {
     console.log(`Event updated: ${this.id}`);
-    await upsertTransactionPositionPriceFromEvent(this);
+    await handleEventAfterUpsert(this);
   }
 }

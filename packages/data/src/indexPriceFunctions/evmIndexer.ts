@@ -1,7 +1,7 @@
-import { indexPriceRepository } from "src/db";
-import { IndexPrice } from "src/entity/IndexPrice";
-import { type Market } from "src/entity/Market";
-import { getBlockByTimestamp, getProviderForChain } from "src/helpers";
+import { indexPriceRepository } from "../db";
+import { IndexPrice } from "../entity/IndexPrice";
+import { type Market } from "../entity/Market";
+import { getBlockByTimestamp, getProviderForChain } from "../helpers";
 import { Block, type PublicClient } from "viem";
 
 class EvmIndexer {
@@ -13,8 +13,10 @@ class EvmIndexer {
 
   private async storeBlockPrice(block: Block, market: Market) {
     const value = block.baseFeePerGas;
-    if(!value || !block.number) {
-      console.error(`No baseFeePerGas for block ${block.number} on market ${market.chainId}:${market.address}`);
+    if (!value || !block.number) {
+      console.error(
+        `No baseFeePerGas for block ${block.number} on market ${market.chainId}:${market.address}`
+      );
       return;
     }
 
@@ -26,14 +28,21 @@ class EvmIndexer {
     await indexPriceRepository.upsert(price, ["market", "timestamp"]);
   }
 
-  async indexFromTimestamp(market: Market, timestamp: number): Promise<boolean> {
+  async indexBlockPriceFromTimestamp(
+    market: Market,
+    timestamp: number
+  ): Promise<boolean> {
     const initalBlock = await getBlockByTimestamp(this.client, timestamp);
-    if(!initalBlock.number) {
+    if (!initalBlock.number) {
       throw new Error("No block found at timestamp");
     }
     const currentBlock = await this.client.getBlock();
 
-    for (let blockNumber = initalBlock.number; blockNumber <= currentBlock.number; blockNumber++) {
+    for (
+      let blockNumber = initalBlock.number;
+      blockNumber <= currentBlock.number;
+      blockNumber++
+    ) {
       try {
         console.log("Indexing gas from block ", blockNumber);
         const block = await this.client.getBlock({

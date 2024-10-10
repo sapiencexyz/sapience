@@ -1,4 +1,4 @@
-import EvmIndexer from "src/indexPriceFunctions/evmIndexer";
+import EvmIndexer from "../indexPriceFunctions/evmIndexer";
 import { Abi } from "viem";
 
 export enum EventType {
