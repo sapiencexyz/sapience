@@ -23,17 +23,15 @@ async function main() {
 main();
 
 export async function reindexMarket(chainId: number, address: string) {
-  const market = await dataSource.getRepository(Market).findOne({
-    where: { chainId, address },
-  });
   const marketInfo = MARKET_INFO.find(
     (m) => m.marketChainId === chainId && m.deployment.address === address
   );
-  if (!market || !marketInfo) {
+  if (!marketInfo) {
     throw new Error(
       `Market not found for chainId ${chainId} and address ${address}`
     );
   }
+  const market = await initializeMarket(marketInfo);
 
   await Promise.all([
     reindexMarketEvents(market, marketInfo.deployment.abi),
