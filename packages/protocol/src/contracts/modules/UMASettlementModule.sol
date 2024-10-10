@@ -92,7 +92,7 @@ contract UMASettlementModule is
         if (!epoch.settlement.disputed) {
             epoch.setSettlementPriceInRange(settlement.settlementPriceD18);
             epoch.settled = true;
-            emit MarketSettled(
+            emit EpochSettled(
                 epochId,
                 assertionId,
                 settlement.settlementPriceD18

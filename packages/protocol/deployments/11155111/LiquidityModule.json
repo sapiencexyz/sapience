@@ -1,5 +1,5 @@
 {
-  "address": "0x1b99D0bD9C7B06804C68A63eeF1315B842669C6c",
+  "address": "0xA034F15C63177De806F7795B0e911B4fcF25BD9E",
   "abi": [
     {
       "type": "function",
@@ -147,35 +147,6 @@
         }
       ],
       "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
-      "name": "getCollateralRequirementForAdditionalTokens",
-      "inputs": [
-        {
-          "name": "positionId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "amount0",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "amount1",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "stateMutability": "view"
     },
     {
       "type": "function",
@@ -746,18 +717,34 @@
     },
     {
       "type": "error",
+      "name": "TransactionExpired",
+      "inputs": [
+        {
+          "name": "deadline",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "blockTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "ZeroAddress",
       "inputs": []
     }
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x6b3ad00fcce7b5e61fe6bc29021e7a442355f7e0bd24b7776100b5c2a617f789",
-  "deployTxnBlockNumber": "6808035",
-  "deployTimestamp": "1727974392",
+  "deployTxnHash": "0xc0db739cf44df80fd690bdfacc7a40ad22fc57d3f0c9c96c34b65696fead405d",
+  "deployTxnBlockNumber": "6851996",
+  "deployTimestamp": "1728588132",
   "sourceName": "src/contracts/modules/LiquidityModule.sol",
   "contractName": "LiquidityModule",
   "deployedOn": "deploy.LiquidityModule",
-  "gasUsed": 3066648,
-  "gasCost": "204311090790"
+  "gasUsed": 2927015,
+  "gasCost": "11638120676"
 }

@@ -15,8 +15,9 @@ import {Position} from "../../src/contracts/storage/Position.sol";
 
 import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import {IUniswapV3Quoter} from "../../src/contracts/interfaces/external/IUniswapV3Quoter.sol";
 
-contract TradePositionBasic is TestTrade {
+contract TradePositionBasicFuzz is TestTrade {
     using Cannon for Vm;
     using DecimalMath for uint256;
     using DecimalMath for int256;
@@ -45,6 +46,7 @@ contract TradePositionBasic is TestTrade {
     address tokenA;
     address tokenB;
     IUniswapV3Pool uniCastedPool;
+    IUniswapV3Quoter uniswapQuoter;
     uint256 feeRate;
     int24 EPOCH_LOWER_TICK = 16000; //5 (4.952636224061651)
     int24 EPOCH_UPPER_TICK = 29800; //20 (19.68488357413147)
@@ -79,6 +81,8 @@ contract TradePositionBasic is TestTrade {
         uniCastedPool = IUniswapV3Pool(pool);
         feeRate = uint256(uniCastedPool.fee()) * 1e12;
 
+        uniswapQuoter = IUniswapV3Quoter(vm.getAddress("Uniswap.Quoter"));
+
         // Add liquidity
         vm.startPrank(lp1);
         addLiquidity(
@@ -103,7 +107,7 @@ contract TradePositionBasic is TestTrade {
 
         vm.startPrank(trader1);
         // quote and open a long
-        uint256 requiredCollateral = foil.quoteCreateTraderPosition(
+        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
             epochId,
             positionSize
         );
@@ -153,7 +157,7 @@ contract TradePositionBasic is TestTrade {
 
         vm.startPrank(trader1);
         // quote and open a long
-        uint256 requiredCollateral = foil.quoteCreateTraderPosition(
+        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
             epochId,
             positionSize
         );
@@ -195,8 +199,8 @@ contract TradePositionBasic is TestTrade {
     ) public {
         vm.assume(startPosition < endPosition || startPosition > endPosition);
 
-        startPosition = bound(startPosition, .00001 ether, 10 ether);
-        endPosition = bound(endPosition, .00001 ether, 10 ether);
+        startPosition = bound(startPosition, .000001 ether, 10 ether);
+        endPosition = bound(endPosition, .00001 ether, 100 ether);
 
         StateData memory latestStateData;
         StateData memory expectedStateData;
@@ -204,9 +208,6 @@ contract TradePositionBasic is TestTrade {
         int256 positionSize = endPosition.toInt();
 
         int256 deltaPositionSize = positionSize - initialPositionSize;
-        uint256 directionPrice = deltaPositionSize > 0
-            ? INITIAL_PRICE_PLUS_FEE_D18
-            : INITIAL_PRICE_MINUS_FEE_D18;
         uint256 positionId;
 
         vm.startPrank(trader1);
@@ -214,37 +215,41 @@ contract TradePositionBasic is TestTrade {
         fillCollateralStateData(trader1, latestStateData);
         fillPositionState(positionId, latestStateData);
 
+        // get actual trade price
+        uint256 tradeRatio = _getTradeRatio(deltaPositionSize);
+
         // quote and open a long
-        uint256 requiredCollateral = foil.quoteModifyTraderPosition(
-            positionId,
-            positionSize
-        );
+        (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
+            .quoteModifyTraderPosition(positionId, positionSize);
 
         // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
             positionId,
             positionSize,
-            (requiredCollateral * 2).toInt(),
+            requiredDeltaCollateral,
             block.timestamp + 30 minutes
         );
         vm.stopPrank();
 
-        int256 deltaCollateral = requiredCollateral.toInt() -
-            latestStateData.depositedCollateralAmount.toInt();
+        int256 requiredCollateral = latestStateData
+            .depositedCollateralAmount
+            .toInt() +
+            requiredDeltaCollateral +
+            closePnL;
 
         // Set expected state
         expectedStateData.userCollateral = (latestStateData
             .userCollateral
-            .toInt() - deltaCollateral).toUint();
+            .toInt() - requiredDeltaCollateral).toUint();
         expectedStateData.foilCollateral = (latestStateData
             .foilCollateral
-            .toInt() + deltaCollateral).toUint();
-        expectedStateData.depositedCollateralAmount = requiredCollateral;
+            .toInt() + requiredDeltaCollateral).toUint();
+        expectedStateData.depositedCollateralAmount = requiredCollateral
+            .toUint();
         expectedStateData.positionSize = positionSize;
         expectedStateData.vEthAmount = 0;
         expectedStateData.vGasAmount = uint256(positionSize);
-        expectedStateData.borrowedVEth = (latestStateData.borrowedVEth.toInt() +
-            deltaPositionSize.mulDecimal(directionPrice.toInt())).toUint();
+        expectedStateData.borrowedVEth = (endPosition.mulDecimal(tradeRatio));
         expectedStateData.borrowedVGas = 0;
 
         // Check position makes sense
@@ -262,8 +267,8 @@ contract TradePositionBasic is TestTrade {
     ) public {
         vm.assume(startPosition < endPosition || startPosition > endPosition);
 
-        startPosition = bound(startPosition, .01 ether, 4 ether);
-        endPosition = bound(endPosition, .01 ether, 4 ether);
+        startPosition = bound(startPosition, .000001 ether, 10 ether);
+        endPosition = bound(endPosition, .00001 ether, 100 ether);
 
         StateData memory latestStateData;
         StateData memory expectedStateData;
@@ -271,57 +276,55 @@ contract TradePositionBasic is TestTrade {
         int256 positionSize = endPosition.toInt() * -1;
 
         int256 deltaPositionSize = positionSize - initialPositionSize;
-        uint256 feeMultiplier = deltaPositionSize > 0
-            ? PLUS_FEE_MULTIPLIER_D18
-            : MINUS_FEE_MULTIPLIER_D18;
 
         uint256 positionId;
 
         vm.startPrank(trader1);
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
+
         fillCollateralStateData(trader1, latestStateData);
         fillPositionState(positionId, latestStateData);
 
+        log_positionAccounting(foil, positionId);
+
+        // get actual trade price
+        uint256 tradeRatio = _getTradeRatio(deltaPositionSize);
+
         // quote and open a long
-        uint256 requiredCollateral = foil.quoteModifyTraderPosition(
-            positionId,
-            positionSize
-        );
+        (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
+            .quoteModifyTraderPosition(positionId, positionSize);
 
         // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
             positionId,
             positionSize,
-            (requiredCollateral * 2).toInt(),
+            requiredDeltaCollateral,
             block.timestamp + 30 minutes
         );
 
         vm.stopPrank();
 
-        uint256 price = foil.getReferencePrice(epochId).mulDecimal(
-            feeMultiplier
-        );
-
-        int256 deltaCollateral = requiredCollateral.toInt() -
-            latestStateData.depositedCollateralAmount.toInt();
-        int256 deltaEth = (latestStateData.vEthAmount.toInt() -
-            deltaPositionSize.mulDecimal(price.toInt()));
+        int256 requiredCollateral = latestStateData
+            .depositedCollateralAmount
+            .toInt() +
+            requiredDeltaCollateral +
+            closePnL;
 
         // Set expected state
         expectedStateData.userCollateral = (latestStateData
             .userCollateral
-            .toInt() - deltaCollateral).toUint();
+            .toInt() - requiredDeltaCollateral).toUint();
         expectedStateData.foilCollateral = (latestStateData
             .foilCollateral
-            .toInt() + deltaCollateral).toUint();
+            .toInt() + requiredDeltaCollateral).toUint();
 
-        expectedStateData.depositedCollateralAmount = requiredCollateral;
+        expectedStateData.depositedCollateralAmount = requiredCollateral
+            .toUint();
         expectedStateData.positionSize = positionSize;
-        expectedStateData.vEthAmount = deltaEth > 0 ? deltaEth.toUint() : 0;
+
+        expectedStateData.vEthAmount = (endPosition.mulDecimal(tradeRatio));
         expectedStateData.vGasAmount = 0;
-        expectedStateData.borrowedVEth = deltaEth < 0
-            ? (deltaEth * -1).toUint()
-            : 0;
+        expectedStateData.borrowedVEth = 0;
         expectedStateData.borrowedVGas = uint256(positionSize * -1);
 
         // Check position makes sense
@@ -339,8 +342,8 @@ contract TradePositionBasic is TestTrade {
     ) public {
         vm.assume(startPosition < endPosition || startPosition > endPosition);
 
-        startPosition = bound(startPosition, .00001 ether, 10 ether);
-        endPosition = bound(endPosition, .00001 ether, 10 ether);
+        startPosition = bound(startPosition, .000001 ether, 10 ether);
+        endPosition = bound(endPosition, .00001 ether, 100 ether);
 
         StateData memory latestStateData;
         StateData memory expectedStateData;
@@ -348,9 +351,6 @@ contract TradePositionBasic is TestTrade {
         int256 positionSize = endPosition.toInt() * -1;
 
         int256 deltaPositionSize = positionSize - initialPositionSize;
-        uint256 feeMultiplier = deltaPositionSize > 0
-            ? PLUS_FEE_MULTIPLIER_D18
-            : MINUS_FEE_MULTIPLIER_D18;
 
         uint256 positionId;
 
@@ -359,48 +359,44 @@ contract TradePositionBasic is TestTrade {
         fillCollateralStateData(trader1, latestStateData);
         fillPositionState(positionId, latestStateData);
 
+        // get actual trade price
+        uint256 tradeRatio = _getTradeRatio(deltaPositionSize);
+
         // quote and open a long
-        uint256 requiredCollateral = foil.quoteModifyTraderPosition(
-            positionId,
-            positionSize
-        );
+        (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
+            .quoteModifyTraderPosition(positionId, positionSize);
 
         // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
             positionId,
             positionSize,
-            (requiredCollateral * 2).toInt(),
+            requiredDeltaCollateral * 2,
             block.timestamp + 30 minutes
         );
 
         vm.stopPrank();
 
-        uint256 price = foil.getReferencePrice(epochId).mulDecimal(
-            feeMultiplier
-        );
-        int256 deltaCollateral = requiredCollateral.toInt() -
-            latestStateData.depositedCollateralAmount.toInt();
-        int256 expectedNetEth = (latestStateData.vEthAmount.toInt() -
-            latestStateData.borrowedVEth.toInt()) -
-            deltaPositionSize.mulDecimal(price.toInt());
+        int256 requiredCollateral = latestStateData
+            .depositedCollateralAmount
+            .toInt() +
+            requiredDeltaCollateral +
+            closePnL;
 
         // Set expected state
         expectedStateData.userCollateral = (latestStateData
             .userCollateral
-            .toInt() - deltaCollateral).toUint();
+            .toInt() - requiredDeltaCollateral).toUint();
         expectedStateData.foilCollateral = (latestStateData
             .foilCollateral
-            .toInt() + deltaCollateral).toUint();
-
-        expectedStateData.depositedCollateralAmount = requiredCollateral;
+            .toInt() + requiredDeltaCollateral).toUint();
+        expectedStateData.depositedCollateralAmount = requiredCollateral
+            .toUint();
         expectedStateData.positionSize = positionSize;
-        expectedStateData.vEthAmount = expectedNetEth > 0
-            ? expectedNetEth.toUint()
-            : 0;
+        expectedStateData.vEthAmount = uint256(positionSize * -1).mulDecimal(
+            tradeRatio
+        );
         expectedStateData.vGasAmount = 0;
-        expectedStateData.borrowedVEth = expectedNetEth < 0
-            ? (expectedNetEth * -1).toUint()
-            : 0;
+        expectedStateData.borrowedVEth = 0;
         expectedStateData.borrowedVGas = uint256(positionSize * -1);
 
         // Check position makes sense
@@ -418,8 +414,8 @@ contract TradePositionBasic is TestTrade {
     ) public {
         vm.assume(startPosition < endPosition || startPosition > endPosition);
 
-        startPosition = bound(startPosition, .00001 ether, 10 ether);
-        endPosition = bound(endPosition, .00001 ether, 10 ether);
+        startPosition = bound(startPosition, .000001 ether, 10 ether);
+        endPosition = bound(endPosition, .00001 ether, 100 ether);
 
         StateData memory latestStateData;
         StateData memory expectedStateData;
@@ -427,9 +423,6 @@ contract TradePositionBasic is TestTrade {
         int256 positionSize = endPosition.toInt();
 
         int256 deltaPositionSize = positionSize - initialPositionSize;
-        uint256 feeMultiplier = deltaPositionSize > 0
-            ? PLUS_FEE_MULTIPLIER_D18
-            : MINUS_FEE_MULTIPLIER_D18;
 
         uint256 positionId;
 
@@ -438,48 +431,43 @@ contract TradePositionBasic is TestTrade {
         fillCollateralStateData(trader1, latestStateData);
         fillPositionState(positionId, latestStateData);
 
+        // get actual trade price
+        uint256 tradeRatio = _getTradeRatio(deltaPositionSize);
+
         // quote and open a long
-        uint256 requiredCollateral = foil.quoteModifyTraderPosition(
-            positionId,
-            positionSize
-        );
+        (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
+            .quoteModifyTraderPosition(positionId, positionSize);
 
         // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
             positionId,
             positionSize,
-            (requiredCollateral * 2).toInt(),
+            requiredDeltaCollateral * 2,
             block.timestamp + 30 minutes
         );
 
         vm.stopPrank();
 
-        uint256 price = foil.getReferencePrice(epochId).mulDecimal(
-            feeMultiplier
-        );
-        int256 deltaCollateral = requiredCollateral.toInt() -
-            latestStateData.depositedCollateralAmount.toInt();
-        int256 expectedNetEth = (latestStateData.vEthAmount.toInt() -
-            latestStateData.borrowedVEth.toInt()) -
-            deltaPositionSize.mulDecimal(price.toInt());
+        int256 requiredCollateral = latestStateData
+            .depositedCollateralAmount
+            .toInt() +
+            requiredDeltaCollateral +
+            closePnL;
 
         // Set expected state
         expectedStateData.userCollateral = (latestStateData
             .userCollateral
-            .toInt() - deltaCollateral).toUint();
+            .toInt() - requiredDeltaCollateral).toUint();
         expectedStateData.foilCollateral = (latestStateData
             .foilCollateral
-            .toInt() + deltaCollateral).toUint();
+            .toInt() + requiredDeltaCollateral).toUint();
 
-        expectedStateData.depositedCollateralAmount = requiredCollateral;
+        expectedStateData.depositedCollateralAmount = requiredCollateral
+            .toUint();
         expectedStateData.positionSize = positionSize;
-        expectedStateData.vEthAmount = expectedNetEth > 0
-            ? expectedNetEth.toUint()
-            : 0;
+        expectedStateData.vEthAmount = 0;
         expectedStateData.vGasAmount = uint256(positionSize);
-        expectedStateData.borrowedVEth = expectedNetEth < 0
-            ? (expectedNetEth * -1).toUint()
-            : 0;
+        expectedStateData.borrowedVEth = (endPosition.mulDecimal(tradeRatio));
         expectedStateData.borrowedVGas = 0;
 
         // Check position makes sense
@@ -506,7 +494,7 @@ contract TradePositionBasic is TestTrade {
         fillPositionState(positionId, latestStateData);
 
         // quote and open a long
-        uint256 requiredCollateral = foil.quoteModifyTraderPosition(
+        (int256 requiredDeltaCollateral, , ) = foil.quoteModifyTraderPosition(
             positionId,
             0
         );
@@ -515,13 +503,13 @@ contract TradePositionBasic is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             0,
-            (requiredCollateral * 2).toInt(),
+            requiredDeltaCollateral * 2,
             block.timestamp + 30 minutes
         );
 
         vm.stopPrank();
 
-        int256 deltaCollateral = requiredCollateral.toInt() -
+        int256 deltaCollateral = requiredDeltaCollateral -
             latestStateData.depositedCollateralAmount.toInt();
 
         // Set expected state
@@ -563,7 +551,7 @@ contract TradePositionBasic is TestTrade {
         fillPositionState(positionId, latestStateData);
 
         // quote and open a long
-        uint256 requiredCollateral = foil.quoteModifyTraderPosition(
+        (int256 requiredDeltaCollateral, , ) = foil.quoteModifyTraderPosition(
             positionId,
             0
         );
@@ -572,14 +560,12 @@ contract TradePositionBasic is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             0,
-            (requiredCollateral * 2).toInt(),
+            requiredDeltaCollateral * 2,
             block.timestamp + 30 minutes
         );
-
         vm.stopPrank();
 
-        int256 deltaCollateral = requiredCollateral.toInt() -
-            latestStateData.depositedCollateralAmount.toInt();
+        int256 deltaCollateral = requiredDeltaCollateral;
 
         // Set expected state
         expectedStateData.userCollateral = (latestStateData
@@ -643,30 +629,29 @@ contract TradePositionBasic is TestTrade {
         assertApproxEqRel(
             currentStateData.userCollateral,
             expectedStateData.userCollateral,
-            0.00001 ether,
+            0.000015 ether,
             string.concat(stage, " userCollateral")
         );
         assertApproxEqRel(
             currentStateData.foilCollateral,
             expectedStateData.foilCollateral,
-            0.00001 ether,
+            0.000015 ether,
             string.concat(stage, " foilCollateral")
         );
-        assertEq(
+        assertApproxEqRel(
             currentStateData.depositedCollateralAmount,
             expectedStateData.depositedCollateralAmount,
+            0.0005 ether,
             string.concat(stage, " depositedCollateralAmount")
         );
-        assertApproxEqRel(
+        assertEq(
             currentStateData.positionSize,
             expectedStateData.positionSize,
-            0.01 ether,
             string.concat(stage, " positionSize")
         );
-        assertApproxEqRel(
+        assertEq(
             currentStateData.vGasAmount,
             expectedStateData.vGasAmount,
-            0.001 ether,
             string.concat(stage, " vGasAmount")
         );
         assertApproxEqRel(
@@ -678,14 +663,41 @@ contract TradePositionBasic is TestTrade {
         assertApproxEqAbs(
             currentStateData.vEthAmount,
             expectedStateData.vEthAmount,
-            0.025 ether,
+            0.00025 ether,
             string.concat(stage, " vEthAmount")
         );
-        assertApproxEqAbs(
+        assertApproxEqRel(
             currentStateData.borrowedVEth,
             expectedStateData.borrowedVEth,
-            0.025 ether,
+            0.00025 ether,
             string.concat(stage, " borrowedVEth")
         );
+    }
+
+    function _getTradeRatio(
+        int256 deltaPositionSize
+    ) public returns (uint256 tradeRatio) {
+        // get actual trade price
+        if (deltaPositionSize > 0) {
+            uint256 amountIn = uniswapQuoter.quoteExactOutputSingle(
+                tokenA,
+                tokenB,
+                uniCastedPool.fee(),
+                deltaPositionSize.toUint(),
+                0
+            );
+
+            tradeRatio = amountIn.divDecimal(deltaPositionSize.toUint());
+        } else {
+            uint256 amountIn = uniswapQuoter.quoteExactInputSingle(
+                tokenB,
+                tokenA,
+                uniCastedPool.fee(),
+                (deltaPositionSize * -1).toUint(),
+                0
+            );
+
+            tradeRatio = amountIn.divDecimal((deltaPositionSize * -1).toUint());
+        }
     }
 }

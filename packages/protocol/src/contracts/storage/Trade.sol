@@ -9,6 +9,8 @@ import {ISwapRouter} from "../interfaces/external/ISwapRouter.sol";
 import {IUniswapV3Quoter} from "../interfaces/external/IUniswapV3Quoter.sol";
 import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
 
+// import "forge-std/console2.sol";
+
 library Trade {
     using Epoch for Epoch.Data;
     using DecimalMath for uint256;

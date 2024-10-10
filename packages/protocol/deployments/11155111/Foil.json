@@ -1,5 +1,5 @@
 {
-  "address": "0x2d2d65ae8d2e16c96813c112ebf98f9b9fdf560b",
+  "address": "0xe2a23471ed304902f8479934d6d95c81d421c2ed",
   "abi": [
     {
       "type": "constructor",
@@ -787,35 +787,6 @@
     },
     {
       "type": "function",
-      "name": "getCollateralRequirementForAdditionalTokens",
-      "inputs": [
-        {
-          "name": "positionId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "amount0",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "amount1",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
       "name": "getTokenAmounts",
       "inputs": [
         {
@@ -1340,6 +1311,22 @@
     },
     {
       "type": "error",
+      "name": "TransactionExpired",
+      "inputs": [
+        {
+          "name": "deadline",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "blockTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "ZeroAddress",
       "inputs": []
     },
@@ -1400,7 +1387,7 @@
     },
     {
       "type": "event",
-      "name": "MarketSettled",
+      "name": "EpochSettled",
       "inputs": [
         {
           "name": "epochId",
@@ -1549,6 +1536,11 @@
           "name": "requiredCollateral",
           "type": "uint256",
           "internalType": "uint256"
+        },
+        {
+          "name": "fillPrice",
+          "type": "uint256",
+          "internalType": "uint256"
         }
       ],
       "stateMutability": "nonpayable"
@@ -1570,7 +1562,17 @@
       ],
       "outputs": [
         {
-          "name": "requiredCollateral",
+          "name": "expectedCollateralDelta",
+          "type": "int256",
+          "internalType": "int256"
+        },
+        {
+          "name": "closePnL",
+          "type": "int256",
+          "internalType": "int256"
+        },
+        {
+          "name": "fillPrice",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -2717,12 +2719,12 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0xe7ecd0a6f9e9e6f7eb290bc965a587e7672d2a04aab45987968fadb16078486f",
-  "deployTxnBlockNumber": "6808043",
-  "deployTimestamp": "1727974500",
+  "deployTxnHash": "0xeb456ab998bfce926b676d0df7404750bf3757adc9ddc367d378dad6135b097b",
+  "deployTxnBlockNumber": "6852003",
+  "deployTimestamp": "1728588228",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
   "highlight": true,
-  "gasUsed": 522052,
-  "gasCost": "245926361183"
+  "gasUsed": 513643,
+  "gasCost": "10600703042"
 }
