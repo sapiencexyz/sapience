@@ -267,31 +267,17 @@ export default function AddEditTrade() {
     }
   }, [approveSuccess]);
 
-  const quotedResultingPositionCollateral = useMemo(() => {
-    const quoteResult = isEdit
+  const [quotedResultingPositionCollateral, quotedFillPrice] = useMemo(() => {
+    const result = isEdit
       ? quoteModifyPositionResult.data?.result
       : quoteCreatePositionResult.data?.result;
-    if (quoteResult !== undefined) {
-      return quoteResult as unknown as bigint;
-    }
-    return BigInt(0);
+    return result || [BigInt(0), BigInt(0)];
   }, [isEdit, quoteCreatePositionResult.data, quoteModifyPositionResult.data]);
 
-  const estimatedFillPrice = useMemo(() => {
-    if (
-      quoteCreatePositionResult.data?.result !== undefined &&
-      sizeChange > BigInt(0) &&
-      pool?.token0Price
-    ) {
-      const collateralDelta = BigInt(
-        quoteCreatePositionResult.data?.result as unknown as bigint
-      );
-      const sizeInWei = sizeChange * BigInt(1e9); // Convert gas to Ggas (wei)
-      const fillPrice = Number(collateralDelta) / Number(sizeInWei);
-      return fillPrice.toFixed(6);
-    }
-    return null;
-  }, [quoteCreatePositionResult.data, sizeChange, pool?.token0Price]);
+  console.log(
+    'quotedResultingPositionCollateral.data =',
+    quotedResultingPositionCollateral
+  );
 
   const collateralDelta = useMemo(() => {
     return (
@@ -600,13 +586,13 @@ export default function AddEditTrade() {
             </Text>
           </Box>
         )}
-        {estimatedFillPrice && (
+        {quotedFillPrice && (
           <Box>
             <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
               Estimated Fill Price
             </Text>
             <Text fontSize="sm" color="gray.600" mb={0.5}>
-              <NumberDisplay value={estimatedFillPrice} /> Ggas/
+              <NumberDisplay value={quotedFillPrice} /> Ggas/
               {collateralAssetTicker}
             </Text>
           </Box>
