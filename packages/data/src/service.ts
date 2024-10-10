@@ -420,7 +420,7 @@ const startServer = async () => {
     }
   });
 
-  app.get("/prices/missing-blocks", async (req, res) => {
+  app.get("/missing-blocks", async (req, res) => {
     const { chainId, address, epochId } = req.query;
 
     if (
