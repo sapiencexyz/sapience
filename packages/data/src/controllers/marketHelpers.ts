@@ -21,7 +21,7 @@ import {
   LiquidityPositionModifiedEventLog,
   TradePositionEventLog,
   EventType,
-} from "../interfaces/interfaces";
+} from "../interfaces";
 import { tickToPrice } from "../helpers";
 import { MarketPrice } from "../entity/MarketPrice";
 

@@ -7,7 +7,7 @@ import {
 } from "./constants";
 import dataSource from "./db";
 import { Transaction } from "./entity/Transaction";
-import { TimeWindow } from "./interfaces/interfaces";
+import { TimeWindow } from "./interfaces";
 import { formatUnits } from "viem";
 
 class EntityGroup<T> {

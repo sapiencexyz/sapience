@@ -26,7 +26,6 @@ export async function reindexMarket(chainId: number, address: string) {
   const market = await dataSource.getRepository(Market).findOne({
     where: { chainId, address },
   });
-  //TODO: if no market exists, should we call getMarket from contract and create market?
   const marketInfo = MARKET_INFO.find(
     (m) => m.marketChainId === chainId && m.deployment.address === address
   );

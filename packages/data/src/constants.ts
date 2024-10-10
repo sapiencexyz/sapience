@@ -1,6 +1,6 @@
 import { mainnet, sepolia, cannon } from "viem/chains";
 import evmIndexer from "./indexPriceFunctions/evmIndexer";
-import { Deployment, MarketInfo } from "./interfaces/interfaces";
+import { Deployment, MarketInfo } from "./interfaces";
 
 export const NUMERIC_PRECISION = 78;
 export const TOKEN_PRECISION = 18;

@@ -10,8 +10,8 @@ import { EpochParams } from "../entity/EpochParams";
 import { Event } from "../entity/Event";
 import { Market } from "../entity/Market";
 import { Transaction, TransactionType } from "../entity/Transaction";
-import { Abi, decodeEventLog, Log, PublicClient } from "viem";
-import { EpochCreatedEventLog, EventType, MarketCreatedUpdatedEventLog, MarketInfo } from "../interfaces/interfaces";
+import { Abi, decodeEventLog, Log } from "viem";
+import { EpochCreatedEventLog, EventType, MarketCreatedUpdatedEventLog, MarketInfo } from "../interfaces";
 import { getProviderForChain, bigintReplacer } from "../helpers";
 import { createEpochFromEvent, createOrModifyPosition, createOrUpdateMarketFromEvent, handleTransferEvent, updateTransactionFromAddLiquidityEvent, updateTransactionFromLiquidityClosedEvent, updateTransactionFromLiquidityModifiedEvent, updateTransactionFromTradeModifiedEvent, upsertMarketPrice } from "./marketHelpers";
 

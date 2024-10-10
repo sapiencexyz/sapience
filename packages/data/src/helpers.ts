@@ -2,7 +2,7 @@ import { Block, PublicClient, createPublicClient, formatUnits, http, webSocket }
 import { mainnet, sepolia, cannon } from 'viem/chains';
 import { FEE, TOKEN_PRECISION } from './constants';
 import { epochRepository } from './db';
-import { Deployment } from './interfaces/interfaces';
+import { Deployment } from './interfaces';
 
 const clientMap = new Map<number, PublicClient>();
 

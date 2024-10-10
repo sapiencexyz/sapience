@@ -18,7 +18,7 @@ import {
   groupMarketPricesByTimeWindow,
   groupTransactionsByTimeWindow,
 } from "./serviceUtil";
-import { TimeWindow } from "./interfaces/interfaces";
+import { TimeWindow } from "./interfaces";
 import { formatDbBigInt } from "./helpers";
 
 const PORT = 3001;
