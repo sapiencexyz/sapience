@@ -204,3 +204,6 @@ export async function getBlockByTimestamp(
   
     return closestBlock!;
 }
+
+// TODO GET FEE FROM CONTRACT
+export const tickToPrice = (tick: number): number => (1 + FEE) ** tick;

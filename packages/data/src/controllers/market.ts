@@ -1,5 +1,5 @@
 import "tsconfig-paths/register";
-import dataSource, {
+import {
   epochRepository,
   eventRepository,
   initializeDataSource,
@@ -26,8 +26,7 @@ import {
   TradePositionEventLog,
   EventType,
 } from "../interfaces/interfaces";
-import { getProviderForChain, bigintReplacer } from "../helpers";
-import { FEE } from "../constants";
+import { getProviderForChain, bigintReplacer, tickToPrice } from "../helpers";
 import { MarketPrice } from "../entity/MarketPrice";
 
 export const initializeMarket = async (marketInfo: MarketInfo) => {
@@ -140,109 +139,6 @@ export const reindexMarketEvents = async (market: Market, abi: Abi) => {
     abi
   );
 };
-
-/*
-// FOR REFERENCE, MAYBE DELETE
-
-export async function reindexNetwork(
-  client: PublicClient,
-  contractDeployment: ContractDeployment | undefined,
-  chainId: number,
-  epoch?: number,
-  startTime?: number,
-  endTime?: number
-) {
-  if (!contractDeployment) {
-    console.error(`Deployment package not available. Cannot reindex network.`);
-    return;
-  }
-  await initializeDataSource();
-
-  const market = await createOrUpdateMarketFromContract(
-    client,
-    contractDeployment,
-    chainId
-  );
-
-  if (epoch) {
-    await createOrUpdateEpochFromContract(
-      client,
-      contractDeployment,
-      epoch,
-      market
-    );
-  } else {
-    await createOrUpdateEpochFromContract(
-      client,
-      contractDeployment,
-      0,
-      market,
-      true
-    );
-  }
-
-  //  check for hardcoded timestamps
-  let startTimestamp: number | null | undefined = startTime;
-  let endTimestamp: number | null | undefined = endTime;
-
-  // if no start/end timestamps are provided, get them from the database or contract
-  if (!startTimestamp || !endTimestamp) {
-    const timestamps = await getTimestampsForReindex(
-      client,
-      contractDeployment,
-      chainId,
-      epoch
-    );
-    startTimestamp = timestamps.startTimestamp;
-    endTimestamp = timestamps.endTimestamp;
-  }
-
-  // if not there throw error
-  if (!startTimestamp || !endTimestamp) {
-    throw new Error("Invalid timestamps");
-  }
-
-  console.log("startTimestamp", startTimestamp);
-  console.log("endTimestamp", endTimestamp);
-
-  getBlockRanges(startTimestamp, endTimestamp, client)
-    .then(({ gasStart, gasEnd, marketStart, marketEnd }) => {
-      console.log(`Reindexing gas between blocks ${gasStart} and ${gasEnd}`);
-      console.log(
-        `Reindexing market between blocks ${marketStart} and ${marketEnd}`
-      );
-
-      Promise.all([
-        indexBaseFeePerGasRange(
-          mainnetPublicClient,
-          Number(gasStart),
-          Number(gasEnd),
-          chainId,
-          contractDeployment.address
-        ),
-        indexMarketEventsRange(
-          client,
-          Number(marketStart),
-          Number(marketEnd),
-          contractDeployment.address,
-          contractDeployment.abi
-        ),
-      ])
-        .then(() => {
-          console.log("Done!");
-        })
-        .catch((error) => {
-          console.error("An error occurred:", error);
-        });
-    })
-    .catch((error) => {
-      console.error("Error getting block ranges:", error);
-    });
-}
-*/
-
-// TODO GET FEE FROM CONTRACT
-const tickToPrice = (tick: number): number => (1 + FEE) ** tick;
 
 export const handleEventAfterUpsert = async (event: Event) => {
   const newTransaction = new Transaction();
@@ -392,7 +288,6 @@ export const createOrModifyPosition = async (transaction: Transaction) => {
     position.lowPrice = tickToPrice(eventArgs.lowerTick).toString();
   }
   position.epoch = transaction.event.epoch;
-  position.unclaimedFees = "0"; //TODO
   position.transactions = position.transactions || [];
   position.transactions.push(transaction);
 
