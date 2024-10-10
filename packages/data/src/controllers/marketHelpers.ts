@@ -22,7 +22,6 @@ import {
   TradePositionEventLog,
   EventType,
 } from "../interfaces";
-import { tickToPrice } from "../helpers";
 import { MarketPrice } from "../models/MarketPrice";
 
 /**

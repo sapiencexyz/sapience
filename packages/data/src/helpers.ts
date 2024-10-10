@@ -204,5 +204,3 @@ export async function getBlockByTimestamp(
   
     return closestBlock!;
 }
-
-export const tickToPrice = (tick: number, feeRate: number): number => (1 + feeRate) ** tick;
