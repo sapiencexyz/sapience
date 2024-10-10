@@ -193,14 +193,14 @@ contract TradePositionBasicFuzz is TestTrade {
         );
     }
 
-    function test_fuzz_modify_Long2Long_Only(
+    function test_fuzz_modify_Long2Long(
         uint256 startPosition,
         uint256 endPosition
     ) public {
         vm.assume(startPosition < endPosition || startPosition > endPosition);
 
         startPosition = bound(startPosition, .000001 ether, 10 ether);
-        endPosition = bound(endPosition, .00001 ether, 10 ether);
+        endPosition = bound(endPosition, .00001 ether, 100 ether);
 
         StateData memory latestStateData;
         StateData memory expectedStateData;
@@ -267,8 +267,8 @@ contract TradePositionBasicFuzz is TestTrade {
     ) public {
         vm.assume(startPosition < endPosition || startPosition > endPosition);
 
-        startPosition = bound(startPosition, .01 ether, 4 ether);
-        endPosition = bound(endPosition, .01 ether, 4 ether);
+        startPosition = bound(startPosition, .000001 ether, 10 ether);
+        endPosition = bound(endPosition, .00001 ether, 100 ether);
 
         StateData memory latestStateData;
         StateData memory expectedStateData;
@@ -336,14 +336,14 @@ contract TradePositionBasicFuzz is TestTrade {
         );
     }
 
-    function test_fuzz_modify_Long2Short_Skip(
+    function test_fuzz_modify_Long2Short(
         uint256 startPosition,
         uint256 endPosition
     ) public {
         vm.assume(startPosition < endPosition || startPosition > endPosition);
 
-        startPosition = bound(startPosition, .00001 ether, 10 ether);
-        endPosition = bound(endPosition, .00001 ether, 10 ether);
+        startPosition = bound(startPosition, .000001 ether, 10 ether);
+        endPosition = bound(endPosition, .00001 ether, 100 ether);
 
         StateData memory latestStateData;
         StateData memory expectedStateData;
@@ -351,9 +351,6 @@ contract TradePositionBasicFuzz is TestTrade {
         int256 positionSize = endPosition.toInt() * -1;
 
         int256 deltaPositionSize = positionSize - initialPositionSize;
-        uint256 feeMultiplier = deltaPositionSize > 0
-            ? PLUS_FEE_MULTIPLIER_D18
-            : MINUS_FEE_MULTIPLIER_D18;
 
         uint256 positionId;
 
@@ -362,11 +359,12 @@ contract TradePositionBasicFuzz is TestTrade {
         fillCollateralStateData(trader1, latestStateData);
         fillPositionState(positionId, latestStateData);
 
+        // get actual trade price
+        uint256 tradeRatio = _getTradeRatio(deltaPositionSize);
+
         // quote and open a long
-        (int256 requiredDeltaCollateral, , ) = foil.quoteModifyTraderPosition(
-            positionId,
-            positionSize
-        );
+        (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
+            .quoteModifyTraderPosition(positionId, positionSize);
 
         // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
@@ -378,11 +376,11 @@ contract TradePositionBasicFuzz is TestTrade {
 
         vm.stopPrank();
 
-        uint256 price = foil.getReferencePrice(epochId).mulDecimal(
-            feeMultiplier
-        );
-        int256 requiredCollateral = requiredDeltaCollateral +
-            latestStateData.depositedCollateralAmount.toInt();
+        int256 requiredCollateral = latestStateData
+            .depositedCollateralAmount
+            .toInt() +
+            requiredDeltaCollateral +
+            closePnL;
 
         // Set expected state
         expectedStateData.userCollateral = (latestStateData
@@ -391,12 +389,11 @@ contract TradePositionBasicFuzz is TestTrade {
         expectedStateData.foilCollateral = (latestStateData
             .foilCollateral
             .toInt() + requiredDeltaCollateral).toUint();
-
         expectedStateData.depositedCollateralAmount = requiredCollateral
             .toUint();
         expectedStateData.positionSize = positionSize;
         expectedStateData.vEthAmount = uint256(positionSize * -1).mulDecimal(
-            price
+            tradeRatio
         );
         expectedStateData.vGasAmount = 0;
         expectedStateData.borrowedVEth = 0;
@@ -411,14 +408,14 @@ contract TradePositionBasicFuzz is TestTrade {
         );
     }
 
-    function test_fuzz_modify_Short2Long_Skip(
+    function test_fuzz_modify_Short2Long(
         uint256 startPosition,
         uint256 endPosition
     ) public {
         vm.assume(startPosition < endPosition || startPosition > endPosition);
 
-        startPosition = bound(startPosition, .00001 ether, 10 ether);
-        endPosition = bound(endPosition, .00001 ether, 10 ether);
+        startPosition = bound(startPosition, .000001 ether, 10 ether);
+        endPosition = bound(endPosition, .00001 ether, 100 ether);
 
         StateData memory latestStateData;
         StateData memory expectedStateData;
@@ -426,9 +423,6 @@ contract TradePositionBasicFuzz is TestTrade {
         int256 positionSize = endPosition.toInt();
 
         int256 deltaPositionSize = positionSize - initialPositionSize;
-        uint256 feeMultiplier = deltaPositionSize > 0
-            ? PLUS_FEE_MULTIPLIER_D18
-            : MINUS_FEE_MULTIPLIER_D18;
 
         uint256 positionId;
 
@@ -437,11 +431,12 @@ contract TradePositionBasicFuzz is TestTrade {
         fillCollateralStateData(trader1, latestStateData);
         fillPositionState(positionId, latestStateData);
 
+        // get actual trade price
+        uint256 tradeRatio = _getTradeRatio(deltaPositionSize);
+
         // quote and open a long
-        (int256 requiredDeltaCollateral, , ) = foil.quoteModifyTraderPosition(
-            positionId,
-            positionSize
-        );
+        (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
+            .quoteModifyTraderPosition(positionId, positionSize);
 
         // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
@@ -453,15 +448,11 @@ contract TradePositionBasicFuzz is TestTrade {
 
         vm.stopPrank();
 
-        uint256 price = foil.getReferencePrice(epochId).mulDecimal(
-            feeMultiplier
-        );
         int256 requiredCollateral = latestStateData
             .depositedCollateralAmount
-            .toInt() - requiredDeltaCollateral;
-        int256 expectedNetEth = (latestStateData.vEthAmount.toInt() -
-            latestStateData.borrowedVEth.toInt()) -
-            deltaPositionSize.mulDecimal(price.toInt());
+            .toInt() +
+            requiredDeltaCollateral +
+            closePnL;
 
         // Set expected state
         expectedStateData.userCollateral = (latestStateData
@@ -476,7 +467,7 @@ contract TradePositionBasicFuzz is TestTrade {
         expectedStateData.positionSize = positionSize;
         expectedStateData.vEthAmount = 0;
         expectedStateData.vGasAmount = uint256(positionSize);
-        expectedStateData.borrowedVEth = (expectedNetEth * -1).toUint();
+        expectedStateData.borrowedVEth = (endPosition.mulDecimal(tradeRatio));
         expectedStateData.borrowedVGas = 0;
 
         // Check position makes sense
