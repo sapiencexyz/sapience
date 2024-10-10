@@ -25,7 +25,6 @@ library Errors {
         int256 collateralRequired,
         int256 maxCollateral
     );
-    error IndexOverrun(uint256 requestedIndex, uint256 length);
     error NotAccountOwnerOrAuthorized(uint256 tokenId, address sender);
     error InvalidPositionKind();
     error InvalidRange(int24 requestedTick, int24 boundedTick);

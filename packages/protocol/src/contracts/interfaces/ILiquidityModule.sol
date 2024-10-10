@@ -5,6 +5,17 @@ import {IFoilStructs} from "./IFoilStructs.sol";
 import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePositionManager.sol";
 
 interface ILiquidityModule {
+    struct LiquidityPositionCreatedEventData {
+        uint256 epochId;
+        uint256 positionId;
+        uint256 depositedCollateralAmount;
+        uint128 liquidity;
+        uint256 addedAmount0;
+        uint256 addedAmount1;
+        int24 lowerTick;
+        int24 upperTick;
+    }
+
     event LiquidityPositionCreated(
         uint256 indexed epochId,
         uint256 indexed positionId,
@@ -48,6 +59,16 @@ interface ILiquidityModule {
         uint256 loanAmount1
     );
 
+    /**
+     * @notice Creates a new liquidity position in the specified epoch
+     * @param params The parameters for creating the liquidity position
+     * @return id The unique identifier of the created position
+     * @return collateralAmount The amount of collateral locked for the position
+     * @return uniswapNftId The ID of the Uniswap V3 NFT representing the liquidity position
+     * @return liquidity The amount of liquidity added to the position
+     * @return addedAmount0 The amount of token0 added to the position
+     * @return addedAmount1 The amount of token1 added to the position
+     */
     function createLiquidityPosition(
         IFoilStructs.LiquidityMintParams memory params
     )
@@ -110,10 +131,4 @@ interface ILiquidityModule {
         external
         view
         returns (uint256 amount0, uint256 amount1, uint128 liquidity);
-
-    function getCollateralRequirementForAdditionalTokens(
-        uint256 positionId,
-        uint256 amount0,
-        uint256 amount1
-    ) external view returns (uint256);
 }

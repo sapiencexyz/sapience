@@ -8,7 +8,7 @@ interface IUMASettlementModule {
         uint256 submissionTime
     );
     event SettlementDisputed(uint256 epochId, uint256 disputeTime);
-    event MarketSettled(
+    event EpochSettled(
         uint256 epochId,
         bytes32 assertionId,
         uint256 settlementPriceD18

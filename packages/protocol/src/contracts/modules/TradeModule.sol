@@ -168,7 +168,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             .depositedCollateralAmount;
 
         // Ensures that the position only have single side tokens
-        position.reconcileTokens();
+        position.rebalanceVirtualTokens();
 
         if (size == 0) {
             // Closing the position. No need to check collateral limit
@@ -201,7 +201,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             }
 
             // 3. Reconcile collateral (again)
-            position.reconcileCollateral();
+            position.rebalanceCollateral();
 
             // 4. Transfer the released collateral to the trader (pnl)
             int256 deltaCollateral = position.updateCollateral(0);
