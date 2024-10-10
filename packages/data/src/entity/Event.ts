@@ -9,7 +9,7 @@ import {
   Unique,
   ManyToOne,
 } from "typeorm";
-import { handleEventAfterUpsert } from "../controllers/market";
+import { upsertEntitiesFromEvent } from "../controllers/market";
 import { Transaction } from "./Transaction";
 import { Epoch } from "./Epoch";
 
@@ -43,12 +43,12 @@ export class Event {
   @AfterInsert()
   async afterInsert() {
     console.log("Event inserted: " + this.id);
-    await handleEventAfterUpsert(this);
+    await upsertEntitiesFromEvent(this);
   }
 
   @AfterUpdate()
   async afterUpdate() {
     console.log(`Event updated: ${this.id}`);
-    await handleEventAfterUpsert(this);
+    await upsertEntitiesFromEvent(this);
   }
 }

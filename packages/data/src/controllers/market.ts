@@ -87,7 +87,7 @@ export const indexMarketEvents = async (market: Market, abi: Abi) => {
       const epochId = logData.args?.epochId || 0;
       console.log("logData is", logData);
 
-      await handleMarketEventUpsert(
+      await upsertEvent(
         chainId,
         market.address,
         epochId,
@@ -116,45 +116,26 @@ export const reindexMarketEvents = async (market: Market, abi: Abi) => {
 
   const startBlock = market.deployTxnBlockNumber;
   const endBlock = await client.getBlockNumber();
-
-  await indexMarketEventsRange(
-    client,
-    startBlock,
-    Number(endBlock),
-    market.address,
-    abi
-  );
-};
-
-
-export const indexMarketEventsRange = async (
-  publicClient: PublicClient,
-  startBlock: number,
-  endBlock: number,
-  contractAddress: string,
-  contractAbi: Abi
-) => {
-  await initializeDataSource();
-  const chainId = await publicClient.getChainId();
+  const chainId = await client.getChainId();
 
   for (let blockNumber = startBlock; blockNumber <= endBlock; blockNumber++) {
     console.log("Indexing market events from block ", blockNumber);
     try {
-      const logs = await publicClient.getLogs({
-        address: contractAddress as `0x${string}`,
+      const logs = await client.getLogs({
+        address: market.address as `0x${string}`,
         fromBlock: BigInt(blockNumber),
         toBlock: BigInt(blockNumber),
       });
 
       for (const log of logs) {
         const decodedLog = decodeEventLog({
-          abi: contractAbi,
+          abi,
           data: log.data,
           topics: log.topics,
         });
         const serializedLog = JSON.stringify(decodedLog, bigintReplacer);
         const blockNumber = log.blockNumber;
-        const block = await publicClient.getBlock({
+        const block = await client.getBlock({
           blockNumber: log.blockNumber,
         });
         const logIndex = log.logIndex || 0;
@@ -163,9 +144,9 @@ export const indexMarketEventsRange = async (
         // Extract epochId from logData (adjust this based on your event structure)
         const epochId = logData.args?.epochId || 0;
 
-        await handleMarketEventUpsert(
+        await upsertEvent(
           chainId,
-          contractAddress,
+          market.address,
           epochId,
           blockNumber,
           block.timestamp,
@@ -179,7 +160,7 @@ export const indexMarketEventsRange = async (
   }
 };
 
-const handleMarketEventUpsert = async (
+const upsertEvent = async (
   chainId: number,
   address: string,
   epochId: number,
@@ -271,7 +252,7 @@ const handleMarketEventUpsert = async (
   await eventRepository.upsert(newEvent, ["epoch", "blockNumber", "logIndex"]);
 };
 
-export const handleEventAfterUpsert = async (event: Event) => {
+export const upsertEntitiesFromEvent = async (event: Event) => {
   const newTransaction = new Transaction();
   newTransaction.event = event;
 
