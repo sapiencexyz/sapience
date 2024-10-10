@@ -243,7 +243,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
     function quoteCreateTraderPosition(
         uint256 epochId,
         int256 size
-    ) external returns (uint256 requiredCollateral, uint256 tradeRatioD18) {
+    ) external returns (uint256 requiredCollateral, uint256 fillPrice) {
         if (size == 0) {
             revert Errors.InvalidData("Size cannot be 0");
         }
@@ -282,7 +282,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         returns (
             int256 expectedCollateralDelta,
             int256 closePnL,
-            uint256 tradeRatioD18
+            uint256 fillPrice
         )
     {
         if (ERC721Storage._ownerOf(positionId) != msg.sender) {
