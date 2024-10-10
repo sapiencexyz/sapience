@@ -42,7 +42,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
     {
         require(
             block.timestamp <= params.deadline,
-            Errors.TransactionExpired(deadline, block.timestamp)
+            Errors.TransactionExpired(params.deadline, block.timestamp)
         );
 
         id = ERC721EnumerableStorage.totalSupply() + 1;
@@ -133,7 +133,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
     {
         require(
             block.timestamp <= params.deadline,
-            Errors.TransactionExpired(deadline, block.timestamp)
+            Errors.TransactionExpired(params.deadline, block.timestamp)
         );
 
         DecreaseLiquidityPositionStack memory stack;
@@ -231,7 +231,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
     {
         require(
             block.timestamp <= params.deadline,
-            Errors.TransactionExpired(deadline, block.timestamp)
+            Errors.TransactionExpired(params.deadline, block.timestamp)
         );
 
         IncreaseLiquidityPositionStack memory stack;
