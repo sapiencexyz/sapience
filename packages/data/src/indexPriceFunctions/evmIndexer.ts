@@ -1,6 +1,6 @@
 import { indexPriceRepository } from "../db";
-import { IndexPrice } from "../entity/IndexPrice";
-import { type Market } from "../entity/Market";
+import { IndexPrice } from "../models/IndexPrice";
+import { type Market } from "../models/Market";
 import { getBlockByTimestamp, getProviderForChain } from "../helpers";
 import { Block, type PublicClient } from "viem";
 

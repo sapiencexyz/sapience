@@ -5,12 +5,12 @@ import {
   marketRepository,
   positionRepository,
 } from "../db";
-import { Event } from "../entity/Event";
-import { EpochParams } from "../entity/EpochParams";
-import { Market } from "../entity/Market";
-import { Epoch } from "../entity/Epoch";
-import { Position } from "../entity/Position";
-import { Transaction, TransactionType } from "../entity/Transaction";
+import { Event } from "../models/Event";
+import { EpochParams } from "../models/EpochParams";
+import { Market } from "../models/Market";
+import { Epoch } from "../models/Epoch";
+import { Position } from "../models/Position";
+import { Transaction, TransactionType } from "../models/Transaction";
 import { PublicClient } from "viem";
 import {
   Deployment,
@@ -23,7 +23,7 @@ import {
   EventType,
 } from "../interfaces";
 import { tickToPrice } from "../helpers";
-import { MarketPrice } from "../entity/MarketPrice";
+import { MarketPrice } from "../models/MarketPrice";
 
 /**
  * Handles a Transfer event by updating the owner of the corresponding Position.

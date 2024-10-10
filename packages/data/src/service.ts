@@ -1,14 +1,14 @@
 import "reflect-metadata";
 import dataSource, { initializeDataSource } from "./db"; /// !IMPORTANT: Keep as top import to prevent issues with db initialization
 import cors from "cors";
-import { IndexPrice } from "./entity/IndexPrice";
-import { Position } from "./entity/Position";
-import { Market } from "./entity/Market";
+import { IndexPrice } from "./models/IndexPrice";
+import { Position } from "./models/Position";
+import { Market } from "./models/Market";
 import express from "express";
 import { Between } from "typeorm";
-import { Transaction } from "./entity/Transaction";
-import { Epoch } from "./entity/Epoch";
-import { MarketPrice } from "./entity/MarketPrice";
+import { Transaction } from "./models/Transaction";
+import { Epoch } from "./models/Epoch";
+import { MarketPrice } from "./models/MarketPrice";
 import { formatUnits } from "viem";
 import { TOKEN_PRECISION } from "./constants";
 import {

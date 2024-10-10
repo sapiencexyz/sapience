@@ -1,11 +1,11 @@
 import { DataSource } from "typeorm";
-import { Position } from "./entity/Position";
-import { IndexPrice } from "./entity/IndexPrice";
-import { Transaction } from "./entity/Transaction";
-import { Event } from "./entity/Event";
-import { Market } from "./entity/Market";
-import { Epoch } from "./entity/Epoch";
-import { MarketPrice } from "./entity/MarketPrice";
+import { Position } from "./models/Position";
+import { IndexPrice } from "./models/IndexPrice";
+import { Transaction } from "./models/Transaction";
+import { Event } from "./models/Event";
+import { Market } from "./models/Market";
+import { Epoch } from "./models/Epoch";
+import { MarketPrice } from "./models/MarketPrice";
 
 const isProduction = process.env.NODE_ENV === "production";
 const devDatabase = process.env.POSTGRES_DB;

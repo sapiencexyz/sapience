@@ -5,7 +5,7 @@ import {
   reindexMarketEvents,
 } from "./controllers/market";
 import { MARKET_INFO } from "./constants";
-import { Market } from "./entity/Market";
+import { Market } from "./models/Market";
 
 async function main() {
   await initializeDataSource();

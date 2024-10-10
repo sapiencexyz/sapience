@@ -1,4 +1,4 @@
-import { MarketPrice } from "./entity/MarketPrice";
+import { MarketPrice } from "./models/MarketPrice";
 import {
   ONE_DAY_MS,
   ONE_HOUR_MS,
@@ -6,7 +6,7 @@ import {
   TOKEN_PRECISION,
 } from "./constants";
 import dataSource from "./db";
-import { Transaction } from "./entity/Transaction";
+import { Transaction } from "./models/Transaction";
 import { TimeWindow } from "./interfaces";
 import { formatUnits } from "viem";
 

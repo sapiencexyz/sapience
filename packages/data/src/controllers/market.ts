@@ -6,10 +6,10 @@ import {
   marketRepository,
   transactionRepository,
 } from "../db";
-import { EpochParams } from "../entity/EpochParams";
-import { Event } from "../entity/Event";
-import { Market } from "../entity/Market";
-import { Transaction, TransactionType } from "../entity/Transaction";
+import { EpochParams } from "../models/EpochParams";
+import { Event } from "../models/Event";
+import { Market } from "../models/Market";
+import { Transaction, TransactionType } from "../models/Transaction";
 import { Abi, decodeEventLog, Log } from "viem";
 import { EpochCreatedEventLog, EventType, MarketCreatedUpdatedEventLog, MarketInfo } from "../interfaces";
 import { getProviderForChain, bigintReplacer } from "../helpers";
