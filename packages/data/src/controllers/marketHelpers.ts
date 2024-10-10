@@ -21,8 +21,10 @@ import {
   LiquidityPositionModifiedEventLog,
   TradePositionEventLog,
   EventType,
+  MarketInfo,
 } from "../interfaces";
 import { MarketPrice } from "../models/MarketPrice";
+import { getProviderForChain } from "src/helpers";
 
 /**
  * Handles a Transfer event by updating the owner of the corresponding Position.
@@ -222,37 +224,36 @@ export const createOrUpdateMarketFromContract = async (
 };
 
 export const createOrUpdateEpochFromContract = async (
-  client: PublicClient,
-  contractDeployment: Deployment,
-  epoch: number,
+  marketInfo: MarketInfo,
   market: Market,
-  getLatestEpoch?: boolean
+  epochId?: number
 ) => {
-  const functionName = getLatestEpoch ? "getLatestEpoch" : "getEpoch";
-  const args = getLatestEpoch ? [] : [epoch];
+  const functionName = epochId ? "getEpoch" : "getLatestEpoch";
+  const args = epochId ? [epochId] : [];
 
+  const client = getProviderForChain(marketInfo.marketChainId);
   // get epoch from contract
   const epochReadResult: any = await client.readContract({
-    address: contractDeployment.address as `0x${string}`,
-    abi: contractDeployment.abi,
+    address: marketInfo.deployment.address as `0x${string}`,
+    abi: marketInfo.deployment.abi,
     functionName,
     args,
   });
   console.log("epochReadResult", epochReadResult);
-  const epochId = getLatestEpoch ? Number(epochReadResult[0]) : epoch;
+  const _epochId = epochId || Number(epochReadResult[0]);
 
   // check if epoch already exists in db
   let existingEpoch = await epochRepository.findOne({
     where: {
-      market: { address: contractDeployment.address },
+      market: { address: marketInfo.deployment.address },
       epochId,
     },
   });
   const updatedEpoch = existingEpoch || new Epoch();
 
-  const idxAdjustment = getLatestEpoch ? 1 : 0; // getLatestEpoch returns and extra param at 0 index
+  const idxAdjustment = epochId ? 0 : 1; // getLatestEpoch returns and extra param at 0 index
 
-  updatedEpoch.epochId = epochId;
+  updatedEpoch.epochId = _epochId;
   updatedEpoch.startTimestamp = epochReadResult[0 + idxAdjustment].toString();
   updatedEpoch.endTimestamp = epochReadResult[1 + idxAdjustment].toString();
   updatedEpoch.settled = epochReadResult[7 + idxAdjustment];

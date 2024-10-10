@@ -237,7 +237,7 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
 
   switch (event.logData.eventName) {
     case EventType.MarketInitialized:
-      console.log("initializing market. LogData: ", event.logData);
+      console.log("initializing market. event: ", event);
       const marketCreatedArgs = event.logData
         .args as MarketCreatedUpdatedEventLog;
       await createOrUpdateMarketFromEvent(
@@ -249,7 +249,7 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       skipTransaction = true;
       break;
     case EventType.MarketUpdated:
-      console.log("updating market. LogData: ", event.logData);
+      console.log("updating market. event: ", event);
       const marketUpdatedArgs = event.logData
         .args as MarketCreatedUpdatedEventLog;
       await createOrUpdateMarketFromEvent(
@@ -261,13 +261,13 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       skipTransaction = true;
       break;
     case EventType.EpochCreated:
-      console.log("creating epoch. LogData: ", event.logData);
+      console.log("creating epoch. event: ", event);
       const epochCreatedArgs = event.logData.args as EpochCreatedEventLog;
       await createEpochFromEvent(epochCreatedArgs, market);
       skipTransaction = true;
       break;
     case EventType.EpochSettled:
-      console.log("Market settled event. LogData: ", event.logData);
+      console.log("Market settled event. event: ", event);
       const epoch = await epochRepository.findOne({
         where: {
           market: { address, chainId },

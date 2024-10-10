@@ -5,7 +5,7 @@ import {
   reindexMarketEvents,
 } from "./controllers/market";
 import { MARKET_INFO } from "./constants";
-import { Market } from "./models/Market";
+import { createOrUpdateEpochFromContract } from "./controllers/marketHelpers";
 
 async function main() {
   await initializeDataSource();
@@ -13,6 +13,8 @@ async function main() {
 
   for (const marketInfo of MARKET_INFO) {
     const market = await initializeMarket(marketInfo);
+    // initialize epoch
+    await createOrUpdateEpochFromContract(marketInfo, market);
     jobs.push(indexMarketEvents(market, marketInfo.deployment.abi));
     jobs.push(marketInfo.priceIndexer.watchBlocksForMarket(market));
   }
