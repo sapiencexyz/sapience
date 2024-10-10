@@ -470,22 +470,19 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         } else {
             // If closePnL is negative, it means that the position is in a loss
             // and the collateral should be reduced
-            uint256 collateralToReturn = (output.closePnL * -1).toUint();
+            uint256 collateralLoss = (output.closePnL * -1).toUint();
 
-            if (
-                collateralToReturn >
-                params.oldPosition.depositedCollateralAmount
-            ) {
+            if (collateralLoss > params.oldPosition.depositedCollateralAmount) {
                 // If the collateral to return is more than the deposited collateral, then the position is in a loss
                 // and the collateral should be reduced to zero
                 output.position.depositedCollateralAmount = params
                     .oldPosition
                     .depositedCollateralAmount;
-                extraCollateralRequired = collateralToReturn;
+                extraCollateralRequired = collateralLoss;
             } else {
                 output.position.depositedCollateralAmount =
                     params.oldPosition.depositedCollateralAmount -
-                    collateralToReturn;
+                    collateralLoss;
             }
         }
 
