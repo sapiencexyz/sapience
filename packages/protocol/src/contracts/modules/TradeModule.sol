@@ -59,7 +59,6 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
         uint256 initialPrice = Trade.getReferencePrice(epochId);
 
-        console2.log(position.vEthAmount);
         QuoteOrTradeInputParams memory inputParams = QuoteOrTradeInputParams({
             oldPosition: position,
             initialSize: 0,
@@ -158,27 +157,12 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         position.vGasAmount = outputParams.position.vGasAmount;
         position.borrowedVEth = outputParams.position.borrowedVEth;
         position.borrowedVGas = outputParams.position.borrowedVGas;
+        position.depositedCollateralAmount = outputParams
+            .position
+            .depositedCollateralAmount;
 
         // Ensures that the position only have single side tokens
         position.reconcileTokens();
-
-        // Adjust the collateral with the PnL
-        if (outputParams.closePnL >= 0) {
-            position.depositedCollateralAmount += outputParams
-                .closePnL
-                .toUint();
-        } else {
-            // If closePnL is negative, it means that the position is in a loss
-            // and the collateral should be reduced
-            uint256 collateralToReturn = (outputParams.closePnL * -1).toUint();
-            if (collateralToReturn > position.depositedCollateralAmount) {
-                revert Errors.InsufficientCollateral(
-                    collateralToReturn,
-                    position.depositedCollateralAmount
-                );
-            }
-            position.depositedCollateralAmount -= collateralToReturn;
-        }
 
         if (size == 0) {
             // Closing the position. No need to check collateral limit
@@ -221,11 +205,6 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
                 "UPDATE: DELTA COLLATERAL LIMIT",
                 deltaCollateralLimit
             );
-            console2.log(
-                "UPDATE: OUTPUT COLLATERAL",
-                outputParams.requiredCollateral
-            );
-            console2.log("UPDATE: OUTPUT CLOSE PNL", outputParams.closePnL);
             // Check if the collateral is within the limit
             _checkDeltaCollateralLimit(deltaCollateral, deltaCollateralLimit);
 
@@ -243,11 +222,6 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
                 "UPDATE: DELTA COLLATERAL LIMIT",
                 deltaCollateralLimit
             );
-            console2.log(
-                "UPDATE: OUTPUT COLLATERAL",
-                outputParams.requiredCollateral
-            );
-            console2.log("UPDATE: OUTPUT CLOSE PNL", outputParams.closePnL);
             // Check if the collateral is within the limit
             _checkDeltaCollateralLimit(deltaCollateral, deltaCollateralLimit);
 
@@ -313,7 +287,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
     function quoteModifyTraderPosition(
         uint256 positionId,
         int256 size
-    ) external returns (int256 expectedCollateralDelta) {
+    ) external returns (int256 expectedCollateralDelta, int256 closePnL) {
         if (ERC721Storage._ownerOf(positionId) != msg.sender) {
             revert Errors.NotAccountOwnerOrAuthorized(positionId, msg.sender);
         }
@@ -348,7 +322,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             inputParams
         );
 
-        return outputParams.expectedDeltaCollateral;
+        return (outputParams.expectedDeltaCollateral, outputParams.closePnL);
     }
 
     function _checkDeltaCollateralLimit(
@@ -520,18 +494,84 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             output.position.borrowedVEth = 0;
         }
 
-        // 4- Get the required collateral for the trade\quote
+        // 4- Adjust position collateral with PNL
+        // Adjust the collateral with the PnL
+        uint256 extraCollateralRequired;
+        if (output.closePnL >= 0) {
+            console2.log(" ==== PnL is positive");
+            console2.log(
+                " ==== >> output.closePnL                       ",
+                output.closePnL
+            );
+            console2.log(
+                " ==== >> oldPosition.depositedCollateralAmount ",
+                params.oldPosition.depositedCollateralAmount
+            );
+            output.position.depositedCollateralAmount =
+                params.oldPosition.depositedCollateralAmount +
+                output.closePnL.toUint();
+        } else {
+            console2.log(" ==== PnL is negative");
+            // If closePnL is negative, it means that the position is in a loss
+            // and the collateral should be reduced
+            uint256 collateralToReturn = (output.closePnL * -1).toUint();
+            console2.log(
+                " ==== >> collateralToReturn                    ",
+                collateralToReturn
+            );
+            console2.log(
+                " ==== >> oldPosition.depositedCollateralAmount ",
+                params.oldPosition.depositedCollateralAmount
+            );
 
-        output.requiredCollateral = epoch.getCollateralRequirementsForTrade(
-            output.position.vGasAmount,
-            output.position.vEthAmount,
-            output.position.borrowedVGas,
-            output.position.borrowedVEth
+            if (
+                collateralToReturn >
+                params.oldPosition.depositedCollateralAmount
+            ) {
+                // If the collateral to return is more than the deposited collateral, then the position is in a loss
+                // and the collateral should be reduced to zero
+                output.position.depositedCollateralAmount = 0;
+                extraCollateralRequired =
+                    collateralToReturn -
+                    params.oldPosition.depositedCollateralAmount;
+            } else {
+                output.position.depositedCollateralAmount =
+                    params.oldPosition.depositedCollateralAmount -
+                    collateralToReturn;
+            }
+        }
+        console2.log(
+            " ==== >> extraCollateralRequired               ",
+            extraCollateralRequired
+        );
+
+        // 5- Get the required collateral for the trade\quote
+        uint256 newPositionCollateralRequired = epoch
+            .getCollateralRequirementsForTrade(
+                output.position.vGasAmount,
+                output.position.vEthAmount,
+                output.position.borrowedVGas,
+                output.position.borrowedVEth
+            );
+        console2.log(
+            " ==== >> newPositionCollateralRequired           ",
+            newPositionCollateralRequired
+        );
+
+        output.requiredCollateral =
+            newPositionCollateralRequired +
+            extraCollateralRequired;
+        console2.log(
+            " ==== >> requiredCollateral                   ",
+            output.requiredCollateral
         );
 
         output.expectedDeltaCollateral =
             output.requiredCollateral.toInt() -
-            params.oldPosition.depositedCollateralAmount.toInt() -
-            output.closePnL;
+            output.position.depositedCollateralAmount.toInt();
+        console2.log(
+            " ==== >> expectedDeltaCollateral               ",
+            output.expectedDeltaCollateral
+        );
     }
 }

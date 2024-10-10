@@ -71,9 +71,10 @@ interface ITradeModule {
      * @param positionId The position id.
      * @param size The new position size.
      * @return expectedCollateralDelta The expected change in collateral. Negative means sender will receive some collateral back, positive some collateral needs to be collected.
+     * @return closePnL The expected profit or loss from the original position.
      */
     function quoteModifyTraderPosition(
         uint256 positionId,
         int256 size
-    ) external returns (int256 expectedCollateralDelta);
+    ) external returns (int256 expectedCollateralDelta, int256 closePnL);
 }

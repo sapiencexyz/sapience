@@ -76,9 +76,17 @@ library Position {
         uint256 amount
     ) internal returns (int256 deltaCollateral) {
         IERC20 collateralAsset = Market.load().collateralAsset;
+        console2.log(" AT UPDATECOLLATERAL");
+        console2.log(
+            "    >> self.depositedCollateralAmount ",
+            self.depositedCollateralAmount
+        );
+        console2.log("    >> amount                         ", amount);
+
         deltaCollateral =
             amount.toInt() -
             self.depositedCollateralAmount.toInt();
+        console2.log("    >> deltaCollateral                ", deltaCollateral);
 
         if (deltaCollateral > 0) {
             collateralAsset.safeTransferFrom(

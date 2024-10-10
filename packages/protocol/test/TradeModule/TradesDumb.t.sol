@@ -181,7 +181,7 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
 
         // quote and close a long
-        int256 requiredCollateral = foil.quoteModifyTraderPosition(
+        (int256 requiredCollateral, ) = foil.quoteModifyTraderPosition(
             positionId,
             0
         );
@@ -227,7 +227,7 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
 
         // quote and close a long
-        int256 requiredCollateral = foil.quoteModifyTraderPosition(
+        (int256 requiredCollateral, ) = foil.quoteModifyTraderPosition(
             positionId,
             0
         );
@@ -270,7 +270,6 @@ contract TradePositionDumb is TestTrade {
         uint256 positionId;
 
         fillCollateralStateData(trader1, initialStateData);
-
         vm.startPrank(trader1);
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
 
@@ -278,10 +277,8 @@ contract TradePositionDumb is TestTrade {
         fillPositionState(positionId, initialStateData);
 
         // quote and close a long
-        int256 requiredDeltaCollateral = foil.quoteModifyTraderPosition(
-            positionId,
-            finalPositionSize
-        );
+        (int256 requiredDeltaCollateral, int256 closePnL) = foil
+            .quoteModifyTraderPosition(positionId, finalPositionSize);
 
         // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
@@ -301,9 +298,10 @@ contract TradePositionDumb is TestTrade {
         );
         expectedStateData.borrowedVGas = 0;
 
-        expectedStateData.depositedCollateralAmount = (initialStateData
-            .depositedCollateralAmount
-            .toInt() + requiredDeltaCollateral).toUint();
+        expectedStateData.depositedCollateralAmount =
+            (initialStateData.depositedCollateralAmount.toInt() +
+                requiredDeltaCollateral).toUint() +
+            closePnL.toUint();
         expectedStateData.userCollateral = (initialStateData
             .userCollateral
             .toInt() - requiredDeltaCollateral).toUint();
@@ -331,16 +329,14 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
 
         // quote and close a long
-        int256 requiredCollateral = foil.quoteModifyTraderPosition(
-            positionId,
-            finalPositionSize
-        );
+        (int256 requiredDeltaCollateral, int256 closePnL) = foil
+            .quoteModifyTraderPosition(positionId, finalPositionSize);
 
         // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
             positionId,
             finalPositionSize,
-            requiredCollateral - 2,
+            requiredDeltaCollateral - 2,
             block.timestamp + 30 minutes
         );
 
@@ -355,7 +351,8 @@ contract TradePositionDumb is TestTrade {
         expectedStateData.vGasAmount = finalPositionSize.toUint();
         expectedStateData.borrowedVEth =
             partialVEth -
-            INITIAL_PRICE_MINUS_FEE_D18.mulDecimal(.5 ether);
+            INITIAL_PRICE_MINUS_FEE_D18.mulDecimal(.5 ether) -
+            (closePnL * -1).toUint();
         expectedStateData.borrowedVGas = 0;
 
         // Check position makes sense
@@ -381,16 +378,14 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
 
         // quote and close a long
-        int256 requiredCollateral = foil.quoteModifyTraderPosition(
-            positionId,
-            finalPositionSize
-        );
+        (int256 requiredDeltaCollateral, int256 closePnL) = foil
+            .quoteModifyTraderPosition(positionId, finalPositionSize);
 
         // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
             positionId,
             finalPositionSize,
-            requiredCollateral + 2,
+            requiredDeltaCollateral + 2,
             block.timestamp + 30 minutes
         );
 
@@ -427,16 +422,14 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
 
         // quote and close a long
-        int256 requiredCollateral = foil.quoteModifyTraderPosition(
-            positionId,
-            finalPositionSize
-        );
+        (int256 requiredDeltaCollateral, int256 closePnL) = foil
+            .quoteModifyTraderPosition(positionId, finalPositionSize);
 
         // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
             positionId,
             finalPositionSize,
-            requiredCollateral - 2,
+            requiredDeltaCollateral - 2,
             block.timestamp + 30 minutes
         );
 
@@ -449,7 +442,8 @@ contract TradePositionDumb is TestTrade {
         expectedStateData.positionSize = finalPositionSize;
         expectedStateData.vEthAmount =
             partialVEth -
-            INITIAL_PRICE_PLUS_FEE_D18.mulDecimal(.5 ether);
+            INITIAL_PRICE_PLUS_FEE_D18.mulDecimal(.5 ether) +
+            (closePnL * -1).toUint();
         expectedStateData.vGasAmount = 0;
         expectedStateData.borrowedVEth = 0;
         expectedStateData.borrowedVGas = (finalPositionSize * -1).toUint();
@@ -477,16 +471,14 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
 
         // quote and close a long
-        int256 requiredCollateral = foil.quoteModifyTraderPosition(
-            positionId,
-            finalPositionSize
-        );
+        (int256 requiredDeltaCollateral, int256 closePnL) = foil
+            .quoteModifyTraderPosition(positionId, finalPositionSize);
 
         // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
             positionId,
             finalPositionSize,
-            requiredCollateral + 2,
+            requiredDeltaCollateral + 2,
             block.timestamp + 30 minutes
         );
 
@@ -523,16 +515,14 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
 
         // quote and close a long
-        int256 requiredCollateral = foil.quoteModifyTraderPosition(
-            positionId,
-            finalPositionSize
-        );
+        (int256 requiredDeltaCollateral, int256 closePnL) = foil
+            .quoteModifyTraderPosition(positionId, finalPositionSize);
 
         // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
             positionId,
             finalPositionSize,
-            requiredCollateral - 2,
+            requiredDeltaCollateral - 2,
             block.timestamp + 30 minutes
         );
 
@@ -592,11 +582,10 @@ contract TradePositionDumb is TestTrade {
 
         if (expectedStateData.userCollateral != 0) {
             fillCollateralStateData(user, currentStateData);
-            // assertApproxEqRel(
-            assertEq(
+            assertApproxEqRel(
                 currentStateData.userCollateral,
                 expectedStateData.userCollateral,
-                // 0.0000001 ether,
+                0.0000001 ether,
                 string.concat(stage, " userCollateral")
             );
             assertEq(

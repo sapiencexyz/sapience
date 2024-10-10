@@ -120,6 +120,7 @@ library Trade {
                     amountOut,
                     0
                 );
+            console2.log("amountIn at quote (EXACT OUT)", amountIn);
         } else {
             ISwapRouter.ExactOutputSingleParams memory swapParams = ISwapRouter
                 .ExactOutputSingleParams({
