@@ -4,9 +4,10 @@ import { Box, Button, Container, Flex, Input, Text } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { useState } from 'react';
+
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { useLoading } from '~/lib/context/LoadingContext';
-import { RenderJob } from '~/lib/interfaces/interfaces';
+import type { RenderJob } from '~/lib/interfaces/interfaces';
 
 const Admin = () => {
   const [chainId, setChainId] = useState('');
@@ -52,12 +53,12 @@ const Admin = () => {
     return (
       <Box my={4}>
         {' '}
-        <Text fontWeight={'bold'} fontSize={'lg'}>
+        <Text fontWeight="bold" fontSize="lg">
           Job Status:
         </Text>
         {Object.entries(job).map(([key, value]) => (
-          <Flex justifyContent={'space-between'} key={key}>
-            <Text mr={2} fontWeight={'bold'}>
+          <Flex justifyContent="space-between" key={key}>
+            <Text mr={2} fontWeight="bold">
               {key}:
             </Text>
             <Text>{value}</Text>
@@ -70,7 +71,7 @@ const Admin = () => {
 
   return (
     <Container mb={10}>
-      <Text fontSize="xl" my={8} fontWeight={'bold'}>
+      <Text fontSize="xl" my={8} fontWeight="bold">
         Reindex
       </Text>
       <Box mb={4}>
