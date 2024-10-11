@@ -47,7 +47,6 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
     abi: marketInfo.deployment.abi,
     functionName: "getMarket",
   });
-  console.log("marketReadResult", marketReadResult);
 
   let updatedMarket = market;
   if (!updatedMarket) {
@@ -102,7 +101,6 @@ export const indexMarketEvents = async (market: Market, abi: Abi) => {
 
       // Extract epochId from logData (adjust this based on your event structure)
       const epochId = logData.args?.epochId || 0;
-      console.log("logData is", logData);
 
       await upsertEvent(
         chainId,
@@ -346,7 +344,7 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
   if (!skipTransaction) {
     console.log("Saving new transaction: ", newTransaction);
     await transactionRepository.save(newTransaction);
-    await createOrModifyPosition(newTransaction, event.logData.args.epochId);
+    await createOrModifyPosition(newTransaction);
     await upsertMarketPrice(newTransaction);
   }
 };

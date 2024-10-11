@@ -1,5 +1,5 @@
 {
-  "address": "0xA034F15C63177De806F7795B0e911B4fcF25BD9E",
+  "address": "0x69C22e273088B2D989e66Eba98Ba09676Afb62fe",
   "abi": [
     {
       "type": "function",
@@ -286,6 +286,12 @@
       "name": "LiquidityPositionClosed",
       "inputs": [
         {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
           "name": "epochId",
           "type": "uint256",
           "indexed": true,
@@ -334,6 +340,12 @@
       "type": "event",
       "name": "LiquidityPositionCreated",
       "inputs": [
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
         {
           "name": "epochId",
           "type": "uint256",
@@ -390,6 +402,12 @@
       "name": "LiquidityPositionDecreased",
       "inputs": [
         {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
           "name": "epochId",
           "type": "uint256",
           "indexed": true,
@@ -444,6 +462,12 @@
       "type": "event",
       "name": "LiquidityPositionIncreased",
       "inputs": [
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
         {
           "name": "epochId",
           "type": "uint256",
@@ -739,12 +763,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xc0db739cf44df80fd690bdfacc7a40ad22fc57d3f0c9c96c34b65696fead405d",
-  "deployTxnBlockNumber": "6851996",
-  "deployTimestamp": "1728588132",
+  "deployTxnHash": "0x6dbe7dd0b6935b7d0b880d769ed05fb618aedbf31e8fdd7eb1c19502709e0dab",
+  "deployTxnBlockNumber": "6857069",
+  "deployTimestamp": "1728661296",
   "sourceName": "src/contracts/modules/LiquidityModule.sol",
   "contractName": "LiquidityModule",
   "deployedOn": "deploy.LiquidityModule",
-  "gasUsed": 2927015,
-  "gasCost": "11638120676"
+  "gasUsed": 2940246,
+  "gasCost": "37348233075"
 }

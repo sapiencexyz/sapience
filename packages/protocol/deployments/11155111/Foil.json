@@ -1,5 +1,5 @@
 {
-  "address": "0xe2a23471ed304902f8479934d6d95c81d421c2ed",
+  "address": "0x02ff287369b6b293804395e69ee6285d1fd6480a",
   "abi": [
     {
       "type": "constructor",
@@ -910,6 +910,12 @@
       "name": "LiquidityPositionClosed",
       "inputs": [
         {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
           "name": "epochId",
           "type": "uint256",
           "indexed": true,
@@ -958,6 +964,12 @@
       "type": "event",
       "name": "LiquidityPositionCreated",
       "inputs": [
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
         {
           "name": "epochId",
           "type": "uint256",
@@ -1014,6 +1026,12 @@
       "name": "LiquidityPositionDecreased",
       "inputs": [
         {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
           "name": "epochId",
           "type": "uint256",
           "indexed": true,
@@ -1068,6 +1086,12 @@
       "type": "event",
       "name": "LiquidityPositionIncreased",
       "inputs": [
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
         {
           "name": "epochId",
           "type": "uint256",
@@ -1584,6 +1608,12 @@
       "name": "TraderPositionCreated",
       "inputs": [
         {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
           "name": "epochId",
           "type": "uint256",
           "indexed": true,
@@ -1650,6 +1680,12 @@
       "type": "event",
       "name": "TraderPositionModified",
       "inputs": [
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
         {
           "name": "epochId",
           "type": "uint256",
@@ -2719,12 +2755,12 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0xeb456ab998bfce926b676d0df7404750bf3757adc9ddc367d378dad6135b097b",
-  "deployTxnBlockNumber": "6852003",
-  "deployTimestamp": "1728588228",
+  "deployTxnHash": "0xb95a795884aade98120fd2704812caf3883df18ce07b737871559e3b6dd28fd6",
+  "deployTxnBlockNumber": "6857076",
+  "deployTimestamp": "1728661392",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
   "highlight": true,
   "gasUsed": 513643,
-  "gasCost": "10600703042"
+  "gasCost": "39021339336"
 }

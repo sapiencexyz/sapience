@@ -60,14 +60,14 @@ export const handleTransferEvent = async (event: Event) => {
  * Creates or modifies a Position in the database based on the given Transaction.
  * @param transaction the Transaction to use for creating/modifying the position
  */
-export const createOrModifyPosition = async (
-  transaction: Transaction,
-  epochId: number
-) => {
+export const createOrModifyPosition = async (transaction: Transaction) => {
+  const eventArgs = transaction.event.logData.args; //as LiquidityPositionModifiedEventLog;
+  const epochId = eventArgs.epochId;
+
   const existingPosition = await positionRepository.findOne({
     where: {
       epoch: {
-        id: epochId,
+        epochId: epochId,
         market: { address: transaction.event.market.address },
       },
       positionId: transaction.event.logData.args.positionId,
@@ -83,7 +83,7 @@ export const createOrModifyPosition = async (
 
   const epoch = await epochRepository.findOne({
     where: {
-      id: epochId,
+      epochId: epochId,
       market: { address: transaction.event.market.address },
     },
   });
@@ -100,7 +100,6 @@ export const createOrModifyPosition = async (
   const originalCollateral = existingPosition
     ? existingPosition.collateral
     : "0";
-  const eventArgs = transaction.event.logData.args; //as LiquidityPositionModifiedEventLog;
   const position = existingPosition || new Position();
 
   if (existingPosition) {
@@ -110,7 +109,7 @@ export const createOrModifyPosition = async (
 
   position.isLP = isLpPosition(transaction);
   position.positionId = Number(eventArgs.positionId);
-
+  position.owner = eventArgs.sender || position.owner;
   position.baseToken =
     eventArgs.vGasAmount?.toString() ||
     eventArgs.loanAmount0?.toString() ||
@@ -239,7 +238,6 @@ export const createOrUpdateEpochFromContract = async (
     functionName,
     args,
   });
-  console.log("epochReadResult", epochReadResult);
   const _epochId = epochId || Number(epochReadResult[0]);
 
   // check if epoch already exists in db
@@ -268,6 +266,7 @@ export const createOrUpdateEpochFromContract = async (
   updatedEpoch.market = market;
   updatedEpoch.epochParams = epochParams;
   await epochRepository.save(updatedEpoch);
+  console.log("saved epoch:", updatedEpoch);
 };
 
 /**

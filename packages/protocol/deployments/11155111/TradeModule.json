@@ -1,5 +1,5 @@
 {
-  "address": "0x09698F75a689C86F95548B4C388EB44548773dF1",
+  "address": "0xE01C84126E8c300548846B57921cCC87d0B78a73",
   "abi": [
     {
       "type": "function",
@@ -144,6 +144,12 @@
       "name": "TraderPositionCreated",
       "inputs": [
         {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
           "name": "epochId",
           "type": "uint256",
           "indexed": true,
@@ -210,6 +216,12 @@
       "type": "event",
       "name": "TraderPositionModified",
       "inputs": [
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
         {
           "name": "epochId",
           "type": "uint256",
@@ -550,12 +562,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x07d5c3582c323a2fc51861e639789f071192445e79238ac934216c5dc1cac1a0",
-  "deployTxnBlockNumber": "6851999",
-  "deployTimestamp": "1728588180",
+  "deployTxnHash": "0x1951557ee8dfcf4aedc919b1336d8c853d8d8856ffcb9b1a0fe598f50d5fd8b1",
+  "deployTxnBlockNumber": "6857072",
+  "deployTimestamp": "1728661344",
   "sourceName": "src/contracts/modules/TradeModule.sol",
   "contractName": "TradeModule",
   "deployedOn": "deploy.TradeModule",
-  "gasUsed": 2435397,
-  "gasCost": "11578580098"
+  "gasUsed": 2429988,
+  "gasCost": "36008900862"
 }
