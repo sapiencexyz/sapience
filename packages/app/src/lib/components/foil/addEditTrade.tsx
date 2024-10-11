@@ -52,6 +52,8 @@ export default function AddEditTrade() {
   );
   const [positionCollateralLimit, setPositionCollateralLimit] =
     useState<bigint>(BigInt(0));
+  const [resultingPositionCollateral, setResultingPositionCollateral] =
+    useState<bigint>(BigInt(0));
 
   const account = useAccount();
   const { isConnected, address } = account;
@@ -267,7 +269,7 @@ export default function AddEditTrade() {
     }
   }, [approveSuccess]);
 
-  const [quotedResultingPositionCollateral, quotedFillPrice] = useMemo(() => {
+  const [quotedCollateralDelta, quotedFillPrice] = useMemo(() => {
     const result = isEdit
       ? quoteModifyPositionResult.data?.result
       : quoteCreatePositionResult.data?.result;
@@ -293,26 +295,22 @@ export default function AddEditTrade() {
     return 0;
   }, [quotedFillPrice, pool]);
 
-  const collateralDelta = useMemo(() => {
-    return (
-      quotedResultingPositionCollateral -
-      (positionData?.depositedCollateralAmount ?? BigInt(0))
-    );
-  }, [quotedResultingPositionCollateral, positionData]);
-
   const collateralDeltaLimit = useMemo(() => {
-    if (collateralDelta === BigInt(0)) return BigInt(0);
+    if (quotedCollateralDelta === BigInt(0)) return BigInt(0);
 
     const slippageMultiplier = BigInt(Math.floor((100 + slippage) * 100));
     const slippageReductionMultiplier = BigInt(
       Math.floor((100 - slippage) * 100)
     );
 
-    if (collateralDelta > BigInt(0)) {
-      return (collateralDelta * slippageMultiplier) / BigInt(10000);
+    if (quotedCollateralDelta > BigInt(0)) {
+      return (quotedCollateralDelta * slippageMultiplier) / BigInt(10000);
     }
-    return (collateralDelta * slippageReductionMultiplier) / BigInt(10000);
-  }, [collateralDelta, slippage]);
+
+    return (
+      (quotedCollateralDelta * slippageReductionMultiplier) / BigInt(10000)
+    );
+  }, [quotedCollateralDelta, slippage]);
 
   const handleSubmit = async (
     e?: React.FormEvent<HTMLFormElement>,
@@ -325,23 +323,18 @@ export default function AddEditTrade() {
     // Set deadline to 30 minutes from now
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
 
-    const absCollateralDeltaLimit =
-      collateralDeltaLimit < BigInt(0)
-        ? -collateralDeltaLimit
-        : collateralDeltaLimit;
-
     if (!allowance) {
       console.log('refetching  allowance...');
       await refetchAllowance();
       console.log('refetched  allowance =', allowance);
     }
-    console.log('allowance =', allowance);
+    console.log('Allowance ', allowance);
     if (
       !approved &&
       allowance !== undefined &&
-      absCollateralDeltaLimit > (allowance as bigint)
+      collateralDeltaLimit > (allowance as bigint)
     ) {
-      console.log('approving...');
+      console.log('Approving ', collateralDeltaLimit);
       approveWrite({
         abi: erc20ABI as AbiFunction[],
         address: collateralAsset as `0x${string}`,
@@ -356,12 +349,18 @@ export default function AddEditTrade() {
         args: [
           nftId,
           desiredSizeInContractUnit,
-          absCollateralDeltaLimit,
+          collateralDeltaLimit,
           deadline,
         ],
       });
     } else {
-      console.log('creating trade position....');
+      console.log(
+        'Creating trade position....',
+        epoch,
+        desiredSizeInContractUnit,
+        collateralDeltaLimit,
+        deadline
+      );
       writeContract({
         abi: foilData.abi,
         address: marketAddress as `0x${string}`,
@@ -369,7 +368,7 @@ export default function AddEditTrade() {
         args: [
           epoch,
           desiredSizeInContractUnit,
-          absCollateralDeltaLimit,
+          collateralDeltaLimit,
           deadline,
         ],
       });
@@ -405,7 +404,7 @@ export default function AddEditTrade() {
       setWalletBalance(newWalletBalance);
 
       const newQuotedResultingWalletBalance = formatUnits(
-        (collateralBalance as bigint) - collateralDelta,
+        (collateralBalance as bigint) - quotedCollateralDelta,
         collateralAssetDecimals
       );
       setQuotedResultingWalletBalance(newQuotedResultingWalletBalance);
@@ -420,10 +419,14 @@ export default function AddEditTrade() {
       (positionData?.depositedCollateralAmount || BigInt(0)) +
       collateralDeltaLimit;
     setPositionCollateralLimit(newPositionCollateralLimit);
+
+    const newResultingPositionCollateral =
+      (positionData?.depositedCollateralAmount || BigInt(0)) +
+      quotedCollateralDelta;
+    setResultingPositionCollateral(newResultingPositionCollateral);
   }, [
     collateralBalance,
     collateralAssetDecimals,
-    collateralDelta,
     collateralDeltaLimit,
     positionData,
   ]);
@@ -431,7 +434,7 @@ export default function AddEditTrade() {
   console.log('******');
   console.log('collateralBalance =', collateralBalance);
   console.log('collateralAssetDecimals =', collateralAssetDecimals);
-  console.log('collateralDelta =', collateralDelta);
+  console.log('quotedCollateralDelta =', quotedCollateralDelta);
   console.log('collateralDeltaLimit =', collateralDeltaLimit);
   console.log('positionData =', positionData);
   console.log('walletBalance =', walletBalance);
@@ -597,7 +600,7 @@ export default function AddEditTrade() {
                   →{' '}
                   <NumberDisplay
                     value={formatUnits(
-                      quotedResultingPositionCollateral,
+                      resultingPositionCollateral,
                       collateralAssetDecimals
                     )}
                   />{' '}
