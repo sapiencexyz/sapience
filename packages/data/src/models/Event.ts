@@ -3,25 +3,24 @@ import {
   PrimaryGeneratedColumn,
   Column,
   AfterInsert,
-  AfterRemove,
   AfterUpdate,
   CreateDateColumn,
   OneToOne,
   Unique,
   ManyToOne,
 } from "typeorm";
-import { upsertTransactionPositionPriceFromEvent } from "../util/dbUtil";
+import { upsertEntitiesFromEvent } from "../controllers/market";
 import { Transaction } from "./Transaction";
-import { Epoch } from "./Epoch";
+import { Market } from "./Market";
 
 @Entity()
-@Unique(["epoch", "blockNumber", "logIndex"])
+@Unique(["market", "blockNumber", "logIndex"])
 export class Event {
   @OneToOne(() => Transaction, (transaction) => transaction.event)
   transaction: Transaction;
 
-  @ManyToOne(() => Epoch, (epoch) => epoch.events)
-  epoch: Epoch;
+  @ManyToOne(() => Market, (market) => market.events)
+  market: Market;
 
   @PrimaryGeneratedColumn()
   id: number;
@@ -41,23 +40,15 @@ export class Event {
   @Column({ type: "json" })
   logData!: { eventName: string; args: Record<string, any> };
 
-  // All should fail without crashing
   @AfterInsert()
   async afterInsert() {
     console.log("Event inserted: " + this.id);
-    // Upsert associated Transaction
-    await upsertTransactionPositionPriceFromEvent(this);
+    await upsertEntitiesFromEvent(this);
   }
 
   @AfterUpdate()
-  afterUpdate() {
+  async afterUpdate() {
     console.log(`Event updated: ${this.id}`);
-    // Upsert associated Position or Transaction
-  }
-
-  @AfterRemove()
-  afterRemove() {
-    console.log(`Event removed: ${this.id}`);
-    // Delete associated Position or Transaction
+    await upsertEntitiesFromEvent(this);
   }
 }

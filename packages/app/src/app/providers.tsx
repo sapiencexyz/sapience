@@ -9,6 +9,7 @@ import { createConfig, http, WagmiProvider } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 
 import { Chakra as ChakraProvider } from '~/lib/components/Chakra';
+import { MarketListProvider } from '~/lib/context/MarketListProvider';
 import { colors } from '~/lib/styles/theme/colors';
 
 const queryClient = new QueryClient();
@@ -49,7 +50,9 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
               accentColor: colors?.gray ? colors.gray[800] : '#00000',
             })}
           >
-            <ChakraProvider>{children}</ChakraProvider>
+            <ChakraProvider>
+              <MarketListProvider>{children}</MarketListProvider>
+            </ChakraProvider>
           </RainbowKitProvider>
         </QueryClientProvider>
       </WagmiProvider>

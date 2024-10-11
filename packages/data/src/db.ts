@@ -1,11 +1,11 @@
 import { DataSource } from "typeorm";
-import { Position } from "./entity/Position";
-import { Price } from "./entity/Price";
-import { Transaction } from "./entity/Transaction";
-import { Event } from "./entity/Event";
-import { Market } from "./entity/Market";
-import { Epoch } from "./entity/Epoch";
-import { MarketPrice } from "./entity/MarketPrice";
+import { Position } from "./models/Position";
+import { IndexPrice } from "./models/IndexPrice";
+import { Transaction } from "./models/Transaction";
+import { Event } from "./models/Event";
+import { Market } from "./models/Market";
+import { Epoch } from "./models/Epoch";
+import { MarketPrice } from "./models/MarketPrice";
 
 const isProduction = process.env.NODE_ENV === "production";
 const devDatabase = process.env.POSTGRES_DB;
@@ -19,16 +19,32 @@ const devDataSource: DataSource = new DataSource({
   host: "localhost",
   url: "postgresql://localhost",
   synchronize: true,
-  logging: true,
-  entities: [Price, Position, Transaction, Event, Market, Epoch, MarketPrice],
+  logging: ["warn", "error", "log", "info"],
+  entities: [
+    IndexPrice,
+    Position,
+    Transaction,
+    Event,
+    Market,
+    Epoch,
+    MarketPrice,
+  ],
 });
 
 const postgresDataSource: DataSource = new DataSource({
   type: "postgres",
   url: process.env.DATABASE_URL,
   synchronize: true,
-  logging: true,
-  entities: [Price, Position, Transaction, Event, Market, Epoch, MarketPrice],
+  logging: ["warn", "error", "log", "info"],
+  entities: [
+    IndexPrice,
+    Position,
+    Transaction,
+    Event,
+    Market,
+    Epoch,
+    MarketPrice,
+  ],
 });
 
 const dataSource = isProduction ? postgresDataSource : devDataSource;
@@ -46,5 +62,13 @@ export const initializeDataSource = async () => {
       });
   }
 };
+
+export const marketRepository = dataSource.getRepository(Market);
+export const epochRepository = dataSource.getRepository(Epoch);
+export const positionRepository = dataSource.getRepository(Position);
+export const transactionRepository = dataSource.getRepository(Transaction);
+export const eventRepository = dataSource.getRepository(Event);
+export const indexPriceRepository = dataSource.getRepository(IndexPrice);
+export const marketPriceRepository = dataSource.getRepository(MarketPrice);
 
 export default dataSource;

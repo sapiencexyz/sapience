@@ -1,16 +1,15 @@
 import "reflect-metadata";
 import dataSource, { initializeDataSource } from "./db"; /// !IMPORTANT: Keep as top import to prevent issues with db initialization
 import cors from "cors";
-import { Price } from "./entity/Price";
-import { Position } from "./entity/Position";
-import { Market } from "./entity/Market";
+import { IndexPrice } from "./models/IndexPrice";
+import { Position } from "./models/Position";
+import { Market } from "./models/Market";
 import express from "express";
 import { Between } from "typeorm";
-import { Transaction } from "./entity/Transaction";
-import { Epoch } from "./entity/Epoch";
-import { MarketPrice } from "./entity/MarketPrice";
+import { Transaction } from "./models/Transaction";
+import { Epoch } from "./models/Epoch";
+import { MarketPrice } from "./models/MarketPrice";
 import { formatUnits } from "viem";
-import { formatDbBigInt } from "./util/dbUtil";
 import { TOKEN_PRECISION } from "./constants";
 import {
   getMarketPricesInTimeRange,
@@ -18,8 +17,11 @@ import {
   getTransactionsInTimeRange,
   groupMarketPricesByTimeWindow,
   groupTransactionsByTimeWindow,
-} from "./util/serviceUtil";
-import { TimeWindow } from "./interfaces/interfaces";
+} from "./serviceUtil";
+import { TimeWindow } from "./interfaces";
+import { formatDbBigInt } from "./helpers";
+import { getProviderForChain, getBlockByTimestamp } from "./helpers";
+import { indexPriceRepository, marketRepository, epochRepository } from "./db";
 
 const PORT = 3001;
 
@@ -27,7 +29,7 @@ const startServer = async () => {
   await initializeDataSource();
   const positionRepository = dataSource.getRepository(Position);
   const epochRepository = dataSource.getRepository(Epoch);
-  const priceRepository = dataSource.getRepository(Price);
+  const priceRepository = dataSource.getRepository(IndexPrice);
   const marketRepository = dataSource.getRepository(Market);
   const transactionRepository = dataSource.getRepository(Transaction);
 
@@ -58,6 +60,29 @@ const startServer = async () => {
 
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
+  });
+
+  app.get("/markets", async (req, res) => {
+    try {
+      const markets = await marketRepository.find({
+        where: { public: true },
+        relations: ["epochs"],
+      });
+
+      const formattedMarkets = markets.map((market) => ({
+        ...market,
+        epochs: market.epochs.map((epoch) => ({
+          ...epoch,
+          startTimestamp: Number(epoch.startTimestamp),
+          endTimestamp: Number(epoch.endTimestamp),
+        })),
+      }));
+
+      res.json(formattedMarkets);
+    } catch (error) {
+      console.error("Error fetching markets:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
   });
 
   // Get market price data for rendering candlestick/boxplot charts filtered by contractId
@@ -231,6 +256,7 @@ const startServer = async () => {
       const positions = await positionRepository.find({
         where,
         relations: ["epoch", "epoch.market"],
+        order: { positionId: "ASC" },
       });
       // format the data
       for (const position of positions) {
@@ -241,7 +267,6 @@ const startServer = async () => {
           position.borrowedQuoteToken
         );
         position.collateral = formatDbBigInt(position.collateral);
-        position.unclaimedFees = formatDbBigInt(position.unclaimedFees);
       }
       res.json(positions);
     } catch (error) {
@@ -288,7 +313,6 @@ const startServer = async () => {
       position.borrowedBaseToken = formatDbBigInt(position.borrowedBaseToken);
       position.borrowedQuoteToken = formatDbBigInt(position.borrowedQuoteToken);
       position.collateral = formatDbBigInt(position.collateral);
-      position.unclaimedFees = formatDbBigInt(position.unclaimedFees);
 
       res.json(position);
     } catch (error) {
@@ -393,6 +417,94 @@ const startServer = async () => {
       res.json(volume);
     } catch (error) {
       console.error("Error fetching transactions:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/missing-blocks", async (req, res) => {
+    const { chainId, address, epochId } = req.query;
+
+    if (
+      typeof chainId !== "string" ||
+      typeof address !== "string" ||
+      typeof epochId !== "string"
+    ) {
+      return res.status(400).json({ error: "Invalid request parameters" });
+    }
+
+    try {
+      // Find the market
+      const market = await marketRepository.findOne({
+        where: { chainId: Number(chainId), address },
+      });
+
+      if (!market) {
+        return res.status(404).json({ error: "Market not found" });
+      }
+
+      // Find the epoch within the market
+      const epoch = await epochRepository.findOne({
+        where: {
+          market: { id: market.id },
+          epochId: Number(epochId),
+        },
+      });
+
+      if (!epoch) {
+        return res.status(404).json({ error: "Epoch not found" });
+      }
+
+      // Get start and end timestamps
+      const startTimestamp = Number(epoch.startTimestamp);
+      const endTimestamp = Number(epoch.endTimestamp);
+
+      // Get the client for the specified chain ID
+      const client = getProviderForChain(Number(chainId));
+
+      // Get the blocks corresponding to the start and end timestamps
+      const startBlock = await getBlockByTimestamp(client, startTimestamp);
+      const endBlock = await getBlockByTimestamp(client, endTimestamp);
+
+      if (!startBlock.number || !endBlock.number) {
+        throw new Error(
+          "Unable to retrieve block numbers for start or end timestamps"
+        );
+      }
+
+      const startBlockNumber = Number(startBlock.number);
+      const endBlockNumber = Number(endBlock.number);
+
+      // Retrieve all indexed block numbers within the range from the IndexPrice repository
+      const indexPrices = await indexPriceRepository.find({
+        where: {
+          market: { id: market.id },
+          blockNumber: Between(
+            startBlockNumber.toString(),
+            endBlockNumber.toString()
+          ),
+        },
+        select: ["blockNumber"],
+      });
+
+      const existingBlockNumbersSet = new Set(
+        indexPrices.map((ip) => Number(ip.blockNumber))
+      );
+
+      // Find missing block numbers within the range
+      const missingBlockNumbers = [];
+      for (
+        let blockNumber = startBlockNumber;
+        blockNumber <= endBlockNumber;
+        blockNumber++
+      ) {
+        if (!existingBlockNumbersSet.has(blockNumber)) {
+          missingBlockNumbers.push(blockNumber);
+        }
+      }
+
+      res.json({ missingBlockNumbers });
+    } catch (error) {
+      console.error("Error fetching missing blocks:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

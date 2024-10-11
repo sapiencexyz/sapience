@@ -1,4 +1,4 @@
-import { HamburgerIcon } from '@chakra-ui/icons';
+import { HamburgerIcon, ChevronDownIcon } from '@chakra-ui/icons';
 import {
   Box,
   Flex,
@@ -11,18 +11,32 @@ import {
   DrawerContent,
   DrawerCloseButton,
   useDisclosure,
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverArrow,
+  PopoverBody,
 } from '@chakra-ui/react';
 import Link from 'next/link';
 import React, { useState, useEffect } from 'react';
 
 import ConnectButton from '../components/ConnectButton';
-import useFoilDeployment from '../components/foil/useFoilDeployment';
+import { useMarketList } from '~/lib/context/MarketListProvider';
+import * as chains from 'viem/chains';
+
+function getChain(chainId: number) {
+  for (const chain of Object.values(chains)) {
+    if (chain.id === chainId) {
+      return chain;
+    }
+  }
+  
+  throw new Error(`Chain with id ${chainId} not found`);
+}
 
 const Header = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [isMobile, setIsMobile] = useState(false);
-  const { foilData: testnetFoilData } = useFoilDeployment(11155111);
-  const { foilData: localFoilData } = useFoilDeployment(13370);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -31,36 +45,109 @@ const Header = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // eslint-disable-next-line react/no-unstable-nested-components
-  const NavLinks = () => (
-    <>
-      {process.env.NODE_ENV === 'development' && localFoilData?.address && (
-        <Link
-          href={`/markets/13370:${localFoilData.address}/epochs/1/subscribe`}
+  const NavLinks = ({ isMobile = false }) => {
+    const { markets, isLoading, error } = useMarketList();
+    const [subscribePopoverOpen, setSubscribePopoverOpen] = useState(false);
+    const [tradePopoverOpen, setTradePopoverOpen] = useState(false);
+
+    const renderMarketLinks = (type: 'subscribe' | 'trade') => (
+      <VStack align="stretch" spacing={2} mt={2} ml={isMobile ? 4 : 0}>
+        {markets.map((market) => (
+          <Box key={market.id}>
+            {type === 'subscribe' && market.nextEpoch && (
+              <Link href={`/markets/${market.chainId}:${market.address}/epochs/${market.nextEpoch.epochId}/subscribe`}>
+                {getChain(market.chainId).name}
+              </Link>
+            )}
+            {type === 'trade' && market.currentEpoch && (
+              <Link href={`/markets/${market.chainId}:${market.address}/epochs/${market.currentEpoch.epochId}`}>
+                {getChain(market.chainId).name}
+              </Link>
+            )}
+          </Box>
+        ))}
+      </VStack>
+    );
+
+    if (isMobile) {
+      return (
+        <VStack align="stretch" spacing={4}>
+          <Box>
+            <Box as="span" fontWeight="bold">Subscribe</Box>
+            {renderMarketLinks('subscribe')}
+          </Box>
+          <Box>
+            <Box as="span" fontWeight="bold">Trade</Box>
+            {renderMarketLinks('trade')}
+          </Box>
+        </VStack>
+      );
+    }
+
+    return (
+      <Flex gap={9}>
+        <Popover
+          trigger="hover"
+          isOpen={subscribePopoverOpen}
+          onOpen={() => setSubscribePopoverOpen(true)}
+          onClose={() => setSubscribePopoverOpen(false)}
         >
-          Local Subscription
-        </Link>
-      )}
-      {process.env.NODE_ENV === 'development' && localFoilData?.address && (
-        <Link href={`/markets/13370:${localFoilData.address}/epochs/1`}>
-          Local Market
-        </Link>
-      )}
-      {testnetFoilData?.address && (
-        <Link
-          href={`/markets/11155111:${testnetFoilData.address}/epochs/1/subscribe`}
+          <PopoverTrigger>
+            <Box as="span" cursor="pointer" display="flex" alignItems="center">
+              Subscribe <ChevronDownIcon ml={1} />
+            </Box>
+          </PopoverTrigger>
+          <PopoverContent>
+            <PopoverArrow />
+            <PopoverBody>
+              {markets.map((market) => (
+                <Box key={market.id} mb={2}>
+                  {market.nextEpoch && (
+                    <Link
+                      href={`/markets/${market.chainId}:${market.address}/epochs/${market.nextEpoch.epochId}/subscribe`}
+                      onClick={() => setSubscribePopoverOpen(false)}
+                    >
+                      {getChain(market.chainId).name}
+                    </Link>
+                  )}
+                </Box>
+              ))}
+            </PopoverBody>
+          </PopoverContent>
+        </Popover>
+
+        <Popover
+          trigger="hover"
+          isOpen={tradePopoverOpen}
+          onOpen={() => setTradePopoverOpen(true)}
+          onClose={() => setTradePopoverOpen(false)}
         >
-          Testnet Subscription
-        </Link>
-      )}
-      {testnetFoilData?.address && (
-        <Link href={`/markets/11155111:${testnetFoilData.address}/epochs/1`}>
-          Testnet Market
-        </Link>
-      )}
-      <Link href="https://docs.foil.xyz">Docs</Link>
-    </>
-  );
+          <PopoverTrigger>
+            <Box as="span" cursor="pointer" display="flex" alignItems="center">
+              Trade <ChevronDownIcon ml={1} />
+            </Box>
+          </PopoverTrigger>
+          <PopoverContent>
+            <PopoverArrow />
+            <PopoverBody>
+              {markets.map((market) => (
+                <Box key={market.id} mb={2}>
+                  {market.currentEpoch && (
+                    <Link
+                      href={`/markets/${market.chainId}:${market.address}/epochs/${market.currentEpoch.epochId}`}
+                      onClick={() => setTradePopoverOpen(false)}
+                    >
+                      {getChain(market.chainId).name}
+                    </Link>
+                  )}
+                </Box>
+              ))}
+            </PopoverBody>
+          </PopoverContent>
+        </Popover>
+      </Flex>
+    );
+  };
 
   return (
     <Box
@@ -100,7 +187,8 @@ const Header = () => {
                 <DrawerCloseButton />
                 <DrawerBody>
                   <VStack spacing={4} align="stretch">
-                    <NavLinks />
+                    <NavLinks isMobile={true} />
+                    <Link href="https://docs.foil.xyz">Docs</Link>
                     <ConnectButton />
                   </VStack>
                 </DrawerBody>
@@ -108,8 +196,11 @@ const Header = () => {
             </Drawer>
           </>
         ) : (
-          <Flex gap={9} align="center" fontWeight="600">
-            <NavLinks />
+          <Flex gap={6} align="center" fontWeight="600" w="100%">
+            <Flex mx="auto">
+              <NavLinks />
+            </Flex>
+            <Link href="https://docs.foil.xyz">Docs</Link>
             <ConnectButton />
           </Flex>
         )}

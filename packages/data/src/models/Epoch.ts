@@ -19,9 +19,6 @@ export class Epoch {
   @ManyToOne(() => Market, (market) => market.epochs)
   market: Market;
 
-  @OneToMany(() => Event, (event) => event.epoch)
-  events: Event[];
-
   @OneToMany(() => Position, (position) => position.epoch)
   positions: Position[];
 

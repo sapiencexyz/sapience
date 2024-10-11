@@ -1,201 +1,58 @@
-import dataSource, { initializeDataSource } from "./db";
-import { Abi, PublicClient } from "viem";
-import { indexBaseFeePerGas, indexBaseFeePerGasRange } from "./processes/chain";
-import { indexMarketEvents, indexMarketEventsRange } from "./processes/market"; // Assuming you have this function
-import { sepolia, hardhat } from "viem/chains";
-import { Market } from "./entity/Market";
-import { Epoch } from "./entity/Epoch";
+import { initializeDataSource } from "./db";
 import {
-  cannonPublicClient,
-  getBlockRanges,
-  getTimestampsForReindex,
-  mainnetPublicClient,
-  sepoliaPublicClient,
-} from "./util/reindexUtil";
-import { ContractDeployment } from "./interfaces/interfaces";
+  indexMarketEvents,
+  initializeMarket,
+  reindexMarketEvents,
+} from "./controllers/market";
+import { MARKET_INFO } from "./constants";
+import { createOrUpdateEpochFromContract } from "./controllers/marketHelpers";
 
-let FoilLocal: ContractDeployment | undefined;
-let FoilSepolia: ContractDeployment | undefined;
-
-try {
-  FoilLocal = require("@/protocol/deployments/13370/Foil.json");
-} catch (error) {
-  console.warn("FoilLocal not available");
-}
-
-try {
-  FoilSepolia = require("@/protocol/deployments/11155111/Foil.json");
-} catch (error) {
-  console.warn("FoilSepolia not available");
-}
-
-// TODO: Get this data from smart contract queries
-async function initializeMarkets() {
+async function main() {
   await initializeDataSource();
-  const marketRepository = dataSource.getRepository(Market);
-  const epochRepository = dataSource.getRepository(Epoch);
+  let jobs = [];
 
-  // Helper function to create or find epoch
-  async function createOrFindEpoch(market: Market) {
-    let epoch = await epochRepository.findOne({
-      where: { market: { id: market.id }, epochId: 1 },
-    });
-
-    if (!epoch) {
-      epoch = new Epoch();
-      epoch.epochId = 1;
-      epoch.market = market;
-      await epochRepository.save(epoch);
-    }
-
-    return epoch;
+  for (const marketInfo of MARKET_INFO) {
+    const market = await initializeMarket(marketInfo);
+    // initialize epoch
+    await createOrUpdateEpochFromContract(marketInfo, market);
+    jobs.push(indexMarketEvents(market, marketInfo.deployment.abi));
+    jobs.push(marketInfo.priceIndexer.watchBlocksForMarket(market));
   }
 
-  // LOCAL
-  if (FoilLocal) {
-    let localMarket = await marketRepository.findOne({
-      where: { address: FoilLocal.address, chainId: hardhat.id },
-      relations: ["epochs"],
-    });
-    if (!localMarket) {
-      localMarket = new Market();
-      localMarket.address = FoilLocal.address;
-      localMarket.chainId = hardhat.id;
-      localMarket = await marketRepository.save(localMarket);
-    }
-    await createOrFindEpoch(localMarket);
-  }
-
-  // SEPOLIA
-  if (FoilSepolia) {
-    let sepoliaMarket = await marketRepository.findOne({
-      where: { address: FoilSepolia.address, chainId: sepolia.id },
-      relations: ["epochs"],
-    });
-    if (!sepoliaMarket) {
-      sepoliaMarket = new Market();
-      sepoliaMarket.address = FoilSepolia.address;
-      sepoliaMarket.chainId = sepolia.id;
-      sepoliaMarket = await marketRepository.save(sepoliaMarket);
-    }
-    await createOrFindEpoch(sepoliaMarket);
-  }
+  await Promise.all(jobs);
 }
 
-// TODO: confirm whether reindexing picks up initial contract events of epoch creation and market initialization
-export async function reindexNetwork(
-  client: PublicClient,
-  contractDeployment: ContractDeployment | undefined,
-  chainId: number,
-  epoch?: number,
-  startTime?: number,
-  endTime?: number
-) {
-  if (!contractDeployment) {
-    console.error(`Deployment package not available. Cannot reindex network.`);
-    return;
-  }
+export async function reindexMarket(chainId: number, address: string) {
   await initializeDataSource();
-
-  //  check for hardcoded timestamps
-  let startTimestamp: number | null | undefined = startTime;
-  let endTimestamp: number | null | undefined = endTime;
-
-  // if no start/end timestamps are provided, get them from the database or contract
-  if (!startTimestamp || !endTimestamp) {
-    const timestamps = await getTimestampsForReindex(
-      client,
-      contractDeployment,
-      chainId,
-      epoch
+  const marketInfo = MARKET_INFO.find(
+    (m) =>
+      m.marketChainId === chainId &&
+      m.deployment.address.toLowerCase() === address.toLowerCase()
+  );
+  if (!marketInfo) {
+    throw new Error(
+      `Market not found for chainId ${chainId} and address ${address}`
     );
-    startTimestamp = timestamps.startTimestamp;
-    endTimestamp = timestamps.endTimestamp;
   }
+  const market = await initializeMarket(marketInfo);
 
-  // if not there throw error
-  if (!startTimestamp || !endTimestamp) {
-    throw new Error("Invalid timestamps");
-  }
-
-  console.log("startTimestamp", startTimestamp);
-  console.log("endTimestamp", endTimestamp);
-
-  getBlockRanges(startTimestamp, endTimestamp, client)
-    .then(({ gasStart, gasEnd, marketStart, marketEnd }) => {
-      console.log(`Reindexing gas between blocks ${gasStart} and ${gasEnd}`);
-      console.log(
-        `Reindexing market between blocks ${marketStart} and ${marketEnd}`
-      );
-
-      Promise.all([
-        indexBaseFeePerGasRange(
-          mainnetPublicClient,
-          Number(gasStart),
-          Number(gasEnd),
-          chainId,
-          contractDeployment.address
-        ),
-        indexMarketEventsRange(
-          client,
-          Number(marketStart),
-          Number(marketEnd),
-          contractDeployment.address,
-          contractDeployment.abi
-        ),
-      ])
-        .then(() => {
-          console.log("Done!");
-        })
-        .catch((error) => {
-          console.error("An error occurred:", error);
-        });
-    })
-    .catch((error) => {
-      console.error("Error getting block ranges:", error);
-    });
+  await Promise.all([
+    reindexMarketEvents(market, marketInfo.deployment.abi),
+    marketInfo.priceIndexer.indexBlockPriceFromTimestamp(
+      market,
+      market.deployTimestamp
+    ),
+  ]);
 }
 
-if (process.argv.length < 3) {
-  initializeMarkets().then(() => {
-    let jobs = [];
-
-    if (FoilSepolia) {
-      jobs.push(
-        indexBaseFeePerGas(
-          mainnetPublicClient,
-          sepolia.id,
-          FoilSepolia.address
-        ),
-        indexMarketEvents(sepoliaPublicClient, FoilSepolia)
-      );
-    }
-
-    if (process.env.NODE_ENV !== "production" && FoilLocal) {
-      jobs.push(
-        indexBaseFeePerGas(mainnetPublicClient, hardhat.id, FoilLocal.address),
-        indexMarketEvents(cannonPublicClient, FoilLocal)
-      );
-    }
-
-    if (jobs.length > 0) {
-      Promise.all(jobs).catch((error) => {
-        console.error("Error running processes in parallel:", error);
-      });
-    } else {
-      console.warn(
-        "No jobs to run. Make sure FoilLocal or FoilSepolia are available."
-      );
-    }
-  });
+if (process.argv[process.argv.length - 1] === "reindexMarket") {
+  const callReindex = async () => {
+    const CHAIN = 13370; // adjust as needed
+    const ADDRESS = "0x90FA2c5b2f2F1B60B5ed9255E2283C17d8E02b63"; //adjust as needed
+    await reindexMarket(CHAIN, ADDRESS);
+    console.log("DONE");
+  };
+  callReindex();
 } else {
-  const args = process.argv.slice(2);
-
-  if (args[0] === "reindex-testnet") {
-    console.log("Reindexing Testnet!");
-    reindexNetwork(sepoliaPublicClient, FoilSepolia, sepolia.id);
-  } else if (args[0] === "reindex-local") {
-    console.log("Reindexing Local!");
-    reindexNetwork(cannonPublicClient, FoilLocal, hardhat.id);
-  }
+  main();
 }

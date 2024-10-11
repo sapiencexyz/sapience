@@ -1,13 +1,13 @@
-import { MarketPrice } from "../entity/MarketPrice";
+import { MarketPrice } from "./models/MarketPrice";
 import {
   ONE_DAY_MS,
   ONE_HOUR_MS,
   ONE_MINUTE_MS,
   TOKEN_PRECISION,
-} from "../constants";
-import dataSource from "../db";
-import { Transaction } from "../entity/Transaction";
-import { TimeWindow } from "../interfaces/interfaces";
+} from "./constants";
+import dataSource from "./db";
+import { Transaction } from "./models/Transaction";
+import { TimeWindow } from "./interfaces";
 import { formatUnits } from "viem";
 
 class EntityGroup<T> {
@@ -32,8 +32,7 @@ export async function getTransactionsInTimeRange(
   return await transactionRepository
     .createQueryBuilder("transaction")
     .innerJoinAndSelect("transaction.event", "event")
-    .innerJoin("event.epoch", "epoch")
-    .innerJoin("epoch.market", "market")
+    .innerJoinAndSelect("event.market", "market")
     .leftJoinAndSelect("transaction.marketPrice", "marketPrice")
     .leftJoinAndSelect("transaction.position", "position")
     .where(
@@ -61,8 +60,8 @@ export async function getMarketPricesInTimeRange(
     .createQueryBuilder("marketPrice")
     .innerJoinAndSelect("marketPrice.transaction", "transaction")
     .innerJoinAndSelect("transaction.event", "event")
-    .innerJoinAndSelect("event.epoch", "epoch")
-    .innerJoinAndSelect("epoch.market", "market")
+    .innerJoinAndSelect("event.market", "market")
+    .innerJoinAndSelect("market.epochs", "epoch", "epoch.epochId = :epochId")
     .where("market.chainId = :chainId", { chainId })
     .andWhere("market.address = :address", { address })
     .andWhere("epoch.epochId = :epochId", { epochId })

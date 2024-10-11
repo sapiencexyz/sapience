@@ -1,15 +1,12 @@
 'use client';
 
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import {
   Flex,
   Box,
   Heading,
   Spinner,
-  Text,
   UnorderedList,
   ListItem,
-  Tooltip,
 } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import { useContext } from 'react';
@@ -18,6 +15,7 @@ import NumberDisplay from '~/lib/components/foil/numberDisplay';
 import TransactionTable from '~/lib/components/foil/transactionTable';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { MarketContext } from '~/lib/context/MarketProvider';
+import { tickToPrice } from '~/lib/util/util';
 
 const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
 
@@ -146,11 +144,11 @@ const PositionPage = ({
             {positionData.isLP ? (
               <>
                 <ListItem>
-                  Low Price: <NumberDisplay value={positionData.lowPrice} />{' '}
+                  Low Price: <NumberDisplay value={tickToPrice(positionData.lowPriceTick)} />{' '}
                   Ggas/wstETH
                 </ListItem>
                 <ListItem>
-                  High Price: <NumberDisplay value={positionData.highPrice} />{' '}
+                  High Price: <NumberDisplay value={tickToPrice(positionData.highPriceTick)} />{' '}
                   Ggas/wstETH
                 </ListItem>
               </>
