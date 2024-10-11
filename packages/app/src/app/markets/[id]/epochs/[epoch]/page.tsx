@@ -33,7 +33,7 @@ const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
 
 const Market = ({ params }: { params: { id: string; epoch: string } }) => {
   const [selectedWindow, setSelectedWindow] = useState<TimeWindow>(
-    TimeWindow.D
+    TimeWindow.W
   );
   const [tableFlexHeight, setTableFlexHeight] = useState(172);
   const resizeRef = useRef<HTMLDivElement>(null);

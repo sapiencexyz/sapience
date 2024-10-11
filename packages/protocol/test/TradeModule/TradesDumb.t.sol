@@ -74,6 +74,11 @@ contract TradePositionDumb is TestTrade {
         lp1 = TestUser.createUser("LP1", 10_000_000_000 ether);
         trader1 = TestUser.createUser("Trader1", 10_000_000 ether);
 
+        // Remove allowance of collateralAsset from trader1 to foil
+        vm.startPrank(trader1);
+        collateralAsset.approve(address(foil), 0);
+        vm.stopPrank();
+
         (epochId, , , pool, tokenA, tokenB, , , , , ) = foil.getLatestEpoch();
 
         uniCastedPool = IUniswapV3Pool(pool);
@@ -103,6 +108,7 @@ contract TradePositionDumb is TestTrade {
             epochId,
             positionSize
         );
+        collateralAsset.approve(address(foil), requiredCollateral + 2);
         // Send more collateral than required, just checking the position can be created/modified
         uint256 positionId = foil.createTraderPosition(
             epochId,
@@ -141,6 +147,7 @@ contract TradePositionDumb is TestTrade {
             epochId,
             positionSize
         );
+        collateralAsset.approve(address(foil), requiredCollateral + 2);
         // Send more collateral than required, just checking the position can be created/modified
         uint256 positionId = foil.createTraderPosition(
             epochId,
@@ -186,6 +193,12 @@ contract TradePositionDumb is TestTrade {
             0
         );
 
+        if (requiredCollateral > 0) {
+            collateralAsset.approve(
+                address(foil),
+                requiredCollateral.toUint() + 2
+            );
+        }
         // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
             positionId,
@@ -231,6 +244,12 @@ contract TradePositionDumb is TestTrade {
             positionId,
             0
         );
+        if (requiredCollateral > 0) {
+            collateralAsset.approve(
+                address(foil),
+                requiredCollateral.toUint() + 2
+            );
+        }
 
         // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
@@ -279,6 +298,13 @@ contract TradePositionDumb is TestTrade {
         // quote and close a long
         (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
             .quoteModifyTraderPosition(positionId, finalPositionSize);
+
+        if (requiredDeltaCollateral > 0) {
+            collateralAsset.approve(
+                address(foil),
+                requiredDeltaCollateral.toUint()
+            );
+        }
 
         // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
@@ -332,6 +358,13 @@ contract TradePositionDumb is TestTrade {
         (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
             .quoteModifyTraderPosition(positionId, finalPositionSize);
 
+        if (requiredDeltaCollateral > 0) {
+            collateralAsset.approve(
+                address(foil),
+                requiredDeltaCollateral.toUint() - 2
+            );
+        }
+
         // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
             positionId,
@@ -383,6 +416,13 @@ contract TradePositionDumb is TestTrade {
             finalPositionSize
         );
 
+        if (requiredDeltaCollateral > 0) {
+            collateralAsset.approve(
+                address(foil),
+                requiredDeltaCollateral.toUint() + 2
+            );
+        }
+
         // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
             positionId,
@@ -427,6 +467,12 @@ contract TradePositionDumb is TestTrade {
         (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
             .quoteModifyTraderPosition(positionId, finalPositionSize);
 
+        if (requiredDeltaCollateral > 0) {
+            collateralAsset.approve(
+                address(foil),
+                requiredDeltaCollateral.toUint() + 2
+            );
+        }
         // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
             positionId,
@@ -478,6 +524,13 @@ contract TradePositionDumb is TestTrade {
             finalPositionSize
         );
 
+        if (requiredDeltaCollateral > 0) {
+            collateralAsset.approve(
+                address(foil),
+                requiredDeltaCollateral.toUint() + 2
+            );
+        }
+
         // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
             positionId,
@@ -523,6 +576,12 @@ contract TradePositionDumb is TestTrade {
             positionId,
             finalPositionSize
         );
+        if (requiredDeltaCollateral > 0) {
+            collateralAsset.approve(
+                address(foil),
+                requiredDeltaCollateral.toUint() + 2
+            );
+        }
 
         // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(

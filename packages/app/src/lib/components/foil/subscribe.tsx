@@ -45,9 +45,8 @@ const Subscribe: FC = () => {
   const [pendingTxn, setPendingTxn] = useState(false);
   const [collateralDelta, setCollateralDelta] = useState<bigint>(BigInt(0));
   const [quoteError, setQuoteError] = useState<string | null>(null);
-  const [estimatedFillPrice, setEstimatedFillPrice] = useState<string | null>(
-    null
-  );
+  const [fillPrice, setFillPrice] = useState<bigint>(BigInt(0));
+  const [fillPriceInEth, setFillPriceInEth] = useState<bigint>(BigInt(0));
 
   console.log('size', size);
 
@@ -107,11 +106,15 @@ const Subscribe: FC = () => {
     query: { enabled: size !== BigInt(0) },
   });
 
+  // Update the useEffect to set quoteResult and fillPrice from the result
   useEffect(() => {
-    const quoteResult = quoteCreatePositionResult.data?.result;
-    if (quoteResult !== undefined) {
-      setCollateralDelta(quoteResult as unknown as bigint);
+    if (quoteCreatePositionResult.data?.result !== undefined) {
+      const [quoteResultData, fillPriceData] =
+        quoteCreatePositionResult.data.result;
+      setFillPrice(fillPriceData as bigint);
+      setCollateralDelta(quoteResultData as bigint);
     } else {
+      setFillPrice(BigInt(0));
       setCollateralDelta(BigInt(0));
     }
   }, [quoteCreatePositionResult.data]);
@@ -190,26 +193,15 @@ const Subscribe: FC = () => {
   }, [approveSuccess]);
 
   useEffect(() => {
-    if (
-      quoteCreatePositionResult.data?.result !== undefined &&
-      size > BigInt(0) &&
-      stEthPerToken
-    ) {
-      const fillPrice =
-        BigInt(quoteCreatePositionResult.data?.result as unknown as bigint) /
-        size;
-      const fillPriceInEth =
-        Number(formatUnits(fillPrice, collateralAssetDecimals)) * stEthPerToken;
-      setEstimatedFillPrice(fillPriceInEth.toString());
+    if (fillPrice !== BigInt(0) && stEthPerToken) {
+      const fillPriceInGwei =
+        (fillPrice * BigInt(1e18)) /
+        BigInt(stEthPerToken * 10 ** collateralAssetDecimals);
+      setFillPriceInEth(fillPriceInGwei);
     } else {
-      setEstimatedFillPrice(null);
+      setFillPriceInEth(BigInt(0));
     }
-  }, [
-    quoteCreatePositionResult.data,
-    size,
-    collateralAssetDecimals,
-    stEthPerToken,
-  ]);
+  }, [fillPrice, collateralAssetDecimals, stEthPerToken]);
 
   const handleSubmit = (e?: FormEvent<HTMLFormElement>, approved?: boolean) => {
     if (e) e.preventDefault();
@@ -376,7 +368,7 @@ const Subscribe: FC = () => {
           {collateralAssetTicker}
         </Text>
         <Text fontSize="sm" display="inline-block" color="gray.600" mb={0.5}>
-          <NumberDisplay value={estimatedFillPrice || '0'} /> gwei
+          <NumberDisplay value={formatUnits(fillPriceInEth, 9)} /> gwei
         </Text>
       </Box>
 
