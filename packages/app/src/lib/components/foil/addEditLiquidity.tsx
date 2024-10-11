@@ -102,7 +102,7 @@ const AddEditLiquidity: React.FC<{
   const account = useAccount();
   const { isConnected } = account;
 
-  const [depositAmount, setDepositAmount] = useState(0);
+  const [depositAmount, setDepositAmount] = useState<string>('0');
   const [lowPrice, setLowPrice] = useState(
     tickToPrice(epochParams.baseAssetMinPriceTick)
   );
@@ -313,12 +313,13 @@ const AddEditLiquidity: React.FC<{
       )
     );
   }, [positionData, collateralAssetDecimals]);
-  const isDecrease = isEdit && depositAmount < positionCollateralAmount;
+  const isDecrease =
+    isEdit && depositAmount < positionCollateralAmount.toString();
 
   const newLiquidity: bigint = useMemo(() => {
     if (!liquidity) return BigInt(0);
     return getNewLiquidity(
-      depositAmount,
+      depositAmount !== '' ? parseFloat(depositAmount) : 0,
       positionCollateralAmount,
       collateralAssetDecimals,
       liquidity
@@ -406,6 +407,11 @@ const AddEditLiquidity: React.FC<{
     );
   }, [allowanceData, collateralAssetDecimals]);
 
+  const positionCollateralAfter = useMemo(() => {
+    if (!isEdit) return parseFloat(depositAmount || '0');
+    return parseFloat(depositAmount || '0');
+  }, [isEdit, depositAmount, positionCollateralAmount]);
+
   /// //// USE EFFECTS ///////
   // handle successful txn
   useEffect(() => {
@@ -418,7 +424,7 @@ const AddEditLiquidity: React.FC<{
   useEffect(() => {
     const calculateDelta = () => {
       const newDepositAmountBigInt = parseUnits(
-        depositAmount.toString(),
+        depositAmount !== '' ? depositAmount : '0',
         collateralAssetDecimals
       );
       const currentDepositAmountBigInt = BigInt(
@@ -438,9 +444,9 @@ const AddEditLiquidity: React.FC<{
           collateralAssetDecimals
         )
       );
-      setDepositAmount(currentCollateral);
+      setDepositAmount(currentCollateral.toString());
     } else {
-      setDepositAmount(0);
+      setDepositAmount('0');
     }
   }, [nftId, positionData, isEdit, collateralAssetDecimals]);
 
@@ -565,11 +571,18 @@ const AddEditLiquidity: React.FC<{
 
   useEffect(() => {
     const validateCollateral = async () => {
-      if (walletBalance && depositAmount > parseFloat(walletBalance)) {
-        setError('collateral', {
-          type: 'manual',
-          message: 'Insufficient balance in wallet',
-        });
+      if (walletBalance && depositAmount !== '') {
+        const currentDepositAmount = isEdit ? positionCollateralAmount : 0;
+        const increaseAmount = parseFloat(depositAmount) - currentDepositAmount;
+
+        if (increaseAmount > 0 && increaseAmount > parseFloat(walletBalance)) {
+          setError('collateral', {
+            type: 'manual',
+            message: 'Insufficient balance in wallet',
+          });
+        } else {
+          clearErrors('collateral');
+        }
       } else {
         clearErrors('collateral');
       }
@@ -577,7 +590,15 @@ const AddEditLiquidity: React.FC<{
     };
 
     validateCollateral();
-  }, [depositAmount, walletBalance, setError, clearErrors, trigger]);
+  }, [
+    depositAmount,
+    walletBalance,
+    isEdit,
+    positionCollateralAmount,
+    setError,
+    clearErrors,
+    trigger,
+  ]);
 
   /// /// HANDLERS //////
   const getCurrentDeadline = (): bigint => {
@@ -624,7 +645,7 @@ const AddEditLiquidity: React.FC<{
               TOKEN_DECIMALS
             ),
             collateralAmount: parseUnits(
-              depositAmount.toString(),
+              depositAmount !== '' ? depositAmount : '0',
               collateralAssetDecimals
             ),
             lowerTick: tickLower,
@@ -768,7 +789,7 @@ const AddEditLiquidity: React.FC<{
 
     // Double-check the delta before submission
     const newDepositAmountBigInt = parseUnits(
-      depositAmount.toString(),
+      depositAmount !== '' ? depositAmount : '0',
       collateralAssetDecimals
     );
     const currentDepositAmountBigInt = BigInt(
@@ -824,13 +845,22 @@ const AddEditLiquidity: React.FC<{
   const handleDepositAmountChange = (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const value = Number(e.target.value);
-    setDepositAmount(value);
+    let { value } = e.target;
+
+    // Remove leading zeros, but keep a single zero if it's the only digit
+    if (value !== '0') {
+      value = value.replace(/^0+/, '');
+    }
+
+    // Ensure the value is valid
+    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+      setDepositAmount(value);
+    }
   };
 
   const getButtonText = () => {
     if (isEdit && isDecrease) {
-      return depositAmount !== 0
+      return parseFloat(depositAmount) !== 0
         ? 'Decrease Liquidity'
         : 'Close Liquidity Position';
     }
@@ -865,8 +895,15 @@ const AddEditLiquidity: React.FC<{
     }
 
     const isAmountUnchanged =
-      isEdit && depositAmount === positionCollateralAmount;
-    const isZeroDeposit = !isEdit && depositAmount === 0;
+      isEdit && depositAmount === positionCollateralAmount.toString();
+    const isBlankDeposit = depositAmount === '';
+
+    const isDisabled =
+      pendingTxn ||
+      isFetching ||
+      isBlankDeposit ||
+      (isEdit && isAmountUnchanged) ||
+      !isValid;
 
     return (
       <Button
@@ -875,13 +912,7 @@ const AddEditLiquidity: React.FC<{
         size="lg"
         type="submit"
         isLoading={pendingTxn || isFetching}
-        isDisabled={
-          pendingTxn ||
-          isFetching ||
-          isAmountUnchanged ||
-          isZeroDeposit ||
-          !isValid
-        }
+        isDisabled={isDisabled}
       >
         {getButtonText()}
       </Button>
@@ -902,12 +933,21 @@ const AddEditLiquidity: React.FC<{
               value={depositAmount}
               onWheel={(e) => e.currentTarget.blur()}
               {...register('collateral', {
-                required: 'This is required',
                 onChange: handleDepositAmountChange,
-                validate: (value) =>
-                  (walletBalance &&
-                    parseFloat(value) <= parseFloat(walletBalance)) ||
-                  'Insufficient balance in wallet',
+                validate: (value) => {
+                  if (value === '') return true;
+                  const currentDepositAmount = isEdit
+                    ? positionCollateralAmount
+                    : 0;
+                  const increaseAmount =
+                    parseFloat(value) - currentDepositAmount;
+                  return (
+                    increaseAmount <= 0 ||
+                    (walletBalance &&
+                      increaseAmount <= parseFloat(walletBalance)) ||
+                    'Insufficient balance in wallet'
+                  );
+                },
               })}
             />
             <InputRightAddon>{collateralAssetTicker}</InputRightAddon>
@@ -960,6 +1000,20 @@ const AddEditLiquidity: React.FC<{
             <NumberDisplay value={minAmountTokenB} />)
           </Text>
         </Box>
+
+        {isEdit && (
+          <Box>
+            <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
+              Position Collateral
+            </Text>
+            <Text fontSize="sm" color="gray.600" mb={0.5}>
+              <NumberDisplay value={positionCollateralAmount} />{' '}
+              {collateralAssetTicker} →{' '}
+              <NumberDisplay value={positionCollateralAfter} />{' '}
+              {collateralAssetTicker}
+            </Text>
+          </Box>
+        )}
 
         {isConnected &&
           walletBalance !== null &&
