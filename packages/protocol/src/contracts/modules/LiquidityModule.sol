@@ -79,6 +79,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
 
         _emitLiquidityPositionCreated(
             ILiquidityModule.LiquidityPositionCreatedEventData({
+                owner: msg.sender,
                 epochId: epoch.id,
                 positionId: id,
                 depositedCollateralAmount: position.depositedCollateralAmount,
@@ -431,6 +432,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         ILiquidityModule.LiquidityPositionCreatedEventData memory eventData
     ) private {
         emit LiquidityPositionCreated(
+            eventData.owner,
             eventData.epochId,
             eventData.positionId,
             eventData.depositedCollateralAmount,

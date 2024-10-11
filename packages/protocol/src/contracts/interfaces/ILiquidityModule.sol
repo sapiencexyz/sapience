@@ -6,6 +6,7 @@ import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePo
 
 interface ILiquidityModule {
     struct LiquidityPositionCreatedEventData {
+        address owner;
         uint256 epochId;
         uint256 positionId;
         uint256 depositedCollateralAmount;
@@ -17,6 +18,7 @@ interface ILiquidityModule {
     }
 
     event LiquidityPositionCreated(
+        address indexed owner,
         uint256 indexed epochId,
         uint256 indexed positionId,
         uint256 collateralAmount,
