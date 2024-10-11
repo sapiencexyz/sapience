@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import dataSource, { initializeDataSource } from "./db"; /// !IMPORTANT: Keep as top import to prevent issues with db initialization
+import dataSource, { initializeDataSource, renderJobRepository } from "./db"; /// !IMPORTANT: Keep as top import to prevent issues with db initialization
 import cors from "cors";
 import { IndexPrice } from "./models/IndexPrice";
 import { Position } from "./models/Position";
@@ -25,6 +25,7 @@ import { indexPriceRepository, marketRepository, epochRepository } from "./db";
 import { reindexMarket } from "./worker";
 import dotenv from "dotenv";
 import path from "path";
+import { RenderJob } from "./models/RenderJob";
 
 const PORT = 3001;
 
@@ -578,11 +579,13 @@ const startServer = async () => {
       }
       console.log("id = ", id);
       // const startCommand = `node -e "require('./packages/data/src/worker').reindexMarket('${chainId}', '${address}')"`;
-      // Use the correct start command based on your package.json script
       const startCommand = `pnpm run start:reindex ${chainId} ${address}`;
       const job = await createRenderJob(id, startCommand);
       console.log("job", job);
-      // await reindexMarket(Number(chainId), address);
+      const jobDb = new RenderJob();
+      jobDb.jobId = job.id;
+      jobDb.serviceId = job.serviceId;
+      await renderJobRepository.save(jobDb);
       res.json({ success: true, job });
     } catch (error) {
       console.error("Error reindexing:", error);
