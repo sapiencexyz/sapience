@@ -256,6 +256,7 @@ const startServer = async () => {
       const positions = await positionRepository.find({
         where,
         relations: ["epoch", "epoch.market"],
+        order: { positionId: "ASC" },
       });
       // format the data
       for (const position of positions) {
@@ -461,10 +462,7 @@ const startServer = async () => {
       const client = getProviderForChain(Number(chainId));
 
       // Get the blocks corresponding to the start and end timestamps
-      const startBlock = await getBlockByTimestamp(
-        client,
-        startTimestamp
-      );
+      const startBlock = await getBlockByTimestamp(client, startTimestamp);
       const endBlock = await getBlockByTimestamp(client, endTimestamp);
 
       if (!startBlock.number || !endBlock.number) {

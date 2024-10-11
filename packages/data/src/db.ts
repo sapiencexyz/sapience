@@ -19,7 +19,7 @@ const devDataSource: DataSource = new DataSource({
   host: "localhost",
   url: "postgresql://localhost",
   synchronize: true,
-  logging: true,
+  logging: ["warn", "error", "log", "info"],
   entities: [
     IndexPrice,
     Position,
@@ -35,7 +35,7 @@ const postgresDataSource: DataSource = new DataSource({
   type: "postgres",
   url: process.env.DATABASE_URL,
   synchronize: true,
-  logging: true,
+  logging: ["warn", "error", "log", "info"],
   entities: [
     IndexPrice,
     Position,
