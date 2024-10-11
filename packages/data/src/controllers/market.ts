@@ -225,7 +225,10 @@ const upsertEvent = async (
 
 // Triggered by the callback in the Event model, this upserts related entities (Transaction, Position, MarketPrice).
 export const upsertEntitiesFromEvent = async (event: Event) => {
-  const newTransaction = new Transaction();
+  const existingTransaction = await transactionRepository.findOne({
+    where: { event: { id: event.id } },
+  });
+  const newTransaction = existingTransaction || new Transaction();
   newTransaction.event = event;
 
   // set to true if the Event does not require a transaction (i.e. a Transfer event)

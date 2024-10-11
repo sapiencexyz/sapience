@@ -1,4 +1,4 @@
-import dataSource, { initializeDataSource } from "./db";
+import { initializeDataSource } from "./db";
 import {
   indexMarketEvents,
   initializeMarket,
@@ -22,11 +22,12 @@ async function main() {
   await Promise.all(jobs);
 }
 
-main();
-
 export async function reindexMarket(chainId: number, address: string) {
+  await initializeDataSource();
   const marketInfo = MARKET_INFO.find(
-    (m) => m.marketChainId === chainId && m.deployment.address === address
+    (m) =>
+      m.marketChainId === chainId &&
+      m.deployment.address.toLowerCase() === address.toLowerCase()
   );
   if (!marketInfo) {
     throw new Error(
@@ -42,4 +43,16 @@ export async function reindexMarket(chainId: number, address: string) {
       market.deployTimestamp
     ),
   ]);
+}
+
+if (process.argv[process.argv.length - 1] === "reindexMarket") {
+  const callReindex = async () => {
+    const CHAIN = 13370; // adjust as needed
+    const ADDRESS = "0x90FA2c5b2f2F1B60B5ed9255E2283C17d8E02b63"; //adjust as needed
+    await reindexMarket(CHAIN, ADDRESS);
+    console.log("DONE");
+  };
+  callReindex();
+} else {
+  main();
 }
