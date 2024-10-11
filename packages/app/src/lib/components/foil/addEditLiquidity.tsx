@@ -17,6 +17,7 @@ import {
   RangeSliderMark,
   Flex,
   useToast,
+  FormErrorMessage,
 } from '@chakra-ui/react';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { TickMath, SqrtPriceMath } from '@uniswap/v3-sdk';
@@ -32,6 +33,7 @@ import {
   useChainId,
   useSwitchChain,
 } from 'wagmi';
+import { useForm } from 'react-hook-form';
 
 import erc20ABI from '../../erc20abi.json';
 import INONFUNGIBLE_POSITION_MANAGER from '../../interfaces/Uniswap.NonfungiblePositionManager.json';
@@ -50,6 +52,7 @@ import NumberDisplay from './numberDisplay';
 import SlippageTolerance from './slippageTolerance';
 
 // TODO 1% - Hardcoded for now, should be retrieved with pool.tickSpacing()
+// Also move this a to helper?
 const tickSpacingDefault = 200; 
 const tickToPrice = (tick: number): number => 1.0001 ** tick;
 const priceToTick = (price: number, tickSpacing: number): number => {
@@ -80,6 +83,7 @@ function getTokenAmountsFromLiquidity(
 
   return { amount0, amount1 };
 }
+
 
 const AddEditLiquidity: React.FC<{
   handleTabChange: (index: number, hasConvertedToTrader: boolean) => void;
@@ -519,6 +523,12 @@ const AddEditLiquidity: React.FC<{
     }
   }, [uniswapPosition]);
 
+const {
+  handleSubmit,
+  register,
+  formState: { errors, isSubmitting },
+} = useForm()
+
   /// /// HANDLERS //////
   const getCurrentDeadline = (): bigint => {
     return BigInt(Math.floor(Date.now() / 1000) + 1800); // 30 minutes from now
@@ -822,25 +832,32 @@ const AddEditLiquidity: React.FC<{
   };
 
   return (
-    <form onSubmit={handleFormSubmit}>
+    <form onSubmit={handleSubmit(handleFormSubmit)}>
       <Box mb={4}>
-        <FormControl>
-          <FormLabel>Collateral</FormLabel>
+        <FormControl isInvalid={!!errors.collateral}>
+          <FormLabel htmlFor='collateral'>Collateral</FormLabel>
           <InputGroup>
             <Input
+              id='collateral'
               type="number"
               min={0}
               step="any"
               value={depositAmount}
               onWheel={(e) => e.currentTarget.blur()}
-              onChange={handleDepositAmountChange}
+              {...register('collateral', {
+                required: 'This is required',
+                onChange: handleDepositAmountChange,
+              })}
             />
             <InputRightAddon>{collateralAssetTicker}</InputRightAddon>
           </InputGroup>
+        <FormErrorMessage>
+          {errors.collateral && errors.collateral.message?.toString()}
+        </FormErrorMessage>
         </FormControl>
       </Box>
-      <FormControl mb={4}>
-        <FormLabel>Low Price</FormLabel>
+      <FormControl mb={4} isInvalid={!!errors.lowPrice}>
+        <FormLabel htmlFor='lowPrice'>Low Price</FormLabel>
         <InputGroup>
           <Input
             type="number"
@@ -848,13 +865,19 @@ const AddEditLiquidity: React.FC<{
             disabled={isEdit}
             onWheel={(e) => e.currentTarget.blur()}
             value={lowPrice}
-            onChange={(e) => setLowPrice(Number(e.target.value))}
+            {...register('lowPrice', {
+              required: 'This is required',
+              onChange: (e) => setLowPrice(Number(e.target.value))
+            })}
           />
           <InputRightAddon>Ggas/{collateralAssetTicker}</InputRightAddon>
         </InputGroup>
+        <FormErrorMessage>
+          {errors.lowPrice && errors.lowPrice.message?.toString()}
+        </FormErrorMessage>
       </FormControl>
-      <FormControl mb={4}>
-        <FormLabel>High Price</FormLabel>
+      <FormControl mb={4}  isInvalid={!!errors.highPrice}>
+        <FormLabel htmlFor='highPrice'>High Price</FormLabel>
         <InputGroup>
           <Input
             type="number"
@@ -863,38 +886,18 @@ const AddEditLiquidity: React.FC<{
             disabled={isEdit}
             onWheel={(e) => e.currentTarget.blur()}
             value={highPrice}
-            onChange={(e) => setHighPrice(Number(e.target.value))}
+            {...register('highPrice', {
+              required: 'This is required',
+              onChange: (e) => setHighPrice(Number(e.target.value))
+            })}
           />
           <InputRightAddon>Ggas/{collateralAssetTicker}</InputRightAddon>
         </InputGroup>
+        <FormErrorMessage>
+          {errors.highPrice && errors.highPrice.message?.toString()}
+        </FormErrorMessage>
       </FormControl>
 
-      <Flex display="none">
-        <Box flex="auto">Recharts Histogram Here</Box>
-        <FormControl>
-          <RangeSlider defaultValue={[10, 30]} orientation="vertical" minH="32">
-            <RangeSliderMark value={0} mb="-1" ml="3" fontSize="sm" w="90px">
-              5 gwei
-            </RangeSliderMark>
-
-            <RangeSliderMark
-              value={100}
-              mb="-3.5"
-              ml="3"
-              fontSize="sm"
-              w="90px"
-            >
-              100 gwei
-            </RangeSliderMark>
-
-            <RangeSliderTrack>
-              <RangeSliderFilledTrack />
-            </RangeSliderTrack>
-            <RangeSliderThumb index={0} />
-            <RangeSliderThumb index={1} />
-          </RangeSlider>
-        </FormControl>
-      </Flex>
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
 
       {renderActionButton()}
