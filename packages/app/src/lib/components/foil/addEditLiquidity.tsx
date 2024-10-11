@@ -49,14 +49,13 @@ import type { FoilPosition } from '~/lib/interfaces/interfaces';
 import NumberDisplay from './numberDisplay';
 import SlippageTolerance from './slippageTolerance';
 
-const tickSpacingDefault = 200; // TODO 1% - Hardcoded for now, should be retrieved with pool.tickSpacing()
-
+// TODO 1% - Hardcoded for now, should be retrieved with pool.tickSpacing()
+const tickSpacingDefault = 200; 
+const tickToPrice = (tick: number): number => 1.0001 ** tick;
 const priceToTick = (price: number, tickSpacing: number): number => {
   const tick = Math.log(price) / Math.log(1.0001);
   return Math.round(tick / tickSpacing) * tickSpacing;
 };
-
-const tickToPrice = (tick: number): number => 1.0001 ** tick;
 
 function getTokenAmountsFromLiquidity(
   tickLower: number,
@@ -188,8 +187,8 @@ const AddEditLiquidity: React.FC<{
       epoch.toString(),
       parseUnits(depositAmount.toString(), collateralAssetDecimals), // uint256 collateralAmount
       pool ? pool.sqrtRatioX96.toString() : '0', // uint160 sqrtPriceX96, // current price of pool
-      TickMath.getSqrtRatioAtTick(tickLower).toString(), // uint160 sqrtPriceAX96, // lower tick price in sqrtRatio
-      TickMath.getSqrtRatioAtTick(tickUpper).toString(), // uint160 sqrtPriceBX96 // upper tick price in sqrtRatio
+      tickLower > 0 ? TickMath.getSqrtRatioAtTick(tickLower).toString() : '0', // uint160 sqrtPriceAX96, // lower tick price in sqrtRatio
+      tickUpper > 0 ? TickMath.getSqrtRatioAtTick(tickUpper).toString() : '0', // uint160 sqrtPriceBX96 // upper tick price in sqrtRatio
     ],
     chainId,
     query: {
@@ -206,8 +205,8 @@ const AddEditLiquidity: React.FC<{
         epoch.toString(),
         collateralAmountDelta, // uint256 collateralAmount
         pool ? pool.sqrtRatioX96.toString() : '0', // uint160 sqrtPriceX96, // current price of pool
-        TickMath.getSqrtRatioAtTick(tickLower).toString(), // uint160 sqrtPriceAX96, // lower tick price in sqrtRatio
-        TickMath.getSqrtRatioAtTick(tickUpper).toString(), // uint160 sqrtPriceBX96 // upper tick price in sqrtRatio
+        tickLower > 0 ? TickMath.getSqrtRatioAtTick(tickLower).toString() : '0', // uint160 sqrtPriceAX96, // lower tick price in sqrtRatio
+        tickUpper > 0 ? TickMath.getSqrtRatioAtTick(tickUpper).toString() : '0', // uint160 sqrtPriceBX96 // upper tick price in sqrtRatio
       ],
       chainId,
       query: {
@@ -805,6 +804,9 @@ const AddEditLiquidity: React.FC<{
       );
     }
 
+    const isAmountUnchanged = isEdit && depositAmount === positionCollateralAmount;
+    const isZeroDeposit = !isEdit && depositAmount === 0;
+
     return (
       <Button
         width="full"
@@ -812,7 +814,7 @@ const AddEditLiquidity: React.FC<{
         size="lg"
         type="submit"
         isLoading={pendingTxn || isFetching}
-        isDisabled={pendingTxn || isFetching}
+        isDisabled={pendingTxn || isFetching || isAmountUnchanged || isZeroDeposit}
       >
         {getButtonText()}
       </Button>
