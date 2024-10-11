@@ -97,6 +97,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         epoch.validateCurrentPoolPriceInRange();
 
         emit TraderPositionCreated(
+            msg.sender,
             epochId,
             positionId,
             outputParams.requiredCollateral,
@@ -228,6 +229,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         epoch.validateCurrentPoolPriceInRange();
 
         emit TraderPositionModified(
+            msg.sender,
             position.epochId,
             positionId,
             outputParams.requiredCollateral,

@@ -25,10 +25,6 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
         Epoch.Data storage epoch = Epoch.loadValid(position.epochId);
         Market.Data storage market = Market.load();
 
-        // Get the current price of the pool in decimal format
-        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(epoch.pool).slot0();
-        uint256 priceInDecimal = DecimalPrice.sqrtRatioX96ToPrice(sqrtPriceX96);
-
         if (ERC721Storage._ownerOf(positionId) != msg.sender) {
             revert Errors.NotAccountOwnerOrAuthorized(positionId, msg.sender);
         }
