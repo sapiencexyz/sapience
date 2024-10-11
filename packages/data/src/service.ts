@@ -22,8 +22,14 @@ import { TimeWindow } from "./interfaces";
 import { formatDbBigInt } from "./helpers";
 import { getProviderForChain, getBlockByTimestamp } from "./helpers";
 import { indexPriceRepository, marketRepository, epochRepository } from "./db";
+import { reindexMarket } from "./worker";
+import dotenv from "dotenv";
+import path from "path";
 
 const PORT = 3001;
+
+// Load environment variables
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 const startServer = async () => {
   await initializeDataSource();
@@ -505,6 +511,113 @@ const startServer = async () => {
       res.json({ missingBlockNumbers });
     } catch (error) {
       console.error("Error fetching missing blocks:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/reindex", async (req, res) => {
+    const { address, chainId } = req.query;
+    if (typeof chainId !== "string" || typeof address !== "string") {
+      return res.status(400).json({ error: "Invalid request parameters" });
+    }
+    try {
+      const RENDER_API_KEY = process.env.RENDER_API_KEY;
+      if (!RENDER_API_KEY) {
+        throw new Error("RENDER_API_KEY not set");
+      }
+
+      async function fetchRenderServices() {
+        const url = "https://api.render.com/v1/services?limit=100";
+
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            accept: "application/json",
+            authorization: `Bearer ${RENDER_API_KEY}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        return await response.json();
+      }
+
+      async function createRenderJob(serviceId: string, startCommand: string) {
+        const url = `https://api.render.com/v1/services/${serviceId}/jobs`;
+
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${RENDER_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            startCommand: startCommand,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        return await response.json();
+      }
+
+      let id: string = "";
+      const renderServices: any[] = await fetchRenderServices();
+      for (const item of renderServices) {
+        if (item?.service?.name === "background-worker" && item?.service?.id) {
+          id = item?.service.id;
+          break;
+        }
+      }
+      if (!id) {
+        throw new Error("Background worker not found");
+      }
+      console.log("id = ", id);
+      // const startCommand = `node -e "require('./packages/data/src/worker').reindexMarket('${chainId}', '${address}')"`;
+      // Use the correct start command based on your package.json script
+      const startCommand = `pnpm run start:reindex ${chainId} ${address}`;
+      const job = await createRenderJob(id, startCommand);
+      console.log("job", job);
+      // await reindexMarket(Number(chainId), address);
+      res.json({ success: true, job });
+    } catch (error) {
+      console.error("Error reindexing:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/reindexStatus", async (req, res) => {
+    const { jobId, serviceId } = req.query;
+    if (typeof jobId !== "string" || typeof serviceId !== "string") {
+      return res.status(400).json({ error: "Invalid request parameters" });
+    }
+    try {
+      const RENDER_API_KEY = process.env.RENDER_API_KEY;
+      if (!RENDER_API_KEY) {
+        throw new Error("RENDER_API_KEY not set");
+      }
+
+      const url = `https://api.render.com/v1/services/${serviceId}/jobs/${jobId}`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          accept: "application/json",
+          authorization: `Bearer ${RENDER_API_KEY}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const job = await response.json();
+      console.log("job", job);
+      res.json({ success: true, job });
+    } catch (error) {
+      console.error("Error fetching job status:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
