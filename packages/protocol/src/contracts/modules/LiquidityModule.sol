@@ -79,7 +79,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
 
         _emitLiquidityPositionCreated(
             ILiquidityModule.LiquidityPositionCreatedEventData({
-                owner: msg.sender,
+                sender: msg.sender,
                 epochId: epoch.id,
                 positionId: id,
                 depositedCollateralAmount: position.depositedCollateralAmount,
@@ -178,6 +178,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         );
 
         emit LiquidityPositionDecreased(
+            msg.sender,
             epoch.id,
             position.id,
             position.depositedCollateralAmount,
@@ -272,6 +273,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         );
 
         emit LiquidityPositionIncreased(
+            msg.sender,
             epoch.id,
             position.id,
             position.depositedCollateralAmount,
@@ -418,6 +420,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
 
         // Emit an event for the closed position
         emit LiquidityPositionClosed(
+            msg.sender,
             epoch.id,
             position.id,
             position.kind,
@@ -432,7 +435,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         ILiquidityModule.LiquidityPositionCreatedEventData memory eventData
     ) private {
         emit LiquidityPositionCreated(
-            eventData.owner,
+            eventData.sender,
             eventData.epochId,
             eventData.positionId,
             eventData.depositedCollateralAmount,

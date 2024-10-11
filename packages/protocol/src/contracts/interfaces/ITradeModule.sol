@@ -5,7 +5,7 @@ import {IFoilStructs} from "./IFoilStructs.sol";
 
 interface ITradeModule {
     event TraderPositionCreated(
-        address indexed owner,
+        address indexed sender,
         uint256 indexed epochId,
         uint256 indexed positionId,
         uint256 collateralAmount,
@@ -19,6 +19,7 @@ interface ITradeModule {
     );
 
     event TraderPositionModified(
+        address indexed sender,
         uint256 indexed epochId,
         uint256 indexed positionId,
         uint256 collateralAmount,

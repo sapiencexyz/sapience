@@ -6,7 +6,7 @@ import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePo
 
 interface ILiquidityModule {
     struct LiquidityPositionCreatedEventData {
-        address owner;
+        address sender;
         uint256 epochId;
         uint256 positionId;
         uint256 depositedCollateralAmount;
@@ -18,7 +18,7 @@ interface ILiquidityModule {
     }
 
     event LiquidityPositionCreated(
-        address indexed owner,
+        address indexed sender,
         uint256 indexed epochId,
         uint256 indexed positionId,
         uint256 collateralAmount,
@@ -30,6 +30,7 @@ interface ILiquidityModule {
     );
 
     event LiquidityPositionDecreased(
+        address indexed sender,
         uint256 indexed epochId,
         uint256 indexed positionId,
         uint256 collateralAmount,
@@ -41,6 +42,7 @@ interface ILiquidityModule {
     );
 
     event LiquidityPositionIncreased(
+        address indexed sender,
         uint256 indexed epochId,
         uint256 indexed positionId,
         uint256 collateralAmount,
@@ -52,6 +54,7 @@ interface ILiquidityModule {
     );
 
     event LiquidityPositionClosed(
+        address indexed sender,
         uint256 indexed epochId,
         uint256 indexed positionId,
         IFoilStructs.PositionKind kind,
