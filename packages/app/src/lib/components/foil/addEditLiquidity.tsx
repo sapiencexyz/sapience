@@ -859,10 +859,11 @@ const AddEditLiquidity: React.FC<{
   };
 
   const getButtonText = () => {
-    if (isEdit && isDecrease) {
-      return parseFloat(depositAmount) !== 0
-        ? 'Decrease Liquidity'
-        : 'Close Liquidity Position';
+    if (isEdit) {
+      if (depositAmount === '' || parseFloat(depositAmount) === 0) {
+        return 'Close Liquidity Position';
+      }
+      return isDecrease ? 'Decrease Liquidity' : 'Increase Liquidity';
     }
     return 'Add Liquidity';
   };
@@ -1008,16 +1009,22 @@ const AddEditLiquidity: React.FC<{
             </Text>
             <Text fontSize="sm" color="gray.600" mb={0.5}>
               <NumberDisplay value={positionCollateralAmount} />{' '}
-              {collateralAssetTicker} →{' '}
-              <NumberDisplay value={positionCollateralAfter} />{' '}
               {collateralAssetTicker}
+              {positionCollateralAmount !== positionCollateralAfter && (
+                <>
+                  {' '}
+                  → <NumberDisplay value={positionCollateralAfter} />{' '}
+                  {collateralAssetTicker}
+                </>
+              )}
             </Text>
           </Box>
         )}
 
         {isConnected &&
           walletBalance !== null &&
-          walletBalanceAfter !== null && (
+          walletBalanceAfter !== null &&
+          walletBalance !== walletBalanceAfter && (
             <Box>
               <Text
                 fontSize="sm"
