@@ -68,3 +68,14 @@ export interface PriceChartData {
   open: number;
   close: number;
 }
+
+export interface RenderJob {
+  id: string;
+  serviceId: string;
+  startCommand: string;
+  planId: string;
+  status?: string;
+  createdAt: string;
+  startedAt?: string;
+  finishedAt?: string;
+}

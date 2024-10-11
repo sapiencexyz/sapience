@@ -23,6 +23,8 @@ async function main() {
 }
 
 export async function reindexMarket(chainId: number, address: string) {
+  console.log("reindexing market", address, "on chain", chainId);
+
   await initializeDataSource();
   const marketInfo = MARKET_INFO.find(
     (m) =>
@@ -43,13 +45,20 @@ export async function reindexMarket(chainId: number, address: string) {
       market.deployTimestamp
     ),
   ]);
+  console.log("finished reindexing market", address, "on chain", chainId);
 }
 
-if (process.argv[process.argv.length - 1] === "reindexMarket") {
+if (process.argv[2] === "reindexMarket") {
   const callReindex = async () => {
-    const CHAIN = 13370; // adjust as needed
-    const ADDRESS = "0x90FA2c5b2f2F1B60B5ed9255E2283C17d8E02b63"; //adjust as needed
-    await reindexMarket(CHAIN, ADDRESS);
+    const chainId = parseInt(process.argv[3], 10);
+    const address = process.argv[4];
+    if (isNaN(chainId) || !address) {
+      console.error(
+        "Invalid arguments. Usage: ts-node src/worker.ts reindexMarket <chainId> <address>"
+      );
+      process.exit(1);
+    }
+    await reindexMarket(chainId, address);
     console.log("DONE");
   };
   callReindex();

@@ -6,6 +6,7 @@ import { Event } from "./models/Event";
 import { Market } from "./models/Market";
 import { Epoch } from "./models/Epoch";
 import { MarketPrice } from "./models/MarketPrice";
+import { RenderJob } from "./models/RenderJob";
 
 const isProduction = process.env.NODE_ENV === "production";
 const devDatabase = process.env.POSTGRES_DB;
@@ -28,6 +29,7 @@ const devDataSource: DataSource = new DataSource({
     Market,
     Epoch,
     MarketPrice,
+    RenderJob,
   ],
 });
 
@@ -44,6 +46,7 @@ const postgresDataSource: DataSource = new DataSource({
     Market,
     Epoch,
     MarketPrice,
+    RenderJob,
   ],
 });
 
@@ -70,5 +73,6 @@ export const transactionRepository = dataSource.getRepository(Transaction);
 export const eventRepository = dataSource.getRepository(Event);
 export const indexPriceRepository = dataSource.getRepository(IndexPrice);
 export const marketPriceRepository = dataSource.getRepository(MarketPrice);
+export const renderJobRepository = dataSource.getRepository(RenderJob);
 
 export default dataSource;
