@@ -174,6 +174,14 @@ const AddEditLiquidity: React.FC<{
   });
 
   const {
+    handleSubmit,
+    register,
+    formState: { errors, isSubmitting, isValid },
+    setError,
+    clearErrors,
+  } = useForm()
+
+  const {
     data: tokenAmounts,
     error: tokenAmountsError,
     isFetching,
@@ -183,14 +191,14 @@ const AddEditLiquidity: React.FC<{
     functionName: 'getTokenAmounts',
     args: [
       epoch.toString(),
-      parseUnits(depositAmount.toString(), collateralAssetDecimals), // uint256 collateralAmount
-      pool ? pool.sqrtRatioX96.toString() : '0', // uint160 sqrtPriceX96, // current price of pool
-      tickLower > 0 ? TickMath.getSqrtRatioAtTick(tickLower).toString() : '0', // uint160 sqrtPriceAX96, // lower tick price in sqrtRatio
-      tickUpper > 0 ? TickMath.getSqrtRatioAtTick(tickUpper).toString() : '0', // uint160 sqrtPriceBX96 // upper tick price in sqrtRatio
+      parseUnits(depositAmount.toString(), collateralAssetDecimals),
+      pool ? pool.sqrtRatioX96.toString() : '0',
+      tickLower > 0 ? TickMath.getSqrtRatioAtTick(tickLower).toString() : '0',
+      tickUpper > 0 ? TickMath.getSqrtRatioAtTick(tickUpper).toString() : '0',
     ],
     chainId,
     query: {
-      enabled: Boolean(pool),
+      enabled: Boolean(pool && isValid),
     },
   });
 
@@ -201,14 +209,14 @@ const AddEditLiquidity: React.FC<{
       functionName: 'getTokenAmounts',
       args: [
         epoch.toString(),
-        collateralAmountDelta, // uint256 collateralAmount
-        pool ? pool.sqrtRatioX96.toString() : '0', // uint160 sqrtPriceX96, // current price of pool
-        tickLower > 0 ? TickMath.getSqrtRatioAtTick(tickLower).toString() : '0', // uint160 sqrtPriceAX96, // lower tick price in sqrtRatio
-        tickUpper > 0 ? TickMath.getSqrtRatioAtTick(tickUpper).toString() : '0', // uint160 sqrtPriceBX96 // upper tick price in sqrtRatio
+        collateralAmountDelta,
+        pool ? pool.sqrtRatioX96.toString() : '0',
+        tickLower > 0 ? TickMath.getSqrtRatioAtTick(tickLower).toString() : '0',
+        tickUpper > 0 ? TickMath.getSqrtRatioAtTick(tickUpper).toString() : '0',
       ],
       chainId,
       query: {
-        enabled: Boolean(pool),
+        enabled: Boolean(pool && isValid),
       },
     }) as {
       data: [bigint, bigint, bigint];
@@ -516,14 +524,6 @@ const AddEditLiquidity: React.FC<{
       setHighPrice(tickToPrice(upperTick));
     }
   }, [uniswapPosition]);
-
-  const {
-    handleSubmit,
-    register,
-    formState: { errors, isSubmitting },
-    setError,
-    clearErrors,
-  } = useForm()
 
   useEffect(() => {
     if (isEdit) return;
