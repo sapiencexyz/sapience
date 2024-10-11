@@ -180,6 +180,7 @@ const AddEditLiquidity: React.FC<{
     formState: { errors, isSubmitting, isValid },
     setError,
     clearErrors,
+    trigger,
   } = useForm();
 
   const {
@@ -562,6 +563,22 @@ const AddEditLiquidity: React.FC<{
     clearErrors,
   ]);
 
+  useEffect(() => {
+    const validateCollateral = async () => {
+      if (walletBalance && depositAmount > parseFloat(walletBalance)) {
+        setError('collateral', {
+          type: 'manual',
+          message: 'Insufficient balance in wallet',
+        });
+      } else {
+        clearErrors('collateral');
+      }
+      await trigger('collateral');
+    };
+
+    validateCollateral();
+  }, [depositAmount, walletBalance, setError, clearErrors, trigger]);
+
   /// /// HANDLERS //////
   const getCurrentDeadline = (): bigint => {
     return BigInt(Math.floor(Date.now() / 1000) + 1800); // 30 minutes from now
@@ -859,7 +876,11 @@ const AddEditLiquidity: React.FC<{
         type="submit"
         isLoading={pendingTxn || isFetching}
         isDisabled={
-          pendingTxn || isFetching || isAmountUnchanged || isZeroDeposit
+          pendingTxn ||
+          isFetching ||
+          isAmountUnchanged ||
+          isZeroDeposit ||
+          !isValid
         }
       >
         {getButtonText()}
@@ -883,6 +904,10 @@ const AddEditLiquidity: React.FC<{
               {...register('collateral', {
                 required: 'This is required',
                 onChange: handleDepositAmountChange,
+                validate: (value) =>
+                  (walletBalance &&
+                    parseFloat(value) <= parseFloat(walletBalance)) ||
+                  'Insufficient balance in wallet',
               })}
             />
             <InputRightAddon>{collateralAssetTicker}</InputRightAddon>
