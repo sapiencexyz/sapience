@@ -16,9 +16,10 @@ services:
           name: database
           property: connectionString
       - key: WORKER_ID
-        fromService: background-worker
-        type: worker
-        property: id
+        fromService:
+          name: background-worker
+          type: worker
+          property: id
     repo: https://github.com/foilxyz/foil
     branch: main
 
