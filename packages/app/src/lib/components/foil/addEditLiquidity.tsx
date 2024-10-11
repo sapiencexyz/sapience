@@ -10,11 +10,6 @@ import {
   InputGroup,
   InputRightAddon,
   Button,
-  RangeSlider,
-  RangeSliderFilledTrack,
-  RangeSliderThumb,
-  RangeSliderTrack,
-  RangeSliderMark,
   Flex,
   useToast,
   FormErrorMessage,
@@ -83,7 +78,6 @@ function getTokenAmountsFromLiquidity(
 
   return { amount0, amount1 };
 }
-
 
 const AddEditLiquidity: React.FC<{
   handleTabChange: (index: number, hasConvertedToTrader: boolean) => void;
@@ -523,11 +517,37 @@ const AddEditLiquidity: React.FC<{
     }
   }, [uniswapPosition]);
 
-const {
-  handleSubmit,
-  register,
-  formState: { errors, isSubmitting },
-} = useForm()
+  const {
+    handleSubmit,
+    register,
+    formState: { errors, isSubmitting },
+    setError,
+    clearErrors,
+  } = useForm()
+
+  useEffect(() => {
+    if (isEdit) return;
+    const minAllowedPrice = tickToPrice(epochParams.baseAssetMinPriceTick);
+    const maxAllowedPrice = tickToPrice(epochParams.baseAssetMaxPriceTick);
+
+    if (lowPrice < minAllowedPrice) {
+      setError('lowPrice', {
+        type: 'manual',
+        message: `Low price cannot be less than ${minAllowedPrice.toFixed(2)}`,
+      });
+    } else {
+      clearErrors('lowPrice');
+    }
+
+    if (highPrice > maxAllowedPrice) {
+      setError('highPrice', {
+        type: 'manual',
+        message: `High price cannot exceed ${maxAllowedPrice.toFixed(2)}`,
+      });
+    } else {
+      clearErrors('highPrice');
+    }
+  }, [lowPrice, highPrice, epochParams.baseAssetMinPriceTick, epochParams.baseAssetMaxPriceTick, isEdit, setError, clearErrors]);
 
   /// /// HANDLERS //////
   const getCurrentDeadline = (): bigint => {
@@ -867,6 +887,11 @@ const {
             value={lowPrice}
             {...register('lowPrice', {
               required: 'This is required',
+              validate: (value) => {
+                const minAllowedPrice = tickToPrice(epochParams.baseAssetMinPriceTick);
+                return value >= minAllowedPrice || 
+                  `Low price cannot be less than ${minAllowedPrice.toFixed(2)}`;
+              },
               onChange: (e) => setLowPrice(Number(e.target.value))
             })}
           />
@@ -888,6 +913,11 @@ const {
             value={highPrice}
             {...register('highPrice', {
               required: 'This is required',
+              validate: (value) => {
+                const maxAllowedPrice = tickToPrice(epochParams.baseAssetMaxPriceTick);
+                return value <= maxAllowedPrice || 
+                  `High price cannot exceed ${maxAllowedPrice.toFixed(2)}`;
+              },
               onChange: (e) => setHighPrice(Number(e.target.value))
             })}
           />
