@@ -13,6 +13,7 @@ import "./TestEpoch.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 contract TestTrade is TestEpoch {
+    using Cannon for Vm;
     using DecimalMath for uint256;
     using DecimalMath for int256;
     using SafeCastU256 for uint256;
@@ -124,11 +125,48 @@ contract TestTrade is TestEpoch {
             epochId,
             positionSize
         );
+        address foilAddress = vm.getAddress("Foil");
+        IMintableToken asset = IMintableToken(
+            vm.getAddress("CollateralAsset.Token")
+        );
+
+        if (asset.allowance(msg.sender, foilAddress) < requiredCollateral) {
+            asset.approve(foilAddress, requiredCollateral);
+        }
+
         positionId = foil.createTraderPosition(
             epochId,
             positionSize,
             requiredCollateral * 2,
             block.timestamp + 30 minutes
         );
+    }
+
+    function modifyTraderPosition(
+        IFoil foil,
+        uint256 positionId,
+        int256 newSize
+    ) internal {
+        (int256 deltaCollateral, , ) = foil.quoteModifyTraderPosition(
+            positionId,
+            newSize
+        );
+        if (deltaCollateral > 0) {
+            IMintableToken asset = IMintableToken(
+                vm.getAddress("CollateralAsset.Token")
+            );
+            asset.approve(address(foil), deltaCollateral.toUint() + 2);
+        }
+
+        foil.modifyTraderPosition(
+            positionId,
+            newSize,
+            deltaCollateral * 2,
+            block.timestamp + 30 minutes
+        );
+    }
+
+    function closerTraderPosition(IFoil foil, uint256 positionId) internal {
+        modifyTraderPosition(foil, positionId, 0);
     }
 }
