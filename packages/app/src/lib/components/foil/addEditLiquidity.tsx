@@ -18,6 +18,7 @@ import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { TickMath, SqrtPriceMath } from '@uniswap/v3-sdk';
 import JSBI from 'jsbi';
 import { useContext, useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import type { WriteContractErrorType } from 'viem';
 import { formatUnits, parseUnits } from 'viem';
 import {
@@ -28,7 +29,6 @@ import {
   useChainId,
   useSwitchChain,
 } from 'wagmi';
-import { useForm } from 'react-hook-form';
 
 import erc20ABI from '../../erc20abi.json';
 import INONFUNGIBLE_POSITION_MANAGER from '../../interfaces/Uniswap.NonfungiblePositionManager.json';
@@ -43,12 +43,13 @@ import { useLoading } from '~/lib/context/LoadingContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
 
+import LiquidityPriceInput from './LiquidityPriceInput';
 import NumberDisplay from './numberDisplay';
 import SlippageTolerance from './slippageTolerance';
 
 // TODO 1% - Hardcoded for now, should be retrieved with pool.tickSpacing()
 // Also move this a to helper?
-const tickSpacingDefault = 200; 
+const tickSpacingDefault = 200;
 const tickToPrice = (tick: number): number => 1.0001 ** tick;
 const priceToTick = (price: number, tickSpacing: number): number => {
   const tick = Math.log(price) / Math.log(1.0001);
@@ -179,7 +180,7 @@ const AddEditLiquidity: React.FC<{
     formState: { errors, isSubmitting, isValid },
     setError,
     clearErrors,
-  } = useForm()
+  } = useForm();
 
   const {
     data: tokenAmounts,
@@ -533,7 +534,9 @@ const AddEditLiquidity: React.FC<{
     if (lowPrice < minAllowedPrice) {
       setError('lowPrice', {
         type: 'manual',
-        message: `Low price cannot be less than ${minAllowedPrice.toFixed(2)}`,
+        message: `Low price cannot be less than ${minAllowedPrice.toFixed(
+          2
+        )} Ggas/wstETH`,
       });
     } else {
       clearErrors('lowPrice');
@@ -542,12 +545,22 @@ const AddEditLiquidity: React.FC<{
     if (highPrice > maxAllowedPrice) {
       setError('highPrice', {
         type: 'manual',
-        message: `High price cannot exceed ${maxAllowedPrice.toFixed(2)}`,
+        message: `High price cannot exceed ${maxAllowedPrice.toFixed(
+          2
+        )} Ggas/wstETH`,
       });
     } else {
       clearErrors('highPrice');
     }
-  }, [lowPrice, highPrice, epochParams.baseAssetMinPriceTick, epochParams.baseAssetMaxPriceTick, isEdit, setError, clearErrors]);
+  }, [
+    lowPrice,
+    highPrice,
+    epochParams.baseAssetMinPriceTick,
+    epochParams.baseAssetMaxPriceTick,
+    isEdit,
+    setError,
+    clearErrors,
+  ]);
 
   /// /// HANDLERS //////
   const getCurrentDeadline = (): bigint => {
@@ -834,7 +847,8 @@ const AddEditLiquidity: React.FC<{
       );
     }
 
-    const isAmountUnchanged = isEdit && depositAmount === positionCollateralAmount;
+    const isAmountUnchanged =
+      isEdit && depositAmount === positionCollateralAmount;
     const isZeroDeposit = !isEdit && depositAmount === 0;
 
     return (
@@ -844,7 +858,9 @@ const AddEditLiquidity: React.FC<{
         size="lg"
         type="submit"
         isLoading={pendingTxn || isFetching}
-        isDisabled={pendingTxn || isFetching || isAmountUnchanged || isZeroDeposit}
+        isDisabled={
+          pendingTxn || isFetching || isAmountUnchanged || isZeroDeposit
+        }
       >
         {getButtonText()}
       </Button>
@@ -855,10 +871,10 @@ const AddEditLiquidity: React.FC<{
     <form onSubmit={handleSubmit(handleFormSubmit)}>
       <Box mb={4}>
         <FormControl isInvalid={!!errors.collateral}>
-          <FormLabel htmlFor='collateral'>Collateral</FormLabel>
+          <FormLabel htmlFor="collateral">Collateral</FormLabel>
           <InputGroup>
             <Input
-              id='collateral'
+              id="collateral"
               type="number"
               min={0}
               step="any"
@@ -871,62 +887,29 @@ const AddEditLiquidity: React.FC<{
             />
             <InputRightAddon>{collateralAssetTicker}</InputRightAddon>
           </InputGroup>
-        <FormErrorMessage>
-          {errors.collateral && errors.collateral.message?.toString()}
-        </FormErrorMessage>
+          <FormErrorMessage>
+            {errors.collateral && errors.collateral.message?.toString()}
+          </FormErrorMessage>
         </FormControl>
       </Box>
-      <FormControl mb={4} isInvalid={!!errors.lowPrice}>
-        <FormLabel htmlFor='lowPrice'>Low Price</FormLabel>
-        <InputGroup>
-          <Input
-            type="number"
-            step="any"
-            disabled={isEdit}
-            onWheel={(e) => e.currentTarget.blur()}
-            value={lowPrice}
-            {...register('lowPrice', {
-              required: 'This is required',
-              validate: (value) => {
-                const minAllowedPrice = tickToPrice(epochParams.baseAssetMinPriceTick);
-                return value >= minAllowedPrice || 
-                  `Low price cannot be less than ${minAllowedPrice.toFixed(2)}`;
-              },
-              onChange: (e) => setLowPrice(Number(e.target.value))
-            })}
-          />
-          <InputRightAddon>Ggas/{collateralAssetTicker}</InputRightAddon>
-        </InputGroup>
-        <FormErrorMessage>
-          {errors.lowPrice && errors.lowPrice.message?.toString()}
-        </FormErrorMessage>
-      </FormControl>
-      <FormControl mb={4}  isInvalid={!!errors.highPrice}>
-        <FormLabel htmlFor='highPrice'>High Price</FormLabel>
-        <InputGroup>
-          <Input
-            type="number"
-            min={0}
-            step="any"
-            disabled={isEdit}
-            onWheel={(e) => e.currentTarget.blur()}
-            value={highPrice}
-            {...register('highPrice', {
-              required: 'This is required',
-              validate: (value) => {
-                const maxAllowedPrice = tickToPrice(epochParams.baseAssetMaxPriceTick);
-                return value <= maxAllowedPrice || 
-                  `High price cannot exceed ${maxAllowedPrice.toFixed(2)}`;
-              },
-              onChange: (e) => setHighPrice(Number(e.target.value))
-            })}
-          />
-          <InputRightAddon>Ggas/{collateralAssetTicker}</InputRightAddon>
-        </InputGroup>
-        <FormErrorMessage>
-          {errors.highPrice && errors.highPrice.message?.toString()}
-        </FormErrorMessage>
-      </FormControl>
+      <LiquidityPriceInput
+        label="Low Price"
+        value={lowPrice}
+        onChange={(value) => setLowPrice(value)}
+        isDisabled={isEdit}
+        minAllowedPrice={tickToPrice(epochParams.baseAssetMinPriceTick)}
+        maxAllowedPrice={highPrice}
+        error={errors.lowPrice?.message?.toString()}
+      />
+      <LiquidityPriceInput
+        label="High Price"
+        value={highPrice}
+        onChange={(value) => setHighPrice(value)}
+        isDisabled={isEdit}
+        minAllowedPrice={lowPrice}
+        maxAllowedPrice={tickToPrice(epochParams.baseAssetMaxPriceTick)}
+        error={errors.highPrice?.message?.toString()}
+      />
 
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
 

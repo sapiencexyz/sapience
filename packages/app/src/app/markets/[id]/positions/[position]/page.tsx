@@ -144,11 +144,17 @@ const PositionPage = ({
             {positionData.isLP ? (
               <>
                 <ListItem>
-                  Low Price: <NumberDisplay value={tickToPrice(positionData.lowPriceTick)} />{' '}
+                  Low Price:{' '}
+                  <NumberDisplay
+                    value={tickToPrice(positionData.lowPriceTick)}
+                  />{' '}
                   Ggas/wstETH
                 </ListItem>
                 <ListItem>
-                  High Price: <NumberDisplay value={tickToPrice(positionData.highPriceTick)} />{' '}
+                  High Price:{' '}
+                  <NumberDisplay
+                    value={tickToPrice(positionData.highPriceTick)}
+                  />{' '}
                   Ggas/wstETH
                 </ListItem>
               </>

@@ -19,10 +19,10 @@ import {
 } from '@chakra-ui/react';
 import Link from 'next/link';
 import React, { useState, useEffect } from 'react';
+import * as chains from 'viem/chains';
 
 import ConnectButton from '../components/ConnectButton';
 import { useMarketList } from '~/lib/context/MarketListProvider';
-import * as chains from 'viem/chains';
 
 function getChain(chainId: number) {
   for (const chain of Object.values(chains)) {
@@ -30,9 +30,122 @@ function getChain(chainId: number) {
       return chain;
     }
   }
-  
+
   throw new Error(`Chain with id ${chainId} not found`);
 }
+
+// Move NavLinks component outside of Header
+const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
+  const { markets, isLoading, error } = useMarketList();
+  const [subscribePopoverOpen, setSubscribePopoverOpen] = useState(false);
+  const [tradePopoverOpen, setTradePopoverOpen] = useState(false);
+
+  const renderMarketLinks = (type: 'subscribe' | 'trade') => (
+    <VStack align="stretch" mt={2} ml={isMobile ? 4 : 0}>
+      {markets.map((market) => (
+        <Box key={market.id}>
+          {type === 'subscribe' && market.nextEpoch && (
+            <Link
+              href={`/markets/${market.chainId}:${market.address}/epochs/${market.nextEpoch.epochId}/subscribe`}
+            >
+              {getChain(market.chainId).name}
+            </Link>
+          )}
+          {type === 'trade' && market.currentEpoch && (
+            <Link
+              href={`/markets/${market.chainId}:${market.address}/epochs/${market.currentEpoch.epochId}`}
+            >
+              {getChain(market.chainId).name}
+            </Link>
+          )}
+        </Box>
+      ))}
+    </VStack>
+  );
+
+  if (isMobile) {
+    return (
+      <VStack align="stretch" spacing={4}>
+        <Box>
+          <Box as="span" fontWeight="bold">
+            Subscribe
+          </Box>
+          {renderMarketLinks('subscribe')}
+        </Box>
+        <Box>
+          <Box as="span" fontWeight="bold">
+            Trade
+          </Box>
+          {renderMarketLinks('trade')}
+        </Box>
+      </VStack>
+    );
+  }
+
+  return (
+    <Flex gap={9}>
+      <Popover
+        trigger="hover"
+        isOpen={subscribePopoverOpen}
+        onOpen={() => setSubscribePopoverOpen(true)}
+        onClose={() => setSubscribePopoverOpen(false)}
+      >
+        <PopoverTrigger>
+          <Box as="span" cursor="pointer" display="flex" alignItems="center">
+            Subscribe <ChevronDownIcon ml={1} />
+          </Box>
+        </PopoverTrigger>
+        <PopoverContent maxW="140px">
+          <PopoverArrow />
+          <PopoverBody>
+            {markets.map((market) => (
+              <Box key={market.id}>
+                {market.nextEpoch && (
+                  <Link
+                    href={`/markets/${market.chainId}:${market.address}/epochs/${market.nextEpoch.epochId}/subscribe`}
+                    onClick={() => setSubscribePopoverOpen(false)}
+                  >
+                    {getChain(market.chainId).name}
+                  </Link>
+                )}
+              </Box>
+            ))}
+          </PopoverBody>
+        </PopoverContent>
+      </Popover>
+
+      <Popover
+        trigger="hover"
+        isOpen={tradePopoverOpen}
+        onOpen={() => setTradePopoverOpen(true)}
+        onClose={() => setTradePopoverOpen(false)}
+      >
+        <PopoverTrigger>
+          <Box as="span" cursor="pointer" display="flex" alignItems="center">
+            Trade <ChevronDownIcon ml={1} />
+          </Box>
+        </PopoverTrigger>
+        <PopoverContent maxW="140px">
+          <PopoverArrow />
+          <PopoverBody>
+            {markets.map((market) => (
+              <Box key={market.id}>
+                {market.currentEpoch && (
+                  <Link
+                    href={`/markets/${market.chainId}:${market.address}/epochs/${market.currentEpoch.epochId}`}
+                    onClick={() => setTradePopoverOpen(false)}
+                  >
+                    {getChain(market.chainId).name}
+                  </Link>
+                )}
+              </Box>
+            ))}
+          </PopoverBody>
+        </PopoverContent>
+      </Popover>
+    </Flex>
+  );
+};
 
 const Header = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -44,110 +157,6 @@ const Header = () => {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
-
-  const NavLinks = ({ isMobile = false }) => {
-    const { markets, isLoading, error } = useMarketList();
-    const [subscribePopoverOpen, setSubscribePopoverOpen] = useState(false);
-    const [tradePopoverOpen, setTradePopoverOpen] = useState(false);
-
-    const renderMarketLinks = (type: 'subscribe' | 'trade') => (
-      <VStack align="stretch" spacing={2} mt={2} ml={isMobile ? 4 : 0}>
-        {markets.map((market) => (
-          <Box key={market.id}>
-            {type === 'subscribe' && market.nextEpoch && (
-              <Link href={`/markets/${market.chainId}:${market.address}/epochs/${market.nextEpoch.epochId}/subscribe`}>
-                {getChain(market.chainId).name}
-              </Link>
-            )}
-            {type === 'trade' && market.currentEpoch && (
-              <Link href={`/markets/${market.chainId}:${market.address}/epochs/${market.currentEpoch.epochId}`}>
-                {getChain(market.chainId).name}
-              </Link>
-            )}
-          </Box>
-        ))}
-      </VStack>
-    );
-
-    if (isMobile) {
-      return (
-        <VStack align="stretch" spacing={4}>
-          <Box>
-            <Box as="span" fontWeight="bold">Subscribe</Box>
-            {renderMarketLinks('subscribe')}
-          </Box>
-          <Box>
-            <Box as="span" fontWeight="bold">Trade</Box>
-            {renderMarketLinks('trade')}
-          </Box>
-        </VStack>
-      );
-    }
-
-    return (
-      <Flex gap={9}>
-        <Popover
-          trigger="hover"
-          isOpen={subscribePopoverOpen}
-          onOpen={() => setSubscribePopoverOpen(true)}
-          onClose={() => setSubscribePopoverOpen(false)}
-        >
-          <PopoverTrigger>
-            <Box as="span" cursor="pointer" display="flex" alignItems="center">
-              Subscribe <ChevronDownIcon ml={1} />
-            </Box>
-          </PopoverTrigger>
-          <PopoverContent>
-            <PopoverArrow />
-            <PopoverBody>
-              {markets.map((market) => (
-                <Box key={market.id} mb={2}>
-                  {market.nextEpoch && (
-                    <Link
-                      href={`/markets/${market.chainId}:${market.address}/epochs/${market.nextEpoch.epochId}/subscribe`}
-                      onClick={() => setSubscribePopoverOpen(false)}
-                    >
-                      {getChain(market.chainId).name}
-                    </Link>
-                  )}
-                </Box>
-              ))}
-            </PopoverBody>
-          </PopoverContent>
-        </Popover>
-
-        <Popover
-          trigger="hover"
-          isOpen={tradePopoverOpen}
-          onOpen={() => setTradePopoverOpen(true)}
-          onClose={() => setTradePopoverOpen(false)}
-        >
-          <PopoverTrigger>
-            <Box as="span" cursor="pointer" display="flex" alignItems="center">
-              Trade <ChevronDownIcon ml={1} />
-            </Box>
-          </PopoverTrigger>
-          <PopoverContent>
-            <PopoverArrow />
-            <PopoverBody>
-              {markets.map((market) => (
-                <Box key={market.id} mb={2}>
-                  {market.currentEpoch && (
-                    <Link
-                      href={`/markets/${market.chainId}:${market.address}/epochs/${market.currentEpoch.epochId}`}
-                      onClick={() => setTradePopoverOpen(false)}
-                    >
-                      {getChain(market.chainId).name}
-                    </Link>
-                  )}
-                </Box>
-              ))}
-            </PopoverBody>
-          </PopoverContent>
-        </Popover>
-      </Flex>
-    );
-  };
 
   return (
     <Box
@@ -187,7 +196,7 @@ const Header = () => {
                 <DrawerCloseButton />
                 <DrawerBody>
                   <VStack spacing={4} align="stretch">
-                    <NavLinks isMobile={true} />
+                    <NavLinks isMobile />
                     <Link href="https://docs.foil.xyz">Docs</Link>
                     <ConnectButton />
                   </VStack>
