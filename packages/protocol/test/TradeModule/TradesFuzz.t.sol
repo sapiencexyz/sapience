@@ -222,6 +222,13 @@ contract TradePositionBasicFuzz is TestTrade {
         (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
             .quoteModifyTraderPosition(positionId, positionSize);
 
+        if (requiredDeltaCollateral > 0) {
+            collateralAsset.approve(
+                address(foil),
+                requiredDeltaCollateral.toUint() + 2
+            );
+        }
+
         // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
             positionId,
@@ -293,6 +300,13 @@ contract TradePositionBasicFuzz is TestTrade {
         // quote and open a long
         (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
             .quoteModifyTraderPosition(positionId, positionSize);
+
+        if (requiredDeltaCollateral > 0) {
+            collateralAsset.approve(
+                address(foil),
+                requiredDeltaCollateral.toUint() + 2
+            );
+        }
 
         // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
@@ -366,6 +380,13 @@ contract TradePositionBasicFuzz is TestTrade {
         (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
             .quoteModifyTraderPosition(positionId, positionSize);
 
+        if (requiredDeltaCollateral > 0) {
+            collateralAsset.approve(
+                address(foil),
+                requiredDeltaCollateral.toUint() + 2
+            );
+        }
+
         // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
             positionId,
@@ -438,6 +459,13 @@ contract TradePositionBasicFuzz is TestTrade {
         (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
             .quoteModifyTraderPosition(positionId, positionSize);
 
+        if (requiredDeltaCollateral > 0) {
+            collateralAsset.approve(
+                address(foil),
+                requiredDeltaCollateral.toUint() + 2
+            );
+        }
+
         // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
             positionId,
@@ -499,6 +527,13 @@ contract TradePositionBasicFuzz is TestTrade {
             0
         );
 
+        if (requiredDeltaCollateral > 0) {
+            collateralAsset.approve(
+                address(foil),
+                requiredDeltaCollateral.toUint() + 2
+            );
+        }
+
         // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
             positionId,
@@ -556,6 +591,13 @@ contract TradePositionBasicFuzz is TestTrade {
             0
         );
 
+        if (requiredDeltaCollateral > 0) {
+            collateralAsset.approve(
+                address(foil),
+                requiredDeltaCollateral.toUint() + 2
+            );
+        }
+
         // Send more collateral than required, just checking the position can be created/modified
         foil.modifyTraderPosition(
             positionId,
@@ -589,6 +631,81 @@ contract TradePositionBasicFuzz is TestTrade {
             expectedStateData,
             "Close short"
         );
+    }
+
+    function test_twoTradesVsOne_Skip(
+        int256 initialSize,
+        int256 targetSize
+    ) public {
+        vm.assume(initialSize != targetSize);
+        vm.assume(initialSize > 0 && targetSize > 0);
+
+        uint256 traderInitialCollateral = collateralAsset.balanceOf(trader1);
+        uint256 foilInitialCollateral = collateralAsset.balanceOf(
+            address(foil)
+        );
+        // int256 initialPositionSize = 1 ether;
+        // int256 targetPositionSize = 2 ether;
+        int256 initialPositionSize = initialSize;
+        int256 targetPositionSize = targetSize;
+
+        vm.startPrank(trader1);
+
+        // open a position
+        uint256 positionId1 = addTraderPosition(
+            foil,
+            epochId,
+            initialPositionSize
+        );
+        vm.stopPrank();
+
+        uint256 snapshotId = vm.snapshot();
+        vm.startPrank(trader1);
+        // update it
+        modifyTraderPosition(foil, positionId1, targetPositionSize);
+        // close the position
+        closerTraderPosition(foil, positionId1);
+        // check trader and foil collateral afterwards
+        uint256 traderFinalCollateralOpt1 = collateralAsset.balanceOf(trader1);
+        uint256 foilFinalCollateralOpt1 = collateralAsset.balanceOf(
+            address(foil)
+        );
+
+        int256 traderPnLOpt1 = traderFinalCollateralOpt1.toInt() -
+            traderInitialCollateral.toInt();
+        int256 foilPnLOpt1 = foilFinalCollateralOpt1.toInt() -
+            foilInitialCollateral.toInt();
+
+        // vs
+
+        vm.revertTo(snapshotId);
+        // close the position and open a new one with the same target position size
+        closerTraderPosition(foil, positionId1);
+
+        uint256 positionId3 = addTraderPosition(
+            foil,
+            epochId,
+            targetPositionSize
+        );
+
+        closerTraderPosition(foil, positionId3);
+        uint256 traderFinalCollateralOpt2 = collateralAsset.balanceOf(trader1);
+        uint256 foilFinalCollateralOpt2 = collateralAsset.balanceOf(
+            address(foil)
+        );
+        int256 traderPnLOpt2 = traderFinalCollateralOpt2.toInt() -
+            traderInitialCollateral.toInt();
+        int256 foilPnLOpt2 = foilFinalCollateralOpt2.toInt() -
+            foilInitialCollateral.toInt();
+        vm.stopPrank();
+
+        console2.log("Opt1 Trader PnL: ", traderPnLOpt1);
+        console2.log("Opt1 Foil PnL  : ", foilPnLOpt1);
+        console2.log("Opt2 Trader PnL: ", traderPnLOpt2);
+        console2.log("Opt2 Foil PnL  : ", foilPnLOpt2);
+
+        assertLe(traderPnLOpt2, traderPnLOpt1);
+        assertGe(foilPnLOpt2, foilPnLOpt1);
     }
 
     // //////////////// //
