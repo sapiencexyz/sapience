@@ -781,7 +781,9 @@ const AddEditLiquidity: React.FC<{
   const handleFormSubmit = (e: any) => {
     setPendingTxn(true);
     setIsLoading(true);
-    e.preventDefault();
+    if (e) {
+      e.preventDefault();
+    }
 
     if (isEdit && isDecrease) {
       return handleDecreaseLiquidity();
