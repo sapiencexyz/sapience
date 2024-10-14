@@ -68,6 +68,10 @@ const SizeInput: React.FC<Props> = ({
   const handleSizeChange = (newVal: string) => {
     const numberPattern = /^(0|[1-9]\d*)(\.\d*)?$/;
 
+    if (sizeInput === '0' && newVal !== '0' && newVal !== '0.') {
+      newVal = newVal.replace(/^0+/, '');
+    }
+
     if (newVal === '' || numberPattern.test(newVal)) {
       setSizeInput(newVal);
       const newSize = newVal === '' ? 0 : parseFloat(newVal);
