@@ -9,6 +9,7 @@ import {
   Button,
   Tooltip,
 } from '@chakra-ui/react';
+import { useRouter } from 'next/navigation';
 import {
   type FC,
   type FormEvent,
@@ -19,7 +20,7 @@ import {
 } from 'react';
 import React from 'react';
 import type { AbiFunction, WriteContractErrorType } from 'viem';
-import { formatUnits, zeroAddress } from 'viem';
+import { decodeEventLog, formatUnits, zeroAddress } from 'viem';
 import {
   useWaitForTransactionReceipt,
   useWriteContract,
@@ -47,9 +48,6 @@ const Subscribe: FC = () => {
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [fillPrice, setFillPrice] = useState<bigint>(BigInt(0));
   const [fillPriceInEth, setFillPriceInEth] = useState<bigint>(BigInt(0));
-
-  console.log('size', size);
-
   const account = useAccount();
   const { isConnected, address } = account;
   const { setIsLoading } = useLoading();
@@ -73,6 +71,8 @@ const Subscribe: FC = () => {
   } = useContext(MarketContext);
 
   const toast = useToast();
+
+  const router = useRouter();
 
   // Format start and end times
   const formatDate = (timestamp: number) => {
@@ -170,17 +170,40 @@ const Subscribe: FC = () => {
     },
   });
 
-  const { isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+  const { isSuccess: isConfirmed, data: createTraderPositionReceipt } =
+    useWaitForTransactionReceipt({ hash });
   const { isSuccess: approveSuccess } = useWaitForTransactionReceipt({
     hash: approveHash,
   });
 
   useEffect(() => {
     if (isConfirmed) {
-      renderToast(toast, `We've created your position for you.`);
-      resetAfterSuccess();
+      for (const log of createTraderPositionReceipt.logs) {
+        try {
+          const event = decodeEventLog({
+            abi: foilData.abi,
+            data: log.data,
+            topics: log.topics,
+          });
+
+          if ((event as any).eventName === 'TraderPositionCreated') {
+            const nftId = (event as any).args.positionId.toString();
+            router.push(
+              `/markets/${chainId}:${marketAddress}/positions/${nftId}`
+            );
+            renderToast(
+              toast,
+              `Your subscription has been created as position ID: ${nftId}`
+            );
+            resetAfterSuccess();
+            return;
+          }
+        } catch (error) {
+          // This log was not for the TraderPositionCreated event, continue to next log
+        }
+      }
     }
-  }, [isConfirmed]);
+  }, [isConfirmed, createTraderPositionReceipt]);
 
   useEffect(() => {
     if (approveSuccess) {
