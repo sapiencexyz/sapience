@@ -73,12 +73,13 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     queryKey: ['averagePrice', `${state.chainId}:${state.address}`],
     queryFn: async () => {
       const response = await fetch(
-        `${API_BASE_URL}/prices/average?contractId=${state.chainId}:${state.address}&epochId=${state.epoch}`
+        `${API_BASE_URL}/prices/index?contractId=${state.chainId}:${state.address}&epochId=${state.epoch}`
       );
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
-      return response.json();
+      const data = await response.json();
+      return data.length > 0 ? data[data.length - 1].price : null;
     },
     enabled: state.chainId !== 0,
     refetchInterval: 60000,
