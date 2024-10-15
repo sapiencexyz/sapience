@@ -13,12 +13,13 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import type React from 'react';
-import { useWriteContract } from 'wagmi';
+import { useReadContract, useWriteContract } from 'wagmi';
 
 import useFoilDeployment from '../foil/useFoilDeployment';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { useLoading } from '~/lib/context/LoadingContext';
 import { useMarketList, type Market } from '~/lib/context/MarketListProvider';
+import { renderToast } from '~/lib/util/util';
 
 const MarketsTable: React.FC = () => {
   const { markets, isLoading, error } = useMarketList();
@@ -77,7 +78,32 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
   const toast = useToast();
   const { foilData, loading, error } = useFoilDeployment(market?.chainId);
 
-  const { writeContract: settleWithPrice } = useWriteContract();
+  const { data: epochData, refetch: refetchEpochData } = useReadContract({
+    address: market.address as `0x${string}`,
+    abi: foilData?.abi,
+    functionName: 'getEpoch',
+    args: [BigInt(epoch.epochId)],
+    chainId: market.chainId,
+    query: {
+      enabled: !loading && !error && !!foilData,
+    },
+  });
+
+  const { writeContract: settleWithPrice } = useWriteContract({
+    mutation: {
+      onError: (settleError) => {
+        renderToast(toast, settleError.toString(), 'error');
+      },
+      onSuccess: () => {
+        renderToast(
+          toast,
+          'Transaction submitted. Waiting for confirmation...',
+          'info'
+        );
+        refetchEpochData();
+      },
+    },
+  });
 
   const { data: latestPrice, isLoading: isLatestPriceLoading } = useQuery({
     queryKey: ['latestPrice', `${market?.chainId}:${market?.address}`],
@@ -93,9 +119,6 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
     },
     enabled: epoch.epochId !== 0 || market !== undefined,
   });
-  console.log('latestPrice', latestPrice);
-  console.log('isLatestPriceLoading', isLatestPriceLoading);
-  console.log('epoch', epoch, market, market?.chainId, market?.address);
 
   const handleGetMissing = async (m: Market, epochId: number) => {
     setIsLoading(true);
@@ -142,19 +165,23 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
           'Loading...'
         ) : (
           <>
-            <Text>latestPrice</Text>
-            <Button
-              onClick={() => {
-                settleWithPrice({
-                  address: market.address as `0x${string}`,
-                  abi: foilData.abi,
-                  functionName: 'submitSettlementPrice',
-                  args: [epoch.epochId, latestPrice],
-                });
-              }}
-            >
-              Settle with Price
-            </Button>
+            <Text>{latestPrice}</Text>
+            {epochData.settled ? (
+              <Text>Settled</Text>
+            ) : (
+              <Button
+                onClick={() => {
+                  settleWithPrice({
+                    address: market.address as `0x${string}`,
+                    abi: foilData.abi,
+                    functionName: 'submitSettlementPrice',
+                    args: [epoch.epochId, latestPrice],
+                  });
+                }}
+              >
+                Settle with Price
+              </Button>
+            )}
           </>
         )}
       </Td>
