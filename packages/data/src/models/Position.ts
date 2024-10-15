@@ -76,25 +76,17 @@ export class Position {
 
   @Column({
     type: "numeric",
+    precision: NUMERIC_PRECISION,
+    scale: 0,
     nullable: true,
-    precision: TOKEN_PRECISION, // Total number of significant digits
-    scale: DECIMAL_SCALE, // Number of digits after the decimal point
   })
-  highPrice: string;
+  highPriceTick: string;
 
   @Column({
     type: "numeric",
+    precision: NUMERIC_PRECISION,
+    scale: 0,
     nullable: true,
-    precision: TOKEN_PRECISION, // Total number of significant digits
-    scale: DECIMAL_SCALE, // Number of digits after the decimal point
   })
-  lowPrice: string;
-
-  @Column({
-    type: "numeric",
-    nullable: true,
-    precision: TOKEN_PRECISION, // Total number of significant digits
-    scale: DECIMAL_SCALE, // Number of digits after the decimal point
-  })
-  unclaimedFees: string; // ETH
+  lowPriceTick: string;
 }

@@ -6,6 +6,7 @@ import { FaRegChartBar, FaCubes, FaRegCalendar } from 'react-icons/fa';
 import { IoDocumentTextOutline } from 'react-icons/io5';
 
 import { MarketContext } from '~/lib/context/MarketProvider';
+import { tickToPrice } from '~/lib/util/util';
 
 const PositionsHeader = () => {
   const { chain, address, collateralAsset, epochParams, startTime, endTime } =
@@ -27,8 +28,6 @@ const PositionsHeader = () => {
     formattedTime = format(date, 'PPpp');
     endTimeString = format(date, 'PPpp');
   }
-
-  const tickToPrice = (tick: number): number => 1.0001 ** tick;
 
   return (
     <Flex alignItems="center" direction="column" width="100%">

@@ -1,5 +1,5 @@
 {
-  "address": "0x9ee193336A411a30da57b24F72483B52e2dd0059",
+  "address": "0xE01C84126E8c300548846B57921cCC87d0B78a73",
   "abi": [
     {
       "type": "function",
@@ -83,6 +83,11 @@
           "name": "requiredCollateral",
           "type": "uint256",
           "internalType": "uint256"
+        },
+        {
+          "name": "fillPrice",
+          "type": "uint256",
+          "internalType": "uint256"
         }
       ],
       "stateMutability": "nonpayable"
@@ -104,7 +109,17 @@
       ],
       "outputs": [
         {
-          "name": "requiredCollateral",
+          "name": "expectedCollateralDelta",
+          "type": "int256",
+          "internalType": "int256"
+        },
+        {
+          "name": "closePnL",
+          "type": "int256",
+          "internalType": "int256"
+        },
+        {
+          "name": "fillPrice",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -128,6 +143,12 @@
       "type": "event",
       "name": "TraderPositionCreated",
       "inputs": [
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
         {
           "name": "epochId",
           "type": "uint256",
@@ -195,6 +216,12 @@
       "type": "event",
       "name": "TraderPositionModified",
       "inputs": [
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
         {
           "name": "epochId",
           "type": "uint256",
@@ -513,18 +540,34 @@
     },
     {
       "type": "error",
+      "name": "TransactionExpired",
+      "inputs": [
+        {
+          "name": "deadline",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "blockTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "ZeroAddress",
       "inputs": []
     }
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xdcb3ed295e092c710b5d06aca269f8d753d0d8747fb3382183d60c4f19b61bb9",
-  "deployTxnBlockNumber": "6808039",
-  "deployTimestamp": "1727974440",
+  "deployTxnHash": "0x1951557ee8dfcf4aedc919b1336d8c853d8d8856ffcb9b1a0fe598f50d5fd8b1",
+  "deployTxnBlockNumber": "6857072",
+  "deployTimestamp": "1728661344",
   "sourceName": "src/contracts/modules/TradeModule.sol",
   "contractName": "TradeModule",
   "deployedOn": "deploy.TradeModule",
-  "gasUsed": 2411477,
-  "gasCost": "246237299172"
+  "gasUsed": 2429988,
+  "gasCost": "36008900862"
 }

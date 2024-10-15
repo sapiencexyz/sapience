@@ -10,18 +10,15 @@ import {
   InputGroup,
   InputRightAddon,
   Button,
-  RangeSlider,
-  RangeSliderFilledTrack,
-  RangeSliderThumb,
-  RangeSliderTrack,
-  RangeSliderMark,
   Flex,
   useToast,
+  FormErrorMessage,
 } from '@chakra-ui/react';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { TickMath, SqrtPriceMath } from '@uniswap/v3-sdk';
 import JSBI from 'jsbi';
 import { useContext, useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import type { WriteContractErrorType } from 'viem';
 import { formatUnits, parseUnits } from 'viem';
 import {
@@ -47,15 +44,18 @@ import { useLoading } from '~/lib/context/LoadingContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
 
+import LiquidityPriceInput from './LiquidityPriceInput';
 import NumberDisplay from './numberDisplay';
 import SlippageTolerance from './slippageTolerance';
 
+// TODO 1% - Hardcoded for now, should be retrieved with pool.tickSpacing()
+// Also move this a to helper?
+const tickSpacingDefault = 200;
+const tickToPrice = (tick: number): number => 1.0001 ** tick;
 const priceToTick = (price: number, tickSpacing: number): number => {
   const tick = Math.log(price) / Math.log(1.0001);
   return Math.round(tick / tickSpacing) * tickSpacing;
 };
-
-const tickToPrice = (tick: number): number => 1.0001 ** tick;
 
 function getTokenAmountsFromLiquidity(
   tickLower: number,
@@ -103,7 +103,7 @@ const AddEditLiquidity: React.FC<{
   const account = useAccount();
   const { isConnected } = account;
 
-  const [depositAmount, setDepositAmount] = useState(0);
+  const [depositAmount, setDepositAmount] = useState<string>('0');
   const [lowPrice, setLowPrice] = useState(
     tickToPrice(epochParams.baseAssetMinPriceTick)
   );
@@ -177,6 +177,15 @@ const AddEditLiquidity: React.FC<{
   });
 
   const {
+    handleSubmit,
+    register,
+    formState: { errors, isSubmitting, isValid },
+    setError,
+    clearErrors,
+    trigger,
+  } = useForm();
+
+  const {
     data: tokenAmounts,
     error: tokenAmountsError,
     isFetching,
@@ -186,14 +195,14 @@ const AddEditLiquidity: React.FC<{
     functionName: 'getTokenAmounts',
     args: [
       epoch.toString(),
-      parseUnits(depositAmount.toString(), collateralAssetDecimals), // uint256 collateralAmount
-      pool ? pool.sqrtRatioX96.toString() : '0', // uint160 sqrtPriceX96, // current price of pool
-      TickMath.getSqrtRatioAtTick(tickLower).toString(), // uint160 sqrtPriceAX96, // lower tick price in sqrtRatio
-      TickMath.getSqrtRatioAtTick(tickUpper).toString(), // uint160 sqrtPriceBX96 // upper tick price in sqrtRatio
+      parseUnits(depositAmount.toString(), collateralAssetDecimals),
+      pool ? pool.sqrtRatioX96.toString() : '0',
+      tickLower > 0 ? TickMath.getSqrtRatioAtTick(tickLower).toString() : '0',
+      tickUpper > 0 ? TickMath.getSqrtRatioAtTick(tickUpper).toString() : '0',
     ],
     chainId,
     query: {
-      enabled: Boolean(pool),
+      enabled: Boolean(pool && isValid),
     },
   });
 
@@ -204,14 +213,14 @@ const AddEditLiquidity: React.FC<{
       functionName: 'getTokenAmounts',
       args: [
         epoch.toString(),
-        collateralAmountDelta, // uint256 collateralAmount
-        pool ? pool.sqrtRatioX96.toString() : '0', // uint160 sqrtPriceX96, // current price of pool
-        TickMath.getSqrtRatioAtTick(tickLower).toString(), // uint160 sqrtPriceAX96, // lower tick price in sqrtRatio
-        TickMath.getSqrtRatioAtTick(tickUpper).toString(), // uint160 sqrtPriceBX96 // upper tick price in sqrtRatio
+        collateralAmountDelta,
+        pool ? pool.sqrtRatioX96.toString() : '0',
+        tickLower > 0 ? TickMath.getSqrtRatioAtTick(tickLower).toString() : '0',
+        tickUpper > 0 ? TickMath.getSqrtRatioAtTick(tickUpper).toString() : '0',
       ],
       chainId,
       query: {
-        enabled: Boolean(pool),
+        enabled: Boolean(pool && isValid),
       },
     }) as {
       data: [bigint, bigint, bigint];
@@ -306,12 +315,13 @@ const AddEditLiquidity: React.FC<{
       )
     );
   }, [positionData, collateralAssetDecimals]);
-  const isDecrease = isEdit && depositAmount < positionCollateralAmount;
+  const isDecrease =
+    isEdit && depositAmount < positionCollateralAmount.toString();
 
   const newLiquidity: bigint = useMemo(() => {
     if (!liquidity) return BigInt(0);
     return getNewLiquidity(
-      depositAmount,
+      depositAmount !== '' ? parseFloat(depositAmount) : 0,
       positionCollateralAmount,
       collateralAssetDecimals,
       liquidity
@@ -399,6 +409,11 @@ const AddEditLiquidity: React.FC<{
     );
   }, [allowanceData, collateralAssetDecimals]);
 
+  const positionCollateralAfter = useMemo(() => {
+    if (!isEdit) return parseFloat(depositAmount || '0');
+    return parseFloat(depositAmount || '0');
+  }, [isEdit, depositAmount, positionCollateralAmount]);
+
   /// //// USE EFFECTS ///////
   // handle successful txn
   useEffect(() => {
@@ -411,7 +426,7 @@ const AddEditLiquidity: React.FC<{
   useEffect(() => {
     const calculateDelta = () => {
       const newDepositAmountBigInt = parseUnits(
-        depositAmount.toString(),
+        depositAmount !== '' ? depositAmount : '0',
         collateralAssetDecimals
       );
       const currentDepositAmountBigInt = BigInt(
@@ -431,9 +446,9 @@ const AddEditLiquidity: React.FC<{
           collateralAssetDecimals
         )
       );
-      setDepositAmount(currentCollateral);
+      setDepositAmount(currentCollateral.toString());
     } else {
-      setDepositAmount(0);
+      setDepositAmount('0');
     }
   }, [nftId, positionData, isEdit, collateralAssetDecimals]);
 
@@ -520,6 +535,73 @@ const AddEditLiquidity: React.FC<{
     }
   }, [uniswapPosition]);
 
+  useEffect(() => {
+    if (isEdit) return;
+    const minAllowedPrice = tickToPrice(epochParams.baseAssetMinPriceTick);
+    const maxAllowedPrice = tickToPrice(epochParams.baseAssetMaxPriceTick);
+
+    if (lowPrice < minAllowedPrice) {
+      setError('lowPrice', {
+        type: 'manual',
+        message: `Low price cannot be less than ${minAllowedPrice.toFixed(
+          2
+        )} Ggas/wstETH`,
+      });
+    } else {
+      clearErrors('lowPrice');
+    }
+
+    if (highPrice > maxAllowedPrice) {
+      setError('highPrice', {
+        type: 'manual',
+        message: `High price cannot exceed ${maxAllowedPrice.toFixed(
+          2
+        )} Ggas/wstETH`,
+      });
+    } else {
+      clearErrors('highPrice');
+    }
+  }, [
+    lowPrice,
+    highPrice,
+    epochParams.baseAssetMinPriceTick,
+    epochParams.baseAssetMaxPriceTick,
+    isEdit,
+    setError,
+    clearErrors,
+  ]);
+
+  useEffect(() => {
+    const validateCollateral = async () => {
+      if (walletBalance && depositAmount !== '') {
+        const currentDepositAmount = isEdit ? positionCollateralAmount : 0;
+        const increaseAmount = parseFloat(depositAmount) - currentDepositAmount;
+
+        if (increaseAmount > 0 && increaseAmount > parseFloat(walletBalance)) {
+          setError('collateral', {
+            type: 'manual',
+            message: 'Insufficient balance in wallet',
+          });
+        } else {
+          clearErrors('collateral');
+        }
+      } else {
+        clearErrors('collateral');
+      }
+      await trigger('collateral');
+    };
+
+    validateCollateral();
+  }, [
+    depositAmount,
+    walletBalance,
+    isEdit,
+    positionCollateralAmount,
+    setError,
+    clearErrors,
+    trigger,
+  ]);
+
   /// /// HANDLERS //////
   const getCurrentDeadline = (): bigint => {
     return BigInt(Math.floor(Date.now() / 1000) + 1800); // 30 minutes from now
@@ -565,7 +647,7 @@ const AddEditLiquidity: React.FC<{
               TOKEN_DECIMALS
             ),
             collateralAmount: parseUnits(
-              depositAmount.toString(),
+              depositAmount !== '' ? depositAmount : '0',
               collateralAssetDecimals
             ),
             lowerTick: tickLower,
@@ -701,7 +783,9 @@ const AddEditLiquidity: React.FC<{
   const handleFormSubmit = (e: any) => {
     setPendingTxn(true);
     setIsLoading(true);
-    e.preventDefault();
+    if (e) {
+      e.preventDefault();
+    }
 
     if (isEdit && isDecrease) {
       return handleDecreaseLiquidity();
@@ -709,7 +793,7 @@ const AddEditLiquidity: React.FC<{
 
     // Double-check the delta before submission
     const newDepositAmountBigInt = parseUnits(
-      depositAmount.toString(),
+      depositAmount !== '' ? depositAmount : '0',
       collateralAssetDecimals
     );
     const currentDepositAmountBigInt = BigInt(
@@ -765,15 +849,25 @@ const AddEditLiquidity: React.FC<{
   const handleDepositAmountChange = (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const value = Number(e.target.value);
-    setDepositAmount(value);
+    let { value } = e.target;
+
+    // Remove leading zeros, but keep a single zero if it's the only digit
+    if (value !== '0') {
+      value = value.replace(/^0+/, '');
+    }
+
+    // Ensure the value is valid
+    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+      setDepositAmount(value);
+    }
   };
 
   const getButtonText = () => {
-    if (isEdit && isDecrease) {
-      return depositAmount !== 0
-        ? 'Decrease Liquidity'
-        : 'Close Liquidity Position';
+    if (isEdit) {
+      if (depositAmount === '' || parseFloat(depositAmount) === 0) {
+        return 'Close Liquidity Position';
+      }
+      return isDecrease ? 'Decrease Liquidity' : 'Increase Liquidity';
     }
     return 'Add Liquidity';
   };
@@ -805,6 +899,17 @@ const AddEditLiquidity: React.FC<{
       );
     }
 
+    const isAmountUnchanged =
+      isEdit && depositAmount === positionCollateralAmount.toString();
+    const isBlankDeposit = depositAmount === '';
+
+    const isDisabled =
+      pendingTxn ||
+      isFetching ||
+      isBlankDeposit ||
+      (isEdit && isAmountUnchanged) ||
+      !isValid;
+
     return (
       <Button
         width="full"
@@ -812,7 +917,7 @@ const AddEditLiquidity: React.FC<{
         size="lg"
         type="submit"
         isLoading={pendingTxn || isFetching}
-        isDisabled={pendingTxn || isFetching}
+        isDisabled={isDisabled}
       >
         {getButtonText()}
       </Button>
@@ -820,79 +925,62 @@ const AddEditLiquidity: React.FC<{
   };
 
   return (
-    <form onSubmit={handleFormSubmit}>
+    <form onSubmit={handleSubmit(handleFormSubmit)}>
       <Box mb={4}>
-        <FormControl>
-          <FormLabel>Collateral</FormLabel>
+        <FormControl isInvalid={!!errors.collateral}>
+          <FormLabel htmlFor="collateral">Collateral</FormLabel>
           <InputGroup>
             <Input
+              id="collateral"
               type="number"
               min={0}
               step="any"
               value={depositAmount}
               onWheel={(e) => e.currentTarget.blur()}
-              onChange={handleDepositAmountChange}
+              {...register('collateral', {
+                onChange: handleDepositAmountChange,
+                validate: (value) => {
+                  if (value === '') return true;
+                  const currentDepositAmount = isEdit
+                    ? positionCollateralAmount
+                    : 0;
+                  const increaseAmount =
+                    parseFloat(value) - currentDepositAmount;
+                  return (
+                    increaseAmount <= 0 ||
+                    (walletBalance &&
+                      increaseAmount <= parseFloat(walletBalance)) ||
+                    'Insufficient balance in wallet'
+                  );
+                },
+              })}
             />
             <InputRightAddon>{collateralAssetTicker}</InputRightAddon>
           </InputGroup>
+          <FormErrorMessage>
+            {errors.collateral && errors.collateral.message?.toString()}
+          </FormErrorMessage>
         </FormControl>
       </Box>
-      <FormControl mb={4}>
-        <FormLabel>Low Price</FormLabel>
-        <InputGroup>
-          <Input
-            type="number"
-            step="any"
-            disabled={isEdit}
-            onWheel={(e) => e.currentTarget.blur()}
-            value={lowPrice}
-            onChange={(e) => setLowPrice(Number(e.target.value))}
-          />
-          <InputRightAddon>Ggas/{collateralAssetTicker}</InputRightAddon>
-        </InputGroup>
-      </FormControl>
-      <FormControl mb={4}>
-        <FormLabel>High Price</FormLabel>
-        <InputGroup>
-          <Input
-            type="number"
-            min={0}
-            step="any"
-            disabled={isEdit}
-            onWheel={(e) => e.currentTarget.blur()}
-            value={highPrice}
-            onChange={(e) => setHighPrice(Number(e.target.value))}
-          />
-          <InputRightAddon>Ggas/{collateralAssetTicker}</InputRightAddon>
-        </InputGroup>
-      </FormControl>
+      <LiquidityPriceInput
+        label="Low Price"
+        value={lowPrice}
+        onChange={(value) => setLowPrice(value)}
+        isDisabled={isEdit}
+        minAllowedPrice={tickToPrice(epochParams.baseAssetMinPriceTick)}
+        maxAllowedPrice={highPrice}
+        error={errors.lowPrice?.message?.toString()}
+      />
+      <LiquidityPriceInput
+        label="High Price"
+        value={highPrice}
+        onChange={(value) => setHighPrice(value)}
+        isDisabled={isEdit}
+        minAllowedPrice={lowPrice}
+        maxAllowedPrice={tickToPrice(epochParams.baseAssetMaxPriceTick)}
+        error={errors.highPrice?.message?.toString()}
+      />
 
-      <Flex display="none">
-        <Box flex="auto">Recharts Histogram Here</Box>
-        <FormControl>
-          <RangeSlider defaultValue={[10, 30]} orientation="vertical" minH="32">
-            <RangeSliderMark value={0} mb="-1" ml="3" fontSize="sm" w="90px">
-              5 gwei
-            </RangeSliderMark>
-
-            <RangeSliderMark
-              value={100}
-              mb="-3.5"
-              ml="3"
-              fontSize="sm"
-              w="90px"
-            >
-              100 gwei
-            </RangeSliderMark>
-
-            <RangeSliderTrack>
-              <RangeSliderFilledTrack />
-            </RangeSliderTrack>
-            <RangeSliderThumb index={0} />
-            <RangeSliderThumb index={1} />
-          </RangeSlider>
-        </FormControl>
-      </Flex>
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
 
       {renderActionButton()}
@@ -918,9 +1006,29 @@ const AddEditLiquidity: React.FC<{
           </Text>
         </Box>
 
+        {isEdit && (
+          <Box>
+            <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
+              Position Collateral
+            </Text>
+            <Text fontSize="sm" color="gray.600" mb={0.5}>
+              <NumberDisplay value={positionCollateralAmount} />{' '}
+              {collateralAssetTicker}
+              {positionCollateralAmount !== positionCollateralAfter && (
+                <>
+                  {' '}
+                  → <NumberDisplay value={positionCollateralAfter} />{' '}
+                  {collateralAssetTicker}
+                </>
+              )}
+            </Text>
+          </Box>
+        )}
+
         {isConnected &&
           walletBalance !== null &&
-          walletBalanceAfter !== null && (
+          walletBalanceAfter !== null &&
+          walletBalance !== walletBalanceAfter && (
             <Box>
               <Text
                 fontSize="sm"

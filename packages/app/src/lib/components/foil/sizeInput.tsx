@@ -68,9 +68,14 @@ const SizeInput: React.FC<Props> = ({
   const handleSizeChange = (newVal: string) => {
     const numberPattern = /^(0|[1-9]\d*)(\.\d*)?$/;
 
-    if (newVal === '' || numberPattern.test(newVal)) {
-      setSizeInput(newVal);
-      const newSize = newVal === '' ? 0 : parseFloat(newVal);
+    let processedVal = newVal;
+    if (sizeInput === '0' && newVal !== '0' && newVal !== '0.') {
+      processedVal = newVal.replace(/^0+/, '');
+    }
+
+    if (processedVal === '' || numberPattern.test(processedVal)) {
+      setSizeInput(processedVal);
+      const newSize = processedVal === '' ? 0 : parseFloat(processedVal);
       const sizeInGas = isGasInput
         ? BigInt(Math.floor(newSize))
         : BigInt(Math.floor(newSize * 1e9));

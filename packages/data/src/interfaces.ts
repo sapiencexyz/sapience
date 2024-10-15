@@ -1,4 +1,5 @@
 import { Abi } from "viem";
+import EvmIndexer from "./resourcePriceFunctions/evmIndexer";
 
 export enum EventType {
   LiquidityPositionCreated = "LiquidityPositionCreated",
@@ -8,6 +9,10 @@ export enum EventType {
   TraderPositionCreated = "TraderPositionCreated",
   TraderPositionModified = "TraderPositionModified",
   Transfer = "Transfer",
+  MarketInitialized = "MarketInitialized",
+  MarketUpdated = "MarketUpdated",
+  EpochCreated = "EpochCreated",
+  EpochSettled = "EpochSettled",
 }
 
 export interface TradePositionEventLog {
@@ -84,15 +89,24 @@ export interface EpochCreatedEventLog {
   startingSqrtPriceX96: string;
 }
 
-export interface ContractDeployment {
+export interface Deployment {
   address: string;
   abi: Abi;
+  deployTimestamp: string;
+  deployTxnBlockNumber: string;
 }
-
 export enum TimeWindow {
   H = "1H",
   D = "1D",
   W = "1W",
   M = "1M",
   Y = "1Y",
+}
+
+export interface MarketInfo {
+  name: string;
+  public: boolean;
+  deployment: Deployment;
+  marketChainId: number;
+  priceIndexer: EvmIndexer;
 }

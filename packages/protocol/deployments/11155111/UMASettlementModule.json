@@ -1,5 +1,5 @@
 {
-  "address": "0xB519D4231C04aEc7EDc3fDE679C8f5e0ef5c87C2",
+  "address": "0xD7D51baf10f267c4c468655a68A94A7F7E450518",
   "abi": [
     {
       "type": "function",
@@ -58,20 +58,7 @@
     },
     {
       "type": "event",
-      "name": "Initialized",
-      "inputs": [
-        {
-          "name": "version",
-          "type": "uint64",
-          "indexed": false,
-          "internalType": "uint64"
-        }
-      ],
-      "anonymous": false
-    },
-    {
-      "type": "event",
-      "name": "MarketSettled",
+      "name": "EpochSettled",
       "inputs": [
         {
           "name": "epochId",
@@ -90,6 +77,19 @@
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "Initialized",
+      "inputs": [
+        {
+          "name": "version",
+          "type": "uint64",
+          "indexed": false,
+          "internalType": "uint64"
         }
       ],
       "anonymous": false
@@ -199,12 +199,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x356cdfb329b1ccc1d5c7730cd148ff92de31efff03e7408902d3e8e916b54c60",
-  "deployTxnBlockNumber": "6808040",
-  "deployTimestamp": "1727974452",
+  "deployTxnHash": "0x4695d037744d3fc090e7a2c6da0a6edd3f21293b67d0c8a5ec9c5ca66513a1d8",
+  "deployTxnBlockNumber": "6857073",
+  "deployTimestamp": "1728661356",
   "sourceName": "src/contracts/modules/UMASettlementModule.sol",
   "contractName": "UMASettlementModule",
   "deployedOn": "deploy.UMASettlementModule",
   "gasUsed": 817853,
-  "gasCost": "248735351697"
+  "gasCost": "37698886478"
 }

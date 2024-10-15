@@ -11,9 +11,8 @@ import {
   CartesianGrid,
   ComposedChart,
   Bar,
-  ReferenceLine,
-  Label,
   Tooltip,
+  Line,
 } from 'recharts';
 
 import type { PriceChartData, TimeWindow } from '../interfaces/interfaces';
@@ -129,9 +128,18 @@ const CustomTooltip: React.FC<
 };
 
 interface Props {
-  data: PriceChartData[];
+  data: {
+    marketPrices: PriceChartData[];
+    indexPrices: IndexPrice[];
+  };
   activeWindow: TimeWindow;
 }
+
+interface IndexPrice {
+  timestamp: number;
+  price: number;
+}
+
 const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
   const [value, setValue] = useState<string>('');
   const timePeriodLabel = useMemo(() => {
@@ -176,9 +184,9 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
   };
 
   useEffect(() => {
-    const validPrices = data.filter((p) => p.high !== null);
+    const validPrices = data.marketPrices.filter((p) => p.high !== null);
     setYAxisDomain([0, Math.max(...validPrices.map((p) => p.high)) + 1]);
-  }, [data]);
+  }, [data.marketPrices]);
 
   const formatYAxisTick = (value: number) => value.toFixed(2);
 
@@ -204,15 +212,13 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
     return () => clearTimeout(timer);
   }, []);
 
-  const averagePriceLabel = (
-    <Label
-      value={`Average Index Price ${averagePrice}`}
-      position="top"
-      offset={-13}
-      fill={grayColor}
-      fontSize={12}
-    />
-  );
+  // Format index prices for the Line component
+  const formattedIndexPrices = useMemo(() => {
+    return data.indexPrices.map((price) => ({
+      endTimestamp: price.timestamp,
+      price: price.price,
+    }));
+  }, [data.indexPrices]);
 
   return (
     <Flex flex={1} position="relative">
@@ -244,7 +250,7 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
         onResize={updateChartDimensions}
       >
         <ComposedChart
-          data={data}
+          data={data.marketPrices}
           ref={chartRef}
           margin={{ top: 70, right: 0, bottom: 0, left: 0 }}
           onMouseLeave={() => {
@@ -258,7 +264,7 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
             tickFormatter={(timestamp) =>
               formatXAxisTick(timestamp, activeWindow)
             }
-            ticks={getXTicksToShow(data, activeWindow)}
+            ticks={getXTicksToShow(data.marketPrices, activeWindow)}
             minTickGap={10}
             allowDataOverflow
           />
@@ -268,14 +274,15 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
             content={<CustomTooltip setLabel={setLabel} setValue={setValue} />}
           />
           <Bar dataKey="close" shape={renderShape} />
-          {averagePrice > 0 && (
-            <ReferenceLine
-              y={averagePrice}
-              stroke={grayColor}
-              strokeDasharray="3 3"
-              label={averagePriceLabel}
-            />
-          )}
+          <Line
+            type="monotone"
+            data={formattedIndexPrices}
+            dataKey="price"
+            stroke={grayColor}
+            strokeWidth={2}
+            dot={false}
+            strokeDasharray="5 5"
+          />
         </ComposedChart>
       </ResponsiveContainer>
     </Flex>

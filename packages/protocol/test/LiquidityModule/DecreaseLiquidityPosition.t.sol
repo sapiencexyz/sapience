@@ -346,14 +346,17 @@ contract DecreaseLiquidityPosition is TestTrade {
             );
         }
 
-        assertEq(
+        // Notice +/- 1 due to rounding errors
+        assertApproxEqAbs(
             amount0,
             initialAmount0 + initialOwedTokens0,
+            1,
             "All token0 should be collected"
         );
-        assertEq(
+        assertApproxEqAbs(
             amount1,
             initialAmount1 + initialOwedTokens1,
+            1,
             "All token1 should be collected"
         );
 

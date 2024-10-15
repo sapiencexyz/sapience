@@ -15,6 +15,7 @@ import {
 import { useContext } from 'react';
 
 import { MarketContext } from '../../context/MarketProvider';
+import { tickToPrice } from '~/lib/util/util';
 
 import Address from './address';
 import NumberDisplay from './numberDisplay';
@@ -96,7 +97,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({
                     </Link>
                   </Td>
                   <Td>
-                    <Address value={row.owner} />
+                    <Address value={row.owner || ''} />
                   </Td>
                   <Td>
                     <NumberDisplay value={row.collateral} /> wstETH
@@ -108,10 +109,12 @@ const LiquidityPositionsTable: React.FC<Props> = ({
                     <NumberDisplay value={row.quoteToken} /> wstETH
                   </Td>
                   <Td>
-                    <NumberDisplay value={row.lowPrice} /> Ggas/wstETH
+                    <NumberDisplay value={tickToPrice(row.lowPriceTick)} />{' '}
+                    Ggas/wstETH
                   </Td>
                   <Td>
-                    <NumberDisplay value={row.highPrice} /> Ggas/wstETH
+                    <NumberDisplay value={tickToPrice(row.highPriceTick)} />{' '}
+                    Ggas/wstETH
                   </Td>
                   {/* <Td>
                     <NumberDisplay value={pnl} /> wstETH

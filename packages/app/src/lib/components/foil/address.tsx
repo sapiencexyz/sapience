@@ -17,7 +17,7 @@ const Address: React.FC<AddressProps> = ({ value }) => {
   const etherscanUrl = `${chain?.blockExplorers?.default.url}/address/${value}`;
 
   return (
-    <Link href={etherscanUrl} isExternal>
+    <Link href={etherscanUrl} textDecoration="underline" isExternal>
       <Text as="span">{shortenAddress(value)}</Text>
     </Link>
   );

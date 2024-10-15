@@ -1,5 +1,5 @@
 {
-  "address": "0x1b99D0bD9C7B06804C68A63eeF1315B842669C6c",
+  "address": "0x69C22e273088B2D989e66Eba98Ba09676Afb62fe",
   "abi": [
     {
       "type": "function",
@@ -150,35 +150,6 @@
     },
     {
       "type": "function",
-      "name": "getCollateralRequirementForAdditionalTokens",
-      "inputs": [
-        {
-          "name": "positionId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "amount0",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "amount1",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
       "name": "getTokenAmounts",
       "inputs": [
         {
@@ -315,6 +286,12 @@
       "name": "LiquidityPositionClosed",
       "inputs": [
         {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
           "name": "epochId",
           "type": "uint256",
           "indexed": true,
@@ -363,6 +340,12 @@
       "type": "event",
       "name": "LiquidityPositionCreated",
       "inputs": [
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
         {
           "name": "epochId",
           "type": "uint256",
@@ -419,6 +402,12 @@
       "name": "LiquidityPositionDecreased",
       "inputs": [
         {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
           "name": "epochId",
           "type": "uint256",
           "indexed": true,
@@ -473,6 +462,12 @@
       "type": "event",
       "name": "LiquidityPositionIncreased",
       "inputs": [
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
         {
           "name": "epochId",
           "type": "uint256",
@@ -746,18 +741,34 @@
     },
     {
       "type": "error",
+      "name": "TransactionExpired",
+      "inputs": [
+        {
+          "name": "deadline",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "blockTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "ZeroAddress",
       "inputs": []
     }
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x6b3ad00fcce7b5e61fe6bc29021e7a442355f7e0bd24b7776100b5c2a617f789",
-  "deployTxnBlockNumber": "6808035",
-  "deployTimestamp": "1727974392",
+  "deployTxnHash": "0x6dbe7dd0b6935b7d0b880d769ed05fb618aedbf31e8fdd7eb1c19502709e0dab",
+  "deployTxnBlockNumber": "6857069",
+  "deployTimestamp": "1728661296",
   "sourceName": "src/contracts/modules/LiquidityModule.sol",
   "contractName": "LiquidityModule",
   "deployedOn": "deploy.LiquidityModule",
-  "gasUsed": 3066648,
-  "gasCost": "204311090790"
+  "gasUsed": 2940246,
+  "gasCost": "37348233075"
 }

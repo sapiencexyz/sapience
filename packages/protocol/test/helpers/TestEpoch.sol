@@ -101,6 +101,7 @@ contract TestEpoch is TestUser {
         int24 upperTick
     )
         internal
+        view
         returns (uint256 loanAmount0, uint256 loanAmount1, uint256 liquidity)
     {
         IFoil foil = IFoil(vm.getAddress("Foil"));
@@ -126,6 +127,7 @@ contract TestEpoch is TestUser {
         int24 upperTick
     )
         internal
+        view
         returns (
             uint256 amount0,
             uint256 amount1,
@@ -192,7 +194,7 @@ contract TestEpoch is TestUser {
 
     function getOwedTokens(
         uint256 uniswapPositionId
-    ) internal returns (uint256 owed0, uint256 owed1) {
+    ) internal view returns (uint256 owed0, uint256 owed1) {
         uniswapPositionId;
         console2.log("IN GETOWEDTOKENS");
         IFoil foil = IFoil(vm.getAddress("Foil"));

@@ -8,18 +8,6 @@ import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
 import {ILiquidityModule} from "../interfaces/ILiquidityModule.sol";
 import {Pool} from "../libraries/Pool.sol";
 
-// Add this struct at the contract level
-struct LiquidityPositionCreatedEventData {
-    uint256 epochId;
-    uint256 positionId;
-    uint256 depositedCollateralAmount;
-    uint128 liquidity;
-    uint256 addedAmount0;
-    uint256 addedAmount1;
-    int24 lowerTick;
-    int24 upperTick;
-}
-
 contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
     using Position for Position.Data;
     using Epoch for Epoch.Data;
@@ -40,7 +28,9 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             uint256 addedAmount1
         )
     {
-        require(block.timestamp <= params.deadline, "Transaction too old");
+        if (params.deadline < block.timestamp) {
+            revert Errors.TransactionExpired(params.deadline, block.timestamp);
+        }
 
         id = ERC721EnumerableStorage.totalSupply() + 1;
         Position.Data storage position = Position.createValid(id);
@@ -48,7 +38,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         ERC721Storage._mint(msg.sender, id);
 
         Epoch.Data storage epoch = Epoch.loadValid(params.epochId);
-        epoch.validateLp(params.lowerTick, params.upperTick);
+        epoch.validateLpRequirements(params.lowerTick, params.upperTick);
 
         (
             uniswapNftId,
@@ -68,7 +58,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                     amount0Min: params.minAmountTokenA,
                     amount1Min: params.minAmountTokenB,
                     recipient: address(this),
-                    deadline: block.timestamp
+                    deadline: params.deadline
                 })
             );
 
@@ -88,7 +78,8 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         );
 
         _emitLiquidityPositionCreated(
-            LiquidityPositionCreatedEventData({
+            ILiquidityModule.LiquidityPositionCreatedEventData({
+                sender: msg.sender,
                 epochId: epoch.id,
                 positionId: id,
                 depositedCollateralAmount: position.depositedCollateralAmount,
@@ -98,21 +89,6 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 lowerTick: params.lowerTick,
                 upperTick: params.upperTick
             })
-        );
-    }
-
-    function _emitLiquidityPositionCreated(
-        LiquidityPositionCreatedEventData memory eventData
-    ) internal {
-        emit LiquidityPositionCreated(
-            eventData.epochId,
-            eventData.positionId,
-            eventData.depositedCollateralAmount,
-            eventData.liquidity,
-            eventData.addedAmount0,
-            eventData.addedAmount1,
-            eventData.lowerTick,
-            eventData.upperTick
         );
     }
 
@@ -128,7 +104,9 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             uint256 collateralAmount
         )
     {
-        require(block.timestamp <= params.deadline, "Transaction too old");
+        if (params.deadline < block.timestamp) {
+            revert Errors.TransactionExpired(params.deadline, block.timestamp);
+        }
 
         DecreaseLiquidityPositionStack memory stack;
 
@@ -152,54 +130,55 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 liquidity: params.liquidity,
                 amount0Min: params.minGasAmount,
                 amount1Min: params.minEthAmount,
-                deadline: block.timestamp
+                deadline: params.deadline
             });
 
         (decreasedAmount0, decreasedAmount1) = INonfungiblePositionManager(
             epoch.params.uniswapPositionManager
         ).decreaseLiquidity(stack.decreaseParams);
 
+        // if all liquidity is removed, close the position and return
+        if (params.liquidity == stack.previousLiquidity)
+            return _closeLiquidityPosition(market, position);
+
+        // otherwise, validate the decreased liquidity and update the position
+        // get tokens owed
+        (
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            stack.tokensOwed0,
+            stack.tokensOwed1
+        ) = INonfungiblePositionManager(epoch.params.uniswapPositionManager)
+            .positions(position.uniswapPositionId);
+
         uint256 loanAmount0;
         uint256 loanAmount1;
 
-        if (params.liquidity == stack.previousLiquidity) {
-            return _closeLiquidityPosition(market, position);
-        } else {
-            // get tokens owed
-            (
-                ,
-                ,
-                ,
-                ,
-                ,
-                ,
-                ,
-                ,
-                ,
-                ,
-                stack.tokensOwed0,
-                stack.tokensOwed1
-            ) = INonfungiblePositionManager(epoch.params.uniswapPositionManager)
-                .positions(position.uniswapPositionId);
-
-            (collateralAmount, loanAmount0, loanAmount1) = position
-                .updateValidLp(
-                    epoch,
-                    Position.UpdateLpParams({
-                        uniswapNftId: position.uniswapPositionId,
-                        liquidity: stack.previousLiquidity - params.liquidity,
-                        additionalCollateral: 0,
-                        additionalLoanAmount0: 0, // tokensOwed0 represents the returned tokens
-                        additionalLoanAmount1: 0, // tokensOwed1 represents the returned tokens
-                        lowerTick: stack.lowerTick,
-                        upperTick: stack.upperTick,
-                        tokensOwed0: stack.tokensOwed0,
-                        tokensOwed1: stack.tokensOwed1
-                    })
-                );
-        }
+        (collateralAmount, loanAmount0, loanAmount1) = position.updateValidLp(
+            epoch,
+            Position.UpdateLpParams({
+                uniswapNftId: position.uniswapPositionId,
+                liquidity: stack.previousLiquidity - params.liquidity,
+                additionalCollateral: 0,
+                additionalLoanAmount0: 0,
+                additionalLoanAmount1: 0,
+                lowerTick: stack.lowerTick,
+                upperTick: stack.upperTick,
+                tokensOwed0: stack.tokensOwed0, // decreased token0 + any fees accrued
+                tokensOwed1: stack.tokensOwed1 // decreased token1 + any fees accrued
+            })
+        );
 
         emit LiquidityPositionDecreased(
+            msg.sender,
             epoch.id,
             position.id,
             position.depositedCollateralAmount,
@@ -223,7 +202,9 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             uint256 collateralAmount
         )
     {
-        require(block.timestamp <= params.deadline, "Transaction too old");
+        if (params.deadline < block.timestamp) {
+            revert Errors.TransactionExpired(params.deadline, block.timestamp);
+        }
 
         IncreaseLiquidityPositionStack memory stack;
 
@@ -249,7 +230,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 amount1Desired: params.ethTokenAmount,
                 amount0Min: params.minGasAmount,
                 amount1Min: params.minEthAmount,
-                deadline: block.timestamp
+                deadline: params.deadline
             });
 
         (liquidity, amount0, amount1) = INonfungiblePositionManager(
@@ -292,6 +273,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         );
 
         emit LiquidityPositionIncreased(
+            msg.sender,
             epoch.id,
             position.id,
             position.depositedCollateralAmount,
@@ -359,66 +341,6 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         );
     }
 
-    function getCollateralRequirementForAdditionalTokens(
-        uint256 positionId,
-        uint256 amount0,
-        uint256 amount1
-    ) external view returns (uint256) {
-        Market.Data storage market = Market.load();
-        Position.Data storage position = Position.loadValid(positionId);
-        Epoch.Data storage epoch = Epoch.loadValid(position.epochId);
-
-        IncreaseLiquidityPositionStack memory stack;
-
-        (
-            stack.previousAmount0,
-            stack.previousAmount1,
-            stack.lowerTick,
-            stack.upperTick,
-            stack.previousLiquidity
-        ) = Pool.getCurrentPositionTokenAmounts(market, epoch, position);
-
-        (
-            ,
-            ,
-            ,
-            ,
-            ,
-            ,
-            ,
-            ,
-            ,
-            ,
-            stack.tokensOwed0,
-            stack.tokensOwed1
-        ) = INonfungiblePositionManager(epoch.params.uniswapPositionManager)
-            .positions(position.uniswapPositionId);
-
-        (uint160 sqrtPriceX96, , , , , , ) = epoch.pool.slot0();
-
-        uint160 sqrtPriceAX96 = TickMath.getSqrtRatioAtTick(stack.lowerTick);
-        uint160 sqrtPriceBX96 = TickMath.getSqrtRatioAtTick(stack.upperTick);
-
-        uint128 liquidityDelta = LiquidityAmounts.getLiquidityForAmounts(
-            sqrtPriceX96,
-            sqrtPriceAX96,
-            sqrtPriceBX96,
-            amount0,
-            amount1
-        );
-
-        return
-            epoch.requiredCollateralForLiquidity(
-                stack.previousLiquidity + liquidityDelta,
-                position.borrowedVGas + amount0,
-                position.borrowedVEth + amount1,
-                stack.tokensOwed0,
-                stack.tokensOwed1,
-                sqrtPriceAX96,
-                sqrtPriceBX96
-            );
-    }
-
     function _closeLiquidityPosition(
         Market.Data storage market,
         Position.Data storage position
@@ -467,20 +389,18 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 position.borrowedVEth;
             position.borrowedVEth = 0;
         } else {
-            if (
-                position.depositedCollateralAmount <
-                position.borrowedVEth - collectedAmount1
-            ) {
-                position.borrowedVEth -= collectedAmount1;
+            uint256 collateralDelta = position.borrowedVEth - collectedAmount1;
+            if (position.depositedCollateralAmount < collateralDelta) {
+                position.borrowedVEth = collateralDelta;
             } else {
-                position.depositedCollateralAmount -=
-                    position.borrowedVEth -
-                    collectedAmount1;
+                position.depositedCollateralAmount -= collateralDelta;
                 position.borrowedVEth = 0;
             }
         }
-        // if gas amounts, transition to trader and let user trade through pool
-        // otherwise withdraw collateral to user
+
+        // if all debt is paid off, and no vGAS, withdraw collateral to user
+        // otherwise, transition user to trader and user can trade through pool to close position
+        // in a subsequent tx
         if (
             position.borrowedVGas == 0 &&
             position.vGasAmount == 0 &&
@@ -500,6 +420,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
 
         // Emit an event for the closed position
         emit LiquidityPositionClosed(
+            msg.sender,
             epoch.id,
             position.id,
             position.kind,
@@ -507,6 +428,22 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             collectedAmount1,
             position.borrowedVGas,
             position.borrowedVEth
+        );
+    }
+
+    function _emitLiquidityPositionCreated(
+        ILiquidityModule.LiquidityPositionCreatedEventData memory eventData
+    ) private {
+        emit LiquidityPositionCreated(
+            eventData.sender,
+            eventData.epochId,
+            eventData.positionId,
+            eventData.depositedCollateralAmount,
+            eventData.liquidity,
+            eventData.addedAmount0,
+            eventData.addedAmount1,
+            eventData.lowerTick,
+            eventData.upperTick
         );
     }
 }

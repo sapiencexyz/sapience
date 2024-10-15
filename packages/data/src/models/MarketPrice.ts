@@ -4,8 +4,6 @@ import {
   Column,
   CreateDateColumn,
   OneToOne,
-  Unique,
-  JoinColumn,
 } from "typeorm";
 import { Transaction } from "./Transaction";
 import { NUMERIC_PRECISION } from "../constants";
