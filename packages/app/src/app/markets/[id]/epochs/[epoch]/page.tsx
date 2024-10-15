@@ -176,19 +176,18 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
 
   const renderChart = () => {
     if (chartType === ChartType.PRICE) {
-      return <Chart
-                    activeWindow={selectedWindow}
-                    data={{
-                      marketPrices: marketPrices || [],
-                      indexPrices: indexPrices || [],
-                    }}
-                  />;
+      return (
+        <Chart
+          activeWindow={selectedWindow}
+          data={{
+            marketPrices: marketPrices || [],
+            indexPrices: indexPrices || [],
+          }}
+        />
+      );
     }
     if (chartType === ChartType.VOLUME) {
-      return <VolumeChart
-                    data={volume || []}
-                    activeWindow={selectedWindow}
-                  />;
+      return <VolumeChart data={volume || []} activeWindow={selectedWindow} />;
     }
     if (chartType === ChartType.LIQUIDITY) {
       return <DepthChart />;
