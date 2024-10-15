@@ -638,9 +638,21 @@ const startServer = async () => {
         return res.status(404).json({ error: "Market not found" });
       }
 
+      const epoch = await epochRepository.findOne({
+        where: {
+          market: { id: market.id },
+          epochId: Number(epochId),
+        },
+      });
+
+      if (!epoch) {
+        return res.status(404).json({ error: "Epoch not found" });
+      }
+
       const latestPrice = await indexPriceRepository.findOne({
         where: {
           epoch: { id: Number(epochId) },
+          timestamp: Between(Number(epoch.startTimestamp), Number(epoch.endTimestamp))
         },
         order: { timestamp: "DESC" },
       });
