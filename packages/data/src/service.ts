@@ -459,22 +459,29 @@ const startServer = async () => {
 
       // Get start and end timestamps
       const startTimestamp = Number(epoch.startTimestamp);
-      const endTimestamp = Number(epoch.endTimestamp);
+      const now = Math.floor(Date.now() / 1000);
+      const endTimestamp = Math.min(Number(epoch.endTimestamp), now);
+
+      console.log("startTimestamp", startTimestamp);
+      console.log("endTimestamp", endTimestamp);
 
       // Get the client for the specified chain ID
       const client = getProviderForChain(Number(chainId));
 
       // Get the blocks corresponding to the start and end timestamps
       const startBlock = await getBlockByTimestamp(client, startTimestamp);
-      const endBlock = await getBlockByTimestamp(client, endTimestamp);
+      let endBlock = await getBlockByTimestamp(client, endTimestamp);
+      if (!endBlock) {
+        endBlock = await client.getBlock();
+      }
+
+      console.log("startBlock", startBlock);
+      console.log("endBlock", endBlock);
 
       if (!startBlock?.number || !endBlock?.number) {
-        return res
-          .status(500)
-          .json({
-            error:
-              "Unable to retrieve block numbers for start or end timestamps",
-          });
+        return res.status(500).json({
+          error: "Unable to retrieve block numbers for start or end timestamps",
+        });
       }
 
       const startBlockNumber = Number(startBlock.number);
