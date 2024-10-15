@@ -4,6 +4,7 @@ pragma solidity >=0.8.25 <0.9.0;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 import {Epoch} from "../storage/Epoch.sol";
 import {Market} from "../storage/Market.sol";
 import {IUMASettlementModule} from "../interfaces/IUMASettlementModule.sol";
@@ -42,13 +43,13 @@ contract UMASettlementModule is
 
         bytes memory claim = abi.encodePacked(
             "ipfs://Qmbg1KiuKNmCbL696Zu8hXUAJrTxuhgNCbyjaPyni4RXTc evaluates to ",
-            abi.encodePacked(settlementPriceD18),
+            Strings.toString(settlementPriceD18),
             " ",
             epoch.params.priceUnit,
             " with start time ",
-            abi.encodePacked(epoch.startTime),
+            Strings.toString(epoch.startTime),
             " and end time ",
-            abi.encodePacked(epoch.endTime)
+            Strings.toString(epoch.endTime)
         );
 
         epoch.assertionId = optimisticOracleV3.assertTruth(
