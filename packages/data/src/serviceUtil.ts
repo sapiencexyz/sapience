@@ -76,7 +76,6 @@ export async function getMarketPricesInTimeRange(
     .getMany();
 }
 
-
 export async function getIndexPricesInTimeRange(
   startTimestamp: number,
   endTimestamp: number,

@@ -112,7 +112,8 @@ const CustomTooltip: React.FC<
   const open: number | null = payloadData?.open;
   const high: number | null = payloadData?.high;
   const low: number | null = payloadData?.low;
-  if (!close && !open && !high && !low) return null;
+  const price = payloadData?.price;
+  if (!close && !open && !high && !low && !price) return null;
   return (
     <Box
       style={{
@@ -125,6 +126,7 @@ const CustomTooltip: React.FC<
       <Text>Open: {open ? formatAmount(open) : '-'}</Text>
       <Text>High: {high ? formatAmount(high) : '-'}</Text>
       <Text>Low: {low ? formatAmount(low) : '-'}</Text>
+      <Text>Price: {price ? formatAmount(price) : '-'}</Text>
     </Box>
   );
 };
@@ -148,7 +150,7 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
     return getDisplayTextForVolumeWindow(activeWindow);
   }, [activeWindow]);
   const [label, setLabel] = useState<string>(timePeriodLabel);
-  const { averagePrice, pool } = useContext(MarketContext);
+  const { pool, stEthPerToken } = useContext(MarketContext);
   const currPrice: string = useMemo(() => {
     return pool?.token0Price.toSignificant(18) || '0';
   }, [pool?.token0Price]);
@@ -163,9 +165,10 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
 
   const combinedData = useMemo(() => {
     return data.marketPrices.map((mp, i) => {
+      const price = data.indexPrices[i]?.price || 0;
       return {
         ...mp,
-        price: data.indexPrices[i]?.price || 0,
+        price: price / (stEthPerToken || 1),
       };
     });
   }, [data]);
@@ -227,14 +230,6 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
 
     return () => clearTimeout(timer);
   }, []);
-
-  // Format index prices for the Line component
-  const formattedIndexPrices = useMemo(() => {
-    return data.indexPrices.map((price) => ({
-      endTimestamp: price.timestamp,
-      price: price.price,
-    }));
-  }, [data.indexPrices]);
 
   return (
     <Flex flex={1} position="relative">
