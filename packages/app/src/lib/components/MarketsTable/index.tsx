@@ -9,12 +9,13 @@ import {
   Text,
   Button,
   useToast,
-  useQuery,
 } from '@chakra-ui/react';
+import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import type React from 'react';
-import { useEffect } from 'react';
+import { useWriteContract } from 'wagmi';
 
+import useFoilDeployment from '../foil/useFoilDeployment';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { useLoading } from '~/lib/context/LoadingContext';
 import { useMarketList, type Market } from '~/lib/context/MarketListProvider';
@@ -53,8 +54,8 @@ const MarketsTable: React.FC = () => {
                     {market.epochs.map((epoch) => (
                       <EpochItem
                         key={epoch.epochId}
-                        epoch={epoch}
                         market={market}
+                        epoch={epoch}
                       />
                     ))}
                   </Tbody>
@@ -74,41 +75,33 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
 }) => {
   const { setIsLoading } = useLoading();
   const toast = useToast();
-  // const latestPriceQueries = markets.flatMap((market) =>
-  //   market.epochs.map((epoch) => ({
-  //     queryKey: [
-  //       'latestPrice',
-  //       `${market.chainId}:${market.address}`,
-  //       epoch.epochId,
-  //     ],
-  //     queryFn: () =>
-  //       getLatestEpochPrice(market.chainId, market.address, epoch.epochId),
-  //     enabled: markets.length !== 0,
-  //   }))
-  // );
+  const { foilData, loading, error } = useFoilDeployment(market?.chainId);
 
-  // const results = useQuery({ queries: latestPriceQueries });
+  const { writeContract: settleWithPrice } = useWriteContract();
 
-  // const getLatestEpochPrice = async (
-  //   chainId: number,
-  //   address: string,
-  //   epochId: number
-  // ) => {
-  //   const response = await fetch(
-  //     `${API_BASE_URL}/prices/index/latest?contractId=${chainId}:${address}&epochId=${epochId}`
-  //   );
-  //   if (!response.ok) {
-  //     throw new Error('Network response was not ok');
-  //   }
-  //   const data = await response.json();
-  //   return data.price;
-  // };
+  const { data: latestPrice, isLoading: isLatestPriceLoading } = useQuery({
+    queryKey: ['latestPrice', `${market?.chainId}:${market?.address}`],
+    queryFn: async () => {
+      const response = await fetch(
+        `${API_BASE_URL}/prices/index/latest?contractId=${market.chainId}:${market.address}&epochId=${epoch.epochId}`
+      );
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      const data = await response.json();
+      return data.price;
+    },
+    enabled: epoch.epochId !== 0 || market !== undefined,
+  });
+  console.log('latestPrice', latestPrice);
+  console.log('isLatestPriceLoading', isLatestPriceLoading);
+  console.log('epoch', epoch, market, market?.chainId, market?.address);
 
-  const handleGetMissing = async (market: Market, epochId: number) => {
+  const handleGetMissing = async (m: Market, epochId: number) => {
     setIsLoading(true);
     try {
       const response = await axios.get(
-        `${API_BASE_URL}/missing-blocks?chainId=${market.chainId}&address=${market.address}&epochId=${epochId}`
+        `${API_BASE_URL}/missing-blocks?chainId=${m.chainId}&address=${m.address}&epochId=${epochId}`
       );
       console.log('response', response);
       toast({
@@ -144,6 +137,27 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
       <Td>{new Date(epoch.startTimestamp * 1000).toLocaleString()}</Td>
       <Td>{new Date(epoch.startTimestamp * 1000).toLocaleString()}</Td>
       <Td>{new Date(epoch.endTimestamp * 1000).toLocaleString()}</Td>
+      <Td>
+        {isLatestPriceLoading ? (
+          'Loading...'
+        ) : (
+          <>
+            <Text>latestPrice</Text>
+            <Button
+              onClick={() => {
+                settleWithPrice({
+                  address: market.address as `0x${string}`,
+                  abi: foilData.abi,
+                  functionName: 'submitSettlementPrice',
+                  args: [epoch.epochId, latestPrice],
+                });
+              }}
+            >
+              Settle with Price
+            </Button>
+          </>
+        )}
+      </Td>
     </Tr>
   );
 };
