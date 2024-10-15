@@ -200,8 +200,7 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
   }, [data.marketPrices]);
 
   const formatYAxisTick = (value: number) => {
-    const ggas = value / 1e9;
-    return ggas.toLocaleString(undefined, {
+    return value.toLocaleString(undefined, {
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
     });
