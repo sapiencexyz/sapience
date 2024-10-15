@@ -43,7 +43,7 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
 
   const renderMarketLinks = (type: 'subscribe' | 'trade') => (
     <VStack align="stretch" mt={2} ml={isMobile ? 4 : 0}>
-      {markets.map((market) => (
+      {markets.filter(m => m.public).map((market) => (
         <Box key={market.id}>
           {type === 'subscribe' && market.nextEpoch && (
             <ChakraLink
@@ -101,7 +101,7 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
         <PopoverContent maxW="180px">
           <PopoverArrow />
           <PopoverBody py={3}>
-            {markets.map((market) => (
+            {markets.filter(m => m.public).map((market) => (
               <Box key={market.id}>
                 {market.nextEpoch && (
                   <ChakraLink

@@ -27,6 +27,7 @@ export interface Market {
     startTimestamp: number;
     endTimestamp: number;
   } | null;
+  public: boolean;
 }
 
 interface MarketListContextType {
