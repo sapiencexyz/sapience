@@ -43,26 +43,28 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
 
   const renderMarketLinks = (type: 'subscribe' | 'trade') => (
     <VStack align="stretch" mt={2} ml={isMobile ? 4 : 0}>
-      {markets.filter(m => m.public).map((market) => (
-        <Box key={market.id}>
-          {type === 'subscribe' && market.nextEpoch && (
-            <ChakraLink
-              as={Link}
-              href={`/markets/${market.chainId}:${market.address}/epochs/${market.nextEpoch.epochId}/subscribe`}
-            >
-              {getChain(market.chainId).name}
-            </ChakraLink>
-          )}
-          {type === 'trade' && market.currentEpoch && (
-            <ChakraLink
-              as={Link}
-              href={`/markets/${market.chainId}:${market.address}/epochs/${market.currentEpoch.epochId}`}
-            >
-              {getChain(market.chainId).name}
-            </ChakraLink>
-          )}
-        </Box>
-      ))}
+      {markets
+        .filter((m) => m.public)
+        .map((market) => (
+          <Box key={market.id}>
+            {type === 'subscribe' && market.nextEpoch && (
+              <ChakraLink
+                as={Link}
+                href={`/markets/${market.chainId}:${market.address}/epochs/${market.nextEpoch.epochId}/subscribe`}
+              >
+                {getChain(market.chainId).name}
+              </ChakraLink>
+            )}
+            {type === 'trade' && market.currentEpoch && (
+              <ChakraLink
+                as={Link}
+                href={`/markets/${market.chainId}:${market.address}/epochs/${market.currentEpoch.epochId}`}
+              >
+                {getChain(market.chainId).name}
+              </ChakraLink>
+            )}
+          </Box>
+        ))}
     </VStack>
   );
 
@@ -101,26 +103,28 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
         <PopoverContent maxW="180px">
           <PopoverArrow />
           <PopoverBody py={3}>
-            {markets.filter(m => m.public).map((market) => (
-              <Box key={market.id}>
-                {market.nextEpoch && (
-                  <ChakraLink
-                    fontSize="sm"
-                    as={Link}
-                    width="100%"
-                    display="block"
-                    borderRadius="md"
-                    px={3}
-                    py={1.5}
-                    _hover={{ bg: 'gray.50' }}
-                    href={`/markets/${market.chainId}:${market.address}/epochs/${market.nextEpoch.epochId}/subscribe`}
-                    onClick={() => setSubscribePopoverOpen(false)}
-                  >
-                    {getChain(market.chainId).name}
-                  </ChakraLink>
-                )}
-              </Box>
-            ))}
+            {markets
+              .filter((m) => m.public)
+              .map((market) => (
+                <Box key={market.id}>
+                  {market.nextEpoch && (
+                    <ChakraLink
+                      fontSize="sm"
+                      as={Link}
+                      width="100%"
+                      display="block"
+                      borderRadius="md"
+                      px={3}
+                      py={1.5}
+                      _hover={{ bg: 'gray.50' }}
+                      href={`/markets/${market.chainId}:${market.address}/epochs/${market.nextEpoch.epochId}/subscribe`}
+                      onClick={() => setSubscribePopoverOpen(false)}
+                    >
+                      {getChain(market.chainId).name}
+                    </ChakraLink>
+                  )}
+                </Box>
+              ))}
           </PopoverBody>
         </PopoverContent>
       </Popover>
