@@ -9,9 +9,10 @@ import {
   Tooltip,
 } from '@chakra-ui/react';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
+import { useRouter } from 'next/navigation';
 import { useState, useEffect, useContext, useMemo } from 'react';
 import type { AbiFunction, WriteContractErrorType } from 'viem';
-import { formatUnits, parseUnits, zeroAddress } from 'viem';
+import { decodeEventLog, formatUnits, parseUnits, zeroAddress } from 'viem';
 import {
   useWaitForTransactionReceipt,
   useWriteContract,
@@ -59,6 +60,8 @@ export default function AddEditTrade() {
   const { isConnected, address } = account;
   const { setIsLoading } = useLoading();
   const isEdit = nftId > 0;
+
+  const router = useRouter();
 
   const {
     address: marketAddress,
@@ -244,20 +247,47 @@ export default function AddEditTrade() {
     },
   });
 
-  const { isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+  const { isSuccess: isConfirmed, data: transactionReceipt } =
+    useWaitForTransactionReceipt({ hash });
   const { isSuccess: approveSuccess } = useWaitForTransactionReceipt({
     hash: approveHash,
   });
 
   useEffect(() => {
     if (isConfirmed) {
-      renderToast(
-        toast,
-        `We've ${nftId === 0 ? 'created' : 'updated'} your position for you.`
-      );
-      resetAfterSuccess();
+      if (isEdit) {
+        renderToast(toast, `We've updated your position for you.`);
+        resetAfterSuccess();
+      } else {
+        for (const log of transactionReceipt.logs) {
+          try {
+            const event = decodeEventLog({
+              abi: foilData.abi,
+              data: log.data,
+              topics: log.topics,
+            });
+
+            if ((event as any).eventName === 'TraderPositionCreated') {
+              const nftId = (event as any).args.positionId.toString();
+              router.push(
+                `/markets/${chainId}:${marketAddress}/positions/${nftId}`
+              );
+              renderToast(
+                toast,
+                `Your position has been created as position ${nftId}`
+              );
+              resetAfterSuccess();
+              return;
+            }
+          } catch (error) {
+            // This log was not for the TraderPositionCreated event, continue to next log
+          }
+        }
+        renderToast(toast, `We've created your position for you.`);
+        resetAfterSuccess();
+      }
     }
-  }, [isConfirmed]);
+  }, [isConfirmed, transactionReceipt]);
 
   useEffect(() => {
     if (approveSuccess) {
