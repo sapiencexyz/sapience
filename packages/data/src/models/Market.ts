@@ -7,7 +7,7 @@ import {
   OneToMany,
 } from "typeorm";
 import { Epoch } from "./Epoch";
-import { IndexPrice } from "./IndexPrice";
+import { ResourcePrice } from "./ResourcePrice";
 import { EpochParams } from "./EpochParams";
 import { Event } from "./Event";
 
@@ -19,8 +19,8 @@ export class Market {
   })
   epochs: Epoch[];
 
-  @OneToMany(() => IndexPrice, (price) => price.market)
-  prices: IndexPrice[];
+  @OneToMany(() => ResourcePrice, (price) => price.market)
+  resourcePrices: ResourcePrice[];
 
   @OneToMany(() => Event, (event) => event.market)
   events: Event[];

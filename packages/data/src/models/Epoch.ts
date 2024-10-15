@@ -8,7 +8,7 @@ import {
   Unique,
 } from "typeorm";
 import { Market } from "./Market";
-import { Event } from "./Event";
+import { IndexPrice } from "./IndexPrice";
 import { Position } from "./Position";
 import { NUMERIC_PRECISION } from "../constants";
 import { EpochParams } from "./EpochParams";
@@ -22,6 +22,9 @@ export class Epoch {
   @OneToMany(() => Position, (position) => position.epoch)
   positions: Position[];
 
+  @OneToMany(() => IndexPrice, (price) => price.epoch)
+  indexPrices: IndexPrice[];
+
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -31,11 +34,11 @@ export class Epoch {
   @Column()
   epochId: number;
 
-  @Column("varchar", { length: NUMERIC_PRECISION, nullable: true })
-  startTimestamp: string | null;
+  @Column()
+  startTimestamp: number;
 
-  @Column("varchar", { length: NUMERIC_PRECISION, nullable: true })
-  endTimestamp: string | null;
+  @Column()
+  endTimestamp: number;
 
   @Column({
     type: "numeric",

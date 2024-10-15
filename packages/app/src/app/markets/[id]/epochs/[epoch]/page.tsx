@@ -173,9 +173,9 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
     isLoading: isLoadingLpPositions,
   } = useLiquidityPositions();
 
-  const usePrices = () => {
+  const useMarketPrices = () => {
     return useQuery({
-      queryKey: ['prices', `${chainId}:${marketAddress}`],
+      queryKey: ['market-prices', `${chainId}:${marketAddress}`],
       queryFn: async () => {
         const response = await fetch(
           `${API_BASE_URL}/prices/chart-data?contractId=${chainId}:${marketAddress}&epochId=${epoch}&timeWindow=${selectedWindow}`
@@ -188,17 +188,43 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
       refetchInterval: 60000,
     });
   };
+
+  const useIndexPrices = () => {
+    return useQuery({
+      queryKey: ['index-prices', `${chainId}:${marketAddress}`],
+      queryFn: async () => {
+        const response = await fetch(
+          `${API_BASE_URL}/prices/index?contractId=${chainId}:${marketAddress}&epochId=${epoch}&timeWindow=${selectedWindow}`
+        );
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      },
+      refetchInterval: 60000,
+    });
+  };
+
   const {
-    data: prices,
+    data: marketPrices,
     error: usePricesError,
     isLoading: isLoadingPrices,
     refetch: refetchPrices,
-  } = usePrices();
+  } = useMarketPrices();
+
+  const {
+    data: indexPrices,
+    error: useIndexPricesError,
+    isLoading: isLoadingIndexPrices,
+    refetch: refetchIndexPrices,
+  } = useIndexPrices();
 
   useEffect(() => {
     refetchVolume();
     refetchPrices();
+    refetchIndexPrices();
   }, [selectedWindow]);
+
   return (
     <MarketProvider
       chainId={Number(chainId)}
@@ -234,7 +260,13 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
 
               <Flex flex={1} id="chart-flex" minHeight={0}>
                 {chartType === 'Price' ? (
-                  <Chart activeWindow={selectedWindow} data={prices || []} />
+                  <Chart
+                    activeWindow={selectedWindow}
+                    data={{
+                      marketPrices: marketPrices || [],
+                      indexPrices: indexPrices || [],
+                    }}
+                  />
                 ) : (
                   <VolumeChart
                     data={volume || []}

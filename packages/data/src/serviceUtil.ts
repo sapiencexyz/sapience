@@ -9,6 +9,7 @@ import dataSource from "./db";
 import { Transaction } from "./models/Transaction";
 import { TimeWindow } from "./interfaces";
 import { formatUnits } from "viem";
+import { IndexPrice } from "./models/IndexPrice";
 
 class EntityGroup<T> {
   startTimestamp: number;
@@ -72,6 +73,32 @@ export async function getMarketPricesInTimeRange(
       endTimestamp,
     })
     .orderBy("marketPrice.timestamp", "ASC")
+    .getMany();
+}
+
+
+export async function getIndexPricesInTimeRange(
+  startTimestamp: number,
+  endTimestamp: number,
+  chainId: string,
+  address: string,
+  epochId: string
+) {
+  const indexPriceRepository = dataSource.getRepository(IndexPrice);
+  return await indexPriceRepository
+    .createQueryBuilder("indexPrice")
+    .innerJoinAndSelect("indexPrice.epoch", "epoch")
+    .innerJoinAndSelect("epoch.market", "market")
+    .where("market.chainId = :chainId", { chainId })
+    .andWhere("market.address = :address", { address })
+    .andWhere("epoch.epochId = :epochId", { epochId })
+    .andWhere("CAST(indexPrice.timestamp AS bigint) >= :startTimestamp", {
+      startTimestamp,
+    })
+    .andWhere("CAST(indexPrice.timestamp AS bigint) <= :endTimestamp", {
+      endTimestamp,
+    })
+    .orderBy("indexPrice.timestamp", "ASC")
     .getMany();
 }
 
@@ -215,4 +242,19 @@ function groupEntitiesByTimeWindow<T>(
     }
   });
   return result;
+}
+
+export function groupIndexPricesByTimeWindow(
+  indexPrices: IndexPrice[],
+  window: TimeWindow
+): EntityGroup<IndexPrice>[] {
+  const dataFormatter = (indexPrice: IndexPrice) => {
+    indexPrice.value = formatUnits(BigInt(indexPrice.value), TOKEN_PRECISION);
+  };
+  return groupEntitiesByTimeWindow(
+    indexPrices,
+    window,
+    (indexPrice) => Number(indexPrice.timestamp) * 1000,
+    dataFormatter
+  );
 }
