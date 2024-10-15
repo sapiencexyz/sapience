@@ -29,6 +29,8 @@ export const BLANK_MARKET: MarketContextType = {
   liquidity: 0,
   owner: '',
   stEthPerToken: 0,
+  useMarketUnits: false,
+  setUseMarketUnits: () => {},
   epochParams: {
     assertionLiveness: BigInt(0),
     baseAssetMinPriceTick: 0,

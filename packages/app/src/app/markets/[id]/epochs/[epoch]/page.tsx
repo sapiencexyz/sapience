@@ -11,9 +11,12 @@ import {
   TabPanels,
   Tabs,
   HStack,
+  IconButton,
+  Tooltip,
 } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
+import { BsArrowLeftRight } from 'react-icons/bs';
 
 import Chart from '~/lib/components/chart';
 import ChartSelector from '~/lib/components/ChartSelector';
@@ -21,6 +24,7 @@ import DepthChart from '~/lib/components/DepthChart';
 import EpochHeader from '~/lib/components/foil/epochHeader';
 import LiquidityPositionsTable from '~/lib/components/foil/liquidityPositionsTable';
 import MarketSidebar from '~/lib/components/foil/marketSidebar';
+import MarketUnitsToggle from '~/lib/components/foil/marketUnitsToggle';
 import Stats from '~/lib/components/foil/stats';
 import TraderPositionsTable from '~/lib/components/foil/traderPositionsTable';
 import TransactionTable from '~/lib/components/foil/transactionTable';
@@ -292,6 +296,7 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
                 flexShrink={0}
               >
                 <Box>
+                  <MarketUnitsToggle />
                   {chartType !== ChartType.LIQUIDITY && (
                     <VolumeWindowSelector
                       selectedWindow={selectedWindow}

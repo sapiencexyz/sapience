@@ -16,8 +16,15 @@ import { MarketContext } from '~/lib/context/MarketProvider';
 import NumberDisplay from './numberDisplay';
 
 const Stats = () => {
-  const { startTime, endTime, averagePrice, pool, liquidity } =
-    useContext(MarketContext);
+  const {
+    startTime,
+    endTime,
+    averagePrice,
+    pool,
+    liquidity,
+    useMarketUnits,
+    stEthPerToken,
+  } = useContext(MarketContext);
 
   let relativeTime = '';
   let formattedTime = '';
@@ -36,6 +43,10 @@ const Stats = () => {
     formattedTime = format(date, 'PPpp');
     endTimeString = format(date, 'PPpp');
   }
+
+  const convertToGwei = (value: number) => {
+    return (value * (stEthPerToken || 1)) / 1e9;
+  };
 
   return (
     <Flex alignItems="center" direction="column" width="100%" pb={6}>
@@ -58,9 +69,13 @@ const Stats = () => {
             </Tooltip>
           </StatLabel>
           <StatNumber>
-            <NumberDisplay value={averagePrice} />{' '}
+            <NumberDisplay
+              value={
+                useMarketUnits ? averagePrice : convertToGwei(averagePrice)
+              }
+            />{' '}
             <Text fontSize="sm" as="span">
-              Ggas/wstETH
+              {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
             </Text>
           </StatNumber>
           {/*
@@ -84,9 +99,17 @@ const Stats = () => {
             </Tooltip>
           </StatLabel>
           <StatNumber>
-            <NumberDisplay value={pool?.token0Price.toSignificant(18) || 0} />{' '}
+            <NumberDisplay
+              value={
+                useMarketUnits
+                  ? pool?.token0Price.toSignificant(18) || 0
+                  : convertToGwei(
+                      Number(pool?.token0Price.toSignificant(18) || 0)
+                    )
+              }
+            />{' '}
             <Text fontSize="sm" as="span">
-              Ggas/wstETH
+              {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
             </Text>
           </StatNumber>
           {/*

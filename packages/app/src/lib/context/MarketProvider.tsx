@@ -44,6 +44,8 @@ export interface MarketContextType {
   owner: string;
   refetchUniswapData: () => void;
   stEthPerToken: number | undefined;
+  useMarketUnits: boolean;
+  setUseMarketUnits: (useMarketUnits: boolean) => void;
 }
 
 interface MarketProviderProps {
@@ -65,6 +67,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
 }) => {
   const toast = useToast();
   const [state, setState] = useState<MarketContextType>(BLANK_MARKET);
+  const [useMarketUnits, setUseMarketUnits] = useState(false);
 
   const { foilData } = useFoilDeployment(chainId);
 
@@ -138,8 +141,10 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
       address,
       epoch,
       chainId,
+      useMarketUnits,
+      setUseMarketUnits,
     }));
-  }, [chainId, address, epoch]);
+  }, [chainId, address, epoch, useMarketUnits, setUseMarketUnits]);
 
   // This will need to be abstracted
   const stEthPerTokenResult = useReadContract({
