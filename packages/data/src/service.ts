@@ -71,9 +71,13 @@ const startServer = async () => {
   });
 
   app.get("/markets", async (req, res) => {
+    const showAll = 'showAll' in req.query;
+
     try {
+      const whereClause = showAll ? {} : { public: true };
+
       const markets = await marketRepository.find({
-        where: { public: true },
+        where: whereClause,
         relations: ["epochs"],
       });
 
