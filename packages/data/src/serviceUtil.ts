@@ -248,13 +248,9 @@ export function groupIndexPricesByTimeWindow(
   indexPrices: IndexPrice[],
   window: TimeWindow
 ): EntityGroup<IndexPrice>[] {
-  const dataFormatter = (indexPrice: IndexPrice) => {
-    indexPrice.value = formatUnits(BigInt(indexPrice.value), TOKEN_PRECISION);
-  };
   return groupEntitiesByTimeWindow(
     indexPrices,
     window,
-    (indexPrice) => Number(indexPrice.timestamp) * 1000,
-    dataFormatter
+    (indexPrice) => Number(indexPrice.timestamp) * 1000
   );
 }
