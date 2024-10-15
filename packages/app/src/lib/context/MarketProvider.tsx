@@ -173,6 +173,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
   }, [stEthPerTokenResult.data]);
 
   useEffect(() => {
+    console.log('price =', price);
     if (price && stEthPerTokenResult.data) {
       const stEthPerToken = Number(
         gweiToEther(stEthPerTokenResult.data as bigint)

@@ -1,5 +1,9 @@
 import "reflect-metadata";
-import dataSource, { initializeDataSource, renderJobRepository } from "./db"; /// !IMPORTANT: Keep as top import to prevent issues with db initialization
+import dataSource, {
+  indexPriceRepository,
+  initializeDataSource,
+  renderJobRepository,
+} from "./db"; /// !IMPORTANT: Keep as top import to prevent issues with db initialization
 import cors from "cors";
 import { ResourcePrice } from "./models/ResourcePrice";
 import { Position } from "./models/Position";
@@ -147,16 +151,14 @@ const startServer = async () => {
 
   // Get index prices for a specified epoch and time window
   app.get("/prices/index", async (req, res) => {
-    const { contractId, epochId, timeWindow } = req.query;
+    let { contractId, epochId, timeWindow } = req.query;
 
-    if (
-      typeof contractId !== "string" ||
-      typeof epochId !== "string" ||
-      typeof timeWindow !== "string"
-    ) {
+    if (typeof contractId !== "string" || typeof epochId !== "string") {
       return res.status(400).json({ error: "Invalid request parameters" });
     }
-
+    if (!timeWindow) {
+      timeWindow = TimeWindow.W;
+    }
     const [chainId, address] = contractId.split(":");
 
     try {
@@ -210,10 +212,17 @@ const startServer = async () => {
         timeWindow as TimeWindow
       );
 
-      const chartData = groupedPrices.map((group) => ({
-        timestamp: group.startTimestamp,
-        price: Number(group.entities[group.entities.length - 1].value),
-      }));
+      console.log("grouped prices =", groupedPrices);
+
+      const chartData = groupedPrices.map((group) => {
+        const lastIdx = group.entities.length - 1;
+        const price =
+          lastIdx >= 0 ? Number(group.entities[lastIdx].value) : "0";
+        return {
+          timestamp: group.startTimestamp,
+          price,
+        };
+      });
 
       res.json(chartData);
     } catch (error) {
@@ -475,10 +484,7 @@ const startServer = async () => {
       const resourcePrices = await resourcePriceRepository.find({
         where: {
           market: { id: market.id },
-          blockNumber: Between(
-            startBlockNumber,
-            endBlockNumber
-          ),
+          blockNumber: Between(startBlockNumber, endBlockNumber),
         },
         select: ["blockNumber"],
       });
