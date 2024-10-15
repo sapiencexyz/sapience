@@ -21,6 +21,7 @@ import {
 
 import { DECIMAL_PRECISION_DISPLAY } from '~/lib/constants/constants';
 import type { VolumeChartData, TimeWindow } from '~/lib/interfaces/interfaces';
+import { turquoise } from '~/lib/styles/theme/colors';
 import { formatXAxisTick, getXTicksToShow } from '~/lib/util/chartUtil';
 import { getDisplayTextForVolumeWindow } from '~/lib/util/util';
 
@@ -93,7 +94,7 @@ const CustomTooltip: React.FC<
   );
 };
 
-const VolumeChart = ({ data, color = '#56B2A4', activeWindow }: ChartProps) => {
+const VolumeChart = ({ data, color = turquoise, activeWindow }: ChartProps) => {
   const volumeOverTimeframe = useMemo(() => {
     return data.reduce((sum, item) => {
       return sum + item.volume;

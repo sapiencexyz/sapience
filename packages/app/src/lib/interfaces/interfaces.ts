@@ -51,7 +51,7 @@ export enum TimeWindow {
 export enum ChartType {
   PRICE = 'Price',
   VOLUME = 'Volume',
-  // LIQUIDITY = 'Liquidity',
+  LIQUIDITY = 'Liquidity',
 }
 
 export interface VolumeChartData {

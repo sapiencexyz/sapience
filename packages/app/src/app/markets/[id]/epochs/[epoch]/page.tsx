@@ -17,6 +17,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import Chart from '~/lib/components/chart';
 import ChartSelector from '~/lib/components/ChartSelector';
+import DepthChart from '~/lib/components/DepthChart';
 import EpochHeader from '~/lib/components/foil/epochHeader';
 import LiquidityPositionsTable from '~/lib/components/foil/liquidityPositionsTable';
 import MarketSidebar from '~/lib/components/foil/marketSidebar';
@@ -173,6 +174,27 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
     isLoading: isLoadingLpPositions,
   } = useLiquidityPositions();
 
+  const renderChart = () => {
+    if (chartType === ChartType.PRICE) {
+      return (
+        <Chart
+          activeWindow={selectedWindow}
+          data={{
+            marketPrices: marketPrices || [],
+            indexPrices: indexPrices || [],
+          }}
+        />
+      );
+    }
+    if (chartType === ChartType.VOLUME) {
+      return <VolumeChart data={volume || []} activeWindow={selectedWindow} />;
+    }
+    if (chartType === ChartType.LIQUIDITY) {
+      return <DepthChart />;
+    }
+    return null;
+  };
+
   const useMarketPrices = () => {
     return useQuery({
       queryKey: ['market-prices', `${chainId}:${marketAddress}`],
@@ -259,20 +281,7 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
               </Box>
 
               <Flex flex={1} id="chart-flex" minHeight={0}>
-                {chartType === 'Price' ? (
-                  <Chart
-                    activeWindow={selectedWindow}
-                    data={{
-                      marketPrices: marketPrices || [],
-                      indexPrices: indexPrices || [],
-                    }}
-                  />
-                ) : (
-                  <VolumeChart
-                    data={volume || []}
-                    activeWindow={selectedWindow}
-                  />
-                )}
+                {renderChart()}
               </Flex>
               <HStack
                 justifyContent="space-between"
@@ -283,10 +292,12 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
                 flexShrink={0}
               >
                 <Box>
-                  <VolumeWindowSelector
-                    selectedWindow={selectedWindow}
-                    setSelectedWindow={setSelectedWindow}
-                  />
+                  {chartType !== ChartType.LIQUIDITY && (
+                    <VolumeWindowSelector
+                      selectedWindow={selectedWindow}
+                      setSelectedWindow={setSelectedWindow}
+                    />
+                  )}
                 </Box>
                 <ChartSelector
                   chartType={chartType}
