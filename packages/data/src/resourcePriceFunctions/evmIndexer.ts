@@ -1,5 +1,5 @@
-import { indexPriceRepository } from "../db";
-import { IndexPrice } from "../models/IndexPrice";
+import { resourcePriceRepository } from "../db";
+import { ResourcePrice } from "../models/ResourcePrice";
 import { type Market } from "../models/Market";
 import { getBlockByTimestamp, getProviderForChain } from "../helpers";
 import { Block, type PublicClient } from "viem";
@@ -20,12 +20,12 @@ class EvmIndexer {
       return;
     }
 
-    const price = new IndexPrice();
+    const price = new ResourcePrice();
     price.market = market;
     price.timestamp = block.timestamp.toString();
     price.value = value.toString();
     price.blockNumber = block.number.toString();
-    await indexPriceRepository.upsert(price, ["market", "timestamp"]);
+    await resourcePriceRepository.upsert(price, ["market", "timestamp"]);
   }
 
   async indexBlockPriceFromTimestamp(

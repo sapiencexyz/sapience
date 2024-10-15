@@ -7,10 +7,10 @@ import {
   Unique,
   ManyToOne,
 } from "typeorm";
-import { Market } from "./Market";
+import { Epoch } from "./Epoch";
 
 @Entity()
-@Unique(["market", "timestamp"])
+@Unique(["epoch", "timestamp"])
 export class IndexPrice {
   @PrimaryGeneratedColumn()
   id: number;
@@ -18,11 +18,8 @@ export class IndexPrice {
   @CreateDateColumn()
   createdAt: Date;
 
-  @ManyToOne(() => Market, (market) => market.prices)
-  market: Market;
-
-  @Column({ type: "bigint" })
-  blockNumber: string;
+  @ManyToOne(() => Epoch, (epoch) => epoch.indexPrices)
+  epoch: Epoch;
 
   @Column({ type: "bigint" })
   timestamp: string;

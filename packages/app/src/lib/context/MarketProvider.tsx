@@ -177,11 +177,11 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
         gweiToEther(stEthPerTokenResult.data as bigint)
       );
 
-      const averageIndexPriceinWstEth = price.average / stEthPerToken;
+      const averageResourcePriceinWstEth = price.average / stEthPerToken;
 
       setState((currentState) => ({
         ...currentState,
-        averagePrice: averageIndexPriceinWstEth,
+        averagePrice: averageResourcePriceinWstEth,
         stEthPerToken,
       }));
     }

@@ -1,7 +1,7 @@
 import "reflect-metadata";
 import dataSource, { initializeDataSource, renderJobRepository } from "./db"; /// !IMPORTANT: Keep as top import to prevent issues with db initialization
 import cors from "cors";
-import { IndexPrice } from "./models/IndexPrice";
+import { ResourcePrice } from "./models/ResourcePrice";
 import { Position } from "./models/Position";
 import { Market } from "./models/Market";
 import express from "express";
@@ -21,7 +21,7 @@ import {
 import { TimeWindow } from "./interfaces";
 import { formatDbBigInt } from "./helpers";
 import { getProviderForChain, getBlockByTimestamp } from "./helpers";
-import { indexPriceRepository, marketRepository, epochRepository } from "./db";
+import { resourcePriceRepository, marketRepository, epochRepository } from "./db";
 import { reindexMarket } from "./worker";
 import dotenv from "dotenv";
 import path from "path";
@@ -36,7 +36,7 @@ const startServer = async () => {
   await initializeDataSource();
   const positionRepository = dataSource.getRepository(Position);
   const epochRepository = dataSource.getRepository(Epoch);
-  const priceRepository = dataSource.getRepository(IndexPrice);
+  const priceRepository = dataSource.getRepository(ResourcePrice);
   const marketRepository = dataSource.getRepository(Market);
   const transactionRepository = dataSource.getRepository(Transaction);
 
@@ -481,8 +481,8 @@ const startServer = async () => {
       const startBlockNumber = Number(startBlock.number);
       const endBlockNumber = Number(endBlock.number);
 
-      // Retrieve all indexed block numbers within the range from the IndexPrice repository
-      const indexPrices = await indexPriceRepository.find({
+      // Retrieve all indexed block numbers within the range from the ResourcePrice repository
+      const resourcePrices = await resourcePriceRepository.find({
         where: {
           market: { id: market.id },
           blockNumber: Between(
@@ -494,7 +494,7 @@ const startServer = async () => {
       });
 
       const existingBlockNumbersSet = new Set(
-        indexPrices.map((ip) => Number(ip.blockNumber))
+        resourcePrices.map((ip) => Number(ip.blockNumber))
       );
 
       // Find missing block numbers within the range
