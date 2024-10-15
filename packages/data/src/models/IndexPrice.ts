@@ -21,8 +21,8 @@ export class IndexPrice {
   @ManyToOne(() => Epoch, (epoch) => epoch.indexPrices)
   epoch: Epoch;
 
-  @Column({ type: "bigint" })
-  timestamp: string;
+  @Column()
+  timestamp: number;
 
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
   value: string;

@@ -24,11 +24,11 @@ export class ResourcePrice {
   @ManyToOne(() => Market, (market) => market.resourcePrices)
   market: Market;
 
-  @Column({ type: "bigint" })
-  blockNumber: string;
+  @Column()
+  blockNumber: number;
 
-  @Column({ type: "bigint" })
-  timestamp: string;
+  @Column()
+  timestamp: number;
 
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
   value: string;

@@ -34,11 +34,11 @@ export class Epoch {
   @Column()
   epochId: number;
 
-  @Column("varchar", { length: NUMERIC_PRECISION, nullable: true })
-  startTimestamp: string | null;
+  @Column()
+  startTimestamp: number;
 
-  @Column("varchar", { length: NUMERIC_PRECISION, nullable: true })
-  endTimestamp: string | null;
+  @Column()
+  endTimestamp: number;
 
   @Column({
     type: "numeric",
