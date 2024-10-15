@@ -8,7 +8,6 @@ import express from "express";
 import { Between } from "typeorm";
 import { Transaction } from "./models/Transaction";
 import { Epoch } from "./models/Epoch";
-import { MarketPrice } from "./models/MarketPrice";
 import { formatUnits } from "viem";
 import { TOKEN_PRECISION } from "./constants";
 import {
@@ -21,8 +20,7 @@ import {
 import { TimeWindow } from "./interfaces";
 import { formatDbBigInt } from "./helpers";
 import { getProviderForChain, getBlockByTimestamp } from "./helpers";
-import { resourcePriceRepository, marketRepository, epochRepository } from "./db";
-import { reindexMarket } from "./worker";
+import { resourcePriceRepository } from "./db";
 import dotenv from "dotenv";
 import path from "path";
 import { RenderJob } from "./models/RenderJob";
@@ -147,89 +145,81 @@ const startServer = async () => {
     }
   });
 
-  // Get average price over a specified time period filtered by market
-  app.get("/prices/average", async (req, res) => {
-    const { contractId, epochId } = req.query;
-    const [chainId, address] = (contractId as string).split(":");
+  // Get index prices for a specified epoch and time window
+  app.get("/prices/index", async (req, res) => {
+    const { contractId, epochId, timeWindow } = req.query;
 
-    // Find the market
-    const market = await marketRepository.findOne({
-      where: {
-        chainId: Number(chainId),
-        address: address,
-      },
-    });
-
-    if (!market) {
-      return res.status(404).json({ error: "Market not found" });
+    if (
+      typeof contractId !== "string" ||
+      typeof epochId !== "string" ||
+      typeof timeWindow !== "string"
+    ) {
+      return res.status(400).json({ error: "Invalid request parameters" });
     }
 
-    // Find the epoch within the market
-    const epoch = await epochRepository.findOne({
-      where: {
-        market: { id: market.id },
-        epochId: Number(epochId),
-      },
-    });
+    const [chainId, address] = contractId.split(":");
 
-    if (!epoch) {
-      return res.status(404).json({ error: "Epoch not found" });
-    }
-
-    const startTimestamp = epoch.startTimestamp;
-    const endTimestamp = epoch.endTimestamp;
-
-    // Construct the where clause
-    const where: any = {
-      market: { id: market.id },
-    };
-
-    if (startTimestamp && endTimestamp) {
-      where.timestamp = Between(startTimestamp, endTimestamp);
-    }
-
-    const prices = await priceRepository.find({
-      where,
-      order: { timestamp: "ASC" },
-    });
-
-    if (prices.length === 0) {
-      return res.status(404).json({
-        error: "No data found for the specified range and market",
+    try {
+      const market = await marketRepository.findOne({
+        where: {
+          chainId: Number(chainId),
+          address: address,
+        },
       });
+
+      if (!market) {
+        return res.status(404).json({ error: "Market not found" });
+      }
+
+      const epoch = await epochRepository.findOne({
+        where: {
+          market: { id: market.id },
+          epochId: Number(epochId),
+        },
+      });
+
+      if (!epoch) {
+        return res.status(404).json({ error: "Epoch not found" });
+      }
+
+      const endTimestamp = Math.min(
+        Number(epoch.endTimestamp),
+        Math.floor(Date.now() / 1000)
+      );
+      const startTimestamp = Math.max(
+        Number(epoch.startTimestamp),
+        getStartTimestampFromTimeWindow(timeWindow as TimeWindow)
+      );
+
+      const indexPrices = await getMarketPricesInTimeRange(
+        startTimestamp,
+        endTimestamp,
+        chainId,
+        address,
+        epochId
+      );
+
+      if (indexPrices.length === 0) {
+        return res.status(404).json({
+          error: "No price data found for the specified epoch and time window",
+        });
+      }
+
+      const groupedPrices = groupMarketPricesByTimeWindow(
+        indexPrices,
+        timeWindow as TimeWindow
+      );
+
+      const chartData = groupedPrices.map((group) => ({
+        timestamp: group.startTimestamp,
+        price: Number(group.entities[group.entities.length - 1].value),
+      }));
+
+      res.json(chartData);
+    } catch (error) {
+      console.error("Error fetching index prices:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
-
-    let totalWeight = 0n;
-    let weightedSum = 0n;
-
-    for (let i = 0; i < prices.length - 1; i++) {
-      const currentPrice = prices[i];
-      const nextPrice = prices[i + 1];
-      const timeDiff =
-        BigInt(nextPrice.timestamp) - BigInt(currentPrice.timestamp);
-
-      totalWeight += timeDiff;
-      weightedSum += BigInt(currentPrice.value) * timeDiff;
-    }
-
-    // Handle the last price point
-    const lastPrice = prices[prices.length - 1];
-    const endTime = endTimestamp
-      ? BigInt(endTimestamp)
-      : BigInt(lastPrice.timestamp);
-    const timeDiff = endTime - BigInt(lastPrice.timestamp);
-
-    totalWeight += timeDiff;
-    weightedSum += BigInt(lastPrice.value) * timeDiff;
-
-    // prevent divide by zero
-    if (totalWeight === 0n) {
-      totalWeight = 1n;
-    }
-
-    const weightedAverage = Number(weightedSum / totalWeight);
-
-    res.json({ average: weightedAverage });
   });
 
   app.get("/positions", async (req, res) => {
