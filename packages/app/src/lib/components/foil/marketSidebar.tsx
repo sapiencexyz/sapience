@@ -10,6 +10,7 @@ import {
 } from '@chakra-ui/react';
 import { useContext, useState } from 'react';
 
+import { AddEditPositionProvider } from '~/lib/context/AddEditPositionContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
 
 import LiquidityPosition from './liquidityPosition';
@@ -48,41 +49,43 @@ export default function MarketSidebar() {
   };
 
   return (
-    <Box
-      height="100%"
-      border="1px solid"
-      borderColor="gray.300"
-      borderRadius="md"
-      w="100%"
-      flex={1}
-      display="flex"
-      flexDirection="column"
-    >
-      {expired ? (
-        <Settle />
-      ) : (
-        <Tabs
-          isFitted
-          display="flex"
-          flexDirection="column"
-          height="100%"
-          index={tabIndex}
-          onChange={(index) => setTabIndex(index)}
-        >
-          <TabList>
-            <Tab pt={4}>Trade</Tab>
-            <Tab pt={4}>Provide&nbsp;Liquidity</Tab>
-          </TabList>
-          <TabPanels flex={1} overflow="auto">
-            <TabPanel p={6}>
-              <TraderPosition showTraderConversionAlert />
-            </TabPanel>
-            <TabPanel p={6}>
-              <LiquidityPosition handleTabChange={handleTabChange} />
-            </TabPanel>
-          </TabPanels>
-        </Tabs>
-      )}
-    </Box>
+    <AddEditPositionProvider>
+      <Box
+        height="100%"
+        border="1px solid"
+        borderColor="gray.300"
+        borderRadius="md"
+        w="100%"
+        flex={1}
+        display="flex"
+        flexDirection="column"
+      >
+        {expired ? (
+          <Settle />
+        ) : (
+          <Tabs
+            isFitted
+            display="flex"
+            flexDirection="column"
+            height="100%"
+            index={tabIndex}
+            onChange={(index) => setTabIndex(index)}
+          >
+            <TabList>
+              <Tab pt={4}>Trade</Tab>
+              <Tab pt={4}>Provide&nbsp;Liquidity</Tab>
+            </TabList>
+            <TabPanels flex={1} overflow="auto">
+              <TabPanel p={6}>
+                <TraderPosition showTraderConversionAlert />
+              </TabPanel>
+              <TabPanel p={6}>
+                <LiquidityPosition handleTabChange={handleTabChange} />
+              </TabPanel>
+            </TabPanels>
+          </Tabs>
+        )}
+      </Box>
+    </AddEditPositionProvider>
   );
 }

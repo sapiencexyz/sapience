@@ -60,7 +60,10 @@ export default function Settle() {
 
   useEffect(() => {
     if (positionData) {
-      setWithdrawableCollateral(BigInt((positionData as any).collateral));
+      console.log('POSITION DATA', positionData);
+      setWithdrawableCollateral(
+        BigInt((positionData as any).depositedCollateralAmount)
+      );
     }
   }, [positionData]);
 
