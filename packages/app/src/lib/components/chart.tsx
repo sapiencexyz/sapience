@@ -42,6 +42,8 @@ const CustomBarShape: React.FC<{
   chartHeight,
   gridOffsetFromParent,
 }) => {
+  if (!payload.close && !payload.open && !payload.high && !payload.low)
+    return null;
   const candleColor = payload.open < payload.close ? greenColor : redColor;
 
   const scaleY = (value: number) => {
@@ -54,7 +56,7 @@ const CustomBarShape: React.FC<{
   const openY = scaleY(payload.open);
   const closeY = scaleY(payload.close);
 
-  const barHeight = Math.abs(openY - closeY);
+  const barHeight = Math.max(Math.abs(openY - closeY), 1);
   const wickHeight = Math.abs(lowY - highY);
 
   return (
@@ -159,6 +161,15 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
 
   const chartRef = useRef(null);
 
+  const combinedData = useMemo(() => {
+    return data.marketPrices.map((mp, i) => {
+      return {
+        ...mp,
+        price: data.indexPrices[i]?.price || 0,
+      };
+    });
+  }, [data]);
+
   useEffect(() => {
     setLabel(timePeriodLabel);
   }, [timePeriodLabel]);
@@ -250,7 +261,7 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
         onResize={updateChartDimensions}
       >
         <ComposedChart
-          data={data.marketPrices}
+          data={combinedData}
           ref={chartRef}
           margin={{ top: 70, right: 0, bottom: 0, left: 0 }}
           onMouseLeave={() => {
@@ -276,7 +287,6 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
           <Bar dataKey="close" shape={renderShape} />
           <Line
             type="monotone"
-            data={formattedIndexPrices}
             dataKey="price"
             stroke={grayColor}
             strokeWidth={2}
