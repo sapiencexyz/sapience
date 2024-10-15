@@ -111,7 +111,7 @@ export default function Settle() {
   }
 
   return (
-    <Box>
+    <Box p={4}>
       <PositionSelector isLP={null} />
       {withdrawableCollateral > BigInt(0) && (
         <Text mb={4}>

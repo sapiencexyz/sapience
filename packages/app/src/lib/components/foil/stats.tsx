@@ -24,7 +24,8 @@ const Stats = () => {
   if (endTime) {
     const dateMilliseconds = Number(endTime) * 1000;
     const date = new Date(dateMilliseconds);
-    relativeTime = formatDistanceToNow(date);
+    const now = new Date();
+    relativeTime = date < now ? 'Expired' : formatDistanceToNow(date);
     formattedTime = format(date, 'PPpp');
     endTimeString = format(date, 'PPpp');
   }
