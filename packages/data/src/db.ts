@@ -7,6 +7,7 @@ import { Market } from "./models/Market";
 import { Epoch } from "./models/Epoch";
 import { MarketPrice } from "./models/MarketPrice";
 import { RenderJob } from "./models/RenderJob";
+import { IndexPrice } from "./models/IndexPrice";
 
 const isProduction = process.env.NODE_ENV === "production";
 const devDatabase = process.env.POSTGRES_DB;
@@ -30,6 +31,7 @@ const devDataSource: DataSource = new DataSource({
     Epoch,
     MarketPrice,
     RenderJob,
+    IndexPrice,
   ],
 });
 
@@ -47,6 +49,7 @@ const postgresDataSource: DataSource = new DataSource({
     Epoch,
     MarketPrice,
     RenderJob,
+    IndexPrice,
   ],
 });
 
