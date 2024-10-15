@@ -34,7 +34,7 @@ export const upsertIndexPriceFromResourcePrice = async (
     const resourcePrices = await resourcePriceRepository.find({
       where: {
         market: { id: market.id },
-        timestamp: Between(epoch.startTimestamp, epoch.endTimestamp),
+        timestamp: Between(epoch.startTimestamp, resourcePrice.timestamp),
       },
       order: { timestamp: "ASC" },
     });
