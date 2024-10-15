@@ -199,7 +199,13 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
     setYAxisDomain([0, Math.max(...validPrices.map((p) => p.high)) + 1]);
   }, [data.marketPrices]);
 
-  const formatYAxisTick = (value: number) => value.toFixed(2);
+  const formatYAxisTick = (value: number) => {
+    const ggas = value / 1e9;
+    return ggas.toLocaleString(undefined, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
+  };
 
   const renderShape = useMemo(() => {
     return (props: any) => {
