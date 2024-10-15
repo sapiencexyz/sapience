@@ -112,7 +112,7 @@ export default function Settle() {
 
   return (
     <Box>
-      <PositionSelector isLP={false} />
+      <PositionSelector isLP={null} />
       {withdrawableCollateral > BigInt(0) && (
         <Text mb={4}>
           Withdrawable Collateral:{' '}

@@ -5,14 +5,17 @@ import type React from 'react';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 
 interface PositionSelectorProps {
-  isLP: boolean;
+  isLP?: boolean | null;
 }
 
 const PositionSelector: React.FC<PositionSelectorProps> = ({ isLP }) => {
   const { nftId, setNftId, tokenIds, isLps } = useAddEditPosition();
 
   const filteredNfts = useMemo(
-    () => tokenIds.filter((_, index) => (isLP ? isLps[index] : !isLps[index])),
+    () =>
+      isLP === null
+        ? tokenIds
+        : tokenIds.filter((_, index) => (isLP ? isLps[index] : !isLps[index])),
     [tokenIds, isLps, isLP]
   );
 
