@@ -363,9 +363,6 @@ const Subscribe: FC = () => {
 
   return (
     <form onSubmit={handleSubmit}>
-      <Heading size="lg" mb={2}>
-        {marketName} Subscription
-      </Heading>
       <Text mb={4}>
         Enter the amount of gas you expect to use between {formattedStartTime}{' '}
         and {formattedEndTime}.{' '}

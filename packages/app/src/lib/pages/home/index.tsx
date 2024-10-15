@@ -1,27 +1,31 @@
 'use client';
 
-import { ChevronDownIcon } from '@chakra-ui/icons';
+import { ChevronDownIcon, UpDownIcon } from '@chakra-ui/icons';
 import {
   Spinner,
   Box,
   Flex,
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-  PopoverArrow,
-  PopoverBody,
-  Link as ChakraLink,
+  Heading,
+  IconButton,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalCloseButton,
+  ModalBody,
+  VStack,
+  Text,
 } from '@chakra-ui/react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 
 import Subscribe from '~/lib/components/foil/subscribe';
 import { useMarketList } from '~/lib/context/MarketListProvider';
 import { MarketProvider } from '~/lib/context/MarketProvider';
 import { getChain } from '~/lib/util/util';
 
-const Home = () => {
-  const [subscribePopoverOpen, setSubscribePopoverOpen] = useState(false);
+const HomeContent = () => {
+  const [isMarketSelectorOpen, setIsMarketSelectorOpen] = useState(false);
   const { markets, isLoading } = useMarketList();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -68,9 +72,12 @@ const Home = () => {
     router.push(`${window.location.pathname}${query}`);
   };
 
-  const handlePopoverClick = (address: string, chain: number) => {
+  const handleMarketSelectorOpen = () => setIsMarketSelectorOpen(true);
+  const handleMarketSelectorClose = () => setIsMarketSelectorOpen(false);
+
+  const handleMarketSelect = (address: string, chain: number) => {
     updateParams(address, chain);
-    setSubscribePopoverOpen(false);
+    handleMarketSelectorClose();
   };
 
   const marketName =
@@ -79,7 +86,6 @@ const Home = () => {
   if (isLoading) {
     return (
       <Flex m={10} justifyContent="center" alignItems="center" w="100%">
-        Loading Markets...
         <Spinner />
       </Flex>
     );
@@ -93,57 +99,77 @@ const Home = () => {
         justify="center"
         alignItems="center"
       >
-        <Popover
-          trigger="hover"
-          isOpen={subscribePopoverOpen}
-          onOpen={() => setSubscribePopoverOpen(true)}
-          onClose={() => setSubscribePopoverOpen(false)}
-        >
-          <PopoverTrigger>
-            <Box as="span" cursor="pointer" display="flex" alignItems="center">
-              {marketName} <ChevronDownIcon ml={1} />
-            </Box>
-          </PopoverTrigger>
-          <PopoverContent maxW="280px">
-            <PopoverArrow />
-            <PopoverBody py={3}>
-              {markets
-                .filter((m) => m.public)
-                .map((market) => (
-                  <Box key={market.id}>
-                    {market.nextEpoch && (
-                      <ChakraLink
-                        fontSize="sm"
-                        width="100%"
-                        display="block"
-                        borderRadius="md"
-                        px={3}
-                        py={1.5}
-                        _hover={{ bg: 'gray.50' }}
-                        onClick={() =>
-                          handlePopoverClick(market.address, market.chainId)
-                        }
-                      >
-                        {market.name} ({getChain(market.chainId).name})
-                      </ChakraLink>
-                    )}
-                  </Box>
-                ))}
-            </PopoverBody>
-          </PopoverContent>
-        </Popover>
         <Box
           m="auto"
           border="1px solid"
           borderColor="gray.300"
           borderRadius="md"
           p={6}
-          maxWidth="432px"
+          maxWidth="460px"
         >
+          <Flex alignItems="center" mb={2}>
+            <Heading size="lg">
+              {marketName.replace('Market', '')} Subscription
+            </Heading>
+            <IconButton
+              ml="auto"
+              aria-label="Change Market"
+              size="xs"
+              icon={<UpDownIcon />}
+              onClick={handleMarketSelectorOpen}
+            />
+          </Flex>
           <Subscribe />
         </Box>
       </Flex>
+
+      <Modal isOpen={isMarketSelectorOpen} onClose={handleMarketSelectorClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Select Market</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody pt={0} pb={6}>
+            <VStack spacing={2} align="stretch">
+              {markets
+                .filter((m) => m.public)
+                .map((market) => (
+                  <Flex
+                    key={market.id}
+                    justifyContent="space-between"
+                    alignItems="center"
+                    py={2}
+                    px={4}
+                    bg={
+                      market.address === marketAddress
+                        ? 'gray.100'
+                        : 'transparent'
+                    }
+                    borderRadius="md"
+                    cursor="pointer"
+                    onClick={() =>
+                      handleMarketSelect(market.address, market.chainId)
+                    }
+                    _hover={{ bg: 'gray.50' }}
+                  >
+                    <Text fontWeight="bold">{market.name}</Text>
+                    <Text fontSize="sm" color="gray.600">
+                      {getChain(market.chainId).name}
+                    </Text>
+                  </Flex>
+                ))}
+            </VStack>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </MarketProvider>
+  );
+};
+
+const Home = () => {
+  return (
+    <Suspense fallback={<Spinner />}>
+      <HomeContent />
+    </Suspense>
   );
 };
 
