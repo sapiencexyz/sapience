@@ -1,8 +1,5 @@
 import "reflect-metadata";
-import dataSource, {
-  initializeDataSource,
-  renderJobRepository,
-} from "./db"; /// !IMPORTANT: Keep as top import to prevent issues with db initialization
+import dataSource, { initializeDataSource, renderJobRepository } from "./db"; /// !IMPORTANT: Keep as top import to prevent issues with db initialization
 import cors from "cors";
 import { ResourcePrice } from "./models/ResourcePrice";
 import { IndexPrice } from "./models/IndexPrice";
@@ -213,8 +210,6 @@ const startServer = async () => {
         indexPrices,
         timeWindow as TimeWindow
       );
-
-      console.log("grouped prices =", groupedPrices);
 
       const chartData = groupedPrices.map((group) => {
         const lastIdx = group.entities.length - 1;

@@ -215,7 +215,7 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
   // Format index prices for the Line component
   const formattedIndexPrices = useMemo(() => {
     return data.indexPrices.map((price) => ({
-      timestamp: price.timestamp,
+      endTimestamp: price.timestamp,
       price: price.price,
     }));
   }, [data.indexPrices]);
