@@ -34,6 +34,7 @@ import {
 
 import erc20ABI from '../../erc20abi.json';
 import { useLoading } from '~/lib/context/LoadingContext';
+import { useMarketList } from '~/lib/context/MarketListProvider';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import { renderContractErrorToast, renderToast } from '~/lib/util/util';
 
@@ -54,6 +55,7 @@ const Subscribe: FC = () => {
   const currentChainId = useChainId();
   const { switchChain } = useSwitchChain();
   const { connect, connectors } = useConnect();
+  const { markets } = useMarketList();
 
   const {
     address: marketAddress,
@@ -64,11 +66,12 @@ const Subscribe: FC = () => {
     stEthPerToken,
     collateralAssetDecimals,
     collateralAssetTicker,
-    pool,
     refetchUniswapData,
     startTime,
     endTime,
   } = useContext(MarketContext);
+  const marketName =
+    markets.find((m) => m.address === marketAddress)?.name || '';
 
   const toast = useToast();
 
@@ -361,7 +364,7 @@ const Subscribe: FC = () => {
   return (
     <form onSubmit={handleSubmit}>
       <Heading size="lg" mb={2}>
-        Ethereum Gas Subscription
+        {marketName} Subscription
       </Heading>
       <Text mb={4}>
         Enter the amount of gas you expect to use between {formattedStartTime}{' '}
