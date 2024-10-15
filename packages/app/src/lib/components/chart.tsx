@@ -11,9 +11,8 @@ import {
   CartesianGrid,
   ComposedChart,
   Bar,
-  ReferenceLine,
-  Label,
   Tooltip,
+  Line,
 } from 'recharts';
 
 import type { PriceChartData, TimeWindow } from '../interfaces/interfaces';
@@ -213,15 +212,13 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
     return () => clearTimeout(timer);
   }, []);
 
-  const averagePriceLabel = (
-    <Label
-      value={`Average Index Price ${averagePrice}`}
-      position="top"
-      offset={-13}
-      fill={grayColor}
-      fontSize={12}
-    />
-  );
+  // Format index prices for the Line component
+  const formattedIndexPrices = useMemo(() => {
+    return data.indexPrices.map((price) => ({
+      timestamp: price.timestamp,
+      price: price.price,
+    }));
+  }, [data.indexPrices]);
 
   return (
     <Flex flex={1} position="relative">
@@ -277,14 +274,15 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
             content={<CustomTooltip setLabel={setLabel} setValue={setValue} />}
           />
           <Bar dataKey="close" shape={renderShape} />
-          {averagePrice > 0 && (
-            <ReferenceLine
-              y={averagePrice}
-              stroke={grayColor}
-              strokeDasharray="3 3"
-              label={averagePriceLabel}
-            />
-          )}
+          <Line
+            type="monotone"
+            data={formattedIndexPrices}
+            dataKey="price"
+            stroke={grayColor}
+            strokeWidth={2}
+            dot={false}
+            strokeDasharray="5 5"
+          />
         </ComposedChart>
       </ResponsiveContainer>
     </Flex>

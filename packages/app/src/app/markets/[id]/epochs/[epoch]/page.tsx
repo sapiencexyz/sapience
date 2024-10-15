@@ -262,9 +262,7 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
                 {chartType === 'Price' ? (
                   <Chart
                     activeWindow={selectedWindow}
-                    data={{marketPrices, indexPrices}}
-                    isLoading={isLoadingPrices || isLoadingIndexPrices}
-                    error={usePricesError || useIndexPricesError}
+                    data={{ marketPrices, indexPrices }}
                   />
                 ) : (
                   <VolumeChart
