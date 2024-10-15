@@ -9,39 +9,19 @@ import {
   Text,
   Button,
   useToast,
+  useQuery,
 } from '@chakra-ui/react';
 import axios from 'axios';
 import type React from 'react';
-
+import { useEffect } from 'react';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { useLoading } from '~/lib/context/LoadingContext';
 import { useMarketList, type Market } from '~/lib/context/MarketListProvider';
 
 const MarketsTable: React.FC = () => {
   const { markets, isLoading, error } = useMarketList();
-  const { setIsLoading } = useLoading();
-  const toast = useToast();
 
   console.log('markets=', markets);
-
-  const handleGetMissing = async (market: Market, epochId: number) => {
-    setIsLoading(true);
-    try {
-      const response = await axios.get(
-        `${API_BASE_URL}/missing-blocks?chainId=${market.chainId}&address=${market.address}&epochId=${epochId}`
-      );
-      console.log('response', response);
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'There was an issue getting missing blocks.',
-        status: 'error',
-        duration: 9000,
-        isClosable: true,
-      });
-    }
-    setIsLoading(false);
-  };
 
   return (
     <Box overflowX="auto">
@@ -70,27 +50,7 @@ const MarketsTable: React.FC = () => {
                   </Thead>
                   <Tbody>
                     {market.epochs.map((epoch) => (
-                      <Tr key={epoch.id}>
-                        <Td>
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              handleGetMissing(market, epoch.epochId)
-                            }
-                          >
-                            Get Missing Blocks
-                          </Button>
-                        </Td>
-                        <Td>{epoch.epochId}</Td>
-                        <Td>
-                          {new Date(
-                            epoch.startTimestamp * 1000
-                          ).toLocaleString()}
-                        </Td>
-                        <Td>
-                          {new Date(epoch.endTimestamp * 1000).toLocaleString()}
-                        </Td>
-                      </Tr>
+                      <EpochItem key={epoch.epochId} epoch={epoch} />
                     ))}
                   </Tbody>
                 </Table>
@@ -100,6 +60,73 @@ const MarketsTable: React.FC = () => {
         </Tbody>
       </Table>
     </Box>
+  );
+};
+
+const EpochItem: React.FC<{ epoch: Market['epochs'][0] }> = ({ epoch }) => {
+  const { setIsLoading } = useLoading();
+  const toast = useToast();
+  // const latestPriceQueries = markets.flatMap((market) =>
+  //   market.epochs.map((epoch) => ({
+  //     queryKey: [
+  //       'latestPrice',
+  //       `${market.chainId}:${market.address}`,
+  //       epoch.epochId,
+  //     ],
+  //     queryFn: () =>
+  //       getLatestEpochPrice(market.chainId, market.address, epoch.epochId),
+  //     enabled: markets.length !== 0,
+  //   }))
+  // );
+
+  // const results = useQuery({ queries: latestPriceQueries });
+
+  // const getLatestEpochPrice = async (
+  //   chainId: number,
+  //   address: string,
+  //   epochId: number
+  // ) => {
+  //   const response = await fetch(
+  //     `${API_BASE_URL}/prices/index/latest?contractId=${chainId}:${address}&epochId=${epochId}`
+  //   );
+  //   if (!response.ok) {
+  //     throw new Error('Network response was not ok');
+  //   }
+  //   const data = await response.json();
+  //   return data.price;
+  // };
+
+  const handleGetMissing = async (market: Market, epochId: number) => {
+    setIsLoading(true);
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/missing-blocks?chainId=${market.chainId}&address=${market.address}&epochId=${epochId}`
+      );
+      console.log('response', response);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'There was an issue getting missing blocks.',
+        status: 'error',
+        duration: 9000,
+        isClosable: true,
+      });
+    }
+    setIsLoading(false);
+  };
+
+  return (
+    <Tr key={epoch.id}>
+      <Td>
+        <Button size="sm" onClick={handleGetMissing}>
+          Get Missing Blocks
+        </Button>
+      </Td>
+      <Td>{epoch.epochId}</Td>
+      <Td>{new Date(epoch.startTimestamp * 1000).toLocaleString()}</Td>
+      <Td>{new Date(epoch.startTimestamp * 1000).toLocaleString()}</Td>
+      <Td>{new Date(epoch.endTimestamp * 1000).toLocaleString()}</Td>
+    </Tr>
   );
 };
 
