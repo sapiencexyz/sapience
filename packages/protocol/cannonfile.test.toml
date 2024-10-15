@@ -3,7 +3,7 @@ version="<%= package.version %>"
 privateSourceCode=true
 
 [clone.Uniswap]
-source="uniswap"
+source="uniswap:3.0.1"
 target="foil@uniswap"
 
 [clone.CollateralAsset]

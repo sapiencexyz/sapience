@@ -22,7 +22,7 @@ options.defaultCurrency = "<%= BondCurrency.Token.address %>"
 options.minimumBond = "0"
 
 [clone.Uniswap]
-source="uniswap"
+source="uniswap:3.0.1"
 target="foil@uniswap"
 
 [clone.CollateralAsset]
@@ -81,7 +81,7 @@ from="<%= settings.owner %>"
 args=[
   "<%= settings.owner %>",
   "<%= imports.CollateralAsset.contracts.Token.address %>",
-  { baseAssetMinPriceTick = "<%= settings.baseAssetMinPriceTick %>", baseAssetMaxPriceTick = "<%= settings.baseAssetMaxPriceTick %>", feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.BondCurrency.contracts.Token.address %>", bondAmount= "<%= settings.bondAmount %>", priceUnit= "<%= settings.priceUnit %>",  uniswapPositionManager =  "<%= imports.Uniswap.contracts.NonfungiblePositionManager.address %>", uniswapSwapRouter = "<%= imports.Uniswap.contracts.SwapRouter.address %>", uniswapQuoter = "<%= imports.Uniswap.contracts.Quoter.address %>", optimisticOracleV3 = "<%= imports.UMA.contracts.OptimisticOracleV3.address %>" }
+  { baseAssetMinPriceTick = "<%= settings.baseAssetMinPriceTick %>", baseAssetMaxPriceTick = "<%= settings.baseAssetMaxPriceTick %>", feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.BondCurrency.contracts.Token.address %>", bondAmount= "<%= settings.bondAmount %>", priceUnit= "<%= settings.priceUnit %>",  uniswapPositionManager =  "<%= imports.Uniswap.contracts.NonfungiblePositionManager.address %>", uniswapSwapRouter = "<%= imports.Uniswap.contracts.SwapRouter.address %>", uniswapQuoter = "<%= imports.Uniswap.contracts.QuoterV2.address %>", optimisticOracleV3 = "<%= imports.UMA.contracts.OptimisticOracleV3.address %>" }
 ]
 depends=["router.Foil"]
 

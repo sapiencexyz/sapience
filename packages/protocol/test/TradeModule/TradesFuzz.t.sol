@@ -15,7 +15,7 @@ import {Position} from "../../src/contracts/storage/Position.sol";
 
 import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import {IUniswapV3Quoter} from "../../src/contracts/interfaces/external/IUniswapV3Quoter.sol";
+import {IQuoterV2} from "../../src/contracts/interfaces/external/IQuoterV2.sol";
 
 contract TradePositionBasicFuzz is TestTrade {
     using Cannon for Vm;
@@ -46,7 +46,7 @@ contract TradePositionBasicFuzz is TestTrade {
     address tokenA;
     address tokenB;
     IUniswapV3Pool uniCastedPool;
-    IUniswapV3Quoter uniswapQuoter;
+    IQuoterV2 uniswapQuoterV2;
     uint256 feeRate;
     int24 EPOCH_LOWER_TICK = 16000; //5 (4.952636224061651)
     int24 EPOCH_UPPER_TICK = 29800; //20 (19.68488357413147)
@@ -81,7 +81,7 @@ contract TradePositionBasicFuzz is TestTrade {
         uniCastedPool = IUniswapV3Pool(pool);
         feeRate = uint256(uniCastedPool.fee()) * 1e12;
 
-        uniswapQuoter = IUniswapV3Quoter(vm.getAddress("Uniswap.Quoter"));
+        uniswapQuoterV2 = IQuoterV2(vm.getAddress("Uniswap.QuoterV2"));
 
         // Add liquidity
         vm.startPrank(lp1);
@@ -796,22 +796,30 @@ contract TradePositionBasicFuzz is TestTrade {
     ) public returns (uint256 tradeRatio) {
         // get actual trade price
         if (deltaPositionSize > 0) {
-            uint256 amountIn = uniswapQuoter.quoteExactOutputSingle(
-                tokenA,
-                tokenB,
-                uniCastedPool.fee(),
-                deltaPositionSize.toUint(),
-                0
+            IQuoterV2.QuoteExactOutputSingleParams memory params = IQuoterV2
+                .QuoteExactOutputSingleParams({
+                    tokenIn: tokenA,
+                    tokenOut: tokenB,
+                    amount: deltaPositionSize.toUint(),
+                    fee: uniCastedPool.fee(),
+                    sqrtPriceLimitX96: 0
+                });
+            (uint256 amountIn, , , ) = uniswapQuoterV2.quoteExactOutputSingle(
+                params
             );
 
             tradeRatio = amountIn.divDecimal(deltaPositionSize.toUint());
         } else {
-            uint256 amountIn = uniswapQuoter.quoteExactInputSingle(
-                tokenB,
-                tokenA,
-                uniCastedPool.fee(),
-                (deltaPositionSize * -1).toUint(),
-                0
+            IQuoterV2.QuoteExactInputSingleParams memory params = IQuoterV2
+                .QuoteExactInputSingleParams({
+                    tokenIn: tokenB,
+                    tokenOut: tokenA,
+                    amountIn: (deltaPositionSize * -1).toUint(),
+                    fee: uniCastedPool.fee(),
+                    sqrtPriceLimitX96: 0
+                });
+            (uint256 amountIn, , , ) = uniswapQuoterV2.quoteExactInputSingle(
+                params
             );
 
             tradeRatio = amountIn.divDecimal((deltaPositionSize * -1).toUint());
