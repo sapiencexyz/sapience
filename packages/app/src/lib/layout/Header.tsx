@@ -20,23 +20,13 @@ import {
 } from '@chakra-ui/react';
 import Link from 'next/link';
 import React, { useState, useEffect } from 'react';
-import * as chains from 'viem/chains';
 
 import ConnectButton from '../components/ConnectButton';
 import { useMarketList } from '~/lib/context/MarketListProvider';
 
-function getChain(chainId: number) {
-  for (const chain of Object.values(chains)) {
-    if (chain.id === chainId) {
-      return chain;
-    }
-  }
-
-  throw new Error(`Chain with id ${chainId} not found`);
-}
-
+// Move NavLinks component outside of Header
 const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
-  const { markets, isLoading, error } = useMarketList();
+  const { markets } = useMarketList();
   const [tradePopoverOpen, setTradePopoverOpen] = useState(false);
 
   const renderTradeLinks = () => (

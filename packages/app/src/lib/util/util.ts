@@ -1,5 +1,6 @@
 import type { ToastId, UseToastOptions } from '@chakra-ui/react';
 import type { ReadContractErrorType, WriteContractErrorType } from 'viem';
+import * as chains from 'viem/chains';
 
 import { TimeWindow } from '../interfaces/interfaces';
 
@@ -62,3 +63,13 @@ export function getDisplayTextForVolumeWindow(volumeWindow: TimeWindow) {
 
 // TODO: Adjust this based on fee rate on the market
 export const tickToPrice = (tick: number): number => 1.0001 ** tick;
+
+export function getChain(chainId: number) {
+  for (const chain of Object.values(chains)) {
+    if (chain.id === chainId) {
+      return chain;
+    }
+  }
+
+  throw new Error(`Chain with id ${chainId} not found`);
+}
