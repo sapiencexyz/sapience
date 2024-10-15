@@ -468,10 +468,13 @@ const startServer = async () => {
       const startBlock = await getBlockByTimestamp(client, startTimestamp);
       const endBlock = await getBlockByTimestamp(client, endTimestamp);
 
-      if (!startBlock.number || !endBlock.number) {
-        throw new Error(
-          "Unable to retrieve block numbers for start or end timestamps"
-        );
+      if (!startBlock?.number || !endBlock?.number) {
+        return res
+          .status(500)
+          .json({
+            error:
+              "Unable to retrieve block numbers for start or end timestamps",
+          });
       }
 
       const startBlockNumber = Number(startBlock.number);
@@ -652,7 +655,10 @@ const startServer = async () => {
       const latestPrice = await indexPriceRepository.findOne({
         where: {
           epoch: { id: Number(epochId) },
-          timestamp: Between(Number(epoch.startTimestamp), Number(epoch.endTimestamp))
+          timestamp: Between(
+            Number(epoch.startTimestamp),
+            Number(epoch.endTimestamp)
+          ),
         },
         order: { timestamp: "DESC" },
       });
