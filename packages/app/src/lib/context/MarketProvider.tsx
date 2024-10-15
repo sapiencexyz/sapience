@@ -69,17 +69,17 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
   const { foilData } = useFoilDeployment(chainId);
 
   // Custom hooks for data fetching
-  const { data: price } = useQuery({
-    queryKey: ['averagePrice', `${state.chainId}:${state.address}`],
+  const { data: latestPrice } = useQuery({
+    queryKey: ['latestPrice', `${state.chainId}:${state.address}`],
     queryFn: async () => {
       const response = await fetch(
-        `${API_BASE_URL}/prices/index?contractId=${state.chainId}:${state.address}&epochId=${state.epoch}`
+        `${API_BASE_URL}/prices/index/latest?contractId=${state.chainId}:${state.address}&epochId=${state.epoch}`
       );
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
       const data = await response.json();
-      return data.length > 0 ? data[data.length - 1].price : null;
+      return data.price;
     },
     enabled: state.chainId !== 0,
     refetchInterval: 60000,
@@ -173,13 +173,13 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
   }, [stEthPerTokenResult.data]);
 
   useEffect(() => {
-    console.log('price =', price);
-    if (price && stEthPerTokenResult.data) {
+    console.log('latestPrice =', latestPrice);
+    if (latestPrice !== undefined && stEthPerTokenResult.data) {
       const stEthPerToken = Number(
         gweiToEther(stEthPerTokenResult.data as bigint)
       );
 
-      const averageResourcePriceinWstEth = price.average / stEthPerToken;
+      const averageResourcePriceinWstEth = latestPrice / stEthPerToken;
 
       setState((currentState) => ({
         ...currentState,
@@ -187,7 +187,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
         stEthPerToken,
       }));
     }
-  }, [price, stEthPerTokenResult.data]);
+  }, [latestPrice, stEthPerTokenResult.data]);
 
   useEffect(() => {
     setState((currentState) => ({

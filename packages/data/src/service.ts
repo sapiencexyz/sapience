@@ -1,11 +1,11 @@
 import "reflect-metadata";
 import dataSource, {
-  indexPriceRepository,
   initializeDataSource,
   renderJobRepository,
 } from "./db"; /// !IMPORTANT: Keep as top import to prevent issues with db initialization
 import cors from "cors";
 import { ResourcePrice } from "./models/ResourcePrice";
+import { IndexPrice } from "./models/IndexPrice";
 import { Position } from "./models/Position";
 import { Market } from "./models/Market";
 import express from "express";
@@ -24,7 +24,6 @@ import {
 import { TimeWindow } from "./interfaces";
 import { formatDbBigInt } from "./helpers";
 import { getProviderForChain, getBlockByTimestamp } from "./helpers";
-import { resourcePriceRepository } from "./db";
 import dotenv from "dotenv";
 import path from "path";
 import { RenderJob } from "./models/RenderJob";
@@ -38,7 +37,8 @@ const startServer = async () => {
   await initializeDataSource();
   const positionRepository = dataSource.getRepository(Position);
   const epochRepository = dataSource.getRepository(Epoch);
-  const priceRepository = dataSource.getRepository(ResourcePrice);
+  const resourcePriceRepository = dataSource.getRepository(ResourcePrice);
+  const indexPriceRepository = dataSource.getRepository(IndexPrice);
   const marketRepository = dataSource.getRepository(Market);
   const transactionRepository = dataSource.getRepository(Transaction);
 
@@ -617,6 +617,49 @@ const startServer = async () => {
       res.json({ success: true, job });
     } catch (error) {
       console.error("Error fetching job status:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/prices/index/latest", async (req, res) => {
+    const { contractId, epochId } = req.query;
+
+    if (typeof contractId !== "string" || typeof epochId !== "string") {
+      return res.status(400).json({ error: "Invalid request parameters" });
+    }
+    const [chainId, address] = contractId.split(":");
+
+    try {
+      const market = await marketRepository.findOne({
+        where: {
+          chainId: Number(chainId),
+          address: address,
+        },
+      });
+
+      if (!market) {
+        return res.status(404).json({ error: "Market not found" });
+      }
+
+      const latestPrice = await indexPriceRepository.findOne({
+        where: {
+          epoch: { id: Number(epochId) },
+        },
+        order: { timestamp: "DESC" },
+      });
+
+      if (!latestPrice) {
+        return res.status(404).json({
+          error: "No price data found for the specified epoch",
+        });
+      }
+
+      res.json({
+        timestamp: Number(latestPrice.timestamp),
+        price: Number(latestPrice.value),
+      });
+    } catch (error) {
+      console.error("Error fetching latest index price:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
