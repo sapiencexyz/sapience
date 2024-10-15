@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 
 import { API_BASE_URL } from '../constants/constants';
 
-interface Market {
+export interface Market {
   id: number;
   chainId: number;
   address: string;

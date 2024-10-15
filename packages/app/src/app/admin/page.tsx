@@ -1,10 +1,10 @@
 'use client';
 
 import { Box, Button, Container, Flex, Input, Text } from '@chakra-ui/react';
-import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { useState } from 'react';
 
+import MarketsTable from '~/lib/components/MarketsTable';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { useLoading } from '~/lib/context/LoadingContext';
 import type { RenderJob } from '~/lib/interfaces/interfaces';
@@ -70,33 +70,36 @@ const Admin = () => {
   };
 
   return (
-    <Container mb={10}>
-      <Text fontSize="xl" my={8} fontWeight="bold">
-        Reindex
-      </Text>
-      <Box mb={4}>
-        <Text>Enter Market Address</Text>
-        <Input value={address} onChange={(e) => setAddress(e.target.value)} />
-      </Box>
-      <Box mb={4}>
-        <Text>Enter Chain ID</Text>
-        <Input value={chainId} onChange={(e) => setChainId(e.target.value)} />
-      </Box>
-      <Button onClick={handleReindex}>Submit</Button>
-      <Box mt={8}>
-        {renderJob()}
+    <Container id="admin" my={10} minWidth="90vw" mx="40px">
+      <MarketsTable />
+      <Box maxW="800px" mx="auto" mt={10}>
+        <Text fontSize="xl" my={8} fontWeight="bold">
+          Reindex
+        </Text>
         <Box mb={4}>
-          <Text>Service Id:</Text>
-          <Input value={job?.serviceId || ''} readOnly />
+          <Text>Enter Market Address</Text>
+          <Input value={address} onChange={(e) => setAddress(e.target.value)} />
         </Box>
         <Box mb={4}>
-          <Text>JobId:</Text>
-          <Input value={job?.id || ''} readOnly />
+          <Text>Enter Chain ID</Text>
+          <Input value={chainId} onChange={(e) => setChainId(e.target.value)} />
         </Box>
-        <Button onClick={handleGetStatus} disabled={!job}>
-          {' '}
-          refresh job status
-        </Button>
+        <Button onClick={handleReindex}>Submit</Button>
+        <Box mt={8}>
+          {renderJob()}
+          <Box mb={4}>
+            <Text>Service Id:</Text>
+            <Input value={job?.serviceId || ''} readOnly />
+          </Box>
+          <Box mb={4}>
+            <Text>JobId:</Text>
+            <Input value={job?.id || ''} readOnly />
+          </Box>
+          <Button onClick={handleGetStatus} disabled={!job}>
+            {' '}
+            refresh job status
+          </Button>
+        </Box>
       </Box>
     </Container>
   );
