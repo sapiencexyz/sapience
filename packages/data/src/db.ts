@@ -77,5 +77,6 @@ export const eventRepository = dataSource.getRepository(Event);
 export const resourcePriceRepository = dataSource.getRepository(ResourcePrice);
 export const marketPriceRepository = dataSource.getRepository(MarketPrice);
 export const renderJobRepository = dataSource.getRepository(RenderJob);
+export const indexPriceRepository = dataSource.getRepository(IndexPrice);
 
 export default dataSource;
