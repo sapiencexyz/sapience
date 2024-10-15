@@ -1,6 +1,13 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import { InfoOutlineIcon } from '@chakra-ui/icons';
-import { Flex, Text, Stat, StatLabel, StatNumber } from '@chakra-ui/react';
+import {
+  Flex,
+  Text,
+  Stat,
+  StatLabel,
+  StatNumber,
+  Tooltip,
+} from '@chakra-ui/react';
 import { format, formatDistanceToNow } from 'date-fns';
 import React, { useContext } from 'react';
 
@@ -41,13 +48,14 @@ const Stats = () => {
         <Stat width={{ base: '100%', md: 'calc(50% - 12px)', lg: 'auto' }}>
           <StatLabel fontSize="md">
             Index Price
-            <InfoOutlineIcon
-              display="none"
-              transform="translateY(-2.5px)"
-              color="gray.600"
-              height="4"
-              ml={1.5}
-            />
+            <Tooltip label="Expected settlement price based on the current time-weighted average underlying price for this epoch.">
+              <InfoOutlineIcon
+                transform="translateY(-2.5px)"
+                color="gray.600"
+                height="4"
+                ml={1.5}
+              />
+            </Tooltip>
           </StatLabel>
           <StatNumber>
             <NumberDisplay value={averagePrice} />{' '}
@@ -66,13 +74,14 @@ const Stats = () => {
         <Stat width={{ base: '100%', md: 'calc(50% - 12px)', lg: 'auto' }}>
           <StatLabel fontSize="md">
             Market Price
-            <InfoOutlineIcon
-              display="none"
-              transform="translateY(-2px)"
-              color="gray.600"
-              height="4"
-              ml={1.5}
-            />
+            <Tooltip label="Current price in the Foil liquidity pool for this epoch.">
+              <InfoOutlineIcon
+                transform="translateY(-2px)"
+                color="gray.600"
+                height="4"
+                ml={1.5}
+              />
+            </Tooltip>
           </StatLabel>
           <StatNumber>
             <NumberDisplay value={pool?.token0Price.toSignificant(18) || 0} />{' '}
