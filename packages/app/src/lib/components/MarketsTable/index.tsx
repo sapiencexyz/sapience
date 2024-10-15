@@ -63,7 +63,10 @@ const MarketsTable: React.FC = () => {
   );
 };
 
-const EpochItem: React.FC<{ epoch: Market['epochs'][0] }> = ({ epoch }) => {
+const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
+  market,
+  epoch,
+}) => {
   const { setIsLoading } = useLoading();
   const toast = useToast();
   // const latestPriceQueries = markets.flatMap((market) =>
@@ -96,11 +99,11 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0] }> = ({ epoch }) => {
   //   return data.price;
   // };
 
-  const handleGetMissing = async (market: Market, epochId: number) => {
+  const handleGetMissing = async (m: Market, epochId: number) => {
     setIsLoading(true);
     try {
       const response = await axios.get(
-        `${API_BASE_URL}/missing-blocks?chainId=${market.chainId}&address=${market.address}&epochId=${epochId}`
+        `${API_BASE_URL}/missing-blocks?chainId=${m.chainId}&address=${m.address}&epochId=${epochId}`
       );
       console.log('response', response);
     } catch (error) {
@@ -118,7 +121,10 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0] }> = ({ epoch }) => {
   return (
     <Tr key={epoch.id}>
       <Td>
-        <Button size="sm" onClick={handleGetMissing}>
+        <Button
+          size="sm"
+          onClick={() => handleGetMissing(market, epoch.epochId)}
+        >
           Get Missing Blocks
         </Button>
       </Td>
