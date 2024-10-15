@@ -17,10 +17,11 @@ import {
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { TickMath, SqrtPriceMath } from '@uniswap/v3-sdk';
 import JSBI from 'jsbi';
+import { useRouter } from 'next/navigation';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import type { WriteContractErrorType } from 'viem';
-import { formatUnits, parseUnits } from 'viem';
+import { decodeEventLog, formatUnits, parseUnits } from 'viem';
 import {
   useWriteContract,
   useWaitForTransactionReceipt,
@@ -127,6 +128,7 @@ const AddEditLiquidity: React.FC<{
   const currentChainId = useChainId();
   const { switchChain } = useSwitchChain();
   const { openConnectModal } = useConnectModal();
+  const router = useRouter();
 
   /// //// READ CONTRACT HOOKS ///////
   const { data: positionData, refetch: refetchPosition } = useReadContract({
@@ -288,9 +290,10 @@ const AddEditLiquidity: React.FC<{
     hash: approveHash,
   });
 
-  const { isSuccess: addLiquiditySuccess } = useWaitForTransactionReceipt({
-    hash: addLiquidityHash,
-  });
+  const { isSuccess: addLiquiditySuccess, data: addLiquidityReceipt } =
+    useWaitForTransactionReceipt({
+      hash: addLiquidityHash,
+    });
 
   const { isSuccess: increaseLiquiditySuccess } = useWaitForTransactionReceipt({
     hash: increaseLiquidityHash,
@@ -461,12 +464,6 @@ const AddEditLiquidity: React.FC<{
 
   // handle successful add/increase liquidity
   useEffect(() => {
-    if (addLiquiditySuccess) {
-      setTxnSuccessMsg('Successfully added liquidity');
-    }
-  }, [addLiquiditySuccess]);
-
-  useEffect(() => {
     if (increaseLiquiditySuccess) {
       setTxnSuccessMsg('Successfully increased liquidity');
     }
@@ -602,6 +599,37 @@ const AddEditLiquidity: React.FC<{
     trigger,
   ]);
 
+  useEffect(() => {
+    if (addLiquiditySuccess && addLiquidityReceipt) {
+      for (const log of addLiquidityReceipt.logs) {
+        try {
+          const event = decodeEventLog({
+            abi: foilData.abi,
+            data: log.data,
+            topics: log.topics,
+          });
+
+          if ((event as any).eventName === 'LiquidityPositionCreated') {
+            const nftId = (event as any).args.positionId.toString();
+            router.push(
+              `/markets/${chainId}:${marketAddress}/positions/${nftId}`
+            );
+            renderToast(
+              toast,
+              `Your liquidity position has been created as position ${nftId}`
+            );
+            resetAfterSuccess();
+            return;
+          }
+        } catch (error) {
+          // This log was not for the LiquidityPositionCreated event, continue to next log
+        }
+      }
+      renderToast(toast, `We've created your liquidity position for you.`);
+      resetAfterSuccess();
+    }
+  }, [addLiquiditySuccess, addLiquidityReceipt]);
+
   /// /// HANDLERS //////
   const getCurrentDeadline = (): bigint => {
     return BigInt(Math.floor(Date.now() / 1000) + 1800); // 30 minutes from now
@@ -688,6 +716,17 @@ const AddEditLiquidity: React.FC<{
     setPendingTxn(false);
     setIsLoading(false);
   };
+
+  const resetAfterSuccess = () => {
+    setDepositAmount('0');
+    setSlippage(0.5);
+    setPendingTxn(false);
+    setIsLoading(false);
+    refreshPositions();
+    refetchUniswapData();
+    refetchCollateralAmount();
+  };
+
   /**
    * Handle updating slippage tolerance
    * @param newSlippage - new slippage value
