@@ -35,7 +35,6 @@ function getChain(chainId: number) {
   throw new Error(`Chain with id ${chainId} not found`);
 }
 
-// Move NavLinks component outside of Header
 const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
   const { markets, isLoading, error } = useMarketList();
   const [tradePopoverOpen, setTradePopoverOpen] = useState(false);

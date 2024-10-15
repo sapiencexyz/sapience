@@ -5,12 +5,18 @@ import React, { useContext } from 'react';
 import { FaRegChartBar, FaCubes, FaRegCalendar } from 'react-icons/fa';
 import { IoDocumentTextOutline } from 'react-icons/io5';
 
+import { useMarketList } from '~/lib/context/MarketListProvider';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import { tickToPrice } from '~/lib/util/util';
 
-const PositionsHeader = () => {
+import EpochSelector from './epochSelector';
+
+const EpochHeader = () => {
   const { chain, address, collateralAsset, epochParams, startTime, endTime } =
     useContext(MarketContext);
+  const { markets } = useMarketList();
+
+  const currentMarket = markets.find((market) => market.address === address);
 
   let relativeTime = '';
   let formattedTime = '';
@@ -43,8 +49,11 @@ const PositionsHeader = () => {
           mb={0}
           alignSelf={{ base: 'flex-start', lg: 'flex-end' }}
         >
-          {chain?.name} Gas Market{' '}
+          {currentMarket ? currentMarket.name : 'Market Name Not Found'}
         </Heading>
+        <Flex mt="2">
+          <EpochSelector />
+        </Flex>
 
         <Flex
           flexDirection="column"
@@ -127,4 +136,4 @@ const PositionsHeader = () => {
   );
 };
 
-export default PositionsHeader;
+export default EpochHeader;
