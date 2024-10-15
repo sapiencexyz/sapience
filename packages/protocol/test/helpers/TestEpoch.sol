@@ -63,7 +63,7 @@ contract TestEpoch is TestUser {
                     "Uniswap.NonfungiblePositionManager"
                 ),
                 uniswapSwapRouter: vm.getAddress("Uniswap.SwapRouter"),
-                uniswapQuoter: vm.getAddress("Uniswap.Quoter"),
+                uniswapQuoter: vm.getAddress("Uniswap.QuoterV2"),
                 optimisticOracleV3: vm.getAddress("UMA.OptimisticOracleV3")
             })
         );

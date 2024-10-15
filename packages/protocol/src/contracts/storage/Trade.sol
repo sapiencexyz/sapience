@@ -6,7 +6,7 @@ import {Epoch} from "./Epoch.sol";
 import {Market} from "./Market.sol";
 import {Errors} from "./Errors.sol";
 import {ISwapRouter} from "../interfaces/external/ISwapRouter.sol";
-import {IUniswapV3Quoter} from "../interfaces/external/IUniswapV3Quoter.sol";
+import {IQuoterV2} from "../interfaces/external/IQuoterV2.sol";
 import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
 
 // import "forge-std/console2.sol";
@@ -45,14 +45,16 @@ library Trade {
         }
 
         if (isQuote) {
-            amountOut = IUniswapV3Quoter(epoch.params.uniswapQuoter)
-                .quoteExactInputSingle(
-                    tokenIn,
-                    tokenOut,
-                    epoch.params.feeRate,
-                    amountIn,
-                    0
-                );
+            IQuoterV2.QuoteExactInputSingleParams memory params = IQuoterV2
+                .QuoteExactInputSingleParams({
+                    tokenIn: tokenIn,
+                    tokenOut: tokenOut,
+                    amountIn: amountIn,
+                    fee: epoch.params.feeRate,
+                    sqrtPriceLimitX96: 0
+                });
+            (amountOut, , , ) = IQuoterV2(epoch.params.uniswapQuoter)
+                .quoteExactInputSingle(params);
         } else {
             ISwapRouter.ExactInputSingleParams memory swapParams = ISwapRouter
                 .ExactInputSingleParams({
@@ -111,14 +113,17 @@ library Trade {
         }
 
         if (isQuote) {
-            amountIn = IUniswapV3Quoter(epoch.params.uniswapQuoter)
-                .quoteExactOutputSingle(
-                    tokenIn,
-                    tokenOut,
-                    epoch.params.feeRate,
-                    amountOut,
-                    0
-                );
+            IQuoterV2.QuoteExactOutputSingleParams memory params = IQuoterV2
+                .QuoteExactOutputSingleParams({
+                    tokenIn: tokenIn,
+                    tokenOut: tokenOut,
+                    amount: amountOut,
+                    fee: epoch.params.feeRate,
+                    sqrtPriceLimitX96: 0
+                });
+
+            (amountIn, , , ) = IQuoterV2(epoch.params.uniswapQuoter)
+                .quoteExactOutputSingle(params);
         } else {
             ISwapRouter.ExactOutputSingleParams memory swapParams = ISwapRouter
                 .ExactOutputSingleParams({
