@@ -166,7 +166,7 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
         ) : (
           <>
             <Text>{latestPrice}</Text>
-            {(epochData as any).settled ? (
+            {(epochData as any)?.settled ? (
               <Text>Settled</Text>
             ) : (
               <Button
