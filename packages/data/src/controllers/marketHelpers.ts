@@ -478,8 +478,8 @@ export const createEpochFromEvent = async (
   const newEpoch = existingEpoch || new Epoch();
   newEpoch.epochId = Number(eventArgs.epochId);
   newEpoch.market = market;
-  newEpoch.startTimestamp = eventArgs.startTime;
-  newEpoch.endTimestamp = eventArgs.endTime;
+  newEpoch.startTimestamp = Number(eventArgs.startTime);
+  newEpoch.endTimestamp = Number(eventArgs.endTime);
   newEpoch.startingSqrtPriceX96 = eventArgs.startingSqrtPriceX96;
   newEpoch.epochParams = market.epochParams;
 

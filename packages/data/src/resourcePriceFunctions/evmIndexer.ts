@@ -22,9 +22,9 @@ class EvmIndexer {
 
     const price = new ResourcePrice();
     price.market = market;
-    price.timestamp = block.timestamp.toString();
+    price.timestamp = Number(block.timestamp);
     price.value = value.toString();
-    price.blockNumber = block.number.toString();
+    price.blockNumber = Number(block.number);
     await resourcePriceRepository.upsert(price, ["market", "timestamp"]);
   }
 

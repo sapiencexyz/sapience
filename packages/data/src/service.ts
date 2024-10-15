@@ -486,8 +486,8 @@ const startServer = async () => {
         where: {
           market: { id: market.id },
           blockNumber: Between(
-            startBlockNumber.toString(),
-            endBlockNumber.toString()
+            startBlockNumber,
+            endBlockNumber
           ),
         },
         select: ["blockNumber"],

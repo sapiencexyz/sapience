@@ -1,4 +1,4 @@
-import { getRepository } from "typeorm";
+import { getRepository, Between, LessThanOrEqual, MoreThanOrEqual } from "typeorm";
 import { ResourcePrice } from "../models/ResourcePrice";
 import { Market } from "../models/Market";
 import { Epoch } from "../models/Epoch";
@@ -20,8 +20,8 @@ export const upsertIndexPriceFromResourcePrice = async (resourcePrice: ResourceP
     const relevantEpochs = await epochRepository.find({
         where: {
             market: { id: market.id },
-            startTimestamp: { $lte: resourcePrice.timestamp },
-            endTimestamp: { $gte: resourcePrice.timestamp }
+            startTimestamp: LessThanOrEqual(resourcePrice.timestamp),
+            endTimestamp: MoreThanOrEqual(resourcePrice.timestamp)
         }
     });
 
@@ -31,7 +31,7 @@ export const upsertIndexPriceFromResourcePrice = async (resourcePrice: ResourceP
         const resourcePrices = await resourcePriceRepository.find({
             where: {
                 market: { id: market.id },
-                timestamp: { $gte: epoch.startTimestamp, $lte: epoch.endTimestamp }
+                timestamp: Between(epoch.startTimestamp, epoch.endTimestamp)
             },
             order: { timestamp: "ASC" }
         });
