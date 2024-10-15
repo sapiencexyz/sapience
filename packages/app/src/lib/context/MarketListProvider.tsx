@@ -6,6 +6,7 @@ import { API_BASE_URL } from '../constants/constants';
 
 export interface Market {
   id: number;
+  name: string;
   chainId: number;
   address: string;
   collateralAsset: string;

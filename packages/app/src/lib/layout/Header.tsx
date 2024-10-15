@@ -38,29 +38,20 @@ function getChain(chainId: number) {
 // Move NavLinks component outside of Header
 const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
   const { markets, isLoading, error } = useMarketList();
-  const [subscribePopoverOpen, setSubscribePopoverOpen] = useState(false);
   const [tradePopoverOpen, setTradePopoverOpen] = useState(false);
 
-  const renderMarketLinks = (type: 'subscribe' | 'trade') => (
+  const renderTradeLinks = () => (
     <VStack align="stretch" mt={2} ml={isMobile ? 4 : 0}>
       {markets
         .filter((m) => m.public)
         .map((market) => (
           <Box key={market.id}>
-            {type === 'subscribe' && market.nextEpoch && (
-              <ChakraLink
-                as={Link}
-                href={`/markets/${market.chainId}:${market.address}/epochs/${market.nextEpoch.epochId}/subscribe`}
-              >
-                {getChain(market.chainId).name}
-              </ChakraLink>
-            )}
-            {type === 'trade' && market.currentEpoch && (
+            {market.currentEpoch && (
               <ChakraLink
                 as={Link}
                 href={`/markets/${market.chainId}:${market.address}/epochs/${market.currentEpoch.epochId}`}
               >
-                {getChain(market.chainId).name}
+                {market.name}
               </ChakraLink>
             )}
           </Box>
@@ -72,16 +63,20 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
     return (
       <VStack align="stretch" spacing={4}>
         <Box>
-          <Box as="span" fontWeight="bold">
+          <ChakraLink as={Link} href="/">
             Subscribe
-          </Box>
-          {renderMarketLinks('subscribe')}
+          </ChakraLink>
         </Box>
         <Box>
           <Box as="span" fontWeight="bold">
             Trade
           </Box>
-          {renderMarketLinks('trade')}
+          {renderTradeLinks()}
+        </Box>
+        <Box>
+          <ChakraLink as={Link} href="https://docs.foil.xyz">
+            Docs
+          </ChakraLink>
         </Box>
       </VStack>
     );
@@ -89,46 +84,9 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
 
   return (
     <Flex gap={9}>
-      <Popover
-        trigger="hover"
-        isOpen={subscribePopoverOpen}
-        onOpen={() => setSubscribePopoverOpen(true)}
-        onClose={() => setSubscribePopoverOpen(false)}
-      >
-        <PopoverTrigger>
-          <Box as="span" cursor="pointer" display="flex" alignItems="center">
-            Subscribe <ChevronDownIcon ml={1} />
-          </Box>
-        </PopoverTrigger>
-        <PopoverContent maxW="180px">
-          <PopoverArrow />
-          <PopoverBody py={3}>
-            {markets
-              .filter((m) => m.public)
-              .map((market) => (
-                <Box key={market.id}>
-                  {market.nextEpoch && (
-                    <ChakraLink
-                      fontSize="sm"
-                      as={Link}
-                      width="100%"
-                      display="block"
-                      borderRadius="md"
-                      px={3}
-                      py={1.5}
-                      _hover={{ bg: 'gray.50' }}
-                      href={`/markets/${market.chainId}:${market.address}/epochs/${market.nextEpoch.epochId}/subscribe`}
-                      onClick={() => setSubscribePopoverOpen(false)}
-                    >
-                      {getChain(market.chainId).name}
-                    </ChakraLink>
-                  )}
-                </Box>
-              ))}
-          </PopoverBody>
-        </PopoverContent>
-      </Popover>
-
+      <ChakraLink as={Link} href="/">
+        Subscribe
+      </ChakraLink>
       <Popover
         trigger="hover"
         isOpen={tradePopoverOpen}
@@ -140,32 +98,37 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
             Trade <ChevronDownIcon ml={1} />
           </Box>
         </PopoverTrigger>
-        <PopoverContent maxW="180px">
+        <PopoverContent maxW="220px">
           <PopoverArrow />
           <PopoverBody py={3}>
-            {markets.map((market) => (
-              <Box key={market.id}>
-                {market.currentEpoch && (
-                  <ChakraLink
-                    fontSize="sm"
-                    as={Link}
-                    width="100%"
-                    display="block"
-                    borderRadius="md"
-                    px={3}
-                    py={1.5}
-                    _hover={{ bg: 'gray.50' }}
-                    href={`/markets/${market.chainId}:${market.address}/epochs/${market.currentEpoch.epochId}`}
-                    onClick={() => setTradePopoverOpen(false)}
-                  >
-                    {getChain(market.chainId).name}
-                  </ChakraLink>
-                )}
-              </Box>
-            ))}
+            {markets
+              .filter((m) => m.public)
+              .map((market) => (
+                <Box key={market.id}>
+                  {market.currentEpoch && (
+                    <ChakraLink
+                      fontSize="sm"
+                      as={Link}
+                      width="100%"
+                      display="block"
+                      borderRadius="md"
+                      px={3}
+                      py={1.5}
+                      _hover={{ bg: 'gray.50' }}
+                      href={`/markets/${market.chainId}:${market.address}/epochs/${market.currentEpoch.epochId}`}
+                      onClick={() => setTradePopoverOpen(false)}
+                    >
+                      {market.name}
+                    </ChakraLink>
+                  )}
+                </Box>
+              ))}
           </PopoverBody>
         </PopoverContent>
       </Popover>
+      <ChakraLink as={Link} href="https://docs.foil.xyz">
+        Docs
+      </ChakraLink>
     </Flex>
   );
 };
@@ -220,7 +183,6 @@ const Header = () => {
                 <DrawerBody>
                   <VStack spacing={4} align="stretch">
                     <NavLinks isMobile />
-                    <Link href="https://docs.foil.xyz">Docs</Link>
                     <ConnectButton />
                   </VStack>
                 </DrawerBody>
@@ -232,7 +194,6 @@ const Header = () => {
             <Flex mx="auto">
               <NavLinks />
             </Flex>
-            <Link href="https://docs.foil.xyz">Docs</Link>
             <ConnectButton />
           </Flex>
         )}
