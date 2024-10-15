@@ -129,9 +129,18 @@ const CustomTooltip: React.FC<
 };
 
 interface Props {
-  data: PriceChartData[];
+  data: {
+    marketPrices: PriceChartData[];
+    indexPrices: IndexPrice[];
+  };
   activeWindow: TimeWindow;
 }
+
+interface IndexPrice {
+  timestamp: number;
+  price: number;
+}
+
 const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
   const [value, setValue] = useState<string>('');
   const timePeriodLabel = useMemo(() => {
@@ -176,9 +185,9 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
   };
 
   useEffect(() => {
-    const validPrices = data.filter((p) => p.high !== null);
+    const validPrices = data.marketPrices.filter((p) => p.high !== null);
     setYAxisDomain([0, Math.max(...validPrices.map((p) => p.high)) + 1]);
-  }, [data]);
+  }, [data.marketPrices]);
 
   const formatYAxisTick = (value: number) => value.toFixed(2);
 
@@ -244,7 +253,7 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
         onResize={updateChartDimensions}
       >
         <ComposedChart
-          data={data}
+          data={data.marketPrices}
           ref={chartRef}
           margin={{ top: 70, right: 0, bottom: 0, left: 0 }}
           onMouseLeave={() => {
@@ -258,7 +267,7 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
             tickFormatter={(timestamp) =>
               formatXAxisTick(timestamp, activeWindow)
             }
-            ticks={getXTicksToShow(data, activeWindow)}
+            ticks={getXTicksToShow(data.marketPrices, activeWindow)}
             minTickGap={10}
             allowDataOverflow
           />
