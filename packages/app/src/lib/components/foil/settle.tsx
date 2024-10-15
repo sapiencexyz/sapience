@@ -23,6 +23,7 @@ export default function Settle() {
     address: marketAddress,
     foilData,
     chainId,
+    epoch,
   } = useContext(MarketContext);
   const { nftId, setNftId } = useAddEditPosition();
   const [withdrawableCollateral, setWithdrawableCollateral] = useState<bigint>(
@@ -41,6 +42,14 @@ export default function Settle() {
     args: [nftId],
     chainId,
   });
+
+  const { data: epochData } = useReadContract({
+    address: marketAddress as `0x${string}`,
+    abi: foilData.abi,
+    functionName: 'getEpoch',
+    args: [epoch],
+    chainId,
+  }) as any; // fix
 
   const { writeContract, data: writeHash } = useWriteContract();
 
@@ -111,16 +120,20 @@ export default function Settle() {
           {foilData.collateralAssetTicker}
         </Text>
       )}
-      <Button
-        onClick={handleSettle}
-        isLoading={isSettling}
-        isDisabled={
-          nftId === 0 || isSettling || withdrawableCollateral === BigInt(0)
-        }
-        variant="brand"
-      >
-        Settle Position
-      </Button>
+      {epochData.settled ? (
+        <Button
+          onClick={handleSettle}
+          isLoading={isSettling}
+          isDisabled={
+            nftId === 0 || isSettling || withdrawableCollateral === BigInt(0)
+          }
+          variant="brand"
+        >
+          Settle Position
+        </Button>
+      ) : (
+        <Text>Pending settlement...</Text>
+      )}
     </Box>
   );
 }
