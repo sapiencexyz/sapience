@@ -14,6 +14,7 @@ import {
 import axios from 'axios';
 import type React from 'react';
 import { useEffect } from 'react';
+
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { useLoading } from '~/lib/context/LoadingContext';
 import { useMarketList, type Market } from '~/lib/context/MarketListProvider';
@@ -50,7 +51,11 @@ const MarketsTable: React.FC = () => {
                   </Thead>
                   <Tbody>
                     {market.epochs.map((epoch) => (
-                      <EpochItem key={epoch.epochId} epoch={epoch} />
+                      <EpochItem
+                        key={epoch.epochId}
+                        epoch={epoch}
+                        market={market}
+                      />
                     ))}
                   </Tbody>
                 </Table>
@@ -99,13 +104,20 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
   //   return data.price;
   // };
 
-  const handleGetMissing = async (m: Market, epochId: number) => {
+  const handleGetMissing = async (market: Market, epochId: number) => {
     setIsLoading(true);
     try {
       const response = await axios.get(
-        `${API_BASE_URL}/missing-blocks?chainId=${m.chainId}&address=${m.address}&epochId=${epochId}`
+        `${API_BASE_URL}/missing-blocks?chainId=${market.chainId}&address=${market.address}&epochId=${epochId}`
       );
       console.log('response', response);
+      toast({
+        title: 'Finished Getting Missing Blocks',
+        description: `${response.data.missingBlockNumbers.length} missing blocks found. See console for more info`,
+        status: 'success',
+        duration: 9000,
+        isClosable: true,
+      });
     } catch (error) {
       toast({
         title: 'Error',
