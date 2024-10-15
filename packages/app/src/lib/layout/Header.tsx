@@ -16,6 +16,7 @@ import {
   PopoverContent,
   PopoverArrow,
   PopoverBody,
+  Link as ChakraLink,
 } from '@chakra-ui/react';
 import Link from 'next/link';
 import React, { useState, useEffect } from 'react';
@@ -45,18 +46,20 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
       {markets.map((market) => (
         <Box key={market.id}>
           {type === 'subscribe' && market.nextEpoch && (
-            <Link
+            <ChakraLink
+              as={Link}
               href={`/markets/${market.chainId}:${market.address}/epochs/${market.nextEpoch.epochId}/subscribe`}
             >
               {getChain(market.chainId).name}
-            </Link>
+            </ChakraLink>
           )}
           {type === 'trade' && market.currentEpoch && (
-            <Link
+            <ChakraLink
+              as={Link}
               href={`/markets/${market.chainId}:${market.address}/epochs/${market.currentEpoch.epochId}`}
             >
               {getChain(market.chainId).name}
-            </Link>
+            </ChakraLink>
           )}
         </Box>
       ))}
@@ -95,18 +98,26 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
             Subscribe <ChevronDownIcon ml={1} />
           </Box>
         </PopoverTrigger>
-        <PopoverContent maxW="140px">
+        <PopoverContent maxW="180px">
           <PopoverArrow />
-          <PopoverBody>
+          <PopoverBody py={3}>
             {markets.map((market) => (
               <Box key={market.id}>
                 {market.nextEpoch && (
-                  <Link
+                  <ChakraLink
+                    fontSize="sm"
+                    as={Link}
+                    width="100%"
+                    display="block"
+                    borderRadius="md"
+                    px={3}
+                    py={1.5}
+                    _hover={{ bg: 'gray.50' }}
                     href={`/markets/${market.chainId}:${market.address}/epochs/${market.nextEpoch.epochId}/subscribe`}
                     onClick={() => setSubscribePopoverOpen(false)}
                   >
                     {getChain(market.chainId).name}
-                  </Link>
+                  </ChakraLink>
                 )}
               </Box>
             ))}
@@ -125,18 +136,26 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
             Trade <ChevronDownIcon ml={1} />
           </Box>
         </PopoverTrigger>
-        <PopoverContent maxW="140px">
+        <PopoverContent maxW="180px">
           <PopoverArrow />
-          <PopoverBody>
+          <PopoverBody py={3}>
             {markets.map((market) => (
               <Box key={market.id}>
                 {market.currentEpoch && (
-                  <Link
+                  <ChakraLink
+                    fontSize="sm"
+                    as={Link}
+                    width="100%"
+                    display="block"
+                    borderRadius="md"
+                    px={3}
+                    py={1.5}
+                    _hover={{ bg: 'gray.50' }}
                     href={`/markets/${market.chainId}:${market.address}/epochs/${market.currentEpoch.epochId}`}
                     onClick={() => setTradePopoverOpen(false)}
                   >
                     {getChain(market.chainId).name}
-                  </Link>
+                  </ChakraLink>
                 )}
               </Box>
             ))}
