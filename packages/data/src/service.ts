@@ -16,10 +16,12 @@ import { formatUnits } from "viem";
 import { TOKEN_PRECISION } from "./constants";
 import {
   getMarketPricesInTimeRange,
+  getIndexPricesInTimeRange,
   getStartTimestampFromTimeWindow,
   getTransactionsInTimeRange,
   groupMarketPricesByTimeWindow,
   groupTransactionsByTimeWindow,
+  groupIndexPricesByTimeWindow,
 } from "./serviceUtil";
 import { TimeWindow } from "./interfaces";
 import { formatDbBigInt } from "./helpers";
@@ -193,7 +195,7 @@ const startServer = async () => {
         getStartTimestampFromTimeWindow(timeWindow as TimeWindow)
       );
 
-      const indexPrices = await getMarketPricesInTimeRange(
+      const indexPrices = await getIndexPricesInTimeRange(
         startTimestamp,
         endTimestamp,
         chainId,
@@ -207,7 +209,7 @@ const startServer = async () => {
         });
       }
 
-      const groupedPrices = groupMarketPricesByTimeWindow(
+      const groupedPrices = groupIndexPricesByTimeWindow(
         indexPrices,
         timeWindow as TimeWindow
       );
