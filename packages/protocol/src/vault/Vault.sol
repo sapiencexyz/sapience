@@ -6,44 +6,30 @@ import "../market/interfaces/IFoil.sol";
 import "./interfaces/IVault.sol";
 
 contract Vault is IVault, ERC20 {
-    /*
-        == Constructor Params ==
-        uniswapPositionManager =  "<%= imports.Uniswap.contracts.NonfungiblePositionManager.address %>", 
-        uniswapSwapRouter = "<%= imports.Uniswap.contracts.SwapRouter.address %>", 
-        uniswapQuoter = "<%= imports.Uniswap.contracts.QuoterV2.address %>", 
-        optimisticOracleV3 = "<%= imports.UMA.contracts.OptimisticOracleV3.address %>" }
-        priceUnit = "<%= formatBytes32String('wstGwei/gas') %>"
-
-        == Initializer Params ==
-
-        collateralAsset
-        startTime = "<%= parseInt(timestamp) %>"
-        duration
-        startingSqrtPriceX96 = "146497135921788803112962621440" # 3.419
-        feeRate = "10000" # 1%
-        assertionLiveness = "21600" # 6 hours
-        bondCurrency = address
-        bondAmount = "5000000000"
-    */
-
     IFoil public market;
+    uint256 public duration;
 
     constructor(
-        uint256 initialPrice,
-        address collateralAddress,
-        uint128 startTime
-    ) ERC20("Vault", "VAULT") {
-        // Deploy market
+        string memory _name,
+        string memory _symbol,
+        address _marketAddress,
+        uint256 _duration,
+        uint160 _initialSqrtPriceX96,
+        uint256 _initialStartTime
+    ) ERC20(_name, _symbol) {
+        // create new market by cloning nextEpochFoilImplementation
+        market = IFoil(_marketAddress);
+        duration = _duration;
 
-        // Call initializer
-        _initializeEpoch(initialPrice);
+        // Initialize the first epoch with the initial price that is set in the constructor's call
+        _initializeEpoch(_initialStartTime, _initialSqrtPriceX96);
     }
 
     // @inheritdoc IVault
     function resolutionCallback(
-        uint256 previousSettlementPriceD18
+        uint160 previousResolutionSqrtPriceX96
     ) external onlyMarket {
-        _createNextEpoch(previousSettlementPriceD18);
+        _createNextEpoch(previousResolutionSqrtPriceX96);
     }
 
     function supportsInterface(
@@ -55,16 +41,41 @@ contract Vault is IVault, ERC20 {
             interfaceId == type(IResolutionCallback).interfaceId;
     }
 
-    function _initializeEpoch(uint256 previousSettlementPriceD18) private {
+    function _initializeEpoch(
+        uint256 startTime,
+        uint160 startingSqrtPriceX96
+    ) private {
         require(address(market) != address(0), "Market address not set");
-        IFoil(market).createEpoch(previousSettlementPriceD18, 0, 0, 0);
+        IFoil(market).createEpoch(
+            startTime,
+            startTime + duration,
+            startingSqrtPriceX96,
+            4
+        );
     }
 
-    function _createNextEpoch(uint256 previousSettlementPriceD18) private {
-        _initializeEpoch(previousSettlementPriceD18);
+    function _createNextEpoch(uint160 startingSqrtPriceX96) private {
+        // Get current epoch data
+        (, uint256 newEpochStartTime, , , , , , , , , ) = market
+            .getLatestEpoch();
+        newEpochStartTime++; // start time of next epoch is the end time of current epoch + 1
+
         // Process Withdraw queue
+        _processWithdrawQueue();
+
         // Initialize next epoch
+        _initializeEpoch(newEpochStartTime, startingSqrtPriceX96);
+
         // Process Deposit queue
+        _processDepositQueue();
+    }
+
+    function _processWithdrawQueue() private {
+        // TODO
+    }
+
+    function _processDepositQueue() private {
+        // TODO
     }
 
     modifier onlyMarket() {
