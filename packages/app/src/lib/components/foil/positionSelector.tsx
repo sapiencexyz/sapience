@@ -44,9 +44,11 @@ const PositionSelector: React.FC<PositionSelectorProps> = ({ isLP }) => {
             {id}
           </option>
         ))}
-        <option key="new" value={0}>
-          New Position
-        </option>
+        {isLP !== null && (
+          <option key="new" value={0}>
+            New Position
+          </option>
+        )}
       </Select>
     </FormControl>
   );
