@@ -333,7 +333,7 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       );
       break;
     case EventType.PositionSettled:
-      console.log("Settling LP or Trader position from event: ", event);
+      console.log("Handling Position Settled from event: ", event);
       await handlePositionSettledEvent(event);
       skipTransaction = true;
       break;
