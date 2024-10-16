@@ -6,8 +6,13 @@ import "../market/interfaces/IFoil.sol";
 import "./interfaces/IVault.sol";
 
 contract Vault is IVault, ERC20 {
+    using SafeERC20 for IERC20;
+
     IFoil public market;
     uint256 public duration;
+
+    uint256 public currentEpochId;
+    uint256 public nextEpochId;
 
     constructor(
         string memory _name,
@@ -84,5 +89,40 @@ contract Vault is IVault, ERC20 {
             "Only market can call this function"
         );
         _;
+    }
+
+    mapping(address => uint256) public pendingDeposits;
+
+    function deposit(uint256 amount) external {
+        collateralAsset.safeTransferFrom(msg.sender, address(this), amount);
+        pendingDeposits[msg.sender] += amount;
+        withdrawalRequested[msg.sender] = false;
+    }
+
+    function withdrawPendingDeposit(uint256 amount) external {
+        require(pendingDeposits[msg.sender] >= amount, "Insufficient balance");
+        collateralAsset.safeTransfer(msg.sender, amount);
+        pendingDeposits[msg.sender] -= amount;
+    }
+
+    mapping(address => bool) public withdrawalRequested;
+
+    function requestWithdrawal() external {
+        withdrawalRequested[msg.sender] = true;
+    }
+
+    function cancelWithdrawal() external {
+        withdrawalRequested[msg.sender] = false;
+    }
+
+    mapping(address => uint256) public pendingWithdrawals;
+
+    function withdraw(uint256 amount) external {
+        require(
+            pendingWithdrawals[msg.sender] >= amount,
+            "Insufficient balance"
+        );
+        collateralAsset.safeTransfer(msg.sender, amount);
+        pendingWithdrawals[msg.sender] -= amount;
     }
 }
