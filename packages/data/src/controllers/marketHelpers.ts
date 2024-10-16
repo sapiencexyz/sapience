@@ -56,6 +56,31 @@ export const handleTransferEvent = async (event: Event) => {
   console.log(`Updated owner of position ${tokenId} to ${to}`);
 };
 
+
+/**
+ * Handles a Transfer event by updating the owner of the corresponding Position.
+ * @param event The Transfer event
+ */
+export const handlePositionSettledEvent = async (event: Event) => {
+  const { positionId, withdrawnCollateral } = event.logData.args;
+
+  let existingPosition = await positionRepository.findOne({
+    where: {
+      positionId: Number(positionId),
+    },
+  });
+
+  if (!existingPosition) {
+    // Ignore the settled event until the position is created from another event
+    console.log("Position not found for settled event: ", event);
+    return;
+  }
+
+  existingPosition.isSettled = true;
+  await positionRepository.save(existingPosition);
+  console.log(`Updated isSettled state of position ${positionId} to true`);
+};
+
 /**
  * Creates or modifies a Position in the database based on the given Transaction.
  * @param transaction the Transaction to use for creating/modifying the position
