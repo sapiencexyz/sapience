@@ -121,7 +121,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({
                     <NumberDisplay value={pnl} /> wstETH
                   </Td> */}
                   <Td>
-                    {row.isSettled ?(
+                    {row.isSettled ? (
                       <CheckIcon color="green.500" mr={2} />
                     ) : null}
                   </Td>

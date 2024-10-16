@@ -175,12 +175,7 @@ const PositionPage = ({
                 <QuestionOutlineIcon transform="translateY(-2px)" />
               </Tooltip>
             </ListItem> */}
-            {positionData.isSettled ? (
-                <ListItem>
-                  Settled
-                </ListItem>
-            ): null}
-
+            {positionData.isSettled ? <ListItem>Settled</ListItem> : null}
           </UnorderedList>
         </Box>
       );
