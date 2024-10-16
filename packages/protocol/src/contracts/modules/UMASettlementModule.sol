@@ -86,13 +86,21 @@ contract UMASettlementModule is
         uint256 epochId = market.epochIdByAssertionId[assertionId];
         Epoch.Data storage epoch = Epoch.load(epochId);
 
-        validateCallback(epoch, msg.sender, assertionId);
+        validateUMACallback(epoch, msg.sender, assertionId);
 
         Epoch.Settlement storage settlement = epoch.settlement;
 
         if (!epoch.settlement.disputed) {
             epoch.setSettlementPriceInRange(settlement.settlementPriceD18);
             epoch.settled = true;
+
+            // Call the callback recipient
+            if (address(market.callbackRecipient) != address(0)) {
+                market.callbackRecipient.resolutionCallback(
+                    settlement.settlementPriceD18
+                );
+            }
+
             emit EpochSettled(
                 epochId,
                 assertionId,
@@ -108,7 +116,7 @@ contract UMASettlementModule is
         uint256 epochId = market.epochIdByAssertionId[assertionId];
         Epoch.Data storage epoch = Epoch.load(epochId);
 
-        validateCallback(epoch, msg.sender, assertionId);
+        validateUMACallback(epoch, msg.sender, assertionId);
 
         Epoch.Settlement storage settlement = epoch.settlement;
         settlement.disputed = true;
@@ -129,7 +137,7 @@ contract UMASettlementModule is
         require(caller == market.owner, "Only owner can call this function");
     }
 
-    function validateCallback(
+    function validateUMACallback(
         Epoch.Data storage epoch,
         address caller,
         bytes32 assertionId
