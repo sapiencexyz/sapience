@@ -73,3 +73,10 @@ export function getChain(chainId: number) {
 
   throw new Error(`Chain with id ${chainId} not found`);
 }
+
+export const convertToGwei = (
+  value: number,
+  stEthPerToken: number | undefined
+) => {
+  return (value * (stEthPerToken || 1)) / 1e9;
+};

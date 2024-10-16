@@ -18,7 +18,7 @@ import {
 import type { PriceChartData, TimeWindow } from '../interfaces/interfaces';
 import { formatXAxisTick, getXTicksToShow } from '../util/chartUtil';
 import { formatAmount } from '../util/numberUtil';
-import { getDisplayTextForVolumeWindow } from '../util/util';
+import { convertToGwei, getDisplayTextForVolumeWindow } from '../util/util';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import { colors, gray700, green400, red500 } from '~/lib/styles/theme/colors';
 
@@ -150,10 +150,15 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
     return getDisplayTextForVolumeWindow(activeWindow);
   }, [activeWindow]);
   const [label, setLabel] = useState<string>(timePeriodLabel);
-  const { pool, stEthPerToken } = useContext(MarketContext);
-  const currPrice: string = useMemo(() => {
-    return pool?.token0Price.toSignificant(18) || '0';
-  }, [pool?.token0Price]);
+  const { pool, stEthPerToken, useMarketUnits } = useContext(MarketContext);
+  const currPrice: string | number = useMemo(() => {
+    return useMarketUnits
+      ? pool?.token0Price.toSignificant(18) || 0
+      : convertToGwei(
+          Number(pool?.token0Price.toSignificant(18) || 0),
+          stEthPerToken
+        );
+  }, [pool?.token0Price, useMarketUnits, stEthPerToken]);
   const [yAxisDomain, setYAxisDomain] = useState<[number, number]>([0, 0]);
   const [chartDimensions, setChartDimensions] = useState({
     width: 0,
@@ -162,6 +167,7 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
   const [gridOffsetFromParent, setGridOffsetFromParent] = useState(0);
 
   const chartRef = useRef(null);
+  console.log('index prices =', data.indexPrices);
 
   const combinedData = useMemo(() => {
     return data.marketPrices.map((mp, i) => {

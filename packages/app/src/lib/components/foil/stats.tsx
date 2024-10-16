@@ -12,6 +12,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import React, { useContext } from 'react';
 
 import { MarketContext } from '~/lib/context/MarketProvider';
+import { convertToGwei } from '~/lib/util/util';
 
 import NumberDisplay from './numberDisplay';
 
@@ -44,10 +45,6 @@ const Stats = () => {
     endTimeString = format(date, 'PPpp');
   }
 
-  const convertToGwei = (value: number) => {
-    return (value * (stEthPerToken || 1)) / 1e9;
-  };
-
   return (
     <Flex alignItems="center" direction="column" width="100%" pb={6}>
       <Flex
@@ -71,7 +68,9 @@ const Stats = () => {
           <StatNumber>
             <NumberDisplay
               value={
-                useMarketUnits ? averagePrice : convertToGwei(averagePrice)
+                useMarketUnits
+                  ? averagePrice
+                  : convertToGwei(averagePrice, stEthPerToken)
               }
             />{' '}
             <Text fontSize="sm" as="span">
@@ -104,7 +103,8 @@ const Stats = () => {
                 useMarketUnits
                   ? pool?.token0Price.toSignificant(18) || 0
                   : convertToGwei(
-                      Number(pool?.token0Price.toSignificant(18) || 0)
+                      Number(pool?.token0Price.toSignificant(18) || 0),
+                      stEthPerToken
                     )
               }
             />{' '}
