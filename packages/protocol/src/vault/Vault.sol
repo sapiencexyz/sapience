@@ -9,16 +9,13 @@ contract Vault is IVault, ERC20 {
     using SafeERC20 for IERC20;
 
     IFoil public market;
-<<<<<<< HEAD
     IERC20 public collateralAsset;
     uint256 public positionId;
     uint256 public epochId;
-=======
     uint256 public duration;
 
     uint256 public currentEpochId;
     uint256 public nextEpochId;
->>>>>>> ccd828bb563a12960004ed6e4dd9079f2a6f8ed8
 
     constructor(
         string memory _name,
