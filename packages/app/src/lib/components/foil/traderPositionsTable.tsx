@@ -1,4 +1,4 @@
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import { CheckIcon, QuestionOutlineIcon } from '@chakra-ui/icons';
 import {
   TableContainer,
   Table,
@@ -75,6 +75,7 @@ const TraderPositionsTable: React.FC<Props> = ({
                 <QuestionOutlineIcon transform="translateY(-1px)" />
               </Tooltip>
             </Th>
+            <Th>Settled</Th>
           </Tr>
         </Thead>
         <Tbody>
@@ -105,6 +106,11 @@ const TraderPositionsTable: React.FC<Props> = ({
                   </Td>
                   <Td>
                     <NumberDisplay value={pnl} /> wstETH
+                  </Td>
+                  <Td>
+                    {row.isSettled ? (
+                      <CheckIcon color="green.500" mr={2} />
+                    ) : null}
                   </Td>
                 </Tr>
               );
