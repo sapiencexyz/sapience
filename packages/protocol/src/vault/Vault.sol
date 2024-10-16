@@ -1,10 +1,4 @@
-
-
 contract Vault is IERC20 {
-
-    
-    constructor(uint initialPrice, address collateralAddress, uint startTime, ) IERC20("Vault", "VAULT") {
-
     /*
         == Constructor Params ==
         uniswapPositionManager =  "<%= imports.Uniswap.contracts.NonfungiblePositionManager.address %>", 
@@ -24,16 +18,25 @@ contract Vault is IERC20 {
         bondCurrency = address
         bondAmount = "5000000000"
     */
-    //DEPLOY MARKET
-    // Call _initializer
+
+    constructor(
+        uint initialPrice,
+        address collateralAddress,
+        uint startTime
+    ) IERC20("Vault", "VAULT") {
+        //DEPLOY MARKET
+        // Call _initializer
+        _initializer();
     }
 
-    _initializer() private {
-        market.createEpoch()
-    }
-
-    function handleSuccessSettlementCallback(uint256 previousSettlementPriceD18) external onlyMarket {
+    function handleSuccessSettlementCallback(
+        uint256 previousSettlementPriceD18
+    ) external onlyMarket {
         _createNextEpoch(previoustSettlementPriceD18);
+    }
+
+    function _initializer() private {
+        market.createEpoch();
     }
 
     function _createNextEpoch(uint256 previousSettlementPriceD18) private {
@@ -42,6 +45,4 @@ contract Vault is IERC20 {
         // Initialize next epoch
         // Process Deposit queue
     }
-
-}   
-    
+}
