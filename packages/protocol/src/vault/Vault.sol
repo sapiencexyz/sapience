@@ -29,10 +29,9 @@ contract Vault is IVault, ERC20 {
     */
 
     IFoil public market;
-
-    uint256 public currentEpochId;
-    uint256 public nextEpochId;
-
+    IERC20 public collateralAsset;
+    uint256 public positionId;
+    uint256 public epochId;
 
     constructor(
         uint256 initialPrice,
@@ -67,10 +66,34 @@ contract Vault is IVault, ERC20 {
     }
 
     function _createNextEpoch(uint256 previousSettlementPriceD18) private {
+        market.settlePosition(positionId);
         _initializeEpoch(previousSettlementPriceD18);
         // Process Withdraw queue
         // Initialize next epoch
         // Process Deposit queue
+
+        (uint256 amount0, uint256 amount1,) = market.getTokenAmounts(
+            epochId,
+            totalPendingDeposits,
+            0, // todo
+            0, // todo
+            0  // todo
+        );
+
+        IFoilStructs.LiquidityMintParams memory params = IFoilStructs.LiquidityMintParams({
+            epochId: epochId,
+            amountTokenA: amount0,
+            amountTokenB: amount1,
+            collateralAmount: totalPendingDeposits,
+            lowerTick: 0, // todo
+            upperTick: 0, // todo
+            minAmountTokenA: 0,
+            minAmountTokenB: 0,
+            deadline: block.timestamp
+        });
+        (positionId, , , , , ) = market.createLiquidityPosition(params);
+
+        totalPendingDeposits = 0;
     }
 
     modifier onlyMarket() {
@@ -82,17 +105,20 @@ contract Vault is IVault, ERC20 {
     }
 
     mapping(address => uint256) public pendingDeposits;
+    uint256 public totalPendingDeposits;
 
     function deposit(uint256 amount) external {
         collateralAsset.safeTransferFrom(msg.sender, address(this), amount);
         pendingDeposits[msg.sender] += amount;
         withdrawalRequested[msg.sender] = false;
+        totalPendingDeposits += amount;
     }
 
     function withdrawPendingDeposit(uint256 amount) external {
         require(pendingDeposits[msg.sender] >= amount, "Insufficient balance");
         collateralAsset.safeTransfer(msg.sender, amount);
         pendingDeposits[msg.sender] -= amount;
+        totalPendingDeposits -= amount;
     }
 
     mapping(address => bool) public withdrawalRequested;
@@ -106,10 +132,12 @@ contract Vault is IVault, ERC20 {
     }
 
     mapping(address => uint256) public pendingWithdrawals;
+    uint256 public totalPendingWithdrawals;
 
     function withdraw(uint256 amount) external {
         require(pendingWithdrawals[msg.sender] >= amount, "Insufficient balance");
         collateralAsset.safeTransfer(msg.sender, amount);
         pendingWithdrawals[msg.sender] -= amount;
+        totalPendingWithdrawals -= amount;
     }
 }
