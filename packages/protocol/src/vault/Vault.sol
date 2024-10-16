@@ -66,7 +66,7 @@ contract Vault is IVault, ERC20 {
         // Get current epoch data
         (, uint256 newEpochStartTime, , , , , , , , , ) = market
             .getLatestEpoch();
-        newEpochStartTime++; // start time of next epoch is the end time of current epoch + 1
+        newEpochStartTime += duration + 1; // start time of next epoch is the end time of current epoch + duration +1 (Ying and Yang vaults)
 
         market.settlePosition(positionId);
 
@@ -85,26 +85,26 @@ contract Vault is IVault, ERC20 {
     }
 
     function _processDepositQueue() private {
-
-        (uint256 amount0, uint256 amount1,) = market.getTokenAmounts(
+        (uint256 amount0, uint256 amount1, ) = market.getTokenAmounts(
             epochId,
             totalPendingDeposits,
             0, // todo
             0, // todo
-            0  // todo
+            0 // todo
         );
 
-        IFoilStructs.LiquidityMintParams memory params = IFoilStructs.LiquidityMintParams({
-            epochId: epochId,
-            amountTokenA: amount0,
-            amountTokenB: amount1,
-            collateralAmount: totalPendingDeposits,
-            lowerTick: 0, // todo
-            upperTick: 0, // todo
-            minAmountTokenA: 0,
-            minAmountTokenB: 0,
-            deadline: block.timestamp
-        });
+        IFoilStructs.LiquidityMintParams memory params = IFoilStructs
+            .LiquidityMintParams({
+                epochId: epochId,
+                amountTokenA: amount0,
+                amountTokenB: amount1,
+                collateralAmount: totalPendingDeposits,
+                lowerTick: 0, // todo
+                upperTick: 0, // todo
+                minAmountTokenA: 0,
+                minAmountTokenB: 0,
+                deadline: block.timestamp
+            });
         (positionId, , , , , ) = market.createLiquidityPosition(params);
 
         totalPendingDeposits = 0;
