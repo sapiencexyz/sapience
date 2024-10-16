@@ -466,7 +466,7 @@
   "deployTxnHash": "0xe36b5081795b6820b5783895d968e569176676760b0c6ae29d6181f2941c9250",
   "deployTxnBlockNumber": "6857070",
   "deployTimestamp": "1728661308",
-  "sourceName": "src/contracts/modules/NftModule.sol",
+  "sourceName": "src/market/modules/NftModule.sol",
   "contractName": "NftModule",
   "deployedOn": "deploy.NftModule",
   "gasUsed": 1190494,

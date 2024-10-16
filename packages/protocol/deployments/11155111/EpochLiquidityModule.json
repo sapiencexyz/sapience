@@ -609,7 +609,7 @@
   "deployTxnHash": "0x4dbf68ec5130957425c6b304f0f397715fe07a82b4efb8f1d471432d6e2f53be",
   "deployTxnBlockNumber": "6582993",
   "deployTimestamp": "1724785572",
-  "sourceName": "src/contracts/modules/EpochLiquidityModule.sol",
+  "sourceName": "src/market/modules/EpochLiquidityModule.sol",
   "contractName": "EpochLiquidityModule",
   "deployedOn": "deploy.EpochLiquidityModule",
   "gasUsed": 2788384,

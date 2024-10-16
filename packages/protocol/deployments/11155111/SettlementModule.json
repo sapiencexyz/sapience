@@ -185,7 +185,7 @@
   "deployTxnHash": "0x5222b075ef987a45e536e19f50c0b242b1095ee9e6f535d64f3a77794ab108b3",
   "deployTxnBlockNumber": "6857071",
   "deployTimestamp": "1728661320",
-  "sourceName": "src/contracts/modules/SettlementModule.sol",
+  "sourceName": "src/market/modules/SettlementModule.sol",
   "contractName": "SettlementModule",
   "deployedOn": "deploy.SettlementModule",
   "gasUsed": 1294100,

@@ -766,7 +766,7 @@
   "deployTxnHash": "0x6dbe7dd0b6935b7d0b880d769ed05fb618aedbf31e8fdd7eb1c19502709e0dab",
   "deployTxnBlockNumber": "6857069",
   "deployTimestamp": "1728661296",
-  "sourceName": "src/contracts/modules/LiquidityModule.sol",
+  "sourceName": "src/market/modules/LiquidityModule.sol",
   "contractName": "LiquidityModule",
   "deployedOn": "deploy.LiquidityModule",
   "gasUsed": 2940246,

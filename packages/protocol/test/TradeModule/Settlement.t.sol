@@ -3,20 +3,20 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
-import {IFoil} from "../../src/contracts/interfaces/IFoil.sol";
-import {IMintableToken} from "../../src/contracts/external/IMintableToken.sol";
-import {TickMath} from "../../src/contracts/external/univ3/TickMath.sol";
+import {IFoil} from "../../src/market/interfaces/IFoil.sol";
+import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
+import {TickMath} from "../../src/market/external/univ3/TickMath.sol";
 import {TestTrade} from "../helpers/TestTrade.sol";
 import {TestEpoch} from "../helpers/TestEpoch.sol";
 import {TestUser} from "../helpers/TestUser.sol";
-import {DecimalPrice} from "../../src/contracts/libraries/DecimalPrice.sol";
+import {DecimalPrice} from "../../src/market/libraries/DecimalPrice.sol";
 import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
 import {SafeCastI256, SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import {Errors} from "../../src/contracts/storage/Errors.sol";
-import {Position} from "../../src/contracts/storage/Position.sol";
-import {IFoilStructs} from "../../src/contracts/interfaces/IFoilStructs.sol";
-import {MigrationMathUtils} from "../../src/contracts/external/univ3/MigrationMathUtils.sol";
+import {Errors} from "../../src/market/storage/Errors.sol";
+import {Position} from "../../src/market/storage/Position.sol";
+import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
+import {MigrationMathUtils} from "../../src/market/external/univ3/MigrationMathUtils.sol";
 import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
 
 contract TradePositionSettlement is TestTrade {

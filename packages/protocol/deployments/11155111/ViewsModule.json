@@ -466,7 +466,7 @@
   "deployTxnHash": "0x164fa8b6366b6b899debaa790cf24538d585df0756bcf8ada98939b0c2c15887",
   "deployTxnBlockNumber": "6857074",
   "deployTimestamp": "1728661368",
-  "sourceName": "src/contracts/modules/ViewsModule.sol",
+  "sourceName": "src/market/modules/ViewsModule.sol",
   "contractName": "ViewsModule",
   "deployedOn": "deploy.ViewsModule",
   "gasUsed": 965855,

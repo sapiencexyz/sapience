@@ -565,7 +565,7 @@
   "deployTxnHash": "0x1951557ee8dfcf4aedc919b1336d8c853d8d8856ffcb9b1a0fe598f50d5fd8b1",
   "deployTxnBlockNumber": "6857072",
   "deployTimestamp": "1728661344",
-  "sourceName": "src/contracts/modules/TradeModule.sol",
+  "sourceName": "src/market/modules/TradeModule.sol",
   "contractName": "TradeModule",
   "deployedOn": "deploy.TradeModule",
   "gasUsed": 2429988,

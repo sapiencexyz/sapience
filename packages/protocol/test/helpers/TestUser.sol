@@ -3,7 +3,7 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
-import {IMintableToken} from "../../src/contracts/external/IMintableToken.sol";
+import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 
 contract TestUser is Test {
     using Cannon for Vm;

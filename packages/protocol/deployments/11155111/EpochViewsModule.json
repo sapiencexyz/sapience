@@ -364,7 +364,7 @@
   "deployTxnHash": "0x8e8764117094f784484ab8b3a67d83e9ff32e4419e42e4e655630f8baff19b8b",
   "deployTxnBlockNumber": "6582997",
   "deployTimestamp": "1724785632",
-  "sourceName": "src/contracts/modules/EpochViewsModule.sol",
+  "sourceName": "src/market/modules/EpochViewsModule.sol",
   "contractName": "EpochViewsModule",
   "deployedOn": "deploy.EpochViewsModule",
   "gasUsed": 642455,

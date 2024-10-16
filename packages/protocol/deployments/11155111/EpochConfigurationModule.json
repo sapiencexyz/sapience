@@ -226,7 +226,7 @@
   "deployTxnHash": "0x1d9a1317ceae3c65b12634be280edf9ed49457f591e84d2ef09f70181fdd96a2",
   "deployTxnBlockNumber": "6582999",
   "deployTimestamp": "1724785656",
-  "sourceName": "src/contracts/modules/EpochConfigurationModule.sol",
+  "sourceName": "src/market/modules/EpochConfigurationModule.sol",
   "contractName": "EpochConfigurationModule",
   "deployedOn": "deploy.EpochConfigurationModule",
   "gasUsed": 2016221,

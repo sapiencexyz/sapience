@@ -463,7 +463,7 @@
   "deployTxnHash": "0x9a3a66ffc99de28f7aaafbf63501ea0ff570636d6aba644154b1ab89383b4e78",
   "deployTxnBlockNumber": "6582995",
   "deployTimestamp": "1724785596",
-  "sourceName": "src/contracts/modules/EpochTradeModule.sol",
+  "sourceName": "src/market/modules/EpochTradeModule.sol",
   "contractName": "EpochTradeModule",
   "deployedOn": "deploy.EpochTradeModule",
   "gasUsed": 2194736,

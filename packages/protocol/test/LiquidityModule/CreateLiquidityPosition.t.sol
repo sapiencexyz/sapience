@@ -3,18 +3,18 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
-import {IFoil} from "../../src/contracts/interfaces/IFoil.sol";
-import {IMintableToken} from "../../src/contracts/external/IMintableToken.sol";
-import {TickMath} from "../../src/contracts/external/univ3/TickMath.sol";
+import {IFoil} from "../../src/market/interfaces/IFoil.sol";
+import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
+import {TickMath} from "../../src/market/external/univ3/TickMath.sol";
 import {TestEpoch} from "../helpers/TestEpoch.sol";
-import {Epoch} from "../../src/contracts/storage/Epoch.sol";
+import {Epoch} from "../../src/market/storage/Epoch.sol";
 import {TestUser} from "../helpers/TestUser.sol";
-import {DecimalPrice} from "../../src/contracts/libraries/DecimalPrice.sol";
-import {IFoilStructs} from "../../src/contracts/interfaces/IFoilStructs.sol";
-import {Errors} from "../../src/contracts/storage/Errors.sol";
+import {DecimalPrice} from "../../src/market/libraries/DecimalPrice.sol";
+import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
+import {Errors} from "../../src/market/storage/Errors.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import {ILiquidityModule} from "../../src/contracts/interfaces/ILiquidityModule.sol";
-import {Position} from "../../src/contracts/storage/Position.sol";
+import {ILiquidityModule} from "../../src/market/interfaces/ILiquidityModule.sol";
+import {Position} from "../../src/market/storage/Position.sol";
 
 contract CreateLiquidityPosition is TestEpoch {
     using Cannon for Vm;

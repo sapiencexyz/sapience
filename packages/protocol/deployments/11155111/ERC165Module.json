@@ -26,7 +26,7 @@
   "deployTxnHash": "0xa18907e168ed25e868084316edd43b9e25474a260672f8775ec8f0e535f0bb8d",
   "deployTxnBlockNumber": "6857068",
   "deployTimestamp": "1728661284",
-  "sourceName": "src/contracts/modules/ERC165Module.sol",
+  "sourceName": "src/market/modules/ERC165Module.sol",
   "contractName": "ERC165Module",
   "deployedOn": "deploy.ERC165Module",
   "gasUsed": 109841,

@@ -646,7 +646,7 @@
   "deployTxnHash": "0x6c7a9b06120b1d1b765802fea302a96672bbef99dfeaaf71d0566d842b4f2c03",
   "deployTxnBlockNumber": "6857075",
   "deployTimestamp": "1728661380",
-  "sourceName": "src/contracts/modules/ConfigurationModule.sol",
+  "sourceName": "src/market/modules/ConfigurationModule.sol",
   "contractName": "ConfigurationModule",
   "deployedOn": "deploy.ConfigurationModule",
   "gasUsed": 2647074,
