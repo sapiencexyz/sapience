@@ -51,7 +51,6 @@ import SlippageTolerance from './slippageTolerance';
 
 // TODO 1% - Hardcoded for now, should be retrieved with pool.tickSpacing()
 // Also move this a to helper?
-const tickSpacingDefault = 200;
 const tickToPrice = (tick: number): number => 1.0001 ** tick;
 const priceToTick = (price: number, tickSpacing: number): number => {
   const tick = Math.log(price) / Math.log(1.0001);
@@ -83,9 +82,10 @@ function getTokenAmountsFromLiquidity(
 }
 
 const AddEditLiquidity: React.FC<{
-  handleTabChange: (index: number, hasConvertedToTrader: boolean) => void;
-}> = ({ handleTabChange }) => {
+  changeToTradeTab: () => void;
+}> = ({ changeToTradeTab }) => {
   const { nftId, refreshPositions } = useAddEditPosition();
+  console.log('nftId', nftId);
 
   const {
     epoch,
@@ -487,9 +487,9 @@ const AddEditLiquidity: React.FC<{
         duration: 5000,
         isClosable: true,
       });
-      handleTabChange(0, true);
+      changeToTradeTab();
     }
-  }, [positionData, toast, handleTabChange]);
+  }, [positionData, toast, changeToTradeTab]);
 
   // handle token amounts error
   useEffect(() => {
@@ -857,13 +857,6 @@ const AddEditLiquidity: React.FC<{
       finalDelta,
       collateralAssetDecimals
     );
-    console.log('***********');
-    console.log('allowance', allowance);
-    console.log(
-      'collateralAmountDeltaFormatted',
-      collateralAmountDeltaFormatted
-    );
-    console.log('FINAL DELTA =', finalDelta);
 
     if (
       allowance &&

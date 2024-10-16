@@ -32,8 +32,9 @@ export default function Settle() {
   const [isSettling, setIsSettling] = useState<boolean>(false);
   const toast = useToast();
 
-  const { tokenIds, isLoadingBalance, isLoadingContracts, refetch } =
-    useTokenIdsOfOwner(address as `0x${string}`);
+  const { isLoadingBalance, isLoadingContracts, refetch } = useTokenIdsOfOwner(
+    address as `0x${string}`
+  );
 
   const { data: positionData } = useReadContract({
     address: marketAddress as `0x${string}`,

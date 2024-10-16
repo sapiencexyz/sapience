@@ -31,6 +31,7 @@ import TransactionTable from '~/lib/components/foil/transactionTable';
 import VolumeChart from '~/lib/components/VolumeChart';
 import VolumeWindowSelector from '~/lib/components/VolumeWindowButtons';
 import { API_BASE_URL } from '~/lib/constants/constants';
+import { AddEditPositionProvider } from '~/lib/context/AddEditPositionContext';
 import { MarketProvider } from '~/lib/context/MarketProvider';
 import { ChartType, TimeWindow } from '~/lib/interfaces/interfaces';
 
@@ -257,120 +258,122 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
       address={marketAddress}
       epoch={Number(epoch)}
     >
-      <Flex
-        direction="column"
-        w="full"
-        h="calc(100vh - 64px)"
-        overflow="hidden"
-      >
-        <EpochHeader />
-        <Flex direction="column" flex={1} overflow="hidden">
-          <Flex
-            direction="column"
-            flex={1}
-            overflow="hidden"
-            px={6}
-            gap={8}
-            flexDirection={{ base: 'column', md: 'row' }}
-          >
+      <AddEditPositionProvider>
+        <Flex
+          direction="column"
+          w="full"
+          h="calc(100vh - 64px)"
+          overflow="hidden"
+        >
+          <EpochHeader />
+          <Flex direction="column" flex={1} overflow="hidden">
             <Flex
               direction="column"
-              w="100%"
-              h="100%"
+              flex={1}
               overflow="hidden"
-              id="chart-stat-flex"
+              px={6}
+              gap={8}
+              flexDirection={{ base: 'column', md: 'row' }}
             >
-              <Box flexShrink={0}>
-                <Stats />
-              </Box>
-
-              <Flex flex={1} id="chart-flex" minHeight={0}>
-                {renderChart()}
-              </Flex>
-              <HStack
-                justifyContent="space-between"
-                width="100%"
-                justify="center"
-                mt={1}
-                mb={3}
-                flexShrink={0}
+              <Flex
+                direction="column"
+                w="100%"
+                h="100%"
+                overflow="hidden"
+                id="chart-stat-flex"
               >
-                <Box>
-                  <MarketUnitsToggle />
-                  {chartType !== ChartType.LIQUIDITY && (
-                    <VolumeWindowSelector
-                      selectedWindow={selectedWindow}
-                      setSelectedWindow={setSelectedWindow}
-                    />
-                  )}
+                <Box flexShrink={0}>
+                  <Stats />
                 </Box>
-                <ChartSelector
-                  chartType={chartType}
-                  setChartType={setChartType}
-                />
-              </HStack>
+
+                <Flex flex={1} id="chart-flex" minHeight={0}>
+                  {renderChart()}
+                </Flex>
+                <HStack
+                  justifyContent="space-between"
+                  width="100%"
+                  justify="center"
+                  mt={1}
+                  mb={3}
+                  flexShrink={0}
+                >
+                  <Box>
+                    <MarketUnitsToggle />
+                    {chartType !== ChartType.LIQUIDITY && (
+                      <VolumeWindowSelector
+                        selectedWindow={selectedWindow}
+                        setSelectedWindow={setSelectedWindow}
+                      />
+                    )}
+                  </Box>
+                  <ChartSelector
+                    chartType={chartType}
+                    setChartType={setChartType}
+                  />
+                </HStack>
+              </Flex>
+              <Box
+                width={{ base: '100%' }}
+                maxWidth={{ base: 'none', md: '360px' }}
+                pb={8}
+              >
+                <MarketSidebar />
+              </Box>
             </Flex>
-            <Box
-              width={{ base: '100%' }}
-              maxWidth={{ base: 'none', md: '360px' }}
-              pb={8}
+            <Flex
+              id="table-flex"
+              borderTop="1px solid"
+              borderColor="gray.200"
+              height={`${tableFlexHeight}px`}
+              pt={1}
+              position="relative"
             >
-              <MarketSidebar />
-            </Box>
-          </Flex>
-          <Flex
-            id="table-flex"
-            borderTop="1px solid"
-            borderColor="gray.200"
-            height={`${tableFlexHeight}px`}
-            pt={1}
-            position="relative"
-          >
-            <Box
-              ref={resizeRef}
-              position="absolute"
-              top="-5px"
-              left="0"
-              right="0"
-              height="10px"
-              cursor="ns-resize"
-            />
-            <Tabs display="flex" flexDirection="column" width="100%">
-              <TabList>
-                <Tab>Transactions</Tab>
-                <Tab>Trader Positions</Tab>
-                <Tab>LP Positions</Tab>
-              </TabList>
-              <TabPanels flexGrow={1} overflow="auto">
-                <TabPanel>
-                  <TransactionTable
-                    isLoading={isLoadingTransactions}
-                    error={useTransactionsError}
-                    transactions={transactions}
-                    contractId={contractId}
-                  />
-                </TabPanel>
-                <TabPanel>
-                  <TraderPositionsTable
-                    isLoading={isLoadingTradePositions}
-                    error={tradePositionsError}
-                    positions={tradePositions}
-                    contractId={contractId}
-                  />
-                </TabPanel>
-                <TabPanel>
-                  <LiquidityPositionsTable
-                    isLoading={isLoadingLpPositions}
-                    error={lpPositionsError}
-                    positions={lpPositions}
-                    contractId={contractId}
-                  />
-                </TabPanel>
-              </TabPanels>
-            </Tabs>
+              <Box
+                ref={resizeRef}
+                position="absolute"
+                top="-5px"
+                left="0"
+                right="0"
+                height="10px"
+                cursor="ns-resize"
+              />
+              <Tabs display="flex" flexDirection="column" width="100%">
+                <TabList>
+                  <Tab>Transactions</Tab>
+                  <Tab>Trader Positions</Tab>
+                  <Tab>LP Positions</Tab>
+                </TabList>
+                <TabPanels flexGrow={1} overflow="auto">
+                  <TabPanel>
+                    <TransactionTable
+                      isLoading={isLoadingTransactions}
+                      error={useTransactionsError}
+                      transactions={transactions}
+                      contractId={contractId}
+                    />
+                  </TabPanel>
+                  <TabPanel>
+                    <TraderPositionsTable
+                      isLoading={isLoadingTradePositions}
+                      error={tradePositionsError}
+                      positions={tradePositions}
+                      contractId={contractId}
+                    />
+                  </TabPanel>
+                  <TabPanel>
+                    <LiquidityPositionsTable
+                      isLoading={isLoadingLpPositions}
+                      error={lpPositionsError}
+                      positions={lpPositions}
+                      contractId={contractId}
+                    />
+                  </TabPanel>
+                </TabPanels>
+              </Tabs>
+            </Flex>
           </Flex>
         </Flex>
-      </Flex>
+      </AddEditPositionProvider>
     </MarketProvider>
   );
 };

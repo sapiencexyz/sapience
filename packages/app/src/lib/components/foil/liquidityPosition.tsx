@@ -6,14 +6,14 @@ import AddEditLiquidity from './addEditLiquidity';
 import PositionSelector from './positionSelector';
 
 const LiquidityPosition = ({
-  handleTabChange,
+  changeToTradeTab,
 }: {
-  handleTabChange: (index: number, hasConvertedToTrader: boolean) => void;
+  changeToTradeTab: () => void;
 }) => {
   return (
     <Box>
       <PositionSelector isLP />
-      <AddEditLiquidity handleTabChange={handleTabChange} />
+      <AddEditLiquidity changeToTradeTab={changeToTradeTab} />
     </Box>
   );
 };

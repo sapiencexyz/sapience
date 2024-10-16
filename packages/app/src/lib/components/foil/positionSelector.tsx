@@ -1,5 +1,5 @@
 import { FormControl, FormLabel, Select } from '@chakra-ui/react';
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import type React from 'react';
 
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
@@ -9,19 +9,12 @@ interface PositionSelectorProps {
 }
 
 const PositionSelector: React.FC<PositionSelectorProps> = ({ isLP }) => {
-  const { nftId, setNftId, tokenIds, isLps } = useAddEditPosition();
+  const { nftId, setNftId, positions } = useAddEditPosition();
 
   const filteredNfts = useMemo(
-    () =>
-      isLP === null
-        ? tokenIds
-        : tokenIds.filter((_, index) => (isLP ? isLps[index] : !isLps[index])),
-    [tokenIds, isLps, isLP]
+    () => (isLP ? positions.liquidityPositions : positions.tradePositions),
+    [isLP, positions]
   );
-
-  useEffect(() => {
-    setNftId(filteredNfts[filteredNfts.length - 1] || 0);
-  }, [filteredNfts, setNftId]);
 
   const handleAccountChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedAccount = Number(event.target.value);
@@ -39,9 +32,9 @@ const PositionSelector: React.FC<PositionSelectorProps> = ({ isLP }) => {
         value={nftId}
         size="sm"
       >
-        {filteredNfts.map((id) => (
-          <option key={id} value={id}>
-            {id}
+        {filteredNfts.map((nft) => (
+          <option key={nft.id} value={Number(nft.id)}>
+            {Number(nft.id)}
           </option>
         ))}
         {isLP !== null && (
