@@ -120,7 +120,7 @@ export default function Settle() {
           {foilData.collateralAssetTicker}
         </Text>
       )}
-      {epochData.settled ? (
+      {epochData[7] ? (
         <Button
           onClick={handleSettle}
           isLoading={isSettling}
