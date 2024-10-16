@@ -63,7 +63,7 @@ library Market {
                 )
             ) {
                 revert Errors.InvalidCallbackResolutionInterface(
-                    callbackRecipient
+                    address(callbackRecipient)
                 );
             }
         }

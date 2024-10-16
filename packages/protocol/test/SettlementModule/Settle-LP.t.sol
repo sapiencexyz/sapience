@@ -14,6 +14,9 @@ import {Position} from "../../src/contracts/storage/Position.sol";
 import {Epoch} from "../../src/contracts/storage/Epoch.sol";
 import {Errors} from "../../src/contracts/storage/Errors.sol";
 import {IFoil} from "../../src/contracts/interfaces/IFoil.sol";
+import {IMockVault} from "../../src/contracts/interfaces/mocks/IMockVault.sol";
+
+import {console2} from "forge-std/console2.sol";
 
 contract SettleLPTest is TestTrade {
     using Cannon for Vm;
@@ -45,7 +48,12 @@ contract SettleLPTest is TestTrade {
         trader2 = createUser("trader2", 1000 ether);
 
         uint160 startingSqrtPriceX96 = 250541448375047931186413801569; // 10
-        (foil, owner) = createEpoch(MIN_TICK, MAX_TICK, startingSqrtPriceX96);
+        (foil, owner) = createEpochWithCallback(
+            MIN_TICK,
+            MAX_TICK,
+            startingSqrtPriceX96,
+            vm.getAddress("MockVault")
+        );
 
         (epochId, , , pool, tokenA, tokenB, , , , , ) = foil.getLatestEpoch();
 
@@ -136,7 +144,7 @@ contract SettleLPTest is TestTrade {
         foil.settlePosition(lpPositionId);
     }
 
-    function testSettleLp_Skip() public {
+    function test_settleLp() public {
         // Warp to end of epoch
         (, , uint256 endTime, , , , , , , , ) = foil.getLatestEpoch();
         vm.warp(endTime + 1);
@@ -162,6 +170,11 @@ contract SettleLPTest is TestTrade {
         Position.Data memory updatedPosition = foil.getPosition(lpPositionId);
         bool isSettled = updatedPosition.isSettled;
         assertTrue(isSettled, "Position should be settled");
+
+        console2.log(
+            "Settlement price:",
+            IMockVault(vm.getAddress("MockVault")).getLastSettlementPrice()
+        );
 
         // TODO: fix this, need to calculate tokens that were collected which is a bit tricky
         // assertCollateralBalanceAfterSettlement(

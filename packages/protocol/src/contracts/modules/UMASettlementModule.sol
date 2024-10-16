@@ -82,6 +82,7 @@ contract UMASettlementModule is
         bytes32 assertionId,
         bool assertedTruthfully
     ) external nonReentrant {
+        assertedTruthfully;
         Market.Data storage market = Market.load();
         uint256 epochId = market.epochIdByAssertionId[assertionId];
         Epoch.Data storage epoch = Epoch.load(epochId);
