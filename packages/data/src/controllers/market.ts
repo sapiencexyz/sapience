@@ -23,6 +23,7 @@ import {
   createOrModifyPosition,
   createOrUpdateMarketFromEvent,
   handleTransferEvent,
+  handlePositionSettledEvent,
   updateTransactionFromAddLiquidityEvent,
   updateTransactionFromLiquidityClosedEvent,
   updateTransactionFromLiquidityModifiedEvent,
@@ -330,6 +331,11 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
         event,
         event.logData.args.epochId
       );
+      break;
+    case EventType.PositionSettled:
+      console.log("Handling Position Settled from event: ", event);
+      await handlePositionSettledEvent(event);
+      skipTransaction = true;
       break;
     case EventType.Transfer:
       console.log("Handling Transfer event: ", event);

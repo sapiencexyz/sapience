@@ -89,4 +89,11 @@ export class Position {
     nullable: true,
   })
   lowPriceTick: string;
+
+  @Column({
+    type: "boolean",
+    nullable: true,
+  })
+  isSettled: boolean | null;
+
 }

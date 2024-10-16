@@ -18,3 +18,5 @@ packages/protocol/deployments/test
 **/coverage.json
 
 .DS_Store
+
+.vscode

@@ -13,6 +13,7 @@ export enum EventType {
   MarketUpdated = "MarketUpdated",
   EpochCreated = "EpochCreated",
   EpochSettled = "EpochSettled",
+  PositionSettled = "PositionSettled",
 }
 
 export interface TradePositionEventLog {
