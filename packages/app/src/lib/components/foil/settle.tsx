@@ -1,6 +1,6 @@
 import { Box, Button, Text, Spinner, useToast } from '@chakra-ui/react';
 import { useState, useEffect, useContext } from 'react';
-import type { WriteContractErrorType } from 'viem';
+import { formatUnits, type WriteContractErrorType } from 'viem';
 import {
   useAccount,
   useReadContract,
@@ -116,21 +116,24 @@ export default function Settle() {
       {withdrawableCollateral > BigInt(0) && (
         <Text mb={4}>
           Withdrawable Collateral:{' '}
-          <NumberDisplay value={withdrawableCollateral.toString()} />{' '}
+          <NumberDisplay value={formatUnits(withdrawableCollateral, 18)} />{' '}
           {foilData.collateralAssetTicker}
         </Text>
       )}
       {epochData[7] ? (
-        <Button
-          onClick={handleSettle}
-          isLoading={isSettling}
-          isDisabled={
-            nftId === 0 || isSettling || withdrawableCollateral === BigInt(0)
-          }
-          variant="brand"
-        >
-          Settle Position
-        </Button>
+        <>
+          <Text mb={4}>Settlement Price: {formatUnits(epochData[8], 18)}</Text>
+          <Button
+            onClick={handleSettle}
+            isLoading={isSettling}
+            isDisabled={
+              nftId === 0 || isSettling || withdrawableCollateral === BigInt(0)
+            }
+            variant="brand"
+          >
+            Settle Position
+          </Button>
+        </>
       ) : (
         <Text>Pending settlement...</Text>
       )}
