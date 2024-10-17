@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: MIT
-pragma solidity >=0.8.2 <0.9.0;
+pragma solidity >=0.8.0 <0.9.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "../market/interfaces/IFoil.sol";
 import "./interfaces/IVault.sol";
 
@@ -19,32 +20,33 @@ contract Vault is IVault, ERC20 {
 
     struct EpochData {
         uint256 epochId;
-        mapping(address => uint256) pendingDeposits;
         uint256 totalPendingDeposits;
-        mapping(address => bool) withdrawalRequested;
-        mapping(address => uint256) pendingWithdrawals;
         uint256 totalPendingWithdrawals;
+        uint256 sharePrice;
+        bool processed;
     }
 
     EpochData[] public epochs;
     mapping(uint256 => uint256) public epochIdToIndex;
 
+    mapping(address => uint256) public userShares;
+    mapping(address => mapping(uint256 => uint256)) public userPendingDeposits;
+    mapping(address => mapping(uint256 => uint256)) public userPendingWithdrawals;
+
     constructor(
         string memory _name,
         string memory _symbol,
         address _marketAddress,
+        address _collateralAssetAddress,
         uint256 _duration,
         uint160 _initialSqrtPriceX96,
         uint256 _initialStartTime
     ) ERC20(_name, _symbol) {
-        // create new market by cloning nextEpochFoilImplementation
         market = IFoil(_marketAddress);
+        collateralAsset = IERC20(_collateralAssetAddress);
         duration = _duration;
 
-        // Initialize the first epoch with the initial price that is set in the constructor's call
         _initializeEpoch(_initialStartTime, _initialSqrtPriceX96);
-
-        _processQueue(0);
     }
 
     // @inheritdoc IVault
@@ -56,7 +58,7 @@ contract Vault is IVault, ERC20 {
 
     function supportsInterface(
         bytes4 interfaceId
-    ) external view returns (bool) {
+    ) external pure returns (bool) {
         return
             interfaceId == type(IVault).interfaceId ||
             interfaceId == type(IERC165).interfaceId ||
@@ -75,39 +77,79 @@ contract Vault is IVault, ERC20 {
             4
         );
         epochs.push(EpochData({
-            pendingDeposits: 0,
+            epochId: newEpochId,
             totalPendingDeposits: 0,
-            withdrawalRequested: false,
-            pendingWithdrawals: 0,
             totalPendingWithdrawals: 0,
-            epochId: newEpochId
+            sharePrice: 0,
+            processed: false
         }));
         epochIdToIndex[newEpochId] = epochs.length - 1;
     }
 
-    function _createNextEpoch(uint160 startingSqrtPriceX96) private {
-        // Get current epoch data
+    function _createNextEpoch() private {
         (, uint256 newEpochStartTime, , , , , , , , , ) = market
             .getLatestEpoch();
         newEpochStartTime += duration + 1; // start time of next epoch is the end time of current epoch + duration +1 (Ying and Yang vaults)
 
-        _initializeEpoch(newEpochStartTime, startingSqrtPriceX96);
-
-        uint collateralReceived = market.settlePosition(positionId);
-
-        _processQueue(collateralReceived);
+        uint256 collateralReceived = market.settlePosition(positionId);
+        _processEpochTransition(collateralReceived);
     }
 
-    function _processQueue(uint256 collateralReceived) private {
-        EpochData previousEpoch = epochs[epochs.length - 1];
-        uint256 collateralToDeposit = collateralReceived + previousEpoch.totalPendingDeposits - previousEpoch.totalPendingWithdrawals;
+    function _processEpochTransition(uint256 collateralReceived) private {
+        EpochData storage currentEpoch = epochs[epochs.length - 1];
+        uint256 totalCollateral = collateralReceived + currentEpoch.totalPendingDeposits - currentEpoch.totalPendingWithdrawals;
+        
+        uint256 newSharePrice;
+        if (totalSupply() > 0) {
+            newSharePrice = totalCollateral * 1e18 / totalSupply();
+        } else {
+            newSharePrice = 1e18;
+        }
+        
+        // Mark current epoch as processed
+        currentEpoch.processed = true;
+        currentEpoch.sharePrice = newSharePrice;
+        
+        // Create new epoch
+        uint256 newEpochId = epochs.length;
+        epochs.push(EpochData({
+            epochId: newEpochId,
+            totalPendingDeposits: 0,
+            totalPendingWithdrawals: 0,
+            sharePrice: newSharePrice,
+            processed: false
+        }));
+        epochIdToIndex[newEpochId] = newEpochId;
+
+        // Create new liquidity position
+        _createNewLiquidityPosition(totalCollateral);
+    }
+
+    function _createNewLiquidityPosition(uint256 totalCollateral) private {
+        uint256 epochId = epochs.length - 1;
+
+        (
+            ,
+            ,
+            ,
+            address pool,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            IFoilStructs.EpochParams memory epochParams
+        ) = market.getLatestEpoch();
+
+        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
 
         (uint256 amount0, uint256 amount1, ) = market.getTokenAmounts(
             epochId,
-            collateralToDeposit,
-            0, // todo
-            0, // todo
-            0 // todo
+            totalCollateral,
+            sqrtPriceX96,
+            TickMath.getSqrtRatioAtTick(epochParams.baseAssetMinPriceTick),
+            TickMath.getSqrtRatioAtTick(epochParams.baseAssetMaxPriceTick)
         );
 
         IFoilStructs.LiquidityMintParams memory params = IFoilStructs
@@ -115,14 +157,67 @@ contract Vault is IVault, ERC20 {
                 epochId: epochId,
                 amountTokenA: amount0,
                 amountTokenB: amount1,
-                collateralAmount: collateralToDeposit,
-                lowerTick: 0, // todo
-                upperTick: 0, // todo
+                collateralAmount: totalCollateral,
+                lowerTick: epochParams.baseAssetMinPriceTick,
+                upperTick: epochParams.baseAssetMaxPriceTick,
                 minAmountTokenA: 0,
                 minAmountTokenB: 0,
                 deadline: block.timestamp
             });
         (positionId, , , , , ) = market.createLiquidityPosition(params);
+    }
+
+    function deposit(uint256 amount) external {
+        collateralAsset.safeTransferFrom(msg.sender, address(this), amount);
+        uint256 currentEpochId = epochs[epochs.length - 1].epochId;
+        userPendingDeposits[msg.sender][currentEpochId] += amount;
+        epochs[epochs.length - 1].totalPendingDeposits += amount;
+    }
+
+    function requestWithdrawal(uint256 shareAmount) external {
+        require(userShares[msg.sender] >= shareAmount, "Insufficient shares");
+        
+        uint256 currentEpochId = epochs[epochs.length - 1].epochId;
+        userPendingWithdrawals[msg.sender][currentEpochId] += shareAmount;
+        epochs[epochs.length - 1].totalPendingWithdrawals += shareAmount;
+        
+        // Lock the shares to prevent double spending
+        userShares[msg.sender] -= shareAmount;
+    }
+
+    function claim() external {
+        uint256 totalNewShares = 0;
+        for (uint256 i = 0; i < epochs.length - 1; i++) {
+            EpochData storage epoch = epochs[i];
+            if (epoch.processed && userPendingDeposits[msg.sender][epoch.epochId] > 0) {
+                uint256 newShares = (userPendingDeposits[msg.sender][epoch.epochId] * 1e18) / epoch.sharePrice;
+                totalNewShares += newShares;
+                delete userPendingDeposits[msg.sender][epoch.epochId];
+            }
+        }
+        if (totalNewShares > 0) {
+            userShares[msg.sender] += totalNewShares;
+            _mint(msg.sender, totalNewShares);
+        }
+    }
+
+    function withdraw() external {
+        uint256 totalWithdrawalAmount = 0;
+        uint256 totalSharesToBurn = 0;
+        for (uint256 i = 0; i < epochs.length - 1; i++) {
+            EpochData storage epoch = epochs[i];
+            if (epoch.processed && userPendingWithdrawals[msg.sender][epoch.epochId] > 0) {
+                uint256 withdrawalAmount = (userPendingWithdrawals[msg.sender][epoch.epochId] * epoch.sharePrice) / 1e18;
+                totalWithdrawalAmount += withdrawalAmount;
+                totalSharesToBurn += userPendingWithdrawals[msg.sender][epoch.epochId];
+                delete userPendingWithdrawals[msg.sender][epoch.epochId];
+            }
+        }
+        if (totalWithdrawalAmount > 0) {
+            userShares[msg.sender] -= totalSharesToBurn;
+            _burn(msg.sender, totalSharesToBurn);
+            collateralAsset.safeTransfer(msg.sender, totalWithdrawalAmount);
+        }
     }
 
     modifier onlyMarket() {
@@ -133,94 +228,24 @@ contract Vault is IVault, ERC20 {
         _;
     }
 
-    function deposit(uint256 amount) external {
-        collateralAsset.safeTransferFrom(msg.sender, address(this), amount);
-        epochs[epochIdToIndex[epochId]].pendingDeposits[msg.sender] += amount;
-        epochs[epochIdToIndex[epochId]].withdrawalRequested[msg.sender] = false;
-        epochs[epochIdToIndex[epochId]].totalPendingDeposits += amount;
-
-        // do accounting to indicate shares will change in the future
-    }
-
     function withdrawPendingDeposit(uint256 amount) external {
-        require(epochs[epochIdToIndex[epochId]].pendingDeposits[msg.sender] >= amount, "Insufficient balance");
+        uint256 currentEpochId = epochs[epochs.length - 1].epochId;
+        require(userPendingDeposits[msg.sender][currentEpochId] >= amount, "Insufficient pending deposit");
+        
+        userPendingDeposits[msg.sender][currentEpochId] -= amount;
+        epochs[epochs.length - 1].totalPendingDeposits -= amount;
+        
         collateralAsset.safeTransfer(msg.sender, amount);
-        epochs[epochIdToIndex[epochId]].pendingDeposits[msg.sender] -= amount;
-        epochs[epochIdToIndex[epochId]].totalPendingDeposits -= amount;
     }
 
-    // my collateral went into the vault, so i can claim my tokens
-    function claim() external {
-    {
-        _mint(msg.sender, claimable[msg.sender]);
-    }
-
-    // this would need to be shares if we want to allow partial withdrawals
-    function requestWithdrawal() external {
-        epochs[epochIdToIndex[epochId]].withdrawalRequested[msg.sender] = true;
-    }
-
-    function cancelWithdrawalRequest() external {
-        epochs[epochIdToIndex[epochId]].withdrawalRequested[msg.sender] = false;
-    }
-
-    function withdraw() external {
-        require(
-            epochs[epochIdToIndex[epochId]].pendingWithdrawals[msg.sender] >= amount,
-            "Insufficient balance"
-        );
-        collateralAsset.safeTransfer(msg.sender, amount);
-        epochs[epochIdToIndex[epochId]].pendingWithdrawals[msg.sender] -= amount;
-        epochs[epochIdToIndex[epochId]].totalPendingWithdrawals -= amount;
+    function cancelWithdrawalRequest(uint256 shareAmount) external {
+        uint256 currentEpochId = epochs[epochs.length - 1].epochId;
+        require(userPendingWithdrawals[msg.sender][currentEpochId] >= shareAmount, "Insufficient pending withdrawal");
+        
+        userPendingWithdrawals[msg.sender][currentEpochId] -= shareAmount;
+        epochs[epochs.length - 1].totalPendingWithdrawals -= shareAmount;
+        
+        // Unlock the shares
+        userShares[msg.sender] += shareAmount;
     }
 }
-
-/*
-# [1] Before the epoch starts, the users can:
-================================================================================
-## Deposit and Remove new collateral for the upcoming epoch `pendingDeposits >= 0`
-(users deposit and remove the collateral they want to trade for the upcoming epoch)
-mapping(address => uint256) public pendingDeposits;
-uint256 public totalPendingDeposits;
-
-
-## Flag (or indicate how much) to withdraw their previous epoch's collateral at the beginning of the next epoch. 
-Up to `totalUserShares` of the previous epoch's collateral.
-mapping(address => uint256) public requestedWithdrawals;
-uint256 public totalRequestedWithdrawals;
-mapping(address => uint256) public shares;
-uint256 public totalShares;
-
-## Withdraw their previously requested withdrawals and update user shares using [3]
-it will update the requestedWithdrawals and totalRequestedWithdrawals with -- amount
-
-# [2] At the start of the epoch, the vault will:
-================================================================================
-- settle the previous epoch's position
-- get how much collateral was received from the settle
-- calculate the new share price based on the total collateral 
-- spawn new epoch in the market
-- calculate the new total collateral amount
-- calculate the new share price based on the total collateral
-- open a position in the new epoch with the new collateral
-- update the accounting for the next epoch [1]
-
-# [3] Calculations and helpers
-================================================================================
-
-## processMyPendingStuff() cleanup all previous pending (dirty) epochs requests for the user and update his total shares
-[USE A SET HERE]
-mapping(address => Uint256Set) dirtyEpochs;
-loop over all dirtyEpochs and: (note, maybe not all, but the limited quantity specified in the call. 0 means all, to prevent gas exhaustion)
-- cleanup pendingDeposits for the dirty epoch
-- withdraw requestedWithdrawals and cleanup requestedWithdrawal for the dirty epoch
-- get delta shares for the epoch
-- update total user shares (and totalShares) if needed
-- remove the epoch from the dirty set
-
-Question.... can we rug in a way lazy users? Do we need to get the historical value?
-
-
-
-CHeck ScalableMapping from DB
-*/
