@@ -7,9 +7,11 @@ import "./interfaces/IERC7540.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../market/external/univ3/TickMath.sol";
 import "../market/interfaces/IFoil.sol";
+import "../market/interfaces/IFoilStructs.sol";
 import "./interfaces/IVault.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
@@ -36,14 +38,13 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
     mapping(address => uint256) public userShares;
     mapping(address => mapping(uint256 => uint256)) public userPendingDeposits;
-    mapping(address => mapping(uint256 => uint256)) public userPendingWithdrawals;
     mapping(address => mapping(uint256 => uint256)) public userPendingWithdrawalShares;
-
-    event EpochProcessed(uint256 indexed epochId, uint256 newSharePrice, uint256 newShares, uint256 sharesToBurn);
 
     // Add mappings to keep track of users with pending deposits and withdrawals
     mapping(uint256 => address[]) private depositors;
     mapping(uint256 => address[]) private withdrawers;
+
+    event EpochProcessed(uint256 indexed epochId, uint256 newSharePrice, uint256 newShares, uint256 sharesToBurn);
 
     constructor(
         string memory _name,
@@ -214,7 +215,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
     function pendingRedeemRequest(address owner) external view override returns (uint256 sharesAmount) {
         uint256 currentEpochId = epochs[epochs.length - 1].epochId;
-        sharesAmount = userPendingWithdrawals[owner][currentEpochId];
+        sharesAmount = userPendingWithdrawalShares[owner][currentEpochId];
     }
 
     function _requestDeposit(
@@ -255,10 +256,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     }
 
     // Existing functions
-
-    function resolutionCallback(
-        uint160 previousResolutionSqrtPriceX96
-    ) external onlyMarket {
+    function resolutionCallback(uint160 previousResolutionSqrtPriceX96) external onlyMarket {
         _createNextEpoch(previousResolutionSqrtPriceX96);
     }
 
@@ -293,22 +291,34 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         epochIdToIndex[newEpochId] = epochs.length - 1;
     }
 
-    function _createNextEpoch(
-        uint160 previousResolutionSqrtPriceX96
-    ) private onlyMarket {
+    // Updated _createNextEpoch function
+    function _createNextEpoch(uint160 previousResolutionSqrtPriceX96) private {
+        // Set up the start time for the new epoch
         (, uint256 newEpochStartTime, , , , , , , , , ) = market.getLatestEpoch();
+
+        // Adjust the start time for the next epoch
         newEpochStartTime += duration + 1;
 
+        _initializeEpoch(newEpochStartTime, previousResolutionSqrtPriceX96);
+
+        // Settle the position and get the collateral received
         uint256 collateralReceived = market.settlePosition(positionId);
-        _processEpochTransition(collateralReceived, previousResolutionSqrtPriceX96);
+
+        // Process the epoch transition and pass the collateral received
+        _processEpochTransition(collateralReceived);
     }
 
-    function _processEpochTransition(uint256 collateralReceived, uint160 previousResolutionSqrtPriceX96) internal {
+    // Updated _processEpochTransition function
+    function _processEpochTransition(uint256 collateralReceived) internal {
         EpochData storage currentEpoch = epochs[epochs.length - 1];
+        
+        // Calculate the new total assets after settling the position
         uint256 totalManagedAssets = totalAssets();
+
         uint256 netSupply = totalSupply();
 
-        uint256 newSharePrice = (totalManagedAssets * 1e18) / netSupply;
+        // Calculate the new share price
+        uint256 newSharePrice = netSupply > 0 ? (totalManagedAssets * 1e18) / netSupply : 1e18;
 
         currentEpoch.sharePrice = newSharePrice;
         currentEpoch.processed = true;
@@ -335,20 +345,21 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
         // Process pending withdrawals
         uint256 totalSharesToBurn = currentEpoch.totalPendingWithdrawals;
+        // Shares were transferred to the vault in _requestRedeem
+        // Burn the shares from the vault's balance
         _burnShares(address(this), totalSharesToBurn);
 
         address[] memory epochWithdrawers = withdrawers[currentEpoch.epochId];
+        uint256 totalWithdrawalAmount = 0;
         for (uint256 i = 0; i < epochWithdrawers.length; i++) {
             address user = epochWithdrawers[i];
             uint256 userWithdrawalShares = userPendingWithdrawalShares[user][currentEpoch.epochId];
             uint256 withdrawalAmount = (userWithdrawalShares * newSharePrice) / 1e18;
 
+            totalWithdrawalAmount += withdrawalAmount;
+
             // Transfer collateral to the user
             collateralAsset.safeTransfer(user, withdrawalAmount);
-
-            // Shares were already transferred to the vault in _requestRedeem
-            // Burn the shares from the vault's balance
-            _burn(address(this), userWithdrawalShares);
 
             // Clean up pending withdrawals
             delete userPendingWithdrawalShares[user][currentEpoch.epochId];
@@ -359,11 +370,20 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         // Clean up depositor and withdrawer lists for the epoch
         delete depositors[currentEpoch.epochId];
         delete withdrawers[currentEpoch.epochId];
+
+        // Calculate the total collateral available for the new liquidity position
+        // This includes the collateral received plus any uninvested collateral after withdrawals
+        uint256 totalCollateral = collateralReceived + collateralAsset.balanceOf(address(this)) - totalWithdrawalAmount;
+
+        // Call _createNewLiquidityPosition with the correct totalCollateral
+        _createNewLiquidityPosition(totalCollateral);
     }
 
-    function _createNewLiquidityPosition(uint256 totalCollateral, uint160 sqrtPriceX96) private {
+    // Updated _createNewLiquidityPosition function
+    function _createNewLiquidityPosition(uint256 totalCollateral) private {
         uint256 epochId = epochs.length - 1;
 
+        // Retrieve the latest epoch parameters
         (
             ,
             ,
@@ -378,6 +398,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             IFoilStructs.EpochParams memory epochParams
         ) = market.getLatestEpoch();
 
+        // Get the current sqrtPriceX96 from the pool
+        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
+
+        // Calculate token amounts for the liquidity position
         (uint256 amount0, uint256 amount1, ) = market.getTokenAmounts(
             epochId,
             totalCollateral,
@@ -386,6 +410,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             TickMath.getSqrtRatioAtTick(epochParams.baseAssetMaxPriceTick)
         );
 
+        // Prepare liquidity mint parameters
         IFoilStructs.LiquidityMintParams memory params = IFoilStructs
             .LiquidityMintParams({
                 epochId: epochId,
@@ -398,6 +423,11 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
                 minAmountTokenB: 0,
                 deadline: block.timestamp
             });
+
+        // Approve collateral transfer to the market
+        collateralAsset.approve(address(market), totalCollateral);
+
+        // Create the liquidity position
         (positionId, , , , , ) = market.createLiquidityPosition(params);
     }
 
