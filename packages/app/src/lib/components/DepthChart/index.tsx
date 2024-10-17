@@ -4,6 +4,7 @@ import { Flex, Text } from '@chakra-ui/react';
 import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import type React from 'react';
 import { useContext, useMemo, useState } from 'react';
+import type { TooltipProps } from 'recharts';
 import {
   BarChart,
   ResponsiveContainer,
@@ -24,6 +25,7 @@ import {
   purple,
   turquoise,
 } from '~/lib/styles/theme/colors';
+import { formatAmount } from '~/lib/util/numberUtil';
 
 type TickDataTuple = [
   bigint, // liquidityGross
@@ -131,6 +133,23 @@ const CustomXAxisTick: React.FC<CustomXAxisTickProps> = ({
         Active tick range
       </text>
     </g>
+  );
+};
+
+const CustomTooltip: React.FC<TooltipProps<number, string>> = ({ payload }) => {
+  console.log('payload', payload);
+  if (!payload || !payload[0]) return null;
+  return (
+    <div
+      style={{
+        backgroundColor: 'white',
+        padding: '8px',
+        border: '1px solid #ccc',
+      }}
+    >
+      <p>{`Tick: ${payload[0].payload?.tick}`}</p>
+      <p>{`Liquidity: ${formatAmount(payload[0].payload?.liquidity)}`}</p>
+    </div>
   );
 };
 
@@ -258,7 +277,7 @@ const DepthChart: React.FC<Props> = () => {
               tickLine={false}
             />
             <YAxis />
-            <Tooltip />
+            <Tooltip content={<CustomTooltip />} />
             <Bar dataKey="liquidity" shape={renderBar} />
           </BarChart>
         </ResponsiveContainer>
