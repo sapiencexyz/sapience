@@ -63,7 +63,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 totalClaimableWithdrawal;
         uint256 sharePrice;
         mapping(address => uint256) userNonExecutedDeposits;
-        mapping(address => uint256) userNonExecutedWithrwawals;
+        mapping(address => uint256) userNonExecutedWithdrawals;
     }
 
     Epoch7540Data[] internal epochs7540;
@@ -296,8 +296,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
     function totalAssets() public view override returns (uint256) {
         uint256 investedAssets = market.getPositionCollateralValue(positionId);
-        uint256 pendingWithdrawals = _getPendingWithdrawals();
-        uint256 pendingDeposits = _getPendingDeposits();
+        uint256 pendingWithdrawals = globalTotalClaimableWithdrawal +
+            globalTotalPendingWithdrawal; // Should we use both or just claimable?
+        uint256 pendingDeposits = globalTotalClaimableDeposit +
+            globalTotalPendingDeposit; // Should we use both or just claimable?
 
         uint256 totalManagedAssets = investedAssets -
             pendingWithdrawals +
@@ -394,6 +396,8 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         if (!user7540DirtyEpochs[owner].contains(currentFutureEpochIdx)) {
             user7540DirtyEpochs[owner].add(currentFutureEpochIdx);
         }
+
+        requestId = currentFutureEpochIdx;
     }
 
     // amount pending to deposit (not claimable, it means, not yet ready to deposit/mint)
@@ -436,8 +440,8 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         assets = convertToAssets(sharesAmount);
         require(assets != 0, "Cannot mint zero shares");
         require(currentFutureEpochIdx > 0, "no previous epoch yet");
+
         // Simplification here - only previous epoch contains unclaimed deposits. TODO make it right
-        // Use convertToShares with Rounding.Down
         Epoch7540Data storage previousEpochData = epochs7540[
             currentFutureEpochIdx - 1
         ];
@@ -450,6 +454,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         previousEpochData.totalClaimableDeposit -= userClaimable;
         globalTotalClaimableDeposit -= userClaimable;
 
+        // Use convertToShares with Rounding.Down
         assets = mint(convertToShares(userClaimable), receiver);
 
         emit Deposit(msg.sender, receiver, assets, userClaimable);
@@ -471,7 +476,16 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             _approve(owner, msg.sender, allowed - sharesAmount);
         }
 
-        // _requestRedeem(sharesAmount, operator, owner);
+        // Do all the accounting (that should go to _requestRedeem)
+        Epoch7540Data storage epochData = epochs7540[currentFutureEpochIdx];
+        epochData.totalPendingWithdrawal += sharesAmount;
+        epochData.userNonExecutedWithdrawals[owner] += sharesAmount;
+        globalTotalPendingWithdrawal += sharesAmount;
+        if (!user7540DirtyEpochs[owner].contains(currentFutureEpochIdx)) {
+            user7540DirtyEpochs[owner].add(currentFutureEpochIdx);
+        }
+
+        requestId = currentFutureEpochIdx;
     }
 
     // amount pending to redeem (not claimable, it means, not yet ready to redeem/withdraw)
@@ -488,28 +502,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256, // ignored requestId
         address owner
     ) external view override returns (uint256 sharesAmount) {
-        uint256 currentEpochId = epochs[epochs.length - 1].epochId;
-        sharesAmount = userPendingWithdrawalShares[owner][currentEpochId];
-    }
-
-    // Sends back collateral to the actor, burns shares (burns sharesAmount = convertToShares(assets); send to actor assets of asset)
-    // notice: this is the second part of the Async requestToWithdraw / withdraw
-    function withdraw(
-        uint256 assets,
-        address receiver,
-        address owner
-    ) external override returns (uint256 sharesAmount) {
-        sharesAmount = convertToShares(assets);
-        require(sharesAmount != 0, "Cannot withdraw zero assets");
-
-        if (msg.sender != owner) {
-            uint256 allowed = allowance(owner, msg.sender);
-            require(allowed >= sharesAmount, "Withdraw exceeds allowance");
-            _approve(owner, msg.sender, allowed - sharesAmount);
-        }
-
-        _requestRedeem(sharesAmount, receiver, owner, "");
-        emit Withdraw(msg.sender, receiver, owner, assets, sharesAmount);
+        return userClaimableWithrwawals[owner];
     }
 
     // Sends back collateral to the actor, burns shares (burns sharesAmount ; send to actor assets = convertToAsset(sharesAmount) of asset)
@@ -519,24 +512,56 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         address receiver,
         address owner
     ) external override returns (uint256 assets) {
-        assets = convertToAssets(sharesAmount);
-        require(assets != 0, "Cannot redeem zero shares");
+        uint256 withdrawnShares = withdraw(
+            convertToAssets(sharesAmount),
+            receiver,
+            owner
+        );
+        // NOTE Use convertToShares with Round.Down
+        assets = convertToAssets(withdrawnShares);
+    }
+
+    // Sends back collateral to the actor, burns shares (burns sharesAmount = convertToShares(assets); send to actor assets of asset)
+    // notice: this is the second part of the Async requestToWithdraw / withdraw
+    function withdraw(
+        uint256 assets,
+        address receiver,
+        address owner
+    ) public override returns (uint256 sharesAmount) {
+        sharesAmount = convertToShares(assets);
+        require(sharesAmount != 0, "Cannot withdraw zero assets");
+        require(currentFutureEpochIdx > 0, "no previous epoch yet");
 
         if (msg.sender != owner) {
             uint256 allowed = allowance(owner, msg.sender);
-            require(allowed >= sharesAmount, "Redeem exceeds allowance");
+            require(allowed >= sharesAmount, "Withdraw exceeds allowance");
             _approve(owner, msg.sender, allowed - sharesAmount);
         }
 
-        _requestRedeem(sharesAmount, receiver, owner, "");
+        // Simplification here - only previous epoch contains unclaimed withdrawals. TODO make it right
+        Epoch7540Data storage previousEpochData = epochs7540[
+            currentFutureEpochIdx - 1
+        ];
+
+        uint256 userClaimable = previousEpochData.userNonExecutedWithdrawals[
+            receiver
+        ];
+
+        // Notice, ignoring assets, getting all, if partials are allowed, use decrement here by assets
+        previousEpochData.userNonExecutedWithdrawals[receiver] = 0;
+        previousEpochData.totalClaimableWithdrawal -= userClaimable;
+        globalTotalClaimableWithdrawal -= userClaimable;
+
+        // Use convertToAssets with Rounding.Down
+        sharesAmount = mint(convertToAssets(userClaimable), receiver);
+
         emit Withdraw(msg.sender, receiver, owner, assets, sharesAmount);
     }
 
     function _requestDeposit(
         uint256 assets,
         address receiver,
-        address owner,
-        bytes memory data
+        address owner
     ) internal {
         uint256 currentEpochId = epochs[epochs.length - 1].epochId;
         userPendingDeposits[receiver][currentEpochId] += assets;
@@ -559,8 +584,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     function _requestRedeem(
         uint256 sharesAmount,
         address receiver,
-        address owner,
-        bytes memory data
+        address owner
     ) internal {
         uint256 currentEpochId = epochs[epochs.length - 1].epochId;
 
@@ -617,22 +641,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             "Only market can call this function"
         );
         _;
-    }
-
-    function _getPendingWithdrawals() internal view returns (uint256) {
-        uint256 totalPendingWithdrawals = 0;
-        for (uint256 i = 0; i < epochs.length; i++) {
-            totalPendingWithdrawals += epochs[i].totalPendingWithdrawals;
-        }
-        return totalPendingWithdrawals;
-    }
-
-    function _getPendingDeposits() internal view returns (uint256) {
-        uint256 totalPendingDeposits = 0;
-        for (uint256 i = 0; i < epochs.length; i++) {
-            totalPendingDeposits += epochs[i].totalPendingDeposits;
-        }
-        return totalPendingDeposits;
     }
 
     event WithdrawPendingDeposit(
