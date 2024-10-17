@@ -17,7 +17,13 @@ import { useReadContracts } from 'wagmi';
 
 import { TICK_SPACING_DEFAULT } from '~/lib/constants/constants';
 import { MarketContext } from '~/lib/context/MarketProvider';
-import { paleGreen, purple, turquoise } from '~/lib/styles/theme/colors';
+import {
+  gray400,
+  paleGreen,
+  peach,
+  purple,
+  turquoise,
+} from '~/lib/styles/theme/colors';
 
 type TickDataTuple = [
   bigint, // liquidityGross
@@ -73,6 +79,8 @@ const CustomBar: React.FC<CustomBarProps> = ({
     fill = paleGreen; // Hover color
   } else if (isClosestTick) {
     fill = turquoise; // Active bar color
+  } else if (tick < activeTickValue) {
+    fill = peach;
   }
   return (
     <rect
@@ -87,11 +95,50 @@ const CustomBar: React.FC<CustomBarProps> = ({
   );
 };
 
+interface CustomXAxisTickProps {
+  props: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    tick: number;
+    index: number;
+    payload: any;
+  };
+  activeTickValue: number;
+}
+
+const CustomXAxisTick: React.FC<CustomXAxisTickProps> = ({
+  props,
+  activeTickValue,
+}) => {
+  const { payload, x, y } = props;
+  const isActiveTick =
+    payload.value <= activeTickValue + 200 && payload.value >= activeTickValue;
+
+  if (!isActiveTick) return null;
+
+  return (
+    <g transform={`translate(${x},${y})`} id="activeTicks">
+      <text
+        x={0}
+        y={0}
+        dy={10}
+        textAnchor="middle"
+        fill={gray400}
+        fontSize={12}
+      >
+        Active tick range
+      </text>
+    </g>
+  );
+};
+
 const DepthChart: React.FC<Props> = () => {
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
   const { pool, chainId, poolAddress, epochParams, collateralAssetDecimals } =
     useContext(MarketContext);
-
+  const activeTickValue = pool?.tickCurrent || 0;
   const tickSpacing = pool ? pool?.tickSpacing : TICK_SPACING_DEFAULT;
   const ticks = useMemo(() => {
     const tickRange: number[] = [];
@@ -178,9 +225,7 @@ const DepthChart: React.FC<Props> = () => {
 
   const liquidityDepthData = useMemo(() => {
     if (!data || !pool || !ticks.length || !data.length) return [];
-    console.log('data', data);
     const baseLiquidity = calculateBaseLiquidity(data, pool.tickCurrent);
-    console.log('base liquidity', baseLiquidity);
     return createLiquidityDistribution(data, baseLiquidity);
   }, [ticks, data, pool]);
 
@@ -193,6 +238,10 @@ const DepthChart: React.FC<Props> = () => {
     />
   );
 
+  const renderXAxis = (props: any) => (
+    <CustomXAxisTick props={props} activeTickValue={activeTickValue} />
+  );
+
   return (
     <Flex flex={1} position="relative">
       {liquidityDepthData.length <= 0 && (
@@ -201,10 +250,16 @@ const DepthChart: React.FC<Props> = () => {
       {liquidityDepthData.length > 0 && (
         <ResponsiveContainer width="100%" height="100%">
           <BarChart width={500} height={300} data={liquidityDepthData}>
-            <XAxis dataKey="tick" tick={false} />
+            <XAxis
+              dataKey="tick"
+              tick={renderXAxis}
+              height={60}
+              interval={0}
+              tickLine={false}
+            />
             <YAxis />
             <Tooltip />
-            <Bar dataKey="liquidity" fill="#8884d8" shape={renderBar} />
+            <Bar dataKey="liquidity" shape={renderBar} />
           </BarChart>
         </ResponsiveContainer>
       )}
