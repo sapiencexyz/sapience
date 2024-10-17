@@ -97,11 +97,11 @@ contract Vault is IVault, ERC20 {
 
     function _processEpochTransition(uint256 collateralReceived) private {
         EpochData storage currentEpoch = epochs[epochs.length - 1];
-        uint256 totalCollateral = collateralReceived + currentEpoch.totalPendingDeposits - currentEpoch.totalPendingWithdrawals;
+        uint256 totalCollateral = collateralReceived + currentEpoch.totalPendingDeposits;
         
         uint256 newSharePrice;
         if (totalSupply() > 0) {
-            newSharePrice = totalCollateral * 1e18 / totalSupply();
+            newSharePrice = totalCollateral * 1e18 / (totalSupply() - currentEpoch.totalPendingWithdrawals);
         } else {
             newSharePrice = 1e18;
         }
@@ -133,7 +133,6 @@ contract Vault is IVault, ERC20 {
             ,
             ,
             address pool,
-            ,
             ,
             ,
             ,
