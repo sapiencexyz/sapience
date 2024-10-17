@@ -9,8 +9,9 @@ import "../market/external/univ3/TickMath.sol";
 import "../market/interfaces/IFoil.sol";
 import "./interfaces/IVault.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
-contract Vault is IVault, ERC20, ERC165 {
+contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
 
     IFoil public market;
@@ -37,6 +38,8 @@ contract Vault is IVault, ERC20, ERC165 {
     mapping(address => mapping(uint256 => uint256)) public userPendingDeposits;
     mapping(address => mapping(uint256 => uint256)) public userPendingWithdrawals;
 
+    event EpochProcessed(uint256 indexed epochId, uint256 newSharePrice, uint256 newShares, uint256 sharesToBurn);
+
     constructor(
         string memory _name,
         string memory _symbol,
@@ -59,9 +62,16 @@ contract Vault is IVault, ERC20, ERC165 {
         return address(collateralAsset);
     }
 
-    function totalAssets() public view override returns (uint256 totalManagedAssets) {
-        // Total assets managed by the vault
-        return collateralAsset.balanceOf(address(this));
+    function totalAssets() public view override returns (uint256) {
+        uint256 investedAssets = 0; // _getInvestedAssets(); // Assets actively invested in positions
+        uint256 uninvestedAssets = collateralAsset.balanceOf(address(this));
+        uint256 pendingWithdrawals = _getPendingWithdrawals();
+        uint256 pendingDeposits = _getPendingDeposits();
+
+        // Total assets = invested assets + uninvested assets - pending withdrawals + pending deposits
+        // We add pending deposits because they will be invested in the next epoch
+        uint256 totalManagedAssets = investedAssets + uninvestedAssets - pendingWithdrawals + pendingDeposits;
+        return totalManagedAssets;
     }
 
     function convertToShares(uint256 assets) public view override returns (uint256 sharesAmount) {
@@ -113,7 +123,7 @@ contract Vault is IVault, ERC20, ERC165 {
         return convertToAssets(sharesAmount);
     }
 
-    function deposit(uint256 assets, address receiver) external override returns (uint256 sharesAmount) {
+    function deposit(uint256 assets, address receiver) external override nonReentrant returns (uint256 sharesAmount) {
         sharesAmount = convertToShares(assets);
         require(sharesAmount != 0, "Cannot deposit zero assets");
 
@@ -307,7 +317,7 @@ contract Vault is IVault, ERC20, ERC165 {
 
     function _createNextEpoch(
         uint160 previousResolutionSqrtPriceX96
-    ) private {
+    ) private onlyMarket {
         (, uint256 newEpochStartTime, , , , , , , , , ) = market.getLatestEpoch();
         newEpochStartTime += duration + 1;
 
@@ -315,34 +325,33 @@ contract Vault is IVault, ERC20, ERC165 {
         _processEpochTransition(collateralReceived, previousResolutionSqrtPriceX96);
     }
 
-    function _processEpochTransition(uint256 collateralReceived, uint160 previousResolutionSqrtPriceX96) private {
+    function _processEpochTransition(uint256 collateralReceived, uint160 previousResolutionSqrtPriceX96) internal {
         EpochData storage currentEpoch = epochs[epochs.length - 1];
-        uint256 totalCollateral = collateralReceived + currentEpoch.totalPendingDeposits;
+        uint256 totalManagedAssets = totalAssets();
+        uint256 netSupply = totalSupply();
 
         uint256 newSharePrice;
-        if (totalSupply() > 0) {
-            newSharePrice = (totalCollateral * 1e18) / (totalSupply() - currentEpoch.totalPendingWithdrawals);
+        if (netSupply > 0) {
+            newSharePrice = (totalManagedAssets * 1e18) / netSupply;
         } else {
             newSharePrice = 1e18;
         }
-
-        // Mark current epoch as processed
-        currentEpoch.processed = true;
+        
         currentEpoch.sharePrice = newSharePrice;
+        currentEpoch.processed = true;
 
-        // Create new epoch
-        uint256 newEpochId = epochs.length;
-        epochs.push(EpochData({
-            epochId: newEpochId,
-            totalPendingDeposits: 0,
-            totalPendingWithdrawals: 0,
-            sharePrice: newSharePrice,
-            processed: false
-        }));
-        epochIdToIndex[newEpochId] = newEpochId;
+        // Process deposits
+        uint256 newShares = (currentEpoch.totalPendingDeposits * 1e18) / newSharePrice;
+        _mint(address(this), newShares);
 
-        // Create new liquidity position
-        _createNewLiquidityPosition(totalCollateral, previousResolutionSqrtPriceX96);
+        // Process withdrawals
+        uint256 sharesToBurn = currentEpoch.totalPendingWithdrawals;
+        _burn(address(this), sharesToBurn);
+
+        // Adjust balances
+        totalShares += newShares - sharesToBurn;
+
+        emit EpochProcessed(currentEpoch.epochId, newSharePrice, newShares, sharesToBurn);
     }
 
     function _createNewLiquidityPosition(uint256 totalCollateral, uint160 sqrtPriceX96) private {
@@ -413,4 +422,22 @@ contract Vault is IVault, ERC20, ERC165 {
         );
         _;
     }
+
+    function _getPendingWithdrawals() internal view returns (uint256) {
+        uint256 totalPendingWithdrawals = 0;
+        for (uint256 i = 0; i < epochs.length; i++) {
+            totalPendingWithdrawals += epochs[i].totalPendingWithdrawals;
+        }
+        return totalPendingWithdrawals;
+    }
+
+    function _getPendingDeposits() internal view returns (uint256) {
+        uint256 totalPendingDeposits = 0;
+        for (uint256 i = 0; i < epochs.length; i++) {
+            totalPendingDeposits += epochs[i].totalPendingDeposits;
+        }
+        return totalPendingDeposits;
+    }
+
+    event WithdrawPendingDeposit(address indexed user, uint256 assets, uint256 epochId);
 }
