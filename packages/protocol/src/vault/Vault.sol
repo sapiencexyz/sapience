@@ -38,13 +38,19 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
     mapping(address => uint256) public userShares;
     mapping(address => mapping(uint256 => uint256)) public userPendingDeposits;
-    mapping(address => mapping(uint256 => uint256)) public userPendingWithdrawalShares;
+    mapping(address => mapping(uint256 => uint256))
+        public userPendingWithdrawalShares;
 
     // Add mappings to keep track of users with pending deposits and withdrawals
     mapping(uint256 => address[]) private depositors;
     mapping(uint256 => address[]) private withdrawers;
 
-    event EpochProcessed(uint256 indexed epochId, uint256 newSharePrice, uint256 newShares, uint256 sharesToBurn);
+    event EpochProcessed(
+        uint256 indexed epochId,
+        uint256 newSharePrice,
+        uint256 newShares,
+        uint256 sharesToBurn
+    );
 
     constructor(
         string memory _name,
@@ -62,12 +68,15 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         _initializeEpoch(_initialStartTime, _initialSqrtPriceX96);
     }
 
-
-    function resolutionCallback(uint160 previousResolutionSqrtPriceX96) external onlyMarket {
+    function resolutionCallback(
+        uint160 previousResolutionSqrtPriceX96
+    ) external onlyMarket {
         _createNextEpoch(previousResolutionSqrtPriceX96);
     }
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view virtual override returns (bool) {
         return
             interfaceId == type(IVault).interfaceId ||
             interfaceId == type(IERC165).interfaceId ||
@@ -88,19 +97,22 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             startingSqrtPriceX96,
             4
         );
-        epochs.push(EpochData({
-            epochId: newEpochId,
-            totalPendingDeposits: 0,
-            totalPendingWithdrawals: 0,
-            sharePrice: 0,
-            processed: false
-        }));
+        epochs.push(
+            EpochData({
+                epochId: newEpochId,
+                totalPendingDeposits: 0,
+                totalPendingWithdrawals: 0,
+                sharePrice: 0,
+                processed: false
+            })
+        );
         epochIdToIndex[newEpochId] = epochs.length - 1;
     }
 
     function _createNextEpoch(uint160 previousResolutionSqrtPriceX96) private {
         // Set up the start time for the new epoch
-        (, uint256 newEpochStartTime, , , , , , , , , ) = market.getLatestEpoch();
+        (, uint256 newEpochStartTime, , , , , , , , , ) = market
+            .getLatestEpoch();
 
         // Adjust the start time for the next epoch
         newEpochStartTime += duration + 1;
@@ -120,20 +132,25 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 netSupply = totalSupply();
 
         // Calculate the new share price
-        uint256 newSharePrice = netSupply > 0 ? (totalAssets() * 1e18) / netSupply : 1e18;
+        uint256 newSharePrice = netSupply > 0
+            ? (totalAssets() * 1e18) / netSupply
+            : 1e18;
 
         currentEpoch.sharePrice = newSharePrice;
         currentEpoch.processed = true;
 
         // Process pending deposits
-        uint256 totalNewShares = (currentEpoch.totalPendingDeposits * 1e18) / newSharePrice;
+        uint256 totalNewShares = (currentEpoch.totalPendingDeposits * 1e18) /
+            newSharePrice;
         _mintShares(address(this), totalNewShares);
 
         // Distribute new shares to depositors
         address[] memory epochDepositors = depositors[currentEpoch.epochId];
         for (uint256 i = 0; i < epochDepositors.length; i++) {
             address user = epochDepositors[i];
-            uint256 userDeposit = userPendingDeposits[user][currentEpoch.epochId];
+            uint256 userDeposit = userPendingDeposits[user][
+                currentEpoch.epochId
+            ];
             uint256 userNewShares = (userDeposit * 1e18) / newSharePrice;
 
             // Transfer shares from the vault to the user
@@ -155,8 +172,11 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 totalWithdrawalAmount = 0;
         for (uint256 i = 0; i < epochWithdrawers.length; i++) {
             address user = epochWithdrawers[i];
-            uint256 userWithdrawalShares = userPendingWithdrawalShares[user][currentEpoch.epochId];
-            uint256 withdrawalAmount = (userWithdrawalShares * newSharePrice) / 1e18;
+            uint256 userWithdrawalShares = userPendingWithdrawalShares[user][
+                currentEpoch.epochId
+            ];
+            uint256 withdrawalAmount = (userWithdrawalShares * newSharePrice) /
+                1e18;
 
             totalWithdrawalAmount += withdrawalAmount;
 
@@ -167,7 +187,12 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             delete userPendingWithdrawalShares[user][currentEpoch.epochId];
         }
 
-        emit EpochProcessed(currentEpoch.epochId, newSharePrice, totalNewShares, totalSharesToBurn);
+        emit EpochProcessed(
+            currentEpoch.epochId,
+            newSharePrice,
+            totalNewShares,
+            totalSharesToBurn
+        );
 
         // Clean up depositor and withdrawer lists for the epoch
         delete depositors[currentEpoch.epochId];
@@ -175,7 +200,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
         // Calculate the total collateral available for the new liquidity position
         // This includes the collateral received plus any uninvested collateral after withdrawals
-        uint256 totalCollateral = collateralReceived + collateralAsset.balanceOf(address(this)) - totalWithdrawalAmount;
+        uint256 totalCollateral = collateralReceived +
+            collateralAsset.balanceOf(address(this)) -
+            totalWithdrawalAmount;
 
         // Call _createNewLiquidityPosition with the correct totalCollateral
         _createNewLiquidityPosition(totalCollateral);
@@ -232,7 +259,12 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         (positionId, , , , , ) = market.createLiquidityPosition(params);
     }
 
-    function asset() external view override returns (address assetTokenAddress) {
+    function asset()
+        external
+        view
+        override
+        returns (address assetTokenAddress)
+    {
         return address(collateralAsset);
     }
 
@@ -241,79 +273,186 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 pendingWithdrawals = _getPendingWithdrawals();
         uint256 pendingDeposits = _getPendingDeposits();
 
-        uint256 totalManagedAssets = investedAssets - pendingWithdrawals + pendingDeposits;
+        uint256 totalManagedAssets = investedAssets -
+            pendingWithdrawals +
+            pendingDeposits;
         return totalManagedAssets;
     }
 
-    function convertToShares(uint256 assets) public view override returns (uint256 sharesAmount) {
+    function convertToShares(
+        uint256 assets
+    ) public view override returns (uint256 sharesAmount) {
         // Converts assets to shares based on current exchange rate
         uint256 supply = totalSupply();
         return supply == 0 ? assets : (assets * supply) / totalAssets();
     }
 
-    function convertToAssets(uint256 sharesAmount) public view override returns (uint256 assets) {
+    function convertToAssets(
+        uint256 sharesAmount
+    ) public view override returns (uint256 assets) {
         // Converts shares to assets based on current exchange rate
         uint256 supply = totalSupply();
-        return supply == 0 ? sharesAmount : (sharesAmount * totalAssets()) / supply;
+        return
+            supply == 0
+                ? sharesAmount
+                : (sharesAmount * totalAssets()) / supply;
     }
 
-    function maxDeposit(address receiver) external pure override returns (uint256 maxAssets) {
+    function maxDeposit(
+        address receiver
+    ) external pure override returns (uint256 maxAssets) {
         // Maximum assets that can be deposited
         return type(uint256).max;
     }
 
-    function maxMint(address receiver) external pure override returns (uint256 maxShares) {
+    function maxMint(
+        address receiver
+    ) external pure override returns (uint256 maxShares) {
         // Maximum shares that can be minted
         return type(uint256).max;
     }
 
-    function maxWithdraw(address owner) external view override returns (uint256 maxAssets) {
+    function maxWithdraw(
+        address owner
+    ) external view override returns (uint256 maxAssets) {
         // Maximum assets that can be withdrawn
         return convertToAssets(balanceOf(owner));
     }
 
-    function maxRedeem(address owner) external view override returns (uint256 maxShares) {
+    function maxRedeem(
+        address owner
+    ) external view override returns (uint256 maxShares) {
         // Maximum shares that can be redeemed
         return balanceOf(owner);
     }
 
-    function previewRedeem(uint256 /*shares*/) public pure override returns (uint256) {
+    function previewRedeem(
+        uint256 /*shares*/
+    ) public pure override returns (uint256) {
         revert("previewRedeem is not supported");
     }
-    
-    function previewWithdraw(uint256 /*assets*/) public pure override returns (uint256) {
+
+    function previewWithdraw(
+        uint256 /*assets*/
+    ) public pure override returns (uint256) {
         revert("previewWithdraw is not supported");
     }
-    
-    function previewDeposit(uint256 /*assets*/) public pure override returns (uint256) {
+
+    function previewDeposit(
+        uint256 /*assets*/
+    ) public pure override returns (uint256) {
         revert("previewDeposit is not supported");
     }
-    
-    function previewMint(uint256 /*shares*/) public pure override returns (uint256) {
+
+    function previewMint(
+        uint256 /*shares*/
+    ) public pure override returns (uint256) {
         revert("previewMint is not supported");
     }
 
-    function deposit(uint256 assets, address receiver) external override nonReentrant returns (uint256 sharesAmount) {
-        sharesAmount = convertToShares(assets);
-        require(sharesAmount != 0, "Cannot deposit zero assets");
-
+    // Sends actor's collateral to the vault, gets shares (gets assets amount of asset, mints sharesAmount = convertToShares(assets))
+    // notice: this is the first part of the Async requestDeposit -> deposit/mint
+    function requestDeposit(
+        uint256 assets,
+        address receiver,
+        address owner,
+        bytes memory data
+    ) external override returns (uint256 requestId) {
+        require(receiver != address(0), "Invalid receiver");
         collateralAsset.safeTransferFrom(msg.sender, address(this), assets);
-
-        _requestDeposit(assets, receiver, msg.sender, "");
-        emit Deposit(msg.sender, receiver, assets, sharesAmount);
+        _requestDeposit(assets, receiver, owner, data);
     }
 
-    function mint(uint256 sharesAmount, address receiver) external override returns (uint256 assets) {
+    // amount pending to deposit (not claimable, it means, not yet ready to deposit/mint)
+    function pendingDepositRequest(
+        uint256, // requestId is ignored
+        address owner
+    ) external view override returns (uint256 assets) {
+        uint256 currentEpochId = epochs[epochs.length - 1].epochId;
+        assets = userPendingDeposits[owner][currentEpochId];
+    }
+
+    // amount claimable to deposit (not pending, it means, ready to deposit/mint)
+    function claimableDepositRequest(
+        uint256, // requestId is ignored
+        address owner
+    ) external view override returns (uint256 assets) {
+        uint256 currentEpochId = epochs[epochs.length - 1].epochId;
+        assets = userPendingDeposits[owner][currentEpochId];
+    }
+
+    // Sends actor's collateral to the vault, gets shares (gets assets amount of asset, mints sharesAmount = convertToShares(assets))
+    // notice: this is the second part of the Async requestDeposit -> deposit/mint
+    // notice: the max amount or effective amount is same as claimable
+    function deposit(
+        uint256 assets,
+        address receiver
+    ) external override nonReentrant returns (uint256 sharesAmount) {
+        // Use convertToShares with Rounding.Down
+        mint(convertToShares(assets), receiver);
+    }
+
+    // Sends actor's collateral to the vault, gets shares (gets convertToAsset(sharesAmount), mints sharesAmount)
+    // notice: this is the second part of the Async requestDeposit -> deposit/mint
+    // notice: the max amount or effective amount is same as claimable
+    function mint(
+        uint256 sharesAmount,
+        address receiver
+    ) public override returns (uint256 assets) {
         assets = convertToAssets(sharesAmount);
         require(assets != 0, "Cannot mint zero shares");
 
-        collateralAsset.safeTransferFrom(msg.sender, address(this), assets);
+        // use sharesAmount or just mint all the available
+        // It should mint all the available (from all previous epochs) shares, the return param is the value amount of the shares minted
 
-        _requestDeposit(assets, receiver, msg.sender, "");
         emit Deposit(msg.sender, receiver, assets, sharesAmount);
     }
 
-    function withdraw(uint256 assets, address receiver, address owner) external override returns (uint256 sharesAmount) {
+    // Sends back collateral to the actor, burns shares (burns sharesAmount = convertToShares(assets); send to actor assets of asset)
+    // notice: this is the first part of the Async requestRedeem -> redeem/withdraw
+    function requestRedeem(
+        uint256 sharesAmount,
+        address operator,
+        address owner,
+        bytes memory data
+    ) external override returns (uint256 requestId) {
+        require(owner != address(0), "Invalid owner");
+        require(userShares[owner] >= sharesAmount, "Insufficient shares");
+
+        if (msg.sender != owner) {
+            uint256 allowed = allowance(owner, msg.sender);
+            require(allowed >= sharesAmount, "Redeem exceeds allowance");
+            _approve(owner, msg.sender, allowed - sharesAmount);
+        }
+
+        _requestRedeem(sharesAmount, operator, owner, data);
+    }
+
+    // amount pending to redeem (not claimable, it means, not yet ready to redeem/withdraw)
+    function pendingRedeemRequest(
+        uint256, // ignored requestId
+        address owner
+    ) external view override returns (uint256 sharesAmount) {
+        uint256 currentEpochId = epochs[epochs.length - 1].epochId;
+        sharesAmount = userPendingWithdrawalShares[owner][currentEpochId];
+    }
+
+    // amount claimable to redeem (not pending, it means, ready to redeem/withdraw)
+    function claimableRedeemRequest(
+        uint256, // ignored requestId
+        address owner
+    ) external view override returns (uint256 sharesAmount) {
+        uint256 currentEpochId = epochs[epochs.length - 1].epochId;
+        sharesAmount = userPendingWithdrawalShares[owner][currentEpochId];
+    }
+
+    // Sends back collateral to the actor, burns shares (burns sharesAmount = convertToShares(assets); send to actor assets of asset)
+    // notice: this is the second part of the Async requestToWithdraw / withdraw
+    function withdraw(
+        uint256 assets,
+        address receiver,
+        address owner
+    ) external override returns (uint256 sharesAmount) {
         sharesAmount = convertToShares(assets);
         require(sharesAmount != 0, "Cannot withdraw zero assets");
 
@@ -327,7 +466,13 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         emit Withdraw(msg.sender, receiver, owner, assets, sharesAmount);
     }
 
-    function redeem(uint256 sharesAmount, address receiver, address owner) external override returns (uint256 assets) {
+    // Sends back collateral to the actor, burns shares (burns sharesAmount ; send to actor assets = convertToAsset(sharesAmount) of asset)
+    // notice: this is the second part of the Async requestToWithdraw / redeem
+    function redeem(
+        uint256 sharesAmount,
+        address receiver,
+        address owner
+    ) external override returns (uint256 assets) {
         assets = convertToAssets(sharesAmount);
         require(assets != 0, "Cannot redeem zero shares");
 
@@ -341,45 +486,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         emit Withdraw(msg.sender, receiver, owner, assets, sharesAmount);
     }
 
-    function requestDeposit(
-        uint256 assets,
-        address receiver,
-        address owner,
-        bytes memory data
-    ) external override {
-        require(receiver != address(0), "Invalid receiver");
-        collateralAsset.safeTransferFrom(msg.sender, address(this), assets);
-        _requestDeposit(assets, receiver, owner, data);
-    }
-
-    function pendingDepositRequest(address owner) external view override returns (uint256 assets) {
-        uint256 currentEpochId = epochs[epochs.length - 1].epochId;
-        assets = userPendingDeposits[owner][currentEpochId];
-    }
-
-    function requestRedeem(
-        uint256 sharesAmount,
-        address operator,
-        address owner,
-        bytes memory data
-    ) external override {
-        require(owner != address(0), "Invalid owner");
-        require(userShares[owner] >= sharesAmount, "Insufficient shares");
-
-        if (msg.sender != owner) {
-            uint256 allowed = allowance(owner, msg.sender);
-            require(allowed >= sharesAmount, "Redeem exceeds allowance");
-            _approve(owner, msg.sender, allowed - sharesAmount);
-        }
-
-        _requestRedeem(sharesAmount, operator, owner, data);
-    }
-
-    function pendingRedeemRequest(address owner) external view override returns (uint256 sharesAmount) {
-        uint256 currentEpochId = epochs[epochs.length - 1].epochId;
-        sharesAmount = userPendingWithdrawalShares[owner][currentEpochId];
-    }
-
     function _requestDeposit(
         uint256 assets,
         address receiver,
@@ -390,10 +496,18 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         userPendingDeposits[receiver][currentEpochId] += assets;
         epochs[epochs.length - 1].totalPendingDeposits += assets;
 
+        // TODO add to set of epochs requested by receiver
+
         // Keep track of depositors
         depositors[currentEpochId].push(receiver);
 
-        emit DepositRequest(receiver, owner, currentEpochId, msg.sender, assets);
+        emit DepositRequest(
+            receiver,
+            owner,
+            currentEpochId,
+            msg.sender,
+            assets
+        );
     }
 
     function _requestRedeem(
@@ -414,12 +528,21 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         // Keep track of withdrawers
         withdrawers[currentEpochId].push(owner);
 
-        emit RedeemRequest(receiver, owner, currentEpochId, msg.sender, sharesAmount);
+        emit RedeemRequest(
+            receiver,
+            owner,
+            currentEpochId,
+            msg.sender,
+            sharesAmount
+        );
     }
 
     function withdrawPendingDeposit(uint256 assets) external {
         uint256 currentEpochId = epochs[epochs.length - 1].epochId;
-        require(userPendingDeposits[msg.sender][currentEpochId] >= assets, "Insufficient pending deposit");
+        require(
+            userPendingDeposits[msg.sender][currentEpochId] >= assets,
+            "Insufficient pending deposit"
+        );
 
         userPendingDeposits[msg.sender][currentEpochId] -= assets;
         epochs[epochs.length - 1].totalPendingDeposits -= assets;
@@ -429,7 +552,11 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
     function cancelWithdrawalRequest(uint256 sharesAmount) external {
         uint256 currentEpochId = epochs[epochs.length - 1].epochId;
-        require(userPendingWithdrawalShares[msg.sender][currentEpochId] >= sharesAmount, "Insufficient pending withdrawal");
+        require(
+            userPendingWithdrawalShares[msg.sender][currentEpochId] >=
+                sharesAmount,
+            "Insufficient pending withdrawal"
+        );
 
         userPendingWithdrawalShares[msg.sender][currentEpochId] -= sharesAmount;
         epochs[epochs.length - 1].totalPendingWithdrawals -= sharesAmount;
@@ -462,9 +589,17 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         return totalPendingDeposits;
     }
 
-    event WithdrawPendingDeposit(address indexed user, uint256 assets, uint256 epochId);
+    event WithdrawPendingDeposit(
+        address indexed user,
+        uint256 assets,
+        uint256 epochId
+    );
 
-    function _update(address from, address to, uint256 amount) internal override {
+    function _update(
+        address from,
+        address to,
+        uint256 amount
+    ) internal override {
         super._update(from, to, amount);
 
         // Update userShares mapping accordingly
