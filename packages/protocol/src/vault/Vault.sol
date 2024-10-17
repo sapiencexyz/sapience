@@ -10,8 +10,9 @@ contract Vault is IVault, ERC20 {
 
     IFoil public market;
     IERC20 public collateralAsset;
-    uint256 public positionId;
     uint256 public duration;
+
+    uint256 public positionId;
 
     mapping(address => uint256) public shares;
     uint256 public totalShares;
@@ -27,7 +28,6 @@ contract Vault is IVault, ERC20 {
 
     EpochData[] public epochs;
     mapping(uint256 => uint256) public epochIdToIndex;
-
 
     constructor(
         string memory _name,
@@ -151,7 +151,7 @@ contract Vault is IVault, ERC20 {
 
     // my collateral went into the vault, so i can claim my tokens
     function claim() external {
-    } {
+    {
         _mint(msg.sender, claimable[msg.sender]);
     }
 
@@ -174,3 +174,53 @@ contract Vault is IVault, ERC20 {
         epochs[epochIdToIndex[epochId]].totalPendingWithdrawals -= amount;
     }
 }
+
+/*
+# [1] Before the epoch starts, the users can:
+================================================================================
+## Deposit and Remove new collateral for the upcoming epoch `pendingDeposits >= 0`
+(users deposit and remove the collateral they want to trade for the upcoming epoch)
+mapping(address => uint256) public pendingDeposits;
+uint256 public totalPendingDeposits;
+
+
+## Flag (or indicate how much) to withdraw their previous epoch's collateral at the beginning of the next epoch. 
+Up to `totalUserShares` of the previous epoch's collateral.
+mapping(address => uint256) public requestedWithdrawals;
+uint256 public totalRequestedWithdrawals;
+mapping(address => uint256) public shares;
+uint256 public totalShares;
+
+## Withdraw their previously requested withdrawals and update user shares using [3]
+it will update the requestedWithdrawals and totalRequestedWithdrawals with -- amount
+
+# [2] At the start of the epoch, the vault will:
+================================================================================
+- settle the previous epoch's position
+- get how much collateral was received from the settle
+- calculate the new share price based on the total collateral 
+- spawn new epoch in the market
+- calculate the new total collateral amount
+- calculate the new share price based on the total collateral
+- open a position in the new epoch with the new collateral
+- update the accounting for the next epoch [1]
+
+# [3] Calculations and helpers
+================================================================================
+
+## processMyPendingStuff() cleanup all previous pending (dirty) epochs requests for the user and update his total shares
+[USE A SET HERE]
+mapping(address => Uint256Set) dirtyEpochs;
+loop over all dirtyEpochs and: (note, maybe not all, but the limited quantity specified in the call. 0 means all, to prevent gas exhaustion)
+- cleanup pendingDeposits for the dirty epoch
+- withdraw requestedWithdrawals and cleanup requestedWithdrawal for the dirty epoch
+- get delta shares for the epoch
+- update total user shares (and totalShares) if needed
+- remove the epoch from the dirty set
+
+Question.... can we rug in a way lazy users? Do we need to get the historical value?
+
+
+
+CHeck ScalableMapping from DB
+*/
