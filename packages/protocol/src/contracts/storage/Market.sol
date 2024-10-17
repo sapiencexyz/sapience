@@ -3,6 +3,7 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import "./Errors.sol";
 import "../interfaces/IFoilStructs.sol";
@@ -14,6 +15,7 @@ library Market {
         address owner;
         address pendingOwner;
         IERC20 collateralAsset;
+        IERC721 feeCollectorNFT;
         uint256 lastEpochId;
         IFoilStructs.EpochParams epochParams;
         mapping(bytes32 => uint256) epochIdByAssertionId;
@@ -30,6 +32,7 @@ library Market {
     function createValid(
         address owner,
         address collateralAsset,
+        address feeCollectorNFT,
         IFoilStructs.EpochParams memory epochParams
     ) internal returns (Data storage market) {
         validateEpochParams(epochParams);
@@ -48,6 +51,7 @@ library Market {
 
         market.owner = owner;
         market.collateralAsset = IERC20(collateralAsset);
+        market.feeCollectorNFT = IERC721(feeCollectorNFT);
         market.epochParams = epochParams;
     }
 

@@ -48,9 +48,11 @@ contract TestEpoch is TestUser {
     ) public returns (address) {
         address owner = createUser("Owner", 10_000_000 ether);
         vm.startPrank(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266);
+        address[] memory feeCollectors = new address[](0);
         IFoil(vm.getAddress("Foil")).initializeMarket(
             owner,
             vm.getAddress("CollateralAsset.Token"),
+            feeCollectors,
             IFoilStructs.EpochParams({
                 baseAssetMinPriceTick: minTick,
                 baseAssetMaxPriceTick: maxTick,
@@ -201,7 +203,7 @@ contract TestEpoch is TestUser {
 
         OwedTokensData memory data;
 
-        (, , IFoilStructs.EpochParams memory epochParams) = foil.getMarket();
+        (, , , IFoilStructs.EpochParams memory epochParams) = foil.getMarket();
 
         // Fetch the current fee growth global values
         data.feeGrowthGlobal0X128 = IUniswapV3Pool(data.pool)

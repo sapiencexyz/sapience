@@ -17,6 +17,7 @@ contract ViewsModule is IViewsModule {
         returns (
             address owner,
             address collateralAsset,
+            address feeCollectorNFT,
             IFoilStructs.EpochParams memory epochParams
         )
     {
@@ -24,6 +25,7 @@ contract ViewsModule is IViewsModule {
         return (
             market.owner,
             address(market.collateralAsset),
+            address(market.feeCollectorNFT),
             market.epochParams
         );
     }
