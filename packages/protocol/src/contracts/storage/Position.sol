@@ -143,6 +143,7 @@ library Position {
 
     function updateValidLp(
         Data storage self,
+        Market.Data storage market,
         Epoch.Data storage epoch,
         UpdateLpParams memory params
     )
@@ -162,15 +163,20 @@ library Position {
         loanAmount0 = self.borrowedVGas;
         loanAmount1 = self.borrowedVEth;
 
-        requiredCollateral = epoch.requiredCollateralForLiquidity(
-            params.liquidity,
-            loanAmount0,
-            loanAmount1,
-            params.tokensOwed0,
-            params.tokensOwed1,
-            TickMath.getSqrtRatioAtTick(params.lowerTick),
-            TickMath.getSqrtRatioAtTick(params.upperTick)
-        );
+        bool skipCollateralCheck = address(market.feeCollectorNFT) != address(0) && market.feeCollectorNFT.balanceOf(msg.sender) > 0;
+        if(skipCollateralCheck) {
+            requiredCollateral = 0;
+        }else{
+            requiredCollateral = epoch.requiredCollateralForLiquidity(
+                params.liquidity,
+                loanAmount0,
+                loanAmount1,
+                params.tokensOwed0,
+                params.tokensOwed1,
+                TickMath.getSqrtRatioAtTick(params.lowerTick),
+                TickMath.getSqrtRatioAtTick(params.upperTick)
+            );
+        }
 
         uint256 newCollateral = self.depositedCollateralAmount +
             params.additionalCollateral;

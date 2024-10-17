@@ -37,6 +37,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         ERC721Storage._checkOnERC721Received(address(this), msg.sender, id, "");
         ERC721Storage._mint(msg.sender, id);
 
+        Market.Data storage market = Market.load();
         Epoch.Data storage epoch = Epoch.loadValid(params.epochId);
         epoch.validateLpRequirements(params.lowerTick, params.upperTick);
 
@@ -63,6 +64,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             );
 
         (collateralAmount, , ) = position.updateValidLp(
+            market,
             epoch,
             Position.UpdateLpParams({
                 uniswapNftId: uniswapNftId,
@@ -163,6 +165,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         uint256 loanAmount1;
 
         (collateralAmount, loanAmount0, loanAmount1) = position.updateValidLp(
+            market,
             epoch,
             Position.UpdateLpParams({
                 uniswapNftId: position.uniswapPositionId,
@@ -258,6 +261,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         uint256 loanAmount1;
 
         (collateralAmount, loanAmount0, loanAmount1) = position.updateValidLp(
+            market,
             epoch,
             Position.UpdateLpParams({
                 uniswapNftId: position.uniswapPositionId,
