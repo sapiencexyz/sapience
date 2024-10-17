@@ -137,6 +137,7 @@ interface Props {
     indexPrices: IndexPrice[];
   };
   activeWindow: TimeWindow;
+  isLoading: boolean;
 }
 
 interface IndexPrice {
@@ -144,7 +145,11 @@ interface IndexPrice {
   price: number;
 }
 
-const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
+const CandlestickChart: React.FC<Props> = ({
+  data,
+  activeWindow,
+  isLoading,
+}) => {
   const [value, setValue] = useState<string>('');
   const timePeriodLabel = useMemo(() => {
     return getDisplayTextForVolumeWindow(activeWindow);
@@ -171,7 +176,7 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
   const combinedData = useMemo(() => {
     return data.marketPrices.map((mp, i) => {
       const price = data.indexPrices[i]?.price || 0;
-      const priceAdjusted = price / (stEthPerToken || 1);
+      const priceAdjusted = isLoading ? 0 : price / (stEthPerToken || 1);
       return {
         ...mp,
         price: useMarketUnits
@@ -179,7 +184,7 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
           : convertToGwei(priceAdjusted, stEthPerToken),
       };
     });
-  }, [data, useMarketUnits, stEthPerToken]);
+  }, [data, useMarketUnits, stEthPerToken, isLoading]);
 
   useEffect(() => {
     setLabel(timePeriodLabel);

@@ -13,6 +13,8 @@ import {
   HStack,
   IconButton,
   Tooltip,
+  Spinner,
+  Text,
 } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
@@ -179,27 +181,6 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
     isLoading: isLoadingLpPositions,
   } = useLiquidityPositions();
 
-  const renderChart = () => {
-    if (chartType === ChartType.PRICE) {
-      return (
-        <Chart
-          activeWindow={selectedWindow}
-          data={{
-            marketPrices: marketPrices || [],
-            indexPrices: indexPrices || [],
-          }}
-        />
-      );
-    }
-    if (chartType === ChartType.VOLUME) {
-      return <VolumeChart data={volume || []} activeWindow={selectedWindow} />;
-    }
-    if (chartType === ChartType.LIQUIDITY) {
-      return <DepthChart />;
-    }
-    return null;
-  };
-
   const useMarketPrices = () => {
     return useQuery({
       queryKey: ['market-prices', `${chainId}:${marketAddress}`],
@@ -237,6 +218,7 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
     error: usePricesError,
     isLoading: isLoadingPrices,
     refetch: refetchPrices,
+    isRefetching: isRefetchingPrices,
   } = useMarketPrices();
 
   const {
@@ -244,6 +226,7 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
     error: useIndexPricesError,
     isLoading: isLoadingIndexPrices,
     refetch: refetchIndexPrices,
+    isRefetching: isRefetchingIndexPrices,
   } = useIndexPrices();
 
   useEffect(() => {
@@ -251,6 +234,48 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
     refetchPrices();
     refetchIndexPrices();
   }, [selectedWindow]);
+
+  const loadingIndexPrices = isLoadingIndexPrices || isRefetchingIndexPrices;
+
+  const renderChart = () => {
+    if (chartType === ChartType.PRICE) {
+      return (
+        <Chart
+          activeWindow={selectedWindow}
+          data={{
+            marketPrices: marketPrices || [],
+            indexPrices: indexPrices || [],
+          }}
+          isLoading={loadingIndexPrices}
+        />
+      );
+    }
+    if (chartType === ChartType.VOLUME) {
+      return <VolumeChart data={volume || []} activeWindow={selectedWindow} />;
+    }
+    if (chartType === ChartType.LIQUIDITY) {
+      return <DepthChart />;
+    }
+    return null;
+  };
+
+  const renderLoadng = () => {
+    if (chartType === ChartType.PRICE && loadingIndexPrices) {
+      return (
+        <Flex
+          ml={2}
+          id="idx-loading"
+          gap={2}
+          justifyContent="center"
+          alignItems="center"
+        >
+          <Spinner size="sm" />
+          <Text fontSize="xs">Loading Index Prices...</Text>
+        </Flex>
+      );
+    }
+    return null;
+  };
 
   return (
     <MarketProvider
@@ -297,15 +322,18 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
                   mb={3}
                   flexShrink={0}
                 >
-                  <Box>
+                  <Flex dir="row">
                     <MarketUnitsToggle />
                     {chartType !== ChartType.LIQUIDITY && (
-                      <VolumeWindowSelector
-                        selectedWindow={selectedWindow}
-                        setSelectedWindow={setSelectedWindow}
-                      />
+                      <Flex dir="row">
+                        <VolumeWindowSelector
+                          selectedWindow={selectedWindow}
+                          setSelectedWindow={setSelectedWindow}
+                        />
+                        {renderLoadng()}
+                      </Flex>
                     )}
-                  </Box>
+                  </Flex>
                   <ChartSelector
                     chartType={chartType}
                     setChartType={setChartType}
