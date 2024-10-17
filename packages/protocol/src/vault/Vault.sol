@@ -12,13 +12,15 @@ import "./interfaces/IVault.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import {SetUtil} from "@synthetixio/core-contracts/contracts/utils/SetUtil.sol";
 
 contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
+    using SetUtil for SetUtil.UintSet;
 
-    IFoil public market;
-    IERC20 public collateralAsset;
-    uint256 public duration;
+    IFoil public immutable market;
+    IERC20 public immutable collateralAsset;
+    uint256 public immutable duration;
 
     uint256 public positionId;
 
@@ -51,6 +53,30 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 newShares,
         uint256 sharesToBurn
     );
+
+    // tentative storage change
+    struct Epoch7540Data {
+        uint256 marketEpochId;
+        uint256 totalPendingDeposit;
+        uint256 totalPendingWithdrawal;
+        uint256 totalClaimableDeposit;
+        uint256 totalClaimableWithdrawal;
+        uint256 sharePrice;
+        mapping(address => uint256) userNonExecutedDeposits;
+        mapping(address => uint256) userNonExecutedWithrwawals;
+    }
+
+    Epoch7540Data[] internal epochs7540;
+    uint256 currentFutureEpochIdx; // helper, it must be epochs7540.lenght -1
+    uint256 globalTotalPendingDeposit;
+    uint256 globalTotalPendingWithdrawal;
+    uint256 globalTotalClaimableDeposit;
+    uint256 globalTotalClaimableWithdrawal;
+    mapping(address => uint256) user7540Shares;
+    uint256 totalShares7540;
+    mapping(address => SetUtil.UintSet) user7540DirtyEpochs;
+    mapping(address => uint256) userClaimableDeposits; // notice userPending is currentFutureEpoch's userNonExecuted
+    mapping(address => uint256) userClaimableWithrwawals; // notice userPending is currentFutureEpoch's userNonExecuted
 
     constructor(
         string memory _name,
@@ -355,12 +381,19 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     function requestDeposit(
         uint256 assets,
         address receiver,
-        address owner,
-        bytes memory data
-    ) external override returns (uint256 requestId) {
+        address owner
+    ) external override nonReentrant returns (uint256 requestId) {
         require(receiver != address(0), "Invalid receiver");
         collateralAsset.safeTransferFrom(msg.sender, address(this), assets);
-        _requestDeposit(assets, receiver, owner, data);
+
+        // Do all the accounting (that should go to __requestDeposit)
+        Epoch7540Data storage epochData = epochs7540[currentFutureEpochIdx];
+        epochData.totalPendingDeposit += assets;
+        epochData.userNonExecutedDeposits[owner] += assets;
+        globalTotalPendingDeposit += assets;
+        if (!user7540DirtyEpochs[owner].contains(currentFutureEpochIdx)) {
+            user7540DirtyEpochs[owner].add(currentFutureEpochIdx);
+        }
     }
 
     // amount pending to deposit (not claimable, it means, not yet ready to deposit/mint)
@@ -377,8 +410,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256, // requestId is ignored
         address owner
     ) external view override returns (uint256 assets) {
-        uint256 currentEpochId = epochs[epochs.length - 1].epochId;
-        assets = userPendingDeposits[owner][currentEpochId];
+        return userClaimableDeposits[owner];
     }
 
     // Sends actor's collateral to the vault, gets shares (gets assets amount of asset, mints sharesAmount = convertToShares(assets))
@@ -387,9 +419,11 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     function deposit(
         uint256 assets,
         address receiver
-    ) external override nonReentrant returns (uint256 sharesAmount) {
-        // Use convertToShares with Rounding.Down
-        mint(convertToShares(assets), receiver);
+    ) external override returns (uint256 sharesAmount) {
+        uint256 mintedAssetValue = mint(convertToShares(assets), receiver);
+        // NOTE Use convertToShares with Round.Down
+
+        sharesAmount = convertToShares(mintedAssetValue);
     }
 
     // Sends actor's collateral to the vault, gets shares (gets convertToAsset(sharesAmount), mints sharesAmount)
@@ -401,11 +435,24 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     ) public override returns (uint256 assets) {
         assets = convertToAssets(sharesAmount);
         require(assets != 0, "Cannot mint zero shares");
+        require(currentFutureEpochIdx > 0, "no previous epoch yet");
+        // Simplification here - only previous epoch contains unclaimed deposits. TODO make it right
+        // Use convertToShares with Rounding.Down
+        Epoch7540Data storage previousEpochData = epochs7540[
+            currentFutureEpochIdx - 1
+        ];
 
-        // use sharesAmount or just mint all the available
-        // It should mint all the available (from all previous epochs) shares, the return param is the value amount of the shares minted
+        uint256 userClaimable = previousEpochData.userNonExecutedDeposits[
+            receiver
+        ];
+        // Notice, ignoring assets, getting all, if partials are allowed, use decrement here by assets
+        previousEpochData.userNonExecutedDeposits[receiver] = 0;
+        previousEpochData.totalClaimableDeposit -= userClaimable;
+        globalTotalClaimableDeposit -= userClaimable;
 
-        emit Deposit(msg.sender, receiver, assets, sharesAmount);
+        assets = mint(convertToShares(userClaimable), receiver);
+
+        emit Deposit(msg.sender, receiver, assets, userClaimable);
     }
 
     // Sends back collateral to the actor, burns shares (burns sharesAmount = convertToShares(assets); send to actor assets of asset)
@@ -413,8 +460,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     function requestRedeem(
         uint256 sharesAmount,
         address operator,
-        address owner,
-        bytes memory data
+        address owner
     ) external override returns (uint256 requestId) {
         require(owner != address(0), "Invalid owner");
         require(userShares[owner] >= sharesAmount, "Insufficient shares");
@@ -425,7 +471,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             _approve(owner, msg.sender, allowed - sharesAmount);
         }
 
-        _requestRedeem(sharesAmount, operator, owner, data);
+        // _requestRedeem(sharesAmount, operator, owner);
     }
 
     // amount pending to redeem (not claimable, it means, not yet ready to redeem/withdraw)

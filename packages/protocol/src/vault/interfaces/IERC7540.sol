@@ -26,8 +26,7 @@ interface IERC7540Deposit {
     function requestDeposit(
         uint256 assets,
         address receiver,
-        address owner,
-        bytes memory data
+        address owner
     ) external returns (uint256 requestId);
 
     /**
@@ -80,8 +79,7 @@ interface IERC7540Redeem {
     function requestRedeem(
         uint256 shares,
         address operator,
-        address owner,
-        bytes memory data
+        address owner
     ) external returns (uint256 requestId);
 
     /**
