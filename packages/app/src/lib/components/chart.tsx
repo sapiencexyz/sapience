@@ -167,17 +167,19 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
   const [gridOffsetFromParent, setGridOffsetFromParent] = useState(0);
 
   const chartRef = useRef(null);
-  console.log('index prices =', data.indexPrices);
 
   const combinedData = useMemo(() => {
     return data.marketPrices.map((mp, i) => {
       const price = data.indexPrices[i]?.price || 0;
+      const priceAdjusted = price / (stEthPerToken || 1);
       return {
         ...mp,
-        price: price / (stEthPerToken || 1),
+        price: useMarketUnits
+          ? priceAdjusted
+          : convertToGwei(priceAdjusted, stEthPerToken),
       };
     });
-  }, [data]);
+  }, [data, useMarketUnits, stEthPerToken]);
 
   useEffect(() => {
     setLabel(timePeriodLabel);
@@ -254,7 +256,7 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
           {value
             ? `${value.toLocaleString()}`
             : formatAmount(Number(currPrice))}{' '}
-          Ggas/wstETH
+          {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
         </Text>
         <Text fontSize="sm" color="gray.500">
           {' '}

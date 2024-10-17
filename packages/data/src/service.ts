@@ -212,8 +212,7 @@ const startServer = async () => {
 
       const chartData = groupedPrices.map((group) => {
         const lastIdx = group.entities.length - 1;
-        const price =
-          lastIdx >= 0 ? Number(group.entities[lastIdx].value) : "0";
+        const price = lastIdx >= 0 ? Number(group.entities[lastIdx].value) : 0;
         return {
           timestamp: group.startTimestamp,
           price,
