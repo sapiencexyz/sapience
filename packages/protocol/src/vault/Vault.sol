@@ -1,12 +1,16 @@
-pragma solidity >=0.8.0 <0.9.0;
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.8.25 <0.9.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import "./interfaces/IERC7540.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import "../market/external/univ3/TickMath.sol";
 import "../market/interfaces/IFoil.sol";
 import "./interfaces/IVault.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
-contract Vault is IVault, ERC20 {
+contract Vault is IVault, ERC20, ERC165 {
     using SafeERC20 for IERC20;
 
     IFoil public market;
@@ -49,20 +53,235 @@ contract Vault is IVault, ERC20 {
         _initializeEpoch(_initialStartTime, _initialSqrtPriceX96);
     }
 
-    // @inheritdoc IVault
+    // IERC4626 required functions
+
+    function asset() external view override returns (address assetTokenAddress) {
+        return address(collateralAsset);
+    }
+
+    function totalAssets() public view override returns (uint256 totalManagedAssets) {
+        // Total assets managed by the vault
+        return collateralAsset.balanceOf(address(this));
+    }
+
+    function convertToShares(uint256 assets) public view override returns (uint256 sharesAmount) {
+        // Converts assets to shares based on current exchange rate
+        uint256 supply = totalSupply();
+        return supply == 0 ? assets : (assets * supply) / totalAssets();
+    }
+
+    function convertToAssets(uint256 sharesAmount) public view override returns (uint256 assets) {
+        // Converts shares to assets based on current exchange rate
+        uint256 supply = totalSupply();
+        return supply == 0 ? sharesAmount : (sharesAmount * totalAssets()) / supply;
+    }
+
+    function maxDeposit(address receiver) external view override returns (uint256 maxAssets) {
+        // Maximum assets that can be deposited
+        return type(uint256).max;
+    }
+
+    function maxMint(address receiver) external view override returns (uint256 maxShares) {
+        // Maximum shares that can be minted
+        return type(uint256).max;
+    }
+
+    function maxWithdraw(address owner) external view override returns (uint256 maxAssets) {
+        // Maximum assets that can be withdrawn
+        return convertToAssets(balanceOf(owner));
+    }
+
+    function maxRedeem(address owner) external view override returns (uint256 maxShares) {
+        // Maximum shares that can be redeemed
+        return balanceOf(owner);
+    }
+
+    function previewDeposit(uint256 assets) external view override returns (uint256 sharesAmount) {
+        return convertToShares(assets);
+    }
+
+    function previewMint(uint256 sharesAmount) external view override returns (uint256 assets) {
+        uint256 supply = totalSupply();
+        return supply == 0 ? sharesAmount : (sharesAmount * totalAssets()) / supply;
+    }
+
+    function previewWithdraw(uint256 assets) external view override returns (uint256 sharesAmount) {
+        return convertToShares(assets);
+    }
+
+    function previewRedeem(uint256 sharesAmount) external view override returns (uint256 assets) {
+        return convertToAssets(sharesAmount);
+    }
+
+    function deposit(uint256 assets, address receiver) external override returns (uint256 sharesAmount) {
+        sharesAmount = convertToShares(assets);
+        require(sharesAmount != 0, "Cannot deposit zero assets");
+
+        collateralAsset.safeTransferFrom(msg.sender, address(this), assets);
+
+        _requestDeposit(assets, receiver, msg.sender, "");
+        emit Deposit(msg.sender, receiver, assets, sharesAmount);
+    }
+
+    function mint(uint256 sharesAmount, address receiver) external override returns (uint256 assets) {
+        assets = convertToAssets(sharesAmount);
+        require(assets != 0, "Cannot mint zero shares");
+
+        collateralAsset.safeTransferFrom(msg.sender, address(this), assets);
+
+        _requestDeposit(assets, receiver, msg.sender, "");
+        emit Deposit(msg.sender, receiver, assets, sharesAmount);
+    }
+
+    function withdraw(uint256 assets, address receiver, address owner) external override returns (uint256 sharesAmount) {
+        sharesAmount = convertToShares(assets);
+        require(sharesAmount != 0, "Cannot withdraw zero assets");
+
+        if (msg.sender != owner) {
+            uint256 allowed = allowance(owner, msg.sender);
+            require(allowed >= sharesAmount, "Withdraw exceeds allowance");
+            _approve(owner, msg.sender, allowed - sharesAmount);
+        }
+
+        _requestRedeem(sharesAmount, receiver, owner, "");
+        emit Withdraw(msg.sender, receiver, owner, assets, sharesAmount);
+    }
+
+    function redeem(uint256 sharesAmount, address receiver, address owner) external override returns (uint256 assets) {
+        assets = convertToAssets(sharesAmount);
+        require(assets != 0, "Cannot redeem zero shares");
+
+        if (msg.sender != owner) {
+            uint256 allowed = allowance(owner, msg.sender);
+            require(allowed >= sharesAmount, "Redeem exceeds allowance");
+            _approve(owner, msg.sender, allowed - sharesAmount);
+        }
+
+        _requestRedeem(sharesAmount, receiver, owner, "");
+        emit Withdraw(msg.sender, receiver, owner, assets, sharesAmount);
+    }
+
+    // IERC7540 required functions
+
+    function requestDeposit(
+        uint256 assets,
+        address receiver,
+        address owner,
+        bytes memory data
+    ) external override {
+        require(receiver != address(0), "Invalid receiver");
+        collateralAsset.safeTransferFrom(msg.sender, address(this), assets);
+        _requestDeposit(assets, receiver, owner, data);
+    }
+
+    function pendingDepositRequest(address owner) external view override returns (uint256 assets) {
+        uint256 currentEpochId = epochs[epochs.length - 1].epochId;
+        assets = userPendingDeposits[owner][currentEpochId];
+    }
+
+    function requestRedeem(
+        uint256 sharesAmount,
+        address operator,
+        address owner,
+        bytes memory data
+    ) external override {
+        require(owner != address(0), "Invalid owner");
+        require(userShares[owner] >= sharesAmount, "Insufficient shares");
+
+        if (msg.sender != owner) {
+            uint256 allowed = allowance(owner, msg.sender);
+            require(allowed >= sharesAmount, "Redeem exceeds allowance");
+            _approve(owner, msg.sender, allowed - sharesAmount);
+        }
+
+        _requestRedeem(sharesAmount, operator, owner, data);
+    }
+
+    function pendingRedeemRequest(address owner) external view override returns (uint256 sharesAmount) {
+        uint256 currentEpochId = epochs[epochs.length - 1].epochId;
+        sharesAmount = userPendingWithdrawals[owner][currentEpochId];
+    }
+
+    function _requestDeposit(
+        uint256 assets,
+        address receiver,
+        address owner,
+        bytes memory data
+    ) internal {
+        uint256 currentEpochId = epochs[epochs.length - 1].epochId;
+        userPendingDeposits[receiver][currentEpochId] += assets;
+        epochs[epochs.length - 1].totalPendingDeposits += assets;
+
+        emit DepositRequest(receiver, owner, currentEpochId, msg.sender, assets);
+    }
+
+    function _requestRedeem(
+        uint256 sharesAmount,
+        address operator,
+        address owner,
+        bytes memory data
+    ) internal {
+        uint256 currentEpochId = epochs[epochs.length - 1].epochId;
+        userPendingWithdrawals[owner][currentEpochId] += sharesAmount;
+        epochs[epochs.length - 1].totalPendingWithdrawals += sharesAmount;
+
+        // Lock the shares to prevent double spending
+        userShares[owner] -= sharesAmount;
+
+        emit RedeemRequest(operator, owner, currentEpochId, msg.sender, sharesAmount);
+    }
+
+    function redeemPending() external {
+        uint256 totalNewShares = 0;
+        for (uint256 i = 0; i < epochs.length - 1; i++) {
+            EpochData storage epoch = epochs[i];
+            if (epoch.processed && userPendingDeposits[msg.sender][epoch.epochId] > 0) {
+                uint256 newShares = (userPendingDeposits[msg.sender][epoch.epochId] * 1e18) / epoch.sharePrice;
+                totalNewShares += newShares;
+                delete userPendingDeposits[msg.sender][epoch.epochId];
+            }
+        }
+        if (totalNewShares > 0) {
+            userShares[msg.sender] += totalNewShares;
+            _mint(msg.sender, totalNewShares);
+        }
+    }
+
+    function claimWithdrawals() external {
+        uint256 totalWithdrawalAmount = 0;
+        uint256 totalSharesToBurn = 0;
+        for (uint256 i = 0; i < epochs.length - 1; i++) {
+            EpochData storage epoch = epochs[i];
+            if (epoch.processed && userPendingWithdrawals[msg.sender][epoch.epochId] > 0) {
+                uint256 withdrawalAmount = (userPendingWithdrawals[msg.sender][epoch.epochId] * epoch.sharePrice) / 1e18;
+                totalWithdrawalAmount += withdrawalAmount;
+                totalSharesToBurn += userPendingWithdrawals[msg.sender][epoch.epochId];
+                delete userPendingWithdrawals[msg.sender][epoch.epochId];
+            }
+        }
+        if (totalWithdrawalAmount > 0) {
+            userShares[msg.sender] -= totalSharesToBurn;
+            _burn(msg.sender, totalSharesToBurn);
+            collateralAsset.safeTransfer(msg.sender, totalWithdrawalAmount);
+        }
+    }
+
+    // Existing functions
+
     function resolutionCallback(
         uint160 previousResolutionSqrtPriceX96
     ) external onlyMarket {
         _createNextEpoch(previousResolutionSqrtPriceX96);
     }
 
-    function supportsInterface(
-        bytes4 interfaceId
-    ) external pure returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return
             interfaceId == type(IVault).interfaceId ||
             interfaceId == type(IERC165).interfaceId ||
-            interfaceId == type(IResolutionCallback).interfaceId;
+            interfaceId == type(IResolutionCallback).interfaceId ||
+            interfaceId == type(IERC4626).interfaceId ||
+            interfaceId == type(IERC7540).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 
     function _initializeEpoch(
@@ -86,30 +305,31 @@ contract Vault is IVault, ERC20 {
         epochIdToIndex[newEpochId] = epochs.length - 1;
     }
 
-    function _createNextEpoch() private {
-        (, uint256 newEpochStartTime, , , , , , , , , ) = market
-            .getLatestEpoch();
-        newEpochStartTime += duration + 1; // start time of next epoch is the end time of current epoch + duration +1 (Ying and Yang vaults)
+    function _createNextEpoch(
+        uint160 previousResolutionSqrtPriceX96
+    ) private {
+        (, uint256 newEpochStartTime, , , , , , , , , ) = market.getLatestEpoch();
+        newEpochStartTime += duration + 1;
 
         uint256 collateralReceived = market.settlePosition(positionId);
-        _processEpochTransition(collateralReceived);
+        _processEpochTransition(collateralReceived, previousResolutionSqrtPriceX96);
     }
 
-    function _processEpochTransition(uint256 collateralReceived) private {
+    function _processEpochTransition(uint256 collateralReceived, uint160 previousResolutionSqrtPriceX96) private {
         EpochData storage currentEpoch = epochs[epochs.length - 1];
         uint256 totalCollateral = collateralReceived + currentEpoch.totalPendingDeposits;
-        
+
         uint256 newSharePrice;
         if (totalSupply() > 0) {
-            newSharePrice = totalCollateral * 1e18 / (totalSupply() - currentEpoch.totalPendingWithdrawals);
+            newSharePrice = (totalCollateral * 1e18) / (totalSupply() - currentEpoch.totalPendingWithdrawals);
         } else {
             newSharePrice = 1e18;
         }
-        
+
         // Mark current epoch as processed
         currentEpoch.processed = true;
         currentEpoch.sharePrice = newSharePrice;
-        
+
         // Create new epoch
         uint256 newEpochId = epochs.length;
         epochs.push(EpochData({
@@ -122,10 +342,10 @@ contract Vault is IVault, ERC20 {
         epochIdToIndex[newEpochId] = newEpochId;
 
         // Create new liquidity position
-        _createNewLiquidityPosition(totalCollateral);
+        _createNewLiquidityPosition(totalCollateral, previousResolutionSqrtPriceX96);
     }
 
-    function _createNewLiquidityPosition(uint256 totalCollateral) private {
+    function _createNewLiquidityPosition(uint256 totalCollateral, uint160 sqrtPriceX96) private {
         uint256 epochId = epochs.length - 1;
 
         (
@@ -138,10 +358,9 @@ contract Vault is IVault, ERC20 {
             ,
             ,
             ,
+            ,
             IFoilStructs.EpochParams memory epochParams
         ) = market.getLatestEpoch();
-
-        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
 
         (uint256 amount0, uint256 amount1, ) = market.getTokenAmounts(
             epochId,
@@ -166,57 +385,25 @@ contract Vault is IVault, ERC20 {
         (positionId, , , , , ) = market.createLiquidityPosition(params);
     }
 
-    function deposit(uint256 amount) external {
-        collateralAsset.safeTransferFrom(msg.sender, address(this), amount);
+    function withdrawPendingDeposit(uint256 assets) external {
         uint256 currentEpochId = epochs[epochs.length - 1].epochId;
-        userPendingDeposits[msg.sender][currentEpochId] += amount;
-        epochs[epochs.length - 1].totalPendingDeposits += amount;
+        require(userPendingDeposits[msg.sender][currentEpochId] >= assets, "Insufficient pending deposit");
+
+        userPendingDeposits[msg.sender][currentEpochId] -= assets;
+        epochs[epochs.length - 1].totalPendingDeposits -= assets;
+
+        collateralAsset.safeTransfer(msg.sender, assets);
     }
 
-    function requestWithdrawal(uint256 shareAmount) external {
-        require(userShares[msg.sender] >= shareAmount, "Insufficient shares");
-        
+    function cancelWithdrawalRequest(uint256 sharesAmount) external {
         uint256 currentEpochId = epochs[epochs.length - 1].epochId;
-        userPendingWithdrawals[msg.sender][currentEpochId] += shareAmount;
-        epochs[epochs.length - 1].totalPendingWithdrawals += shareAmount;
-        
-        // Lock the shares to prevent double spending
-        userShares[msg.sender] -= shareAmount;
-    }
+        require(userPendingWithdrawals[msg.sender][currentEpochId] >= sharesAmount, "Insufficient pending withdrawal");
 
-    function claim() external {
-        uint256 totalNewShares = 0;
-        for (uint256 i = 0; i < epochs.length - 1; i++) {
-            EpochData storage epoch = epochs[i];
-            if (epoch.processed && userPendingDeposits[msg.sender][epoch.epochId] > 0) {
-                uint256 newShares = (userPendingDeposits[msg.sender][epoch.epochId] * 1e18) / epoch.sharePrice;
-                totalNewShares += newShares;
-                delete userPendingDeposits[msg.sender][epoch.epochId];
-            }
-        }
-        if (totalNewShares > 0) {
-            userShares[msg.sender] += totalNewShares;
-            _mint(msg.sender, totalNewShares);
-        }
-    }
+        userPendingWithdrawals[msg.sender][currentEpochId] -= sharesAmount;
+        epochs[epochs.length - 1].totalPendingWithdrawals -= sharesAmount;
 
-    function withdraw() external {
-        uint256 totalWithdrawalAmount = 0;
-        uint256 totalSharesToBurn = 0;
-        for (uint256 i = 0; i < epochs.length - 1; i++) {
-            EpochData storage epoch = epochs[i];
-            if (epoch.processed && userPendingWithdrawals[msg.sender][epoch.epochId] > 0) {
-                uint256 withdrawalAmount = (userPendingWithdrawals[msg.sender][epoch.epochId] * epoch.sharePrice) / 1e18;
-                totalWithdrawalAmount += withdrawalAmount;
-                totalSharesToBurn += userPendingWithdrawals[msg.sender][epoch.epochId];
-                delete userPendingWithdrawals[msg.sender][epoch.epochId];
-            }
-        }
-        if (totalWithdrawalAmount > 0) {
-            userShares[msg.sender] -= totalSharesToBurn;
-            _burn(msg.sender, totalSharesToBurn);
-            collateralAsset.safeTransfer(msg.sender, totalWithdrawalAmount);
-        }
+        // Unlock the shares
+        userShares[msg.sender] += sharesAmount;
     }
 
     modifier onlyMarket() {
@@ -225,26 +412,5 @@ contract Vault is IVault, ERC20 {
             "Only market can call this function"
         );
         _;
-    }
-
-    function withdrawPendingDeposit(uint256 amount) external {
-        uint256 currentEpochId = epochs[epochs.length - 1].epochId;
-        require(userPendingDeposits[msg.sender][currentEpochId] >= amount, "Insufficient pending deposit");
-        
-        userPendingDeposits[msg.sender][currentEpochId] -= amount;
-        epochs[epochs.length - 1].totalPendingDeposits -= amount;
-        
-        collateralAsset.safeTransfer(msg.sender, amount);
-    }
-
-    function cancelWithdrawalRequest(uint256 shareAmount) external {
-        uint256 currentEpochId = epochs[epochs.length - 1].epochId;
-        require(userPendingWithdrawals[msg.sender][currentEpochId] >= shareAmount, "Insufficient pending withdrawal");
-        
-        userPendingWithdrawals[msg.sender][currentEpochId] -= shareAmount;
-        epochs[epochs.length - 1].totalPendingWithdrawals -= shareAmount;
-        
-        // Unlock the shares
-        userShares[msg.sender] += shareAmount;
     }
 }
