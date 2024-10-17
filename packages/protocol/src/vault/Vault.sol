@@ -277,21 +277,20 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         return balanceOf(owner);
     }
 
-    function previewDeposit(uint256 assets) external view override returns (uint256 sharesAmount) {
-        return convertToShares(assets);
+    function previewRedeem(uint256 /*shares*/) public pure override returns (uint256) {
+        revert("previewRedeem is not supported");
     }
-
-    function previewMint(uint256 sharesAmount) external view override returns (uint256 assets) {
-        uint256 supply = totalSupply();
-        return supply == 0 ? sharesAmount : (sharesAmount * totalAssets()) / supply;
+    
+    function previewWithdraw(uint256 /*assets*/) public pure override returns (uint256) {
+        revert("previewWithdraw is not supported");
     }
-
-    function previewWithdraw(uint256 assets) external view override returns (uint256 sharesAmount) {
-        return convertToShares(assets);
+    
+    function previewDeposit(uint256 /*assets*/) public pure override returns (uint256) {
+        revert("previewDeposit is not supported");
     }
-
-    function previewRedeem(uint256 sharesAmount) external view override returns (uint256 assets) {
-        return convertToAssets(sharesAmount);
+    
+    function previewMint(uint256 /*shares*/) public pure override returns (uint256) {
+        revert("previewMint is not supported");
     }
 
     function deposit(uint256 assets, address receiver) external override nonReentrant returns (uint256 sharesAmount) {
