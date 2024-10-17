@@ -37,6 +37,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     mapping(address => uint256) public userShares;
     mapping(address => mapping(uint256 => uint256)) public userPendingDeposits;
     mapping(address => mapping(uint256 => uint256)) public userPendingWithdrawals;
+    mapping(address => mapping(uint256 => uint256)) public userPendingWithdrawalShares;
 
     event EpochProcessed(uint256 indexed epochId, uint256 newSharePrice, uint256 newShares, uint256 sharesToBurn);
 
@@ -232,47 +233,68 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         bytes memory data
     ) internal {
         uint256 currentEpochId = epochs[epochs.length - 1].epochId;
-        userPendingWithdrawals[owner][currentEpochId] += sharesAmount;
-        epochs[epochs.length - 1].totalPendingWithdrawals += sharesAmount;
 
-        // Lock the shares to prevent double spending
+        // Lock the shares by reducing userShares
         userShares[owner] -= sharesAmount;
+
+        // Record pending withdrawal shares
+        userPendingWithdrawalShares[owner][currentEpochId] += sharesAmount;
+        epochs[epochs.length - 1].totalPendingWithdrawals += sharesAmount;
 
         emit RedeemRequest(operator, owner, currentEpochId, msg.sender, sharesAmount);
     }
 
     function redeemPending() external {
         uint256 totalNewShares = 0;
-        for (uint256 i = 0; i < epochs.length - 1; i++) {
+
+        for (uint256 i = 0; i < epochs.length; i++) {
             EpochData storage epoch = epochs[i];
             if (epoch.processed && userPendingDeposits[msg.sender][epoch.epochId] > 0) {
-                uint256 newShares = (userPendingDeposits[msg.sender][epoch.epochId] * 1e18) / epoch.sharePrice;
+                uint256 assetsDeposited = userPendingDeposits[msg.sender][epoch.epochId];
+                uint256 newShares = (assetsDeposited * 1e18) / epoch.sharePrice;
+
                 totalNewShares += newShares;
                 delete userPendingDeposits[msg.sender][epoch.epochId];
             }
         }
+
         if (totalNewShares > 0) {
+            // Update userShares
             userShares[msg.sender] += totalNewShares;
-            _mint(msg.sender, totalNewShares);
+
+            // Mint the ERC20 tokens
+            _mintShares(msg.sender, totalNewShares);
+
+            emit Deposit(msg.sender, msg.sender, totalNewShares, totalNewShares);
         }
     }
 
     function claimWithdrawals() external {
         uint256 totalWithdrawalAmount = 0;
         uint256 totalSharesToBurn = 0;
-        for (uint256 i = 0; i < epochs.length - 1; i++) {
+
+        for (uint256 i = 0; i < epochs.length; i++) {
             EpochData storage epoch = epochs[i];
-            if (epoch.processed && userPendingWithdrawals[msg.sender][epoch.epochId] > 0) {
-                uint256 withdrawalAmount = (userPendingWithdrawals[msg.sender][epoch.epochId] * epoch.sharePrice) / 1e18;
+            if (epoch.processed && userPendingWithdrawalShares[msg.sender][epoch.epochId] > 0) {
+                uint256 sharesToWithdraw = userPendingWithdrawalShares[msg.sender][epoch.epochId];
+                uint256 withdrawalAmount = (sharesToWithdraw * epoch.sharePrice) / 1e18;
+
                 totalWithdrawalAmount += withdrawalAmount;
-                totalSharesToBurn += userPendingWithdrawals[msg.sender][epoch.epochId];
-                delete userPendingWithdrawals[msg.sender][epoch.epochId];
+                totalSharesToBurn += sharesToWithdraw;
+
+                // Clean up the pending withdrawal shares
+                delete userPendingWithdrawalShares[msg.sender][epoch.epochId];
             }
         }
+
         if (totalWithdrawalAmount > 0) {
-            userShares[msg.sender] -= totalSharesToBurn;
-            _burn(msg.sender, totalSharesToBurn);
+            // Burn the shares from the user's balance
+            _burnShares(msg.sender, totalSharesToBurn);
+
+            // Transfer the collateral to the user
             collateralAsset.safeTransfer(msg.sender, totalWithdrawalAmount);
+
+            emit Withdraw(msg.sender, msg.sender, msg.sender, totalWithdrawalAmount, totalSharesToBurn);
         }
     }
 
@@ -342,11 +364,11 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
         // Process deposits
         uint256 newShares = (currentEpoch.totalPendingDeposits * 1e18) / newSharePrice;
-        _mint(address(this), newShares);
+        _mintShares(address(this), newShares);
 
         // Process withdrawals
         uint256 sharesToBurn = currentEpoch.totalPendingWithdrawals;
-        _burn(address(this), sharesToBurn);
+        _burnShares(address(this), sharesToBurn);
 
         // Adjust balances
         totalShares += newShares - sharesToBurn;
@@ -440,4 +462,41 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     }
 
     event WithdrawPendingDeposit(address indexed user, uint256 assets, uint256 epochId);
+
+    function _update(address from, address to, uint256 amount) internal override {
+        if (from != address(0)) { // Not a mint operation
+            uint256 available = availableShares(from);
+            require(available >= amount, "Transfer amount exceeds available shares");
+        }
+        super._update(from, to, amount);
+        
+        // Update userShares
+        if (from != address(0) && from != address(this)) {
+            userShares[from] -= amount;
+        }
+        if (to != address(0) && to != address(this)) {
+            userShares[to] += amount;
+        }
+    }
+
+    function availableShares(address owner) public view returns (uint256) {
+        // The shares currently available to the user (not locked)
+        return userShares[owner];
+    }
+
+    function _mintShares(address account, uint256 amount) internal {
+        super._mint(account, amount);
+        // Ensure userShares is updated unless we're minting to the contract itself (e.g., in epoch processing)
+        if (account != address(this)) {
+            userShares[account] += amount;
+        }
+    }
+
+    function _burnShares(address account, uint256 amount) internal {
+        super._burn(account, amount);
+        // Ensure userShares is updated unless we're burning from the contract itself
+        if (account != address(this)) {
+            userShares[account] -= amount;
+        }
+    }
 }
