@@ -41,6 +41,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
     event EpochProcessed(uint256 indexed epochId, uint256 newSharePrice, uint256 newShares, uint256 sharesToBurn);
 
+    // Add mappings to keep track of users with pending deposits and withdrawals
+    mapping(uint256 => address[]) private depositors;
+    mapping(uint256 => address[]) private withdrawers;
+
     constructor(
         string memory _name,
         string memory _symbol,
@@ -223,80 +227,32 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         userPendingDeposits[receiver][currentEpochId] += assets;
         epochs[epochs.length - 1].totalPendingDeposits += assets;
 
+        // Keep track of depositors
+        depositors[currentEpochId].push(receiver);
+
         emit DepositRequest(receiver, owner, currentEpochId, msg.sender, assets);
     }
 
-function _requestRedeem(
-    uint256 sharesAmount,
-    address receiver,
-    address owner,
-    bytes memory data
-) internal {
-    uint256 currentEpochId = epochs[epochs.length - 1].epochId;
+    function _requestRedeem(
+        uint256 sharesAmount,
+        address receiver,
+        address owner,
+        bytes memory data
+    ) internal {
+        uint256 currentEpochId = epochs[epochs.length - 1].epochId;
 
-    // Transfer the tokens from the user to the contract
-    _transfer(owner, address(this), sharesAmount);
+        // Transfer the tokens from the user to the contract
+        _update(owner, address(this), sharesAmount);
 
-    // Record pending withdrawal shares
-    userPendingWithdrawalShares[owner][currentEpochId] += sharesAmount;
-    epochs[epochs.length - 1].totalPendingWithdrawals += sharesAmount;
+        // Record pending withdrawal shares
+        userPendingWithdrawalShares[owner][currentEpochId] += sharesAmount;
+        epochs[epochs.length - 1].totalPendingWithdrawals += sharesAmount;
 
-    emit RedeemRequest(receiver, owner, currentEpochId, msg.sender, sharesAmount);
-}
+        // Keep track of withdrawers
+        withdrawers[currentEpochId].push(owner);
 
-    function redeemPending() external {
-        uint256 totalNewShares = 0;
-
-        for (uint256 i = 0; i < epochs.length; i++) {
-            EpochData storage epoch = epochs[i];
-            if (epoch.processed && userPendingDeposits[msg.sender][epoch.epochId] > 0) {
-                uint256 assetsDeposited = userPendingDeposits[msg.sender][epoch.epochId];
-                uint256 newShares = (assetsDeposited * 1e18) / epoch.sharePrice;
-
-                totalNewShares += newShares;
-                delete userPendingDeposits[msg.sender][epoch.epochId];
-            }
-        }
-
-        if (totalNewShares > 0) {
-            // Update userShares
-            userShares[msg.sender] += totalNewShares;
-
-            // Mint the ERC20 tokens
-            _mintShares(msg.sender, totalNewShares);
-
-            emit Deposit(msg.sender, msg.sender, totalNewShares, totalNewShares);
-        }
+        emit RedeemRequest(receiver, owner, currentEpochId, msg.sender, sharesAmount);
     }
-
-function claimWithdrawals() external {
-    uint256 totalWithdrawalAmount = 0;
-    uint256 totalSharesToBurn = 0;
-
-    for (uint256 i = 0; i < epochs.length; i++) {
-        EpochData storage epoch = epochs[i];
-        if (epoch.processed && userPendingWithdrawalShares[msg.sender][epoch.epochId] > 0) {
-            uint256 sharesToWithdraw = userPendingWithdrawalShares[msg.sender][epoch.epochId];
-            uint256 withdrawalAmount = (sharesToWithdraw * epoch.sharePrice) / 1e18;
-
-            totalWithdrawalAmount += withdrawalAmount;
-            totalSharesToBurn += sharesToWithdraw;
-
-            // Clean up the pending withdrawal shares
-            delete userPendingWithdrawalShares[msg.sender][epoch.epochId];
-        }
-    }
-
-    if (totalWithdrawalAmount > 0) {
-        // Burn the tokens from the contract's balance
-        _burn(address(this), totalSharesToBurn);
-
-        // Transfer the collateral to the user
-        collateralAsset.safeTransfer(msg.sender, totalWithdrawalAmount);
-
-        emit Withdraw(msg.sender, msg.sender, msg.sender, totalWithdrawalAmount, totalSharesToBurn);
-    }
-}
 
     // Existing functions
 
@@ -352,28 +308,57 @@ function claimWithdrawals() external {
         uint256 totalManagedAssets = totalAssets();
         uint256 netSupply = totalSupply();
 
-        uint256 newSharePrice;
-        if (netSupply > 0) {
-            newSharePrice = (totalManagedAssets * 1e18) / netSupply;
-        } else {
-            newSharePrice = 1e18;
-        }
-        
+        uint256 newSharePrice = (totalManagedAssets * 1e18) / netSupply;
+
         currentEpoch.sharePrice = newSharePrice;
         currentEpoch.processed = true;
 
-        // Process deposits
-        uint256 newShares = (currentEpoch.totalPendingDeposits * 1e18) / newSharePrice;
-        _mintShares(address(this), newShares);
+        // Process pending deposits
+        uint256 totalNewShares = (currentEpoch.totalPendingDeposits * 1e18) / newSharePrice;
+        _mintShares(address(this), totalNewShares);
 
-        // Process withdrawals
-        uint256 sharesToBurn = currentEpoch.totalPendingWithdrawals;
-        _burnShares(address(this), sharesToBurn);
+        // Distribute new shares to depositors
+        address[] memory epochDepositors = depositors[currentEpoch.epochId];
+        for (uint256 i = 0; i < epochDepositors.length; i++) {
+            address user = epochDepositors[i];
+            uint256 userDeposit = userPendingDeposits[user][currentEpoch.epochId];
+            uint256 userNewShares = (userDeposit * 1e18) / newSharePrice;
 
-        // Adjust balances
-        totalShares += newShares - sharesToBurn;
+            // Transfer shares from the vault to the user
+            _update(address(this), user, userNewShares);
+            // Update user shares
+            userShares[user] += userNewShares;
 
-        emit EpochProcessed(currentEpoch.epochId, newSharePrice, newShares, sharesToBurn);
+            // Clean up pending deposits
+            delete userPendingDeposits[user][currentEpoch.epochId];
+        }
+
+        // Process pending withdrawals
+        uint256 totalSharesToBurn = currentEpoch.totalPendingWithdrawals;
+        _burnShares(address(this), totalSharesToBurn);
+
+        address[] memory epochWithdrawers = withdrawers[currentEpoch.epochId];
+        for (uint256 i = 0; i < epochWithdrawers.length; i++) {
+            address user = epochWithdrawers[i];
+            uint256 userWithdrawalShares = userPendingWithdrawalShares[user][currentEpoch.epochId];
+            uint256 withdrawalAmount = (userWithdrawalShares * newSharePrice) / 1e18;
+
+            // Transfer collateral to the user
+            collateralAsset.safeTransfer(user, withdrawalAmount);
+
+            // Shares were already transferred to the vault in _requestRedeem
+            // Burn the shares from the vault's balance
+            _burn(address(this), userWithdrawalShares);
+
+            // Clean up pending withdrawals
+            delete userPendingWithdrawalShares[user][currentEpoch.epochId];
+        }
+
+        emit EpochProcessed(currentEpoch.epochId, newSharePrice, totalNewShares, totalSharesToBurn);
+
+        // Clean up depositor and withdrawer lists for the epoch
+        delete depositors[currentEpoch.epochId];
+        delete withdrawers[currentEpoch.epochId];
     }
 
     function _createNewLiquidityPosition(uint256 totalCollateral, uint160 sqrtPriceX96) private {
@@ -426,16 +411,16 @@ function claimWithdrawals() external {
         collateralAsset.safeTransfer(msg.sender, assets);
     }
 
-function cancelWithdrawalRequest(uint256 sharesAmount) external {
-    uint256 currentEpochId = epochs[epochs.length - 1].epochId;
-    require(userPendingWithdrawalShares[msg.sender][currentEpochId] >= sharesAmount, "Insufficient pending withdrawal");
+    function cancelWithdrawalRequest(uint256 sharesAmount) external {
+        uint256 currentEpochId = epochs[epochs.length - 1].epochId;
+        require(userPendingWithdrawalShares[msg.sender][currentEpochId] >= sharesAmount, "Insufficient pending withdrawal");
 
-    userPendingWithdrawalShares[msg.sender][currentEpochId] -= sharesAmount;
-    epochs[epochs.length - 1].totalPendingWithdrawals -= sharesAmount;
+        userPendingWithdrawalShares[msg.sender][currentEpochId] -= sharesAmount;
+        epochs[epochs.length - 1].totalPendingWithdrawals -= sharesAmount;
 
-    // Transfer the tokens back to the user
-    _transfer(address(this), msg.sender, sharesAmount);
-}
+        // Transfer the tokens back to the user
+        _update(address(this), msg.sender, sharesAmount);
+    }
 
     modifier onlyMarket() {
         require(
@@ -463,17 +448,17 @@ function cancelWithdrawalRequest(uint256 sharesAmount) external {
 
     event WithdrawPendingDeposit(address indexed user, uint256 assets, uint256 epochId);
 
-function _update(address from, address to, uint256 amount) internal override {
-    super._update(from, to, amount);
+    function _update(address from, address to, uint256 amount) internal override {
+        super._update(from, to, amount);
 
-    // Update userShares mapping accordingly
-    if (from != address(0) && from != address(this)) {
-        userShares[from] -= amount;
+        // Update userShares mapping accordingly
+        if (from != address(0) && from != address(this)) {
+            userShares[from] -= amount;
+        }
+        if (to != address(0) && to != address(this)) {
+            userShares[to] += amount;
+        }
     }
-    if (to != address(0) && to != address(this)) {
-        userShares[to] += amount;
-    }
-}
 
     function availableShares(address owner) public view returns (uint256) {
         // The shares currently available to the user (not locked)
@@ -481,16 +466,14 @@ function _update(address from, address to, uint256 amount) internal override {
     }
 
     function _mintShares(address account, uint256 amount) internal {
-        super._mint(account, amount);
-        // Ensure userShares is updated unless we're minting to the contract itself (e.g., in epoch processing)
+        _mint(account, amount);
         if (account != address(this)) {
             userShares[account] += amount;
         }
     }
 
     function _burnShares(address account, uint256 amount) internal {
-        super._burn(account, amount);
-        // Ensure userShares is updated unless we're burning from the contract itself
+        _burn(account, amount);
         if (account != address(this)) {
             userShares[account] -= amount;
         }
