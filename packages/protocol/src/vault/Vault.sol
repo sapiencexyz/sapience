@@ -64,7 +64,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     }
 
     function totalAssets() public view override returns (uint256) {
-        uint256 investedAssets = 0; // TODO: Get the value of the current LP position in collateral
+        uint256 investedAssets = market.getPositionCollateralValue(positionId);
         uint256 uninvestedAssets = collateralAsset.balanceOf(address(this));
         uint256 pendingWithdrawals = _getPendingWithdrawals();
         uint256 pendingDeposits = _getPendingDeposits();
@@ -87,12 +87,12 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         return supply == 0 ? sharesAmount : (sharesAmount * totalAssets()) / supply;
     }
 
-    function maxDeposit(address receiver) external view override returns (uint256 maxAssets) {
+    function maxDeposit(address receiver) external pure override returns (uint256 maxAssets) {
         // Maximum assets that can be deposited
         return type(uint256).max;
     }
 
-    function maxMint(address receiver) external view override returns (uint256 maxShares) {
+    function maxMint(address receiver) external pure override returns (uint256 maxShares) {
         // Maximum shares that can be minted
         return type(uint256).max;
     }
