@@ -64,7 +64,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     }
 
     function totalAssets() public view override returns (uint256) {
-        uint256 investedAssets = 0; // _getInvestedAssets(); // Assets actively invested in positions
+        uint256 investedAssets = 0; // TODO: Get the value of the current LP position in collateral
         uint256 uninvestedAssets = collateralAsset.balanceOf(address(this));
         uint256 pendingWithdrawals = _getPendingWithdrawals();
         uint256 pendingDeposits = _getPendingDeposits();
@@ -226,23 +226,23 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         emit DepositRequest(receiver, owner, currentEpochId, msg.sender, assets);
     }
 
-    function _requestRedeem(
-        uint256 sharesAmount,
-        address operator,
-        address owner,
-        bytes memory data
-    ) internal {
-        uint256 currentEpochId = epochs[epochs.length - 1].epochId;
+function _requestRedeem(
+    uint256 sharesAmount,
+    address receiver,
+    address owner,
+    bytes memory data
+) internal {
+    uint256 currentEpochId = epochs[epochs.length - 1].epochId;
 
-        // Lock the shares by reducing userShares
-        userShares[owner] -= sharesAmount;
+    // Transfer the tokens from the user to the contract
+    _transfer(owner, address(this), sharesAmount);
 
-        // Record pending withdrawal shares
-        userPendingWithdrawalShares[owner][currentEpochId] += sharesAmount;
-        epochs[epochs.length - 1].totalPendingWithdrawals += sharesAmount;
+    // Record pending withdrawal shares
+    userPendingWithdrawalShares[owner][currentEpochId] += sharesAmount;
+    epochs[epochs.length - 1].totalPendingWithdrawals += sharesAmount;
 
-        emit RedeemRequest(operator, owner, currentEpochId, msg.sender, sharesAmount);
-    }
+    emit RedeemRequest(receiver, owner, currentEpochId, msg.sender, sharesAmount);
+}
 
     function redeemPending() external {
         uint256 totalNewShares = 0;
@@ -269,34 +269,34 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         }
     }
 
-    function claimWithdrawals() external {
-        uint256 totalWithdrawalAmount = 0;
-        uint256 totalSharesToBurn = 0;
+function claimWithdrawals() external {
+    uint256 totalWithdrawalAmount = 0;
+    uint256 totalSharesToBurn = 0;
 
-        for (uint256 i = 0; i < epochs.length; i++) {
-            EpochData storage epoch = epochs[i];
-            if (epoch.processed && userPendingWithdrawalShares[msg.sender][epoch.epochId] > 0) {
-                uint256 sharesToWithdraw = userPendingWithdrawalShares[msg.sender][epoch.epochId];
-                uint256 withdrawalAmount = (sharesToWithdraw * epoch.sharePrice) / 1e18;
+    for (uint256 i = 0; i < epochs.length; i++) {
+        EpochData storage epoch = epochs[i];
+        if (epoch.processed && userPendingWithdrawalShares[msg.sender][epoch.epochId] > 0) {
+            uint256 sharesToWithdraw = userPendingWithdrawalShares[msg.sender][epoch.epochId];
+            uint256 withdrawalAmount = (sharesToWithdraw * epoch.sharePrice) / 1e18;
 
-                totalWithdrawalAmount += withdrawalAmount;
-                totalSharesToBurn += sharesToWithdraw;
+            totalWithdrawalAmount += withdrawalAmount;
+            totalSharesToBurn += sharesToWithdraw;
 
-                // Clean up the pending withdrawal shares
-                delete userPendingWithdrawalShares[msg.sender][epoch.epochId];
-            }
-        }
-
-        if (totalWithdrawalAmount > 0) {
-            // Burn the shares from the user's balance
-            _burnShares(msg.sender, totalSharesToBurn);
-
-            // Transfer the collateral to the user
-            collateralAsset.safeTransfer(msg.sender, totalWithdrawalAmount);
-
-            emit Withdraw(msg.sender, msg.sender, msg.sender, totalWithdrawalAmount, totalSharesToBurn);
+            // Clean up the pending withdrawal shares
+            delete userPendingWithdrawalShares[msg.sender][epoch.epochId];
         }
     }
+
+    if (totalWithdrawalAmount > 0) {
+        // Burn the tokens from the contract's balance
+        _burn(address(this), totalSharesToBurn);
+
+        // Transfer the collateral to the user
+        collateralAsset.safeTransfer(msg.sender, totalWithdrawalAmount);
+
+        emit Withdraw(msg.sender, msg.sender, msg.sender, totalWithdrawalAmount, totalSharesToBurn);
+    }
+}
 
     // Existing functions
 
@@ -426,16 +426,16 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         collateralAsset.safeTransfer(msg.sender, assets);
     }
 
-    function cancelWithdrawalRequest(uint256 sharesAmount) external {
-        uint256 currentEpochId = epochs[epochs.length - 1].epochId;
-        require(userPendingWithdrawals[msg.sender][currentEpochId] >= sharesAmount, "Insufficient pending withdrawal");
+function cancelWithdrawalRequest(uint256 sharesAmount) external {
+    uint256 currentEpochId = epochs[epochs.length - 1].epochId;
+    require(userPendingWithdrawalShares[msg.sender][currentEpochId] >= sharesAmount, "Insufficient pending withdrawal");
 
-        userPendingWithdrawals[msg.sender][currentEpochId] -= sharesAmount;
-        epochs[epochs.length - 1].totalPendingWithdrawals -= sharesAmount;
+    userPendingWithdrawalShares[msg.sender][currentEpochId] -= sharesAmount;
+    epochs[epochs.length - 1].totalPendingWithdrawals -= sharesAmount;
 
-        // Unlock the shares
-        userShares[msg.sender] += sharesAmount;
-    }
+    // Transfer the tokens back to the user
+    _transfer(address(this), msg.sender, sharesAmount);
+}
 
     modifier onlyMarket() {
         require(
@@ -463,21 +463,17 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
     event WithdrawPendingDeposit(address indexed user, uint256 assets, uint256 epochId);
 
-    function _update(address from, address to, uint256 amount) internal override {
-        if (from != address(0)) { // Not a mint operation
-            uint256 available = availableShares(from);
-            require(available >= amount, "Transfer amount exceeds available shares");
-        }
-        super._update(from, to, amount);
-        
-        // Update userShares
-        if (from != address(0) && from != address(this)) {
-            userShares[from] -= amount;
-        }
-        if (to != address(0) && to != address(this)) {
-            userShares[to] += amount;
-        }
+function _update(address from, address to, uint256 amount) internal override {
+    super._update(from, to, amount);
+
+    // Update userShares mapping accordingly
+    if (from != address(0) && from != address(this)) {
+        userShares[from] -= amount;
     }
+    if (to != address(0) && to != address(this)) {
+        userShares[to] += amount;
+    }
+}
 
     function availableShares(address owner) public view returns (uint256) {
         // The shares currently available to the user (not locked)
