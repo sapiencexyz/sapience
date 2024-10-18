@@ -129,11 +129,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
         // Settle the position and get the collateral received
         uint256 collateralReceived = market.settlePosition(positionId);
+        collateralReceived; // do we need to use if for anything? at least an event reporting it
 
         // Process the epoch transition and pass the collateral received
-        uint256 totalCollateralAfterTransition = _processEpochTransition(
-            collateralReceived
-        );
+        uint256 totalCollateralAfterTransition = _processEpochTransition();
 
         // Move to the next epoch
         _initializeEpoch(newEpochStartTime, previousResolutionSqrtPriceX96);
@@ -144,9 +143,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         );
     }
 
-    function _processEpochTransition(
-        uint256 collateralReceived
-    ) internal returns (uint256) {
+    function _processEpochTransition() internal returns (uint256) {
         EpochData storage epochData = epochs[currentFutureEpochIdx];
 
         uint256 netSupplyBeforeTransitioning = totalSupply();
@@ -461,11 +458,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     // notice: the max amount or effective amount is same as claimable
     // @dev notice the amount is being ignored and all the claimable is going to be deposited
     function deposit(
-        uint256 assets,
+        uint256, // ignoring the amount. All or nothing
         address receiver
     ) external override returns (uint256 sharesAmount) {
-        uint256 mintedAssetValue = mint(convertToShares(assets), receiver);
-        // NOTE Use convertToShares with Round.Down
+        uint256 mintedAssetValue = mint(0, receiver);
 
         sharesAmount = convertToShares(mintedAssetValue);
     }
@@ -475,27 +471,27 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     // notice: the max amount or effective amount is same as claimable
     // @dev notice the amount is being ignored and all the claimable is going to be minted
     function mint(
-        uint256 sharesAmount,
+        uint256, // ignoring the amount
         address receiver
     ) public override returns (uint256 assets) {
-        assets = convertToAssets(sharesAmount);
-        require(assets != 0, "Cannot mint zero shares");
         require(currentFutureEpochIdx > 0, "no previous epoch yet");
 
         // Simplification here - only previous epoch contains unclaimed deposits. TODO make it right
         EpochData storage previousEpochData = epochs[currentFutureEpochIdx - 1];
 
+        // Notice, ignoring shares, getting all, if partials are allowed, use decrement here by assets
         uint256 userClaimable = userNonExecutedDeposits[
             currentFutureEpochIdx - 1
         ][receiver];
+        require(assets != 0, "Cannot mint zero shares");
         assets = userClaimable;
         uint256 sharesToMint = convertToShares(assets);
-        // Notice, ignoring assets, getting all, if partials are allowed, use decrement here by assets
+
         userNonExecutedDeposits[currentFutureEpochIdx - 1][receiver] = 0;
         previousEpochData.totalClaimableDeposit -= userClaimable;
         globalTotalClaimableDeposit -= userClaimable;
 
-        // Use convertToShares with Rounding.Down
+        // mint the shares
         _mintShares(receiver, sharesToMint);
 
         emit Deposit(msg.sender, receiver, assets, sharesToMint);
@@ -563,16 +559,12 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     // notice: this is the second part of the Async requestToWithdraw / redeem
     // @dev notice the amount is being ignored and all the claimable is going to be redeemed
     function redeem(
-        uint256 sharesAmount,
+        uint256, // ignore the shares amount
         address receiver,
         address owner
     ) external override returns (uint256 assets) {
-        uint256 withdrawnShares = withdraw(
-            convertToAssets(sharesAmount),
-            receiver,
-            owner
-        );
-        // NOTE Use convertToShares with Round.Down
+        uint256 withdrawnShares = withdraw(0, receiver, owner);
+
         assets = convertToAssets(withdrawnShares);
     }
 
@@ -580,12 +572,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     // notice: this is the second part of the Async requestToWithdraw / withdraw
     // @dev notice the amount is being ignored and all the claimable is going to be withdrawn
     function withdraw(
-        uint256 assets,
+        uint256, // ignore the assets amount
         address receiver,
         address owner
     ) public override returns (uint256 sharesAmount) {
-        sharesAmount = convertToShares(assets);
-        require(sharesAmount != 0, "Cannot withdraw zero assets");
         require(currentFutureEpochIdx > 0, "no previous epoch yet");
 
         if (msg.sender != owner) {
@@ -601,17 +591,24 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             currentFutureEpochIdx - 1
         ][receiver];
         sharesAmount = userClaimable;
-        uint256 sharesValue = convertToAssets(sharesAmount);
+        require(sharesAmount != 0, "Cannot withdraw zero assets");
+        uint256 sharesAssetValue = convertToAssets(sharesAmount);
 
         // Notice, ignoring assets, getting all, if partials are allowed, use decrement here by assets
         userNonExecutedWithdrawals[currentFutureEpochIdx - 1][receiver] = 0;
         previousEpochData.totalClaimableWithdrawal -= userClaimable;
         globalTotalClaimableWithdrawal -= userClaimable;
 
-        // Use convertToAssets with Rounding.Down
+        // Burn the shares
         _burnShares(receiver, userClaimable);
 
-        emit Withdraw(msg.sender, receiver, owner, sharesValue, sharesAmount);
+        emit Withdraw(
+            msg.sender,
+            receiver,
+            owner,
+            sharesAssetValue,
+            sharesAmount
+        );
     }
 
     modifier onlyMarket() {
@@ -622,21 +619,21 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         _;
     }
 
-    function _update(
-        address from,
-        address to,
-        uint256 amount
-    ) internal override {
-        super._update(from, to, amount);
+    // function _update(
+    //     address from,
+    //     address to,
+    //     uint256 amount
+    // ) internal override {
+    //     super._update(from, to, amount);
 
-        // Update userShares mapping accordingly
-        if (from != address(0) && from != address(this)) {
-            userShares[from] -= amount;
-        }
-        if (to != address(0) && to != address(this)) {
-            userShares[to] += amount;
-        }
-    }
+    //     // Update userShares mapping accordingly
+    //     if (from != address(0) && from != address(this)) {
+    //         userShares[from] -= amount;
+    //     }
+    //     if (to != address(0) && to != address(this)) {
+    //         userShares[to] += amount;
+    //     }
+    // }
 
     function availableShares(address owner) public view returns (uint256) {
         // The shares currently available to the user (not locked)
