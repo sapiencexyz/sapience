@@ -52,15 +52,17 @@ const NavPopover = ({
   const { markets } = useMarketList();
   const { isOpen, onClose, onOpen } = useDisclosure();
 
+  const publicMarkets = markets.filter((m) => m.public);
+
   const formatTimestamp = (timestamp: number) => {
     return format(new Date(timestamp * 1000), 'MMM d, HH:mm');
   };
 
   useEffect(() => {
-    if (withEpochs && markets.length > 0) {
-      setHoveredMarket(markets[0].id);
+    if (withEpochs && publicMarkets.length > 0) {
+      setHoveredMarket(publicMarkets[0].id);
     }
-  }, [withEpochs, markets]);
+  }, [withEpochs, publicMarkets]);
 
   const handleLinkClick = () => {
     onClose();
@@ -78,41 +80,37 @@ const NavPopover = ({
         <PopoverBody py={3}>
           <Flex>
             <Box flex={1}>
-              {markets
-                .filter((m) => m.public)
-                .map((market) => (
-                  <Box
-                    key={market.id}
-                    onMouseEnter={() =>
-                      withEpochs && setHoveredMarket(market.id)
-                    }
-                    onMouseLeave={() =>
-                      withEpochs && setHoveredMarket(markets[0].id)
-                    }
-                  >
-                    {market.currentEpoch && (
-                      <ChakraLink
-                        fontSize="sm"
-                        as={Link}
-                        width="100%"
-                        display="block"
-                        borderRadius="md"
-                        px={3}
-                        py={1.5}
-                        bg={
-                          withEpochs && hoveredMarket === market.id
-                            ? 'gray.100'
-                            : 'transparent'
-                        }
-                        _hover={{ bg: 'gray.100' }}
-                        href={getMarketHref(path, market, withEpochs)}
-                        onClick={handleLinkClick}
-                      >
-                        {market.name}
-                      </ChakraLink>
-                    )}
-                  </Box>
-                ))}
+              {publicMarkets.map((market) => (
+                <Box
+                  key={market.id}
+                  onMouseEnter={() => withEpochs && setHoveredMarket(market.id)}
+                  onMouseLeave={() =>
+                    withEpochs && setHoveredMarket(publicMarkets[0].id)
+                  }
+                >
+                  {market.currentEpoch && (
+                    <ChakraLink
+                      fontSize="sm"
+                      as={Link}
+                      width="100%"
+                      display="block"
+                      borderRadius="md"
+                      px={3}
+                      py={1.5}
+                      bg={
+                        withEpochs && hoveredMarket === market.id
+                          ? 'gray.100'
+                          : 'transparent'
+                      }
+                      _hover={{ bg: 'gray.100' }}
+                      href={getMarketHref(path, market, withEpochs)}
+                      onClick={handleLinkClick}
+                    >
+                      {market.name}
+                    </ChakraLink>
+                  )}
+                </Box>
+              ))}
             </Box>
             {withEpochs && (
               <Box
@@ -125,7 +123,7 @@ const NavPopover = ({
                 {hoveredMarket && (
                   <VStack align="stretch" spacing={1}>
                     {(() => {
-                      const hoveredMarketData = markets.find(
+                      const hoveredMarketData = publicMarkets.find(
                         (m) => m.id === hoveredMarket
                       );
                       const chainId = hoveredMarketData?.chainId;
@@ -163,6 +161,7 @@ const NavPopover = ({
 
 const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
   const { markets } = useMarketList();
+  const publicMarkets = markets.filter((m) => m.public);
 
   const formatTimestamp = (timestamp: number) => {
     return format(new Date(timestamp * 1000), 'MMM d, HH:mm');
@@ -170,7 +169,7 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
 
   const renderMobileMarketLinks = (path: string, withEpochs = false) => (
     <Accordion allowMultiple>
-      {markets
+      {publicMarkets
         .filter((m) => m.public)
         .map((market) => (
           <AccordionItem key={market.id} border="none">

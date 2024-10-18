@@ -477,6 +477,7 @@ const AddEditLiquidity: React.FC = () => {
 
   useEffect(() => {
     // trader position so switch to trader tab
+    console.log('positionData', positionData);
     if (positionData && positionData.kind === 2) {
       toast({
         title:

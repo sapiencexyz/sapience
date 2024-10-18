@@ -1,3 +1,4 @@
+/* eslint-disable sonarjs/cognitive-complexity */
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, {
   createContext,
@@ -94,10 +95,25 @@ export const AddEditPositionProvider: React.FC<{
         positions.liquidityPositions[positions.liquidityPositions.length - 1];
       const lastTradePosition =
         positions.tradePositions[positions.tradePositions.length - 1];
-      const lastPositionId = Math.max(
-        lastLiquidityPosition?.id ? Number(lastLiquidityPosition.id) : 0,
-        lastTradePosition?.id ? Number(lastTradePosition.id) : 0
-      );
+
+      let lastPositionId = 0;
+      const currentPath = window.location.pathname.toLowerCase(); // hacky fix for now
+
+      if (currentPath.includes('trade')) {
+        lastPositionId = lastTradePosition?.id
+          ? Number(lastTradePosition.id)
+          : 0;
+      } else if (currentPath.includes('pool')) {
+        lastPositionId = lastLiquidityPosition?.id
+          ? Number(lastLiquidityPosition.id)
+          : 0;
+      } else {
+        lastPositionId = Math.max(
+          lastLiquidityPosition?.id ? Number(lastLiquidityPosition.id) : 0,
+          lastTradePosition?.id ? Number(lastTradePosition.id) : 0
+        );
+      }
+
       if (lastPositionId > 0) {
         setNftId(lastPositionId);
         router.push(`${window.location.pathname}?positionId=${lastPositionId}`);
