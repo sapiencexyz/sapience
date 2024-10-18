@@ -611,9 +611,6 @@ const AddEditLiquidity: React.FC = () => {
 
           if ((event as any).eventName === 'LiquidityPositionCreated') {
             const nftId = (event as any).args.positionId.toString();
-            router.push(
-              `/markets/${chainId}:${marketAddress}/positions/${nftId}`
-            );
             renderToast(
               toast,
               `Your liquidity position has been created as position ${nftId}`
