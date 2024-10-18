@@ -81,9 +81,7 @@ function getTokenAmountsFromLiquidity(
   return { amount0, amount1 };
 }
 
-const AddEditLiquidity: React.FC<{
-  changeToTradeTab: () => void;
-}> = ({ changeToTradeTab }) => {
+const AddEditLiquidity: React.FC = () => {
   const { nftId, refreshPositions } = useAddEditPosition();
   console.log('nftId', nftId);
 
@@ -487,9 +485,11 @@ const AddEditLiquidity: React.FC<{
         duration: 5000,
         isClosable: true,
       });
-      changeToTradeTab();
+      router.push(
+        `/pool/${chainId}%3A${marketAddress}/epochs/${epoch}?nftId=${nftId}`
+      );
     }
-  }, [positionData, toast, changeToTradeTab]);
+  }, [positionData, toast]);
 
   // handle token amounts error
   useEffect(() => {

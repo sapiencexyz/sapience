@@ -1,14 +1,6 @@
-import {
-  Box,
-  Tab,
-  TabList,
-  TabPanel,
-  TabPanels,
-  Tabs,
-  Spinner,
-  Center,
-} from '@chakra-ui/react';
-import { useContext, useEffect, useRef, useState } from 'react';
+import { Box, Spinner, Center } from '@chakra-ui/react';
+import { useSearchParams } from 'next/navigation';
+import { useContext, useEffect } from 'react';
 
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
@@ -17,25 +9,27 @@ import LiquidityPosition from './liquidityPosition';
 import Settle from './settle';
 import TraderPosition from './traderPosition';
 
-export default function MarketSidebar() {
-  const [tabIndex, setTabIndex] = useState(0);
+export default function MarketSidebar({ isTrade }: { isTrade: boolean }) {
   const { endTime } = useContext(MarketContext);
   const { setNftId, positions } = useAddEditPosition();
+  const searchParams = useSearchParams();
   const expired = endTime < Math.floor(Date.now() / 1000);
-  const isInitialMount = useRef(true);
 
-  // Refined useEffect to set nftId when positions are initialized
   useEffect(() => {
-    const currentPositions =
-      tabIndex === 1 ? positions.liquidityPositions : positions.tradePositions;
-
-    if (isInitialMount.current && currentPositions.length > 0) {
-      const lastPosition = currentPositions[currentPositions.length - 1];
-      const lastPositionId = lastPosition?.id ? Number(lastPosition.id) : 0;
-      setNftId(lastPositionId);
-      isInitialMount.current = false;
+    const positionId = searchParams.get('positionId');
+    if (positionId) {
+      setNftId(Number(positionId));
+    } else {
+      const currentPositions = isTrade
+        ? positions.tradePositions
+        : positions.liquidityPositions;
+      if (currentPositions.length > 0) {
+        const lastPosition = currentPositions[currentPositions.length - 1];
+        const lastPositionId = lastPosition?.id ? Number(lastPosition.id) : 0;
+        setNftId(lastPositionId);
+      }
     }
-  }, [positions, tabIndex, setNftId]);
+  }, [searchParams, positions, setNftId, isTrade]);
 
   if (endTime === 0) {
     return (
@@ -56,18 +50,14 @@ export default function MarketSidebar() {
     );
   }
 
-  const changeToTradeTab = () => {
-    setTabIndex(0);
-  };
-
-  const handleTabChange = (index: number) => {
-    // update nftdId to latest for that position type
-    const filteredNfts =
-      index === 1 ? positions.liquidityPositions : positions.tradePositions;
-    const lastPosition = filteredNfts[filteredNfts.length - 1];
-    const lastPositionId = lastPosition?.id ? Number(lastPosition.id) : 0;
-    setNftId(lastPositionId);
-    setTabIndex(index);
+  const renderContent = () => {
+    if (expired) {
+      return <Settle />;
+    }
+    if (isTrade) {
+      return <TraderPosition />;
+    }
+    return <LiquidityPosition />;
   };
 
   return (
@@ -80,33 +70,10 @@ export default function MarketSidebar() {
       flex={1}
       display="flex"
       flexDirection="column"
+      p={6}
+      overflowY="auto"
     >
-      {expired ? (
-        <Settle />
-      ) : (
-        <Tabs
-          isFitted
-          display="flex"
-          flexDirection="column"
-          height="100%"
-          index={tabIndex}
-          isLazy
-          onChange={(index) => handleTabChange(index)}
-        >
-          <TabList>
-            <Tab pt={4}>Trade</Tab>
-            <Tab pt={4}>Provide&nbsp;Liquidity</Tab>
-          </TabList>
-          <TabPanels flex={1} overflow="auto">
-            <TabPanel p={6}>
-              <TraderPosition />
-            </TabPanel>
-            <TabPanel p={6}>
-              <LiquidityPosition changeToTradeTab={changeToTradeTab} />
-            </TabPanel>
-          </TabPanels>
-        </Tabs>
-      )}
+      {renderContent()}
     </Box>
   );
 }
