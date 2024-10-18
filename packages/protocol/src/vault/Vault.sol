@@ -3,17 +3,17 @@ pragma solidity >=0.8.25 <0.9.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/interfaces/IERC4626.sol";
-import "./interfaces/IERC7540.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "../market/external/univ3/TickMath.sol";
-import "../market/interfaces/IFoil.sol";
-import "../market/interfaces/IFoilStructs.sol";
-import "./interfaces/IVault.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {SetUtil} from "@synthetixio/core-contracts/contracts/utils/SetUtil.sol";
+import "../market/external/univ3/TickMath.sol";
+import "../market/interfaces/IFoil.sol";
+import "../market/interfaces/IFoilStructs.sol";
+import "./interfaces/IVault.sol";
+import "./interfaces/IERC7540.sol";
 
 contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
@@ -56,7 +56,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     uint256 globalTotalClaimableDeposit; // total claimable deposits expressed in collateral asset
     uint256 globalTotalClaimableWithdrawal; // total claimable withdrawal expressed in shares
     mapping(address => uint256) userShares;
-    mapping(address => SetUtil.UintSet) userDirtyEpochs;
+    mapping(address => SetUtil.UintSet) userDirtyEpochs; // epochs with pending deposits or withdrawals for users
     mapping(address => uint256) userClaimableDeposits; // notice userPending is currentFutureEpoch's userNonExecuted
     mapping(address => uint256) userClaimableWithrwawals; // notice userPending is currentFutureEpoch's userNonExecuted
 
@@ -173,7 +173,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         globalTotalPendingWithdrawal -= epochData.totalPendingWithdrawal;
         epochData.totalPendingWithdrawal = 0;
 
-        // currentEpoch.processed = true;
+        // Do we need to do something with the shares?
+        // with the PnL from the received collateral, the shares value is adjusted
+        // re-distribute shares makes sense in a liquidation like action where shares needs to be distributed
 
         // // Process pending deposits
         // uint256 totalNewShares = (currentEpoch.totalPendingDeposits * 1e18) /
@@ -223,23 +225,22 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         //     delete userPendingWithdrawalShares[user][currentEpoch.epochId];
         // }
 
-        emit EpochProcessed(epochData.marketEpochId, epochSharePriceAtClosure);
-
         // // Clean up depositor and withdrawer lists for the epoch
         // delete depositors[currentEpoch.epochId];
         // delete withdrawers[currentEpoch.epochId];
+
+        emit EpochProcessed(epochData.marketEpochId, epochSharePriceAtClosure);
 
         uint256 totalWithdrawalAmount = _calculateAssets(
             globalTotalClaimableWithdrawal,
             epochSharePriceAtClosure,
             Math.Rounding.Floor
         );
-        // Calculate the total collateral available for the new liquidity position
-        // Balance the collateral received plus any uninvested collateral (claimable deposits)
-        // minus claimable withdrawal shares value at current price
 
-        uint256 totalCollateral = collateralReceived +
-            collateralAsset.balanceOf(address(this)) -
+        // Calculate the total collateral available for the new liquidity position
+        // Balance includes the collateral received plus any uninvested collateral for the next epoch (claimable deposits) and pending withdrawals
+        // then we need to remove the total withdrawable value at current price
+        uint256 totalCollateral = collateralAsset.balanceOf(address(this)) -
             totalWithdrawalAmount;
 
         return totalCollateral;
@@ -605,23 +606,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         emit Withdraw(msg.sender, receiver, owner, assets, sharesAmount);
     }
 
-    // OLD
-
-    // function cancelWithdrawalRequest(uint256 sharesAmount) external {
-    //     uint256 currentEpochId = epochs[epochs.length - 1].epochId;
-    //     require(
-    //         userPendingWithdrawalShares[msg.sender][currentEpochId] >=
-    //             sharesAmount,
-    //         "Insufficient pending withdrawal"
-    //     );
-
-    //     userPendingWithdrawalShares[msg.sender][currentEpochId] -= sharesAmount;
-    //     epochs[epochs.length - 1].totalPendingWithdrawals -= sharesAmount;
-
-    //     // Transfer the tokens back to the user
-    //     _update(address(this), msg.sender, sharesAmount);
-    // }
-
     modifier onlyMarket() {
         require(
             msg.sender == address(market),
@@ -629,12 +613,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         );
         _;
     }
-
-    event WithdrawPendingDeposit(
-        address indexed user,
-        uint256 assets,
-        uint256 epochId
-    );
 
     function _update(
         address from,
@@ -699,11 +677,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
     /**
      * Calculates asset amount based on share amount and share price. Takes a rounding direction
-          * assets = shares * price
-
+     * assets = shares * price
      * @dev it assumes collateral and shares (asset and shares) buth uses 18 digits
      */
-    /// @dev     Returned value is in asset decimals.
     function _calculateAssets(
         uint256 shares,
         uint256 price,
@@ -717,12 +693,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     }
 
     /**
-     * Calculates share price and returns the value in price decimals. 
-          * price = assets / shares
-
+     * Calculates share price and returns the value in price decimals.
+     * price = assets / shares
      * @dev it assumes collateral and shares (asset and shares) buth uses 18 digits
      */
-    /// @dev
     function _calculatePrice(
         uint256 assets,
         uint256 shares
