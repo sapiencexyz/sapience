@@ -459,6 +459,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     // Sends actor's collateral to the vault, gets shares (gets assets amount of asset, mints sharesAmount = convertToShares(assets))
     // notice: this is the second part of the Async requestDeposit -> deposit/mint
     // notice: the max amount or effective amount is same as claimable
+    // @dev notice the amount is being ignored and all the claimable is going to be deposited
     function deposit(
         uint256 assets,
         address receiver
@@ -472,6 +473,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     // Sends actor's collateral to the vault, gets shares (gets convertToAsset(sharesAmount), mints sharesAmount)
     // notice: this is the second part of the Async requestDeposit -> deposit/mint
     // notice: the max amount or effective amount is same as claimable
+    // @dev notice the amount is being ignored and all the claimable is going to be minted
     function mint(
         uint256 sharesAmount,
         address receiver
@@ -486,15 +488,17 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 userClaimable = userNonExecutedDeposits[
             currentFutureEpochIdx - 1
         ][receiver];
+        assets = userClaimable;
+        uint256 sharesToMint = convertToShares(assets);
         // Notice, ignoring assets, getting all, if partials are allowed, use decrement here by assets
         userNonExecutedDeposits[currentFutureEpochIdx - 1][receiver] = 0;
         previousEpochData.totalClaimableDeposit -= userClaimable;
         globalTotalClaimableDeposit -= userClaimable;
 
         // Use convertToShares with Rounding.Down
-        assets = mint(convertToShares(userClaimable), receiver);
+        _mintShares(receiver, sharesToMint);
 
-        emit Deposit(msg.sender, receiver, assets, userClaimable);
+        emit Deposit(msg.sender, receiver, assets, sharesToMint);
     }
 
     // Sends back collateral to the actor, burns shares (burns sharesAmount = convertToShares(assets); send to actor assets of asset)
@@ -557,6 +561,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
     // Sends back collateral to the actor, burns shares (burns sharesAmount ; send to actor assets = convertToAsset(sharesAmount) of asset)
     // notice: this is the second part of the Async requestToWithdraw / redeem
+    // @dev notice the amount is being ignored and all the claimable is going to be redeemed
     function redeem(
         uint256 sharesAmount,
         address receiver,
@@ -573,6 +578,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
     // Sends back collateral to the actor, burns shares (burns sharesAmount = convertToShares(assets); send to actor assets of asset)
     // notice: this is the second part of the Async requestToWithdraw / withdraw
+    // @dev notice the amount is being ignored and all the claimable is going to be withdrawn
     function withdraw(
         uint256 assets,
         address receiver,
@@ -594,6 +600,8 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 userClaimable = userNonExecutedWithdrawals[
             currentFutureEpochIdx - 1
         ][receiver];
+        sharesAmount = userClaimable;
+        uint256 sharesValue = convertToAssets(sharesAmount);
 
         // Notice, ignoring assets, getting all, if partials are allowed, use decrement here by assets
         userNonExecutedWithdrawals[currentFutureEpochIdx - 1][receiver] = 0;
@@ -601,9 +609,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         globalTotalClaimableWithdrawal -= userClaimable;
 
         // Use convertToAssets with Rounding.Down
-        sharesAmount = mint(convertToAssets(userClaimable), receiver);
+        _burnShares(receiver, userClaimable);
 
-        emit Withdraw(msg.sender, receiver, owner, assets, sharesAmount);
+        emit Withdraw(msg.sender, receiver, owner, sharesValue, sharesAmount);
     }
 
     modifier onlyMarket() {
