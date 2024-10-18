@@ -21,18 +21,36 @@ import {
   AccordionItem,
   AccordionButton,
   AccordionPanel,
-  AccordionIcon,
 } from '@chakra-ui/react';
+import { format } from 'date-fns';
 import Link from 'next/link';
 import React, { useState, useEffect } from 'react';
-import { format } from 'date-fns';
 
 import ConnectButton from '../components/ConnectButton';
 import { useMarketList } from '~/lib/context/MarketListProvider';
 
-const NavPopover = ({ label, path, withEpochs = false }: { label: string, path: string, withEpochs?: boolean }) => {
+const getMarketHref = (path: string, market: any, withEpochs: boolean) => {
+  if (path === 'earn') {
+    return `/${path}/${market.chainId}:${market.address}`;
+  }
+  if (withEpochs) {
+    return `/${path}/${market.chainId}:${market.address}`;
+  }
+  return `/${path}/${market.chainId}:${market.address}/epochs/${market.currentEpoch?.epochId}`;
+};
+
+const NavPopover = ({
+  label,
+  path,
+  withEpochs = false,
+}: {
+  label: string;
+  path: string;
+  withEpochs?: boolean;
+}) => {
   const [hoveredMarket, setHoveredMarket] = useState<number | null>(null);
   const { markets } = useMarketList();
+  const { isOpen, onClose, onOpen } = useDisclosure();
 
   const formatTimestamp = (timestamp: number) => {
     return format(new Date(timestamp * 1000), 'MMM d, HH:mm');
@@ -44,14 +62,18 @@ const NavPopover = ({ label, path, withEpochs = false }: { label: string, path: 
     }
   }, [withEpochs, markets]);
 
+  const handleLinkClick = () => {
+    onClose();
+  };
+
   return (
-    <Popover trigger="hover">
+    <Popover trigger="hover" isOpen={isOpen} onClose={onClose} onOpen={onOpen}>
       <PopoverTrigger>
         <Box as="span" cursor="pointer" display="flex" alignItems="center">
           {label} <ChevronDownIcon ml={1} />
         </Box>
       </PopoverTrigger>
-      <PopoverContent maxW={withEpochs ? "400px" : "220px"}>
+      <PopoverContent maxW={withEpochs ? '400px' : '220px'}>
         <PopoverArrow />
         <PopoverBody py={3}>
           <Flex>
@@ -61,8 +83,12 @@ const NavPopover = ({ label, path, withEpochs = false }: { label: string, path: 
                 .map((market) => (
                   <Box
                     key={market.id}
-                    onMouseEnter={() => withEpochs && setHoveredMarket(market.id)}
-                    onMouseLeave={() => withEpochs && setHoveredMarket(markets[0].id)}
+                    onMouseEnter={() =>
+                      withEpochs && setHoveredMarket(market.id)
+                    }
+                    onMouseLeave={() =>
+                      withEpochs && setHoveredMarket(markets[0].id)
+                    }
                   >
                     {market.currentEpoch && (
                       <ChakraLink
@@ -73,14 +99,14 @@ const NavPopover = ({ label, path, withEpochs = false }: { label: string, path: 
                         borderRadius="md"
                         px={3}
                         py={1.5}
-                        bg={withEpochs && hoveredMarket === market.id ? 'gray.100' : 'transparent'}
-                        _hover={{ bg: 'gray.100' }}
-                        href={path === 'earn'
-                          ? `/${path}/${market.chainId}:${market.address}`
-                          : withEpochs
-                            ? `/${path}/${market.chainId}:${market.address}`
-                            : `/${path}/${market.chainId}:${market.address}/epochs/${market.currentEpoch.epochId}`
+                        bg={
+                          withEpochs && hoveredMarket === market.id
+                            ? 'gray.100'
+                            : 'transparent'
                         }
+                        _hover={{ bg: 'gray.100' }}
+                        href={getMarketHref(path, market, withEpochs)}
+                        onClick={handleLinkClick}
                       >
                         {market.name}
                       </ChakraLink>
@@ -89,12 +115,23 @@ const NavPopover = ({ label, path, withEpochs = false }: { label: string, path: 
                 ))}
             </Box>
             {withEpochs && (
-              <Box flex={1} borderLeft="1px" borderColor="gray.200" pl={3} ml={3}>
+              <Box
+                flex={1}
+                borderLeft="1px"
+                borderColor="gray.200"
+                pl={3}
+                ml={3}
+              >
                 {hoveredMarket && (
                   <VStack align="stretch" spacing={1}>
-                    {markets
-                      .find(m => m.id === hoveredMarket)
-                      ?.epochs.map(epoch => (
+                    {(() => {
+                      const hoveredMarketData = markets.find(
+                        (m) => m.id === hoveredMarket
+                      );
+                      const chainId = hoveredMarketData?.chainId;
+                      const address = hoveredMarketData?.address;
+
+                      return hoveredMarketData?.epochs.map((epoch) => (
                         <ChakraLink
                           key={epoch.epochId}
                           fontSize="sm"
@@ -105,11 +142,14 @@ const NavPopover = ({ label, path, withEpochs = false }: { label: string, path: 
                           px={3}
                           py={1.5}
                           _hover={{ bg: 'gray.50' }}
-                          href={`/${path}/${markets.find(m => m.id === hoveredMarket)?.chainId}:${markets.find(m => m.id === hoveredMarket)?.address}/epochs/${epoch.epochId}`}
+                          href={`/${path}/${chainId}:${address}/epochs/${epoch.epochId}`}
+                          onClick={handleLinkClick}
                         >
-                          {formatTimestamp(epoch.startTimestamp)} - {formatTimestamp(epoch.endTimestamp)}
+                          {formatTimestamp(epoch.startTimestamp)} -{' '}
+                          {formatTimestamp(epoch.endTimestamp)}
                         </ChakraLink>
-                      ))}
+                      ));
+                    })()}
                   </VStack>
                 )}
               </Box>
@@ -144,12 +184,7 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
                   >
                     <ChakraLink
                       as={Link}
-                      href={path === 'earn'
-                        ? `/${path}/${market.chainId}:${market.address}`
-                        : withEpochs
-                          ? `/${path}/${market.chainId}:${market.address}`
-                          : `/${path}/${market.chainId}:${market.address}/epochs/${market.currentEpoch?.epochId}`
-                      }
+                      href={getMarketHref(path, market, withEpochs)}
                       onClick={(e) => withEpochs && e.preventDefault()}
                     >
                       {market.name}
@@ -165,14 +200,15 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
                 {withEpochs && (
                   <AccordionPanel pb={4} pl={4}>
                     <VStack align="stretch" spacing={2}>
-                      {market.epochs.map(epoch => (
+                      {market.epochs.map((epoch) => (
                         <ChakraLink
                           key={epoch.epochId}
                           fontSize="sm"
                           as={Link}
                           href={`/${path}/${market.chainId}:${market.address}/epochs/${epoch.epochId}`}
                         >
-                          {formatTimestamp(epoch.startTimestamp)} - {formatTimestamp(epoch.endTimestamp)}
+                          {formatTimestamp(epoch.startTimestamp)} -{' '}
+                          {formatTimestamp(epoch.endTimestamp)}
                         </ChakraLink>
                       ))}
                     </VStack>
@@ -189,19 +225,27 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
     return (
       <VStack align="stretch" spacing={4}>
         <Box>
-          <Box fontWeight="bold" mb={1}>Subscribe</Box>
+          <Box fontWeight="bold" mb={1}>
+            Subscribe
+          </Box>
           {renderMobileMarketLinks('subscribe')}
         </Box>
         <Box>
-          <Box fontWeight="bold" mb={1}>Earn</Box>
+          <Box fontWeight="bold" mb={1}>
+            Earn
+          </Box>
           {renderMobileMarketLinks('earn')}
         </Box>
         <Box>
-          <Box fontWeight="bold" mb={1}>Trade</Box>
+          <Box fontWeight="bold" mb={1}>
+            Trade
+          </Box>
           {renderMobileMarketLinks('trade', true)}
         </Box>
         <Box>
-          <Box fontWeight="bold" mb={1}>Pool</Box>
+          <Box fontWeight="bold" mb={1}>
+            Pool
+          </Box>
           {renderMobileMarketLinks('pool', true)}
         </Box>
         <ChakraLink as={Link} href="https://docs.foil.xyz">
@@ -215,8 +259,8 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
     <Flex gap={9}>
       <NavPopover label="Subscribe" path="subscribe" />
       <NavPopover label="Earn" path="earn" />
-      <NavPopover label="Trade" path="trade" withEpochs={true} />
-      <NavPopover label="Pool" path="pool" withEpochs={true} />
+      <NavPopover label="Trade" path="trade" withEpochs />
+      <NavPopover label="Pool" path="pool" withEpochs />
       <ChakraLink as={Link} href="https://docs.foil.xyz">
         Docs
       </ChakraLink>

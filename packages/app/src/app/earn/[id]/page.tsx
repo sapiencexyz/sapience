@@ -1,6 +1,4 @@
-import {
-  Flex,
-} from '@chakra-ui/react';
+import { Flex } from '@chakra-ui/react';
 
 const Earn = () => {
   return (
