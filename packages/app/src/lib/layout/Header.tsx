@@ -230,12 +230,14 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
           </Box>
           {renderMobileMarketLinks('subscribe')}
         </Box>
+        {/*
         <Box>
           <Box fontWeight="bold" mb={1}>
             Earn
           </Box>
           {renderMobileMarketLinks('earn')}
         </Box>
+        */}
         <Box>
           <Box fontWeight="bold" mb={1}>
             Trade
@@ -258,7 +260,7 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
   return (
     <Flex gap={9}>
       <NavPopover label="Subscribe" path="subscribe" />
-      <NavPopover label="Earn" path="earn" />
+      {/* <NavPopover label="Earn" path="earn" /> */}
       <NavPopover label="Trade" path="trade" withEpochs />
       <NavPopover label="Pool" path="pool" withEpochs />
       <ChakraLink as={Link} href="https://docs.foil.xyz">
