@@ -16,8 +16,6 @@ import {Errors} from "../../src/contracts/storage/Errors.sol";
 import {IFoil} from "../../src/contracts/interfaces/IFoil.sol";
 import {IMockVault} from "../../src/contracts/interfaces/mocks/IMockVault.sol";
 
-import {console2} from "forge-std/console2.sol";
-
 contract SettleLPTest is TestTrade {
     using Cannon for Vm;
 
@@ -151,16 +149,6 @@ contract SettleLPTest is TestTrade {
 
         // Set settlement price
         settleEpoch(epochId, settlementPrice, owner);
-        // Get initial position details
-        Position.Data memory position = foil.getPosition(lpPositionId);
-        // Get initial balances
-        uint256 initialCollateralBalance = collateralAsset.balanceOf(lp1);
-        (uint256 owed0, uint256 owed1) = getOwedTokens(
-            position.uniswapPositionId
-        );
-        initialCollateralBalance; // silence warnings
-        owed0; // silence warnings
-        owed1; // silence warnings
 
         // Settle LP position
         vm.prank(lp1);
@@ -171,9 +159,9 @@ contract SettleLPTest is TestTrade {
         bool isSettled = updatedPosition.isSettled;
         assertTrue(isSettled, "Position should be settled");
 
-        console2.log(
-            "Settlement price:",
-            IMockVault(vm.getAddress("MockVault")).getLastSettlementPrice()
+        assertEq(
+            IMockVault(vm.getAddress("MockVault")).getLastSettlementPrice(),
+            settlementPrice
         );
 
         // TODO: fix this, need to calculate tokens that were collected which is a bit tricky
