@@ -74,9 +74,11 @@ const Subscribe: FC<SubscribeProps> = ({
   const marketAddress =
     propMarketAddress ||
     searchParams.get('marketAddress') ||
-    markets[0]?.address;
+    markets.filter((m) => m.public)[0]?.address;
   const chainId =
-    propChainId || Number(searchParams.get('chainId')) || markets[0]?.chainId;
+    propChainId ||
+    Number(searchParams.get('chainId')) ||
+    markets.filter((m) => m.public)[0]?.chainId;
   const epoch = propEpoch || Number(searchParams.get('epoch')) || 1;
 
   const [size, setSize] = useState<bigint>(BigInt(0));
@@ -104,11 +106,14 @@ const Subscribe: FC<SubscribeProps> = ({
 
   useEffect(() => {
     if (
-      markets.length > 0 &&
+      markets.filter((m) => m.public).length > 0 &&
       (!marketAddressParam || !chainIdParam) &&
       showMarketSwitcher
     ) {
-      updateParams(markets[0].address, markets[0].chainId);
+      updateParams(
+        markets.filter((m) => m.public)[0].address,
+        markets.filter((m) => m.public)[0].chainId
+      );
     }
   }, [markets, marketAddressParam, chainIdParam]);
 
