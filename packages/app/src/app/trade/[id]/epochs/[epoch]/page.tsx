@@ -46,7 +46,7 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
   const [tableFlexHeight, setTableFlexHeight] = useState(172);
   const resizeRef = useRef<HTMLDivElement>(null);
   const [chartType, setChartType] = useState<ChartType>(ChartType.PRICE);
-
+  const [isRefetchingIndexPrices, setIsRefetchingIndexPrices] = useState(false);
   const [chainId, marketAddress] = params.id.split('%3A');
   const { epoch } = params;
   const contractId = `${chainId}:${marketAddress}`;
@@ -226,16 +226,18 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
     error: useIndexPricesError,
     isLoading: isLoadingIndexPrices,
     refetch: refetchIndexPrices,
-    isRefetching: isRefetchingIndexPrices,
   } = useIndexPrices();
 
   useEffect(() => {
+    setIsRefetchingIndexPrices(true);
     refetchVolume();
     refetchPrices();
-    refetchIndexPrices();
+    refetchIndexPrices().then(() => {
+      setIsRefetchingIndexPrices(false);
+    });
   }, [selectedWindow]);
 
-  const loadingIndexPrices = isLoadingIndexPrices || isRefetchingIndexPrices;
+  const idxLoading = isLoadingIndexPrices || isRefetchingIndexPrices;
 
   const renderChart = () => {
     if (chartType === ChartType.PRICE) {
@@ -246,7 +248,7 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
             marketPrices: marketPrices || [],
             indexPrices: indexPrices || [],
           }}
-          isLoading={loadingIndexPrices}
+          isLoading={idxLoading}
         />
       );
     }
@@ -260,7 +262,7 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
   };
 
   const renderLoadng = () => {
-    if (chartType === ChartType.PRICE && loadingIndexPrices) {
+    if (chartType === ChartType.PRICE && idxLoading) {
       return (
         <Flex
           ml={2}

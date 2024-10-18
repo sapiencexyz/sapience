@@ -23,7 +23,8 @@ export default function Settle() {
     address: marketAddress,
     foilData,
     chainId,
-    epoch,
+    epochSettled,
+    settlementPrice,
   } = useContext(MarketContext);
   const { nftId, setNftId } = useAddEditPosition();
   const [withdrawableCollateral, setWithdrawableCollateral] = useState<bigint>(
@@ -44,14 +45,6 @@ export default function Settle() {
     chainId,
   });
 
-  const { data: epochData } = useReadContract({
-    address: marketAddress as `0x${string}`,
-    abi: foilData.abi,
-    functionName: 'getEpoch',
-    args: [epoch],
-    chainId,
-  }) as any; // fix
-
   const { writeContract, data: writeHash } = useWriteContract();
 
   const { isSuccess: isConfirmed } = useWaitForTransactionReceipt({
@@ -70,7 +63,6 @@ export default function Settle() {
 
   useEffect(() => {
     if (positionData) {
-      console.log('POSITION DATA', positionData);
       setWithdrawableCollateral(
         BigInt((positionData as any).depositedCollateralAmount)
       );
@@ -121,9 +113,11 @@ export default function Settle() {
           {foilData.collateralAssetTicker}
         </Text>
       )}
-      {epochData[7] ? (
+      {epochSettled && settlementPrice ? (
         <>
-          <Text mb={4}>Settlement Price: {formatUnits(epochData[8], 18)}</Text>
+          <Text mb={4}>
+            Settlement Price: {formatUnits(settlementPrice, 18)}
+          </Text>
           <Button
             onClick={handleSettle}
             isLoading={isSettling}
