@@ -54,9 +54,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
     event EpochProcessed(
         uint256 indexed epochId,
-        uint256 newSharePrice,
-        uint256 newShares,
-        uint256 sharesToBurn
+        uint256 newSharePrice
+        // uint256 newShares,
+        // uint256 sharesToBurn
     );
 
     // tentative storage change
@@ -67,12 +67,13 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 totalClaimableDeposit;
         uint256 totalClaimableWithdrawal;
         uint256 sharePrice;
-        mapping(address => uint256) userNonExecutedDeposits;
-        mapping(address => uint256) userNonExecutedWithdrawals;
     }
 
-    Epoch7540Data[] public epochs7540;
     uint256 currentFutureEpochIdx; // helper, it must be epochs7540.lenght -1
+    Epoch7540Data[] public epochs7540; // holds the epoch data currentFutureEpochIdx points to current "not-closed" epoch
+    mapping(address => uint256)[] userNonExecutedDeposits; // uses same id as epochs7540
+    mapping(address => uint256)[] userNonExecutedWithdrawals; // uses same id as epochs7540
+
     uint256 globalTotalPendingDeposit; // total pending deposits expressed in collateral asset
     uint256 globalTotalPendingWithdrawal; // total pending withdrawal expressed in shares
     uint256 globalTotalClaimableDeposit; // total claimable deposits expressed in collateral asset
@@ -128,9 +129,17 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             startingSqrtPriceX96,
             4
         );
-        Epoch7540Data storage newEpochData = new Epoch7540Data();
-        newEpochData.marketEpochId = newEpochId;
-        epochs7540.push(newEpochData);
+
+        epochs7540.push(
+            Epoch7540Data({
+                marketEpochId: newEpochId,
+                totalPendingDeposit: 0,
+                totalPendingWithdrawal: 0,
+                totalClaimableDeposit: 0,
+                totalClaimableWithdrawal: 0,
+                sharePrice: 0
+            })
+        );
         currentFutureEpochIdx++;
     }
 
@@ -246,7 +255,8 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
         uint256 totalWithdrawalAmount = _calculateAssets(
             globalTotalClaimableWithdrawal,
-            epochSharePriceAtClosure
+            epochSharePriceAtClosure,
+            Math.Rounding.Floor
         );
         // Calculate the total collateral available for the new liquidity position
         // Balance the collateral received plus any uninvested collateral (claimable deposits)
@@ -358,7 +368,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
                 : sharesAmount.mulDiv(
                     totalAssets(),
                     supply,
-                    Math.Rouunding.Floor
+                    Math.Rounding.Floor
                 );
     }
 
@@ -427,7 +437,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         // Do all the accounting (that should go to __requestDeposit)
         Epoch7540Data storage epochData = epochs7540[currentFutureEpochIdx];
         epochData.totalPendingDeposit += assets;
-        epochData.userNonExecutedDeposits[owner] += assets;
+        userNonExecutedDeposits[currentFutureEpochIdx][owner] += assets;
         globalTotalPendingDeposit += assets;
         if (!user7540DirtyEpochs[owner].contains(currentFutureEpochIdx)) {
             user7540DirtyEpochs[owner].add(currentFutureEpochIdx);
@@ -442,12 +452,12 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         Epoch7540Data storage epochData = epochs7540[currentFutureEpochIdx];
         address owner = msg.sender;
         require(
-            epochData.userNonExecutedDeposits[owner] >= assets,
+            userNonExecutedDeposits[currentFutureEpochIdx][owner] >= assets,
             "Insufficient pending deposit"
         );
 
         epochData.totalPendingDeposit -= assets;
-        epochData.userNonExecutedDeposits[owner] -= assets;
+        userNonExecutedDeposits[currentFutureEpochIdx][owner] -= assets;
         globalTotalPendingDeposit -= assets;
 
         collateralAsset.safeTransfer(msg.sender, assets);
@@ -459,7 +469,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         address owner
     ) external view override returns (uint256 assets) {
         Epoch7540Data storage epochData = epochs7540[currentFutureEpochIdx];
-        assets = epochData.userNonExecutedDeposits[owner];
+        assets = userNonExecutedDeposits[currentFutureEpochIdx][owner];
     }
 
     // amount claimable to deposit (not pending, it means, ready to deposit/mint)
@@ -499,11 +509,11 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             currentFutureEpochIdx - 1
         ];
 
-        uint256 userClaimable = previousEpochData.userNonExecutedDeposits[
-            receiver
-        ];
+        uint256 userClaimable = userNonExecutedDeposits[
+            currentFutureEpochIdx - 1
+        ][receiver];
         // Notice, ignoring assets, getting all, if partials are allowed, use decrement here by assets
-        previousEpochData.userNonExecutedDeposits[receiver] = 0;
+        userNonExecutedDeposits[currentFutureEpochIdx - 1][receiver] = 0;
         previousEpochData.totalClaimableDeposit -= userClaimable;
         globalTotalClaimableDeposit -= userClaimable;
 
@@ -532,7 +542,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         // Do all the accounting (that should go to _requestRedeem)
         Epoch7540Data storage epochData = epochs7540[currentFutureEpochIdx];
         epochData.totalPendingWithdrawal += sharesAmount;
-        epochData.userNonExecutedWithdrawals[owner] += sharesAmount;
+        userNonExecutedWithdrawals[currentFutureEpochIdx][
+            owner
+        ] += sharesAmount;
         globalTotalPendingWithdrawal += sharesAmount;
         if (!user7540DirtyEpochs[owner].contains(currentFutureEpochIdx)) {
             user7540DirtyEpochs[owner].add(currentFutureEpochIdx);
@@ -545,12 +557,12 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         Epoch7540Data storage epochData = epochs7540[currentFutureEpochIdx];
         address owner = msg.sender;
         require(
-            epochData.userNonExecutedWithdrawals[owner] >= shares,
+            userNonExecutedWithdrawals[currentFutureEpochIdx][owner] >= shares,
             "Insufficient pending withdrawal"
         );
 
-        epochData.totalPendingWithdraw -= shares;
-        epochData.userNonExecutedWithdrawals[owner] -= shares;
+        epochData.totalPendingWithdrawal -= shares;
+        userNonExecutedWithdrawals[currentFutureEpochIdx][owner] -= shares;
         globalTotalPendingWithdrawal -= shares;
     }
     // amount pending to redeem (not claimable, it means, not yet ready to redeem/withdraw)
@@ -559,7 +571,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         address owner
     ) external view override returns (uint256 sharesAmount) {
         Epoch7540Data storage epochData = epochs7540[currentFutureEpochIdx];
-        sharesAmount = epochData.userNonExecutedWithdrawals[owner];
+        sharesAmount = userNonExecutedWithdrawals[currentFutureEpochIdx][owner];
     }
 
     // amount claimable to redeem (not pending, it means, ready to redeem/withdraw)
@@ -608,12 +620,12 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             currentFutureEpochIdx - 1
         ];
 
-        uint256 userClaimable = previousEpochData.userNonExecutedWithdrawals[
-            receiver
-        ];
+        uint256 userClaimable = userNonExecutedWithdrawals[
+            currentFutureEpochIdx - 1
+        ][receiver];
 
         // Notice, ignoring assets, getting all, if partials are allowed, use decrement here by assets
-        previousEpochData.userNonExecutedWithdrawals[receiver] = 0;
+        userNonExecutedWithdrawals[currentFutureEpochIdx - 1][receiver] = 0;
         previousEpochData.totalClaimableWithdrawal -= userClaimable;
         globalTotalClaimableWithdrawal -= userClaimable;
 
@@ -663,29 +675,29 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
         // Update userShares mapping accordingly
         if (from != address(0) && from != address(this)) {
-            userShares[from] -= amount;
+            user7540Shares[from] -= amount;
         }
         if (to != address(0) && to != address(this)) {
-            userShares[to] += amount;
+            user7540Shares[to] += amount;
         }
     }
 
     function availableShares(address owner) public view returns (uint256) {
         // The shares currently available to the user (not locked)
-        return userShares[owner];
+        return user7540Shares[owner];
     }
 
     function _mintShares(address account, uint256 amount) internal {
         _mint(account, amount);
         if (account != address(this)) {
-            userShares[account] += amount;
+            user7540Shares[account] += amount;
         }
     }
 
     function _burnShares(address account, uint256 amount) internal {
         _burn(account, amount);
         if (account != address(this)) {
-            userShares[account] -= amount;
+            user7540Shares[account] -= amount;
         }
     }
 
@@ -694,7 +706,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 assetsInVault,
         uint256 supplyInVault,
         uint256 shares
-    ) internal returns (uint256 sharesValue) {
+    ) internal pure returns (uint256 sharesValue) {
         return assetsInVault.mulDiv(shares, supplyInVault);
     }
 
@@ -748,6 +760,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         if (assets == 0 || shares == 0) {
             return 0;
         }
-        return assets.mulDiv(10 ** 18, shares, Math.Rounding.Down);
+        return assets.mulDiv(10 ** 18, shares, Math.Rounding.Floor);
     }
 }
