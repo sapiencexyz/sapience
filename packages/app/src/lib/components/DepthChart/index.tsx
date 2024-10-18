@@ -27,6 +27,14 @@ import {
 } from '~/lib/styles/theme/colors';
 import { formatAmount } from '~/lib/util/numberUtil';
 
+const checkIsClosestTick = (
+  tick: number,
+  activeTickValue: number,
+  tickSpacing: number
+) => {
+  return tick <= activeTickValue && tick + tickSpacing >= activeTickValue;
+};
+
 type TickDataTuple = [
   bigint, // liquidityGross
   bigint, // liquidityNet
@@ -63,6 +71,7 @@ interface CustomBarProps {
   activeTickValue: number;
   hoveredBar: number | null;
   setHoveredBar: React.Dispatch<React.SetStateAction<number | null>>;
+  tickSpacing: number;
 }
 
 const CustomBar: React.FC<CustomBarProps> = ({
@@ -70,13 +79,12 @@ const CustomBar: React.FC<CustomBarProps> = ({
   activeTickValue,
   hoveredBar,
   setHoveredBar,
+  tickSpacing,
 }) => {
   const { x, y, width, height, tick, index } = props;
   let fill = purple; // Default color
 
-  const isClosestTick =
-    activeTickValue <= tick + 200 && activeTickValue >= tick - 200;
-
+  const isClosestTick = checkIsClosestTick(tick, activeTickValue, tickSpacing);
   if (index === hoveredBar) {
     fill = paleGreen; // Hover color
   } else if (isClosestTick) {
@@ -108,17 +116,23 @@ interface CustomXAxisTickProps {
     payload: any;
   };
   activeTickValue: number;
+  tickSpacing: number;
 }
 
 const CustomXAxisTick: React.FC<CustomXAxisTickProps> = ({
   props,
   activeTickValue,
+  tickSpacing,
 }) => {
   const { payload, x, y } = props;
-  const isActiveTick =
-    payload.value <= activeTickValue + 200 && payload.value >= activeTickValue;
 
-  if (!isActiveTick) return null;
+  const isClosestTick = checkIsClosestTick(
+    payload.value,
+    activeTickValue,
+    tickSpacing
+  );
+
+  if (!isClosestTick) return null;
 
   return (
     <g transform={`translate(${x},${y})`} id="activeTicks">
@@ -135,10 +149,15 @@ const CustomXAxisTick: React.FC<CustomXAxisTickProps> = ({
     </g>
   );
 };
-
-const CustomTooltip: React.FC<TooltipProps<number, string>> = ({ payload }) => {
+interface CustomTooltipProps {
+  tickSpacing: number;
+}
+const CustomTooltip: React.FC<
+  TooltipProps<number, string> & CustomTooltipProps
+> = ({ payload, tickSpacing }) => {
   console.log('payload', payload);
   if (!payload || !payload[0]) return null;
+  const tickValue: number = payload[0].payload?.tick;
   return (
     <div
       style={{
@@ -147,7 +166,7 @@ const CustomTooltip: React.FC<TooltipProps<number, string>> = ({ payload }) => {
         border: '1px solid #ccc',
       }}
     >
-      <p>{`Tick: ${payload[0].payload?.tick}`}</p>
+      <p>{`Tick Range: ${tickValue}-${tickValue + tickSpacing}`}</p>
       <p>{`Liquidity: ${formatAmount(payload[0].payload?.liquidity)}`}</p>
     </div>
   );
@@ -192,7 +211,7 @@ const DepthChart: React.FC<Props> = () => {
     tickData: TickData[],
     currentTick: number
   ): number {
-    let baseLiquidity = 0; // Using BigInt for precision
+    let baseLiquidity = 0;
 
     for (let i = 0; i < tickData.length; i++) {
       const tick = ticks[i];
@@ -244,7 +263,7 @@ const DepthChart: React.FC<Props> = () => {
 
   const liquidityDepthData = useMemo(() => {
     if (!data || !pool || !ticks.length || !data.length) return [];
-    const baseLiquidity = calculateBaseLiquidity(data, pool.tickCurrent);
+    const baseLiquidity = calculateBaseLiquidity(data, activeTickValue);
     return createLiquidityDistribution(data, baseLiquidity);
   }, [ticks, data, pool]);
 
@@ -253,12 +272,24 @@ const DepthChart: React.FC<Props> = () => {
       props={props}
       hoveredBar={hoveredBar}
       setHoveredBar={setHoveredBar}
-      activeTickValue={pool?.tickCurrent || 0}
+      activeTickValue={activeTickValue}
+      tickSpacing={tickSpacing}
     />
   );
 
+  /**
+   * Custom XAxis tick renderer that colors ticks based on whether they are
+   * below or above the current tick value.
+   *
+   * @param props - props passed by recharts
+   * @returns a rendered tick SVG element
+   */
   const renderXAxis = (props: any) => (
-    <CustomXAxisTick props={props} activeTickValue={activeTickValue} />
+    <CustomXAxisTick
+      props={props}
+      activeTickValue={activeTickValue}
+      tickSpacing={tickSpacing}
+    />
   );
 
   return (
@@ -277,7 +308,7 @@ const DepthChart: React.FC<Props> = () => {
               tickLine={false}
             />
             <YAxis />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<CustomTooltip tickSpacing={tickSpacing} />} />
             <Bar dataKey="liquidity" shape={renderBar} />
           </BarChart>
         </ResponsiveContainer>
