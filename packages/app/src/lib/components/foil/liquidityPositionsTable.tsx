@@ -91,7 +91,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({
                 <Tr key={row.id}>
                   <Td>
                     <Link
-                      href={`/positions/${contractId}/${row.position.positionId}`}
+                      href={`/positions/${contractId}/${row.positionId}`}
                       textDecoration="underline"
                     >
                       #{row.positionId.toString()}
