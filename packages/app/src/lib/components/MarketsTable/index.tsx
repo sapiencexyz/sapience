@@ -1,3 +1,4 @@
+import { ChevronDownIcon } from '@chakra-ui/icons';
 import {
   Table,
   Thead,
@@ -9,13 +10,19 @@ import {
   Text,
   Button,
   useToast,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
 } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import type React from 'react';
+import { useEffect } from 'react';
 import { useReadContract, useWriteContract } from 'wagmi';
 
 import useFoilDeployment from '../foil/useFoilDeployment';
+import MarketAddress from '../MarketAddress';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { useLoading } from '~/lib/context/LoadingContext';
 import { useMarketList, type Market } from '~/lib/context/MarketListProvider';
@@ -39,7 +46,9 @@ const MarketsTable: React.FC = () => {
         <Tbody>
           {markets.map((market) => (
             <Tr key={market.id}>
-              <Td>{market.address}</Td>
+              <Td>
+                <MarketAddress address={market.address} />
+              </Td>
               <Td>{market.chainId}</Td>
               <Td padding={0}>
                 <Table variant="simple" size="sm">
@@ -87,7 +96,10 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
     query: {
       enabled: !loading && !error && !!foilData,
     },
-  });
+  }) as any;
+
+  const epochSettled = epochData ? epochData[7] : undefined;
+  const settlementPrice = epochData ? epochData[8] : undefined;
 
   const { writeContract: settleWithPrice } = useWriteContract({
     mutation: {
@@ -120,11 +132,15 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
     enabled: epoch.epochId !== 0 || market !== undefined,
   });
 
-  const handleGetMissing = async (m: Market, epochId: number) => {
+  const handleGetMissing = async (
+    m: Market,
+    epochId: number,
+    model: string
+  ) => {
     setIsLoading(true);
     try {
       const response = await axios.get(
-        `${API_BASE_URL}/missing-blocks?chainId=${m.chainId}&address=${m.address}&epochId=${epochId}`
+        `${API_BASE_URL}/missing-blocks?chainId=${m.chainId}&address=${m.address}&epochId=${epochId}&model=${model}`
       );
       console.log('response', response);
       toast({
@@ -149,15 +165,27 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
   return (
     <Tr key={epoch.id}>
       <Td>
-        <Button
-          size="sm"
-          onClick={() => handleGetMissing(market, epoch.epochId)}
-        >
-          Get Missing Blocks
-        </Button>
+        <Menu>
+          <MenuButton as={Button} rightIcon={<ChevronDownIcon />} size="sm">
+            Get Missing Blocks
+          </MenuButton>
+          <MenuList>
+            <MenuItem
+              onClick={() =>
+                handleGetMissing(market, epoch.epochId, 'ResourcePrice')
+              }
+            >
+              Resource Prices
+            </MenuItem>
+            <MenuItem
+              onClick={() => handleGetMissing(market, epoch.epochId, 'Event')}
+            >
+              Events
+            </MenuItem>
+          </MenuList>
+        </Menu>
       </Td>
       <Td>{epoch.epochId}</Td>
-      <Td>{new Date(epoch.startTimestamp * 1000).toLocaleString()}</Td>
       <Td>{new Date(epoch.startTimestamp * 1000).toLocaleString()}</Td>
       <Td>{new Date(epoch.endTimestamp * 1000).toLocaleString()}</Td>
       <Td>
@@ -166,8 +194,11 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
         ) : (
           <>
             <Text>{latestPrice}</Text>
-            {(epochData as any)?.settled ? (
-              <Text>Settled</Text>
+            {epochSettled ? (
+              <>
+                <Text>Settled</Text>
+                <Text>{Number(settlementPrice)}</Text>
+              </>
             ) : (
               <Button
                 onClick={() => {

@@ -1,5 +1,9 @@
 import "reflect-metadata";
-import dataSource, { initializeDataSource, renderJobRepository } from "./db"; /// !IMPORTANT: Keep as top import to prevent issues with db initialization
+import dataSource, {
+  eventRepository,
+  initializeDataSource,
+  renderJobRepository,
+} from "./db"; /// !IMPORTANT: Keep as top import to prevent issues with db initialization
 import cors from "cors";
 import { ResourcePrice } from "./models/ResourcePrice";
 import { IndexPrice } from "./models/IndexPrice";
@@ -26,6 +30,7 @@ import { getProviderForChain, getBlockByTimestamp } from "./helpers";
 import dotenv from "dotenv";
 import path from "path";
 import { RenderJob } from "./models/RenderJob";
+import { getMarketStartEndBlock } from "./controllers/marketHelpers";
 
 const PORT = 3001;
 
@@ -423,12 +428,13 @@ const startServer = async () => {
   });
 
   app.get("/missing-blocks", async (req, res) => {
-    const { chainId, address, epochId } = req.query;
+    const { chainId, address, epochId, model } = req.query;
 
     if (
       typeof chainId !== "string" ||
       typeof address !== "string" ||
-      typeof epochId !== "string"
+      typeof epochId !== "string" ||
+      typeof model !== "string"
     ) {
       return res.status(400).json({ error: "Invalid request parameters" });
     }
@@ -438,65 +444,47 @@ const startServer = async () => {
       const market = await marketRepository.findOne({
         where: { chainId: Number(chainId), address },
       });
-
       if (!market) {
-        return res.status(404).json({ error: "Market not found" });
+        return res.status(500).json({ error: "Market not found" });
       }
-
-      // Find the epoch within the market
-      const epoch = await epochRepository.findOne({
-        where: {
-          market: { id: market.id },
-          epochId: Number(epochId),
-        },
-      });
-
-      if (!epoch) {
-        return res.status(404).json({ error: "Epoch not found" });
+      // get block numbers
+      const { startBlockNumber, endBlockNumber, error } =
+        await getMarketStartEndBlock(market, epochId);
+      if (error || !startBlockNumber || !endBlockNumber) {
+        return res.status(500).json({ error });
       }
+      console.log("startBlockNumber", startBlockNumber);
+      console.log("endBlockNumber", endBlockNumber);
 
-      // Get start and end timestamps
-      const startTimestamp = Number(epoch.startTimestamp);
-      const now = Math.floor(Date.now() / 1000);
-      const endTimestamp = Math.min(Number(epoch.endTimestamp), now);
-
-      console.log("startTimestamp", startTimestamp);
-      console.log("endTimestamp", endTimestamp);
-
-      // Get the client for the specified chain ID
-      const client = getProviderForChain(Number(chainId));
-
-      // Get the blocks corresponding to the start and end timestamps
-      const startBlock = await getBlockByTimestamp(client, startTimestamp);
-      let endBlock = await getBlockByTimestamp(client, endTimestamp);
-      if (!endBlock) {
-        endBlock = await client.getBlock();
-      }
-
-      console.log("startBlock", startBlock);
-      console.log("endBlock", endBlock);
-
-      if (!startBlock?.number || !endBlock?.number) {
-        return res.status(500).json({
-          error: "Unable to retrieve block numbers for start or end timestamps",
+      let existingBlockNumbersSet: Set<number> = new Set();
+      if (model === "ResourcePrice") {
+        const resourcePrices = await resourcePriceRepository.find({
+          where: {
+            market: { id: market.id },
+            blockNumber: Between(startBlockNumber, endBlockNumber),
+          },
+          select: ["blockNumber"],
         });
+
+        existingBlockNumbersSet = new Set(
+          resourcePrices.map((ip) => Number(ip.blockNumber))
+        );
+      } else if (model === "Event") {
+        // Retrieve all indexed block numbers within the range from the ResourcePrice repository
+        const events = await eventRepository.find({
+          where: {
+            market: { id: market.id },
+            blockNumber: Between(startBlockNumber, endBlockNumber),
+          },
+          select: ["blockNumber"],
+        });
+
+        existingBlockNumbersSet = new Set(
+          events.map((ip) => Number(ip.blockNumber))
+        );
+      } else {
+        return res.status(500).json({ error: "Invalid model" });
       }
-
-      const startBlockNumber = Number(startBlock.number);
-      const endBlockNumber = Number(endBlock.number);
-
-      // Retrieve all indexed block numbers within the range from the ResourcePrice repository
-      const resourcePrices = await resourcePriceRepository.find({
-        where: {
-          market: { id: market.id },
-          blockNumber: Between(startBlockNumber, endBlockNumber),
-        },
-        select: ["blockNumber"],
-      });
-
-      const existingBlockNumbersSet = new Set(
-        resourcePrices.map((ip) => Number(ip.blockNumber))
-      );
 
       // Find missing block numbers within the range
       const missingBlockNumbers = [];
