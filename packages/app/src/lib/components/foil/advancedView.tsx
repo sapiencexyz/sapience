@@ -11,8 +11,6 @@ import {
   TabPanels,
   Tabs,
   HStack,
-  IconButton,
-  Tooltip,
   Spinner,
   Text,
 } from '@chakra-ui/react';
@@ -39,7 +37,13 @@ import { ChartType, TimeWindow } from '~/lib/interfaces/interfaces';
 
 const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
 
-const Market = ({ params }: { params: { id: string; epoch: string } }) => {
+const Market = ({
+  params,
+  isTrade,
+}: {
+  params: { id: string; epoch: string };
+  isTrade: boolean;
+}) => {
   const [selectedWindow, setSelectedWindow] = useState<TimeWindow>(
     TimeWindow.W
   );
@@ -347,7 +351,7 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
                 maxWidth={{ base: 'none', md: '360px' }}
                 pb={8}
               >
-                <MarketSidebar />
+                <MarketSidebar isTrade={isTrade} />
               </Box>
             </Flex>
             <Flex

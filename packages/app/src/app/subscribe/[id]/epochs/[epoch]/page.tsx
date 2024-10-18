@@ -29,7 +29,12 @@ const SubscribePage = ({
           p={6}
           maxWidth="432px"
         >
-          <Subscribe />
+          <Subscribe
+            marketAddress={marketAddress}
+            chainId={Number(chainId)}
+            epoch={Number(epoch)}
+            showMarketSwitcher={false}
+          />
         </Box>
       </Flex>
     </MarketProvider>

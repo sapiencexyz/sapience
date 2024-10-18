@@ -1,9 +1,12 @@
+/* eslint-disable sonarjs/cognitive-complexity */
+import { useRouter, useSearchParams } from 'next/navigation';
 import React, {
   createContext,
   useContext,
   useState,
   useCallback,
   useMemo,
+  useEffect,
 } from 'react';
 import { useAccount, useReadContracts } from 'wagmi';
 
@@ -33,6 +36,9 @@ export const AddEditPositionProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
   const [nftId, setNftId] = useState(0);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const { address } = useAccount();
   const {
     tokenIds,
@@ -80,6 +86,53 @@ export const AddEditPositionProvider: React.FC<{
     return _positions;
   }, [positionsData]);
 
+  useEffect(() => {
+    const positionId = searchParams.get('positionId');
+    if (positionId) {
+      setNftId(Number(positionId));
+    } else {
+      const lastLiquidityPosition =
+        positions.liquidityPositions[positions.liquidityPositions.length - 1];
+      const lastTradePosition =
+        positions.tradePositions[positions.tradePositions.length - 1];
+
+      let lastPositionId = 0;
+      const currentPath = window.location.pathname.toLowerCase(); // hacky fix for now
+
+      if (currentPath.includes('trade')) {
+        lastPositionId = lastTradePosition?.id
+          ? Number(lastTradePosition.id)
+          : 0;
+      } else if (currentPath.includes('pool')) {
+        lastPositionId = lastLiquidityPosition?.id
+          ? Number(lastLiquidityPosition.id)
+          : 0;
+      } else {
+        lastPositionId = Math.max(
+          lastLiquidityPosition?.id ? Number(lastLiquidityPosition.id) : 0,
+          lastTradePosition?.id ? Number(lastTradePosition.id) : 0
+        );
+      }
+
+      if (lastPositionId > 0) {
+        setNftId(lastPositionId);
+        router.push(`${window.location.pathname}?positionId=${lastPositionId}`);
+      }
+    }
+  }, [router, positions]);
+
+  const setNftIdAndUpdateUrl = useCallback(
+    (id: number) => {
+      setNftId(id);
+      if (id === 0) {
+        router.push(window.location.pathname);
+      } else {
+        router.push(`${window.location.pathname}?positionId=${id}`);
+      }
+    },
+    [router]
+  );
+
   const refreshPositions = useCallback(async () => {
     await refetchTokenIds();
     await refetchPositions();
@@ -105,7 +158,7 @@ export const AddEditPositionProvider: React.FC<{
     <AddEditPositionContext.Provider
       value={{
         nftId,
-        setNftId,
+        setNftId: setNftIdAndUpdateUrl,
         positions,
         refreshPositions,
         isLoading,
