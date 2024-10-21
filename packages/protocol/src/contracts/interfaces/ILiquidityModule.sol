@@ -64,6 +64,13 @@ interface ILiquidityModule {
         uint256 loanAmount1
     );
 
+    event DepositedCollateralIncreased(
+        address indexed sender,
+        uint256 indexed epochId,
+        uint256 indexed positionId,
+        uint256 collateralAmount
+    );
+
     /**
      * @notice Creates a new liquidity position in the specified epoch
      * @param params The parameters for creating the liquidity position
@@ -126,7 +133,7 @@ interface ILiquidityModule {
             uint256 collateralAmount
         );
 
-    function getTokenAmounts(
+    function quoteLiquidityPositionTokens(
         uint256 epochId,
         uint256 depositedCollateralAmount,
         uint160 sqrtPriceX96,
@@ -136,4 +143,15 @@ interface ILiquidityModule {
         external
         view
         returns (uint256 amount0, uint256 amount1, uint128 liquidity);
+
+    /**
+     * @notice Increases the deposited collateral for a liquidity position
+     * @dev Only the fee collector can increase the deposited collateral
+     * @param positionId The ID of the liquidity position (fee collector has to be owner)
+     * @param collateralAmount The amount of collateral to increase
+     */
+    function depositCollateral(
+        uint256 positionId,
+        uint256 collateralAmount
+    ) external;
 }

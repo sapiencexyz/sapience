@@ -194,7 +194,7 @@ const AddEditLiquidity: React.FC<{
   } = useReadContract({
     address: foilData.address,
     abi: foilData.abi,
-    functionName: 'getTokenAmounts',
+    functionName: 'quoteLiquidityPositionTokens',
     args: [
       epoch.toString(),
       parseUnits(depositAmount.toString(), collateralAssetDecimals),
@@ -212,7 +212,7 @@ const AddEditLiquidity: React.FC<{
     useReadContract({
       address: foilData.address,
       abi: foilData.abi,
-      functionName: 'getTokenAmounts',
+      functionName: 'quoteLiquidityPositionTokens',
       args: [
         epoch.toString(),
         collateralAmountDelta,

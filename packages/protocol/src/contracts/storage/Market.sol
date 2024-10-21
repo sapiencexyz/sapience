@@ -175,4 +175,13 @@ library Market {
         self.owner = sender;
         delete self.pendingOwner;
     }
+
+    function isFeeCollector(
+        Data storage self,
+        address user
+    ) internal view returns (bool) {
+        return
+            address(self.feeCollectorNFT) != address(0) &&
+            self.feeCollectorNFT.balanceOf(user) > 0;
+    }
 }

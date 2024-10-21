@@ -28,7 +28,23 @@ contract TestEpoch is TestUser {
         int24 maxTick,
         uint160 startingSqrtPriceX96
     ) public returns (IFoil, address) {
-        address owner = initializeMarket(minTick, maxTick);
+        address[] memory feeCollectors = new address[](0);
+        return
+            createEpochWithFeeCollectors(
+                minTick,
+                maxTick,
+                startingSqrtPriceX96,
+                feeCollectors
+            );
+    }
+
+    function createEpochWithFeeCollectors(
+        int24 minTick,
+        int24 maxTick,
+        uint160 startingSqrtPriceX96,
+        address[] memory feeCollectors
+    ) public returns (IFoil, address) {
+        address owner = initializeMarket(minTick, maxTick, feeCollectors);
         IFoil foil = IFoil(vm.getAddress("Foil"));
 
         vm.prank(owner);
@@ -44,11 +60,11 @@ contract TestEpoch is TestUser {
 
     function initializeMarket(
         int24 minTick,
-        int24 maxTick
+        int24 maxTick,
+        address[] memory feeCollectors
     ) public returns (address) {
         address owner = createUser("Owner", 10_000_000 ether);
         vm.startPrank(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266);
-        address[] memory feeCollectors = new address[](0);
         IFoil(vm.getAddress("Foil")).initializeMarket(
             owner,
             vm.getAddress("CollateralAsset.Token"),
@@ -114,13 +130,14 @@ contract TestEpoch is TestUser {
         uint160 sqrtPriceAX96 = uint160(TickMath.getSqrtRatioAtTick(lowerTick));
         uint160 sqrtPriceBX96 = uint160(TickMath.getSqrtRatioAtTick(upperTick));
 
-        (loanAmount0, loanAmount1, liquidity) = foil.getTokenAmounts(
-            epochId,
-            collateralAmount,
-            sqrtPriceX96,
-            sqrtPriceAX96,
-            sqrtPriceBX96
-        );
+        (loanAmount0, loanAmount1, liquidity) = foil
+            .quoteLiquidityPositionTokens(
+                epochId,
+                collateralAmount,
+                sqrtPriceX96,
+                sqrtPriceAX96,
+                sqrtPriceBX96
+            );
     }
 
     function getCurrentPositionTokenAmounts(

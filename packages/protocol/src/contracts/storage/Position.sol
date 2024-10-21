@@ -11,12 +11,14 @@ import {DecimalMath} from "@synthetixio/core-contracts/contracts/utils/DecimalMa
 import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
 import {ERC721Storage} from "./ERC721Storage.sol";
 import {Errors} from "./Errors.sol";
+import {Market} from "./Market.sol";
 
 library Position {
     using SafeCastU256 for uint256;
     using SafeCastI256 for int256;
     using DecimalMath for uint256;
     using SafeERC20 for IERC20;
+    using Market for Market.Data;
 
     using Epoch for Epoch.Data;
 
@@ -163,11 +165,10 @@ library Position {
         loanAmount0 = self.borrowedVGas;
         loanAmount1 = self.borrowedVEth;
 
-        bool skipCollateralCheck = address(market.feeCollectorNFT) != address(0) && market.feeCollectorNFT.balanceOf(msg.sender) > 0;
-        if(skipCollateralCheck) {
-            requiredCollateral = 0;
-        }else{
-            requiredCollateral = epoch.requiredCollateralForLiquidity(
+        bool isFeeCollector = market.isFeeCollector(msg.sender);
+        requiredCollateral = isFeeCollector
+            ? 0
+            : epoch.requiredCollateralForLiquidity(
                 params.liquidity,
                 loanAmount0,
                 loanAmount1,
@@ -176,7 +177,6 @@ library Position {
                 TickMath.getSqrtRatioAtTick(params.lowerTick),
                 TickMath.getSqrtRatioAtTick(params.upperTick)
             );
-        }
 
         uint256 newCollateral = self.depositedCollateralAmount +
             params.additionalCollateral;
