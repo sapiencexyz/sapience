@@ -9,6 +9,7 @@ import {Epoch} from "../storage/Epoch.sol";
 import {Market} from "../storage/Market.sol";
 import {IUMASettlementModule} from "../interfaces/IUMASettlementModule.sol";
 import {OptimisticOracleV3Interface} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
+import "../libraries/DecimalPrice.sol";
 
 contract UMASettlementModule is
     IUMASettlementModule,
@@ -69,7 +70,7 @@ contract UMASettlementModule is
         market.epochIdByAssertionId[epoch.assertionId] = epochId;
 
         epoch.settlement = Epoch.Settlement({
-            settlementPriceD18: settlementSqrtPriceX96,
+            settlementPriceSqrtX96: settlementSqrtPriceX96,
             submissionTime: block.timestamp,
             disputed: false
         });
@@ -97,20 +98,24 @@ contract UMASettlementModule is
         Epoch.Settlement storage settlement = epoch.settlement;
 
         if (!epoch.settlement.disputed) {
-            epoch.setSettlementPriceInRange(settlement.settlementPriceD18);
+            epoch.setSettlementPriceInRange(
+                DecimalPrice.sqrtRatioX96ToPrice(
+                    settlement.settlementPriceSqrtX96
+                )
+            );
             epoch.settled = true;
 
             // Call the callback recipient
             if (address(market.callbackRecipient) != address(0)) {
                 market.callbackRecipient.resolutionCallback(
-                    settlement.settlementPriceD18
+                    settlement.settlementPriceSqrtX96
                 );
             }
 
             emit EpochSettled(
                 epochId,
                 assertionId,
-                settlement.settlementPriceD18
+                settlement.settlementPriceSqrtX96
             );
         }
 
