@@ -7,7 +7,10 @@ import "../storage/Market.sol";
 import "../storage/Epoch.sol";
 import "../storage/Errors.sol";
 
-contract ConfigurationModule is IConfigurationModule, ReentrancyGuardUpgradeable {
+contract ConfigurationModule is
+    IConfigurationModule,
+    ReentrancyGuardUpgradeable
+{
     using Market for Market.Data;
 
     address immutable marketInitializer;
@@ -30,13 +33,24 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuardUpgradeable
     function initializeMarket(
         address initialOwner,
         address collateralAsset,
+        address callbackRecipient,
         IFoilStructs.EpochParams memory epochParams
-    ) external nonReentrant override {
+    ) external override nonReentrant {
         if (msg.sender != marketInitializer) {
             revert Errors.OnlyInitializer(msg.sender, marketInitializer);
         }
-        Market.createValid(initialOwner, collateralAsset, epochParams);
-        emit MarketInitialized(initialOwner, collateralAsset, epochParams);
+        Market.createValid(
+            initialOwner,
+            collateralAsset,
+            callbackRecipient,
+            epochParams
+        );
+        emit MarketInitialized(
+            initialOwner,
+            collateralAsset,
+            callbackRecipient,
+            epochParams
+        );
     }
 
     function updateMarket(
@@ -52,7 +66,7 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuardUpgradeable
         uint256 endTime,
         uint160 startingSqrtPriceX96,
         uint256 salt
-    ) external nonReentrant override onlyOwner {
+    ) external override nonReentrant onlyOwner {
         // load the market to check if it's already created
         Market.Data storage market = Market.load();
 
@@ -68,7 +82,9 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuardUpgradeable
         emit EpochCreated(newEpochId, startTime, endTime, startingSqrtPriceX96);
     }
 
-    function transferOwnership(address newOwner) external nonReentrant onlyOwner {
+    function transferOwnership(
+        address newOwner
+    ) external nonReentrant onlyOwner {
         Market.Data storage market = Market.load();
         address oldOwner = market.owner;
         market.transferOwnership(newOwner);
