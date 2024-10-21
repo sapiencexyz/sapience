@@ -267,13 +267,14 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
 
         // Calculate token amounts for the liquidity position
-        (uint256 amount0, uint256 amount1, ) = market.getTokenAmounts(
-            epochId,
-            totalCollateral,
-            sqrtPriceX96,
-            TickMath.getSqrtRatioAtTick(epochParams.baseAssetMinPriceTick),
-            TickMath.getSqrtRatioAtTick(epochParams.baseAssetMaxPriceTick)
-        );
+        (uint256 amount0, uint256 amount1, ) = market
+            .quoteLiquidityPositionTokens(
+                epochId,
+                totalCollateral,
+                sqrtPriceX96,
+                TickMath.getSqrtRatioAtTick(epochParams.baseAssetMinPriceTick),
+                TickMath.getSqrtRatioAtTick(epochParams.baseAssetMaxPriceTick)
+            );
 
         // Prepare liquidity mint parameters
         IFoilStructs.LiquidityMintParams memory params = IFoilStructs
