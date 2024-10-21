@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
-import {TickMath} from "../../src/contracts/external/univ3/TickMath.sol";
-import {IFoil} from "../../src/contracts/interfaces/IFoil.sol";
-import {IFoilStructs} from "../../src/contracts/interfaces/IFoilStructs.sol";
-import {Position} from "../../src/contracts/storage/Position.sol";
-import {IMintableToken} from "../../src/contracts/external/IMintableToken.sol";
+import {TickMath} from "../../src/market/external/univ3/TickMath.sol";
+import {IFoil} from "../../src/market/interfaces/IFoil.sol";
+import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
+import {Position} from "../../src/market/storage/Position.sol";
+import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 import {DecimalMath} from "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
 import {SafeCastU256, SafeCastI256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 

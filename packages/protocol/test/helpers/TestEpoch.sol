@@ -3,15 +3,15 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
-import {FullMath} from "../../src/contracts/external/univ3/FullMath.sol";
-import {LiquidityAmounts} from "../../src/contracts/external/univ3/LiquidityAmounts.sol";
-import {INonfungiblePositionManager} from "../../src/contracts/interfaces/external/INonfungiblePositionManager.sol";
+import {FullMath} from "../../src/market/external/univ3/FullMath.sol";
+import {LiquidityAmounts} from "../../src/market/external/univ3/LiquidityAmounts.sol";
+import {INonfungiblePositionManager} from "../../src/market/interfaces/external/INonfungiblePositionManager.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import {TickMath} from "../../src/contracts/external/univ3/TickMath.sol";
-import {IMintableToken} from "../../src/contracts/external/IMintableToken.sol";
-import {IFoil} from "../../src/contracts/interfaces/IFoil.sol";
-import {IFoilStructs} from "../../src/contracts/interfaces/IFoilStructs.sol";
-import {DecimalPrice} from "../../src/contracts/libraries/DecimalPrice.sol";
+import {TickMath} from "../../src/market/external/univ3/TickMath.sol";
+import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
+import {IFoil} from "../../src/market/interfaces/IFoil.sol";
+import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
+import {DecimalPrice} from "../../src/market/libraries/DecimalPrice.sol";
 import {TestUser} from "./TestUser.sol";
 
 import "forge-std/console2.sol";

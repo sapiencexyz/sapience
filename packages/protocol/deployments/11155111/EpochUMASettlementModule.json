@@ -141,7 +141,7 @@
   "deployTxnHash": "0x95d3ff65b1704f5d573a6b52e75dea5e6c40f1a77ca732d27960022142f68486",
   "deployTxnBlockNumber": "6582996",
   "deployTimestamp": "1724785620",
-  "sourceName": "src/contracts/modules/EpochUMASettlementModule.sol",
+  "sourceName": "src/market/modules/EpochUMASettlementModule.sol",
   "contractName": "EpochUMASettlementModule",
   "deployedOn": "deploy.EpochUMASettlementModule",
   "gasUsed": 724842,

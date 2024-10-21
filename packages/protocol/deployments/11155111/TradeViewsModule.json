@@ -26,7 +26,7 @@
   "deployTxnHash": "0x5921358e5e7197a145adf983f272fdd457c548cc6ae7aae16c77b6ba8f06e60c",
   "deployTxnBlockNumber": "6728608",
   "deployTimestamp": "1726855812",
-  "sourceName": "src/contracts/modules/TradeViewsModule.sol",
+  "sourceName": "src/market/modules/TradeViewsModule.sol",
   "contractName": "TradeViewsModule",
   "deployedOn": "deploy.TradeViewsModule",
   "gasUsed": 219276,

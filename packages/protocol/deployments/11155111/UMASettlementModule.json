@@ -202,7 +202,7 @@
   "deployTxnHash": "0x2567bd12886311acdddf59306ac3fb6ef4b295ddfec3401c542dc728ed506b2e",
   "deployTxnBlockNumber": "6917971",
   "deployTimestamp": "1729536708",
-  "sourceName": "src/contracts/modules/UMASettlementModule.sol",
+  "sourceName": "src/market/modules/UMASettlementModule.sol",
   "contractName": "UMASettlementModule",
   "deployedOn": "deploy.UMASettlementModule",
   "gasUsed": 915303,

@@ -4,17 +4,17 @@ pragma solidity ^0.8.19;
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
 import {TestTrade} from "../helpers/TestTrade.sol";
-import {IFoilStructs} from "../../src/contracts/interfaces/IFoilStructs.sol";
-import {IMintableToken} from "../../src/contracts/external/IMintableToken.sol";
-import {IFoil} from "../../src/contracts/interfaces/IFoil.sol";
-import {SettlementModule} from "../../src/contracts/modules/SettlementModule.sol";
-import {TradeModule} from "../../src/contracts/modules/TradeModule.sol";
-import {Market} from "../../src/contracts/storage/Market.sol";
-import {Position} from "../../src/contracts/storage/Position.sol";
-import {Epoch} from "../../src/contracts/storage/Epoch.sol";
-import {Errors} from "../../src/contracts/storage/Errors.sol";
-import {IFoil} from "../../src/contracts/interfaces/IFoil.sol";
-import {IMockVault} from "../../src/contracts/interfaces/mocks/IMockVault.sol";
+import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
+import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
+import {IFoil} from "../../src/market/interfaces/IFoil.sol";
+import {SettlementModule} from "../../src/market/modules/SettlementModule.sol";
+import {TradeModule} from "../../src/market/modules/TradeModule.sol";
+import {Market} from "../../src/market/storage/Market.sol";
+import {Position} from "../../src/market/storage/Position.sol";
+import {Epoch} from "../../src/market/storage/Epoch.sol";
+import {Errors} from "../../src/market/storage/Errors.sol";
+import {IFoil} from "../../src/market/interfaces/IFoil.sol";
+import {IMockVault} from "../../src/market/interfaces/mocks/IMockVault.sol";
 
 contract SettleLPTest is TestTrade {
     using Cannon for Vm;

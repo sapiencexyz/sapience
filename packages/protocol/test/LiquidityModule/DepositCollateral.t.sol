@@ -3,14 +3,14 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
-import {IFoil} from "../../src/contracts/interfaces/IFoil.sol";
-import {IMintableToken} from "../../src/contracts/external/IMintableToken.sol";
+import {IFoil} from "../../src/market/interfaces/IFoil.sol";
+import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 import {TestTrade} from "../helpers/TestTrade.sol";
 import {TestUser} from "../helpers/TestUser.sol";
-import {ILiquidityModule} from "../../src/contracts/interfaces/ILiquidityModule.sol";
-import {Position} from "../../src/contracts/storage/Position.sol";
-import {Errors} from "../../src/contracts/storage/Errors.sol";
-import {IFoilStructs} from "../../src/contracts/interfaces/IFoilStructs.sol";
+import {ILiquidityModule} from "../../src/market/interfaces/ILiquidityModule.sol";
+import {Position} from "../../src/market/storage/Position.sol";
+import {Errors} from "../../src/market/storage/Errors.sol";
+import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
 
 contract DepositCollateralTest is TestTrade {
     using Cannon for Vm;
