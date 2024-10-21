@@ -1,5 +1,5 @@
 {
-  "address": "0x69C22e273088B2D989e66Eba98Ba09676Afb62fe",
+  "address": "0xBB1D32f89f7db04b51Daf4608F110c41307fD3Fc",
   "abi": [
     {
       "type": "function",
@@ -150,52 +150,21 @@
     },
     {
       "type": "function",
-      "name": "getTokenAmounts",
+      "name": "depositCollateral",
       "inputs": [
         {
-          "name": "epochId",
+          "name": "positionId",
           "type": "uint256",
           "internalType": "uint256"
         },
         {
-          "name": "depositedCollateralAmount",
+          "name": "collateralAmount",
           "type": "uint256",
           "internalType": "uint256"
-        },
-        {
-          "name": "sqrtPriceX96",
-          "type": "uint160",
-          "internalType": "uint160"
-        },
-        {
-          "name": "sqrtPriceAX96",
-          "type": "uint160",
-          "internalType": "uint160"
-        },
-        {
-          "name": "sqrtPriceBX96",
-          "type": "uint160",
-          "internalType": "uint160"
         }
       ],
-      "outputs": [
-        {
-          "name": "amount0",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "amount1",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "liquidity",
-          "type": "uint128",
-          "internalType": "uint128"
-        }
-      ],
-      "stateMutability": "view"
+      "outputs": [],
+      "stateMutability": "nonpayable"
     },
     {
       "type": "function",
@@ -267,6 +236,86 @@
         }
       ],
       "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "quoteLiquidityPositionTokens",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "depositedCollateralAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "sqrtPriceX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        },
+        {
+          "name": "sqrtPriceAX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        },
+        {
+          "name": "sqrtPriceBX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "amount0",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "amount1",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "liquidity",
+          "type": "uint128",
+          "internalType": "uint128"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "event",
+      "name": "CollateralDeposited",
+      "inputs": [
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateralAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
     },
     {
       "type": "event",
@@ -673,6 +722,11 @@
     },
     {
       "type": "error",
+      "name": "OnlyFeeCollector",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "OverflowInt24ToUint256",
       "inputs": []
     },
@@ -763,12 +817,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x6dbe7dd0b6935b7d0b880d769ed05fb618aedbf31e8fdd7eb1c19502709e0dab",
-  "deployTxnBlockNumber": "6857069",
-  "deployTimestamp": "1728661296",
+  "deployTxnHash": "0x82e27ac4990126811a675552cc6b870e6a58d6170d30a650a94aa09dea520a3a",
+  "deployTxnBlockNumber": "6917965",
+  "deployTimestamp": "1729536636",
   "sourceName": "src/contracts/modules/LiquidityModule.sol",
   "contractName": "LiquidityModule",
   "deployedOn": "deploy.LiquidityModule",
-  "gasUsed": 2940246,
-  "gasCost": "37348233075"
+  "gasUsed": 3058130,
+  "gasCost": "1388873390"
 }

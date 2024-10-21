@@ -1,5 +1,5 @@
 {
-  "address": "0x84a9BBfA555995f42cD323b60fdbBdD81758cae2",
+  "address": "0x603586E17bA154E6578E4b5959994c2d5058910C",
   "abi": [
     {
       "type": "function",
@@ -258,6 +258,16 @@
           "internalType": "address"
         },
         {
+          "name": "feeCollectorNFT",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "callbackRecipient",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
           "name": "epochParams",
           "type": "tuple",
           "internalType": "struct IFoilStructs.EpochParams",
@@ -463,12 +473,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x164fa8b6366b6b899debaa790cf24538d585df0756bcf8ada98939b0c2c15887",
-  "deployTxnBlockNumber": "6857074",
-  "deployTimestamp": "1728661368",
+  "deployTxnHash": "0x2e83f49d7e0334e61593cbe8a58736a0a5b0db3d57e1cfdf5810bcc3be0d84e5",
+  "deployTxnBlockNumber": "6917972",
+  "deployTimestamp": "1729536720",
   "sourceName": "src/contracts/modules/ViewsModule.sol",
   "contractName": "ViewsModule",
   "deployedOn": "deploy.ViewsModule",
-  "gasUsed": 965855,
-  "gasCost": "39248153915"
+  "gasUsed": 987469,
+  "gasCost": "1397174542"
 }

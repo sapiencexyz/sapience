@@ -1,5 +1,5 @@
 {
-  "address": "0x02ff287369b6b293804395e69ee6285d1fd6480a",
+  "address": "0xbba8cfd1b960ad15d5e2063fff9fdbe25990378c",
   "abi": [
     {
       "type": "constructor",
@@ -58,6 +58,16 @@
         },
         {
           "name": "collateralAsset",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "feeCollectors",
+          "type": "address[]",
+          "internalType": "address[]"
+        },
+        {
+          "name": "callbackRecipient",
           "type": "address",
           "internalType": "address"
         },
@@ -297,6 +307,18 @@
           "internalType": "address"
         },
         {
+          "name": "feeCollectorNFT",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "callbackRecipient",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
           "name": "epochParams",
           "type": "tuple",
           "indexed": false,
@@ -520,6 +542,17 @@
           "name": "tickSpacing",
           "type": "int24",
           "internalType": "int24"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidCallbackResolutionInterface",
+      "inputs": [
+        {
+          "name": "callbackRecipient",
+          "type": "address",
+          "internalType": "address"
         }
       ]
     },
@@ -787,52 +820,21 @@
     },
     {
       "type": "function",
-      "name": "getTokenAmounts",
+      "name": "depositCollateral",
       "inputs": [
         {
-          "name": "epochId",
+          "name": "positionId",
           "type": "uint256",
           "internalType": "uint256"
         },
         {
-          "name": "depositedCollateralAmount",
+          "name": "collateralAmount",
           "type": "uint256",
           "internalType": "uint256"
-        },
-        {
-          "name": "sqrtPriceX96",
-          "type": "uint160",
-          "internalType": "uint160"
-        },
-        {
-          "name": "sqrtPriceAX96",
-          "type": "uint160",
-          "internalType": "uint160"
-        },
-        {
-          "name": "sqrtPriceBX96",
-          "type": "uint160",
-          "internalType": "uint160"
         }
       ],
-      "outputs": [
-        {
-          "name": "amount0",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "amount1",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "liquidity",
-          "type": "uint128",
-          "internalType": "uint128"
-        }
-      ],
-      "stateMutability": "view"
+      "outputs": [],
+      "stateMutability": "nonpayable"
     },
     {
       "type": "function",
@@ -904,6 +906,86 @@
         }
       ],
       "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "quoteLiquidityPositionTokens",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "depositedCollateralAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "sqrtPriceX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        },
+        {
+          "name": "sqrtPriceAX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        },
+        {
+          "name": "sqrtPriceBX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "amount0",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "amount1",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "liquidity",
+          "type": "uint128",
+          "internalType": "uint128"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "event",
+      "name": "CollateralDeposited",
+      "inputs": [
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateralAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
     },
     {
       "type": "event",
@@ -1284,6 +1366,11 @@
           "internalType": "address"
         }
       ]
+    },
+    {
+      "type": "error",
+      "name": "OnlyFeeCollector",
+      "inputs": []
     },
     {
       "type": "error",
@@ -2499,6 +2586,16 @@
           "internalType": "address"
         },
         {
+          "name": "feeCollectorNFT",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "callbackRecipient",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
           "name": "epochParams",
           "type": "tuple",
           "internalType": "struct IFoilStructs.EpochParams",
@@ -2755,12 +2852,12 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0xb95a795884aade98120fd2704812caf3883df18ce07b737871559e3b6dd28fd6",
-  "deployTxnBlockNumber": "6857076",
-  "deployTimestamp": "1728661392",
+  "deployTxnHash": "0xeebcb344f70f3cab46b6f7e97e449907d0ba9f24bdd6b80b40752eb65f3bdd64",
+  "deployTxnBlockNumber": "6917974",
+  "deployTimestamp": "1729536744",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
   "highlight": true,
-  "gasUsed": 513643,
-  "gasCost": "39021339336"
+  "gasUsed": 521920,
+  "gasCost": "1496073517"
 }
