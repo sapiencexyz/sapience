@@ -4,19 +4,19 @@ pragma solidity >=0.8.2 <0.9.0;
 interface IUMASettlementModule {
     event SettlementSubmitted(
         uint256 epochId,
-        uint256 price,
+        uint160 settlementSqrtPriceX96,
         uint256 submissionTime
     );
     event SettlementDisputed(uint256 epochId, uint256 disputeTime);
     event EpochSettled(
         uint256 epochId,
         bytes32 assertionId,
-        uint256 settlementPriceD18
+        uint160 settlementSqrtPriceX96
     );
 
     function submitSettlementPrice(
         uint256 epochId,
-        uint256 settlementPriceD18
+        uint160 settlementSqrtPriceX96
     ) external returns (bytes32);
 
     function assertionResolvedCallback(

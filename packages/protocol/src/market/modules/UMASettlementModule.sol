@@ -19,7 +19,7 @@ contract UMASettlementModule is
 
     function submitSettlementPrice(
         uint256 epochId,
-        uint256 settlementPriceD18
+        uint160 settlementSqrtPriceX96
     ) external nonReentrant returns (bytes32) {
         Market.Data storage market = Market.load();
         Epoch.Data storage epoch = Epoch.loadValid(epochId);
@@ -44,13 +44,13 @@ contract UMASettlementModule is
         );
 
         bytes memory claim = abi.encodePacked(
-            string(epoch.params.claimStatement),
+            string(epoch.marketParams.claimStatement),
             " between timestamps ",
             Strings.toString(epoch.startTime),
             " and ",
             Strings.toString(epoch.endTime),
             "(inclusive) is ",
-            Strings.toString(settlementPriceD18),
+            Strings.toString(settlementSqrtPriceX96),
             "."
         );
 
@@ -69,12 +69,16 @@ contract UMASettlementModule is
         market.epochIdByAssertionId[epoch.assertionId] = epochId;
 
         epoch.settlement = Epoch.Settlement({
-            settlementPriceD18: settlementPriceD18,
+            settlementPriceD18: settlementSqrtPriceX96,
             submissionTime: block.timestamp,
             disputed: false
         });
 
-        emit SettlementSubmitted(epochId, settlementPriceD18, block.timestamp);
+        emit SettlementSubmitted(
+            epochId,
+            settlementSqrtPriceX96,
+            block.timestamp
+        );
 
         return epoch.assertionId;
     }
