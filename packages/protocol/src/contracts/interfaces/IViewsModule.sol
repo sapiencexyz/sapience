@@ -74,4 +74,11 @@ interface IViewsModule {
     function getReferencePrice(
         uint256 epochId
     ) external view returns (uint256 price18Digits);
+
+    /**
+     * @notice Gets the current value of a position
+     * @param positionId id of the position
+     * @return collateralValue value of the position, collateral denominated
+     */
+    function getPositionCollateralValue(uint256 positionId) external view returns (uint256 collateralValue);
 }

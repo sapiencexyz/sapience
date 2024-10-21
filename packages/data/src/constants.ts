@@ -34,14 +34,7 @@ const FULL_MARKET_LIST = [
     marketChainId: sepolia.id,
     priceIndexer: new evmIndexer(mainnet.id),
     public: true,
-  },
-  {
-    name: "Ethereum Gas Market (Settlement Test)",
-    deployment: { ...safeRequire("@/protocol/deployments/11155111/Foil.json"), address: '0x3a56b4174c031baccb2f54ccde75a221379d8931' },
-    marketChainId: sepolia.id,
-    priceIndexer: new evmIndexer(mainnet.id),
-    public: false,
-  },
+  }
 ];
 
 export const MARKET_INFO = FULL_MARKET_LIST.filter((market) => market.deployment !== null) as MarketInfo[];

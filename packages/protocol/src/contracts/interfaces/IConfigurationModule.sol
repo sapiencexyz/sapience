@@ -53,5 +53,5 @@ interface IConfigurationModule {
         uint256 endTime,
         uint160 startingSqrtPriceX96,
         uint256 salt
-    ) external;
+    ) external returns (uint256 epochId);
 }

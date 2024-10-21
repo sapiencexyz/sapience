@@ -80,7 +80,7 @@ contract ConfigurationModule is
         uint256 endTime,
         uint160 startingSqrtPriceX96,
         uint256 salt
-    ) external override nonReentrant onlyOwner {
+    ) external override nonReentrant onlyOwner returns (uint256 epochId) {
         // load the market to check if it's already created
         Market.Data storage market = Market.load();
 
@@ -94,6 +94,8 @@ contract ConfigurationModule is
             salt
         );
         emit EpochCreated(newEpochId, startTime, endTime, startingSqrtPriceX96);
+
+        return newEpochId;
     }
 
     function transferOwnership(
