@@ -60,7 +60,8 @@ contract LiquidityFeeCollectorTest is TestTrade {
             MIN_TICK,
             MAX_TICK,
             startingSqrtPriceX96,
-            feeCollectors
+            feeCollectors,
+            address(0)
         );
 
         (epochId, , , pool, tokenA, tokenB, , , , , ) = foil.getLatestEpoch();
@@ -197,7 +198,6 @@ contract LiquidityFeeCollectorTest is TestTrade {
             uint256 initialEthTokenAmount,
             ,
             ,
-            uint128 initialLiquidity
         ) = getCurrentPositionTokenAmounts(uniswapNftId, MIN_TICK, MAX_TICK);
 
         // Calculate the token amounts to increase (double the initial amounts)

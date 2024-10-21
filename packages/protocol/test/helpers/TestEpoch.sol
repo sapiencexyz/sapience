@@ -29,12 +29,14 @@ contract TestEpoch is TestUser {
         uint160 startingSqrtPriceX96
     ) public returns (IFoil, address) {
         address[] memory feeCollectors = new address[](0);
+        address callbackRecipient = address(0);
         return
             createEpochWithFeeCollectors(
                 minTick,
                 maxTick,
                 startingSqrtPriceX96,
-                feeCollectors
+                feeCollectors,
+                callbackRecipient
             );
     }
 
@@ -42,9 +44,10 @@ contract TestEpoch is TestUser {
         int24 minTick,
         int24 maxTick,
         uint160 startingSqrtPriceX96,
-        address[] memory feeCollectors
+        address[] memory feeCollectors,
+        address callbackRecipient
     ) public returns (IFoil, address) {
-        address owner = initializeMarket(minTick, maxTick, feeCollectors);
+        initializeMarket(minTick, maxTick, feeCollectors, callbackRecipient);
         return
             createEpochWithCallback(
                 minTick,
@@ -60,7 +63,8 @@ contract TestEpoch is TestUser {
         uint160 startingSqrtPriceX96,
         address callbackRecipient
     ) public returns (IFoil, address) {
-        address owner = initializeMarket(minTick, maxTick, callbackRecipient);
+        address[] memory feeCollectors = new address[](0);
+        address owner = initializeMarket(minTick, maxTick, feeCollectors, callbackRecipient);
         IFoil foil = IFoil(vm.getAddress("Foil"));
 
         vm.prank(owner);
@@ -77,7 +81,7 @@ contract TestEpoch is TestUser {
     function initializeMarket(
         int24 minTick,
         int24 maxTick,
-        address[] memory feeCollectors
+        address[] memory feeCollectors,
         address callbackRecipient
     ) public returns (address) {
         address owner = createUser("Owner", 10_000_000 ether);
