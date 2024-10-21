@@ -35,6 +35,8 @@ contract SettleLPTest is TestTrade {
     int24 constant MIN_TICK = 16000;
     int24 constant MAX_TICK = 29800;
     uint256 constant settlementPrice = 10 ether;
+    uint160 constant settlementPriceSqrt =
+        250541448375047929189414038447079817216;
 
     function setUp() public {
         collateralAsset = IMintableToken(
@@ -148,7 +150,7 @@ contract SettleLPTest is TestTrade {
         vm.warp(endTime + 1);
 
         // Set settlement price
-        settleEpoch(epochId, settlementPrice, owner);
+        settleEpoch(epochId, settlementPriceSqrt, owner);
 
         // Settle LP position
         vm.prank(lp1);
@@ -161,7 +163,7 @@ contract SettleLPTest is TestTrade {
 
         assertEq(
             IMockVault(vm.getAddress("MockVault")).getLastSettlementPrice(),
-            settlementPrice
+            settlementPriceSqrt
         );
 
         // TODO: fix this, need to calculate tokens that were collected which is a bit tricky
