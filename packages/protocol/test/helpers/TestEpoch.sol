@@ -133,7 +133,7 @@ contract TestEpoch is TestUser {
 
     function settleEpoch(
         uint256 epochId,
-        uint256 price,
+        uint160 price,
         address owner
     ) internal {
         IMintableToken bondCurrency = IMintableToken(
