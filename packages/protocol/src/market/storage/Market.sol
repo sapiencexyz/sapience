@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import "./Errors.sol";
 import "../interfaces/IFoilStructs.sol";
-import {IResolutionCallback} from "../external/IResolutionCallback.sol";
+import {IResolutionCallback} from "../../vault/interfaces/IResolutionCallback.sol";
 import {Errors} from "./Errors.sol";
 
 library Market {
