@@ -15,8 +15,6 @@ import "../market/interfaces/IFoilStructs.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/IERC7540.sol";
 
-import "forge-std/console2.sol";
-
 contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
     using SetUtil for SetUtil.UintSet;
@@ -589,9 +587,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     }
 
     modifier onlyOwner() {
-        console2.log("aaaaa");
-        console2.log(msg.sender);
-        console2.log(vaultInitializer);
         require(
             msg.sender == vaultInitializer,
             "Only vaultInitializer can call this function"

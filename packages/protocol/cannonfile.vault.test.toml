@@ -3,6 +3,7 @@ version="<%= package.version %>"
 privateSourceCode=true
 
 [var.settings]
+owner = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
 # Vault Settings
 vaultName="Foil Vault"
 vaultSymbol = "FVLT"
@@ -86,11 +87,13 @@ highlight=true
 
 [deploy.Vault]
 artifact="Vault"
+from="<%= settings.owner %>"
 args=[ "<%= settings.vaultName %>", "<%= settings.vaultSymbol %>", "<%= Foil.address %>", "<%= CollateralAsset.Token.address %>", "<%= settings.duration %>", "<%= settings.initialSqrtPriceX96 %>", "<%= settings.initialStartTime %>"]
 depends = ['router.Foil', 'clone.CollateralAsset', 'var.settings']
 
 [invoke.initializeMarket]
 target="Foil"
+from="<%= settings.owner %>"
 func="initializeMarket"
 args=[
   "<%= Vault.address %>",
@@ -102,5 +105,6 @@ depends=["router.Foil", "deploy.Vault"]
 
 [invoke.initializeEpoch]
 target="Vault"
+from="<%= settings.owner %>"
 func="initializeEpoch"
-depends=["deploy.Vault"]
+depends=["invoke.initializeMarket"]

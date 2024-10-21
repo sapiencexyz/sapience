@@ -7,7 +7,10 @@ import "../storage/Market.sol";
 import "../storage/Epoch.sol";
 import "../storage/Errors.sol";
 
-contract ConfigurationModule is IConfigurationModule, ReentrancyGuardUpgradeable {
+contract ConfigurationModule is
+    IConfigurationModule,
+    ReentrancyGuardUpgradeable
+{
     using Market for Market.Data;
 
     address immutable marketInitializer;
@@ -31,7 +34,7 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuardUpgradeable
         address initialOwner,
         address collateralAsset,
         IFoilStructs.EpochParams memory epochParams
-    ) external nonReentrant override {
+    ) external override nonReentrant {
         if (msg.sender != marketInitializer) {
             revert Errors.OnlyInitializer(msg.sender, marketInitializer);
         }
@@ -52,7 +55,7 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuardUpgradeable
         uint256 endTime,
         uint160 startingSqrtPriceX96,
         uint256 salt
-    ) external nonReentrant override onlyOwner returns (uint256 epochId) {
+    ) external override nonReentrant onlyOwner returns (uint256 epochId) {
         // load the market to check if it's already created
         Market.Data storage market = Market.load();
 
@@ -70,7 +73,9 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuardUpgradeable
         return newEpochId;
     }
 
-    function transferOwnership(address newOwner) external nonReentrant onlyOwner {
+    function transferOwnership(
+        address newOwner
+    ) external nonReentrant onlyOwner {
         Market.Data storage market = Market.load();
         address oldOwner = market.owner;
         market.transferOwnership(newOwner);
