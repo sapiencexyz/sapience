@@ -15,6 +15,8 @@ import "../market/interfaces/IFoilStructs.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/IERC7540.sol";
 
+import "forge-std/console2.sol";
+
 contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
     using SetUtil for SetUtil.UintSet;
@@ -60,6 +62,11 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     mapping(address => uint256) userClaimableDeposits; // notice userPending is currentFutureEpoch's userNonExecuted
     mapping(address => uint256) userClaimableWithrwawals; // notice userPending is currentFutureEpoch's userNonExecuted
 
+    uint160 initialSqrtPriceX96;
+    uint256 initialStartTime;
+    address immutable vaultInitializer;
+    bool initialized;
+
     constructor(
         string memory _name,
         string memory _symbol,
@@ -73,7 +80,16 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         collateralAsset = IERC20(_collateralAssetAddress);
         duration = _duration;
 
-        _initializeEpoch(_initialStartTime, _initialSqrtPriceX96);
+        initialSqrtPriceX96 = _initialSqrtPriceX96;
+        initialStartTime = _initialStartTime;
+        vaultInitializer = msg.sender;
+    }
+
+    function initializeEpoch() external onlyOwner {
+        require(!initialized, "Already Initialized");
+
+        _initializeEpoch(initialStartTime, initialSqrtPriceX96);
+        initialized = true;
     }
 
     function resolutionCallback(
@@ -163,11 +179,11 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         // Move from pending to claimable
         epochData.totalClaimableDeposit = epochData.totalPendingDeposit;
         globalTotalClaimableDeposit += epochData.totalPendingDeposit;
-        globalTotalPendingDeposit -= epochData.totalPendingDeposit;
+        globalTotalPendingDeposit -= epochData.totalPendingDeposit; // is it possible to overflow? I don't think so, since it was updated at the same time on requests
         epochData.totalPendingDeposit = 0;
         epochData.totalClaimableWithdrawal = epochData.totalPendingWithdrawal;
         globalTotalClaimableWithdrawal += epochData.totalPendingWithdrawal;
-        globalTotalPendingWithdrawal -= epochData.totalPendingWithdrawal;
+        globalTotalPendingWithdrawal -= epochData.totalPendingWithdrawal; // is it possible to overflow? I don't think so, since it was updated at the same time on requests
         epochData.totalPendingWithdrawal = 0;
 
         // Do we need to do something with the shares?
@@ -178,53 +194,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         // uint256 totalNewShares = (currentEpoch.totalPendingDeposits * 1e18) /
         //     newSharePrice;
         // _mintShares(address(this), totalNewShares);
-
-        // // Distribute new shares to depositors
-        // address[] memory epochDepositors = depositors[currentEpoch.epochId];
-        // for (uint256 i = 0; i < epochDepositors.length; i++) {
-        //     address user = epochDepositors[i];
-        //     uint256 userDeposit = userPendingDeposits[user][
-        //         currentEpoch.epochId
-        //     ];
-        //     uint256 userNewShares = (userDeposit * 1e18) / newSharePrice;
-
-        //     // Transfer shares from the vault to the user
-        //     _update(address(this), user, userNewShares);
-        //     // Update user shares
-        //     userShares[user] += userNewShares;
-
-        //     // Clean up pending deposits
-        //     delete userPendingDeposits[user][currentEpoch.epochId];
-        // }
-
-        // // Process pending withdrawals
-        // uint256 totalSharesToBurn = currentEpoch.totalPendingWithdrawals;
-        // // Shares were transferred to the vault in _requestRedeem
-        // // Burn the shares from the vault's balance
-        // _burnShares(address(this), totalSharesToBurn);
-
-        // address[] memory epochWithdrawers = withdrawers[currentEpoch.epochId];
-        // uint256 totalWithdrawalAmount = 0;
-        // for (uint256 i = 0; i < epochWithdrawers.length; i++) {
-        //     address user = epochWithdrawers[i];
-        //     uint256 userWithdrawalShares = userPendingWithdrawalShares[user][
-        //         currentEpoch.epochId
-        //     ];
-        //     uint256 withdrawalAmount = (userWithdrawalShares * newSharePrice) /
-        //         1e18;
-
-        //     totalWithdrawalAmount += withdrawalAmount;
-
-        //     // Transfer collateral to the user
-        //     collateralAsset.safeTransfer(user, withdrawalAmount);
-
-        //     // Clean up pending withdrawals
-        //     delete userPendingWithdrawalShares[user][currentEpoch.epochId];
-        // }
-
-        // // Clean up depositor and withdrawer lists for the epoch
-        // delete depositors[currentEpoch.epochId];
-        // delete withdrawers[currentEpoch.epochId];
 
         emit EpochProcessed(epochData.marketEpochId, epochSharePriceAtClosure);
 
@@ -615,6 +584,17 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         require(
             msg.sender == address(market),
             "Only market can call this function"
+        );
+        _;
+    }
+
+    modifier onlyOwner() {
+        console2.log("aaaaa");
+        console2.log(msg.sender);
+        console2.log(vaultInitializer);
+        require(
+            msg.sender == vaultInitializer,
+            "Only vaultInitializer can call this function"
         );
         _;
     }
