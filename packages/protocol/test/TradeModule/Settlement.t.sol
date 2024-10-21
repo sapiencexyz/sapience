@@ -87,7 +87,7 @@ contract TradePositionSettlement is TestTrade {
         bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
         optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
 
-        (owner, , , ) = foil.getMarket();
+        (owner, , , , ) = foil.getMarket();
         (
             epochId,
             ,

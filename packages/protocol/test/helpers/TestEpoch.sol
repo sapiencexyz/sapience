@@ -64,7 +64,12 @@ contract TestEpoch is TestUser {
         address callbackRecipient
     ) public returns (IFoil, address) {
         address[] memory feeCollectors = new address[](0);
-        address owner = initializeMarket(minTick, maxTick, feeCollectors, callbackRecipient);
+        address owner = initializeMarket(
+            minTick,
+            maxTick,
+            feeCollectors,
+            callbackRecipient
+        );
         IFoil foil = IFoil(vm.getAddress("Foil"));
 
         vm.prank(owner);
@@ -237,12 +242,12 @@ contract TestEpoch is TestUser {
         uint256 uniswapPositionId
     ) internal view returns (uint256 owed0, uint256 owed1) {
         uniswapPositionId;
-        console2.log("IN GETOWEDTOKENS");
         IFoil foil = IFoil(vm.getAddress("Foil"));
 
         OwedTokensData memory data;
 
-        (, , , IFoilStructs.EpochParams memory epochParams) = foil.getMarket();
+        (, , , , IFoilStructs.EpochParams memory epochParams) = foil
+            .getMarket();
 
         // Fetch the current fee growth global values
         data.feeGrowthGlobal0X128 = IUniswapV3Pool(data.pool)

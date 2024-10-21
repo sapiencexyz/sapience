@@ -354,13 +354,13 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         }
 
         Position.Data storage position = Position.loadValid(positionId);
-        position.preValidateLp();
+        position.validateLp();
         // add to the collateral instead of updating
         position.updateCollateral(
             position.depositedCollateralAmount + collateralAmount
         );
 
-        emit DepositedCollateralIncreased(
+        emit CollateralDeposited(
             msg.sender,
             position.epochId,
             position.id,

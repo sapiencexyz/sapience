@@ -142,7 +142,7 @@ contract DepositCollateralTest is TestTrade {
 
         vm.startPrank(feeCollector);
         vm.expectEmit(true, true, true, true);
-        emit ILiquidityModule.DepositedCollateralIncreased(
+        emit ILiquidityModule.CollateralDeposited(
             feeCollector,
             epochId,
             feeCollectorPositionId,

@@ -64,7 +64,7 @@ interface ILiquidityModule {
         uint256 loanAmount1
     );
 
-    event DepositedCollateralIncreased(
+    event CollateralDeposited(
         address indexed sender,
         uint256 indexed epochId,
         uint256 indexed positionId,
