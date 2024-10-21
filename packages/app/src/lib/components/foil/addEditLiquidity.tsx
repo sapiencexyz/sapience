@@ -81,9 +81,7 @@ function getTokenAmountsFromLiquidity(
   return { amount0, amount1 };
 }
 
-const AddEditLiquidity: React.FC<{
-  changeToTradeTab: () => void;
-}> = ({ changeToTradeTab }) => {
+const AddEditLiquidity: React.FC = () => {
   const { nftId, refreshPositions } = useAddEditPosition();
   console.log('nftId', nftId);
 
@@ -479,6 +477,7 @@ const AddEditLiquidity: React.FC<{
 
   useEffect(() => {
     // trader position so switch to trader tab
+    console.log('positionData', positionData);
     if (positionData && positionData.kind === 2) {
       toast({
         title:
@@ -487,9 +486,11 @@ const AddEditLiquidity: React.FC<{
         duration: 5000,
         isClosable: true,
       });
-      changeToTradeTab();
+      router.push(
+        `/trade/${chainId}%3A${marketAddress}/epochs/${epoch}?nftId=${nftId}`
+      );
     }
-  }, [positionData, toast, changeToTradeTab]);
+  }, [positionData, toast]);
 
   // handle token amounts error
   useEffect(() => {
@@ -611,9 +612,6 @@ const AddEditLiquidity: React.FC<{
 
           if ((event as any).eventName === 'LiquidityPositionCreated') {
             const nftId = (event as any).args.positionId.toString();
-            router.push(
-              `/markets/${chainId}:${marketAddress}/positions/${nftId}`
-            );
             renderToast(
               toast,
               `Your liquidity position has been created as position ${nftId}`

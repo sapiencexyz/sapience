@@ -4,6 +4,7 @@ import { Flex, Text } from '@chakra-ui/react';
 import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import type React from 'react';
 import { useContext, useMemo, useState } from 'react';
+import type { TooltipProps } from 'recharts';
 import {
   BarChart,
   ResponsiveContainer,
@@ -17,7 +18,22 @@ import { useReadContracts } from 'wagmi';
 
 import { TICK_SPACING_DEFAULT } from '~/lib/constants/constants';
 import { MarketContext } from '~/lib/context/MarketProvider';
-import { paleGreen, purple, turquoise } from '~/lib/styles/theme/colors';
+import {
+  gray400,
+  paleGreen,
+  peach,
+  purple,
+  turquoise,
+} from '~/lib/styles/theme/colors';
+import { formatAmount } from '~/lib/util/numberUtil';
+
+const checkIsClosestTick = (
+  tick: number,
+  activeTickValue: number,
+  tickSpacing: number
+) => {
+  return tick <= activeTickValue && tick + tickSpacing >= activeTickValue;
+};
 
 type TickDataTuple = [
   bigint, // liquidityGross
@@ -55,6 +71,7 @@ interface CustomBarProps {
   activeTickValue: number;
   hoveredBar: number | null;
   setHoveredBar: React.Dispatch<React.SetStateAction<number | null>>;
+  tickSpacing: number;
 }
 
 const CustomBar: React.FC<CustomBarProps> = ({
@@ -62,17 +79,18 @@ const CustomBar: React.FC<CustomBarProps> = ({
   activeTickValue,
   hoveredBar,
   setHoveredBar,
+  tickSpacing,
 }) => {
   const { x, y, width, height, tick, index } = props;
   let fill = purple; // Default color
 
-  const isClosestTick =
-    activeTickValue <= tick + 200 && activeTickValue >= tick - 200;
-
+  const isClosestTick = checkIsClosestTick(tick, activeTickValue, tickSpacing);
   if (index === hoveredBar) {
     fill = paleGreen; // Hover color
   } else if (isClosestTick) {
     fill = turquoise; // Active bar color
+  } else if (tick < activeTickValue) {
+    fill = peach;
   }
   return (
     <rect
@@ -87,11 +105,78 @@ const CustomBar: React.FC<CustomBarProps> = ({
   );
 };
 
+interface CustomXAxisTickProps {
+  props: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    tick: number;
+    index: number;
+    payload: any;
+  };
+  activeTickValue: number;
+  tickSpacing: number;
+}
+
+const CustomXAxisTick: React.FC<CustomXAxisTickProps> = ({
+  props,
+  activeTickValue,
+  tickSpacing,
+}) => {
+  const { payload, x, y } = props;
+
+  const isClosestTick = checkIsClosestTick(
+    payload.value,
+    activeTickValue,
+    tickSpacing
+  );
+
+  if (!isClosestTick) return null;
+
+  return (
+    <g transform={`translate(${x},${y})`} id="activeTicks">
+      <text
+        x={0}
+        y={0}
+        dy={10}
+        textAnchor="middle"
+        fill={gray400}
+        fontSize={12}
+      >
+        Active tick range
+      </text>
+    </g>
+  );
+};
+interface CustomTooltipProps {
+  tickSpacing: number;
+}
+const CustomTooltip: React.FC<
+  TooltipProps<number, string> & CustomTooltipProps
+> = ({ payload, tickSpacing }) => {
+  console.log('payload', payload);
+  if (!payload || !payload[0]) return null;
+  const tickValue: number = payload[0].payload?.tick;
+  return (
+    <div
+      style={{
+        backgroundColor: 'white',
+        padding: '8px',
+        border: '1px solid #ccc',
+      }}
+    >
+      <p>{`Tick Range: ${tickValue}-${tickValue + tickSpacing}`}</p>
+      <p>{`Liquidity: ${formatAmount(payload[0].payload?.liquidity)}`}</p>
+    </div>
+  );
+};
+
 const DepthChart: React.FC<Props> = () => {
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
   const { pool, chainId, poolAddress, epochParams, collateralAssetDecimals } =
     useContext(MarketContext);
-
+  const activeTickValue = pool?.tickCurrent || 0;
   const tickSpacing = pool ? pool?.tickSpacing : TICK_SPACING_DEFAULT;
   const ticks = useMemo(() => {
     const tickRange: number[] = [];
@@ -126,7 +211,7 @@ const DepthChart: React.FC<Props> = () => {
     tickData: TickData[],
     currentTick: number
   ): number {
-    let baseLiquidity = 0; // Using BigInt for precision
+    let baseLiquidity = 0;
 
     for (let i = 0; i < tickData.length; i++) {
       const tick = ticks[i];
@@ -178,9 +263,7 @@ const DepthChart: React.FC<Props> = () => {
 
   const liquidityDepthData = useMemo(() => {
     if (!data || !pool || !ticks.length || !data.length) return [];
-    console.log('data', data);
-    const baseLiquidity = calculateBaseLiquidity(data, pool.tickCurrent);
-    console.log('base liquidity', baseLiquidity);
+    const baseLiquidity = calculateBaseLiquidity(data, activeTickValue);
     return createLiquidityDistribution(data, baseLiquidity);
   }, [ticks, data, pool]);
 
@@ -189,7 +272,23 @@ const DepthChart: React.FC<Props> = () => {
       props={props}
       hoveredBar={hoveredBar}
       setHoveredBar={setHoveredBar}
-      activeTickValue={pool?.tickCurrent || 0}
+      activeTickValue={activeTickValue}
+      tickSpacing={tickSpacing}
+    />
+  );
+
+  /**
+   * Custom XAxis tick renderer that colors ticks based on whether they are
+   * below or above the current tick value.
+   *
+   * @param props - props passed by recharts
+   * @returns a rendered tick SVG element
+   */
+  const renderXAxis = (props: any) => (
+    <CustomXAxisTick
+      props={props}
+      activeTickValue={activeTickValue}
+      tickSpacing={tickSpacing}
     />
   );
 
@@ -201,10 +300,16 @@ const DepthChart: React.FC<Props> = () => {
       {liquidityDepthData.length > 0 && (
         <ResponsiveContainer width="100%" height="100%">
           <BarChart width={500} height={300} data={liquidityDepthData}>
-            <XAxis dataKey="tick" tick={false} />
+            <XAxis
+              dataKey="tick"
+              tick={renderXAxis}
+              height={60}
+              interval={0}
+              tickLine={false}
+            />
             <YAxis />
-            <Tooltip />
-            <Bar dataKey="liquidity" fill="#8884d8" shape={renderBar} />
+            <Tooltip content={<CustomTooltip tickSpacing={tickSpacing} />} />
+            <Bar dataKey="liquidity" shape={renderBar} />
           </BarChart>
         </ResponsiveContainer>
       )}

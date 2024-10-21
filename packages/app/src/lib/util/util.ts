@@ -80,3 +80,10 @@ export const convertToGwei = (
 ) => {
   return (value * (stEthPerToken || 1)) / 1e9;
 };
+
+export const shortenAddress = (address: string) => {
+  if (address.length < 12) {
+    return address;
+  }
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+};

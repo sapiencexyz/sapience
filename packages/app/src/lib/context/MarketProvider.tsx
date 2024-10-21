@@ -37,6 +37,8 @@ export interface MarketContextType {
   pool: Pool | null;
   collateralAssetDecimals: number;
   epoch: number;
+  epochSettled: boolean;
+  settlementPrice?: bigint;
   foilData: any;
   chainId: number;
   error?: string;
@@ -238,11 +240,17 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
 
   useEffect(() => {
     if (epochViewFunctionResult.data !== undefined) {
+      console.log(
+        'epochViewFunctionResult data: ',
+        epochViewFunctionResult.data
+      );
       setState((currentState) => ({
         ...currentState,
-        startTime: epochViewFunctionResult?.data[0],
-        endTime: epochViewFunctionResult?.data[1],
-        poolAddress: epochViewFunctionResult?.data[2],
+        startTime: epochViewFunctionResult.data[0],
+        endTime: epochViewFunctionResult.data[1],
+        poolAddress: epochViewFunctionResult.data[2],
+        epochSettled: epochViewFunctionResult.data[7],
+        settlementPrice: epochViewFunctionResult.data[8],
       }));
     }
   }, [epochViewFunctionResult.data]);

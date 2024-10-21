@@ -269,9 +269,6 @@ export default function AddEditTrade() {
 
             if ((event as any).eventName === 'TraderPositionCreated') {
               const nftId = (event as any).args.positionId.toString();
-              router.push(
-                `/markets/${chainId}:${marketAddress}/positions/${nftId}`
-              );
               renderToast(
                 toast,
                 `Your position has been created as position ${nftId}`

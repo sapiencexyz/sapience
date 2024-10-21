@@ -32,9 +32,9 @@ const LiquidityPositionsTable: React.FC<Props> = ({
   positions,
   contractId,
 }) => {
-  const { pool } = useContext(MarketContext);
-
-  // console.log('positions = ', positions);
+  const { pool, endTime } = useContext(MarketContext);
+  const dateMilliseconds = Number(endTime) * 1000;
+  const expired = new Date(dateMilliseconds) < new Date();
 
   if (isLoading) {
     return (
@@ -80,7 +80,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({
                 <QuestionOutlineIcon transform="translateY(-1px)" />
               </Tooltip>
             </Th>
-            <Th>Settled</Th>
+            {expired ? <Th>Settled</Th> : null}
           </Tr>
         </Thead>
         <Tbody>
@@ -91,7 +91,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({
                 <Tr key={row.id}>
                   <Td>
                     <Link
-                      href={`/markets/${contractId}/positions/${row.positionId}`}
+                      href={`/positions/${contractId}/${row.positionId}`}
                       textDecoration="underline"
                     >
                       #{row.positionId.toString()}
@@ -117,14 +117,16 @@ const LiquidityPositionsTable: React.FC<Props> = ({
                     <NumberDisplay value={tickToPrice(row.highPriceTick)} />{' '}
                     Ggas/wstETH
                   </Td>
-                  {/* <Td>
-                    <NumberDisplay value={pnl} /> wstETH
-                  </Td> */}
                   <Td>
-                    {row.isSettled ? (
-                      <CheckIcon color="green.500" mr={2} />
-                    ) : null}
+                    <NumberDisplay value={pnl} /> wstETH
                   </Td>
+                  {expired ? (
+                    <Td>
+                      {row.isSettled ? (
+                        <CheckIcon color="green.500" mr={2} />
+                      ) : null}
+                    </Td>
+                  ) : null}
                 </Tr>
               );
             })}

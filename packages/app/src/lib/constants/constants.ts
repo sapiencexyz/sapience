@@ -24,6 +24,7 @@ export const BLANK_MARKET: MarketContextType = {
   pool: null,
   poolAddress: '0x',
   epoch: 0,
+  epochSettled: false,
   foilData: {},
   chainId: 0,
   liquidity: 0,

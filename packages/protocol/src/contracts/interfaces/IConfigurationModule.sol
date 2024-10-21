@@ -8,6 +8,7 @@ interface IConfigurationModule {
         address initialOwner,
         address collateralAsset,
         address feeCollectorNFT,
+        address callbackRecipient,
         IFoilStructs.EpochParams epochParams
     );
 
@@ -34,12 +35,14 @@ interface IConfigurationModule {
      * @notice Initializes a market
      * @param owner Address of a market owner, which can update the configurations and submit a settlement price
      * @param collateralAsset Address of the collateral used by the market. This cannot be a rebase token.
+     * @param callbackRecipient recipient of callback on resolution of epoch, can be address(0)
      * @param epochParams Parameters used when new epochs are created
      */
     function initializeMarket(
         address owner,
         address collateralAsset,
         address[] calldata feeCollectors,
+        address callbackRecipient,
         IFoilStructs.EpochParams memory epochParams
     ) external;
 

@@ -45,11 +45,14 @@ artifact="ViewsModule"
 [deploy.ERC165Module]
 artifact="ERC165Module"
 
+[deploy.SettlementModule]
+artifact="SettlementModule"
+
 [deploy.ExposedInternalFunctions]
 artifact="ExposedInternalFunctions"
 
-[deploy.SettlementModule]
-artifact="SettlementModule"
+[deploy.MockVault]
+artifact="MockVault"
 
 [router.Foil]
 contracts=[

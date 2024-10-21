@@ -1,6 +1,6 @@
 'use client';
 
-import { InfoOutlineIcon } from '@chakra-ui/icons';
+import { InfoOutlineIcon, UpDownIcon } from '@chakra-ui/icons';
 import {
   useToast,
   Text,
@@ -8,8 +8,17 @@ import {
   Box,
   Button,
   Tooltip,
+  Flex,
+  IconButton,
+  Modal,
+  ModalBody,
+  ModalCloseButton,
+  ModalContent,
+  ModalHeader,
+  ModalOverlay,
+  VStack,
 } from '@chakra-ui/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   type FC,
   type FormEvent,
@@ -17,6 +26,7 @@ import {
   useEffect,
   useContext,
   useRef,
+  useMemo,
 } from 'react';
 import React from 'react';
 import type { AbiFunction, WriteContractErrorType } from 'viem';
@@ -36,12 +46,41 @@ import erc20ABI from '../../erc20abi.json';
 import { useLoading } from '~/lib/context/LoadingContext';
 import { useMarketList } from '~/lib/context/MarketListProvider';
 import { MarketContext } from '~/lib/context/MarketProvider';
-import { renderContractErrorToast, renderToast } from '~/lib/util/util';
+import {
+  getChain,
+  renderContractErrorToast,
+  renderToast,
+} from '~/lib/util/util';
 
 import NumberDisplay from './numberDisplay';
 import SizeInput from './sizeInput';
 
-const Subscribe: FC = () => {
+interface SubscribeProps {
+  marketAddress?: string;
+  chainId?: number;
+  epoch?: number;
+  showMarketSwitcher?: boolean;
+}
+
+const Subscribe: FC<SubscribeProps> = ({
+  marketAddress: propMarketAddress,
+  chainId: propChainId,
+  epoch: propEpoch,
+  showMarketSwitcher = false,
+}) => {
+  const searchParams = useSearchParams();
+  const { markets } = useMarketList();
+
+  const marketAddress =
+    propMarketAddress ||
+    searchParams.get('marketAddress') ||
+    markets.filter((m) => m.public)[0]?.address;
+  const chainId =
+    propChainId ||
+    Number(searchParams.get('chainId')) ||
+    markets.filter((m) => m.public)[0]?.chainId;
+  const epoch = propEpoch || Number(searchParams.get('epoch')) || 1;
+
   const [size, setSize] = useState<bigint>(BigInt(0));
   const slippage = 0.5;
   const [pendingTxn, setPendingTxn] = useState(false);
@@ -55,12 +94,42 @@ const Subscribe: FC = () => {
   const currentChainId = useChainId();
   const { switchChain } = useSwitchChain();
   const { connect, connectors } = useConnect();
-  const { markets } = useMarketList();
+
+  const chainIdParam = useMemo(
+    () => searchParams.get('chainId'),
+    [searchParams]
+  );
+  const marketAddressParam = useMemo(
+    () => searchParams.get('marketAddress'),
+    [searchParams]
+  );
+
+  useEffect(() => {
+    if (
+      markets.filter((m) => m.public).length > 0 &&
+      (!marketAddressParam || !chainIdParam) &&
+      showMarketSwitcher
+    ) {
+      updateParams(
+        markets.filter((m) => m.public)[0].address,
+        markets.filter((m) => m.public)[0].chainId
+      );
+    }
+  }, [markets, marketAddressParam, chainIdParam]);
+
+  const updateParams = (address: string, chain: number) => {
+    const current = new URLSearchParams(Array.from(searchParams.entries()));
+    current.set('marketAddress', address);
+    current.set('chainId', chain.toString());
+    const search = current.toString();
+    const query = search ? `?${search}` : '';
+    router.push(`${window.location.pathname}${query}`);
+  };
 
   const {
-    address: marketAddress,
-    chainId,
-    epoch,
+    address: contextMarketAddress,
+    chainId: contextChainId,
+    epoch: contextEpoch,
     collateralAsset,
     foilData,
     stEthPerToken,
@@ -70,8 +139,11 @@ const Subscribe: FC = () => {
     startTime,
     endTime,
   } = useContext(MarketContext);
-  const marketName =
-    markets.find((m) => m.address === marketAddress)?.name || '';
+
+  // Use prop values if provided, otherwise use context values
+  const finalMarketAddress = marketAddress || contextMarketAddress;
+  const finalChainId = chainId || contextChainId;
+  const finalEpoch = epoch || contextEpoch;
 
   const toast = useToast();
 
@@ -91,8 +163,8 @@ const Subscribe: FC = () => {
     abi: erc20ABI,
     address: collateralAsset as `0x${string}`,
     functionName: 'allowance',
-    args: [address, marketAddress],
-    chainId,
+    args: [address, finalMarketAddress],
+    chainId: finalChainId,
   });
 
   // Convert gas to gigagas for internal calculations
@@ -101,10 +173,10 @@ const Subscribe: FC = () => {
   // Quote function
   const quoteCreatePositionResult = useSimulateContract({
     abi: foilData.abi,
-    address: marketAddress as `0x${string}`,
+    address: finalMarketAddress as `0x${string}`,
     functionName: 'quoteCreateTraderPosition',
-    args: [epoch, sizeInGigagas],
-    chainId,
+    args: [finalEpoch, sizeInGigagas],
+    chainId: finalChainId,
     account: address || zeroAddress,
     query: { enabled: size !== BigInt(0) },
   });
@@ -192,7 +264,7 @@ const Subscribe: FC = () => {
           if ((event as any).eventName === 'TraderPositionCreated') {
             const nftId = (event as any).args.positionId.toString();
             router.push(
-              `/markets/${chainId}:${marketAddress}/positions/${nftId}`
+              `/markets/${finalChainId}:${finalMarketAddress}/positions/${nftId}`
             );
             renderToast(
               toast,
@@ -282,15 +354,15 @@ const Subscribe: FC = () => {
         abi: erc20ABI as AbiFunction[],
         address: collateralAsset as `0x${string}`,
         functionName: 'approve',
-        args: [marketAddress, collateralDeltaLimit],
+        args: [finalMarketAddress, collateralDeltaLimit],
       });
     } else {
       console.log('creating trade position....');
       writeContract({
         abi: foilData.abi,
-        address: marketAddress as `0x${string}`,
+        address: finalMarketAddress as `0x${string}`,
         functionName: 'createTraderPosition',
-        args: [epoch, sizeInTokens, absCollateralDeltaLimit, deadline],
+        args: [finalEpoch, sizeInTokens, absCollateralDeltaLimit, deadline],
       });
     }
   };
@@ -321,13 +393,13 @@ const Subscribe: FC = () => {
       );
     }
 
-    if (currentChainId !== chainId) {
+    if (currentChainId !== finalChainId) {
       return (
         <Button
           width="full"
           variant="brand"
           size="lg"
-          onClick={() => switchChain({ chainId })}
+          onClick={() => switchChain({ chainId: finalChainId })}
         >
           Switch Network
         </Button>
@@ -361,8 +433,35 @@ const Subscribe: FC = () => {
     }
   }, []);
 
+  const [isMarketSelectorOpen, setIsMarketSelectorOpen] = useState(false);
+
+  const handleMarketSelectorOpen = () => setIsMarketSelectorOpen(true);
+  const handleMarketSelectorClose = () => setIsMarketSelectorOpen(false);
+
+  const handleMarketSelect = (address: string, chain: number) => {
+    updateParams(address, chain);
+    handleMarketSelectorClose();
+  };
+
+  const marketName =
+    markets.find((m) => m.address === marketAddress)?.name || 'Choose Market';
+
   return (
     <form onSubmit={handleSubmit}>
+      <Flex alignItems="center" mb={2}>
+        <Heading size="lg">
+          {marketName.replace('Market', '')} Subscription
+        </Heading>
+        {showMarketSwitcher && (
+          <IconButton
+            ml="auto"
+            aria-label="Change Market"
+            size="xs"
+            icon={<UpDownIcon />}
+            onClick={handleMarketSelectorOpen}
+          />
+        )}
+      </Flex>
       <Text mb={4}>
         Enter the amount of gas you expect to use between {formattedStartTime}{' '}
         and {formattedEndTime}.{' '}
@@ -396,6 +495,45 @@ const Subscribe: FC = () => {
       </Box>
 
       {renderActionButton()}
+
+      <Modal isOpen={isMarketSelectorOpen} onClose={handleMarketSelectorClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Select Market</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody pt={0} pb={6}>
+            <VStack spacing={2} align="stretch">
+              {markets
+                .filter((m) => m.public)
+                .map((market) => (
+                  <Flex
+                    key={market.id}
+                    justifyContent="space-between"
+                    alignItems="center"
+                    py={2}
+                    px={4}
+                    bg={
+                      market.address === marketAddress
+                        ? 'gray.100'
+                        : 'transparent'
+                    }
+                    borderRadius="md"
+                    cursor="pointer"
+                    onClick={() =>
+                      handleMarketSelect(market.address, market.chainId)
+                    }
+                    _hover={{ bg: 'gray.50' }}
+                  >
+                    <Text fontWeight="bold">{market.name}</Text>
+                    <Text fontSize="sm" color="gray.600">
+                      {getChain(market.chainId).name}
+                    </Text>
+                  </Flex>
+                ))}
+            </VStack>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </form>
   );
 };

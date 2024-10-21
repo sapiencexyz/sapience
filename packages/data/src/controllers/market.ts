@@ -213,7 +213,7 @@ const upsertEvent = async (
   // Create a new Event entity
   const newEvent = new Event();
   newEvent.market = market;
-  newEvent.blockNumber = blockNumber.toString();
+  newEvent.blockNumber = Number(blockNumber);
   newEvent.timestamp = timeStamp.toString();
   newEvent.logIndex = logIndex;
   newEvent.logData = logData;

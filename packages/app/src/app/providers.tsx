@@ -34,14 +34,17 @@ const transports: Record<number, HttpTransport> = {
   ),
 };
 
+const chains: any = [sepolia];
+
 if (process.env.NODE_ENV !== 'production') {
   transports[cannon.id] = http('http://localhost:8545');
+  chains.push(cannon);
 }
 
 // Create the configuration
 const config = createConfig({
   ssr: true,
-  chains: [cannon, sepolia],
+  chains,
   connectors: [injected()],
   transports,
 });

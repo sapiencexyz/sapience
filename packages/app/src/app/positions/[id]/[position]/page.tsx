@@ -14,7 +14,7 @@ import { useContext } from 'react';
 import NumberDisplay from '~/lib/components/foil/numberDisplay';
 import TransactionTable from '~/lib/components/foil/transactionTable';
 import { API_BASE_URL } from '~/lib/constants/constants';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { MarketContext, MarketProvider } from '~/lib/context/MarketProvider';
 import { tickToPrice } from '~/lib/util/util';
 
 const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
@@ -184,31 +184,37 @@ const PositionPage = ({
   };
 
   return (
-    <Flex w="100%" p={6}>
-      <Box
-        m="auto"
-        border="1px solid"
-        borderColor="gray.300"
-        borderRadius="md"
-        maxWidth="container.md"
-        width="100%"
-      >
-        {renderPositionData()}
-        {!isLoadingTransactions && (
-          <Box>
-            <Heading size="md" mx={4} mb={2}>
-              Transactions
-            </Heading>
-            <TransactionTable
-              isLoading={isLoadingTransactions}
-              error={transactionsError as Error | null}
-              transactions={transactions}
-              contractId={contractId}
-            />
-          </Box>
-        )}
-      </Box>
-    </Flex>
+    <MarketProvider
+      chainId={Number(chainId)}
+      address={marketAddress}
+      epoch={Number(positionData?.epoch?.id)}
+    >
+      <Flex w="100%" p={6}>
+        <Box
+          m="auto"
+          border="1px solid"
+          borderColor="gray.300"
+          borderRadius="md"
+          maxWidth="container.md"
+          width="100%"
+        >
+          {renderPositionData()}
+          {!isLoadingTransactions && (
+            <Box>
+              <Heading size="md" mx={4} mb={2}>
+                Transactions
+              </Heading>
+              <TransactionTable
+                isLoading={isLoadingTransactions}
+                error={transactionsError as Error | null}
+                transactions={transactions}
+                contractId={contractId}
+              />
+            </Box>
+          )}
+        </Box>
+      </Flex>
+    </MarketProvider>
   );
 };
 

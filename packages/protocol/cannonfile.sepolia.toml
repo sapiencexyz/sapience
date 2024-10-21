@@ -14,6 +14,7 @@ assertionLiveness = "21600" # 6 hours
 bondAmount = "5000000000"
 priceUnit = "<%= formatBytes32String('wstGwei/gas') %>"
 optimisticOracleV3 = "0xFd9e2642a170aDD10F53Ee14a93FcF2F31924944"
+callbackRecipient = "0x0000000000000000000000000000000000000000"
 depends = []
 
 # [pull.Uniswap]
@@ -71,6 +72,7 @@ args=[
   "<%= settings.owner %>",
   "<%= imports.wstETH.contracts.Token.address %>",
   [],
+  "<%= settings.callbackRecipient %>",
   { baseAssetMinPriceTick = "<%= settings.baseAssetMinPriceTick %>", baseAssetMaxPriceTick = "<%= settings.baseAssetMaxPriceTick %>", feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.USDC.contracts.Token.address %>", bondAmount = "<%= settings.bondAmount %>", priceUnit = "<%= settings.priceUnit %>", uniswapPositionManager = "0x1238536071E1c677A632429e3655c799b22cDA52", uniswapSwapRouter = "0x65669fe35312947050c450bd5d36e6361f85ec12", uniswapQuoter = "0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>" }
 ]
 depends=["router.Foil"]

@@ -24,7 +24,7 @@ import {
   MarketInfo,
 } from "../interfaces";
 import { MarketPrice } from "../models/MarketPrice";
-import { getProviderForChain } from "src/helpers";
+import { getBlockByTimestamp, getProviderForChain } from "../helpers";
 
 /**
  * Handles a Transfer event by updating the owner of the corresponding Position.
@@ -55,7 +55,6 @@ export const handleTransferEvent = async (event: Event) => {
   await positionRepository.save(existingPosition);
   console.log(`Updated owner of position ${tokenId} to ${to}`);
 };
-
 
 /**
  * Handles a Transfer event by updating the owner of the corresponding Position.
@@ -510,4 +509,49 @@ export const createEpochFromEvent = async (
 
   const epoch = await epochRepository.save(newEpoch);
   return epoch;
+};
+
+export const getMarketStartEndBlock = async (
+  market: Market,
+  epochId: string
+) => {
+  // Find the epoch within the market
+  const epoch = await epochRepository.findOne({
+    where: {
+      market: { id: market.id },
+      epochId: Number(epochId),
+    },
+  });
+
+  if (!epoch) {
+    return { error: "Epoch not found" };
+  }
+
+  // Get start and end timestamps
+  const startTimestamp = Number(epoch.startTimestamp);
+  const now = Math.floor(Date.now() / 1000);
+  const endTimestamp = Math.min(Number(epoch.endTimestamp), now);
+
+  console.log("startTimestamp", startTimestamp);
+  console.log("endTimestamp", endTimestamp);
+
+  // Get the client for the specified chain ID
+  const client = getProviderForChain(market.chainId);
+
+  // Get the blocks corresponding to the start and end timestamps
+  const startBlock = await getBlockByTimestamp(client, startTimestamp);
+  let endBlock = await getBlockByTimestamp(client, endTimestamp);
+  if (!endBlock) {
+    endBlock = await client.getBlock();
+  }
+
+  if (!startBlock?.number || !endBlock?.number) {
+    return {
+      error: "Unable to retrieve block numbers for start or end timestamps",
+    };
+  }
+
+  const startBlockNumber = Number(startBlock.number);
+  const endBlockNumber = Number(endBlock.number);
+  return { startBlockNumber, endBlockNumber };
 };

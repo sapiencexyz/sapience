@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
+import {ERC165Helper} from "@synthetixio/core-contracts/contracts/utils/ERC165Helper.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import "./Errors.sol";
 import "../interfaces/IFoilStructs.sol";
+import {IResolutionCallback} from "../external/IResolutionCallback.sol";
+import {Errors} from "./Errors.sol";
 
 library Market {
     using SafeERC20 for IERC20;
@@ -14,6 +17,7 @@ library Market {
     struct Data {
         address owner;
         address pendingOwner;
+        IResolutionCallback callbackRecipient;
         IERC20 collateralAsset;
         IERC721 feeCollectorNFT;
         uint256 lastEpochId;
@@ -33,6 +37,7 @@ library Market {
         address owner,
         address collateralAsset,
         address feeCollectorNFT,
+        address callbackRecipient,
         IFoilStructs.EpochParams memory epochParams
     ) internal returns (Data storage market) {
         validateEpochParams(epochParams);
@@ -53,6 +58,21 @@ library Market {
         market.collateralAsset = IERC20(collateralAsset);
         market.feeCollectorNFT = IERC721(feeCollectorNFT);
         market.epochParams = epochParams;
+
+        if (callbackRecipient != address(0)) {
+            if (
+                !ERC165Helper.safeSupportsInterface(
+                    callbackRecipient,
+                    type(IResolutionCallback).interfaceId
+                )
+            ) {
+                revert Errors.InvalidCallbackResolutionInterface(
+                    address(callbackRecipient)
+                );
+            }
+        }
+
+        market.callbackRecipient = IResolutionCallback(callbackRecipient);
     }
 
     function loadValid() internal view returns (Data storage market) {

@@ -78,7 +78,7 @@ const CustomTooltip: React.FC<
 
   if (!payload || !payload[0]) return null;
 
-  const fee = payload?.[0]?.payload?.fee;
+  const fee = payload[0].payload?.fee;
   if (!fee) return null;
 
   return (
@@ -89,7 +89,7 @@ const CustomTooltip: React.FC<
         border: '1px solid #ccc',
       }}
     >
-      <p className="intro">{`Fee: ${fee}`}</p>
+      <p>{`Fee: ${fee}`}</p>
     </div>
   );
 };

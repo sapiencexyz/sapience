@@ -11,8 +11,8 @@ import {
   TabPanels,
   Tabs,
   HStack,
-  IconButton,
-  Tooltip,
+  Spinner,
+  Text,
 } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
@@ -37,14 +37,20 @@ import { ChartType, TimeWindow } from '~/lib/interfaces/interfaces';
 
 const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
 
-const Market = ({ params }: { params: { id: string; epoch: string } }) => {
+const Market = ({
+  params,
+  isTrade,
+}: {
+  params: { id: string; epoch: string };
+  isTrade: boolean;
+}) => {
   const [selectedWindow, setSelectedWindow] = useState<TimeWindow>(
     TimeWindow.W
   );
   const [tableFlexHeight, setTableFlexHeight] = useState(172);
   const resizeRef = useRef<HTMLDivElement>(null);
   const [chartType, setChartType] = useState<ChartType>(ChartType.PRICE);
-
+  const [isRefetchingIndexPrices, setIsRefetchingIndexPrices] = useState(false);
   const [chainId, marketAddress] = params.id.split('%3A');
   const { epoch } = params;
   const contractId = `${chainId}:${marketAddress}`;
@@ -179,27 +185,6 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
     isLoading: isLoadingLpPositions,
   } = useLiquidityPositions();
 
-  const renderChart = () => {
-    if (chartType === ChartType.PRICE) {
-      return (
-        <Chart
-          activeWindow={selectedWindow}
-          data={{
-            marketPrices: marketPrices || [],
-            indexPrices: indexPrices || [],
-          }}
-        />
-      );
-    }
-    if (chartType === ChartType.VOLUME) {
-      return <VolumeChart data={volume || []} activeWindow={selectedWindow} />;
-    }
-    if (chartType === ChartType.LIQUIDITY) {
-      return <DepthChart />;
-    }
-    return null;
-  };
-
   const useMarketPrices = () => {
     return useQuery({
       queryKey: ['market-prices', `${chainId}:${marketAddress}`],
@@ -237,6 +222,7 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
     error: usePricesError,
     isLoading: isLoadingPrices,
     refetch: refetchPrices,
+    isRefetching: isRefetchingPrices,
   } = useMarketPrices();
 
   const {
@@ -247,10 +233,55 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
   } = useIndexPrices();
 
   useEffect(() => {
+    setIsRefetchingIndexPrices(true);
     refetchVolume();
     refetchPrices();
-    refetchIndexPrices();
+    refetchIndexPrices().then(() => {
+      setIsRefetchingIndexPrices(false);
+    });
   }, [selectedWindow]);
+
+  const idxLoading = isLoadingIndexPrices || isRefetchingIndexPrices;
+
+  const renderChart = () => {
+    if (chartType === ChartType.PRICE) {
+      return (
+        <Chart
+          activeWindow={selectedWindow}
+          data={{
+            marketPrices: marketPrices || [],
+            indexPrices: indexPrices || [],
+          }}
+          isLoading={idxLoading}
+        />
+      );
+    }
+    if (chartType === ChartType.VOLUME) {
+      return <VolumeChart data={volume || []} activeWindow={selectedWindow} />;
+    }
+    if (chartType === ChartType.LIQUIDITY) {
+      return <DepthChart />;
+    }
+    return null;
+  };
+
+  const renderLoadng = () => {
+    if (chartType === ChartType.PRICE && idxLoading) {
+      return (
+        <Flex
+          ml={2}
+          id="idx-loading"
+          gap={2}
+          justifyContent="center"
+          alignItems="center"
+        >
+          <Spinner size="sm" />
+          <Text fontSize="xs">Loading Index Prices...</Text>
+        </Flex>
+      );
+    }
+    return null;
+  };
 
   return (
     <MarketProvider
@@ -297,15 +328,18 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
                   mb={3}
                   flexShrink={0}
                 >
-                  <Box>
+                  <Flex dir="row">
                     <MarketUnitsToggle />
                     {chartType !== ChartType.LIQUIDITY && (
-                      <VolumeWindowSelector
-                        selectedWindow={selectedWindow}
-                        setSelectedWindow={setSelectedWindow}
-                      />
+                      <Flex dir="row">
+                        <VolumeWindowSelector
+                          selectedWindow={selectedWindow}
+                          setSelectedWindow={setSelectedWindow}
+                        />
+                        {renderLoadng()}
+                      </Flex>
                     )}
-                  </Box>
+                  </Flex>
                   <ChartSelector
                     chartType={chartType}
                     setChartType={setChartType}
@@ -317,7 +351,7 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
                 maxWidth={{ base: 'none', md: '360px' }}
                 pb={8}
               >
-                <MarketSidebar />
+                <MarketSidebar isTrade={isTrade} />
               </Box>
             </Flex>
             <Flex

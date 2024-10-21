@@ -28,8 +28,8 @@ export class Event {
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column({ type: "bigint" })
-  blockNumber: string;
+  @Column()
+  blockNumber: number;
 
   @Column({ type: "bigint" })
   timestamp: string; //In seconds

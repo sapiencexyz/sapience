@@ -137,6 +137,7 @@ interface Props {
     indexPrices: IndexPrice[];
   };
   activeWindow: TimeWindow;
+  isLoading: boolean;
 }
 
 interface IndexPrice {
@@ -144,7 +145,11 @@ interface IndexPrice {
   price: number;
 }
 
-const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
+const CandlestickChart: React.FC<Props> = ({
+  data,
+  activeWindow,
+  isLoading,
+}) => {
   const [value, setValue] = useState<string>('');
   const timePeriodLabel = useMemo(() => {
     return getDisplayTextForVolumeWindow(activeWindow);
@@ -167,17 +172,25 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
   const [gridOffsetFromParent, setGridOffsetFromParent] = useState(0);
 
   const chartRef = useRef(null);
-  console.log('index prices =', data.indexPrices);
 
   const combinedData = useMemo(() => {
     return data.marketPrices.map((mp, i) => {
       const price = data.indexPrices[i]?.price || 0;
+      const priceAdjusted = isLoading ? 0 : price / (stEthPerToken || 1);
       return {
         ...mp,
-        price: price / (stEthPerToken || 1),
+        high: useMarketUnits ? mp.high : convertToGwei(mp.high, stEthPerToken),
+        low: useMarketUnits ? mp.low : convertToGwei(mp.low, stEthPerToken),
+        open: useMarketUnits ? mp.open : convertToGwei(mp.open, stEthPerToken),
+        close: useMarketUnits
+          ? mp.close
+          : convertToGwei(mp.close, stEthPerToken),
+        price: useMarketUnits
+          ? priceAdjusted
+          : convertToGwei(priceAdjusted, stEthPerToken),
       };
     });
-  }, [data]);
+  }, [data, useMarketUnits, stEthPerToken, isLoading]);
 
   useEffect(() => {
     setLabel(timePeriodLabel);
@@ -204,9 +217,12 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
   };
 
   useEffect(() => {
-    const validPrices = data.marketPrices.filter((p) => p.high !== null);
-    setYAxisDomain([0, Math.max(...validPrices.map((p) => p.high)) + 1]);
-  }, [data.marketPrices]);
+    const highs = combinedData.map((d) => d.high);
+    const indexPrices = combinedData.map((d) => d.price);
+    const max = Math.max(...highs, ...indexPrices);
+    const maxWithBuffer = Math.floor(max * 1.1 + 1);
+    setYAxisDomain([0, maxWithBuffer]);
+  }, [combinedData]);
 
   const formatYAxisTick = (value: number) => {
     return value.toLocaleString(undefined, {
@@ -254,7 +270,7 @@ const CandlestickChart: React.FC<Props> = ({ data, activeWindow }) => {
           {value
             ? `${value.toLocaleString()}`
             : formatAmount(Number(currPrice))}{' '}
-          Ggas/wstETH
+          {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
         </Text>
         <Text fontSize="sm" color="gray.500">
           {' '}
