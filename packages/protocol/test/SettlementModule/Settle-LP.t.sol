@@ -36,8 +36,7 @@ contract SettleLPTest is TestTrade {
     int24 constant MAX_TICK = 29800;
     uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
     uint256 constant settlementPrice = 10 ether;
-    uint160 constant settlementPriceSqrt =
-        250541448375047929189414038447079817216;
+    uint160 constant settlementPriceSqrt = 250541448375047946302209916928;
 
     function setUp() public {
         collateralAsset = IMintableToken(

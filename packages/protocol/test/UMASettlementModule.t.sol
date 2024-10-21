@@ -29,6 +29,9 @@ contract UmaSettleMarket is TestEpoch {
     uint160 minPriceSqrtX96 = 176318465955203702497835220992;
     uint160 maxPriceSqrtX96 = 351516737644262680948788690944;
 
+    uint160 minPriceSqrtX96MinusOne = 157515395125078639904557105152;
+    uint160 maxPriceSqrtX96PlusOne = 363781735724983009021857366016;
+
     function setUp() public {
         bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
         optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
@@ -108,7 +111,7 @@ contract UmaSettleMarket is TestEpoch {
         );
         bytes32 assertionId = foil.submitSettlementPrice(
             epochId,
-            maxPriceSqrtX96 + uint160(1)
+            maxPriceSqrtX96PlusOne
         );
         vm.stopPrank();
 
@@ -138,7 +141,7 @@ contract UmaSettleMarket is TestEpoch {
         );
         bytes32 assertionId = foil.submitSettlementPrice(
             epochId,
-            minPriceSqrtX96 - uint160(1)
+            minPriceSqrtX96MinusOne
         );
         vm.stopPrank();
 
@@ -163,7 +166,7 @@ contract UmaSettleMarket is TestEpoch {
             epochParams.bondAmount
         );
         vm.expectRevert("Market epoch activity is still allowed");
-        foil.submitSettlementPrice(epochId, minPriceSqrtX96 - uint160(1));
+        foil.submitSettlementPrice(epochId, minPriceSqrtX96MinusOne);
         vm.stopPrank();
     }
 
