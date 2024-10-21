@@ -21,7 +21,7 @@ library Epoch {
     using SafeCastU256 for uint256;
 
     struct Settlement {
-        uint160 settlementPriceD18;
+        uint160 settlementPriceSqrtX96;
         uint256 submissionTime;
         bool disputed;
     }
