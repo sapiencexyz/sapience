@@ -235,7 +235,7 @@ export const createOrUpdateMarketFromContract = async (
   updatedMarket.chainId = chainId;
   updatedMarket.owner = marketReadResult[0];
   updatedMarket.collateralAsset = marketReadResult[1];
-  const epochParamsRaw = marketReadResult[2];
+  const epochParamsRaw = marketReadResult[4];
   const marketEpochParams: EpochParams = {
     ...epochParamsRaw,
     assertionLiveness: epochParamsRaw.assertionLiveness.toString(),

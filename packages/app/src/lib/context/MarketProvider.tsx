@@ -228,7 +228,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
         'marketViewFunctionResult data: ',
         marketViewFunctionResult.data
       );
-      const epochParams: EpochParams = marketViewFunctionResult.data[2];
+      const epochParams: EpochParams = marketViewFunctionResult.data[4];
       setState((currentState) => ({
         ...currentState,
         owner: marketViewFunctionResult?.data[0],

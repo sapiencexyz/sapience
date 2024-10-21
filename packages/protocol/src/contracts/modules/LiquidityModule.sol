@@ -37,6 +37,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         ERC721Storage._checkOnERC721Received(address(this), msg.sender, id, "");
         ERC721Storage._mint(msg.sender, id);
 
+        Market.Data storage market = Market.load();
         Epoch.Data storage epoch = Epoch.loadValid(params.epochId);
         epoch.validateLpRequirements(params.lowerTick, params.upperTick);
 
@@ -63,6 +64,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             );
 
         (collateralAmount, , ) = position.updateValidLp(
+            market,
             epoch,
             Position.UpdateLpParams({
                 uniswapNftId: uniswapNftId,
@@ -163,6 +165,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         uint256 loanAmount1;
 
         (collateralAmount, loanAmount0, loanAmount1) = position.updateValidLp(
+            market,
             epoch,
             Position.UpdateLpParams({
                 uniswapNftId: position.uniswapPositionId,
@@ -258,6 +261,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         uint256 loanAmount1;
 
         (collateralAmount, loanAmount0, loanAmount1) = position.updateValidLp(
+            market,
             epoch,
             Position.UpdateLpParams({
                 uniswapNftId: position.uniswapPositionId,
@@ -285,7 +289,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         );
     }
 
-    function getTokenAmounts(
+    function quoteLiquidityPositionTokens(
         uint256 epochId,
         uint256 depositedCollateralAmount,
         uint160 sqrtPriceX96,
@@ -341,6 +345,29 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         );
     }
 
+    function depositCollateral(
+        uint256 positionId,
+        uint256 collateralAmount
+    ) external override {
+        if (!Market.load().isFeeCollector(msg.sender)) {
+            revert Errors.OnlyFeeCollector();
+        }
+
+        Position.Data storage position = Position.loadValid(positionId);
+        position.validateLp();
+        // add to the collateral instead of updating
+        position.updateCollateral(
+            position.depositedCollateralAmount + collateralAmount
+        );
+
+        emit CollateralDeposited(
+            msg.sender,
+            position.epochId,
+            position.id,
+            position.depositedCollateralAmount
+        );
+    }
+
     function _closeLiquidityPosition(
         Market.Data storage market,
         Position.Data storage position
@@ -370,7 +397,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         );
         position.uniswapPositionId = 0;
 
-        // due to rounding on the uniswap side, 1 wei is left over on loan amount when opening closing position
+        // due to rounding on the uniswap side, 1 wei is left over on loan amount when opening & immediately closing position
         // it seems like it's always 1 wei lower than original added amount so adding it to collected amount to make sure we don't have any rounding error
         collectedAmount0 += 1;
         collectedAmount1 += 1;

@@ -2,6 +2,7 @@
 pragma solidity >=0.8.25 <0.9.0;
 
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import "../external/FeeCollectorNft.sol";
 import "../interfaces/IConfigurationModule.sol";
 import "../storage/Market.sol";
 import "../storage/Epoch.sol";
@@ -33,21 +34,34 @@ contract ConfigurationModule is
     function initializeMarket(
         address initialOwner,
         address collateralAsset,
+        address[] calldata feeCollectors,
         address callbackRecipient,
         IFoilStructs.EpochParams memory epochParams
     ) external override nonReentrant {
         if (msg.sender != marketInitializer) {
             revert Errors.OnlyInitializer(msg.sender, marketInitializer);
         }
+
+        address feeCollectorNFT;
+        if(feeCollectors.length > 0) {
+            feeCollectorNFT = address(new FeeCollectorNft("FeeCollectorNFT", "FCNFT"));
+            for (uint256 i = 0; i < feeCollectors.length; i++) {
+                address feeCollector = feeCollectors[i];
+                FeeCollectorNft(feeCollectorNFT).mint(feeCollector);
+            }
+        }
+
         Market.createValid(
             initialOwner,
             collateralAsset,
+            feeCollectorNFT,
             callbackRecipient,
             epochParams
         );
         emit MarketInitialized(
             initialOwner,
             collateralAsset,
+            feeCollectorNFT,
             callbackRecipient,
             epochParams
         );

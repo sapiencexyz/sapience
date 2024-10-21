@@ -11,12 +11,14 @@ import {DecimalMath} from "@synthetixio/core-contracts/contracts/utils/DecimalMa
 import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
 import {ERC721Storage} from "./ERC721Storage.sol";
 import {Errors} from "./Errors.sol";
+import {Market} from "./Market.sol";
 
 library Position {
     using SafeCastU256 for uint256;
     using SafeCastI256 for int256;
     using DecimalMath for uint256;
     using SafeERC20 for IERC20;
+    using Market for Market.Data;
 
     using Epoch for Epoch.Data;
 
@@ -120,6 +122,12 @@ library Position {
             revert Errors.InvalidPositionKind();
         }
 
+        validateLp(self);
+    }
+
+    // called from depositCollateral, that way the check for self.kind is not needed as
+    // both trader and lps can deposit collateral as long as they are the owner of fee collector NFT
+    function validateLp(Data storage self) internal view {
         if (self.isSettled) {
             revert Errors.PositionAlreadySettled(self.id);
         }
@@ -143,6 +151,7 @@ library Position {
 
     function updateValidLp(
         Data storage self,
+        Market.Data storage market,
         Epoch.Data storage epoch,
         UpdateLpParams memory params
     )
@@ -162,15 +171,18 @@ library Position {
         loanAmount0 = self.borrowedVGas;
         loanAmount1 = self.borrowedVEth;
 
-        requiredCollateral = epoch.requiredCollateralForLiquidity(
-            params.liquidity,
-            loanAmount0,
-            loanAmount1,
-            params.tokensOwed0,
-            params.tokensOwed1,
-            TickMath.getSqrtRatioAtTick(params.lowerTick),
-            TickMath.getSqrtRatioAtTick(params.upperTick)
-        );
+        bool isFeeCollector = market.isFeeCollector(msg.sender);
+        requiredCollateral = isFeeCollector
+            ? 0
+            : epoch.requiredCollateralForLiquidity(
+                params.liquidity,
+                loanAmount0,
+                loanAmount1,
+                params.tokensOwed0,
+                params.tokensOwed1,
+                TickMath.getSqrtRatioAtTick(params.lowerTick),
+                TickMath.getSqrtRatioAtTick(params.upperTick)
+            );
 
         uint256 newCollateral = self.depositedCollateralAmount +
             params.additionalCollateral;

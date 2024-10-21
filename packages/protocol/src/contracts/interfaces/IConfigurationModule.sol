@@ -7,6 +7,7 @@ interface IConfigurationModule {
     event MarketInitialized(
         address initialOwner,
         address collateralAsset,
+        address feeCollectorNFT,
         address callbackRecipient,
         IFoilStructs.EpochParams epochParams
     );
@@ -40,6 +41,7 @@ interface IConfigurationModule {
     function initializeMarket(
         address owner,
         address collateralAsset,
+        address[] calldata feeCollectors,
         address callbackRecipient,
         IFoilStructs.EpochParams memory epochParams
     ) external;

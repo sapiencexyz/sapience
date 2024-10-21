@@ -28,13 +28,39 @@ contract TestEpoch is TestUser {
         int24 maxTick,
         uint160 startingSqrtPriceX96
     ) public returns (IFoil, address) {
+        address[] memory feeCollectors = new address[](0);
         return
-            createEpochWithCallback(
+            createEpochWithFeeCollectors(
                 minTick,
                 maxTick,
                 startingSqrtPriceX96,
-                address(0)
+                feeCollectors
             );
+    }
+
+    function createEpochWithFeeCollectors(
+        int24 minTick,
+        int24 maxTick,
+        uint160 startingSqrtPriceX96,
+        address[] memory feeCollectors
+    ) public returns (IFoil, address) {
+        address owner = initializeMarket(
+            minTick,
+            maxTick,
+            feeCollectors,
+            address(0)
+        );
+        IFoil foil = IFoil(vm.getAddress("Foil"));
+
+        vm.prank(owner);
+        foil.createEpoch(
+            block.timestamp,
+            block.timestamp + 30 days,
+            startingSqrtPriceX96,
+            CREATE_EPOCH_SALT
+        );
+
+        return (foil, owner);
     }
 
     function createEpochWithCallback(
@@ -43,7 +69,13 @@ contract TestEpoch is TestUser {
         uint160 startingSqrtPriceX96,
         address callbackRecipient
     ) public returns (IFoil, address) {
-        address owner = initializeMarket(minTick, maxTick, callbackRecipient);
+        address[] memory feeCollectors = new address[](0);
+        address owner = initializeMarket(
+            minTick,
+            maxTick,
+            feeCollectors,
+            callbackRecipient
+        );
         IFoil foil = IFoil(vm.getAddress("Foil"));
 
         vm.prank(owner);
@@ -60,6 +92,7 @@ contract TestEpoch is TestUser {
     function initializeMarket(
         int24 minTick,
         int24 maxTick,
+        address[] memory feeCollectors,
         address callbackRecipient
     ) public returns (address) {
         address owner = createUser("Owner", 10_000_000 ether);
@@ -67,6 +100,7 @@ contract TestEpoch is TestUser {
         IFoil(vm.getAddress("Foil")).initializeMarket(
             owner,
             vm.getAddress("CollateralAsset.Token"),
+            feeCollectors,
             callbackRecipient,
             IFoilStructs.EpochParams({
                 baseAssetMinPriceTick: minTick,
@@ -129,13 +163,14 @@ contract TestEpoch is TestUser {
         uint160 sqrtPriceAX96 = uint160(TickMath.getSqrtRatioAtTick(lowerTick));
         uint160 sqrtPriceBX96 = uint160(TickMath.getSqrtRatioAtTick(upperTick));
 
-        (loanAmount0, loanAmount1, liquidity) = foil.getTokenAmounts(
-            epochId,
-            collateralAmount,
-            sqrtPriceX96,
-            sqrtPriceAX96,
-            sqrtPriceBX96
-        );
+        (loanAmount0, loanAmount1, liquidity) = foil
+            .quoteLiquidityPositionTokens(
+                epochId,
+                collateralAmount,
+                sqrtPriceX96,
+                sqrtPriceAX96,
+                sqrtPriceBX96
+            );
     }
 
     function getCurrentPositionTokenAmounts(
@@ -213,12 +248,12 @@ contract TestEpoch is TestUser {
         uint256 uniswapPositionId
     ) internal view returns (uint256 owed0, uint256 owed1) {
         uniswapPositionId;
-        console2.log("IN GETOWEDTOKENS");
         IFoil foil = IFoil(vm.getAddress("Foil"));
 
         OwedTokensData memory data;
 
-        (, , IFoilStructs.EpochParams memory epochParams) = foil.getMarket();
+        (, , , , IFoilStructs.EpochParams memory epochParams) = foil
+            .getMarket();
 
         // Fetch the current fee growth global values
         data.feeGrowthGlobal0X128 = IUniswapV3Pool(data.pool)

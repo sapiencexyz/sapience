@@ -82,6 +82,7 @@ from="<%= settings.owner %>"
 args=[
   "<%= settings.owner %>",
   "<%= imports.CollateralAsset.contracts.Token.address %>",
+  [],
   "<%= settings.callbackRecipient %>",
   { baseAssetMinPriceTick = "<%= settings.baseAssetMinPriceTick %>", baseAssetMaxPriceTick = "<%= settings.baseAssetMaxPriceTick %>", feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.BondCurrency.contracts.Token.address %>", bondAmount= "<%= settings.bondAmount %>", priceUnit= "<%= settings.priceUnit %>",  uniswapPositionManager =  "<%= imports.Uniswap.contracts.NonfungiblePositionManager.address %>", uniswapSwapRouter = "<%= imports.Uniswap.contracts.SwapRouter.address %>", uniswapQuoter = "<%= imports.Uniswap.contracts.QuoterV2.address %>", optimisticOracleV3 = "<%= imports.UMA.contracts.OptimisticOracleV3.address %>" }
 ]

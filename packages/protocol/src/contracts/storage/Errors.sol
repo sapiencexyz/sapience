@@ -44,5 +44,6 @@ library Errors {
         uint160 maxPrice
     );
     error TransactionExpired(uint256 deadline, uint256 blockTime);
+    error OnlyFeeCollector();
     error InvalidCallbackResolutionInterface(address callbackRecipient);
 }

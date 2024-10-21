@@ -11,6 +11,8 @@ interface IViewsModule {
         returns (
             address owner,
             address collateralAsset,
+            address feeCollectorNFT,
+            address callbackRecipient,
             IFoilStructs.EpochParams memory epochParams
         );
 
