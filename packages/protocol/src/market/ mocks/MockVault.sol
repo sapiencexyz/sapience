@@ -5,12 +5,12 @@ import "../interfaces/mocks/IMockVault.sol";
 import {IERC165} from "@synthetixio/core-contracts/contracts/interfaces/IERC165.sol";
 
 contract MockVault is IMockVault {
-    uint256 public lastSettlementPrice;
+    uint160 public lastSettlementPrice;
 
     function resolutionCallback(
-        uint256 previousSettlementPriceD18
+        uint160 previousResolutionSqrtPriceX96
     ) external override {
-        lastSettlementPrice = previousSettlementPriceD18;
+        lastSettlementPrice = previousResolutionSqrtPriceX96;
     }
 
     function getLastSettlementPrice() external view override returns (uint256) {
