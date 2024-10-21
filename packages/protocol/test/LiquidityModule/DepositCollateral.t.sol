@@ -44,8 +44,7 @@ contract DepositCollateralTest is TestTrade {
             LOWER_TICK,
             UPPER_TICK,
             startingSqrtPriceX96,
-            feeCollectors,
-            address(0)
+            feeCollectors
         );
 
         (epochId, , , , , , , , , , ) = foil.getLatestEpoch();

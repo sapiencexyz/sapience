@@ -29,14 +29,12 @@ contract TestEpoch is TestUser {
         uint160 startingSqrtPriceX96
     ) public returns (IFoil, address) {
         address[] memory feeCollectors = new address[](0);
-        address callbackRecipient = address(0);
         return
             createEpochWithFeeCollectors(
                 minTick,
                 maxTick,
                 startingSqrtPriceX96,
-                feeCollectors,
-                callbackRecipient
+                feeCollectors
             );
     }
 
@@ -44,17 +42,25 @@ contract TestEpoch is TestUser {
         int24 minTick,
         int24 maxTick,
         uint160 startingSqrtPriceX96,
-        address[] memory feeCollectors,
-        address callbackRecipient
+        address[] memory feeCollectors
     ) public returns (IFoil, address) {
-        initializeMarket(minTick, maxTick, feeCollectors, callbackRecipient);
-        return
-            createEpochWithCallback(
-                minTick,
-                maxTick,
-                startingSqrtPriceX96,
-                address(0)
-            );
+        address owner = initializeMarket(
+            minTick,
+            maxTick,
+            feeCollectors,
+            address(0)
+        );
+        IFoil foil = IFoil(vm.getAddress("Foil"));
+
+        vm.prank(owner);
+        foil.createEpoch(
+            block.timestamp,
+            block.timestamp + 30 days,
+            startingSqrtPriceX96,
+            CREATE_EPOCH_SALT
+        );
+
+        return (foil, owner);
     }
 
     function createEpochWithCallback(
