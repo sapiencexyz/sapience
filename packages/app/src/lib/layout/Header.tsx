@@ -59,10 +59,10 @@ const NavPopover = ({
   };
 
   useEffect(() => {
-    if (withEpochs && publicMarkets.length > 0) {
+    if (publicMarkets.length > 0 && !hoveredMarket) {
       setHoveredMarket(publicMarkets[0].id);
     }
-  }, [withEpochs, publicMarkets]);
+  }, [hoveredMarket, publicMarkets]);
 
   const handleLinkClick = () => {
     onClose();
@@ -77,16 +77,19 @@ const NavPopover = ({
       </PopoverTrigger>
       <PopoverContent maxW={withEpochs ? '400px' : '220px'}>
         <PopoverArrow />
-        <PopoverBody py={3}>
+        <PopoverBody
+          py={3}
+          onMouseLeave={() => {
+            onClose();
+            setHoveredMarket(publicMarkets[0].id);
+          }}
+        >
           <Flex>
             <Box flex={1}>
               {publicMarkets.map((market) => (
                 <Box
                   key={market.id}
-                  onMouseEnter={() => withEpochs && setHoveredMarket(market.id)}
-                  onMouseLeave={() =>
-                    withEpochs && setHoveredMarket(publicMarkets[0].id)
-                  }
+                  onMouseEnter={() => setHoveredMarket(market.id)}
                 >
                   {market.currentEpoch && (
                     <ChakraLink
@@ -98,9 +101,7 @@ const NavPopover = ({
                       px={3}
                       py={1.5}
                       bg={
-                        withEpochs && hoveredMarket === market.id
-                          ? 'gray.100'
-                          : 'transparent'
+                        hoveredMarket === market.id ? 'gray.100' : 'transparent'
                       }
                       _hover={{ bg: 'gray.100' }}
                       href={getMarketHref(path, market, withEpochs)}
