@@ -15,6 +15,8 @@ import "../market/interfaces/IFoilStructs.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/IERC7540.sol";
 
+import "forge-std/console2.sol";
+
 contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
     using SetUtil for SetUtil.UintSet;
@@ -85,6 +87,27 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
         _initializeEpoch(_initialStartTime, _initialSqrtPriceX96);
         initialized = true;
+    }
+
+    function submitMarketSettlementPrice(
+        uint256 epochId,
+        uint160 price
+    ) external returns (bytes32 assertionId) {
+        (, , , , IFoilStructs.EpochParams memory epochParams) = market
+            .getMarket();
+        IERC20 bondCurrency = IERC20(epochParams.bondCurrency);
+
+        bondCurrency.safeTransferFrom(
+            msg.sender,
+            address(this),
+            epochParams.bondAmount
+        );
+
+        console2.log("AAA 1");
+        bondCurrency.approve(address(market), epochParams.bondAmount);
+        console2.log("AAA 2");
+
+        return market.submitSettlementPrice(epochId, price);
     }
 
     function resolutionCallback(

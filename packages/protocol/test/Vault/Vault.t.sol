@@ -32,7 +32,6 @@ contract VaultTest is TestTrade {
     IFoil foil;
     IVault vault;
     IMintableToken collateralAsset;
-    IMintableToken bondCurrency;
 
     uint160 initialSqrtPriceX96 = 146497135921788803112962621440; // 3.419
     uint256 initialStartTime;
@@ -87,13 +86,31 @@ contract VaultTest is TestTrade {
         assertEq(endTime - startTime, DEFAULT_DURATION, "Epoch duration");
     }
 
+    function test_settleEpochCreatesNewEpoch() public {
+        uint256 epochId;
+        uint256 startTime;
+        uint256 endTime;
+
+        initializeFirstEpoch(initialSqrtPriceX96, initialStartTime);
+
+        // New epoch created
+        (epochId, startTime, endTime, , , , , , , , ) = foil.getLatestEpoch();
+
+        // Settle
+        vm.warp(endTime + 1);
+        settleEpochFromVault(epochId, initialSqrtPriceX96, owner);
+
+        // New epoch created
+        (epochId, startTime, endTime, , , , , , , , ) = foil.getLatestEpoch();
+    }
+
     /////////////
     // Helpers //
     /////////////
     function initializeVault(
         address[] memory feeCollectors
     )
-        public
+        internal
         returns (
             IFoil foilContract,
             IVault vaultContract,
@@ -141,12 +158,33 @@ contract VaultTest is TestTrade {
     function initializeFirstEpoch(
         uint160 _initialSqrtPriceX96,
         uint256 _initialStartTime
-    ) public {
+    ) internal {
         vm.startPrank(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266);
 
         // Initialize Epoch (by owner, kicks the ball with the first epoch)
         vault.initializeFirstEpoch(_initialStartTime, _initialSqrtPriceX96);
 
+        vm.stopPrank();
+    }
+
+    function settleEpochFromVault(
+        uint256 epochId,
+        uint160 price,
+        address submitter
+    ) internal {
+        IMintableToken bondCurrency = IMintableToken(
+            vm.getAddress("BondCurrency.Token")
+        );
+        bondCurrency.mint(BOND_AMOUNT * 2, submitter);
+        vm.startPrank(submitter);
+
+        bondCurrency.approve(address(vault), BOND_AMOUNT);
+        bytes32 assertionId = vault.submitMarketSettlementPrice(epochId, price);
+        vm.stopPrank();
+
+        address optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
+        vm.startPrank(optimisticOracleV3);
+        foil.assertionResolvedCallback(assertionId, true);
         vm.stopPrank();
     }
 }
