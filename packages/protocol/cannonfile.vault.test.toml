@@ -98,6 +98,8 @@ func="initializeMarket"
 args=[
   "<%= Vault.address %>",
   "<%= CollateralAsset.Token.address %>",
+  [],
+  "<%= Vault.address %>",
   { baseAssetMinPriceTick = "<%= settings.baseAssetMinPriceTick %>", baseAssetMaxPriceTick = "<%= settings.baseAssetMaxPriceTick %>", feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= BondCurrency.Token.address %>", bondAmount = "<%= settings.bondAmount %>", priceUnit = "<%= settings.priceUnit %>", uniswapPositionManager = "<%= Uniswap.NonfungiblePositionManager.address %>", uniswapSwapRouter = "<%= Uniswap.SwapRouter.address %>", uniswapQuoter = "<%= Uniswap.QuoterV2.address %>", optimisticOracleV3 = "<%= UMA.OptimisticOracleV3.address %>" }
 ]
 depends=["router.Foil", "deploy.Vault"]
