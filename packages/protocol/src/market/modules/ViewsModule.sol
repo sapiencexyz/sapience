@@ -196,8 +196,10 @@ contract ViewsModule is IViewsModule {
         // Calculate the net value of virtual GAS holdings in ETH terms
         int256 netVGASValue = netVGAS.mulDecimal(int256(gasPriceD18));
 
-        // Total net value in ETH terms (profit or loss)
-        int256 totalNetValue = netVETH + netVGASValue;
+        // Total net value in ETH terms
+        uint256 totalNetValue = (netVETH + netVGASValue) > 0
+            ? uint256(netVETH + netVGASValue)
+            : 0;
 
         // Get the deposited collateral amount as an integer
         int256 depositedCollateral = position.depositedCollateralAmount.toInt();

@@ -9,4 +9,9 @@ interface IVault is IERC7540, IResolutionCallback {
         uint256 _initialStartTime,
         uint160 _initialSqrtPriceX96
     ) external;
+
+    function submitMarketSettlementPrice(
+        uint256 epochId,
+        uint160 price
+    ) external returns (bytes32 assertionId);
 }
