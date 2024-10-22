@@ -32,11 +32,17 @@ contract UmaSettleMarket is TestEpoch {
     uint160 minPriceSqrtX96MinusOne = 157515395125078639904557105152;
     uint160 maxPriceSqrtX96PlusOne = 363781735724983009021857366016;
 
+    uint160 SQRT_PRICE_10Eth = 250541448375047931186413801569;
+    uint160 SQRT_PRICE_11Eth = 262770087889115504578498920448;
+
+    uint256 COMPUTED_11EthPrice = 10999999999999999740;
+    uint256 COMPUTED_10EthPrice = 9999999999999999999;
+
     function setUp() public {
         bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
         optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
 
-        uint160 startingSqrtPriceX96 = 250541448375047931186413801569; // 10
+        uint160 startingSqrtPriceX96 = SQRT_PRICE_10Eth; // 10
         (foil, ) = createEpoch(
             16000,
             29800,
@@ -65,7 +71,7 @@ contract UmaSettleMarket is TestEpoch {
     function test_only_owner_settle() public {
         vm.warp(endTime + 1);
         vm.expectRevert("Only owner can call this function");
-        foil.submitSettlementPrice(epochId, 11 ether);
+        foil.submitSettlementPrice(epochId, SQRT_PRICE_11Eth);
     }
 
     function test_settle_in_range() public {
@@ -79,7 +85,10 @@ contract UmaSettleMarket is TestEpoch {
             address(foil),
             epochParams.bondAmount
         );
-        bytes32 assertionId = foil.submitSettlementPrice(epochId, 10 ether);
+        bytes32 assertionId = foil.submitSettlementPrice(
+            epochId,
+            SQRT_PRICE_10Eth
+        );
         vm.stopPrank();
 
         (, , , , , , , , settled, settlementPriceD18, ) = foil.getLatestEpoch();
@@ -92,7 +101,7 @@ contract UmaSettleMarket is TestEpoch {
         (, , , , , , , , settled, settlementPriceD18, ) = foil.getLatestEpoch();
         assertTrue(settled, "The epoch is settled");
         assertTrue(
-            settlementPriceD18 == 10 ether,
+            settlementPriceD18 == COMPUTED_10EthPrice,
             "The settlement price is as submitted"
         );
     }
@@ -178,7 +187,10 @@ contract UmaSettleMarket is TestEpoch {
             address(foil),
             epochParams.bondAmount
         );
-        bytes32 assertionId = foil.submitSettlementPrice(epochId, 10 ether);
+        bytes32 assertionId = foil.submitSettlementPrice(
+            epochId,
+            SQRT_PRICE_10Eth
+        );
         vm.stopPrank();
 
         vm.startPrank(optimisticOracleV3);
@@ -191,7 +203,7 @@ contract UmaSettleMarket is TestEpoch {
             epochParams.bondAmount
         );
         vm.expectRevert("Market epoch already settled");
-        foil.submitSettlementPrice(epochId, 10 ether);
+        foil.submitSettlementPrice(epochId, SQRT_PRICE_10Eth);
         vm.stopPrank();
     }
 
@@ -203,7 +215,10 @@ contract UmaSettleMarket is TestEpoch {
             address(foil),
             epochParams.bondAmount
         );
-        bytes32 assertionId = foil.submitSettlementPrice(epochId, 10 ether);
+        bytes32 assertionId = foil.submitSettlementPrice(
+            epochId,
+            SQRT_PRICE_10Eth
+        );
         vm.stopPrank();
 
         vm.startPrank(optimisticOracleV3);
@@ -219,7 +234,10 @@ contract UmaSettleMarket is TestEpoch {
             address(foil),
             epochParams.bondAmount
         );
-        bytes32 assertionId2 = foil.submitSettlementPrice(epochId, 11 ether);
+        bytes32 assertionId2 = foil.submitSettlementPrice(
+            epochId,
+            SQRT_PRICE_11Eth
+        );
         vm.stopPrank();
 
         vm.startPrank(optimisticOracleV3);
@@ -233,7 +251,7 @@ contract UmaSettleMarket is TestEpoch {
         (, , , , , , , , , uint256 settlementPriceD18, ) = foil
             .getLatestEpoch();
         assertTrue(
-            settlementPriceD18 == 11 ether,
+            settlementPriceD18 == COMPUTED_11EthPrice,
             "The settlement price is the undisputed value"
         );
     }
