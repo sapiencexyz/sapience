@@ -60,6 +60,11 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     mapping(address => uint256) userClaimableDeposits; // notice userPending is currentFutureEpoch's userNonExecuted
     mapping(address => uint256) userClaimableWithrwawals; // notice userPending is currentFutureEpoch's userNonExecuted
 
+    uint160 initialSqrtPriceX96;
+    uint256 initialStartTime;
+    address immutable vaultInitializer;
+    bool initialized;
+
     constructor(
         string memory _name,
         string memory _symbol,
@@ -73,7 +78,16 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         collateralAsset = IERC20(_collateralAssetAddress);
         duration = _duration;
 
-        _initializeEpoch(_initialStartTime, _initialSqrtPriceX96);
+        initialSqrtPriceX96 = _initialSqrtPriceX96;
+        initialStartTime = _initialStartTime;
+        vaultInitializer = msg.sender;
+    }
+
+    function initializeEpoch() external onlyInitializer {
+        require(!initialized, "Already Initialized");
+
+        _initializeEpoch(initialStartTime, initialSqrtPriceX96);
+        initialized = true;
     }
 
     function resolutionCallback(
@@ -610,6 +624,14 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             sharesAssetValue,
             sharesAmount
         );
+    }
+
+    modifier onlyInitializer() {
+        require(
+            msg.sender == vaultInitializer,
+            "Only vaultInitializer can call this function"
+        );
+        _;
     }
 
     modifier onlyMarket() {
