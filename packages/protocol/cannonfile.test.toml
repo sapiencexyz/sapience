@@ -2,6 +2,14 @@ name="foil-test"
 version="<%= package.version %>"
 privateSourceCode=true
 
+[var.settings]
+owner = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+# Vault Settings
+vaultName="Foil Vault"
+vaultSymbol = "FVLT"
+duration = "2419200" # 28 days in seconds
+depends = []
+
 [clone.Uniswap]
 source="uniswap:3.0.1"
 target="foil@uniswap"
@@ -67,3 +75,9 @@ contracts=[
   "SettlementModule"
 ]
 highlight=true
+
+[deploy.Vault]
+artifact="Vault"
+from="<%= settings.owner %>"
+args=[ "<%= settings.vaultName %>", "<%= settings.vaultSymbol %>", "<%= Foil.address %>", "<%= CollateralAsset.Token.address %>", "<%= settings.duration %>"]
+depends = ['router.Foil', 'clone.CollateralAsset', 'var.settings']

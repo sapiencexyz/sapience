@@ -28,12 +28,12 @@ contract VaultTest is TestTrade {
     using SafeCastI256 for int256;
     using SafeCastU256 for uint256;
 
+    address owner;
     IFoil foil;
     IVault vault;
     IMintableToken collateralAsset;
     IMintableToken bondCurrency;
 
-    // address owner;
     // address lp1;
     // address trader1;
     // uint256 epochId;
@@ -61,11 +61,9 @@ contract VaultTest is TestTrade {
     // IFoilStructs.EpochParams epochParams;
 
     function setUp() public {
-        collateralAsset = IMintableToken(
-            vm.getAddress("CollateralAsset.Token")
-        );
-        foil = IFoil(vm.getAddress("Foil"));
-        vault = IVault(vm.getAddress("Vault"));
+        address[] memory feeCollectors = new address[](0);
+
+        (foil, vault, collateralAsset, owner) = initializeVault(feeCollectors);
 
         // uint160 startingSqrtPriceX96 = INITIAL_PRICE_SQRT;
 
@@ -110,6 +108,63 @@ contract VaultTest is TestTrade {
         // ) = foil.getLatestEpoch();
 
         // bondCurrency.mint(epochParams.bondAmount * 2, owner);
+    }
+
+    function initializeVault(
+        address[] memory feeCollectors
+    )
+        public
+        returns (
+            IFoil foilContract,
+            IVault vaultContract,
+            IMintableToken collateralAssetContract,
+            address ownerUser
+        )
+    {
+        ownerUser = createUser("Owner", 10_000_000 ether);
+        foilContract = IFoil(vm.getAddress("Foil"));
+        vaultContract = IVault(vm.getAddress("Vault"));
+        collateralAssetContract = IMintableToken(
+            vm.getAddress("CollateralAsset.Token")
+        );
+
+        // params (should move from initializeMarket to createEpoch)
+        int24 minTick = 16000;
+        int24 maxTick = 30000;
+
+        vm.startPrank(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266);
+        // Initialize Market (by owner, links fail market with vault)
+        foilContract.initializeMarket(
+            address(vaultContract),
+            address(collateralAssetContract),
+            feeCollectors,
+            address(vaultContract),
+            IFoilStructs.EpochParams({
+                baseAssetMinPriceTick: minTick,
+                baseAssetMaxPriceTick: maxTick,
+                feeRate: 10000,
+                assertionLiveness: 21600,
+                bondCurrency: vm.getAddress("BondCurrency.Token"),
+                bondAmount: BOND_AMOUNT,
+                priceUnit: "wstGwei/gas",
+                uniswapPositionManager: vm.getAddress(
+                    "Uniswap.NonfungiblePositionManager"
+                ),
+                uniswapSwapRouter: vm.getAddress("Uniswap.SwapRouter"),
+                uniswapQuoter: vm.getAddress("Uniswap.QuoterV2"),
+                optimisticOracleV3: vm.getAddress("UMA.OptimisticOracleV3")
+            })
+        );
+
+        // Initialize Epoch (by owner, kicks the ball with the first epoch)
+        uint160 initialSqrtPriceX96 = 146497135921788803112962621440; // 3.419
+        uint256 initialStartTime = block.timestamp + 60;
+        vaultContract.initializeFirstEpoch(
+            initialStartTime,
+            initialSqrtPriceX96
+        );
+
+        vm.stopPrank();
     }
 
     function testSomethingFail() public {
