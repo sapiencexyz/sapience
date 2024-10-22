@@ -34,82 +34,62 @@ contract VaultTest is TestTrade {
     IMintableToken collateralAsset;
     IMintableToken bondCurrency;
 
-    // address lp1;
-    // address trader1;
-    // uint256 epochId;
-    // address pool;
-    // address tokenA;
-    // address tokenB;
-    // IUniswapV3Pool uniCastedPool;
-    // uint256 feeRate;
-    // uint256 COLLATERAL_FOR_ORDERS = 100 ether;
-    // uint256 INITIAL_PRICE_D18 = 5 ether;
-    // uint256 INITIAL_PRICE_PLUS_FEE_D18 = 5.05 ether;
-    // uint256 INITIAL_PRICE_LESS_FEE_D18 = 4.95 ether;
-    // uint160 INITIAL_PRICE_SQRT = 177159557114295718903631839232; // 5.0
-    // int24 EPOCH_LOWER_TICK = 6800; // 2.0
-    // int24 EPOCH_UPPER_TICK = 27000; // 15.0
-    // int24 LP_LOWER_TICK = 15800; //3.31
-    // int24 LP_UPPER_TICK = 16200; //3.52
-    // uint256 SETTLEMENT_PRICE_D18 = 10 ether;
-    // uint160 SETTLEMENT_PRICE_SQRT_D18 = 250541448375047946302209916928; // 10.0
+    uint160 initialSqrtPriceX96 = 146497135921788803112962621440; // 3.419
+    uint256 initialStartTime;
 
-    // address optimisticOracleV3;
-    // uint256 endTime;
-    // uint256 minPriceD18;
-    // uint256 maxPriceD18;
-    // IFoilStructs.EpochParams epochParams;
+    uint256 DEFAULT_DURATION = 2419200; // 28 days in seconds
 
     function setUp() public {
         address[] memory feeCollectors = new address[](0);
 
         (foil, vault, collateralAsset, owner) = initializeVault(feeCollectors);
 
-        // uint160 startingSqrtPriceX96 = INITIAL_PRICE_SQRT;
-
-        // (foil, ) = createEpoch(5200, 28200, startingSqrtPriceX96); // 1.709 to 17.09 (1.6819839204636384 to 16.774485460620674)
-
-        // lp1 = TestUser.createUser("LP1", 20_000_000 ether);
-        // trader1 = TestUser.createUser("Trader1", 20_000_000 ether);
-
-        // (epochId, , , pool, tokenA, tokenB, , , , , ) = foil.getLatestEpoch();
-
-        // uniCastedPool = IUniswapV3Pool(pool);
-        // feeRate = uint256(uniCastedPool.fee()) * 1e12;
-
-        // vm.startPrank(lp1);
-        // addLiquidity(
-        //     foil,
-        //     pool,
-        //     epochId,
-        //     COLLATERAL_FOR_ORDERS * 100_000,
-        //     LP_LOWER_TICK,
-        //     LP_UPPER_TICK
-        // ); // enough to keep price stable (no slippage)
-        // vm.stopPrank();
-
-        // // Settle the epoch
-        // bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
-        // optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
-
-        // (owner, , , , ) = foil.getMarket();
-        // (
-        //     epochId,
-        //     ,
-        //     endTime,
-        //     ,
-        //     ,
-        //     ,
-        //     minPriceD18,
-        //     maxPriceD18,
-        //     ,
-        //     ,
-        //     epochParams
-        // ) = foil.getLatestEpoch();
-
-        // bondCurrency.mint(epochParams.bondAmount * 2, owner);
+        initialStartTime = block.timestamp + 60;
     }
 
+    function test_revertsWhenInitializeNonOwner() public {
+        vm.expectRevert("Only vaultInitializer can call this function");
+        vault.initializeFirstEpoch(initialStartTime, initialSqrtPriceX96);
+    }
+
+    function test_revertsWhenInitializeFirstEpochAgain() public {
+        initializeFirstEpoch(initialSqrtPriceX96, initialStartTime);
+
+        vm.startPrank(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266);
+
+        vm.expectRevert("Already Initialized");
+        vault.initializeFirstEpoch(initialStartTime, initialSqrtPriceX96);
+
+        vm.stopPrank();
+    }
+
+    function test_revertsWhenResolutionCallbackNonMarket() public {
+        initializeFirstEpoch(initialSqrtPriceX96, initialStartTime);
+
+        vm.expectRevert("Only market can call this function");
+        vault.resolutionCallback(initialSqrtPriceX96);
+    }
+
+    function test_firstEpochInitialized() public {
+        uint256 startTime;
+        uint256 endTime;
+
+        // Verify no epochs were created before
+        vm.expectRevert(
+            abi.encodeWithSelector(Errors.NoEpochsCreated.selector)
+        );
+        foil.getLatestEpoch();
+
+        initializeFirstEpoch(initialSqrtPriceX96, initialStartTime);
+
+        // New epoch created
+        (, startTime, endTime, , , , , , , , ) = foil.getLatestEpoch();
+        assertEq(endTime - startTime, DEFAULT_DURATION, "Epoch duration");
+    }
+
+    /////////////
+    // Helpers //
+    /////////////
     function initializeVault(
         address[] memory feeCollectors
     )
@@ -155,25 +135,18 @@ contract VaultTest is TestTrade {
                 optimisticOracleV3: vm.getAddress("UMA.OptimisticOracleV3")
             })
         );
-
-        // Initialize Epoch (by owner, kicks the ball with the first epoch)
-        uint160 initialSqrtPriceX96 = 146497135921788803112962621440; // 3.419
-        uint256 initialStartTime = block.timestamp + 60;
-        vaultContract.initializeFirstEpoch(
-            initialStartTime,
-            initialSqrtPriceX96
-        );
-
         vm.stopPrank();
     }
 
-    function testSomethingFail() public {
-        // make it fail so that we have logs
-        assert(false);
-    }
+    function initializeFirstEpoch(
+        uint160 _initialSqrtPriceX96,
+        uint256 _initialStartTime
+    ) public {
+        vm.startPrank(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266);
 
-    function testSomethingSucceed() public {
-        // make it pass so that we have a green mark
-        assert(true);
+        // Initialize Epoch (by owner, kicks the ball with the first epoch)
+        vault.initializeFirstEpoch(_initialStartTime, _initialSqrtPriceX96);
+
+        vm.stopPrank();
     }
 }
