@@ -7,6 +7,7 @@
     "dev": "cannon build --keep-alive --anvil.port 8545 --write-deployments ./deployments/13370",
     "docgen": "forge doc",
     "test": "forge build --ast && cannon test cannonfile.test.toml --forge.vv",
+    "test-vault": "forge build --ast && cannon test cannonfile.vault.test.toml --forge.vv",
     "deploy:sepolia": "cannon build cannonfile.sepolia.toml --chain-id 11155111 --write-deployments ./deployments/11155111",
     "simulate-deploy:sepolia": "cannon build cannonfile.sepolia.toml --chain-id 11155111 --dry-run"
   },
