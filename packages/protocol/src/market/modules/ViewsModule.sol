@@ -141,11 +141,12 @@ contract ViewsModule is IViewsModule {
         return Trade.getReferencePrice(epochId);
     }
 
-
     /**
      * @inheritdoc IViewsModule
      */
-    function getPositionCollateralValue(uint256 positionId) external view override returns (uint256 collateralValue) {
+    function getPositionCollateralValue(
+        uint256 positionId
+    ) external view override returns (uint256 collateralValue) {
         // Load the position data and ensure it's valid
         Position.Data storage position = Position.loadValid(positionId);
 
@@ -167,7 +168,10 @@ contract ViewsModule is IViewsModule {
         // If the position is a Liquidity Provider (LP) position
         if (position.kind == IFoilStructs.PositionKind.Liquidity) {
             // Get the current amounts and fees owed from the Uniswap position manager
-            (uint256 amount0, uint256 amount1) = _getCurrentPositionTokenAmounts(position, epoch);
+            (
+                uint256 amount0,
+                uint256 amount1
+            ) = _getCurrentPositionTokenAmounts(position, epoch);
 
             // Add these amounts to the position's vGasAmount and vEthAmount
             uint256 totalVGAS = position.vGasAmount + amount0;
@@ -177,15 +181,21 @@ contract ViewsModule is IViewsModule {
             netVETH = int256(totalVETH) - int256(position.borrowedVEth);
         } else {
             // For trader positions, use the stored values
-            netVGAS = int256(position.vGasAmount) - int256(position.borrowedVGas);
-            netVETH = int256(position.vEthAmount) - int256(position.borrowedVEth);
+            netVGAS =
+                int256(position.vGasAmount) -
+                int256(position.borrowedVGas);
+            netVETH =
+                int256(position.vEthAmount) -
+                int256(position.borrowedVEth);
         }
 
         // Calculate the net value of virtual GAS holdings in ETH terms
         int256 netVGASValue = (netVGAS * int256(gasPriceD18)) / int256(1e18);
 
         // Total net value in ETH terms
-        uint256 totalNetValue = (netVETH + netVGASValue) > 0 ? uint256(netVETH + netVGASValue) : 0;
+        uint256 totalNetValue = (netVETH + netVGASValue) > 0
+            ? uint256(netVETH + netVGASValue)
+            : 0;
 
         // Get the deposited collateral amount as an integer
         uint256 depositedCollateral = position.depositedCollateralAmount;
@@ -201,7 +211,10 @@ contract ViewsModule is IViewsModule {
         Epoch.Data storage epoch
     ) internal view returns (uint256 amount0, uint256 amount1) {
         // Ensure the position is an LP position
-        require(position.kind == IFoilStructs.PositionKind.Liquidity, "Not an LP position");
+        require(
+            position.kind == IFoilStructs.PositionKind.Liquidity,
+            "Not an LP position"
+        );
 
         // Fetch position info from Uniswap V3 position manager
         (
@@ -218,18 +231,19 @@ contract ViewsModule is IViewsModule {
             uint128 tokensOwed0,
             uint128 tokensOwed1
         ) = INonfungiblePositionManager(epoch.params.uniswapPositionManager)
-            .positions(position.uniswapPositionId);
+                .positions(position.uniswapPositionId);
 
         // Get the current sqrt price from the pool
         (uint160 sqrtPriceX96, , , , , , ) = epoch.pool.slot0();
 
         // Calculate the amounts of token0 and token1 represented by the liquidity
-        (uint256 amount0Liquidity, uint256 amount1Liquidity) = LiquidityAmounts.getAmountsForLiquidity(
-            sqrtPriceX96,
-            TickMath.getSqrtRatioAtTick(tickLower),
-            TickMath.getSqrtRatioAtTick(tickUpper),
-            liquidity
-        );
+        (uint256 amount0Liquidity, uint256 amount1Liquidity) = LiquidityAmounts
+            .getAmountsForLiquidity(
+                sqrtPriceX96,
+                TickMath.getSqrtRatioAtTick(tickLower),
+                TickMath.getSqrtRatioAtTick(tickUpper),
+                liquidity
+            );
 
         // Add tokens owed (fees)
         amount0 = amount0Liquidity + uint256(tokensOwed0);
