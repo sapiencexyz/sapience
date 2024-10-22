@@ -47,6 +47,8 @@ const startServer = async () => {
   const transactionRepository = dataSource.getRepository(Transaction);
 
   const app = express();
+  // Middleware to parse JSON bodies
+  app.use(express.json());
 
   const corsOptions: cors.CorsOptions = {
     origin: (
@@ -669,6 +671,31 @@ const startServer = async () => {
     } catch (error) {
       console.error("Error fetching latest index price:", error);
       res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/updateMarketPrivacy", async (req, res) => {
+    const { address, chainId } = req.body;
+    try {
+      const market = await marketRepository.findOne({
+        where: {
+          chainId: Number(chainId),
+          address: address,
+        },
+      });
+
+      if (!market) {
+        return res.status(404).json({ error: "Market not found" });
+      }
+
+      market.public = !market.public;
+
+      await marketRepository.save(market);
+
+      res.json({ success: true });
+    } catch (e) {
+      console.error("Error updating market privacy:", e);
+      res.status(500).json({ error: `Internal server error: ${e}` });
     }
   });
 };

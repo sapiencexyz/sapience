@@ -14,11 +14,13 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
+  Switch,
+  Flex,
+  Spinner,
 } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import type React from 'react';
-import { useEffect } from 'react';
 import { useReadContract, useWriteContract } from 'wagmi';
 
 import useFoilDeployment from '../foil/useFoilDeployment';
@@ -29,9 +31,38 @@ import { useMarketList, type Market } from '~/lib/context/MarketListProvider';
 import { renderToast } from '~/lib/util/util';
 
 const MarketsTable: React.FC = () => {
-  const { markets, isLoading, error } = useMarketList();
+  const { markets, isLoading, error, refetchMarkets } = useMarketList();
+  const { setIsLoading } = useLoading();
 
   console.log('markets=', markets);
+
+  const updateMarketPrivacy = async (market: Market) => {
+    setIsLoading(true);
+    const response = await axios.post(`${API_BASE_URL}/updateMarketPrivacy`, {
+      address: market.address,
+      chainId: market.chainId,
+    });
+    if (response.data.success) {
+      await refetchMarkets();
+    }
+
+    setIsLoading(false);
+  };
+
+  if (isLoading) {
+    return (
+      <Box display="flex" flexDirection="column" alignItems="center">
+        <Spinner
+          thickness="4px"
+          speed="0.65s"
+          emptyColor="gray.200"
+          color="blue.500"
+          size="xl"
+        />
+        <Text>Loading Markets...</Text>
+      </Box>
+    );
+  }
 
   return (
     <Box overflowX="auto">
@@ -40,6 +71,7 @@ const MarketsTable: React.FC = () => {
           <Tr>
             <Th>Market Address</Th>
             <Th>Chain ID</Th>
+            <Th>Is Public?</Th>
             <Th>Epochs</Th>
           </Tr>
         </Thead>
@@ -50,6 +82,16 @@ const MarketsTable: React.FC = () => {
                 <MarketAddress address={market.address} />
               </Td>
               <Td>{market.chainId}</Td>
+              <Td>
+                <Flex mt={3} gap={2}>
+                  <Text fontSize="sm">{market.public ? 'yes' : 'no'}</Text>
+                  <Switch
+                    isChecked={market.public}
+                    size="sm"
+                    onChange={() => updateMarketPrivacy(market)}
+                  />
+                </Flex>
+              </Td>
               <Td padding={0}>
                 <Table variant="simple" size="sm">
                   <Thead>
