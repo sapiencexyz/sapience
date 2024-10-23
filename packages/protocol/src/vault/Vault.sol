@@ -386,6 +386,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         revert("previewMint is not supported");
     }
 
+    ////////////////////////
+    /// DEPOSIT WORKFLOW ///
+    ////////////////////////
     // Sends actor's collateral to the vault, gets shares (gets assets amount of asset, mints sharesAmount = convertToShares(assets))
     // notice: this is the first part of the Async requestDeposit -> deposit/mint
     function requestDeposit(
@@ -484,7 +487,13 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
         emit Deposit(msg.sender, receiver, assets, sharesToMint);
     }
+    //////////////////////////////
+    /// DEPOSIT WORKFLOW  ENDS ///
+    //////////////////////////////
 
+    ////////////////////////
+    /// REDEEM WORKFLOW  ///
+    ////////////////////////
     // Sends back collateral to the actor, burns shares (burns sharesAmount = convertToShares(assets); send to actor assets of asset)
     // notice: this is the first part of the Async requestRedeem -> redeem/withdraw
     function requestRedeem(
@@ -598,6 +607,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             sharesAmount
         );
     }
+    ///////////////////////////////
+    /// WITHDRAW WORKFLOW  ENDS ///
+    ///////////////////////////////
 
     modifier onlyInitializer() {
         require(
