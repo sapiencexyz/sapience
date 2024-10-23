@@ -11,7 +11,7 @@ import {IUMASettlementModule} from "../interfaces/IUMASettlementModule.sol";
 import {OptimisticOracleV3Interface} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import "../libraries/DecimalPrice.sol";
 
-import "forge-std/console2.sol";
+// import "forge-std/console2.sol";
 
 contract UMASettlementModule is
     IUMASettlementModule,
@@ -66,25 +66,21 @@ contract UMASettlementModule is
             optimisticOracleV3.defaultIdentifier(),
             bytes32(0)
         );
-        console2.log("BBB 3");
 
         market.epochIdByAssertionId[epoch.assertionId] = epochId;
 
-        console2.log("BBB 4");
         epoch.settlement = Epoch.Settlement({
             settlementPriceSqrtX96: settlementSqrtPriceX96,
             submissionTime: block.timestamp,
             disputed: false,
             disputer: address(0)
         });
-        console2.log("BBB 5");
 
         emit SettlementSubmitted(
             epochId,
             settlementSqrtPriceX96,
             block.timestamp
         );
-        console2.log("BBB 6");
 
         return epoch.assertionId;
     }

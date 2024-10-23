@@ -111,17 +111,9 @@ library Epoch {
 
         epoch.feeRateD18 = uint256(epochParams.feeRate) * 1e12;
 
-        VirtualToken tokenA = new VirtualToken{salt: bytes32(salt)}(
-            address(this),
-            "Token A",
-            "tknA"
-        );
+        VirtualToken tokenA = _createVirtualToken(salt, "Token A", "tknA");
 
-        VirtualToken tokenB = new VirtualToken{salt: bytes32(salt + 1)}(
-            address(this),
-            "Token B",
-            "tknB"
-        );
+        VirtualToken tokenB = _createVirtualToken(salt + 1, "Token B", "tknB");
 
         if (address(tokenA) < address(tokenB)) {
             epoch.gasToken = tokenA;
@@ -184,6 +176,27 @@ library Epoch {
             address(market.epochParams.uniswapSwapRouter),
             type(uint256).max
         );
+    }
+
+    function _createVirtualToken(
+        uint256 initialSalt,
+        string memory name,
+        string memory symbol
+    ) private returns (VirtualToken) {
+        uint256 currentSalt = initialSalt;
+        while (true) {
+            try
+                new VirtualToken{salt: bytes32(currentSalt)}(
+                    address(this),
+                    name,
+                    symbol
+                )
+            returns (VirtualToken token) {
+                return token;
+            } catch {
+                currentSalt++;
+            }
+        }
     }
 
     function loadValid(uint256 id) internal view returns (Data storage epoch) {
