@@ -21,7 +21,7 @@ import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
 import {MigrationMathUtils} from "../../src/market/external/univ3/MigrationMathUtils.sol";
 import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
 
-contract VaultTest is TestTrade {
+contract FoilVaultTest is TestTrade {
     using Cannon for Vm;
     using DecimalMath for uint256;
     using DecimalMath for int256;
