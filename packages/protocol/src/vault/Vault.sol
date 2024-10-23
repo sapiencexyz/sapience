@@ -152,11 +152,11 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
     function _createNextEpoch(uint160 previousResolutionSqrtPriceX96) private {
         // Set up the start time for the new epoch
-        (, uint256 resolvedEpochEndTime, , , , , , , , , ) = market
+        (, , uint256 resolvedEpochEndTime, , , , , , , , ) = market
             .getLatestEpoch();
 
         // Adjust the start time for the next epoch
-        uint256 newEpochStartTime = resolvedEpochEndTime + duration + 1;
+        uint256 newEpochStartTime = resolvedEpochEndTime + duration;
 
         // Settle the position and get the collateral received
         if (positionId != 0) {
