@@ -21,14 +21,20 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import type React from 'react';
+import { useEffect, useState } from 'react';
+import * as Chains from 'viem/chains';
 import { useReadContract, useWriteContract } from 'wagmi';
 
 import useFoilDeployment from '../foil/useFoilDeployment';
 import MarketAddress from '../MarketAddress';
-import { API_BASE_URL } from '~/lib/constants/constants';
+import {
+  API_BASE_URL,
+  DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS,
+} from '~/lib/constants/constants';
 import { useLoading } from '~/lib/context/LoadingContext';
 import { useMarketList, type Market } from '~/lib/context/MarketListProvider';
-import { renderToast } from '~/lib/util/util';
+import { formatAmount } from '~/lib/util/numberUtil';
+import { gweiToEther, renderToast } from '~/lib/util/util';
 
 const MarketsTable: React.FC = () => {
   const { markets, isLoading, error, refetchMarkets } = useMarketList();
@@ -126,8 +132,75 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
   epoch,
 }) => {
   const { setIsLoading } = useLoading();
+  const [loadingStEthPerToken, setLoadingStEthPerToken] = useState(false);
+  const [currentTime, setCurrentTime] = useState(Math.floor(Date.now() / 1000));
+  const [stEthPerToken, setStEthPerToken] = useState(0);
   const toast = useToast();
   const { foilData, loading, error } = useFoilDeployment(market?.chainId);
+  const { chainId, collateralAsset } = market;
+  const { endTimestamp } = epoch;
+
+  // polling to check if the epoch expired
+  useEffect(() => {
+    const interval = setInterval(
+      () => setCurrentTime(Math.floor(Date.now() / 1000)),
+      60 * 1000
+    );
+    return () => clearInterval(interval);
+  }, []);
+
+  const stEthPerTokenResult = useReadContract({
+    chainId: chainId === Chains.cannon.id ? Chains.sepolia.id : chainId,
+    abi: [
+      {
+        inputs: [],
+        name: 'stEthPerToken',
+        outputs: [
+          {
+            internalType: 'uint256',
+            name: '',
+            type: 'uint256',
+          },
+        ],
+        stateMutability: 'view',
+        type: 'function',
+      },
+    ],
+    address:
+      chainId === Chains.cannon.id
+        ? DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS
+        : (collateralAsset as `0x${string}`),
+    functionName: 'stEthPerToken',
+  });
+
+  useEffect(() => {
+    if (stEthPerTokenResult.data) {
+      setStEthPerToken(Number(gweiToEther(stEthPerTokenResult.data)));
+    }
+  }, [stEthPerTokenResult.data]);
+
+  useEffect(() => {
+    const updateSettledStEthPerToken = async () => {
+      setLoadingStEthPerToken(true);
+      const response = await axios.get(
+        `${API_BASE_URL}/getStEthPerTokenAtTimestamp?chainId=${chainId}&collateralAssetAddress=${collateralAsset}&endTime=${endTimestamp}`
+      );
+      if (response.data.stEthPerToken) {
+        setStEthPerToken(
+          Number(gweiToEther(BigInt(response.data.stEthPerToken)))
+        );
+      }
+      setLoadingStEthPerToken(false);
+    };
+    if (
+      endTimestamp &&
+      endTimestamp < currentTime &&
+      chainId &&
+      collateralAsset
+    ) {
+      updateSettledStEthPerToken();
+    }
+  }, [chainId, collateralAsset, endTimestamp, currentTime]);
 
   const { data: epochData, refetch: refetchEpochData } = useReadContract({
     address: market.address as `0x${string}`,
@@ -173,6 +246,8 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
     },
     enabled: epoch.epochId !== 0 || market !== undefined,
   });
+
+  const priceAdjusted = latestPrice / (stEthPerToken || 1);
 
   const handleGetMissing = async (
     m: Market,
@@ -220,8 +295,9 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
 
     return (
       <>
-        <Text>{latestPrice}</Text>
+        <Text>{formatAmount(priceAdjusted)}</Text>
         <Button
+          isLoading={loadingStEthPerToken || stEthPerTokenResult.isLoading}
           onClick={() => {
             settleWithPrice({
               address: market.address as `0x${string}`,

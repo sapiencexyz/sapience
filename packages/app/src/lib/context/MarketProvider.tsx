@@ -11,21 +11,15 @@ import type { Chain } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 
 import useFoilDeployment from '../components/foil/useFoilDeployment';
-import { API_BASE_URL, BLANK_MARKET } from '../constants/constants';
+import {
+  API_BASE_URL,
+  BLANK_MARKET,
+  DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS,
+} from '../constants/constants';
 import erc20ABI from '../erc20abi.json';
 import { useUniswapPool } from '../hooks/useUniswapPool';
 import type { EpochParams } from '../interfaces/interfaces';
-import { renderContractErrorToast } from '../util/util';
-
-const LOCAL_COLLATERAL_ASSET_ADDRESS =
-  '0xB82381A3fBD3FaFA77B3a7bE693342618240067b';
-
-const gweiToEther = (gweiValue: bigint): string => {
-  // First, convert gwei to wei (multiply by 10^9)
-  const weiValue = gweiValue * BigInt(1e9);
-  // Then use formatEther to convert wei to ether
-  return formatEther(weiValue);
-};
+import { gweiToEther, renderContractErrorToast } from '../util/util';
 
 // Types and Interfaces
 export interface MarketContextType {
@@ -178,7 +172,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     ],
     address:
       chainId === Chains.cannon.id
-        ? LOCAL_COLLATERAL_ASSET_ADDRESS
+        ? DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS
         : (state.collateralAsset as `0x${string}`),
     functionName: 'stEthPerToken',
   });
