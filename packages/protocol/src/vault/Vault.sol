@@ -103,11 +103,8 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             epochParams.bondAmount
         );
 
-        console2.log("AAA 1");
         bondCurrency.approve(address(market), epochParams.bondAmount);
-        console2.log("AAA 2");
         assertionId = market.submitSettlementPrice(epochId, price);
-        console2.log("AAA 3");
     }
 
     function resolutionCallback(
