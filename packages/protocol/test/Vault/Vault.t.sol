@@ -184,9 +184,7 @@ contract VaultTest is TestTrade {
 
         address optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
         vm.startPrank(optimisticOracleV3);
-        console2.log("CCC 1");
         foil.assertionResolvedCallback(assertionId, true);
-        console2.log("CCC 2");
         vm.stopPrank();
     }
 }
