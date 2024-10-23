@@ -76,8 +76,8 @@ contracts=[
 ]
 highlight=true
 
-[deploy.Vault]
-artifact="Vault"
+[deploy.FoilVault]
+artifact="FoilVault"
 from="<%= settings.owner %>"
 args=[ "<%= settings.vaultName %>", "<%= settings.vaultSymbol %>", "<%= Foil.address %>", "<%= CollateralAsset.Token.address %>", "<%= settings.duration %>"]
 depends = ['router.Foil', 'clone.CollateralAsset', 'var.settings']
