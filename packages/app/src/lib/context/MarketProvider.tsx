@@ -197,7 +197,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
       const response = await axios.get(
         `${API_BASE_URL}/getStEthPerTokenAtTimestamp?chainId=${state.chainId}&collateralAssetAddress=${state.collateralAsset}&endTime=${state.endTime}`
       );
-      console.log('response', response);
+      console.log('updated stEthPerToken', response.data);
       const stEthPerToken = BigInt(response.data.stEthPerToken);
       setState((currentState) => ({
         ...currentState,
