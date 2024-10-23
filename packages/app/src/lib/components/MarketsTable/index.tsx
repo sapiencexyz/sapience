@@ -204,6 +204,39 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
     setIsLoading(false);
   };
 
+  const renderSettledCell = () => {
+    if (epochSettled) {
+      return (
+        <>
+          <Text>Settled</Text>
+          <Text>{Number(settlementPrice)}</Text>
+        </>
+      );
+    }
+
+    if (isLatestPriceLoading) {
+      return 'Loading Latest Price...';
+    }
+
+    return (
+      <>
+        <Text>{latestPrice}</Text>
+        <Button
+          onClick={() => {
+            settleWithPrice({
+              address: market.address as `0x${string}`,
+              abi: foilData.abi,
+              functionName: 'submitSettlementPrice',
+              args: [epoch.epochId, latestPrice],
+            });
+          }}
+        >
+          Settle with Price
+        </Button>
+      </>
+    );
+  };
+
   return (
     <Tr key={epoch.id}>
       <Td>
@@ -230,34 +263,7 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
       <Td>{epoch.epochId}</Td>
       <Td>{new Date(epoch.startTimestamp * 1000).toLocaleString()}</Td>
       <Td>{new Date(epoch.endTimestamp * 1000).toLocaleString()}</Td>
-      <Td>
-        {isLatestPriceLoading ? (
-          'Loading...'
-        ) : (
-          <>
-            <Text>{latestPrice}</Text>
-            {epochSettled ? (
-              <>
-                <Text>Settled</Text>
-                <Text>{Number(settlementPrice)}</Text>
-              </>
-            ) : (
-              <Button
-                onClick={() => {
-                  settleWithPrice({
-                    address: market.address as `0x${string}`,
-                    abi: foilData.abi,
-                    functionName: 'submitSettlementPrice',
-                    args: [epoch.epochId, latestPrice],
-                  });
-                }}
-              >
-                Settle with Price
-              </Button>
-            )}
-          </>
-        )}
-      </Td>
+      <Td>{renderSettledCell()}</Td>
     </Tr>
   );
 };
