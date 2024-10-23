@@ -93,7 +93,7 @@ contract UMASettlementModule is
     function assertionResolvedCallback(
         bytes32 assertionId,
         bool assertedTruthfully
-    ) external nonReentrant {
+    ) external {
         assertedTruthfully;
         Market.Data storage market = Market.load();
         uint256 epochId = market.epochIdByAssertionId[assertionId];
