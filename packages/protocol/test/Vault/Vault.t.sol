@@ -87,21 +87,30 @@ contract VaultTest is TestTrade {
     }
 
     function test_settleEpochCreatesNewEpoch() public {
-        uint256 epochId;
-        uint256 startTime;
-        uint256 endTime;
+        uint256 epochIdBefore;
+        uint256 startTimeBefore;
+        uint256 endTimeBefore;
+
+        uint256 epochIdAfter;
+        uint256 startTimeAfter;
+        uint256 endTimeAfter;
 
         initializeFirstEpoch(initialSqrtPriceX96, initialStartTime);
 
         // New epoch created
-        (epochId, startTime, endTime, , , , , , , , ) = foil.getLatestEpoch();
+        (epochIdBefore, startTimeBefore, endTimeBefore, , , , , , , , ) = foil
+            .getLatestEpoch();
 
         // Settle
-        vm.warp(endTime + 1);
-        settleEpochFromVault(epochId, initialSqrtPriceX96, owner);
+        vm.warp(endTimeBefore + 1);
+        settleEpochFromVault(epochIdBefore, initialSqrtPriceX96, owner);
 
         // New epoch created
-        (epochId, startTime, endTime, , , , , , , , ) = foil.getLatestEpoch();
+        (epochIdAfter, startTimeAfter, endTimeAfter, , , , , , , , ) = foil
+            .getLatestEpoch();
+        assertEq(epochIdAfter, epochIdBefore + 1);
+        assertEq(startTimeAfter, endTimeBefore + DEFAULT_DURATION);
+        assertEq(endTimeAfter, startTimeAfter + DEFAULT_DURATION);
     }
 
     /////////////
