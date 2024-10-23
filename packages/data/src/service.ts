@@ -25,8 +25,8 @@ import {
   groupIndexPricesByTimeWindow,
 } from "./serviceUtil";
 import { TimeWindow } from "./interfaces";
-import { formatDbBigInt } from "./helpers";
-import { getProviderForChain, getBlockByTimestamp } from "./helpers";
+import { formatDbBigInt, getBlockBeforeTimestamp } from "./helpers";
+import { getProviderForChain } from "./helpers";
 import dotenv from "dotenv";
 import path from "path";
 import { RenderJob } from "./models/RenderJob";
@@ -696,6 +696,62 @@ const startServer = async () => {
     } catch (e) {
       console.error("Error updating market privacy:", e);
       res.status(500).json({ error: `Internal server error: ${e}` });
+    }
+  });
+
+  app.get("/getStEthPerTokenAtTimestamp", async (req, res) => {
+    const { chainId, collateralAssetAddress, endTime } = req.query;
+
+    if (
+      typeof chainId !== "string" ||
+      typeof collateralAssetAddress !== "string"
+    ) {
+      return res.status(400).json({ error: "Invalid request parameters" });
+    }
+    //  const [chainId, address] = contractId.split(":");
+    try {
+      console.log("getting provider...");
+      const client = getProviderForChain(Number(chainId));
+      console.log("got provider");
+      console.log("reading contract for stEthPerToken....");
+
+      // get last block
+      const block = await getBlockBeforeTimestamp(client, Number(endTime));
+      console.log("block number:", block.number);
+
+      if (!block.number) {
+        return res.status(404).json({ error: "Block not found" });
+      }
+
+      const stEthPerTokenResult = await client.readContract({
+        address: collateralAssetAddress as `0x${string}`,
+        abi: [
+          {
+            inputs: [],
+            name: "stEthPerToken",
+            outputs: [
+              {
+                internalType: "uint256",
+                name: "",
+                type: "uint256",
+              },
+            ],
+            stateMutability: "view",
+            type: "function",
+          },
+        ],
+        functionName: "stEthPerToken",
+        blockNumber: block.number,
+      });
+
+      console.log("stEthPerTokenResult =", stEthPerTokenResult);
+
+      res.json({
+        stEthPerToken: stEthPerTokenResult.toString(),
+      });
+    } catch (error) {
+      console.error("Error fetching latest resource price:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 };

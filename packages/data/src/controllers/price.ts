@@ -64,10 +64,10 @@ export const upsertIndexPriceFromResourcePrice = async (
     if (!indexPrice) {
       indexPrice = new IndexPrice();
       indexPrice.epoch = epoch;
+      indexPrice.timestamp = resourcePrice.timestamp;
     }
 
     indexPrice.value = averagePrice.toString();
-    indexPrice.timestamp = resourcePrice.timestamp;
 
     await indexPriceRepository.save(indexPrice);
   }
