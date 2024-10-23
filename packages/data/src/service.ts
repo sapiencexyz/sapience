@@ -649,7 +649,7 @@ const startServer = async () => {
 
       const latestPrice = await indexPriceRepository.findOne({
         where: {
-          epoch: { id: Number(epochId) },
+          epoch: { id: Number(epoch.id) },
           timestamp: Between(
             Number(epoch.startTimestamp),
             Number(epoch.endTimestamp)
