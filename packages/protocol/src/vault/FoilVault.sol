@@ -17,7 +17,7 @@ import "./interfaces/IERC7540.sol";
 
 import "forge-std/console2.sol";
 
-contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
+contract FoilVault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
     using SetUtil for SetUtil.UintSet;
     using Math for uint256;
