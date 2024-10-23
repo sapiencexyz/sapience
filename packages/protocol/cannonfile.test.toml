@@ -3,7 +3,8 @@ version="<%= package.version %>"
 privateSourceCode=true
 
 [var.settings]
-owner = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+owner = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" #1 from anvil
+owner2 = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" #2 from anvil
 # Vault Settings
 vaultName="Foil Vault"
 vaultSymbol = "FVLT"
@@ -33,7 +34,7 @@ options.minimumBond = "0"
 
 [deploy.ConfigurationModule]
 artifact="ConfigurationModule"
-args=["0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"]
+args=["0x70997970C51812dc3A010C7d01b50e0d17dc79C8"]
 
 [deploy.LiquidityModule]
 artifact="LiquidityModule"
@@ -63,6 +64,7 @@ artifact="ExposedInternalFunctions"
 artifact="MockVault"
 
 [router.Foil]
+from="<%= settings.owner2 %>"
 contracts=[
   "ConfigurationModule",
   "LiquidityModule",
@@ -76,8 +78,8 @@ contracts=[
 ]
 highlight=true
 
-[deploy.FoilVault]
-artifact="FoilVault"
-from="<%= settings.owner %>"
+[deploy.Vault]
+artifact="Vault"
+from="<%= settings.owner2 %>"
 args=[ "<%= settings.vaultName %>", "<%= settings.vaultSymbol %>", "<%= Foil.address %>", "<%= CollateralAsset.Token.address %>", "<%= settings.duration %>"]
 depends = ['router.Foil', 'clone.CollateralAsset', 'var.settings']
