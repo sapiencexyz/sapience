@@ -15,7 +15,7 @@ import "../market/interfaces/IFoilStructs.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/IERC7540.sol";
 
-import "forge-std/console2.sol";
+// import "forge-std/console2.sol";
 
 contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
@@ -137,7 +137,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             startTime,
             startTime + duration,
             startingSqrtPriceX96,
-            4
+            block.timestamp
         );
 
         epochs.push(
@@ -162,8 +162,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 newEpochStartTime = resolvedEpochEndTime + duration + 1;
 
         // Settle the position and get the collateral received
-        uint256 collateralReceived = market.settlePosition(positionId);
-        collateralReceived; // do we need to use if for anything? at least an event reporting it
+        if (positionId != 0) {
+            uint256 collateralReceived = market.settlePosition(positionId);
+            collateralReceived; // do we need to use if for anything? at least an event reporting it
+        }
 
         // Process the epoch transition and pass the collateral received
         uint256 totalCollateralAfterTransition = _processEpochTransition();
@@ -172,48 +174,56 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         _initializeEpoch(newEpochStartTime, previousResolutionSqrtPriceX96);
 
         // Call _createNewLiquidityPosition with the correct totalCollateral
-        positionId = _createNewLiquidityPosition(
-            totalCollateralAfterTransition
-        );
+        if (totalCollateralAfterTransition > 0) {
+            positionId = _createNewLiquidityPosition(
+                totalCollateralAfterTransition
+            );
+        }
     }
 
     function _processEpochTransition() internal returns (uint256) {
-        EpochData storage epochData = epochs[currentFutureEpochIdx];
+        uint256 epochSharePriceAtClosure;
+        if (currentFutureEpochIdx > 0) {
+            EpochData storage epochData = epochs[currentFutureEpochIdx - 1];
 
-        uint256 netSupplyBeforeTransitioning = totalSupply();
+            uint256 netSupplyBeforeTransitioning = totalSupply();
 
-        // Calculate the new share price
-        uint256 totalAssetsBeforeTransitioning = totalAssets();
-        uint256 epochSharePriceAtClosure = netSupplyBeforeTransitioning > 0
-            ? _calculatePrice(
-                totalAssetsBeforeTransitioning,
-                netSupplyBeforeTransitioning
-            )
-            : 1e18;
+            // Calculate the new share price
+            uint256 totalAssetsBeforeTransitioning = totalAssets();
+            epochSharePriceAtClosure = netSupplyBeforeTransitioning > 0
+                ? _calculatePrice(
+                    totalAssetsBeforeTransitioning,
+                    netSupplyBeforeTransitioning
+                )
+                : 1e18;
 
-        epochData.sharePrice = epochSharePriceAtClosure;
+            epochData.sharePrice = epochSharePriceAtClosure;
 
-        // Adjust accounting
-        // Move from pending to claimable
-        epochData.totalClaimableDeposit = epochData.totalPendingDeposit;
-        globalTotalClaimableDeposit += epochData.totalPendingDeposit;
-        globalTotalPendingDeposit -= epochData.totalPendingDeposit; // is it possible to overflow? I don't think so, since it was updated at the same time on requests
-        epochData.totalPendingDeposit = 0;
-        epochData.totalClaimableWithdrawal = epochData.totalPendingWithdrawal;
-        globalTotalClaimableWithdrawal += epochData.totalPendingWithdrawal;
-        globalTotalPendingWithdrawal -= epochData.totalPendingWithdrawal; // is it possible to overflow? I don't think so, since it was updated at the same time on requests
-        epochData.totalPendingWithdrawal = 0;
+            // Adjust accounting
+            // Move from pending to claimable
+            epochData.totalClaimableDeposit = epochData.totalPendingDeposit;
+            globalTotalClaimableDeposit += epochData.totalPendingDeposit;
+            globalTotalPendingDeposit -= epochData.totalPendingDeposit; // is it possible to overflow? I don't think so, since it was updated at the same time on requests
+            epochData.totalPendingDeposit = 0;
+            epochData.totalClaimableWithdrawal = epochData
+                .totalPendingWithdrawal;
+            globalTotalClaimableWithdrawal += epochData.totalPendingWithdrawal;
+            globalTotalPendingWithdrawal -= epochData.totalPendingWithdrawal; // is it possible to overflow? I don't think so, since it was updated at the same time on requests
+            epochData.totalPendingWithdrawal = 0;
 
-        // Do we need to do something with the shares?
-        // with the PnL from the received collateral, the shares value is adjusted
-        // re-distribute shares makes sense in a liquidation like action where shares needs to be distributed
+            // Do we need to do something with the shares?
+            // with the PnL from the received collateral, the shares value is adjusted
+            // re-distribute shares makes sense in a liquidation like action where shares needs to be distributed
 
-        // // Process pending deposits
-        // uint256 totalNewShares = (currentEpoch.totalPendingDeposits * 1e18) /
-        //     newSharePrice;
-        // _mintShares(address(this), totalNewShares);
-
-        emit EpochProcessed(epochData.marketEpochId, epochSharePriceAtClosure);
+            // // Process pending deposits
+            // uint256 totalNewShares = (currentEpoch.totalPendingDeposits * 1e18) /
+            //     newSharePrice;
+            // _mintShares(address(this), totalNewShares);
+            emit EpochProcessed(
+                epochData.marketEpochId,
+                epochSharePriceAtClosure
+            );
+        }
 
         uint256 totalWithdrawalAmount = _calculateAssets(
             globalTotalClaimableWithdrawal,
@@ -294,7 +304,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     }
 
     function totalAssets() public view override returns (uint256) {
-        uint256 investedAssets = market.getPositionCollateralValue(positionId);
+        uint256 investedAssets;
+        if (positionId > 0) {
+            investedAssets = market.getPositionCollateralValue(positionId);
+        }
         uint256 pendingWithdrawalsValue = _getSharesValue(
             investedAssets,
             totalSupply(),
@@ -668,7 +681,11 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 supplyInVault,
         uint256 shares
     ) internal pure returns (uint256 sharesValue) {
-        return assetsInVault.mulDiv(shares, supplyInVault);
+        if (assetsInVault == 0 || supplyInVault == 0) {
+            sharesValue = 0;
+        } else {
+            sharesValue = assetsInVault.mulDiv(shares, supplyInVault);
+        }
     }
 
     /**
