@@ -21,7 +21,7 @@ import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
 import {MigrationMathUtils} from "../../src/market/external/univ3/MigrationMathUtils.sol";
 import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
 
-contract FoilVaultTest is TestTrade {
+contract VaultTest is TestTrade {
     using Cannon for Vm;
     using DecimalMath for uint256;
     using DecimalMath for int256;
@@ -41,7 +41,7 @@ contract FoilVaultTest is TestTrade {
     function setUp() public {
         address[] memory feeCollectors = new address[](0);
 
-        (foil, vault, collateralAsset, owner) = initializeVault(feeCollectors);
+        (foil, vault, collateralAsset, owner) = _initializeVault(feeCollectors);
 
         initialStartTime = block.timestamp + 60;
     }
@@ -54,7 +54,7 @@ contract FoilVaultTest is TestTrade {
     function test_revertsWhenInitializeFirstEpochAgain() public {
         initializeFirstEpoch(initialSqrtPriceX96, initialStartTime);
 
-        vm.startPrank(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266);
+        vm.startPrank(0x70997970C51812dc3A010C7d01b50e0d17dc79C8);
 
         vm.expectRevert("Already Initialized");
         vault.initializeFirstEpoch(initialStartTime, initialSqrtPriceX96);
@@ -107,7 +107,7 @@ contract FoilVaultTest is TestTrade {
     /////////////
     // Helpers //
     /////////////
-    function initializeVault(
+    function _initializeVault(
         address[] memory feeCollectors
     )
         internal
@@ -129,7 +129,7 @@ contract FoilVaultTest is TestTrade {
         int24 minTick = 16000;
         int24 maxTick = 30000;
 
-        vm.startPrank(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266);
+        vm.startPrank(0x70997970C51812dc3A010C7d01b50e0d17dc79C8);
         // Initialize Market (by owner, links fail market with vault)
         foilContract.initializeMarket(
             address(vaultContract),
@@ -159,7 +159,7 @@ contract FoilVaultTest is TestTrade {
         uint160 _initialSqrtPriceX96,
         uint256 _initialStartTime
     ) internal {
-        vm.startPrank(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266);
+        vm.startPrank(0x70997970C51812dc3A010C7d01b50e0d17dc79C8);
 
         // Initialize Epoch (by owner, kicks the ball with the first epoch)
         vault.initializeFirstEpoch(_initialStartTime, _initialSqrtPriceX96);
@@ -184,7 +184,9 @@ contract FoilVaultTest is TestTrade {
 
         address optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
         vm.startPrank(optimisticOracleV3);
+        console2.log("CCC 1");
         foil.assertionResolvedCallback(assertionId, true);
+        console2.log("CCC 2");
         vm.stopPrank();
     }
 }

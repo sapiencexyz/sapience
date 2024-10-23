@@ -44,8 +44,6 @@ contract UMASettlementModule is
             epoch.params.bondAmount
         );
 
-        console2.log("BBB 1");
-
         bytes memory claim = abi.encodePacked(
             "ipfs://Qmbg1KiuKNmCbL696Zu8hXUAJrTxuhgNCbyjaPyni4RXTc evaluates to ",
             Strings.toString(settlementSqrtPriceX96),
@@ -56,16 +54,6 @@ contract UMASettlementModule is
             " and end time ",
             Strings.toString(epoch.endTime)
         );
-        console2.log("BBB 2");
-
-        // [259] 0x5FbDB2315678afecb367f032d93F642f64180aa3::isOnWhitelist(0xBDF33AE1C1e5f8E3B3ce166F64f2337E2e07a398) [staticcall]
-        console2.logBytes(claim);
-        console2.log(msg.sender);
-        console2.log(address(this));
-        console2.log(epoch.params.assertionLiveness);
-        console2.log(epoch.params.bondCurrency);
-        console2.log(epoch.params.bondAmount);
-        console2.logBytes32(optimisticOracleV3.defaultIdentifier());
 
         epoch.assertionId = optimisticOracleV3.assertTruth(
             claim,
@@ -82,18 +70,21 @@ contract UMASettlementModule is
 
         market.epochIdByAssertionId[epoch.assertionId] = epochId;
 
+        console2.log("BBB 4");
         epoch.settlement = Epoch.Settlement({
             settlementPriceSqrtX96: settlementSqrtPriceX96,
             submissionTime: block.timestamp,
             disputed: false,
             disputer: address(0)
         });
+        console2.log("BBB 5");
 
         emit SettlementSubmitted(
             epochId,
             settlementSqrtPriceX96,
             block.timestamp
         );
+        console2.log("BBB 6");
 
         return epoch.assertionId;
     }

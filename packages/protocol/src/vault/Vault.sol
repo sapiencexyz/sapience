@@ -17,7 +17,7 @@ import "./interfaces/IERC7540.sol";
 
 import "forge-std/console2.sol";
 
-contract FoilVault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
+contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
     using SetUtil for SetUtil.UintSet;
     using Math for uint256;
@@ -106,8 +106,8 @@ contract FoilVault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         console2.log("AAA 1");
         bondCurrency.approve(address(market), epochParams.bondAmount);
         console2.log("AAA 2");
-
-        return market.submitSettlementPrice(epochId, price);
+        assertionId = market.submitSettlementPrice(epochId, price);
+        console2.log("AAA 3");
     }
 
     function resolutionCallback(
