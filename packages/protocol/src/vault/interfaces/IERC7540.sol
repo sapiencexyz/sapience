@@ -117,4 +117,28 @@ interface IERC7540Redeem {
  * defined in
  *         https://github.com/ethereum/EIPs/blob/2e63f2096b0c7d8388458bb0a03a7ce0eb3422a4/EIPS/eip-7540.md[ERC-7540].
  */
-interface IERC7540 is IERC7540Deposit, IERC7540Redeem, IERC4626 {}
+interface IERC7540 is IERC7540Deposit, IERC7540Redeem, IERC4626 {
+    function deposit(
+        uint256 amount,
+        address receiver,
+        address owner
+    ) external returns (uint256 sharesAmount);
+
+    function mint(
+        uint256 amount,
+        address receiver,
+        address owner
+    ) external returns (uint256 assets);
+
+    function redeem(
+        uint256, // ignore the shares amount
+        address receiver,
+        address owner
+    ) external returns (uint256 assets);
+
+    function withdraw(
+        uint256, // ignore the assets amount
+        address receiver,
+        address owner
+    ) external override(IERC4626) returns (uint256 sharesAmount);
+}
