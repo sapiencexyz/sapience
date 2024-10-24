@@ -7,6 +7,7 @@ import React, {
   useCallback,
   useMemo,
   useEffect,
+  useRef,
 } from 'react';
 import { useAccount, useReadContracts } from 'wagmi';
 
@@ -22,7 +23,7 @@ interface Positions {
 
 interface AddEditPositionContextType {
   nftId: number;
-  setNftId: (id: number) => void;
+  setNftId: (id: number | undefined) => void;
   positions: Positions;
   refreshPositions: () => Promise<void>;
   isLoading: boolean;
@@ -35,9 +36,10 @@ const AddEditPositionContext = createContext<
 export const AddEditPositionProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
-  const [nftId, setNftId] = useState(0);
+  const [nftId, setNftId] = useState<number | undefined>(undefined);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const hasSetInitialPosition = useRef(false);
 
   const { address } = useAccount();
   const {
@@ -90,41 +92,49 @@ export const AddEditPositionProvider: React.FC<{
     const positionId = searchParams.get('positionId');
     if (positionId) {
       setNftId(Number(positionId));
-    } else {
+    } else if (nftId === undefined) {
+      // Only set default if nftId is undefined
       const lastLiquidityPosition =
         positions.liquidityPositions[positions.liquidityPositions.length - 1];
       const lastTradePosition =
         positions.tradePositions[positions.tradePositions.length - 1];
 
-      let lastPositionId = 0;
-      const currentPath = window.location.pathname.toLowerCase(); // hacky fix for now
+      let lastPositionId: number | undefined;
+      const currentPath = window.location.pathname.toLowerCase();
 
       if (currentPath.includes('trade')) {
         lastPositionId = lastTradePosition?.id
           ? Number(lastTradePosition.id)
-          : 0;
+          : undefined;
       } else if (currentPath.includes('pool')) {
         lastPositionId = lastLiquidityPosition?.id
           ? Number(lastLiquidityPosition.id)
-          : 0;
+          : undefined;
       } else {
-        lastPositionId = Math.max(
-          lastLiquidityPosition?.id ? Number(lastLiquidityPosition.id) : 0,
-          lastTradePosition?.id ? Number(lastTradePosition.id) : 0
-        );
+        const liquidityId = lastLiquidityPosition?.id
+          ? Number(lastLiquidityPosition.id)
+          : undefined;
+        const tradeId = lastTradePosition?.id
+          ? Number(lastTradePosition.id)
+          : undefined;
+        lastPositionId =
+          liquidityId !== undefined && tradeId !== undefined
+            ? Math.max(liquidityId, tradeId)
+            : (liquidityId ?? tradeId);
       }
 
-      if (lastPositionId > 0) {
+      if (lastPositionId !== undefined) {
         setNftId(lastPositionId);
         router.push(`${window.location.pathname}?positionId=${lastPositionId}`);
       }
     }
-  }, [router, positions]);
+  }, [router, positions, searchParams, nftId]);
 
   const setNftIdAndUpdateUrl = useCallback(
-    (id: number) => {
+    (id: number | undefined) => {
       setNftId(id);
-      if (id === 0) {
+      hasSetInitialPosition.current = true; // Mark as set when manually changing
+      if (!id) {
         router.push(window.location.pathname);
       } else {
         router.push(`${window.location.pathname}?positionId=${id}`);
@@ -157,7 +167,7 @@ export const AddEditPositionProvider: React.FC<{
   return (
     <AddEditPositionContext.Provider
       value={{
-        nftId,
+        nftId: nftId ?? 0,
         setNftId: setNftIdAndUpdateUrl,
         positions,
         refreshPositions,

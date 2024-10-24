@@ -19,17 +19,8 @@ export default function MarketSidebar({ isTrade }: { isTrade: boolean }) {
     const positionId = searchParams.get('positionId');
     if (positionId) {
       setNftId(Number(positionId));
-    } else {
-      const currentPositions = isTrade
-        ? positions.tradePositions
-        : positions.liquidityPositions;
-      if (currentPositions.length > 0) {
-        const lastPosition = currentPositions[currentPositions.length - 1];
-        const lastPositionId = lastPosition?.id ? Number(lastPosition.id) : 0;
-        setNftId(lastPositionId);
-      }
     }
-  }, [searchParams, positions, setNftId, isTrade]);
+  }, [searchParams, setNftId]);
 
   if (endTime === 0) {
     return (

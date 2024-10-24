@@ -13,6 +13,7 @@ import {
   Flex,
   useToast,
   FormErrorMessage,
+  Heading,
 } from '@chakra-ui/react';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { TickMath, SqrtPriceMath } from '@uniswap/v3-sdk';
@@ -47,6 +48,7 @@ import type { FoilPosition } from '~/lib/interfaces/interfaces';
 
 import LiquidityPriceInput from './LiquidityPriceInput';
 import NumberDisplay from './numberDisplay';
+import PositionSelector from './positionSelector';
 import SlippageTolerance from './slippageTolerance';
 
 // TODO 1% - Hardcoded for now, should be retrieved with pool.tickSpacing()
@@ -117,7 +119,7 @@ const AddEditLiquidity: React.FC = () => {
   const tickSpacing = pool ? pool?.tickSpacing : TICK_SPACING_DEFAULT;
   const tickLower = priceToTick(lowPrice, tickSpacing);
   const tickUpper = priceToTick(highPrice, tickSpacing);
-  const isEdit = nftId > 0;
+  const isEdit = !!nftId;
 
   const [collateralAmountDelta, setCollateralAmountDelta] = useState<bigint>(
     BigInt(0)
@@ -953,6 +955,9 @@ const AddEditLiquidity: React.FC = () => {
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)}>
+      <Heading size="md" mb={3}>
+        Pool Liquidity
+      </Heading>
       <Box mb={4}>
         <FormControl isInvalid={!!errors.collateral}>
           <FormLabel htmlFor="collateral">Collateral</FormLabel>
@@ -1013,6 +1018,8 @@ const AddEditLiquidity: React.FC = () => {
       {renderActionButton()}
 
       <Flex gap={2} flexDir="column" mt={4}>
+        <PositionSelector isLP />
+
         <Box>
           <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
             Base Token

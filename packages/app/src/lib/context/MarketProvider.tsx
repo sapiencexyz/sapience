@@ -5,7 +5,6 @@ import axios from 'axios';
 import type { ReactNode } from 'react';
 import type React from 'react';
 import { createContext, useEffect, useState } from 'react';
-import { formatEther } from 'viem';
 import * as Chains from 'viem/chains';
 import type { Chain } from 'viem/chains';
 import { useReadContract } from 'wagmi';

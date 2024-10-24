@@ -7,9 +7,9 @@ import {
   Text,
   useToast,
   Tooltip,
+  Heading,
 } from '@chakra-ui/react';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
-import { useRouter } from 'next/navigation';
 import { useState, useEffect, useContext, useMemo } from 'react';
 import type { AbiFunction, WriteContractErrorType } from 'viem';
 import { decodeEventLog, formatUnits, parseUnits, zeroAddress } from 'viem';
@@ -33,6 +33,7 @@ import type { FoilPosition } from '~/lib/interfaces/interfaces';
 import { renderContractErrorToast, renderToast } from '~/lib/util/util';
 
 import NumberDisplay from './numberDisplay';
+import PositionSelector from './positionSelector';
 import SizeInput from './sizeInput';
 import SlippageTolerance from './slippageTolerance';
 
@@ -59,9 +60,7 @@ export default function AddEditTrade() {
   const account = useAccount();
   const { isConnected, address } = account;
   const { setIsLoading } = useLoading();
-  const isEdit = nftId > 0;
-
-  const router = useRouter();
+  const isEdit = !!nftId;
 
   const {
     address: marketAddress,
@@ -528,6 +527,9 @@ export default function AddEditTrade() {
 
   return (
     <form onSubmit={handleSubmit}>
+      <Heading size="md" mb={3}>
+        Trade
+      </Heading>
       <Flex {...group} gap={4} mb={4}>
         {tradeOptions.map((value) => {
           const radio = getRadioProps({ value });
@@ -550,6 +552,7 @@ export default function AddEditTrade() {
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
       {renderActionButton()}
       <Flex gap={2} flexDir="column">
+        <PositionSelector isLP={false} />
         {isEdit && (
           <Box>
             <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
