@@ -43,12 +43,20 @@ export class Event {
   @AfterInsert()
   async afterInsert() {
     console.log("Event inserted: " + this.id);
-    await upsertEntitiesFromEvent(this);
+    try {
+      await upsertEntitiesFromEvent(this);
+    } catch (e) {
+      console.error("Error upserting entities from event:", e);
+    }
   }
 
   @AfterUpdate()
   async afterUpdate() {
     console.log(`Event updated: ${this.id}`);
-    await upsertEntitiesFromEvent(this);
+    try {
+      await upsertEntitiesFromEvent(this);
+    } catch (e) {
+      console.error("Error upserting entities from event:", e);
+    }
   }
 }

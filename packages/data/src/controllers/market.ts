@@ -29,6 +29,7 @@ import {
   updateTransactionFromLiquidityModifiedEvent,
   updateTransactionFromTradeModifiedEvent,
   upsertMarketPrice,
+  initializeResourcePriceForEpoch,
 } from "./marketHelpers";
 
 // Called when the process starts, upserts markets in the database to match those in the constants.ts file
@@ -265,7 +266,10 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
     case EventType.EpochCreated:
       console.log("creating epoch. event: ", event);
       const epochCreatedArgs = event.logData.args as EpochCreatedEventLog;
-      await createEpochFromEvent(epochCreatedArgs, market);
+      await Promise.all([
+        createEpochFromEvent(epochCreatedArgs, market),
+        initializeResourcePriceForEpoch(epochCreatedArgs, market),
+      ]);
       skipTransaction = true;
       break;
     case EventType.EpochSettled:

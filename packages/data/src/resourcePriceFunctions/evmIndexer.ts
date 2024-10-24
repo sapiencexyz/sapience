@@ -1,7 +1,11 @@
 import { resourcePriceRepository } from "../db";
 import { ResourcePrice } from "../models/ResourcePrice";
 import { type Market } from "../models/Market";
-import { getBlockByTimestamp, getProviderForChain } from "../helpers";
+import {
+  getBlockBeforeTimestamp,
+  getBlockByTimestamp,
+  getProviderForChain,
+} from "../helpers";
 import { Block, type PublicClient } from "viem";
 
 class EvmIndexer {
@@ -19,15 +23,23 @@ class EvmIndexer {
       );
       return;
     }
-    // const adjustedValue = value / BigInt(1e9); in gwei
 
     const price = new ResourcePrice();
     price.market = market;
     price.timestamp = Number(block.timestamp);
-    // price.value = adjustedValue.toString();
     price.value = value.toString();
     price.blockNumber = Number(block.number);
     await resourcePriceRepository.upsert(price, ["market", "timestamp"]);
+  }
+
+  async indexBlockPriceAtTimestamp(market: Market, timestamp: number) {
+    const block = await getBlockBeforeTimestamp(this.client, timestamp);
+    if (!block.number) {
+      throw new Error(
+        `Unabe to indexBlockPriceAtTimestamp, No block found at timestamp ${timestamp}`
+      );
+    }
+    await this.storeBlockPrice(block, market);
   }
 
   async indexBlockPriceFromTimestamp(
