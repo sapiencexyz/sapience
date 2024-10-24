@@ -29,6 +29,7 @@ contract VaultTest is TestTrade {
     using SafeCastU256 for uint256;
 
     address owner;
+    address lp1;
     IFoil foil;
     IVault vault;
     IMintableToken collateralAsset;
@@ -37,9 +38,12 @@ contract VaultTest is TestTrade {
     uint256 initialStartTime;
 
     uint256 DEFAULT_DURATION = 2419200; // 28 days in seconds
+    uint256 INITIAL_LP_BALANCE = 100_000 ether;
 
     function setUp() public {
         address[] memory feeCollectors = new address[](0);
+
+        lp1 = TestUser.createUser("LP1", INITIAL_LP_BALANCE);
 
         (foil, vault, collateralAsset, owner) = _initializeVault(feeCollectors);
 
@@ -86,7 +90,7 @@ contract VaultTest is TestTrade {
         assertEq(endTime - startTime, DEFAULT_DURATION, "Epoch duration");
     }
 
-    function test_settleEpochCreatesNewEpoch() public {
+    function test_settleEpochCreatesNewEpochWithoutLiquidity() public {
         uint256 epochIdBefore;
         uint256 startTimeBefore;
         uint256 endTimeBefore;
@@ -100,6 +104,37 @@ contract VaultTest is TestTrade {
         // New epoch created
         (epochIdBefore, startTimeBefore, endTimeBefore, , , , , , , , ) = foil
             .getLatestEpoch();
+
+        // Settle
+        vm.warp(endTimeBefore + 1);
+        settleEpochFromVault(epochIdBefore, initialSqrtPriceX96, owner);
+
+        // New epoch created
+        (epochIdAfter, startTimeAfter, endTimeAfter, , , , , , , , ) = foil
+            .getLatestEpoch();
+        assertEq(epochIdAfter, epochIdBefore + 1);
+        assertEq(startTimeAfter, endTimeBefore + DEFAULT_DURATION);
+        assertEq(endTimeAfter, startTimeAfter + DEFAULT_DURATION);
+    }
+
+    function test_settleEpochCreatesNewEpochWithLiquidity() public {
+        uint256 epochIdBefore;
+        uint256 startTimeBefore;
+        uint256 endTimeBefore;
+
+        uint256 epochIdAfter;
+        uint256 startTimeAfter;
+        uint256 endTimeAfter;
+
+        initializeFirstEpoch(initialSqrtPriceX96, initialStartTime);
+
+        // New epoch created
+        (epochIdBefore, startTimeBefore, endTimeBefore, , , , , , , , ) = foil
+            .getLatestEpoch();
+
+        // Add liquidity
+        vm.prank(lp1);
+        uint256 requestId = vault.requestDeposit(100 ether, lp1, lp1);
 
         // Settle
         vm.warp(endTimeBefore + 1);
