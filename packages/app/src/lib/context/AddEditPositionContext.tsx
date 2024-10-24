@@ -117,10 +117,10 @@ export const AddEditPositionProvider: React.FC<{
         const tradeId = lastTradePosition?.id
           ? Number(lastTradePosition.id)
           : undefined;
-        lastPositionId =
-          liquidityId !== undefined && tradeId !== undefined
-            ? Math.max(liquidityId, tradeId)
-            : (liquidityId ?? tradeId);
+        lastPositionId = Math.max(
+          liquidityId ?? -Infinity,
+          tradeId ?? -Infinity
+        );
       }
 
       if (lastPositionId !== undefined) {

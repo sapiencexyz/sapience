@@ -264,7 +264,7 @@ const Subscribe: FC<SubscribeProps> = ({
           if ((event as any).eventName === 'TraderPositionCreated') {
             const nftId = (event as any).args.positionId.toString();
             router.push(
-              `/markets/${finalChainId}:${finalMarketAddress}/positions/${nftId}`
+              `/trade/${finalChainId}:${finalMarketAddress}/epochs/${finalEpoch}?positionId=${nftId}`
             );
             renderToast(
               toast,
