@@ -51,7 +51,7 @@ const useAccountData = () => {
       return response.json();
     },
     enabled: isConnected,
-    refetchInterval: POLLING_INTERVAL
+    refetchInterval: POLLING_INTERVAL,
   });
 };
 
@@ -236,10 +236,16 @@ const Market = ({
     return null;
   };
 
-  const { data: accountData, error: accountDataError, isLoading: isLoadingAccountData } = useAccountData();
+  const {
+    data: accountData,
+    error: accountDataError,
+    isLoading: isLoadingAccountData,
+  } = useAccountData();
 
-  const traderPositions = accountData?.positions.filter((position: any) => !position.isLP) || [];
-  const lpPositions = accountData?.positions.filter((position: any) => position.isLP) || [];
+  const traderPositions =
+    accountData?.positions.filter((position: any) => !position.isLP) || [];
+  const lpPositions =
+    accountData?.positions.filter((position: any) => position.isLP) || [];
   const transactions = accountData?.transactions || [];
 
   useEffect(() => {
@@ -325,7 +331,7 @@ const Market = ({
                 <MarketSidebar isTrade={isTrade} />
               </Box>
             </Flex>
-            {isConnected && (
+            {transactions.length > 0 && (
               <Flex
                 id="table-flex"
                 borderTop="1px solid"
@@ -339,27 +345,26 @@ const Market = ({
                 {isLoadingAccountData ? (
                   <Spinner size="lg" />
                 ) : (
-                  <Tabs display="flex" flexDirection="column" width="100%">
+                  <Tabs
+                    display="flex"
+                    flexDirection="column"
+                    width="100%"
+                    height="100%"
+                  >
                     <TabList>
                       <Tab>Transactions</Tab>
                       <Tab>Trader Positions</Tab>
                       <Tab>LP Positions</Tab>
                     </TabList>
-                    <TabPanels flexGrow={1} overflow="auto">
+                    <TabPanels flexGrow={1} overflowY="auto">
                       <TabPanel>
-                        <TransactionTable
-                          transactions={transactions}
-                        />
+                        <TransactionTable transactions={transactions} />
                       </TabPanel>
                       <TabPanel>
-                        <TraderPositionsTable
-                          positions={traderPositions}
-                        />
+                        <TraderPositionsTable positions={traderPositions} />
                       </TabPanel>
                       <TabPanel>
-                        <LiquidityPositionsTable
-                          positions={lpPositions}
-                        />
+                        <LiquidityPositionsTable positions={lpPositions} />
                       </TabPanel>
                     </TabPanels>
                   </Tabs>

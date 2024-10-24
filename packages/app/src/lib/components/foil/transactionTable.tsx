@@ -38,9 +38,7 @@ const getTypeDisplay = (type: string) => {
   }
 };
 
-const TransactionTable: React.FC<Props> = ({
-  transactions,
-}) => {
+const TransactionTable: React.FC<Props> = ({ transactions }) => {
   const { address, chain } = useContext(MarketContext);
 
   const sortedTransactions = useMemo(() => {

@@ -8,8 +8,6 @@ import {
   Tbody,
   Td,
   Link,
-  Box,
-  Spinner,
   Tooltip,
 } from '@chakra-ui/react';
 import { useContext } from 'react';
@@ -21,36 +19,12 @@ import Address from './address';
 import NumberDisplay from './numberDisplay';
 
 interface Props {
-  isLoading: boolean;
-  error: Error | null;
   positions: any[];
-  contractId: string;
 }
-const LiquidityPositionsTable: React.FC<Props> = ({
-  isLoading,
-  error,
-  positions,
-  contractId,
-}) => {
-  const { pool, endTime } = useContext(MarketContext);
+const LiquidityPositionsTable: React.FC<Props> = ({ positions }) => {
+  const { pool, endTime, chain, address } = useContext(MarketContext);
   const dateMilliseconds = Number(endTime) * 1000;
   const expired = new Date(dateMilliseconds) < new Date();
-
-  if (isLoading) {
-    return (
-      <Box textAlign="center" py={12}>
-        <Spinner opacity={0.5} />
-      </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <Box textAlign="center" py={12}>
-        Error: {error.message}
-      </Box>
-    );
-  }
 
   const calculatePnL = (position: any) => {
     const vEthToken = parseFloat(position.quoteToken);
@@ -68,7 +42,6 @@ const LiquidityPositionsTable: React.FC<Props> = ({
         <Thead>
           <Tr>
             <Th>Position</Th>
-            <Th>Owner</Th>
             <Th>Collateral</Th>
             <Th>Base Token</Th>
             <Th>Quote Token</Th>
@@ -91,14 +64,11 @@ const LiquidityPositionsTable: React.FC<Props> = ({
                 <Tr key={row.id}>
                   <Td>
                     <Link
-                      href={`/positions/${contractId}/${row.positionId}`}
+                      href={`/positions/${chain}:${address}/${row.positionId}`}
                       textDecoration="underline"
                     >
                       #{row.positionId.toString()}
                     </Link>
-                  </Td>
-                  <Td>
-                    <Address value={row.owner || ''} />
                   </Td>
                   <Td>
                     <NumberDisplay value={row.collateral} /> wstETH
