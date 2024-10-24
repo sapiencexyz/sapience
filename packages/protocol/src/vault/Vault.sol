@@ -39,29 +39,29 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     );
 
     // tentative storage change
-    struct EpochData {
-        uint256 marketEpochId;
-        uint256 totalPendingDeposit;
-        uint256 totalPendingWithdrawal;
-        uint256 totalClaimableDeposit;
-        uint256 totalClaimableWithdrawal;
-        uint256 sharePrice;
-        mapping(address => uint256) userNonExecutedDeposits; // uses same id as epochs
-        mapping(address => uint256) userNonExecutedWithdrawals; // uses same id as epochs
-    }
+    // struct EpochData {
+    //     uint256 marketEpochId;
+    //     uint256 totalPendingDeposit;
+    //     uint256 totalPendingWithdrawal;
+    //     uint256 totalClaimableDeposit;
+    //     uint256 totalClaimableWithdrawal;
+    //     uint256 sharePrice;
+    //     mapping(address => uint256) userNonExecutedDeposits; // uses same id as epochs
+    //     mapping(address => uint256) userNonExecutedWithdrawals; // uses same id as epochs
+    // }
 
-    uint256 currentFutureEpochIdx; // helper, it must be epochs.lenght -1
-    mapping(uint256 => EpochData) public epochs; // holds the epoch data currentFutureEpochIdx points to current "not-closed" epoch
+    // uint256 currentFutureEpochIdx; // helper, it must be epochs.lenght -1
+    // mapping(uint256 => EpochData) public epochs; // holds the epoch data currentFutureEpochIdx points to current "not-closed" epoch
 
-    uint256 globalTotalPendingDeposit; // total pending deposits expressed in collateral asset
-    uint256 globalTotalPendingWithdrawal; // total pending withdrawal expressed in shares
-    uint256 globalTotalClaimableDeposit; // total claimable deposits expressed in collateral asset
-    uint256 globalTotalClaimableWithdrawal; // total claimable withdrawal expressed in shares
+    // uint256 globalTotalPendingDeposit; // total pending deposits expressed in collateral asset
+    // uint256 globalTotalPendingWithdrawal; // total pending withdrawal expressed in shares
+    // uint256 globalTotalClaimableDeposit; // total claimable deposits expressed in collateral asset
+    // uint256 globalTotalClaimableWithdrawal; // total claimable withdrawal expressed in shares
 
-    mapping(address => uint256) userShares;
-    mapping(address => SetUtil.UintSet) userDirtyEpochs; // epochs with pending deposits or withdrawals for users
-    mapping(address => uint256) userClaimableDeposits; // notice userPending is currentFutureEpoch's userNonExecuted
-    mapping(address => uint256) userClaimableWithrwawals; // notice userPending is currentFutureEpoch's userNonExecuted
+    // mapping(address => uint256) userShares;
+    // mapping(address => SetUtil.UintSet) userDirtyEpochs; // epochs with pending deposits or withdrawals for users
+    // mapping(address => uint256) userClaimableDeposits; // notice userPending is currentFutureEpoch's userNonExecuted
+    // mapping(address => uint256) userClaimableWithrwawals; // notice userPending is currentFutureEpoch's userNonExecuted
 
     address immutable vaultInitializer;
     bool initialized;
@@ -173,13 +173,15 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 newEpochStartTime = resolvedEpochEndTime + duration;
 
         // Settle the position and get the collateral received
+        uint256 collateralReceived;
         if (positionId != 0) {
-            uint256 collateralReceived = market.settlePosition(positionId);
-            collateralReceived; // do we need to use if for anything? at least an event reporting it
+            collateralReceived = market.settlePosition(positionId);
         }
 
         // Process the epoch transition and pass the collateral received
-        uint256 totalCollateralAfterTransition = _processEpochTransition();
+        uint256 totalCollateralAfterTransition = _processEpochTransition(
+            collateralReceived
+        );
 
         // Move to the next epoch
         _initializeEpoch(newEpochStartTime, previousResolutionSqrtPriceX96);
@@ -192,63 +194,87 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         }
     }
 
-    function _processEpochTransition() internal returns (uint256) {
-        uint256 epochSharePriceAtClosure;
-        if (currentFutureEpochIdx > 0) {
-            EpochData storage epochData = epochs[currentFutureEpochIdx - 1];
+    function _processEpochTransition(
+        uint256 collateralFromPreviousEpoch
+    ) internal returns (uint256 totalCollateralForNextEpoch) {
+        // uint256 epochSharePriceAtClosure;
+        // if (currentFutureEpochIdx > 0) {
+        //     EpochData storage epochData = epochs[currentFutureEpochIdx - 1];
+        //     uint256 netSupplyBeforeTransitioning = totalSupply();
+        //     // Calculate the new share price
+        //     uint256 totalAssetsBeforeTransitioning = totalAssets();
+        //     epochSharePriceAtClosure = netSupplyBeforeTransitioning > 0
+        //         ? _calculatePrice(
+        //             totalAssetsBeforeTransitioning,
+        //             netSupplyBeforeTransitioning
+        //         )
+        //         : 1e18;
+        //     epochData.sharePrice = epochSharePriceAtClosure;
+        //     // Adjust accounting
+        //     // Move from pending to claimable
+        //     epochData.totalClaimableDeposit = epochData.totalPendingDeposit;
+        //     globalTotalClaimableDeposit += epochData.totalPendingDeposit;
+        //     globalTotalPendingDeposit -= epochData.totalPendingDeposit; // is it possible to overflow? I don't think so, since it was updated at the same time on requests
+        //     epochData.totalPendingDeposit = 0;
+        //     epochData.totalClaimableWithdrawal = epochData
+        //         .totalPendingWithdrawal;
+        //     globalTotalClaimableWithdrawal += epochData.totalPendingWithdrawal;
+        //     globalTotalPendingWithdrawal -= epochData.totalPendingWithdrawal; // is it possible to overflow? I don't think so, since it was updated at the same time on requests
+        //     epochData.totalPendingWithdrawal = 0;
+        //     // Do we need to do something with the shares?
+        //     // with the PnL from the received collateral, the shares value is adjusted
+        //     // re-distribute shares makes sense in a liquidation like action where shares needs to be distributed
+        //     // // Process pending deposits
+        //     // uint256 totalNewShares = (currentEpoch.totalPendingDeposits * 1e18) /
+        //     //     newSharePrice;
+        //     // _mintShares(address(this), totalNewShares);
+        //     emit EpochProcessed(
+        //         epochData.marketEpochId,
+        //         epochSharePriceAtClosure
+        //     );
+        // }
+        // uint256 totalWithdrawalAmount = _calculateAssets(
+        //     globalTotalClaimableWithdrawal,
+        //     epochSharePriceAtClosure,
+        //     Math.Rounding.Floor
+        // );
+        // // Calculate the total collateral available for the new liquidity position
+        // // Balance includes the collateral received plus any uninvested collateral for the next epoch (claimable deposits) and pending withdrawals
+        // // then we need to remove the total withdrawable value at current price
+        // uint256 totalCollateral = collateralAsset.balanceOf(address(this)) -
+        //     totalWithdrawalAmount;
+        // return totalCollateral;
 
-            uint256 netSupplyBeforeTransitioning = totalSupply();
-
-            // Calculate the new share price
-            uint256 totalAssetsBeforeTransitioning = totalAssets();
-            epochSharePriceAtClosure = netSupplyBeforeTransitioning > 0
-                ? _calculatePrice(
-                    totalAssetsBeforeTransitioning,
-                    netSupplyBeforeTransitioning
-                )
-                : 1e18;
-
-            epochData.sharePrice = epochSharePriceAtClosure;
-
-            // Adjust accounting
-            // Move from pending to claimable
-            epochData.totalClaimableDeposit = epochData.totalPendingDeposit;
-            globalTotalClaimableDeposit += epochData.totalPendingDeposit;
-            globalTotalPendingDeposit -= epochData.totalPendingDeposit; // is it possible to overflow? I don't think so, since it was updated at the same time on requests
-            epochData.totalPendingDeposit = 0;
-            epochData.totalClaimableWithdrawal = epochData
-                .totalPendingWithdrawal;
-            globalTotalClaimableWithdrawal += epochData.totalPendingWithdrawal;
-            globalTotalPendingWithdrawal -= epochData.totalPendingWithdrawal; // is it possible to overflow? I don't think so, since it was updated at the same time on requests
-            epochData.totalPendingWithdrawal = 0;
-
-            // Do we need to do something with the shares?
-            // with the PnL from the received collateral, the shares value is adjusted
-            // re-distribute shares makes sense in a liquidation like action where shares needs to be distributed
-
-            // // Process pending deposits
-            // uint256 totalNewShares = (currentEpoch.totalPendingDeposits * 1e18) /
-            //     newSharePrice;
-            // _mintShares(address(this), totalNewShares);
-            emit EpochProcessed(
-                epochData.marketEpochId,
-                epochSharePriceAtClosure
-            );
+        // Get the share price for the closing epoch
+        uint256 totalShares = totalSupply();
+        uint256 sharePrice;
+        if (totalShares > 0 && collateralFromPreviousEpoch > 0) {
+            sharePrice = collateralFromPreviousEpoch.mulDiv(1e18, totalShares); // any rounding?
+        } else {
+            sharePrice = 1e18;
         }
 
-        uint256 totalWithdrawalAmount = _calculateAssets(
-            globalTotalClaimableWithdrawal,
-            epochSharePriceAtClosure,
-            Math.Rounding.Floor
-        );
+        epochSharePrices[currentEpochId] = sharePrice;
 
-        // Calculate the total collateral available for the new liquidity position
-        // Balance includes the collateral received plus any uninvested collateral for the next epoch (claimable deposits) and pending withdrawals
-        // then we need to remove the total withdrawable value at current price
-        uint256 totalCollateral = collateralAsset.balanceOf(address(this)) -
-            totalWithdrawalAmount;
+        totalCollateralForNextEpoch =
+            collateralFromPreviousEpoch +
+            totalPendingDeposits -
+            totalPendingWithdrawals.mulDiv(sharePrice, 1e18); // any rounding?
+        // TODO check if it overflows
 
-        return totalCollateral;
+        uint256 newShares = totalCollateralForNextEpoch.mulDiv(
+            1e18,
+            sharePrice
+        ); // any rounding?
+
+        uint256 currentShares = totalSupply();
+
+        if (newShares > currentShares) {
+            // need to mint more shares
+            _mint(address(this), newShares - currentShares);
+        }
+        totalPendingWithdrawals = 0;
+        totalPendingDeposits = 0;
     }
 
     function _createNewLiquidityPosition(
