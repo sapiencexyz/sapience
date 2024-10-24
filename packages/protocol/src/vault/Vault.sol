@@ -183,6 +183,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             collateralReceived
         );
 
+        /*
+            TODO: update market params with new min/max price bounds for the next epoch
+        */
+
         // Move to the next epoch
         _initializeEpoch(newEpochStartTime, previousResolutionSqrtPriceX96);
 
@@ -191,6 +195,8 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             positionId = _createNewLiquidityPosition(
                 totalCollateralAfterTransition
             );
+        } else {
+            positionId = 0;
         }
     }
 
@@ -272,7 +278,12 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         if (newShares > currentShares) {
             // need to mint more shares
             _mint(address(this), newShares - currentShares);
+        } else {
+            pendingSharesToBurn =
+                (pendingSharesToBurn + currentShares) -
+                newShares;
         }
+
         totalPendingWithdrawals = 0;
         totalPendingDeposits = 0;
     }
@@ -280,8 +291,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     function _createNewLiquidityPosition(
         uint256 totalCollateral
     ) private returns (uint256 newPositionId) {
-        uint256 epochId = epochs[currentFutureEpochIdx].marketEpochId;
-
         // Retrieve the latest epoch parameters
         (
             ,
@@ -303,7 +312,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         // Calculate token amounts for the liquidity position
         (uint256 amount0, uint256 amount1, ) = market
             .quoteLiquidityPositionTokens(
-                epochId,
+                currentEpochId,
                 totalCollateral,
                 sqrtPriceX96,
                 TickMath.getSqrtRatioAtTick(epochParams.baseAssetMinPriceTick),
@@ -313,7 +322,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         // Prepare liquidity mint parameters
         IFoilStructs.LiquidityMintParams memory params = IFoilStructs
             .LiquidityMintParams({
-                epochId: epochId,
+                epochId: currentEpochId,
                 amountTokenA: amount0,
                 amountTokenB: amount1,
                 collateralAmount: totalCollateral,
@@ -341,21 +350,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     }
 
     function totalAssets() public view override returns (uint256) {
-        uint256 investedAssets;
-        if (positionId > 0) {
-            investedAssets = market.getPositionCollateralValue(positionId);
-        }
-        uint256 pendingWithdrawalsValue = _getSharesValue(
-            investedAssets,
-            totalSupply(),
-            globalTotalClaimableWithdrawal
-        );
-        uint256 pendingDeposits = globalTotalClaimableDeposit;
-
-        uint256 totalManagedAssets = investedAssets -
-            pendingWithdrawalsValue +
-            pendingDeposits;
-        return totalManagedAssets;
+        return market.getPositionCollateralValue(positionId);
     }
 
     function totalSupply()
@@ -729,25 +724,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             "Only market can call this function"
         );
         _;
-    }
-
-    function availableShares(address owner) public view returns (uint256) {
-        // The shares currently available to the user (not locked)
-        return userShares[owner];
-    }
-
-    function _mintShares(address account, uint256 amount) internal {
-        _mint(account, amount);
-        if (account != address(this)) {
-            userShares[account] += amount;
-        }
-    }
-
-    function _burnShares(address account, uint256 amount) internal {
-        _burn(account, amount);
-        if (account != address(this)) {
-            userShares[account] -= amount;
-        }
     }
 
     // Helpers
