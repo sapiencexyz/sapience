@@ -13,10 +13,11 @@ import {
   HStack,
   Spinner,
   Text,
+  useToast,
 } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { BsArrowLeftRight } from 'react-icons/bs';
+import { useAccount } from 'wagmi';
 
 import Chart from '~/lib/components/chart';
 import ChartSelector from '~/lib/components/ChartSelector';
@@ -37,6 +38,23 @@ import { ChartType, TimeWindow } from '~/lib/interfaces/interfaces';
 
 const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
 
+const useAccountData = () => {
+  const { address, isConnected } = useAccount();
+
+  return useQuery({
+    queryKey: ['accountData', address],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/accounts/${address}`);
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    },
+    enabled: isConnected,
+    refetchInterval: POLLING_INTERVAL
+  });
+};
+
 const Market = ({
   params,
   isTrade,
@@ -54,6 +72,8 @@ const Market = ({
   const [chainId, marketAddress] = params.id.split('%3A');
   const { epoch } = params;
   const contractId = `${chainId}:${marketAddress}`;
+  const { isConnected } = useAccount();
+  const toast = useToast();
 
   // useEffect to handle table resize
   useEffect(() => {
@@ -90,22 +110,6 @@ const Market = ({
     };
   }, [tableFlexHeight]);
 
-  const useTransactions = () => {
-    return useQuery({
-      queryKey: ['transactions', contractId, epoch],
-      queryFn: async () => {
-        const response = await fetch(
-          `${API_BASE_URL}/transactions?contractId=${contractId}&epochId=${epoch}`
-        );
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        return response.json();
-      },
-      refetchInterval: POLLING_INTERVAL,
-    });
-  };
-
   const useVolume = () => {
     return useQuery({
       queryKey: ['volume', contractId, epoch],
@@ -133,57 +137,6 @@ const Market = ({
       console.error('useVolumeError =', useVolumeError);
     }
   }, [volume, useVolumeError]);
-
-  const {
-    data: transactions,
-    error: useTransactionsError,
-    isLoading: isLoadingTransactions,
-    refetch: refetchTransactions,
-  } = useTransactions();
-
-  const useTradePositions = () => {
-    return useQuery({
-      queryKey: ['traderPositions', contractId],
-      queryFn: async () => {
-        const response = await fetch(
-          `${API_BASE_URL}/positions?contractId=${contractId}&isLP=false`
-        );
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        return response.json();
-      },
-      refetchInterval: POLLING_INTERVAL,
-    });
-  };
-
-  const {
-    data: tradePositions,
-    error: tradePositionsError,
-    isLoading: isLoadingTradePositions,
-  } = useTradePositions();
-
-  const useLiquidityPositions = () => {
-    return useQuery({
-      queryKey: ['liquidityPositions', contractId],
-      queryFn: async () => {
-        const response = await fetch(
-          `${API_BASE_URL}/positions?contractId=${contractId}&isLP=true`
-        );
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        return response.json();
-      },
-      refetchInterval: POLLING_INTERVAL,
-    });
-  };
-
-  const {
-    data: lpPositions,
-    error: lpPositionsError,
-    isLoading: isLoadingLpPositions,
-  } = useLiquidityPositions();
 
   const useMarketPrices = () => {
     return useQuery({
@@ -283,6 +236,24 @@ const Market = ({
     return null;
   };
 
+  const { data: accountData, error: accountDataError, isLoading: isLoadingAccountData } = useAccountData();
+
+  const traderPositions = accountData?.positions.filter((position: any) => !position.isLP) || [];
+  const lpPositions = accountData?.positions.filter((position: any) => position.isLP) || [];
+  const transactions = accountData?.transactions || [];
+
+  useEffect(() => {
+    if (accountDataError) {
+      toast({
+        title: 'Error loading account data',
+        description: accountDataError.message,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  }, [accountDataError, toast]);
+
   return (
     <MarketProvider
       chainId={Number(chainId)}
@@ -349,62 +320,52 @@ const Market = ({
               <Box
                 width={{ base: '100%' }}
                 maxWidth={{ base: 'none', md: '360px' }}
-                pb={8}
+                pb={3}
               >
                 <MarketSidebar isTrade={isTrade} />
               </Box>
             </Flex>
-            <Flex
-              id="table-flex"
-              borderTop="1px solid"
-              borderColor="gray.200"
-              height={`${tableFlexHeight}px`}
-              pt={1}
-              position="relative"
-            >
-              <Box
-                ref={resizeRef}
-                position="absolute"
-                top="-5px"
-                left="0"
-                right="0"
-                height="10px"
-                cursor="ns-resize"
-              />
-              <Tabs display="flex" flexDirection="column" width="100%">
-                <TabList>
-                  <Tab>Transactions</Tab>
-                  <Tab>Trader Positions</Tab>
-                  <Tab>LP Positions</Tab>
-                </TabList>
-                <TabPanels flexGrow={1} overflow="auto">
-                  <TabPanel>
-                    <TransactionTable
-                      isLoading={isLoadingTransactions}
-                      error={useTransactionsError}
-                      transactions={transactions}
-                      contractId={contractId}
-                    />
-                  </TabPanel>
-                  <TabPanel>
-                    <TraderPositionsTable
-                      isLoading={isLoadingTradePositions}
-                      error={tradePositionsError}
-                      positions={tradePositions}
-                      contractId={contractId}
-                    />
-                  </TabPanel>
-                  <TabPanel>
-                    <LiquidityPositionsTable
-                      isLoading={isLoadingLpPositions}
-                      error={lpPositionsError}
-                      positions={lpPositions}
-                      contractId={contractId}
-                    />
-                  </TabPanel>
-                </TabPanels>
-              </Tabs>
-            </Flex>
+            {isConnected && (
+              <Flex
+                id="table-flex"
+                borderTop="1px solid"
+                borderColor="gray.200"
+                height={`${tableFlexHeight}px`}
+                pt={1}
+                position="relative"
+                justifyContent="center"
+                alignItems="center"
+              >
+                {isLoadingAccountData ? (
+                  <Spinner size="lg" />
+                ) : (
+                  <Tabs display="flex" flexDirection="column" width="100%">
+                    <TabList>
+                      <Tab>Transactions</Tab>
+                      <Tab>Trader Positions</Tab>
+                      <Tab>LP Positions</Tab>
+                    </TabList>
+                    <TabPanels flexGrow={1} overflow="auto">
+                      <TabPanel>
+                        <TransactionTable
+                          transactions={transactions}
+                        />
+                      </TabPanel>
+                      <TabPanel>
+                        <TraderPositionsTable
+                          positions={traderPositions}
+                        />
+                      </TabPanel>
+                      <TabPanel>
+                        <LiquidityPositionsTable
+                          positions={lpPositions}
+                        />
+                      </TabPanel>
+                    </TabPanels>
+                  </Tabs>
+                )}
+              </Flex>
+            )}
           </Flex>
         </Flex>
       </AddEditPositionProvider>

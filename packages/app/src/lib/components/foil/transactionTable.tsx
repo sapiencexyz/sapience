@@ -20,10 +20,7 @@ import { MarketContext } from '~/lib/context/MarketProvider';
 import NumberDisplay from './numberDisplay';
 
 interface Props {
-  isLoading: boolean;
-  error: Error | null;
   transactions: any[];
-  contractId: string;
 }
 
 const getTypeDisplay = (type: string) => {
@@ -42,12 +39,9 @@ const getTypeDisplay = (type: string) => {
 };
 
 const TransactionTable: React.FC<Props> = ({
-  isLoading,
-  error,
   transactions,
-  contractId,
 }) => {
-  const { chain } = useContext(MarketContext);
+  const { address, chain } = useContext(MarketContext);
 
   const sortedTransactions = useMemo(() => {
     if (!transactions) return [];
@@ -56,21 +50,7 @@ const TransactionTable: React.FC<Props> = ({
     );
   }, [transactions]);
 
-  if (isLoading) {
-    return (
-      <Box textAlign="center" py={12}>
-        <Spinner opacity={0.5} />
-      </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <Box textAlign="center" py={12}>
-        Error: {error.message}
-      </Box>
-    );
-  }
+  console.log(transactions);
 
   return (
     <TableContainer mb={4}>
@@ -78,6 +58,7 @@ const TransactionTable: React.FC<Props> = ({
         <Thead>
           <Tr>
             <Th>Time</Th>
+            <Th>Market</Th>
             <Th>Position</Th>
             <Th>Type</Th>
             <Th>Collateral</Th>
@@ -95,9 +76,10 @@ const TransactionTable: React.FC<Props> = ({
                   addSuffix: true,
                 })}
               </Td>
+              <Td>Market X (Epoch Y)</Td>
               <Td>
                 <Link
-                  href={`/positions/${contractId}/${row.position.positionId}`}
+                  href={`/positions/${chain}:${address}/${row.position.positionId}`}
                   textDecoration="underline"
                 >
                   #{row.position.positionId}
