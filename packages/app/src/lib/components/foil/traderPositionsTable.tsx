@@ -41,6 +41,7 @@ const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
       <Table variant="simple" size="sm">
         <Thead>
           <Tr>
+            <Th>Market</Th>
             <Th>Position</Th>
             <Th>Collateral</Th>
             <Th>Size</Th>
@@ -59,6 +60,9 @@ const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
               const pnl = calculatePnL(row);
               return (
                 <Tr key={row.id}>
+                  <Td>
+                    {row.epoch.market.name} (Epoch {row.epoch.epochId})
+                  </Td>
                   <Td>
                     <Link
                       href={`/positions/${chain}:${address}/${row.positionId}`}

@@ -48,7 +48,7 @@ const TransactionTable: React.FC<Props> = ({ transactions }) => {
     );
   }, [transactions]);
 
-  console.log(transactions);
+  console.log('s', sortedTransactions);
 
   return (
     <TableContainer mb={4}>
@@ -74,7 +74,10 @@ const TransactionTable: React.FC<Props> = ({ transactions }) => {
                   addSuffix: true,
                 })}
               </Td>
-              <Td>Market X (Epoch Y)</Td>
+              <Td>
+                {row.position.epoch.market.name} (Epoch{' '}
+                {row.position.epoch.epochId})
+              </Td>
               <Td>
                 <Link
                   href={`/positions/${chain}:${address}/${row.position.positionId}`}
