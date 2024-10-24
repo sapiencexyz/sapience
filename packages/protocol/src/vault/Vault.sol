@@ -252,7 +252,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         // return totalCollateral;
 
         // Get the share price for the closing epoch
-        uint256 totalShares = totalSupply() - pendingSharesToBurn;
+        uint256 totalShares = totalSupply();
         uint256 sharePrice;
         if (totalShares > 0 && collateralFromPreviousEpoch > 0) {
             sharePrice = collateralFromPreviousEpoch.mulDiv(1e18, totalShares); // any rounding?
