@@ -754,5 +754,46 @@ const startServer = async () => {
       res.status(500).json({ error: "Internal server error" });
     }
   });
+
+  app.get("/accounts/:address", async (req, res) => {
+    const { address } = req.params;
+
+    if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+      return res.status(400).json({ error: "Invalid address format" });
+    }
+
+    try {
+      const positions = await positionRepository.find({
+        where: { owner: address },
+        relations: ["epoch", "epoch.market"],
+      });
+
+      const transactions = await transactionRepository.find({
+        where: { position: { owner: address } },
+        relations: ["position", "position.epoch", "position.epoch.market"],
+      });
+
+      positions.forEach((position) => {
+        position.baseToken = formatDbBigInt(position.baseToken);
+        position.quoteToken = formatDbBigInt(position.quoteToken);
+        position.borrowedBaseToken = formatDbBigInt(position.borrowedBaseToken);
+        position.borrowedQuoteToken = formatDbBigInt(position.borrowedQuoteToken);
+        position.collateral = formatDbBigInt(position.collateral);
+      });
+
+      transactions.forEach((transaction) => {
+        transaction.baseTokenDelta = formatDbBigInt(transaction.baseTokenDelta);
+        transaction.quoteTokenDelta = formatDbBigInt(transaction.quoteTokenDelta);
+        transaction.collateralDelta = formatDbBigInt(transaction.collateralDelta);
+        transaction.tradeRatioD18 = formatDbBigInt(transaction.tradeRatioD18);
+      });
+
+      res.json({ positions, transactions });
+    } catch (error) {
+      console.error("Error fetching account data:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
 };
 startServer().catch((e) => console.error("Unable to start server: ", e));
