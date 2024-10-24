@@ -22,19 +22,31 @@ import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import type React from 'react';
 import { useEffect, useState } from 'react';
+import type { WriteContractErrorType } from 'viem';
+import { parseUnits } from 'viem';
 import * as Chains from 'viem/chains';
-import { useReadContract, useWriteContract } from 'wagmi';
+import {
+  useReadContract,
+  useWaitForTransactionReceipt,
+  useWriteContract,
+} from 'wagmi';
 
+import erc20ABI from '../../erc20abi.json';
 import useFoilDeployment from '../foil/useFoilDeployment';
 import MarketAddress from '../MarketAddress';
 import {
   API_BASE_URL,
   DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS,
+  TOKEN_DECIMALS,
 } from '~/lib/constants/constants';
 import { useLoading } from '~/lib/context/LoadingContext';
 import { useMarketList, type Market } from '~/lib/context/MarketListProvider';
 import { formatAmount } from '~/lib/util/numberUtil';
-import { gweiToEther, renderToast } from '~/lib/util/util';
+import {
+  gweiToEther,
+  renderContractErrorToast,
+  renderToast,
+} from '~/lib/util/util';
 
 const MarketsTable: React.FC = () => {
   const { markets, isLoading, error, refetchMarkets } = useMarketList();
@@ -133,21 +145,14 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
 }) => {
   const { setIsLoading } = useLoading();
   const [loadingStEthPerToken, setLoadingStEthPerToken] = useState(false);
-  const [currentTime, setCurrentTime] = useState(Math.floor(Date.now() / 1000));
   const [stEthPerToken, setStEthPerToken] = useState(0);
   const toast = useToast();
   const { foilData, loading, error } = useFoilDeployment(market?.chainId);
   const { chainId, collateralAsset } = market;
   const { endTimestamp } = epoch;
+  const [txnStep, setTxnStep] = useState(0);
 
-  // polling to check if the epoch expired
-  useEffect(() => {
-    const interval = setInterval(
-      () => setCurrentTime(Math.floor(Date.now() / 1000)),
-      60 * 1000
-    );
-    return () => clearInterval(interval);
-  }, []);
+  const currentTime = Math.floor(Date.now() / 1000);
 
   const stEthPerTokenResult = useReadContract({
     chainId: chainId === Chains.cannon.id ? Chains.sepolia.id : chainId,
@@ -212,25 +217,83 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
       enabled: !loading && !error && !!foilData,
     },
   }) as any;
-
   const epochSettled = epochData ? epochData[7] : undefined;
   const settlementPrice = epochData ? epochData[8] : undefined;
+  const bondAmount =
+    epochData && epochData[9] ? epochData[9].bondAmount : undefined;
+  const bondCurrency =
+    epochData && epochData[9] ? epochData[9].bondCurrency : undefined;
 
-  const { writeContract: settleWithPrice } = useWriteContract({
-    mutation: {
-      onError: (settleError) => {
-        renderToast(toast, settleError.toString(), 'error');
+  const { writeContract: settleWithPrice, data: settlementHash } =
+    useWriteContract({
+      mutation: {
+        onError: (settleError) => {
+          renderContractErrorToast(
+            settleError as WriteContractErrorType,
+            toast,
+            'Failed to settle'
+          );
+          resetAfterError();
+        },
+        onSuccess: () => {
+          renderToast(
+            toast,
+            'Transaction submitted. Waiting for confirmation...',
+            'info'
+          );
+        },
       },
-      onSuccess: () => {
-        renderToast(
+    });
+
+  const { isSuccess: isSettlementSuccess } = useWaitForTransactionReceipt({
+    hash: settlementHash,
+  });
+
+  const { data: approveHash, writeContract: approveWrite } = useWriteContract({
+    mutation: {
+      onError: (error) => {
+        resetAfterError();
+        renderContractErrorToast(
+          error as WriteContractErrorType,
           toast,
-          'Transaction submitted. Waiting for confirmation...',
-          'info'
+          'Failed to approve'
         );
-        refetchEpochData();
       },
     },
   });
+
+  const { isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({
+    hash: approveHash,
+  });
+
+  useEffect(() => {
+    if (isApproveSuccess && txnStep === 1) {
+      settleWithPrice({
+        address: market.address as `0x${string}`,
+        abi: foilData.abi,
+        functionName: 'submitSettlementPrice',
+        args: [
+          epoch.epochId,
+          parseUnits(priceAdjusted.toString(), TOKEN_DECIMALS),
+        ],
+      });
+      setTxnStep(2);
+    }
+  }, [isApproveSuccess, txnStep]);
+
+  // handle successful txn
+  useEffect(() => {
+    if (isSettlementSuccess && txnStep === 2) {
+      renderToast(
+        toast,
+        'Successfully settled. Note that it may take a few minutes while in the dispute period on UMA.',
+        'success'
+      );
+      refetchEpochData();
+      setTxnStep(0);
+      setIsLoading(false);
+    }
+  }, [isSettlementSuccess]);
 
   const { data: latestPrice, isLoading: isLatestPriceLoading } = useQuery({
     queryKey: ['latestPrice', `${market?.chainId}:${market?.address}`],
@@ -246,7 +309,6 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
     },
     enabled: epoch.epochId !== 0 || market !== undefined,
   });
-
   const priceAdjusted = latestPrice / (stEthPerToken || 1);
 
   const handleGetMissing = async (
@@ -279,6 +341,23 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
     setIsLoading(false);
   };
 
+  const handleApproveSettle = async () => {
+    setIsLoading(true);
+    approveWrite({
+      abi: erc20ABI,
+      address: bondCurrency as `0x${string}`,
+      functionName: 'approve',
+      args: [market.address, bondAmount],
+      chainId,
+    });
+    setTxnStep(1);
+  };
+
+  const resetAfterError = () => {
+    setTxnStep(0);
+    setIsLoading(false);
+  };
+
   const renderSettledCell = () => {
     if (epochSettled) {
       return (
@@ -298,14 +377,7 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
         <Text>{formatAmount(priceAdjusted)}</Text>
         <Button
           isLoading={loadingStEthPerToken || stEthPerTokenResult.isLoading}
-          onClick={() => {
-            settleWithPrice({
-              address: market.address as `0x${string}`,
-              abi: foilData.abi,
-              functionName: 'submitSettlementPrice',
-              args: [epoch.epochId, latestPrice],
-            });
-          }}
+          onClick={handleApproveSettle}
         >
           Settle with Price
         </Button>
