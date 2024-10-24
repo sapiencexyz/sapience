@@ -15,7 +15,7 @@ import "../market/interfaces/IFoilStructs.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/IERC7540.sol";
 
-// import "forge-std/console2.sol";
+import "forge-std/console2.sol";
 
 contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
@@ -46,17 +46,18 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 totalClaimableDeposit;
         uint256 totalClaimableWithdrawal;
         uint256 sharePrice;
+        mapping(address => uint256) userNonExecutedDeposits; // uses same id as epochs
+        mapping(address => uint256) userNonExecutedWithdrawals; // uses same id as epochs
     }
 
     uint256 currentFutureEpochIdx; // helper, it must be epochs.lenght -1
-    EpochData[] public epochs; // holds the epoch data currentFutureEpochIdx points to current "not-closed" epoch
-    mapping(address => uint256)[] userNonExecutedDeposits; // uses same id as epochs
-    mapping(address => uint256)[] userNonExecutedWithdrawals; // uses same id as epochs
+    mapping(uint256 => EpochData) public epochs; // holds the epoch data currentFutureEpochIdx points to current "not-closed" epoch
 
     uint256 globalTotalPendingDeposit; // total pending deposits expressed in collateral asset
     uint256 globalTotalPendingWithdrawal; // total pending withdrawal expressed in shares
     uint256 globalTotalClaimableDeposit; // total claimable deposits expressed in collateral asset
     uint256 globalTotalClaimableWithdrawal; // total claimable withdrawal expressed in shares
+
     mapping(address => uint256) userShares;
     mapping(address => SetUtil.UintSet) userDirtyEpochs; // epochs with pending deposits or withdrawals for users
     mapping(address => uint256) userClaimableDeposits; // notice userPending is currentFutureEpoch's userNonExecuted
@@ -408,31 +409,45 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     ) external override nonReentrant returns (uint256 requestId) {
         require(receiver != address(0), "Invalid receiver");
         collateralAsset.safeTransferFrom(msg.sender, address(this), assets);
+        console2.log("currentFutureEpochIdx", currentFutureEpochIdx);
 
         // Do all the accounting (that should go to __requestDeposit)
-        EpochData storage epochData = epochs[currentFutureEpochIdx];
-        epochData.totalPendingDeposit += assets;
-        userNonExecutedDeposits[currentFutureEpochIdx][owner] += assets;
+        if (epochs.length < currentFutureEpochIdx) {
+            EpochData memory epochData = EpochData({
+                marketEpochId: currentFutureEpochIdx,
+                totalPendingDeposit: assets,
+                totalPendingWithdrawal: 0,
+                totalClaimableDeposit: 0,
+                totalClaimableWithdrawal: 0,
+                sharePrice: 0
+            });
+            epochs.push(epochData);
+            // TODO, use a mapping with idx as key instead of array
+        } else {
+            epochs[currentFutureEpochIdx - 1].totalPendingDeposit += assets;
+        }
+
+        userNonExecutedDeposits[currentFutureEpochIdx - 1][owner] += assets;
         globalTotalPendingDeposit += assets;
         if (!userDirtyEpochs[owner].contains(currentFutureEpochIdx)) {
             userDirtyEpochs[owner].add(currentFutureEpochIdx);
         }
 
-        requestId = currentFutureEpochIdx;
+        requestId = currentFutureEpochIdx - 1;
     }
 
     // Reduce requestDeposit Sends back collateral pending to deposit to actor
     // notice: this adjusts the first part of the Async requestDeposit -> deposit/mint
     function withdrawRequestDeposit(uint256 assets) external {
-        EpochData storage epochData = epochs[currentFutureEpochIdx];
+        EpochData storage epochData = epochs[currentFutureEpochIdx - 1];
         address owner = msg.sender;
         require(
-            userNonExecutedDeposits[currentFutureEpochIdx][owner] >= assets,
+            userNonExecutedDeposits[currentFutureEpochIdx - 1][owner] >= assets,
             "Insufficient pending deposit"
         );
 
         epochData.totalPendingDeposit -= assets;
-        userNonExecutedDeposits[currentFutureEpochIdx][owner] -= assets;
+        userNonExecutedDeposits[currentFutureEpochIdx - 1][owner] -= assets;
         globalTotalPendingDeposit -= assets;
 
         collateralAsset.safeTransfer(msg.sender, assets);
@@ -443,7 +458,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256, // requestId is ignored
         address owner
     ) external view override returns (uint256 assets) {
-        assets = userNonExecutedDeposits[currentFutureEpochIdx][owner];
+        assets = userNonExecutedDeposits[currentFutureEpochIdx - 1][owner];
     }
 
     // amount claimable to deposit (not pending, it means, ready to deposit/mint)
