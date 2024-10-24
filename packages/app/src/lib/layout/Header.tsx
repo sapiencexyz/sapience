@@ -34,7 +34,7 @@ const getMarketHref = (path: string, market: any, withEpochs: boolean) => {
     return `/${path}/${market.chainId}:${market.address}`;
   }
   if (withEpochs) {
-    return `/${path}/${market.chainId}:${market.address}`;
+    return `/markets/?contractId=${market.chainId}:${market.address}`;
   }
   return `/${path}/${market.chainId}:${market.address}/epochs/${market.currentEpoch?.epochId}`;
 };
