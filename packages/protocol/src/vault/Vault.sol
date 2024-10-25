@@ -15,7 +15,7 @@ import "../market/interfaces/IFoilStructs.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/IERC7540.sol";
 
-import "forge-std/console2.sol";
+// import "forge-std/console2.sol";
 
 contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
@@ -86,6 +86,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     uint256 totalPendingWithdrawals;
 
     uint256 pendingSharesToBurn;
+    uint256 uninvestedCollateral;
 
     uint256 currentEpochId;
     ///
@@ -180,7 +181,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
         // Process the epoch transition and pass the collateral received
         uint256 totalCollateralAfterTransition = _processEpochTransition(
-            collateralReceived
+            collateralReceived + uninvestedCollateral
         );
 
         /*
@@ -203,54 +204,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     function _processEpochTransition(
         uint256 collateralFromPreviousEpoch
     ) internal returns (uint256 totalCollateralForNextEpoch) {
-        // uint256 epochSharePriceAtClosure;
-        // if (currentFutureEpochIdx > 0) {
-        //     EpochData storage epochData = epochs[currentFutureEpochIdx - 1];
-        //     uint256 netSupplyBeforeTransitioning = totalSupply();
-        //     // Calculate the new share price
-        //     uint256 totalAssetsBeforeTransitioning = totalAssets();
-        //     epochSharePriceAtClosure = netSupplyBeforeTransitioning > 0
-        //         ? _calculatePrice(
-        //             totalAssetsBeforeTransitioning,
-        //             netSupplyBeforeTransitioning
-        //         )
-        //         : 1e18;
-        //     epochData.sharePrice = epochSharePriceAtClosure;
-        //     // Adjust accounting
-        //     // Move from pending to claimable
-        //     epochData.totalClaimableDeposit = epochData.totalPendingDeposit;
-        //     globalTotalClaimableDeposit += epochData.totalPendingDeposit;
-        //     globalTotalPendingDeposit -= epochData.totalPendingDeposit; // is it possible to overflow? I don't think so, since it was updated at the same time on requests
-        //     epochData.totalPendingDeposit = 0;
-        //     epochData.totalClaimableWithdrawal = epochData
-        //         .totalPendingWithdrawal;
-        //     globalTotalClaimableWithdrawal += epochData.totalPendingWithdrawal;
-        //     globalTotalPendingWithdrawal -= epochData.totalPendingWithdrawal; // is it possible to overflow? I don't think so, since it was updated at the same time on requests
-        //     epochData.totalPendingWithdrawal = 0;
-        //     // Do we need to do something with the shares?
-        //     // with the PnL from the received collateral, the shares value is adjusted
-        //     // re-distribute shares makes sense in a liquidation like action where shares needs to be distributed
-        //     // // Process pending deposits
-        //     // uint256 totalNewShares = (currentEpoch.totalPendingDeposits * 1e18) /
-        //     //     newSharePrice;
-        //     // _mintShares(address(this), totalNewShares);
-        //     emit EpochProcessed(
-        //         epochData.marketEpochId,
-        //         epochSharePriceAtClosure
-        //     );
-        // }
-        // uint256 totalWithdrawalAmount = _calculateAssets(
-        //     globalTotalClaimableWithdrawal,
-        //     epochSharePriceAtClosure,
-        //     Math.Rounding.Floor
-        // );
-        // // Calculate the total collateral available for the new liquidity position
-        // // Balance includes the collateral received plus any uninvested collateral for the next epoch (claimable deposits) and pending withdrawals
-        // // then we need to remove the total withdrawable value at current price
-        // uint256 totalCollateral = collateralAsset.balanceOf(address(this)) -
-        //     totalWithdrawalAmount;
-        // return totalCollateral;
-
         // Get the share price for the closing epoch
         uint256 totalShares = totalSupply();
         uint256 sharePrice;
@@ -319,6 +272,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
                 TickMath.getSqrtRatioAtTick(epochParams.baseAssetMaxPriceTick)
             );
 
+        // Reduce the token amounts by a little to account for slippage
+        amount0 = amount0.mulDiv(999999999, 1000000000);
+        amount1 = amount1.mulDiv(999999999, 1000000000);
+
         // Prepare liquidity mint parameters
         IFoilStructs.LiquidityMintParams memory params = IFoilStructs
             .LiquidityMintParams({
@@ -336,8 +293,14 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         // Approve collateral transfer to the market
         collateralAsset.approve(address(market), totalCollateral);
 
+        uint256 balanceBefore = collateralAsset.balanceOf(address(this));
         // Create the liquidity position
         (newPositionId, , , , , ) = market.createLiquidityPosition(params);
+
+        // Calculate the uninvested collateral
+        uninvestedCollateral =
+            collateralAsset.balanceOf(address(this)) -
+            (balanceBefore - totalCollateral);
     }
 
     function asset()
@@ -350,7 +313,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     }
 
     function totalAssets() public view override returns (uint256) {
-        return market.getPositionCollateralValue(positionId);
+        return
+            market.getPositionCollateralValue(positionId) +
+            uninvestedCollateral;
     }
 
     function totalSupply()
