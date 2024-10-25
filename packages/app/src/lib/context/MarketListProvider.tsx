@@ -4,7 +4,7 @@ import type {
 } from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext } from 'react';
 
 import { API_BASE_URL } from '../constants/constants';
 

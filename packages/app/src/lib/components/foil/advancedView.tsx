@@ -67,12 +67,13 @@ const Market = ({
   );
   const [tableFlexHeight, setTableFlexHeight] = useState(172);
   const resizeRef = useRef<HTMLDivElement>(null);
-  const [chartType, setChartType] = useState<ChartType>(ChartType.PRICE);
+  const [chartType, setChartType] = useState<ChartType>(
+    isTrade ? ChartType.PRICE : ChartType.LIQUIDITY
+  );
   const [isRefetchingIndexPrices, setIsRefetchingIndexPrices] = useState(false);
   const [chainId, marketAddress] = params.id.split('%3A');
   const { epoch } = params;
   const contractId = `${chainId}:${marketAddress}`;
-  const { isConnected } = useAccount();
   const toast = useToast();
 
   // useEffect to handle table resize

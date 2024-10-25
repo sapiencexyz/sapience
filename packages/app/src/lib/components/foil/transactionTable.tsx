@@ -8,8 +8,6 @@ import {
   Td,
   Image,
   Link,
-  Box,
-  Spinner,
 } from '@chakra-ui/react';
 import { formatDistanceToNow } from 'date-fns';
 import type React from 'react';
