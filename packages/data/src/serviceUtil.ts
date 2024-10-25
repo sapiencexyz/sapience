@@ -226,7 +226,7 @@ function groupEntitiesByTimeWindow<T>(
       entities: [],
     }));
 
-  logIntervals(result);
+  //logIntervals(result);
   entities.forEach((entity) => {
     const timestamp = getTimestamp(entity);
     if (timestamp >= startTime && timestamp <= now) {
