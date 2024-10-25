@@ -1,15 +1,20 @@
-import { extendTheme } from '@chakra-ui/react';
+import { createSystem, defaultConfig } from '@chakra-ui/react';
 
 import { colors } from './colors';
 import { components } from './components';
-import { config } from './config';
 import { fonts } from './fonts';
 
-const customTheme = extendTheme({
-  fonts,
-  colors,
-  config,
-  components,
+export const system = createSystem(defaultConfig, {
+  theme: {
+    tokens: {
+      fonts: {
+        heading: { value: fonts.heading },
+        body: { value: fonts.body },
+      },
+      colors,
+    },
+    recipes: components,
+  },
 });
 
-export default customTheme;
+export default system;

@@ -1,6 +1,5 @@
 'use client';
 
-import { CacheProvider } from '@chakra-ui/next-js';
 import { RainbowKitProvider, lightTheme } from '@rainbow-me/rainbowkit';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import type { HttpTransport } from 'viem';
@@ -9,7 +8,7 @@ import { sepolia } from 'viem/chains';
 import { createConfig, http, WagmiProvider } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 
-import { Chakra as ChakraProvider } from '~/lib/components/Chakra';
+import ChakraProvider from '~/components/ui/provider';
 import { MarketListProvider } from '~/lib/context/MarketListProvider';
 import { colors } from '~/lib/styles/theme/colors';
 
@@ -51,21 +50,19 @@ const config = createConfig({
 
 const Providers = ({ children }: { children: React.ReactNode }) => {
   return (
-    <CacheProvider>
-      <WagmiProvider config={config}>
-        <QueryClientProvider client={queryClient}>
-          <RainbowKitProvider
-            theme={lightTheme({
-              accentColor: colors?.gray ? colors.gray[800] : '#00000',
-            })}
-          >
-            <ChakraProvider>
-              <MarketListProvider>{children}</MarketListProvider>
-            </ChakraProvider>
-          </RainbowKitProvider>
-        </QueryClientProvider>
-      </WagmiProvider>
-    </CacheProvider>
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <RainbowKitProvider
+          theme={lightTheme({
+            accentColor: colors?.gray ? colors.gray[800].value : '#00000',
+          })}
+        >
+          <MarketListProvider>
+            <ChakraProvider>{children}</ChakraProvider>
+          </MarketListProvider>
+        </RainbowKitProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
   );
 };
 

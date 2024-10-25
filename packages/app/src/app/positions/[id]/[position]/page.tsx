@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  Flex,
-  Box,
-  Heading,
-  Spinner,
-  UnorderedList,
-  ListItem,
-} from '@chakra-ui/react';
+import { Flex, Box, Heading, Spinner, List } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import { useContext } from 'react';
 
@@ -24,22 +17,6 @@ const usePosition = (contractId: string, positionId: string) => {
     queryFn: async () => {
       const response = await fetch(
         `${API_BASE_URL}/positions/${positionId}?contractId=${contractId}`
-      );
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      return response.json();
-    },
-    refetchInterval: POLLING_INTERVAL,
-  });
-};
-
-const useTransactions = (contractId: string, positionId: string) => {
-  return useQuery({
-    queryKey: ['transactions', contractId, positionId],
-    queryFn: async () => {
-      const response = await fetch(
-        `${API_BASE_URL}/transactions?contractId=${contractId}&positionId=${positionId}`
       );
       if (!response.ok) {
         throw new Error('Network response was not ok');
@@ -110,49 +87,49 @@ const PositionPage = ({
       return (
         <Box p={8}>
           <Heading mb={4}>Position #{positionId}</Heading>
-          <UnorderedList spacing={2}>
-            <ListItem>Epoch: {positionData.epoch.id}</ListItem>
-            <ListItem>
+          <List.Root>
+            <List.Item>Epoch: {positionData.epoch.id}</List.Item>
+            <List.Item>
               {positionData.isLP ? 'Liquidity Provider' : 'Trader'}
-            </ListItem>
-            <ListItem>
+            </List.Item>
+            <List.Item>
               Collateral: <NumberDisplay value={positionData.collateral} />{' '}
               wstETH
-            </ListItem>
-            <ListItem>
+            </List.Item>
+            <List.Item>
               Base Token: <NumberDisplay value={positionData.baseToken} /> Ggas
-            </ListItem>
-            <ListItem>
+            </List.Item>
+            <List.Item>
               Quote Token: <NumberDisplay value={positionData.quoteToken} />{' '}
               wstETH
-            </ListItem>
-            <ListItem>
+            </List.Item>
+            <List.Item>
               Borrowed Base Token:{' '}
               <NumberDisplay value={positionData.borrowedBaseToken} /> Ggas
-            </ListItem>
-            <ListItem>
+            </List.Item>
+            <List.Item>
               Borrowed Quote Token:{' '}
               <NumberDisplay value={positionData.borrowedQuoteToken} /> wstETH
-            </ListItem>
+            </List.Item>
             {positionData.isLP ? (
               <>
-                <ListItem>
+                <List.Item>
                   Low Price:{' '}
                   <NumberDisplay
                     value={tickToPrice(positionData.lowPriceTick)}
                   />{' '}
                   Ggas/wstETH
-                </ListItem>
-                <ListItem>
+                </List.Item>
+                <List.Item>
                   High Price:{' '}
                   <NumberDisplay
                     value={tickToPrice(positionData.highPriceTick)}
                   />{' '}
                   Ggas/wstETH
-                </ListItem>
+                </List.Item>
               </>
             ) : (
-              <ListItem>
+              <List.Item>
                 Size:{' '}
                 <NumberDisplay
                   value={
@@ -160,16 +137,10 @@ const PositionPage = ({
                   }
                 />{' '}
                 Ggas
-              </ListItem>
+              </List.Item>
             )}
-            {/* <ListItem>
-              Profit/Loss: <NumberDisplay value={pnl} /> wstETH{' '}
-              <Tooltip label="This is an estimate that does not take into account slippage or fees.">
-                <QuestionOutlineIcon transform="translateY(-2px)" />
-              </Tooltip>
-            </ListItem> */}
-            {positionData.isSettled ? <ListItem>Settled</ListItem> : null}
-          </UnorderedList>
+            {positionData.isSettled ? <List.Item>Settled</List.Item> : null}
+          </List.Root>
         </Box>
       );
     }
