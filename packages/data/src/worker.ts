@@ -10,6 +10,7 @@ import { createOrUpdateEpochFromContract } from "./controllers/marketHelpers";
 async function main() {
   await initializeDataSource();
   let jobs = [];
+  console.log("starting worker");
 
   for (const marketInfo of MARKET_INFO) {
     const market = await initializeMarket(marketInfo);
