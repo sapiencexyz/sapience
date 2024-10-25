@@ -43,12 +43,12 @@ interface IFoilStructs {
         int24 baseAssetMaxPriceTick;
         uint24 feeRate;
         uint64 assertionLiveness;
-        address bondCurrency;
         uint256 bondAmount;
-        bytes32 priceUnit;
+        address bondCurrency;
         address uniswapPositionManager;
         address uniswapSwapRouter;
         address uniswapQuoter;
         address optimisticOracleV3;
+        bytes claimStatement;
     }
 }

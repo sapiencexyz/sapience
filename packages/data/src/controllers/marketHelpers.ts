@@ -325,7 +325,7 @@ export const createOrUpdateMarketFromEvent = async (
     assertionLiveness: eventArgs?.epochParams?.assertionLiveness.toString(),
     bondCurrency: eventArgs?.epochParams?.bondCurrency,
     bondAmount: eventArgs?.epochParams?.bondAmount.toString(),
-    priceUnit: eventArgs?.epochParams?.priceUnit,
+    claimStatement: eventArgs?.epochParams?.claimStatement,
     uniswapPositionManager: eventArgs?.epochParams?.uniswapPositionManager,
     uniswapSwapRouter: eventArgs?.epochParams?.uniswapSwapRouter,
     uniswapQuoter: eventArgs?.epochParams?.uniswapQuoter,

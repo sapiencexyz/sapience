@@ -12,7 +12,7 @@ feeRate = "10000" # 1%
 startingSqrtPriceX96 = "146497135921788803112962621440" # 3.419
 assertionLiveness = "21600" # 6 hours
 bondAmount = "5000000000"
-priceUnit = "<%= formatBytes32String('wstGwei/gas') %>"
+claimStatement = "<%= stringToBytes('The sum of gas used divided by the sum of base fees paid on Ethereum Mainnet across all blocks (inclusive), divided by the wstETH/ETH ratio at the end of the period, represented with 18 decimal places') %>"
 callbackRecipient = "0x0000000000000000000000000000000000000000"
 depends=[]
 
@@ -84,7 +84,7 @@ args=[
   "<%= imports.CollateralAsset.contracts.Token.address %>",
   [],
   "<%= settings.callbackRecipient %>",
-  { baseAssetMinPriceTick = "<%= settings.baseAssetMinPriceTick %>", baseAssetMaxPriceTick = "<%= settings.baseAssetMaxPriceTick %>", feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.BondCurrency.contracts.Token.address %>", bondAmount= "<%= settings.bondAmount %>", priceUnit= "<%= settings.priceUnit %>",  uniswapPositionManager =  "<%= imports.Uniswap.contracts.NonfungiblePositionManager.address %>", uniswapSwapRouter = "<%= imports.Uniswap.contracts.SwapRouter.address %>", uniswapQuoter = "<%= imports.Uniswap.contracts.QuoterV2.address %>", optimisticOracleV3 = "<%= imports.UMA.contracts.OptimisticOracleV3.address %>" }
+  { baseAssetMinPriceTick = "<%= settings.baseAssetMinPriceTick %>", baseAssetMaxPriceTick = "<%= settings.baseAssetMaxPriceTick %>", feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.BondCurrency.contracts.Token.address %>", bondAmount= "<%= settings.bondAmount %>", claimStatement= "<%= settings.claimStatement %>",  uniswapPositionManager =  "<%= imports.Uniswap.contracts.NonfungiblePositionManager.address %>", uniswapSwapRouter = "<%= imports.Uniswap.contracts.SwapRouter.address %>", uniswapQuoter = "<%= imports.Uniswap.contracts.QuoterV2.address %>", optimisticOracleV3 = "<%= imports.UMA.contracts.OptimisticOracleV3.address %>" }
 ]
 depends=["router.Foil"]
 
