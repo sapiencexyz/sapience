@@ -449,9 +449,7 @@ const Subscribe: FC<SubscribeProps> = ({
   return (
     <form onSubmit={handleSubmit}>
       <Flex alignItems="center" mb={2}>
-        <Heading size="lg">
-          {marketName.replace('Market', '')} Subscription
-        </Heading>
+        <Heading size="lg">{marketName} Subscription</Heading>
         {showMarketSwitcher && (
           <IconButton
             ml="auto"

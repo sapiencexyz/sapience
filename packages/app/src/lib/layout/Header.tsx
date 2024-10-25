@@ -55,7 +55,7 @@ const NavPopover = ({
   const publicMarkets = markets.filter((m) => m.public);
 
   const formatTimestamp = (timestamp: number) => {
-    return format(new Date(timestamp * 1000), 'MMM d, HH:mm');
+    return format(new Date(timestamp * 1000), 'MMM d');
   };
 
   useEffect(() => {
@@ -160,7 +160,13 @@ const NavPopover = ({
   );
 };
 
-const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
+const NavLinks = ({
+  isMobile = false,
+  onClose,
+}: {
+  isMobile?: boolean;
+  onClose?: () => void;
+}) => {
   const { markets } = useMarketList();
   const publicMarkets = markets.filter((m) => m.public);
 
@@ -185,7 +191,13 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
                     <ChakraLink
                       as={Link}
                       href={getMarketHref(path, market, withEpochs)}
-                      onClick={(e) => withEpochs && e.preventDefault()}
+                      onClick={(e) => {
+                        if (withEpochs) {
+                          e.preventDefault();
+                        } else if (onClose) {
+                          onClose();
+                        }
+                      }}
                     >
                       {market.name}
                     </ChakraLink>
@@ -206,6 +218,7 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
                           fontSize="sm"
                           as={Link}
                           href={`/${path}/${market.chainId}:${market.address}/epochs/${epoch.epochId}`}
+                          onClick={() => onClose?.()}
                         >
                           {formatTimestamp(epoch.startTimestamp)} -{' '}
                           {formatTimestamp(epoch.endTimestamp)}
@@ -250,7 +263,11 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
           </Box>
           {renderMobileMarketLinks('pool', true)}
         </Box>
-        <ChakraLink as={Link} href="https://docs.foil.xyz">
+        <ChakraLink
+          as={Link}
+          href="https://docs.foil.xyz"
+          onClick={() => onClose?.()}
+        >
           Docs
         </ChakraLink>
       </VStack>
@@ -319,7 +336,7 @@ const Header = () => {
                 <DrawerCloseButton />
                 <DrawerBody>
                   <VStack spacing={4} align="stretch">
-                    <NavLinks isMobile />
+                    <NavLinks isMobile onClose={onClose} />
                     <ConnectButton />
                   </VStack>
                 </DrawerBody>
