@@ -100,7 +100,7 @@ library Epoch {
         epoch.params.assertionLiveness = epochParams.assertionLiveness;
         epoch.params.bondCurrency = epochParams.bondCurrency;
         epoch.params.bondAmount = epochParams.bondAmount;
-        epoch.params.priceUnit = epochParams.priceUnit;
+        epoch.params.claimStatement = epochParams.claimStatement;
         epoch.params.uniswapPositionManager = epochParams
             .uniswapPositionManager;
         epoch.params.uniswapSwapRouter = epochParams.uniswapSwapRouter;

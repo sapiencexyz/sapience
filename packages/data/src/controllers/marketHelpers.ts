@@ -325,7 +325,7 @@ export const createOrUpdateMarketFromEvent = async (
     assertionLiveness: eventArgs?.epochParams?.assertionLiveness.toString(),
     bondCurrency: eventArgs?.epochParams?.bondCurrency,
     bondAmount: eventArgs?.epochParams?.bondAmount.toString(),
-    priceUnit: eventArgs?.epochParams?.priceUnit,
+    claimStatement: eventArgs?.epochParams?.claimStatement,
     uniswapPositionManager: eventArgs?.epochParams?.uniswapPositionManager,
     uniswapSwapRouter: eventArgs?.epochParams?.uniswapSwapRouter,
     uniswapQuoter: eventArgs?.epochParams?.uniswapQuoter,
@@ -513,52 +513,6 @@ export const createEpochFromEvent = async (
 
   const epoch = await epochRepository.save(newEpoch);
   return epoch;
-};
-
-export const initializeResourcePriceForEpoch = async (
-  eventArgs: EpochCreatedEventLog,
-  market: Market
-) => {
-  // find most recent resource price before startTimestamp
-  const previousResourcePrice = await resourcePriceRepository.findOne({
-    where: {
-      market: { id: market.id },
-      timestamp: LessThanOrEqual(Number(eventArgs.startTime)),
-    },
-    order: {
-      timestamp: "DESC",
-    },
-  });
-
-  if (!previousResourcePrice) {
-    // add a resource price via contract lookup
-    const marketInfo = MARKET_INFO.find(
-      (m) =>
-        m.marketChainId === market.chainId &&
-        m.deployment.address.toLowerCase() === market.address.toLowerCase()
-    );
-    if (!marketInfo) {
-      // TODO: just default to use priceIndexer = new evmIndexer(mainnet.id)?
-      throw new Error(
-        `Could not find market info for chainId ${market.chainId} and address ${market.address} to create resource price`
-      );
-    }
-    await marketInfo.priceIndexer.indexBlockPriceAtTimestamp(
-      market,
-      Number(eventArgs.startTime)
-    );
-  } else {
-    const resourcePrice = new ResourcePrice();
-    resourcePrice.market = market;
-    resourcePrice.timestamp = Number(eventArgs.startTime);
-    resourcePrice.value = previousResourcePrice.value;
-    resourcePrice.blockNumber = previousResourcePrice.blockNumber;
-
-    await resourcePriceRepository.upsert(resourcePrice, [
-      "market",
-      "timestamp",
-    ]);
-  }
 };
 
 export const getMarketStartEndBlock = async (

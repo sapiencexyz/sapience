@@ -31,7 +31,7 @@ export class EpochParams {
   bondAmount: string | null;
 
   @Column("varchar", { nullable: true })
-  priceUnit: string | null;
+  claimStatement: string | null;
 
   @Column({ type: "varchar", nullable: true })
   uniswapPositionManager: string | null;

@@ -1,11 +1,7 @@
 import { resourcePriceRepository } from "../db";
 import { ResourcePrice } from "../models/ResourcePrice";
 import { type Market } from "../models/Market";
-import {
-  getBlockBeforeTimestamp,
-  getBlockByTimestamp,
-  getProviderForChain,
-} from "../helpers";
+import { getBlockByTimestamp, getProviderForChain } from "../helpers";
 import { Block, type PublicClient } from "viem";
 
 class EvmIndexer {
@@ -17,6 +13,7 @@ class EvmIndexer {
 
   private async storeBlockPrice(block: Block, market: Market) {
     const value = block.baseFeePerGas; // in wei
+    const used = block.gasUsed;
     if (!value || !block.number) {
       console.error(
         `No baseFeePerGas for block ${block.number} on market ${market.chainId}:${market.address}`
@@ -28,18 +25,9 @@ class EvmIndexer {
     price.market = market;
     price.timestamp = Number(block.timestamp);
     price.value = value.toString();
+    price.used = used.toString();
     price.blockNumber = Number(block.number);
     await resourcePriceRepository.upsert(price, ["market", "timestamp"]);
-  }
-
-  async indexBlockPriceAtTimestamp(market: Market, timestamp: number) {
-    const block = await getBlockBeforeTimestamp(this.client, timestamp);
-    if (!block.number) {
-      throw new Error(
-        `Unabe to indexBlockPriceAtTimestamp, No block found at timestamp ${timestamp}`
-      );
-    }
-    await this.storeBlockPrice(block, market);
   }
 
   async indexBlockPriceFromTimestamp(

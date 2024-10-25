@@ -33,6 +33,9 @@ export class ResourcePrice {
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
   value: string;
 
+  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
+  used: string;
+
   @AfterInsert()
   async afterInsert() {
     console.log("Resource price inserted: " + this.id);
