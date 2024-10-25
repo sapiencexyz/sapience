@@ -42,7 +42,6 @@ import {
   TOKEN_DECIMALS,
 } from '~/lib/constants/constants';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
-import { useLoading } from '~/lib/context/LoadingContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
 
@@ -99,7 +98,6 @@ const AddEditLiquidity: React.FC = () => {
     refetchUniswapData,
     address: marketAddress,
   } = useContext(MarketContext);
-  const { setIsLoading } = useLoading();
   const toast = useToast();
   const account = useAccount();
   const { isConnected } = account;
@@ -702,7 +700,6 @@ const AddEditLiquidity: React.FC = () => {
     setTxnSuccessMsg('');
     setTxnStep(0);
     setPendingTxn(false);
-    setIsLoading(false);
 
     // refetch contract data
     refetchCollateralAmount();
@@ -714,14 +711,12 @@ const AddEditLiquidity: React.FC = () => {
   const resetAfterError = () => {
     setTxnStep(0);
     setPendingTxn(false);
-    setIsLoading(false);
   };
 
   const resetAfterSuccess = () => {
     setDepositAmount('0');
     setSlippage(0.5);
     setPendingTxn(false);
-    setIsLoading(false);
     refreshPositions();
     refetchUniswapData();
     refetchCollateralAmount();
@@ -821,7 +816,6 @@ const AddEditLiquidity: React.FC = () => {
 
   const handleFormSubmit = (e: any) => {
     setPendingTxn(true);
-    setIsLoading(true);
 
     if (isEdit && isDecrease) {
       return handleDecreaseLiquidity();
