@@ -42,14 +42,14 @@ contract UMASettlementModule is
         );
 
         bytes memory claim = abi.encodePacked(
-            "ipfs://Qmbg1KiuKNmCbL696Zu8hXUAJrTxuhgNCbyjaPyni4RXTc evaluates to ",
-            Strings.toString(settlementPriceD18),
-            " ",
-            _bytes32ToString(epoch.params.priceUnit),
-            " with start time ",
+            string(epoch.params.claimStatement),
+            " between timestamps ",
             Strings.toString(epoch.startTime),
-            " and end time ",
-            Strings.toString(epoch.endTime)
+            " and ",
+            Strings.toString(epoch.endTime),
+            "(inclusive) is ",
+            Strings.toString(settlementPriceD18),
+            "."
         );
 
         epoch.assertionId = optimisticOracleV3.assertTruth(
@@ -154,19 +154,5 @@ contract UMASettlementModule is
         require(!epoch.settled, "Market epoch already settled");
         require(caller == address(optimisticOracleV3), "Invalid caller");
         require(assertionId == epoch.assertionId, "Invalid assertionId");
-    }
-
-    function _bytes32ToString(
-        bytes32 _bytes32
-    ) internal pure returns (string memory) {
-        uint8 i = 0;
-        while (i < 32 && _bytes32[i] != 0) {
-            i++;
-        }
-        bytes memory bytesArray = new bytes(i);
-        for (uint8 j = 0; j < i; j++) {
-            bytesArray[j] = _bytes32[j];
-        }
-        return string(bytesArray);
     }
 }

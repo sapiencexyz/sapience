@@ -135,8 +135,8 @@ library Market {
             "bondAmount must be greater than 0"
         );
         require(
-            epochParams.priceUnit.length > 0,
-            "priceUnit must be non-empty"
+            epochParams.claimStatement.length > 0,
+            "claimStatement must be non-empty"
         );
         require(
             epochParams.uniswapPositionManager != address(0),

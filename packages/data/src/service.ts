@@ -708,7 +708,7 @@ const startServer = async () => {
     ) {
       return res.status(400).json({ error: "Invalid request parameters" });
     }
-    //  const [chainId, address] = contractId.split(":");
+
     try {
       console.log("getting provider...");
       const client = getProviderForChain(Number(chainId));
@@ -770,21 +770,32 @@ const startServer = async () => {
 
       const transactions = await transactionRepository.find({
         where: { position: { owner: address } },
-        relations: ["position", "position.epoch", "position.epoch.market", "event"],
+        relations: [
+          "position",
+          "position.epoch",
+          "position.epoch.market",
+          "event",
+        ],
       });
 
       positions.forEach((position) => {
         position.baseToken = formatDbBigInt(position.baseToken);
         position.quoteToken = formatDbBigInt(position.quoteToken);
         position.borrowedBaseToken = formatDbBigInt(position.borrowedBaseToken);
-        position.borrowedQuoteToken = formatDbBigInt(position.borrowedQuoteToken);
+        position.borrowedQuoteToken = formatDbBigInt(
+          position.borrowedQuoteToken
+        );
         position.collateral = formatDbBigInt(position.collateral);
       });
 
       transactions.forEach((transaction) => {
         transaction.baseTokenDelta = formatDbBigInt(transaction.baseTokenDelta);
-        transaction.quoteTokenDelta = formatDbBigInt(transaction.quoteTokenDelta);
-        transaction.collateralDelta = formatDbBigInt(transaction.collateralDelta);
+        transaction.quoteTokenDelta = formatDbBigInt(
+          transaction.quoteTokenDelta
+        );
+        transaction.collateralDelta = formatDbBigInt(
+          transaction.collateralDelta
+        );
         transaction.tradeRatioD18 = formatDbBigInt(transaction.tradeRatioD18);
       });
 
@@ -794,6 +805,5 @@ const startServer = async () => {
       res.status(500).json({ error: "Internal server error" });
     }
   });
-
 };
 startServer().catch((e) => console.error("Unable to start server: ", e));

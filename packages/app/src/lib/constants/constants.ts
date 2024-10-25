@@ -43,7 +43,7 @@ export const BLANK_MARKET: MarketContextType = {
     bondCurrency: '',
     feeRate: 0,
     optimisticOracleV3: '',
-    priceUnit: '',
+    claimStatement: '',
     uniswapPositionManager: '0x',
     uniswapQuoter: '0x',
     uniswapSwapRouter: '0x',
