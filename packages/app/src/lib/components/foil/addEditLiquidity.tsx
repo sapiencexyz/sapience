@@ -316,8 +316,7 @@ const AddEditLiquidity: React.FC = () => {
       )
     );
   }, [positionData, collateralAssetDecimals]);
-  const isDecrease =
-    isEdit && depositAmount < positionCollateralAmount.toString();
+  const isDecrease = isEdit && Number(depositAmount) < positionCollateralAmount;
 
   const newLiquidity: bigint = useMemo(() => {
     if (!liquidity) return BigInt(0);
@@ -414,6 +413,40 @@ const AddEditLiquidity: React.FC = () => {
     if (!isEdit) return parseFloat(depositAmount || '0');
     return parseFloat(depositAmount || '0');
   }, [isEdit, depositAmount, positionCollateralAmount]);
+
+  const finalDelta: bigint = useMemo(() => {
+    // Double-check the delta before submission
+    const newDepositAmountBigInt = parseUnits(
+      depositAmount !== '' ? depositAmount : '0',
+      collateralAssetDecimals
+    );
+
+    const currentDepositAmountBigInt = BigInt(
+      positionData?.depositedCollateralAmount || 0
+    );
+    const calculatedDelta = newDepositAmountBigInt - currentDepositAmountBigInt;
+
+    // Use the calculated delta if it differs from the state (shouldn't happen, but just in case)
+    return calculatedDelta !== collateralAmountDelta
+      ? calculatedDelta
+      : collateralAmountDelta;
+  }, [
+    depositAmount,
+    positionData,
+    collateralAssetDecimals,
+    collateralAmountDelta,
+  ]);
+
+  const requireApproval: boolean = useMemo(() => {
+    const collateralAmountDeltaFormatted = formatUnits(
+      finalDelta,
+      collateralAssetDecimals
+    );
+    return (
+      !allowance ||
+      parseFloat(allowance) < parseFloat(collateralAmountDeltaFormatted)
+    );
+  }, [allowance, finalDelta, collateralAssetDecimals]);
 
   /// //// USE EFFECTS ///////
   // handle successful txn
@@ -821,43 +854,13 @@ const AddEditLiquidity: React.FC = () => {
       return handleDecreaseLiquidity();
     }
 
-    // Double-check the delta before submission
-    const newDepositAmountBigInt = parseUnits(
-      depositAmount !== '' ? depositAmount : '0',
-      collateralAssetDecimals
-    );
-    const currentDepositAmountBigInt = BigInt(
-      positionData?.depositedCollateralAmount || 0
-    );
-    const calculatedDelta = newDepositAmountBigInt - currentDepositAmountBigInt;
-    console.log('newDepositAmountBigInt', newDepositAmountBigInt);
-    console.log('currentDepositAmountBigInt', currentDepositAmountBigInt);
-    console.log('calculatedDelta', calculatedDelta);
-    console.log('collateralAmountDelta', collateralAmountDelta);
-
-    // Use the calculated delta if it differs from the state (shouldn't happen, but just in case)
-    const finalDelta =
-      calculatedDelta !== collateralAmountDelta
-        ? calculatedDelta
-        : collateralAmountDelta;
-
     if (finalDelta <= 0) {
       // No increase in deposit, proceed with creating or increasing liquidity
       handleCreateOrIncreaseLiquidity();
       return;
     }
 
-    const collateralAmountDeltaFormatted = formatUnits(
-      finalDelta,
-      collateralAssetDecimals
-    );
-
-    if (
-      allowance &&
-      parseFloat(allowance) >= parseFloat(collateralAmountDeltaFormatted)
-    ) {
-      handleCreateOrIncreaseLiquidity();
-    } else {
+    if (requireApproval) {
       approveWrite({
         abi: erc20ABI,
         address: collateralAsset as `0x${string}`,
@@ -866,6 +869,8 @@ const AddEditLiquidity: React.FC = () => {
         chainId,
       });
       setTxnStep(1);
+    } else {
+      handleCreateOrIncreaseLiquidity();
     }
   };
 
@@ -886,13 +891,22 @@ const AddEditLiquidity: React.FC = () => {
   };
 
   const getButtonText = () => {
+    let txt = '';
     if (isEdit) {
       if (depositAmount === '' || parseFloat(depositAmount) === 0) {
-        return 'Close Liquidity Position';
+        txt = 'Close Liquidity Position';
+      } else {
+        txt = isDecrease ? 'Decrease Liquidity' : 'Increase Liquidity';
       }
-      return isDecrease ? 'Decrease Liquidity' : 'Increase Liquidity';
+    } else {
+      txt = 'Add Liquidity';
     }
-    return 'Add Liquidity';
+
+    if (requireApproval) {
+      txt = `Approve ${txt}`;
+    }
+
+    return txt;
   };
 
   const renderActionButton = () => {
