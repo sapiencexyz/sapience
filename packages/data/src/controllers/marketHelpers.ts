@@ -272,7 +272,7 @@ export const createOrUpdateEpochFromContract = async (
   let existingEpoch = await epochRepository.findOne({
     where: {
       market: { address: marketInfo.deployment.address },
-      epochId,
+      epochId: _epochId,
     },
   });
   const updatedEpoch = existingEpoch || new Epoch();
