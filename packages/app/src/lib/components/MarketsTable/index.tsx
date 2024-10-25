@@ -39,7 +39,6 @@ import {
   DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS,
   TOKEN_DECIMALS,
 } from '~/lib/constants/constants';
-import { useLoading } from '~/lib/context/LoadingContext';
 import { useMarketList, type Market } from '~/lib/context/MarketListProvider';
 import { formatAmount } from '~/lib/util/numberUtil';
 import {
@@ -50,12 +49,13 @@ import {
 
 const MarketsTable: React.FC = () => {
   const { markets, isLoading, error, refetchMarkets } = useMarketList();
-  const { setIsLoading } = useLoading();
-
+  const [loadingAction, setLoadingAction] = useState<{
+    [actionName: string]: boolean;
+  }>({});
   console.log('markets=', markets);
 
   const updateMarketPrivacy = async (market: Market) => {
-    setIsLoading(true);
+    setLoadingAction((prev) => ({ ...prev, [market.address]: true }));
     const response = await axios.post(`${API_BASE_URL}/updateMarketPrivacy`, {
       address: market.address,
       chainId: market.chainId,
@@ -63,8 +63,7 @@ const MarketsTable: React.FC = () => {
     if (response.data.success) {
       await refetchMarkets();
     }
-
-    setIsLoading(false);
+    setLoadingAction((prev) => ({ ...prev, [market.address]: false }));
   };
 
   if (isLoading) {
@@ -107,8 +106,12 @@ const MarketsTable: React.FC = () => {
                     isChecked={market.public}
                     size="sm"
                     onChange={() => updateMarketPrivacy(market)}
+                    isDisabled={loadingAction[market.address]}
                   />
                 </Flex>
+                {loadingAction[market.address] && (
+                  <Spinner size="sm" display="block" />
+                )}
               </Td>
               <Td padding={0}>
                 <Table variant="simple" size="sm">
@@ -143,7 +146,6 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
   market,
   epoch,
 }) => {
-  const { setIsLoading } = useLoading();
   const [loadingStEthPerToken, setLoadingStEthPerToken] = useState(false);
   const [stEthPerToken, setStEthPerToken] = useState(0);
   const toast = useToast();
@@ -151,6 +153,9 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
   const { chainId, collateralAsset } = market;
   const { endTimestamp } = epoch;
   const [txnStep, setTxnStep] = useState(0);
+  const [loadingAction, setLoadingAction] = useState<{
+    [actionName: string]: boolean;
+  }>({});
 
   const currentTime = Math.floor(Date.now() / 1000);
 
@@ -291,7 +296,7 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
       );
       refetchEpochData();
       setTxnStep(0);
-      setIsLoading(false);
+      setLoadingAction((prev) => ({ ...prev, settle: false }));
     }
   }, [isSettlementSuccess]);
 
@@ -316,7 +321,10 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
     epochId: number,
     model: string
   ) => {
-    setIsLoading(true);
+    setLoadingAction((prev) => ({
+      ...prev,
+      getMissing: true,
+    }));
     try {
       const response = await axios.get(
         `${API_BASE_URL}/missing-blocks?chainId=${m.chainId}&address=${m.address}&epochId=${epochId}&model=${model}`
@@ -338,11 +346,14 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
         isClosable: true,
       });
     }
-    setIsLoading(false);
+    setLoadingAction((prev) => ({
+      ...prev,
+      getMissing: false,
+    }));
   };
 
   const handleApproveSettle = async () => {
-    setIsLoading(true);
+    setLoadingAction((prev) => ({ ...prev, settle: true }));
     approveWrite({
       abi: erc20ABI,
       address: bondCurrency as `0x${string}`,
@@ -355,7 +366,7 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
 
   const resetAfterError = () => {
     setTxnStep(0);
-    setIsLoading(false);
+    setLoadingAction((prev) => ({ ...prev, settle: false }));
   };
 
   const renderSettledCell = () => {
@@ -376,7 +387,11 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
       <>
         <Text>{formatAmount(priceAdjusted)}</Text>
         <Button
-          isLoading={loadingStEthPerToken || stEthPerTokenResult.isLoading}
+          isLoading={
+            loadingStEthPerToken ||
+            stEthPerTokenResult.isLoading ||
+            loadingAction.settle
+          }
           onClick={handleApproveSettle}
         >
           Settle with Price
@@ -394,6 +409,9 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
           </MenuButton>
           <MenuList>
             <MenuItem
+              as={Button}
+              borderRadius={0}
+              isLoading={loadingAction.getMissing}
               onClick={() =>
                 handleGetMissing(market, epoch.epochId, 'ResourcePrice')
               }
@@ -401,6 +419,9 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
               Resource Prices
             </MenuItem>
             <MenuItem
+              as={Button}
+              borderRadius={0}
+              isLoading={loadingAction.getMissing}
               onClick={() => handleGetMissing(market, epoch.epochId, 'Event')}
             >
               Events

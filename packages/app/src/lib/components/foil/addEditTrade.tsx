@@ -27,7 +27,6 @@ import erc20ABI from '../../erc20abi.json';
 import RadioCard from '../RadioCard';
 import { MIN_BIG_INT_SIZE, TOKEN_DECIMALS } from '~/lib/constants/constants';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
-import { useLoading } from '~/lib/context/LoadingContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
 import { renderContractErrorToast, renderToast } from '~/lib/util/util';
@@ -59,7 +58,6 @@ export default function AddEditTrade() {
 
   const account = useAccount();
   const { isConnected, address } = account;
-  const { setIsLoading } = useLoading();
   const isEdit = !!nftId;
 
   const {
@@ -344,7 +342,6 @@ export default function AddEditTrade() {
   ) => {
     if (e) e.preventDefault();
     setPendingTxn(true);
-    setIsLoading(true);
 
     // Set deadline to 30 minutes from now
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
@@ -407,14 +404,12 @@ export default function AddEditTrade() {
 
   const resetAfterError = () => {
     setPendingTxn(false);
-    setIsLoading(false);
   };
 
   const resetAfterSuccess = () => {
     setSizeChange(BigInt(0));
     setSlippage(0.5);
     setPendingTxn(false);
-    setIsLoading(false);
     refreshPositions();
     refetchPositionData();
     refetchUniswapData();

@@ -43,7 +43,6 @@ import {
 } from 'wagmi';
 
 import erc20ABI from '../../erc20abi.json';
-import { useLoading } from '~/lib/context/LoadingContext';
 import { useMarketList } from '~/lib/context/MarketListProvider';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import {
@@ -90,7 +89,6 @@ const Subscribe: FC<SubscribeProps> = ({
   const [fillPriceInEth, setFillPriceInEth] = useState<bigint>(BigInt(0));
   const account = useAccount();
   const { isConnected, address } = account;
-  const { setIsLoading } = useLoading();
   const currentChainId = useChainId();
   const { switchChain } = useSwitchChain();
   const { connect, connectors } = useConnect();
@@ -314,7 +312,6 @@ const Subscribe: FC<SubscribeProps> = ({
       return;
     }
     setPendingTxn(true);
-    setIsLoading(true);
 
     const sizeInTokens = sizeInGigagas;
 
@@ -369,13 +366,12 @@ const Subscribe: FC<SubscribeProps> = ({
 
   const resetAfterError = () => {
     setPendingTxn(false);
-    setIsLoading(false);
   };
 
   const resetAfterSuccess = () => {
     setSize(BigInt(0));
     setPendingTxn(false);
-    setIsLoading(false);
+
     refetchUniswapData();
   };
 
