@@ -41,10 +41,8 @@ contract UMASettlementModule is
             epoch.params.bondAmount
         );
 
-        string memory decodedClaimStatement = abi.decode(epoch.params.claimStatement, (string));
-
         bytes memory claim = abi.encodePacked(
-            decodedClaimStatement,
+            string(epoch.params.claimStatement),
             " between ",
             Strings.toString(epoch.startTime),
             " and ",
