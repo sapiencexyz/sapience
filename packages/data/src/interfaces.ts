@@ -68,7 +68,7 @@ export interface EpochParams {
   bondCurrency: string;
   feeRate: number;
   optimisticOracleV3: string;
-  priceUnit: string;
+  claimStatement: string;
   uniswapPositionManager: string;
   uniswapQuoter: string;
   uniswapSwapRouter: string;

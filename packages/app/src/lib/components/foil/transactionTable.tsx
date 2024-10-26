@@ -8,8 +8,6 @@ import {
   Td,
   Image,
   Link,
-  Box,
-  Spinner,
 } from '@chakra-ui/react';
 import { formatDistanceToNow } from 'date-fns';
 import type React from 'react';
@@ -20,10 +18,7 @@ import { MarketContext } from '~/lib/context/MarketProvider';
 import NumberDisplay from './numberDisplay';
 
 interface Props {
-  isLoading: boolean;
-  error: Error | null;
   transactions: any[];
-  contractId: string;
 }
 
 const getTypeDisplay = (type: string) => {
@@ -41,13 +36,8 @@ const getTypeDisplay = (type: string) => {
   }
 };
 
-const TransactionTable: React.FC<Props> = ({
-  isLoading,
-  error,
-  transactions,
-  contractId,
-}) => {
-  const { chain } = useContext(MarketContext);
+const TransactionTable: React.FC<Props> = ({ transactions }) => {
+  const { address, chain } = useContext(MarketContext);
 
   const sortedTransactions = useMemo(() => {
     if (!transactions) return [];
@@ -56,21 +46,7 @@ const TransactionTable: React.FC<Props> = ({
     );
   }, [transactions]);
 
-  if (isLoading) {
-    return (
-      <Box textAlign="center" py={12}>
-        <Spinner opacity={0.5} />
-      </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <Box textAlign="center" py={12}>
-        Error: {error.message}
-      </Box>
-    );
-  }
+  console.log('s', sortedTransactions);
 
   return (
     <TableContainer mb={4}>
@@ -78,6 +54,7 @@ const TransactionTable: React.FC<Props> = ({
         <Thead>
           <Tr>
             <Th>Time</Th>
+            <Th>Market</Th>
             <Th>Position</Th>
             <Th>Type</Th>
             <Th>Collateral</Th>
@@ -96,8 +73,12 @@ const TransactionTable: React.FC<Props> = ({
                 })}
               </Td>
               <Td>
+                {row.position.epoch.market.name} (Epoch{' '}
+                {row.position.epoch.epochId})
+              </Td>
+              <Td>
                 <Link
-                  href={`/positions/${contractId}/${row.position.positionId}`}
+                  href={`/positions/${chain}:${address}/${row.position.positionId}`}
                   textDecoration="underline"
                 >
                   #{row.position.positionId}

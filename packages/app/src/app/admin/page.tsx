@@ -6,7 +6,6 @@ import { useState } from 'react';
 
 import MarketsTable from '~/lib/components/MarketsTable';
 import { API_BASE_URL } from '~/lib/constants/constants';
-import { useLoading } from '~/lib/context/LoadingContext';
 import type { RenderJob } from '~/lib/interfaces/interfaces';
 
 const Admin = () => {
@@ -14,11 +13,12 @@ const Admin = () => {
   const [address, setAddress] = useState('');
   const [job, setJob] = useState<RenderJob | undefined>();
   const [lastRefresh, setLastRefresh] = useState('');
-
-  const { setIsLoading } = useLoading();
+  const [loadingAction, setLoadingAction] = useState<{
+    [actionName: string]: boolean;
+  }>({});
 
   const handleReindex = async () => {
-    setIsLoading(true);
+    setLoadingAction((prev) => ({ ...prev, reindex: true }));
     const response = await axios.get(
       `${API_BASE_URL}/reindex?chainId=${chainId}&address=${address}`
     );
@@ -28,12 +28,12 @@ const Admin = () => {
     } else {
       setJob(undefined);
     }
-    setIsLoading(false);
+    setLoadingAction((prev) => ({ ...prev, reindex: false }));
   };
 
   const handleGetStatus = async () => {
     if (!job) return;
-    setIsLoading(true);
+    setLoadingAction((prev) => ({ ...prev, getStatus: true }));
     const response = await axios.get(
       `${API_BASE_URL}/reindexStatus?jobId=${job.id}&serviceId=${job.serviceId}`
     );
@@ -45,7 +45,7 @@ const Admin = () => {
     }
 
     console.log('response', response);
-    setIsLoading(false);
+    setLoadingAction((prev) => ({ ...prev, getStatus: false }));
   };
 
   const renderJob = () => {
@@ -84,7 +84,9 @@ const Admin = () => {
           <Text>Enter Chain ID</Text>
           <Input value={chainId} onChange={(e) => setChainId(e.target.value)} />
         </Box>
-        <Button onClick={handleReindex}>Submit</Button>
+        <Button onClick={handleReindex} isLoading={loadingAction.reindex}>
+          Submit
+        </Button>
         <Box mt={8}>
           {renderJob()}
           <Box mb={4}>
@@ -95,7 +97,11 @@ const Admin = () => {
             <Text>JobId:</Text>
             <Input value={job?.id || ''} readOnly />
           </Box>
-          <Button onClick={handleGetStatus} disabled={!job}>
+          <Button
+            onClick={handleGetStatus}
+            disabled={!job}
+            isLoading={loadingAction.getStatus}
+          >
             {' '}
             refresh job status
           </Button>

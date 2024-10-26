@@ -12,6 +12,9 @@ export const TICK_SPACING_DEFAULT = 200; // i.e. 1% - Hardcoded for now, should 
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_FOIL_API_URL;
 
+export const DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS =
+  '0xB82381A3fBD3FaFA77B3a7bE693342618240067b';
+
 export const BLANK_MARKET: MarketContextType = {
   chain: undefined,
   address: '',
@@ -40,7 +43,7 @@ export const BLANK_MARKET: MarketContextType = {
     bondCurrency: '',
     feeRate: 0,
     optimisticOracleV3: '',
-    priceUnit: '',
+    claimStatement: '',
     uniswapPositionManager: '0x',
     uniswapQuoter: '0x',
     uniswapSwapRouter: '0x',

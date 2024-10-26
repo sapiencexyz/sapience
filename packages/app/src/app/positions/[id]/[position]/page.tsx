@@ -12,7 +12,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useContext } from 'react';
 
 import NumberDisplay from '~/lib/components/foil/numberDisplay';
-import TransactionTable from '~/lib/components/foil/transactionTable';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { MarketContext, MarketProvider } from '~/lib/context/MarketProvider';
 import { tickToPrice } from '~/lib/util/util';
@@ -69,12 +68,6 @@ const PositionPage = ({
     error: positionError,
     isLoading: isLoadingPosition,
   } = usePosition(contractId, positionId);
-
-  const {
-    data: transactions,
-    error: transactionsError,
-    isLoading: isLoadingTransactions,
-  } = useTransactions(contractId, positionId);
 
   const calculatePnL = (positionData: any) => {
     if (positionData.isLP) {
@@ -199,19 +192,6 @@ const PositionPage = ({
           width="100%"
         >
           {renderPositionData()}
-          {!isLoadingTransactions && (
-            <Box>
-              <Heading size="md" mx={4} mb={2}>
-                Transactions
-              </Heading>
-              <TransactionTable
-                isLoading={isLoadingTransactions}
-                error={transactionsError as Error | null}
-                transactions={transactions}
-                contractId={contractId}
-              />
-            </Box>
-          )}
         </Box>
       </Flex>
     </MarketProvider>

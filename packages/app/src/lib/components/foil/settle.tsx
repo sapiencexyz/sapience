@@ -41,7 +41,7 @@ export default function Settle() {
     address: marketAddress as `0x${string}`,
     abi: foilData.abi,
     functionName: 'getPosition',
-    args: [nftId],
+    args: [nftId ?? 0],
     chainId,
   });
 
@@ -78,7 +78,7 @@ export default function Settle() {
           abi: foilData.abi,
           functionName: 'settlePosition',
           chainId,
-          args: [BigInt(nftId)],
+          args: [BigInt(nftId ?? 0)],
         });
       } catch (error) {
         renderContractErrorToast(
@@ -105,7 +105,9 @@ export default function Settle() {
 
   return (
     <Box p={4}>
-      <PositionSelector isLP={null} />
+      <Box mb={4}>
+        <PositionSelector />
+      </Box>
       {withdrawableCollateral > BigInt(0) && (
         <Text mb={4}>
           Withdrawable Collateral:{' '}

@@ -34,7 +34,7 @@ const getMarketHref = (path: string, market: any, withEpochs: boolean) => {
     return `/${path}/${market.chainId}:${market.address}`;
   }
   if (withEpochs) {
-    return `/${path}/${market.chainId}:${market.address}`;
+    return `/markets/?contractId=${market.chainId}:${market.address}`;
   }
   return `/${path}/${market.chainId}:${market.address}/epochs/${market.currentEpoch?.epochId}`;
 };
@@ -55,14 +55,14 @@ const NavPopover = ({
   const publicMarkets = markets.filter((m) => m.public);
 
   const formatTimestamp = (timestamp: number) => {
-    return format(new Date(timestamp * 1000), 'MMM d, HH:mm');
+    return format(new Date(timestamp * 1000), 'MMM d');
   };
 
   useEffect(() => {
-    if (withEpochs && publicMarkets.length > 0) {
+    if (publicMarkets.length > 0 && !hoveredMarket) {
       setHoveredMarket(publicMarkets[0].id);
     }
-  }, [withEpochs, publicMarkets]);
+  }, [hoveredMarket, publicMarkets]);
 
   const handleLinkClick = () => {
     onClose();
@@ -77,16 +77,19 @@ const NavPopover = ({
       </PopoverTrigger>
       <PopoverContent maxW={withEpochs ? '400px' : '220px'}>
         <PopoverArrow />
-        <PopoverBody py={3}>
+        <PopoverBody
+          py={3}
+          onMouseLeave={() => {
+            onClose();
+            setHoveredMarket(publicMarkets[0].id);
+          }}
+        >
           <Flex>
             <Box flex={1}>
               {publicMarkets.map((market) => (
                 <Box
                   key={market.id}
-                  onMouseEnter={() => withEpochs && setHoveredMarket(market.id)}
-                  onMouseLeave={() =>
-                    withEpochs && setHoveredMarket(publicMarkets[0].id)
-                  }
+                  onMouseEnter={() => setHoveredMarket(market.id)}
                 >
                   {market.currentEpoch && (
                     <ChakraLink
@@ -98,9 +101,7 @@ const NavPopover = ({
                       px={3}
                       py={1.5}
                       bg={
-                        withEpochs && hoveredMarket === market.id
-                          ? 'gray.100'
-                          : 'transparent'
+                        hoveredMarket === market.id ? 'gray.100' : 'transparent'
                       }
                       _hover={{ bg: 'gray.100' }}
                       href={getMarketHref(path, market, withEpochs)}
@@ -159,7 +160,13 @@ const NavPopover = ({
   );
 };
 
-const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
+const NavLinks = ({
+  isMobile = false,
+  onClose,
+}: {
+  isMobile?: boolean;
+  onClose?: () => void;
+}) => {
   const { markets } = useMarketList();
   const publicMarkets = markets.filter((m) => m.public);
 
@@ -184,7 +191,13 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
                     <ChakraLink
                       as={Link}
                       href={getMarketHref(path, market, withEpochs)}
-                      onClick={(e) => withEpochs && e.preventDefault()}
+                      onClick={(e) => {
+                        if (withEpochs) {
+                          e.preventDefault();
+                        } else if (onClose) {
+                          onClose();
+                        }
+                      }}
                     >
                       {market.name}
                     </ChakraLink>
@@ -205,6 +218,7 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
                           fontSize="sm"
                           as={Link}
                           href={`/${path}/${market.chainId}:${market.address}/epochs/${epoch.epochId}`}
+                          onClick={() => onClose?.()}
                         >
                           {formatTimestamp(epoch.startTimestamp)} -{' '}
                           {formatTimestamp(epoch.endTimestamp)}
@@ -249,7 +263,11 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
           </Box>
           {renderMobileMarketLinks('pool', true)}
         </Box>
-        <ChakraLink as={Link} href="https://docs.foil.xyz">
+        <ChakraLink
+          as={Link}
+          href="https://docs.foil.xyz"
+          onClick={() => onClose?.()}
+        >
           Docs
         </ChakraLink>
       </VStack>
@@ -318,7 +336,7 @@ const Header = () => {
                 <DrawerCloseButton />
                 <DrawerBody>
                   <VStack spacing={4} align="stretch">
-                    <NavLinks isMobile />
+                    <NavLinks isMobile onClose={onClose} />
                     <ConnectButton />
                   </VStack>
                 </DrawerBody>

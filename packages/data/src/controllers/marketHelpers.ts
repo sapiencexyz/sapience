@@ -4,6 +4,7 @@ import {
   marketPriceRepository,
   marketRepository,
   positionRepository,
+  resourcePriceRepository,
 } from "../db";
 import { Event } from "../models/Event";
 import { EpochParams } from "../models/EpochParams";
@@ -25,6 +26,9 @@ import {
 } from "../interfaces";
 import { MarketPrice } from "../models/MarketPrice";
 import { getBlockByTimestamp, getProviderForChain } from "../helpers";
+import { ResourcePrice } from "../models/ResourcePrice";
+import { LessThanOrEqual } from "typeorm";
+import { MARKET_INFO } from "src/constants";
 
 /**
  * Handles a Transfer event by updating the owner of the corresponding Position.
@@ -268,7 +272,7 @@ export const createOrUpdateEpochFromContract = async (
   let existingEpoch = await epochRepository.findOne({
     where: {
       market: { address: marketInfo.deployment.address },
-      epochId,
+      epochId: _epochId,
     },
   });
   const updatedEpoch = existingEpoch || new Epoch();
@@ -321,7 +325,7 @@ export const createOrUpdateMarketFromEvent = async (
     assertionLiveness: eventArgs?.epochParams?.assertionLiveness.toString(),
     bondCurrency: eventArgs?.epochParams?.bondCurrency,
     bondAmount: eventArgs?.epochParams?.bondAmount.toString(),
-    priceUnit: eventArgs?.epochParams?.priceUnit,
+    claimStatement: eventArgs?.epochParams?.claimStatement,
     uniswapPositionManager: eventArgs?.epochParams?.uniswapPositionManager,
     uniswapSwapRouter: eventArgs?.epochParams?.uniswapSwapRouter,
     uniswapQuoter: eventArgs?.epochParams?.uniswapQuoter,

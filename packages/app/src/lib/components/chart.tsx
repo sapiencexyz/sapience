@@ -177,6 +177,9 @@ const CandlestickChart: React.FC<Props> = ({
     return data.marketPrices.map((mp, i) => {
       const price = data.indexPrices[i]?.price || 0;
       const priceAdjusted = isLoading ? 0 : price / (stEthPerToken || 1);
+      const displayPriceValue = useMarketUnits
+        ? priceAdjusted
+        : convertToGwei(priceAdjusted, stEthPerToken);
       return {
         ...mp,
         high: useMarketUnits ? mp.high : convertToGwei(mp.high, stEthPerToken),
@@ -185,9 +188,7 @@ const CandlestickChart: React.FC<Props> = ({
         close: useMarketUnits
           ? mp.close
           : convertToGwei(mp.close, stEthPerToken),
-        price: useMarketUnits
-          ? priceAdjusted
-          : convertToGwei(priceAdjusted, stEthPerToken),
+        price: displayPriceValue || undefined,
       };
     });
   }, [data, useMarketUnits, stEthPerToken, isLoading]);
@@ -218,7 +219,7 @@ const CandlestickChart: React.FC<Props> = ({
 
   useEffect(() => {
     const highs = combinedData.map((d) => d.high);
-    const indexPrices = combinedData.map((d) => d.price);
+    const indexPrices = combinedData.map((d) => d.price ?? 0);
     const max = Math.max(...highs, ...indexPrices);
     const maxWithBuffer = Math.floor(max * 1.1 + 1);
     setYAxisDomain([0, maxWithBuffer]);

@@ -45,14 +45,14 @@ contract UMASettlementModule is
         );
 
         bytes memory claim = abi.encodePacked(
-            "ipfs://Qmbg1KiuKNmCbL696Zu8hXUAJrTxuhgNCbyjaPyni4RXTc evaluates to ",
-            Strings.toString(settlementSqrtPriceX96),
-            " ",
-            epoch.params.priceUnit,
-            " with start time ",
+            string(epoch.params.claimStatement),
+            " between timestamps ",
             Strings.toString(epoch.startTime),
-            " and end time ",
-            Strings.toString(epoch.endTime)
+            " and ",
+            Strings.toString(epoch.endTime),
+            "(inclusive) is ",
+            Strings.toString(settlementSqrtPriceX96),
+            "."
         );
 
         epoch.assertionId = optimisticOracleV3.assertTruth(

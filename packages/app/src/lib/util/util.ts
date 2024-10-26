@@ -1,5 +1,9 @@
 import type { ToastId, UseToastOptions } from '@chakra-ui/react';
-import type { ReadContractErrorType, WriteContractErrorType } from 'viem';
+import {
+  formatEther,
+  type ReadContractErrorType,
+  type WriteContractErrorType,
+} from 'viem';
 import * as chains from 'viem/chains';
 
 import { TimeWindow } from '../interfaces/interfaces';
@@ -79,6 +83,13 @@ export const convertToGwei = (
   stEthPerToken: number | undefined
 ) => {
   return (value * (stEthPerToken || 1)) / 1e9;
+};
+
+export const gweiToEther = (gweiValue: bigint): string => {
+  // First, convert gwei to wei (multiply by 10^9)
+  const weiValue = gweiValue * BigInt(1e9);
+  // Then use formatEther to convert wei to ether
+  return formatEther(weiValue);
 };
 
 export const shortenAddress = (address: string) => {

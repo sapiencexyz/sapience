@@ -13,19 +13,19 @@ class EvmIndexer {
 
   private async storeBlockPrice(block: Block, market: Market) {
     const value = block.baseFeePerGas; // in wei
+    const used = block.gasUsed;
     if (!value || !block.number) {
       console.error(
         `No baseFeePerGas for block ${block.number} on market ${market.chainId}:${market.address}`
       );
       return;
     }
-    // const adjustedValue = value / BigInt(1e9); in gwei
 
     const price = new ResourcePrice();
     price.market = market;
     price.timestamp = Number(block.timestamp);
-    // price.value = adjustedValue.toString();
     price.value = value.toString();
+    price.used = used.toString();
     price.blockNumber = Number(block.number);
     await resourcePriceRepository.upsert(price, ["market", "timestamp"]);
   }

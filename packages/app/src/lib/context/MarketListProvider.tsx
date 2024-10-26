@@ -1,6 +1,10 @@
+import type {
+  QueryObserverResult,
+  RefetchOptions,
+} from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext } from 'react';
 
 import { API_BASE_URL } from '../constants/constants';
 
@@ -35,6 +39,9 @@ interface MarketListContextType {
   markets: Market[];
   isLoading: boolean;
   error: Error | null;
+  refetchMarkets: (
+    options?: RefetchOptions
+  ) => Promise<QueryObserverResult<Market[], Error>>;
 }
 
 const MarketListContext = createContext<MarketListContextType | undefined>(
@@ -48,6 +55,7 @@ export const MarketListProvider: React.FC<{ children: React.ReactNode }> = ({
     data: markets,
     isLoading,
     error,
+    refetch: refetchMarkets,
   } = useQuery<Market[], Error>({
     queryKey: ['markets'],
     queryFn: async () => {
@@ -93,7 +101,7 @@ export const MarketListProvider: React.FC<{ children: React.ReactNode }> = ({
 
   return (
     <MarketListContext.Provider
-      value={{ markets: markets || [], isLoading, error }}
+      value={{ markets: markets || [], isLoading, error, refetchMarkets }}
     >
       {children}
     </MarketListContext.Provider>

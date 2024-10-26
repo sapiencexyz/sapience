@@ -39,22 +39,17 @@ export const upsertIndexPriceFromResourcePrice = async (
       order: { timestamp: "ASC" },
     });
 
-    // Calculate the time-weighted average of all the resource prices
-    let totalWeightedPrice = 0n;
-    let totalDuration = 0n;
+    const totalGasUsed: bigint = resourcePrices.reduce(
+      (total, price) => total + BigInt(price.used),
+      0n
+    );
 
-    for (let i = 0; i < resourcePrices.length; i++) {
-      const currentPrice = resourcePrices[i];
-      const nextPrice = resourcePrices[i + 1];
-      const duration = nextPrice
-        ? BigInt(nextPrice.timestamp) - BigInt(currentPrice.timestamp)
-        : BigInt(epoch.endTimestamp) - BigInt(currentPrice.timestamp);
+    const totalBaseFeesPaid: bigint = resourcePrices.reduce((total, price) => {
+      const baseFeePaid = BigInt(price.value) * BigInt(price.used);
+      return total + baseFeePaid;
+    }, 0n);
 
-      totalWeightedPrice += BigInt(currentPrice.value) * duration;
-      totalDuration += duration;
-    }
-
-    const averagePrice = totalWeightedPrice / totalDuration;
+    const averagePrice: bigint = totalBaseFeesPaid / totalGasUsed;
 
     // Create or update the index price associated with the epoch
     let indexPrice = await indexPriceRepository.findOne({
@@ -64,10 +59,10 @@ export const upsertIndexPriceFromResourcePrice = async (
     if (!indexPrice) {
       indexPrice = new IndexPrice();
       indexPrice.epoch = epoch;
+      indexPrice.timestamp = resourcePrice.timestamp;
     }
 
     indexPrice.value = averagePrice.toString();
-    indexPrice.timestamp = resourcePrice.timestamp;
 
     await indexPriceRepository.save(indexPrice);
   }

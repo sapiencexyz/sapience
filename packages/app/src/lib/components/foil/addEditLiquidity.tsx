@@ -13,6 +13,7 @@ import {
   Flex,
   useToast,
   FormErrorMessage,
+  Heading,
 } from '@chakra-ui/react';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { TickMath, SqrtPriceMath } from '@uniswap/v3-sdk';
@@ -41,12 +42,12 @@ import {
   TOKEN_DECIMALS,
 } from '~/lib/constants/constants';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
-import { useLoading } from '~/lib/context/LoadingContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
 
 import LiquidityPriceInput from './LiquidityPriceInput';
 import NumberDisplay from './numberDisplay';
+import PositionSelector from './positionSelector';
 import SlippageTolerance from './slippageTolerance';
 
 // TODO 1% - Hardcoded for now, should be retrieved with pool.tickSpacing()
@@ -97,7 +98,6 @@ const AddEditLiquidity: React.FC = () => {
     refetchUniswapData,
     address: marketAddress,
   } = useContext(MarketContext);
-  const { setIsLoading } = useLoading();
   const toast = useToast();
   const account = useAccount();
   const { isConnected } = account;
@@ -117,7 +117,7 @@ const AddEditLiquidity: React.FC = () => {
   const tickSpacing = pool ? pool?.tickSpacing : TICK_SPACING_DEFAULT;
   const tickLower = priceToTick(lowPrice, tickSpacing);
   const tickUpper = priceToTick(highPrice, tickSpacing);
-  const isEdit = nftId > 0;
+  const isEdit = !!nftId;
 
   const [collateralAmountDelta, setCollateralAmountDelta] = useState<bigint>(
     BigInt(0)
@@ -316,8 +316,7 @@ const AddEditLiquidity: React.FC = () => {
       )
     );
   }, [positionData, collateralAssetDecimals]);
-  const isDecrease =
-    isEdit && depositAmount < positionCollateralAmount.toString();
+  const isDecrease = isEdit && Number(depositAmount) < positionCollateralAmount;
 
   const newLiquidity: bigint = useMemo(() => {
     if (!liquidity) return BigInt(0);
@@ -414,6 +413,40 @@ const AddEditLiquidity: React.FC = () => {
     if (!isEdit) return parseFloat(depositAmount || '0');
     return parseFloat(depositAmount || '0');
   }, [isEdit, depositAmount, positionCollateralAmount]);
+
+  const finalDelta: bigint = useMemo(() => {
+    // Double-check the delta before submission
+    const newDepositAmountBigInt = parseUnits(
+      depositAmount !== '' ? depositAmount : '0',
+      collateralAssetDecimals
+    );
+
+    const currentDepositAmountBigInt = BigInt(
+      positionData?.depositedCollateralAmount || 0
+    );
+    const calculatedDelta = newDepositAmountBigInt - currentDepositAmountBigInt;
+
+    // Use the calculated delta if it differs from the state (shouldn't happen, but just in case)
+    return calculatedDelta !== collateralAmountDelta
+      ? calculatedDelta
+      : collateralAmountDelta;
+  }, [
+    depositAmount,
+    positionData,
+    collateralAssetDecimals,
+    collateralAmountDelta,
+  ]);
+
+  const requireApproval: boolean = useMemo(() => {
+    const collateralAmountDeltaFormatted = formatUnits(
+      finalDelta,
+      collateralAssetDecimals
+    );
+    return (
+      !allowance ||
+      parseFloat(allowance) < parseFloat(collateralAmountDeltaFormatted)
+    );
+  }, [allowance, finalDelta, collateralAssetDecimals]);
 
   /// //// USE EFFECTS ///////
   // handle successful txn
@@ -700,7 +733,6 @@ const AddEditLiquidity: React.FC = () => {
     setTxnSuccessMsg('');
     setTxnStep(0);
     setPendingTxn(false);
-    setIsLoading(false);
 
     // refetch contract data
     refetchCollateralAmount();
@@ -712,14 +744,12 @@ const AddEditLiquidity: React.FC = () => {
   const resetAfterError = () => {
     setTxnStep(0);
     setPendingTxn(false);
-    setIsLoading(false);
   };
 
   const resetAfterSuccess = () => {
     setDepositAmount('0');
     setSlippage(0.5);
     setPendingTxn(false);
-    setIsLoading(false);
     refreshPositions();
     refetchUniswapData();
     refetchCollateralAmount();
@@ -819,31 +849,10 @@ const AddEditLiquidity: React.FC = () => {
 
   const handleFormSubmit = (e: any) => {
     setPendingTxn(true);
-    setIsLoading(true);
 
     if (isEdit && isDecrease) {
       return handleDecreaseLiquidity();
     }
-
-    // Double-check the delta before submission
-    const newDepositAmountBigInt = parseUnits(
-      depositAmount !== '' ? depositAmount : '0',
-      collateralAssetDecimals
-    );
-    const currentDepositAmountBigInt = BigInt(
-      positionData?.depositedCollateralAmount || 0
-    );
-    const calculatedDelta = newDepositAmountBigInt - currentDepositAmountBigInt;
-    console.log('newDepositAmountBigInt', newDepositAmountBigInt);
-    console.log('currentDepositAmountBigInt', currentDepositAmountBigInt);
-    console.log('calculatedDelta', calculatedDelta);
-    console.log('collateralAmountDelta', collateralAmountDelta);
-
-    // Use the calculated delta if it differs from the state (shouldn't happen, but just in case)
-    const finalDelta =
-      calculatedDelta !== collateralAmountDelta
-        ? calculatedDelta
-        : collateralAmountDelta;
 
     if (finalDelta <= 0) {
       // No increase in deposit, proceed with creating or increasing liquidity
@@ -851,17 +860,7 @@ const AddEditLiquidity: React.FC = () => {
       return;
     }
 
-    const collateralAmountDeltaFormatted = formatUnits(
-      finalDelta,
-      collateralAssetDecimals
-    );
-
-    if (
-      allowance &&
-      parseFloat(allowance) >= parseFloat(collateralAmountDeltaFormatted)
-    ) {
-      handleCreateOrIncreaseLiquidity();
-    } else {
+    if (requireApproval) {
       approveWrite({
         abi: erc20ABI,
         address: collateralAsset as `0x${string}`,
@@ -870,6 +869,8 @@ const AddEditLiquidity: React.FC = () => {
         chainId,
       });
       setTxnStep(1);
+    } else {
+      handleCreateOrIncreaseLiquidity();
     }
   };
 
@@ -890,13 +891,22 @@ const AddEditLiquidity: React.FC = () => {
   };
 
   const getButtonText = () => {
+    let txt = '';
     if (isEdit) {
       if (depositAmount === '' || parseFloat(depositAmount) === 0) {
-        return 'Close Liquidity Position';
+        txt = 'Close Liquidity Position';
+      } else {
+        txt = isDecrease ? 'Decrease Liquidity' : 'Increase Liquidity';
       }
-      return isDecrease ? 'Decrease Liquidity' : 'Increase Liquidity';
+    } else {
+      txt = 'Add Liquidity';
     }
-    return 'Add Liquidity';
+
+    if (requireApproval) {
+      txt = `Approve ${txt}`;
+    }
+
+    return txt;
   };
 
   const renderActionButton = () => {
@@ -953,6 +963,9 @@ const AddEditLiquidity: React.FC = () => {
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)}>
+      <Heading size="md" mb={3}>
+        Pool Liquidity
+      </Heading>
       <Box mb={4}>
         <FormControl isInvalid={!!errors.collateral}>
           <FormLabel htmlFor="collateral">Collateral</FormLabel>
@@ -1013,6 +1026,8 @@ const AddEditLiquidity: React.FC = () => {
       {renderActionButton()}
 
       <Flex gap={2} flexDir="column" mt={4}>
+        <PositionSelector isLP />
+
         <Box>
           <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
             Base Token

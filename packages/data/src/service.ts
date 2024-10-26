@@ -25,8 +25,8 @@ import {
   groupIndexPricesByTimeWindow,
 } from "./serviceUtil";
 import { TimeWindow } from "./interfaces";
-import { formatDbBigInt } from "./helpers";
-import { getProviderForChain, getBlockByTimestamp } from "./helpers";
+import { formatDbBigInt, getBlockBeforeTimestamp } from "./helpers";
+import { getProviderForChain } from "./helpers";
 import dotenv from "dotenv";
 import path from "path";
 import { RenderJob } from "./models/RenderJob";
@@ -47,6 +47,8 @@ const startServer = async () => {
   const transactionRepository = dataSource.getRepository(Transaction);
 
   const app = express();
+  // Middleware to parse JSON bodies
+  app.use(express.json());
 
   const corsOptions: cors.CorsOptions = {
     origin: (
@@ -647,7 +649,7 @@ const startServer = async () => {
 
       const latestPrice = await indexPriceRepository.findOne({
         where: {
-          epoch: { id: Number(epochId) },
+          epoch: { id: Number(epoch.id) },
           timestamp: Between(
             Number(epoch.startTimestamp),
             Number(epoch.endTimestamp)
@@ -668,6 +670,138 @@ const startServer = async () => {
       });
     } catch (error) {
       console.error("Error fetching latest index price:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/updateMarketPrivacy", async (req, res) => {
+    const { address, chainId } = req.body;
+    try {
+      const market = await marketRepository.findOne({
+        where: {
+          chainId: Number(chainId),
+          address: address,
+        },
+      });
+
+      if (!market) {
+        return res.status(404).json({ error: "Market not found" });
+      }
+
+      market.public = !market.public;
+
+      await marketRepository.save(market);
+
+      res.json({ success: true });
+    } catch (e) {
+      console.error("Error updating market privacy:", e);
+      res.status(500).json({ error: `Internal server error: ${e}` });
+    }
+  });
+
+  app.get("/getStEthPerTokenAtTimestamp", async (req, res) => {
+    const { chainId, collateralAssetAddress, endTime } = req.query;
+
+    if (
+      typeof chainId !== "string" ||
+      typeof collateralAssetAddress !== "string"
+    ) {
+      return res.status(400).json({ error: "Invalid request parameters" });
+    }
+
+    try {
+      console.log("getting provider...");
+      const client = getProviderForChain(Number(chainId));
+      console.log("got provider");
+      console.log("reading contract for stEthPerToken....");
+
+      // get last block
+      const block = await getBlockBeforeTimestamp(client, Number(endTime));
+      console.log("block number:", block.number);
+
+      if (!block.number) {
+        return res.status(404).json({ error: "Block not found" });
+      }
+
+      const stEthPerTokenResult = await client.readContract({
+        address: collateralAssetAddress as `0x${string}`,
+        abi: [
+          {
+            inputs: [],
+            name: "stEthPerToken",
+            outputs: [
+              {
+                internalType: "uint256",
+                name: "",
+                type: "uint256",
+              },
+            ],
+            stateMutability: "view",
+            type: "function",
+          },
+        ],
+        functionName: "stEthPerToken",
+        blockNumber: block.number,
+      });
+
+      console.log("stEthPerTokenResult =", stEthPerTokenResult);
+
+      res.json({
+        stEthPerToken: stEthPerTokenResult.toString(),
+      });
+    } catch (error) {
+      console.error("Error fetching latest resource price:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/accounts/:address", async (req, res) => {
+    const { address } = req.params;
+
+    if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+      return res.status(400).json({ error: "Invalid address format" });
+    }
+
+    try {
+      const positions = await positionRepository.find({
+        where: { owner: address },
+        relations: ["epoch", "epoch.market"],
+      });
+
+      const transactions = await transactionRepository.find({
+        where: { position: { owner: address } },
+        relations: [
+          "position",
+          "position.epoch",
+          "position.epoch.market",
+          "event",
+        ],
+      });
+
+      positions.forEach((position) => {
+        position.baseToken = formatDbBigInt(position.baseToken);
+        position.quoteToken = formatDbBigInt(position.quoteToken);
+        position.borrowedBaseToken = formatDbBigInt(position.borrowedBaseToken);
+        position.borrowedQuoteToken = formatDbBigInt(
+          position.borrowedQuoteToken
+        );
+        position.collateral = formatDbBigInt(position.collateral);
+      });
+
+      transactions.forEach((transaction) => {
+        transaction.baseTokenDelta = formatDbBigInt(transaction.baseTokenDelta);
+        transaction.quoteTokenDelta = formatDbBigInt(
+          transaction.quoteTokenDelta
+        );
+        transaction.collateralDelta = formatDbBigInt(
+          transaction.collateralDelta
+        );
+        transaction.tradeRatioD18 = formatDbBigInt(transaction.tradeRatioD18);
+      });
+
+      res.json({ positions, transactions });
+    } catch (error) {
+      console.error("Error fetching account data:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

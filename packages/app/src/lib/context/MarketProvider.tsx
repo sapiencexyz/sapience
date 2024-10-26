@@ -1,27 +1,24 @@
 import { useToast } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import type { Pool } from '@uniswap/v3-sdk';
+import axios from 'axios';
 import type { ReactNode } from 'react';
 import type React from 'react';
 import { createContext, useEffect, useState } from 'react';
-import { formatEther } from 'viem';
 import * as Chains from 'viem/chains';
 import type { Chain } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 
 import useFoilDeployment from '../components/foil/useFoilDeployment';
-import { API_BASE_URL, BLANK_MARKET } from '../constants/constants';
+import {
+  API_BASE_URL,
+  BLANK_MARKET,
+  DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS,
+} from '../constants/constants';
 import erc20ABI from '../erc20abi.json';
 import { useUniswapPool } from '../hooks/useUniswapPool';
 import type { EpochParams } from '../interfaces/interfaces';
-import { renderContractErrorToast } from '../util/util';
-
-const gweiToEther = (gweiValue: bigint): string => {
-  // First, convert gwei to wei (multiply by 10^9)
-  const weiValue = gweiValue * BigInt(1e9);
-  // Then use formatEther to convert wei to ether
-  return formatEther(weiValue);
-};
+import { gweiToEther, renderContractErrorToast } from '../util/util';
 
 // Types and Interfaces
 export interface MarketContextType {
@@ -86,8 +83,14 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
       const data = await response.json();
       return data.price;
     },
-    enabled: state.chainId !== 0,
-    refetchInterval: 60000,
+    enabled: state.chainId !== 0 && state.epoch !== 0,
+    refetchInterval: () => {
+      const currentTime = Math.floor(Date.now() / 1000); // Convert to Unix timestamp
+      if (state.averagePrice && currentTime > state.endTime) {
+        return false;
+      }
+      return 60000;
+    },
   });
 
   const marketViewFunctionResult = useReadContract({
@@ -150,7 +153,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
 
   // This will need to be abstracted
   const stEthPerTokenResult = useReadContract({
-    chainId,
+    chainId: chainId === Chains.cannon.id ? Chains.sepolia.id : chainId,
     abi: [
       {
         inputs: [],
@@ -166,7 +169,10 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
         type: 'function',
       },
     ],
-    address: state.collateralAsset as `0x${string}`,
+    address:
+      chainId === Chains.cannon.id
+        ? DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS
+        : (state.collateralAsset as `0x${string}`),
     functionName: 'stEthPerToken',
   });
 
@@ -178,6 +184,30 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
       }));
     }
   }, [stEthPerTokenResult.data]);
+
+  useEffect(() => {
+    const updateSettledStEthPerToken = async () => {
+      const response = await axios.get(
+        `${API_BASE_URL}/getStEthPerTokenAtTimestamp?chainId=${state.chainId}&collateralAssetAddress=${state.collateralAsset}&endTime=${state.endTime}`
+      );
+      console.log('updated stEthPerToken', response.data);
+      const stEthPerToken = BigInt(response.data.stEthPerToken);
+      setState((currentState) => ({
+        ...currentState,
+        stEthPerToken: Number(gweiToEther(stEthPerToken)),
+      }));
+    };
+
+    const currentTime = Math.floor(Date.now() / 1000);
+    if (
+      state.endTime &&
+      state.endTime < currentTime &&
+      state.chainId &&
+      state.collateralAsset
+    ) {
+      updateSettledStEthPerToken();
+    }
+  }, [state.endTime, state.chainId, state.collateralAsset]);
 
   useEffect(() => {
     console.log('latestPrice =', latestPrice);
