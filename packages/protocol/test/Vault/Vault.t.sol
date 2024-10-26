@@ -187,7 +187,7 @@ contract VaultTest is TestTrade {
                 assertionLiveness: 21600,
                 bondCurrency: vm.getAddress("BondCurrency.Token"),
                 bondAmount: BOND_AMOUNT,
-                priceUnit: "wstGwei/gas",
+                claimStatement: "wstGwei/gas",
                 uniswapPositionManager: vm.getAddress(
                     "Uniswap.NonfungiblePositionManager"
                 ),
