@@ -53,7 +53,7 @@ contract TestEpoch is TestUser {
         IFoil foil = IFoil(vm.getAddress("Foil"));
 
         vm.prank(owner);
-        foil.createEpochWithBounds(
+        foil.createEpoch(
             block.timestamp,
             block.timestamp + 30 days,
             startingSqrtPriceX96,
@@ -81,7 +81,7 @@ contract TestEpoch is TestUser {
         IFoil foil = IFoil(vm.getAddress("Foil"));
 
         vm.prank(owner);
-        foil.createEpochWithBounds(
+        foil.createEpoch(
             block.timestamp,
             block.timestamp + 30 days,
             startingSqrtPriceX96,

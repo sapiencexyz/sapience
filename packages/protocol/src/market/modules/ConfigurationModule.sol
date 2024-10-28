@@ -100,7 +100,7 @@ contract ConfigurationModule is
     //     return newEpochId;
     // }
 
-    function createEpochWithBounds(
+    function createEpoch(
         uint256 startTime,
         uint256 endTime,
         uint160 startingSqrtPriceX96,

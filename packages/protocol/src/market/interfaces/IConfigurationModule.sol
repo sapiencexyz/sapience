@@ -48,14 +48,7 @@ interface IConfigurationModule {
 
     function updateMarket(IFoilStructs.EpochParams memory epochParams) external;
 
-    // function createEpoch(
-    //     uint256 startTime,
-    //     uint256 endTime,
-    //     uint160 startingSqrtPriceX96,
-    //     uint256 salt
-    // ) external returns (uint256 epochId);
-
-    function createEpochWithBounds(
+    function createEpoch(
         uint256 startTime,
         uint256 endTime,
         uint160 startingSqrtPriceX96,
