@@ -80,29 +80,6 @@ contract ConfigurationModule is
         emit MarketUpdated(epochParams);
     }
 
-    // function createEpoch(
-    //     uint256 startTime,
-    //     uint256 endTime,
-    //     uint160 startingSqrtPriceX96,
-    //     uint256 salt
-    // ) external override nonReentrant onlyOwner returns (uint256 epochId) {
-    //     // load the market to check if it's already created
-    //     Market.Data storage market = Market.load();
-
-    //     uint256 newEpochId = market.getNewEpochId();
-
-    //     Epoch.createValid(
-    //         newEpochId,
-    //         startTime,
-    //         endTime,
-    //         startingSqrtPriceX96,
-    //         salt
-    //     );
-    //     emit EpochCreated(newEpochId, startTime, endTime, startingSqrtPriceX96);
-
-    //     return newEpochId;
-    // }
-
     function createEpoch(
         uint256 startTime,
         uint256 endTime,
