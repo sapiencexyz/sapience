@@ -146,7 +146,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             int24 baseAssetMaxPriceTick
         ) = _getTickBoundsForStartingPrice(startingSqrtPriceX96);
 
-        uint256 newEpochId = IFoil(market).createEpochWithBounds(
+        uint256 newEpochId = IFoil(market).createEpoch(
             startTime,
             startTime + duration,
             startingSqrtPriceX96,
