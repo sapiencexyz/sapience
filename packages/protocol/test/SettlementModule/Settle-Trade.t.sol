@@ -68,7 +68,14 @@ contract SettleTradeTest is TestTrade {
         lp1 = TestUser.createUser("LP1", 20_000_000 ether);
         trader1 = TestUser.createUser("Trader1", 20_000_000 ether);
 
-        (epochId, , , pool, tokenA, tokenB, , , , , ) = foil.getLatestEpoch();
+        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
+        epochId = epochData.epochId;
+        pool = epochData.pool;
+        tokenA = epochData.ethToken;
+        tokenB = epochData.gasToken;
+        endTime = epochData.endTime;
+        minPriceD18 = epochData.minPriceD18;
+        maxPriceD18 = epochData.maxPriceD18;
 
         uniCastedPool = IUniswapV3Pool(pool);
         feeRate = uint256(uniCastedPool.fee()) * 1e12;
@@ -89,19 +96,6 @@ contract SettleTradeTest is TestTrade {
         optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
 
         (owner, , , , ) = foil.getMarket();
-        (
-            epochId,
-            ,
-            endTime,
-            ,
-            ,
-            ,
-            minPriceD18,
-            maxPriceD18,
-            ,
-            ,
-            epochParams
-        ) = foil.getLatestEpoch();
 
         bondCurrency.mint(epochParams.bondAmount * 2, owner);
     }

@@ -47,7 +47,8 @@ contract DepositCollateralTest is TestTrade {
             feeCollectors
         );
 
-        (epochId, , , , , , , , , , ) = foil.getLatestEpoch();
+        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
+        epochId = epochData.epochId;
 
         (
             uint256 gasTokenAmount,

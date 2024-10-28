@@ -40,6 +40,7 @@ contract VaultTest is TestTrade {
 
     uint256 DEFAULT_DURATION = 2419200; // 28 days in seconds
     uint256 INITIAL_LP_BALANCE = 100_000 ether;
+    IFoilStructs.EpochData epochData;
 
     function setUp() public {
         address[] memory feeCollectors = new address[](0);
@@ -87,8 +88,12 @@ contract VaultTest is TestTrade {
         initializeFirstEpoch(initialSqrtPriceX96, initialStartTime);
 
         // New epoch created
-        (, startTime, endTime, , , , , , , , ) = foil.getLatestEpoch();
-        assertEq(endTime - startTime, DEFAULT_DURATION, "Epoch duration");
+        (epochData, ) = foil.getLatestEpoch();
+        assertEq(
+            epochData.endTime - epochData.startTime,
+            DEFAULT_DURATION,
+            "Epoch duration"
+        );
     }
 
     function test_settleEpochCreatesNewEpochWithoutLiquidity() public {
@@ -103,29 +108,21 @@ contract VaultTest is TestTrade {
         initializeFirstEpoch(initialSqrtPriceX96, initialStartTime);
 
         // New epoch created
-        (epochIdBefore, startTimeBefore, endTimeBefore, , , , , , , , ) = foil
-            .getLatestEpoch();
+        (epochData, ) = foil.getLatestEpoch();
+        epochIdBefore = epochData.epochId;
+        startTimeBefore = epochData.startTime;
+        endTimeBefore = epochData.endTime;
 
         // Settle
-        vm.warp(endTimeBefore + 1);
-        settleEpochFromVault(epochIdBefore, updatedSqrtPriceX96, owner);
+        vm.warp(epochData.endTime + 1);
+        settleEpochFromVault(epochData.epochId, updatedSqrtPriceX96, owner);
 
         // New epoch created
-        uint256 minPriceD18;
-        uint256 maxPriceD18;
-        (
-            epochIdAfter,
-            startTimeAfter,
-            endTimeAfter,
-            ,
-            ,
-            ,
-            minPriceD18,
-            maxPriceD18,
-            ,
-            ,
+        (epochData, ) = foil.getLatestEpoch();
+        epochIdAfter = epochData.epochId;
+        startTimeAfter = epochData.startTime;
+        endTimeAfter = epochData.endTime;
 
-        ) = foil.getLatestEpoch();
         assertEq(epochIdAfter, epochIdBefore + 1);
         assertEq(startTimeAfter, endTimeBefore + DEFAULT_DURATION);
         assertEq(endTimeAfter, startTimeAfter + DEFAULT_DURATION);
@@ -134,11 +131,11 @@ contract VaultTest is TestTrade {
         // min price should be 15 / 3 = 5 ether
         // max price should be 15 * 3 = 45 ether
 
-        assertLe(minPriceD18, 5 ether);
-        assertApproxEqRel(minPriceD18, 5 ether, 0.02 ether);
+        assertLe(epochData.minPriceD18, 5 ether);
+        assertApproxEqRel(epochData.minPriceD18, 5 ether, 0.02 ether);
 
-        assertGe(maxPriceD18, 45 ether);
-        assertApproxEqRel(maxPriceD18, 45 ether, 0.02 ether);
+        assertGe(epochData.maxPriceD18, 45 ether);
+        assertApproxEqRel(epochData.maxPriceD18, 45 ether, 0.02 ether);
     }
 
     function test_settleEpochCreatesNewEpochWithLiquidity() public {
@@ -153,33 +150,25 @@ contract VaultTest is TestTrade {
         initializeFirstEpoch(initialSqrtPriceX96, initialStartTime);
 
         // New epoch created
-        (epochIdBefore, startTimeBefore, endTimeBefore, , , , , , , , ) = foil
-            .getLatestEpoch();
+        (epochData, ) = foil.getLatestEpoch();
+        epochIdBefore = epochData.epochId;
+        startTimeBefore = epochData.startTime;
+        endTimeBefore = epochData.endTime;
 
         // Add liquidity
         vm.prank(lp1);
         uint256 requestId = vault.requestDeposit(100 ether, lp1, lp1);
 
         // Settle
-        vm.warp(endTimeBefore + 1);
-        settleEpochFromVault(epochIdBefore, updatedSqrtPriceX96, owner);
+        vm.warp(epochData.endTime + 1);
+        settleEpochFromVault(epochData.epochId, updatedSqrtPriceX96, owner);
 
         // New epoch created
-        uint256 minPriceD18;
-        uint256 maxPriceD18;
-        (
-            epochIdAfter,
-            startTimeAfter,
-            endTimeAfter,
-            ,
-            ,
-            ,
-            minPriceD18,
-            maxPriceD18,
-            ,
-            ,
+        (epochData, ) = foil.getLatestEpoch();
+        epochIdAfter = epochData.epochId;
+        startTimeAfter = epochData.startTime;
+        endTimeAfter = epochData.endTime;
 
-        ) = foil.getLatestEpoch();
         assertEq(epochIdAfter, epochIdBefore + 1);
         assertEq(startTimeAfter, endTimeBefore + DEFAULT_DURATION);
         assertEq(endTimeAfter, startTimeAfter + DEFAULT_DURATION);
@@ -188,11 +177,11 @@ contract VaultTest is TestTrade {
         // min price should be 15 / 3 = 5 ether
         // max price should be 15 * 3 = 45 ether
 
-        assertLe(minPriceD18, 5 ether);
-        assertApproxEqRel(minPriceD18, 5 ether, 0.02 ether);
+        assertLe(epochData.minPriceD18, 5 ether);
+        assertApproxEqRel(epochData.minPriceD18, 5 ether, 0.02 ether);
 
-        assertGe(maxPriceD18, 45 ether);
-        assertApproxEqRel(maxPriceD18, 45 ether, 0.02 ether);
+        assertGe(epochData.maxPriceD18, 45 ether);
+        assertApproxEqRel(epochData.maxPriceD18, 45 ether, 0.02 ether);
     }
 
     /////////////
@@ -228,8 +217,6 @@ contract VaultTest is TestTrade {
             feeCollectors,
             address(vaultContract),
             IFoilStructs.EpochParams({
-                baseAssetMinPriceTick: minTick,
-                baseAssetMaxPriceTick: maxTick,
                 feeRate: 10000,
                 assertionLiveness: 21600,
                 bondCurrency: vm.getAddress("BondCurrency.Token"),

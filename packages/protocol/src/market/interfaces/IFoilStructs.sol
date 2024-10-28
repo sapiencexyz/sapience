@@ -39,8 +39,6 @@ interface IFoilStructs {
     }
 
     struct EpochParams {
-        int24 baseAssetMinPriceTick;
-        int24 baseAssetMaxPriceTick;
         uint24 feeRate;
         uint64 assertionLiveness;
         uint256 bondAmount;
@@ -50,5 +48,20 @@ interface IFoilStructs {
         address uniswapQuoter;
         address optimisticOracleV3;
         bytes claimStatement;
+    }
+
+    struct EpochData {
+        uint256 epochId;
+        uint256 startTime;
+        uint256 endTime;
+        address pool;
+        address ethToken;
+        address gasToken;
+        uint256 minPriceD18;
+        uint256 maxPriceD18;
+        int24 baseAssetMinPriceTick;
+        int24 baseAssetMaxPriceTick;
+        bool settled;
+        uint256 settlementPriceD18;
     }
 }

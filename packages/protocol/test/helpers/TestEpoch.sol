@@ -53,10 +53,12 @@ contract TestEpoch is TestUser {
         IFoil foil = IFoil(vm.getAddress("Foil"));
 
         vm.prank(owner);
-        foil.createEpoch(
+        foil.createEpochWithBounds(
             block.timestamp,
             block.timestamp + 30 days,
             startingSqrtPriceX96,
+            minTick,
+            maxTick,
             CREATE_EPOCH_SALT
         );
 
@@ -79,10 +81,12 @@ contract TestEpoch is TestUser {
         IFoil foil = IFoil(vm.getAddress("Foil"));
 
         vm.prank(owner);
-        foil.createEpoch(
+        foil.createEpochWithBounds(
             block.timestamp,
             block.timestamp + 30 days,
             startingSqrtPriceX96,
+            minTick,
+            maxTick,
             CREATE_EPOCH_SALT
         );
 
@@ -103,8 +107,6 @@ contract TestEpoch is TestUser {
             feeCollectors,
             callbackRecipient,
             IFoilStructs.EpochParams({
-                baseAssetMinPriceTick: minTick,
-                baseAssetMaxPriceTick: maxTick,
                 feeRate: 10000,
                 assertionLiveness: 21600,
                 bondCurrency: vm.getAddress("BondCurrency.Token"),
@@ -156,16 +158,16 @@ contract TestEpoch is TestUser {
         returns (uint256 loanAmount0, uint256 loanAmount1, uint256 liquidity)
     {
         IFoil foil = IFoil(vm.getAddress("Foil"));
-        (uint256 epochId, , , address pool, , , , , , , ) = foil
-            .getLatestEpoch();
-        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
+        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
+        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(epochData.pool)
+            .slot0();
 
         uint160 sqrtPriceAX96 = uint160(TickMath.getSqrtRatioAtTick(lowerTick));
         uint160 sqrtPriceBX96 = uint160(TickMath.getSqrtRatioAtTick(upperTick));
 
         (loanAmount0, loanAmount1, liquidity) = foil
             .quoteLiquidityPositionTokens(
-                epochId,
+                epochData.epochId,
                 collateralAmount,
                 sqrtPriceX96,
                 sqrtPriceAX96,
@@ -190,19 +192,11 @@ contract TestEpoch is TestUser {
     {
         IFoil foil = IFoil(vm.getAddress("Foil"));
         (
-            ,
-            ,
-            ,
-            address pool,
-            ,
-            ,
-            ,
-            ,
-            ,
-            ,
+            IFoilStructs.EpochData memory epochData,
             IFoilStructs.EpochParams memory epochParams
         ) = foil.getLatestEpoch();
-        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
+        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(epochData.pool)
+            .slot0();
 
         (
             ,
@@ -264,7 +258,7 @@ contract TestEpoch is TestUser {
         console2.log("feeGrowthGlobal0X128", data.feeGrowthGlobal0X128);
         console2.log("feeGrowthGlobal1X128", data.feeGrowthGlobal1X128);
 
-        (, , , data.pool, , , , , , , ) = foil.getLatestEpoch();
+        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
 
         bytes32 positionKey = keccak256(
             abi.encodePacked(

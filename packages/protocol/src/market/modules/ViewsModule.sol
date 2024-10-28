@@ -39,31 +39,27 @@ contract ViewsModule is IViewsModule {
         view
         override
         returns (
-            uint256 startTime,
-            uint256 endTime,
-            address pool,
-            address ethToken,
-            address gasToken,
-            uint256 minPriceD18,
-            uint256 maxPriceD18,
-            bool settled,
-            uint256 settlementPriceD18,
+            IFoilStructs.EpochData memory epochData,
             IFoilStructs.EpochParams memory params
         )
     {
         Epoch.Data storage epoch = Epoch.load(id);
-        return (
-            epoch.startTime,
-            epoch.endTime,
-            address(epoch.pool),
-            address(epoch.ethToken),
-            address(epoch.gasToken),
-            epoch.minPriceD18,
-            epoch.maxPriceD18,
-            epoch.settled,
-            epoch.settlementPriceD18,
-            epoch.params
-        );
+        epochData = IFoilStructs.EpochData({
+            epochId: epoch.id,
+            startTime: epoch.startTime,
+            endTime: epoch.endTime,
+            pool: address(epoch.pool),
+            ethToken: address(epoch.ethToken),
+            gasToken: address(epoch.gasToken),
+            minPriceD18: epoch.minPriceD18,
+            maxPriceD18: epoch.maxPriceD18,
+            baseAssetMinPriceTick: epoch.baseAssetMinPriceTick,
+            baseAssetMaxPriceTick: epoch.baseAssetMaxPriceTick,
+            settled: epoch.settled,
+            settlementPriceD18: epoch.settlementPriceD18
+        });
+
+        return (epochData, epoch.params);
     }
 
     function getLatestEpoch()
@@ -71,39 +67,32 @@ contract ViewsModule is IViewsModule {
         view
         override
         returns (
-            uint256 epochId,
-            uint256 startTime,
-            uint256 endTime,
-            address pool,
-            address ethToken,
-            address gasToken,
-            uint256 minPriceD18,
-            uint256 maxPriceD18,
-            bool settled,
-            uint256 settlementPriceD18,
+            IFoilStructs.EpochData memory epochData,
             IFoilStructs.EpochParams memory params
         )
     {
-        epochId = Market.load().lastEpochId;
+        uint256 epochId = Market.load().lastEpochId;
 
         if (epochId == 0) {
             revert Errors.NoEpochsCreated();
         }
         Epoch.Data storage epoch = Epoch.load(epochId);
+        epochData = IFoilStructs.EpochData({
+            epochId: epochId,
+            startTime: epoch.startTime,
+            endTime: epoch.endTime,
+            pool: address(epoch.pool),
+            ethToken: address(epoch.ethToken),
+            gasToken: address(epoch.gasToken),
+            minPriceD18: epoch.minPriceD18,
+            maxPriceD18: epoch.maxPriceD18,
+            baseAssetMinPriceTick: epoch.baseAssetMinPriceTick,
+            baseAssetMaxPriceTick: epoch.baseAssetMaxPriceTick,
+            settled: epoch.settled,
+            settlementPriceD18: epoch.settlementPriceD18
+        });
 
-        return (
-            epochId,
-            epoch.startTime,
-            epoch.endTime,
-            address(epoch.pool),
-            address(epoch.ethToken),
-            address(epoch.gasToken),
-            epoch.minPriceD18,
-            epoch.maxPriceD18,
-            epoch.settled,
-            epoch.settlementPriceD18,
-            epoch.params
-        );
+        return (epochData, epoch.params);
     }
 
     function getPosition(
