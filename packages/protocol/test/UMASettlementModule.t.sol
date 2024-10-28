@@ -26,6 +26,7 @@ contract UmaSettleMarket is TestEpoch {
     IFoilStructs.EpochParams epochParams;
     uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
     IFoilStructs.EpochData epochData;
+    IFoilStructs.EpochData initialEpochData;
 
     uint160 minPriceSqrtX96 = 176318465955203702497835220992;
     uint160 maxPriceSqrtX96 = 351516737644262680948788690944;
@@ -53,13 +54,13 @@ contract UmaSettleMarket is TestEpoch {
 
         (owner, , , , ) = foil.getMarket();
         (
-            IFoilStructs.EpochData memory epochData,
+            IFoilStructs.EpochData memory initialEpochData,
             IFoilStructs.EpochParams memory _epochParams
         ) = foil.getLatestEpoch();
-        epochId = epochData.epochId;
-        endTime = epochData.endTime;
-        minPriceD18 = epochData.minPriceD18;
-        maxPriceD18 = epochData.maxPriceD18;
+        epochId = initialEpochData.epochId;
+        endTime = initialEpochData.endTime;
+        minPriceD18 = initialEpochData.minPriceD18;
+        maxPriceD18 = initialEpochData.maxPriceD18;
         epochParams = _epochParams;
 
         bondCurrency.mint(epochParams.bondAmount * 2, owner);
@@ -72,6 +73,7 @@ contract UmaSettleMarket is TestEpoch {
     }
 
     function test_settle_in_range() public {
+        IFoilStructs.EpochData memory epochData;
         bool settled;
         uint256 settlementPriceD18;
 
@@ -87,7 +89,7 @@ contract UmaSettleMarket is TestEpoch {
             SQRT_PRICE_10Eth
         );
         vm.stopPrank();
-        IFoilStructs.EpochData memory epochData;
+        IFoilStructs.EpochData memory initialEpochData;
         (epochData, ) = foil.getLatestEpoch();
         assertTrue(!epochData.settled, "The epoch isn't settled");
 
@@ -104,11 +106,12 @@ contract UmaSettleMarket is TestEpoch {
     }
 
     function test_settle_above_range() public {
-        (epochData, ) = foil.getLatestEpoch();
-        uint256 _minPriceD18 = epochData.minPriceD18;
-        uint256 _maxPriceD18 = epochData.maxPriceD18;
+        IFoilStructs.EpochData memory epochData;
+        (initialEpochData, ) = foil.getLatestEpoch();
+        uint256 _minPriceD18 = initialEpochData.minPriceD18;
+        uint256 _maxPriceD18 = initialEpochData.maxPriceD18;
 
-        vm.warp(epochData.endTime + 1);
+        vm.warp(endTime + 1);
 
         vm.startPrank(owner);
         IMintableToken(epochParams.bondCurrency).approve(
@@ -133,11 +136,12 @@ contract UmaSettleMarket is TestEpoch {
     }
 
     function test_settle_below_range() public {
-        (epochData, ) = foil.getLatestEpoch();
-        uint256 _minPriceD18 = epochData.minPriceD18;
-        uint256 _maxPriceD18 = epochData.maxPriceD18;
+        IFoilStructs.EpochData memory epochData;
+        (initialEpochData, ) = foil.getLatestEpoch();
+        uint256 _minPriceD18 = initialEpochData.minPriceD18;
+        uint256 _maxPriceD18 = initialEpochData.maxPriceD18;
 
-        vm.warp(epochData.endTime + 1);
+        vm.warp(endTime + 1);
 
         vm.startPrank(owner);
         IMintableToken(epochParams.bondCurrency).approve(
@@ -162,7 +166,8 @@ contract UmaSettleMarket is TestEpoch {
     }
 
     function test_settle_too_early() public {
-        vm.warp(epochData.endTime - 1);
+        IFoilStructs.EpochData memory epochData;
+        vm.warp(endTime - 1);
 
         vm.startPrank(owner);
         IMintableToken(epochParams.bondCurrency).approve(
@@ -175,7 +180,8 @@ contract UmaSettleMarket is TestEpoch {
     }
 
     function test_settle_too_late() public {
-        vm.warp(epochData.endTime + 1);
+        IFoilStructs.EpochData memory epochData;
+        vm.warp(endTime + 1);
 
         vm.startPrank(owner);
         IMintableToken(epochParams.bondCurrency).approve(
@@ -203,7 +209,8 @@ contract UmaSettleMarket is TestEpoch {
     }
 
     function test_settle_after_dispute() public {
-        vm.warp(epochData.endTime + 1);
+        IFoilStructs.EpochData memory epochData;
+        vm.warp(endTime + 1);
 
         vm.startPrank(owner);
         IMintableToken(epochParams.bondCurrency).approve(
@@ -215,12 +222,12 @@ contract UmaSettleMarket is TestEpoch {
             SQRT_PRICE_10Eth
         );
         vm.stopPrank();
-
+\
         vm.startPrank(optimisticOracleV3);
         foil.assertionDisputedCallback(assertionId);
         foil.assertionResolvedCallback(assertionId, true);
         vm.stopPrank();
-
+ 
         (epochData, ) = foil.getLatestEpoch();
         assertTrue(!epochData.settled, "The epoch is not settled");
 
