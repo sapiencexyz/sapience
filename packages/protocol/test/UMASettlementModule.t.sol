@@ -222,12 +222,12 @@ contract UmaSettleMarket is TestEpoch {
             SQRT_PRICE_10Eth
         );
         vm.stopPrank();
-\
+
         vm.startPrank(optimisticOracleV3);
         foil.assertionDisputedCallback(assertionId);
         foil.assertionResolvedCallback(assertionId, true);
         vm.stopPrank();
- 
+
         (epochData, ) = foil.getLatestEpoch();
         assertTrue(!epochData.settled, "The epoch is not settled");
 
