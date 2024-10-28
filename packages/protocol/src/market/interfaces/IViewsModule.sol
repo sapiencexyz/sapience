@@ -22,15 +22,7 @@ interface IViewsModule {
         external
         view
         returns (
-            uint256 startTime,
-            uint256 endTime,
-            address pool,
-            address ethToken,
-            address gasToken,
-            uint256 minPriceD18,
-            uint256 maxPriceD18,
-            bool settled,
-            uint256 settlementPriceD18,
+            IFoilStructs.EpochData memory epochData,
             IFoilStructs.EpochParams memory epochParams
         );
 
@@ -38,16 +30,7 @@ interface IViewsModule {
         external
         view
         returns (
-            uint256 epochId,
-            uint256 startTime,
-            uint256 endTime,
-            address pool,
-            address ethToken,
-            address gasToken,
-            uint256 minPriceD18,
-            uint256 maxPriceD18,
-            bool settled,
-            uint256 settlementPriceD18,
+            IFoilStructs.EpochData memory epochData,
             IFoilStructs.EpochParams memory epochParams
         );
 
@@ -80,5 +63,7 @@ interface IViewsModule {
      * @param positionId id of the position
      * @return collateralValue value of the position, collateral denominated
      */
-    function getPositionCollateralValue(uint256 positionId) external view returns (uint256 collateralValue);
+    function getPositionCollateralValue(
+        uint256 positionId
+    ) external view returns (uint256 collateralValue);
 }

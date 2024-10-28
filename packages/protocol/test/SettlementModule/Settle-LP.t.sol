@@ -56,7 +56,11 @@ contract SettleLPTest is TestTrade {
             MIN_TRADE_SIZE
         );
 
-        (epochId, , , pool, tokenA, tokenB, , , , , ) = foil.getLatestEpoch();
+        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
+        epochId = epochData.epochId;
+        pool = epochData.pool;
+        tokenA = epochData.ethToken;
+        tokenB = epochData.gasToken;
 
         // Create LP position
         provideLiquidity(lp1, 100 ether);
@@ -147,8 +151,8 @@ contract SettleLPTest is TestTrade {
 
     function test_settleLp() public {
         // Warp to end of epoch
-        (, , uint256 endTime, , , , , , , , ) = foil.getLatestEpoch();
-        vm.warp(endTime + 1);
+        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
+        vm.warp(epochData.endTime + 1);
 
         // Set settlement price
         settleEpoch(epochId, settlementPriceSqrt, owner);
