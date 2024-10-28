@@ -15,7 +15,7 @@ import "../market/interfaces/IFoilStructs.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/IERC7540.sol";
 
-// import "forge-std/console2.sol";
+import "forge-std/console2.sol";
 
 contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
@@ -25,83 +25,66 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     IFoil public immutable market;
     IERC20 public immutable collateralAsset;
     uint256 public immutable duration;
+    uint256 public immutable lowerBoundMultiplier;
+    uint256 public immutable upperBoundMultiplier;
+    address immutable vaultInitializer;
+    bool initialized; // flag indicating if vaultInitializer already called initializeFirstEpoch
+
+    /**
+     * current epoch id in market contract
+     */
+    uint256 currentEpochId;
 
     /**
      * holds the vault position id on the active (running or future) epoch
      */
     uint256 public positionId;
 
-    event EpochProcessed(
-        uint256 indexed epochId,
-        uint256 newSharePrice
-        // uint256 newShares,
-        // uint256 sharesToBurn
-    );
-
-    // tentative storage change
-    // struct EpochData {
-    //     uint256 marketEpochId;
-    //     uint256 totalPendingDeposit;
-    //     uint256 totalPendingWithdrawal;
-    //     uint256 totalClaimableDeposit;
-    //     uint256 totalClaimableWithdrawal;
-    //     uint256 sharePrice;
-    //     mapping(address => uint256) userNonExecutedDeposits; // uses same id as epochs
-    //     mapping(address => uint256) userNonExecutedWithdrawals; // uses same id as epochs
-    // }
-
-    // uint256 currentFutureEpochIdx; // helper, it must be epochs.lenght -1
-    // mapping(uint256 => EpochData) public epochs; // holds the epoch data currentFutureEpochIdx points to current "not-closed" epoch
-
-    // uint256 globalTotalPendingDeposit; // total pending deposits expressed in collateral asset
-    // uint256 globalTotalPendingWithdrawal; // total pending withdrawal expressed in shares
-    // uint256 globalTotalClaimableDeposit; // total claimable deposits expressed in collateral asset
-    // uint256 globalTotalClaimableWithdrawal; // total claimable withdrawal expressed in shares
-
-    // mapping(address => uint256) userShares;
-    // mapping(address => SetUtil.UintSet) userDirtyEpochs; // epochs with pending deposits or withdrawals for users
-    // mapping(address => uint256) userClaimableDeposits; // notice userPending is currentFutureEpoch's userNonExecuted
-    // mapping(address => uint256) userClaimableWithrwawals; // notice userPending is currentFutureEpoch's userNonExecuted
-
-    address immutable vaultInitializer;
-    bool initialized;
-
-    enum TransactionType {
-        NULL,
-        DEPOSIT,
-        WITHDRAW
-    }
-
-    /* new storage */
-    struct UserPendingTransaction {
-        uint256 amount; // collateral amount or shares amount
-        TransactionType transactionType;
-        uint256 requestInitiatedEpoch;
-    }
-
+    /**
+     * holds the user pending transactions
+     */
     mapping(address => UserPendingTransaction) userPendingTransactions;
 
+    /**
+     * holds the share price for each epoch
+     */
     mapping(uint256 => uint256) epochSharePrices;
+
+    /**
+     * total pending deposits
+     */
     uint256 totalPendingDeposits;
+
+    /**
+     * total pending withdrawals
+     */
     uint256 totalPendingWithdrawals;
 
+    /**
+     * pending shares to burn
+     */
     uint256 pendingSharesToBurn;
-    uint256 uninvestedCollateral;
 
-    uint256 currentEpochId;
-    ///
+    /**
+     * uninvested collateral
+     */
+    uint256 uninvestedCollateral;
 
     constructor(
         string memory _name,
         string memory _symbol,
         address _marketAddress,
         address _collateralAssetAddress,
-        uint256 _duration
+        uint256 _duration,
+        uint256 _lowerBoundMultiplier,
+        uint256 _upperBoundMultiplier
     ) ERC20(_name, _symbol) {
         market = IFoil(_marketAddress);
         collateralAsset = IERC20(_collateralAssetAddress);
 
         duration = _duration;
+        lowerBoundMultiplier = _lowerBoundMultiplier;
+        upperBoundMultiplier = _upperBoundMultiplier;
         vaultInitializer = msg.sender;
     }
 
@@ -156,13 +139,60 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint160 startingSqrtPriceX96
     ) private {
         require(address(market) != address(0), "Market address not set");
-        uint256 newEpochId = IFoil(market).createEpoch(
+
+        // get lower and upper bounds for the price tick for the new epoch
+        (
+            int24 baseAssetMinPriceTick,
+            int24 baseAssetMaxPriceTick
+        ) = _getTickBoundsForStartingPrice(startingSqrtPriceX96);
+
+        uint256 newEpochId = IFoil(market).createEpochWithBounds(
             startTime,
             startTime + duration,
             startingSqrtPriceX96,
+            baseAssetMinPriceTick,
+            baseAssetMaxPriceTick,
             block.timestamp
         );
         currentEpochId = newEpochId;
+    }
+
+    function _getTickBoundsForStartingPrice(
+        uint160 startingSqrtPriceX96
+    )
+        private
+        view
+        returns (int24 baseAssetMinPriceTick, int24 baseAssetMaxPriceTick)
+    {
+        console2.log("lowerBoundMultiplier", lowerBoundMultiplier);
+        console2.log("upperBoundMultiplier", upperBoundMultiplier);
+        console2.log("startingSqrtPriceX96", startingSqrtPriceX96);
+        uint256 lowerBoundSqrtPriceX96 = uint256(startingSqrtPriceX96).mulDiv(
+            lowerBoundMultiplier,
+            1e18
+        );
+        uint256 upperBoundSqrtPriceX96 = uint256(startingSqrtPriceX96).mulDiv(
+            upperBoundMultiplier,
+            1e18
+        );
+        console2.log("lowerBoundSqrtPriceX96", lowerBoundSqrtPriceX96);
+        console2.log("upperBoundSqrtPriceX96", upperBoundSqrtPriceX96);
+
+        if (
+            lowerBoundSqrtPriceX96 > type(uint160).max ||
+            upperBoundSqrtPriceX96 > type(uint160).max
+        ) {
+            revert("Price bounds are too large");
+        }
+
+        baseAssetMinPriceTick = TickMath.getTickAtSqrtRatio(
+            uint160(lowerBoundSqrtPriceX96)
+        );
+        baseAssetMaxPriceTick = TickMath.getTickAtSqrtRatio(
+            uint160(upperBoundSqrtPriceX96)
+        );
+        console2.log("baseAssetMinPriceTick", baseAssetMinPriceTick);
+        console2.log("baseAssetMaxPriceTick", baseAssetMaxPriceTick);
     }
 
     function _createNextEpoch(uint160 previousResolutionSqrtPriceX96) private {
@@ -191,11 +221,17 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         // Move to the next epoch
         _initializeEpoch(newEpochStartTime, previousResolutionSqrtPriceX96);
 
+        console2.log(
+            "totalCollateralAfterTransition",
+            totalCollateralAfterTransition
+        );
         // Call _createNewLiquidityPosition with the correct totalCollateral
         if (totalCollateralAfterTransition > 0) {
+            console2.log("creating new liquidity position");
             positionId = _createNewLiquidityPosition(
                 totalCollateralAfterTransition
             );
+            console2.log("positionId", positionId);
         } else {
             positionId = 0;
         }
@@ -244,6 +280,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     function _createNewLiquidityPosition(
         uint256 totalCollateral
     ) private returns (uint256 newPositionId) {
+        console2.log("at _createNewLiquidityPosition");
         // Retrieve the latest epoch parameters
         (
             ,
@@ -259,9 +296,11 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             IFoilStructs.EpochParams memory epochParams
         ) = market.getLatestEpoch();
 
+        console2.log("pool");
         // Get the current sqrtPriceX96 from the pool
         (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
 
+        console2.log("sqrtPriceX96", sqrtPriceX96);
         // Calculate token amounts for the liquidity position
         (uint256 amount0, uint256 amount1, ) = market
             .quoteLiquidityPositionTokens(
@@ -271,11 +310,14 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
                 TickMath.getSqrtRatioAtTick(epochParams.baseAssetMinPriceTick),
                 TickMath.getSqrtRatioAtTick(epochParams.baseAssetMaxPriceTick)
             );
+        console2.log("amount0 org ", amount0);
+        console2.log("amount1 org ", amount1);
 
         // Reduce the token amounts by a little to account for slippage
         amount0 = amount0.mulDiv(999999999, 1000000000);
         amount1 = amount1.mulDiv(999999999, 1000000000);
-
+        console2.log("amount0 adj ", amount0);
+        console2.log("amount1 adj ", amount1);
         // Prepare liquidity mint parameters
         IFoilStructs.LiquidityMintParams memory params = IFoilStructs
             .LiquidityMintParams({
@@ -290,17 +332,25 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
                 deadline: block.timestamp
             });
 
+        console2.log("params");
+
         // Approve collateral transfer to the market
         collateralAsset.approve(address(market), totalCollateral);
 
+        console2.log(
+            "collateralAsset balance before",
+            collateralAsset.balanceOf(address(this))
+        );
         uint256 balanceBefore = collateralAsset.balanceOf(address(this));
         // Create the liquidity position
+        console2.log("creating liquidity position");
         (newPositionId, , , , , ) = market.createLiquidityPosition(params);
-
+        console2.log("newPositionId", newPositionId);
         // Calculate the uninvested collateral
         uninvestedCollateral =
             collateralAsset.balanceOf(address(this)) -
             (balanceBefore - totalCollateral);
+        console2.log("uninvestedCollateral", uninvestedCollateral);
     }
 
     function asset()
