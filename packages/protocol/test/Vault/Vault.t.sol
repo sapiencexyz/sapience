@@ -35,6 +35,7 @@ contract VaultTest is TestTrade {
     IMintableToken collateralAsset;
 
     uint160 initialSqrtPriceX96 = 250541448375047946302209916928; // 10
+    uint160 updatedSqrtPriceX96 = 306849353968360536420395253760; // 15
     uint256 initialStartTime;
 
     uint256 DEFAULT_DURATION = 2419200; // 28 days in seconds
@@ -107,14 +108,37 @@ contract VaultTest is TestTrade {
 
         // Settle
         vm.warp(endTimeBefore + 1);
-        settleEpochFromVault(epochIdBefore, initialSqrtPriceX96, owner);
+        settleEpochFromVault(epochIdBefore, updatedSqrtPriceX96, owner);
 
         // New epoch created
-        (epochIdAfter, startTimeAfter, endTimeAfter, , , , , , , , ) = foil
-            .getLatestEpoch();
+        uint256 minPriceD18;
+        uint256 maxPriceD18;
+        (
+            epochIdAfter,
+            startTimeAfter,
+            endTimeAfter,
+            ,
+            ,
+            ,
+            minPriceD18,
+            maxPriceD18,
+            ,
+            ,
+
+        ) = foil.getLatestEpoch();
         assertEq(epochIdAfter, epochIdBefore + 1);
         assertEq(startTimeAfter, endTimeBefore + DEFAULT_DURATION);
         assertEq(endTimeAfter, startTimeAfter + DEFAULT_DURATION);
+
+        // check new bounds
+        // min price should be 15 / 3 = 5 ether
+        // max price should be 15 * 3 = 45 ether
+
+        assertLe(minPriceD18, 5 ether);
+        assertApproxEqRel(minPriceD18, 5 ether, 0.02 ether);
+
+        assertGe(maxPriceD18, 45 ether);
+        assertApproxEqRel(maxPriceD18, 45 ether, 0.02 ether);
     }
 
     function test_settleEpochCreatesNewEpochWithLiquidity() public {
@@ -138,14 +162,37 @@ contract VaultTest is TestTrade {
 
         // Settle
         vm.warp(endTimeBefore + 1);
-        settleEpochFromVault(epochIdBefore, initialSqrtPriceX96, owner);
+        settleEpochFromVault(epochIdBefore, updatedSqrtPriceX96, owner);
 
         // New epoch created
-        (epochIdAfter, startTimeAfter, endTimeAfter, , , , , , , , ) = foil
-            .getLatestEpoch();
+        uint256 minPriceD18;
+        uint256 maxPriceD18;
+        (
+            epochIdAfter,
+            startTimeAfter,
+            endTimeAfter,
+            ,
+            ,
+            ,
+            minPriceD18,
+            maxPriceD18,
+            ,
+            ,
+
+        ) = foil.getLatestEpoch();
         assertEq(epochIdAfter, epochIdBefore + 1);
         assertEq(startTimeAfter, endTimeBefore + DEFAULT_DURATION);
         assertEq(endTimeAfter, startTimeAfter + DEFAULT_DURATION);
+
+        // check new bounds
+        // min price should be 15 / 3 = 5 ether
+        // max price should be 15 * 3 = 45 ether
+
+        assertLe(minPriceD18, 5 ether);
+        assertApproxEqRel(minPriceD18, 5 ether, 0.02 ether);
+
+        assertGe(maxPriceD18, 45 ether);
+        assertApproxEqRel(maxPriceD18, 45 ether, 0.02 ether);
     }
 
     /////////////
