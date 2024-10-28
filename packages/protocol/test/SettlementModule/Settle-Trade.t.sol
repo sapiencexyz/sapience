@@ -68,7 +68,10 @@ contract SettleTradeTest is TestTrade {
         lp1 = TestUser.createUser("LP1", 20_000_000 ether);
         trader1 = TestUser.createUser("Trader1", 20_000_000 ether);
 
-        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
+        (
+            IFoilStructs.EpochData memory epochData,
+            IFoilStructs.EpochParams memory _epochParams
+        ) = foil.getLatestEpoch();
         epochId = epochData.epochId;
         pool = epochData.pool;
         tokenA = epochData.ethToken;
@@ -76,6 +79,7 @@ contract SettleTradeTest is TestTrade {
         endTime = epochData.endTime;
         minPriceD18 = epochData.minPriceD18;
         maxPriceD18 = epochData.maxPriceD18;
+        epochParams = _epochParams;
 
         uniCastedPool = IUniswapV3Pool(pool);
         feeRate = uint256(uniCastedPool.fee()) * 1e12;
