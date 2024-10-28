@@ -103,6 +103,35 @@ contract ConfigurationModule is
         return newEpochId;
     }
 
+    function createEpochWithBounds(
+        uint256 startTime,
+        uint256 endTime,
+        uint160 startingSqrtPriceX96,
+        int24 baseAssetMinPriceTick,
+        int24 baseAssetMaxPriceTick,
+        uint256 salt
+    ) external override nonReentrant onlyOwner returns (uint256 epochId) {
+        // load the market to check if it's already created
+        Market.Data storage market = Market.load();
+
+        // Update the market (and hence, new epoch) params with the new bounds
+        market.epochParams.baseAssetMinPriceTick = baseAssetMinPriceTick;
+        market.epochParams.baseAssetMaxPriceTick = baseAssetMaxPriceTick;
+
+        uint256 newEpochId = market.getNewEpochId();
+
+        Epoch.createValid(
+            newEpochId,
+            startTime,
+            endTime,
+            startingSqrtPriceX96,
+            salt
+        );
+        emit EpochCreated(newEpochId, startTime, endTime, startingSqrtPriceX96);
+
+        return newEpochId;
+    }
+
     function transferOwnership(
         address newOwner
     ) external nonReentrant onlyOwner {

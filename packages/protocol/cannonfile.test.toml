@@ -9,6 +9,8 @@ owner2 = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" #2 from anvil
 vaultName="Foil Vault"
 vaultSymbol = "FVLT"
 duration = "2419200" # 28 days in seconds
+lowerBoundMultiplier = "0.5773502691896257" # sqrt(1/3) 
+upperBoundMultiplier = "1.7320508075688772" # sqrt(3)
 depends = []
 
 [clone.Uniswap]
@@ -81,5 +83,5 @@ highlight=true
 [deploy.Vault]
 artifact="Vault"
 from="<%= settings.owner2 %>"
-args=[ "<%= settings.vaultName %>", "<%= settings.vaultSymbol %>", "<%= Foil.address %>", "<%= CollateralAsset.Token.address %>", "<%= settings.duration %>"]
+args=[ "<%= settings.vaultName %>", "<%= settings.vaultSymbol %>", "<%= Foil.address %>", "<%= CollateralAsset.Token.address %>", "<%= settings.duration %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>" ]
 depends = ['router.Foil', 'clone.CollateralAsset', 'var.settings']

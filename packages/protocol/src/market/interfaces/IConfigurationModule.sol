@@ -58,4 +58,13 @@ interface IConfigurationModule {
         uint160 startingSqrtPriceX96,
         uint256 salt
     ) external returns (uint256 epochId);
+
+    function createEpochWithBounds(
+        uint256 startTime,
+        uint256 endTime,
+        uint160 startingSqrtPriceX96,
+        int24 baseAssetMinPriceTick,
+        int24 baseAssetMaxPriceTick,
+        uint256 salt
+    ) external returns (uint256 epochId);
 }
