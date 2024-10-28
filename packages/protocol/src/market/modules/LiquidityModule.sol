@@ -8,6 +8,8 @@ import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
 import {ILiquidityModule} from "../interfaces/ILiquidityModule.sol";
 import {Pool} from "../libraries/Pool.sol";
 
+import "forge-std/console2.sol";
+
 contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
     using Position for Position.Data;
     using Epoch for Epoch.Data;
@@ -28,18 +30,30 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             uint256 addedAmount1
         )
     {
+        console2.log("AAA 1");
         if (params.deadline < block.timestamp) {
             revert Errors.TransactionExpired(params.deadline, block.timestamp);
         }
+        console2.log("AAA 2");
 
         id = ERC721EnumerableStorage.totalSupply() + 1;
         Position.Data storage position = Position.createValid(id);
         ERC721Storage._checkOnERC721Received(address(this), msg.sender, id, "");
         ERC721Storage._mint(msg.sender, id);
+        console2.log("AAA 3");
 
         Market.Data storage market = Market.load();
         Epoch.Data storage epoch = Epoch.loadValid(params.epochId);
         epoch.validateLpRequirements(params.lowerTick, params.upperTick);
+        console2.log("AAA 4");
+
+        console2.log("params.amountTokenA", params.amountTokenA);
+        console2.log("params.amountTokenB", params.amountTokenB);
+        console2.log("params.minAmountTokenA", params.minAmountTokenA);
+        console2.log("params.minAmountTokenB", params.minAmountTokenB);
+        console2.log("params.deadline", params.deadline);
+        console2.log("params.lowerTick", params.lowerTick);
+        console2.log("params.upperTick", params.upperTick);
 
         (
             uniswapNftId,
@@ -62,6 +76,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                     deadline: params.deadline
                 })
             );
+        console2.log("AAA 5");
 
         (collateralAmount, , ) = position.updateValidLp(
             market,
@@ -78,6 +93,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 tokensOwed1: 0
             })
         );
+        console2.log("AAA 6");
 
         _emitLiquidityPositionCreated(
             ILiquidityModule.LiquidityPositionCreatedEventData({
@@ -92,6 +108,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 upperTick: params.upperTick
             })
         );
+        console2.log("AAA 7");
     }
 
     function decreaseLiquidityPosition(

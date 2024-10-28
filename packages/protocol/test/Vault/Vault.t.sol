@@ -34,7 +34,7 @@ contract VaultTest is TestTrade {
     IVault vault;
     IMintableToken collateralAsset;
 
-    uint160 initialSqrtPriceX96 = 146497135921788803112962621440; // 3.419
+    uint160 initialSqrtPriceX96 = 250541448375047946302209916928; // 10
     uint256 initialStartTime;
 
     uint256 DEFAULT_DURATION = 2419200; // 28 days in seconds
