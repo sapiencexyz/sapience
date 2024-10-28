@@ -12,6 +12,7 @@ import {TestUser} from "../helpers/TestUser.sol";
 import {DecimalPrice} from "../../src/market/libraries/DecimalPrice.sol";
 import {SafeCastI256, SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 import {Position} from "../../src/market/storage/Position.sol";
+import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
 
 import {DecimalMath} from "../../src/market/libraries/DecimalMath.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
@@ -77,7 +78,11 @@ contract TradePositionBasicFuzz is TestTrade {
         lp1 = TestUser.createUser("LP1", 10_000_000_000 ether);
         trader1 = TestUser.createUser("Trader1", 10_000_000 ether);
 
-        (epochId, , , pool, tokenA, tokenB, , , , , ) = foil.getLatestEpoch();
+        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
+        epochId = epochData.epochId;
+        pool = epochData.pool;
+        tokenA = epochData.ethToken;
+        tokenB = epochData.gasToken;
 
         uniCastedPool = IUniswapV3Pool(pool);
         feeRate = uint256(uniCastedPool.fee()) * 1e12;

@@ -198,11 +198,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
     function _createNextEpoch(uint160 previousResolutionSqrtPriceX96) private {
         // Set up the start time for the new epoch
-        (, , uint256 resolvedEpochEndTime, , , , , , , , ) = market
-            .getLatestEpoch();
+        (IFoilStructs.EpochData memory epochData, ) = market.getLatestEpoch();
 
         // Adjust the start time for the next epoch
-        uint256 newEpochStartTime = resolvedEpochEndTime + duration;
+        uint256 newEpochStartTime = epochData.endTime + duration;
 
         // Settle the position and get the collateral received
         uint256 collateralReceived;
@@ -276,22 +275,11 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 totalCollateral
     ) private returns (uint256 newPositionId) {
         // Retrieve the latest epoch parameters
-        (
-            ,
-            ,
-            ,
-            address pool,
-            ,
-            ,
-            ,
-            ,
-            ,
-            ,
-            IFoilStructs.EpochParams memory epochParams
-        ) = market.getLatestEpoch();
+        (IFoilStructs.EpochData memory epochData, ) = market.getLatestEpoch();
 
         // Get the current sqrtPriceX96 from the pool
-        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
+        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(epochData.pool)
+            .slot0();
 
         // Calculate token amounts for the liquidity position
         (uint256 amount0, uint256 amount1, ) = market
@@ -299,8 +287,8 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
                 currentEpochId,
                 totalCollateral,
                 sqrtPriceX96,
-                TickMath.getSqrtRatioAtTick(epochParams.baseAssetMinPriceTick),
-                TickMath.getSqrtRatioAtTick(epochParams.baseAssetMaxPriceTick)
+                TickMath.getSqrtRatioAtTick(epochData.baseAssetMinPriceTick),
+                TickMath.getSqrtRatioAtTick(epochData.baseAssetMaxPriceTick)
             );
 
         // Reduce the token amounts by a little to account for slippage
@@ -313,8 +301,8 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
                 amountTokenA: amount0,
                 amountTokenB: amount1,
                 collateralAmount: totalCollateral,
-                lowerTick: epochParams.baseAssetMinPriceTick,
-                upperTick: epochParams.baseAssetMaxPriceTick,
+                lowerTick: epochData.baseAssetMinPriceTick,
+                upperTick: epochData.baseAssetMaxPriceTick,
                 minAmountTokenA: 0,
                 minAmountTokenB: 0,
                 deadline: block.timestamp

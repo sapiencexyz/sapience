@@ -31,6 +31,8 @@ library Epoch {
     struct Data {
         uint256 startTime;
         uint256 endTime;
+        int24 baseAssetMinPriceTick;
+        int24 baseAssetMaxPriceTick;
         VirtualToken ethToken;
         VirtualToken gasToken;
         IUniswapV3Pool pool;
@@ -61,6 +63,8 @@ library Epoch {
         uint256 startTime,
         uint256 endTime,
         uint160 startingSqrtPriceX96,
+        int24 baseAssetMinPriceTick,
+        int24 baseAssetMaxPriceTick,
         uint256 salt
     ) internal returns (Data storage epoch) {
         Market.Data storage market = Market.loadValid();
@@ -95,8 +99,6 @@ library Epoch {
         epoch.endTime = endTime;
 
         // copy over market parameters into epoch (clone them to prevent any changes to market params)
-        epoch.params.baseAssetMinPriceTick = epochParams.baseAssetMinPriceTick;
-        epoch.params.baseAssetMaxPriceTick = epochParams.baseAssetMaxPriceTick;
         epoch.params.feeRate = epochParams.feeRate;
         epoch.params.assertionLiveness = epochParams.assertionLiveness;
         epoch.params.bondCurrency = epochParams.bondCurrency;
@@ -108,6 +110,14 @@ library Epoch {
         epoch.params.uniswapQuoter = epochParams.uniswapQuoter;
         epoch.params.optimisticOracleV3 = epochParams.optimisticOracleV3;
 
+        validateEpochBounds(
+            epoch,
+            Market.getTickSpacingForFee(epochParams.feeRate),
+            baseAssetMinPriceTick,
+            baseAssetMaxPriceTick
+        );
+        epoch.baseAssetMinPriceTick = baseAssetMinPriceTick;
+        epoch.baseAssetMaxPriceTick = baseAssetMaxPriceTick;
         epoch.feeRateD18 = uint256(epochParams.feeRate) * 1e12;
 
         // check market.epochParams.bondAmount is greater than the minimum bond for the assertion currency
@@ -146,11 +156,11 @@ library Epoch {
         int24 spacing = epoch.pool.tickSpacing();
         // store min/max prices
         epoch.sqrtPriceMinX96 = TickMath.getSqrtRatioAtTick(
-            epoch.params.baseAssetMinPriceTick
+            epoch.baseAssetMinPriceTick
         );
         // use next tick for max price
         epoch.sqrtPriceMaxX96 = TickMath.getSqrtRatioAtTick(
-            epoch.params.baseAssetMaxPriceTick + spacing
+            epoch.baseAssetMaxPriceTick + spacing
         );
         epoch.maxPriceD18 = DecimalPrice.sqrtRatioX96ToPrice(
             epoch.sqrtPriceMaxX96
@@ -232,8 +242,8 @@ library Epoch {
     ) internal view {
         validateEpochNotExpired(self);
 
-        int24 minTick = self.params.baseAssetMinPriceTick;
-        int24 maxTick = self.params.baseAssetMaxPriceTick;
+        int24 minTick = self.baseAssetMinPriceTick;
+        int24 maxTick = self.baseAssetMaxPriceTick;
         if (lowerTick < minTick) revert Errors.InvalidRange(lowerTick, minTick);
         if (upperTick > maxTick) revert Errors.InvalidRange(upperTick, maxTick);
     }
@@ -251,6 +261,31 @@ library Epoch {
 
         if (self.settled) {
             revert Errors.EpochSettled();
+        }
+    }
+
+    function validateEpochBounds(
+        Data storage self,
+        int24 tickSpacing,
+        int24 minPriceTick,
+        int24 maxPriceTick
+    ) internal view {
+        if (minPriceTick % tickSpacing != 0) {
+            revert Errors.InvalidBaseAssetMinPriceTick(
+                minPriceTick,
+                tickSpacing
+            );
+        }
+
+        if (maxPriceTick % tickSpacing != 0) {
+            revert Errors.InvalidBaseAssetMaxPriceTick(
+                maxPriceTick,
+                tickSpacing
+            );
+        }
+
+        if (minPriceTick >= maxPriceTick) {
+            revert Errors.InvalidPriceTickRange(minPriceTick, maxPriceTick);
         }
     }
 

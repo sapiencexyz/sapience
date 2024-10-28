@@ -50,7 +50,11 @@ contract DecreaseLiquidityPosition is TestTrade {
 
         lp1 = TestUser.createUser("LP1", INITIAL_LP_BALANCE);
 
-        (epochId, , , pool, tokenA, tokenB, , , , , ) = foil.getLatestEpoch();
+        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
+        epochId = epochData.epochId;
+        pool = epochData.pool;
+        tokenA = epochData.ethToken;
+        tokenB = epochData.gasToken;
 
         // Get token amounts for collateral using TestEpoch's method
         (
@@ -105,8 +109,8 @@ contract DecreaseLiquidityPosition is TestTrade {
 
     function test_revertWhen_decreasingPositionAfterEpochSettlement() public {
         // Settle the epoch
-        (, , uint256 endTime, , , , , , , , ) = foil.getLatestEpoch();
-        vm.warp(endTime + 1);
+        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
+        vm.warp(epochData.endTime + 1);
 
         // Try to decrease position after settlement
         vm.expectRevert(Errors.ExpiredEpoch.selector);

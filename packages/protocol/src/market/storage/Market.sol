@@ -109,30 +109,6 @@ library Market {
     ) internal pure {
         int24 tickSpacing = getTickSpacingForFee(epochParams.feeRate);
 
-        if (epochParams.baseAssetMinPriceTick % tickSpacing != 0) {
-            revert Errors.InvalidBaseAssetMinPriceTick(
-                epochParams.baseAssetMinPriceTick,
-                tickSpacing
-            );
-        }
-
-        if (epochParams.baseAssetMaxPriceTick % tickSpacing != 0) {
-            revert Errors.InvalidBaseAssetMaxPriceTick(
-                epochParams.baseAssetMaxPriceTick,
-                tickSpacing
-            );
-        }
-
-        if (
-            epochParams.baseAssetMinPriceTick >=
-            epochParams.baseAssetMaxPriceTick
-        ) {
-            revert Errors.InvalidPriceTickRange(
-                epochParams.baseAssetMinPriceTick,
-                epochParams.baseAssetMaxPriceTick
-            );
-        }
-
         require(
             epochParams.assertionLiveness >= 6 hours,
             "assertionLiveness must be at least six hours"

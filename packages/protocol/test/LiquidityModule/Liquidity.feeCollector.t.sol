@@ -64,7 +64,11 @@ contract LiquidityFeeCollectorTest is TestTrade {
             MIN_TRADE_SIZE
         );
 
-        (epochId, , , pool, tokenA, tokenB, , , , , ) = foil.getLatestEpoch();
+        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
+        epochId = epochData.epochId;
+        pool = epochData.pool;
+        tokenA = epochData.ethToken;
+        tokenB = epochData.gasToken;
 
         // create liquidity position
         (

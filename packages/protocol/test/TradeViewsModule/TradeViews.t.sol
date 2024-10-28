@@ -12,6 +12,7 @@ import {SafeCastI256, SafeCastU256} from "@synthetixio/core-contracts/contracts/
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {Errors} from "../../src/market/storage/Errors.sol";
 import {Position} from "../../src/market/storage/Position.sol";
+import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
 
 contract TradeViews is TestTrade {
     using Cannon for Vm;
@@ -49,8 +50,11 @@ contract TradeViews is TestTrade {
         lp1 = TestUser.createUser("LP1", 10_000_000 ether);
         trader1 = TestUser.createUser("Trader1", 10_000_000 ether);
 
-        (epochId, , , pool, , , minPriceD18, maxPriceD18, , , ) = foil
-            .getLatestEpoch();
+        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
+        epochId = epochData.epochId;
+        pool = epochData.pool;
+        minPriceD18 = epochData.minPriceD18;
+        maxPriceD18 = epochData.maxPriceD18;
 
         IUniswapV3Pool uniCastedPool = IUniswapV3Pool(pool);
         feeRate = uint256(uniCastedPool.fee()) * 1e12;
