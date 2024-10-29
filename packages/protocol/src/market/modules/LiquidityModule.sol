@@ -34,7 +34,16 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
 
         id = ERC721EnumerableStorage.totalSupply() + 1;
         Position.Data storage position = Position.createValid(id);
-        ERC721Storage._checkOnERC721Received(address(this), msg.sender, id, "");
+        if (
+            !ERC721Storage._checkOnERC721Received(
+                address(this),
+                msg.sender,
+                id,
+                ""
+            )
+        ) {
+            revert Errors.InvalidTransferRecipient(msg.sender);
+        }
         ERC721Storage._mint(msg.sender, id);
 
         Market.Data storage market = Market.load();
