@@ -87,6 +87,7 @@ const Subscribe: FC<SubscribeProps> = ({
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [fillPrice, setFillPrice] = useState<bigint>(BigInt(0));
   const [fillPriceInEth, setFillPriceInEth] = useState<bigint>(BigInt(0));
+  const [txnStep, setTxnStep] = useState(0);
   const account = useAccount();
   const { isConnected, address } = account;
   const currentChainId = useChainId();
@@ -151,6 +152,23 @@ const Subscribe: FC<SubscribeProps> = ({
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp * 1000);
     return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+  };
+
+  const calculateCollateralDeltaLimit = (
+    collateralDelta: bigint,
+    slippage: number
+  ) => {
+    if (collateralDelta === BigInt(0)) return BigInt(0);
+
+    const slippageMultiplier = BigInt(Math.floor((100 + slippage) * 100));
+    const slippageReductionMultiplier = BigInt(
+      Math.floor((100 - slippage) * 100)
+    );
+
+    if (collateralDelta > BigInt(0)) {
+      return (collateralDelta * slippageMultiplier) / BigInt(10000);
+    }
+    return (collateralDelta * slippageReductionMultiplier) / BigInt(10000);
   };
 
   const formattedStartTime = startTime ? formatDate(Number(startTime)) : '';
@@ -233,7 +251,8 @@ const Subscribe: FC<SubscribeProps> = ({
         );
         resetAfterError();
       },
-      onSuccess: () => {
+      onSuccess: async () => {
+        await refetchAllowance();
         renderToast(
           toast,
           'Approval transaction submitted. Waiting for confirmation...',
@@ -250,7 +269,7 @@ const Subscribe: FC<SubscribeProps> = ({
   });
 
   useEffect(() => {
-    if (isConfirmed) {
+    if (isConfirmed && txnStep === 2) {
       for (const log of createTraderPositionReceipt.logs) {
         try {
           const event = decodeEventLog({
@@ -276,17 +295,13 @@ const Subscribe: FC<SubscribeProps> = ({
         }
       }
     }
-  }, [isConfirmed, createTraderPositionReceipt]);
+  }, [isConfirmed, createTraderPositionReceipt, txnStep]);
 
   useEffect(() => {
-    if (approveSuccess) {
-      const handleSuccess = async () => {
-        await refetchAllowance();
-        handleSubmit(undefined, true);
-      };
-      handleSuccess();
+    if (approveSuccess && txnStep === 1) {
+      handleCreateTraderPosition();
     }
-  }, [approveSuccess]);
+  }, [approveSuccess, txnStep]);
 
   useEffect(() => {
     if (fillPrice !== BigInt(0) && stEthPerToken) {
@@ -299,7 +314,14 @@ const Subscribe: FC<SubscribeProps> = ({
     }
   }, [fillPrice, collateralAssetDecimals, stEthPerToken]);
 
-  const handleSubmit = (e?: FormEvent<HTMLFormElement>, approved?: boolean) => {
+  const collateralDeltaLimit = useMemo(() => {
+    return calculateCollateralDeltaLimit(collateralDelta, slippage);
+  }, [collateralDelta, slippage]);
+
+  const requireApproval =
+    !allowance || collateralDeltaLimit > (allowance as bigint);
+
+  const handleSubmit = (e?: FormEvent<HTMLFormElement>) => {
     if (e) e.preventDefault();
     if (size === BigInt(0)) {
       toast({
@@ -313,39 +335,7 @@ const Subscribe: FC<SubscribeProps> = ({
     }
     setPendingTxn(true);
 
-    const sizeInTokens = sizeInGigagas;
-
-    const calculateCollateralDeltaLimit = (
-      collateralDelta: bigint,
-      slippage: number
-    ) => {
-      if (collateralDelta === BigInt(0)) return BigInt(0);
-
-      const slippageMultiplier = BigInt(Math.floor((100 + slippage) * 100));
-      const slippageReductionMultiplier = BigInt(
-        Math.floor((100 - slippage) * 100)
-      );
-
-      if (collateralDelta > BigInt(0)) {
-        return (collateralDelta * slippageMultiplier) / BigInt(10000);
-      }
-      return (collateralDelta * slippageReductionMultiplier) / BigInt(10000);
-    };
-
-    const collateralDeltaLimit = calculateCollateralDeltaLimit(
-      collateralDelta,
-      slippage
-    );
-
-    const absCollateralDeltaLimit =
-      collateralDeltaLimit < BigInt(0)
-        ? -collateralDeltaLimit
-        : collateralDeltaLimit;
-
-    // Set deadline to 30 minutes from now
-    const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
-
-    if (!approved && collateralDeltaLimit > (allowance as bigint)) {
+    if (requireApproval) {
       console.log('approving...');
       approveWrite({
         abi: erc20ABI as AbiFunction[],
@@ -353,25 +343,38 @@ const Subscribe: FC<SubscribeProps> = ({
         functionName: 'approve',
         args: [finalMarketAddress, collateralDeltaLimit],
       });
+      setTxnStep(1);
     } else {
-      console.log('creating trade position....');
-      writeContract({
-        abi: foilData.abi,
-        address: finalMarketAddress as `0x${string}`,
-        functionName: 'createTraderPosition',
-        args: [finalEpoch, sizeInTokens, absCollateralDeltaLimit, deadline],
-      });
+      handleCreateTraderPosition();
     }
+  };
+
+  const handleCreateTraderPosition = () => {
+    const sizeInTokens = sizeInGigagas;
+    // Set deadline to 30 minutes from now
+    const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
+    const absCollateralDeltaLimit =
+      collateralDeltaLimit < BigInt(0)
+        ? -collateralDeltaLimit
+        : collateralDeltaLimit;
+    writeContract({
+      abi: foilData.abi,
+      address: finalMarketAddress as `0x${string}`,
+      functionName: 'createTraderPosition',
+      args: [finalEpoch, sizeInTokens, absCollateralDeltaLimit, deadline],
+    });
+    setTxnStep(2);
   };
 
   const resetAfterError = () => {
     setPendingTxn(false);
+    setTxnStep(0);
   };
 
   const resetAfterSuccess = () => {
     setSize(BigInt(0));
     setPendingTxn(false);
-
+    setTxnStep(0);
     refetchUniswapData();
   };
 
@@ -416,7 +419,9 @@ const Subscribe: FC<SubscribeProps> = ({
         }
         size="lg"
       >
-        Create Subscription
+        {requireApproval
+          ? 'Approve Subscription Creation'
+          : 'Create Subscription'}
       </Button>
     );
   };

@@ -1,3 +1,4 @@
+/* eslint-disable sonarjs/cognitive-complexity */
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import {
   Flex,
@@ -55,6 +56,7 @@ export default function AddEditTrade() {
     useState<bigint>(BigInt(0));
   const [resultingPositionCollateral, setResultingPositionCollateral] =
     useState<bigint>(BigInt(0));
+  const [txnStep, setTxnStep] = useState(0);
 
   const account = useAccount();
   const { isConnected, address } = account;
@@ -234,7 +236,8 @@ export default function AddEditTrade() {
         );
         resetAfterError();
       },
-      onSuccess: () => {
+      onSuccess: async () => {
+        await refetchAllowance();
         renderToast(
           toast,
           'Approval transaction submitted. Waiting for confirmation...',
@@ -251,7 +254,7 @@ export default function AddEditTrade() {
   });
 
   useEffect(() => {
-    if (isConfirmed) {
+    if (isConfirmed && txnStep === 2) {
       if (isEdit) {
         renderToast(toast, `We've updated your position for you.`);
         resetAfterSuccess();
@@ -281,17 +284,39 @@ export default function AddEditTrade() {
         resetAfterSuccess();
       }
     }
-  }, [isConfirmed, transactionReceipt]);
+  }, [isConfirmed, transactionReceipt, txnStep]);
 
   useEffect(() => {
-    if (approveSuccess) {
-      const handleSuccess = async () => {
-        await refetchAllowance();
-        handleSubmit(undefined, true);
-      };
-      handleSuccess();
+    if (approveSuccess && txnStep === 1) {
+      const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
+      if (isEdit) {
+        writeContract({
+          abi: foilData.abi,
+          address: marketAddress as `0x${string}`,
+          functionName: 'modifyTraderPosition',
+          args: [
+            nftId,
+            desiredSizeInContractUnit,
+            collateralDeltaLimit,
+            deadline,
+          ],
+        });
+      } else {
+        writeContract({
+          abi: foilData.abi,
+          address: marketAddress as `0x${string}`,
+          functionName: 'createTraderPosition',
+          args: [
+            epoch,
+            desiredSizeInContractUnit,
+            collateralDeltaLimit,
+            deadline,
+          ],
+        });
+      }
+      setTxnStep(2);
     }
-  }, [approveSuccess]);
+  }, [approveSuccess, txnStep]);
 
   const [quotedCollateralDelta, quotedFillPrice] = useMemo(() => {
     const result = isEdit
@@ -336,10 +361,10 @@ export default function AddEditTrade() {
     );
   }, [quotedCollateralDelta, slippage]);
 
-  const handleSubmit = async (
-    e?: React.FormEvent<HTMLFormElement>,
-    approved?: boolean
-  ) => {
+  const requireApproval =
+    !allowance || collateralDeltaLimit > (allowance as bigint);
+
+  const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>) => {
     if (e) e.preventDefault();
     setPendingTxn(true);
 
@@ -347,23 +372,16 @@ export default function AddEditTrade() {
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
 
     if (!allowance) {
-      console.log('refetching  allowance...');
       await refetchAllowance();
-      console.log('refetched  allowance =', allowance);
     }
-    console.log('Allowance ', allowance);
-    if (
-      !approved &&
-      allowance !== undefined &&
-      collateralDeltaLimit > (allowance as bigint)
-    ) {
-      console.log('Approving ', collateralDeltaLimit);
+    if (requireApproval) {
       approveWrite({
         abi: erc20ABI as AbiFunction[],
         address: collateralAsset as `0x${string}`,
         functionName: 'approve',
         args: [marketAddress, collateralDeltaLimit],
       });
+      setTxnStep(1);
     } else if (isEdit) {
       writeContract({
         abi: foilData.abi,
@@ -376,14 +394,8 @@ export default function AddEditTrade() {
           deadline,
         ],
       });
+      setTxnStep(2);
     } else {
-      console.log(
-        'Creating trade position....',
-        epoch,
-        desiredSizeInContractUnit,
-        collateralDeltaLimit,
-        deadline
-      );
       writeContract({
         abi: foilData.abi,
         address: marketAddress as `0x${string}`,
@@ -395,6 +407,7 @@ export default function AddEditTrade() {
           deadline,
         ],
       });
+      setTxnStep(2);
     }
   };
 
@@ -404,6 +417,7 @@ export default function AddEditTrade() {
 
   const resetAfterError = () => {
     setPendingTxn(false);
+    setTxnStep(0);
   };
 
   const resetAfterSuccess = () => {
@@ -414,6 +428,7 @@ export default function AddEditTrade() {
     refetchPositionData();
     refetchUniswapData();
     refetchAllowance();
+    setTxnStep(0);
   };
 
   useEffect(() => {
@@ -452,20 +467,6 @@ export default function AddEditTrade() {
     positionData,
   ]);
 
-  // console.log('******');
-  // console.log('collateralBalance =', collateralBalance);
-  // console.log('collateralAssetDecimals =', collateralAssetDecimals);
-  // console.log('quotedCollateralDelta =', quotedCollateralDelta);
-  // console.log('collateralDeltaLimit =', collateralDeltaLimit);
-  // console.log('positionData =', positionData);
-  // console.log('walletBalance =', walletBalance);
-  // console.log('quotedResultingWalletBalance =', quotedResultingWalletBalance);
-  // console.log('walletBalanceLimit =', walletBalanceLimit);
-  // console.log('positionCollateralLimit =', positionCollateralLimit);
-  // console.log('quotedFillPrice =', quotedFillPrice);
-  // console.log('pool?.token0Price =', pool?.token0Price);
-  // console.log('******');
-
   const currentChainId = useChainId();
   const { switchChain } = useSwitchChain();
 
@@ -500,6 +501,15 @@ export default function AddEditTrade() {
       );
     }
 
+    let buttonTxt = isEdit ? 'Update Position' : 'Create Position';
+    if (requireApproval) {
+      if (isEdit) {
+        buttonTxt = 'Approve Position Update';
+      } else {
+        buttonTxt = 'Approve Position Creation';
+      }
+    }
+
     return (
       <Button
         width="full"
@@ -515,7 +525,7 @@ export default function AddEditTrade() {
         mb={4}
         size="lg"
       >
-        {isEdit ? 'Update Position' : 'Create Position'}
+        {buttonTxt}
       </Button>
     );
   };

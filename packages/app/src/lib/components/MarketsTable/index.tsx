@@ -21,12 +21,14 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import type React from 'react';
-import { useEffect, useState } from 'react';
-import type { WriteContractErrorType } from 'viem';
-import { parseUnits } from 'viem';
+import { useEffect, useMemo, useState } from 'react';
+import type { AbiFunction, WriteContractErrorType } from 'viem';
+import { parseUnits, zeroAddress } from 'viem';
 import * as Chains from 'viem/chains';
 import {
+  useAccount,
   useReadContract,
+  useReadContracts,
   useWaitForTransactionReceipt,
   useWriteContract,
 } from 'wagmi';
@@ -53,6 +55,26 @@ const MarketsTable: React.FC = () => {
     [actionName: string]: boolean;
   }>({});
   console.log('markets=', markets);
+  const account = useAccount();
+  const { isConnected, address } = account;
+
+  const contracts = useMemo(() => {
+    return markets.map((market) => {
+      return {
+        abi: erc20ABI as AbiFunction[],
+        address: market.collateralAsset as `0x${string}`,
+        functionName: 'allowance',
+        args: [address, market.address],
+        account: address || zeroAddress,
+        chainId: market.chainId,
+      };
+    });
+  }, [address, markets]);
+
+  const { data: allowances, refetch: refetchAllowances } = useReadContracts({
+    contracts,
+  });
+  console.log('allowances', allowances);
 
   const updateMarketPrivacy = async (market: Market) => {
     setLoadingAction((prev) => ({ ...prev, [market.address]: true }));
@@ -93,7 +115,7 @@ const MarketsTable: React.FC = () => {
           </Tr>
         </Thead>
         <Tbody>
-          {markets.map((market) => (
+          {markets.map((market, idx) => (
             <Tr key={market.id}>
               <Td>
                 <MarketAddress address={market.address} />
@@ -129,6 +151,10 @@ const MarketsTable: React.FC = () => {
                         key={epoch.epochId}
                         market={market}
                         epoch={epoch}
+                        allowance={
+                          allowances?.[idx]?.result as bigint | undefined
+                        }
+                        refetchAllowances={refetchAllowances}
                       />
                     ))}
                   </Tbody>
@@ -142,10 +168,12 @@ const MarketsTable: React.FC = () => {
   );
 };
 
-const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
-  market,
-  epoch,
-}) => {
+const EpochItem: React.FC<{
+  epoch: Market['epochs'][0];
+  market: Market;
+  allowance: bigint | undefined;
+  refetchAllowances: () => Promise<any>;
+}> = ({ market, epoch, allowance, refetchAllowances }) => {
   const [loadingStEthPerToken, setLoadingStEthPerToken] = useState(false);
   const [stEthPerToken, setStEthPerToken] = useState(0);
   const toast = useToast();
@@ -192,6 +220,7 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
   useEffect(() => {
     const updateSettledStEthPerToken = async () => {
       setLoadingStEthPerToken(true);
+      console.log('repingging...');
       const response = await axios.get(
         `${API_BASE_URL}/getStEthPerTokenAtTimestamp?chainId=${chainId}&collateralAssetAddress=${collateralAsset}&endTime=${endTimestamp}`
       );
@@ -210,7 +239,7 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
     ) {
       updateSettledStEthPerToken();
     }
-  }, [chainId, collateralAsset, endTimestamp, currentTime]);
+  }, [endTimestamp, chainId && collateralAsset]);
 
   const { data: epochData, refetch: refetchEpochData } = useReadContract({
     address: market.address as `0x${string}`,
@@ -264,6 +293,9 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
           'Failed to approve'
         );
       },
+      onSuccess: async () => {
+        await refetchAllowances();
+      },
     },
   });
 
@@ -273,16 +305,7 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
 
   useEffect(() => {
     if (isApproveSuccess && txnStep === 1) {
-      settleWithPrice({
-        address: market.address as `0x${string}`,
-        abi: foilData.abi,
-        functionName: 'submitSettlementPrice',
-        args: [
-          epoch.epochId,
-          parseUnits(priceAdjusted.toString(), TOKEN_DECIMALS),
-        ],
-      });
-      setTxnStep(2);
+      handleSettleWithPrice();
     }
   }, [isApproveSuccess, txnStep]);
 
@@ -352,6 +375,20 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
     }));
   };
 
+  const requireApproval = !allowance || bondAmount > (allowance as bigint);
+
+  const handleSettleWithPrice = () => {
+    settleWithPrice({
+      address: market.address as `0x${string}`,
+      abi: foilData.abi,
+      functionName: 'submitSettlementPrice',
+      args: [
+        epoch.epochId,
+        parseUnits(priceAdjusted.toString(), TOKEN_DECIMALS),
+      ],
+    });
+    setTxnStep(2);
+  };
   const handleApproveSettle = async () => {
     setLoadingAction((prev) => ({ ...prev, settle: true }));
     approveWrite({
@@ -392,9 +429,13 @@ const EpochItem: React.FC<{ epoch: Market['epochs'][0]; market: Market }> = ({
             stEthPerTokenResult.isLoading ||
             loadingAction.settle
           }
-          onClick={handleApproveSettle}
+          onClick={
+            requireApproval ? handleApproveSettle : handleSettleWithPrice
+          }
         >
-          Settle with Price
+          {requireApproval
+            ? 'Approve Settlement with Price'
+            : 'Settle with Price'}
         </Button>
       </>
     );

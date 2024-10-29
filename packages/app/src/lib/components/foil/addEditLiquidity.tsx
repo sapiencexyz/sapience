@@ -938,7 +938,7 @@ const AddEditLiquidity: React.FC = () => {
 
     const isAmountUnchanged =
       isEdit && depositAmount === positionCollateralAmount.toString();
-    const isBlankDeposit = depositAmount === '';
+    const isBlankDeposit = depositAmount === '' || !Number(depositAmount);
 
     const isDisabled =
       pendingTxn ||

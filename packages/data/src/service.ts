@@ -710,10 +710,7 @@ const startServer = async () => {
     }
 
     try {
-      console.log("getting provider...");
       const client = getProviderForChain(Number(chainId));
-      console.log("got provider");
-      console.log("reading contract for stEthPerToken....");
 
       // get last block
       const block = await getBlockBeforeTimestamp(client, Number(endTime));
