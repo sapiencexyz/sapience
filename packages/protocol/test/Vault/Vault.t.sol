@@ -154,7 +154,11 @@ contract VaultTest is TestTrade {
 
         // Add liquidity
         vm.prank(lp1);
+<<<<<<< HEAD
         vault.requestDeposit(100 ether, lp1, lp1);
+=======
+        vault.requestDeposit(100 ether);
+>>>>>>> 42d9377 (cleanup interface)
 
         // Settle
         vm.warp(epochData.endTime + 1);
