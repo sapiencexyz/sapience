@@ -19,6 +19,7 @@ import type { FoilPosition } from '~/lib/interfaces/interfaces';
 interface Props {
   nftId?: number;
   setSize: Dispatch<SetStateAction<bigint>>;
+  size?: bigint;
   positionData?: FoilPosition;
   isLong?: boolean;
   error?: string;
@@ -29,6 +30,7 @@ interface Props {
 const SizeInput: React.FC<Props> = ({
   nftId,
   setSize,
+  size = BigInt(0),
   positionData,
   isLong = true,
   error,
@@ -45,6 +47,20 @@ const SizeInput: React.FC<Props> = ({
   useEffect(() => {
     handleSizeChange(sizeInput);
   }, [isLong]);
+
+  useEffect(() => {
+    if (size === BigInt(0)) {
+      setSizeInput('0');
+      return;
+    }
+
+    const absoluteSize = size < 0 ? -size : size;
+    const numberValue = isGasInput
+      ? absoluteSize.toString()
+      : (Number(absoluteSize) / 1e9).toString();
+
+    setSizeInput(numberValue);
+  }, [size, isGasInput]);
 
   const handleUpdateInputType = () => {
     const wasGasInput = isGasInput;

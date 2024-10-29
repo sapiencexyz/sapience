@@ -465,6 +465,8 @@ const Subscribe: FC<SubscribeProps> = ({
 
   const [isEstimating, setIsEstimating] = useState(false);
 
+  const [accordionIndex, setAccordionIndex] = useState<number | null>(null);
+
   const handleEstimateUsage = async () => {
     if (!walletAddressInput) {
       toast({
@@ -500,7 +502,8 @@ const Subscribe: FC<SubscribeProps> = ({
       }
 
       const data = await response.json();
-      setSize(BigInt(Math.floor(data.estimatedGas)));
+      setSize(BigInt(Math.floor(data.totalGasUsed)));
+      setAccordionIndex(null);
       toast({
         title: 'Estimate Complete',
         description: 'Gas amount has been populated based on historical usage.',
@@ -547,7 +550,12 @@ const Subscribe: FC<SubscribeProps> = ({
         </Tooltip>
       </Text>
 
-      <Accordion allowToggle mb={4}>
+      <Accordion
+        allowToggle
+        mb={4}
+        index={accordionIndex ?? undefined}
+        onChange={(index) => setAccordionIndex(index as number)}
+      >
         <AccordionItem>
           <AccordionButton px={0}>
             <Box
@@ -590,6 +598,7 @@ const Subscribe: FC<SubscribeProps> = ({
 
       <SizeInput
         setSize={setSize}
+        size={size}
         error={quoteError || undefined}
         label="Gas Amount"
       />
