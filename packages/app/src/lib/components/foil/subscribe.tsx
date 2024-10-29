@@ -17,6 +17,14 @@ import {
   ModalHeader,
   ModalOverlay,
   VStack,
+  FormControl,
+  FormLabel,
+  Input,
+  Accordion,
+  AccordionItem,
+  AccordionButton,
+  AccordionPanel,
+  AccordionIcon,
 } from '@chakra-ui/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -447,6 +455,72 @@ const Subscribe: FC<SubscribeProps> = ({
   const marketName =
     markets.find((m) => m.address === marketAddress)?.name || 'Choose Market';
 
+  const [walletAddressInput, setWalletAddressInput] = useState<string>('');
+
+  useEffect(() => {
+    if (address) {
+      setWalletAddressInput(address);
+    }
+  }, [address]);
+
+  const [isEstimating, setIsEstimating] = useState(false);
+
+  const handleEstimateUsage = async () => {
+    if (!walletAddressInput) {
+      toast({
+        title: 'Invalid Address',
+        description: 'Please enter a wallet address to estimate usage.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    setIsEstimating(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/estimate`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            walletAddress: walletAddressInput,
+            chainId: finalChainId,
+            marketAddress: finalMarketAddress,
+            epochId: finalEpoch,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch estimate');
+      }
+
+      const data = await response.json();
+      setSize(BigInt(Math.floor(data.estimatedGas)));
+      toast({
+        title: 'Estimate Complete',
+        description: 'Gas amount has been populated based on historical usage.',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+    } catch (error) {
+      toast({
+        title: 'Estimation Failed',
+        description: 'Unable to estimate gas usage. Please try again.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsEstimating(false);
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit}>
       <Flex alignItems="center" mb={2}>
@@ -472,6 +546,48 @@ const Subscribe: FC<SubscribeProps> = ({
           <InfoOutlineIcon opacity={0.7} transform="translateY(-2.5px)" />
         </Tooltip>
       </Text>
+
+      <Accordion allowToggle mb={4}>
+        <AccordionItem>
+          <AccordionButton px={0}>
+            <Box
+              as="span"
+              fontSize="sm"
+              textTransform="uppercase"
+              fontWeight="medium"
+              color="gray.600"
+              letterSpacing="wide"
+              flex="1"
+              textAlign="left"
+            >
+              Estimate Gas Usage
+            </Box>
+            <AccordionIcon />
+          </AccordionButton>
+          <AccordionPanel p={0}>
+            <FormControl mt={2} mb={4}>
+              <FormLabel>Wallet Address</FormLabel>
+              <Input
+                size="md"
+                value={walletAddressInput}
+                onChange={(e) => setWalletAddressInput(e.target.value)}
+                isDisabled={isEstimating}
+              />
+            </FormControl>
+            <Button
+              w="100%"
+              variant="brand"
+              onClick={handleEstimateUsage}
+              isLoading={isEstimating}
+              loadingText="Estimating..."
+              mb={6}
+            >
+              Estimate Usage
+            </Button>
+          </AccordionPanel>
+        </AccordionItem>
+      </Accordion>
+
       <SizeInput
         setSize={setSize}
         error={quoteError || undefined}

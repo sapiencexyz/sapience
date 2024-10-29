@@ -23,7 +23,7 @@ interface Props {
   isLong?: boolean;
   error?: string;
   label?: string;
-  defaultToGas?: boolean; // New prop
+  defaultToGas?: boolean;
 }
 
 const SizeInput: React.FC<Props> = ({

@@ -802,5 +802,99 @@ const startServer = async () => {
       res.status(500).json({ error: "Internal server error" });
     }
   });
+
+  app.post("/estimate", async (req, res) => {
+    const { walletAddress, chainId, marketAddress, epochId } = req.body;
+    if (
+      typeof walletAddress !== "string" ||
+      typeof chainId !== "string" ||
+      typeof marketAddress !== "string" ||
+      typeof epochId !== "string"
+    ) {
+      return res.status(400).json({ error: "Invalid request parameters" });
+    }
+
+    try {
+      const market = await marketRepository.findOne({
+        where: {
+          chainId: Number(chainId),
+          address: marketAddress,
+        },
+      });
+
+      if (!market) {
+        return res.status(404).json({ error: "Market not found" });
+      }
+
+      const epoch = await epochRepository.findOne({
+        where: {
+          market: { id: market.id },
+          epochId: Number(epochId),
+        },
+      });
+
+      if (!epoch) {
+        return res.status(404).json({ error: "Epoch not found" });
+      }
+
+      const duration = Number(epoch.endTimestamp) - Number(epoch.startTimestamp);
+
+      // Fetch transactions from Etherscan
+      const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY;
+      if (!ETHERSCAN_API_KEY) {
+        throw new Error("ETHERSCAN_API_KEY not configured");
+      }
+
+      let totalGasUsed = 0;
+      let page = 1;
+      const offset = 1000; // Number of records per page
+      
+      while (true) {
+        // TODO: change etherscan endpoint based on chainId (mainnet, sepolia, etc) but chainId is where the contract is, not the resource
+        const response = await fetch(
+          `https://api.etherscan.io/api?module=account&action=txlist` +
+          `&address=${walletAddress}` +
+          `&startblock=0` +
+          `&endblock=99999999` +
+          `&page=${page}` +
+          `&offset=${offset}` +
+          `&sort=desc` +
+          `&apikey=${ETHERSCAN_API_KEY}`
+        );
+
+        const data = await response.json();
+        
+        if (data.status !== "1" || !data.result.length) {
+          break;
+        }
+
+        // Filter transactions within duration and sum gas used
+        const currentTime = Math.floor(Date.now() / 1000);
+        const startTime = currentTime - duration;
+
+        for (const tx of data.result) {
+          if (Number(tx.timeStamp) >= startTime) {
+            totalGasUsed += Number(tx.gasUsed);
+          } else {
+            // Since results are sorted by desc, we can break early
+            break;
+          }
+        }
+
+        // If we got less than the requested offset, there are no more pages
+        if (data.result.length < offset) {
+          break;
+        }
+        
+        page++;
+      }
+
+      res.json({ duration, totalGasUsed });
+    } catch (error) {
+      console.error("Error calculating gas usage:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
 };
 startServer().catch((e) => console.error("Unable to start server: ", e));
