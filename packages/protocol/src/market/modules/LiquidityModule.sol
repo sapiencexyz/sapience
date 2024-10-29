@@ -399,8 +399,13 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
 
         // due to rounding on the uniswap side, 1 wei is left over on loan amount when opening & immediately closing position
         // it seems like it's always 1 wei lower than original added amount so adding it to collected amount to make sure we don't have any rounding error
-        collectedAmount0 += 1;
-        collectedAmount1 += 1;
+        // @dev notice we are doing it only if the values are non-zero
+        if (collectedAmount0 > 0) {
+            collectedAmount0 += 1;
+        }
+        if (collectedAmount1 > 0) {
+            collectedAmount1 += 1;
+        }
 
         if (collectedAmount0 > position.borrowedVGas) {
             position.vGasAmount = collectedAmount0 - position.borrowedVGas;
