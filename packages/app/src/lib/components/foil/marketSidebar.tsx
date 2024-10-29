@@ -11,9 +11,9 @@ import TraderPosition from './traderPosition';
 
 export default function MarketSidebar({ isTrade }: { isTrade: boolean }) {
   const { endTime } = useContext(MarketContext);
-  const { setNftId, positions } = useAddEditPosition();
-  const searchParams = useSearchParams();
   const expired = endTime < Math.floor(Date.now() / 1000);
+  const { setNftId } = useAddEditPosition();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const positionId = searchParams.get('positionId');

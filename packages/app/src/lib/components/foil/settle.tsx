@@ -1,4 +1,11 @@
-import { Box, Button, Text, Spinner, useToast } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  Text,
+  Spinner,
+  useToast,
+  Heading,
+} from '@chakra-ui/react';
 import { useState, useEffect, useContext } from 'react';
 import { formatUnits, type WriteContractErrorType } from 'viem';
 import {
@@ -25,6 +32,7 @@ export default function Settle() {
     chainId,
     epochSettled,
     settlementPrice,
+    collateralAssetTicker,
   } = useContext(MarketContext);
   const { nftId, setNftId } = useAddEditPosition();
   const [withdrawableCollateral, setWithdrawableCollateral] = useState<bigint>(
@@ -92,7 +100,11 @@ export default function Settle() {
   };
 
   if (!isConnected) {
-    return <Text>Please connect your wallet to settle positions.</Text>;
+    return (
+      <Heading size="md" textAlign="center" p={8}>
+        Connect your wallet to settle positions
+      </Heading>
+    );
   }
 
   if (isLoadingBalance || isLoadingContracts) {
@@ -104,16 +116,24 @@ export default function Settle() {
   }
 
   return (
-    <Box p={4}>
+    <Box>
+      <Heading size="md" mb={3}>
+        Settle Position
+      </Heading>
       <Box mb={4}>
         <PositionSelector />
       </Box>
       {withdrawableCollateral > BigInt(0) && (
-        <Text mb={4}>
-          Withdrawable Collateral:{' '}
-          <NumberDisplay value={formatUnits(withdrawableCollateral, 18)} />{' '}
-          {foilData.collateralAssetTicker}
-        </Text>
+        <Box mb={4}>
+          <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
+            {!(epochSettled && settlementPrice) ? 'Anticipated' : null}{' '}
+            Withdrawable Collateral
+          </Text>
+          <Text fontSize="sm" color="gray.600">
+            <NumberDisplay value={formatUnits(withdrawableCollateral, 18)} />{' '}
+            {collateralAssetTicker}
+          </Text>
+        </Box>
       )}
       {epochSettled && settlementPrice ? (
         <>
@@ -121,6 +141,7 @@ export default function Settle() {
             Settlement Price: {formatUnits(settlementPrice, 18)}
           </Text>
           <Button
+            w="100%"
             onClick={handleSettle}
             isLoading={isSettling}
             isDisabled={
@@ -132,7 +153,9 @@ export default function Settle() {
           </Button>
         </>
       ) : (
-        <Text>Pending settlement...</Text>
+        <Button w="100%" isDisabled variant="brand">
+          Awaiting settlement price
+        </Button>
       )}
     </Box>
   );
