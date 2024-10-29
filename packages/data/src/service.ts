@@ -805,14 +805,6 @@ const startServer = async () => {
 
   app.post("/estimate", async (req, res) => {
     const { walletAddress, chainId, marketAddress, epochId } = req.body;
-    if (
-      typeof walletAddress !== "string" ||
-      typeof chainId !== "string" ||
-      typeof marketAddress !== "string" ||
-      typeof epochId !== "string"
-    ) {
-      return res.status(400).json({ error: "Invalid request parameters" });
-    }
 
     try {
       const market = await marketRepository.findOne({
