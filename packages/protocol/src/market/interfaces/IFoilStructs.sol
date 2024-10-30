@@ -38,7 +38,7 @@ interface IFoilStructs {
         uint256 deadline;
     }
 
-    struct EpochParams {
+    struct MarketParams {
         uint24 feeRate;
         uint64 assertionLiveness;
         uint256 bondAmount;

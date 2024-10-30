@@ -36,7 +36,7 @@ contract ConfigurationModule is
         address collateralAsset,
         address[] calldata feeCollectors,
         address callbackRecipient,
-        IFoilStructs.EpochParams memory epochParams
+        IFoilStructs.MarketParams memory marketParams
     ) external override nonReentrant {
         if (msg.sender != marketInitializer) {
             revert Errors.OnlyInitializer(msg.sender, marketInitializer);
@@ -58,23 +58,23 @@ contract ConfigurationModule is
             collateralAsset,
             feeCollectorNFT,
             callbackRecipient,
-            epochParams
+            marketParams
         );
         emit MarketInitialized(
             initialOwner,
             collateralAsset,
             feeCollectorNFT,
             callbackRecipient,
-            epochParams
+            marketParams
         );
     }
 
     function updateMarket(
-        IFoilStructs.EpochParams memory epochParams
+        IFoilStructs.MarketParams memory marketParams
     ) external override onlyOwner {
-        Market.updateValid(epochParams);
+        Market.updateValid(marketParams);
 
-        emit MarketUpdated(epochParams);
+        emit MarketUpdated(marketParams);
     }
 
     function createEpoch(

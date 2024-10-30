@@ -55,7 +55,7 @@ contract TradePositionSettlement is TestTrade {
     uint256 endTime;
     uint256 minPriceD18;
     uint256 maxPriceD18;
-    IFoilStructs.EpochParams epochParams;
+    IFoilStructs.MarketParams marketParams;
 
     function setUp() public {
         collateralAsset = IMintableToken(
@@ -70,7 +70,7 @@ contract TradePositionSettlement is TestTrade {
 
         (
             IFoilStructs.EpochData memory epochData,
-            IFoilStructs.EpochParams memory _epochParams
+            IFoilStructs.MarketParams memory _epochParams
         ) = foil.getLatestEpoch();
         epochId = epochData.epochId;
         pool = epochData.pool;
@@ -79,7 +79,7 @@ contract TradePositionSettlement is TestTrade {
         endTime = epochData.endTime;
         minPriceD18 = epochData.minPriceD18;
         maxPriceD18 = epochData.maxPriceD18;
-        epochParams = _epochParams;
+        marketParams = _epochParams;
 
         uniCastedPool = IUniswapV3Pool(pool);
         feeRate = uint256(uniCastedPool.fee()) * 1e12;
@@ -101,7 +101,7 @@ contract TradePositionSettlement is TestTrade {
 
         (owner, , , , ) = foil.getMarket();
 
-        bondCurrency.mint(epochParams.bondAmount * 2, owner);
+        bondCurrency.mint(marketParams.bondAmount * 2, owner);
     }
 
     function test_createTraderPosition_long_RevertIf_Settled() public {
@@ -243,9 +243,9 @@ contract TradePositionSettlement is TestTrade {
         vm.warp(endTime + 1);
 
         vm.startPrank(owner);
-        IMintableToken(epochParams.bondCurrency).approve(
+        IMintableToken(marketParams.bondCurrency).approve(
             address(foil),
-            epochParams.bondAmount
+            marketParams.bondAmount
         );
         bytes32 assertionId = foil.submitSettlementPrice(
             epochId,

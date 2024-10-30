@@ -48,12 +48,13 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             liquidity,
             addedAmount0,
             addedAmount1
-        ) = INonfungiblePositionManager(epoch.params.uniswapPositionManager)
-            .mint(
+        ) = INonfungiblePositionManager(
+            epoch.marketParams.uniswapPositionManager
+        ).mint(
                 INonfungiblePositionManager.MintParams({
                     token0: address(epoch.gasToken),
                     token1: address(epoch.ethToken),
-                    fee: epoch.params.feeRate,
+                    fee: epoch.marketParams.feeRate,
                     tickLower: params.lowerTick,
                     tickUpper: params.upperTick,
                     amount0Desired: params.amountTokenA,
@@ -138,7 +139,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             });
 
         (decreasedAmount0, decreasedAmount1) = INonfungiblePositionManager(
-            epoch.params.uniswapPositionManager
+            epoch.marketParams.uniswapPositionManager
         ).decreaseLiquidity(stack.decreaseParams);
 
         // if all liquidity is removed, close the position and return
@@ -160,8 +161,9 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             ,
             stack.tokensOwed0,
             stack.tokensOwed1
-        ) = INonfungiblePositionManager(epoch.params.uniswapPositionManager)
-            .positions(position.uniswapPositionId);
+        ) = INonfungiblePositionManager(
+            epoch.marketParams.uniswapPositionManager
+        ).positions(position.uniswapPositionId);
 
         uint256 loanAmount0;
         uint256 loanAmount1;
@@ -239,7 +241,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             });
 
         (liquidity, amount0, amount1) = INonfungiblePositionManager(
-            epoch.params.uniswapPositionManager
+            epoch.marketParams.uniswapPositionManager
         ).increaseLiquidity(stack.increaseParams);
 
         // get tokens owed
@@ -256,8 +258,9 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             ,
             stack.tokensOwed0,
             stack.tokensOwed1
-        ) = INonfungiblePositionManager(epoch.params.uniswapPositionManager)
-            .positions(position.uniswapPositionId);
+        ) = INonfungiblePositionManager(
+            epoch.marketParams.uniswapPositionManager
+        ).positions(position.uniswapPositionId);
 
         uint256 loanAmount0;
         uint256 loanAmount1;
@@ -384,7 +387,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         Epoch.Data storage epoch = Epoch.loadValid(position.epochId);
         // Collect fees and remaining tokens
         (collectedAmount0, collectedAmount1) = INonfungiblePositionManager(
-            epoch.params.uniswapPositionManager
+            epoch.marketParams.uniswapPositionManager
         ).collect(
                 INonfungiblePositionManager.CollectParams({
                     tokenId: position.uniswapPositionId,
@@ -394,9 +397,8 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 })
             );
         // Burn the Uniswap position
-        INonfungiblePositionManager(epoch.params.uniswapPositionManager).burn(
-            position.uniswapPositionId
-        );
+        INonfungiblePositionManager(epoch.marketParams.uniswapPositionManager)
+            .burn(position.uniswapPositionId);
         position.uniswapPositionId = 0;
 
         // due to rounding on the uniswap side, 1 wei is left over on loan amount when opening & immediately closing position

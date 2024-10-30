@@ -42,7 +42,7 @@ library Epoch {
         mapping(uint256 => Debt.Data) lpDebtPositions;
         bytes32 assertionId;
         Settlement settlement;
-        IFoilStructs.EpochParams params; // Storing epochParams as a struct within Epoch.Data
+        IFoilStructs.MarketParams marketParams; // Storing marketParams as a struct within Epoch.Data
         uint160 sqrtPriceMinX96;
         uint160 sqrtPriceMaxX96;
         uint256 minPriceD18;
@@ -69,7 +69,7 @@ library Epoch {
         uint256 salt
     ) internal returns (Data storage epoch) {
         Market.Data storage market = Market.loadValid();
-        IFoilStructs.EpochParams storage epochParams = market.epochParams;
+        IFoilStructs.MarketParams storage marketParams = market.marketParams;
 
         epoch = load(id);
 
@@ -99,27 +99,26 @@ library Epoch {
         epoch.startTime = startTime;
         epoch.endTime = endTime;
 
-        // copy over market parameters into epoch (clone them to prevent any changes to market params)
-        epoch.params.feeRate = epochParams.feeRate;
-        epoch.params.assertionLiveness = epochParams.assertionLiveness;
-        epoch.params.bondCurrency = epochParams.bondCurrency;
-        epoch.params.bondAmount = epochParams.bondAmount;
-        epoch.params.claimStatement = epochParams.claimStatement;
-        epoch.params.uniswapPositionManager = epochParams
+        // copy over market parameters into epoch (clone them to prevent any changes to market marketParams)
+        epoch.marketParams.feeRate = marketParams.feeRate;
+        epoch.marketParams.assertionLiveness = marketParams.assertionLiveness;
+        epoch.marketParams.bondCurrency = marketParams.bondCurrency;
+        epoch.marketParams.bondAmount = marketParams.bondAmount;
+        epoch.marketParams.claimStatement = marketParams.claimStatement;
+        epoch.marketParams.uniswapPositionManager = marketParams
             .uniswapPositionManager;
-        epoch.params.uniswapSwapRouter = epochParams.uniswapSwapRouter;
-        epoch.params.uniswapQuoter = epochParams.uniswapQuoter;
-        epoch.params.optimisticOracleV3 = epochParams.optimisticOracleV3;
+        epoch.marketParams.uniswapSwapRouter = marketParams.uniswapSwapRouter;
+        epoch.marketParams.uniswapQuoter = marketParams.uniswapQuoter;
+        epoch.marketParams.optimisticOracleV3 = marketParams.optimisticOracleV3;
 
         validateEpochBounds(
             epoch,
-            Market.getTickSpacingForFee(epochParams.feeRate),
             baseAssetMinPriceTick,
             baseAssetMaxPriceTick
         );
         epoch.baseAssetMinPriceTick = baseAssetMinPriceTick;
         epoch.baseAssetMaxPriceTick = baseAssetMaxPriceTick;
-        epoch.feeRateD18 = uint256(epochParams.feeRate) * 1e12;
+        epoch.feeRateD18 = uint256(marketParams.feeRate) * 1e12;
 
         VirtualToken tokenA = _createVirtualToken(salt, "Token A", "tknA");
 
@@ -137,12 +136,12 @@ library Epoch {
         epoch.pool = IUniswapV3Pool(
             IUniswapV3Factory(
                 INonfungiblePositionManager(
-                    market.epochParams.uniswapPositionManager
+                    market.marketParams.uniswapPositionManager
                 ).factory()
             ).createPool(
                     address(epoch.gasToken),
                     address(epoch.ethToken),
-                    epochParams.feeRate
+                    marketParams.feeRate
                 )
         );
         IUniswapV3Pool(epoch.pool).initialize(startingSqrtPriceX96); // starting price
@@ -169,21 +168,21 @@ library Epoch {
 
         // approve to uniswapPositionManager
         epoch.ethToken.approve(
-            address(market.epochParams.uniswapPositionManager),
+            address(market.marketParams.uniswapPositionManager),
             type(uint256).max
         );
         epoch.gasToken.approve(
-            address(market.epochParams.uniswapPositionManager),
+            address(market.marketParams.uniswapPositionManager),
             type(uint256).max
         );
 
         // approve to uniswapSwapRouter
         epoch.ethToken.approve(
-            address(market.epochParams.uniswapSwapRouter),
+            address(market.marketParams.uniswapSwapRouter),
             type(uint256).max
         );
         epoch.gasToken.approve(
-            address(market.epochParams.uniswapSwapRouter),
+            address(market.marketParams.uniswapSwapRouter),
             type(uint256).max
         );
     }
@@ -192,7 +191,7 @@ library Epoch {
         uint256 initialSalt,
         string memory name,
         string memory symbol
-    ) private returns (VirtualToken) {
+    ) private returns (VirtualToken token) {
         uint256 currentSalt = initialSalt;
         while (true) {
             try
@@ -201,8 +200,8 @@ library Epoch {
                     name,
                     symbol
                 )
-            returns (VirtualToken token) {
-                return token;
+            returns (VirtualToken _token) {
+                return _token;
             } catch {
                 currentSalt++;
             }
@@ -254,10 +253,10 @@ library Epoch {
 
     function validateEpochBounds(
         Data storage self,
-        int24 tickSpacing,
         int24 minPriceTick,
         int24 maxPriceTick
     ) internal view {
+        int24 tickSpacing = _getTickSpacingForFee(self.marketParams.feeRate);
         if (minPriceTick % tickSpacing != 0) {
             revert Errors.InvalidBaseAssetMinPriceTick(
                 minPriceTick,
@@ -594,6 +593,20 @@ library Epoch {
             self.settlementPriceD18 = self.minPriceD18;
         } else {
             self.settlementPriceD18 = settlementPriceD18;
+        }
+    }
+
+    function _getTickSpacingForFee(uint24 fee) internal pure returns (int24) {
+        if (fee == 100) {
+            return 1;
+        } else if (fee == 500) {
+            return 10;
+        } else if (fee == 3000) {
+            return 60;
+        } else if (fee == 10000) {
+            return 200;
+        } else {
+            return 0;
         }
     }
 }

@@ -72,7 +72,7 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
 
         // Collect fees from the Uniswap position
         (uint256 amount0, uint256 amount1) = INonfungiblePositionManager(
-            epoch.params.uniswapPositionManager
+            epoch.marketParams.uniswapPositionManager
         ).collect(
                 INonfungiblePositionManager.CollectParams({
                     tokenId: position.uniswapPositionId,

@@ -23,7 +23,7 @@ contract UmaSettleMarket is TestEpoch {
     uint256 endTime;
     uint256 minPriceD18;
     uint256 maxPriceD18;
-    IFoilStructs.EpochParams epochParams;
+    IFoilStructs.MarketParams marketParams;
     IFoilStructs.EpochData initialEpochData;
 
     uint160 minPriceSqrtX96 = 176318465955203702497835220992;
@@ -48,15 +48,15 @@ contract UmaSettleMarket is TestEpoch {
         (owner, , , , ) = foil.getMarket();
         (
             IFoilStructs.EpochData memory initialEpochData,
-            IFoilStructs.EpochParams memory _epochParams
+            IFoilStructs.MarketParams memory _epochParams
         ) = foil.getLatestEpoch();
         epochId = initialEpochData.epochId;
         endTime = initialEpochData.endTime;
         minPriceD18 = initialEpochData.minPriceD18;
         maxPriceD18 = initialEpochData.maxPriceD18;
-        epochParams = _epochParams;
+        marketParams = _epochParams;
 
-        bondCurrency.mint(epochParams.bondAmount * 2, owner);
+        bondCurrency.mint(marketParams.bondAmount * 2, owner);
     }
 
     function test_only_owner_settle() public {
@@ -73,9 +73,9 @@ contract UmaSettleMarket is TestEpoch {
         vm.warp(endTime + 1);
 
         vm.startPrank(owner);
-        IMintableToken(epochParams.bondCurrency).approve(
+        IMintableToken(marketParams.bondCurrency).approve(
             address(foil),
-            epochParams.bondAmount
+            marketParams.bondAmount
         );
         bytes32 assertionId = foil.submitSettlementPrice(
             epochId,
@@ -107,9 +107,9 @@ contract UmaSettleMarket is TestEpoch {
         vm.warp(endTime + 1);
 
         vm.startPrank(owner);
-        IMintableToken(epochParams.bondCurrency).approve(
+        IMintableToken(marketParams.bondCurrency).approve(
             address(foil),
-            epochParams.bondAmount
+            marketParams.bondAmount
         );
         bytes32 assertionId = foil.submitSettlementPrice(
             epochId,
@@ -137,9 +137,9 @@ contract UmaSettleMarket is TestEpoch {
         vm.warp(endTime + 1);
 
         vm.startPrank(owner);
-        IMintableToken(epochParams.bondCurrency).approve(
+        IMintableToken(marketParams.bondCurrency).approve(
             address(foil),
-            epochParams.bondAmount
+            marketParams.bondAmount
         );
         bytes32 assertionId = foil.submitSettlementPrice(
             epochId,
@@ -163,9 +163,9 @@ contract UmaSettleMarket is TestEpoch {
         vm.warp(endTime - 1);
 
         vm.startPrank(owner);
-        IMintableToken(epochParams.bondCurrency).approve(
+        IMintableToken(marketParams.bondCurrency).approve(
             address(foil),
-            epochParams.bondAmount
+            marketParams.bondAmount
         );
         vm.expectRevert("Market epoch activity is still allowed");
         foil.submitSettlementPrice(epochId, minPriceSqrtX96MinusOne);
@@ -177,9 +177,9 @@ contract UmaSettleMarket is TestEpoch {
         vm.warp(endTime + 1);
 
         vm.startPrank(owner);
-        IMintableToken(epochParams.bondCurrency).approve(
+        IMintableToken(marketParams.bondCurrency).approve(
             address(foil),
-            epochParams.bondAmount
+            marketParams.bondAmount
         );
         bytes32 assertionId = foil.submitSettlementPrice(
             epochId,
@@ -192,9 +192,9 @@ contract UmaSettleMarket is TestEpoch {
         vm.stopPrank();
 
         vm.startPrank(owner);
-        IMintableToken(epochParams.bondCurrency).approve(
+        IMintableToken(marketParams.bondCurrency).approve(
             address(foil),
-            epochParams.bondAmount
+            marketParams.bondAmount
         );
         vm.expectRevert("Market epoch already settled");
         foil.submitSettlementPrice(epochId, SQRT_PRICE_10Eth);
@@ -206,9 +206,9 @@ contract UmaSettleMarket is TestEpoch {
         vm.warp(endTime + 1);
 
         vm.startPrank(owner);
-        IMintableToken(epochParams.bondCurrency).approve(
+        IMintableToken(marketParams.bondCurrency).approve(
             address(foil),
-            epochParams.bondAmount
+            marketParams.bondAmount
         );
         bytes32 assertionId = foil.submitSettlementPrice(
             epochId,
@@ -225,9 +225,9 @@ contract UmaSettleMarket is TestEpoch {
         assertTrue(!epochData.settled, "The epoch is not settled");
 
         vm.startPrank(owner);
-        IMintableToken(epochParams.bondCurrency).approve(
+        IMintableToken(marketParams.bondCurrency).approve(
             address(foil),
-            epochParams.bondAmount
+            marketParams.bondAmount
         );
         bytes32 assertionId2 = foil.submitSettlementPrice(
             epochId,
@@ -236,9 +236,9 @@ contract UmaSettleMarket is TestEpoch {
         vm.stopPrank();
 
         vm.startPrank(optimisticOracleV3);
-        IMintableToken(epochParams.bondCurrency).approve(
+        IMintableToken(marketParams.bondCurrency).approve(
             address(foil),
-            epochParams.bondAmount
+            marketParams.bondAmount
         );
         foil.assertionResolvedCallback(assertionId2, true);
         vm.stopPrank();
