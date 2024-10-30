@@ -236,7 +236,7 @@ const EpochItem: React.FC<{
 
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
     abi: erc20ABI as AbiFunction[],
-    address: bondAmount as `0x${string}`,
+    address: bondCurrency as `0x${string}`,
     functionName: 'allowance',
     args: [address, market.address],
     account: address || zeroAddress,
