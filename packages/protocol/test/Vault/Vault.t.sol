@@ -154,7 +154,7 @@ contract VaultTest is TestTrade {
 
         // Add liquidity
         vm.prank(lp1);
-        vault.requestDeposit(100 ether, lp1, lp1);
+        vault.requestDeposit(100 ether);
 
         // Settle
         vm.warp(epochData.endTime + 1);

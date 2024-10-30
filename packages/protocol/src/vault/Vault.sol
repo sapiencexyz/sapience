@@ -13,7 +13,6 @@ import "../market/external/univ3/TickMath.sol";
 import "../market/interfaces/IFoil.sol";
 import "../market/interfaces/IFoilStructs.sol";
 import "./interfaces/IVault.sol";
-import "./interfaces/IERC7540.sol";
 
 // import "forge-std/console2.sol";
 
@@ -130,7 +129,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             interfaceId == type(IERC165).interfaceId ||
             interfaceId == type(IResolutionCallback).interfaceId ||
             interfaceId == type(IERC4626).interfaceId ||
-            interfaceId == type(IERC7540).interfaceId ||
             super.supportsInterface(interfaceId);
     }
 
@@ -425,18 +423,13 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     ////////////////////////
     /// DEPOSIT WORKFLOW ///
     ////////////////////////
-    // Sends actor's collateral to the vault, gets shares (gets assets amount of asset, mints sharesAmount = convertToShares(assets))
-    // notice: this is the first part of the Async requestDeposit -> deposit/mint
     function requestDeposit(
-        uint256 assets,
-        address,
-        address owner
-    ) external override nonReentrant returns (uint256 requestId) {
-        require(owner != address(0), "Invalid receiver");
-        collateralAsset.safeTransferFrom(owner, address(this), assets);
+        uint256 assets
+    ) external returns (IVault.UserPendingTransaction memory) {
+        collateralAsset.safeTransferFrom(msg.sender, address(this), assets);
 
         UserPendingTransaction storage pendingTxn = userPendingTransactions[
-            owner
+            msg.sender
         ];
 
         // only allow deposit if no withdrawal is pending
@@ -444,32 +437,33 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             revert("Cannot deposit while withdrawal is pending");
         }
 
-        // only allow deposit if previous deposit request is in the same epoch
         if (
-            pendingTxn.requestInitiatedEpoch == currentEpochId ||
-            pendingTxn.requestInitiatedEpoch == 0
+            pendingTxn.requestInitiatedEpoch != 0 &&
+            pendingTxn.requestInitiatedEpoch != currentEpochId
         ) {
-            pendingTxn.requestInitiatedEpoch = currentEpochId;
-            pendingTxn.amount += assets;
-            pendingTxn.transactionType = TransactionType.DEPOSIT;
-
-            totalPendingDeposits += assets;
-        } else {
-            revert("Previous deposit request is not in the same epoch");
+            revert("Previous deposit request is not completed");
         }
 
-        return currentEpochId;
+        pendingTxn.requestInitiatedEpoch = currentEpochId;
+        pendingTxn.amount += assets;
+        pendingTxn.transactionType = TransactionType.DEPOSIT;
+
+        totalPendingDeposits += assets;
+
+        emit DepositRequest(msg.sender, currentEpochId, assets);
+
+        return pendingTxn;
     }
 
-    // Reduce requestDeposit Sends back collateral pending to deposit to actor
-    // notice: this adjusts the first part of the Async requestDeposit -> deposit/mint
-    function withdrawRequestDeposit(uint256 assets) external {
+    function withdrawRequestDeposit(
+        uint256 assets
+    ) external override returns (IVault.UserPendingTransaction memory) {
         UserPendingTransaction storage pendingTxn = userPendingTransactions[
             msg.sender
         ];
 
         if (pendingTxn.transactionType != TransactionType.DEPOSIT) {
-            revert("No deposit request to withdraw");
+            revert("No deposit request to withdraw from");
         }
 
         if (assets > pendingTxn.amount) {
@@ -484,30 +478,24 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         if (pendingTxn.amount == 0) {
             resetTransaction(msg.sender);
         }
+
+        emit DepositRequestWithdrawn(
+            msg.sender,
+            currentEpochId,
+            pendingTxn.amount,
+            assets
+        );
+
+        return pendingTxn;
     }
 
-    // amount pending to deposit (not claimable, it means, not yet ready to deposit/mint)
     function pendingDepositRequest(
-        uint256, // requestId is ignored
         address owner
-    ) external view override returns (uint256 assets) {
-        UserPendingTransaction storage pendingTxn = userPendingTransactions[
-            owner
-        ];
-
-        if (pendingTxn.requestInitiatedEpoch != currentEpochId) {
-            return 0;
-        }
-
-        return
-            pendingTxn.transactionType == TransactionType.DEPOSIT
-                ? pendingTxn.amount
-                : 0;
+    ) external view override returns (IVault.UserPendingTransaction memory) {
+        return userPendingTransactions[owner];
     }
 
-    // amount claimable to deposit (not pending, it means, ready to deposit/mint)
     function claimableDepositRequest(
-        uint256, // requestId is ignored
         address owner
     ) external view override returns (uint256 assets) {
         UserPendingTransaction storage pendingTxn = userPendingTransactions[
@@ -524,42 +512,18 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
                 : 0;
     }
 
-    // Sends actor's collateral to the vault, gets shares (gets assets amount of asset, mints sharesAmount = convertToShares(assets))
-    // notice: this is the second part of the Async requestDeposit -> deposit/mint
-    // notice: the max amount or effective amount is same as claimable
-    // @dev notice the amount is being ignored and all the claimable is going to be deposited
     function deposit(
-        uint256, // ignoring the amount. All or nothing
-        address,
-        address owner
+        uint256, // ignore the amount, all shares will be claimed
+        address receiver
     ) public override returns (uint256 sharesAmount) {
-        (, sharesAmount) = _mintShares(owner);
-    }
-
-    function deposit(
-        uint256, // ignoring the amount. All or nothing
-        address owner
-    ) external override returns (uint256 sharesAmount) {
-        return deposit(0, owner, owner);
-    }
-
-    // Sends actor's collateral to the vault, gets shares (gets convertToAsset(sharesAmount), mints sharesAmount)
-    // notice: this is the second part of the Async requestDeposit -> deposit/mint
-    // notice: the max amount or effective amount is same as claimable
-    // @dev notice the amount is being ignored and all the claimable is going to be minted
-    function mint(
-        uint256, // ignoring the amount
-        address,
-        address owner
-    ) public override returns (uint256 assets) {
-        (assets, ) = _mintShares(owner);
+        (, sharesAmount) = _mintShares(receiver);
     }
 
     function mint(
         uint256,
-        address owner
+        address receiver
     ) external override returns (uint256 assets) {
-        return mint(0, owner, owner);
+        (assets, ) = _mintShares(receiver);
     }
     //////////////////////////////
     /// DEPOSIT WORKFLOW  ENDS ///
@@ -568,15 +532,11 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     ////////////////////////
     /// REDEEM WORKFLOW  ///
     ////////////////////////
-    // Sends back collateral to the actor, burns shares (burns sharesAmount = convertToShares(assets); send to actor assets of asset)
-    // notice: this is the first part of the Async requestRedeem -> redeem/withdraw
     function requestRedeem(
-        uint256 sharesAmount,
-        address,
-        address owner
-    ) external override returns (uint256 requestId) {
+        uint256 shares
+    ) external override returns (IVault.UserPendingTransaction memory) {
         UserPendingTransaction storage pendingTxn = userPendingTransactions[
-            owner
+            msg.sender
         ];
 
         // only allow deposit if no withdrawal is pending
@@ -584,24 +544,26 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             revert("Cannot redeem while deposit is pending");
         }
 
-        // only allow deposit if previous deposit request is in the same epoch
         if (
-            pendingTxn.requestInitiatedEpoch == currentEpochId ||
-            pendingTxn.requestInitiatedEpoch == 0 // empty txn
+            pendingTxn.requestInitiatedEpoch != 0 &&
+            pendingTxn.requestInitiatedEpoch != currentEpochId
         ) {
-            pendingTxn.requestInitiatedEpoch = currentEpochId;
-            pendingTxn.amount += sharesAmount;
-            pendingTxn.transactionType = TransactionType.WITHDRAW;
-
-            totalPendingWithdrawals += sharesAmount;
-        } else {
             revert("Previous deposit request is not in the same epoch");
         }
+        pendingTxn.requestInitiatedEpoch = currentEpochId;
+        pendingTxn.amount += shares;
+        pendingTxn.transactionType = TransactionType.WITHDRAW;
 
-        return currentEpochId;
+        totalPendingWithdrawals += shares;
+
+        emit RedeemRequest(msg.sender, currentEpochId, shares);
+
+        return pendingTxn;
     }
 
-    function withdrawRequestRedeem(uint256 shares) external {
+    function withdrawRequestRedeem(
+        uint256 shares
+    ) external returns (IVault.UserPendingTransaction memory) {
         UserPendingTransaction storage pendingTxn = userPendingTransactions[
             msg.sender
         ];
@@ -620,31 +582,26 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         if (pendingTxn.amount == 0) {
             resetTransaction(msg.sender);
         }
+
+        emit RedeemRequestWithdrawn(
+            msg.sender,
+            currentEpochId,
+            pendingTxn.amount,
+            shares
+        );
+
+        return pendingTxn;
     }
-    // amount pending to redeem (not claimable, it means, not yet ready to redeem/withdraw)
+
     function pendingRedeemRequest(
-        uint256, // ignored requestId
         address owner
-    ) external view override returns (uint256 sharesAmount) {
-        UserPendingTransaction storage pendingTxn = userPendingTransactions[
-            owner
-        ];
-
-        if (pendingTxn.requestInitiatedEpoch != currentEpochId) {
-            return 0;
-        }
-
-        return
-            pendingTxn.transactionType == TransactionType.WITHDRAW
-                ? pendingTxn.amount
-                : 0;
+    ) external view override returns (IVault.UserPendingTransaction memory) {
+        return userPendingTransactions[owner];
     }
 
-    // amount claimable to redeem (not pending, it means, ready to redeem/withdraw)
     function claimableRedeemRequest(
-        uint256, // ignored requestId
         address owner
-    ) external view override returns (uint256 sharesAmount) {
+    ) external view override returns (uint256 shares) {
         UserPendingTransaction storage pendingTxn = userPendingTransactions[
             owner
         ];
@@ -659,9 +616,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
                 : 0;
     }
 
-    // Sends back collateral to the actor, burns shares (burns sharesAmount ; send to actor assets = convertToAsset(sharesAmount) of asset)
-    // notice: this is the second part of the Async requestToWithdraw / redeem
-    // @dev notice the amount is being ignored and all the claimable is going to be redeemed
     function redeem(
         uint256, // ignore the shares amount
         address,
@@ -670,13 +624,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         (assets, ) = _redeemShares(owner);
     }
 
-    function redeem(address receiver) external returns (uint256 assets) {
-        return redeem(0, receiver, receiver);
+    function redeem(address owner) external returns (uint256 assets) {
+        return redeem(0, owner, owner);
     }
 
-    // Sends back collateral to the actor, burns shares (burns sharesAmount = convertToShares(assets); send to actor assets of asset)
-    // notice: this is the second part of the Async requestToWithdraw / withdraw
-    // @dev notice the amount is being ignored and all the claimable is going to be withdrawn
     function withdraw(
         uint256, // ignore the assets amount
         address,
@@ -709,66 +660,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     }
 
     // Helpers
-    function _getSharesValue(
-        uint256 assetsInVault,
-        uint256 supplyInVault,
-        uint256 shares
-    ) internal pure returns (uint256 sharesValue) {
-        if (assetsInVault == 0 || supplyInVault == 0) {
-            sharesValue = 0;
-        } else {
-            sharesValue = assetsInVault.mulDiv(shares, supplyInVault);
-        }
-    }
-
-    /**
-     * Gets the shares based on assets and a price. Takes a rounding direction
-     * shares = assets / price
-     * @dev it assumes collateral and shares (asset and shares) buth uses 18 digits
-     */
-    function _calculateShares(
-        uint256 assets,
-        uint256 price,
-        Math.Rounding rounding
-    ) internal pure returns (uint256 shares) {
-        if (price == 0 || assets == 0) {
-            shares = 0;
-        } else {
-            shares = assets.mulDiv(10 ** 18, price, rounding);
-        }
-    }
-
-    /**
-     * Calculates asset amount based on share amount and share price. Takes a rounding direction
-     * assets = shares * price
-     * @dev it assumes collateral and shares (asset and shares) buth uses 18 digits
-     */
-    function _calculateAssets(
-        uint256 shares,
-        uint256 price,
-        Math.Rounding rounding
-    ) internal pure returns (uint256 assets) {
-        if (price == 0 || shares == 0) {
-            assets = 0;
-        } else {
-            assets = shares.mulDiv(price, 10 ** 18, rounding);
-        }
-    }
-
-    /**
-     * Calculates share price and returns the value in price decimals.
-     * price = assets / shares
-     * @dev it assumes collateral and shares (asset and shares) buth uses 18 digits
-     */
-    function _calculatePrice(
-        uint256 assets,
-        uint256 shares
-    ) internal pure returns (uint256) {
-        if (assets == 0 || shares == 0) {
-            return 0;
-        }
-        return assets.mulDiv(10 ** 18, shares, Math.Rounding.Floor);
-    }
 
     function resetTransaction(address receiver) internal {
         userPendingTransactions[receiver] = UserPendingTransaction({
@@ -779,14 +670,14 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     }
 
     function _mintShares(
-        address owner
+        address receiver
     ) internal returns (uint256 assets, uint256 sharesAmount) {
         UserPendingTransaction storage pendingTxn = userPendingTransactions[
-            owner
+            receiver
         ];
 
         if (
-            pendingTxn.requestInitiatedEpoch != currentEpochId ||
+            pendingTxn.requestInitiatedEpoch == currentEpochId ||
             pendingTxn.requestInitiatedEpoch == 0
         ) {
             revert("Previous deposit request is not in the same epoch");
@@ -805,12 +696,12 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
         assets = pendingTxn.amount;
 
-        // transfer shares to owner
-        transfer(owner, sharesAmount);
+        // transfer shares to receiver
+        transfer(receiver, sharesAmount);
 
-        resetTransaction(owner);
+        resetTransaction(receiver);
 
-        emit Deposit(msg.sender, owner, assets, sharesAmount);
+        emit Deposit(msg.sender, receiver, assets, sharesAmount);
     }
 
     function _redeemShares(
