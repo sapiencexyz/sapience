@@ -77,12 +77,6 @@ const Stats = () => {
               {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
             </Text>
           </StatNumber>
-          {/*
-          <StatHelpText>
-            <StatArrow type="decrease" color="red.500" />
-            9.36% (24hr)
-          </StatHelpText>
-          */}
         </Stat>
 
         <Stat width={{ base: '100%', md: 'calc(50% - 12px)', lg: 'auto' }}>
@@ -112,12 +106,6 @@ const Stats = () => {
               {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
             </Text>
           </StatNumber>
-          {/*
-          <StatHelpText>
-            <StatArrow type="decrease" color="red.500" />
-            3.36% (24hr)
-          </StatHelpText>
-          */}
         </Stat>
 
         <Stat width={{ base: '100%', md: 'calc(50% - 12px)', lg: 'auto' }}>
@@ -137,20 +125,11 @@ const Stats = () => {
               Ggas
             </Text>
           </StatNumber>
-          {/*
-          <StatHelpText>
-            <StatArrow type="increase" color="green.400" />
-            23.36%
-          </StatHelpText>
-          */}
         </Stat>
 
         <Stat width={{ base: '100%', md: 'calc(50% - 12px)', lg: 'auto' }}>
           <StatLabel fontSize="md">Ends In</StatLabel>
           <StatNumber>{relativeTime}</StatNumber>
-          {/*
-          <StatHelpText>{formattedTime} UTC</StatHelpText>
-          */}
         </Stat>
       </Flex>
     </Flex>

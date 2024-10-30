@@ -161,6 +161,13 @@ const EpochItem: React.FC<{
     [actionName: string]: boolean;
   }>({});
 
+  const collateralTickerFunctionResult = useReadContract({
+    chainId,
+    abi: erc20ABI,
+    address: market.collateralAsset as `0x${string}`,
+    functionName: 'symbol',
+  });
+
   const currentTime = Math.floor(Date.now() / 1000);
 
   const stEthPerTokenResult = useReadContract({
@@ -423,7 +430,7 @@ const EpochItem: React.FC<{
           }
         >
           {requireApproval
-            ? 'Approve Settlement with Price'
+            ? `Approve ${collateralTickerFunctionResult.data} Transfer`
             : 'Settle with Price'}
         </Button>
         {!epochData && (

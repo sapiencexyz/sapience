@@ -428,7 +428,7 @@ const Subscribe: FC<SubscribeProps> = ({
         size="lg"
       >
         {requireApproval
-          ? 'Approve Subscription Creation'
+          ? `Approve ${collateralAssetTicker} Transfer`
           : 'Create Subscription'}
       </Button>
     );

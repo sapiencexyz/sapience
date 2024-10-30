@@ -903,7 +903,7 @@ const AddEditLiquidity: React.FC = () => {
     }
 
     if (requireApproval) {
-      txt = `Approve ${txt}`;
+      txt = `Approve ${collateralAssetTicker} Transfer`;
     }
 
     return txt;

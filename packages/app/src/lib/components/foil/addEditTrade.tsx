@@ -507,11 +507,7 @@ export default function AddEditTrade() {
 
     let buttonTxt = isEdit ? 'Update Position' : 'Create Position';
     if (requireApproval) {
-      if (isEdit) {
-        buttonTxt = 'Approve Position Update';
-      } else {
-        buttonTxt = 'Approve Position Creation';
-      }
+      buttonTxt = `Approve ${collateralAssetTicker} Transfer`;
     }
 
     return (
