@@ -8,6 +8,7 @@ import cors from "cors";
 import { ResourcePrice } from "./models/ResourcePrice";
 import { IndexPrice } from "./models/IndexPrice";
 import { Position } from "./models/Position";
+import { cannon } from "viem/chains";
 import { Market } from "./models/Market";
 import express from "express";
 import { Between } from "typeorm";
@@ -25,7 +26,11 @@ import {
   groupIndexPricesByTimeWindow,
 } from "./serviceUtil";
 import { TimeWindow } from "./interfaces";
-import { formatDbBigInt, getBlockBeforeTimestamp } from "./helpers";
+import {
+  formatDbBigInt,
+  getBlockBeforeTimestamp,
+  sepoliaPublicClient,
+} from "./helpers";
 import { getProviderForChain } from "./helpers";
 import dotenv from "dotenv";
 import path from "path";
@@ -710,7 +715,10 @@ const startServer = async () => {
     }
 
     try {
-      const client = getProviderForChain(Number(chainId));
+      const client =
+        Number(chainId) === cannon.id
+          ? sepoliaPublicClient
+          : getProviderForChain(Number(chainId));
 
       // get last block
       const block = await getBlockBeforeTimestamp(client, Number(endTime));
@@ -720,8 +728,16 @@ const startServer = async () => {
         return res.status(404).json({ error: "Block not found" });
       }
 
+      // for testing on local dev node
+      const DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS =
+        "0xB82381A3fBD3FaFA77B3a7bE693342618240067b";
+      const address =
+        Number(chainId) === cannon.id
+          ? DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS
+          : collateralAssetAddress;
+
       const stEthPerTokenResult = await client.readContract({
-        address: collateralAssetAddress as `0x${string}`,
+        address: address as `0x${string}`,
         abi: [
           {
             inputs: [],
@@ -829,7 +845,8 @@ const startServer = async () => {
         return res.status(404).json({ error: "Epoch not found" });
       }
 
-      const duration = Number(epoch.endTimestamp) - Number(epoch.startTimestamp);
+      const duration =
+        Number(epoch.endTimestamp) - Number(epoch.startTimestamp);
 
       // Fetch transactions from Etherscan
       const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY;
@@ -840,22 +857,22 @@ const startServer = async () => {
       let totalGasUsed = 0;
       let page = 1;
       const offset = 1000; // Number of records per page
-      
+
       while (true) {
         // TODO: change etherscan endpoint based on chainId (mainnet, sepolia, etc) but chainId is where the contract is, not the resource
         const response = await fetch(
           `https://api.etherscan.io/api?module=account&action=txlist` +
-          `&address=${walletAddress}` +
-          `&startblock=0` +
-          `&endblock=99999999` +
-          `&page=${page}` +
-          `&offset=${offset}` +
-          `&sort=desc` +
-          `&apikey=${ETHERSCAN_API_KEY}`
+            `&address=${walletAddress}` +
+            `&startblock=0` +
+            `&endblock=99999999` +
+            `&page=${page}` +
+            `&offset=${offset}` +
+            `&sort=desc` +
+            `&apikey=${ETHERSCAN_API_KEY}`
         );
 
         const data = await response.json();
-        
+
         if (data.status !== "1" || !data.result.length) {
           break;
         }
@@ -877,7 +894,7 @@ const startServer = async () => {
         if (data.result.length < offset) {
           break;
         }
-        
+
         page++;
       }
 
@@ -887,6 +904,5 @@ const startServer = async () => {
       res.status(500).json({ error: "Internal server error" });
     }
   });
-
 };
 startServer().catch((e) => console.error("Unable to start server: ", e));

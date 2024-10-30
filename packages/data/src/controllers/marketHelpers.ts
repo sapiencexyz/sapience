@@ -23,6 +23,7 @@ import {
   TradePositionEventLog,
   EventType,
   MarketInfo,
+  PositionSettledEventLog,
 } from "../interfaces";
 import { MarketPrice } from "../models/MarketPrice";
 import { getBlockByTimestamp, getProviderForChain } from "../helpers";
@@ -483,6 +484,37 @@ export const updateTransactionFromTradeModifiedEvent = async (
   ).toString();
 
   newTransaction.tradeRatioD18 = eventArgsCreateTrade.tradeRatio;
+};
+
+export const updateTransactionFromPositionSettledEvent = async (
+  newTransaction: Transaction,
+  event: Event,
+  epochId: number
+) => {
+  const eventArgs = event.logData.args as PositionSettledEventLog;
+  newTransaction.type = TransactionType.SETTLE_POSITION;
+
+  const initialPosition = await positionRepository.findOne({
+    where: {
+      positionId: Number(eventArgs.positionId),
+      epoch: {
+        epochId,
+        market: { address: event.market.address },
+      },
+    },
+    relations: ["epoch"],
+  });
+
+  const baseTokenInitial = initialPosition?.baseToken || "0";
+  const quoteTokenInitial = initialPosition?.quoteToken || "0";
+  const settlementPriceD18 = initialPosition?.epoch.settlementPriceD18 || "0";
+
+  newTransaction.baseTokenDelta = (-BigInt(baseTokenInitial)).toString();
+  newTransaction.quoteTokenDelta = (-BigInt(quoteTokenInitial)).toString();
+  newTransaction.collateralDelta = BigInt(
+    eventArgs.withdrawableCollateral
+  ).toString();
+  newTransaction.tradeRatioD18 = settlementPriceD18;
 };
 
 /**
