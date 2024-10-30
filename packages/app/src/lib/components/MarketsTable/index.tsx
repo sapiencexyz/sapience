@@ -417,6 +417,7 @@ const EpochItem: React.FC<{
             stEthPerTokenResult.isLoading ||
             loadingAction.settle
           }
+          isDisabled={!epochData}
           onClick={
             requireApproval ? handleApproveSettle : handleSettleWithPrice
           }
@@ -425,6 +426,11 @@ const EpochItem: React.FC<{
             ? 'Approve Settlement with Price'
             : 'Settle with Price'}
         </Button>
+        {!epochData && (
+          <Text color="red" size="sm" textAlign="center">
+            Could not get epoch data for market{' '}
+          </Text>
+        )}
       </>
     );
   };
