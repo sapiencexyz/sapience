@@ -15,8 +15,8 @@ import { useContext } from 'react';
 import { formatUnits } from 'viem';
 
 import { MarketContext } from '../../context/MarketProvider';
+import { calculatePnL } from '~/lib/util/positionUtil';
 
-import Address from './address';
 import NumberDisplay from './numberDisplay';
 
 interface Props {
@@ -61,15 +61,6 @@ const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
     }
     return formatUnits(BigInt(entryPrice), 18);
   };
-  const calculatePnL = (position: any) => {
-    const vEthToken = parseFloat(position.quoteToken);
-    const borrowedVEth = parseFloat(position.borrowedQuoteToken);
-    const vGasToken = parseFloat(position.baseToken);
-    const borrowedVGas = parseFloat(position.borrowedBaseToken);
-    const marketPrice = parseFloat(pool?.token0Price?.toSignificant(18) || '0');
-
-    return vEthToken - borrowedVEth + (vGasToken - borrowedVGas) * marketPrice;
-  };
 
   return (
     <TableContainer mb={4}>
@@ -93,7 +84,7 @@ const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
         <Tbody>
           {positions &&
             positions.map((row: any) => {
-              const pnl = calculatePnL(row);
+              const pnl = calculatePnL(row, pool);
               const entryPrice = calculateEntryPrice(row);
               return (
                 <Tr key={row.id}>
