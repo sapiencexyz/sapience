@@ -78,7 +78,7 @@ const TransactionTable: React.FC<Props> = ({ transactions }) => {
               </Td>
               <Td>
                 <Link
-                  href={`/positions/${chain}:${address}/${row.position.positionId}`}
+                  href={`/positions/${chain?.id}:${address}/${row.position.positionId}`}
                   textDecoration="underline"
                 >
                   #{row.position.positionId}
