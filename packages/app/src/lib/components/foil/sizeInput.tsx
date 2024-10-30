@@ -71,45 +71,58 @@ const SizeInput: React.FC<Props> = ({
     setSizeInput(numberValue);
   }, [size, isGasInput]);
 
-  const handleUpdateInputType = () => {
-    const currentType = inputType;
-    let newType: 'gas' | 'Ggas' | 'collateral';
-    
+  const getNextInputType = (
+    currentType: 'gas' | 'Ggas' | 'collateral'
+  ): 'gas' | 'Ggas' | 'collateral' => {
     if (allowCollateralInput) {
-      // Cycle through all three types
-      if (currentType === 'gas') newType = 'Ggas';
-      else if (currentType === 'Ggas') newType = 'collateral';
-      else newType = 'gas';
-    } else {
-      // Just toggle between gas and Ggas
-      newType = currentType === 'gas' ? 'Ggas' : 'gas';
+      const mapping = {
+        gas: 'Ggas',
+        Ggas: 'collateral',
+        collateral: 'gas',
+      } as const;
+      return mapping[currentType];
     }
-    
+    return currentType === 'gas' ? 'Ggas' : 'gas';
+  };
+
+  const convertValue = (
+    value: number,
+    fromType: string,
+    toType: string
+  ): number => {
+    if (fromType === 'gas' && toType === 'Ggas') return value / 1e9;
+    if (fromType === 'Ggas' && toType === 'gas') return value * 1e9;
+    return 0; // Reset value when switching to/from collateral
+  };
+
+  const handleUpdateInputType = () => {
+    const newType = getNextInputType(inputType);
     setInputType(newType);
 
-    if (sizeInput !== '') {
-      const currentValue = parseFloat(sizeInput);
-      let newValue: number;
-      
-      // Convert based on type change
-      if (currentType === 'gas' && newType === 'Ggas') {
-        newValue = currentValue / 1e9;
-      } else if (currentType === 'Ggas' && newType === 'gas') {
-        newValue = currentValue * 1e9;
-      } else if (newType === 'collateral') {
-        // Reset input when switching to collateral
-        newValue = 0;
-      } else {
-        // Reset input when switching from collateral
-        newValue = 0;
-      }
+    if (sizeInput === '') return;
 
-      const formattedValue = newValue.toLocaleString('fullwide', {
-        useGrouping: false,
-        maximumFractionDigits: 20,
-      });
-      setSizeInput(formattedValue);
-    }
+    const currentValue = parseFloat(sizeInput);
+    const newValue = convertValue(currentValue, inputType, newType);
+    const formattedValue = newValue.toLocaleString('fullwide', {
+      useGrouping: false,
+      maximumFractionDigits: 20,
+    });
+    setSizeInput(formattedValue);
+  };
+
+  const processCollateralInput = (value: string) => {
+    const collateralAmount = value === '' ? 0 : parseFloat(value);
+    onCollateralAmountChange?.(BigInt(Math.floor(collateralAmount * 1e18)));
+  };
+
+  const processSizeInput = (value: string) => {
+    const newSize = value === '' ? 0 : parseFloat(value);
+    const sizeInGas =
+      inputType === 'gas'
+        ? BigInt(Math.floor(newSize))
+        : BigInt(Math.floor(newSize * 1e9));
+    const sign = isLong ? BigInt(1) : BigInt(-1);
+    setSize(sign * sizeInGas);
   };
 
   const handleSizeChange = (newVal: string) => {
@@ -122,17 +135,11 @@ const SizeInput: React.FC<Props> = ({
 
     if (processedVal === '' || numberPattern.test(processedVal)) {
       setSizeInput(processedVal);
-      
+
       if (inputType === 'collateral') {
-        const collateralAmount = processedVal === '' ? 0 : parseFloat(processedVal);
-        onCollateralAmountChange?.(BigInt(Math.floor(collateralAmount * 1e18)));
+        processCollateralInput(processedVal);
       } else {
-        const newSize = processedVal === '' ? 0 : parseFloat(processedVal);
-        const sizeInGas = inputType === 'gas'
-          ? BigInt(Math.floor(newSize))
-          : BigInt(Math.floor(newSize * 1e9));
-        const sign = isLong ? BigInt(1) : BigInt(-1);
-        setSize(sign * sizeInGas);
+        processSizeInput(processedVal);
       }
     }
   };

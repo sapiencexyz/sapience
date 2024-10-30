@@ -11,6 +11,7 @@ import {
   Heading,
 } from '@chakra-ui/react';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
+import { debounce } from 'lodash';
 import { useState, useEffect, useContext, useMemo } from 'react';
 import type { AbiFunction, WriteContractErrorType } from 'viem';
 import { decodeEventLog, formatUnits, parseUnits, zeroAddress } from 'viem';
@@ -37,7 +38,6 @@ import NumberDisplay from './numberDisplay';
 import PositionSelector from './positionSelector';
 import SizeInput from './sizeInput';
 import SlippageTolerance from './slippageTolerance';
-import { debounce } from 'lodash';
 
 const tradeOptions = ['Long', 'Short'];
 
@@ -538,7 +538,7 @@ export default function AddEditTrade() {
     if (!collateralInput || collateralInput === BigInt(0)) return;
 
     // Start with an initial guess based on current price
-    let targetCollateral = collateralInput;
+    const targetCollateral = collateralInput;
     let currentSize = BigInt(0);
     let bestSize = BigInt(0);
     let bestDiff = targetCollateral;
@@ -551,15 +551,18 @@ export default function AddEditTrade() {
 
     while (low <= high && iterations < maxIterations) {
       currentSize = (low + high) / BigInt(2);
-      
+
       // Convert currentSize to contract units (multiply by 1e9 for Ggas)
       const sizeInContractUnits = currentSize * BigInt(1e9);
-      
+
+      // eslint-disable-next-line no-await-in-loop
       const result = await publicClient?.simulateContract({
         abi: foilData.abi,
         address: marketAddress as `0x${string}`,
-        functionName: isEdit ? 'quoteModifyTraderPosition' : 'quoteCreateTraderPosition',
-        args: isEdit 
+        functionName: isEdit
+          ? 'quoteModifyTraderPosition'
+          : 'quoteCreateTraderPosition',
+        args: isEdit
           ? [nftId, sizeInContractUnits]
           : [epoch, sizeInContractUnits],
         account: address || zeroAddress,
@@ -570,11 +573,12 @@ export default function AddEditTrade() {
       // Extract collateral requirement from result
       const [quotedCollateral] = result.result;
       const quotedCollateralBigInt = BigInt(quotedCollateral.toString());
-      
+
       // Calculate how far off we are from target
-      const diff = quotedCollateralBigInt > targetCollateral 
-        ? quotedCollateralBigInt - targetCollateral
-        : targetCollateral - quotedCollateralBigInt;
+      const diff =
+        quotedCollateralBigInt > targetCollateral
+          ? quotedCollateralBigInt - targetCollateral
+          : targetCollateral - quotedCollateralBigInt;
 
       // Update best result if this is closer
       if (diff < bestDiff) {
@@ -592,7 +596,10 @@ export default function AddEditTrade() {
       iterations++;
     }
 
-    console.log('result', bestSize - (isEdit ? originalPositionSizeInContractUnit : BigInt(0)));
+    console.log(
+      'result',
+      bestSize - (isEdit ? originalPositionSizeInContractUnit : BigInt(0))
+    );
 
     // Convert bestSize back to gas units before setting
     setSizeChange(bestSize);
@@ -644,7 +651,7 @@ export default function AddEditTrade() {
         error={formError}
         label="Size"
         defaultToGas={false}
-        allowCollateralInput={true}
+        allowCollateralInput
         collateralAssetTicker={collateralAssetTicker}
         onCollateralAmountChange={handleCollateralAmountChange}
       />
