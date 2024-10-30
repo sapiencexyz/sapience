@@ -76,9 +76,6 @@ contract VaultTest is TestTrade {
     }
 
     function test_firstEpochInitialized() public {
-        uint256 startTime;
-        uint256 endTime;
-
         // Verify no epochs were created before
         vm.expectRevert(
             abi.encodeWithSelector(Errors.NoEpochsCreated.selector)
@@ -157,7 +154,7 @@ contract VaultTest is TestTrade {
 
         // Add liquidity
         vm.prank(lp1);
-        uint256 requestId = vault.requestDeposit(100 ether, lp1, lp1);
+        vault.requestDeposit(100 ether, lp1, lp1);
 
         // Settle
         vm.warp(epochData.endTime + 1);
@@ -204,10 +201,6 @@ contract VaultTest is TestTrade {
         collateralAssetContract = IMintableToken(
             vm.getAddress("CollateralAsset.Token")
         );
-
-        // params (should move from initializeMarket to createEpoch)
-        int24 minTick = 16000;
-        int24 maxTick = 30000;
 
         vm.startPrank(0x70997970C51812dc3A010C7d01b50e0d17dc79C8);
         // Initialize Market (by owner, links fail market with vault)
