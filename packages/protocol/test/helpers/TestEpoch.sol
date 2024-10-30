@@ -44,12 +44,7 @@ contract TestEpoch is TestUser {
         uint160 startingSqrtPriceX96,
         address[] memory feeCollectors
     ) public returns (IFoil, address) {
-        address owner = initializeMarket(
-            minTick,
-            maxTick,
-            feeCollectors,
-            address(0)
-        );
+        address owner = initializeMarket(feeCollectors, address(0));
         IFoil foil = IFoil(vm.getAddress("Foil"));
 
         vm.prank(owner);
@@ -72,12 +67,7 @@ contract TestEpoch is TestUser {
         address callbackRecipient
     ) public returns (IFoil, address) {
         address[] memory feeCollectors = new address[](0);
-        address owner = initializeMarket(
-            minTick,
-            maxTick,
-            feeCollectors,
-            callbackRecipient
-        );
+        address owner = initializeMarket(feeCollectors, callbackRecipient);
         IFoil foil = IFoil(vm.getAddress("Foil"));
 
         vm.prank(owner);
@@ -94,8 +84,6 @@ contract TestEpoch is TestUser {
     }
 
     function initializeMarket(
-        int24 minTick,
-        int24 maxTick,
         address[] memory feeCollectors,
         address callbackRecipient
     ) public returns (address) {
@@ -257,8 +245,6 @@ contract TestEpoch is TestUser {
 
         console2.log("feeGrowthGlobal0X128", data.feeGrowthGlobal0X128);
         console2.log("feeGrowthGlobal1X128", data.feeGrowthGlobal1X128);
-
-        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
 
         bytes32 positionKey = keccak256(
             abi.encodePacked(
