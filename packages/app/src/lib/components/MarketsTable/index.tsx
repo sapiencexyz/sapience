@@ -55,26 +55,6 @@ const MarketsTable: React.FC = () => {
     [actionName: string]: boolean;
   }>({});
   console.log('markets=', markets);
-  const account = useAccount();
-  const { isConnected, address } = account;
-
-  const contracts = useMemo(() => {
-    return markets.map((market) => {
-      return {
-        abi: erc20ABI as AbiFunction[],
-        address: market.collateralAsset as `0x${string}`,
-        functionName: 'allowance',
-        args: [address, market.address],
-        account: address || zeroAddress,
-        chainId: market.chainId,
-      };
-    });
-  }, [address, markets]);
-
-  const { data: allowances, refetch: refetchAllowances } = useReadContracts({
-    contracts,
-  });
-  console.log('allowances', allowances);
 
   const updateMarketPrivacy = async (market: Market) => {
     setLoadingAction((prev) => ({ ...prev, [market.address]: true }));
@@ -115,7 +95,7 @@ const MarketsTable: React.FC = () => {
           </Tr>
         </Thead>
         <Tbody>
-          {markets.map((market, idx) => (
+          {markets.map((market) => (
             <Tr key={market.id}>
               <Td>
                 <MarketAddress address={market.address} />
@@ -151,10 +131,6 @@ const MarketsTable: React.FC = () => {
                         key={epoch.epochId}
                         market={market}
                         epoch={epoch}
-                        allowance={
-                          allowances?.[idx]?.result as bigint | undefined
-                        }
-                        refetchAllowances={refetchAllowances}
                       />
                     ))}
                   </Tbody>
@@ -171,9 +147,9 @@ const MarketsTable: React.FC = () => {
 const EpochItem: React.FC<{
   epoch: Market['epochs'][0];
   market: Market;
-  allowance: bigint | undefined;
-  refetchAllowances: () => Promise<any>;
-}> = ({ market, epoch, allowance, refetchAllowances }) => {
+}> = ({ market, epoch }) => {
+  const account = useAccount();
+  const { address } = account;
   const [loadingStEthPerToken, setLoadingStEthPerToken] = useState(false);
   const [stEthPerToken, setStEthPerToken] = useState(0);
   const toast = useToast();
@@ -258,6 +234,18 @@ const EpochItem: React.FC<{
   const bondCurrency =
     epochData && epochData[9] ? epochData[9].bondCurrency : undefined;
 
+  const { data: allowance, refetch: refetchAllowance } = useReadContract({
+    abi: erc20ABI as AbiFunction[],
+    address: bondAmount as `0x${string}`,
+    functionName: 'allowance',
+    args: [address, market.address],
+    account: address || zeroAddress,
+    chainId: market.chainId,
+    query: {
+      enabled: !!address && !!bondAmount,
+    },
+  });
+
   const { writeContract: settleWithPrice, data: settlementHash } =
     useWriteContract({
       mutation: {
@@ -294,7 +282,7 @@ const EpochItem: React.FC<{
         );
       },
       onSuccess: async () => {
-        await refetchAllowances();
+        await refetchAllowance();
       },
     },
   });
