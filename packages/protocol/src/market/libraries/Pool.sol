@@ -40,8 +40,9 @@ library Pool {
             ,
             ,
 
-        ) = INonfungiblePositionManager(epoch.params.uniswapPositionManager)
-            .positions(position.uniswapPositionId);
+        ) = INonfungiblePositionManager(
+            epoch.marketParams.uniswapPositionManager
+        ).positions(position.uniswapPositionId);
         (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(epoch.pool).slot0();
         uint160 sqrtPriceAX96 = uint160(TickMath.getSqrtRatioAtTick(lowerTick));
         uint160 sqrtPriceBX96 = uint160(TickMath.getSqrtRatioAtTick(upperTick));

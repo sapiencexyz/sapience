@@ -31,19 +31,19 @@ contract UMASettlementModule is
 
         require(epoch.assertionId == bytes32(0), "Assertion already submitted");
 
-        IERC20 bondCurrency = IERC20(epoch.params.bondCurrency);
+        IERC20 bondCurrency = IERC20(epoch.marketParams.bondCurrency);
         OptimisticOracleV3Interface optimisticOracleV3 = OptimisticOracleV3Interface(
-                epoch.params.optimisticOracleV3
+                epoch.marketParams.optimisticOracleV3
             );
 
         bondCurrency.safeTransferFrom(
             msg.sender,
             address(this),
-            epoch.params.bondAmount
+            epoch.marketParams.bondAmount
         );
         bondCurrency.approve(
             address(optimisticOracleV3),
-            epoch.params.bondAmount
+            epoch.marketParams.bondAmount
         );
 
         bytes memory claim = abi.encodePacked(
@@ -62,9 +62,9 @@ contract UMASettlementModule is
             msg.sender,
             address(this),
             address(0),
-            epoch.params.assertionLiveness,
-            IERC20(epoch.params.bondCurrency),
-            epoch.params.bondAmount,
+            epoch.marketParams.assertionLiveness,
+            IERC20(epoch.marketParams.bondCurrency),
+            epoch.marketParams.bondAmount,
             optimisticOracleV3.defaultIdentifier(),
             bytes32(0)
         );
@@ -159,7 +159,7 @@ contract UMASettlementModule is
         bytes32 assertionId
     ) internal view {
         OptimisticOracleV3Interface optimisticOracleV3 = OptimisticOracleV3Interface(
-                epoch.params.optimisticOracleV3
+                epoch.marketParams.optimisticOracleV3
             );
 
         require(

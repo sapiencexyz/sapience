@@ -13,7 +13,7 @@ interface IViewsModule {
             address collateralAsset,
             address feeCollectorNFT,
             address callbackRecipient,
-            IFoilStructs.EpochParams memory epochParams
+            IFoilStructs.MarketParams memory marketParams
         );
 
     function getEpoch(
@@ -23,7 +23,7 @@ interface IViewsModule {
         view
         returns (
             IFoilStructs.EpochData memory epochData,
-            IFoilStructs.EpochParams memory epochParams
+            IFoilStructs.MarketParams memory marketParams
         );
 
     function getLatestEpoch()
@@ -31,7 +31,7 @@ interface IViewsModule {
         view
         returns (
             IFoilStructs.EpochData memory epochData,
-            IFoilStructs.EpochParams memory epochParams
+            IFoilStructs.MarketParams memory marketParams
         );
 
     function getPosition(

@@ -23,7 +23,7 @@ contract ViewsModule is IViewsModule {
             address collateralAsset,
             address feeCollectorNFT,
             address callbackRecipient,
-            IFoilStructs.EpochParams memory epochParams
+            IFoilStructs.MarketParams memory marketParams
         )
     {
         Market.Data storage market = Market.load();
@@ -32,7 +32,7 @@ contract ViewsModule is IViewsModule {
             address(market.collateralAsset),
             address(market.feeCollectorNFT),
             address(market.callbackRecipient),
-            market.epochParams
+            market.marketParams
         );
     }
 
@@ -44,7 +44,7 @@ contract ViewsModule is IViewsModule {
         override
         returns (
             IFoilStructs.EpochData memory epochData,
-            IFoilStructs.EpochParams memory params
+            IFoilStructs.MarketParams memory params
         )
     {
         Epoch.Data storage epoch = Epoch.load(id);
@@ -63,7 +63,7 @@ contract ViewsModule is IViewsModule {
             settlementPriceD18: epoch.settlementPriceD18
         });
 
-        return (epochData, epoch.params);
+        return (epochData, epoch.marketParams);
     }
 
     function getLatestEpoch()
@@ -72,7 +72,7 @@ contract ViewsModule is IViewsModule {
         override
         returns (
             IFoilStructs.EpochData memory epochData,
-            IFoilStructs.EpochParams memory params
+            IFoilStructs.MarketParams memory params
         )
     {
         uint256 epochId = Market.load().lastEpochId;
@@ -96,7 +96,7 @@ contract ViewsModule is IViewsModule {
             settlementPriceD18: epoch.settlementPriceD18
         });
 
-        return (epochData, epoch.params);
+        return (epochData, epoch.marketParams);
     }
 
     function getPosition(
@@ -226,8 +226,9 @@ contract ViewsModule is IViewsModule {
             ,
             uint128 tokensOwed0,
             uint128 tokensOwed1
-        ) = INonfungiblePositionManager(epoch.params.uniswapPositionManager)
-                .positions(position.uniswapPositionId);
+        ) = INonfungiblePositionManager(
+                epoch.marketParams.uniswapPositionManager
+            ).positions(position.uniswapPositionId);
 
         // Get the current sqrt price from the pool
         (uint160 sqrtPriceX96, , , , , , ) = epoch.pool.slot0();

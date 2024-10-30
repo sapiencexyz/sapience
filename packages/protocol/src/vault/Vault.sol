@@ -102,17 +102,17 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 epochId,
         uint160 price
     ) external returns (bytes32 assertionId) {
-        (, , , , IFoilStructs.EpochParams memory epochParams) = market
+        (, , , , IFoilStructs.MarketParams memory marketParams) = market
             .getMarket();
-        IERC20 bondCurrency = IERC20(epochParams.bondCurrency);
+        IERC20 bondCurrency = IERC20(marketParams.bondCurrency);
 
         bondCurrency.safeTransferFrom(
             msg.sender,
             address(this),
-            epochParams.bondAmount
+            marketParams.bondAmount
         );
 
-        bondCurrency.approve(address(market), epochParams.bondAmount);
+        bondCurrency.approve(address(market), marketParams.bondAmount);
         assertionId = market.submitSettlementPrice(epochId, price);
     }
 
@@ -144,7 +144,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         (
             int24 baseAssetMinPriceTick,
             int24 baseAssetMaxPriceTick
-        ) = _getTickBoundsForStartingPrice(startingSqrtPriceX96);
+        ) = _calculateTickBounds(startingSqrtPriceX96);
 
         uint256 newEpochId = IFoil(market).createEpoch(
             startTime,
@@ -157,7 +157,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         currentEpochId = newEpochId;
     }
 
-    function _getTickBoundsForStartingPrice(
+    function _calculateTickBounds(
         uint160 startingSqrtPriceX96
     )
         private
