@@ -115,7 +115,10 @@ export default function Settle() {
     );
   }
 
-  if (positions?.tradePositions?.length === 0 && positions?.liquidityPositions?.length === 0) {
+  if (
+    positions?.tradePositions?.length === 0 &&
+    positions?.liquidityPositions?.length === 0
+  ) {
     return (
       <Heading size="md" textAlign="center" p={8}>
         The connected wallet has no positions in this epoch
