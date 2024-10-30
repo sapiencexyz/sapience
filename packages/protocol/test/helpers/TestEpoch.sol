@@ -114,7 +114,7 @@ contract TestEpoch is TestUser {
             feeCollectors,
             callbackRecipient,
             minTradeSize,
-            IFoilStructs.EpochParams({
+            IFoilStructs.MarketParams({
                 feeRate: 10000,
                 assertionLiveness: 21600,
                 bondCurrency: vm.getAddress("BondCurrency.Token"),
@@ -201,7 +201,7 @@ contract TestEpoch is TestUser {
         IFoil foil = IFoil(vm.getAddress("Foil"));
         (
             IFoilStructs.EpochData memory epochData,
-            IFoilStructs.EpochParams memory epochParams
+            IFoilStructs.MarketParams memory marketParams
         ) = foil.getLatestEpoch();
         (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(epochData.pool)
             .slot0();
@@ -219,7 +219,7 @@ contract TestEpoch is TestUser {
             ,
             tokensOwed0,
             tokensOwed1
-        ) = INonfungiblePositionManager(epochParams.uniswapPositionManager)
+        ) = INonfungiblePositionManager(marketParams.uniswapPositionManager)
             .positions(uniswapPositionId);
 
         (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
@@ -254,7 +254,7 @@ contract TestEpoch is TestUser {
 
         OwedTokensData memory data;
 
-        (, , , , IFoilStructs.EpochParams memory epochParams) = foil
+        (, , , , IFoilStructs.MarketParams memory marketParams) = foil
             .getMarket();
 
         // Fetch the current fee growth global values
@@ -267,7 +267,7 @@ contract TestEpoch is TestUser {
 
         bytes32 positionKey = keccak256(
             abi.encodePacked(
-                address(epochParams.uniswapPositionManager),
+                address(marketParams.uniswapPositionManager),
                 data.tickLower,
                 data.tickUpper
             )

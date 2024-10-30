@@ -21,7 +21,7 @@ library Market {
         IERC20 collateralAsset;
         IERC721 feeCollectorNFT;
         uint256 lastEpochId;
-        IFoilStructs.EpochParams epochParams;
+        IFoilStructs.MarketParams marketParams;
         mapping(bytes32 => uint256) epochIdByAssertionId;
         uint256 minTradeSize;
     }
@@ -40,9 +40,9 @@ library Market {
         address feeCollectorNFT,
         address callbackRecipient,
         uint256 minTradeSize,
-        IFoilStructs.EpochParams memory epochParams
+        IFoilStructs.MarketParams memory marketParams
     ) internal returns (Data storage market) {
-        validateEpochParams(epochParams);
+        validateEpochParams(marketParams);
 
         require(
             IERC20Metadata(collateralAsset).decimals() == 18,
@@ -60,7 +60,7 @@ library Market {
         market.collateralAsset = IERC20(collateralAsset);
         market.feeCollectorNFT = IERC721(feeCollectorNFT);
         market.minTradeSize = minTradeSize;
-        market.epochParams = epochParams;
+        market.marketParams = marketParams;
 
         if (callbackRecipient != address(0)) {
             if (
@@ -81,72 +81,66 @@ library Market {
     function loadValid() internal view returns (Data storage market) {
         market = load();
 
-        if (address(market.epochParams.uniswapPositionManager) == address(0)) {
+        if (address(market.marketParams.uniswapPositionManager) == address(0)) {
             revert Errors.InvalidMarket();
         }
     }
 
     function updateValid(
-        IFoilStructs.EpochParams memory epochParams
+        IFoilStructs.MarketParams memory marketParams
     ) internal returns (Data storage market) {
-        validateEpochParams(epochParams);
+        validateEpochParams(marketParams);
 
         market = load();
 
-        market.epochParams = epochParams;
+        market.marketParams = marketParams;
     }
 
     function validateEpochParams(
-        IFoilStructs.EpochParams memory epochParams
+        IFoilStructs.MarketParams memory marketParams
     ) internal pure {
-        int24 tickSpacing = getTickSpacingForFee(epochParams.feeRate);
+        uint24 feeRate = marketParams.feeRate;
+        if (
+            feeRate != 100 &&
+            feeRate != 500 &&
+            feeRate != 3000 &&
+            feeRate != 10000
+        ) {
+            revert Errors.InvalidFeeRate(feeRate);
+        }
 
         require(
-            epochParams.assertionLiveness >= 6 hours,
+            marketParams.assertionLiveness >= 6 hours,
             "assertionLiveness must be at least six hours"
         );
         require(
-            epochParams.bondCurrency != address(0),
+            marketParams.bondCurrency != address(0),
             "bondCurrency must be a non-zero address"
         );
         require(
-            epochParams.bondAmount > 0,
+            marketParams.bondAmount > 0,
             "bondAmount must be greater than 0"
         );
         require(
-            epochParams.claimStatement.length > 0,
+            marketParams.claimStatement.length > 0,
             "claimStatement must be non-empty"
         );
         require(
-            epochParams.uniswapPositionManager != address(0),
+            marketParams.uniswapPositionManager != address(0),
             "uniswapPositionManager must be a non-zero address"
         );
         require(
-            epochParams.uniswapSwapRouter != address(0),
+            marketParams.uniswapSwapRouter != address(0),
             "uniswapSwapRouter must be a non-zero address"
         );
         require(
-            epochParams.uniswapQuoter != address(0),
+            marketParams.uniswapQuoter != address(0),
             "uniswapQuoter must be a non-zero address"
         );
         require(
-            epochParams.optimisticOracleV3 != address(0),
+            marketParams.optimisticOracleV3 != address(0),
             "optimisticOracleV3 must be a non-zero address"
         );
-    }
-
-    function getTickSpacingForFee(uint24 fee) internal pure returns (int24) {
-        if (fee == 100) {
-            return 1;
-        } else if (fee == 500) {
-            return 10;
-        } else if (fee == 3000) {
-            return 60;
-        } else if (fee == 10000) {
-            return 200;
-        } else {
-            revert Errors.InvalidTickSpacing(fee);
-        }
     }
 
     function getNewEpochId(Data storage self) internal returns (uint256) {

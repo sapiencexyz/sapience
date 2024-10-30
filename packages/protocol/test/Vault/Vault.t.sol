@@ -216,7 +216,7 @@ contract VaultTest is TestTrade {
             address(collateralAssetContract),
             feeCollectors,
             address(vaultContract),
-            IFoilStructs.EpochParams({
+            IFoilStructs.MarketParams({
                 feeRate: 10000,
                 assertionLiveness: 21600,
                 bondCurrency: vm.getAddress("BondCurrency.Token"),
