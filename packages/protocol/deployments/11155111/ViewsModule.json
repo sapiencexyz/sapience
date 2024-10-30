@@ -1,5 +1,5 @@
 {
-  "address": "0x603586E17bA154E6578E4b5959994c2d5058910C",
+  "address": "0xfB77eE9f1Aff6Ba0f19d66F0052356606bA14352",
   "abi": [
     {
       "type": "function",
@@ -83,19 +83,14 @@
               "internalType": "uint64"
             },
             {
-              "name": "bondCurrency",
-              "type": "address",
-              "internalType": "address"
-            },
-            {
               "name": "bondAmount",
               "type": "uint256",
               "internalType": "uint256"
             },
             {
-              "name": "claimStatement",
-              "type": "bytes32",
-              "internalType": "bytes32"
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
             },
             {
               "name": "uniswapPositionManager",
@@ -116,6 +111,11 @@
               "name": "optimisticOracleV3",
               "type": "address",
               "internalType": "address"
+            },
+            {
+              "name": "claimStatement",
+              "type": "bytes",
+              "internalType": "bytes"
             }
           ]
         }
@@ -203,19 +203,14 @@
               "internalType": "uint64"
             },
             {
-              "name": "bondCurrency",
-              "type": "address",
-              "internalType": "address"
-            },
-            {
               "name": "bondAmount",
               "type": "uint256",
               "internalType": "uint256"
             },
             {
-              "name": "claimStatement",
-              "type": "bytes32",
-              "internalType": "bytes32"
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
             },
             {
               "name": "uniswapPositionManager",
@@ -236,6 +231,11 @@
               "name": "optimisticOracleV3",
               "type": "address",
               "internalType": "address"
+            },
+            {
+              "name": "claimStatement",
+              "type": "bytes",
+              "internalType": "bytes"
             }
           ]
         }
@@ -293,19 +293,14 @@
               "internalType": "uint64"
             },
             {
-              "name": "bondCurrency",
-              "type": "address",
-              "internalType": "address"
-            },
-            {
               "name": "bondAmount",
               "type": "uint256",
               "internalType": "uint256"
             },
             {
-              "name": "claimStatement",
-              "type": "bytes32",
-              "internalType": "bytes32"
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
             },
             {
               "name": "uniswapPositionManager",
@@ -326,6 +321,11 @@
               "name": "optimisticOracleV3",
               "type": "address",
               "internalType": "address"
+            },
+            {
+              "name": "claimStatement",
+              "type": "bytes",
+              "internalType": "bytes"
             }
           ]
         }
@@ -405,6 +405,25 @@
     },
     {
       "type": "function",
+      "name": "getPositionCollateralValue",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "collateralValue",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "getPositionSize",
       "inputs": [
         {
@@ -462,7 +481,33 @@
     },
     {
       "type": "error",
+      "name": "InvalidPositionId",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "NoEpochsCreated",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowInt24ToUint256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowInt256ToUint256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowUint256ToInt256",
       "inputs": []
     },
     {
@@ -473,12 +518,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x2e83f49d7e0334e61593cbe8a58736a0a5b0db3d57e1cfdf5810bcc3be0d84e5",
-  "deployTxnBlockNumber": "6917972",
-  "deployTimestamp": "1729536720",
+  "deployTxnHash": "0x04ce2bb2f1afe0b26109aaf108b3560d719ad1c9afab38b0a5122534d768991c",
+  "deployTxnBlockNumber": "6973599",
+  "deployTimestamp": "1730252712",
   "sourceName": "src/market/modules/ViewsModule.sol",
   "contractName": "ViewsModule",
   "deployedOn": "deploy.ViewsModule",
-  "gasUsed": 987469,
-  "gasCost": "1397174542"
+  "gasUsed": 1797018,
+  "gasCost": "2054895655"
 }

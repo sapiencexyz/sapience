@@ -1,5 +1,5 @@
 {
-  "address": "0xfB55d6Cc4dc5f55Aa951A5913939Bbc84407E2a0",
+  "address": "0xFB5555d4a850046e134b75C3D5279c1B476ad728",
   "abi": [
     {
       "type": "constructor",
@@ -44,7 +44,13 @@
           "internalType": "uint256"
         }
       ],
-      "outputs": [],
+      "outputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
       "stateMutability": "nonpayable"
     },
     {
@@ -97,19 +103,14 @@
               "internalType": "uint64"
             },
             {
-              "name": "bondCurrency",
-              "type": "address",
-              "internalType": "address"
-            },
-            {
               "name": "bondAmount",
               "type": "uint256",
               "internalType": "uint256"
             },
             {
-              "name": "claimStatement",
-              "type": "bytes32",
-              "internalType": "bytes32"
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
             },
             {
               "name": "uniswapPositionManager",
@@ -130,6 +131,11 @@
               "name": "optimisticOracleV3",
               "type": "address",
               "internalType": "address"
+            },
+            {
+              "name": "claimStatement",
+              "type": "bytes",
+              "internalType": "bytes"
             }
           ]
         }
@@ -206,19 +212,14 @@
               "internalType": "uint64"
             },
             {
-              "name": "bondCurrency",
-              "type": "address",
-              "internalType": "address"
-            },
-            {
               "name": "bondAmount",
               "type": "uint256",
               "internalType": "uint256"
             },
             {
-              "name": "claimStatement",
-              "type": "bytes32",
-              "internalType": "bytes32"
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
             },
             {
               "name": "uniswapPositionManager",
@@ -239,6 +240,11 @@
               "name": "optimisticOracleV3",
               "type": "address",
               "internalType": "address"
+            },
+            {
+              "name": "claimStatement",
+              "type": "bytes",
+              "internalType": "bytes"
             }
           ]
         }
@@ -345,19 +351,14 @@
               "internalType": "uint64"
             },
             {
-              "name": "bondCurrency",
-              "type": "address",
-              "internalType": "address"
-            },
-            {
               "name": "bondAmount",
               "type": "uint256",
               "internalType": "uint256"
             },
             {
-              "name": "claimStatement",
-              "type": "bytes32",
-              "internalType": "bytes32"
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
             },
             {
               "name": "uniswapPositionManager",
@@ -378,6 +379,11 @@
               "name": "optimisticOracleV3",
               "type": "address",
               "internalType": "address"
+            },
+            {
+              "name": "claimStatement",
+              "type": "bytes",
+              "internalType": "bytes"
             }
           ]
         }
@@ -415,19 +421,14 @@
               "internalType": "uint64"
             },
             {
-              "name": "bondCurrency",
-              "type": "address",
-              "internalType": "address"
-            },
-            {
               "name": "bondAmount",
               "type": "uint256",
               "internalType": "uint256"
             },
             {
-              "name": "claimStatement",
-              "type": "bytes32",
-              "internalType": "bytes32"
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
             },
             {
               "name": "uniswapPositionManager",
@@ -448,6 +449,11 @@
               "name": "optimisticOracleV3",
               "type": "address",
               "internalType": "address"
+            },
+            {
+              "name": "claimStatement",
+              "type": "bytes",
+              "internalType": "bytes"
             }
           ]
         }
@@ -676,12 +682,12 @@
     "0xE006B58cA5aB7ba53863012dc3067A14b965C1da"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x9ce8ceafddac72b31a109cb75fcc45d5a5ce878ed966f5bb610fa2faa7aadb19",
-  "deployTxnBlockNumber": "6917973",
-  "deployTimestamp": "1729536732",
+  "deployTxnHash": "0x016e9ac1b27f41a9dd404d741ad9f6f1bc72360f0879efdd7cde176fbdf421f1",
+  "deployTxnBlockNumber": "6973600",
+  "deployTimestamp": "1730252724",
   "sourceName": "src/market/modules/ConfigurationModule.sol",
   "contractName": "ConfigurationModule",
   "deployedOn": "deploy.ConfigurationModule",
-  "gasUsed": 3957631,
-  "gasCost": "1396613664"
+  "gasUsed": 4179840,
+  "gasCost": "2029633198"
 }
