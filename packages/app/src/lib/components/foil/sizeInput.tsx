@@ -10,11 +10,18 @@ import {
   InputRightAddon,
   Button,
   FormErrorMessage,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
 } from '@chakra-ui/react';
-import type { Dispatch, SetStateAction } from 'react';
+import { Dispatch, SetStateAction, useContext } from 'react';
 import { useEffect, useState } from 'react';
+import { MarketContext } from '~/lib/context/MarketProvider';
 
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
+
+type InputType = 'gas' | 'Ggas' | 'wstETH';
 
 interface Props {
   nftId?: number;
@@ -25,6 +32,8 @@ interface Props {
   error?: string;
   label?: string;
   defaultToGas?: boolean;
+  currentPrice?: number;
+  slippage?: number;
 }
 
 const SizeInput: React.FC<Props> = ({
@@ -36,9 +45,29 @@ const SizeInput: React.FC<Props> = ({
   error,
   label = 'Size',
   defaultToGas = true,
+  currentPrice = 0,
+  slippage = 0.5,
 }) => {
+  const { collateralAssetTicker } = useContext(MarketContext);
   const [sizeInput, setSizeInput] = useState<string>('0');
-  const [isGasInput, setIsGasInput] = useState(defaultToGas);
+  const [inputType, setInputType] = useState<InputType>(defaultToGas ? 'gas' : 'Ggas');
+
+  const calculateSizeFromCollateral = (collateralAmount: number): bigint => {
+    if (!currentPrice || currentPrice === 0) return BigInt(0);
+    
+    const MARGIN_REQUIREMENT = 0.1;
+    
+    // Adjust price for slippage
+    const adjustedPrice = isLong 
+      ? currentPrice * (1 + slippage / 100) // Higher price for longs
+      : currentPrice * (1 - slippage / 100); // Lower price for shorts
+    
+    // Size = Collateral / (AdjustedPrice * Margin Requirement)
+    const estimatedSize = collateralAmount / (adjustedPrice * MARGIN_REQUIREMENT);
+    
+    // Convert to gas units
+    return BigInt(Math.floor(estimatedSize * 1e9));
+  };
 
   useEffect(() => {
     handleSizeChange('0');
@@ -55,31 +84,12 @@ const SizeInput: React.FC<Props> = ({
     }
 
     const absoluteSize = size < 0 ? -size : size;
-    const numberValue = isGasInput
+    const numberValue = inputType === 'gas'
       ? absoluteSize.toString()
       : (Number(absoluteSize) / 1e9).toString();
 
     setSizeInput(numberValue);
-  }, [size, isGasInput]);
-
-  const handleUpdateInputType = () => {
-    const wasGasInput = isGasInput;
-    setIsGasInput(!wasGasInput);
-
-    if (sizeInput !== '') {
-      const currentValue = parseFloat(sizeInput);
-      const newValue = wasGasInput
-        ? currentValue / 1e9 // Convert from gas to Ggas
-        : currentValue * 1e9; // Convert from Ggas to gas
-
-      // Format the new value to avoid scientific notation
-      const formattedValue = newValue.toLocaleString('fullwide', {
-        useGrouping: false,
-        maximumFractionDigits: 20,
-      });
-      setSizeInput(formattedValue);
-    }
-  };
+  }, [size, inputType]);
 
   const handleSizeChange = (newVal: string) => {
     const numberPattern = /^(0|[1-9]\d*)(\.\d*)?$/;
@@ -92,12 +102,16 @@ const SizeInput: React.FC<Props> = ({
     if (processedVal === '' || numberPattern.test(processedVal)) {
       setSizeInput(processedVal);
       const newSize = processedVal === '' ? 0 : parseFloat(processedVal);
-      const sizeInGas = isGasInput
+      const sizeInGas = inputType === 'gas'
         ? BigInt(Math.floor(newSize))
         : BigInt(Math.floor(newSize * 1e9));
       const sign = isLong ? BigInt(1) : BigInt(-1);
       setSize(sign * sizeInGas);
     }
+  };
+
+  const handleInputTypeChange = (type: InputType) => {
+    setInputType(type);
   };
 
   return (
@@ -118,15 +132,22 @@ const SizeInput: React.FC<Props> = ({
             borderRight="none"
           />
           <InputRightAddon bg="none" px={1}>
-            <Button
-              px={3}
-              h="1.75rem"
-              size="sm"
-              onClick={handleUpdateInputType}
-              rightIcon={<ArrowUpDownIcon h={2.5} />}
-            >
-              {isGasInput ? 'gas' : 'Ggas'}
-            </Button>
+            <Menu>
+              <MenuButton
+                as={Button}
+                px={3}
+                h="1.75rem"
+                size="sm"
+                rightIcon={<ArrowUpDownIcon h={2.5} />}
+              >
+                {inputType === 'wstETH' ? collateralAssetTicker : inputType}
+              </MenuButton>
+              <MenuList>
+                <MenuItem onClick={() => handleInputTypeChange('gas')}>gas</MenuItem>
+                <MenuItem onClick={() => handleInputTypeChange('Ggas')}>Ggas</MenuItem>
+                <MenuItem onClick={() => handleInputTypeChange('wstETH')}>{collateralAssetTicker}</MenuItem>
+              </MenuList>
+            </Menu>
           </InputRightAddon>
         </InputGroup>
         {error && <FormErrorMessage>{error}</FormErrorMessage>}

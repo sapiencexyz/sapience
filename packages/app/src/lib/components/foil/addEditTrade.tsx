@@ -553,6 +553,8 @@ export default function AddEditTrade() {
         error={formError}
         label="Size"
         defaultToGas={false}
+        currentPrice={pool?.token0Price ? parseFloat(pool.token0Price.toSignificant(18)) : 0}
+        slippage={slippage}
       />
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
       {renderActionButton()}

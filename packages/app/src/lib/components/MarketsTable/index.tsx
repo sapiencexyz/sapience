@@ -1,3 +1,5 @@
+'use client';
+
 import { ChevronDownIcon } from '@chakra-ui/icons';
 import {
   Table,
@@ -50,13 +52,13 @@ import {
 } from '~/lib/util/util';
 
 const MarketsTable: React.FC = () => {
-  const { markets, isLoading, error, refetchMarkets } = useMarketList();
+  const { markets, isLoading, refetchMarkets } = useMarketList();
   const [loadingAction, setLoadingAction] = useState<{
     [actionName: string]: boolean;
   }>({});
   console.log('markets=', markets);
   const account = useAccount();
-  const { isConnected, address } = account;
+  const { address } = account;
 
   const contracts = useMemo(() => {
     return markets.map((market) => {
