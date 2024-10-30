@@ -100,8 +100,6 @@ contract TestEpoch is TestUser {
     }
 
     function initializeMarket(
-        int24 minTick,
-        int24 maxTick,
         address[] memory feeCollectors,
         address callbackRecipient,
         uint256 minTradeSize
@@ -262,8 +260,6 @@ contract TestEpoch is TestUser {
             .feeGrowthGlobal0X128();
         data.feeGrowthGlobal1X128 = IUniswapV3Pool(data.pool)
             .feeGrowthGlobal1X128();
-
-        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
 
         bytes32 positionKey = keccak256(
             abi.encodePacked(
