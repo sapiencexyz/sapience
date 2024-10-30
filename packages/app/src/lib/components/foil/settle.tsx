@@ -34,7 +34,7 @@ export default function Settle() {
     settlementPrice,
     collateralAssetTicker,
   } = useContext(MarketContext);
-  const { nftId, setNftId } = useAddEditPosition();
+  const { nftId, setNftId, positions } = useAddEditPosition();
   const [withdrawableCollateral, setWithdrawableCollateral] = useState<bigint>(
     BigInt(0)
   );
@@ -112,6 +112,14 @@ export default function Settle() {
       <Box textAlign="center">
         <Spinner />
       </Box>
+    );
+  }
+
+  if (positions?.tradePositions?.length === 0 && positions?.liquidityPositions?.length === 0) {
+    return (
+      <Heading size="md" textAlign="center" p={8}>
+        The connected wallet has no positions in this epoch
+      </Heading>
     );
   }
 
