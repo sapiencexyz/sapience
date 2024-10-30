@@ -11,6 +11,7 @@ import {
   Heading,
 } from '@chakra-ui/react';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
+import { debounce } from 'lodash';
 import { useState, useEffect, useContext, useMemo } from 'react';
 import type { AbiFunction, WriteContractErrorType } from 'viem';
 import { decodeEventLog, formatUnits, parseUnits, zeroAddress } from 'viem';
@@ -22,6 +23,7 @@ import {
   useSimulateContract,
   useChainId,
   useSwitchChain,
+  usePublicClient,
 } from 'wagmi';
 
 import erc20ABI from '../../erc20abi.json';
@@ -57,6 +59,7 @@ export default function AddEditTrade() {
   const [resultingPositionCollateral, setResultingPositionCollateral] =
     useState<bigint>(BigInt(0));
   const [txnStep, setTxnStep] = useState(0);
+  const [collateralInput, setCollateralInput] = useState<bigint>(BigInt(0));
 
   const account = useAccount();
   const { isConnected, address } = account;
@@ -97,6 +100,7 @@ export default function AddEditTrade() {
       return 'Not enough liquidity to perform this trade.';
     }
     if (quoteError) {
+      console.log('quoteError', quoteError);
       return 'The protocol cannot generate a quote for this order.';
     }
     return '';
@@ -530,6 +534,100 @@ export default function AddEditTrade() {
     );
   };
 
+  const findSizeForCollateral = async () => {
+    if (!collateralInput || collateralInput === BigInt(0)) return;
+
+    // Start with an initial guess based on current price
+    const targetCollateral = collateralInput;
+    let currentSize = BigInt(0);
+    let bestSize = BigInt(0);
+    let bestDiff = targetCollateral;
+    let iterations = 0;
+    const maxIterations = 10;
+
+    // Binary search parameters
+    let low = BigInt(0);
+    let high = (targetCollateral * BigInt(2)) / BigInt(1e9); // Divide by 1e9 to convert from Gwei to gas
+
+    while (low <= high && iterations < maxIterations) {
+      currentSize = (low + high) / BigInt(2);
+
+      // Convert currentSize to contract units (multiply by 1e9 for Ggas)
+      const sizeInContractUnits = currentSize * BigInt(1e9);
+
+      // eslint-disable-next-line no-await-in-loop
+      const result = await publicClient?.simulateContract({
+        abi: foilData.abi,
+        address: marketAddress as `0x${string}`,
+        functionName: isEdit
+          ? 'quoteModifyTraderPosition'
+          : 'quoteCreateTraderPosition',
+        args: isEdit
+          ? [nftId, sizeInContractUnits]
+          : [epoch, sizeInContractUnits],
+        account: address || zeroAddress,
+      });
+
+      if (!result?.result) break;
+
+      // Extract collateral requirement from result
+      const [quotedCollateral] = result.result;
+      const quotedCollateralBigInt = BigInt(quotedCollateral.toString());
+
+      // Calculate how far off we are from target
+      const diff =
+        quotedCollateralBigInt > targetCollateral
+          ? quotedCollateralBigInt - targetCollateral
+          : targetCollateral - quotedCollateralBigInt;
+
+      // Update best result if this is closer
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        bestSize = currentSize;
+      }
+
+      // Binary search adjustment
+      if (quotedCollateralBigInt > targetCollateral) {
+        high = currentSize - BigInt(1);
+      } else {
+        low = currentSize + BigInt(1);
+      }
+
+      iterations++;
+    }
+
+    console.log(
+      'result',
+      bestSize - (isEdit ? originalPositionSizeInContractUnit : BigInt(0))
+    );
+
+    // Convert bestSize back to gas units before setting
+    setSizeChange(bestSize);
+
+    console.log('sizeChange', sizeChange);
+  };
+
+  // Debounce the search to avoid too many calls
+  const debouncedFindSize = useMemo(
+    () => debounce(findSizeForCollateral, 500),
+    [collateralInput, isEdit, originalPositionSizeInContractUnit]
+  );
+
+  useEffect(() => {
+    if (collateralInput > BigInt(0)) {
+      debouncedFindSize();
+    }
+    return () => {
+      debouncedFindSize.cancel();
+    };
+  }, [collateralInput, debouncedFindSize]);
+
+  const handleCollateralAmountChange = (amount: bigint) => {
+    setCollateralInput(amount);
+  };
+
+  const publicClient = usePublicClient();
+
   return (
     <form onSubmit={handleSubmit}>
       <Heading size="md" mb={3}>
@@ -553,6 +651,9 @@ export default function AddEditTrade() {
         error={formError}
         label="Size"
         defaultToGas={false}
+        allowCollateralInput
+        collateralAssetTicker={collateralAssetTicker}
+        onCollateralAmountChange={handleCollateralAmountChange}
       />
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
       {renderActionButton()}
