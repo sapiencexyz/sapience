@@ -25,6 +25,9 @@ interface Props {
   error?: string;
   label?: string;
   defaultToGas?: boolean;
+  allowCollateralInput?: boolean;
+  collateralAssetTicker?: string;
+  onCollateralAmountChange?: (amount: bigint) => void;
 }
 
 const SizeInput: React.FC<Props> = ({
@@ -36,9 +39,15 @@ const SizeInput: React.FC<Props> = ({
   error,
   label = 'Size',
   defaultToGas = true,
+  allowCollateralInput = false,
+  collateralAssetTicker = '',
+  onCollateralAmountChange,
 }) => {
   const [sizeInput, setSizeInput] = useState<string>('0');
   const [isGasInput, setIsGasInput] = useState(defaultToGas);
+  const [inputType, setInputType] = useState<'gas' | 'Ggas' | 'collateral'>(
+    defaultToGas ? 'gas' : 'Ggas'
+  );
 
   useEffect(() => {
     handleSizeChange('0');
@@ -63,16 +72,38 @@ const SizeInput: React.FC<Props> = ({
   }, [size, isGasInput]);
 
   const handleUpdateInputType = () => {
-    const wasGasInput = isGasInput;
-    setIsGasInput(!wasGasInput);
+    const currentType = inputType;
+    let newType: 'gas' | 'Ggas' | 'collateral';
+    
+    if (allowCollateralInput) {
+      // Cycle through all three types
+      if (currentType === 'gas') newType = 'Ggas';
+      else if (currentType === 'Ggas') newType = 'collateral';
+      else newType = 'gas';
+    } else {
+      // Just toggle between gas and Ggas
+      newType = currentType === 'gas' ? 'Ggas' : 'gas';
+    }
+    
+    setInputType(newType);
 
     if (sizeInput !== '') {
       const currentValue = parseFloat(sizeInput);
-      const newValue = wasGasInput
-        ? currentValue / 1e9 // Convert from gas to Ggas
-        : currentValue * 1e9; // Convert from Ggas to gas
+      let newValue: number;
+      
+      // Convert based on type change
+      if (currentType === 'gas' && newType === 'Ggas') {
+        newValue = currentValue / 1e9;
+      } else if (currentType === 'Ggas' && newType === 'gas') {
+        newValue = currentValue * 1e9;
+      } else if (newType === 'collateral') {
+        // Reset input when switching to collateral
+        newValue = 0;
+      } else {
+        // Reset input when switching from collateral
+        newValue = 0;
+      }
 
-      // Format the new value to avoid scientific notation
       const formattedValue = newValue.toLocaleString('fullwide', {
         useGrouping: false,
         maximumFractionDigits: 20,
@@ -91,12 +122,18 @@ const SizeInput: React.FC<Props> = ({
 
     if (processedVal === '' || numberPattern.test(processedVal)) {
       setSizeInput(processedVal);
-      const newSize = processedVal === '' ? 0 : parseFloat(processedVal);
-      const sizeInGas = isGasInput
-        ? BigInt(Math.floor(newSize))
-        : BigInt(Math.floor(newSize * 1e9));
-      const sign = isLong ? BigInt(1) : BigInt(-1);
-      setSize(sign * sizeInGas);
+      
+      if (inputType === 'collateral') {
+        const collateralAmount = processedVal === '' ? 0 : parseFloat(processedVal);
+        onCollateralAmountChange?.(BigInt(Math.floor(collateralAmount * 1e18)));
+      } else {
+        const newSize = processedVal === '' ? 0 : parseFloat(processedVal);
+        const sizeInGas = inputType === 'gas'
+          ? BigInt(Math.floor(newSize))
+          : BigInt(Math.floor(newSize * 1e9));
+        const sign = isLong ? BigInt(1) : BigInt(-1);
+        setSize(sign * sizeInGas);
+      }
     }
   };
 
@@ -125,7 +162,7 @@ const SizeInput: React.FC<Props> = ({
               onClick={handleUpdateInputType}
               rightIcon={<ArrowUpDownIcon h={2.5} />}
             >
-              {isGasInput ? 'gas' : 'Ggas'}
+              {inputType === 'collateral' ? collateralAssetTicker : inputType}
             </Button>
           </InputRightAddon>
         </InputGroup>
