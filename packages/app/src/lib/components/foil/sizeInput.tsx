@@ -107,6 +107,9 @@ const SizeInput: React.FC<Props> = ({
       useGrouping: false,
       maximumFractionDigits: 20,
     });
+    if (newValue === 0) {
+      handleSizeChange('0');
+    }
     setSizeInput(formattedValue);
   };
 

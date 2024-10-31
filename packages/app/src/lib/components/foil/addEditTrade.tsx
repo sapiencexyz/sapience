@@ -43,9 +43,13 @@ const tradeOptions = ['Long', 'Short'];
 
 export default function AddEditTrade() {
   const { nftId, refreshPositions } = useAddEditPosition();
+
+  // form states
   const [sizeChange, setSizeChange] = useState<bigint>(BigInt(0));
   const [option, setOption] = useState<'Long' | 'Short'>('Long');
   const [slippage, setSlippage] = useState<number>(0.5);
+
+  // component states
   const [pendingTxn, setPendingTxn] = useState(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [walletBalance, setWalletBalance] = useState<string>('0');
@@ -89,22 +93,35 @@ export default function AddEditTrade() {
 
   const isLong = option === 'Long';
 
+  const sizeChangeInContractUnit = useMemo(() => {
+    return sizeChange * BigInt(1e9); // Convert sizeChange from gas to Ggas with 18 decimals
+  }, [sizeChange]);
+
   const formError = useMemo(() => {
+    if (Number(quotedResultingWalletBalance) < 0) {
+      return 'Insufficient wallet balance to perform this trade.';
+    }
     if (
-      sizeChange > BigInt(0) &&
+      sizeChangeInContractUnit > BigInt(0) &&
       (!liquidity ||
         (isLong &&
-          parseFloat(formatUnits(sizeChange, 18)) > Number(liquidity))) &&
-      !isEdit
+          parseFloat(formatUnits(sizeChangeInContractUnit, TOKEN_DECIMALS)) >
+            Number(liquidity)))
     ) {
       return 'Not enough liquidity to perform this trade.';
     }
     if (quoteError) {
-      console.log('quoteError', quoteError);
+      console.error('quoteError', quoteError);
       return 'The protocol cannot generate a quote for this order.';
     }
     return '';
-  }, [quoteError, liquidity, sizeChange, isLong]);
+  }, [
+    quoteError,
+    liquidity,
+    sizeChangeInContractUnit,
+    isLong,
+    quotedResultingWalletBalance,
+  ]);
 
   // Position data
   const { data: positionData, refetch: refetchPositionData } = useReadContract({
@@ -138,10 +155,6 @@ export default function AddEditTrade() {
 
     return BigInt(0);
   }, [positionData, isEdit]);
-
-  const sizeChangeInContractUnit = useMemo(() => {
-    return sizeChange * BigInt(1e9); // Convert sizeChange from gas to Ggas with 18 decimals
-  }, [sizeChange]);
 
   const desiredSizeInContractUnit = useMemo(() => {
     return originalPositionSizeInContractUnit + sizeChangeInContractUnit;

@@ -46,8 +46,6 @@ const TransactionTable: React.FC<Props> = ({ transactions }) => {
     );
   }, [transactions]);
 
-  console.log('s', sortedTransactions);
-
   return (
     <TableContainer mb={4}>
       <Table variant="simple" size="sm">
