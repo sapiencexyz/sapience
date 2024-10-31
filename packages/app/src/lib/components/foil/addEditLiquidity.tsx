@@ -943,7 +943,7 @@ const AddEditLiquidity: React.FC = () => {
     const isDisabled =
       pendingTxn ||
       isFetching ||
-      isBlankDeposit ||
+      (!isEdit && isBlankDeposit) ||
       (isEdit && isAmountUnchanged) ||
       !isValid;
 
