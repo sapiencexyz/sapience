@@ -26,6 +26,7 @@ import {
   AccordionPanel,
   AccordionIcon,
 } from '@chakra-ui/react';
+import { formatDuration, intervalToDuration } from 'date-fns';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   type FC,
@@ -501,16 +502,32 @@ const Subscribe: FC<SubscribeProps> = ({
         throw new Error('Failed to fetch estimate');
       }
 
+      const duration = formatDuration(
+        intervalToDuration({
+          start: Number(startTime) * 1000,
+          end: Number(endTime) * 1000,
+        })
+      );
       const data = await response.json();
       setSize(BigInt(Math.floor(data.totalGasUsed)));
       setAccordionIndex(null);
-      toast({
-        title: 'Estimate Complete',
-        description: 'Gas amount has been populated based on historical usage.',
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      });
+      if (size === BigInt(0)) {
+        toast({
+          title: 'Estimate Complete',
+          description: `This wallet hasn't used any gas in the last ${duration}.`,
+          status: 'info',
+          duration: 5000,
+          isClosable: true,
+        });
+      } else {
+        toast({
+          title: 'Estimate Complete',
+          description: `Gas amount has been populated based on this wallet's usage in the last ${duration}.`,
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
     } catch (error) {
       toast({
         title: 'Estimation Failed',
