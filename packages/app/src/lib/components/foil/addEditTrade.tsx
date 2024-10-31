@@ -1,3 +1,4 @@
+/* eslint-disable sonarjs/cognitive-complexity */
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import {
   Flex,
@@ -10,6 +11,7 @@ import {
   Heading,
 } from '@chakra-ui/react';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
+import { debounce } from 'lodash';
 import { useState, useEffect, useContext, useMemo } from 'react';
 import type { AbiFunction, WriteContractErrorType } from 'viem';
 import { decodeEventLog, formatUnits, parseUnits, zeroAddress } from 'viem';
@@ -21,6 +23,7 @@ import {
   useSimulateContract,
   useChainId,
   useSwitchChain,
+  usePublicClient,
 } from 'wagmi';
 
 import erc20ABI from '../../erc20abi.json';
@@ -40,9 +43,13 @@ const tradeOptions = ['Long', 'Short'];
 
 export default function AddEditTrade() {
   const { nftId, refreshPositions } = useAddEditPosition();
+
+  // form states
   const [sizeChange, setSizeChange] = useState<bigint>(BigInt(0));
   const [option, setOption] = useState<'Long' | 'Short'>('Long');
   const [slippage, setSlippage] = useState<number>(0.5);
+
+  // component states
   const [pendingTxn, setPendingTxn] = useState(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [walletBalance, setWalletBalance] = useState<string>('0');
@@ -55,6 +62,8 @@ export default function AddEditTrade() {
     useState<bigint>(BigInt(0));
   const [resultingPositionCollateral, setResultingPositionCollateral] =
     useState<bigint>(BigInt(0));
+  const [txnStep, setTxnStep] = useState(0);
+  const [collateralInput, setCollateralInput] = useState<bigint>(BigInt(0));
 
   const account = useAccount();
   const { isConnected, address } = account;
@@ -84,21 +93,35 @@ export default function AddEditTrade() {
 
   const isLong = option === 'Long';
 
+  const sizeChangeInContractUnit = useMemo(() => {
+    return sizeChange * BigInt(1e9); // Convert sizeChange from gas to Ggas with 18 decimals
+  }, [sizeChange]);
+
   const formError = useMemo(() => {
+    if (Number(quotedResultingWalletBalance) < 0) {
+      return 'Insufficient wallet balance to perform this trade.';
+    }
     if (
-      sizeChange > BigInt(0) &&
+      sizeChangeInContractUnit > BigInt(0) &&
       (!liquidity ||
         (isLong &&
-          parseFloat(formatUnits(sizeChange, 18)) > Number(liquidity))) &&
-      !isEdit
+          parseFloat(formatUnits(sizeChangeInContractUnit, TOKEN_DECIMALS)) >
+            Number(liquidity)))
     ) {
       return 'Not enough liquidity to perform this trade.';
     }
     if (quoteError) {
+      console.error('quoteError', quoteError);
       return 'The protocol cannot generate a quote for this order.';
     }
     return '';
-  }, [quoteError, liquidity, sizeChange, isLong]);
+  }, [
+    quoteError,
+    liquidity,
+    sizeChangeInContractUnit,
+    isLong,
+    quotedResultingWalletBalance,
+  ]);
 
   // Position data
   const { data: positionData, refetch: refetchPositionData } = useReadContract({
@@ -132,10 +155,6 @@ export default function AddEditTrade() {
 
     return BigInt(0);
   }, [positionData, isEdit]);
-
-  const sizeChangeInContractUnit = useMemo(() => {
-    return sizeChange * BigInt(1e9); // Convert sizeChange from gas to Ggas with 18 decimals
-  }, [sizeChange]);
 
   const desiredSizeInContractUnit = useMemo(() => {
     return originalPositionSizeInContractUnit + sizeChangeInContractUnit;
@@ -234,7 +253,8 @@ export default function AddEditTrade() {
         );
         resetAfterError();
       },
-      onSuccess: () => {
+      onSuccess: async () => {
+        await refetchAllowance();
         renderToast(
           toast,
           'Approval transaction submitted. Waiting for confirmation...',
@@ -251,7 +271,7 @@ export default function AddEditTrade() {
   });
 
   useEffect(() => {
-    if (isConfirmed) {
+    if (isConfirmed && txnStep === 2) {
       if (isEdit) {
         renderToast(toast, `We've updated your position for you.`);
         resetAfterSuccess();
@@ -281,17 +301,39 @@ export default function AddEditTrade() {
         resetAfterSuccess();
       }
     }
-  }, [isConfirmed, transactionReceipt]);
+  }, [isConfirmed, transactionReceipt, txnStep]);
 
   useEffect(() => {
-    if (approveSuccess) {
-      const handleSuccess = async () => {
-        await refetchAllowance();
-        handleSubmit(undefined, true);
-      };
-      handleSuccess();
+    if (approveSuccess && txnStep === 1) {
+      const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
+      if (isEdit) {
+        writeContract({
+          abi: foilData.abi,
+          address: marketAddress as `0x${string}`,
+          functionName: 'modifyTraderPosition',
+          args: [
+            nftId,
+            desiredSizeInContractUnit,
+            collateralDeltaLimit,
+            deadline,
+          ],
+        });
+      } else {
+        writeContract({
+          abi: foilData.abi,
+          address: marketAddress as `0x${string}`,
+          functionName: 'createTraderPosition',
+          args: [
+            epoch,
+            desiredSizeInContractUnit,
+            collateralDeltaLimit,
+            deadline,
+          ],
+        });
+      }
+      setTxnStep(2);
     }
-  }, [approveSuccess]);
+  }, [approveSuccess, txnStep]);
 
   const [quotedCollateralDelta, quotedFillPrice] = useMemo(() => {
     const result = isEdit
@@ -336,10 +378,10 @@ export default function AddEditTrade() {
     );
   }, [quotedCollateralDelta, slippage]);
 
-  const handleSubmit = async (
-    e?: React.FormEvent<HTMLFormElement>,
-    approved?: boolean
-  ) => {
+  const requireApproval =
+    !allowance || collateralDeltaLimit > (allowance as bigint);
+
+  const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>) => {
     if (e) e.preventDefault();
     setPendingTxn(true);
 
@@ -347,23 +389,16 @@ export default function AddEditTrade() {
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
 
     if (!allowance) {
-      console.log('refetching  allowance...');
       await refetchAllowance();
-      console.log('refetched  allowance =', allowance);
     }
-    console.log('Allowance ', allowance);
-    if (
-      !approved &&
-      allowance !== undefined &&
-      collateralDeltaLimit > (allowance as bigint)
-    ) {
-      console.log('Approving ', collateralDeltaLimit);
+    if (requireApproval) {
       approveWrite({
         abi: erc20ABI as AbiFunction[],
         address: collateralAsset as `0x${string}`,
         functionName: 'approve',
         args: [marketAddress, collateralDeltaLimit],
       });
+      setTxnStep(1);
     } else if (isEdit) {
       writeContract({
         abi: foilData.abi,
@@ -376,14 +411,8 @@ export default function AddEditTrade() {
           deadline,
         ],
       });
+      setTxnStep(2);
     } else {
-      console.log(
-        'Creating trade position....',
-        epoch,
-        desiredSizeInContractUnit,
-        collateralDeltaLimit,
-        deadline
-      );
       writeContract({
         abi: foilData.abi,
         address: marketAddress as `0x${string}`,
@@ -395,6 +424,7 @@ export default function AddEditTrade() {
           deadline,
         ],
       });
+      setTxnStep(2);
     }
   };
 
@@ -404,6 +434,7 @@ export default function AddEditTrade() {
 
   const resetAfterError = () => {
     setPendingTxn(false);
+    setTxnStep(0);
   };
 
   const resetAfterSuccess = () => {
@@ -414,6 +445,7 @@ export default function AddEditTrade() {
     refetchPositionData();
     refetchUniswapData();
     refetchAllowance();
+    setTxnStep(0);
   };
 
   useEffect(() => {
@@ -452,20 +484,6 @@ export default function AddEditTrade() {
     positionData,
   ]);
 
-  // console.log('******');
-  // console.log('collateralBalance =', collateralBalance);
-  // console.log('collateralAssetDecimals =', collateralAssetDecimals);
-  // console.log('quotedCollateralDelta =', quotedCollateralDelta);
-  // console.log('collateralDeltaLimit =', collateralDeltaLimit);
-  // console.log('positionData =', positionData);
-  // console.log('walletBalance =', walletBalance);
-  // console.log('quotedResultingWalletBalance =', quotedResultingWalletBalance);
-  // console.log('walletBalanceLimit =', walletBalanceLimit);
-  // console.log('positionCollateralLimit =', positionCollateralLimit);
-  // console.log('quotedFillPrice =', quotedFillPrice);
-  // console.log('pool?.token0Price =', pool?.token0Price);
-  // console.log('******');
-
   const currentChainId = useChainId();
   const { switchChain } = useSwitchChain();
 
@@ -500,6 +518,11 @@ export default function AddEditTrade() {
       );
     }
 
+    let buttonTxt = isEdit ? 'Update Position' : 'Create Position';
+    if (requireApproval) {
+      buttonTxt = `Approve ${collateralAssetTicker} Transfer`;
+    }
+
     return (
       <Button
         width="full"
@@ -515,10 +538,104 @@ export default function AddEditTrade() {
         mb={4}
         size="lg"
       >
-        {isEdit ? 'Update Position' : 'Create Position'}
+        {buttonTxt}
       </Button>
     );
   };
+
+  const findSizeForCollateral = async () => {
+    if (!collateralInput || collateralInput === BigInt(0)) return;
+
+    // Start with an initial guess based on current price
+    const targetCollateral = collateralInput;
+    let currentSize = BigInt(0);
+    let bestSize = BigInt(0);
+    let bestDiff = targetCollateral;
+    let iterations = 0;
+    const maxIterations = 10;
+
+    // Binary search parameters
+    let low = BigInt(0);
+    let high = (targetCollateral * BigInt(2)) / BigInt(1e9); // Divide by 1e9 to convert from Gwei to gas
+
+    while (low <= high && iterations < maxIterations) {
+      currentSize = (low + high) / BigInt(2);
+
+      // Convert currentSize to contract units (multiply by 1e9 for Ggas)
+      const sizeInContractUnits = currentSize * BigInt(1e9);
+
+      // eslint-disable-next-line no-await-in-loop
+      const result = await publicClient?.simulateContract({
+        abi: foilData.abi,
+        address: marketAddress as `0x${string}`,
+        functionName: isEdit
+          ? 'quoteModifyTraderPosition'
+          : 'quoteCreateTraderPosition',
+        args: isEdit
+          ? [nftId, sizeInContractUnits]
+          : [epoch, sizeInContractUnits],
+        account: address || zeroAddress,
+      });
+
+      if (!result?.result) break;
+
+      // Extract collateral requirement from result
+      const [quotedCollateral] = result.result;
+      const quotedCollateralBigInt = BigInt(quotedCollateral.toString());
+
+      // Calculate how far off we are from target
+      const diff =
+        quotedCollateralBigInt > targetCollateral
+          ? quotedCollateralBigInt - targetCollateral
+          : targetCollateral - quotedCollateralBigInt;
+
+      // Update best result if this is closer
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        bestSize = currentSize;
+      }
+
+      // Binary search adjustment
+      if (quotedCollateralBigInt > targetCollateral) {
+        high = currentSize - BigInt(1);
+      } else {
+        low = currentSize + BigInt(1);
+      }
+
+      iterations++;
+    }
+
+    console.log(
+      'result',
+      bestSize - (isEdit ? originalPositionSizeInContractUnit : BigInt(0))
+    );
+
+    // Convert bestSize back to gas units before setting
+    setSizeChange(bestSize);
+
+    console.log('sizeChange', sizeChange);
+  };
+
+  // Debounce the search to avoid too many calls
+  const debouncedFindSize = useMemo(
+    () => debounce(findSizeForCollateral, 500),
+    [collateralInput, isEdit, originalPositionSizeInContractUnit]
+  );
+
+  useEffect(() => {
+    if (collateralInput > BigInt(0)) {
+      debouncedFindSize();
+    }
+    return () => {
+      debouncedFindSize.cancel();
+    };
+  }, [collateralInput, debouncedFindSize]);
+
+  const handleCollateralAmountChange = (amount: bigint) => {
+    setCollateralInput(amount);
+  };
+
+  const publicClient = usePublicClient();
 
   return (
     <form onSubmit={handleSubmit}>
@@ -543,6 +660,9 @@ export default function AddEditTrade() {
         error={formError}
         label="Size"
         defaultToGas={false}
+        allowCollateralInput
+        collateralAssetTicker={collateralAssetTicker}
+        onCollateralAmountChange={handleCollateralAmountChange}
       />
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
       {renderActionButton()}
