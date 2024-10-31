@@ -46,8 +46,6 @@ const TransactionTable: React.FC<Props> = ({ transactions }) => {
     );
   }, [transactions]);
 
-  console.log('s', sortedTransactions);
-
   return (
     <TableContainer mb={4}>
       <Table variant="simple" size="sm">
@@ -78,7 +76,7 @@ const TransactionTable: React.FC<Props> = ({ transactions }) => {
               </Td>
               <Td>
                 <Link
-                  href={`/positions/${chain}:${address}/${row.position.positionId}`}
+                  href={`/positions/${chain?.id}:${address}/${row.position.positionId}`}
                   textDecoration="underline"
                 >
                   #{row.position.positionId}

@@ -54,6 +54,11 @@ export interface LiquidityPositionClosedEventLog {
   collectedAmount1: string;
 }
 
+export interface PositionSettledEventLog {
+  positionId: string;
+  withdrawableCollateral: string;
+}
+
 export enum PositionKind {
   Unknown,
   Liquidity,

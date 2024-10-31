@@ -19,24 +19,35 @@ import type { FoilPosition } from '~/lib/interfaces/interfaces';
 interface Props {
   nftId?: number;
   setSize: Dispatch<SetStateAction<bigint>>;
+  size?: bigint;
   positionData?: FoilPosition;
   isLong?: boolean;
   error?: string;
   label?: string;
-  defaultToGas?: boolean; // New prop
+  defaultToGas?: boolean;
+  allowCollateralInput?: boolean;
+  collateralAssetTicker?: string;
+  onCollateralAmountChange?: (amount: bigint) => void;
 }
 
 const SizeInput: React.FC<Props> = ({
   nftId,
   setSize,
+  size = BigInt(0),
   positionData,
   isLong = true,
   error,
   label = 'Size',
   defaultToGas = true,
+  allowCollateralInput = false,
+  collateralAssetTicker = '',
+  onCollateralAmountChange,
 }) => {
   const [sizeInput, setSizeInput] = useState<string>('0');
   const [isGasInput, setIsGasInput] = useState(defaultToGas);
+  const [inputType, setInputType] = useState<'gas' | 'Ggas' | 'collateral'>(
+    defaultToGas ? 'gas' : 'Ggas'
+  );
 
   useEffect(() => {
     handleSizeChange('0');
@@ -46,23 +57,75 @@ const SizeInput: React.FC<Props> = ({
     handleSizeChange(sizeInput);
   }, [isLong]);
 
-  const handleUpdateInputType = () => {
-    const wasGasInput = isGasInput;
-    setIsGasInput(!wasGasInput);
-
-    if (sizeInput !== '') {
-      const currentValue = parseFloat(sizeInput);
-      const newValue = wasGasInput
-        ? currentValue / 1e9 // Convert from gas to Ggas
-        : currentValue * 1e9; // Convert from Ggas to gas
-
-      // Format the new value to avoid scientific notation
-      const formattedValue = newValue.toLocaleString('fullwide', {
-        useGrouping: false,
-        maximumFractionDigits: 20,
-      });
-      setSizeInput(formattedValue);
+  useEffect(() => {
+    if (size === BigInt(0)) {
+      setSizeInput('0');
+      return;
     }
+
+    const absoluteSize = size < 0 ? -size : size;
+    const numberValue = isGasInput
+      ? absoluteSize.toString()
+      : (Number(absoluteSize) / 1e9).toString();
+
+    setSizeInput(numberValue);
+  }, [size, isGasInput]);
+
+  const getNextInputType = (
+    currentType: 'gas' | 'Ggas' | 'collateral'
+  ): 'gas' | 'Ggas' | 'collateral' => {
+    if (allowCollateralInput) {
+      const mapping = {
+        gas: 'Ggas',
+        Ggas: 'collateral',
+        collateral: 'gas',
+      } as const;
+      return mapping[currentType];
+    }
+    return currentType === 'gas' ? 'Ggas' : 'gas';
+  };
+
+  const convertValue = (
+    value: number,
+    fromType: string,
+    toType: string
+  ): number => {
+    if (fromType === 'gas' && toType === 'Ggas') return value / 1e9;
+    if (fromType === 'Ggas' && toType === 'gas') return value * 1e9;
+    return 0; // Reset value when switching to/from collateral
+  };
+
+  const handleUpdateInputType = () => {
+    const newType = getNextInputType(inputType);
+    setInputType(newType);
+
+    if (sizeInput === '') return;
+
+    const currentValue = parseFloat(sizeInput);
+    const newValue = convertValue(currentValue, inputType, newType);
+    const formattedValue = newValue.toLocaleString('fullwide', {
+      useGrouping: false,
+      maximumFractionDigits: 20,
+    });
+    if (newValue === 0) {
+      handleSizeChange('0');
+    }
+    setSizeInput(formattedValue);
+  };
+
+  const processCollateralInput = (value: string) => {
+    const collateralAmount = value === '' ? 0 : parseFloat(value);
+    onCollateralAmountChange?.(BigInt(Math.floor(collateralAmount * 1e18)));
+  };
+
+  const processSizeInput = (value: string) => {
+    const newSize = value === '' ? 0 : parseFloat(value);
+    const sizeInGas =
+      inputType === 'gas'
+        ? BigInt(Math.floor(newSize))
+        : BigInt(Math.floor(newSize * 1e9));
+    const sign = isLong ? BigInt(1) : BigInt(-1);
+    setSize(sign * sizeInGas);
   };
 
   const handleSizeChange = (newVal: string) => {
@@ -75,12 +138,12 @@ const SizeInput: React.FC<Props> = ({
 
     if (processedVal === '' || numberPattern.test(processedVal)) {
       setSizeInput(processedVal);
-      const newSize = processedVal === '' ? 0 : parseFloat(processedVal);
-      const sizeInGas = isGasInput
-        ? BigInt(Math.floor(newSize))
-        : BigInt(Math.floor(newSize * 1e9));
-      const sign = isLong ? BigInt(1) : BigInt(-1);
-      setSize(sign * sizeInGas);
+
+      if (inputType === 'collateral') {
+        processCollateralInput(processedVal);
+      } else {
+        processSizeInput(processedVal);
+      }
     }
   };
 
@@ -109,7 +172,7 @@ const SizeInput: React.FC<Props> = ({
               onClick={handleUpdateInputType}
               rightIcon={<ArrowUpDownIcon h={2.5} />}
             >
-              {isGasInput ? 'gas' : 'Ggas'}
+              {inputType === 'collateral' ? collateralAssetTicker : inputType}
             </Button>
           </InputRightAddon>
         </InputGroup>

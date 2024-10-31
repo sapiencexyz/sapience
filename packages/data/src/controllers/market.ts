@@ -29,6 +29,7 @@ import {
   updateTransactionFromLiquidityModifiedEvent,
   updateTransactionFromTradeModifiedEvent,
   upsertMarketPrice,
+  updateTransactionFromPositionSettledEvent,
 } from "./marketHelpers";
 
 // Called when the process starts, upserts markets in the database to match those in the constants.ts file
@@ -334,8 +335,14 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       break;
     case EventType.PositionSettled:
       console.log("Handling Position Settled from event: ", event);
-      await handlePositionSettledEvent(event);
-      skipTransaction = true;
+      await Promise.all([
+        handlePositionSettledEvent(event),
+        updateTransactionFromPositionSettledEvent(
+          newTransaction,
+          event,
+          event.logData.args.epochId
+        ),
+      ]);
       break;
     case EventType.Transfer:
       console.log("Handling Transfer event: ", event);

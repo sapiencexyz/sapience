@@ -13,9 +13,9 @@ import {
 import { useContext } from 'react';
 
 import { MarketContext } from '../../context/MarketProvider';
+import { calculatePnL } from '~/lib/util/positionUtil';
 import { tickToPrice } from '~/lib/util/util';
 
-import Address from './address';
 import NumberDisplay from './numberDisplay';
 
 interface Props {
@@ -25,16 +25,6 @@ const LiquidityPositionsTable: React.FC<Props> = ({ positions }) => {
   const { pool, endTime, chain, address } = useContext(MarketContext);
   const dateMilliseconds = Number(endTime) * 1000;
   const expired = new Date(dateMilliseconds) < new Date();
-
-  const calculatePnL = (position: any) => {
-    const vEthToken = parseFloat(position.quoteToken);
-    const vGasToken = parseFloat(position.baseToken);
-    const marketPrice = parseFloat(pool?.token0Price?.toSignificant(18) || '0');
-
-    return (
-      vEthToken + vGasToken * marketPrice - parseFloat(position.collateral)
-    );
-  };
 
   return (
     <TableContainer mb={4}>
@@ -60,7 +50,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({ positions }) => {
         <Tbody>
           {positions &&
             positions.map((row: any) => {
-              const pnl = calculatePnL(row);
+              const pnl = calculatePnL(row, pool);
               return (
                 <Tr key={row.id}>
                   <Td>

@@ -17,7 +17,16 @@ import {
   ModalHeader,
   ModalOverlay,
   VStack,
+  FormControl,
+  FormLabel,
+  Input,
+  Accordion,
+  AccordionItem,
+  AccordionButton,
+  AccordionPanel,
+  AccordionIcon,
 } from '@chakra-ui/react';
+import { formatDuration, intervalToDuration } from 'date-fns';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   type FC,
@@ -87,6 +96,7 @@ const Subscribe: FC<SubscribeProps> = ({
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [fillPrice, setFillPrice] = useState<bigint>(BigInt(0));
   const [fillPriceInEth, setFillPriceInEth] = useState<bigint>(BigInt(0));
+  const [txnStep, setTxnStep] = useState(0);
   const account = useAccount();
   const { isConnected, address } = account;
   const currentChainId = useChainId();
@@ -151,6 +161,23 @@ const Subscribe: FC<SubscribeProps> = ({
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp * 1000);
     return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+  };
+
+  const calculateCollateralDeltaLimit = (
+    collateralDelta: bigint,
+    slippage: number
+  ) => {
+    if (collateralDelta === BigInt(0)) return BigInt(0);
+
+    const slippageMultiplier = BigInt(Math.floor((100 + slippage) * 100));
+    const slippageReductionMultiplier = BigInt(
+      Math.floor((100 - slippage) * 100)
+    );
+
+    if (collateralDelta > BigInt(0)) {
+      return (collateralDelta * slippageMultiplier) / BigInt(10000);
+    }
+    return (collateralDelta * slippageReductionMultiplier) / BigInt(10000);
   };
 
   const formattedStartTime = startTime ? formatDate(Number(startTime)) : '';
@@ -233,7 +260,8 @@ const Subscribe: FC<SubscribeProps> = ({
         );
         resetAfterError();
       },
-      onSuccess: () => {
+      onSuccess: async () => {
+        await refetchAllowance();
         renderToast(
           toast,
           'Approval transaction submitted. Waiting for confirmation...',
@@ -250,7 +278,7 @@ const Subscribe: FC<SubscribeProps> = ({
   });
 
   useEffect(() => {
-    if (isConfirmed) {
+    if (isConfirmed && txnStep === 2) {
       for (const log of createTraderPositionReceipt.logs) {
         try {
           const event = decodeEventLog({
@@ -276,17 +304,13 @@ const Subscribe: FC<SubscribeProps> = ({
         }
       }
     }
-  }, [isConfirmed, createTraderPositionReceipt]);
+  }, [isConfirmed, createTraderPositionReceipt, txnStep]);
 
   useEffect(() => {
-    if (approveSuccess) {
-      const handleSuccess = async () => {
-        await refetchAllowance();
-        handleSubmit(undefined, true);
-      };
-      handleSuccess();
+    if (approveSuccess && txnStep === 1) {
+      handleCreateTraderPosition();
     }
-  }, [approveSuccess]);
+  }, [approveSuccess, txnStep]);
 
   useEffect(() => {
     if (fillPrice !== BigInt(0) && stEthPerToken) {
@@ -299,7 +323,14 @@ const Subscribe: FC<SubscribeProps> = ({
     }
   }, [fillPrice, collateralAssetDecimals, stEthPerToken]);
 
-  const handleSubmit = (e?: FormEvent<HTMLFormElement>, approved?: boolean) => {
+  const collateralDeltaLimit = useMemo(() => {
+    return calculateCollateralDeltaLimit(collateralDelta, slippage);
+  }, [collateralDelta, slippage]);
+
+  const requireApproval =
+    !allowance || collateralDeltaLimit > (allowance as bigint);
+
+  const handleSubmit = (e?: FormEvent<HTMLFormElement>) => {
     if (e) e.preventDefault();
     if (size === BigInt(0)) {
       toast({
@@ -313,39 +344,7 @@ const Subscribe: FC<SubscribeProps> = ({
     }
     setPendingTxn(true);
 
-    const sizeInTokens = sizeInGigagas;
-
-    const calculateCollateralDeltaLimit = (
-      collateralDelta: bigint,
-      slippage: number
-    ) => {
-      if (collateralDelta === BigInt(0)) return BigInt(0);
-
-      const slippageMultiplier = BigInt(Math.floor((100 + slippage) * 100));
-      const slippageReductionMultiplier = BigInt(
-        Math.floor((100 - slippage) * 100)
-      );
-
-      if (collateralDelta > BigInt(0)) {
-        return (collateralDelta * slippageMultiplier) / BigInt(10000);
-      }
-      return (collateralDelta * slippageReductionMultiplier) / BigInt(10000);
-    };
-
-    const collateralDeltaLimit = calculateCollateralDeltaLimit(
-      collateralDelta,
-      slippage
-    );
-
-    const absCollateralDeltaLimit =
-      collateralDeltaLimit < BigInt(0)
-        ? -collateralDeltaLimit
-        : collateralDeltaLimit;
-
-    // Set deadline to 30 minutes from now
-    const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
-
-    if (!approved && collateralDeltaLimit > (allowance as bigint)) {
+    if (requireApproval) {
       console.log('approving...');
       approveWrite({
         abi: erc20ABI as AbiFunction[],
@@ -353,25 +352,38 @@ const Subscribe: FC<SubscribeProps> = ({
         functionName: 'approve',
         args: [finalMarketAddress, collateralDeltaLimit],
       });
+      setTxnStep(1);
     } else {
-      console.log('creating trade position....');
-      writeContract({
-        abi: foilData.abi,
-        address: finalMarketAddress as `0x${string}`,
-        functionName: 'createTraderPosition',
-        args: [finalEpoch, sizeInTokens, absCollateralDeltaLimit, deadline],
-      });
+      handleCreateTraderPosition();
     }
+  };
+
+  const handleCreateTraderPosition = () => {
+    const sizeInTokens = sizeInGigagas;
+    // Set deadline to 30 minutes from now
+    const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
+    const absCollateralDeltaLimit =
+      collateralDeltaLimit < BigInt(0)
+        ? -collateralDeltaLimit
+        : collateralDeltaLimit;
+    writeContract({
+      abi: foilData.abi,
+      address: finalMarketAddress as `0x${string}`,
+      functionName: 'createTraderPosition',
+      args: [finalEpoch, sizeInTokens, absCollateralDeltaLimit, deadline],
+    });
+    setTxnStep(2);
   };
 
   const resetAfterError = () => {
     setPendingTxn(false);
+    setTxnStep(0);
   };
 
   const resetAfterSuccess = () => {
     setSize(BigInt(0));
     setPendingTxn(false);
-
+    setTxnStep(0);
     refetchUniswapData();
   };
 
@@ -416,7 +428,9 @@ const Subscribe: FC<SubscribeProps> = ({
         }
         size="lg"
       >
-        Create Subscription
+        {requireApproval
+          ? `Approve ${collateralAssetTicker} Transfer`
+          : 'Create Subscription'}
       </Button>
     );
   };
@@ -441,6 +455,91 @@ const Subscribe: FC<SubscribeProps> = ({
 
   const marketName =
     markets.find((m) => m.address === marketAddress)?.name || 'Choose Market';
+
+  const [walletAddressInput, setWalletAddressInput] = useState<string>('');
+
+  useEffect(() => {
+    if (address) {
+      setWalletAddressInput(address);
+    }
+  }, [address]);
+
+  const [isEstimating, setIsEstimating] = useState(false);
+
+  const [accordionIndex, setAccordionIndex] = useState<number | null>(null);
+
+  const handleEstimateUsage = async () => {
+    if (!walletAddressInput) {
+      toast({
+        title: 'Invalid Address',
+        description: 'Please enter a wallet address to estimate usage.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    setIsEstimating(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_FOIL_API_URL}/estimate`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            walletAddress: walletAddressInput,
+            chainId: finalChainId,
+            marketAddress: finalMarketAddress,
+            epochId: finalEpoch,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch estimate');
+      }
+
+      const duration = formatDuration(
+        intervalToDuration({
+          start: Number(startTime) * 1000,
+          end: Number(endTime) * 1000,
+        })
+      );
+      const data = await response.json();
+      setSize(BigInt(Math.floor(data.totalGasUsed)));
+      setAccordionIndex(null);
+      if (size === BigInt(0)) {
+        toast({
+          title: 'Estimate Complete',
+          description: `This wallet hasn't used any gas in the last ${duration}.`,
+          status: 'info',
+          duration: 5000,
+          isClosable: true,
+        });
+      } else {
+        toast({
+          title: 'Estimate Complete',
+          description: `Gas amount has been populated based on this wallet's usage in the last ${duration}.`,
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Estimation Failed',
+        description: 'Unable to estimate gas usage. Please try again.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsEstimating(false);
+    }
+  };
 
   return (
     <form onSubmit={handleSubmit}>
@@ -467,8 +566,56 @@ const Subscribe: FC<SubscribeProps> = ({
           <InfoOutlineIcon opacity={0.7} transform="translateY(-2.5px)" />
         </Tooltip>
       </Text>
+
+      <Accordion
+        allowToggle
+        mb={4}
+        index={accordionIndex ?? undefined}
+        onChange={(index) => setAccordionIndex(index as number)}
+      >
+        <AccordionItem>
+          <AccordionButton px={0}>
+            <Box
+              as="span"
+              fontSize="sm"
+              textTransform="uppercase"
+              fontWeight="medium"
+              color="gray.600"
+              letterSpacing="wide"
+              flex="1"
+              textAlign="left"
+            >
+              Estimate Gas Usage
+            </Box>
+            <AccordionIcon />
+          </AccordionButton>
+          <AccordionPanel p={0}>
+            <FormControl mt={2} mb={4}>
+              <FormLabel>Wallet Address</FormLabel>
+              <Input
+                size="md"
+                value={walletAddressInput}
+                onChange={(e) => setWalletAddressInput(e.target.value)}
+                isDisabled={isEstimating}
+              />
+            </FormControl>
+            <Button
+              w="100%"
+              variant="brand"
+              onClick={handleEstimateUsage}
+              isLoading={isEstimating}
+              loadingText="Estimating..."
+              mb={6}
+            >
+              Estimate Usage
+            </Button>
+          </AccordionPanel>
+        </AccordionItem>
+      </Accordion>
+
       <SizeInput
         setSize={setSize}
+        size={size}
         error={quoteError || undefined}
         label="Gas Amount"
       />
