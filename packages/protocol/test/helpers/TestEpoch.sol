@@ -26,7 +26,8 @@ contract TestEpoch is TestUser {
     function createEpoch(
         int24 minTick,
         int24 maxTick,
-        uint160 startingSqrtPriceX96
+        uint160 startingSqrtPriceX96,
+        uint256 minTradeSize
     ) public returns (IFoil, address) {
         address[] memory feeCollectors = new address[](0);
         return
@@ -34,7 +35,8 @@ contract TestEpoch is TestUser {
                 minTick,
                 maxTick,
                 startingSqrtPriceX96,
-                feeCollectors
+                feeCollectors,
+                minTradeSize
             );
     }
 
@@ -42,13 +44,15 @@ contract TestEpoch is TestUser {
         int24 minTick,
         int24 maxTick,
         uint160 startingSqrtPriceX96,
-        address[] memory feeCollectors
+        address[] memory feeCollectors,
+        uint256 minTradeSize
     ) public returns (IFoil, address) {
         address owner = initializeMarket(
             minTick,
             maxTick,
             feeCollectors,
-            address(0)
+            address(0),
+            minTradeSize
         );
         IFoil foil = IFoil(vm.getAddress("Foil"));
 
@@ -67,14 +71,16 @@ contract TestEpoch is TestUser {
         int24 minTick,
         int24 maxTick,
         uint160 startingSqrtPriceX96,
-        address callbackRecipient
+        address callbackRecipient,
+        uint256 minTradeSize
     ) public returns (IFoil, address) {
         address[] memory feeCollectors = new address[](0);
         address owner = initializeMarket(
             minTick,
             maxTick,
             feeCollectors,
-            callbackRecipient
+            callbackRecipient,
+            minTradeSize
         );
         IFoil foil = IFoil(vm.getAddress("Foil"));
 
@@ -93,7 +99,8 @@ contract TestEpoch is TestUser {
         int24 minTick,
         int24 maxTick,
         address[] memory feeCollectors,
-        address callbackRecipient
+        address callbackRecipient,
+        uint256 minTradeSize
     ) public returns (address) {
         address owner = createUser("Owner", 10_000_000 ether);
         vm.startPrank(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266);
@@ -102,6 +109,7 @@ contract TestEpoch is TestUser {
             vm.getAddress("CollateralAsset.Token"),
             feeCollectors,
             callbackRecipient,
+            minTradeSize,
             IFoilStructs.EpochParams({
                 baseAssetMinPriceTick: minTick,
                 baseAssetMaxPriceTick: maxTick,

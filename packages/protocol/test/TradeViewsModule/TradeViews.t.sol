@@ -37,12 +37,13 @@ contract TradeViews is TestTrade {
     int24 LP_UPPER_TICK = 23200; // (10.174494074987374)
     uint256 COLLATERAL_FOR_ORDERS = 10 ether;
     uint160 INITIAL_PRICE_SQRT = 250541448375047931186413801569; // 10 (9999999999999999999)
+    uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
 
     function setUp() public {
         (foil, ) = createEpoch(
             EPOCH_LOWER_TICK,
             EPOCH_UPPER_TICK,
-            INITIAL_PRICE_SQRT
+            INITIAL_PRICE_SQRT,MIN_TRADE_SIZE
         ); // 1.709 to 17.09 (1.6819839204636384 to 16.774485460620674)
 
         lp1 = TestUser.createUser("LP1", 10_000_000 ether);

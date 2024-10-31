@@ -42,6 +42,8 @@ contract LiquidityFeeCollectorTest is TestTrade {
     uint256 constant COLLATERAL_AMOUNT = 10 ether;
     int24 constant LOWER_TICK = 19400;
     int24 constant UPPER_TICK = 24800;
+    uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
+
     function setUp() public {
         collateralAsset = IMintableToken(
             vm.getAddress("CollateralAsset.Token")
@@ -60,7 +62,8 @@ contract LiquidityFeeCollectorTest is TestTrade {
             MIN_TICK,
             MAX_TICK,
             startingSqrtPriceX96,
-            feeCollectors
+            feeCollectors,
+            MIN_TRADE_SIZE
         );
 
         (epochId, , , pool, tokenA, tokenB, , , , , ) = foil.getLatestEpoch();

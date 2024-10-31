@@ -33,7 +33,9 @@ library Errors {
     error InvalidBaseAssetMaxPriceTick(int24 maxPriceTick, int24 tickSpacing);
     error InvalidPriceTickRange(int24 minPriceTick, int24 maxPriceTick);
     error InvalidTickSpacing(uint24 feeRate);
-    error InvalidTradeSize(uint256 tradeSize);
+    error InvalidInternalTradeSize(uint256 tradeSize);
+    error DeltaTradeIsZero();
+    error PositionSizeBelowMin();
     error OwnableUnauthorizedAccount(address sender);
     error OnlyInitializer(address sender, address initializer);
     error StartTimeTooEarly(uint256 startTime, uint256 blockTime);

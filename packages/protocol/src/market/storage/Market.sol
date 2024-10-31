@@ -23,6 +23,7 @@ library Market {
         uint256 lastEpochId;
         IFoilStructs.EpochParams epochParams;
         mapping(bytes32 => uint256) epochIdByAssertionId;
+        uint256 minTradeSize;
     }
 
     function load() internal pure returns (Data storage market) {
@@ -38,6 +39,7 @@ library Market {
         address collateralAsset,
         address feeCollectorNFT,
         address callbackRecipient,
+        uint256 minTradeSize,
         IFoilStructs.EpochParams memory epochParams
     ) internal returns (Data storage market) {
         validateEpochParams(epochParams);
@@ -57,6 +59,7 @@ library Market {
         market.owner = owner;
         market.collateralAsset = IERC20(collateralAsset);
         market.feeCollectorNFT = IERC721(feeCollectorNFT);
+        market.minTradeSize = minTradeSize;
         market.epochParams = epochParams;
 
         if (callbackRecipient != address(0)) {
