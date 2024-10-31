@@ -68,7 +68,8 @@ interface ILiquidityModule {
         address indexed sender,
         uint256 indexed epochId,
         uint256 indexed positionId,
-        uint256 collateralAmount
+        uint256 depositedCollateralAmount,
+        uint256 collateralAmountAdded
     );
 
     /**
@@ -103,6 +104,11 @@ interface ILiquidityModule {
         INonfungiblePositionManager.DecreaseLiquidityParams decreaseParams;
         uint256 tokensOwed0;
         uint256 tokensOwed1;
+        bool isFeeCollector;
+        uint256 requiredCollateralAmount;
+        uint256 newCollateralAmount;
+        uint256 loanAmount0;
+        uint256 loanAmount1;
     }
 
     function decreaseLiquidityPosition(
@@ -120,6 +126,11 @@ interface ILiquidityModule {
         INonfungiblePositionManager.IncreaseLiquidityParams increaseParams;
         uint256 tokensOwed0;
         uint256 tokensOwed1;
+        bool isFeeCollector;
+        uint256 requiredCollateralAmount;
+        uint256 newCollateralAmount;
+        uint256 loanAmount0;
+        uint256 loanAmount1;
     }
 
     function increaseLiquidityPosition(
