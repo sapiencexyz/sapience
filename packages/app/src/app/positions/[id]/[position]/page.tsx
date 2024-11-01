@@ -111,7 +111,7 @@ const PositionPage = ({
         <Box p={8}>
           <Heading mb={4}>Position #{positionId}</Heading>
           <UnorderedList spacing={2}>
-            <ListItem>Epoch: {positionData.epoch.id}</ListItem>
+            <ListItem>Epoch: {positionData.epoch.epochId}</ListItem>
             <ListItem>
               {positionData.isLP ? 'Liquidity Provider' : 'Trader'}
             </ListItem>
