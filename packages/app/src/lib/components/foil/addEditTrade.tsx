@@ -42,7 +42,7 @@ import SlippageTolerance from './slippageTolerance';
 const tradeOptions = ['Long', 'Short'];
 
 export default function AddEditTrade() {
-  const { nftId, refreshPositions } = useAddEditPosition();
+  const { nftId, refreshPositions, setNftId } = useAddEditPosition();
 
   // form states
   const [sizeChange, setSizeChange] = useState<bigint>(BigInt(0));
@@ -290,6 +290,7 @@ export default function AddEditTrade() {
                 toast,
                 `Your position has been created as position ${nftId}`
               );
+              setNftId(nftId);
               resetAfterSuccess();
               return;
             }

@@ -18,7 +18,10 @@ import {
 import type { PriceChartData, TimeWindow } from '../interfaces/interfaces';
 import { formatXAxisTick, getXTicksToShow } from '../util/chartUtil';
 import { formatAmount } from '../util/numberUtil';
-import { convertToGwei, getDisplayTextForVolumeWindow } from '../util/util';
+import {
+  convertGgasPerWstEthToGwei,
+  getDisplayTextForVolumeWindow,
+} from '../util/util';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import { colors, gray700, green400, red500 } from '~/lib/styles/theme/colors';
 
@@ -159,7 +162,7 @@ const CandlestickChart: React.FC<Props> = ({
   const currPrice: string | number = useMemo(() => {
     return useMarketUnits
       ? pool?.token0Price.toSignificant(18) || 0
-      : convertToGwei(
+      : convertGgasPerWstEthToGwei(
           Number(pool?.token0Price.toSignificant(18) || 0),
           stEthPerToken
         );
@@ -179,15 +182,21 @@ const CandlestickChart: React.FC<Props> = ({
       const priceAdjusted = isLoading ? 0 : price / (stEthPerToken || 1);
       const displayPriceValue = useMarketUnits
         ? priceAdjusted
-        : convertToGwei(priceAdjusted, stEthPerToken);
+        : convertGgasPerWstEthToGwei(priceAdjusted, stEthPerToken);
       return {
         ...mp,
-        high: useMarketUnits ? mp.high : convertToGwei(mp.high, stEthPerToken),
-        low: useMarketUnits ? mp.low : convertToGwei(mp.low, stEthPerToken),
-        open: useMarketUnits ? mp.open : convertToGwei(mp.open, stEthPerToken),
+        high: useMarketUnits
+          ? mp.high
+          : convertGgasPerWstEthToGwei(mp.high, stEthPerToken),
+        low: useMarketUnits
+          ? mp.low
+          : convertGgasPerWstEthToGwei(mp.low, stEthPerToken),
+        open: useMarketUnits
+          ? mp.open
+          : convertGgasPerWstEthToGwei(mp.open, stEthPerToken),
         close: useMarketUnits
           ? mp.close
-          : convertToGwei(mp.close, stEthPerToken),
+          : convertGgasPerWstEthToGwei(mp.close, stEthPerToken),
         price: displayPriceValue || undefined,
       };
     });

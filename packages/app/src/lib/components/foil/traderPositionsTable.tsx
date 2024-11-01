@@ -16,6 +16,7 @@ import { formatUnits } from 'viem';
 
 import { MarketContext } from '../../context/MarketProvider';
 import { calculatePnL } from '~/lib/util/positionUtil';
+import { convertWstEthToGwei } from '~/lib/util/util';
 
 import NumberDisplay from './numberDisplay';
 
@@ -23,7 +24,8 @@ interface Props {
   positions: any[];
 }
 const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
-  const { address, chain, endTime, pool } = useContext(MarketContext);
+  const { address, chain, endTime, pool, useMarketUnits, stEthPerToken } =
+    useContext(MarketContext);
   const dateMilliseconds = Number(endTime) * 1000;
   const expired = new Date(dateMilliseconds) < new Date();
 
@@ -59,7 +61,10 @@ const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
         entryPrice /= quoteTokenDeltaTotal;
       }
     }
-    return formatUnits(BigInt(entryPrice), 18);
+    const unitsAdjustedEntryPrice = useMarketUnits
+      ? entryPrice
+      : convertWstEthToGwei(entryPrice, stEthPerToken);
+    return formatUnits(BigInt(unitsAdjustedEntryPrice), 18);
   };
 
   return (
@@ -109,7 +114,8 @@ const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
                     Ggas
                   </Td>
                   <Td>
-                    <NumberDisplay value={entryPrice} /> wstETH
+                    <NumberDisplay value={entryPrice} />{' '}
+                    {useMarketUnits ? 'wstETH' : 'gwei'}
                   </Td>
                   <Td>
                     <NumberDisplay value={pnl} /> wstETH

@@ -12,7 +12,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import React, { useContext } from 'react';
 
 import { MarketContext } from '~/lib/context/MarketProvider';
-import { convertToGwei } from '~/lib/util/util';
+import { convertGgasPerWstEthToGwei } from '~/lib/util/util';
 
 import NumberDisplay from './numberDisplay';
 
@@ -70,7 +70,7 @@ const Stats = () => {
               value={
                 useMarketUnits
                   ? averagePrice
-                  : convertToGwei(averagePrice, stEthPerToken)
+                  : convertGgasPerWstEthToGwei(averagePrice, stEthPerToken)
               }
             />{' '}
             <Text fontSize="sm" as="span">
@@ -96,7 +96,7 @@ const Stats = () => {
               value={
                 useMarketUnits
                   ? pool?.token0Price.toSignificant(18) || 0
-                  : convertToGwei(
+                  : convertGgasPerWstEthToGwei(
                       Number(pool?.token0Price.toSignificant(18) || 0),
                       stEthPerToken
                     )

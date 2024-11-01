@@ -88,7 +88,7 @@ function getTokenAmountsFromLiquidity(
 }
 
 const AddEditLiquidity: React.FC = () => {
-  const { nftId, refreshPositions } = useAddEditPosition();
+  const { nftId, refreshPositions, setNftId } = useAddEditPosition();
   const {
     epoch,
     pool,
@@ -551,6 +551,7 @@ const AddEditLiquidity: React.FC = () => {
             setTxnSuccessMsg(
               `Your liquidity position has been created as position ${nftId}`
             );
+            setNftId(nftId);
             return;
           }
         } catch (error) {
