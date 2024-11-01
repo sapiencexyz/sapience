@@ -1,5 +1,5 @@
 /* eslint-disable sonarjs/cognitive-complexity */
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import { QuestionOutlineIcon, WarningTwoIcon } from '@chakra-ui/icons';
 import {
   Flex,
   Box,
@@ -28,7 +28,11 @@ import {
 
 import erc20ABI from '../../erc20abi.json';
 import RadioCard from '../RadioCard';
-import { MIN_BIG_INT_SIZE, TOKEN_DECIMALS } from '~/lib/constants/constants';
+import {
+  HIGH_PRICE_IMPACT,
+  MIN_BIG_INT_SIZE,
+  TOKEN_DECIMALS,
+} from '~/lib/constants/constants';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
@@ -361,6 +365,7 @@ export default function AddEditTrade() {
     }
     return 0;
   }, [quotedFillPrice, pool]);
+  const showPriceImpactWarning = priceImpact > HIGH_PRICE_IMPACT;
 
   const collateralDeltaLimit = useMemo(() => {
     if (quotedCollateralDelta === BigInt(0)) return BigInt(0);
@@ -525,22 +530,24 @@ export default function AddEditTrade() {
     }
 
     return (
-      <Button
-        width="full"
-        variant="brand"
-        type="submit"
-        isLoading={(pendingTxn || isLoadingCollateralChange) && !formError}
-        isDisabled={
-          !!formError ||
-          pendingTxn ||
-          isLoadingCollateralChange ||
-          sizeChangeInContractUnit === BigInt(0)
-        }
-        mb={4}
-        size="lg"
-      >
-        {buttonTxt}
-      </Button>
+      <Box mb={4}>
+        <Button
+          width="full"
+          variant="brand"
+          type="submit"
+          isLoading={(pendingTxn || isLoadingCollateralChange) && !formError}
+          isDisabled={
+            !!formError ||
+            pendingTxn ||
+            isLoadingCollateralChange ||
+            sizeChangeInContractUnit === BigInt(0)
+          }
+          size="lg"
+        >
+          {buttonTxt}
+        </Button>
+        {renderPriceImpactWarning()}
+      </Box>
     );
   };
 
@@ -637,6 +644,22 @@ export default function AddEditTrade() {
   };
 
   const publicClient = usePublicClient();
+
+  const renderPriceImpactWarning = () => {
+    if (!showPriceImpactWarning) return;
+    return (
+      <Text
+        color="red"
+        fontSize="sm"
+        textAlign="center"
+        mt={1}
+        fontWeight={500}
+      >
+        <WarningTwoIcon mr={1} />
+        Very high price impact ({Number(priceImpact.toFixed(2)).toString()}%)
+      </Text>
+    );
+  };
 
   return (
     <form onSubmit={handleSubmit}>
@@ -779,7 +802,12 @@ export default function AddEditTrade() {
             <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
               Estimated Price Impact
             </Text>
-            <Text fontSize="sm" color="gray.600" mb={0.5}>
+            <Text
+              fontSize={showPriceImpactWarning ? 'large' : 'sm'}
+              color={showPriceImpactWarning ? 'red' : '"gray.600"'}
+              fontWeight={showPriceImpactWarning ? 'bold' : 'normal'}
+              mb={0.5}
+            >
               {Number(priceImpact.toFixed(2)).toString()}%
             </Text>
           </Box>
