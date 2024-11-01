@@ -155,7 +155,6 @@ interface CustomTooltipProps {
 const CustomTooltip: React.FC<
   TooltipProps<number, string> & CustomTooltipProps
 > = ({ payload, tickSpacing }) => {
-  console.log('payload', payload);
   if (!payload || !payload[0]) return null;
   const tickValue: number = payload[0].payload?.tick;
   return (

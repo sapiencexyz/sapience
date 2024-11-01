@@ -98,3 +98,32 @@ export const shortenAddress = (address: string) => {
   }
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 };
+
+/**
+ * Removes leading zeros from a string or number input while preserving valid number format
+ * @param input - The input string or number to process
+ * @returns A string with leading zeros removed while maintaining decimal points and negative signs
+ */
+export const removeLeadingZeros = (input: string | number): string => {
+  // Convert input to string if it's a number
+  const str = input.toString();
+
+  // Handle empty string
+  if (!str) return str;
+
+  // Handle zero
+  if (str === '0') return '0';
+
+  // Handle decimal numbers starting with 0 (e.g., 0.123)
+  if (str.match(/^0\./)) return str;
+
+  // Handle negative numbers
+  if (str.startsWith('-')) {
+    const withoutMinus = str.slice(1);
+    const processed = removeLeadingZeros(withoutMinus);
+    return processed === '0' ? '0' : `-${processed}`;
+  }
+
+  // Remove leading zeros and return
+  return str.replace(/^0+/, '') || '0';
+};
