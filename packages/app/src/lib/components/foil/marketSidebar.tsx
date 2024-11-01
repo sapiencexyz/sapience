@@ -5,7 +5,7 @@ import { useContext, useEffect } from 'react';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
 
-import LiquidityPosition from './liquidityPosition';
+import AddEditLiquidity from './Liquidity/AddEditLiquidity';
 import Settle from './settle';
 import TraderPosition from './traderPosition';
 
@@ -48,7 +48,7 @@ export default function MarketSidebar({ isTrade }: { isTrade: boolean }) {
     if (isTrade) {
       return <TraderPosition />;
     }
-    return <LiquidityPosition />;
+    return <AddEditLiquidity />;
   };
 
   return (
