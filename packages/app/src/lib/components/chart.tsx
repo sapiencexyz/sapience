@@ -1,4 +1,3 @@
-import { Box, Flex, Text } from '@chakra-ui/react';
 import dayjs from 'dayjs';
 import type React from 'react';
 import type { Dispatch, SetStateAction } from 'react';
@@ -118,19 +117,13 @@ const CustomTooltip: React.FC<
   const price = payloadData?.price;
   if (!close && !open && !high && !low && !price) return null;
   return (
-    <Box
-      style={{
-        backgroundColor: 'white',
-        padding: '8px',
-        border: '1px solid #ccc',
-      }}
-    >
-      <Text>Close: {close ? formatAmount(close) : '-'}</Text>
-      <Text>Open: {open ? formatAmount(open) : '-'}</Text>
-      <Text>High: {high ? formatAmount(high) : '-'}</Text>
-      <Text>Low: {low ? formatAmount(low) : '-'}</Text>
-      <Text>Price: {price ? formatAmount(price) : '-'}</Text>
-    </Box>
+    <div className="bg-white p-2 border border-gray-200 rounded-md">
+      <p>Close: {close ? formatAmount(close) : '-'}</p>
+      <p>Open: {open ? formatAmount(open) : '-'}</p>
+      <p>High: {high ? formatAmount(high) : '-'}</p>
+      <p>Low: {low ? formatAmount(low) : '-'}</p>
+      <p>Price: {price ? formatAmount(price) : '-'}</p>
+    </div>
   );
 };
 
@@ -264,29 +257,16 @@ const CandlestickChart: React.FC<Props> = ({
   }, []);
 
   return (
-    <Flex flex={1} position="relative">
-      <Box
-        minH="50px"
-        w="fit-content"
-        position="absolute"
-        top={0}
-        left={0}
-        zIndex={2}
-        bgColor="white"
-        opacity={0.8}
-      >
-        <Text minH="24px">
-          {' '}
+    <div className="flex flex-1 relative">
+      <div className="min-h-[50px] w-fit absolute top-0 left-0 z-[2] bg-white/80">
+        <p className="min-h-[24px]">
           {value
             ? `${value.toLocaleString()}`
             : formatAmount(Number(currPrice))}{' '}
           {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
-        </Text>
-        <Text fontSize="sm" color="gray.500">
-          {' '}
-          {label ? `${label}` : ''}
-        </Text>
-      </Box>
+        </p>
+        <p className="text-sm text-gray-500">{label ? `${label}` : ''}</p>
+      </div>
       <ResponsiveContainer
         height="95%"
         width="100%"
@@ -327,7 +307,7 @@ const CandlestickChart: React.FC<Props> = ({
           />
         </ComposedChart>
       </ResponsiveContainer>
-    </Flex>
+    </div>
   );
 };
 

@@ -1,5 +1,3 @@
-import { Container, Heading } from '@chakra-ui/react';
-
 import MarketsTable from '~/lib/components/foil/marketsTable';
 
 const Market = () => {

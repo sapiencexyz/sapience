@@ -1,77 +1,63 @@
-import {
-  Button,
-  FormControl,
-  FormLabel,
-  HStack,
-  Input,
-  InputGroup,
-  InputRightAddon,
-} from '@chakra-ui/react';
-import type React from 'react';
-import { useState, useEffect, useCallback } from 'react';
+import { useFormContext } from 'react-hook-form';
 
-interface SlippageToleranceProps {
-  onSlippageChange: (slippage: number) => void;
-}
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
-const SlippageTolerance: React.FC<SlippageToleranceProps> = ({
-  onSlippageChange,
-}) => {
-  const [slippage, setSlippage] = useState<number>(0.5);
+const SlippageTolerance: React.FC = () => {
+  const { setValue, watch } = useFormContext();
+  const currentSlippage = watch('slippage');
 
-  const handleSlippageChange = useCallback(
-    (valueString: string) => {
-      const value = parseFloat(valueString);
-      if (!isNaN(value)) {
-        setSlippage(value);
-        onSlippageChange(value);
-      }
-    },
-    [onSlippageChange]
-  );
-
-  useEffect(() => {
-    onSlippageChange(slippage);
-  }, [slippage, onSlippageChange]);
+  const handleSlippageChange = (value: number) => {
+    setValue('slippage', value.toString(), {
+      shouldValidate: false,
+    });
+  };
 
   return (
-    <FormControl mb={4}>
-      <FormLabel>Slippage Tolerance</FormLabel>
-      <HStack spacing={4} alignItems="center">
+    <div className="mb-4">
+      <Label>Slippage Tolerance</Label>
+      <div className="flex items-center gap-4 mt-2">
         <Button
-          onClick={() => setSlippage(0.1)}
-          isActive={slippage === 0.1}
-          size="xs"
+          type="button"
+          onClick={() => handleSlippageChange(0.1)}
+          variant={Number(currentSlippage) === 0.1 ? 'default' : 'outline'}
+          size="sm"
         >
           0.1%
         </Button>
         <Button
-          onClick={() => setSlippage(0.5)}
-          isActive={slippage === 0.5}
-          size="xs"
+          type="button"
+          onClick={() => handleSlippageChange(0.5)}
+          variant={Number(currentSlippage) === 0.5 ? 'default' : 'outline'}
+          size="sm"
         >
           0.5%
         </Button>
         <Button
-          onClick={() => setSlippage(1.0)}
-          isActive={slippage === 1.0}
-          size="xs"
+          type="button"
+          onClick={() => handleSlippageChange(1.0)}
+          variant={Number(currentSlippage) === 1.0 ? 'default' : 'outline'}
+          size="sm"
         >
           1.0%
         </Button>
-        <InputGroup size="xs" maxWidth="100px">
+        <div className="relative w-[100px]">
           <Input
-            value={slippage}
-            onChange={(e) => handleSlippageChange(e.target.value)}
+            value={currentSlippage}
+            onChange={(e) => handleSlippageChange(Number(e.target.value))}
             min={0}
             max={100}
             step={0.1}
             type="number"
+            className="pr-6"
           />
-          <InputRightAddon>%</InputRightAddon>
-        </InputGroup>
-      </HStack>
-    </FormControl>
+          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">
+            %
+          </span>
+        </div>
+      </div>
+    </div>
   );
 };
 

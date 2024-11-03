@@ -1,19 +1,12 @@
 'use client';
 
-import { ArrowUpDownIcon } from '@chakra-ui/icons';
-import {
-  Box,
-  FormControl,
-  FormLabel,
-  Input,
-  InputGroup,
-  InputRightAddon,
-  Button,
-  FormErrorMessage,
-} from '@chakra-ui/react';
+import { ArrowUpDown } from 'lucide-react';
 import type { Dispatch, SetStateAction } from 'react';
 import { useEffect, useState } from 'react';
 
+import { Button } from '~/components/ui/button';
+import { FormItem, FormLabel } from '~/components/ui/form';
+import { Input } from '~/components/ui/input';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
 
 interface Props {
@@ -148,12 +141,12 @@ const SizeInput: React.FC<Props> = ({
   };
 
   return (
-    <Box mb={4}>
-      <FormControl mb={4} isInvalid={!!error}>
+    <div className="w-full">
+      <FormItem>
         <FormLabel>
           {label} {nftId && nftId > 0 ? 'Change' : ''}
         </FormLabel>
-        <InputGroup>
+        <div className="flex">
           <Input
             value={sizeInput}
             type="text"
@@ -162,23 +155,24 @@ const SizeInput: React.FC<Props> = ({
             step="any"
             onWheel={(e) => e.currentTarget.blur()}
             onChange={(e) => handleSizeChange(e.target.value)}
-            borderRight="none"
+            className="rounded-r-none"
           />
-          <InputRightAddon bg="none" px={1}>
-            <Button
-              px={3}
-              h="1.75rem"
-              size="sm"
-              onClick={handleUpdateInputType}
-              rightIcon={<ArrowUpDownIcon h={2.5} />}
-            >
+          <Button
+            variant="outline"
+            className="rounded-l-none px-3 h-10"
+            onClick={handleUpdateInputType}
+          >
+            <span>
               {inputType === 'collateral' ? collateralAssetTicker : inputType}
-            </Button>
-          </InputRightAddon>
-        </InputGroup>
-        {error && <FormErrorMessage>{error}</FormErrorMessage>}
-      </FormControl>
-    </Box>
+            </span>
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
+        {error && (
+          <p className="text-sm font-medium text-destructive mt-2">{error}</p>
+        )}
+      </FormItem>
+    </div>
   );
 };
 
