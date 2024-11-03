@@ -1,16 +1,14 @@
 /* eslint-disable sonarjs/no-duplicate-string */
-import { InfoOutlineIcon } from '@chakra-ui/icons';
-import {
-  Flex,
-  Text,
-  Stat,
-  StatLabel,
-  StatNumber,
-  Tooltip,
-} from '@chakra-ui/react';
 import { format, formatDistanceToNow } from 'date-fns';
+import { InfoIcon } from 'lucide-react';
 import React, { useContext } from 'react';
 
+import {
+  TooltipProvider,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '~/components/ui/tooltip';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import { convertGgasPerWstEthToGwei } from '~/lib/util/util';
 
@@ -46,93 +44,83 @@ const Stats = () => {
   }
 
   return (
-    <Flex alignItems="center" direction="column" width="100%" pb={6}>
-      <Flex
-        gap={6}
-        w="100%"
-        flexDirection={{ base: 'column', md: 'row' }}
-        flexWrap="wrap"
-      >
-        <Stat width={{ base: '100%', md: 'calc(50% - 12px)', lg: 'auto' }}>
-          <StatLabel fontSize="md">
-            Index Price
-            <Tooltip label="Expected settlement price based on the current time-weighted average underlying price for this epoch.">
-              <InfoOutlineIcon
-                transform="translateY(-2.5px)"
-                color="gray.600"
-                height="4"
-                ml={1.5}
-              />
-            </Tooltip>
-          </StatLabel>
-          <StatNumber>
-            <NumberDisplay
-              value={
-                useMarketUnits
-                  ? averagePrice
-                  : convertGgasPerWstEthToGwei(averagePrice, stEthPerToken)
-              }
-            />{' '}
-            <Text fontSize="sm" as="span">
-              {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
-            </Text>
-          </StatNumber>
-        </Stat>
+    <TooltipProvider>
+      <div className="flex w-full flex-col items-center pb-6">
+        <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-lg border border-gray-200 p-4 shadow-sm">
+            <div className="text-md text-gray-600">
+              Index Price
+              <Tooltip>
+                <TooltipTrigger>
+                  <InfoIcon className="ml-1.5 -translate-y-0.5 inline-block h-4 text-gray-600" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  Expected settlement price based on the current time-weighted
+                  average underlying price for this epoch.
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <div className="mt-1 text-2xl font-bold">
+              <NumberDisplay
+                value={
+                  useMarketUnits
+                    ? averagePrice
+                    : convertGgasPerWstEthToGwei(averagePrice, stEthPerToken)
+                }
+              />{' '}
+              <span className="text-sm">
+                {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
+              </span>
+            </div>
+          </div>
 
-        <Stat width={{ base: '100%', md: 'calc(50% - 12px)', lg: 'auto' }}>
-          <StatLabel fontSize="md">
-            Market Price
-            <Tooltip label="Current price in the Foil liquidity pool for this epoch.">
-              <InfoOutlineIcon
-                transform="translateY(-2px)"
-                color="gray.600"
-                height="4"
-                ml={1.5}
-              />
-            </Tooltip>
-          </StatLabel>
-          <StatNumber>
-            <NumberDisplay
-              value={
-                useMarketUnits
-                  ? pool?.token0Price.toSignificant(18) || 0
-                  : convertGgasPerWstEthToGwei(
-                      Number(pool?.token0Price.toSignificant(18) || 0),
-                      stEthPerToken
-                    )
-              }
-            />{' '}
-            <Text fontSize="sm" as="span">
-              {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
-            </Text>
-          </StatNumber>
-        </Stat>
+          <div className="rounded-lg border border-gray-200 p-4 shadow-sm">
+            <div className="text-md text-gray-600">
+              Market Price
+              <Tooltip>
+                <TooltipTrigger>
+                  <InfoIcon className="ml-1.5 -translate-y-0.5 inline-block h-4 text-gray-600" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  Current price in the Foil liquidity pool for this epoch.
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <div className="mt-1 text-2xl font-bold">
+              <NumberDisplay
+                value={
+                  useMarketUnits
+                    ? pool?.token0Price.toSignificant(18) || 0
+                    : convertGgasPerWstEthToGwei(
+                        Number(pool?.token0Price.toSignificant(18) || 0),
+                        stEthPerToken
+                      )
+                }
+              />{' '}
+              <span className="text-sm">
+                {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
+              </span>
+            </div>
+          </div>
 
-        <Stat width={{ base: '100%', md: 'calc(50% - 12px)', lg: 'auto' }}>
-          <StatLabel fontSize="md">
-            Liquidity
-            <InfoOutlineIcon
-              display="none"
-              transform="translateY(-2px)"
-              color="gray.600"
-              height="4"
-              ml={1.5}
-            />
-          </StatLabel>
-          <StatNumber>
-            <NumberDisplay value={liquidity} />{' '}
-            <Text fontSize="sm" as="span">
-              Ggas
-            </Text>
-          </StatNumber>
-        </Stat>
+          <div className="rounded-lg border border-gray-200 p-4 shadow-sm">
+            <div className="text-md text-gray-600">
+              Liquidity
+              <InfoIcon className="ml-1.5 -translate-y-0.5 hidden h-4 text-gray-600" />
+            </div>
+            <div className="mt-1 text-2xl font-bold">
+              <NumberDisplay value={liquidity} />{' '}
+              <span className="text-sm">Ggas</span>
+            </div>
+          </div>
 
-        <Stat width={{ base: '100%', md: 'calc(50% - 12px)', lg: 'auto' }}>
-          <StatLabel fontSize="md">Ends In</StatLabel>
-          <StatNumber>{relativeTime}</StatNumber>
-        </Stat>
-      </Flex>
-    </Flex>
+          <div className="rounded-lg border border-gray-200 p-4 shadow-sm">
+            <div className="text-md text-gray-600">Ends In</div>
+            <div className="mt-1 text-2xl font-bold">{relativeTime}</div>
+          </div>
+        </div>
+      </div>
+    </TooltipProvider>
   );
 };
 

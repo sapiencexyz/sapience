@@ -1,17 +1,15 @@
-import { ChevronUpIcon, ChevronDownIcon, CheckIcon } from '@chakra-ui/icons';
-import {
-  Box,
-  Button,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  Icon,
-} from '@chakra-ui/react';
+import { ChevronUp, ChevronDown, Check } from 'lucide-react';
 import { useContext, useState } from 'react';
 import type React from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 
+import { Button } from '~/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '~/components/ui/dropdown-menu';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import { ChartType } from '~/lib/interfaces/interfaces';
 
@@ -35,44 +33,43 @@ const ChartSelector: React.FC<CustomDropdownProps> = ({
   const renderChartType = (option: ChartType) => {
     if (epochSettled && option === ChartType.LIQUIDITY) return null;
     return (
-      <MenuItem
+      <DropdownMenuItem
         key={option}
         onClick={() => handleSelect(option as ChartType)}
-        bg="gray.100"
-        _hover={{ bg: 'gray.200' }}
+        className="bg-gray-100 hover:bg-gray-200"
       >
-        <Box
-          display="flex"
-          alignItems="center"
-          justifyContent="space-between"
-          width="100%"
-          fontWeight={option === chartType ? 'bold' : 'normal'}
+        <div
+          className={`flex items-center justify-between w-full font-${
+            option === chartType ? 'bold' : 'normal'
+          }`}
         >
           {option}
-          {option === chartType && <Icon as={CheckIcon} />}
-        </Box>
-      </MenuItem>
+          {option === chartType && <Check className="h-4 w-4" />}
+        </div>
+      </DropdownMenuItem>
     );
   };
 
   return (
-    <Menu isOpen={isOpen} onClose={() => setIsOpen(false)}>
-      <MenuButton
-        as={Button}
-        rightIcon={isOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
-        bg="gray.100"
-        _hover={{ bg: 'gray.200' }}
-        _active={{ bg: 'gray.200' }}
-        onClick={() => setIsOpen(!isOpen)}
-        borderRadius="full"
-        size="sm"
-      >
-        {chartType}
-      </MenuButton>
-      <MenuList bg="gray.100" borderColor="gray.200" borderWidth={1}>
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          className="bg-gray-100 hover:bg-gray-200 rounded-full"
+          size="sm"
+        >
+          {chartType}
+          {isOpen ? (
+            <ChevronUp className="ml-2 h-4 w-4" />
+          ) : (
+            <ChevronDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="bg-gray-100 border border-gray-200">
         {Object.values(ChartType).map((option) => renderChartType(option))}
-      </MenuList>
-    </Menu>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };
 

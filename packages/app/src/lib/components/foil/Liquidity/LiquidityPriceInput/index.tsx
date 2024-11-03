@@ -1,20 +1,20 @@
 'use client';
 
-import { ArrowUpDownIcon } from '@chakra-ui/icons';
-import {
-  Box,
-  FormControl,
-  FormLabel,
-  Input,
-  InputGroup,
-  InputRightAddon,
-  Button,
-  FormErrorMessage,
-} from '@chakra-ui/react';
+import { ArrowUpDown } from 'lucide-react';
 import { useContext, useState } from 'react';
 import type { Control, Path, FieldValues } from 'react-hook-form';
 import { Controller, useWatch } from 'react-hook-form';
 
+import { Button } from '@/components/ui/button';
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import { removeLeadingZeros } from '~/lib/util/util';
 
@@ -82,7 +82,7 @@ const LiquidityPriceInput = <T extends FieldValues>({
   };
 
   return (
-    <Box mb={4}>
+    <div className="mb-4">
       <Controller
         name={name}
         control={control}
@@ -93,10 +93,13 @@ const LiquidityPriceInput = <T extends FieldValues>({
             return errorMessage || true;
           },
         }}
-        render={({ field: { onChange, value, onBlur } }) => (
-          <FormControl isInvalid={!!getErrorMessage(value)}>
+        render={({
+          field: { onChange, value, onBlur },
+          fieldState: { error },
+        }) => (
+          <FormItem>
             <FormLabel>{label}</FormLabel>
-            <InputGroup>
+            <div className="relative flex">
               <Input
                 value={value?.toString() || ''}
                 onChange={(e) => onChange(removeLeadingZeros(e.target.value))}
@@ -110,24 +113,24 @@ const LiquidityPriceInput = <T extends FieldValues>({
                 inputMode="decimal"
                 disabled={isDisabled}
                 onWheel={(e) => e.currentTarget.blur()}
+                className="pr-[120px]"
               />
-              <InputRightAddon bg="none" px={1}>
-                <Button
-                  px={3}
-                  h="1.75rem"
-                  size="sm"
-                  onClick={() => handleToggleUnit(value, onChange)}
-                  rightIcon={<ArrowUpDownIcon h={2.5} />}
-                >
-                  {getCurrentUnit()}
-                </Button>
-              </InputRightAddon>
-            </InputGroup>
-            <FormErrorMessage>{getErrorMessage(value)}</FormErrorMessage>
-          </FormControl>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="absolute right-0 h-full px-3 gap-2 rounded-l-none"
+                onClick={() => handleToggleUnit(value, onChange)}
+              >
+                {getCurrentUnit()}
+                <ArrowUpDown className="h-4 w-4" />
+              </Button>
+            </div>
+            {error && <FormMessage>{getErrorMessage(value)}</FormMessage>}
+          </FormItem>
         )}
       />
-    </Box>
+    </div>
   );
 };
 

@@ -1,6 +1,5 @@
 'use client';
 
-import { Flex, Text } from '@chakra-ui/react';
 import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import type React from 'react';
 import { useContext, useMemo, useState } from 'react';
@@ -292,9 +291,9 @@ const DepthChart: React.FC<Props> = () => {
   );
 
   return (
-    <Flex flex={1} position="relative">
+    <div className="flex flex-1 relative">
       {liquidityDepthData.length <= 0 && (
-        <Text fontStyle="italic">Loading Liquidity Data...</Text>
+        <div className="italic">Loading Liquidity Data...</div>
       )}
       {liquidityDepthData.length > 0 && (
         <ResponsiveContainer width="100%" height="100%">
@@ -312,7 +311,7 @@ const DepthChart: React.FC<Props> = () => {
           </BarChart>
         </ResponsiveContainer>
       )}
-    </Flex>
+    </div>
   );
 };
 

@@ -3,20 +3,6 @@
 'use client';
 
 // eslint-disable-next-line import/no-extraneous-dependencies
-import {
-  Box,
-  FormControl,
-  Text,
-  FormLabel,
-  Input,
-  InputGroup,
-  InputRightAddon,
-  Button,
-  Flex,
-  useToast,
-  FormErrorMessage,
-  Heading,
-} from '@chakra-ui/react';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { TickMath, SqrtPriceMath } from '@uniswap/v3-sdk';
 import JSBI from 'jsbi';
@@ -37,15 +23,16 @@ import {
 import erc20ABI from '../../../../erc20abi.json';
 import INONFUNGIBLE_POSITION_MANAGER from '../../../../interfaces/Uniswap.NonfungiblePositionManager.json';
 import { getNewLiquidity } from '../../../../util/positionUtil';
-import {
-  removeLeadingZeros,
-  renderContractErrorToast,
-  renderToast,
-} from '../../../../util/util';
+import { removeLeadingZeros } from '../../../../util/util';
 import NumberDisplay from '../../numberDisplay';
 import PositionSelector from '../../positionSelector';
 import SlippageTolerance from '../../slippageTolerance';
 import LiquidityPriceInput from '../LiquidityPriceInput';
+import { Button } from '@/components/ui/button';
+import { Form } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '~/hooks/use-toast';
 import {
   CREATE_LIQUIDITY_REDUCTION,
   TICK_SPACING_DEFAULT,
@@ -101,18 +88,11 @@ const AddEditLiquidity: React.FC = () => {
     refetchUniswapData,
     address: marketAddress,
   } = useContext(MarketContext);
-  const toast = useToast();
+  const { toast } = useToast();
   const account = useAccount();
   const { isConnected } = account;
 
-  const {
-    register,
-    control,
-    handleSubmit,
-    formState: { errors, isValid, touchedFields },
-    setValue,
-    reset: resetForm,
-  } = useForm({
+  const form = useForm({
     defaultValues: {
       depositAmount: '1',
       lowPrice: epochParams?.baseAssetMinPriceTick
@@ -125,6 +105,14 @@ const AddEditLiquidity: React.FC = () => {
     mode: 'onChange', // Validate on change instead of blur
     reValidateMode: 'onChange', // Keep revalidating on change
   });
+  const {
+    register,
+    control,
+    handleSubmit,
+    formState: { errors, isValid, touchedFields },
+    setValue,
+    reset: resetForm,
+  } = form;
   const depositAmount = useWatch({
     control,
     name: 'depositAmount',
@@ -254,11 +242,11 @@ const AddEditLiquidity: React.FC = () => {
     mutation: {
       onError: (error) => {
         resetAfterError();
-        renderContractErrorToast(
-          error as WriteContractErrorType,
-          toast,
-          'Failed to approve'
-        );
+        toast({
+          variant: 'destructive',
+          title: 'Failed to approve',
+          description: (error as Error).message,
+        });
       },
     },
   });
@@ -268,11 +256,11 @@ const AddEditLiquidity: React.FC = () => {
       mutation: {
         onError: (error) => {
           resetAfterError();
-          renderContractErrorToast(
-            error as WriteContractErrorType,
-            toast,
-            'Failed to add liquidity'
-          );
+          toast({
+            variant: 'destructive',
+            title: 'Failed to add liquidity',
+            description: (error as Error).message,
+          });
         },
       },
     });
@@ -282,11 +270,11 @@ const AddEditLiquidity: React.FC = () => {
       mutation: {
         onError: (error) => {
           resetAfterError();
-          renderContractErrorToast(
-            error as WriteContractErrorType,
-            toast,
-            'Failed to increase liquidity'
-          );
+          toast({
+            variant: 'destructive',
+            title: 'Failed to increase liquidity',
+            description: (error as Error).message,
+          });
         },
       },
     });
@@ -296,11 +284,11 @@ const AddEditLiquidity: React.FC = () => {
       mutation: {
         onError: (error) => {
           resetAfterError();
-          renderContractErrorToast(
-            error as WriteContractErrorType,
-            toast,
-            'Failed to decrease liquidity'
-          );
+          toast({
+            variant: 'destructive',
+            title: 'Failed to decrease liquidity',
+            description: (error as Error).message,
+          });
         },
       },
     });
@@ -474,7 +462,9 @@ const AddEditLiquidity: React.FC = () => {
   // handle successful txn
   useEffect(() => {
     if (txnSuccessMsg && txnStep === 2) {
-      renderToast(toast, txnSuccessMsg);
+      toast({
+        title: txnSuccessMsg,
+      });
       resetAfterSuccess();
     }
   }, [txnSuccessMsg, txnStep]);
@@ -569,9 +559,7 @@ const AddEditLiquidity: React.FC = () => {
       toast({
         title:
           'Your liquidity position has been closed and converted to a trader position with your accumulated position',
-        status: 'info',
         duration: 5000,
-        isClosable: true,
       });
       router.push(
         `/trade/${chainId}%3A${marketAddress}/epochs/${epoch}?nftId=${nftId}`
@@ -581,20 +569,20 @@ const AddEditLiquidity: React.FC = () => {
 
   // handle token amounts error
   useEffect(() => {
-    renderContractErrorToast(
-      tokenAmountsError,
-      toast,
-      'Failed to fetch token amounts'
-    );
+    toast({
+      title: 'Failed to fetch token amounts',
+      description: tokenAmountsError?.message,
+      duration: 5000,
+    });
   }, [tokenAmountsError, toast]);
 
   // hanlde uniswap error
   useEffect(() => {
-    renderContractErrorToast(
-      uniswapPositionError,
-      toast,
-      'Failed to get position from uniswap'
-    );
+    toast({
+      title: 'Failed to get position from uniswap',
+      description: uniswapPositionError?.message,
+      duration: 5000,
+    });
   }, [uniswapPositionError, toast]);
 
   useEffect(() => {
@@ -858,12 +846,7 @@ const AddEditLiquidity: React.FC = () => {
   const renderActionButton = () => {
     if (!isConnected) {
       return (
-        <Button
-          width="full"
-          size="lg"
-          variant="brand"
-          onClick={openConnectModal}
-        >
+        <Button className="w-full" size="lg" onClick={openConnectModal}>
           Connect Wallet
         </Button>
       );
@@ -872,8 +855,7 @@ const AddEditLiquidity: React.FC = () => {
     if (currentChainId !== chainId) {
       return (
         <Button
-          width="full"
-          variant="brand"
+          className="w-full"
           size="lg"
           onClick={() => switchChain({ chainId })}
         >
@@ -894,168 +876,164 @@ const AddEditLiquidity: React.FC = () => {
       !isValid;
 
     return (
-      <Button
-        width="full"
-        variant="brand"
-        size="lg"
-        type="submit"
-        isLoading={pendingTxn || isFetching}
-        isDisabled={isDisabled}
-      >
+      <Button className="w-full" size="lg" type="submit" disabled={isDisabled}>
         {getButtonText()}
       </Button>
     );
   };
 
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)}>
-      <Heading size="md" mb={3}>
-        Pool Liquidity
-      </Heading>
-      <Box mb={4}>
-        <FormControl
-          isInvalid={Boolean(
-            touchedFields.depositAmount && errors.depositAmount
-          )}
-        >
-          <FormLabel htmlFor="collateral">Collateral</FormLabel>
-          <InputGroup>
-            <Input
-              id="collateral"
-              type="number"
-              inputMode="decimal"
-              min={0}
-              value={depositAmount}
-              onWheel={(e) => e.currentTarget.blur()}
-              {...register('depositAmount', {
-                onChange: (e) => {
-                  const processed = removeLeadingZeros(e.target.value);
-                  setValue('depositAmount', processed, {
-                    shouldValidate: true,
-                  });
-                },
-                onBlur: () => {
-                  if (depositAmount === '') {
-                    setValue('depositAmount', '0', {
-                      shouldValidate: false,
-                      shouldDirty: false, // don't mark as dirty since this is initial/reset value
-                      shouldTouch: false, // don't mark as touched since this is initial/reset value
-                    });
-                  }
-                },
-                validate: (value) => {
-                  if (value === '' || parseFloat(value) === 0) {
-                    if (isEdit) {
-                      return true;
-                    }
-                    return 'Amount is required';
-                  }
-                  const currentDepositAmount = isEdit
-                    ? positionCollateralAmount
-                    : 0;
-                  const increaseAmount =
-                    parseFloat(value) - currentDepositAmount;
-                  return (
-                    increaseAmount <= 0 ||
-                    (walletBalance &&
-                      increaseAmount <= parseFloat(walletBalance)) ||
-                    'Insufficient balance in wallet'
-                  );
-                },
-              })}
-            />
-            <InputRightAddon>{collateralAssetTicker}</InputRightAddon>
-          </InputGroup>
-          <FormErrorMessage>
-            {errors.depositAmount && errors.depositAmount.message?.toString()}
-          </FormErrorMessage>
-        </FormControl>
-      </Box>
-      <LiquidityPriceInput
-        label="Low Price"
-        name="lowPrice"
-        control={control}
-        isDisabled={isEdit}
-        minAllowedPrice={tickToPrice(epochParams.baseAssetMinPriceTick)}
-        maxAllowedPrice={Number(highPrice)}
-      />
-      <LiquidityPriceInput
-        label="High Price"
-        name="highPrice"
-        control={control}
-        isDisabled={isEdit}
-        minAllowedPrice={Number(lowPrice)}
-        maxAllowedPrice={tickToPrice(epochParams.baseAssetMaxPriceTick)}
-      />
+    <Form {...form}>
+      <form onSubmit={handleSubmit(handleFormSubmit)}>
+        <h2 className="text-xl font-semibold mb-3">Pool Liquidity</h2>
 
-      <SlippageTolerance onSlippageChange={handleSlippageChange} />
-
-      {renderActionButton()}
-
-      <Flex gap={2} flexDir="column" mt={4}>
-        <PositionSelector isLP />
-
-        <Box>
-          <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
-            Base Token
-          </Text>
-          <Text fontSize="sm" color="gray.600" mb={0.5}>
-            <NumberDisplay value={baseToken} /> vGGas (Min.{' '}
-            <NumberDisplay value={minAmountTokenA} />)
-          </Text>
-        </Box>
-
-        <Box>
-          <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
-            Quote Token
-          </Text>
-          <Text fontSize="sm" color="gray.600" mb={0.5}>
-            <NumberDisplay value={quoteToken} /> vWstETH (Min.{' '}
-            <NumberDisplay value={minAmountTokenB} />)
-          </Text>
-        </Box>
-
-        {isEdit && (
-          <Box>
-            <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
-              Position Collateral
-            </Text>
-            <Text fontSize="sm" color="gray.600" mb={0.5}>
-              <NumberDisplay value={positionCollateralAmount} />{' '}
-              {collateralAssetTicker}
-              {positionCollateralAmount !== positionCollateralAfter && (
-                <>
-                  {' '}
-                  → <NumberDisplay value={positionCollateralAfter} />{' '}
+        <div className="mb-4">
+          <div>
+            <div className={errors.depositAmount ? 'space-y-1' : ''}>
+              <Label htmlFor="collateral">Collateral</Label>
+              <div className="relative flex">
+                <Input
+                  id="collateral"
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step="any"
+                  value={depositAmount}
+                  className="pr-20"
+                  onWheel={(e) => e.currentTarget.blur()}
+                  {...register('depositAmount', {
+                    onChange: (e) => {
+                      const processed = removeLeadingZeros(e.target.value);
+                      setValue('depositAmount', processed, {
+                        shouldValidate: true,
+                      });
+                    },
+                    onBlur: () => {
+                      if (depositAmount === '') {
+                        setValue('depositAmount', '0', {
+                          shouldValidate: false,
+                          shouldDirty: false,
+                          shouldTouch: false,
+                        });
+                      }
+                    },
+                    validate: (value) => {
+                      if (value === '' || parseFloat(value) === 0) {
+                        if (isEdit) {
+                          return true;
+                        }
+                        return 'Amount is required';
+                      }
+                      const currentDepositAmount = isEdit
+                        ? positionCollateralAmount
+                        : 0;
+                      const increaseAmount =
+                        parseFloat(value) - currentDepositAmount;
+                      return (
+                        increaseAmount <= 0 ||
+                        (walletBalance &&
+                          increaseAmount <= parseFloat(walletBalance)) ||
+                        'Insufficient balance in wallet'
+                      );
+                    },
+                  })}
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center px-3 border border-l-0 border-input bg-muted">
                   {collateralAssetTicker}
-                </>
+                </div>
+              </div>
+              {errors.depositAmount && (
+                <p className="text-sm text-destructive">
+                  {errors.depositAmount.message?.toString()}
+                </p>
               )}
-            </Text>
-          </Box>
-        )}
+            </div>
+          </div>
+        </div>
 
-        {isConnected &&
-          walletBalance !== null &&
-          walletBalanceAfter !== null &&
-          walletBalance !== walletBalanceAfter && (
-            <Box>
-              <Text
-                fontSize="sm"
-                color="gray.600"
-                fontWeight="semibold"
-                mb={0.5}
-              >
-                Wallet Balance
-              </Text>
-              <Text fontSize="sm" color="gray.600" mb={0.5}>
-                <NumberDisplay value={walletBalance} /> {collateralAssetTicker}{' '}
-                → <NumberDisplay value={walletBalanceAfter} />{' '}
+        <LiquidityPriceInput
+          label="Low Price"
+          name="lowPrice"
+          control={control}
+          isDisabled={isEdit}
+          minAllowedPrice={tickToPrice(epochParams.baseAssetMinPriceTick)}
+          maxAllowedPrice={Number(highPrice)}
+        />
+
+        <LiquidityPriceInput
+          label="High Price"
+          name="highPrice"
+          control={control}
+          isDisabled={isEdit}
+          minAllowedPrice={Number(lowPrice)}
+          maxAllowedPrice={tickToPrice(epochParams.baseAssetMaxPriceTick)}
+        />
+
+        <SlippageTolerance onSlippageChange={handleSlippageChange} />
+
+        {renderActionButton()}
+
+        <div className="flex flex-col gap-2 mt-4">
+          <PositionSelector isLP />
+
+          <div>
+            <p className="text-sm text-gray-600 font-semibold mb-0.5">
+              Base Token
+            </p>
+            <p className="text-sm text-gray-600 mb-0.5">
+              <NumberDisplay value={baseToken} /> vGGas (Min.{' '}
+              <NumberDisplay value={minAmountTokenA} />)
+            </p>
+          </div>
+
+          <div>
+            <p className="text-sm text-gray-600 font-semibold mb-0.5">
+              Quote Token
+            </p>
+            <p className="text-sm text-gray-600 mb-0.5">
+              <NumberDisplay value={quoteToken} /> vWstETH (Min.{' '}
+              <NumberDisplay value={minAmountTokenB} />)
+            </p>
+          </div>
+
+          {isEdit && (
+            <div>
+              <p className="text-sm text-gray-600 font-semibold mb-0.5">
+                Position Collateral
+              </p>
+              <p className="text-sm text-gray-600 mb-0.5">
+                <NumberDisplay value={positionCollateralAmount} />{' '}
                 {collateralAssetTicker}
-              </Text>
-            </Box>
+                {positionCollateralAmount !== positionCollateralAfter && (
+                  <>
+                    {' '}
+                    → <NumberDisplay value={positionCollateralAfter} />{' '}
+                    {collateralAssetTicker}
+                  </>
+                )}
+              </p>
+            </div>
           )}
-      </Flex>
-    </form>
+
+          {isConnected &&
+            walletBalance !== null &&
+            walletBalanceAfter !== null &&
+            walletBalance !== walletBalanceAfter && (
+              <div>
+                <p className="text-sm text-gray-600 font-semibold mb-0.5">
+                  Wallet Balance
+                </p>
+                <p className="text-sm text-gray-600 mb-0.5">
+                  <NumberDisplay value={walletBalance} />{' '}
+                  {collateralAssetTicker} →{' '}
+                  <NumberDisplay value={walletBalanceAfter} />{' '}
+                  {collateralAssetTicker}
+                </p>
+              </div>
+            )}
+        </div>
+      </form>
+    </Form>
   );
 };
 
