@@ -463,9 +463,9 @@ export default function AddEditTrade() {
   // Update resetAfterSuccess to reset form values properly
   const resetAfterSuccess = () => {
     reset({
-        size: '0',
-        option: 'Long',
-        slippage: '0.5',
+      size: '0',
+      option: 'Long',
+      slippage: '0.5',
     });
     setPendingTxn(false);
     refreshPositions();

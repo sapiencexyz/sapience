@@ -9,7 +9,6 @@ import JSBI from 'jsbi';
 import { useRouter } from 'next/navigation';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
-import type { WriteContractErrorType } from 'viem';
 import { decodeEventLog, formatUnits, parseUnits } from 'viem';
 import {
   useWriteContract,
@@ -969,7 +968,7 @@ const AddEditLiquidity: React.FC = () => {
           maxAllowedPrice={tickToPrice(epochParams.baseAssetMaxPriceTick)}
         />
 
-        <SlippageTolerance onSlippageChange={handleSlippageChange} />
+        <SlippageTolerance />
 
         {renderActionButton()}
 
