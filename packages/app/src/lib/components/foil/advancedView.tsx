@@ -2,23 +2,13 @@
 
 /* eslint-disable sonarjs/no-duplicate-string */
 
-import {
-  Flex,
-  Box,
-  Tab,
-  TabList,
-  TabPanel,
-  TabPanels,
-  Tabs,
-  HStack,
-  Spinner,
-  Text,
-  useToast,
-} from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
+import { Loader2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useAccount } from 'wagmi';
 
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '~/components/ui/tabs';
+import { useToast } from '~/hooks/use-toast';
 import Chart from '~/lib/components/chart';
 import ChartSelector from '~/lib/components/ChartSelector';
 import DepthChart from '~/lib/components/DepthChart';
@@ -74,7 +64,7 @@ const Market = ({
   const [chainId, marketAddress] = params.id.split('%3A');
   const { epoch } = params;
   const contractId = `${chainId}:${marketAddress}`;
-  const toast = useToast();
+  const { toast } = useToast();
 
   // useEffect to handle table resize
   useEffect(() => {
@@ -222,16 +212,13 @@ const Market = ({
   const renderLoadng = () => {
     if (chartType === ChartType.PRICE && idxLoading) {
       return (
-        <Flex
-          ml={2}
+        <div
+          className="flex ml-2 gap-2 justify-center items-center"
           id="idx-loading"
-          gap={2}
-          justifyContent="center"
-          alignItems="center"
         >
-          <Spinner size="sm" />
-          <Text fontSize="xs">Loading Index Prices...</Text>
-        </Flex>
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span className="text-xs">Loading Index Prices...</span>
+        </div>
       );
     }
     return null;
@@ -254,9 +241,7 @@ const Market = ({
       toast({
         title: 'Error loading account data',
         description: accountDataError.message,
-        status: 'error',
         duration: 5000,
-        isClosable: true,
       });
     }
   }, [accountDataError, toast]);
@@ -268,112 +253,81 @@ const Market = ({
       epoch={Number(epoch)}
     >
       <AddEditPositionProvider>
-        <Flex
-          direction="column"
-          w="full"
-          h="calc(100vh - 64px)"
-          overflow="hidden"
-        >
+        <div className="flex flex-col w-full h-[calc(100vh-64px)] overflow-hidden">
           <EpochHeader />
-          <Flex direction="column" flex={1} overflow="hidden">
-            <Flex
-              direction="column"
-              flex={1}
-              overflow="hidden"
-              px={6}
-              gap={8}
-              flexDirection={{ base: 'column', md: 'row' }}
-            >
-              <Flex
-                direction="column"
-                w="100%"
-                h="100%"
-                overflow="hidden"
+          <div className="flex flex-col flex-1 overflow-hidden">
+            <div className="flex flex-col flex-1 overflow-hidden px-6 gap-8 md:flex-row">
+              <div
+                className="flex flex-col w-full h-full overflow-hidden"
                 id="chart-stat-flex"
               >
-                <Box flexShrink={0}>
-                  <Stats />
-                </Box>
+                <Stats />
 
-                <Flex flex={1} id="chart-flex" minHeight={0}>
+                <div className="flex flex-1 id-chart-flex min-h-0">
                   {renderChart()}
-                </Flex>
-                <HStack
-                  justifyContent="space-between"
-                  width="100%"
-                  justify="center"
-                  mt={1}
-                  mb={3}
-                  flexShrink={0}
-                >
-                  <Flex dir="row">
+                </div>
+                <div className="flex justify-between w-full items-center mt-1 mb-3 flex-shrink-0">
+                  <div className="flex flex-row">
                     <MarketUnitsToggle />
                     {chartType !== ChartType.LIQUIDITY && (
-                      <Flex dir="row">
+                      <div className="flex flex-row">
                         <VolumeWindowSelector
                           selectedWindow={selectedWindow}
                           setSelectedWindow={setSelectedWindow}
                         />
                         {renderLoadng()}
-                      </Flex>
+                      </div>
                     )}
-                  </Flex>
+                  </div>
                   <ChartSelector
                     chartType={chartType}
                     setChartType={setChartType}
                   />
-                </HStack>
-              </Flex>
-              <Box
-                width={{ base: '100%' }}
-                maxWidth={{ base: 'none', md: '360px' }}
-                pb={3}
-              >
+                </div>
+              </div>
+              <div className="w-full md:max-w-[360px] pb-3">
                 <MarketSidebar isTrade={isTrade} />
-              </Box>
-            </Flex>
+              </div>
+            </div>
             {transactions.length > 0 && (
-              <Flex
-                id="table-flex"
-                borderTop="1px solid"
-                borderColor="gray.200"
-                height={`${tableFlexHeight}px`}
-                pt={1}
-                position="relative"
-                justifyContent="center"
-                alignItems="center"
-              >
+              <div className="flex id-table-flex border-t border-border h-[calc(172px)] position-relative justify-center items-center">
                 {isLoadingAccountData ? (
-                  <Spinner size="lg" />
+                  <div className="flex justify-center items-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+                  </div>
                 ) : (
                   <Tabs
-                    display="flex"
-                    flexDirection="column"
-                    width="100%"
-                    height="100%"
+                    defaultValue="transactions"
+                    className="flex flex-col w-full h-full"
                   >
-                    <TabList>
-                      <Tab>Transactions</Tab>
-                      <Tab>Trader Positions</Tab>
-                      <Tab>LP Positions</Tab>
-                    </TabList>
-                    <TabPanels flexGrow={1} overflowY="auto">
-                      <TabPanel>
+                    <TabsList>
+                      <TabsTrigger value="transactions">
+                        Transactions
+                      </TabsTrigger>
+                      <TabsTrigger value="trader-positions">
+                        Trader Positions
+                      </TabsTrigger>
+                      <TabsTrigger value="lp-positions">
+                        LP Positions
+                      </TabsTrigger>
+                    </TabsList>
+                    <div className="flex-grow overflow-y-auto">
+                      <TabsContent value="transactions">
                         <TransactionTable transactions={transactions} />
-                      </TabPanel>
-                      <TabPanel>
+                      </TabsContent>
+                      <TabsContent value="trader-positions">
                         <TraderPositionsTable positions={traderPositions} />
-                      </TabPanel>
-                      <TabPanel>
+                      </TabsContent>
+                      <TabsContent value="lp-positions">
                         <LiquidityPositionsTable positions={lpPositions} />
-                      </TabPanel>
-                    </TabPanels>
+                      </TabsContent>
+                    </div>
                   </Tabs>
                 )}
-              </Flex>
+              </div>
             )}
-          </Flex>
-        </Flex>
+          </div>
+        </div>
       </AddEditPositionProvider>
     </MarketProvider>
   );

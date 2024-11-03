@@ -47,12 +47,12 @@ const Stats = () => {
     <TooltipProvider>
       <div className="flex w-full flex-col items-center pb-6">
         <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-lg border border-gray-200 p-4 shadow-sm">
-            <div className="text-md text-gray-600">
+          <div className="rounded-lg border border-border p-4 shadow-sm">
+            <div className="text-md">
               Index Price
               <Tooltip>
                 <TooltipTrigger>
-                  <InfoIcon className="ml-1.5 -translate-y-0.5 inline-block h-4 text-gray-600" />
+                  <InfoIcon className="ml-1.5 -translate-y-0.5 inline-block h-4" />
                 </TooltipTrigger>
                 <TooltipContent>
                   Expected settlement price based on the current time-weighted
@@ -74,12 +74,12 @@ const Stats = () => {
             </div>
           </div>
 
-          <div className="rounded-lg border border-gray-200 p-4 shadow-sm">
-            <div className="text-md text-gray-600">
+          <div className="rounded-lg border border-border p-4 shadow-sm">
+            <div className="text-md">
               Market Price
               <Tooltip>
                 <TooltipTrigger>
-                  <InfoIcon className="ml-1.5 -translate-y-0.5 inline-block h-4 text-gray-600" />
+                  <InfoIcon className="ml-1.5 -translate-y-0.5 inline-block h-4" />
                 </TooltipTrigger>
                 <TooltipContent>
                   Current price in the Foil liquidity pool for this epoch.
@@ -103,8 +103,8 @@ const Stats = () => {
             </div>
           </div>
 
-          <div className="rounded-lg border border-gray-200 p-4 shadow-sm">
-            <div className="text-md text-gray-600">
+          <div className="rounded-lg border border-border p-4 shadow-sm">
+            <div className="text-md">
               Liquidity
               <InfoIcon className="ml-1.5 -translate-y-0.5 hidden h-4 text-gray-600" />
             </div>
@@ -114,8 +114,8 @@ const Stats = () => {
             </div>
           </div>
 
-          <div className="rounded-lg border border-gray-200 p-4 shadow-sm">
-            <div className="text-md text-gray-600">Ends In</div>
+          <div className="rounded-lg border border-border p-4 shadow-sm">
+            <div className="text-md">Ends In</div>
             <div className="mt-1 text-2xl font-bold">{relativeTime}</div>
           </div>
         </div>

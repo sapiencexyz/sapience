@@ -52,7 +52,7 @@ export default function CustomConnectButton() {
                 );
               }
               return (
-                <div className="flex gap-3">
+                <div className="flex gap-2">
                   <Button
                     onClick={openChainModal}
                     className="flex items-center"

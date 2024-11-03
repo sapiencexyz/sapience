@@ -294,8 +294,10 @@ const Header = () => {
             <div className="mx-auto">
               <NavLinks />
             </div>
-            <ConnectButton />
-            <ModeToggle />
+            <div className="flex gap-2 items-center">
+              <ConnectButton />
+              <ModeToggle />
+            </div>
           </div>
         )}
       </div>
