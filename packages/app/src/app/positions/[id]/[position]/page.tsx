@@ -152,7 +152,7 @@ const PositionPage = ({
       epoch={Number(positionData?.epoch?.id)}
     >
       <div className="flex-1 flex">
-        <div className="m-auto border border-gray-300 rounded-md p-6 max-w-[460px]">
+        <div className="m-auto border border-border rounded-md p-6 max-w-[460px]">
           {renderPositionData()}
         </div>
       </div>

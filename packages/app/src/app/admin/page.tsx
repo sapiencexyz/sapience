@@ -1,5 +1,6 @@
 'use client';
 
+import axios from 'axios';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -7,7 +8,6 @@ import { Input } from '@/components/ui/input';
 import MarketsTable from '~/lib/components/MarketsTable';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import type { RenderJob } from '~/lib/interfaces/interfaces';
-import axios from 'axios';
 
 const Admin = () => {
   const [chainId, setChainId] = useState('');

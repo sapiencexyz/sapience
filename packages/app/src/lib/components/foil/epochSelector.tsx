@@ -1,24 +1,20 @@
-import { ArrowUpDownIcon } from '@chakra-ui/icons';
-import {
-  Button,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalCloseButton,
-  VStack,
-  Text,
-  Flex,
-  Box,
-} from '@chakra-ui/react';
 import { format } from 'date-fns';
+import { ChevronsUpDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type React from 'react';
 import { useContext, useState } from 'react';
 
+import { Button } from '~/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '~/components/ui/dialog';
+import { ScrollArea } from '~/components/ui/scroll-area';
 import { useMarketList } from '~/lib/context/MarketListProvider';
 import { MarketContext } from '~/lib/context/MarketProvider';
+import { cn } from '~/lib/utils';
 
 const EpochSelector: React.FC = () => {
   const { chain, address, epoch } = useContext(MarketContext);
@@ -34,7 +30,7 @@ const EpochSelector: React.FC = () => {
   );
 
   const handleEpochSelect = (selectedEpoch: number) => {
-    router.push(`/markets/${chain?.id}:${address}/epochs/${selectedEpoch}`);
+    router.push(`/trade/${chain?.id}:${address}/epochs/${selectedEpoch}`);
     handleClose();
   };
 
@@ -44,44 +40,42 @@ const EpochSelector: React.FC = () => {
 
   return (
     <>
-      <Button onClick={handleOpen} ml={4} size="xs">
+      <Button onClick={handleOpen} variant="outline" size="sm" className="ml-4">
         Epoch {epoch}
-        <ArrowUpDownIcon ml={0.5} h={2} />
+        <ChevronsUpDown className="ml-0.5 h-4 w-4" />
       </Button>
 
-      <Modal isOpen={isOpen} onClose={handleClose}>
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Select Epoch</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody pt={0} pb={6}>
-            <VStack spacing={2} align="stretch">
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Select Epoch</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="h-[400px] px-1">
+            <div className="flex flex-col gap-2">
               {currentMarket?.epochs.map((epochData) => (
-                <Flex
+                <button
+                  type="button"
                   key={epochData.id}
-                  justifyContent="space-between"
-                  alignItems="center"
-                  py={2}
-                  px={4}
-                  bg={epochData.epochId === epoch ? 'gray.100' : 'transparent'}
-                  borderRadius="md"
-                  cursor="pointer"
                   onClick={() => handleEpochSelect(epochData.epochId)}
-                  _hover={{ bg: 'gray.50' }}
+                  className={cn(
+                    'flex w-full cursor-pointer items-center justify-between rounded-md px-4 py-2 text-left',
+                    'hover:bg-muted',
+                    epochData.epochId === epoch ? 'bg-muted' : 'bg-transparent'
+                  )}
                 >
-                  <Text fontWeight="bold">Epoch {epochData.epochId}</Text>
-                  <Box>
-                    <Text fontSize="sm" color="gray.600">
+                  <span className="font-bold">Epoch {epochData.epochId}</span>
+                  <div>
+                    <span className="text-sm text-muted-foreground">
                       {formatDate(epochData.startTimestamp)} -{' '}
                       {formatDate(epochData.endTimestamp)}
-                    </Text>
-                  </Box>
-                </Flex>
+                    </span>
+                  </div>
+                </button>
               ))}
-            </VStack>
-          </ModalBody>
-        </ModalContent>
-      </Modal>
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

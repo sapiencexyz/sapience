@@ -20,7 +20,7 @@ const SubscribePage = ({
       epoch={Number(epoch)}
     >
       <div className="flex-1 flex">
-        <div className="m-auto border border-gray-300 rounded-md p-6 max-w-[460px]">
+        <div className="m-auto border border-border rounded-md p-6 max-w-[460px]">
           <Subscribe
             marketAddress={marketAddress}
             chainId={Number(chainId)}

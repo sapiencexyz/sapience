@@ -1,17 +1,7 @@
 /* eslint-disable sonarjs/cognitive-complexity */
-import { QuestionOutlineIcon, WarningTwoIcon } from '@chakra-ui/icons';
-import {
-  Flex,
-  Box,
-  useRadioGroup,
-  Button,
-  Text,
-  useToast,
-  Tooltip,
-  Heading,
-} from '@chakra-ui/react';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { debounce } from 'lodash';
+import { HelpCircle, AlertTriangle } from 'lucide-react';
 import { useState, useEffect, useContext, useMemo } from 'react';
 import type { AbiFunction, WriteContractErrorType } from 'viem';
 import { decodeEventLog, formatUnits, parseUnits, zeroAddress } from 'viem';
@@ -27,7 +17,15 @@ import {
 } from 'wagmi';
 
 import erc20ABI from '../../erc20abi.json';
-import RadioCard from '../RadioCard';
+import { Button } from '~/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '~/components/ui/tabs';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '~/components/ui/tooltip';
+import { useToast } from '~/hooks/use-toast';
 import {
   HIGH_PRICE_IMPACT,
   MIN_BIG_INT_SIZE,
@@ -42,8 +40,6 @@ import NumberDisplay from './numberDisplay';
 import PositionSelector from './positionSelector';
 import SizeInput from './sizeInput';
 import SlippageTolerance from './slippageTolerance';
-
-const tradeOptions = ['Long', 'Short'];
 
 export default function AddEditTrade() {
   const { nftId, refreshPositions, setNftId } = useAddEditPosition();
@@ -86,14 +82,7 @@ export default function AddEditTrade() {
     refetchUniswapData,
   } = useContext(MarketContext);
 
-  const { getRootProps, getRadioProps } = useRadioGroup({
-    name: 'positionType',
-    defaultValue: 'Long',
-    onChange: (value) => setOption(value as 'Long' | 'Short'),
-    value: option,
-  });
-  const group = getRootProps();
-  const toast = useToast();
+  const { toast } = useToast();
 
   const isLong = option === 'Long';
 
@@ -230,19 +219,18 @@ export default function AddEditTrade() {
   const { data: hash, writeContract } = useWriteContract({
     mutation: {
       onError: (error) => {
-        renderContractErrorToast(
-          error as WriteContractErrorType,
-          toast,
-          `There was an issue creating/updating your position.`
-        );
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: `There was an issue creating/updating your position: ${(error as Error).message}`,
+        });
         resetAfterError();
       },
       onSuccess: () => {
-        renderToast(
-          toast,
-          'Transaction submitted. Waiting for confirmation...',
-          'info'
-        );
+        toast({
+          title: 'Transaction Submitted',
+          description: 'Waiting for confirmation...',
+        });
       },
     },
   });
@@ -250,20 +238,19 @@ export default function AddEditTrade() {
   const { data: approveHash, writeContract: approveWrite } = useWriteContract({
     mutation: {
       onError: (error) => {
-        renderContractErrorToast(
-          error as WriteContractErrorType,
-          toast,
-          'Failed to approve'
-        );
+        toast({
+          variant: 'destructive',
+          title: 'Approval Failed',
+          description: `Failed to approve: ${(error as Error).message}`,
+        });
         resetAfterError();
       },
       onSuccess: async () => {
         await refetchAllowance();
-        renderToast(
-          toast,
-          'Approval transaction submitted. Waiting for confirmation...',
-          'info'
-        );
+        toast({
+          title: 'Approval Submitted',
+          description: 'Waiting for confirmation...',
+        });
       },
     },
   });
@@ -277,7 +264,10 @@ export default function AddEditTrade() {
   useEffect(() => {
     if (isConfirmed && txnStep === 2) {
       if (isEdit) {
-        renderToast(toast, `We've updated your position for you.`);
+        toast({
+          title: 'Success',
+          description: "We've updated your position for you.",
+        });
         resetAfterSuccess();
       } else {
         for (const log of transactionReceipt.logs) {
@@ -290,10 +280,10 @@ export default function AddEditTrade() {
 
             if ((event as any).eventName === 'TraderPositionCreated') {
               const nftId = (event as any).args.positionId.toString();
-              renderToast(
-                toast,
-                `Your position has been created as position ${nftId}`
-              );
+              toast({
+                title: 'Position Created',
+                description: `Your position has been created as position ${nftId}`,
+              });
               setNftId(nftId);
               resetAfterSuccess();
               return;
@@ -302,7 +292,10 @@ export default function AddEditTrade() {
             // This log was not for the TraderPositionCreated event, continue to next log
           }
         }
-        renderToast(toast, `We've created your position for you.`);
+        toast({
+          title: 'Success',
+          description: "We've created your position for you.",
+        });
         resetAfterSuccess();
       }
     }
@@ -495,13 +488,16 @@ export default function AddEditTrade() {
 
   const { openConnectModal } = useConnectModal();
 
+  const handleTabChange = (value: string) => {
+    setOption(value as 'Long' | 'Short');
+  };
+
   const renderActionButton = () => {
     if (!isConnected) {
       return (
         <Button
-          width="full"
-          variant="brand"
-          mb={4}
+          className="w-full mb-4"
+          variant="default"
           size="lg"
           onClick={openConnectModal}
         >
@@ -513,9 +509,8 @@ export default function AddEditTrade() {
     if (currentChainId !== chainId) {
       return (
         <Button
-          width="full"
-          variant="brand"
-          mb={4}
+          className="w-full mb-4"
+          variant="default"
           size="lg"
           onClick={() => switchChain({ chainId })}
         >
@@ -530,13 +525,12 @@ export default function AddEditTrade() {
     }
 
     return (
-      <Box mb={4}>
+      <div className="mb-4">
         <Button
-          width="full"
-          variant="brand"
+          className="w-full"
+          variant="default"
           type="submit"
-          isLoading={(pendingTxn || isLoadingCollateralChange) && !formError}
-          isDisabled={
+          disabled={
             !!formError ||
             pendingTxn ||
             isLoadingCollateralChange ||
@@ -544,10 +538,13 @@ export default function AddEditTrade() {
           }
           size="lg"
         >
+          {(pendingTxn || isLoadingCollateralChange) && !formError ? (
+            <span className="loading loading-spinner" />
+          ) : null}
           {buttonTxt}
         </Button>
         {renderPriceImpactWarning()}
-      </Box>
+      </div>
     );
   };
 
@@ -646,36 +643,29 @@ export default function AddEditTrade() {
   const publicClient = usePublicClient();
 
   const renderPriceImpactWarning = () => {
-    if (!showPriceImpactWarning) return;
+    if (!showPriceImpactWarning) return null;
     return (
-      <Text
-        color="red"
-        fontSize="sm"
-        textAlign="center"
-        mt={1}
-        fontWeight={500}
-      >
-        <WarningTwoIcon mr={1} />
+      <p className="text-red-500 text-sm text-center mt-1 font-medium">
+        <AlertTriangle className="inline-block w-4 h-4 mr-1" />
         Very high price impact ({Number(priceImpact.toFixed(2)).toString()}%)
-      </Text>
+      </p>
     );
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <Heading size="md" mb={3}>
-        Trade
-      </Heading>
-      <Flex {...group} gap={4} mb={4}>
-        {tradeOptions.map((value) => {
-          const radio = getRadioProps({ value });
-          return (
-            <RadioCard key={value} {...radio}>
-              {value}
-            </RadioCard>
-          );
-        })}
-      </Flex>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <h2 className="text-lg font-semibold mb-3">Trade</h2>
+      <Tabs
+        defaultValue="Long"
+        value={option}
+        onValueChange={handleTabChange}
+        className="mb-4"
+      >
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="Long">Long</TabsTrigger>
+          <TabsTrigger value="Short">Short</TabsTrigger>
+        </TabsList>
+      </Tabs>
       <SizeInput
         nftId={nftId}
         setSize={setSizeChange}
@@ -690,14 +680,14 @@ export default function AddEditTrade() {
       />
       <SlippageTolerance onSlippageChange={handleSlippageChange} />
       {renderActionButton()}
-      <Flex gap={2} flexDir="column">
+      <div className="flex flex-col gap-2">
         <PositionSelector isLP={false} />
         {isEdit && (
-          <Box>
-            <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
+          <div>
+            <p className="text-sm text-gray-600 font-semibold mb-0.5">
               Position Size
-            </Text>
-            <Text fontSize="sm" color="gray.600" mb={0.5}>
+            </p>
+            <p className="text-sm text-gray-600 mb-0.5">
               <NumberDisplay
                 value={formatUnits(
                   originalPositionSizeInContractUnit,
@@ -718,20 +708,31 @@ export default function AddEditTrade() {
                   Ggas
                 </>
               )}
-            </Text>
-          </Box>
+            </p>
+          </div>
         )}
         {!isLoadingCollateralChange && isConnected && (
-          <Box>
-            <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
+          <div>
+            <p className="text-sm text-gray-600 font-semibold mb-0.5 flex items-center">
               Wallet Balance
               {sizeChange !== BigInt(0) && (
-                <Tooltip label="Your slippage tolerance sets a maximum limit on how much additional collateral Foil can use or the minimum amount of collateral you will receive back, protecting you from unexpected market changes between submitting and processing your transaction.">
-                  <QuestionOutlineIcon transform="translateY(-1px)" ml={0.5} />
-                </Tooltip>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <HelpCircle className="w-4 h-4 ml-1" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Your slippage tolerance sets a maximum limit on how much
+                      additional collateral Foil can use or the minimum amount
+                      of collateral you will receive back, protecting you from
+                      unexpected market changes between submitting and
+                      processing your transaction.
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )}
-            </Text>
-            <Text fontSize="sm" color="gray.600">
+            </p>
+            <p className="text-sm text-gray-600">
               <NumberDisplay value={walletBalance} /> {collateralAssetTicker}
               {sizeChange !== BigInt(0) && !quoteError && (
                 <>
@@ -747,15 +748,15 @@ export default function AddEditTrade() {
                   {collateralAssetTicker})
                 </>
               )}
-            </Text>
-          </Box>
+            </p>
+          </div>
         )}
         {!isLoadingCollateralChange && (
-          <Box>
-            <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
+          <div>
+            <p className="text-sm text-gray-600 font-semibold mb-0.5">
               Position Collateral
-            </Text>
-            <Text fontSize="sm" color="gray.600" mb={0.5}>
+            </p>
+            <p className="text-sm text-gray-600 mb-0.5">
               <NumberDisplay
                 value={formatUnits(
                   positionData?.depositedCollateralAmount || BigInt(0),
@@ -783,36 +784,33 @@ export default function AddEditTrade() {
                   {collateralAssetTicker})
                 </>
               )}
-            </Text>
-          </Box>
+            </p>
+          </div>
         )}
         {quotedFillPrice && (
-          <Box>
-            <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
+          <div>
+            <p className="text-sm text-gray-600 font-semibold mb-0.5">
               Estimated Fill Price
-            </Text>
-            <Text fontSize="sm" color="gray.600" mb={0.5}>
+            </p>
+            <p className="text-sm text-gray-600 mb-0.5">
               <NumberDisplay value={quotedFillPrice} /> Ggas/
               {collateralAssetTicker}
-            </Text>
-          </Box>
+            </p>
+          </div>
         )}
         {priceImpact !== 0 && (
-          <Box>
-            <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
+          <div>
+            <p className="text-sm text-gray-600 font-semibold mb-0.5">
               Estimated Price Impact
-            </Text>
-            <Text
-              fontSize={showPriceImpactWarning ? 'large' : 'sm'}
-              color={showPriceImpactWarning ? 'red' : '"gray.600"'}
-              fontWeight={showPriceImpactWarning ? 'bold' : 'normal'}
-              mb={0.5}
+            </p>
+            <p
+              className={`${showPriceImpactWarning ? 'text-red-500' : 'text-gray-600'} text-sm font-medium mb-0.5`}
             >
               {Number(priceImpact.toFixed(2)).toString()}%
-            </Text>
-          </Box>
+            </p>
+          </div>
         )}
-      </Flex>
+      </div>
     </form>
   );
 }
