@@ -17,6 +17,7 @@
     "baseUrl": "src",
     "paths": {
       "~/*": ["./*"],
+      "@/components/*": ["./components/*"],
       "@/protocol/*": ["../../protocol/*"],
     },
     "incremental": true,

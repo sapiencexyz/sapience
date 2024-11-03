@@ -1,13 +1,12 @@
 'use client';
 
-import { Spinner, Box, Flex } from '@chakra-ui/react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 
 import Subscribe from '~/lib/components/foil/subscribe';
 import { useMarketList } from '~/lib/context/MarketListProvider';
 import { MarketProvider } from '~/lib/context/MarketProvider';
-import { getChain } from '~/lib/util/util';
 
 const HomeContent = () => {
   const { markets, isLoading } = useMarketList();
@@ -42,38 +41,31 @@ const HomeContent = () => {
 
   if (isLoading) {
     return (
-      <Flex m={10} justifyContent="center" alignItems="center" w="100%">
-        <Spinner />
-      </Flex>
+      <div className="flex justify-center items-center w-full m-10">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+      </div>
     );
   }
   return (
     <MarketProvider chainId={chainId} address={marketAddress} epoch={Number(1)}>
-      <Flex
-        w="100%"
-        p={6}
-        flexDirection="column"
-        justify="center"
-        alignItems="center"
-      >
-        <Box
-          m="auto"
-          border="1px solid"
-          borderColor="gray.300"
-          borderRadius="md"
-          p={6}
-          maxWidth="460px"
-        >
+      <div className="flex-1 flex">
+        <div className="m-auto border border-gray-300 rounded-md p-6 max-w-[460px]">
           <Subscribe showMarketSwitcher />
-        </Box>
-      </Flex>
+        </div>
+      </div>
     </MarketProvider>
   );
 };
 
 const Home = () => {
   return (
-    <Suspense fallback={<Spinner />}>
+    <Suspense
+      fallback={
+        <div className="flex justify-center items-center w-full m-10">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+        </div>
+      }
+    >
       <HomeContent />
     </Suspense>
   );

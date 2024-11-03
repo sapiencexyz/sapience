@@ -1,12 +1,13 @@
 'use client';
 
-import { Box, Button, Container, Flex, Input, Text } from '@chakra-ui/react';
-import axios from 'axios';
 import { useState } from 'react';
 
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import MarketsTable from '~/lib/components/MarketsTable';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import type { RenderJob } from '~/lib/interfaces/interfaces';
+import axios from 'axios';
 
 const Admin = () => {
   const [chainId, setChainId] = useState('');
@@ -51,63 +52,62 @@ const Admin = () => {
   const renderJob = () => {
     if (!job) return;
     return (
-      <Box my={4}>
-        {' '}
-        <Text fontWeight="bold" fontSize="lg">
-          Job Status:
-        </Text>
+      <div className="my-4">
+        <p className="font-bold text-lg">Job Status:</p>
         {Object.entries(job).map(([key, value]) => (
-          <Flex justifyContent="space-between" key={key}>
-            <Text mr={2} fontWeight="bold">
-              {key}:
-            </Text>
-            <Text>{value}</Text>
-          </Flex>
+          <div className="flex justify-between" key={key}>
+            <p className="mr-2 font-bold">{key}:</p>
+            <p>{value}</p>
+          </div>
         ))}
-        <Text>Last Refresh: {lastRefresh}</Text>
-      </Box>
+        <p>Last Refresh: {lastRefresh}</p>
+      </div>
     );
   };
 
   return (
-    <Container id="admin" my={10} minWidth="90vw" mx="40px">
+    <div className="container my-10 min-w-[90vw] mx-10">
       <MarketsTable />
-      <Box maxW="800px" mx="auto" mt={10}>
-        <Text fontSize="xl" my={8} fontWeight="bold">
-          Reindex
-        </Text>
-        <Box mb={4}>
-          <Text>Enter Market Address</Text>
+      <div className="max-w-[800px] mx-auto mt-10">
+        <p className="text-xl my-8 font-bold">Reindex</p>
+        <div className="mb-4">
+          <p>Enter Market Address</p>
           <Input value={address} onChange={(e) => setAddress(e.target.value)} />
-        </Box>
-        <Box mb={4}>
-          <Text>Enter Chain ID</Text>
+        </div>
+        <div className="mb-4">
+          <p>Enter Chain ID</p>
           <Input value={chainId} onChange={(e) => setChainId(e.target.value)} />
-        </Box>
-        <Button onClick={handleReindex} isLoading={loadingAction.reindex}>
-          Submit
+        </div>
+        <Button onClick={handleReindex} disabled={loadingAction.reindex}>
+          {loadingAction.reindex ? (
+            <div className="animate-spin">⌛</div>
+          ) : (
+            'Submit'
+          )}
         </Button>
-        <Box mt={8}>
+        <div className="mt-8">
           {renderJob()}
-          <Box mb={4}>
-            <Text>Service Id:</Text>
+          <div className="mb-4">
+            <p>Service Id:</p>
             <Input value={job?.serviceId || ''} readOnly />
-          </Box>
-          <Box mb={4}>
-            <Text>JobId:</Text>
+          </div>
+          <div className="mb-4">
+            <p>JobId:</p>
             <Input value={job?.id || ''} readOnly />
-          </Box>
+          </div>
           <Button
             onClick={handleGetStatus}
-            disabled={!job}
-            isLoading={loadingAction.getStatus}
+            disabled={!job || loadingAction.getStatus}
           >
-            {' '}
-            refresh job status
+            {loadingAction.getStatus ? (
+              <div className="animate-spin">⌛</div>
+            ) : (
+              'refresh job status'
+            )}
           </Button>
-        </Box>
-      </Box>
-    </Container>
+        </div>
+      </div>
+    </div>
   );
 };
 

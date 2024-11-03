@@ -4,10 +4,12 @@ import MarketsTable from '~/lib/components/foil/marketsTable';
 
 const Market = () => {
   return (
-    <Container my={8} maxWidth="container.xl">
-      <Heading>Foil Markets</Heading>
+    <div className="container mx-auto my-8 max-w-7xl">
+      <h1 className="scroll-m-20 text-4xl font-bold tracking-tight">
+        Foil Markets
+      </h1>
       <MarketsTable />
-    </Container>
+    </div>
   );
 };
 

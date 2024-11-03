@@ -1,6 +1,5 @@
 'use client';
 
-import { Flex, Box } from '@chakra-ui/react';
 import React from 'react';
 
 import Subscribe from '~/lib/components/foil/subscribe';
@@ -20,23 +19,16 @@ const SubscribePage = ({
       address={marketAddress}
       epoch={Number(epoch)}
     >
-      <Flex w="100%" p={6}>
-        <Box
-          m="auto"
-          border="1px solid"
-          borderColor="gray.300"
-          borderRadius="md"
-          p={6}
-          maxWidth="432px"
-        >
+      <div className="flex-1 flex">
+        <div className="m-auto border border-gray-300 rounded-md p-6 max-w-[460px]">
           <Subscribe
             marketAddress={marketAddress}
             chainId={Number(chainId)}
             epoch={Number(epoch)}
             showMarketSwitcher={false}
           />
-        </Box>
-      </Flex>
+        </div>
+      </div>
     </MarketProvider>
   );
 };

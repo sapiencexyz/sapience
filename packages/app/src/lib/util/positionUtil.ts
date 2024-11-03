@@ -1,5 +1,5 @@
 import type { Pool } from '@uniswap/v3-sdk';
-import { formatUnits, parseUnits } from 'viem';
+import { parseUnits } from 'viem';
 
 /**
  * Calculate the new liquidity of a position after depositing collateral
