@@ -47,7 +47,7 @@ const EpochHeader = () => {
         <div className="flex flex-col items-start lg:items-end mt-4 lg:mt-auto mb-0 lg:mb-1 lg:ml-auto w-full lg:w-auto">
           <div className="flex flex-wrap gap-2 lg:gap-6">
             <a
-              className="text-sm text-gray-800 hover:no-underline inline-flex items-center"
+              className="text-sm hover:no-underline inline-flex items-center"
               target="_blank"
               rel="noopener noreferrer"
               href={`${chain?.blockExplorers?.default.url}/address/${address}`}
@@ -61,7 +61,7 @@ const EpochHeader = () => {
             </a>
 
             <a
-              className="text-sm text-gray-800 hover:no-underline inline-flex items-center"
+              className="text-sm hover:no-underline inline-flex items-center"
               target="_blank"
               rel="noopener noreferrer"
               href={`${chain?.blockExplorers?.default.url}/address/${collateralAsset}`}

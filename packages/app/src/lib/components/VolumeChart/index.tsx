@@ -20,9 +20,10 @@ import {
 
 import { DECIMAL_PRECISION_DISPLAY } from '~/lib/constants/constants';
 import type { VolumeChartData, TimeWindow } from '~/lib/interfaces/interfaces';
-import { turquoise } from '~/lib/styles/theme/colors';
 import { formatXAxisTick, getXTicksToShow } from '~/lib/util/chartUtil';
 import { getDisplayTextForVolumeWindow } from '~/lib/util/util';
+
+const turquoise = '#00FFD1';
 
 dayjs.extend(utc);
 

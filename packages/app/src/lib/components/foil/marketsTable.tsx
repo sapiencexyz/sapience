@@ -1,6 +1,5 @@
 'use client';
 
-import { Button, Link } from '@chakra-ui/react';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import {
   useReactTable,
@@ -10,8 +9,10 @@ import {
 } from '@tanstack/react-table';
 import { format } from 'date-fns';
 import { ChevronDown, ChevronUp, ArrowUpDown } from 'lucide-react';
+import Link from 'next/link';
 import * as React from 'react';
 
+import { Button } from '~/components/ui/button';
 import {
   Table,
   TableBody,
@@ -135,22 +136,20 @@ const MarketsTable = () => {
               <TableCell>
                 <Link
                   href={`/subscribe/${row.original.chainId}:${row.original.marketAddress}/epochs/${row.original.epochId}`}
+                  className="mr-2"
                 >
-                  <Button size="xs" mr={2}>
-                    Subscribe
-                  </Button>
+                  <Button size="sm">Subscribe</Button>
                 </Link>
                 <Link
                   href={`/trade/${row.original.chainId}:${row.original.marketAddress}/epochs/${row.original.epochId}`}
+                  className="mr-2"
                 >
-                  <Button size="xs" mr={2}>
-                    Trade
-                  </Button>
+                  <Button size="sm">Trade</Button>
                 </Link>
                 <Link
                   href={`/pool/${row.original.chainId}:${row.original.marketAddress}/epochs/${row.original.epochId}`}
                 >
-                  <Button size="xs">Pool</Button>
+                  <Button size="sm">Pool</Button>
                 </Link>
               </TableCell>
             </TableRow>

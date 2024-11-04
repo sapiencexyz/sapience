@@ -1,5 +1,3 @@
-import { CheckIcon, QuestionOutlineIcon } from '@chakra-ui/icons';
-import { Tooltip } from '@chakra-ui/react';
 import {
   useReactTable,
   flexRender,
@@ -8,7 +6,13 @@ import {
   type ColumnDef,
   type SortingState,
 } from '@tanstack/react-table';
-import { ChevronDown, ChevronUp, ArrowUpDown } from 'lucide-react';
+import {
+  Check,
+  HelpCircle,
+  ChevronDown,
+  ChevronUp,
+  ArrowUpDown,
+} from 'lucide-react';
 import Link from 'next/link';
 import type React from 'react';
 import { useContext, useState, useMemo } from 'react';
@@ -23,6 +27,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { calculatePnL } from '~/lib/util/positionUtil';
 import { convertWstEthToGwei } from '~/lib/util/util';
 
@@ -54,16 +64,26 @@ const SizeCell = ({ cell }: { cell: any }) => (
 );
 
 const PnLHeaderCell = () => (
-  <span>
+  <span className="flex items-center gap-1">
     Profit/Loss{' '}
-    <Tooltip label="This is an estimate that does not take into account slippage or fees.">
-      <QuestionOutlineIcon transform="translateY(-1px)" />
-    </Tooltip>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger>
+          <HelpCircle className="h-4 w-4" />
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>
+            This is an estimate that does not take into account slippage or
+            fees.
+          </p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   </span>
 );
 
 const SettledCell = ({ cell }: { cell: any }) =>
-  cell.getValue() ? <CheckIcon color="green.500" mr={2} /> : null;
+  cell.getValue() ? <Check className="h-4 w-4 text-green-500 mr-2" /> : null;
 
 const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
   const { address, chain, endTime, pool, useMarketUnits, stEthPerToken } =

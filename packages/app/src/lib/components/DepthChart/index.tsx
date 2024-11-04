@@ -17,14 +17,13 @@ import { useReadContracts } from 'wagmi';
 
 import { TICK_SPACING_DEFAULT } from '~/lib/constants/constants';
 import { MarketContext } from '~/lib/context/MarketProvider';
-import {
-  gray400,
-  paleGreen,
-  peach,
-  purple,
-  turquoise,
-} from '~/lib/styles/theme/colors';
 import { formatAmount } from '~/lib/util/numberUtil';
+
+const gray400 = '#a3a3a3';
+const paleGreen = '#98fb98';
+const purple = '#800080';
+const turquoise = '#00ffd1';
+const peach = '#ffa07a';
 
 const checkIsClosestTick = (
   tick: number,

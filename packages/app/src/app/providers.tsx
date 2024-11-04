@@ -1,6 +1,5 @@
 'use client';
 
-import { CacheProvider } from '@chakra-ui/next-js';
 import { RainbowKitProvider, lightTheme } from '@rainbow-me/rainbowkit';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import type { HttpTransport } from 'viem';
@@ -10,9 +9,7 @@ import { createConfig, http, WagmiProvider } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 
 import ThemeProvider from '~/components/ThemeProvider';
-import { Chakra as ChakraProvider } from '~/lib/components/Chakra';
 import { MarketListProvider } from '~/lib/context/MarketListProvider';
-import { colors } from '~/lib/styles/theme/colors';
 
 const queryClient = new QueryClient();
 
@@ -58,21 +55,13 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
       enableSystem={false}
       disableTransitionOnChange
     >
-      <CacheProvider>
-        <WagmiProvider config={config}>
-          <QueryClientProvider client={queryClient}>
-            <RainbowKitProvider
-              theme={lightTheme({
-                accentColor: colors?.gray ? colors.gray[800] : '#00000',
-              })}
-            >
-              <ChakraProvider>
-                <MarketListProvider>{children}</MarketListProvider>
-              </ChakraProvider>
-            </RainbowKitProvider>
-          </QueryClientProvider>
-        </WagmiProvider>
-      </CacheProvider>
+      <WagmiProvider config={config}>
+        <QueryClientProvider client={queryClient}>
+          <RainbowKitProvider theme={lightTheme()}>
+            <MarketListProvider>{children}</MarketListProvider>
+          </RainbowKitProvider>
+        </QueryClientProvider>
+      </WagmiProvider>
     </ThemeProvider>
   );
 };

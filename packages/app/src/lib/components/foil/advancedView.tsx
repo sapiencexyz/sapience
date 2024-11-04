@@ -217,7 +217,7 @@ const Market = ({
           id="idx-loading"
         >
           <Loader2 className="w-4 h-4 animate-spin" />
-          <span className="text-xs">Loading Index Prices...</span>
+          <span className="text-sm">Loading Index Prices...</span>
         </div>
       );
     }

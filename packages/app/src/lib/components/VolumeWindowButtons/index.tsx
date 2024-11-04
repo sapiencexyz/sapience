@@ -19,14 +19,12 @@ const VolumeWindowSelector: React.FC<VolumeWindowSelectorProps> = ({
       onValueChange={(value) => setSelectedWindow(value as TimeWindow)}
       className="w-fit"
     >
-      <TabsList className="bg-gray-100 rounded-full p-1">
+      <TabsList className="rounded-full p-1">
         {Object.values(TimeWindow).map((window) => (
           <TabsTrigger
             key={window}
             value={window}
             className={`rounded-full px-3 py-1.5 text-sm transition-all
-              hover:bg-gray-200
-              data-[state=active]:bg-gray-200
               data-[state=active]:font-bold`}
           >
             {window}

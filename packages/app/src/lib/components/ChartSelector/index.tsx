@@ -36,7 +36,6 @@ const ChartSelector: React.FC<CustomDropdownProps> = ({
       <DropdownMenuItem
         key={option}
         onClick={() => handleSelect(option as ChartType)}
-        className="bg-gray-100 hover:bg-gray-200"
       >
         <div
           className={`flex items-center justify-between w-full font-${
@@ -53,11 +52,7 @@ const ChartSelector: React.FC<CustomDropdownProps> = ({
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          className="bg-gray-100 hover:bg-gray-200 rounded-full"
-          size="sm"
-        >
+        <Button variant="outline" className="rounded-full" size="sm">
           {chartType}
           {isOpen ? (
             <ChevronUp className="ml-2 h-4 w-4" />
@@ -66,7 +61,7 @@ const ChartSelector: React.FC<CustomDropdownProps> = ({
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="bg-gray-100 border border-gray-200">
+      <DropdownMenuContent>
         {Object.values(ChartType).map((option) => renderChartType(option))}
       </DropdownMenuContent>
     </DropdownMenu>

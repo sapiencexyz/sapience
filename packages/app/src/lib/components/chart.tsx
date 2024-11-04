@@ -22,11 +22,11 @@ import {
   getDisplayTextForVolumeWindow,
 } from '../util/util';
 import { MarketContext } from '~/lib/context/MarketProvider';
-import { colors, gray700, green400, red500 } from '~/lib/styles/theme/colors';
 
-const grayColor = colors.gray?.[700] || gray700;
-const redColor = colors.red?.[400] || red500;
-const greenColor = colors.green?.[400] || green400;
+const grayColor = '#475569';
+const greenColor = '#00ff00';
+const redColor = '#ff0000';
+
 const CustomBarShape: React.FC<{
   x: number;
   // y: number;
@@ -117,7 +117,7 @@ const CustomTooltip: React.FC<
   const price = payloadData?.price;
   if (!close && !open && !high && !low && !price) return null;
   return (
-    <div className="bg-white p-2 border border-gray-200 rounded-md">
+    <div className="bg-background p-2 border border-border rounded-md">
       <p>Close: {close ? formatAmount(close) : '-'}</p>
       <p>Open: {open ? formatAmount(open) : '-'}</p>
       <p>High: {high ? formatAmount(high) : '-'}</p>
@@ -258,14 +258,14 @@ const CandlestickChart: React.FC<Props> = ({
 
   return (
     <div className="flex flex-1 relative">
-      <div className="min-h-[50px] w-fit absolute top-0 left-0 z-[2] bg-white/80">
+      <div className="min-h-[50px] w-fit absolute top-0 left-0 z-[2]">
         <p className="min-h-[24px]">
           {value
             ? `${value.toLocaleString()}`
             : formatAmount(Number(currPrice))}{' '}
           {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
         </p>
-        <p className="text-sm text-gray-500">{label ? `${label}` : ''}</p>
+        <p className="text-sm">{label ? `${label}` : ''}</p>
       </div>
       <ResponsiveContainer
         height="95%"
