@@ -291,7 +291,7 @@ const Market = ({
               </div>
             </div>
             {transactions.length > 0 && (
-              <div 
+              <div
                 className="flex id-table-flex border-t border-border position-relative justify-center items-center relative"
                 style={{ height: `${tableFlexHeight}px` }}
               >

@@ -628,16 +628,36 @@ const AddEditLiquidity: React.FC = () => {
   }, [uniswapPosition, setValue]);
 
   useEffect(() => {
-    if (approveHash || addLiquidityHash || increaseLiquidityHash || decreaseLiquidityHash) {
+    if (
+      approveHash ||
+      addLiquidityHash ||
+      increaseLiquidityHash ||
+      decreaseLiquidityHash
+    ) {
       setPendingTxn(true);
     }
-  }, [approveHash, addLiquidityHash, increaseLiquidityHash, decreaseLiquidityHash]);
+  }, [
+    approveHash,
+    addLiquidityHash,
+    increaseLiquidityHash,
+    decreaseLiquidityHash,
+  ]);
 
   useEffect(() => {
-    if (isApproveSuccess || addLiquiditySuccess || increaseLiquiditySuccess || decreaseLiquiditySuccess) {
+    if (
+      isApproveSuccess ||
+      addLiquiditySuccess ||
+      increaseLiquiditySuccess ||
+      decreaseLiquiditySuccess
+    ) {
       setPendingTxn(false);
     }
-  }, [isApproveSuccess, addLiquiditySuccess, increaseLiquiditySuccess, decreaseLiquiditySuccess]);
+  }, [
+    isApproveSuccess,
+    addLiquiditySuccess,
+    increaseLiquiditySuccess,
+    decreaseLiquiditySuccess,
+  ]);
 
   /// /// HANDLERS //////
   const getCurrentDeadline = (): bigint => {
@@ -955,7 +975,7 @@ const AddEditLiquidity: React.FC = () => {
                       const percentage = parseFloat(value) / 100;
                       const newAmount = positionCollateralAmount * percentage;
                       const change = newAmount - positionCollateralAmount;
-                      
+
                       return (
                         change <= 0 ||
                         (walletBalance &&
@@ -1008,8 +1028,8 @@ const AddEditLiquidity: React.FC = () => {
                         return 'Amount is required';
                       }
                       return (
-                        walletBalance &&
-                        parseFloat(value) <= parseFloat(walletBalance) ||
+                        (walletBalance &&
+                          parseFloat(value) <= parseFloat(walletBalance)) ||
                         'Insufficient balance in wallet'
                       );
                     },
@@ -1046,8 +1066,7 @@ const AddEditLiquidity: React.FC = () => {
           maxAllowedPrice={tickToPrice(epochParams.baseAssetMaxPriceTick)}
         />
 
-        <SlippageTolerance
-        />
+        <SlippageTolerance />
 
         {renderActionButton()}
 
