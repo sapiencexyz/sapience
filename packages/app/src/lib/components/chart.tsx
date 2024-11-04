@@ -170,12 +170,37 @@ const CandlestickChart: React.FC<Props> = ({
   const chartRef = useRef(null);
 
   const combinedData = useMemo(() => {
+    let lastClose = 0;
     return data.marketPrices.map((mp, i) => {
+      if (mp.close) {
+        lastClose = mp.close;
+      }
+
       const price = data.indexPrices[i]?.price || 0;
       const priceAdjusted = isLoading ? 0 : price / (stEthPerToken || 1);
       const displayPriceValue = useMarketUnits
         ? priceAdjusted
         : convertGgasPerWstEthToGwei(priceAdjusted, stEthPerToken);
+
+      if (!mp.close && !mp.open && !mp.high && !mp.low && lastClose) {
+        return {
+          ...mp,
+          high: useMarketUnits
+            ? lastClose
+            : convertGgasPerWstEthToGwei(lastClose, stEthPerToken),
+          low: useMarketUnits
+            ? lastClose
+            : convertGgasPerWstEthToGwei(lastClose, stEthPerToken),
+          open: useMarketUnits
+            ? lastClose
+            : convertGgasPerWstEthToGwei(lastClose, stEthPerToken),
+          close: useMarketUnits
+            ? lastClose
+            : convertGgasPerWstEthToGwei(lastClose, stEthPerToken),
+          price: displayPriceValue || undefined,
+        };
+      }
+
       return {
         ...mp,
         high: useMarketUnits
