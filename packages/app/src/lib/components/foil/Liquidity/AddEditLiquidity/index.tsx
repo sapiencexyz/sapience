@@ -93,25 +93,34 @@ const AddEditLiquidity: React.FC = () => {
 
   const form = useForm({
     defaultValues: {
-      depositAmount: '1',
+      depositAmount: '0',
+      modifyLiquidity: '100',
       lowPrice: epochParams?.baseAssetMinPriceTick
         ? tickToPrice(epochParams.baseAssetMinPriceTick).toString()
         : '0',
       highPrice: epochParams?.baseAssetMaxPriceTick
         ? tickToPrice(epochParams.baseAssetMaxPriceTick).toString()
         : '0',
+      slippage: '0.5',
     },
-    mode: 'onChange', // Validate on change instead of blur
-    reValidateMode: 'onChange', // Keep revalidating on change
+    mode: 'onChange',
+    reValidateMode: 'onChange',
   });
+
   const {
     register,
     control,
     handleSubmit,
-    formState: { errors, isValid, touchedFields },
+    formState: { errors, isValid },
     setValue,
     reset: resetForm,
   } = form;
+
+  const modifyLiquidity = useWatch({
+    control,
+    name: 'modifyLiquidity',
+  });
+
   const depositAmount = useWatch({
     control,
     name: 'depositAmount',
@@ -618,6 +627,18 @@ const AddEditLiquidity: React.FC = () => {
     }
   }, [uniswapPosition, setValue]);
 
+  useEffect(() => {
+    if (approveHash || addLiquidityHash || increaseLiquidityHash || decreaseLiquidityHash) {
+      setPendingTxn(true);
+    }
+  }, [approveHash, addLiquidityHash, increaseLiquidityHash, decreaseLiquidityHash]);
+
+  useEffect(() => {
+    if (isApproveSuccess || addLiquiditySuccess || increaseLiquiditySuccess || decreaseLiquiditySuccess) {
+      setPendingTxn(false);
+    }
+  }, [isApproveSuccess, addLiquiditySuccess, increaseLiquiditySuccess, decreaseLiquiditySuccess]);
+
   /// /// HANDLERS //////
   const getCurrentDeadline = (): bigint => {
     return BigInt(Math.floor(Date.now() / 1000) + 1800); // 30 minutes from now
@@ -692,8 +713,6 @@ const AddEditLiquidity: React.FC = () => {
 
   const resetAfterSuccess = () => {
     resetForm();
-    setSlippage(0.5);
-
     setTxnSuccessMsg('');
     setTxnStep(0);
     setPendingTxn(false);
@@ -881,13 +900,82 @@ const AddEditLiquidity: React.FC = () => {
     );
   };
 
+  // Set initial values when position loads
+  useEffect(() => {
+    if (isEdit) {
+      setValue('modifyLiquidity', '100', {
+        shouldValidate: false,
+        shouldDirty: false,
+        shouldTouch: false,
+      });
+    } else {
+      setValue('depositAmount', '0', {
+        shouldValidate: false,
+        shouldDirty: false,
+        shouldTouch: false,
+      });
+    }
+  }, [nftId, positionData, isEdit, setValue]);
+
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit(handleFormSubmit)}>
         <h2 className="text-xl font-semibold mb-3">Pool Liquidity</h2>
 
         <div className="mb-4">
-          <div>
+          {isEdit ? (
+            <div className={errors.modifyLiquidity ? 'space-y-1' : ''}>
+              <Label htmlFor="modifyLiquidity">Modify Liquidity</Label>
+              <div className="relative flex">
+                <Input
+                  id="modifyLiquidity"
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step="any"
+                  className="pr-20"
+                  onWheel={(e) => e.currentTarget.blur()}
+                  {...register('modifyLiquidity', {
+                    onChange: (e) => {
+                      const processed = removeLeadingZeros(e.target.value);
+                      setValue('modifyLiquidity', processed, {
+                        shouldValidate: true,
+                      });
+                    },
+                    onBlur: () => {
+                      if (modifyLiquidity === '') {
+                        setValue('modifyLiquidity', '100', {
+                          shouldValidate: false,
+                          shouldDirty: false,
+                          shouldTouch: false,
+                        });
+                      }
+                    },
+                    validate: (value) => {
+                      const percentage = parseFloat(value) / 100;
+                      const newAmount = positionCollateralAmount * percentage;
+                      const change = newAmount - positionCollateralAmount;
+                      
+                      return (
+                        change <= 0 ||
+                        (walletBalance &&
+                          change <= parseFloat(walletBalance)) ||
+                        'Insufficient balance in wallet'
+                      );
+                    },
+                  })}
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center px-3 border border-l-0 border-input bg-muted">
+                  %
+                </div>
+              </div>
+              {errors.modifyLiquidity && (
+                <p className="text-sm text-destructive">
+                  {errors.modifyLiquidity.message?.toString()}
+                </p>
+              )}
+            </div>
+          ) : (
             <div className={errors.depositAmount ? 'space-y-1' : ''}>
               <Label htmlFor="collateral">Collateral</Label>
               <div className="relative flex">
@@ -897,7 +985,6 @@ const AddEditLiquidity: React.FC = () => {
                   inputMode="decimal"
                   min={0}
                   step="any"
-                  value={depositAmount}
                   className="pr-20"
                   onWheel={(e) => e.currentTarget.blur()}
                   {...register('depositAmount', {
@@ -918,20 +1005,11 @@ const AddEditLiquidity: React.FC = () => {
                     },
                     validate: (value) => {
                       if (value === '' || parseFloat(value) === 0) {
-                        if (isEdit) {
-                          return true;
-                        }
                         return 'Amount is required';
                       }
-                      const currentDepositAmount = isEdit
-                        ? positionCollateralAmount
-                        : 0;
-                      const increaseAmount =
-                        parseFloat(value) - currentDepositAmount;
                       return (
-                        increaseAmount <= 0 ||
-                        (walletBalance &&
-                          increaseAmount <= parseFloat(walletBalance)) ||
+                        walletBalance &&
+                        parseFloat(value) <= parseFloat(walletBalance) ||
                         'Insufficient balance in wallet'
                       );
                     },
@@ -947,7 +1025,7 @@ const AddEditLiquidity: React.FC = () => {
                 </p>
               )}
             </div>
-          </div>
+          )}
         </div>
 
         <LiquidityPriceInput
@@ -968,7 +1046,8 @@ const AddEditLiquidity: React.FC = () => {
           maxAllowedPrice={tickToPrice(epochParams.baseAssetMaxPriceTick)}
         />
 
-        <SlippageTolerance />
+        <SlippageTolerance
+        />
 
         {renderActionButton()}
 

@@ -69,6 +69,7 @@ const Market = ({
   // useEffect to handle table resize
   useEffect(() => {
     const resizeElement = resizeRef.current;
+    if (!resizeElement) return;
     let startY: number;
     let startHeight: number;
 
@@ -99,7 +100,7 @@ const Market = ({
         resizeElement.removeEventListener('mousedown', onMouseDown);
       }
     };
-  }, [tableFlexHeight]);
+  }, [tableFlexHeight, resizeRef.current]);
 
   const useVolume = () => {
     return useQuery({
@@ -290,7 +291,14 @@ const Market = ({
               </div>
             </div>
             {transactions.length > 0 && (
-              <div className="flex id-table-flex border-t border-border h-[calc(172px)] position-relative justify-center items-center">
+              <div 
+                className="flex id-table-flex border-t border-border position-relative justify-center items-center relative"
+                style={{ height: `${tableFlexHeight}px` }}
+              >
+                <div
+                  ref={resizeRef}
+                  className="absolute top-0 left-0 right-0 h-1 cursor-ns-resize hover:bg-gray-30"
+                />
                 {isLoadingAccountData ? (
                   <div className="flex justify-center items-center">
                     <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
