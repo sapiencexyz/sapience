@@ -585,6 +585,7 @@ const Subscribe: FC<SubscribeProps> = ({
           <h2 className="text-lg font-semibold">{marketName} Subscription</h2>
           {showMarketSwitcher && (
             <Button
+              type="button"
               variant="ghost"
               size="sm"
               onClick={() => setIsMarketSelectorOpen(true)}
