@@ -1,20 +1,28 @@
 import { CheckIcon, QuestionOutlineIcon } from '@chakra-ui/icons';
+import { Tooltip } from '@chakra-ui/react';
 import {
-  TableContainer,
-  Table,
-  Thead,
-  Tr,
-  Th,
-  Tbody,
-  Td,
-  Link,
-  Tooltip,
-} from '@chakra-ui/react';
+  useReactTable,
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+  type ColumnDef,
+  type SortingState,
+} from '@tanstack/react-table';
+import { ChevronDown, ChevronUp, ArrowUpDown } from 'lucide-react';
+import Link from 'next/link';
 import type React from 'react';
-import { useContext } from 'react';
+import { useContext, useState, useMemo } from 'react';
 import { formatUnits } from 'viem';
 
 import { MarketContext } from '../../context/MarketProvider';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { calculatePnL } from '~/lib/util/positionUtil';
 import { convertWstEthToGwei } from '~/lib/util/util';
 
@@ -23,9 +31,44 @@ import NumberDisplay from './numberDisplay';
 interface Props {
   positions: any[];
 }
+
+// First, define cell components outside the main component
+const PositionCell = ({ row }: { row: any }) => (
+  <Link
+    href={`/positions/${row.original.chain?.id}:${row.original.address}/${row.original.positionId}`}
+  >
+    #{row.original.positionId.toString()}
+  </Link>
+);
+
+const CollateralCell = ({ cell }: { cell: any }) => (
+  <>
+    <NumberDisplay value={cell.getValue()} /> wstETH
+  </>
+);
+
+const SizeCell = ({ cell }: { cell: any }) => (
+  <>
+    <NumberDisplay value={cell.getValue()} /> Ggas
+  </>
+);
+
+const PnLHeaderCell = () => (
+  <span>
+    Profit/Loss{' '}
+    <Tooltip label="This is an estimate that does not take into account slippage or fees.">
+      <QuestionOutlineIcon transform="translateY(-1px)" />
+    </Tooltip>
+  </span>
+);
+
+const SettledCell = ({ cell }: { cell: any }) =>
+  cell.getValue() ? <CheckIcon color="green.500" mr={2} /> : null;
+
 const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
   const { address, chain, endTime, pool, useMarketUnits, stEthPerToken } =
     useContext(MarketContext);
+  const [sorting, setSorting] = useState<SortingState>([]);
   const dateMilliseconds = Number(endTime) * 1000;
   const expired = new Date(dateMilliseconds) < new Date();
 
@@ -67,72 +110,129 @@ const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
     return formatUnits(BigInt(unitsAdjustedEntryPrice), 18);
   };
 
+  const columns = useMemo<ColumnDef<any>[]>(
+    () => [
+      {
+        id: 'market',
+        header: 'Market',
+        accessorFn: (row) =>
+          `${row.epoch.market.name} (Epoch ${row.epoch.epochId})`,
+      },
+      {
+        id: 'position',
+        header: 'Position',
+        accessorFn: (row) => row.positionId,
+        cell: PositionCell,
+      },
+      {
+        id: 'collateral',
+        header: 'Collateral',
+        accessorKey: 'collateral',
+        cell: CollateralCell,
+      },
+      {
+        id: 'size',
+        header: 'Size',
+        accessorFn: (row) => row.baseToken - row.borrowedBaseToken,
+        cell: SizeCell,
+      },
+      {
+        id: 'entryPrice',
+        header: 'Entry Price',
+        accessorFn: (row) => calculateEntryPrice(row),
+        cell: SizeCell,
+      },
+      {
+        id: 'pnl',
+        header: PnLHeaderCell,
+        accessorFn: (row) => calculatePnL(row, pool),
+        cell: CollateralCell,
+      },
+      {
+        id: 'settled',
+        header: 'Settled',
+        accessorFn: (row) => row.isSettled,
+        cell: SettledCell,
+      },
+    ],
+    [useMarketUnits]
+  );
+
+  const table = useReactTable({
+    data: positions,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    onSortingChange: setSorting,
+    getSortedRowModel: getSortedRowModel(),
+    state: {
+      sorting,
+    },
+    meta: {
+      useMarketUnits,
+    },
+  });
+
   return (
-    <TableContainer mb={4}>
-      <Table variant="simple" size="sm">
-        <Thead>
-          <Tr>
-            <Th>Market</Th>
-            <Th>Position</Th>
-            <Th>Collateral</Th>
-            <Th>Size</Th>
-            <Th>Entry Price</Th>
-            <Th>
-              Profit/Loss{' '}
-              <Tooltip label="This is an estimate that does not take into account slippage or fees.">
-                <QuestionOutlineIcon transform="translateY(-1px)" />
-              </Tooltip>
-            </Th>
-            {expired ? <Th>Settled</Th> : null}
-          </Tr>
-        </Thead>
-        <Tbody>
-          {positions &&
-            positions.map((row: any) => {
-              const pnl = calculatePnL(row, pool);
-              const entryPrice = calculateEntryPrice(row);
-              return (
-                <Tr key={row.id}>
-                  <Td>
-                    {row.epoch.market.name} (Epoch {row.epoch.epochId})
-                  </Td>
-                  <Td>
-                    <Link
-                      href={`/positions/${chain?.id}:${address}/${row.positionId}`}
-                      textDecoration="underline"
-                    >
-                      #{row.positionId.toString()}
-                    </Link>
-                  </Td>
-                  <Td>
-                    <NumberDisplay value={row.collateral} /> wstETH
-                  </Td>
-                  <Td>
-                    <NumberDisplay
-                      value={row.baseToken - row.borrowedBaseToken}
-                    />{' '}
-                    Ggas
-                  </Td>
-                  <Td>
-                    <NumberDisplay value={entryPrice} />{' '}
-                    {useMarketUnits ? 'wstETH' : 'gwei'}
-                  </Td>
-                  <Td>
-                    <NumberDisplay value={pnl} /> wstETH
-                  </Td>
-                  {expired ? (
-                    <Td>
-                      {row.isSettled ? (
-                        <CheckIcon color="green.500" mr={2} />
-                      ) : null}
-                    </Td>
-                  ) : null}
-                </Tr>
-              );
-            })}
-        </Tbody>
-      </Table>
-    </TableContainer>
+    <Table>
+      <TableHeader>
+        {table.getHeaderGroups().map((headerGroup) => (
+          <TableRow key={headerGroup.id}>
+            {headerGroup.headers.map((header) => (
+              <TableHead
+                key={header.id}
+                onClick={header.column.getToggleSortingHandler()}
+                className="cursor-pointer"
+              >
+                <span className="flex items-center">
+                  {flexRender(
+                    header.column.columnDef.header,
+                    header.getContext()
+                  )}
+                  <span className="ml-2 inline-block">
+                    {(() => {
+                      const sortDirection = header.column.getIsSorted();
+                      if (sortDirection === 'desc') {
+                        return (
+                          <ChevronDown
+                            className="h-3 w-3"
+                            aria-label="sorted descending"
+                          />
+                        );
+                      }
+                      if (sortDirection === 'asc') {
+                        return (
+                          <ChevronUp
+                            className="h-3 w-3"
+                            aria-label="sorted ascending"
+                          />
+                        );
+                      }
+                      return (
+                        <ArrowUpDown
+                          className="h-3 w-3"
+                          aria-label="sortable"
+                        />
+                      );
+                    })()}
+                  </span>
+                </span>
+              </TableHead>
+            ))}
+          </TableRow>
+        ))}
+      </TableHeader>
+      <TableBody>
+        {table.getRowModel().rows.map((row) => (
+          <TableRow key={row.id}>
+            {row.getVisibleCells().map((cell) => (
+              <TableCell key={cell.id}>
+                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              </TableCell>
+            ))}
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 };
 

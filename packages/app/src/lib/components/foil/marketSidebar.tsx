@@ -4,9 +4,9 @@ import { useContext, useEffect } from 'react';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
 
+import AddEditTrade from './addEditTrade';
 import AddEditLiquidity from './Liquidity/AddEditLiquidity';
 import Settle from './settle';
-import TraderPosition from './traderPosition';
 
 export default function MarketSidebar({ isTrade }: { isTrade: boolean }) {
   const { endTime } = useContext(MarketContext);
@@ -36,7 +36,7 @@ export default function MarketSidebar({ isTrade }: { isTrade: boolean }) {
       return <Settle />;
     }
     if (isTrade) {
-      return <TraderPosition />;
+      return <AddEditTrade />;
     }
     return <AddEditLiquidity />;
   };

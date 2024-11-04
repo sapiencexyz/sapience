@@ -158,6 +158,7 @@ const SizeInput: React.FC<Props> = ({
             className="rounded-r-none"
           />
           <Button
+            type="button"
             variant="outline"
             className="rounded-l-none px-3 h-10"
             onClick={handleUpdateInputType}

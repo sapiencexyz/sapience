@@ -302,13 +302,13 @@ const Market = ({
                   >
                     <TabsList>
                       <TabsTrigger value="transactions">
-                        Transactions
+                        Your Transactions
                       </TabsTrigger>
                       <TabsTrigger value="trader-positions">
-                        Trader Positions
+                        Your Trader Positions
                       </TabsTrigger>
                       <TabsTrigger value="lp-positions">
-                        LP Positions
+                        Your LP Positions
                       </TabsTrigger>
                     </TabsList>
                     <div className="flex-grow overflow-y-auto">
