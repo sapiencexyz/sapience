@@ -92,8 +92,8 @@ const NavPopover = ({
                 {market.currentEpoch && (
                   <Link
                     className={`text-sm w-full block rounded-md px-3 py-1.5 
-                      ${hoveredMarket === market.id ? 'bg-gray-100' : 'bg-transparent'}
-                      hover:bg-gray-100`}
+                      ${hoveredMarket === market.id ? 'bg-secondary' : 'bg-transparent'}
+                      hover:bg-secondary`}
                     href={getMarketHref(path, market, withEpochs)}
                     onClick={handleLinkClick}
                   >
@@ -104,7 +104,7 @@ const NavPopover = ({
             ))}
           </div>
           {withEpochs && (
-            <div className="flex-1 border-l border-gray-200 pl-3 ml-3">
+            <div className="flex-1 border-l border-border pl-3 ml-3">
               {hoveredMarket && (
                 <div className="flex flex-col space-y-1">
                   {(() => {
@@ -117,7 +117,7 @@ const NavPopover = ({
                     return hoveredMarketData?.epochs.map((epoch) => (
                       <Link
                         key={epoch.epochId}
-                        className="text-sm w-full block rounded-md px-3 py-1.5 hover:bg-gray-50"
+                        className="text-sm w-full block rounded-md px-3 py-1.5 hover:bg-secondary"
                         href={`/${path}/${chainId}:${address}/epochs/${epoch.epochId}`}
                         onClick={handleLinkClick}
                       >
@@ -272,7 +272,13 @@ const Header = () => {
     <header className="w-full py-3 z-[3] border-b border-border">
       <div className="mx-auto px-6 flex items-center justify-between">
         <Link href="/" className="inline-block">
-          <Image src="/logo.svg" alt="Foil" width={100} height={28} />
+          <Image
+            src="/logo.svg"
+            alt="Foil"
+            width={100}
+            height={28}
+            className="dark:invert"
+          />
         </Link>
 
         {isMobile ? (
