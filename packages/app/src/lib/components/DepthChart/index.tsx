@@ -18,6 +18,7 @@ import { useReadContracts } from 'wagmi';
 import { TICK_SPACING_DEFAULT } from '~/lib/constants/constants';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import { formatAmount } from '~/lib/util/numberUtil';
+import { tickToPrice } from '~/lib/util/util';
 
 const gray400 = '#a3a3a3';
 const paleGreen = '#98fb98';
@@ -53,6 +54,9 @@ interface LiquidityPoint {
   tick: number;
   liquidity: number;
   name: string;
+  amount0: number;
+  amount1: number;
+  price: number;
 }
 
 interface Props {}
@@ -165,6 +169,9 @@ const CustomTooltip: React.FC<
     >
       <p>{`Tick Range: ${tickValue}-${tickValue + tickSpacing}`}</p>
       <p>{`Liquidity: ${formatAmount(payload[0].payload?.liquidity)}`}</p>
+      <p>{`Base Token: ${formatAmount(payload[0].payload?.amount0)}`}</p>
+      <p>{`Quote Token: ${formatAmount(payload[0].payload?.amount1)}`}</p>
+      <p>{`Price: ${formatAmount(payload[0].payload?.price)}`}</p>
     </div>
   );
 };
@@ -246,23 +253,48 @@ const DepthChart: React.FC<Props> = () => {
       const liquidityNetNum = Number(
         formatUnits(liquidityNet, collateralAssetDecimals)
       );
+      const { amount0, amount1, price } = calculateTokenAmounts(
+        ticks[index],
+        tickInfo
+      );
 
       cumulativeLiquidity += liquidityNetNum;
       distribution.push({
         tick: ticks[index],
         liquidity: cumulativeLiquidity,
         name: `tick ${index} liquidity ${cumulativeLiquidity}`,
+        amount0,
+        amount1,
+        price,
       });
     });
 
     return distribution;
   }
 
+  function calculateTokenAmounts(tickValue: number, tickData: TickData) {
+    const [liquidityGross, , , , , , ,] = tickData.result;
+
+    // Calculate the price at the current tick
+    const price = tickToPrice(tickValue);
+
+    const amount0 =
+      Number(formatUnits(liquidityGross, collateralAssetDecimals)) / price;
+    const amount1 =
+      Number(formatUnits(liquidityGross, collateralAssetDecimals)) * price;
+
+    return {
+      amount0,
+      amount1,
+      price,
+    };
+  }
+
   const liquidityDepthData = useMemo(() => {
     if (!data || !pool || !ticks.length || !data.length) return [];
     const baseLiquidity = calculateBaseLiquidity(data, activeTickValue);
     return createLiquidityDistribution(data, baseLiquidity);
-  }, [ticks, data, pool]);
+  }, [ticks, data, pool, activeTickValue]);
 
   const renderBar = (props: any) => (
     <CustomBar
@@ -304,7 +336,6 @@ const DepthChart: React.FC<Props> = () => {
               interval={0}
               tickLine={false}
             />
-            <YAxis />
             <Tooltip content={<CustomTooltip tickSpacing={tickSpacing} />} />
             <Bar dataKey="liquidity" shape={renderBar} />
           </BarChart>
