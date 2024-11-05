@@ -38,7 +38,18 @@ export class Event {
   logIndex: number;
 
   @Column({ type: "json" })
-  logData!: { eventName: string; args: Record<string, any> };
+  logData!: {
+    eventName: string;
+    args: Record<string, any>;
+    transactionHash: string;
+    blockHash: string;
+    blockNumber: string;
+    data: string;
+    logIndex: number;
+    removed: boolean;
+    topics: string[];
+    transactionIndex: number;
+  };
 
   @AfterInsert()
   async afterInsert() {
