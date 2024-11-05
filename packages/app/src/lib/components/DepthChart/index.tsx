@@ -293,9 +293,8 @@ const DepthChart: React.FC<Props> = () => {
   const liquidityDepthData = useMemo(() => {
     if (!data || !pool || !ticks.length || !data.length) return [];
     const baseLiquidity = calculateBaseLiquidity(data, activeTickValue);
-    console.log('dtaa', data);
     return createLiquidityDistribution(data, baseLiquidity);
-  }, [ticks, data, pool]);
+  }, [ticks, data, pool, activeTickValue]);
 
   const renderBar = (props: any) => (
     <CustomBar
