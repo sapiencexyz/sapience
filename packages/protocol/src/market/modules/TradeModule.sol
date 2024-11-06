@@ -336,17 +336,15 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         int256 deltaCollateral,
         int256 deltaCollateralLimit
     ) internal pure {
-        if (
-            deltaCollateralLimit > 0 && deltaCollateral > deltaCollateralLimit
-        ) {
-            revert Errors.CollateralLimitReached(
-                deltaCollateral,
-                deltaCollateralLimit
-            );
+        // limit is 1.01, deltaCollateral is 1.02 => revert
+        if (deltaCollateralLimit == 0) {
+            // no limit, so no need to check
+            return;
         }
-        if (
-            deltaCollateralLimit < 0 && deltaCollateral < deltaCollateralLimit
-        ) {
+        // check if collateral limit is reached (positive means collateral added to the position, negative means collateral removed from the position)
+        // For positive limit, deltaCollateral > deltaCollateralLimit revert (i.e. collateral limit is 1.02, deltaCollateral is 1.03 => revert)
+        // For negative limit, deltaCollateral > deltaCollateralLimit revert (i.e. collateral limit is -1.02, deltaCollateral is -1.01 => revert)
+        if (deltaCollateral > deltaCollateralLimit) {
             revert Errors.CollateralLimitReached(
                 deltaCollateral,
                 deltaCollateralLimit
