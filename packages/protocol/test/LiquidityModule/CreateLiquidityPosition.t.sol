@@ -351,7 +351,7 @@ contract CreateLiquidityPosition is TestEpoch {
         uint256 lpCollateralBalance = collateralAsset.balanceOf(lp1);
         assertEq(
             lpCollateralBalance,
-            INITIAL_LP_BALANCE - requiredCollateral,
+            INITIAL_LP_BALANCE - totalDepositedCollateralAmount,
             "LP's collateral balance should decrease by the correct amount"
         );
 
