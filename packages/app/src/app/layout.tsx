@@ -5,6 +5,7 @@ import '@rainbow-me/rainbowkit/styles.css';
 import '../lib/styles/globals.css';
 import { LoadingSpinner } from '~/lib/components/foil/loadingSpinner';
 import { LoadingProvider } from '~/lib/context/LoadingContext';
+import { Toaster } from '@/components/ui/toaster';
 import Layout from '~/lib/layout';
 // import { spacemonoRegular, figtreeFont } from '~/lib/styles/theme/fonts';
 
@@ -27,9 +28,9 @@ export const metadata: Metadata = {
     telephone: false,
   },
   openGraph: {
-    url: 'https://nextarter-chakra.sznm.dev',
-    title: 'nextarter-chakra',
-    description: 'Next.js + chakra-ui + TypeScript template',
+    url: 'https://foil.xyz',
+    title: 'Foil',
+    description: '',
     images: {
       url: 'https://og-image.sznm.dev/**nextarter-chakra**.sznm.dev.png?theme=dark&md=1&fontSize=125px&images=https%3A%2F%2Fsznm.dev%2Favataaars.svg&widths=250',
       alt: 'nextarter-chakra.sznm.dev og-image',
@@ -55,6 +56,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
           <LoadingProvider>
             <LoadingSpinner />
             <Layout>{children}</Layout>
+            <Toaster />
           </LoadingProvider>
         </Providers>
       </body>

@@ -1,32 +1,31 @@
-import { HamburgerIcon, ChevronDownIcon } from '@chakra-ui/icons';
-import {
-  Box,
-  Flex,
-  Image,
-  IconButton,
-  VStack,
-  Drawer,
-  DrawerBody,
-  DrawerOverlay,
-  DrawerContent,
-  DrawerCloseButton,
-  useDisclosure,
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-  PopoverArrow,
-  PopoverBody,
-  Link as ChakraLink,
-  Accordion,
-  AccordionItem,
-  AccordionButton,
-  AccordionPanel,
-} from '@chakra-ui/react';
 import { format } from 'date-fns';
+import { Menu, ChevronDown } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import React, { useState, useEffect } from 'react';
 
 import ConnectButton from '../components/ConnectButton';
+import { ModeToggle } from '../components/ModeToggle';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '~/components/ui/accordion';
+import { Button } from '~/components/ui/button';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '~/components/ui/popover';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetClose,
+} from '~/components/ui/sheet';
 import { useMarketList } from '~/lib/context/MarketListProvider';
 
 const getMarketHref = (path: string, market: any, withEpochs: boolean) => {
@@ -50,7 +49,7 @@ const NavPopover = ({
 }) => {
   const [hoveredMarket, setHoveredMarket] = useState<number | null>(null);
   const { markets } = useMarketList();
-  const { isOpen, onClose, onOpen } = useDisclosure();
+  const [open, setOpen] = useState(false);
 
   const publicMarkets = markets.filter((m) => m.public);
 
@@ -65,96 +64,73 @@ const NavPopover = ({
   }, [hoveredMarket, publicMarkets]);
 
   const handleLinkClick = () => {
-    onClose();
+    setOpen(false);
   };
 
   return (
-    <Popover trigger="hover" isOpen={isOpen} onClose={onClose} onOpen={onOpen}>
-      <PopoverTrigger>
-        <Box as="span" cursor="pointer" display="flex" alignItems="center">
-          {label} <ChevronDownIcon ml={1} />
-        </Box>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" className="gap-2">
+          {label} <ChevronDown className="h-4 w-4" />
+        </Button>
       </PopoverTrigger>
-      <PopoverContent maxW={withEpochs ? '400px' : '220px'}>
-        <PopoverArrow />
-        <PopoverBody
-          py={3}
-          onMouseLeave={() => {
-            onClose();
-            setHoveredMarket(publicMarkets[0].id);
-          }}
-        >
-          <Flex>
-            <Box flex={1}>
-              {publicMarkets.map((market) => (
-                <Box
-                  key={market.id}
-                  onMouseEnter={() => setHoveredMarket(market.id)}
-                >
-                  {market.currentEpoch && (
-                    <ChakraLink
-                      fontSize="sm"
-                      as={Link}
-                      width="100%"
-                      display="block"
-                      borderRadius="md"
-                      px={3}
-                      py={1.5}
-                      bg={
-                        hoveredMarket === market.id ? 'gray.100' : 'transparent'
-                      }
-                      _hover={{ bg: 'gray.100' }}
-                      href={getMarketHref(path, market, withEpochs)}
-                      onClick={handleLinkClick}
-                    >
-                      {market.name}
-                    </ChakraLink>
-                  )}
-                </Box>
-              ))}
-            </Box>
-            {withEpochs && (
-              <Box
-                flex={1}
-                borderLeft="1px"
-                borderColor="gray.200"
-                pl={3}
-                ml={3}
+      <PopoverContent
+        className={`${withEpochs ? 'w-[400px]' : 'w-[220px]'} p-3`}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => {
+          setOpen(false);
+          setHoveredMarket(publicMarkets[0]?.id);
+        }}
+      >
+        <div className="flex">
+          <div className="flex-1">
+            {publicMarkets.map((market) => (
+              <div
+                key={market.id}
+                onMouseEnter={() => setHoveredMarket(market.id)}
               >
-                {hoveredMarket && (
-                  <VStack align="stretch" spacing={1}>
-                    {(() => {
-                      const hoveredMarketData = publicMarkets.find(
-                        (m) => m.id === hoveredMarket
-                      );
-                      const chainId = hoveredMarketData?.chainId;
-                      const address = hoveredMarketData?.address;
-
-                      return hoveredMarketData?.epochs.map((epoch) => (
-                        <ChakraLink
-                          key={epoch.epochId}
-                          fontSize="sm"
-                          as={Link}
-                          width="100%"
-                          display="block"
-                          borderRadius="md"
-                          px={3}
-                          py={1.5}
-                          _hover={{ bg: 'gray.50' }}
-                          href={`/${path}/${chainId}:${address}/epochs/${epoch.epochId}`}
-                          onClick={handleLinkClick}
-                        >
-                          {formatTimestamp(epoch.startTimestamp)} -{' '}
-                          {formatTimestamp(epoch.endTimestamp)}
-                        </ChakraLink>
-                      ));
-                    })()}
-                  </VStack>
+                {market.currentEpoch && (
+                  <Link
+                    className={`text-sm w-full block rounded-md px-3 py-1.5 
+                      ${hoveredMarket === market.id ? 'bg-secondary' : 'bg-transparent'}
+                      hover:bg-secondary`}
+                    href={getMarketHref(path, market, withEpochs)}
+                    onClick={handleLinkClick}
+                  >
+                    {market.name}
+                  </Link>
                 )}
-              </Box>
-            )}
-          </Flex>
-        </PopoverBody>
+              </div>
+            ))}
+          </div>
+          {withEpochs && (
+            <div className="flex-1 border-l border-border pl-3 ml-3">
+              {hoveredMarket && (
+                <div className="flex flex-col space-y-1">
+                  {(() => {
+                    const hoveredMarketData = publicMarkets.find(
+                      (m) => m.id === hoveredMarket
+                    );
+                    const chainId = hoveredMarketData?.chainId;
+                    const address = hoveredMarketData?.address;
+
+                    return hoveredMarketData?.epochs.map((epoch) => (
+                      <Link
+                        key={epoch.epochId}
+                        className="text-sm w-full block rounded-md px-3 py-1.5 hover:bg-secondary"
+                        href={`/${path}/${chainId}:${address}/epochs/${epoch.epochId}`}
+                        onClick={handleLinkClick}
+                      >
+                        {formatTimestamp(epoch.startTimestamp)} -{' '}
+                        {formatTimestamp(epoch.endTimestamp)}
+                      </Link>
+                    ));
+                  })()}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </PopoverContent>
     </Popover>
   );
@@ -174,121 +150,115 @@ const NavLinks = ({
     return format(new Date(timestamp * 1000), 'MMM d, HH:mm');
   };
 
-  const renderMobileMarketLinks = (path: string, withEpochs = false) => (
-    <Accordion allowMultiple>
-      {publicMarkets
-        .filter((m) => m.public)
-        .map((market) => (
-          <AccordionItem key={market.id} border="none">
-            {({ isExpanded }) => (
-              <>
-                <h2>
-                  <AccordionButton
-                    p={0}
-                    _hover={{ bg: 'transparent' }}
-                    justifyContent="space-between"
-                  >
-                    <ChakraLink
-                      as={Link}
-                      href={getMarketHref(path, market, withEpochs)}
-                      onClick={(e) => {
-                        if (withEpochs) {
-                          e.preventDefault();
-                        } else if (onClose) {
-                          onClose();
-                        }
-                      }}
+  const renderMobileMarketLinks = (path: string, withEpochs = false) => {
+    if (path === 'subscribe') {
+      return (
+        <div className="flex flex-col space-y-2">
+          {publicMarkets.map((market) => (
+            <Link
+              key={market.id}
+              href={getMarketHref(path, market, withEpochs)}
+              onClick={() => onClose?.()}
+              className="text-sm w-full block rounded-md px-3 py-1.5 hover:bg-gray-50"
+            >
+              {market.name}
+            </Link>
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <Accordion type="multiple">
+        {publicMarkets.map((market) => (
+          <AccordionItem key={market.id} value={market.id.toString()}>
+            <AccordionTrigger className="hover:no-underline">
+              <Link
+                href={getMarketHref(path, market, withEpochs)}
+                onClick={(e) => {
+                  if (withEpochs) {
+                    e.preventDefault();
+                  } else if (onClose) {
+                    onClose();
+                  }
+                }}
+                className="hover:no-underline"
+              >
+                {market.name}
+              </Link>
+            </AccordionTrigger>
+            {withEpochs && (
+              <AccordionContent className="pl-4">
+                <div className="flex flex-col space-y-2">
+                  {market.epochs.map((epoch) => (
+                    <Link
+                      key={epoch.epochId}
+                      className="text-sm w-full block rounded-md px-3 py-1.5 hover:bg-gray-50"
+                      href={`/${path}/${market.chainId}:${market.address}/epochs/${epoch.epochId}`}
+                      onClick={() => onClose?.()}
                     >
-                      {market.name}
-                    </ChakraLink>
-                    {withEpochs && (
-                      <ChevronDownIcon
-                        transform={isExpanded ? 'rotate(180deg)' : undefined}
-                        transition="transform 0.2s"
-                      />
-                    )}
-                  </AccordionButton>
-                </h2>
-                {withEpochs && (
-                  <AccordionPanel pb={4} pl={4}>
-                    <VStack align="stretch" spacing={2}>
-                      {market.epochs.map((epoch) => (
-                        <ChakraLink
-                          key={epoch.epochId}
-                          fontSize="sm"
-                          as={Link}
-                          href={`/${path}/${market.chainId}:${market.address}/epochs/${epoch.epochId}`}
-                          onClick={() => onClose?.()}
-                        >
-                          {formatTimestamp(epoch.startTimestamp)} -{' '}
-                          {formatTimestamp(epoch.endTimestamp)}
-                        </ChakraLink>
-                      ))}
-                    </VStack>
-                  </AccordionPanel>
-                )}
-              </>
+                      {formatTimestamp(epoch.startTimestamp)} -{' '}
+                      {formatTimestamp(epoch.endTimestamp)}
+                    </Link>
+                  ))}
+                </div>
+              </AccordionContent>
             )}
           </AccordionItem>
         ))}
-    </Accordion>
-  );
+      </Accordion>
+    );
+  };
 
   if (isMobile) {
     return (
-      <VStack align="stretch" spacing={4}>
-        <Box>
-          <Box fontWeight="bold" mb={1}>
-            Subscribe
-          </Box>
+      <div className="flex flex-col space-y-4">
+        <div>
+          <div className="font-bold mb-1">Subscribe</div>
           {renderMobileMarketLinks('subscribe')}
-        </Box>
+        </div>
         {/*
-        <Box>
-          <Box fontWeight="bold" mb={1}>
+        <div>
+          <div className="font-bold mb-1">
             Earn
-          </Box>
+          </div>
           {renderMobileMarketLinks('earn')}
-        </Box>
+        </div>
         */}
-        <Box>
-          <Box fontWeight="bold" mb={1}>
-            Trade
-          </Box>
+        <div>
+          <div className="font-bold mb-1">Trade</div>
           {renderMobileMarketLinks('trade', true)}
-        </Box>
-        <Box>
-          <Box fontWeight="bold" mb={1}>
-            Pool
-          </Box>
+        </div>
+        <div>
+          <div className="font-bold mb-1">Pool</div>
           {renderMobileMarketLinks('pool', true)}
-        </Box>
-        <ChakraLink
-          as={Link}
+        </div>
+        <Link
           href="https://docs.foil.xyz"
           onClick={() => onClose?.()}
+          className="hover:no-underline"
         >
           Docs
-        </ChakraLink>
-      </VStack>
+        </Link>
+      </div>
     );
   }
 
   return (
-    <Flex gap={9}>
+    <div className="flex gap-3">
       <NavPopover label="Subscribe" path="subscribe" />
       {/* <NavPopover label="Earn" path="earn" /> */}
       <NavPopover label="Trade" path="trade" withEpochs />
       <NavPopover label="Pool" path="pool" withEpochs />
-      <ChakraLink as={Link} href="https://docs.foil.xyz">
-        Docs
-      </ChakraLink>
-    </Flex>
+      <Link href="https://docs.foil.xyz" className="hover:no-underline">
+        <Button variant="ghost">Docs</Button>
+      </Link>
+    </div>
   );
 };
 
 const Header = () => {
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [isOpen, setIsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -299,60 +269,45 @@ const Header = () => {
   }, []);
 
   return (
-    <Box
-      as="header"
-      width="full"
-      py={3}
-      zIndex={3}
-      bg="white"
-      borderBottom="1px solid"
-      borderColor="gray.300"
-    >
-      <Flex
-        margin="0 auto"
-        align="center"
-        px={6}
-        justifyContent="space-between"
-      >
-        <Box display="inline-block" as={Link} href="/">
-          <Image src="/logo.svg" alt="Foil" height="28px" />
-        </Box>
+    <header className="w-full py-3 z-[3] border-b border-border">
+      <div className="mx-auto px-6 flex items-center justify-between">
+        <Link href="/" className="inline-block">
+          <Image
+            src="/logo.svg"
+            alt="Foil"
+            width={100}
+            height={28}
+            className="dark:invert"
+          />
+        </Link>
+
         {isMobile ? (
-          <>
-            <IconButton
-              aria-label="Open menu"
-              icon={<HamburgerIcon />}
-              onClick={onOpen}
-              variant="ghost"
-            />
-            <Drawer
-              isOpen={isOpen}
-              placement="right"
-              onClose={onClose}
-              size="sm"
-            >
-              <DrawerOverlay />
-              <DrawerContent pt={4}>
-                <DrawerCloseButton />
-                <DrawerBody>
-                  <VStack spacing={4} align="stretch">
-                    <NavLinks isMobile onClose={onClose} />
-                    <ConnectButton />
-                  </VStack>
-                </DrawerBody>
-              </DrawerContent>
-            </Drawer>
-          </>
+          <Sheet open={isOpen} onOpenChange={setIsOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Menu className="h-6 w-6" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent>
+              <div className="flex flex-col space-y-4 mt-4">
+                <NavLinks isMobile onClose={() => setIsOpen(false)} />
+                <ConnectButton />
+              </div>
+            </SheetContent>
+          </Sheet>
         ) : (
-          <Flex gap={6} align="center" fontWeight="600" w="100%">
-            <Flex mx="auto">
+          <div className="flex gap-6 items-center font-semibold w-full">
+            <div className="mx-auto">
               <NavLinks />
-            </Flex>
-            <ConnectButton />
-          </Flex>
+            </div>
+            <div className="flex gap-2 items-center">
+              <ConnectButton />
+              <ModeToggle />
+            </div>
+          </div>
         )}
-      </Flex>
-    </Box>
+      </div>
+    </header>
   );
 };
 

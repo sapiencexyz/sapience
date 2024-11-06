@@ -1,13 +1,6 @@
-import {
-  Box,
-  Button,
-  Text,
-  Spinner,
-  useToast,
-  Heading,
-} from '@chakra-ui/react';
+import { Loader } from 'lucide-react';
 import { useState, useEffect, useContext } from 'react';
-import { formatUnits, type WriteContractErrorType } from 'viem';
+import { formatUnits } from 'viem';
 import {
   useAccount,
   useReadContract,
@@ -15,10 +8,11 @@ import {
   useWaitForTransactionReceipt,
 } from 'wagmi';
 
+import { Button } from '~/components/ui/button';
+import { useToast } from '~/hooks/use-toast';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';
-import { renderContractErrorToast, renderToast } from '~/lib/util/util';
 
 import NumberDisplay from './numberDisplay';
 import PositionSelector from './positionSelector';
@@ -39,7 +33,7 @@ export default function Settle() {
     BigInt(0)
   );
   const [isSettling, setIsSettling] = useState<boolean>(false);
-  const toast = useToast();
+  const { toast } = useToast();
 
   const { isLoadingBalance, isLoadingContracts, refetch } = useTokenIdsOfOwner(
     address as `0x${string}`
@@ -61,7 +55,10 @@ export default function Settle() {
 
   useEffect(() => {
     if (isConfirmed) {
-      renderToast(toast, 'Position settled successfully!', 'success');
+      toast({
+        title: 'Success',
+        description: 'Position settled successfully!',
+      });
       setIsSettling(false);
       refetch();
       setNftId(0);
@@ -89,11 +86,11 @@ export default function Settle() {
           args: [BigInt(nftId ?? 0)],
         });
       } catch (error) {
-        renderContractErrorToast(
-          error as WriteContractErrorType,
-          toast,
-          'Failed to settle position'
-        );
+        toast({
+          variant: 'destructive',
+          title: 'Failed to settle position',
+          description: (error as Error).message,
+        });
         setIsSettling(false);
       }
     }
@@ -101,17 +98,17 @@ export default function Settle() {
 
   if (!isConnected) {
     return (
-      <Heading size="md" textAlign="center" p={8}>
+      <h2 className="text-xl font-semibold text-center p-8">
         Connect your wallet to settle positions
-      </Heading>
+      </h2>
     );
   }
 
   if (isLoadingBalance || isLoadingContracts) {
     return (
-      <Box textAlign="center">
-        <Spinner />
-      </Box>
+      <div className="text-center">
+        <Loader className="h-6 w-6 animate-spin" />
+      </div>
     );
   }
 
@@ -120,54 +117,52 @@ export default function Settle() {
     positions?.liquidityPositions?.length === 0
   ) {
     return (
-      <Heading size="md" textAlign="center" p={8}>
+      <h2 className="text-xl font-semibold text-center p-8">
         The connected wallet has no positions in this epoch
-      </Heading>
+      </h2>
     );
   }
 
   return (
-    <Box>
-      <Heading size="md" mb={3}>
-        Settle Position
-      </Heading>
-      <Box mb={4}>
+    <div className="p-6">
+      <h2 className="text-xl font-semibold mb-3">Settle Position</h2>
+      <div className="mb-4">
         <PositionSelector />
-      </Box>
+      </div>
       {withdrawableCollateral > BigInt(0) && (
-        <Box mb={4}>
-          <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
+        <div className="mb-4">
+          <p className="text-sm text-muted-foreground font-semibold mb-0.5">
             {!(epochSettled && settlementPrice) ? 'Anticipated' : null}{' '}
             Withdrawable Collateral
-          </Text>
-          <Text fontSize="sm" color="gray.600">
+          </p>
+          <p className="text-sm text-muted-foreground">
             <NumberDisplay value={formatUnits(withdrawableCollateral, 18)} />{' '}
             {collateralAssetTicker}
-          </Text>
-        </Box>
+          </p>
+        </div>
       )}
       {epochSettled && settlementPrice ? (
         <>
-          <Text mb={4}>
+          <p className="mb-4">
             Settlement Price: {formatUnits(settlementPrice, 18)}
-          </Text>
+          </p>
           <Button
-            w="100%"
+            className="w-full"
             onClick={handleSettle}
-            isLoading={isSettling}
-            isDisabled={
+            disabled={
               nftId === 0 || isSettling || withdrawableCollateral === BigInt(0)
             }
-            variant="brand"
+            variant="default"
           >
+            {isSettling && <Loader className="mr-2 h-4 w-4 animate-spin" />}
             Settle Position
           </Button>
         </>
       ) : (
-        <Button w="100%" isDisabled variant="brand">
+        <Button className="w-full" disabled variant="default">
           Awaiting settlement price
         </Button>
       )}
-    </Box>
+    </div>
   );
 }

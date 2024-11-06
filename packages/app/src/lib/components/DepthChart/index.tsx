@@ -1,6 +1,5 @@
 'use client';
 
-import { Flex, Text } from '@chakra-ui/react';
 import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import type React from 'react';
 import { useContext, useMemo, useState } from 'react';
@@ -18,14 +17,14 @@ import { useReadContracts } from 'wagmi';
 
 import { TICK_SPACING_DEFAULT } from '~/lib/constants/constants';
 import { MarketContext } from '~/lib/context/MarketProvider';
-import {
-  gray400,
-  paleGreen,
-  peach,
-  purple,
-  turquoise,
-} from '~/lib/styles/theme/colors';
 import { formatAmount } from '~/lib/util/numberUtil';
+import { tickToPrice } from '~/lib/util/util';
+
+const gray400 = '#a3a3a3';
+const paleGreen = '#98fb98';
+const purple = '#800080';
+const turquoise = '#00ffd1';
+const peach = '#ffa07a';
 
 const checkIsClosestTick = (
   tick: number,
@@ -55,6 +54,9 @@ interface LiquidityPoint {
   tick: number;
   liquidity: number;
   name: string;
+  amount0: number;
+  amount1: number;
+  price: number;
 }
 
 interface Props {}
@@ -155,7 +157,6 @@ interface CustomTooltipProps {
 const CustomTooltip: React.FC<
   TooltipProps<number, string> & CustomTooltipProps
 > = ({ payload, tickSpacing }) => {
-  console.log('payload', payload);
   if (!payload || !payload[0]) return null;
   const tickValue: number = payload[0].payload?.tick;
   return (
@@ -168,6 +169,9 @@ const CustomTooltip: React.FC<
     >
       <p>{`Tick Range: ${tickValue}-${tickValue + tickSpacing}`}</p>
       <p>{`Liquidity: ${formatAmount(payload[0].payload?.liquidity)}`}</p>
+      <p>{`Base Token: ${formatAmount(payload[0].payload?.amount0)}`}</p>
+      <p>{`Quote Token: ${formatAmount(payload[0].payload?.amount1)}`}</p>
+      <p>{`Price: ${formatAmount(payload[0].payload?.price)}`}</p>
     </div>
   );
 };
@@ -249,23 +253,48 @@ const DepthChart: React.FC<Props> = () => {
       const liquidityNetNum = Number(
         formatUnits(liquidityNet, collateralAssetDecimals)
       );
+      const { amount0, amount1, price } = calculateTokenAmounts(
+        ticks[index],
+        tickInfo
+      );
 
       cumulativeLiquidity += liquidityNetNum;
       distribution.push({
         tick: ticks[index],
         liquidity: cumulativeLiquidity,
         name: `tick ${index} liquidity ${cumulativeLiquidity}`,
+        amount0,
+        amount1,
+        price,
       });
     });
 
     return distribution;
   }
 
+  function calculateTokenAmounts(tickValue: number, tickData: TickData) {
+    const [liquidityGross, , , , , , ,] = tickData.result;
+
+    // Calculate the price at the current tick
+    const price = tickToPrice(tickValue);
+
+    const amount0 =
+      Number(formatUnits(liquidityGross, collateralAssetDecimals)) / price;
+    const amount1 =
+      Number(formatUnits(liquidityGross, collateralAssetDecimals)) * price;
+
+    return {
+      amount0,
+      amount1,
+      price,
+    };
+  }
+
   const liquidityDepthData = useMemo(() => {
     if (!data || !pool || !ticks.length || !data.length) return [];
     const baseLiquidity = calculateBaseLiquidity(data, activeTickValue);
     return createLiquidityDistribution(data, baseLiquidity);
-  }, [ticks, data, pool]);
+  }, [ticks, data, pool, activeTickValue]);
 
   const renderBar = (props: any) => (
     <CustomBar
@@ -293,9 +322,9 @@ const DepthChart: React.FC<Props> = () => {
   );
 
   return (
-    <Flex flex={1} position="relative">
+    <div className="flex flex-1 relative">
       {liquidityDepthData.length <= 0 && (
-        <Text fontStyle="italic">Loading Liquidity Data...</Text>
+        <div className="italic">Loading Liquidity Data...</div>
       )}
       {liquidityDepthData.length > 0 && (
         <ResponsiveContainer width="100%" height="100%">
@@ -307,13 +336,12 @@ const DepthChart: React.FC<Props> = () => {
               interval={0}
               tickLine={false}
             />
-            <YAxis />
             <Tooltip content={<CustomTooltip tickSpacing={tickSpacing} />} />
             <Bar dataKey="liquidity" shape={renderBar} />
           </BarChart>
         </ResponsiveContainer>
       )}
-    </Flex>
+    </div>
   );
 };
 

@@ -1,14 +1,7 @@
 'use client';
 
-import {
-  Flex,
-  Box,
-  Heading,
-  Spinner,
-  UnorderedList,
-  ListItem,
-} from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
+import { Loader2 } from 'lucide-react';
 import { useContext } from 'react';
 
 import NumberDisplay from '~/lib/components/foil/numberDisplay';
@@ -69,90 +62,66 @@ const PositionPage = ({
     isLoading: isLoadingPosition,
   } = usePosition(contractId, positionId);
 
-  const calculatePnL = (positionData: any) => {
-    if (positionData.isLP) {
-      const vEthToken = parseFloat(positionData.quoteToken);
-      const vGasToken = parseFloat(positionData.baseToken);
-      const marketPrice = parseFloat(
-        pool?.token0Price?.toSignificant(18) || '0'
-      );
-      return (
-        vEthToken +
-        vGasToken * marketPrice -
-        parseFloat(positionData.collateral)
-      );
-    }
-    const vEthToken = parseFloat(positionData.quoteToken);
-    const borrowedVEth = parseFloat(positionData.borrowedQuoteToken);
-    const vGasToken = parseFloat(positionData.baseToken);
-    const borrowedVGas = parseFloat(positionData.borrowedBaseToken);
-    const marketPrice = parseFloat(pool?.token0Price?.toSignificant(18) || '0');
-    return vEthToken - borrowedVEth + (vGasToken - borrowedVGas) * marketPrice;
-  };
-
   const renderPositionData = () => {
     if (isLoadingPosition) {
       return (
-        <Box w="100%" textAlign="center" p={4}>
-          <Spinner />
-        </Box>
+        <div className="w-full text-center p-4">
+          <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+        </div>
       );
     }
     if (positionError) {
       return (
-        <Box w="100%" textAlign="center" p={4}>
+        <div className="w-full text-center p-4">
           Error: {(positionError as Error).message}
-        </Box>
+        </div>
       );
     }
     if (positionData) {
-      const pnl = calculatePnL(positionData);
       return (
-        <Box p={8}>
-          <Heading mb={4}>Position #{positionId}</Heading>
-          <UnorderedList spacing={2}>
-            <ListItem>Epoch: {positionData.epoch.id}</ListItem>
-            <ListItem>
-              {positionData.isLP ? 'Liquidity Provider' : 'Trader'}
-            </ListItem>
-            <ListItem>
+        <div>
+          <h1 className="text-2xl font-bold mb-4">Position #{positionId}</h1>
+          <ul className="space-y-2 list-disc pl-4">
+            <li>Epoch: {positionData.epoch.epochId}</li>
+            <li>{positionData.isLP ? 'Liquidity Provider' : 'Trader'}</li>
+            <li>
               Collateral: <NumberDisplay value={positionData.collateral} />{' '}
               wstETH
-            </ListItem>
-            <ListItem>
+            </li>
+            <li>
               Base Token: <NumberDisplay value={positionData.baseToken} /> Ggas
-            </ListItem>
-            <ListItem>
+            </li>
+            <li>
               Quote Token: <NumberDisplay value={positionData.quoteToken} />{' '}
               wstETH
-            </ListItem>
-            <ListItem>
+            </li>
+            <li>
               Borrowed Base Token:{' '}
               <NumberDisplay value={positionData.borrowedBaseToken} /> Ggas
-            </ListItem>
-            <ListItem>
+            </li>
+            <li>
               Borrowed Quote Token:{' '}
               <NumberDisplay value={positionData.borrowedQuoteToken} /> wstETH
-            </ListItem>
+            </li>
             {positionData.isLP ? (
               <>
-                <ListItem>
+                <li>
                   Low Price:{' '}
                   <NumberDisplay
                     value={tickToPrice(positionData.lowPriceTick)}
                   />{' '}
                   Ggas/wstETH
-                </ListItem>
-                <ListItem>
+                </li>
+                <li>
                   High Price:{' '}
                   <NumberDisplay
                     value={tickToPrice(positionData.highPriceTick)}
                   />{' '}
                   Ggas/wstETH
-                </ListItem>
+                </li>
               </>
             ) : (
-              <ListItem>
+              <li>
                 Size:{' '}
                 <NumberDisplay
                   value={
@@ -160,17 +129,17 @@ const PositionPage = ({
                   }
                 />{' '}
                 Ggas
-              </ListItem>
+              </li>
             )}
-            {/* <ListItem>
+            {/* <li>
               Profit/Loss: <NumberDisplay value={pnl} /> wstETH{' '}
               <Tooltip label="This is an estimate that does not take into account slippage or fees.">
                 <QuestionOutlineIcon transform="translateY(-2px)" />
               </Tooltip>
-            </ListItem> */}
-            {positionData.isSettled ? <ListItem>Settled</ListItem> : null}
-          </UnorderedList>
-        </Box>
+            </li> */}
+            {positionData.isSettled ? <li>Settled</li> : null}
+          </ul>
+        </div>
       );
     }
     return null;
@@ -182,18 +151,11 @@ const PositionPage = ({
       address={marketAddress}
       epoch={Number(positionData?.epoch?.id)}
     >
-      <Flex w="100%" p={6}>
-        <Box
-          m="auto"
-          border="1px solid"
-          borderColor="gray.300"
-          borderRadius="md"
-          maxWidth="container.md"
-          width="100%"
-        >
+      <div className="flex-1 flex">
+        <div className="m-auto border border-border rounded-md p-6 max-w-[460px]">
           {renderPositionData()}
-        </Box>
-      </Flex>
+        </div>
+      </div>
     </MarketProvider>
   );
 };

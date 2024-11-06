@@ -1,7 +1,7 @@
-import { Button, ButtonGroup } from '@chakra-ui/react';
 import type React from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TimeWindow } from '~/lib/interfaces/interfaces';
 
 interface VolumeWindowSelectorProps {
@@ -13,31 +13,25 @@ const VolumeWindowSelector: React.FC<VolumeWindowSelectorProps> = ({
   setSelectedWindow,
   selectedWindow,
 }) => {
-  const handleSelect = (window: TimeWindow) => {
-    setSelectedWindow(window);
-  };
-
   return (
-    <ButtonGroup
-      size="sm"
-      isAttached
-      variant="outline"
-      borderRadius="full"
-      bg="gray.100"
+    <Tabs
+      value={selectedWindow}
+      onValueChange={(value) => setSelectedWindow(value as TimeWindow)}
+      className="w-fit"
     >
-      {Object.values(TimeWindow).map((window) => (
-        <Button
-          key={window}
-          onClick={() => handleSelect(window)}
-          bg={selectedWindow === window ? 'gray.200' : 'transparent'}
-          _hover={{ bg: 'gray.250' }}
-          borderRadius="full"
-          fontWeight={selectedWindow === window ? 'bold' : 'normal'}
-        >
-          {window}
-        </Button>
-      ))}
-    </ButtonGroup>
+      <TabsList className="rounded-full p-1">
+        {Object.values(TimeWindow).map((window) => (
+          <TabsTrigger
+            key={window}
+            value={window}
+            className={`rounded-full px-3 py-1.5 text-sm transition-all
+              data-[state=active]:font-bold`}
+          >
+            {window}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
   );
 };
 

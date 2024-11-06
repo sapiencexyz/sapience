@@ -157,7 +157,17 @@ export const reindexMarketEvents = async (market: Market, abi: Abi) => {
           blockNumber: log.blockNumber,
         });
         const logIndex = log.logIndex || 0;
-        const logData = JSON.parse(serializedLog);
+        const logData = {
+          ...JSON.parse(serializedLog),
+          transactionHash: log.transactionHash || "",
+          blockHash: log.blockHash || "",
+          blockNumber: log.blockNumber?.toString() || "",
+          logIndex: log.logIndex || 0,
+          transactionIndex: log.transactionIndex || 0,
+          removed: log.removed || false,
+          topics: log.topics || [],
+          data: log.data || "",
+        };
 
         // Extract epochId from logData (adjust this based on your event structure)
         const epochId = logData.args?.epochId || 0;

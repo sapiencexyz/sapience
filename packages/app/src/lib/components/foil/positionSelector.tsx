@@ -1,24 +1,19 @@
-import { EditIcon } from '@chakra-ui/icons';
-import {
-  Box,
-  Button,
-  Text,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  VStack,
-  useDisclosure,
-  Flex,
-} from '@chakra-ui/react';
+import { Edit } from 'lucide-react';
 import type React from 'react';
+import { useState } from 'react';
 
+import { Button } from '~/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '~/components/ui/dialog';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 
 const PositionSelector: React.FC<{ isLP?: boolean | null }> = ({ isLP }) => {
   const { nftId, positions, setNftId } = useAddEditPosition();
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [isOpen, setIsOpen] = useState(false);
 
   let filteredPositions;
   if (isLP === true) {
@@ -34,7 +29,7 @@ const PositionSelector: React.FC<{ isLP?: boolean | null }> = ({ isLP }) => {
 
   const handlePositionSelect = (selectedNftId: number) => {
     setNftId(selectedNftId);
-    onClose();
+    setIsOpen(false);
   };
 
   // Helper function to get position type text
@@ -45,68 +40,54 @@ const PositionSelector: React.FC<{ isLP?: boolean | null }> = ({ isLP }) => {
   };
 
   return (
-    <Box>
-      <Text fontSize="sm" color="gray.600" fontWeight="semibold" mb={0.5}>
+    <div>
+      <p className="text-sm text-muted-foreground font-semibold mb-0.5">
         Position
-      </Text>
-      <Text fontSize="sm" color="gray.600">
+      </p>
+      <p className="text-sm text-muted-foreground items-center flex">
         {nftId ? `#${nftId}` : 'New Position'}{' '}
         <Button
-          variant="unstyled"
-          display="inline"
-          ml={0.5}
-          color="blue.400"
-          onClick={onOpen}
-          minW="auto"
-          h="auto"
-          p={0}
+          type="button"
+          variant="link"
+          size="sm"
+          className="text-blue-500 ml-1 p-0 h-auto"
+          onClick={() => setIsOpen(true)}
         >
-          <EditIcon transform="translateY(-1.5px)" />
+          <Edit className="h-4 w-4" />
         </Button>
-      </Text>
+      </p>
 
-      <Modal isOpen={isOpen} onClose={onClose}>
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Select {getPositionTypeText()}</ModalHeader>
-          <ModalBody pb={6}>
-            <VStack spacing={2} align="stretch">
-              {filteredPositions?.map((position) => (
-                <Flex
-                  key={Number(position.id)}
-                  justifyContent="space-between"
-                  alignItems="center"
-                  py={2}
-                  px={4}
-                  bg={
-                    Number(position.id) === nftId ? 'gray.100' : 'transparent'
-                  }
-                  borderRadius="md"
-                  cursor="pointer"
-                  onClick={() => handlePositionSelect(Number(position.id))}
-                  _hover={{ bg: 'gray.50' }}
-                >
-                  <Text fontWeight="bold">#{Number(position.id)}</Text>
-                </Flex>
-              ))}
-              <Flex
-                justifyContent="space-between"
-                alignItems="center"
-                py={2}
-                px={4}
-                bg={nftId === 0 ? 'gray.100' : 'transparent'}
-                borderRadius="md"
-                cursor="pointer"
-                onClick={() => handlePositionSelect(0)}
-                _hover={{ bg: 'gray.50' }}
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Select {getPositionTypeText()}</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col space-y-2">
+            {filteredPositions?.map((position) => (
+              <Button
+                key={Number(position.id)}
+                variant="ghost"
+                className={`flex justify-between items-center py-2 px-4 rounded-md w-full h-auto
+                  ${Number(position.id) === nftId ? 'bg-muted' : 'bg-transparent'}
+                  hover:bg-muted/50`}
+                onClick={() => handlePositionSelect(Number(position.id))}
               >
-                <Text fontWeight="bold">New Position</Text>
-              </Flex>
-            </VStack>
-          </ModalBody>
-        </ModalContent>
-      </Modal>
-    </Box>
+                <p className="font-bold">#{Number(position.id)}</p>
+              </Button>
+            ))}
+            <Button
+              variant="ghost"
+              className={`flex justify-between items-center py-2 px-4 rounded-md w-full h-auto
+                ${nftId === 0 ? 'bg-muted' : 'bg-transparent'}
+                hover:bg-muted/50`}
+              onClick={() => handlePositionSelect(0)}
+            >
+              <p className="font-bold">New Position</p>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };
 

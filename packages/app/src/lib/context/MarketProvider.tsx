@@ -1,4 +1,3 @@
-import { useToast } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import type { Pool } from '@uniswap/v3-sdk';
 import axios from 'axios';
@@ -18,7 +17,8 @@ import {
 import erc20ABI from '../erc20abi.json';
 import { useUniswapPool } from '../hooks/useUniswapPool';
 import type { EpochParams } from '../interfaces/interfaces';
-import { gweiToEther, renderContractErrorToast } from '../util/util';
+import { gweiToEther } from '../util/util';
+import { useToast } from '~/hooks/use-toast';
 
 // Types and Interfaces
 export interface MarketContextType {
@@ -64,7 +64,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
   children,
   epoch,
 }) => {
-  const toast = useToast();
+  const { toast } = useToast();
   const [state, setState] = useState<MarketContextType>(BLANK_MARKET);
   const [useMarketUnits, setUseMarketUnits] = useState(false);
 
@@ -235,11 +235,12 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
 
   useEffect(() => {
     if (marketViewFunctionResult.error) {
-      renderContractErrorToast(
-        marketViewFunctionResult.error,
-        toast,
-        'Unable to get market data'
-      );
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description:
+          marketViewFunctionResult.error.message || 'Unable to get market data',
+      });
       setState((prev) => ({
         ...prev,
         error: marketViewFunctionResult.error?.message,

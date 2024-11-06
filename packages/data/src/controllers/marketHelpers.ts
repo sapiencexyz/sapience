@@ -150,9 +150,9 @@ export const createOrModifyPosition = async (transaction: Transaction) => {
     position.quoteToken ||
     eventArgs.addedAmount1?.toString();
   position.borrowedBaseToken =
-    eventArgs.borrowedVGas?.toString() || position.borrowedBaseToken;
+    eventArgs.borrowedVGas?.toString() || eventArgs.loanAmount0?.toString() || position.borrowedBaseToken;
   position.borrowedQuoteToken =
-    eventArgs.borrowedVEth?.toString() || position.borrowedQuoteToken;
+    eventArgs.borrowedVEth?.toString() || eventArgs.loanAmount1?.toString() || position.borrowedQuoteToken;
 
   position.collateral = (
     BigInt(originalCollateral) + BigInt(transaction.collateralDelta)

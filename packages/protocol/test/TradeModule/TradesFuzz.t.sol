@@ -392,7 +392,7 @@ contract TradePositionBasicFuzz is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             positionSize,
-            requiredDeltaCollateral * 2,
+            requiredDeltaCollateral + 2,
             block.timestamp + 30 minutes
         );
 
@@ -471,7 +471,7 @@ contract TradePositionBasicFuzz is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             positionSize,
-            requiredDeltaCollateral * 2,
+            requiredDeltaCollateral + 2,
             block.timestamp + 30 minutes
         );
 
@@ -539,7 +539,7 @@ contract TradePositionBasicFuzz is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             0,
-            requiredDeltaCollateral * 2,
+            requiredDeltaCollateral + 2,
             block.timestamp + 30 minutes
         );
 
@@ -603,7 +603,7 @@ contract TradePositionBasicFuzz is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             0,
-            requiredDeltaCollateral * 2,
+            requiredDeltaCollateral + 2,
             block.timestamp + 30 minutes
         );
         vm.stopPrank();

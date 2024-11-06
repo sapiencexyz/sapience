@@ -1,34 +1,14 @@
-import { ChevronDownIcon } from '@chakra-ui/icons';
-import {
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  Box,
-  Text,
-  Button,
-  useToast,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  Switch,
-  Flex,
-  Spinner,
-} from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
+import { Loader2, ChevronDown } from 'lucide-react';
 import type React from 'react';
-import { useEffect, useMemo, useState } from 'react';
-import type { AbiFunction, WriteContractErrorType } from 'viem';
+import { useEffect, useState } from 'react';
+import type { AbiFunction } from 'viem';
 import { parseUnits, zeroAddress } from 'viem';
 import * as Chains from 'viem/chains';
 import {
   useAccount,
   useReadContract,
-  useReadContracts,
   useWaitForTransactionReceipt,
   useWriteContract,
 } from 'wagmi';
@@ -36,6 +16,23 @@ import {
 import erc20ABI from '../../erc20abi.json';
 import useFoilDeployment from '../foil/useFoilDeployment';
 import MarketAddress from '../MarketAddress';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
+import { Switch } from '@/components/ui/switch';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/ui/table';
+import { useToast } from '~/hooks/use-toast';
 import {
   API_BASE_URL,
   DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS,
@@ -43,11 +40,7 @@ import {
 } from '~/lib/constants/constants';
 import { useMarketList, type Market } from '~/lib/context/MarketListProvider';
 import { formatAmount } from '~/lib/util/numberUtil';
-import {
-  gweiToEther,
-  renderContractErrorToast,
-  renderToast,
-} from '~/lib/util/util';
+import { gweiToEther } from '~/lib/util/util';
 
 const MarketsTable: React.FC = () => {
   const { markets, isLoading, error, refetchMarkets } = useMarketList();
@@ -70,62 +63,55 @@ const MarketsTable: React.FC = () => {
 
   if (isLoading) {
     return (
-      <Box display="flex" flexDirection="column" alignItems="center">
-        <Spinner
-          thickness="4px"
-          speed="0.65s"
-          emptyColor="gray.200"
-          color="blue.500"
-          size="xl"
-        />
-        <Text>Loading Markets...</Text>
-      </Box>
+      <div className="flex flex-col items-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <p className="mt-2">Loading Markets...</p>
+      </div>
     );
   }
 
   return (
-    <Box overflowX="auto">
-      <Table variant="simple">
-        <Thead>
-          <Tr>
-            <Th>Market Address</Th>
-            <Th>Chain ID</Th>
-            <Th>Is Public?</Th>
-            <Th>Epochs</Th>
-          </Tr>
-        </Thead>
-        <Tbody>
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Market Address</TableHead>
+            <TableHead>Chain ID</TableHead>
+            <TableHead>Is Public?</TableHead>
+            <TableHead>Epochs</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {markets.map((market) => (
-            <Tr key={market.id}>
-              <Td>
+            <TableRow key={market.id}>
+              <TableCell>
                 <MarketAddress address={market.address} />
-              </Td>
-              <Td>{market.chainId}</Td>
-              <Td>
-                <Flex mt={3} gap={2}>
-                  <Text fontSize="sm">{market.public ? 'yes' : 'no'}</Text>
+              </TableCell>
+              <TableCell>{market.chainId}</TableCell>
+              <TableCell>
+                <div className="flex items-center gap-2 mt-3">
+                  <p className="text-sm">{market.public ? 'yes' : 'no'}</p>
                   <Switch
-                    isChecked={market.public}
-                    size="sm"
-                    onChange={() => updateMarketPrivacy(market)}
-                    isDisabled={loadingAction[market.address]}
+                    checked={market.public}
+                    onCheckedChange={() => updateMarketPrivacy(market)}
+                    disabled={loadingAction[market.address]}
                   />
-                </Flex>
+                </div>
                 {loadingAction[market.address] && (
-                  <Spinner size="sm" display="block" />
+                  <Loader2 className="h-4 w-4 block mt-2 animate-spin" />
                 )}
-              </Td>
-              <Td padding={0}>
-                <Table variant="simple" size="sm">
-                  <Thead>
-                    <Tr>
-                      <Th>Action</Th>
-                      <Th>Epoch ID</Th>
-                      <Th>Start Timestamp</Th>
-                      <Th>End Timestamp</Th>
-                    </Tr>
-                  </Thead>
-                  <Tbody>
+              </TableCell>
+              <TableCell className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Action</TableHead>
+                      <TableHead>Epoch ID</TableHead>
+                      <TableHead>Start Timestamp</TableHead>
+                      <TableHead>End Timestamp</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {market.epochs.map((epoch) => (
                       <EpochItem
                         key={epoch.epochId}
@@ -133,14 +119,14 @@ const MarketsTable: React.FC = () => {
                         epoch={epoch}
                       />
                     ))}
-                  </Tbody>
+                  </TableBody>
                 </Table>
-              </Td>
-            </Tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </Tbody>
+        </TableBody>
       </Table>
-    </Box>
+    </div>
   );
 };
 
@@ -152,7 +138,7 @@ const EpochItem: React.FC<{
   const { address } = account;
   const [loadingStEthPerToken, setLoadingStEthPerToken] = useState(false);
   const [stEthPerToken, setStEthPerToken] = useState(0);
-  const toast = useToast();
+  const { toast } = useToast();
   const { foilData, loading, error } = useFoilDeployment(market?.chainId);
   const { chainId, collateralAsset } = market;
   const { endTimestamp } = epoch;
@@ -257,19 +243,18 @@ const EpochItem: React.FC<{
     useWriteContract({
       mutation: {
         onError: (settleError) => {
-          renderContractErrorToast(
-            settleError as WriteContractErrorType,
-            toast,
-            'Failed to settle'
-          );
+          toast({
+            variant: 'destructive',
+            title: 'Failed to settle',
+            description: (settleError as Error).message,
+          });
           resetAfterError();
         },
         onSuccess: () => {
-          renderToast(
-            toast,
-            'Transaction submitted. Waiting for confirmation...',
-            'info'
-          );
+          toast({
+            title: 'Transaction submitted',
+            description: 'Waiting for confirmation...',
+          });
         },
       },
     });
@@ -282,11 +267,11 @@ const EpochItem: React.FC<{
     mutation: {
       onError: (error) => {
         resetAfterError();
-        renderContractErrorToast(
-          error as WriteContractErrorType,
-          toast,
-          'Failed to approve'
-        );
+        toast({
+          variant: 'destructive',
+          title: 'Failed to approve',
+          description: (error as Error).message,
+        });
       },
       onSuccess: async () => {
         await refetchAllowance();
@@ -307,11 +292,11 @@ const EpochItem: React.FC<{
   // handle successful txn
   useEffect(() => {
     if (isSettlementSuccess && txnStep === 2) {
-      renderToast(
-        toast,
-        'Successfully settled. Note that it may take a few minutes while in the dispute period on UMA.',
-        'success'
-      );
+      toast({
+        title: 'Successfully settled',
+        description:
+          'Note that it may take a few minutes while in the dispute period on UMA.',
+      });
       refetchEpochData();
       setTxnStep(0);
       setLoadingAction((prev) => ({ ...prev, settle: false }));
@@ -351,17 +336,13 @@ const EpochItem: React.FC<{
       toast({
         title: 'Finished Getting Missing Blocks',
         description: `${response.data.missingBlockNumbers.length} missing blocks found. See console for more info`,
-        status: 'success',
         duration: 9000,
-        isClosable: true,
       });
     } catch (error) {
       toast({
         title: 'Error',
         description: 'There was an issue getting missing blocks.',
-        status: 'error',
         duration: 9000,
-        isClosable: true,
       });
     }
     setLoadingAction((prev) => ({
@@ -404,10 +385,10 @@ const EpochItem: React.FC<{
   const renderSettledCell = () => {
     if (epochSettled) {
       return (
-        <>
-          <Text>Settled</Text>
-          <Text>{Number(settlementPrice)}</Text>
-        </>
+        <div className="space-y-1">
+          <p>Settled</p>
+          <p>{Number(settlementPrice)}</p>
+        </div>
       );
     }
 
@@ -416,15 +397,10 @@ const EpochItem: React.FC<{
     }
 
     return (
-      <>
-        <Text>{formatAmount(priceAdjusted)}</Text>
+      <div className="space-y-2">
+        <p>{formatAmount(priceAdjusted)}</p>
         <Button
-          isLoading={
-            loadingStEthPerToken ||
-            stEthPerTokenResult.isLoading ||
-            loadingAction.settle
-          }
-          isDisabled={!epochData}
+          disabled={!epochData}
           onClick={
             requireApproval ? handleApproveSettle : handleSettleWithPrice
           }
@@ -434,48 +410,51 @@ const EpochItem: React.FC<{
             : 'Settle with Price'}
         </Button>
         {!epochData && (
-          <Text color="red" size="sm" textAlign="center">
-            Could not get epoch data for market{' '}
-          </Text>
+          <p className="text-sm text-red-500 text-center">
+            Could not get epoch data for market
+          </p>
         )}
-      </>
+      </div>
     );
   };
 
   return (
-    <Tr key={epoch.id}>
-      <Td>
-        <Menu>
-          <MenuButton as={Button} rightIcon={<ChevronDownIcon />} size="sm">
-            Get Missing Blocks
-          </MenuButton>
-          <MenuList>
-            <MenuItem
-              as={Button}
-              borderRadius={0}
-              isLoading={loadingAction.getMissing}
+    <TableRow key={epoch.id}>
+      <TableCell>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              Get Missing Blocks
+              <ChevronDown className="ml-2 h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem
+              disabled={loadingAction.getMissing}
               onClick={() =>
                 handleGetMissing(market, epoch.epochId, 'ResourcePrice')
               }
             >
               Resource Prices
-            </MenuItem>
-            <MenuItem
-              as={Button}
-              borderRadius={0}
-              isLoading={loadingAction.getMissing}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={loadingAction.getMissing}
               onClick={() => handleGetMissing(market, epoch.epochId, 'Event')}
             >
               Events
-            </MenuItem>
-          </MenuList>
-        </Menu>
-      </Td>
-      <Td>{epoch.epochId}</Td>
-      <Td>{new Date(epoch.startTimestamp * 1000).toLocaleString()}</Td>
-      <Td>{new Date(epoch.endTimestamp * 1000).toLocaleString()}</Td>
-      <Td>{renderSettledCell()}</Td>
-    </Tr>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+      <TableCell>{epoch.epochId}</TableCell>
+      <TableCell>
+        {new Date(epoch.startTimestamp * 1000).toLocaleString()}
+      </TableCell>
+      <TableCell>
+        {new Date(epoch.endTimestamp * 1000).toLocaleString()}
+      </TableCell>
+      <TableCell>{renderSettledCell()}</TableCell>
+    </TableRow>
   );
 };
 

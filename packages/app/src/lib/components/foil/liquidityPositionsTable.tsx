@@ -1,18 +1,36 @@
-import { CheckIcon, QuestionOutlineIcon } from '@chakra-ui/icons';
 import {
-  TableContainer,
-  Table,
-  Thead,
-  Tr,
-  Th,
-  Tbody,
-  Td,
-  Link,
-  Tooltip,
-} from '@chakra-ui/react';
-import { useContext } from 'react';
+  useReactTable,
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+  type SortingState,
+} from '@tanstack/react-table';
+import {
+  Check,
+  HelpCircle,
+  ChevronDown,
+  ChevronUp,
+  ArrowUpDown,
+} from 'lucide-react';
+import Link from 'next/link';
+import type React from 'react';
+import { useContext, useState, useMemo } from 'react';
 
-import { MarketContext } from '../../context/MarketProvider';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { MarketContext } from '~/lib/context/MarketProvider';
 import { calculatePnL } from '~/lib/util/positionUtil';
 import { tickToPrice } from '~/lib/util/util';
 
@@ -21,82 +39,206 @@ import NumberDisplay from './numberDisplay';
 interface Props {
   positions: any[];
 }
+
+// Define cell components outside the main component
+const PositionCell = ({
+  row,
+  chain,
+  address,
+}: {
+  row: any;
+  chain: any;
+  address: string;
+}) => (
+  <Link
+    href={`/positions/${chain?.id}:${address}/${row.original.positionId}`}
+    className="text-primary underline"
+  >
+    #{row.original.positionId.toString()}
+  </Link>
+);
+
+const CollateralCell = ({ cell }: { cell: any }) => (
+  <>
+    <NumberDisplay value={cell.getValue()} /> wstETH
+  </>
+);
+
+const BaseTokenCell = ({ cell }: { cell: any }) => (
+  <>
+    <NumberDisplay value={cell.getValue()} /> Ggas
+  </>
+);
+
+const PriceCell = ({ cell }: { cell: any }) => (
+  <>
+    <NumberDisplay value={cell.getValue()} /> Ggas/wstETH
+  </>
+);
+
+const PnLHeaderCell = () => (
+  <span className="flex items-center">
+    Profit/Loss{' '}
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger>
+          <HelpCircle className="ml-1 h-4 w-4" />
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>
+            This is an estimate that does not take into account slippage or
+            fees.
+          </p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  </span>
+);
+
+const SettledCell = ({ cell }: { cell: any }) =>
+  cell.getValue() ? <Check className="text-green-500 mr-2 h-4 w-4" /> : null;
+
+const renderSortIcon = (isSorted: string | false) => {
+  if (isSorted === 'desc') {
+    return <ChevronDown className="h-3 w-3" aria-label="sorted descending" />;
+  }
+  if (isSorted === 'asc') {
+    return <ChevronUp className="h-3 w-3" aria-label="sorted ascending" />;
+  }
+  return <ArrowUpDown className="h-3 w-3" aria-label="sortable" />;
+};
+
+// Move the column definition outside the component
+const createColumns = (
+  chain: any,
+  address: string,
+  pool: any,
+  expired: boolean
+) => [
+  {
+    id: 'market',
+    header: 'Market',
+    accessorFn: (row: any) =>
+      `${row.epoch.market.name} (Epoch ${row.epoch.epochId})`,
+  },
+  {
+    id: 'position',
+    header: 'Position',
+    accessorFn: (row: any) => row.positionId,
+    cell: (props: any) => (
+      <PositionCell row={props.row} chain={chain} address={address} />
+    ),
+  },
+  {
+    id: 'collateral',
+    header: 'Collateral',
+    accessorKey: 'collateral',
+    cell: CollateralCell,
+  },
+  {
+    id: 'baseToken',
+    header: 'Base Token',
+    accessorKey: 'baseToken',
+    cell: BaseTokenCell,
+  },
+  {
+    id: 'quoteToken',
+    header: 'Quote Token',
+    accessorKey: 'quoteToken',
+    cell: CollateralCell,
+  },
+  {
+    id: 'lowPrice',
+    header: 'Low Price',
+    accessorFn: (row: any) => tickToPrice(row.lowPriceTick),
+    cell: PriceCell,
+  },
+  {
+    id: 'highPrice',
+    header: 'High Price',
+    accessorFn: (row: any) => tickToPrice(row.highPriceTick),
+    cell: PriceCell,
+  },
+  {
+    id: 'pnl',
+    header: PnLHeaderCell,
+    accessorFn: (row: any) => calculatePnL(row, pool),
+    cell: CollateralCell,
+  },
+  ...(expired
+    ? [
+        {
+          id: 'settled',
+          header: 'Settled',
+          accessorKey: 'isSettled',
+          cell: SettledCell,
+        },
+      ]
+    : []),
+];
+
 const LiquidityPositionsTable: React.FC<Props> = ({ positions }) => {
   const { pool, endTime, chain, address } = useContext(MarketContext);
+  const [sorting, setSorting] = useState<SortingState>([]);
   const dateMilliseconds = Number(endTime) * 1000;
   const expired = new Date(dateMilliseconds) < new Date();
 
+  // Use the createColumns function instead of defining columns directly
+  const columns = useMemo(
+    () => createColumns(chain, address, pool, expired),
+    [chain?.id, address, pool, expired]
+  );
+
+  const table = useReactTable({
+    data: positions,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    onSortingChange: setSorting,
+    getSortedRowModel: getSortedRowModel(),
+    state: {
+      sorting,
+    },
+  });
+
   return (
-    <TableContainer mb={4}>
-      <Table variant="simple" size="sm">
-        <Thead>
-          <Tr>
-            <Th>Market</Th>
-            <Th>Position</Th>
-            <Th>Collateral</Th>
-            <Th>Base Token</Th>
-            <Th>Quote Token</Th>
-            <Th>Low Price</Th>
-            <Th>High Price</Th>
-            <Th>
-              Profit/Loss{' '}
-              <Tooltip label="This is an estimate that does not take into account slippage or fees.">
-                <QuestionOutlineIcon transform="translateY(-1px)" />
-              </Tooltip>
-            </Th>
-            {expired ? <Th>Settled</Th> : null}
-          </Tr>
-        </Thead>
-        <Tbody>
-          {positions &&
-            positions.map((row: any) => {
-              const pnl = calculatePnL(row, pool);
-              return (
-                <Tr key={row.id}>
-                  <Td>
-                    {row.epoch.market.name} (Epoch {row.epoch.epochId})
-                  </Td>
-                  <Td>
-                    <Link
-                      href={`/positions/${chain}:${address}/${row.positionId}`}
-                      textDecoration="underline"
-                    >
-                      #{row.positionId.toString()}
-                    </Link>
-                  </Td>
-                  <Td>
-                    <NumberDisplay value={row.collateral} /> wstETH
-                  </Td>
-                  <Td>
-                    <NumberDisplay value={row.baseToken} /> Ggas
-                  </Td>
-                  <Td>
-                    <NumberDisplay value={row.quoteToken} /> wstETH
-                  </Td>
-                  <Td>
-                    <NumberDisplay value={tickToPrice(row.lowPriceTick)} />{' '}
-                    Ggas/wstETH
-                  </Td>
-                  <Td>
-                    <NumberDisplay value={tickToPrice(row.highPriceTick)} />{' '}
-                    Ggas/wstETH
-                  </Td>
-                  <Td>
-                    <NumberDisplay value={pnl} /> wstETH
-                  </Td>
-                  {expired ? (
-                    <Td>
-                      {row.isSettled ? (
-                        <CheckIcon color="green.500" mr={2} />
-                      ) : null}
-                    </Td>
-                  ) : null}
-                </Tr>
-              );
-            })}
-        </Tbody>
+    <div className="w-full">
+      <Table>
+        <TableHeader>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <TableRow key={headerGroup.id}>
+              {headerGroup.headers.map((header) => (
+                <TableHead
+                  key={header.id}
+                  onClick={header.column.getToggleSortingHandler()}
+                  className="cursor-pointer"
+                >
+                  <span className="flex items-center">
+                    {flexRender(
+                      header.column.columnDef.header,
+                      header.getContext()
+                    )}
+                    <span className="ml-2 inline-block">
+                      {renderSortIcon(header.column.getIsSorted())}
+                    </span>
+                  </span>
+                </TableHead>
+              ))}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {table.getRowModel().rows.map((row) => (
+            <TableRow key={row.id}>
+              {row.getVisibleCells().map((cell) => (
+                <TableCell key={cell.id}>
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
       </Table>
-    </TableContainer>
+    </div>
   );
 };
 
