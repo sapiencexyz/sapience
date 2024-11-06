@@ -49,12 +49,17 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         // Mint position NFT and initialize position
         positionId = ERC721EnumerableStorage.totalSupply() + 1;
         Position.Data storage position = Position.createValid(positionId);
-        ERC721Storage._checkOnERC721Received(
-            address(this),
-            msg.sender,
-            positionId,
-            ""
-        );
+
+        if (
+            !ERC721Storage._checkOnERC721Received(
+                address(this),
+                msg.sender,
+                positionId,
+                ""
+            )
+        ) {
+            revert Errors.InvalidTransferRecipient(msg.sender);
+        }
         ERC721Storage._mint(msg.sender, positionId);
         position.epochId = epochId;
         position.kind = IFoilStructs.PositionKind.Trade;
