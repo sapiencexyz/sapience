@@ -6,7 +6,7 @@ import { useScroll, motion, useTransform } from 'framer-motion';
 export const Hero = () => {
   const { scrollYProgress } = useScroll();
   const y = useTransform(scrollYProgress, [0, 1], ['0%', '200%']);
-  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0.25]);
 
   return (
     <div className="relative h-[100dvh] w-full overflow-hidden border-b border-border">

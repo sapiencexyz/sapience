@@ -7,7 +7,7 @@ import {
 
 export const FAQ = () => {
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-12 md:px-6">
+    <div className="container mx-auto max-w-2xl px-4 py-12 md:px-6">
       <div className="grid gap-2.5">
         <h1 className="text-center text-3xl font-semibold text-primary">FAQ</h1>
         <Accordion type="single" collapsible>
