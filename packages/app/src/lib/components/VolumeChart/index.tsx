@@ -1,4 +1,3 @@
-import { Box, Flex, Text } from '@chakra-ui/react';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import {
@@ -21,9 +20,10 @@ import {
 
 import { DECIMAL_PRECISION_DISPLAY } from '~/lib/constants/constants';
 import type { VolumeChartData, TimeWindow } from '~/lib/interfaces/interfaces';
-import { turquoise } from '~/lib/styles/theme/colors';
 import { formatXAxisTick, getXTicksToShow } from '~/lib/util/chartUtil';
 import { getDisplayTextForVolumeWindow } from '~/lib/util/util';
+
+const turquoise = '#00FFD1';
 
 dayjs.extend(utc);
 
@@ -122,23 +122,13 @@ const VolumeChart = ({ data, color = turquoise, activeWindow }: ChartProps) => {
   };
 
   return (
-    <Flex flex={1} position="relative">
-      <Box
-        minH="50px"
-        w="fit-content"
-        position="absolute"
-        top={0}
-        left={0}
-        zIndex={2}
-        bgColor="white"
-        opacity={0.8}
-      >
-        <Text> {value ? `${value.toLocaleString()} Ggas` : '0 Ggas'}</Text>
-        <Text fontSize="sm" color="gray.500">
-          {' '}
-          {label ? `${label}` : ''}
-        </Text>
-      </Box>
+    <div className="flex flex-1 relative">
+      <div className="min-h-[50px] w-fit absolute top-0 left-0 z-[2] bg-white opacity-80">
+        <p className="text-base">
+          {value ? `${value.toLocaleString()} Ggas` : '0 Ggas'}
+        </p>
+        <p className="text-sm text-gray-500">{label ? `${label}` : ''}</p>
+      </div>
 
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
@@ -181,7 +171,7 @@ const VolumeChart = ({ data, color = turquoise, activeWindow }: ChartProps) => {
           <Bar dataKey="volume" fill={color} shape={renderCustomBar} />
         </BarChart>
       </ResponsiveContainer>
-    </Flex>
+    </div>
   );
 };
 

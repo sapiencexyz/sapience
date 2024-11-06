@@ -1,6 +1,12 @@
-import { MinusIcon } from '@chakra-ui/icons';
-import { Tooltip } from '@chakra-ui/react';
+import { Minus } from 'lucide-react';
 import type React from 'react';
+
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 type NumberDisplayProps = {
   value: number | string;
@@ -40,9 +46,18 @@ const NumberDisplay: React.FC<NumberDisplayProps> = ({ value }) => {
   const displayValue = formatNumber(value || 0);
 
   return displayValue.length ? (
-    <Tooltip label={value.toString()}>{displayValue}</Tooltip>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger type="button" className="cursor-default">
+          {displayValue}
+        </TooltipTrigger>
+        <TooltipContent className="font-normal">
+          {value.toString()}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   ) : (
-    <MinusIcon opacity={0.2} />
+    <Minus className="opacity-20" />
   );
 };
 

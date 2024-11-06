@@ -1,4 +1,3 @@
-import type { ToastId, UseToastOptions } from '@chakra-ui/react';
 import {
   formatEther,
   type ReadContractErrorType,
@@ -7,36 +6,6 @@ import {
 import * as chains from 'viem/chains';
 
 import { TimeWindow } from '../interfaces/interfaces';
-
-export const renderContractErrorToast = (
-  error: ReadContractErrorType | WriteContractErrorType | null,
-  toast: (options?: UseToastOptions) => ToastId,
-  desc: string
-) => {
-  if (error) {
-    console.error(desc, error.message);
-    toast({
-      title: desc,
-      description: error.message,
-      status: 'error',
-      duration: 5000,
-      isClosable: true,
-    });
-  }
-};
-
-export const renderToast = (
-  toast: (options?: UseToastOptions) => ToastId,
-  desc: string,
-  status?: 'info' | 'warning' | 'success' | 'error' | 'loading'
-) => {
-  toast({
-    title: desc,
-    status: status || 'success',
-    duration: 5000,
-    isClosable: true,
-  });
-};
 
 export function convertHundredthsOfBipToPercent(
   hundredthsOfBip: number
@@ -78,7 +47,14 @@ export function getChain(chainId: number) {
   throw new Error(`Chain with id ${chainId} not found`);
 }
 
-export const convertToGwei = (
+export const convertWstEthToGwei = (
+  wstEth: number,
+  stEthPerToken: number | undefined
+) => {
+  return (wstEth * 1e9) / (stEthPerToken || 1);
+};
+
+export const convertGgasPerWstEthToGwei = (
   value: number,
   stEthPerToken: number | undefined
 ) => {
@@ -97,4 +73,33 @@ export const shortenAddress = (address: string) => {
     return address;
   }
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
+};
+
+/**
+ * Removes leading zeros from a string or number input while preserving valid number format
+ * @param input - The input string or number to process
+ * @returns A string with leading zeros removed while maintaining decimal points and negative signs
+ */
+export const removeLeadingZeros = (input: string | number): string => {
+  // Convert input to string if it's a number
+  const str = input.toString();
+
+  // Handle empty string
+  if (!str) return str;
+
+  // Handle zero
+  if (str === '0') return '0';
+
+  // Handle decimal numbers starting with 0 (e.g., 0.123)
+  if (str.match(/^0\./)) return str;
+
+  // Handle negative numbers
+  if (str.startsWith('-')) {
+    const withoutMinus = str.slice(1);
+    const processed = removeLeadingZeros(withoutMinus);
+    return processed === '0' ? '0' : `-${processed}`;
+  }
+
+  // Remove leading zeros and return
+  return str.replace(/^0+/, '') || '0';
 };

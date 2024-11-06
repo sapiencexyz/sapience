@@ -1,13 +1,12 @@
-import { Box, Spinner, Center } from '@chakra-ui/react';
 import { useSearchParams } from 'next/navigation';
 import { useContext, useEffect } from 'react';
 
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
 
-import LiquidityPosition from './liquidityPosition';
+import AddEditTrade from './addEditTrade';
+import AddEditLiquidity from './Liquidity/AddEditLiquidity';
 import Settle from './settle';
-import TraderPosition from './traderPosition';
 
 export default function MarketSidebar({ isTrade }: { isTrade: boolean }) {
   const { endTime } = useContext(MarketContext);
@@ -24,20 +23,11 @@ export default function MarketSidebar({ isTrade }: { isTrade: boolean }) {
 
   if (endTime === 0) {
     return (
-      <Box
-        height="100%"
-        border="1px solid"
-        borderColor="gray.300"
-        borderRadius="md"
-        w="100%"
-        flex={1}
-        display="flex"
-        flexDirection="column"
-      >
-        <Center height="100%">
-          <Spinner size="xl" opacity={0.5} />
-        </Center>
-      </Box>
+      <div className="h-full border border-gray-300 rounded-md w-full flex-1 flex flex-col">
+        <div className="h-full flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-400 opacity-50" />
+        </div>
+      </div>
     );
   }
 
@@ -46,25 +36,14 @@ export default function MarketSidebar({ isTrade }: { isTrade: boolean }) {
       return <Settle />;
     }
     if (isTrade) {
-      return <TraderPosition />;
+      return <AddEditTrade />;
     }
-    return <LiquidityPosition />;
+    return <AddEditLiquidity />;
   };
 
   return (
-    <Box
-      height="100%"
-      border="1px solid"
-      borderColor="gray.300"
-      borderRadius="md"
-      w="100%"
-      flex={1}
-      display="flex"
-      flexDirection="column"
-      p={6}
-      overflowY="auto"
-    >
+    <div className="h-full border border-border rounded-md w-full flex-1 flex flex-col p-6 overflow-y-auto shadow-sm">
       {renderContent()}
-    </Box>
+    </div>
   );
 }

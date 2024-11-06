@@ -17,6 +17,7 @@ export enum TransactionType {
   REMOVE_LIQUIDITY = "removeLiquidity",
   LONG = "long",
   SHORT = "short",
+  SETTLE_POSITION = "settledPosition",
 }
 
 @Entity()
