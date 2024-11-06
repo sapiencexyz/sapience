@@ -305,7 +305,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
         uint256 balanceBefore = collateralAsset.balanceOf(address(this));
         // Create the liquidity position
-        (newPositionId, , , , , ) = market.createLiquidityPosition(params);
+        (newPositionId, , , , , , ) = market.createLiquidityPosition(params);
         // Calculate the uninvested collateral
         uninvestedCollateral =
             collateralAsset.balanceOf(address(this)) -

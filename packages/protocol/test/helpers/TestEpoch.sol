@@ -48,8 +48,6 @@ contract TestEpoch is TestUser {
         uint256 minTradeSize
     ) public returns (IFoil, address) {
         address owner = initializeMarket(
-            minTick,
-            maxTick,
             feeCollectors,
             address(0),
             minTradeSize
@@ -78,8 +76,6 @@ contract TestEpoch is TestUser {
     ) public returns (IFoil, address) {
         address[] memory feeCollectors = new address[](0);
         address owner = initializeMarket(
-            minTick,
-            maxTick,
             feeCollectors,
             callbackRecipient,
             minTradeSize
