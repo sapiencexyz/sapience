@@ -36,6 +36,7 @@ contract ConfigurationModule is
         address collateralAsset,
         address[] calldata feeCollectors,
         address callbackRecipient,
+        uint256 minTradeSize,
         IFoilStructs.EpochParams memory epochParams
     ) external override nonReentrant {
         if (msg.sender != marketInitializer) {
@@ -43,8 +44,10 @@ contract ConfigurationModule is
         }
 
         address feeCollectorNFT;
-        if(feeCollectors.length > 0) {
-            feeCollectorNFT = address(new FeeCollectorNft("FeeCollectorNFT", "FCNFT"));
+        if (feeCollectors.length > 0) {
+            feeCollectorNFT = address(
+                new FeeCollectorNft("FeeCollectorNFT", "FCNFT")
+            );
             for (uint256 i = 0; i < feeCollectors.length; i++) {
                 address feeCollector = feeCollectors[i];
                 FeeCollectorNft(feeCollectorNFT).mint(feeCollector);
@@ -56,6 +59,7 @@ contract ConfigurationModule is
             collateralAsset,
             feeCollectorNFT,
             callbackRecipient,
+            minTradeSize,
             epochParams
         );
         emit MarketInitialized(
@@ -63,6 +67,7 @@ contract ConfigurationModule is
             collateralAsset,
             feeCollectorNFT,
             callbackRecipient,
+            minTradeSize,
             epochParams
         );
     }

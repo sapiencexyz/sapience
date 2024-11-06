@@ -12,6 +12,7 @@ import {TestUser} from "../helpers/TestUser.sol";
 import {DecimalPrice} from "../../src/market/libraries/DecimalPrice.sol";
 import {SafeCastI256, SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 import {Position} from "../../src/market/storage/Position.sol";
+import {Errors} from "../../src/market/storage/Errors.sol";
 
 import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
@@ -40,6 +41,7 @@ contract TradePositionDumb is TestTrade {
 
     address lp1;
     address trader1;
+    address trader2;
     uint256 epochId;
     address pool;
     address tokenA;
@@ -57,6 +59,7 @@ contract TradePositionDumb is TestTrade {
     uint256 INITIAL_PRICE_MINUS_FEE_D18 = 9.9 ether;
     uint256 PLUS_FEE_MULTIPLIER_D18 = 1.01 ether;
     uint256 MINUS_FEE_MULTIPLIER_D18 = 0.99 ether;
+    uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
 
     function setUp() public {
         collateralAsset = IMintableToken(
@@ -68,11 +71,13 @@ contract TradePositionDumb is TestTrade {
         (foil, ) = createEpoch(
             EPOCH_LOWER_TICK,
             EPOCH_UPPER_TICK,
-            startingSqrtPriceX96
+            startingSqrtPriceX96,
+            MIN_TRADE_SIZE
         );
 
         lp1 = TestUser.createUser("LP1", 10_000_000_000 ether);
         trader1 = TestUser.createUser("Trader1", 10_000_000 ether);
+        trader2 = TestUser.createUser("Trader2", 10_000_000 ether);
 
         // Remove allowance of collateralAsset from trader1 to foil
         vm.startPrank(trader1);
@@ -94,6 +99,222 @@ contract TradePositionDumb is TestTrade {
             LP_LOWER_TICK,
             LP_UPPER_TICK
         ); // enough to keep price stable (no slippage)
+        vm.stopPrank();
+    }
+
+    function test_revertWhen_zeroTradeSize_Create() public {
+        vm.startPrank(trader1);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(Errors.DeltaTradeIsZero.selector)
+        );
+        foil.createTraderPosition(epochId, 0, 0, block.timestamp + 30 minutes);
+
+        vm.stopPrank();
+    }
+
+    function test_revertWhen_zeroTradeSize_Modify() public {
+        vm.startPrank(trader1);
+        int256 initialPositionSize = 1 ether;
+        uint256 positionId = addTraderPosition(
+            foil,
+            epochId,
+            initialPositionSize
+        );
+
+        vm.expectRevert(
+            abi.encodeWithSelector(Errors.DeltaTradeIsZero.selector)
+        );
+        foil.modifyTraderPosition(
+            positionId,
+            initialPositionSize,
+            0,
+            block.timestamp + 30 minutes
+        );
+
+        vm.stopPrank();
+    }
+
+    function test_revertWhen_minTradeSizeNotMet_CreateLong() public {
+        vm.startPrank(trader1);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(Errors.PositionSizeBelowMin.selector)
+        );
+        foil.createTraderPosition(
+            epochId,
+            (MIN_TRADE_SIZE - 1).toInt(),
+            0,
+            block.timestamp + 30 minutes
+        );
+
+        vm.stopPrank();
+    }
+
+    function test_revertWhen_minTradeSizeNotMet_CreateShort() public {
+        vm.startPrank(trader1);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(Errors.PositionSizeBelowMin.selector)
+        );
+        foil.createTraderPosition(
+            epochId,
+            (MIN_TRADE_SIZE - 1).toInt() * -1,
+            0,
+            block.timestamp + 30 minutes
+        );
+
+        vm.stopPrank();
+    }
+
+    function test_revertWhen_minTradeSizeNotMet_ModifyLongToLong() public {
+        vm.startPrank(trader1);
+        int256 initialPositionSize = 1 ether;
+        uint256 positionId = addTraderPosition(
+            foil,
+            epochId,
+            initialPositionSize
+        );
+
+        vm.expectRevert(
+            abi.encodeWithSelector(Errors.PositionSizeBelowMin.selector)
+        );
+        foil.modifyTraderPosition(
+            positionId,
+            (MIN_TRADE_SIZE - 1).toInt(),
+            0,
+            block.timestamp + 30 minutes
+        );
+
+        vm.stopPrank();
+    }
+
+    function test_revertWhen_minTradeSizeNotMet_ModifyLongToShort() public {
+        vm.startPrank(trader1);
+        int256 initialPositionSize = 1 ether;
+        uint256 positionId = addTraderPosition(
+            foil,
+            epochId,
+            initialPositionSize
+        );
+
+        vm.expectRevert(
+            abi.encodeWithSelector(Errors.PositionSizeBelowMin.selector)
+        );
+        foil.modifyTraderPosition(
+            positionId,
+            (MIN_TRADE_SIZE - 1).toInt() * -1,
+            0,
+            block.timestamp + 30 minutes
+        );
+
+        vm.stopPrank();
+    }
+
+    function test_revertWhen_minTradeSizeNotMet_ModifyShortToLong() public {
+        vm.startPrank(trader1);
+        int256 initialPositionSize = -1 ether;
+        uint256 positionId = addTraderPosition(
+            foil,
+            epochId,
+            initialPositionSize
+        );
+
+        vm.expectRevert(
+            abi.encodeWithSelector(Errors.PositionSizeBelowMin.selector)
+        );
+        foil.modifyTraderPosition(
+            positionId,
+            (MIN_TRADE_SIZE - 1).toInt(),
+            0,
+            block.timestamp + 30 minutes
+        );
+
+        vm.stopPrank();
+    }
+
+    function test_revertWhen_minTradeSizeNotMet_ModifyShortToShort() public {
+        vm.startPrank(trader1);
+        int256 initialPositionSize = -1 ether;
+        uint256 positionId = addTraderPosition(
+            foil,
+            epochId,
+            initialPositionSize
+        );
+
+        vm.expectRevert(
+            abi.encodeWithSelector(Errors.PositionSizeBelowMin.selector)
+        );
+        foil.modifyTraderPosition(
+            positionId,
+            (MIN_TRADE_SIZE - 1).toInt() * -1,
+            0,
+            block.timestamp + 30 minutes
+        );
+
+        vm.stopPrank();
+    }
+
+    function test_revertWhen_modifyPosition_notOwner() public {
+        vm.startPrank(trader1);
+        uint256 positionId = addTraderPosition(foil, epochId, 1 ether);
+        vm.stopPrank();
+
+        vm.startPrank(trader2);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Errors.NotAccountOwnerOrAuthorized.selector,
+                positionId,
+                trader2
+            )
+        );
+        foil.modifyTraderPosition(
+            positionId,
+            0,
+            0,
+            block.timestamp + 30 minutes
+        );
+        vm.stopPrank();
+    }
+
+    function test_revertWhen_modifyPosition_wrongId() public {
+        vm.startPrank(trader1);
+        addTraderPosition(foil, epochId, 1 ether);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Errors.NotAccountOwnerOrAuthorized.selector,
+                1337,
+                trader1
+            )
+        );
+        foil.modifyTraderPosition(1337, 0, 0, block.timestamp + 30 minutes);
+        vm.stopPrank();
+    }
+
+    function test_revertWhen_modifyPosition_invalidPositionKind() public {
+        // add a liquidity position as trader1
+        vm.startPrank(trader2);
+        uint256 positionId = addLiquidity(
+            foil,
+            pool,
+            epochId,
+            COLLATERAL_FOR_ORDERS * 1_000,
+            LP_LOWER_TICK,
+            LP_UPPER_TICK
+        ); // enough to keep price stable (no slippage)
+
+        // try to modify it as a trader, it should revert
+        vm.expectRevert(
+            abi.encodeWithSelector(Errors.InvalidPositionKind.selector)
+        );
+        foil.modifyTraderPosition(
+            positionId,
+            0,
+            0,
+            block.timestamp + 30 minutes
+        );
+
         vm.stopPrank();
     }
 

@@ -34,6 +34,7 @@ contract SettleLPTest is TestTrade {
     IMintableToken collateralAsset;
     int24 constant MIN_TICK = 16000;
     int24 constant MAX_TICK = 29800;
+    uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
     uint256 constant settlementPrice = 10 ether;
 
     function setUp() public {
@@ -50,7 +51,8 @@ contract SettleLPTest is TestTrade {
             MIN_TICK,
             MAX_TICK,
             startingSqrtPriceX96,
-            vm.getAddress("MockVault")
+            vm.getAddress("MockVault"),
+            MIN_TRADE_SIZE
         );
 
         (epochId, , , pool, tokenA, tokenB, , , , , ) = foil.getLatestEpoch();

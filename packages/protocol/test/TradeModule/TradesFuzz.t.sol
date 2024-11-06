@@ -59,6 +59,7 @@ contract TradePositionBasicFuzz is TestTrade {
     uint256 INITIAL_PRICE_MINUS_FEE_D18 = 9.9 ether;
     uint256 PLUS_FEE_MULTIPLIER_D18 = 1.01 ether;
     uint256 MINUS_FEE_MULTIPLIER_D18 = 0.99 ether;
+    uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
 
     function setUp() public {
         collateralAsset = IMintableToken(
@@ -70,7 +71,7 @@ contract TradePositionBasicFuzz is TestTrade {
         (foil, ) = createEpoch(
             EPOCH_LOWER_TICK,
             EPOCH_UPPER_TICK,
-            startingSqrtPriceX96
+            startingSqrtPriceX96,MIN_TRADE_SIZE
         );
 
         lp1 = TestUser.createUser("LP1", 10_000_000_000 ether);

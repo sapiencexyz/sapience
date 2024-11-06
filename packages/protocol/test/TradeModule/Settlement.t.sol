@@ -49,6 +49,7 @@ contract TradePositionSettlement is TestTrade {
     int24 LP_LOWER_TICK = 15800; //3.31
     int24 LP_UPPER_TICK = 16200; //3.52
     uint256 SETTLEMENT_PRICE_D18 = 10 ether;
+    uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
 
     address optimisticOracleV3;
     uint256 endTime;
@@ -62,7 +63,7 @@ contract TradePositionSettlement is TestTrade {
         );
         uint160 startingSqrtPriceX96 = INITIAL_PRICE_SQRT;
 
-        (foil, ) = createEpoch(5200, 28200, startingSqrtPriceX96); // 1.709 to 17.09 (1.6819839204636384 to 16.774485460620674)
+        (foil, ) = createEpoch(5200, 28200, startingSqrtPriceX96,MIN_TRADE_SIZE); // 1.709 to 17.09 (1.6819839204636384 to 16.774485460620674)
 
         lp1 = TestUser.createUser("LP1", 20_000_000 ether);
         trader1 = TestUser.createUser("Trader1", 20_000_000 ether);

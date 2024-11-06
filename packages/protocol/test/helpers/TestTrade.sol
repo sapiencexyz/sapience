@@ -88,7 +88,7 @@ contract TestTrade is TestEpoch {
         uint256 collateralAmount,
         int24 lowerTick,
         int24 upperTick
-    ) internal {
+    ) internal returns (uint256 positionId) {
         pool;
         (
             uint256 amountTokenA,
@@ -113,7 +113,7 @@ contract TestTrade is TestEpoch {
                 deadline: block.timestamp + 30 minutes
             });
 
-        foil.createLiquidityPosition(params);
+        (positionId, , , , , ) = foil.createLiquidityPosition(params);
     }
 
     function addTraderPosition(

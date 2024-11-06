@@ -38,8 +38,10 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         }
 
         if (size == 0) {
-            revert Errors.InvalidData("Size cannot be 0");
+            revert Errors.DeltaTradeIsZero();
         }
+
+        _checkTradeSize(size);
 
         Epoch.Data storage epoch = Epoch.load(epochId);
 
@@ -141,8 +143,10 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
         int256 deltaSize = size - position.positionSize();
         if (deltaSize == 0) {
-            revert Errors.InvalidData("Size not changed");
+            revert Errors.DeltaTradeIsZero();
         }
+
+        _checkTradeSize(size);
 
         Epoch.Data storage epoch = Epoch.load(position.epochId);
 
@@ -357,6 +361,17 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         }
     }
 
+    function _checkTradeSize(int256 size) internal view {
+        if (size == 0) {
+            return;
+        }
+
+        uint256 modSize = size > 0 ? size.toUint() : (size * -1).toUint();
+        if (modSize < Market.load().minTradeSize) {
+            revert Errors.PositionSizeBelowMin();
+        }
+    }
+
     struct QuoteRuntime {
         bool isLongDirection;
         uint256 tradedVGas;
@@ -426,7 +441,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
         // Sanity check. vGas on trade is zero means someting went really wrong (or )
         if (runtime.tradedVGas == 0) {
-            revert Errors.InvalidTradeSize(0);
+            revert Errors.InvalidInternalTradeSize(0);
         }
 
         // 2- Get PnL and vEth involved in the transaction from initial size to zero (intermediate close the position).

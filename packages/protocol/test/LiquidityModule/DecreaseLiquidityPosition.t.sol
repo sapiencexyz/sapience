@@ -31,6 +31,7 @@ contract DecreaseLiquidityPosition is TestTrade {
     int24 constant MAX_TICK = 29800;
     uint256 constant INITIAL_LP_BALANCE = 100_000_000 ether;
     uint256 constant INITIAL_COLLATERAL_AMOUNT = 100 ether;
+    uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
     uint256 positionId;
 
     function setUp() public {
@@ -40,7 +41,12 @@ contract DecreaseLiquidityPosition is TestTrade {
         foil = IFoil(vm.getAddress("Foil"));
 
         uint160 startingSqrtPriceX96 = 250541448375047931186413801569; // 10
-        (foil, ) = createEpoch(MIN_TICK, MAX_TICK, startingSqrtPriceX96);
+        (foil, ) = createEpoch(
+            MIN_TICK,
+            MAX_TICK,
+            startingSqrtPriceX96,
+            MIN_TRADE_SIZE
+        );
 
         lp1 = TestUser.createUser("LP1", INITIAL_LP_BALANCE);
 
