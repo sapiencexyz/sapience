@@ -16,8 +16,6 @@ import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Po
 import {ILiquidityModule} from "../../src/market/interfaces/ILiquidityModule.sol";
 import {Position} from "../../src/market/storage/Position.sol";
 
-import "forge-std/console2.sol";
-
 contract LiquidityFeeCollectorTest is TestTrade {
     using Cannon for Vm;
 
@@ -81,7 +79,7 @@ contract LiquidityFeeCollectorTest is TestTrade {
 
         // Fee collector opens position
         vm.startPrank(feeCollector);
-        (feeCollectorId, , , , , ) = foil.createLiquidityPosition(
+        (feeCollectorId, , , , , , ) = foil.createLiquidityPosition(
             IFoilStructs.LiquidityMintParams({
                 epochId: epochId,
                 amountTokenA: loanAmount0,
@@ -98,7 +96,7 @@ contract LiquidityFeeCollectorTest is TestTrade {
 
         // Regular LP opens position
         vm.startPrank(regularLp);
-        (regularLpId, , , , , ) = foil.createLiquidityPosition(
+        (regularLpId, , , , , , ) = foil.createLiquidityPosition(
             IFoilStructs.LiquidityMintParams({
                 epochId: epochId,
                 amountTokenA: loanAmount0,
