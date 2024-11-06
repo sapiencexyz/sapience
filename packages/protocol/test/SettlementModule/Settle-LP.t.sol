@@ -77,7 +77,7 @@ contract SettleLPTest is TestTrade {
 
         // Create initial position
         vm.startPrank(user);
-        (lpPositionId, , , , , ) = foil.createLiquidityPosition(
+        (lpPositionId, , , , , , ) = foil.createLiquidityPosition(
             IFoilStructs.LiquidityMintParams({
                 epochId: epochId,
                 amountTokenA: gasTokenAmount,

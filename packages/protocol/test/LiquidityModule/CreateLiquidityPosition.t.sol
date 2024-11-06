@@ -167,6 +167,7 @@ contract CreateLiquidityPosition is TestEpoch {
         (
             uint256 id,
             uint256 requiredCollateral,
+            ,
             uint256 uniswapNftId,
             uint128 liquidity,
             uint256 addedAmount0,
@@ -300,6 +301,7 @@ contract CreateLiquidityPosition is TestEpoch {
         (
             uint256 id,
             uint256 requiredCollateral,
+            ,
             uint256 uniswapNftId,
             uint128 liquidity,
             uint256 addedAmount0,

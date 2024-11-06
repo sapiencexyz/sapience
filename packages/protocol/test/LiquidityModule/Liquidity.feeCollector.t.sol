@@ -79,7 +79,7 @@ contract LiquidityFeeCollectorTest is TestTrade {
 
         // Fee collector opens position
         vm.startPrank(feeCollector);
-        (feeCollectorId, , , , , ) = foil.createLiquidityPosition(
+        (feeCollectorId, , , , , , ) = foil.createLiquidityPosition(
             IFoilStructs.LiquidityMintParams({
                 epochId: epochId,
                 amountTokenA: loanAmount0,
@@ -96,7 +96,7 @@ contract LiquidityFeeCollectorTest is TestTrade {
 
         // Regular LP opens position
         vm.startPrank(regularLp);
-        (regularLpId, , , , , ) = foil.createLiquidityPosition(
+        (regularLpId, , , , , , ) = foil.createLiquidityPosition(
             IFoilStructs.LiquidityMintParams({
                 epochId: epochId,
                 amountTokenA: loanAmount0,

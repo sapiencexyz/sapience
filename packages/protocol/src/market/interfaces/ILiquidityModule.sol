@@ -76,7 +76,8 @@ interface ILiquidityModule {
      * @notice Creates a new liquidity position in the specified epoch
      * @param params The parameters for creating the liquidity position
      * @return id The unique identifier of the created position
-     * @return collateralAmount The amount of collateral locked for the position
+     * @return requiredCollateralAmount The amount of collateral required for the position
+     * @return totalDepositedCollateralAmount The total amount of collateral deposited for the position
      * @return uniswapNftId The ID of the Uniswap V3 NFT representing the liquidity position
      * @return liquidity The amount of liquidity added to the position
      * @return addedAmount0 The amount of token0 added to the position
@@ -88,7 +89,8 @@ interface ILiquidityModule {
         external
         returns (
             uint256 id,
-            uint256 collateralAmount,
+            uint256 requiredCollateralAmount,
+            uint256 totalDepositedCollateralAmount,
             uint256 uniswapNftId,
             uint128 liquidity,
             uint256 addedAmount0,
@@ -141,7 +143,8 @@ interface ILiquidityModule {
             uint128 liquidity,
             uint256 amount0,
             uint256 amount1,
-            uint256 collateralAmount
+            uint256 requiredCollateralAmount,
+            uint256 totalDepositedCollateralAmount
         );
 
     function quoteLiquidityPositionTokens(

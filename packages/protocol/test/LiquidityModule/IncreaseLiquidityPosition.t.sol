@@ -65,7 +65,7 @@ contract IncreaseLiquidityPosition is TestTrade {
 
         // Create initial position
         vm.startPrank(lp1);
-        (positionId, , , , , ) = foil.createLiquidityPosition(
+        (positionId, , , , , , ) = foil.createLiquidityPosition(
             IFoilStructs.LiquidityMintParams({
                 epochId: epochId,
                 amountTokenA: gasTokenAmount,

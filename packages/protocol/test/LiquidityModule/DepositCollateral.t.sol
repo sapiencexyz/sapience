@@ -63,7 +63,7 @@ contract DepositCollateralTest is TestTrade {
 
         // Create fee collector position
         vm.startPrank(feeCollector);
-        (feeCollectorPositionId, , , , , ) = foil.createLiquidityPosition(
+        (feeCollectorPositionId, , , , , , ) = foil.createLiquidityPosition(
             IFoilStructs.LiquidityMintParams({
                 epochId: epochId,
                 amountTokenA: gasTokenAmount,
@@ -80,7 +80,7 @@ contract DepositCollateralTest is TestTrade {
 
         // Create regular LP position
         vm.startPrank(regularLp);
-        (regularLpPositionId, , , , , ) = foil.createLiquidityPosition(
+        (regularLpPositionId, , , , , , ) = foil.createLiquidityPosition(
             IFoilStructs.LiquidityMintParams({
                 epochId: epochId,
                 amountTokenA: gasTokenAmount,

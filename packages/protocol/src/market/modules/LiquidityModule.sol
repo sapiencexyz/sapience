@@ -21,7 +21,8 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         nonReentrant
         returns (
             uint256 id,
-            uint256 collateralAmount,
+            uint256 requiredCollateralAmount,
+            uint256 totalDepositedCollateralAmount,
             uint256 uniswapNftId,
             uint128 liquidity,
             uint256 addedAmount0,
@@ -73,7 +74,12 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             );
 
         bool isFeeCollector = market.isFeeCollector(msg.sender);
-        (, collateralAmount, , ) = position.updateValidLp(
+        (
+            requiredCollateralAmount,
+            totalDepositedCollateralAmount,
+            ,
+
+        ) = position.updateValidLp(
             epoch,
             Position.UpdateLpParams({
                 uniswapNftId: uniswapNftId,
@@ -89,7 +95,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             })
         );
 
-        position.updateCollateral(collateralAmount);
+        position.updateCollateral(totalDepositedCollateralAmount);
 
         _emitLiquidityPositionCreated(
             ILiquidityModule.LiquidityPositionCreatedEventData({
@@ -227,7 +233,8 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             uint128 liquidity,
             uint256 amount0,
             uint256 amount1,
-            uint256 collateralAmount
+            uint256 requiredCollateralAmount,
+            uint256 totalDepositedCollateralAmount
         )
     {
         if (params.deadline < block.timestamp) {
@@ -284,8 +291,8 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
 
         stack.isFeeCollector = market.isFeeCollector(msg.sender);
         (
-            stack.requiredCollateralAmount,
-            stack.newCollateralAmount,
+            requiredCollateralAmount,
+            totalDepositedCollateralAmount,
             stack.loanAmount0,
             stack.loanAmount1
         ) = position.updateValidLp(
@@ -304,8 +311,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             })
         );
 
-        collateralAmount = stack.newCollateralAmount;
-        position.updateCollateral(collateralAmount);
+        position.updateCollateral(totalDepositedCollateralAmount);
 
         emit LiquidityPositionIncreased(
             msg.sender,
