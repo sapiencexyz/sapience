@@ -1,19 +1,16 @@
 import type { Metadata, Viewport } from 'next';
-import type React from 'react';
 
-import Providers from '~/app/providers';
-import Layout from '~/lib/layout';
-import '../lib/styles/globals.css';
+import Layout from '@/lib/layout';
+import { fontSans } from '@/lib/styles/fonts';
+import { cn } from '@/lib/styles/utils';
 
-type RootLayoutProps = {
-  children: React.ReactNode;
-};
+import '@/lib/styles/globals.css';
 
-const APP_NAME = 'Foil';
+const APP_NAME = 'nextarter-tailwind';
 
 export const metadata: Metadata = {
-  title: { default: APP_NAME, template: '%s | Foil' },
-  description: '',
+  title: APP_NAME,
+  description: 'Next.js + TailwindCSS v3 + TypeScript template',
   applicationName: APP_NAME,
   appleWebApp: {
     capable: true,
@@ -24,12 +21,16 @@ export const metadata: Metadata = {
     telephone: false,
   },
   openGraph: {
-    url: 'https://foil.xyz',
-    title: 'foil',
-    description: '',
+    url: 'https://nextarter-tailwind.sznm.dev',
+    title: 'nextarter-tailwind',
+    description: 'Next.js + TailwindCSS v3 + TypeScript template',
+    images: {
+      url: 'https://og-image.sznm.dev/**nextarter-tailwind**.sznm.dev.png?theme=dark&md=1&fontSize=125px&images=https%3A%2F%2Fsznm.dev%2Favataaars.svg&widths=250',
+      alt: 'nextarter-tailwind.sznm.dev og-image',
+    },
   },
   twitter: {
-    creator: '',
+    creator: '@sozonome',
     card: 'summary_large_image',
   },
 };
@@ -40,13 +41,22 @@ export const viewport: Viewport = {
   themeColor: '#FFFFFF',
 };
 
+interface RootLayoutProps {
+  children: React.ReactNode;
+}
+
 const RootLayout = ({ children }: RootLayoutProps) => {
   return (
-    <html lang="en">
-      <body>
-        <Providers>
-          <Layout>{children}</Layout>
-        </Providers>
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={cn(
+          'min-h-screen bg-background font-sans antialiased',
+          fontSans.variable
+        )}
+      >
+        <Layout>
+          <div className="flex-1">{children}</div>
+        </Layout>
       </body>
     </html>
   );
