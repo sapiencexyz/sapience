@@ -34,6 +34,11 @@ export interface BarChartTick {
   isCurrent: boolean;
 }
 
+export interface PoolData {
+  pool: Pool;
+  ticks: BarChartTick[];
+}
+
 const MAX_INT128 = JSBI.subtract(
   JSBI.exponentiate(JSBI.BigInt(2), JSBI.BigInt(128)),
   JSBI.BigInt(1)

@@ -17,10 +17,13 @@ import {
 import { type AbiFunction } from 'viem';
 import { useReadContracts } from 'wagmi';
 
-import type { PoolData } from '../DensityChartV2';
 import { TICK_SPACING_DEFAULT } from '~/lib/constants/constants';
 import { MarketContext } from '~/lib/context/MarketProvider';
-import type { BarChartTick, GraphTick } from '~/lib/util/liqudityUtil';
+import type {
+  BarChartTick,
+  GraphTick,
+  PoolData,
+} from '~/lib/util/liqudityUtil';
 import { getFullPool } from '~/lib/util/liqudityUtil';
 
 const gray400 = '#a3a3a3';
