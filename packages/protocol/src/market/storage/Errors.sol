@@ -49,4 +49,9 @@ library Errors {
     error OnlyFeeCollector();
     error InvalidCallbackResolutionInterface(address callbackRecipient);
     error InvalidTransferRecipient(address recipient);
+    error TradePriceOutOfBounds(
+        uint256 tradeRatioD18,
+        uint256 minTradeRatioD18,
+        uint256 maxTradeRatioD18
+    );
 }

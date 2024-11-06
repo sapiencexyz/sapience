@@ -448,6 +448,18 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         output.tradeRatioD18 = runtime.tradedVEth.divDecimal(
             runtime.tradedVGas
         );
+
+        if (
+            output.tradeRatioD18 < epoch.minPriceD18 ||
+            output.tradeRatioD18 > epoch.maxPriceD18
+        ) {
+            revert Errors.TradePriceOutOfBounds(
+                output.tradeRatioD18,
+                epoch.minPriceD18,
+                epoch.maxPriceD18
+            );
+        }
+
         // vEth to compensate the gas (either to pay borrowedVGas or borrowerVEth paid from the vGas tokens from the close trade)
         runtime.vEthToZero = (params.initialSize * -1).mulDecimal(
             output.tradeRatioD18.toInt()
