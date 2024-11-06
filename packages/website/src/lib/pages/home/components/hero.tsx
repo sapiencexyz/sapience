@@ -9,9 +9,9 @@ export const Hero = () => {
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
 
   return (
-    <div className="relative h-[100dvh] overflow-hidden border-b border-border">
-      <div className="relative z-[2] mx-auto flex min-h-[100dvh] w-full max-w-[820px] flex-col items-center justify-center gap-3 px-4 pt-0 text-center md:gap-7 md:pt-12">
-        <h1 className="text-3xl leading-[1.15] text-white drop-shadow-[1px_1px_3px_#000000] md:text-5xl">
+    <div className="relative h-[100dvh] w-full overflow-hidden border-b border-border">
+      <div className="relative z-[2] mx-auto flex min-h-[100dvh] w-full flex-col items-center justify-center gap-3 px-4 pt-0 text-center md:gap-7 md:pt-12">
+        <h1 className="text-3xl font-bold leading-[1.15] text-white drop-shadow-[1px_1px_3px_#000000] md:text-5xl">
           Gas and Blobspace with Stable Pricing
         </h1>
         <h2 className="mb-0 max-w-[560px] text-lg font-semibold leading-[1.15] text-white drop-shadow-[1px_1px_3px_#000000] md:text-2xl">

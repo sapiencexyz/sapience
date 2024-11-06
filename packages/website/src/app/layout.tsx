@@ -6,11 +6,13 @@ import { cn } from '@/lib/styles/utils';
 
 import '@/lib/styles/globals.css';
 
-const APP_NAME = 'nextarter-tailwind';
+const APP_NAME = 'Foil';
+const APP_DESCRIPTION =
+  'Lock in your onchain costs regardless of network congestion';
 
 export const metadata: Metadata = {
   title: APP_NAME,
-  description: 'Next.js + TailwindCSS v3 + TypeScript template',
+  description: APP_DESCRIPTION,
   applicationName: APP_NAME,
   appleWebApp: {
     capable: true,
@@ -21,16 +23,16 @@ export const metadata: Metadata = {
     telephone: false,
   },
   openGraph: {
-    url: 'https://nextarter-tailwind.sznm.dev',
-    title: 'nextarter-tailwind',
-    description: 'Next.js + TailwindCSS v3 + TypeScript template',
+    url: 'https://foil.xyz',
+    title: APP_NAME,
+    description: APP_DESCRIPTION,
     images: {
       url: 'https://og-image.sznm.dev/**nextarter-tailwind**.sznm.dev.png?theme=dark&md=1&fontSize=125px&images=https%3A%2F%2Fsznm.dev%2Favataaars.svg&widths=250',
-      alt: 'nextarter-tailwind.sznm.dev og-image',
+      alt: 'foil.xyz og-image',
     },
   },
   twitter: {
-    creator: '@sozonome',
+    creator: '@foilxyz',
     card: 'summary_large_image',
   },
 };

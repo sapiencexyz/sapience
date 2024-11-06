@@ -1,7 +1,9 @@
 export const Investors = () => {
   return (
-    <div className="grid gap-2.5 space-y-6">
-      <h1>Backed by</h1>
+    <div className="grid gap-2.5 space-y-6 py-12 text-center">
+      <h1 className="text-center text-3xl font-semibold text-primary">
+        Backed by
+      </h1>
 
       <div className="grid grid-cols-2 gap-2.5">
         <div>
@@ -19,34 +21,37 @@ export const Investors = () => {
           <h2>CMS</h2>
         </div>
         <div>
-          <h2>Public Works</h2>
-        </div>
-        <div>
           <h2>Cobie</h2>
-          <h4>Echo</h4>
+          <h4>@cobie</h4>
+          <h6>via echo</h6>
         </div>
         <div>
           <h2>Larry</h2>
           <h4>The Block</h4>
+          <h6>via echo</h6>
+        </div>
+        <div>
+          <h2>Scott Moore</h2>
+          <h4>Gitcoin</h4>
         </div>
       </div>
 
       <div className="grid grid-cols-4 gap-2.5">
         <div>
-          <h2>Steven</h2>
-          <h4>x handle</h4>
-        </div>
-        <div>
           <h2>Ismail</h2>
           <h4>Celestia</h4>
         </div>
         <div>
-          <h2>Maclane</h2>
-          <h4>Threshold</h4>
+          <h2>Dean</h2>
+          <h4>@deaneigenmann</h4>
         </div>
         <div>
-          <h2>Dean</h2>
-          <h4>x handle</h4>
+          <h2>Steven</h2>
+          <h4>The Block</h4>
+        </div>
+        <div>
+          <h2>Maclane</h2>
+          <h4>Threshold</h4>
         </div>
       </div>
     </div>
