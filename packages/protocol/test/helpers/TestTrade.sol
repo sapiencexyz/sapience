@@ -113,7 +113,7 @@ contract TestTrade is TestEpoch {
                 deadline: block.timestamp + 30 minutes
             });
 
-        (positionId, , , , , ) = foil.createLiquidityPosition(params);
+        (positionId, , , , , , ) = foil.createLiquidityPosition(params);
     }
 
     function addTraderPosition(
