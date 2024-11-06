@@ -1,21 +1,5 @@
 'use client';
 
-import {
-  ChevronDownIcon,
-  ChevronUpIcon,
-  ArrowUpDownIcon,
-} from '@chakra-ui/icons';
-import {
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  chakra,
-  Button,
-  Link,
-} from '@chakra-ui/react';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import {
   useReactTable,
@@ -24,8 +8,19 @@ import {
   getSortedRowModel,
 } from '@tanstack/react-table';
 import { format } from 'date-fns';
+import { ChevronDown, ChevronUp, ArrowUpDown } from 'lucide-react';
+import Link from 'next/link';
 import * as React from 'react';
 
+import { Button } from '~/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '~/components/ui/table';
 import { useMarketList } from '~/lib/context/MarketListProvider';
 
 const MarketsTable = () => {
@@ -71,7 +66,7 @@ const MarketsTable = () => {
       {
         header: 'Period',
         accessorKey: 'period',
-        sortingFn: 'basic', // Ensure sorting is based on startTimestamp
+        sortingFn: 'basic',
       },
       {
         header: 'Settled',
@@ -95,79 +90,73 @@ const MarketsTable = () => {
 
   const renderSortIcon = (isSorted: string | false) => {
     if (isSorted === 'desc') {
-      return <ChevronDownIcon aria-label="sorted descending" />;
+      return <ChevronDown className="h-3 w-3" aria-label="sorted descending" />;
     }
     if (isSorted === 'asc') {
-      return <ChevronUpIcon aria-label="sorted ascending" />;
+      return <ChevronUp className="h-3 w-3" aria-label="sorted ascending" />;
     }
-    return <ArrowUpDownIcon aria-label="sortable" />;
+    return <ArrowUpDown className="h-3 w-3" aria-label="sortable" />;
   };
 
   return (
-    <Table variant="simple" mt={4}>
-      <Thead>
-        {table.getHeaderGroups().map((headerGroup: any) => (
-          <Tr key={headerGroup.id}>
-            {headerGroup.headers.map((header: any) => {
-              const { meta } = header.column.columnDef;
-              return (
-                <Th
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <TableRow key={headerGroup.id}>
+              {headerGroup.headers.map((header) => (
+                <TableHead
                   key={header.id}
                   onClick={header.column.getToggleSortingHandler()}
-                  isNumeric={meta?.isNumeric}
+                  className="cursor-pointer"
                 >
-                  {flexRender(
-                    header.column.columnDef.header,
-                    header.getContext()
-                  )}
-                  <chakra.span pl="4">
-                    {renderSortIcon(header.column.getIsSorted())}
-                  </chakra.span>
-                </Th>
-              );
-            })}
-            <Th />
-          </Tr>
-        ))}
-      </Thead>
-      <Tbody>
-        {table.getRowModel().rows.map((row: any) => (
-          <Tr key={row.id}>
-            {row.getVisibleCells().map((cell: any) => {
-              const { meta } = cell.column.columnDef;
-              return (
-                <Td key={cell.id} isNumeric={meta?.isNumeric}>
+                  <span className="flex items-center">
+                    {flexRender(
+                      header.column.columnDef.header,
+                      header.getContext()
+                    )}
+                    <span className="ml-2 inline-block">
+                      {renderSortIcon(header.column.getIsSorted())}
+                    </span>
+                  </span>
+                </TableHead>
+              ))}
+              <TableHead />
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {table.getRowModel().rows.map((row) => (
+            <TableRow key={row.id}>
+              {row.getVisibleCells().map((cell) => (
+                <TableCell key={cell.id}>
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </Td>
-              );
-            })}
-            <Td>
-              <Link
-                href={`/subscribe/${row.original.chainId}:${row.original.marketAddress}/epochs/${row.original.epochId}`}
-              >
-                <Button size="xs" colorScheme="gray" mr={2}>
-                  Subscribe
-                </Button>
-              </Link>
-              <Link
-                href={`/trade/${row.original.chainId}:${row.original.marketAddress}/epochs/${row.original.epochId}`}
-              >
-                <Button size="xs" colorScheme="gray" mr={2}>
-                  Trade
-                </Button>
-              </Link>
-              <Link
-                href={`/pool/${row.original.chainId}:${row.original.marketAddress}/epochs/${row.original.epochId}`}
-              >
-                <Button size="xs" colorScheme="gray">
-                  Pool
-                </Button>
-              </Link>
-            </Td>
-          </Tr>
-        ))}
-      </Tbody>
-    </Table>
+                </TableCell>
+              ))}
+              <TableCell>
+                <Link
+                  href={`/subscribe/${row.original.chainId}:${row.original.marketAddress}/epochs/${row.original.epochId}`}
+                  className="mr-2"
+                >
+                  <Button size="sm">Subscribe</Button>
+                </Link>
+                <Link
+                  href={`/trade/${row.original.chainId}:${row.original.marketAddress}/epochs/${row.original.epochId}`}
+                  className="mr-2"
+                >
+                  <Button size="sm">Trade</Button>
+                </Link>
+                <Link
+                  href={`/pool/${row.original.chainId}:${row.original.marketAddress}/epochs/${row.original.epochId}`}
+                >
+                  <Button size="sm">Pool</Button>
+                </Link>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 };
 

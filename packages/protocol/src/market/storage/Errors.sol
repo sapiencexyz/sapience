@@ -46,4 +46,5 @@ library Errors {
     error TransactionExpired(uint256 deadline, uint256 blockTime);
     error OnlyFeeCollector();
     error InvalidCallbackResolutionInterface(address callbackRecipient);
+    error InvalidTransferRecipient(address recipient);
 }

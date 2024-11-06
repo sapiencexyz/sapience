@@ -1,5 +1,6 @@
-import { Button } from '@chakra-ui/react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+
+import { Button } from '@/components/ui/button';
 
 export default function CustomConnectButton() {
   return (
@@ -36,9 +37,8 @@ export default function CustomConnectButton() {
               if (!connected) {
                 return (
                   <Button
-                    variant="brand"
                     onClick={openConnectModal}
-                    type="button"
+                    className="bg-primary hover:bg-primary/90"
                   >
                     Connect Wallet
                   </Button>
@@ -46,41 +46,35 @@ export default function CustomConnectButton() {
               }
               if (chain.unsupported) {
                 return (
-                  <Button onClick={openChainModal} type="button">
+                  <Button onClick={openChainModal} variant="destructive">
                     Wrong network
                   </Button>
                 );
               }
               return (
-                <div style={{ display: 'flex', gap: 12 }}>
+                <div className="flex gap-2">
                   <Button
                     onClick={openChainModal}
-                    style={{ display: 'flex', alignItems: 'center' }}
-                    type="button"
+                    className="flex items-center"
+                    variant="outline"
                   >
                     {chain.hasIcon && (
                       <div
-                        style={{
-                          background: chain.iconBackground,
-                          width: 12,
-                          height: 12,
-                          borderRadius: 999,
-                          overflow: 'hidden',
-                          marginRight: 4,
-                        }}
+                        className="w-3 h-3 rounded-full overflow-hidden mr-1"
+                        style={{ background: chain.iconBackground }}
                       >
                         {chain.iconUrl && (
                           <img
                             alt={chain.name ?? 'Chain icon'}
                             src={chain.iconUrl}
-                            style={{ width: 12, height: 12 }}
+                            className="w-3 h-3"
                           />
                         )}
                       </div>
                     )}
                     {chain.name}
                   </Button>
-                  <Button onClick={openAccountModal} type="button">
+                  <Button onClick={openAccountModal} variant="outline">
                     {account.displayName}
                     {account.displayBalance
                       ? ` (${account.displayBalance})`

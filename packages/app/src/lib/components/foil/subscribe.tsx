@@ -1,23 +1,7 @@
 'use client';
 
-import { InfoOutlineIcon, UpDownIcon } from '@chakra-ui/icons';
-import {
-  useToast,
-  Text,
-  Heading,
-  Box,
-  Button,
-  Tooltip,
-  Flex,
-  IconButton,
-  Modal,
-  ModalBody,
-  ModalCloseButton,
-  ModalContent,
-  ModalHeader,
-  ModalOverlay,
-  VStack,
-} from '@chakra-ui/react';
+import { formatDuration, intervalToDuration } from 'date-fns';
+import { ArrowUpDown, HelpCircle, Loader2 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   type FC,
@@ -29,8 +13,10 @@ import {
   useMemo,
 } from 'react';
 import React from 'react';
+import { useForm } from 'react-hook-form';
 import type { AbiFunction, WriteContractErrorType } from 'viem';
 import { decodeEventLog, formatUnits, zeroAddress } from 'viem';
+import { mainnet, sepolia } from 'viem/chains';
 import {
   useWaitForTransactionReceipt,
   useWriteContract,
@@ -43,13 +29,37 @@ import {
 } from 'wagmi';
 
 import erc20ABI from '../../erc20abi.json';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '~/components/ui/accordion';
+import { Button } from '~/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '~/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+} from '~/components/ui/form';
+import { Input } from '~/components/ui/input';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '~/components/ui/tooltip';
+import { useToast } from '~/hooks/use-toast';
 import { useMarketList } from '~/lib/context/MarketListProvider';
 import { MarketContext } from '~/lib/context/MarketProvider';
-import {
-  getChain,
-  renderContractErrorToast,
-  renderToast,
-} from '~/lib/util/util';
+import { getChain } from '~/lib/util/util';
 
 import NumberDisplay from './numberDisplay';
 import SizeInput from './sizeInput';
@@ -67,6 +77,52 @@ const Subscribe: FC<SubscribeProps> = ({
   epoch: propEpoch,
   showMarketSwitcher = false,
 }) => {
+  // State declarations first
+  const [sizeValue, setSizeValue] = useState<bigint>(BigInt(0));
+  const [pendingTxn, setPendingTxn] = useState(false);
+  const [collateralDelta, setCollateralDelta] = useState<bigint>(BigInt(0));
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [fillPrice, setFillPrice] = useState<bigint>(BigInt(0));
+  const [fillPriceInEth, setFillPriceInEth] = useState<bigint>(BigInt(0));
+  const [txnStep, setTxnStep] = useState(0);
+  const [isMarketSelectorOpen, setIsMarketSelectorOpen] = useState(false);
+  const [walletAddressInput, setWalletAddressInput] = useState<string>('');
+  const [isEstimating, setIsEstimating] = useState(false);
+  const [accordionIndex, setAccordionIndex] = useState<string | undefined>(
+    undefined
+  );
+
+  // Form setup
+  const form = useForm({
+    defaultValues: {
+      sizeInput: '0',
+      walletAddress: '',
+      slippage: '0.5',
+    },
+    mode: 'onChange',
+    reValidateMode: 'onChange',
+  });
+
+  // Destructure form methods after initialization
+  const {
+    register,
+    control,
+    handleSubmit,
+    formState: { errors },
+    setValue,
+    reset,
+    watch,
+  } = form;
+
+  // Single definition of watched form values
+  const formValues = {
+    size: watch('sizeInput'),
+    slippage: watch('slippage'),
+  };
+
+  // Rest of your hooks and effects
+  const { toast } = useToast();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { markets } = useMarketList();
 
@@ -80,14 +136,6 @@ const Subscribe: FC<SubscribeProps> = ({
     markets.filter((m) => m.public)[0]?.chainId;
   const epoch = propEpoch || Number(searchParams.get('epoch')) || 1;
 
-  const [size, setSize] = useState<bigint>(BigInt(0));
-  const slippage = 0.5;
-  const [pendingTxn, setPendingTxn] = useState(false);
-  const [collateralDelta, setCollateralDelta] = useState<bigint>(BigInt(0));
-  const [quoteError, setQuoteError] = useState<string | null>(null);
-  const [fillPrice, setFillPrice] = useState<bigint>(BigInt(0));
-  const [fillPriceInEth, setFillPriceInEth] = useState<bigint>(BigInt(0));
-  const [txnStep, setTxnStep] = useState(0);
   const account = useAccount();
   const { isConnected, address } = account;
   const currentChainId = useChainId();
@@ -144,35 +192,11 @@ const Subscribe: FC<SubscribeProps> = ({
   const finalChainId = chainId || contextChainId;
   const finalEpoch = epoch || contextEpoch;
 
-  const toast = useToast();
-
-  const router = useRouter();
-
   // Format start and end times
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp * 1000);
     return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
   };
-
-  const calculateCollateralDeltaLimit = (
-    collateralDelta: bigint,
-    slippage: number
-  ) => {
-    if (collateralDelta === BigInt(0)) return BigInt(0);
-
-    const slippageMultiplier = BigInt(Math.floor((100 + slippage) * 100));
-    const slippageReductionMultiplier = BigInt(
-      Math.floor((100 - slippage) * 100)
-    );
-
-    if (collateralDelta > BigInt(0)) {
-      return (collateralDelta * slippageMultiplier) / BigInt(10000);
-    }
-    return (collateralDelta * slippageReductionMultiplier) / BigInt(10000);
-  };
-
-  const formattedStartTime = startTime ? formatDate(Number(startTime)) : '';
-  const formattedEndTime = endTime ? formatDate(Number(endTime)) : '';
 
   // Allowance check
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
@@ -184,7 +208,7 @@ const Subscribe: FC<SubscribeProps> = ({
   });
 
   // Convert gas to gigagas for internal calculations
-  const sizeInGigagas = size * BigInt(1e9);
+  const sizeInGigagas = sizeValue * BigInt(1e9);
 
   // Quote function
   const quoteCreatePositionResult = useSimulateContract({
@@ -194,7 +218,7 @@ const Subscribe: FC<SubscribeProps> = ({
     args: [finalEpoch, sizeInGigagas],
     chainId: finalChainId,
     account: address || zeroAddress,
-    query: { enabled: size !== BigInt(0) },
+    query: { enabled: sizeValue !== BigInt(0) },
   });
 
   // Update the useEffect to set quoteResult and fillPrice from the result
@@ -212,11 +236,16 @@ const Subscribe: FC<SubscribeProps> = ({
 
   useEffect(() => {
     if (quoteCreatePositionResult.error) {
-      setQuoteError(quoteCreatePositionResult.error.message);
+      const errorMessage = quoteCreatePositionResult.error.message;
+      // Clean up common error messages
+      const cleanedMessage = errorMessage
+        .replace('execution reverted: ', '')
+        .replace('Error: ', '');
+      setQuoteError(cleanedMessage);
     } else {
       setQuoteError(null);
     }
-  }, [quoteCreatePositionResult.error, size]);
+  }, [quoteCreatePositionResult.error, sizeValue]);
 
   const isLoadingCollateralChange = quoteCreatePositionResult.isFetching;
 
@@ -224,19 +253,18 @@ const Subscribe: FC<SubscribeProps> = ({
   const { data: hash, writeContract } = useWriteContract({
     mutation: {
       onError: (error) => {
-        renderContractErrorToast(
-          error as WriteContractErrorType,
-          toast,
-          `There was an issue creating/updating your position.`
-        );
+        toast({
+          variant: 'destructive',
+          title: 'Transaction Failed',
+          description: `There was an issue creating/updating your position: ${(error as Error).message}`,
+        });
         resetAfterError();
       },
       onSuccess: () => {
-        renderToast(
-          toast,
-          'Transaction submitted. Waiting for confirmation...',
-          'info'
-        );
+        toast({
+          title: 'Transaction Submitted',
+          description: 'Waiting for confirmation...',
+        });
       },
     },
   });
@@ -244,20 +272,19 @@ const Subscribe: FC<SubscribeProps> = ({
   const { data: approveHash, writeContract: approveWrite } = useWriteContract({
     mutation: {
       onError: (error) => {
-        renderContractErrorToast(
-          error as WriteContractErrorType,
-          toast,
-          'Failed to approve'
-        );
+        toast({
+          variant: 'destructive',
+          title: 'Approval Failed',
+          description: `Failed to approve: ${(error as Error).message}`,
+        });
         resetAfterError();
       },
       onSuccess: async () => {
         await refetchAllowance();
-        renderToast(
-          toast,
-          'Approval transaction submitted. Waiting for confirmation...',
-          'info'
-        );
+        toast({
+          title: 'Approval Submitted',
+          description: 'Waiting for confirmation...',
+        });
       },
     },
   });
@@ -283,10 +310,10 @@ const Subscribe: FC<SubscribeProps> = ({
             router.push(
               `/trade/${finalChainId}:${finalMarketAddress}/epochs/${finalEpoch}?positionId=${nftId}`
             );
-            renderToast(
-              toast,
-              `Your subscription has been created as position ID: ${nftId}`
-            );
+            toast({
+              title: 'Position Created',
+              description: `Your subscription has been created as position ID: ${nftId}`,
+            });
             resetAfterSuccess();
             return;
           }
@@ -294,6 +321,12 @@ const Subscribe: FC<SubscribeProps> = ({
           // This log was not for the TraderPositionCreated event, continue to next log
         }
       }
+      // If we get here, no position ID was found but transaction succeeded
+      toast({
+        title: 'Success',
+        description: 'Your subscription has been created successfully.',
+      });
+      resetAfterSuccess();
     }
   }, [isConfirmed, createTraderPositionReceipt, txnStep]);
 
@@ -314,29 +347,19 @@ const Subscribe: FC<SubscribeProps> = ({
     }
   }, [fillPrice, collateralAssetDecimals, stEthPerToken]);
 
-  const collateralDeltaLimit = useMemo(() => {
-    return calculateCollateralDeltaLimit(collateralDelta, slippage);
-  }, [collateralDelta, slippage]);
-
-  const requireApproval =
-    !allowance || collateralDeltaLimit > (allowance as bigint);
-
-  const handleSubmit = (e?: FormEvent<HTMLFormElement>) => {
-    if (e) e.preventDefault();
-    if (size === BigInt(0)) {
+  // Update onSubmit to use the single formValues definition
+  const onSubmit = async (values: any) => {
+    if (BigInt(formValues.size) === BigInt(0)) {
       toast({
         title: 'Invalid size',
         description: 'Please enter a positive gas amount.',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
+        variant: 'destructive',
       });
       return;
     }
     setPendingTxn(true);
 
     if (requireApproval) {
-      console.log('approving...');
       approveWrite({
         abi: erc20ABI as AbiFunction[],
         address: collateralAsset as `0x${string}`,
@@ -372,7 +395,12 @@ const Subscribe: FC<SubscribeProps> = ({
   };
 
   const resetAfterSuccess = () => {
-    setSize(BigInt(0));
+    reset({
+      sizeInput: '0',
+      walletAddress: '',
+      slippage: '0.5',
+    });
+    setSizeValue(BigInt(0));
     setPendingTxn(false);
     setTxnStep(0);
     refetchUniswapData();
@@ -382,8 +410,7 @@ const Subscribe: FC<SubscribeProps> = ({
     if (!isConnected) {
       return (
         <Button
-          width="full"
-          variant="brand"
+          className="w-full"
           size="lg"
           onClick={() => connect({ connector: connectors[0] })}
         >
@@ -395,8 +422,7 @@ const Subscribe: FC<SubscribeProps> = ({
     if (currentChainId !== finalChainId) {
       return (
         <Button
-          width="full"
-          variant="brand"
+          className="w-full"
           size="lg"
           onClick={() => switchChain({ chainId: finalChainId })}
         >
@@ -405,23 +431,30 @@ const Subscribe: FC<SubscribeProps> = ({
       );
     }
 
+    const isDisabled =
+      pendingTxn ||
+      isLoadingCollateralChange ||
+      Boolean(quoteError) ||
+      BigInt(formValues.size) <= BigInt(0);
+
     return (
-      <Button
-        width="full"
-        variant="brand"
-        type="submit"
-        isLoading={pendingTxn || isLoadingCollateralChange}
-        isDisabled={
-          pendingTxn ||
-          isLoadingCollateralChange ||
-          Boolean(quoteError) ||
-          size <= BigInt(0)
-        }
-        size="lg"
-      >
-        {requireApproval
-          ? 'Approve Subscription Creation'
-          : 'Create Subscription'}
+      <Button className="w-full" size="lg" type="submit" disabled={isDisabled}>
+        {(() => {
+          if (isLoadingCollateralChange) {
+            return (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Loading Quote</span>
+              </>
+            );
+          }
+
+          if (requireApproval) {
+            return `Approve ${collateralAssetTicker} Transfer`;
+          }
+
+          return 'Create Subscription';
+        })()}
       </Button>
     );
   };
@@ -434,106 +467,280 @@ const Subscribe: FC<SubscribeProps> = ({
     }
   }, []);
 
-  const [isMarketSelectorOpen, setIsMarketSelectorOpen] = useState(false);
-
-  const handleMarketSelectorOpen = () => setIsMarketSelectorOpen(true);
-  const handleMarketSelectorClose = () => setIsMarketSelectorOpen(false);
-
-  const handleMarketSelect = (address: string, chain: number) => {
-    updateParams(address, chain);
-    handleMarketSelectorClose();
-  };
-
   const marketName =
     markets.find((m) => m.address === marketAddress)?.name || 'Choose Market';
 
+  useEffect(() => {
+    if (address) {
+      setWalletAddressInput(address);
+    }
+  }, [address]);
+
+  const handleEstimateUsage = async () => {
+    if (!walletAddressInput) {
+      toast({
+        title: 'Invalid Address',
+        description: 'Please enter a wallet address to estimate usage.',
+        duration: 3000,
+      });
+      return;
+    }
+
+    setIsEstimating(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_FOIL_API_URL}/estimate`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            walletAddress: walletAddressInput,
+            chainId: finalChainId,
+            marketAddress: finalMarketAddress,
+            epochId: finalEpoch,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch estimate');
+      }
+
+      const duration = formatDuration(
+        intervalToDuration({
+          start: Number(startTime) * 1000,
+          end: Number(endTime) * 1000,
+        })
+      );
+      const data = await response.json();
+      setSizeValue(BigInt(Math.floor(data.totalGasUsed)));
+      setAccordionIndex(undefined);
+      if (sizeValue === BigInt(0)) {
+        toast({
+          title: 'Estimate Complete',
+          description: `This wallet hasn't used any gas in the last ${duration}.`,
+          duration: 5000,
+        });
+      } else {
+        toast({
+          title: 'Estimate Complete',
+          description: `Gas amount has been populated based on this wallet's usage in the last ${duration}.`,
+          duration: 5000,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Estimation Failed',
+        description: 'Unable to estimate gas usage. Please try again.',
+        duration: 5000,
+      });
+    } finally {
+      setIsEstimating(false);
+    }
+  };
+
+  const formattedStartTime = startTime ? formatDate(Number(startTime)) : '';
+  const formattedEndTime = endTime ? formatDate(Number(endTime)) : '';
+
+  // Now we can define collateralDeltaLimit after allowance is initialized
+  const collateralDeltaLimit = useMemo(() => {
+    if (collateralDelta === BigInt(0)) return BigInt(0);
+
+    // Fixed 1% slippage
+    const slippageMultiplier = BigInt(101 * 100); // 1% above
+    const slippageReductionMultiplier = BigInt(99 * 100); // 1% below
+
+    if (collateralDelta > BigInt(0)) {
+      return (collateralDelta * slippageMultiplier) / BigInt(10000);
+    }
+    return (collateralDelta * slippageReductionMultiplier) / BigInt(10000);
+  }, [collateralDelta]);
+
+  // And now we can use requireApproval
+  const requireApproval =
+    !allowance || collateralDeltaLimit > (allowance as bigint);
+
+  const handleMarketSelect = (address: string, chain: number) => {
+    updateParams(address, chain);
+    setIsMarketSelectorOpen(false);
+  };
+
+  const getChainName = (chainId: number) => {
+    switch (chainId) {
+      case mainnet.id:
+        return 'Ethereum';
+      case sepolia.id:
+        return 'Sepolia';
+      default:
+        return `Chain ${chainId}`;
+    }
+  };
+
   return (
-    <form onSubmit={handleSubmit}>
-      <Flex alignItems="center" mb={2}>
-        <Heading size="lg">{marketName} Subscription</Heading>
-        {showMarketSwitcher && (
-          <IconButton
-            ml="auto"
-            aria-label="Change Market"
-            size="xs"
-            icon={<UpDownIcon />}
-            onClick={handleMarketSelectorOpen}
-          />
-        )}
-      </Flex>
-      <Text mb={4}>
-        Enter the amount of gas you expect to use between {formattedStartTime}{' '}
-        and {formattedEndTime}.{' '}
-        <Tooltip
-          label="If the average gas price in this time exceeds
-        the quote you're provided in gwei, you will be able to redeem a rebate from Foil
-        at the end of this period."
+    <Form {...form}>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">{marketName} Subscription</h2>
+          {showMarketSwitcher && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsMarketSelectorOpen(true)}
+            >
+              <ArrowUpDown className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1">
+          <TooltipProvider delayDuration={0}>
+            <Tooltip>
+              <p>
+                Enter the amount of gas you expect to use between{' '}
+                {formattedStartTime} and {formattedEndTime}.
+                <TooltipTrigger asChild>
+                  <HelpCircle className="inline-block h-4 w-4 text-muted-foreground ml-1 relative top-[-3px]" />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs">
+                  <p>
+                    If the average gas price in this time exceeds the quote
+                    you&apos;re provided in gwei, you will be able to redeem a
+                    rebate from Foil at the end of this period.
+                  </p>
+                </TooltipContent>
+              </p>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+
+        <Accordion
+          type="single"
+          collapsible
+          value={accordionIndex}
+          onValueChange={(val) => setAccordionIndex(val)}
         >
-          <InfoOutlineIcon opacity={0.7} transform="translateY(-2.5px)" />
-        </Tooltip>
-      </Text>
-      <SizeInput
-        setSize={setSize}
-        error={quoteError || undefined}
-        label="Gas Amount"
-      />
+          <AccordionItem value="0" className="border-none">
+            <AccordionTrigger className="text-sm uppercase font-medium text-muted-foreground">
+              Estimate Gas Usage
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="border p-6 rounded-sm space-y-4">
+                <FormField
+                  control={form.control}
+                  name="walletAddress"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Wallet Address</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          disabled={isEstimating}
+                          placeholder="0x..."
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <Button
+                  className="w-full"
+                  onClick={handleEstimateUsage}
+                  disabled={isEstimating}
+                >
+                  {isEstimating ? 'Estimating...' : 'Estimate Usage'}
+                </Button>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
 
-      <Box bg="gray.50" p={5} borderRadius="md" mb={4}>
-        <Text color="gray.600" fontWeight="semibold" mb={1}>
-          Quote
-        </Text>
-        <Text fontSize="lg" display="inline-block" mr={3}>
-          <NumberDisplay
-            value={formatUnits(collateralDelta, collateralAssetDecimals)}
-          />{' '}
-          {collateralAssetTicker}
-        </Text>
-        <Text fontSize="sm" display="inline-block" color="gray.600" mb={0.5}>
-          <NumberDisplay value={formatUnits(fillPriceInEth, 9)} /> gwei
-        </Text>
-      </Box>
+        <FormField
+          control={form.control}
+          name="sizeInput"
+          render={({ field }) => (
+            <>
+              <SizeInput
+                setSize={setSizeValue}
+                size={sizeValue}
+                label="Gas Amount"
+                {...field}
+              />
+              {quoteError && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <p className="text-red-500 text-sm font-medium flex items-center">
+                        <span className="mr-2">
+                          Foil was unable to generate a quote
+                        </span>{' '}
+                        <HelpCircle className="h-4 w-4" />
+                      </p>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-xs">{quoteError}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </>
+          )}
+        />
 
-      {renderActionButton()}
+        {!quoteError && (
+          <div className="bg-muted p-4 rounded-lg space-y-2">
+            <p className="text-sm font-semibold text-muted-foreground">Quote</p>
 
-      <Modal isOpen={isMarketSelectorOpen} onClose={handleMarketSelectorClose}>
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Select Market</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody pt={0} pb={6}>
-            <VStack spacing={2} align="stretch">
+            <div className="flex items-center gap-3">
+              <p className="text-lg">
+                <NumberDisplay
+                  value={formatUnits(collateralDelta, collateralAssetDecimals)}
+                />{' '}
+                {collateralAssetTicker}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                <NumberDisplay value={formatUnits(fillPriceInEth, 9)} /> gwei
+              </p>
+            </div>
+          </div>
+        )}
+
+        {renderActionButton()}
+
+        <Dialog
+          open={isMarketSelectorOpen}
+          onOpenChange={setIsMarketSelectorOpen}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Select Market</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2">
               {markets
                 .filter((m) => m.public)
                 .map((market) => (
-                  <Flex
+                  <button
+                    type="button"
                     key={market.id}
-                    justifyContent="space-between"
-                    alignItems="center"
-                    py={2}
-                    px={4}
-                    bg={
-                      market.address === marketAddress
-                        ? 'gray.100'
-                        : 'transparent'
-                    }
-                    borderRadius="md"
-                    cursor="pointer"
+                    className={`w-full flex justify-between items-center p-3 rounded-lg hover:bg-muted transition-colors ${
+                      market.address === marketAddress ? 'bg-muted' : ''
+                    }`}
                     onClick={() =>
                       handleMarketSelect(market.address, market.chainId)
                     }
-                    _hover={{ bg: 'gray.50' }}
                   >
-                    <Text fontWeight="bold">{market.name}</Text>
-                    <Text fontSize="sm" color="gray.600">
-                      {getChain(market.chainId).name}
-                    </Text>
-                  </Flex>
+                    <span className="font-medium">{market.name}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {getChainName(market.chainId)}
+                    </span>
+                  </button>
                 ))}
-            </VStack>
-          </ModalBody>
-        </ModalContent>
-      </Modal>
-    </form>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </form>
+    </Form>
   );
 };
 

@@ -15,6 +15,8 @@ export const API_BASE_URL = process.env.NEXT_PUBLIC_FOIL_API_URL;
 export const DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS =
   '0xB82381A3fBD3FaFA77B3a7bE693342618240067b';
 
+export const HIGH_PRICE_IMPACT = 5;
+
 export const BLANK_MARKET: MarketContextType = {
   chain: undefined,
   address: '',

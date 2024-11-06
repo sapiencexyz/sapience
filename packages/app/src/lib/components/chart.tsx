@@ -1,4 +1,4 @@
-import { Box, Flex, Text } from '@chakra-ui/react';
+/* eslint-disable sonarjs/cognitive-complexity */
 import dayjs from 'dayjs';
 import type React from 'react';
 import type { Dispatch, SetStateAction } from 'react';
@@ -18,13 +18,16 @@ import {
 import type { PriceChartData, TimeWindow } from '../interfaces/interfaces';
 import { formatXAxisTick, getXTicksToShow } from '../util/chartUtil';
 import { formatAmount } from '../util/numberUtil';
-import { convertToGwei, getDisplayTextForVolumeWindow } from '../util/util';
+import {
+  convertGgasPerWstEthToGwei,
+  getDisplayTextForVolumeWindow,
+} from '../util/util';
 import { MarketContext } from '~/lib/context/MarketProvider';
-import { colors, gray700, green400, red500 } from '~/lib/styles/theme/colors';
 
-const grayColor = colors.gray?.[700] || gray700;
-const redColor = colors.red?.[400] || red500;
-const greenColor = colors.green?.[400] || green400;
+const grayColor = '#475569';
+const greenColor = '#00ff00';
+const redColor = '#ff0000';
+
 const CustomBarShape: React.FC<{
   x: number;
   // y: number;
@@ -115,19 +118,13 @@ const CustomTooltip: React.FC<
   const price = payloadData?.price;
   if (!close && !open && !high && !low && !price) return null;
   return (
-    <Box
-      style={{
-        backgroundColor: 'white',
-        padding: '8px',
-        border: '1px solid #ccc',
-      }}
-    >
-      <Text>Close: {close ? formatAmount(close) : '-'}</Text>
-      <Text>Open: {open ? formatAmount(open) : '-'}</Text>
-      <Text>High: {high ? formatAmount(high) : '-'}</Text>
-      <Text>Low: {low ? formatAmount(low) : '-'}</Text>
-      <Text>Price: {price ? formatAmount(price) : '-'}</Text>
-    </Box>
+    <div className="bg-background p-2 border border-border rounded-md">
+      <p>Close: {close ? formatAmount(close) : '-'}</p>
+      <p>Open: {open ? formatAmount(open) : '-'}</p>
+      <p>High: {high ? formatAmount(high) : '-'}</p>
+      <p>Low: {low ? formatAmount(low) : '-'}</p>
+      <p>Price: {price ? formatAmount(price) : '-'}</p>
+    </div>
   );
 };
 
@@ -159,7 +156,7 @@ const CandlestickChart: React.FC<Props> = ({
   const currPrice: string | number = useMemo(() => {
     return useMarketUnits
       ? pool?.token0Price.toSignificant(18) || 0
-      : convertToGwei(
+      : convertGgasPerWstEthToGwei(
           Number(pool?.token0Price.toSignificant(18) || 0),
           stEthPerToken
         );
@@ -174,20 +171,51 @@ const CandlestickChart: React.FC<Props> = ({
   const chartRef = useRef(null);
 
   const combinedData = useMemo(() => {
+    let lastClose = 0;
     return data.marketPrices.map((mp, i) => {
+      if (mp.close) {
+        lastClose = mp.close;
+      }
+
       const price = data.indexPrices[i]?.price || 0;
       const priceAdjusted = isLoading ? 0 : price / (stEthPerToken || 1);
       const displayPriceValue = useMarketUnits
         ? priceAdjusted
-        : convertToGwei(priceAdjusted, stEthPerToken);
+        : convertGgasPerWstEthToGwei(priceAdjusted, stEthPerToken);
+
+      if (!mp.close && !mp.open && !mp.high && !mp.low && lastClose) {
+        return {
+          ...mp,
+          high: useMarketUnits
+            ? lastClose
+            : convertGgasPerWstEthToGwei(lastClose, stEthPerToken),
+          low: useMarketUnits
+            ? lastClose
+            : convertGgasPerWstEthToGwei(lastClose, stEthPerToken),
+          open: useMarketUnits
+            ? lastClose
+            : convertGgasPerWstEthToGwei(lastClose, stEthPerToken),
+          close: useMarketUnits
+            ? lastClose
+            : convertGgasPerWstEthToGwei(lastClose, stEthPerToken),
+          price: displayPriceValue || undefined,
+        };
+      }
+
       return {
         ...mp,
-        high: useMarketUnits ? mp.high : convertToGwei(mp.high, stEthPerToken),
-        low: useMarketUnits ? mp.low : convertToGwei(mp.low, stEthPerToken),
-        open: useMarketUnits ? mp.open : convertToGwei(mp.open, stEthPerToken),
+        high: useMarketUnits
+          ? mp.high
+          : convertGgasPerWstEthToGwei(mp.high, stEthPerToken),
+        low: useMarketUnits
+          ? mp.low
+          : convertGgasPerWstEthToGwei(mp.low, stEthPerToken),
+        open: useMarketUnits
+          ? mp.open
+          : convertGgasPerWstEthToGwei(mp.open, stEthPerToken),
         close: useMarketUnits
           ? mp.close
-          : convertToGwei(mp.close, stEthPerToken),
+          : convertGgasPerWstEthToGwei(mp.close, stEthPerToken),
         price: displayPriceValue || undefined,
       };
     });
@@ -255,29 +283,16 @@ const CandlestickChart: React.FC<Props> = ({
   }, []);
 
   return (
-    <Flex flex={1} position="relative">
-      <Box
-        minH="50px"
-        w="fit-content"
-        position="absolute"
-        top={0}
-        left={0}
-        zIndex={2}
-        bgColor="white"
-        opacity={0.8}
-      >
-        <Text minH="24px">
-          {' '}
+    <div className="flex flex-1 relative">
+      <div className="min-h-[50px] w-fit absolute top-0 left-0 z-[2]">
+        <p className="min-h-[24px]">
           {value
             ? `${value.toLocaleString()}`
             : formatAmount(Number(currPrice))}{' '}
           {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
-        </Text>
-        <Text fontSize="sm" color="gray.500">
-          {' '}
-          {label ? `${label}` : ''}
-        </Text>
-      </Box>
+        </p>
+        <p className="text-sm">{label ? `${label}` : ''}</p>
+      </div>
       <ResponsiveContainer
         height="95%"
         width="100%"
@@ -318,7 +333,7 @@ const CandlestickChart: React.FC<Props> = ({
           />
         </ComposedChart>
       </ResponsiveContainer>
-    </Flex>
+    </div>
   );
 };
 

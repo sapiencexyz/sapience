@@ -361,7 +361,7 @@ contract TradePositionDumb is TestTrade {
         if (requiredDeltaCollateral > 0) {
             collateralAsset.approve(
                 address(foil),
-                requiredDeltaCollateral.toUint() - 2
+                requiredDeltaCollateral.toUint() + 2
             );
         }
 
@@ -369,7 +369,7 @@ contract TradePositionDumb is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             finalPositionSize,
-            requiredDeltaCollateral - 2,
+            requiredDeltaCollateral + 2,
             block.timestamp + 30 minutes
         );
 
@@ -477,7 +477,7 @@ contract TradePositionDumb is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             finalPositionSize,
-            requiredDeltaCollateral - 2,
+            requiredDeltaCollateral + 2,
             block.timestamp + 30 minutes
         );
 
@@ -587,7 +587,7 @@ contract TradePositionDumb is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             finalPositionSize,
-            requiredDeltaCollateral - 2,
+            requiredDeltaCollateral + 2,
             block.timestamp + 30 minutes
         );
 

@@ -29,6 +29,7 @@ import {
   updateTransactionFromLiquidityModifiedEvent,
   updateTransactionFromTradeModifiedEvent,
   upsertMarketPrice,
+  updateTransactionFromPositionSettledEvent,
 } from "./marketHelpers";
 
 // Called when the process starts, upserts markets in the database to match those in the constants.ts file
@@ -156,7 +157,17 @@ export const reindexMarketEvents = async (market: Market, abi: Abi) => {
           blockNumber: log.blockNumber,
         });
         const logIndex = log.logIndex || 0;
-        const logData = JSON.parse(serializedLog);
+        const logData = {
+          ...JSON.parse(serializedLog),
+          transactionHash: log.transactionHash || "",
+          blockHash: log.blockHash || "",
+          blockNumber: log.blockNumber?.toString() || "",
+          logIndex: log.logIndex || 0,
+          transactionIndex: log.transactionIndex || 0,
+          removed: log.removed || false,
+          topics: log.topics || [],
+          data: log.data || "",
+        };
 
         // Extract epochId from logData (adjust this based on your event structure)
         const epochId = logData.args?.epochId || 0;
@@ -334,8 +345,14 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       break;
     case EventType.PositionSettled:
       console.log("Handling Position Settled from event: ", event);
-      await handlePositionSettledEvent(event);
-      skipTransaction = true;
+      await Promise.all([
+        handlePositionSettledEvent(event),
+        updateTransactionFromPositionSettledEvent(
+          newTransaction,
+          event,
+          event.logData.args.epochId
+        ),
+      ]);
       break;
     case EventType.Transfer:
       console.log("Handling Transfer event: ", event);

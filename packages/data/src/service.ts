@@ -8,6 +8,7 @@ import cors from "cors";
 import { ResourcePrice } from "./models/ResourcePrice";
 import { IndexPrice } from "./models/IndexPrice";
 import { Position } from "./models/Position";
+import { cannon } from "viem/chains";
 import { Market } from "./models/Market";
 import express from "express";
 import { Between } from "typeorm";
@@ -25,7 +26,11 @@ import {
   groupIndexPricesByTimeWindow,
 } from "./serviceUtil";
 import { TimeWindow } from "./interfaces";
-import { formatDbBigInt, getBlockBeforeTimestamp } from "./helpers";
+import {
+  formatDbBigInt,
+  getBlockBeforeTimestamp,
+  sepoliaPublicClient,
+} from "./helpers";
 import { getProviderForChain } from "./helpers";
 import dotenv from "dotenv";
 import path from "path";
@@ -710,7 +715,10 @@ const startServer = async () => {
     }
 
     try {
-      const client = getProviderForChain(Number(chainId));
+      const client =
+        Number(chainId) === cannon.id
+          ? sepoliaPublicClient
+          : getProviderForChain(Number(chainId));
 
       // get last block
       const block = await getBlockBeforeTimestamp(client, Number(endTime));
@@ -720,8 +728,16 @@ const startServer = async () => {
         return res.status(404).json({ error: "Block not found" });
       }
 
+      // for testing on local dev node
+      const DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS =
+        "0xB82381A3fBD3FaFA77B3a7bE693342618240067b";
+      const address =
+        Number(chainId) === cannon.id
+          ? DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS
+          : collateralAssetAddress;
+
       const stEthPerTokenResult = await client.readContract({
-        address: collateralAssetAddress as `0x${string}`,
+        address: address as `0x${string}`,
         abi: [
           {
             inputs: [],
@@ -762,7 +778,7 @@ const startServer = async () => {
     try {
       const positions = await positionRepository.find({
         where: { owner: address },
-        relations: ["epoch", "epoch.market"],
+        relations: ["epoch", "epoch.market", "transactions"],
       });
 
       const transactions = await transactionRepository.find({
@@ -799,6 +815,92 @@ const startServer = async () => {
       res.json({ positions, transactions });
     } catch (error) {
       console.error("Error fetching account data:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/estimate", async (req, res) => {
+    const { walletAddress, chainId, marketAddress, epochId } = req.body;
+
+    try {
+      const market = await marketRepository.findOne({
+        where: {
+          chainId: Number(chainId),
+          address: marketAddress,
+        },
+      });
+
+      if (!market) {
+        return res.status(404).json({ error: "Market not found" });
+      }
+
+      const epoch = await epochRepository.findOne({
+        where: {
+          market: { id: market.id },
+          epochId: Number(epochId),
+        },
+      });
+
+      if (!epoch) {
+        return res.status(404).json({ error: "Epoch not found" });
+      }
+
+      const duration =
+        Number(epoch.endTimestamp) - Number(epoch.startTimestamp);
+
+      // Fetch transactions from Etherscan
+      const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY;
+      if (!ETHERSCAN_API_KEY) {
+        throw new Error("ETHERSCAN_API_KEY not configured");
+      }
+
+      let totalGasUsed = 0;
+      let page = 1;
+      const offset = 1000; // Number of records per page
+
+      while (true) {
+        // TODO: change etherscan endpoint based on chainId (mainnet, sepolia, etc) but chainId is where the contract is, not the resource
+        const response = await fetch(
+          `https://api.etherscan.io/api?module=account&action=txlist` +
+            `&address=${walletAddress}` +
+            `&startblock=0` +
+            `&endblock=99999999` +
+            `&page=${page}` +
+            `&offset=${offset}` +
+            `&sort=desc` +
+            `&apikey=${ETHERSCAN_API_KEY}`
+        );
+
+        const data = await response.json();
+
+        if (data.status !== "1" || !data.result.length) {
+          break;
+        }
+
+        // Filter transactions within duration and sum gas used
+        const currentTime = Math.floor(Date.now() / 1000);
+        const startTime = currentTime - duration;
+
+        for (const tx of data.result) {
+          if (Number(tx.timeStamp) >= startTime) {
+            totalGasUsed += Number(tx.gasUsed);
+          } else {
+            // Since results are sorted by desc, we can break early
+            break;
+          }
+        }
+
+        // If we got less than the requested offset, there are no more pages
+        if (data.result.length < offset) {
+          break;
+        }
+
+        page++;
+      }
+
+      res.json({ duration, totalGasUsed });
+    } catch (error) {
+      console.error("Error calculating gas usage:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

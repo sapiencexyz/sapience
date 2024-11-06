@@ -1,5 +1,4 @@
 /* eslint-disable sonarjs/no-duplicate-string */
-import { Box, Heading, Link, Flex, Text } from '@chakra-ui/react';
 import { format, formatDistanceToNow } from 'date-fns';
 import React, { useContext } from 'react';
 import { FaRegChartBar, FaCubes, FaRegCalendar } from 'react-icons/fa';
@@ -36,103 +35,66 @@ const EpochHeader = () => {
   }
 
   return (
-    <Flex alignItems="center" direction="column" width="100%">
-      <Flex
-        w="100%"
-        alignItems="flex-start"
-        flexDirection={{ base: 'column', lg: 'row' }}
-        px={6}
-        py={4}
-      >
-        <Heading
-          size="lg"
-          mb={0}
-          alignSelf={{ base: 'flex-start', lg: 'flex-end' }}
-        >
+    <div className="flex items-center flex-col w-full">
+      <div className="w-full items-start flex flex-col lg:flex-row px-6 py-4">
+        <h1 className="text-2xl font-bold mb-0 self-start lg:self-end">
           {currentMarket ? currentMarket.name : 'Market Name Not Found'}
-        </Heading>
-        <Flex mt="2">
+        </h1>
+        <div className="mt-2">
           <EpochSelector />
-        </Flex>
+        </div>
 
-        <Flex
-          flexDirection="column"
-          alignItems={{ base: 'flex-start', lg: 'flex-end' }}
-          mt={{ base: 4, lg: 'auto' }}
-          mb={{ base: 0, lg: 1 }}
-          ml={{ lg: 'auto' }}
-          width={{ base: '100%', lg: 'auto' }}
-        >
-          <Flex flexWrap="wrap" gap={{ base: 2, lg: 6 }}>
-            <Link
-              fontSize="sm"
-              color="gray.800"
-              isExternal
-              _hover={{ textDecoration: 'none' }}
+        <div className="flex flex-col items-start lg:items-end mt-4 lg:mt-auto mb-0 lg:mb-1 lg:ml-auto w-full lg:w-auto">
+          <div className="flex flex-wrap gap-2 lg:gap-6">
+            <a
+              className="text-sm hover:no-underline inline-flex items-center"
+              target="_blank"
+              rel="noopener noreferrer"
               href={`${chain?.blockExplorers?.default.url}/address/${address}`}
             >
-              <Flex display="inline-flex" alignItems="center">
-                <Box display="inline-block" mr="1">
-                  <IoDocumentTextOutline />
-                </Box>
-                <Text
-                  borderBottom="1px dotted"
-                  borderRadius="1px"
-                  fontWeight="500"
-                  as="span"
-                >
-                  Contract
-                </Text>
-              </Flex>
-            </Link>
+              <span className="inline-block mr-1">
+                <IoDocumentTextOutline />
+              </span>
+              <span className="border-b border-dotted border-current font-medium">
+                Contract
+              </span>
+            </a>
 
-            <Link
-              fontSize="sm"
-              color="gray.800"
-              isExternal
-              _hover={{ textDecoration: 'none' }}
+            <a
+              className="text-sm hover:no-underline inline-flex items-center"
+              target="_blank"
+              rel="noopener noreferrer"
               href={`${chain?.blockExplorers?.default.url}/address/${collateralAsset}`}
             >
-              <Flex display="inline-flex" alignItems="center">
-                <Box display="inline-block" mr="1">
-                  <FaCubes />
-                </Box>
-                <Text
-                  borderBottom="1px dotted"
-                  borderRadius="1px"
-                  fontWeight="500"
-                  as="span"
-                >
-                  Collateral
-                </Text>
-              </Flex>
-            </Link>
+              <span className="inline-block mr-1">
+                <FaCubes />
+              </span>
+              <span className="border-b border-dotted border-current font-medium">
+                Collateral
+              </span>
+            </a>
 
-            <Flex display="inline-flex" align="center" fontSize="sm">
-              <Box display="inline-block" mr="1">
+            <div className="inline-flex items-center text-sm">
+              <span className="inline-block mr-1">
                 <FaRegChartBar />
-              </Box>
-              <Text as="span" fontWeight="500" mr={1}>
-                Contract Price Range:
-              </Text>{' '}
+              </span>
+              <span className="font-medium mr-1">Contract Price Range:</span>
               {tickToPrice(epochParams.baseAssetMinPriceTick).toLocaleString()}-
               {tickToPrice(epochParams.baseAssetMaxPriceTick).toLocaleString()}{' '}
               Ggas/wstETH
-            </Flex>
+            </div>
 
-            <Flex display="inline-flex" align="center" fontSize="sm">
-              <Box display="inline-block" mr="1">
-                <FaRegCalendar opacity={0.8} />
-              </Box>
-              <Text as="span" fontWeight="500" mr={1}>
-                Period:
-              </Text>{' '}
+            <div className="inline-flex items-center text-sm">
+              <span className="inline-block mr-1">
+                <FaRegCalendar className="opacity-80" />
+              </span>
+              <span className="font-medium mr-1">Period:</span>
               {startTimeString} - {endTimeString}
-            </Flex>
-          </Flex>
-        </Flex>
-      </Flex>
-    </Flex>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

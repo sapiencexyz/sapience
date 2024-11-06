@@ -3,7 +3,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import React, {
   createContext,
   useContext,
-  useState,
   useCallback,
   useMemo,
   useEffect,
@@ -36,10 +35,11 @@ const AddEditPositionContext = createContext<
 export const AddEditPositionProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
-  const [nftId, setNftId] = useState<number | undefined>(undefined);
   const router = useRouter();
   const searchParams = useSearchParams();
   const hasSetInitialPosition = useRef(false);
+  const positionId = searchParams.get('positionId');
+  const nftId = positionId ? Number(positionId) : 0;
 
   const { address } = useAccount();
   const {
@@ -89,10 +89,10 @@ export const AddEditPositionProvider: React.FC<{
   }, [positionsData]);
 
   useEffect(() => {
-    const positionId = searchParams.get('positionId');
-    if (positionId) {
-      setNftId(Number(positionId));
-    } else if (nftId === undefined) {
+    if (
+      !hasSetInitialPosition.current &&
+      (positions.liquidityPositions.length || positions.tradePositions.length)
+    ) {
       // Only set default if nftId is undefined
       const lastLiquidityPosition =
         positions.liquidityPositions[positions.liquidityPositions.length - 1];
@@ -124,15 +124,14 @@ export const AddEditPositionProvider: React.FC<{
       }
 
       if (lastPositionId !== undefined) {
-        setNftId(lastPositionId);
+        hasSetInitialPosition.current = true;
         router.push(`${window.location.pathname}?positionId=${lastPositionId}`);
       }
     }
-  }, [router, positions, searchParams, nftId]);
+  }, [positions]);
 
-  const setNftIdAndUpdateUrl = useCallback(
+  const updateUrlWithPositionId = useCallback(
     (id: number | undefined) => {
-      setNftId(id);
       hasSetInitialPosition.current = true; // Mark as set when manually changing
       if (!id) {
         router.push(window.location.pathname);
@@ -168,7 +167,7 @@ export const AddEditPositionProvider: React.FC<{
     <AddEditPositionContext.Provider
       value={{
         nftId: nftId ?? 0,
-        setNftId: setNftIdAndUpdateUrl,
+        setNftId: updateUrlWithPositionId,
         positions,
         refreshPositions,
         isLoading,
