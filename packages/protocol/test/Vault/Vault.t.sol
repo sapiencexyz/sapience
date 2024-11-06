@@ -42,6 +42,8 @@ contract VaultTest is TestTrade {
     uint256 INITIAL_LP_BALANCE = 100_000 ether;
     IFoilStructs.EpochData epochData;
 
+    uint256 MIN_TRADE_SIZE = 10_000; // 10,000 vGas
+
     function setUp() public {
         address[] memory feeCollectors = new address[](0);
 
@@ -154,11 +156,7 @@ contract VaultTest is TestTrade {
 
         // Add liquidity
         vm.prank(lp1);
-<<<<<<< HEAD
-        vault.requestDeposit(100 ether, lp1, lp1);
-=======
         vault.requestDeposit(100 ether);
->>>>>>> 42d9377 (cleanup interface)
 
         // Settle
         vm.warp(epochData.endTime + 1);
@@ -213,6 +211,7 @@ contract VaultTest is TestTrade {
             address(collateralAssetContract),
             feeCollectors,
             address(vaultContract),
+            MIN_TRADE_SIZE,
             IFoilStructs.MarketParams({
                 feeRate: 10000,
                 assertionLiveness: 21600,
