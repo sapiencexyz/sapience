@@ -3,8 +3,13 @@
 import type { Token } from '@uniswap/sdk-core';
 import { CurrencyAmount } from '@uniswap/sdk-core';
 import type { FeeAmount } from '@uniswap/v3-sdk';
-import { Pool, TickMath, tickToPrice } from '@uniswap/v3-sdk';
+import { Pool, SqrtPriceMath, TickMath, tickToPrice } from '@uniswap/v3-sdk';
 import JSBI from 'jsbi';
+import { parseUnits } from 'viem';
+
+import { TOKEN_DECIMALS } from '../constants/constants';
+
+import { JSBIAbs } from './util';
 
 export interface GraphTick {
   tickIdx: string;
@@ -317,3 +322,97 @@ async function calculateLockedLiqudity(
     isCurrent: tick.isCurrent,
   };
 }
+
+function getTokenAmountsFromLiquidity(
+  tickLower: number,
+  tickUpper: number,
+  liquidity: JSBI
+): { amount0: JSBI; amount1: JSBI } {
+  const sqrtRatioA = TickMath.getSqrtRatioAtTick(tickLower);
+  const sqrtRatioB = TickMath.getSqrtRatioAtTick(tickUpper);
+
+  const amount0 = SqrtPriceMath.getAmount0Delta(
+    sqrtRatioA,
+    sqrtRatioB,
+    liquidity,
+    true
+  );
+  const amount1 = SqrtPriceMath.getAmount1Delta(
+    sqrtRatioA,
+    sqrtRatioB,
+    liquidity,
+    true
+  );
+
+  return { amount0, amount1 };
+}
+
+export const getTokenAmountsFromNewLiqudity = (
+  newLiquidity: bigint,
+  originalLiquidity: bigint,
+  tickLower: number,
+  tickUpper: number,
+  slippage: number
+): {
+  gasAmountDelta: number;
+  ethAmountDelta: number;
+  minGasAmountDelta: bigint;
+  minEthAmountDelta: bigint;
+  liquidityDelta: string;
+} => {
+  // Convert liquidity and newLiquidity to JSBI
+  const liquidityJSBI = JSBI.BigInt(originalLiquidity.toString());
+  const newLiquidityJSBI = JSBI.BigInt(newLiquidity.toString());
+
+  // Calculate the liquidity change (and get absolute value)
+  const liquidityDelta = JSBIAbs(
+    JSBI.subtract(liquidityJSBI, newLiquidityJSBI)
+  );
+
+  // Get amounts for total liquidity, not just the new liquidity
+  const { amount0, amount1 } = getTokenAmountsFromLiquidity(
+    tickLower,
+    tickUpper,
+    liquidityJSBI
+  );
+
+  // Calculate the proportion of liquidity being removed
+  const proportion = JSBI.divide(liquidityDelta, liquidityJSBI);
+
+  // Calculate the amounts being removed
+  const amount0Delta = JSBI.divide(
+    JSBI.multiply(amount0, proportion),
+    JSBI.BigInt(1e18)
+  );
+  const amount1Delta = JSBI.divide(
+    JSBI.multiply(amount1, proportion),
+    JSBI.BigInt(1e18)
+  );
+
+  // Convert amounts to decimal strings
+  const amount0Decimal =
+    parseFloat(amount0Delta.toString()) / 10 ** TOKEN_DECIMALS;
+  const amount1Decimal =
+    parseFloat(amount1Delta.toString()) / 10 ** TOKEN_DECIMALS;
+
+  // Calculate minimum amounts with slippage
+  const minAmount0 = amount0Decimal * (1 - slippage / 100);
+  const minAmount1 = amount1Decimal * (1 - slippage / 100);
+
+  // Parse amounts with proper decimals
+  const parsedMinAmount0 = parseUnits(
+    minAmount0.toFixed(TOKEN_DECIMALS),
+    TOKEN_DECIMALS
+  );
+  const parsedMinAmount1 = parseUnits(
+    minAmount1.toFixed(TOKEN_DECIMALS),
+    TOKEN_DECIMALS
+  );
+  return {
+    gasAmountDelta: amount0Decimal,
+    ethAmountDelta: amount1Decimal,
+    minGasAmountDelta: parsedMinAmount0,
+    minEthAmountDelta: parsedMinAmount1,
+    liquidityDelta: liquidityDelta.toString(),
+  };
+};
