@@ -33,6 +33,7 @@ const MarketsTable = () => {
         .filter((market: any) => market.public)
         .flatMap((market: any) =>
           market.epochs.map((epoch: any) => {
+            console.log('epoch=', epoch);
             const startDate = new Date(epoch.startTimestamp * 1000);
             const endDate = new Date(epoch.endTimestamp * 1000);
             return {

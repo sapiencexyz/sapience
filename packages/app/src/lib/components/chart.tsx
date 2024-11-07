@@ -24,9 +24,9 @@ import {
 } from '../util/util';
 import { MarketContext } from '~/lib/context/MarketProvider';
 
-const grayColor = '#475569';
-const greenColor = '#00ff00';
-const redColor = '#ff0000';
+const grayColor = 'hsl(var(--chart-3))';
+const greenColor = 'hsl(var(--chart-2))';
+const redColor = 'hsl(var(--chart-1))';
 
 const CustomBarShape: React.FC<{
   x: number;
@@ -79,9 +79,7 @@ const CustomBarShape: React.FC<{
         width={width}
         height={barHeight}
         fill={candleColor}
-        stroke={grayColor}
-        strokeWidth={0.5}
-        rx="5px"
+        rx="2px"
       />
     </>
   );
@@ -327,7 +325,7 @@ const CandlestickChart: React.FC<Props> = ({
             type="monotone"
             dataKey="price"
             stroke={grayColor}
-            strokeWidth={2}
+            strokeWidth={1.5}
             dot={false}
             strokeDasharray="5 5"
           />

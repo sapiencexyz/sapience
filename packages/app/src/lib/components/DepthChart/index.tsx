@@ -26,11 +26,11 @@ import type {
 } from '~/lib/util/liquidityUtil';
 import { getFullPool } from '~/lib/util/liquidityUtil';
 
-const gray400 = '#a3a3a3';
-const paleGreen = '#98fb98';
-const purple = '#800080';
-const turquoise = '#00ffd1';
-const peach = '#ffa07a';
+const gray400 = 'hsl(var(--chart-3))';
+const paleGreen = 'hsl(var(--chart-3))';
+const purple = 'hsl(var(--chart-5))';
+const turquoise = 'hsl(var(--chart-4))';
+const peach = 'hsl(var(--chart-2))';
 
 const checkIsClosestTick = (
   tick: number,
