@@ -124,7 +124,7 @@ export default function Settle() {
   }
 
   return (
-    <div className="p-6">
+    <div>
       <h2 className="text-xl font-semibold mb-3">Settle Position</h2>
       <div className="mb-4">
         <PositionSelector />

@@ -1,5 +1,5 @@
 {
-  "address": "0xD936E1c783aCCC32ee2421c1A803004372f8c99A",
+  "address": "0x598aB8af181F2454B74904500F3e6D731b7faAC4",
   "abi": [
     {
       "type": "function",
@@ -350,6 +350,11 @@
     },
     {
       "type": "error",
+      "name": "DeltaTradeIsZero",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "EpochNotSettled",
       "inputs": [
         {
@@ -403,6 +408,17 @@
     },
     {
       "type": "error",
+      "name": "InvalidInternalTradeSize",
+      "inputs": [
+        {
+          "name": "tradeSize",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "InvalidParameter",
       "inputs": [
         {
@@ -435,12 +451,12 @@
     },
     {
       "type": "error",
-      "name": "InvalidTradeSize",
+      "name": "InvalidTransferRecipient",
       "inputs": [
         {
-          "name": "tradeSize",
-          "type": "uint256",
-          "internalType": "uint256"
+          "name": "recipient",
+          "type": "address",
+          "internalType": "address"
         }
       ]
     },
@@ -513,6 +529,11 @@
     },
     {
       "type": "error",
+      "name": "PositionSizeBelowMin",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "ReentrancyGuardReentrantCall",
       "inputs": []
     },
@@ -562,12 +583,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x0551bd0912d48ff53be6438f92ef407240408bce3c9c17f4e9f1e3ef0d61e7f0",
-  "deployTxnBlockNumber": "6973597",
-  "deployTimestamp": "1730252688",
+  "deployTxnHash": "0x1fbdf371e81ff7ae3f7aefe4f72690ab5e3e1733957c7d665d0fe480b6d5e368",
+  "deployTxnBlockNumber": "7030620",
+  "deployTimestamp": "1730989536",
   "sourceName": "src/market/modules/TradeModule.sol",
   "contractName": "TradeModule",
   "deployedOn": "deploy.TradeModule",
-  "gasUsed": 2471264,
-  "gasCost": "2065601316"
+  "gasUsed": 2497797,
+  "gasCost": "4968962880"
 }
