@@ -47,13 +47,11 @@ export async function middleware(request: NextRequest) {
   }
 
   if (process.env.NODE_ENV === 'production' && (await isGeofenced(request))) {
-    return new NextResponse('Forbidden', {
-      status: 403,
-    });
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   return response;
 }
 
 export const config = {
-  matcher: '/:path*',
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };
