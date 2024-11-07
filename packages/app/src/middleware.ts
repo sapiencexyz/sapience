@@ -21,11 +21,11 @@ function isDebug(req: NextRequest) {
 async function getIpInfo(ip: string) {
   const token = process.env.IPINFO_TOKEN;
   if (!token) return null;
-  
+
   const response = await fetch(`https://ipinfo.io/${ip}?token=${token}`);
   if (!response.ok) return null;
-  
-  return await response.json();
+
+  return response.json();
 }
 
 async function isGeofenced(req: NextRequest) {
@@ -36,7 +36,7 @@ async function isGeofenced(req: NextRequest) {
 
   const ipInfo = await getIpInfo(req.ip);
   if (!ipInfo) return true;
-  
+
   return GEOFENCED_COUNTRIES.includes(ipInfo.country) || ipInfo.privacy?.vpn;
 }
 
