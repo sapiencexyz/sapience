@@ -23,8 +23,8 @@ import type {
   BarChartTick,
   GraphTick,
   PoolData,
-} from '~/lib/util/liqudityUtil';
-import { getFullPool } from '~/lib/util/liqudityUtil';
+} from '~/lib/util/liquidityUtil';
+import { getFullPool } from '~/lib/util/liquidityUtil';
 
 const gray400 = '#a3a3a3';
 const paleGreen = '#98fb98';
