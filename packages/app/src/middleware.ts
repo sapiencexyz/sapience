@@ -8,10 +8,9 @@ const ipinfoWrapper = process.env.IPINFO_TOKEN
 const GEOFENCED_COUNTRIES = ['US'];
 
 function isDebug(req: NextRequest) {
-  return (
-    req.cookies.get('debug')?.value === 'true' ||
-    req.nextUrl.searchParams.has('debug')
-  );
+  const hasDebugCookie = req.cookies.get('debug')?.value === 'true';
+  const hasDebugParam = req.nextUrl.searchParams.has('debug');
+  return hasDebugCookie || hasDebugParam;
 }
 
 async function isGeofenced(req: NextRequest) {
@@ -25,13 +24,18 @@ async function isGeofenced(req: NextRequest) {
 }
 
 export async function middleware(request: NextRequest) {
+  const response = NextResponse.next();
+  if (request.nextUrl.searchParams.has('debug')) {
+    response.cookies.set('debug', 'true');
+  }
+
   if (process.env.NODE_ENV === 'production' && (await !isGeofenced(request))) {
     return new NextResponse('Authentication required', {
       status: 403,
       headers: { 'WWW-Authenticate': 'Basic' },
     });
   }
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {

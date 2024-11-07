@@ -3,7 +3,6 @@ import type { Metadata, Viewport } from 'next';
 import Providers from '~/app/providers';
 import '@rainbow-me/rainbowkit/styles.css';
 import '../lib/styles/globals.css';
-import DebugDetector from '~/lib/components/DebugDetector';
 import { LoadingSpinner } from '~/lib/components/foil/loadingSpinner';
 import { LoadingProvider } from '~/lib/context/LoadingContext';
 import { Toaster } from '@/components/ui/toaster';
@@ -54,7 +53,6 @@ const RootLayout = ({ children }: RootLayoutProps) => {
       <body>
         <Providers>
           <LoadingProvider>
-            <DebugDetector />
             <LoadingSpinner />
             <Layout>{children}</Layout>
             <Toaster />
