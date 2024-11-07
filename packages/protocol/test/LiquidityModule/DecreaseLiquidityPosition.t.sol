@@ -16,8 +16,6 @@ import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Po
 import {ILiquidityModule} from "../../src/market/interfaces/ILiquidityModule.sol";
 import {Position} from "../../src/market/storage/Position.sol";
 
-import "forge-std/console2.sol";
-
 contract DecreaseLiquidityPosition is TestTrade {
     using Cannon for Vm;
 
