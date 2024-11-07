@@ -448,8 +448,9 @@ library Epoch {
             : collateralRequirementAtMax;
 
         // Adding 2 wei to prevent round up errors. Insignificant amount for normal operations but to prevent potential issues
-        requiredCollateral += 2;
-    }
+        if (requiredCollateral > 0) {
+            requiredCollateral += 2;
+        }
 
     function collateralRequirementAtMinTick(
         Data storage self,

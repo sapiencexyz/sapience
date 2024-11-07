@@ -16,6 +16,8 @@ import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Po
 import {ILiquidityModule} from "../../src/market/interfaces/ILiquidityModule.sol";
 import {Position} from "../../src/market/storage/Position.sol";
 
+import "forge-std/console2.sol";
+
 contract DecreaseLiquidityPosition is TestTrade {
     using Cannon for Vm;
 
@@ -281,6 +283,39 @@ contract DecreaseLiquidityPosition is TestTrade {
                 deadline: block.timestamp + 30 minutes
             })
         );
+        vm.stopPrank();
+    }
+
+    function test_decreaseLiquidityPosition_after_trade() public {
+        traderSellsGas();
+
+        vm.startPrank(lp1);
+
+        Position.Data memory initialPosition = foil.getPosition(positionId);
+
+        // Get initial position details
+        (, , , , uint128 initialLiquidity) = getCurrentPositionTokenAmounts(
+            initialPosition.uniswapPositionId,
+            MIN_TICK,
+            MAX_TICK
+        );
+
+        // Calculate 20% of initial liquidity
+        uint128 newLiquidity = uint128((uint256(initialLiquidity) * 80) / 100);
+
+        uint256 requiredCollateral = foil.quoteRequiredCollateral(
+            positionId,
+            newLiquidity
+        );
+
+        console2.log("requiredCollateral", requiredCollateral);
+
+        assertGt(
+            requiredCollateral,
+            2,
+            "Quoted collateral should be greater than 0"
+        );
+
         vm.stopPrank();
     }
 

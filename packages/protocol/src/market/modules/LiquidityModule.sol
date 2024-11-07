@@ -370,6 +370,9 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         stack.sqrtPriceAX96 = TickMath.getSqrtRatioAtTick(stack.lowerTick);
         stack.sqrtPriceBX96 = TickMath.getSqrtRatioAtTick(stack.upperTick);
 
+        stack.finalLoanAmount0 = position.borrowedVGas;
+        stack.finalLoanAmount1 = position.borrowedVEth;
+
         if (liquidity > stack.currentLiquidity) {
             (stack.amount0, stack.amount1) = LiquidityAmounts
                 .getAmountsForLiquidity(
@@ -378,8 +381,8 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                     stack.sqrtPriceBX96,
                     liquidity - stack.currentLiquidity
                 );
-            stack.finalLoanAmount0 = position.borrowedVGas + stack.amount0;
-            stack.finalLoanAmount1 = position.borrowedVEth + stack.amount1;
+            stack.finalLoanAmount0 += stack.amount0;
+            stack.finalLoanAmount1 += stack.amount1;
         } else {
             (stack.amount0, stack.amount1) = LiquidityAmounts
                 .getAmountsForLiquidity(
