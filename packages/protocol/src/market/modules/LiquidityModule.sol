@@ -326,6 +326,44 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         );
     }
 
+    function quoteRequiredCollateral(
+        uint256 positionId,
+        uint128 liquidity
+    ) external view override returns (uint256 requiredCollateral) {
+        Position.Data storage position = Position.loadValid(positionId);
+        Epoch.Data storage epoch = Epoch.loadValid(position.epochId);
+
+        (
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            int24 lowerTick,
+            int24 upperTick,
+            ,
+            ,
+            uint256 tokensOwed0,
+            uint256 tokensOwed1
+        ) = INonfungiblePositionManager(epoch.params.uniswapPositionManager)
+                .positions(position.uniswapPositionId);
+
+        uint160 sqrtPriceAX96 = TickMath.getSqrtRatioAtTick(lowerTick);
+        uint160 sqrtPriceBX96 = TickMath.getSqrtRatioAtTick(upperTick);
+
+        return
+            epoch.requiredCollateralForLiquidity(
+                liquidity,
+                position.borrowedVGas,
+                position.borrowedVEth,
+                tokensOwed0,
+                tokensOwed1,
+                sqrtPriceAX96,
+                sqrtPriceBX96
+            );
+    }
+
     function quoteLiquidityPositionTokens(
         uint256 epochId,
         uint256 depositedCollateralAmount,

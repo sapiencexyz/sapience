@@ -172,81 +172,81 @@ contract IncreaseLiquidityPosition is TestTrade {
         vm.stopPrank();
     }
 
-    // function test_doubleLiquidityPosition() public {
-    //     traderBuysGas(); // moves price
+    function test_doubleLiquidityPosition() public {
+        traderBuysGas(); // moves price
 
-    //     Position.Data memory initialPosition = foil.getPosition(positionId);
-    //     (
-    //         uint256 currentGasTokenAmount,
-    //         uint256 currentEthTokenAmount,
-    //         ,
-    //         ,
+        Position.Data memory initialPosition = foil.getPosition(positionId);
+        (
+            uint256 currentGasTokenAmount,
+            uint256 currentEthTokenAmount,
+            ,
+            ,
+            uint128 currentLiquidity
+        ) = getCurrentPositionTokenAmounts(
+                initialPosition.uniswapPositionId,
+                MIN_TICK,
+                MAX_TICK
+            );
 
-    //     ) = getCurrentPositionTokenAmounts(
-    //             initialPosition.uniswapPositionId,
-    //             MIN_TICK,
-    //             MAX_TICK
-    //         );
+        uint256 requiredCollateral = foil.quoteRequiredCollateral(
+            positionId,
+            liquidity * 2
+        );
+        uint256 additionalCollateral = requiredCollateral -
+            initialPosition.depositedCollateralAmount;
 
-    //     uint256 additionalCollateral = foil
-    //         .getCollateralRequirementForAdditionalTokens(
-    //             positionId,
-    //             currentGasTokenAmount,
-    //             currentEthTokenAmount
-    //         );
+        vm.startPrank(lp1);
+        uint256 initialBalance = collateralAsset.balanceOf(lp1);
 
-    //     vm.startPrank(lp1);
-    //     uint256 initialBalance = collateralAsset.balanceOf(lp1);
+        (
+            uint128 addedLiquidity,
+            uint256 amount0,
+            uint256 amount1,
+            uint256 requiredCollateral
+        ) = foil.increaseLiquidityPosition(
+                IFoilStructs.LiquidityIncreaseParams({
+                    positionId: positionId,
+                    collateralAmount: additionalCollateral,
+                    gasTokenAmount: currentGasTokenAmount, // delta so doubling position
+                    ethTokenAmount: currentEthTokenAmount, // delta so doubling position
+                    minGasAmount: 0,
+                    minEthAmount: 0,
+                    deadline: block.timestamp + 30 minutes
+                })
+            );
+        addedLiquidity;
 
-    //     (
-    //         uint128 addedLiquidity,
-    //         uint256 amount0,
-    //         uint256 amount1,
-    //         uint256 requiredCollateral
-    //     ) = foil.increaseLiquidityPosition(
-    //             IFoilStructs.LiquidityIncreaseParams({
-    //                 positionId: positionId,
-    //                 collateralAmount: additionalCollateral,
-    //                 gasTokenAmount: currentGasTokenAmount,
-    //                 ethTokenAmount: currentEthTokenAmount,
-    //                 minGasAmount: 0,
-    //                 minEthAmount: 0,
-    //                 deadline: block.timestamp + 30 minutes
-    //             })
-    //         );
-    //     addedLiquidity;
+        uint256 finalBalance = collateralAsset.balanceOf(lp1);
+        uint256 actualTransferred = initialBalance - finalBalance;
 
-    //     uint256 finalBalance = collateralAsset.balanceOf(lp1);
-    //     uint256 actualTransferred = initialBalance - finalBalance;
+        assertEq(
+            actualTransferred,
+            requiredCollateral - initialPosition.depositedCollateralAmount,
+            "Only additional required collateral should be transferred"
+        );
 
-    //     assertEq(
-    //         actualTransferred,
-    //         requiredCollateral - initialPosition.depositedCollateralAmount,
-    //         "Only additional required collateral should be transferred"
-    //     );
+        assertGt(amount0, 0, "Amount of token0 added should be greater than 0");
+        assertGt(amount1, 0, "Amount of token1 added should be greater than 0");
 
-    //     assertGt(amount0, 0, "Amount of token0 added should be greater than 0");
-    //     assertGt(amount1, 0, "Amount of token1 added should be greater than 0");
+        Position.Data memory updatedPosition = foil.getPosition(positionId);
+        assertEq(
+            updatedPosition.depositedCollateralAmount,
+            requiredCollateral,
+            "Collateral amount should equal total collateral"
+        );
+        assertEq(
+            updatedPosition.borrowedVGas,
+            initialPosition.borrowedVGas + amount0,
+            "Borrowed vGas should equal previous borrowed amount plus newly added amount0"
+        );
+        assertEq(
+            updatedPosition.borrowedVEth,
+            initialPosition.borrowedVEth + amount1,
+            "Borrowed vEth should equal previous borrowed amount plus newly added amount1"
+        );
 
-    //     Position.Data memory updatedPosition = foil.getPosition(positionId);
-    //     assertEq(
-    //         updatedPosition.depositedCollateralAmount,
-    //         requiredCollateral,
-    //         "Collateral amount should equal total collateral"
-    //     );
-    //     assertEq(
-    //         updatedPosition.borrowedVGas,
-    //         initialPosition.borrowedVGas + amount0,
-    //         "Borrowed vGas should equal previous borrowed amount plus newly added amount0"
-    //     );
-    //     assertEq(
-    //         updatedPosition.borrowedVEth,
-    //         initialPosition.borrowedVEth + amount1,
-    //         "Borrowed vEth should equal previous borrowed amount plus newly added amount1"
-    //     );
-
-    //     vm.stopPrank();
-    // }
+        vm.stopPrank();
+    }
 
     // struct IncreaseLiquidityReturnValues {
     //     uint128 addedLiquidity;
