@@ -1,5 +1,5 @@
 {
-  "address": "0x9596E014489f87002B1A8E4D72b28eB250aEFaEA",
+  "address": "0x81b955145952Fa74686Edadc428238686eA7b3F4",
   "abi": [
     {
       "type": "function",
@@ -65,7 +65,12 @@
           "internalType": "uint256"
         },
         {
-          "name": "collateralAmount",
+          "name": "requiredCollateralAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "totalDepositedCollateralAmount",
           "type": "uint256",
           "internalType": "uint256"
         },
@@ -230,7 +235,12 @@
           "internalType": "uint256"
         },
         {
-          "name": "collateralAmount",
+          "name": "requiredCollateralAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "totalDepositedCollateralAmount",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -309,7 +319,13 @@
           "internalType": "uint256"
         },
         {
-          "name": "collateralAmount",
+          "name": "depositedCollateralAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateralAmountAdded",
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
@@ -701,6 +717,17 @@
     },
     {
       "type": "error",
+      "name": "InvalidTransferRecipient",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "NotAccountOwnerOrAuthorized",
       "inputs": [
         {
@@ -817,12 +844,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x2a3226364793734af0c0120a6abbe312c8898cfbc8577a3308b84b3b4e5c169f",
-  "deployTxnBlockNumber": "6973592",
-  "deployTimestamp": "1730252628",
+  "deployTxnHash": "0x4df6b0678a79a73d6370a29385eb8041ed59b4ca8ebbbe3efc9c1336ae5893e1",
+  "deployTxnBlockNumber": "7030617",
+  "deployTimestamp": "1730989500",
   "sourceName": "src/market/modules/LiquidityModule.sol",
   "contractName": "LiquidityModule",
   "deployedOn": "deploy.LiquidityModule",
-  "gasUsed": 3058130,
-  "gasCost": "2280008405"
+  "gasUsed": 3114704,
+  "gasCost": "5107495943"
 }

@@ -1,5 +1,5 @@
 {
-  "address": "0x518384ae93698eafe652813689c0742c8e4ff7aa",
+  "address": "0xd4b1f251307548bef9f5d845b4c4d5902bafbcab",
   "abi": [
     {
       "type": "constructor",
@@ -76,6 +76,11 @@
           "name": "callbackRecipient",
           "type": "address",
           "internalType": "address"
+        },
+        {
+          "name": "minTradeSize",
+          "type": "uint256",
+          "internalType": "uint256"
         },
         {
           "name": "epochParams",
@@ -323,6 +328,12 @@
           "type": "address",
           "indexed": false,
           "internalType": "address"
+        },
+        {
+          "name": "minTradeSize",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
         },
         {
           "name": "epochParams",
@@ -741,7 +752,12 @@
           "internalType": "uint256"
         },
         {
-          "name": "collateralAmount",
+          "name": "requiredCollateralAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "totalDepositedCollateralAmount",
           "type": "uint256",
           "internalType": "uint256"
         },
@@ -906,7 +922,12 @@
           "internalType": "uint256"
         },
         {
-          "name": "collateralAmount",
+          "name": "requiredCollateralAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "totalDepositedCollateralAmount",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -985,7 +1006,13 @@
           "internalType": "uint256"
         },
         {
-          "name": "collateralAmount",
+          "name": "depositedCollateralAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateralAmountAdded",
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
@@ -1354,6 +1381,17 @@
           "name": "boundedTick",
           "type": "int24",
           "internalType": "int24"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidTransferRecipient",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "address",
+          "internalType": "address"
         }
       ]
     },
@@ -1860,6 +1898,11 @@
     },
     {
       "type": "error",
+      "name": "DeltaTradeIsZero",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "EpochNotSettled",
       "inputs": [
         {
@@ -1887,7 +1930,7 @@
     },
     {
       "type": "error",
-      "name": "InvalidTradeSize",
+      "name": "InvalidInternalTradeSize",
       "inputs": [
         {
           "name": "tradeSize",
@@ -1916,6 +1959,11 @@
           "internalType": "uint160"
         }
       ]
+    },
+    {
+      "type": "error",
+      "name": "PositionSizeBelowMin",
+      "inputs": []
     },
     {
       "type": "constructor",
@@ -2877,12 +2925,12 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0xd7bed7258f9f21d35c5fdf5299e38c839fe37623f5e7ad1972d1fda9f01fc748",
-  "deployTxnBlockNumber": "6973601",
-  "deployTimestamp": "1730252736",
+  "deployTxnHash": "0x63da196f3e1ef237b4c7ac24b0b325a7b12ecf3ed52f1f6f113cefa1883311c5",
+  "deployTxnBlockNumber": "7030625",
+  "deployTimestamp": "1730989608",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
   "highlight": true,
-  "gasUsed": 533290,
-  "gasCost": "2266715064"
+  "gasUsed": 533314,
+  "gasCost": "5635169192"
 }

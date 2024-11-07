@@ -23,8 +23,8 @@ import type {
   BarChartTick,
   GraphTick,
   PoolData,
-} from '~/lib/util/liqudityUtil';
-import { getFullPool } from '~/lib/util/liqudityUtil';
+} from '~/lib/util/liquidityUtil';
+import { getFullPool } from '~/lib/util/liquidityUtil';
 
 const gray400 = '#a3a3a3';
 const paleGreen = '#98fb98';
@@ -181,14 +181,14 @@ const CustomTooltip: React.FC<
     >
       {(tick.tickIdx <= pool.tickCurrent || tick.isCurrent) && (
         <p>
-          {pool.token0.symbol} Liquidity:{' '}
-          {tick.liquidityLockedToken0.toFixed(3)}
+          {pool.token1.symbol} Liquidity:{' '}
+          {(tick.liquidityLockedToken1 / tick.price0).toFixed(3)}
         </p>
       )}
       {(tick.tickIdx >= pool.tickCurrent || tick.isCurrent) && (
         <p>
-          {pool.token1.symbol} Liquidity:{' '}
-          {tick.liquidityLockedToken1.toFixed(3)}
+          {pool.token0.symbol} Liquidity:{' '}
+          {(tick.liquidityLockedToken0 / tick.price0).toFixed(3)}
         </p>
       )}
       <p>Tick {tick.tickIdx}</p>
