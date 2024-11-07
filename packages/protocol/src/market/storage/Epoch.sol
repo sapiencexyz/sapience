@@ -451,6 +451,7 @@ library Epoch {
         if (requiredCollateral > 0) {
             requiredCollateral += 2;
         }
+    }
 
     function collateralRequirementAtMinTick(
         Data storage self,
