@@ -5,7 +5,17 @@ const ipinfoWrapper = process.env.IPINFO_TOKEN
   ? new IPinfoWrapper(process.env.IPINFO_TOKEN)
   : null;
 
-const GEOFENCED_COUNTRIES = ['US'];
+const GEOFENCED_COUNTRIES = [
+  'US',
+  'BY',
+  'CU',
+  'IR',
+  'KP',
+  'RU',
+  'SY',
+  'UA',
+  'MM',
+];
 
 function isDebug(req: NextRequest) {
   const hasDebugCookie = req.cookies.get('debug')?.value === 'true';
@@ -29,10 +39,9 @@ export async function middleware(request: NextRequest) {
     response.cookies.set('debug', 'true');
   }
 
-  if (process.env.NODE_ENV === 'production' && (await !isGeofenced(request))) {
-    return new NextResponse('Authentication required', {
+  if (process.env.NODE_ENV === 'production' && (await isGeofenced(request))) {
+    return new NextResponse('Forbidden', {
       status: 403,
-      headers: { 'WWW-Authenticate': 'Basic' },
     });
   }
   return response;
