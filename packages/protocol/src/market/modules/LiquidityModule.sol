@@ -326,6 +326,20 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         );
     }
 
+    struct QuoteCollateralStack {
+        int24 lowerTick;
+        int24 upperTick;
+        uint128 currentLiquidity;
+        uint256 tokensOwed0;
+        uint256 tokensOwed1;
+        uint160 sqrtPriceX96;
+        uint160 sqrtPriceAX96;
+        uint160 sqrtPriceBX96;
+        uint256 finalLoanAmount0;
+        uint256 finalLoanAmount1;
+        uint256 amount0;
+        uint256 amount1;
+    }
     function quoteRequiredCollateral(
         uint256 positionId,
         uint128 liquidity
@@ -333,34 +347,60 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         Position.Data storage position = Position.loadValid(positionId);
         Epoch.Data storage epoch = Epoch.loadValid(position.epochId);
 
+        QuoteCollateralStack memory stack;
+
         (
             ,
             ,
             ,
             ,
             ,
+            stack.lowerTick,
+            stack.upperTick,
+            stack.currentLiquidity,
             ,
-            int24 lowerTick,
-            int24 upperTick,
             ,
-            ,
-            uint256 tokensOwed0,
-            uint256 tokensOwed1
+            stack.tokensOwed0,
+            stack.tokensOwed1
         ) = INonfungiblePositionManager(epoch.params.uniswapPositionManager)
-                .positions(position.uniswapPositionId);
+            .positions(position.uniswapPositionId);
 
-        uint160 sqrtPriceAX96 = TickMath.getSqrtRatioAtTick(lowerTick);
-        uint160 sqrtPriceBX96 = TickMath.getSqrtRatioAtTick(upperTick);
+        (stack.sqrtPriceX96, , , , , , ) = epoch.pool.slot0();
+
+        stack.sqrtPriceAX96 = TickMath.getSqrtRatioAtTick(stack.lowerTick);
+        stack.sqrtPriceBX96 = TickMath.getSqrtRatioAtTick(stack.upperTick);
+
+        if (liquidity > stack.currentLiquidity) {
+            (stack.amount0, stack.amount1) = LiquidityAmounts
+                .getAmountsForLiquidity(
+                    stack.sqrtPriceX96,
+                    stack.sqrtPriceAX96,
+                    stack.sqrtPriceBX96,
+                    liquidity - stack.currentLiquidity
+                );
+            stack.finalLoanAmount0 = position.borrowedVGas + stack.amount0;
+            stack.finalLoanAmount1 = position.borrowedVEth + stack.amount1;
+        } else {
+            (stack.amount0, stack.amount1) = LiquidityAmounts
+                .getAmountsForLiquidity(
+                    stack.sqrtPriceX96,
+                    stack.sqrtPriceAX96,
+                    stack.sqrtPriceBX96,
+                    stack.currentLiquidity - liquidity
+                );
+            stack.tokensOwed0 += stack.amount0;
+            stack.tokensOwed1 += stack.amount1;
+        }
 
         return
             epoch.requiredCollateralForLiquidity(
                 liquidity,
-                position.borrowedVGas,
-                position.borrowedVEth,
-                tokensOwed0,
-                tokensOwed1,
-                sqrtPriceAX96,
-                sqrtPriceBX96
+                stack.finalLoanAmount0,
+                stack.finalLoanAmount1,
+                stack.tokensOwed0,
+                stack.tokensOwed1,
+                stack.sqrtPriceAX96,
+                stack.sqrtPriceBX96
             );
     }
 
