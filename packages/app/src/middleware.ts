@@ -1,40 +1,39 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import IPinfoWrapper from 'node-ipinfo';
 
-// const [AUTH_USER, AUTH_PASS] = (process.env.HTTP_BASIC_AUTH || ':').split(':');
-const AUTH_USER = 'cz';
-const AUTH_PASS = '4';
+const ipinfoWrapper = process.env.IPINFO_TOKEN
+  ? new IPinfoWrapper(process.env.IPINFO_TOKEN)
+  : null;
 
-// Step 2. Check HTTP Basic Auth header if present
-function isAuthenticated(req: NextRequest) {
-  const authheader =
-    req.headers.get('authorization') || req.headers.get('Authorization');
+const GEOFENCED_COUNTRIES = ['US'];
 
-  if (!authheader) {
-    return false;
-  }
-
-  const auth = Buffer.from(authheader.split(' ')[1], 'base64')
-    .toString()
-    .split(':');
-  const user = auth[0];
-  const pass = auth[1];
-
-  return user === AUTH_USER && pass === AUTH_PASS;
+function isDebug(req: NextRequest) {
+  return (
+    req.cookies.get('debug')?.value === 'true' ||
+    req.nextUrl.searchParams.has('debug')
+  );
 }
 
-export function middleware(request: NextRequest) {
-  // Call our authentication function to check the request
-  if (!isAuthenticated(request)) {
-    // Respond with JSON indicating an error message
+async function isGeofenced(req: NextRequest) {
+  if (!ipinfoWrapper) return false;
+  if (!req.ip) return true;
+
+  if (isDebug(req)) return false;
+
+  const response = await ipinfoWrapper.lookupIp(req.ip);
+  return GEOFENCED_COUNTRIES.includes(response.country) || response.privacy.vpn;
+}
+
+export async function middleware(request: NextRequest) {
+  if (process.env.NODE_ENV === 'production' && (await !isGeofenced(request))) {
     return new NextResponse('Authentication required', {
-      status: 401,
+      status: 403,
       headers: { 'WWW-Authenticate': 'Basic' },
     });
   }
   return NextResponse.next();
 }
 
-// Step 3. Configure "Matching Paths" below to protect routes with HTTP Basic Auth
 export const config = {
   matcher: '/:path*',
 };
