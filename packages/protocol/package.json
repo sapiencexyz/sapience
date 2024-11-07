@@ -2,7 +2,7 @@
   "name": "@foil/protocol",
   "license": "UNLICENSED",
   "private": true,
-  "version": "0.36",
+  "version": "0.37",
   "scripts": {
     "dev": "cannon build --keep-alive --anvil.port 8545 --write-deployments ./deployments/13370",
     "docgen": "forge doc",
