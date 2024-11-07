@@ -32,6 +32,7 @@ contract CreateLiquidityPosition is TestEpoch {
     int24 constant MAX_TICK = 29800;
     uint256 constant dust = 1e8;
     uint256 constant INITIAL_LP_BALANCE = 100_000_000 ether;
+    uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
 
     function setUp() public {
         collateralAsset = IMintableToken(
@@ -40,7 +41,12 @@ contract CreateLiquidityPosition is TestEpoch {
         foil = IFoil(vm.getAddress("Foil"));
 
         uint160 startingSqrtPriceX96 = 250541448375047931186413801569; // 10
-        (foil, ) = createEpoch(MIN_TICK, MAX_TICK, startingSqrtPriceX96);
+        (foil, ) = createEpoch(
+            MIN_TICK,
+            MAX_TICK,
+            startingSqrtPriceX96,
+            MIN_TRADE_SIZE
+        );
 
         lp1 = TestUser.createUser("LP1", INITIAL_LP_BALANCE);
 
@@ -161,6 +167,7 @@ contract CreateLiquidityPosition is TestEpoch {
         (
             uint256 id,
             uint256 requiredCollateral,
+            uint256 totalDepositedCollateralAmount,
             uint256 uniswapNftId,
             uint128 liquidity,
             uint256 addedAmount0,
@@ -187,13 +194,13 @@ contract CreateLiquidityPosition is TestEpoch {
 
         assertEq(
             foilFinalBalance,
-            foilInitialBalance + requiredCollateral,
-            "Foil balance should increase by the required collateral amount"
+            foilInitialBalance + totalDepositedCollateralAmount,
+            "Foil balance should increase by the deposited collateral amount"
         );
         assertEq(
             lpFinalBalance,
-            lpInitialBalance - requiredCollateral,
-            "LP balance should decrease by the required collateral amount"
+            lpInitialBalance - totalDepositedCollateralAmount,
+            "LP balance should decrease by the deposited collateral amount"
         );
 
         assertApproxEqAbs(
@@ -294,6 +301,7 @@ contract CreateLiquidityPosition is TestEpoch {
         (
             uint256 id,
             uint256 requiredCollateral,
+            uint256 totalDepositedCollateralAmount,
             uint256 uniswapNftId,
             uint128 liquidity,
             uint256 addedAmount0,
@@ -335,7 +343,7 @@ contract CreateLiquidityPosition is TestEpoch {
         );
         assertEq(
             foilCollateralBalance,
-            requiredCollateral,
+            totalDepositedCollateralAmount,
             "Collateral amount should be transferred to Foil contract"
         );
 
@@ -343,7 +351,7 @@ contract CreateLiquidityPosition is TestEpoch {
         uint256 lpCollateralBalance = collateralAsset.balanceOf(lp1);
         assertEq(
             lpCollateralBalance,
-            INITIAL_LP_BALANCE - requiredCollateral,
+            INITIAL_LP_BALANCE - totalDepositedCollateralAmount,
             "LP's collateral balance should decrease by the correct amount"
         );
 

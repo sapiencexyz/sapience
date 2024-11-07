@@ -24,13 +24,19 @@ contract UmaSettleMarket is TestEpoch {
     uint256 minPriceD18;
     uint256 maxPriceD18;
     IFoilStructs.EpochParams epochParams;
+    uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
 
     function setUp() public {
         bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
         optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
 
         uint160 startingSqrtPriceX96 = 250541448375047931186413801569; // 10
-        (foil, ) = createEpoch(16000, 29800, startingSqrtPriceX96);
+        (foil, ) = createEpoch(
+            16000,
+            29800,
+            startingSqrtPriceX96,
+            MIN_TRADE_SIZE
+        );
 
         (owner, , , , ) = foil.getMarket();
         (

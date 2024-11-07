@@ -1,8 +1,10 @@
 'use client';
 
 import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
+import type { Pool } from '@uniswap/v3-sdk';
 import type React from 'react';
-import { useContext, useMemo, useState } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import type { TooltipProps } from 'recharts';
 import {
   BarChart,
@@ -12,13 +14,17 @@ import {
   Bar,
   YAxis,
 } from 'recharts';
-import { formatUnits, type AbiFunction } from 'viem';
+import { type AbiFunction } from 'viem';
 import { useReadContracts } from 'wagmi';
 
 import { TICK_SPACING_DEFAULT } from '~/lib/constants/constants';
 import { MarketContext } from '~/lib/context/MarketProvider';
-import { formatAmount } from '~/lib/util/numberUtil';
-import { tickToPrice } from '~/lib/util/util';
+import type {
+  BarChartTick,
+  GraphTick,
+  PoolData,
+} from '~/lib/util/liqudityUtil';
+import { getFullPool } from '~/lib/util/liqudityUtil';
 
 const gray400 = '#a3a3a3';
 const paleGreen = '#98fb98';
@@ -50,24 +56,13 @@ interface TickData {
   result: TickDataTuple;
 }
 
-interface LiquidityPoint {
-  tick: number;
-  liquidity: number;
-  name: string;
-  amount0: number;
-  amount1: number;
-  price: number;
-}
-
-interface Props {}
-
 interface CustomBarProps {
   props: {
     x: number;
     y: number;
     width: number;
     height: number;
-    tick: number;
+    tickIdx: number;
     index: number;
   };
   activeTickValue: number;
@@ -83,15 +78,19 @@ const CustomBar: React.FC<CustomBarProps> = ({
   setHoveredBar,
   tickSpacing,
 }) => {
-  const { x, y, width, height, tick, index } = props;
+  const { x, y, width, height, tickIdx, index } = props;
   let fill = purple; // Default color
 
-  const isClosestTick = checkIsClosestTick(tick, activeTickValue, tickSpacing);
+  const isClosestTick = checkIsClosestTick(
+    tickIdx,
+    activeTickValue,
+    tickSpacing
+  );
   if (index === hoveredBar) {
     fill = paleGreen; // Hover color
   } else if (isClosestTick) {
     fill = turquoise; // Active bar color
-  } else if (tick < activeTickValue) {
+  } else if (tickIdx < activeTickValue) {
     fill = peach;
   }
   return (
@@ -152,36 +151,73 @@ const CustomXAxisTick: React.FC<CustomXAxisTickProps> = ({
   );
 };
 interface CustomTooltipProps {
-  tickSpacing: number;
+  pool: Pool | null;
+  setPrice1: Dispatch<SetStateAction<number>>; // used for price1 value on hover
+  setPrice0: Dispatch<SetStateAction<number>>; // used for price0 value on hover
+  setLabel: Dispatch<SetStateAction<string>>; // used for label of value
 }
 const CustomTooltip: React.FC<
   TooltipProps<number, string> & CustomTooltipProps
-> = ({ payload, tickSpacing }) => {
-  if (!payload || !payload[0]) return null;
-  const tickValue: number = payload[0].payload?.tick;
+> = ({ payload, pool, setPrice0, setLabel, setPrice1 }) => {
+  useEffect(() => {
+    if (payload && payload[0]) {
+      const tick: BarChartTick = payload[0].payload;
+      setPrice0(tick.price0);
+      setPrice1(tick.price1);
+      setLabel(`Tick ${tick.tickIdx}`);
+    }
+  }, [payload, setLabel, setPrice0, setPrice1]);
+
+  if (!payload || !payload[0] || !pool) return null;
+  const tick: BarChartTick = payload[0].payload;
+
   return (
     <div
       style={{
-        backgroundColor: 'white',
         padding: '8px',
         border: '1px solid #ccc',
       }}
+      className="bg-background"
     >
-      <p>{`Tick Range: ${tickValue}-${tickValue + tickSpacing}`}</p>
-      <p>{`Liquidity: ${formatAmount(payload[0].payload?.liquidity)}`}</p>
-      <p>{`Base Token: ${formatAmount(payload[0].payload?.amount0)}`}</p>
-      <p>{`Quote Token: ${formatAmount(payload[0].payload?.amount1)}`}</p>
-      <p>{`Price: ${formatAmount(payload[0].payload?.price)}`}</p>
+      {(tick.tickIdx <= pool.tickCurrent || tick.isCurrent) && (
+        <p>
+          {pool.token0.symbol} Liquidity:{' '}
+          {tick.liquidityLockedToken0.toFixed(3)}
+        </p>
+      )}
+      {(tick.tickIdx >= pool.tickCurrent || tick.isCurrent) && (
+        <p>
+          {pool.token1.symbol} Liquidity:{' '}
+          {tick.liquidityLockedToken1.toFixed(3)}
+        </p>
+      )}
+      <p>Tick {tick.tickIdx}</p>
     </div>
   );
 };
 
-const DepthChart: React.FC<Props> = () => {
+const DepthChart: React.FC = () => {
+  const [poolData, setPool] = useState<PoolData | undefined>();
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
-  const { pool, chainId, poolAddress, epochParams, collateralAssetDecimals } =
-    useContext(MarketContext);
+  const [price0, setPrice0] = useState<number>(0);
+  const [price1, setPrice1] = useState<number>(0);
+  const [label, setLabel] = useState<string>('');
+  const {
+    pool,
+    chainId,
+    poolAddress,
+    epochParams,
+    useMarketUnits,
+    stEthPerToken,
+  } = useContext(MarketContext);
   const activeTickValue = pool?.tickCurrent || 0;
   const tickSpacing = pool ? pool?.tickSpacing : TICK_SPACING_DEFAULT;
+  useEffect(() => {
+    if (activeTickValue) {
+      setLabel(`Active Tick Value: ${activeTickValue}`);
+    }
+  }, [activeTickValue]);
+
   const ticks = useMemo(() => {
     const tickRange: number[] = [];
     for (
@@ -207,94 +243,41 @@ const DepthChart: React.FC<Props> = () => {
     });
   }, [ticks, poolAddress, chainId]);
 
-  const { data, isLoading: isLoadingContracts } = useReadContracts({
+  const { data: tickData } = useReadContracts({
     contracts,
   }) as { data: TickData[]; isLoading: boolean };
 
-  function calculateBaseLiquidity(
-    tickData: TickData[],
-    currentTick: number
-  ): number {
-    let baseLiquidity = 0;
-
-    for (let i = 0; i < tickData.length; i++) {
-      const tick = ticks[i];
-      const tickInfo = tickData[i];
-      if (tick >= currentTick) {
-        break;
-      }
-      if (!tickInfo.result) {
-        console.log('no result for tick idx', i, '...data is ', tickData);
-        break;
-      }
-      const liquidityNet = tickInfo.result[1];
-      const liquidityNetNum = Number(
-        formatUnits(liquidityNet, collateralAssetDecimals)
-      );
-      baseLiquidity += liquidityNetNum;
-    }
-
-    return baseLiquidity;
-  }
-
-  function createLiquidityDistribution(
-    tickData: TickData[],
-    baseL: number
-  ): LiquidityPoint[] {
-    const distribution: LiquidityPoint[] = [];
-    let cumulativeLiquidity = baseL;
-
-    tickData.forEach((tickInfo, index) => {
-      if (!tickInfo.result) {
-        console.log('no result for tick idx', index, '...data is ', tickData);
-        return;
-      }
-      const liquidityNet = tickInfo.result[1];
-      const liquidityNetNum = Number(
-        formatUnits(liquidityNet, collateralAssetDecimals)
-      );
-      const { amount0, amount1, price } = calculateTokenAmounts(
-        ticks[index],
-        tickInfo
-      );
-
-      cumulativeLiquidity += liquidityNetNum;
-      distribution.push({
-        tick: ticks[index],
-        liquidity: cumulativeLiquidity,
-        name: `tick ${index} liquidity ${cumulativeLiquidity}`,
-        amount0,
-        amount1,
-        price,
-      });
+  const graphTicks: GraphTick[] = useMemo(() => {
+    if (!tickData) return [];
+    return tickData.map((tick, idx) => {
+      return {
+        tickIdx: ticks[idx].toString(),
+        liquidityGross: tick.result[0].toString(),
+        liquidityNet: tick.result[1].toString(),
+      };
     });
+  }, [tickData, ticks]);
 
-    return distribution;
-  }
+  useEffect(() => {
+    if (pool) {
+      getFullPool(pool, graphTicks, tickSpacing).then((fullPoolData) =>
+        setPool(fullPoolData)
+      );
+    }
+  }, [pool, graphTicks, tickSpacing]);
 
-  function calculateTokenAmounts(tickValue: number, tickData: TickData) {
-    const [liquidityGross, , , , , , ,] = tickData.result;
+  const [currPrice0, currPrice1] = useMemo(() => {
+    const currTick = poolData?.ticks.filter((t) => t.isCurrent);
+    if (currTick) {
+      return [currTick[0].price0, currTick[0].price1];
+    }
+    return [0, 0];
+  }, [poolData]);
 
-    // Calculate the price at the current tick
-    const price = tickToPrice(tickValue);
-
-    const amount0 =
-      Number(formatUnits(liquidityGross, collateralAssetDecimals)) / price;
-    const amount1 =
-      Number(formatUnits(liquidityGross, collateralAssetDecimals)) * price;
-
-    return {
-      amount0,
-      amount1,
-      price,
-    };
-  }
-
-  const liquidityDepthData = useMemo(() => {
-    if (!data || !pool || !ticks.length || !data.length) return [];
-    const baseLiquidity = calculateBaseLiquidity(data, activeTickValue);
-    return createLiquidityDistribution(data, baseLiquidity);
-  }, [ticks, data, pool, activeTickValue]);
+  useEffect(() => {
+    setPrice0(currPrice0);
+    setPrice1(currPrice1);
+  }, [currPrice0, currPrice1]);
 
   const renderBar = (props: any) => (
     <CustomBar
@@ -323,21 +306,58 @@ const DepthChart: React.FC<Props> = () => {
 
   return (
     <div className="flex flex-1 relative">
-      {liquidityDepthData.length <= 0 && (
-        <div className="italic">Loading Liquidity Data...</div>
-      )}
-      {liquidityDepthData.length > 0 && (
+      <div className="min-h-[50px] w-fit absolute top-0 left-0 z-[2] bg-white opacity-80">
+        {pool && price0 && (
+          <div>
+            <p className="text-base">
+              {` 1${pool.token0.symbol} = ${price0.toFixed(4)}
+        ${pool.token1.symbol}`}
+            </p>
+            <p className="text-base">
+              {` 1${pool.token1.symbol} = ${price1.toFixed(4)}
+        ${pool.token0.symbol}`}
+            </p>
+          </div>
+        )}
+        <p className="text-sm text-gray-500">{label ? `${label}` : ''}</p>
+      </div>
+      {!poolData && <div className="italic">Loading Liquidity Data...</div>}
+      {poolData && (
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart width={500} height={300} data={liquidityDepthData}>
+          <BarChart
+            width={500}
+            height={300}
+            data={poolData.ticks}
+            margin={{ top: 70, bottom: -40 }}
+            onMouseLeave={() => {
+              setLabel(`Active Tick Value: ${activeTickValue}`);
+              setPrice0(currPrice0);
+              setPrice1(currPrice1);
+            }}
+          >
             <XAxis
-              dataKey="tick"
+              dataKey="tickIdx"
               tick={renderXAxis}
               height={60}
               interval={0}
               tickLine={false}
             />
-            <Tooltip content={<CustomTooltip tickSpacing={tickSpacing} />} />
-            <Bar dataKey="liquidity" shape={renderBar} />
+            <YAxis
+              tick={false}
+              axisLine={false}
+              padding={{ top: 0, bottom: 2 }}
+            />
+            <Tooltip
+              content={
+                <CustomTooltip
+                  pool={pool}
+                  setLabel={setLabel}
+                  setPrice0={setPrice0}
+                  setPrice1={setPrice1}
+                />
+              }
+            />
+            <Bar dataKey="liquidityActive" shape={renderBar} />
           </BarChart>
         </ResponsiveContainer>
       )}

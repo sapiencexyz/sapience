@@ -90,7 +90,9 @@ library Position {
             amount.toInt() -
             self.depositedCollateralAmount.toInt();
 
-        if (deltaCollateral > 0) {
+        if (deltaCollateral == 0) {
+            return 0;
+        } else if (deltaCollateral > 0) {
             collateralAsset.safeTransferFrom(
                 msg.sender,
                 address(this),
@@ -102,7 +104,6 @@ library Position {
                 (deltaCollateral * -1).toUint()
             );
         }
-        // do nothing if deltaCollateral == 0
 
         self.depositedCollateralAmount = amount;
     }
@@ -147,17 +148,18 @@ library Position {
         int24 upperTick;
         uint256 tokensOwed0;
         uint256 tokensOwed1;
+        bool isFeeCollector;
     }
 
     function updateValidLp(
         Data storage self,
-        Market.Data storage market,
         Epoch.Data storage epoch,
         UpdateLpParams memory params
     )
         internal
         returns (
             uint256 requiredCollateral,
+            uint256 newCollateralAmount,
             uint256 loanAmount0,
             uint256 loanAmount1
         )
@@ -171,30 +173,28 @@ library Position {
         loanAmount0 = self.borrowedVGas;
         loanAmount1 = self.borrowedVEth;
 
-        bool isFeeCollector = market.isFeeCollector(msg.sender);
-        requiredCollateral = isFeeCollector
-            ? 0
-            : epoch.requiredCollateralForLiquidity(
-                params.liquidity,
-                loanAmount0,
-                loanAmount1,
-                params.tokensOwed0,
-                params.tokensOwed1,
-                TickMath.getSqrtRatioAtTick(params.lowerTick),
-                TickMath.getSqrtRatioAtTick(params.upperTick)
-            );
+        requiredCollateral = epoch.requiredCollateralForLiquidity(
+            params.liquidity,
+            loanAmount0,
+            loanAmount1,
+            params.tokensOwed0,
+            params.tokensOwed1,
+            TickMath.getSqrtRatioAtTick(params.lowerTick),
+            TickMath.getSqrtRatioAtTick(params.upperTick)
+        );
 
-        uint256 newCollateral = self.depositedCollateralAmount +
+        newCollateralAmount =
+            self.depositedCollateralAmount +
             params.additionalCollateral;
 
-        if (newCollateral < requiredCollateral) {
+        if (
+            requiredCollateral > newCollateralAmount && !params.isFeeCollector
+        ) {
             revert Errors.InsufficientCollateral(
                 requiredCollateral,
-                newCollateral
+                newCollateralAmount
             );
         }
-
-        updateCollateral(self, requiredCollateral);
     }
 
     function settle(

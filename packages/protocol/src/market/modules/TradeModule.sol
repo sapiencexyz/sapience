@@ -38,8 +38,10 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         }
 
         if (size == 0) {
-            revert Errors.InvalidData("Size cannot be 0");
+            revert Errors.DeltaTradeIsZero();
         }
+
+        _checkTradeSize(size);
 
         Epoch.Data storage epoch = Epoch.load(epochId);
 
@@ -49,12 +51,17 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         // Mint position NFT and initialize position
         positionId = ERC721EnumerableStorage.totalSupply() + 1;
         Position.Data storage position = Position.createValid(positionId);
-        ERC721Storage._checkOnERC721Received(
-            address(this),
-            msg.sender,
-            positionId,
-            ""
-        );
+
+        if (
+            !ERC721Storage._checkOnERC721Received(
+                address(this),
+                msg.sender,
+                positionId,
+                ""
+            )
+        ) {
+            revert Errors.InvalidTransferRecipient(msg.sender);
+        }
         ERC721Storage._mint(msg.sender, positionId);
         position.epochId = epochId;
         position.kind = IFoilStructs.PositionKind.Trade;
@@ -136,8 +143,10 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
         int256 deltaSize = size - position.positionSize();
         if (deltaSize == 0) {
-            revert Errors.InvalidData("Size not changed");
+            revert Errors.DeltaTradeIsZero();
         }
+
+        _checkTradeSize(size);
 
         Epoch.Data storage epoch = Epoch.load(position.epochId);
 
@@ -336,21 +345,30 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         int256 deltaCollateral,
         int256 deltaCollateralLimit
     ) internal pure {
-        if (
-            deltaCollateralLimit > 0 && deltaCollateral > deltaCollateralLimit
-        ) {
+        // limit is 1.01, deltaCollateral is 1.02 => revert
+        if (deltaCollateralLimit == 0) {
+            // no limit, so no need to check
+            return;
+        }
+        // check if collateral limit is reached (positive means collateral added to the position, negative means collateral removed from the position)
+        // For positive limit, deltaCollateral > deltaCollateralLimit revert (i.e. collateral limit is 1.02, deltaCollateral is 1.03 => revert)
+        // For negative limit, deltaCollateral > deltaCollateralLimit revert (i.e. collateral limit is -1.02, deltaCollateral is -1.01 => revert)
+        if (deltaCollateral > deltaCollateralLimit) {
             revert Errors.CollateralLimitReached(
                 deltaCollateral,
                 deltaCollateralLimit
             );
         }
-        if (
-            deltaCollateralLimit < 0 && deltaCollateral < deltaCollateralLimit
-        ) {
-            revert Errors.CollateralLimitReached(
-                deltaCollateral,
-                deltaCollateralLimit
-            );
+    }
+
+    function _checkTradeSize(int256 size) internal view {
+        if (size == 0) {
+            return;
+        }
+
+        uint256 modSize = size > 0 ? size.toUint() : (size * -1).toUint();
+        if (modSize < Market.load().minTradeSize) {
+            revert Errors.PositionSizeBelowMin();
         }
     }
 
@@ -423,7 +441,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
         // Sanity check. vGas on trade is zero means someting went really wrong (or )
         if (runtime.tradedVGas == 0) {
-            revert Errors.InvalidTradeSize(0);
+            revert Errors.InvalidInternalTradeSize(0);
         }
 
         // 2- Get PnL and vEth involved in the transaction from initial size to zero (intermediate close the position).

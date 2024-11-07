@@ -79,15 +79,15 @@ export const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
           chainId,
           token0Address as string,
           TOKEN_DECIMALS,
-          'TOKEN0',
-          'Token 0'
+          'Ggas',
+          'Ggas'
         );
         const token1 = new Token(
           chainId,
           token1Address as string,
           TOKEN_DECIMALS,
-          'TOKEN1',
-          'Token 1'
+          'wstETH',
+          'wstETH'
         );
 
         const poolInstance = new Pool(

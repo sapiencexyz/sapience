@@ -27,6 +27,7 @@ contract DepositCollateralTest is TestTrade {
     uint256 constant COLLATERAL_AMOUNT = 10 ether;
     int24 constant LOWER_TICK = 19400;
     int24 constant UPPER_TICK = 24800;
+    uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
 
     function setUp() public {
         collateralAsset = IMintableToken(
@@ -44,7 +45,8 @@ contract DepositCollateralTest is TestTrade {
             LOWER_TICK,
             UPPER_TICK,
             startingSqrtPriceX96,
-            feeCollectors
+            feeCollectors,
+            MIN_TRADE_SIZE
         );
 
         (epochId, , , , , , , , , , ) = foil.getLatestEpoch();
@@ -54,14 +56,14 @@ contract DepositCollateralTest is TestTrade {
             uint256 ethTokenAmount,
 
         ) = getTokenAmountsForCollateralAmount(
-                COLLATERAL_AMOUNT,
+                50 ether,
                 LOWER_TICK,
                 UPPER_TICK
             );
 
         // Create fee collector position
         vm.startPrank(feeCollector);
-        (feeCollectorPositionId, , , , , ) = foil.createLiquidityPosition(
+        (feeCollectorPositionId, , , , , , ) = foil.createLiquidityPosition(
             IFoilStructs.LiquidityMintParams({
                 epochId: epochId,
                 amountTokenA: gasTokenAmount,
@@ -78,12 +80,12 @@ contract DepositCollateralTest is TestTrade {
 
         // Create regular LP position
         vm.startPrank(regularLp);
-        (regularLpPositionId, , , , , ) = foil.createLiquidityPosition(
+        (regularLpPositionId, , , , , , ) = foil.createLiquidityPosition(
             IFoilStructs.LiquidityMintParams({
                 epochId: epochId,
                 amountTokenA: gasTokenAmount,
                 amountTokenB: ethTokenAmount,
-                collateralAmount: COLLATERAL_AMOUNT,
+                collateralAmount: 50 ether,
                 lowerTick: LOWER_TICK,
                 upperTick: UPPER_TICK,
                 minAmountTokenA: 0,
@@ -95,6 +97,15 @@ contract DepositCollateralTest is TestTrade {
     }
 
     function test_depositCollateralAsFeeCollector() public {
+        // Get initial position data for fee collector
+        Position.Data memory initialPosition = foil.getPosition(
+            feeCollectorPositionId
+        );
+        assertEq(
+            initialPosition.depositedCollateralAmount,
+            COLLATERAL_AMOUNT,
+            "Initial collateral amount should be COLLATERAL_AMOUNT"
+        );
         uint256 amountToDeposit = 5 ether;
 
         vm.startPrank(feeCollector);
@@ -107,7 +118,7 @@ contract DepositCollateralTest is TestTrade {
         );
         assertEq(
             position.depositedCollateralAmount,
-            amountToDeposit,
+            amountToDeposit + COLLATERAL_AMOUNT,
             "Collateral amount should increase"
         );
     }
@@ -145,6 +156,7 @@ contract DepositCollateralTest is TestTrade {
             feeCollector,
             epochId,
             feeCollectorPositionId,
+            amountToDeposit + COLLATERAL_AMOUNT,
             amountToDeposit
         );
         foil.depositCollateral(feeCollectorPositionId, amountToDeposit);
@@ -154,7 +166,9 @@ contract DepositCollateralTest is TestTrade {
     function test_depositAdditionalCollateral() public {
         uint256 initialDeposit = 5 ether;
         uint256 additionalDeposit = 3 ether;
-        uint256 totalExpectedDeposit = initialDeposit + additionalDeposit;
+        uint256 totalExpectedDeposit = initialDeposit +
+            additionalDeposit +
+            COLLATERAL_AMOUNT;
 
         // Initial deposit
         vm.startPrank(feeCollector);
@@ -166,7 +180,7 @@ contract DepositCollateralTest is TestTrade {
         );
         assertEq(
             positionAfterInitial.depositedCollateralAmount,
-            initialDeposit,
+            initialDeposit + COLLATERAL_AMOUNT,
             "Initial deposit should be correct"
         );
 
@@ -184,6 +198,164 @@ contract DepositCollateralTest is TestTrade {
             positionAfterAdditional.depositedCollateralAmount,
             totalExpectedDeposit,
             "Total deposited collateral should be the sum of initial and additional deposits"
+        );
+    }
+
+    function test_increaseLiquidityNoAdditionalCollateral() public {
+        vm.startPrank(feeCollector);
+        // Get position data and current token amounts
+        Position.Data memory positionBefore = foil.getPosition(
+            feeCollectorPositionId
+        );
+        uint256 uniswapNftId = positionBefore.uniswapPositionId;
+        (
+            uint256 initialGasTokenAmount,
+            uint256 initialEthTokenAmount,
+            ,
+            ,
+
+        ) = getCurrentPositionTokenAmounts(
+                uniswapNftId,
+                LOWER_TICK,
+                UPPER_TICK
+            );
+
+        uint256 additionalCollateral = 2;
+        // Increase liquidity with no additional collateral
+        foil.increaseLiquidityPosition(
+            IFoilStructs.LiquidityIncreaseParams({
+                positionId: feeCollectorPositionId,
+                collateralAmount: additionalCollateral,
+                gasTokenAmount: initialGasTokenAmount * 2,
+                ethTokenAmount: initialEthTokenAmount * 2,
+                minGasAmount: 0,
+                minEthAmount: 0,
+                deadline: block.timestamp + 30 minutes
+            })
+        );
+        vm.stopPrank();
+
+        // Get updated position data
+        Position.Data memory positionAfter = foil.getPosition(
+            feeCollectorPositionId
+        );
+
+        // Check that deposited collateral amount hasn't changed
+        assertEq(
+            positionAfter.depositedCollateralAmount,
+            COLLATERAL_AMOUNT + additionalCollateral,
+            "Deposited collateral should include only the additional collateral + the original"
+        );
+    }
+
+    function test_decreaseLiquidityNoCollateralChange() public {
+        vm.startPrank(feeCollector);
+        // Get position data and current token amounts
+        Position.Data memory positionBefore = foil.getPosition(
+            feeCollectorPositionId
+        );
+        uint256 uniswapNftId = positionBefore.uniswapPositionId;
+        (, , , , uint128 initialLiquidity) = getCurrentPositionTokenAmounts(
+            uniswapNftId,
+            LOWER_TICK,
+            UPPER_TICK
+        );
+
+        // Calculate 20% of initial liquidity to decrease
+        uint128 liquidityToDecrease = uint128((initialLiquidity * 20) / 100);
+
+        // Decrease liquidity by 20%
+        foil.decreaseLiquidityPosition(
+            IFoilStructs.LiquidityDecreaseParams({
+                positionId: feeCollectorPositionId,
+                liquidity: liquidityToDecrease,
+                minGasAmount: 0,
+                minEthAmount: 0,
+                deadline: block.timestamp + 30 minutes
+            })
+        );
+        vm.stopPrank();
+
+        // Get updated position data
+        Position.Data memory positionAfter = foil.getPosition(
+            feeCollectorPositionId
+        );
+
+        // Check that deposited collateral amount hasn't changed
+        assertEq(
+            positionAfter.depositedCollateralAmount,
+            positionBefore.depositedCollateralAmount,
+            "Deposited collateral should remain unchanged after decreasing liquidity"
+        );
+
+        // Verify liquidity decreased by ~20%
+        (, , , , uint128 remainingLiquidity) = getCurrentPositionTokenAmounts(
+            uniswapNftId,
+            LOWER_TICK,
+            UPPER_TICK
+        );
+
+        assertApproxEqRel(
+            remainingLiquidity,
+            initialLiquidity - liquidityToDecrease,
+            1e16, // 1% tolerance
+            "Liquidity should decrease by approximately 20%"
+        );
+    }
+
+    function test_decreaseLiquidity95Percent() public {
+        // Get initial position data
+        Position.Data memory positionBefore = foil.getPosition(
+            feeCollectorPositionId
+        );
+        uint256 uniswapNftId = positionBefore.uniswapPositionId;
+        (, , , , uint128 initialLiquidity) = getCurrentPositionTokenAmounts(
+            uniswapNftId,
+            LOWER_TICK,
+            UPPER_TICK
+        );
+
+        // Calculate 95% of initial liquidity to decrease
+        uint128 liquidityToDecrease = uint128((initialLiquidity * 95) / 100);
+
+        vm.startPrank(feeCollector);
+        // Decrease liquidity by 95%
+        foil.decreaseLiquidityPosition(
+            IFoilStructs.LiquidityDecreaseParams({
+                positionId: feeCollectorPositionId,
+                liquidity: liquidityToDecrease,
+                minGasAmount: 0,
+                minEthAmount: 0,
+                deadline: block.timestamp + 30 minutes
+            })
+        );
+        vm.stopPrank();
+
+        // Get updated position data
+        Position.Data memory positionAfter = foil.getPosition(
+            feeCollectorPositionId
+        );
+
+        // Check that deposited collateral amount is reduced proportionally
+        assertApproxEqRel(
+            positionAfter.depositedCollateralAmount,
+            (50 ether * 5) / 100, // Should be ~5% of original
+            1e16, // 1% tolerance
+            "Deposited collateral should be reduced to ~5% after decreasing liquidity by 95%"
+        );
+
+        // Verify liquidity decreased by ~95%
+        (, , , , uint128 remainingLiquidity) = getCurrentPositionTokenAmounts(
+            uniswapNftId,
+            LOWER_TICK,
+            UPPER_TICK
+        );
+
+        assertApproxEqRel(
+            remainingLiquidity,
+            initialLiquidity - liquidityToDecrease,
+            1e16, // 1% tolerance
+            "Liquidity should decrease by approximately 95%"
         );
     }
 }

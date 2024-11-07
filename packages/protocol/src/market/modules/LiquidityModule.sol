@@ -21,7 +21,8 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         nonReentrant
         returns (
             uint256 id,
-            uint256 collateralAmount,
+            uint256 requiredCollateralAmount,
+            uint256 totalDepositedCollateralAmount,
             uint256 uniswapNftId,
             uint128 liquidity,
             uint256 addedAmount0,
@@ -34,7 +35,16 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
 
         id = ERC721EnumerableStorage.totalSupply() + 1;
         Position.Data storage position = Position.createValid(id);
-        ERC721Storage._checkOnERC721Received(address(this), msg.sender, id, "");
+        if (
+            !ERC721Storage._checkOnERC721Received(
+                address(this),
+                msg.sender,
+                id,
+                ""
+            )
+        ) {
+            revert Errors.InvalidTransferRecipient(msg.sender);
+        }
         ERC721Storage._mint(msg.sender, id);
 
         Market.Data storage market = Market.load();
@@ -63,8 +73,13 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 })
             );
 
-        (collateralAmount, , ) = position.updateValidLp(
-            market,
+        bool isFeeCollector = market.isFeeCollector(msg.sender);
+        (
+            requiredCollateralAmount,
+            totalDepositedCollateralAmount,
+            ,
+
+        ) = position.updateValidLp(
             epoch,
             Position.UpdateLpParams({
                 uniswapNftId: uniswapNftId,
@@ -75,9 +90,12 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 lowerTick: params.lowerTick,
                 upperTick: params.upperTick,
                 tokensOwed0: 0,
-                tokensOwed1: 0
+                tokensOwed1: 0,
+                isFeeCollector: isFeeCollector
             })
         );
+
+        position.updateCollateral(totalDepositedCollateralAmount);
 
         _emitLiquidityPositionCreated(
             ILiquidityModule.LiquidityPositionCreatedEventData({
@@ -161,11 +179,13 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         ) = INonfungiblePositionManager(epoch.params.uniswapPositionManager)
             .positions(position.uniswapPositionId);
 
-        uint256 loanAmount0;
-        uint256 loanAmount1;
-
-        (collateralAmount, loanAmount0, loanAmount1) = position.updateValidLp(
-            market,
+        stack.isFeeCollector = market.isFeeCollector(msg.sender);
+        (
+            stack.requiredCollateralAmount,
+            stack.newCollateralAmount,
+            stack.loanAmount0,
+            stack.loanAmount1
+        ) = position.updateValidLp(
             epoch,
             Position.UpdateLpParams({
                 uniswapNftId: position.uniswapPositionId,
@@ -176,20 +196,31 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 lowerTick: stack.lowerTick,
                 upperTick: stack.upperTick,
                 tokensOwed0: stack.tokensOwed0, // decreased token0 + any fees accrued
-                tokensOwed1: stack.tokensOwed1 // decreased token1 + any fees accrued
+                tokensOwed1: stack.tokensOwed1, // decreased token1 + any fees accrued
+                isFeeCollector: stack.isFeeCollector
             })
         );
+
+        // return collateral that isn't required when decreasing position
+        // this is checked in updateValidLp but ignored when feeCollector
+        // so we add the check here and return any excess collateral
+        if (stack.newCollateralAmount > stack.requiredCollateralAmount) {
+            position.updateCollateral(stack.requiredCollateralAmount);
+            collateralAmount = stack.requiredCollateralAmount;
+        } else {
+            collateralAmount = stack.newCollateralAmount;
+        }
 
         emit LiquidityPositionDecreased(
             msg.sender,
             epoch.id,
             position.id,
-            position.depositedCollateralAmount,
+            stack.requiredCollateralAmount,
             params.liquidity,
             decreasedAmount0,
             decreasedAmount1,
-            loanAmount0,
-            loanAmount1
+            stack.loanAmount0,
+            stack.loanAmount1
         );
     }
 
@@ -202,7 +233,8 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             uint128 liquidity,
             uint256 amount0,
             uint256 amount1,
-            uint256 collateralAmount
+            uint256 requiredCollateralAmount,
+            uint256 totalDepositedCollateralAmount
         )
     {
         if (params.deadline < block.timestamp) {
@@ -257,11 +289,13 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         ) = INonfungiblePositionManager(epoch.params.uniswapPositionManager)
             .positions(position.uniswapPositionId);
 
-        uint256 loanAmount0;
-        uint256 loanAmount1;
-
-        (collateralAmount, loanAmount0, loanAmount1) = position.updateValidLp(
-            market,
+        stack.isFeeCollector = market.isFeeCollector(msg.sender);
+        (
+            requiredCollateralAmount,
+            totalDepositedCollateralAmount,
+            stack.loanAmount0,
+            stack.loanAmount1
+        ) = position.updateValidLp(
             epoch,
             Position.UpdateLpParams({
                 uniswapNftId: position.uniswapPositionId,
@@ -272,20 +306,23 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 lowerTick: stack.lowerTick,
                 upperTick: stack.upperTick,
                 tokensOwed0: stack.tokensOwed0,
-                tokensOwed1: stack.tokensOwed1
+                tokensOwed1: stack.tokensOwed1,
+                isFeeCollector: stack.isFeeCollector
             })
         );
+
+        position.updateCollateral(totalDepositedCollateralAmount);
 
         emit LiquidityPositionIncreased(
             msg.sender,
             epoch.id,
             position.id,
-            position.depositedCollateralAmount,
+            stack.newCollateralAmount,
             liquidity,
             amount0,
             amount1,
-            loanAmount0,
-            loanAmount1
+            stack.loanAmount0,
+            stack.loanAmount1
         );
     }
 
@@ -364,7 +401,8 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             msg.sender,
             position.epochId,
             position.id,
-            position.depositedCollateralAmount
+            position.depositedCollateralAmount,
+            collateralAmount
         );
     }
 
@@ -399,8 +437,13 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
 
         // due to rounding on the uniswap side, 1 wei is left over on loan amount when opening & immediately closing position
         // it seems like it's always 1 wei lower than original added amount so adding it to collected amount to make sure we don't have any rounding error
-        collectedAmount0 += 1;
-        collectedAmount1 += 1;
+        // @dev notice we are doing it only if the values are non-zero
+        if (collectedAmount0 > 0) {
+            collectedAmount0 += 1;
+        }
+        if (collectedAmount1 > 0) {
+            collectedAmount1 += 1;
+        }
 
         if (collectedAmount0 > position.borrowedVGas) {
             position.vGasAmount = collectedAmount0 - position.borrowedVGas;
