@@ -14,7 +14,7 @@ import {
 } from 'react';
 import React from 'react';
 import { useForm } from 'react-hook-form';
-import type { AbiFunction, WriteContractErrorType } from 'viem';
+import type { AbiFunction } from 'viem';
 import { decodeEventLog, formatUnits, zeroAddress } from 'viem';
 import { mainnet, sepolia } from 'viem/chains';
 import {
@@ -59,7 +59,6 @@ import {
 import { useToast } from '~/hooks/use-toast';
 import { useMarketList } from '~/lib/context/MarketListProvider';
 import { MarketContext } from '~/lib/context/MarketProvider';
-import { getChain } from '~/lib/util/util';
 
 import NumberDisplay from './numberDisplay';
 import SizeInput from './sizeInput';
@@ -580,17 +579,19 @@ const Subscribe: FC<SubscribeProps> = ({
 
   return (
     <Form {...form}>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{marketName} Subscription</h2>
+          <h2 className="text-lg md:text-2xl font-semibold">
+            {marketName} Subscription
+          </h2>
           {showMarketSwitcher && (
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={() => setIsMarketSelectorOpen(true)}
             >
-              <ArrowUpDown className="h-4 w-4" />
+              <ArrowUpDown />
             </Button>
           )}
         </div>

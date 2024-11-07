@@ -48,7 +48,7 @@ const HomeContent = () => {
   }
   return (
     <MarketProvider chainId={chainId} address={marketAddress} epoch={Number(1)}>
-      <div className="flex-1 flex">
+      <div className="flex-1 flex p-6">
         <div className="m-auto border border-border rounded-md p-6 max-w-[460px]">
           <Subscribe showMarketSwitcher />
         </div>
