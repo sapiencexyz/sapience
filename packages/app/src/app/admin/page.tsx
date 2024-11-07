@@ -4,10 +4,41 @@ import axios from 'axios';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import MarketsTable from '~/lib/components/MarketsTable';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import type { RenderJob } from '~/lib/interfaces/interfaces';
+
+const JobStatus = ({
+  job,
+  lastRefresh,
+}: {
+  job: RenderJob;
+  lastRefresh: string;
+}) => {
+  return (
+    <Card className="mt-4">
+      <CardHeader>
+        <CardTitle>Job Status</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-2">
+          {Object.entries(job).map(([key, value]) => (
+            <div className="flex justify-between" key={key}>
+              <p className="font-medium">{key}:</p>
+              <p>{value}</p>
+            </div>
+          ))}
+          <div className="flex justify-between text-sm text-muted-foreground">
+            <p>Last Refresh:</p>
+            <p>{lastRefresh}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 const Admin = () => {
   const [chainId, setChainId] = useState('');
@@ -23,7 +54,6 @@ const Admin = () => {
     const response = await axios.get(
       `${API_BASE_URL}/reindex?chainId=${chainId}&address=${address}`
     );
-    console.log('response', response);
     if (response.data.success && response.data.job) {
       setJob(response.data.job);
     } else {
@@ -38,74 +68,84 @@ const Admin = () => {
     const response = await axios.get(
       `${API_BASE_URL}/reindexStatus?jobId=${job.id}&serviceId=${job.serviceId}`
     );
-    console.log('status response', response);
 
     if (response.data.success && response.data.job) {
       setJob(response.data.job);
       setLastRefresh(new Date().toISOString());
     }
-
-    console.log('response', response);
     setLoadingAction((prev) => ({ ...prev, getStatus: false }));
   };
 
-  const renderJob = () => {
-    if (!job) return;
-    return (
-      <div className="my-4">
-        <p className="font-bold text-lg">Job Status:</p>
-        {Object.entries(job).map(([key, value]) => (
-          <div className="flex justify-between" key={key}>
-            <p className="mr-2 font-bold">{key}:</p>
-            <p>{value}</p>
-          </div>
-        ))}
-        <p>Last Refresh: {lastRefresh}</p>
-      </div>
-    );
-  };
-
   return (
-    <div className="container my-10 min-w-[90vw] mx-10">
+    <div className="w-full my-10 space-y-8">
       <MarketsTable />
-      <div className="max-w-[800px] mx-auto mt-10">
-        <p className="text-xl my-8 font-bold">Reindex</p>
-        <div className="mb-4">
-          <p>Enter Market Address</p>
-          <Input value={address} onChange={(e) => setAddress(e.target.value)} />
-        </div>
-        <div className="mb-4">
-          <p>Enter Chain ID</p>
-          <Input value={chainId} onChange={(e) => setChainId(e.target.value)} />
-        </div>
-        <Button onClick={handleReindex} disabled={loadingAction.reindex}>
-          {loadingAction.reindex ? (
-            <div className="animate-spin">⌛</div>
-          ) : (
-            'Submit'
-          )}
-        </Button>
-        <div className="mt-8">
-          {renderJob()}
-          <div className="mb-4">
-            <p>Service Id:</p>
-            <Input value={job?.serviceId || ''} readOnly />
-          </div>
-          <div className="mb-4">
-            <p>JobId:</p>
-            <Input value={job?.id || ''} readOnly />
-          </div>
-          <Button
-            onClick={handleGetStatus}
-            disabled={!job || loadingAction.getStatus}
-          >
-            {loadingAction.getStatus ? (
-              <div className="animate-spin">⌛</div>
-            ) : (
-              'refresh job status'
-            )}
-          </Button>
-        </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl mx-auto">
+        <Card className="max-w-2xl w-full">
+          <CardHeader>
+            <CardTitle>Reindex Market</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Market Address</p>
+              <Input
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Chain ID</p>
+              <Input
+                value={chainId}
+                onChange={(e) => setChainId(e.target.value)}
+              />
+            </div>
+
+            <Button
+              onClick={handleReindex}
+              disabled={loadingAction.reindex}
+              className="w-full"
+            >
+              {loadingAction.reindex ? (
+                <div className="animate-spin">⌛</div>
+              ) : (
+                'Submit'
+              )}
+            </Button>
+
+            {job ? <JobStatus job={job} lastRefresh={lastRefresh} /> : null}
+          </CardContent>
+        </Card>
+
+        <Card className="max-w-2xl w-full">
+          <CardHeader>
+            <CardTitle>Check Job Status</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Service ID</p>
+              <Input value={job?.serviceId || ''} readOnly />
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Job ID</p>
+              <Input value={job?.id || ''} readOnly />
+            </div>
+
+            <Button
+              onClick={handleGetStatus}
+              disabled={!job || loadingAction.getStatus}
+              className="w-full"
+            >
+              {loadingAction.getStatus ? (
+                <div className="animate-spin">⌛</div>
+              ) : (
+                'Submit'
+              )}
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
