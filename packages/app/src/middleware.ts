@@ -1,9 +1,4 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import IPinfoWrapper from 'node-ipinfo';
-
-const ipinfoWrapper = process.env.IPINFO_TOKEN
-  ? new IPinfoWrapper(process.env.IPINFO_TOKEN)
-  : null;
 
 const GEOFENCED_COUNTRIES = [
   'US',
@@ -23,14 +18,26 @@ function isDebug(req: NextRequest) {
   return hasDebugCookie || hasDebugParam;
 }
 
+async function getIpInfo(ip: string) {
+  const token = process.env.IPINFO_TOKEN;
+  if (!token) return null;
+  
+  const response = await fetch(`https://ipinfo.io/${ip}?token=${token}`);
+  if (!response.ok) return null;
+  
+  return await response.json();
+}
+
 async function isGeofenced(req: NextRequest) {
-  if (!ipinfoWrapper) return false;
+  if (!process.env.IPINFO_TOKEN) return false;
   if (!req.ip) return true;
 
   if (isDebug(req)) return false;
 
-  const response = await ipinfoWrapper.lookupIp(req.ip);
-  return GEOFENCED_COUNTRIES.includes(response.country) || response.privacy.vpn;
+  const ipInfo = await getIpInfo(req.ip);
+  if (!ipInfo) return true;
+  
+  return GEOFENCED_COUNTRIES.includes(ipInfo.country) || ipInfo.privacy?.vpn;
 }
 
 export async function middleware(request: NextRequest) {
