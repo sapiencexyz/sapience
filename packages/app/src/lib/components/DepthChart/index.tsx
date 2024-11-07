@@ -181,14 +181,14 @@ const CustomTooltip: React.FC<
     >
       {(tick.tickIdx <= pool.tickCurrent || tick.isCurrent) && (
         <p>
-          {pool.token0.symbol} Liquidity:{' '}
-          {tick.liquidityLockedToken0.toFixed(3)}
+          {pool.token1.symbol} Liquidity:{' '}
+          {(tick.liquidityLockedToken1 / tick.price0).toFixed(3)}
         </p>
       )}
       {(tick.tickIdx >= pool.tickCurrent || tick.isCurrent) && (
         <p>
-          {pool.token1.symbol} Liquidity:{' '}
-          {tick.liquidityLockedToken1.toFixed(3)}
+          {pool.token0.symbol} Liquidity:{' '}
+          {(tick.liquidityLockedToken0 / tick.price0).toFixed(3)}
         </p>
       )}
       <p>Tick {tick.tickIdx}</p>
