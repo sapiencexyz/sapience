@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
+import html403 from './lib/403.html?raw';
+
 const GEOFENCED_COUNTRIES = [
   'US',
   'BY',
@@ -47,11 +49,16 @@ export async function middleware(request: NextRequest) {
   }
 
   if (process.env.NODE_ENV === 'production' && (await isGeofenced(request))) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    return new NextResponse(html403, {
+      status: 403,
+      headers: {
+        'Content-Type': 'text/html',
+      },
+    });
   }
   return response;
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  matcher: '/:path*',
 };
