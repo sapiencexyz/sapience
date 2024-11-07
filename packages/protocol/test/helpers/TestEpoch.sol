@@ -269,9 +269,6 @@ contract TestEpoch is TestUser {
         data.feeGrowthGlobal1X128 = IUniswapV3Pool(data.pool)
             .feeGrowthGlobal1X128();
 
-        console2.log("feeGrowthGlobal0X128", data.feeGrowthGlobal0X128);
-        console2.log("feeGrowthGlobal1X128", data.feeGrowthGlobal1X128);
-
         (, , , data.pool, , , , , , , ) = foil.getLatestEpoch();
 
         bytes32 positionKey = keccak256(
@@ -302,6 +299,5 @@ contract TestEpoch is TestUser {
 
         owed0 = uint256(data.tokensOwed0) + tokensOwed0Additional;
         owed1 = uint256(data.tokensOwed1) + tokensOwed1Additional;
-        console2.log("OUT OF GETOWEDTOKENS");
     }
 }
