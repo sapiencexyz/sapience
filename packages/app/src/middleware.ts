@@ -1,9 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import IPinfoWrapper from 'node-ipinfo';
 
-const ipinfoWrapper = process.env.IPINFO_TOKEN
-  ? new IPinfoWrapper(process.env.IPINFO_TOKEN)
-  : null;
+import html403 from './lib/403.html?raw';
 
 const GEOFENCED_COUNTRIES = [
   'US',
@@ -23,14 +20,26 @@ function isDebug(req: NextRequest) {
   return hasDebugCookie || hasDebugParam;
 }
 
+async function getIpInfo(ip: string) {
+  const token = process.env.IPINFO_TOKEN;
+  if (!token) return null;
+
+  const response = await fetch(`https://ipinfo.io/${ip}?token=${token}`);
+  if (!response.ok) return null;
+
+  return response.json();
+}
+
 async function isGeofenced(req: NextRequest) {
-  if (!ipinfoWrapper) return false;
+  if (!process.env.IPINFO_TOKEN) return false;
   if (!req.ip) return true;
 
   if (isDebug(req)) return false;
 
-  const response = await ipinfoWrapper.lookupIp(req.ip);
-  return GEOFENCED_COUNTRIES.includes(response.country) || response.privacy.vpn;
+  const ipInfo = await getIpInfo(req.ip);
+  if (!ipInfo) return true;
+
+  return GEOFENCED_COUNTRIES.includes(ipInfo.country) || ipInfo.privacy?.vpn;
 }
 
 export async function middleware(request: NextRequest) {
@@ -40,8 +49,11 @@ export async function middleware(request: NextRequest) {
   }
 
   if (process.env.NODE_ENV === 'production' && (await isGeofenced(request))) {
-    return new NextResponse('Forbidden', {
+    return new NextResponse(html403, {
       status: 403,
+      headers: {
+        'Content-Type': 'text/html',
+      },
     });
   }
   return response;
