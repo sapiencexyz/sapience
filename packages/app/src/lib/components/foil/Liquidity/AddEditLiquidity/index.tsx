@@ -37,7 +37,7 @@ import {
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
-import { getTokenAmountsFromNewLiqudity } from '~/lib/util/liqudityUtil';
+import { getTokenAmountsFromNewLiqudity } from '~/lib/util/liquidityUtil';
 
 // TODO 1% - Hardcoded for now, should be retrieved with pool.tickSpacing()
 // Also move this a to helper?
@@ -291,16 +291,30 @@ const AddEditLiquidity: React.FC = () => {
       )
     );
   }, [positionData, collateralAssetDecimals]);
-  const isDecrease = isEdit && Number(depositAmount) < positionCollateralAmount;
+  const isDecrease = isEdit && Number(modifyLiquidity) < 100;
 
   const newLiquidity = useMemo(() => {
     if (!liquidity) return BigInt(0);
-    const jsbiNewLiq = JSBI.multiply(
-      JSBI.BigInt(liquidity.toString()),
-      JSBI.BigInt(modifyLiquidity)
+    const jsbiNewLiq = JSBI.divide(
+      JSBI.multiply(
+        JSBI.BigInt(liquidity.toString()),
+        JSBI.BigInt(modifyLiquidity)
+      ),
+      JSBI.BigInt(100)
     );
     return BigInt(jsbiNewLiq.toString());
   }, [modifyLiquidity, liquidity]);
+
+  const { data: requiredCollateral } = useReadContract({
+    abi: foilData.abi,
+    address: marketAddress as `0x${string}`,
+    functionName: 'quoteRequiredCollateral',
+    args: [nftId, newLiquidity],
+    query: {
+      enabled: Boolean(isEdit),
+    },
+    chainId,
+  }) as { data: bigint | undefined };
 
   // same as token0/tokenA/gasToken
   const baseToken = useMemo(() => {
@@ -352,34 +366,52 @@ const AddEditLiquidity: React.FC = () => {
     );
   }, [allowanceData, collateralAssetDecimals]);
 
-  const positionCollateralAfter = useMemo(() => {
+  const positionCollateralAfter: number = useMemo(() => {
     if (!isEdit) return parseFloat(depositAmount || '0');
 
     // TODO: FIX THIS ONCE WE HAVE THE QUOTE FUNCTION
+    // if increasing
+    if (!isDecrease) {
+      return Number(
+        formatUnits(requiredCollateral || BigInt(0), collateralAssetDecimals)
+      );
+    }
+    // if decreasing
     return parseFloat(depositAmount || '0');
-  }, [isEdit, depositAmount, positionCollateralAmount]);
+  }, [
+    isEdit,
+    depositAmount,
+    isDecrease,
+    requiredCollateral,
+    collateralAssetDecimals,
+  ]);
 
   const finalDelta: bigint = useMemo(() => {
-    // Double-check the delta before submission
-    const newDepositAmountBigInt = parseUnits(
-      depositAmount !== '' ? depositAmount : '0',
-      collateralAssetDecimals
-    );
+    if (!isEdit) {
+      // Double-check the delta before submission
+      const newDepositAmountBigInt = parseUnits(
+        depositAmount !== '' ? depositAmount : '0',
+        collateralAssetDecimals
+      );
 
-    const currentDepositAmountBigInt = BigInt(
-      positionData?.depositedCollateralAmount || 0
-    );
-    const calculatedDelta = newDepositAmountBigInt - currentDepositAmountBigInt;
+      const currentDepositAmountBigInt = BigInt(
+        positionData?.depositedCollateralAmount || 0
+      );
+      const calculatedDelta =
+        newDepositAmountBigInt - currentDepositAmountBigInt;
 
-    // Use the calculated delta if it differs from the state (shouldn't happen, but just in case)
-    return calculatedDelta !== collateralAmountDelta
-      ? calculatedDelta
-      : collateralAmountDelta;
+      // Use the calculated delta if it differs from the state (shouldn't happen, but just in case)
+      return calculatedDelta !== collateralAmountDelta
+        ? calculatedDelta
+        : collateralAmountDelta;
+    }
+    return BigInt(0);
   }, [
     depositAmount,
     positionData,
     collateralAssetDecimals,
     collateralAmountDelta,
+    isEdit,
   ]);
 
   const requireApproval: boolean = useMemo(() => {
@@ -405,20 +437,39 @@ const AddEditLiquidity: React.FC = () => {
   }, [txnSuccessMsg, txnStep]);
 
   useEffect(() => {
-    const calculateDelta = () => {
-      const newDepositAmountBigInt = parseUnits(
+    const getNewDepositAmount = (): bigint => {
+      if (isEdit) {
+        // if increasing
+        if (!isDecrease) {
+          return requiredCollateral || BigInt(0);
+        }
+        // TODO:
+        // if decreasing
+        return BigInt(0);
+      }
+      return parseUnits(
         depositAmount !== '' ? depositAmount : '0',
         collateralAssetDecimals
       );
+    };
+
+    const calculateDelta = () => {
+      const newDepositAmountBigInt = getNewDepositAmount();
       const currentDepositAmountBigInt = BigInt(
         positionData?.depositedCollateralAmount || 0
       );
       return newDepositAmountBigInt - currentDepositAmountBigInt;
     };
 
-    // TODO: FIX THIS ONCE WE HAVE THE QUOTE FUNCTION
     setCollateralAmountDelta(calculateDelta());
-  }, [depositAmount, positionData, collateralAssetDecimals]);
+  }, [
+    depositAmount,
+    positionData,
+    collateralAssetDecimals,
+    isDecrease,
+    isEdit,
+    requiredCollateral,
+  ]);
 
   useEffect(() => {
     if (isEdit && positionData) {
@@ -598,7 +649,7 @@ const AddEditLiquidity: React.FC = () => {
   const handleCreateOrIncreaseLiquidity = () => {
     const deadline = getCurrentDeadline();
     if (isEdit) {
-      if (!liquidity) {
+      if (!liquidity || !requiredCollateral) {
         console.log('noliquidity found');
         resetAfterError();
         return;
@@ -622,7 +673,7 @@ const AddEditLiquidity: React.FC = () => {
         args: [
           {
             positionId: nftId,
-            collateralAmount: collateralAmountDelta, // TODO: get this from quote function
+            collateralAmount: requiredCollateral,
             gasTokenAmount: gasAmountDelta,
             ethTokenAmount: ethAmountDelta,
             minGasAmount: minEthAmountDelta,
@@ -828,11 +879,16 @@ const AddEditLiquidity: React.FC = () => {
     }
   }, [nftId, positionData, isEdit, setValue]);
 
+  console.log('requiredCollateral', requiredCollateral);
+
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit(handleFormSubmit)}>
         <h2 className="text-xl font-semibold mb-3">Pool Liquidity</h2>
-
+        <div> requiredCollateral {requiredCollateral?.toString()}</div>
+        <div> liquidity {liquidity?.toString()}</div>
+        <div> new liquidity {newLiquidity.toString()}</div>
+        <div> modifyLiquidity {modifyLiquidity}</div>
         <LiquidityAmountInput
           isEdit={isEdit}
           walletBalance={walletBalance}
