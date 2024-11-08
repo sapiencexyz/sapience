@@ -7,19 +7,10 @@ import { BarChart, ResponsiveContainer, XAxis, Tooltip, Bar } from 'recharts';
 
 const barColor = 'rgba(0, 0, 0, 0.5)';
 
-const generateData = () => {
-  return Array.from({ length: 50 }, (_, i) => ({
-    id: i,
-    value: Math.floor(Math.random() * (1000 - 100 + 1)) + 100, // Random value between 100 and 1000
-    timestamp: Date.now() + i * 1000 * 60 * 60, // hourly intervals
-  }));
-};
-
-const SimpleBarChart = () => {
+const SimpleBarChart = ({ data }: { data: any[] }) => {
   const [value, setValue] = useState<string>('');
   const [prevValue, setPrevValue] = useState<number>(0);
   const [label, setLabel] = useState<string>('');
-  const [data] = useState(() => generateData());
 
   return (
     <div className="flex flex-1 relative w-full h-[100px]">

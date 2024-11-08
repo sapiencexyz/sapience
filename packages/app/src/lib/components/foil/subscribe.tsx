@@ -96,7 +96,6 @@ const Subscribe: FC<SubscribeProps> = ({
   const [fillPriceInEth, setFillPriceInEth] = useState<bigint>(BigInt(0));
   const [txnStep, setTxnStep] = useState(0);
   const [isMarketSelectorOpen, setIsMarketSelectorOpen] = useState(false);
-  const [walletAddressInput, setWalletAddressInput] = useState<string>('');
   const [isEstimating, setIsEstimating] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [estimationResults, setEstimationResults] = useState<{
@@ -104,6 +103,7 @@ const Subscribe: FC<SubscribeProps> = ({
     ethPaid: number;
     avgGasPerTx: number;
     avgGasPrice: number;
+    chartData: { timestamp: number; value: number }[];
   } | null>(null);
 
   // Form setup
@@ -546,6 +546,7 @@ const Subscribe: FC<SubscribeProps> = ({
         ethPaid: data.ethPaid || 0,
         avgGasPerTx: data.avgGasPerTx || 0,
         avgGasPrice: data.avgGasPrice || 0,
+        chartData: data.chartData || [],
       });
     } catch (error) {
       toast({
@@ -763,7 +764,7 @@ const Subscribe: FC<SubscribeProps> = ({
                     }}
                   >
                     <div className="mb-5">
-                      <SimpleBarChart />
+                      <SimpleBarChart data={estimationResults.chartData} />
                     </div>
                     <p className="text-lg mb-2">
                       {form.getValues('walletAddress')} used{' '}
