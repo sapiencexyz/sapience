@@ -426,6 +426,15 @@ const Subscribe: FC<SubscribeProps> = ({
   };
 
   const renderActionButton = () => {
+    if (isLoadingCollateralChange) {
+      return (
+        <Button className="w-full" size="lg" disabled>
+          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          <span>Generating Quote</span>
+        </Button>
+      );
+    }
+
     if (!isConnected) {
       return (
         <Button
@@ -452,28 +461,14 @@ const Subscribe: FC<SubscribeProps> = ({
 
     const isDisabled =
       pendingTxn ||
-      isLoadingCollateralChange ||
       Boolean(quoteError) ||
       BigInt(formValues.size) <= BigInt(0);
 
     return (
       <Button className="w-full" size="lg" type="submit" disabled={isDisabled}>
-        {(() => {
-          if (isLoadingCollateralChange) {
-            return (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Generating Quote</span>
-              </>
-            );
-          }
-
-          if (requireApproval) {
-            return `Approve ${collateralAssetTicker} Transfer`;
-          }
-
-          return 'Create Subscription';
-        })()}
+        {requireApproval
+          ? `Approve ${collateralAssetTicker} Transfer`
+          : 'Create Subscription'}
       </Button>
     );
   };
@@ -624,7 +619,7 @@ const Subscribe: FC<SubscribeProps> = ({
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-2.5">
           <h2 className="text-xl md:text-2xl font-semibold">
             {marketName} Subscription
           </h2>
@@ -635,15 +630,15 @@ const Subscribe: FC<SubscribeProps> = ({
               variant="outline"
               size="sm"
               onClick={() => setIsMarketSelectorOpen(true)}
-              className="shadow-sm"
+              className="px-2.5"
             >
               <ArrowUpDown />
             </Button>
           )}
         </div>
 
-        <div className="flex items-center flex-col mb-4">
-          <p className="mb-4">
+        <div className="flex items-center flex-col mb-6">
+          <p className="mb-6">
             Enter the amount of gas you expect to use between{' '}
             {formattedStartTime} and {formattedEndTime}.
           </p>
@@ -709,7 +704,7 @@ const Subscribe: FC<SubscribeProps> = ({
                       control={form.control}
                       name="walletAddress"
                       render={({ field }) => (
-                        <FormItem className="space-y-1">
+                        <FormItem>
                           <FormLabel>Wallet Address</FormLabel>
                           <FormControl>
                             <Input
@@ -785,7 +780,7 @@ const Subscribe: FC<SubscribeProps> = ({
                         {estimationResults.avgGasPrice} gwei.
                       </p>
                     </div>
-                    <div className="border border-border p-5 rounded-lg shadow-sm bg-primary/5">
+                    <div className="border border-border p-6 rounded-lg shadow-sm bg-primary/5">
                       <p className="mb-4">
                         Generate a quote for a subscription of this much gas
                         over {formattedDuration}, starting {formattedStartTime}.
@@ -820,7 +815,7 @@ const Subscribe: FC<SubscribeProps> = ({
                 label="Gas Amount"
                 {...field}
               />
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-muted-foreground mt-2">
                 If the average gas price exceeds the quote during the period,
                 you can redeem a rebate.
               </p>
@@ -835,7 +830,7 @@ const Subscribe: FC<SubscribeProps> = ({
                 <TooltipTrigger>
                   <p className="text-red-500 text-sm font-medium flex items-center">
                     <span className="mr-2">
-                      Foil was unable to generate a quote
+                      Foil was unable to generate a quote.
                     </span>{' '}
                     <HelpCircle className="h-4 w-4" />
                   </p>
