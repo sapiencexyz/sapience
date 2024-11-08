@@ -469,7 +469,7 @@ const Subscribe: FC<SubscribeProps> = ({
             return (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Loading Quote</span>
+                <span>Generating Quote</span>
               </>
             );
           }
@@ -632,7 +632,7 @@ const Subscribe: FC<SubscribeProps> = ({
     <Form {...form}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg md:text-2xl font-semibold">
+          <h2 className="text-xl md:text-2xl font-semibold">
             {marketName} Subscription
           </h2>
 
@@ -666,8 +666,8 @@ const Subscribe: FC<SubscribeProps> = ({
         </div>
 
         <Dialog open={isAnalyticsOpen} onOpenChange={setIsAnalyticsOpen}>
-          <DialogContent>
-            <DialogHeader className="flex flex-row items-center">
+          <DialogContent className="max-w-96">
+            <DialogHeader className="relative">
               <AnimatePresence>
                 {estimationResults && (
                   <motion.div
@@ -675,10 +675,12 @@ const Subscribe: FC<SubscribeProps> = ({
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
                     transition={{ duration: 0.2 }}
+                    className="absolute left-0"
                   >
                     <Button
                       variant="ghost"
                       size="sm"
+                      className="p-0"
                       onClick={() => setEstimationResults(null)}
                     >
                       ← Back
@@ -687,7 +689,7 @@ const Subscribe: FC<SubscribeProps> = ({
                 )}
               </AnimatePresence>
 
-              <DialogTitle className="text-center">
+              <DialogTitle className="pt-0.5">
                 Estimate Gas Usage
               </DialogTitle>
             </DialogHeader>
@@ -785,7 +787,7 @@ const Subscribe: FC<SubscribeProps> = ({
                 {...field}
               />
               <p className="text-sm text-muted-foreground">
-                If the average gas price exceeds this quote during the period,
+                If the average gas price exceeds the quote during the period,
                 you can redeem a rebate.
               </p>
               {quoteError && (
