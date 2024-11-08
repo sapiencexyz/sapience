@@ -133,6 +133,11 @@ const AddEditLiquidity: React.FC = () => {
   const { openConnectModal } = useConnectModal();
   const router = useRouter();
 
+  const isDecrease = isEdit && Number(modifyLiquidity) < 100;
+  const isAmountUnchanged =
+    (isEdit && Number(modifyLiquidity) === 100) ||
+    (!isEdit && (!depositAmount || Number(depositAmount) === 0));
+
   /// //// READ CONTRACT HOOKS ///////
   const { data: positionData, refetch: refetchPosition } = useReadContract({
     abi: foilData.abi,
@@ -234,6 +239,7 @@ const AddEditLiquidity: React.FC = () => {
     useWriteContract({
       mutation: {
         onError: (error) => {
+          console.error(' Failed to increase liquidity', error);
           resetAfterError();
           toast({
             variant: 'destructive',
@@ -291,7 +297,6 @@ const AddEditLiquidity: React.FC = () => {
       )
     );
   }, [positionData, collateralAssetDecimals]);
-  const isDecrease = isEdit && Number(modifyLiquidity) < 100;
 
   const newLiquidity = useMemo(() => {
     if (!liquidity) return BigInt(0);
@@ -369,22 +374,10 @@ const AddEditLiquidity: React.FC = () => {
   const positionCollateralAfter: number = useMemo(() => {
     if (!isEdit) return parseFloat(depositAmount || '0');
 
-    // TODO: FIX THIS ONCE WE HAVE THE QUOTE FUNCTION
-    // if increasing
-    if (!isDecrease) {
-      return Number(
-        formatUnits(requiredCollateral || BigInt(0), collateralAssetDecimals)
-      );
-    }
-    // if decreasing
-    return parseFloat(depositAmount || '0');
-  }, [
-    isEdit,
-    depositAmount,
-    isDecrease,
-    requiredCollateral,
-    collateralAssetDecimals,
-  ]);
+    return Number(
+      formatUnits(requiredCollateral || BigInt(0), collateralAssetDecimals)
+    );
+  }, [isEdit, depositAmount, requiredCollateral, collateralAssetDecimals]);
 
   const finalDelta: bigint = useMemo(() => {
     if (!isEdit) {
@@ -439,13 +432,7 @@ const AddEditLiquidity: React.FC = () => {
   useEffect(() => {
     const getNewDepositAmount = (): bigint => {
       if (isEdit) {
-        // if increasing
-        if (!isDecrease) {
-          return requiredCollateral || BigInt(0);
-        }
-        // TODO:
-        // if decreasing
-        return BigInt(0);
+        return requiredCollateral || BigInt(0);
       }
       return parseUnits(
         depositAmount !== '' ? depositAmount : '0',
@@ -556,20 +543,26 @@ const AddEditLiquidity: React.FC = () => {
 
   // handle token amounts error
   useEffect(() => {
-    toast({
-      title: 'Failed to fetch token amounts',
-      description: tokenAmountsError?.message,
-      duration: 5000,
-    });
+    if (tokenAmountsError) {
+      console.error('tokenAmountsError:', tokenAmountsError);
+      toast({
+        title: 'Failed to fetch token amounts',
+        description: tokenAmountsError?.message,
+        duration: 5000,
+      });
+    }
   }, [tokenAmountsError, toast]);
 
   // hanlde uniswap error
   useEffect(() => {
-    toast({
-      title: 'Failed to get position from uniswap',
-      description: uniswapPositionError?.message,
-      duration: 5000,
-    });
+    if (uniswapPositionError) {
+      console.error('uniswapPositionError: ', uniswapPositionError);
+      toast({
+        title: 'Failed to get position from uniswap',
+        description: uniswapPositionError?.message,
+        duration: 5000,
+      });
+    }
   }, [uniswapPositionError, toast]);
 
   useEffect(() => {
@@ -844,16 +837,8 @@ const AddEditLiquidity: React.FC = () => {
       );
     }
 
-    const isAmountUnchanged =
-      isEdit && depositAmount === positionCollateralAmount.toString();
-    const isBlankDeposit = depositAmount === '' || !Number(depositAmount);
-
     const isDisabled =
-      pendingTxn ||
-      isFetching ||
-      (!isEdit && isBlankDeposit) ||
-      (isEdit && isAmountUnchanged) ||
-      !isValid;
+      pendingTxn || isFetching || isAmountUnchanged || !isValid;
 
     return (
       <Button className="w-full" size="lg" type="submit" disabled={isDisabled}>
@@ -879,16 +864,10 @@ const AddEditLiquidity: React.FC = () => {
     }
   }, [nftId, positionData, isEdit, setValue]);
 
-  console.log('requiredCollateral', requiredCollateral);
-
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit(handleFormSubmit)}>
         <h2 className="text-xl font-semibold mb-3">Pool Liquidity</h2>
-        <div> requiredCollateral {requiredCollateral?.toString()}</div>
-        <div> liquidity {liquidity?.toString()}</div>
-        <div> new liquidity {newLiquidity.toString()}</div>
-        <div> modifyLiquidity {modifyLiquidity}</div>
         <LiquidityAmountInput
           isEdit={isEdit}
           walletBalance={walletBalance}
@@ -939,6 +918,33 @@ const AddEditLiquidity: React.FC = () => {
               <NumberDisplay value={minAmountTokenB} />)
             </p>
           </div>
+          {isEdit && (
+            <div>
+              <p className="text-sm text-gray-600 font-semibold mb-0.5">
+                Liquidity
+              </p>
+              <p className="text-sm text-gray-600 mb-0.5">
+                <NumberDisplay
+                  value={formatUnits(
+                    liquidity || BigInt(0),
+                    collateralAssetDecimals
+                  )}
+                />{' '}
+                {!isAmountUnchanged && (
+                  <>
+                    {' '}
+                    →{' '}
+                    <NumberDisplay
+                      value={formatUnits(
+                        newLiquidity || BigInt(0),
+                        collateralAssetDecimals
+                      )}
+                    />{' '}
+                  </>
+                )}
+              </p>
+            </div>
+          )}
 
           {isEdit && (
             <div>
@@ -948,7 +954,7 @@ const AddEditLiquidity: React.FC = () => {
               <p className="text-sm text-gray-600 mb-0.5">
                 <NumberDisplay value={positionCollateralAmount} />{' '}
                 {collateralAssetTicker}
-                {positionCollateralAmount !== positionCollateralAfter && (
+                {!isAmountUnchanged && (
                   <>
                     {' '}
                     → <NumberDisplay value={positionCollateralAfter} />{' '}
@@ -961,17 +967,21 @@ const AddEditLiquidity: React.FC = () => {
 
           {isConnected &&
             walletBalance !== null &&
-            walletBalanceAfter !== null &&
-            walletBalance !== walletBalanceAfter && (
+            walletBalanceAfter !== null && (
               <div>
                 <p className="text-sm text-gray-600 font-semibold mb-0.5">
                   Wallet Balance
                 </p>
                 <p className="text-sm text-gray-600 mb-0.5">
                   <NumberDisplay value={walletBalance} />{' '}
-                  {collateralAssetTicker} →{' '}
-                  <NumberDisplay value={walletBalanceAfter} />{' '}
                   {collateralAssetTicker}
+                  {!isAmountUnchanged && (
+                    <>
+                      {' '}
+                      → <NumberDisplay value={walletBalanceAfter} />{' '}
+                      {collateralAssetTicker}
+                    </>
+                  )}
                 </p>
               </div>
             )}

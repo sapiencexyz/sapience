@@ -354,8 +354,8 @@ export const getTokenAmountsFromNewLiqudity = (
   tickUpper: number,
   slippage: number
 ): {
-  gasAmountDelta: number;
-  ethAmountDelta: number;
+  gasAmountDelta: bigint;
+  ethAmountDelta: bigint;
   minGasAmountDelta: bigint;
   minEthAmountDelta: bigint;
   liquidityDelta: string;
@@ -369,25 +369,8 @@ export const getTokenAmountsFromNewLiqudity = (
     JSBI.subtract(liquidityJSBI, newLiquidityJSBI)
   );
 
-  // Get amounts for total liquidity, not just the new liquidity
-  const { amount0, amount1 } = getTokenAmountsFromLiquidity(
-    tickLower,
-    tickUpper,
-    liquidityJSBI
-  );
-
-  // Calculate the proportion of liquidity being removed
-  const proportion = JSBI.divide(liquidityDelta, liquidityJSBI);
-
-  // Calculate the amounts being removed
-  const amount0Delta = JSBI.divide(
-    JSBI.multiply(amount0, proportion),
-    JSBI.BigInt(1e18)
-  );
-  const amount1Delta = JSBI.divide(
-    JSBI.multiply(amount1, proportion),
-    JSBI.BigInt(1e18)
-  );
+  const { amount0: amount0Delta, amount1: amount1Delta } =
+    getTokenAmountsFromLiquidity(tickLower, tickUpper, liquidityDelta);
 
   // Convert amounts to decimal strings
   const amount0Decimal =
@@ -409,8 +392,8 @@ export const getTokenAmountsFromNewLiqudity = (
     TOKEN_DECIMALS
   );
   return {
-    gasAmountDelta: amount0Decimal,
-    ethAmountDelta: amount1Decimal,
+    gasAmountDelta: BigInt(amount0Delta.toString()),
+    ethAmountDelta: BigInt(amount1Delta.toString()),
     minGasAmountDelta: parsedMinAmount0,
     minEthAmountDelta: parsedMinAmount1,
     liquidityDelta: liquidityDelta.toString(),
