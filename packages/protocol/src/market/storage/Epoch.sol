@@ -3,7 +3,7 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
-import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
+import "../libraries/DecimalMath.sol";
 
 import "../external/VirtualToken.sol";
 import "../libraries/DecimalPrice.sol";

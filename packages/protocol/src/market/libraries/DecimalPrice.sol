@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.25 <0.9.0;
 
-import {FullMath} from "../external/univ3/FullMath.sol";
-
 library DecimalPrice {
     function sqrtRatioX96ToPrice(
         uint160 sqrtRatioX96
