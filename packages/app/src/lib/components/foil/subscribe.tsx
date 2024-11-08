@@ -1,11 +1,10 @@
 'use client';
 
 import { formatDuration, intervalToDuration } from 'date-fns';
-import { ArrowUpDown, HelpCircle, Loader2 } from 'lucide-react';
+import { ArrowUpDown, ChartNoAxesColumn, HelpCircle, Loader2 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   type FC,
-  type FormEvent,
   useState,
   useEffect,
   useContext,
@@ -15,7 +14,7 @@ import {
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import type { AbiFunction } from 'viem';
-import { decodeEventLog, formatUnits, zeroAddress } from 'viem';
+import { decodeEventLog, formatUnits, zeroAddress, isAddress } from 'viem';
 import { mainnet, sepolia } from 'viem/chains';
 import {
   useWaitForTransactionReceipt,
@@ -27,18 +26,14 @@ import {
   useSwitchChain,
   useConnect,
 } from 'wagmi';
+import { createPublicClient, http } from 'viem';
 
 import erc20ABI from '../../erc20abi.json';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '~/components/ui/accordion';
 import { Button } from '~/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '~/components/ui/dialog';
@@ -70,6 +65,13 @@ interface SubscribeProps {
   showMarketSwitcher?: boolean;
 }
 
+const publicClient = createPublicClient({
+  chain: mainnet,
+  transport: process.env.NEXT_PUBLIC_INFURA_API_KEY
+    ? http(`https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`)
+    : http('https://ethereum-rpc.publicnode.com'),
+});
+
 const Subscribe: FC<SubscribeProps> = ({
   marketAddress: propMarketAddress,
   chainId: propChainId,
@@ -87,9 +89,13 @@ const Subscribe: FC<SubscribeProps> = ({
   const [isMarketSelectorOpen, setIsMarketSelectorOpen] = useState(false);
   const [walletAddressInput, setWalletAddressInput] = useState<string>('');
   const [isEstimating, setIsEstimating] = useState(false);
-  const [accordionIndex, setAccordionIndex] = useState<string | undefined>(
-    undefined
-  );
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+  const [estimationResults, setEstimationResults] = useState<{
+    totalGasUsed: number;
+    ethPaid: number;
+    avgGasPerTx: number;
+    avgGasPrice: number;
+  } | null>(null);
 
   // Form setup
   const form = useForm({
@@ -346,8 +352,13 @@ const Subscribe: FC<SubscribeProps> = ({
     }
   }, [fillPrice, collateralAssetDecimals, stEthPerToken]);
 
-  // Update onSubmit to use the single formValues definition
+  // Update onSubmit to check for dialog interactions
   const onSubmit = async (values: any) => {
+    // Return early if we're just opening/closing dialogs
+    if (isMarketSelectorOpen || isAnalyticsOpen) {
+      return;
+    }
+
     if (BigInt(formValues.size) === BigInt(0)) {
       toast({
         title: 'Invalid size',
@@ -469,17 +480,12 @@ const Subscribe: FC<SubscribeProps> = ({
   const marketName =
     markets.find((m) => m.address === marketAddress)?.name || 'Choose Market';
 
-  useEffect(() => {
-    if (address) {
-      setWalletAddressInput(address);
-    }
-  }, [address]);
-
   const handleEstimateUsage = async () => {
-    if (!walletAddressInput) {
+    const formWalletAddress = form.getValues('walletAddress');
+    if (!formWalletAddress) {
       toast({
         title: 'Invalid Address',
-        description: 'Please enter a wallet address to estimate usage.',
+        description: 'Please enter a wallet address or ENS name.',
         duration: 3000,
       });
       return;
@@ -487,6 +493,27 @@ const Subscribe: FC<SubscribeProps> = ({
 
     setIsEstimating(true);
     try {
+      let resolvedAddress = formWalletAddress;
+      if (!isAddress(formWalletAddress)) {
+        try {
+          const ensAddress = await publicClient.getEnsAddress({
+            name: formWalletAddress,
+          });
+          if (!ensAddress) {
+            throw new Error('Could not resolve ENS name');
+          }
+          resolvedAddress = ensAddress;
+        } catch (error) {
+          toast({
+            title: 'Invalid Address',
+            description: 'Please enter a valid wallet address or ENS name.',
+            duration: 3000,
+          });
+          setIsEstimating(false);
+          return;
+        }
+      }
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_FOIL_API_URL}/estimate`,
         {
@@ -495,7 +522,7 @@ const Subscribe: FC<SubscribeProps> = ({
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            walletAddress: walletAddressInput,
+            walletAddress: resolvedAddress,
             chainId: finalChainId,
             marketAddress: finalMarketAddress,
             epochId: finalEpoch,
@@ -507,28 +534,15 @@ const Subscribe: FC<SubscribeProps> = ({
         throw new Error('Failed to fetch estimate');
       }
 
-      const duration = formatDuration(
-        intervalToDuration({
-          start: Number(startTime) * 1000,
-          end: Number(endTime) * 1000,
-        })
-      );
       const data = await response.json();
-      setSizeValue(BigInt(Math.floor(data.totalGasUsed)));
-      setAccordionIndex(undefined);
-      if (sizeValue === BigInt(0)) {
-        toast({
-          title: 'Estimate Complete',
-          description: `This wallet hasn't used any gas in the last ${duration}.`,
-          duration: 5000,
-        });
-      } else {
-        toast({
-          title: 'Estimate Complete',
-          description: `Gas amount has been populated based on this wallet's usage in the last ${duration}.`,
-          duration: 5000,
-        });
-      }
+      // Store the results instead of closing the modal
+      setEstimationResults({
+        totalGasUsed: data.totalGasUsed,
+        ethPaid: data.ethPaid || 0,
+        avgGasPerTx: data.avgGasPerTx || 0,
+        avgGasPrice: data.avgGasPrice || 0,
+      });
+      
     } catch (error) {
       toast({
         title: 'Estimation Failed',
@@ -542,6 +556,18 @@ const Subscribe: FC<SubscribeProps> = ({
 
   const formattedStartTime = startTime ? formatDate(Number(startTime)) : '';
   const formattedEndTime = endTime ? formatDate(Number(endTime)) : '';
+
+  // Add this new formatted duration calculation
+  const formattedDuration = useMemo(() => {
+    if (!startTime || !endTime) return '';
+    
+    const duration = intervalToDuration({
+      start: new Date(Number(startTime) * 1000),
+      end: new Date(Number(endTime) * 1000)
+    });
+
+    return formatDuration(duration, { format: ['months', 'days'] });
+  }, [startTime, endTime]);
 
   // Now we can define collateralDeltaLimit after allowance is initialized
   const collateralDeltaLimit = useMemo(() => {
@@ -580,82 +606,110 @@ const Subscribe: FC<SubscribeProps> = ({
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+
         <div className="flex items-center justify-between">
           <h2 className="text-lg md:text-2xl font-semibold">
             {marketName} Subscription
           </h2>
+
           {showMarketSwitcher && (
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => setIsMarketSelectorOpen(true)}
+              className="shadow-sm"
             >
               <ArrowUpDown />
             </Button>
           )}
         </div>
 
-        <div className="flex items-center gap-1">
-          <TooltipProvider delayDuration={0}>
-            <Tooltip>
-              <p>
+        <div className="flex items-center gap-1 flex-col">
+              <p className="mb-1">
                 Enter the amount of gas you expect to use between{' '}
                 {formattedStartTime} and {formattedEndTime}.
-                <TooltipTrigger asChild>
-                  <HelpCircle className="inline-block h-4 w-4 text-muted-foreground ml-1 relative top-[-3px]" />
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-xs">
-                  <p>
-                    If the average gas price in this time exceeds the quote
-                    you&apos;re provided in gwei, you will be able to redeem a
-                    rebate from Foil at the end of this period.
-                  </p>
-                </TooltipContent>
               </p>
-            </Tooltip>
-          </TooltipProvider>
+
+              <Button
+                variant="outline"
+                onClick={() => setIsAnalyticsOpen(true)}
+                className="w-full shadow-sm"
+              >
+                <ChartNoAxesColumn className="text-muted-foreground" />Wallet Analytics
+              </Button>
         </div>
 
-        <Accordion
-          type="single"
-          collapsible
-          value={accordionIndex}
-          onValueChange={(val) => setAccordionIndex(val)}
-        >
-          <AccordionItem value="0" className="border-none">
-            <AccordionTrigger className="text-sm uppercase font-medium text-muted-foreground">
-              Estimate Gas Usage
-            </AccordionTrigger>
-            <AccordionContent>
-              <div className="border p-6 rounded-sm space-y-4">
-                <FormField
-                  control={form.control}
-                  name="walletAddress"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Wallet Address</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          disabled={isEstimating}
-                          placeholder="0x..."
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <Button
-                  className="w-full"
-                  onClick={handleEstimateUsage}
-                  disabled={isEstimating}
-                >
-                  {isEstimating ? 'Estimating...' : 'Estimate Usage'}
-                </Button>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
+        <Dialog open={isAnalyticsOpen} onOpenChange={setIsAnalyticsOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Estimate Gas Usage</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <FormField
+                control={form.control}
+                name="walletAddress"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Wallet Address</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        disabled={isEstimating}
+                        placeholder="vitalik.eth"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleEstimateUsage();
+                          }
+                        }}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <Button
+                className="w-full"
+                onClick={handleEstimateUsage}
+                disabled={isEstimating}
+              >
+                {isEstimating ? 'Generating...' : 'Generate Analytics'}
+              </Button>
+
+              {estimationResults && (
+                <div className="p-4 border border-border rounded-lg space-y-3">
+                  <p className="text-lg">Historical Usage Analysis</p>
+                  <div className="space-y-2">
+                    <p className="text-sm">
+                      Gas Used: {estimationResults.totalGasUsed} gas
+                    </p>
+                    <p className="text-sm">
+                      ETH paid: x
+                    </p>
+                    <p className="text-sm">
+                      Average Gas per Transaction: x gas
+                    </p>
+                    <p className="text-sm">
+                      Average Gas Price: x gwei
+                    </p>
+                  </div>
+                  <p>Generate a quote for a subscription to {estimationResults.totalGasUsed} gas over {formattedDuration} days, starting on {formattedStartTime}.</p>
+                  <Button 
+                    className="w-full"
+                    onClick={() => {
+                      setSizeValue(BigInt(estimationResults.totalGasUsed));
+                      setIsAnalyticsOpen(false);
+                    }}
+                  >
+                    Generate Quote
+                  </Button>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <FormField
           control={form.control}
@@ -668,6 +722,9 @@ const Subscribe: FC<SubscribeProps> = ({
                 label="Gas Amount"
                 {...field}
               />
+              <p className="text-sm text-muted-foreground">
+                If the average gas price exceeds this quote during the period, you can redeem a rebate.
+              </p>
               {quoteError && (
                 <TooltipProvider>
                   <Tooltip>
