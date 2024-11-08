@@ -667,9 +667,10 @@ const Subscribe: FC<SubscribeProps> = ({
         <Dialog open={isAnalyticsOpen} onOpenChange={setIsAnalyticsOpen}>
           <DialogContent className="max-w-96">
             <DialogHeader className="relative">
-              <AnimatePresence>
-                {estimationResults && (
+              <AnimatePresence mode="wait">
+                {estimationResults ? (
                   <motion.div
+                    key="back-button"
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
@@ -685,97 +686,113 @@ const Subscribe: FC<SubscribeProps> = ({
                       ← Back
                     </Button>
                   </motion.div>
-                )}
+                ) : null}
               </AnimatePresence>
 
-              <DialogTitle className="pt-0.5">Estimate Gas Usage</DialogTitle>
+              <DialogTitle className="pt-0 tracking-wide text-center">
+                Estimate Gas Usage
+              </DialogTitle>
             </DialogHeader>
 
             <div className="space-y-4">
-              {!estimationResults ? (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="walletAddress"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Wallet Address</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            placeholder="vitalik.eth"
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                handleEstimateUsage();
-                              }
-                            }}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <Button
-                    className="w-full"
-                    onClick={handleEstimateUsage}
-                    disabled={isEstimating}
+              <AnimatePresence mode="wait">
+                {!estimationResults ? (
+                  <motion.div
+                    key="input-form"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
                   >
-                    {isEstimating ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Generating Analytics
-                      </>
-                    ) : (
-                      'Generate Analytics'
-                    )}
-                  </Button>
-                </>
-              ) : (
-                <div>
-                  <div className="mb-4">
-                    <SimpleBarChart />
-                  </div>
-                  <p className="text-lg mb-2">
-                    {form.getValues('walletAddress')} used{' '}
-                    <CountUp
-                      end={estimationResults.totalGasUsed}
-                      separator=","
-                      duration={1.5}
-                      delay={0.5}
-                    />{' '}
-                    gas (costing{' '}
-                    <NumberDisplay value={estimationResults.ethPaid} /> ETH)
-                    over the last {formattedDuration}.
-                  </p>
-                  <div className="flex flex-col gap-0.5 mb-6">
-                    <p className="text-sm text-muted-foreground">
-                      The average cost per transaction was{' '}
-                      {estimationResults.avgGasPerTx} gas.
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      The average gas price paid was{' '}
-                      {estimationResults.avgGasPrice} gwei.
-                    </p>
-                  </div>
-                  <div className="border border-border p-5 rounded-lg shadow-sm bg-primary/5">
-                    <p className="mb-3">
-                      Generate a quote for a subscription of this much gas over{' '}
-                      {formattedDuration}, starting {formattedStartTime}.
-                    </p>
+                    <FormField
+                      control={form.control}
+                      name="walletAddress"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Wallet Address</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="vitalik.eth"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleEstimateUsage();
+                                }
+                              }}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
                     <Button
-                      className="w-full"
-                      size="lg"
-                      variant="default"
-                      onClick={() => {
-                        setSizeValue(BigInt(estimationResults.totalGasUsed));
-                        setIsAnalyticsOpen(false);
-                      }}
+                      className="w-full mt-4"
+                      onClick={handleEstimateUsage}
+                      disabled={isEstimating}
                     >
-                      Generate Quote
+                      {isEstimating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          Generating Analytics
+                        </>
+                      ) : (
+                        'Generate Analytics'
+                      )}
                     </Button>
-                  </div>
-                </div>
-              )}
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="results"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <div className="mb-4">
+                      <SimpleBarChart />
+                    </div>
+                    <p className="text-lg mb-2">
+                      {form.getValues('walletAddress')} used{' '}
+                      <CountUp
+                        end={estimationResults.totalGasUsed}
+                        separator=","
+                        duration={1.5}
+                        delay={0.5}
+                      />{' '}
+                      gas (costing{' '}
+                      <NumberDisplay value={estimationResults.ethPaid} /> ETH)
+                      over the last {formattedDuration}.
+                    </p>
+                    <div className="flex flex-col gap-0.5 mb-6">
+                      <p className="text-sm text-muted-foreground">
+                        The average cost per transaction was{' '}
+                        {estimationResults.avgGasPerTx} gas.
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        The average gas price paid was{' '}
+                        {estimationResults.avgGasPrice} gwei.
+                      </p>
+                    </div>
+                    <div className="border border-border p-5 rounded-lg shadow-sm bg-primary/5">
+                      <p className="mb-3">
+                        Generate a quote for a subscription of this much gas
+                        over {formattedDuration}, starting {formattedStartTime}.
+                      </p>
+                      <Button
+                        className="w-full"
+                        size="lg"
+                        variant="default"
+                        onClick={() => {
+                          setSizeValue(BigInt(estimationResults.totalGasUsed));
+                          setIsAnalyticsOpen(false);
+                        }}
+                      >
+                        Generate Quote
+                      </Button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </DialogContent>
         </Dialog>
