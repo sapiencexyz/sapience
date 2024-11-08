@@ -6,6 +6,7 @@
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { TickMath } from '@uniswap/v3-sdk';
 import JSBI from 'jsbi';
+import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
@@ -842,6 +843,7 @@ const AddEditLiquidity: React.FC = () => {
 
     return (
       <Button className="w-full" size="lg" type="submit" disabled={isDisabled}>
+        {(pendingTxn || isFetching) && <Loader2 className="animate-spin" />}
         {getButtonText()}
       </Button>
     );
