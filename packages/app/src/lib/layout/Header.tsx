@@ -18,11 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '~/components/ui/popover';
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from '~/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger } from '~/components/ui/sheet';
 import { useMarketList } from '~/lib/context/MarketListProvider';
 
 const getMarketHref = (path: string, market: any, withEpochs: boolean) => {
