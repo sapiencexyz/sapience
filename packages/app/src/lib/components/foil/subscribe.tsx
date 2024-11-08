@@ -27,6 +27,7 @@ import {
   useConnect,
 } from 'wagmi';
 import { createPublicClient, http } from 'viem';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import erc20ABI from '../../erc20abi.json';
 import { Button } from '~/components/ui/button';
@@ -642,58 +643,74 @@ const Subscribe: FC<SubscribeProps> = ({
 
         <Dialog open={isAnalyticsOpen} onOpenChange={setIsAnalyticsOpen}>
           <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Estimate Gas Usage</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <FormField
-                control={form.control}
-                name="walletAddress"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Wallet Address</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        disabled={isEstimating}
-                        placeholder="vitalik.eth"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleEstimateUsage();
-                          }
-                        }}
-                      />
-                    </FormControl>
-                  </FormItem>
+            <DialogHeader className="flex flex-row items-center gap-4">
+              <AnimatePresence>
+                {estimationResults && (
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEstimationResults(null)}
+                      className="h-9" // Match height with title
+                    >
+                      ← Back
+                    </Button>
+                  </motion.div>
                 )}
-              />
-              <Button
-                className="w-full"
-                onClick={handleEstimateUsage}
-                disabled={isEstimating}
-              >
-                {isEstimating ? 'Generating...' : 'Generate Analytics'}
-              </Button>
+              </AnimatePresence>
+              <DialogTitle className="flex-grow text-center">Estimate Gas Usage</DialogTitle>
+            </DialogHeader>
 
-              {estimationResults && (
-                <div className="p-4 border border-border rounded-lg space-y-3">
-                  <p className="text-lg">Historical Usage Analysis</p>
-                  <div className="space-y-2">
-                    <p className="text-sm">
-                      Gas Used: {estimationResults.totalGasUsed} gas
-                    </p>
-                    <p className="text-sm">
-                      ETH paid: x
-                    </p>
-                    <p className="text-sm">
-                      Average Gas per Transaction: x gas
-                    </p>
-                    <p className="text-sm">
-                      Average Gas Price: x gwei
-                    </p>
-                  </div>
-                  <p>Generate a quote for a subscription to {estimationResults.totalGasUsed} gas over {formattedDuration} days, starting on {formattedStartTime}.</p>
+            <div className="space-y-4">
+              {!estimationResults ? (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="walletAddress"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Wallet Address</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            disabled={isEstimating}
+                            placeholder="vitalik.eth"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleEstimateUsage();
+                              }
+                            }}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <Button
+                    className="w-full"
+                    onClick={handleEstimateUsage}
+                    disabled={isEstimating}
+                  >
+                    {isEstimating ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Generating Analytics
+                      </>
+                    ) : (
+                      'Generate Analytics'
+                    )}
+                  </Button>
+                </>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-lg">{form.getValues('walletAddress')} used {estimationResults.totalGasUsed.toLocaleString()} gas (costing <NumberDisplay value={estimationResults.ethPaid} /> ETH) over the last {formattedDuration}.</p>
+                  <p>The average gas per transaction was {estimationResults.avgGasPerTx} gas, and the average gas price paid was {estimationResults.avgGasPrice} gwei.</p>
+                  <p>Generate a quote for a subscription for that much gas over {formattedDuration}, starting on {formattedStartTime}.</p>
                   <Button 
                     className="w-full"
                     onClick={() => {
