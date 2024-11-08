@@ -1,7 +1,13 @@
 'use client';
 
 import { formatDuration, intervalToDuration } from 'date-fns';
-import { ArrowUpDown, ChartNoAxesColumn, HelpCircle, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  ArrowUpDown,
+  ChartNoAxesColumn,
+  HelpCircle,
+  Loader2,
+} from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   type FC,
@@ -14,7 +20,14 @@ import {
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import type { AbiFunction } from 'viem';
-import { decodeEventLog, formatUnits, zeroAddress, isAddress } from 'viem';
+import {
+  decodeEventLog,
+  formatUnits,
+  zeroAddress,
+  isAddress,
+  createPublicClient,
+  http,
+} from 'viem';
 import { mainnet, sepolia } from 'viem/chains';
 import {
   useWaitForTransactionReceipt,
@@ -26,10 +39,9 @@ import {
   useSwitchChain,
   useConnect,
 } from 'wagmi';
-import { createPublicClient, http } from 'viem';
-import { motion, AnimatePresence } from 'framer-motion';
 
 import erc20ABI from '../../erc20abi.json';
+import SimpleBarChart from '../SimpleBarChart';
 import { Button } from '~/components/ui/button';
 import {
   Dialog,
@@ -69,7 +81,9 @@ interface SubscribeProps {
 const publicClient = createPublicClient({
   chain: mainnet,
   transport: process.env.NEXT_PUBLIC_INFURA_API_KEY
-    ? http(`https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`)
+    ? http(
+        `https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
+      )
     : http('https://ethereum-rpc.publicnode.com'),
 });
 
@@ -536,14 +550,24 @@ const Subscribe: FC<SubscribeProps> = ({
       }
 
       const data = await response.json();
-      // Store the results instead of closing the modal
+
+      // Add check for no gas usage
+      if (!data.totalGasUsed || data.totalGasUsed === 0) {
+        toast({
+          title: 'Recent Data Unavailable',
+          description: `This address hasn't used gas in the last ${formattedDuration}.`,
+          duration: 5000,
+        });
+        return;
+      }
+
+      // Store the results if there is gas usage
       setEstimationResults({
         totalGasUsed: data.totalGasUsed,
         ethPaid: data.ethPaid || 0,
         avgGasPerTx: data.avgGasPerTx || 0,
         avgGasPrice: data.avgGasPrice || 0,
       });
-      
     } catch (error) {
       toast({
         title: 'Estimation Failed',
@@ -561,10 +585,10 @@ const Subscribe: FC<SubscribeProps> = ({
   // Add this new formatted duration calculation
   const formattedDuration = useMemo(() => {
     if (!startTime || !endTime) return '';
-    
+
     const duration = intervalToDuration({
       start: new Date(Number(startTime) * 1000),
-      end: new Date(Number(endTime) * 1000)
+      end: new Date(Number(endTime) * 1000),
     });
 
     return formatDuration(duration, { format: ['months', 'days'] });
@@ -607,7 +631,6 @@ const Subscribe: FC<SubscribeProps> = ({
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-
         <div className="flex items-center justify-between">
           <h2 className="text-lg md:text-2xl font-semibold">
             {marketName} Subscription
@@ -626,24 +649,25 @@ const Subscribe: FC<SubscribeProps> = ({
           )}
         </div>
 
-        <div className="flex items-center gap-1 flex-col">
-              <p className="mb-1">
-                Enter the amount of gas you expect to use between{' '}
-                {formattedStartTime} and {formattedEndTime}.
-              </p>
+        <div className="flex items-center flex-col mb-4">
+          <p className="mb-4">
+            Enter the amount of gas you expect to use between{' '}
+            {formattedStartTime} and {formattedEndTime}.
+          </p>
 
-              <Button
-                variant="outline"
-                onClick={() => setIsAnalyticsOpen(true)}
-                className="w-full shadow-sm"
-              >
-                <ChartNoAxesColumn className="text-muted-foreground" />Wallet Analytics
-              </Button>
+          <Button
+            variant="outline"
+            onClick={() => setIsAnalyticsOpen(true)}
+            className="w-full shadow-sm"
+          >
+            <ChartNoAxesColumn className="text-muted-foreground" />
+            Wallet Analytics
+          </Button>
         </div>
 
         <Dialog open={isAnalyticsOpen} onOpenChange={setIsAnalyticsOpen}>
           <DialogContent>
-            <DialogHeader className="flex flex-row items-center gap-4">
+            <DialogHeader className="flex flex-row items-center">
               <AnimatePresence>
                 {estimationResults && (
                   <motion.div
@@ -656,14 +680,16 @@ const Subscribe: FC<SubscribeProps> = ({
                       variant="ghost"
                       size="sm"
                       onClick={() => setEstimationResults(null)}
-                      className="h-9" // Match height with title
                     >
                       ← Back
                     </Button>
                   </motion.div>
                 )}
               </AnimatePresence>
-              <DialogTitle className="flex-grow text-center">Estimate Gas Usage</DialogTitle>
+
+              <DialogTitle className="text-center">
+                Estimate Gas Usage
+              </DialogTitle>
             </DialogHeader>
 
             <div className="space-y-4">
@@ -707,24 +733,43 @@ const Subscribe: FC<SubscribeProps> = ({
                   </Button>
                 </>
               ) : (
-                <div className="space-y-3">
-                  <p className="text-lg">{form.getValues('walletAddress')} used {estimationResults.totalGasUsed.toLocaleString()} gas (costing <NumberDisplay value={estimationResults.ethPaid} /> ETH) over the last {formattedDuration}.</p>
-                  <p>The average gas per transaction was {estimationResults.avgGasPerTx} gas, and the average gas price paid was {estimationResults.avgGasPrice} gwei.</p>
-                  <p>Generate a quote for a subscription for that much gas over {formattedDuration}, starting on {formattedStartTime}.</p>
-                  <Button 
-                    className="w-full"
-                    onClick={() => {
-                      setSizeValue(BigInt(estimationResults.totalGasUsed));
-                      setIsAnalyticsOpen(false);
-                    }}
-                  >
-                    Generate Quote
-                  </Button>
+                <div>
+                  <SimpleBarChart />
+                  <p className="text-lg mb-3">
+                    {form.getValues('walletAddress')} used{' '}
+                    {estimationResults.totalGasUsed.toLocaleString()} gas
+                    (costing <NumberDisplay value={estimationResults.ethPaid} />{' '}
+                    ETH) over the last {formattedDuration}.
+                  </p>
+                  <div className="flex flex-col gap-0.5 mb-6">
+                    <p className="text-sm text-muted-foreground">
+                      The average cost per transaction was{' '}
+                      {estimationResults.avgGasPerTx} gas.
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      The average gas price paid was{' '}
+                      {estimationResults.avgGasPrice} gwei.
+                    </p>
+                  </div>
+                  <div className="border border-border p-5 rounded-lg shadow-sm">
+                    <p className="mb-3">
+                      Generate a quote for a subscription for that much gas over{' '}
+                      {formattedDuration}, starting on {formattedStartTime}.
+                    </p>
+                    <Button
+                      className="w-full"
+                      size="lg"
+                      onClick={() => {
+                        setSizeValue(BigInt(estimationResults.totalGasUsed));
+                        setIsAnalyticsOpen(false);
+                      }}
+                    >
+                      Generate Quote
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
-            <DialogFooter>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
 
@@ -740,7 +785,8 @@ const Subscribe: FC<SubscribeProps> = ({
                 {...field}
               />
               <p className="text-sm text-muted-foreground">
-                If the average gas price exceeds this quote during the period, you can redeem a rebate.
+                If the average gas price exceeds this quote during the period,
+                you can redeem a rebate.
               </p>
               {quoteError && (
                 <TooltipProvider>
