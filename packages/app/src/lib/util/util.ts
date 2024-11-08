@@ -1,3 +1,4 @@
+import JSBI from 'jsbi';
 import {
   formatEther,
   type ReadContractErrorType,
@@ -103,3 +104,9 @@ export const removeLeadingZeros = (input: string | number): string => {
   // Remove leading zeros and return
   return str.replace(/^0+/, '') || '0';
 };
+
+export function JSBIAbs(value: JSBI): JSBI {
+  return JSBI.lessThan(value, JSBI.BigInt(0))
+    ? JSBI.multiply(value, JSBI.BigInt(-1))
+    : value;
+}
