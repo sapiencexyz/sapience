@@ -1,11 +1,9 @@
-import { motion } from 'framer-motion';
-import type { Dispatch, SetStateAction } from 'react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import CountUp from 'react-countup';
-import type { TooltipProps } from 'recharts';
 import { BarChart, ResponsiveContainer, XAxis, Tooltip, Bar } from 'recharts';
 
 const barColor = 'rgba(0, 0, 0, 0.5)';
+const axisColor = 'rgba(0, 0, 0, 0.2)';
 
 const SimpleBarChart = ({ data }: { data: any[] }) => {
   const [value, setValue] = useState<string>('');
@@ -70,17 +68,17 @@ const SimpleBarChart = ({ data }: { data: any[] }) => {
             }}
           >
             <XAxis
-              axisLine={{ stroke: barColor, strokeWidth: 1 }}
+              axisLine={{ stroke: axisColor, strokeWidth: 1 }}
               tick={false}
               height={1}
             />
             <Bar
               dataKey="value"
-              fill={barColor}
               radius={[2, 2, 0, 0]}
               isAnimationActive
               animationDuration={1000}
               barSize={2}
+              fill={barColor}
             />
           </BarChart>
         </ResponsiveContainer>

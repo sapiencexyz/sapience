@@ -665,15 +665,15 @@ const Subscribe: FC<SubscribeProps> = ({
         </div>
 
         <Dialog open={isAnalyticsOpen} onOpenChange={setIsAnalyticsOpen}>
-          <DialogContent className="max-w-96 overflow-hidden">
+          <DialogContent className="max-w-96 overflow-hidden focus:ring-0 focus:outline-none">
             <DialogHeader className="relative">
               <AnimatePresence mode="wait">
                 {estimationResults ? (
                   <motion.div
                     key="back-button"
-                    initial={{ opacity: 0, x: 25 }}
+                    initial={{ opacity: 0, x: 32 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 25 }}
+                    exit={{ opacity: 0, x: 32 }}
                     transition={{
                       duration: 0.3,
                       ease: 'easeInOut',
@@ -743,7 +743,7 @@ const Subscribe: FC<SubscribeProps> = ({
                       {isEstimating ? (
                         <>
                           <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          Generating Analytics
+                          Generating
                         </>
                       ) : (
                         'Generate Analytics'
@@ -753,9 +753,9 @@ const Subscribe: FC<SubscribeProps> = ({
                 ) : (
                   <motion.div
                     key="results"
-                    initial={{ opacity: 0, height: 120 }}
+                    initial={{ opacity: 0, height: 140 }}
                     animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 120 }}
+                    exit={{ opacity: 0, height: 140 }}
                     transition={{
                       duration: 0.2,
                       height: {
@@ -836,14 +836,14 @@ const Subscribe: FC<SubscribeProps> = ({
           )}
         />
 
-        <div className=" bg-muted p-4 rounded-lg space-y-2 my-6">
+        <div className=" bg-muted p-4 rounded-lg space-y-2 my-7">
           <p className="text-sm font-semibold text-muted-foreground">Quote</p>
           {quoteError ? (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
-                  <p className="text-red-500 text-sm font-medium flex items-center">
-                    <span className="mr-2 pt-1">
+                  <p className="text-red-500 text-sm font-medium flex items-center pt-1">
+                    <span className="mr-1">
                       Foil was unable to generate a quote.
                     </span>{' '}
                     <HelpCircle className="h-4 w-4" />
