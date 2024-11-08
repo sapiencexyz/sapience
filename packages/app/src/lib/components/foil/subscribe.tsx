@@ -460,9 +460,7 @@ const Subscribe: FC<SubscribeProps> = ({
     }
 
     const isDisabled =
-      pendingTxn ||
-      Boolean(quoteError) ||
-      BigInt(formValues.size) <= BigInt(0);
+      pendingTxn || Boolean(quoteError) || BigInt(formValues.size) <= BigInt(0);
 
     return (
       <Button className="w-full" size="lg" type="submit" disabled={isDisabled}>
@@ -619,18 +617,26 @@ const Subscribe: FC<SubscribeProps> = ({
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="flex items-center justify-between mb-2.5">
-          <h2 className="text-xl md:text-2xl font-semibold">
+        <div className="flex items-center mb-5">
+          <img
+            src="/eth.svg"
+            alt="Ethereum"
+            width={32}
+            height={32}
+            className="mr-3 grayscale"
+          />
+
+          <h2 className="text-lg md:text-2xl font-semibold">
             {marketName} Subscription
           </h2>
 
           {showMarketSwitcher && (
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={() => setIsMarketSelectorOpen(true)}
-              className="px-2.5"
+              className="px-2.5 ml-auto text-muted-foreground"
             >
               <ArrowUpDown />
             </Button>
@@ -747,12 +753,12 @@ const Subscribe: FC<SubscribeProps> = ({
                     transition={{
                       duration: 0.2,
                       height: {
-                        duration: 0.4,
-                        ease: 'easeInOut',
+                        duration: 0.5,
+                        ease: 'easeOut',
                       },
                       opacity: {
                         duration: 0.2,
-                        ease: 'easeInOut',
+                        ease: 'easeOut',
                       },
                     }}
                   >

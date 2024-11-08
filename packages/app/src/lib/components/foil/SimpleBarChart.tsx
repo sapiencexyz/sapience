@@ -68,7 +68,7 @@ const SimpleBarChart = () => {
               fill={barColor}
               radius={[2, 2, 0, 0]}
               isAnimationActive
-              animationDuration={1500}
+              animationDuration={1000}
               barSize={2}
             />
           </BarChart>
