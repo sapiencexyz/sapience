@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable sonarjs/cognitive-complexity */
+
 import { formatDuration, intervalToDuration, format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -426,15 +428,6 @@ const Subscribe: FC<SubscribeProps> = ({
   };
 
   const renderActionButton = () => {
-    if (isLoadingCollateralChange) {
-      return (
-        <Button className="w-full" size="lg" disabled>
-          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-          <span>Generating Quote</span>
-        </Button>
-      );
-    }
-
     if (!isConnected) {
       return (
         <Button
@@ -460,14 +453,29 @@ const Subscribe: FC<SubscribeProps> = ({
     }
 
     const isDisabled =
-      pendingTxn || Boolean(quoteError) || BigInt(formValues.size) <= BigInt(0);
+      pendingTxn ||
+      Boolean(quoteError) ||
+      BigInt(formValues.size) <= BigInt(0) ||
+      isLoadingCollateralChange;
 
     return (
-      <Button className="w-full" size="lg" type="submit" disabled={isDisabled}>
-        {requireApproval
-          ? `Approve ${collateralAssetTicker} Transfer`
-          : 'Create Subscription'}
-      </Button>
+      <div className="relative">
+        {isLoadingCollateralChange && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Loader2 className="h-4 w-4 animate-spin" />
+          </div>
+        )}
+        <Button
+          className="w-full"
+          size="lg"
+          type="submit"
+          disabled={isDisabled}
+        >
+          {requireApproval
+            ? `Approve ${collateralAssetTicker} Transfer`
+            : 'Create Subscription'}
+        </Button>
+      </div>
     );
   };
 
@@ -714,6 +722,7 @@ const Subscribe: FC<SubscribeProps> = ({
                               {...field}
                               placeholder="vitalik.eth"
                               autoComplete="off"
+                              spellCheck={false}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                   e.preventDefault();
@@ -776,17 +785,18 @@ const Subscribe: FC<SubscribeProps> = ({
                     <div className="flex flex-col gap-0.5 mb-6">
                       <p className="text-sm text-muted-foreground">
                         The average cost per transaction was{' '}
-                        {estimationResults.avgGasPerTx} gas.
+                        {estimationResults.avgGasPerTx.toLocaleString()} gas.
                       </p>
                       <p className="text-sm text-muted-foreground">
                         The average gas price paid was{' '}
-                        {estimationResults.avgGasPrice} gwei.
+                        {estimationResults.avgGasPrice.toLocaleString()} gwei.
                       </p>
                     </div>
                     <div className="border border-border p-6 rounded-lg shadow-sm bg-primary/5">
                       <p className="mb-4">
                         Generate a quote for a subscription of this much gas
-                        over {formattedDuration}, starting {formattedStartTime}.
+                        over {formattedDuration}, starting on{' '}
+                        {formattedStartTime}.
                       </p>
                       <Button
                         className="w-full"
@@ -827,12 +837,13 @@ const Subscribe: FC<SubscribeProps> = ({
         />
 
         <div className=" bg-muted p-4 rounded-lg space-y-2 my-6">
+          <p className="text-sm font-semibold text-muted-foreground">Quote</p>
           {quoteError ? (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
                   <p className="text-red-500 text-sm font-medium flex items-center">
-                    <span className="mr-2">
+                    <span className="mr-2 pt-1">
                       Foil was unable to generate a quote.
                     </span>{' '}
                     <HelpCircle className="h-4 w-4" />
@@ -844,26 +855,44 @@ const Subscribe: FC<SubscribeProps> = ({
               </Tooltip>
             </TooltipProvider>
           ) : (
-            <>
-              <p className="text-sm font-semibold text-muted-foreground">
-                Quote
-              </p>
-
-              <div className="flex items-center gap-3">
-                <p className="text-lg">
-                  <NumberDisplay
-                    value={formatUnits(
-                      collateralDelta,
-                      collateralAssetDecimals
-                    )}
-                  />{' '}
-                  {collateralAssetTicker}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  <NumberDisplay value={formatUnits(fillPriceInEth, 9)} /> gwei
-                </p>
-              </div>
-            </>
+            <div className="flex gap-3 items-baseline">
+              <AnimatePresence mode="wait">
+                {isLoadingCollateralChange ? (
+                  <motion.div
+                    key="loading"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex items-center justify-center mx-auto -translate-y-1"
+                  >
+                    <Loader2 className="h-7 w-7 animate-spin opacity-50" />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="content"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <div className="flex gap-3 items-baseline">
+                      <p className="text-lg">
+                        <NumberDisplay
+                          value={formatUnits(
+                            collateralDelta,
+                            collateralAssetDecimals
+                          )}
+                        />{' '}
+                        {collateralAssetTicker}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        <NumberDisplay value={formatUnits(fillPriceInEth, 9)} />{' '}
+                        gwei
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           )}
         </div>
 
@@ -873,7 +902,7 @@ const Subscribe: FC<SubscribeProps> = ({
           open={isMarketSelectorOpen}
           onOpenChange={setIsMarketSelectorOpen}
         >
-          <DialogContent>
+          <DialogContent className="max-w-96 overflow-hidden">
             <DialogHeader>
               <DialogTitle>Select Market</DialogTitle>
             </DialogHeader>
