@@ -1,9 +1,9 @@
+import { motion } from 'framer-motion';
 import type { Dispatch, SetStateAction } from 'react';
 import { useEffect, useState } from 'react';
+import CountUp from 'react-countup';
 import type { TooltipProps } from 'recharts';
 import { BarChart, ResponsiveContainer, XAxis, Tooltip, Bar } from 'recharts';
-import { motion } from 'framer-motion';
-import CountUp from 'react-countup';
 
 const barColor = 'rgba(0, 0, 0, 0.5)';
 
@@ -15,7 +15,6 @@ const generateData = () => {
   }));
 };
 
-
 const SimpleBarChart = () => {
   const [value, setValue] = useState<string>('');
   const [prevValue, setPrevValue] = useState<number>(0);
@@ -26,14 +25,13 @@ const SimpleBarChart = () => {
     <div className="flex flex-1 relative w-full h-[100px]">
       {value.length ? (
         <div className="min-h-[50px] w-fit absolute top-0 left-0 z-[2]">
-          <p
-          >
-            <CountUp 
+          <p>
+            <CountUp
               delay={0}
               start={prevValue}
-              end={parseInt(value)} 
+              end={parseInt(value, 10)}
               duration={0.2}
-              separator="," 
+              separator=","
             />
             {' gas '}
             <span className="text-sm text-muted-foreground ml-1">{label}</span>
@@ -49,9 +47,13 @@ const SimpleBarChart = () => {
               if (state?.activePayload?.[0]) {
                 const newValue = state.activePayload[0].value.toString();
                 if (newValue !== value) {
-                  setPrevValue(parseInt(value) || 0);
+                  setPrevValue(parseInt(value, 10) || 0);
                   setValue(newValue);
-                  setLabel(new Date(state.activePayload[0].payload.timestamp).toLocaleString());
+                  setLabel(
+                    new Date(
+                      state.activePayload[0].payload.timestamp
+                    ).toLocaleString()
+                  );
                 }
               }
             }}
@@ -65,7 +67,8 @@ const SimpleBarChart = () => {
               dataKey="value"
               fill={barColor}
               radius={[2, 2, 0, 0]}
-              isAnimationActive={false}
+              isAnimationActive
+              animationDuration={1500}
               barSize={2}
             />
           </BarChart>

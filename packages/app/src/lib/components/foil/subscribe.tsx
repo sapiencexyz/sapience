@@ -18,6 +18,7 @@ import {
   useMemo,
 } from 'react';
 import React from 'react';
+import CountUp from 'react-countup';
 import { useForm } from 'react-hook-form';
 import type { AbiFunction } from 'viem';
 import {
@@ -41,7 +42,6 @@ import {
 } from 'wagmi';
 
 import erc20ABI from '../../erc20abi.json';
-import SimpleBarChart from './SimpleBarChart';
 import { Button } from '~/components/ui/button';
 import {
   Dialog,
@@ -68,6 +68,7 @@ import { useMarketList } from '~/lib/context/MarketListProvider';
 import { MarketContext } from '~/lib/context/MarketProvider';
 
 import NumberDisplay from './numberDisplay';
+import SimpleBarChart from './SimpleBarChart';
 import SizeInput from './sizeInput';
 
 interface SubscribeProps {
@@ -687,9 +688,7 @@ const Subscribe: FC<SubscribeProps> = ({
                 )}
               </AnimatePresence>
 
-              <DialogTitle className="pt-0.5">
-                Estimate Gas Usage
-              </DialogTitle>
+              <DialogTitle className="pt-0.5">Estimate Gas Usage</DialogTitle>
             </DialogHeader>
 
             <div className="space-y-4">
@@ -738,9 +737,15 @@ const Subscribe: FC<SubscribeProps> = ({
                   </div>
                   <p className="text-lg mb-2">
                     {form.getValues('walletAddress')} used{' '}
-                    {estimationResults.totalGasUsed.toLocaleString()} gas
-                    (costing <NumberDisplay value={estimationResults.ethPaid} />{' '}
-                    ETH) over the last {formattedDuration}.
+                    <CountUp
+                      end={estimationResults.totalGasUsed}
+                      separator=","
+                      duration={1.5}
+                      delay={0.5}
+                    />{' '}
+                    gas (costing{' '}
+                    <NumberDisplay value={estimationResults.ethPaid} /> ETH)
+                    over the last {formattedDuration}.
                   </p>
                   <div className="flex flex-col gap-0.5 mb-6">
                     <p className="text-sm text-muted-foreground">
@@ -752,7 +757,7 @@ const Subscribe: FC<SubscribeProps> = ({
                       {estimationResults.avgGasPrice} gwei.
                     </p>
                   </div>
-                  <div className="border border-border p-5 rounded-lg shadow-sm">
+                  <div className="border border-border p-5 rounded-lg shadow-sm bg-primary/5">
                     <p className="mb-3">
                       Generate a quote for a subscription of this much gas over{' '}
                       {formattedDuration}, starting {formattedStartTime}.
@@ -760,6 +765,7 @@ const Subscribe: FC<SubscribeProps> = ({
                     <Button
                       className="w-full"
                       size="lg"
+                      variant="default"
                       onClick={() => {
                         setSizeValue(BigInt(estimationResults.totalGasUsed));
                         setIsAnalyticsOpen(false);
