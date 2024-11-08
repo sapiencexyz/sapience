@@ -1,6 +1,6 @@
 'use client';
 
-import { formatDuration, intervalToDuration } from 'date-fns';
+import { formatDuration, intervalToDuration, format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowUpDown,
@@ -41,12 +41,11 @@ import {
 } from 'wagmi';
 
 import erc20ABI from '../../erc20abi.json';
-import SimpleBarChart from '../SimpleBarChart';
+import SimpleBarChart from './SimpleBarChart';
 import { Button } from '~/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '~/components/ui/dialog';
@@ -215,7 +214,7 @@ const Subscribe: FC<SubscribeProps> = ({
   // Format start and end times
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp * 1000);
-    return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+    return format(date, 'MMMM do');
   };
 
   // Allowance check
@@ -484,14 +483,6 @@ const Subscribe: FC<SubscribeProps> = ({
     );
   };
 
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, []);
-
   const marketName =
     markets.find((m) => m.address === marketAddress)?.name || 'Choose Market';
 
@@ -628,6 +619,13 @@ const Subscribe: FC<SubscribeProps> = ({
     }
   };
 
+  useEffect(() => {
+    if (!isAnalyticsOpen) {
+      setEstimationResults(null);
+      form.setValue('walletAddress', '');
+    }
+  }, [isAnalyticsOpen]);
+
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
@@ -706,7 +704,6 @@ const Subscribe: FC<SubscribeProps> = ({
                         <FormControl>
                           <Input
                             {...field}
-                            disabled={isEstimating}
                             placeholder="vitalik.eth"
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
@@ -736,8 +733,10 @@ const Subscribe: FC<SubscribeProps> = ({
                 </>
               ) : (
                 <div>
-                  <SimpleBarChart />
-                  <p className="text-lg mb-3">
+                  <div className="mb-4">
+                    <SimpleBarChart />
+                  </div>
+                  <p className="text-lg mb-2">
                     {form.getValues('walletAddress')} used{' '}
                     {estimationResults.totalGasUsed.toLocaleString()} gas
                     (costing <NumberDisplay value={estimationResults.ethPaid} />{' '}
@@ -755,8 +754,8 @@ const Subscribe: FC<SubscribeProps> = ({
                   </div>
                   <div className="border border-border p-5 rounded-lg shadow-sm">
                     <p className="mb-3">
-                      Generate a quote for a subscription for that much gas over{' '}
-                      {formattedDuration}, starting on {formattedStartTime}.
+                      Generate a quote for a subscription of this much gas over{' '}
+                      {formattedDuration}, starting {formattedStartTime}.
                     </p>
                     <Button
                       className="w-full"
