@@ -5,18 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowUpDown,
   ChartNoAxesColumn,
+  ChevronLeft,
   HelpCircle,
   Loader2,
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  type FC,
-  useState,
-  useEffect,
-  useContext,
-  useRef,
-  useMemo,
-} from 'react';
+import { type FC, useState, useEffect, useContext, useMemo } from 'react';
 import React from 'react';
 import CountUp from 'react-countup';
 import { useForm } from 'react-hook-form';
@@ -629,7 +623,7 @@ const Subscribe: FC<SubscribeProps> = ({
 
   return (
     <Form {...form}>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+      <form onSubmit={handleSubmit(onSubmit)}>
         <div className="flex items-center justify-between">
           <h2 className="text-xl md:text-2xl font-semibold">
             {marketName} Subscription
@@ -665,36 +659,40 @@ const Subscribe: FC<SubscribeProps> = ({
         </div>
 
         <Dialog open={isAnalyticsOpen} onOpenChange={setIsAnalyticsOpen}>
-          <DialogContent className="max-w-96">
+          <DialogContent className="max-w-96 overflow-hidden">
             <DialogHeader className="relative">
               <AnimatePresence mode="wait">
                 {estimationResults ? (
                   <motion.div
                     key="back-button"
-                    initial={{ opacity: 0, x: -20 }}
+                    initial={{ opacity: 0, x: 25 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.2 }}
-                    className="absolute left-0"
+                    exit={{ opacity: 0, x: 25 }}
+                    transition={{
+                      duration: 0.3,
+                      ease: 'easeInOut',
+                    }}
+                    className="absolute left-0 -top-1.5 -left-1.5"
                   >
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="p-0"
                       onClick={() => setEstimationResults(null)}
+                      className="p-0 h-auto text-muted-foreground"
                     >
-                      ← Back
+                      <ChevronLeft className="h-4 w-4" />
+                      <span className="sr-only">Go back</span>
                     </Button>
                   </motion.div>
                 ) : null}
               </AnimatePresence>
 
-              <DialogTitle className="pt-0 tracking-wide text-center">
+              <DialogTitle className="tracking-normal text-center pt-3">
                 Estimate Gas Usage
               </DialogTitle>
             </DialogHeader>
 
-            <div className="space-y-4">
+            <div className="space-y-4 pt-1">
               <AnimatePresence mode="wait">
                 {!estimationResults ? (
                   <motion.div
@@ -702,18 +700,22 @@ const Subscribe: FC<SubscribeProps> = ({
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
+                    transition={{
+                      duration: 0.2,
+                      ease: 'easeInOut',
+                    }}
                   >
                     <FormField
                       control={form.control}
                       name="walletAddress"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="space-y-1">
                           <FormLabel>Wallet Address</FormLabel>
                           <FormControl>
                             <Input
                               {...field}
                               placeholder="vitalik.eth"
+                              autoComplete="off"
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                   e.preventDefault();
@@ -726,7 +728,8 @@ const Subscribe: FC<SubscribeProps> = ({
                       )}
                     />
                     <Button
-                      className="w-full mt-4"
+                      size="lg"
+                      className="w-full mt-5"
                       onClick={handleEstimateUsage}
                       disabled={isEstimating}
                     >
@@ -743,12 +746,22 @@ const Subscribe: FC<SubscribeProps> = ({
                 ) : (
                   <motion.div
                     key="results"
-                    initial={{ opacity: 0, height: 0 }}
+                    initial={{ opacity: 0, height: 120 }}
                     animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.2 }}
+                    exit={{ opacity: 0, height: 120 }}
+                    transition={{
+                      duration: 0.2,
+                      height: {
+                        duration: 0.4,
+                        ease: 'easeInOut',
+                      },
+                      opacity: {
+                        duration: 0.2,
+                        ease: 'easeInOut',
+                      },
+                    }}
                   >
-                    <div className="mb-4">
+                    <div className="mb-5">
                       <SimpleBarChart />
                     </div>
                     <p className="text-lg mb-2">
@@ -757,7 +770,6 @@ const Subscribe: FC<SubscribeProps> = ({
                         end={estimationResults.totalGasUsed}
                         separator=","
                         duration={1.5}
-                        delay={0.5}
                       />{' '}
                       gas (costing{' '}
                       <NumberDisplay value={estimationResults.ethPaid} /> ETH)
@@ -774,7 +786,7 @@ const Subscribe: FC<SubscribeProps> = ({
                       </p>
                     </div>
                     <div className="border border-border p-5 rounded-lg shadow-sm bg-primary/5">
-                      <p className="mb-3">
+                      <p className="mb-4">
                         Generate a quote for a subscription of this much gas
                         over {formattedDuration}, starting {formattedStartTime}.
                       </p>
@@ -808,48 +820,54 @@ const Subscribe: FC<SubscribeProps> = ({
                 label="Gas Amount"
                 {...field}
               />
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground mt-1">
                 If the average gas price exceeds the quote during the period,
                 you can redeem a rebate.
               </p>
-              {quoteError && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <p className="text-red-500 text-sm font-medium flex items-center">
-                        <span className="mr-2">
-                          Foil was unable to generate a quote
-                        </span>{' '}
-                        <HelpCircle className="h-4 w-4" />
-                      </p>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="max-w-xs">{quoteError}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
             </>
           )}
         />
 
-        {!quoteError && (
-          <div className="bg-muted p-4 rounded-lg space-y-2">
-            <p className="text-sm font-semibold text-muted-foreground">Quote</p>
+        <div className=" bg-muted p-4 rounded-lg space-y-2 my-6">
+          {quoteError ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <p className="text-red-500 text-sm font-medium flex items-center">
+                    <span className="mr-2">
+                      Foil was unable to generate a quote
+                    </span>{' '}
+                    <HelpCircle className="h-4 w-4" />
+                  </p>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">{quoteError}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <>
+              <p className="text-sm font-semibold text-muted-foreground">
+                Quote
+              </p>
 
-            <div className="flex items-center gap-3">
-              <p className="text-lg">
-                <NumberDisplay
-                  value={formatUnits(collateralDelta, collateralAssetDecimals)}
-                />{' '}
-                {collateralAssetTicker}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                <NumberDisplay value={formatUnits(fillPriceInEth, 9)} /> gwei
-              </p>
-            </div>
-          </div>
-        )}
+              <div className="flex items-center gap-3">
+                <p className="text-lg">
+                  <NumberDisplay
+                    value={formatUnits(
+                      collateralDelta,
+                      collateralAssetDecimals
+                    )}
+                  />{' '}
+                  {collateralAssetTicker}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  <NumberDisplay value={formatUnits(fillPriceInEth, 9)} /> gwei
+                </p>
+              </div>
+            </>
+          )}
+        </div>
 
         {renderActionButton()}
 

@@ -30,7 +30,7 @@ const SimpleBarChart = () => {
               delay={0}
               start={prevValue}
               end={parseInt(value, 10)}
-              duration={0.2}
+              duration={0.3}
               separator=","
             />
             {' gas '}
