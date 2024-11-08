@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import { useState } from 'react';
 import CountUp from 'react-countup';
 import { BarChart, ResponsiveContainer, XAxis, Tooltip, Bar } from 'recharts';
@@ -13,7 +14,12 @@ const SimpleBarChart = ({ data }: { data: any[] }) => {
   return (
     <div className="flex flex-1 relative w-full h-[100px]">
       {value.length ? (
-        <div className="min-h-[50px] w-full absolute top-0 left-0 z-[2]">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
+          className="min-h-[50px] w-full absolute top-0 left-0 z-[2]"
+        >
           <p className="flex items-baseline">
             <span>
               <CountUp
@@ -29,7 +35,7 @@ const SimpleBarChart = ({ data }: { data: any[] }) => {
               {label}
             </span>
           </p>
-        </div>
+        </motion.div>
       ) : null}
       <div className="w-full h-full">
         <ResponsiveContainer width="100%" height="100%">

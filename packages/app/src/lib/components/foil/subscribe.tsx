@@ -855,7 +855,7 @@ const Subscribe: FC<SubscribeProps> = ({
               </Tooltip>
             </TooltipProvider>
           ) : (
-            <div className="flex gap-3 items-baseline">
+            <div className="flex gap-3 items-baseline min-h-[28px]">
               <AnimatePresence mode="wait">
                 {isLoadingCollateralChange ? (
                   <motion.div
