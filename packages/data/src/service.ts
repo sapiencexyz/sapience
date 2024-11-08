@@ -866,10 +866,10 @@ const startServer = async () => {
             `&endblock=99999999` +
             `&page=${page}` +
             `&offset=${offset}` +
-            `&sort=asc` +
+            `&sort=desc` +
             `&apikey=${ETHERSCAN_API_KEY}`
         );
-
+        
         const data = await response.json();
         if (data.status !== "1" || !data.result.length) break;
 

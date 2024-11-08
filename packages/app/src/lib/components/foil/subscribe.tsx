@@ -619,13 +619,9 @@ const Subscribe: FC<SubscribeProps> = ({
     <Form {...form}>
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="flex items-center mb-5">
-          <img
-            src="/eth.svg"
-            alt="Ethereum"
-            width={32}
-            height={32}
-            className="mr-3 grayscale"
-          />
+          <div className="border border-border rounded-full p-1.5 mr-2 h-8 w-8 overflow-hidden">
+            <img src="/eth.svg" alt="Ethereum" width="100%" height="100%" />
+          </div>
 
           <h2 className="text-lg md:text-2xl font-semibold">
             {marketName} Subscription
