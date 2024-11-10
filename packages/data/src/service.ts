@@ -845,8 +845,8 @@ const startServer = async () => {
         return res.status(404).json({ error: "Epoch not found" });
       }
 
-      const duration =
-        Number(epoch.endTimestamp) - Number(epoch.startTimestamp);
+      const duration = Number(epoch.endTimestamp) - Number(epoch.startTimestamp);
+      const startTime = Math.floor(Date.now() / 1000) - duration;
 
       // Fetch transactions from Etherscan
       const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY;
@@ -854,12 +854,11 @@ const startServer = async () => {
         throw new Error("ETHERSCAN_API_KEY not configured");
       }
 
-      let totalGasUsed = 0;
+      let transactions = [];
       let page = 1;
-      const offset = 1000; // Number of records per page
+      const offset = 1000;
 
       while (true) {
-        // TODO: change etherscan endpoint based on chainId (mainnet, sepolia, etc) but chainId is where the contract is, not the resource
         const response = await fetch(
           `https://api.etherscan.io/api?module=account&action=txlist` +
             `&address=${walletAddress}` +
@@ -870,35 +869,69 @@ const startServer = async () => {
             `&sort=desc` +
             `&apikey=${ETHERSCAN_API_KEY}`
         );
-
+        
         const data = await response.json();
+        if (data.status !== "1" || !data.result.length) break;
 
-        if (data.status !== "1" || !data.result.length) {
-          break;
-        }
+        // Filter transactions within time range
+        const relevantTxs = data.result.filter(
+          (tx: any) => Number(tx.timeStamp) >= startTime
+        );
+        transactions.push(...relevantTxs);
 
-        // Filter transactions within duration and sum gas used
-        const currentTime = Math.floor(Date.now() / 1000);
-        const startTime = currentTime - duration;
-
-        for (const tx of data.result) {
-          if (Number(tx.timeStamp) >= startTime) {
-            totalGasUsed += Number(tx.gasUsed);
-          } else {
-            // Since results are sorted by desc, we can break early
-            break;
-          }
-        }
-
-        // If we got less than the requested offset, there are no more pages
-        if (data.result.length < offset) {
-          break;
-        }
-
+        if (data.result.length < offset) break;
         page++;
       }
 
-      res.json({ duration, totalGasUsed });
+      if (transactions.length === 0) {
+        return res.json({ totalGasUsed: 0 });
+      }
+
+      // Calculate metrics
+      const totalGasUsed = transactions.reduce(
+        (sum, tx) => sum + Number(tx.gasUsed),
+        0
+      );
+      const totalEthPaid = transactions.reduce(
+        (sum, tx) => sum + (Number(tx.gasUsed) * Number(tx.gasPrice)) / 1e18,
+        0
+      );
+      const avgGasPerTx = Math.round(totalGasUsed / transactions.length);
+      const avgGasPrice = Math.round(
+        transactions.reduce((sum, tx) => sum + Number(tx.gasPrice), 0) /
+          transactions.length /
+          1e9
+      );
+
+      // Generate chart data with 50 buckets
+      const bucketDuration = Math.floor(duration / 50);
+      const chartData = Array(50)
+        .fill(0)
+        .map((_, i) => {
+          const bucketStart = startTime + i * bucketDuration;
+          const bucketEnd = bucketStart + bucketDuration;
+          
+          const bucketGasUsed = transactions
+            .filter(
+              (tx) =>
+                Number(tx.timeStamp) >= bucketStart &&
+                Number(tx.timeStamp) < bucketEnd
+            )
+            .reduce((sum, tx) => sum + Number(tx.gasUsed), 0);
+
+          return {
+            timestamp: bucketStart * 1000, // Convert to milliseconds for frontend
+            value: bucketGasUsed,
+          };
+        });
+
+      res.json({
+        totalGasUsed,
+        ethPaid: totalEthPaid,
+        avgGasPerTx,
+        avgGasPrice,
+        chartData,
+      });
     } catch (error) {
       console.error("Error calculating gas usage:", error);
       res.status(500).json({ error: "Internal server error" });

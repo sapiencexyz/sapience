@@ -1,5 +1,5 @@
 {
-  "address": "0xd4b1f251307548bef9f5d845b4c4d5902bafbcab",
+  "address": "0x6b2e198c11300bcf1152a47a382465c6fc874d8b",
   "abi": [
     {
       "type": "constructor",
@@ -979,6 +979,30 @@
           "name": "liquidity",
           "type": "uint128",
           "internalType": "uint128"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "quoteRequiredCollateral",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "liquidity",
+          "type": "uint128",
+          "internalType": "uint128"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "requiredCollateral",
+          "type": "uint256",
+          "internalType": "uint256"
         }
       ],
       "stateMutability": "view"
@@ -2925,12 +2949,12 @@
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0x63da196f3e1ef237b4c7ac24b0b325a7b12ecf3ed52f1f6f113cefa1883311c5",
-  "deployTxnBlockNumber": "7030625",
-  "deployTimestamp": "1730989608",
+  "deployTxnHash": "0x831c2e63d61d66e418615e65610308698a8eeb8f66344b026f067917964da61e",
+  "deployTxnBlockNumber": "7032045",
+  "deployTimestamp": "1731009024",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
   "highlight": true,
-  "gasUsed": 533314,
-  "gasCost": "5635169192"
+  "gasUsed": 541842,
+  "gasCost": "4033114384"
 }

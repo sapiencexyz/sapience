@@ -16,9 +16,9 @@
 
 - Go to `/packages/protocol`
 - Bump the version in `/packages/protocol/package.json`
-- Run `pnpm simulate-deploy:sepolia` to verify there are no issues
-- Run `CANNON_PRIVATE_KEY=x CANNON_PROVIDER_URL=y pnpm deploy:sepolia` (or set those values in a `.env` file)
-- Run `pnpm cannon publish foil:<version-number> --chain-id 11155111`
+- Run `pnpm simulate-deploy:sepolia --rpc-url <rpc-url> --private-key <private-key>` to verify there are no issues
+- Run `pnpm deploy:sepolia --rpc-url <rpc-url> --private-key <private-key>`
+- Run `pnpm cannon publish foil --chain-id 11155111 --private-key <private-key>`
 - `git add .`
 - `git commit -m "Foil v<version-number>"`
 - `git tag v<version-number>`

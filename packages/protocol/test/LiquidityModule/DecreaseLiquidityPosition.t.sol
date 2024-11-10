@@ -284,6 +284,39 @@ contract DecreaseLiquidityPosition is TestTrade {
         vm.stopPrank();
     }
 
+    function test_decreaseLiquidityPosition_after_trade() public {
+        traderSellsGas();
+
+        vm.startPrank(lp1);
+
+        Position.Data memory initialPosition = foil.getPosition(positionId);
+
+        // Get initial position details
+        (, , , , uint128 initialLiquidity) = getCurrentPositionTokenAmounts(
+            initialPosition.uniswapPositionId,
+            MIN_TICK,
+            MAX_TICK
+        );
+
+        // Calculate 20% of initial liquidity
+        uint128 newLiquidity = uint128((uint256(initialLiquidity) * 80) / 100);
+
+        uint256 requiredCollateral = foil.quoteRequiredCollateral(
+            positionId,
+            newLiquidity
+        );
+
+        console2.log("requiredCollateral", requiredCollateral);
+
+        assertGt(
+            requiredCollateral,
+            2,
+            "Quoted collateral should be greater than 0"
+        );
+
+        vm.stopPrank();
+    }
+
     function test_decreaseLiquidityPosition_closePosition() public {
         traderSellsGas();
         increaseLiquidityPosition(); // this collects fees from trader

@@ -158,6 +158,11 @@ interface ILiquidityModule {
         view
         returns (uint256 amount0, uint256 amount1, uint128 liquidity);
 
+    function quoteRequiredCollateral(
+        uint256 positionId,
+        uint128 liquidity
+    ) external view returns (uint256 requiredCollateral);
+
     /**
      * @notice Increases the deposited collateral for a liquidity position
      * @dev Only the fee collector can increase the deposited collateral

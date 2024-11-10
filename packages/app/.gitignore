@@ -36,6 +36,7 @@ yarn-error.log*
 
 **/public/workbox-*.js
 **/public/sw.js
+**/public/sw.js.map
 **/public/service-worker.js
 
 # sitemap

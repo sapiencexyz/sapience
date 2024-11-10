@@ -1,5 +1,5 @@
 {
-  "address": "0x81b955145952Fa74686Edadc428238686eA7b3F4",
+  "address": "0x99d87e8f41991926cEE4AC85B856dfe67FEcbB05",
   "abi": [
     {
       "type": "function",
@@ -292,6 +292,30 @@
           "name": "liquidity",
           "type": "uint128",
           "internalType": "uint128"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "quoteRequiredCollateral",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "liquidity",
+          "type": "uint128",
+          "internalType": "uint128"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "requiredCollateral",
+          "type": "uint256",
+          "internalType": "uint256"
         }
       ],
       "stateMutability": "view"
@@ -844,12 +868,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x4df6b0678a79a73d6370a29385eb8041ed59b4ca8ebbbe3efc9c1336ae5893e1",
-  "deployTxnBlockNumber": "7030617",
-  "deployTimestamp": "1730989500",
+  "deployTxnHash": "0x608de6ae7205022178b74e0457ca928e10489b52e745f2b5784db7193aa418b4",
+  "deployTxnBlockNumber": "7032038",
+  "deployTimestamp": "1731008928",
   "sourceName": "src/market/modules/LiquidityModule.sol",
   "contractName": "LiquidityModule",
   "deployedOn": "deploy.LiquidityModule",
-  "gasUsed": 3114704,
-  "gasCost": "5107495943"
+  "gasUsed": 3320329,
+  "gasCost": "4207678586"
 }

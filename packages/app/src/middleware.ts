@@ -1,40 +1,64 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
-// const [AUTH_USER, AUTH_PASS] = (process.env.HTTP_BASIC_AUTH || ':').split(':');
-const AUTH_USER = 'cz';
-const AUTH_PASS = '4';
+import html403 from './lib/403.html?raw';
 
-// Step 2. Check HTTP Basic Auth header if present
-function isAuthenticated(req: NextRequest) {
-  const authheader =
-    req.headers.get('authorization') || req.headers.get('Authorization');
+const GEOFENCED_COUNTRIES = [
+  'US',
+  'BY',
+  'CU',
+  'IR',
+  'KP',
+  'RU',
+  'SY',
+  'UA',
+  'MM',
+];
 
-  if (!authheader) {
-    return false;
-  }
-
-  const auth = Buffer.from(authheader.split(' ')[1], 'base64')
-    .toString()
-    .split(':');
-  const user = auth[0];
-  const pass = auth[1];
-
-  return user === AUTH_USER && pass === AUTH_PASS;
+function isDebug(req: NextRequest) {
+  const hasDebugCookie = req.cookies.get('debug')?.value === 'true';
+  const hasDebugParam = req.nextUrl.searchParams.has('debug');
+  return hasDebugCookie || hasDebugParam;
 }
 
-export function middleware(request: NextRequest) {
-  // Call our authentication function to check the request
-  if (!isAuthenticated(request)) {
-    // Respond with JSON indicating an error message
-    return new NextResponse('Authentication required', {
-      status: 401,
-      headers: { 'WWW-Authenticate': 'Basic' },
+async function getIpInfo(ip: string) {
+  const token = process.env.IPINFO_TOKEN;
+  if (!token) return null;
+
+  const response = await fetch(`https://ipinfo.io/${ip}?token=${token}`);
+  if (!response.ok) return null;
+
+  return response.json();
+}
+
+async function isGeofenced(req: NextRequest) {
+  if (!process.env.IPINFO_TOKEN) return false;
+  if (!req.ip) return true;
+
+  if (isDebug(req)) return false;
+
+  const ipInfo = await getIpInfo(req.ip);
+  if (!ipInfo) return true;
+
+  return GEOFENCED_COUNTRIES.includes(ipInfo.country) || ipInfo.privacy?.vpn;
+}
+
+export async function middleware(request: NextRequest) {
+  const response = NextResponse.next();
+  if (request.nextUrl.searchParams.has('debug')) {
+    response.cookies.set('debug', 'true');
+  }
+
+  if (process.env.NODE_ENV === 'production' && (await isGeofenced(request))) {
+    return new NextResponse(html403, {
+      status: 403,
+      headers: {
+        'Content-Type': 'text/html',
+      },
     });
   }
-  return NextResponse.next();
+  return response;
 }
 
-// Step 3. Configure "Matching Paths" below to protect routes with HTTP Basic Auth
 export const config = {
   matcher: '/:path*',
 };
