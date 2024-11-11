@@ -287,17 +287,4 @@ library Position {
             self.borrowedVEth = 0;
         }
     }
-
-    function getRequiredCollateral(
-        Data storage self
-    ) internal view returns (uint256 requiredCollateral) {
-        Epoch.Data storage epoch = Epoch.load(self.epochId);
-
-        requiredCollateral = epoch.getCollateralRequirementsForTrade(
-            self.vGasAmount,
-            self.vEthAmount,
-            self.borrowedVGas,
-            self.borrowedVEth
-        );
-    }
 }
