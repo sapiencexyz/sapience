@@ -452,7 +452,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         runtime.vEthToZero = (params.initialSize * -1).mulDecimal(
             output.tradeRatioD18.toInt()
         );
-        // net vEth from oritinal positon minus the vEth to zero
+        // net vEth from original positon minus the vEth to zero
         output.closePnL =
             params.oldPosition.vEthAmount.toInt() -
             params.oldPosition.borrowedVEth.toInt() -
