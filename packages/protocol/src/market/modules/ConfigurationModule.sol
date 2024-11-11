@@ -22,11 +22,11 @@ contract ConfigurationModule is
 
     modifier onlyOwner() {
         Market.Data storage market = Market.load();
-        if (msg.sender != market.owner) {
-            revert Errors.OnlyOwner();
-        }
         if (market.owner == address(0)) {
             revert Errors.MarketNotInitialized();
+        }
+        if (msg.sender != market.owner) {
+            revert Errors.OnlyOwner();
         }
         _;
     }
