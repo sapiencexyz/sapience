@@ -7,12 +7,7 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import { formatDistanceToNow } from 'date-fns';
-import {
-  ExternalLink,
-  ChevronDown,
-  ChevronUp,
-  ArrowUpDown,
-} from 'lucide-react';
+import { ChevronDown, ChevronUp, ArrowUpDown } from 'lucide-react';
 import Link from 'next/link';
 import type React from 'react';
 import { useMemo, useContext, useState } from 'react';
@@ -186,7 +181,13 @@ const TransactionTable: React.FC<Props> = ({ transactions }) => {
                   rel="noreferrer"
                   href={`${chain?.blockExplorers?.default.url}/tx/${row.original.event.logData.transactionHash}`}
                 >
-                  <ExternalLink className="w-5 h-5 opacity-80" />
+                  <img
+                    src="/etherscan.svg"
+                    alt="View on Etherscan"
+                    width={20}
+                    height={20}
+                    className="opacity-80"
+                  />
                 </a>
               </TableCell>
             </TableRow>
