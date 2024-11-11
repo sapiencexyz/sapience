@@ -33,14 +33,16 @@ library LiquidityAmounts {
             sqrtRatioBX96,
             FixedPoint96.Q96
         );
-        return
-            toUint128(
-                FullMath.mulDiv(
-                    amount0,
-                    intermediate,
-                    sqrtRatioBX96 - sqrtRatioAX96
-                )
-            );
+        unchecked {
+            return
+                toUint128(
+                    FullMath.mulDiv(
+                        amount0,
+                        intermediate,
+                        sqrtRatioBX96 - sqrtRatioAX96
+                    )
+                );
+        }
     }
 
     /// @notice Computes the amount of liquidity received for a given amount of token1 and price range
@@ -56,14 +58,16 @@ library LiquidityAmounts {
     ) internal pure returns (uint128 liquidity) {
         if (sqrtRatioAX96 > sqrtRatioBX96)
             (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
-        return
-            toUint128(
-                FullMath.mulDiv(
-                    amount1,
-                    FixedPoint96.Q96,
-                    sqrtRatioBX96 - sqrtRatioAX96
-                )
-            );
+        unchecked {
+            return
+                toUint128(
+                    FullMath.mulDiv(
+                        amount1,
+                        FixedPoint96.Q96,
+                        sqrtRatioBX96 - sqrtRatioAX96
+                    )
+                );
+        }
     }
 
     /// @notice Computes the maximum amount of liquidity received for a given amount of token0, token1, the current
@@ -112,7 +116,6 @@ library LiquidityAmounts {
         }
     }
 
-    /// Modified from Uniswap V3's getAmount0ForLiquidity to resolve overflow issues
     /// @notice Computes the amount of token0 for a given amount of liquidity and a price range
     /// @param sqrtRatioAX96 A sqrt price representing the first tick boundary
     /// @param sqrtRatioBX96 A sqrt price representing the second tick boundary
@@ -126,20 +129,14 @@ library LiquidityAmounts {
         if (sqrtRatioAX96 > sqrtRatioBX96)
             (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
 
-        uint256 numerator1 = uint256(liquidity) << FixedPoint96.RESOLUTION;
-        uint256 numerator2 = FullMath.mulDiv(
-            sqrtRatioBX96 - sqrtRatioAX96,
-            FixedPoint96.Q96,
-            sqrtRatioBX96
-        );
-
-        uint256 numerator = FullMath.mulDiv(
-            numerator1,
-            numerator2,
-            FixedPoint96.Q96
-        );
-
-        amount0 = numerator / sqrtRatioAX96;
+        unchecked {
+            return
+                FullMath.mulDiv(
+                    uint256(liquidity) << FixedPoint96.RESOLUTION,
+                    sqrtRatioBX96 - sqrtRatioAX96,
+                    sqrtRatioBX96
+                ) / sqrtRatioAX96;
+        }
     }
 
     /// @notice Computes the amount of token1 for a given amount of liquidity and a price range
@@ -155,12 +152,14 @@ library LiquidityAmounts {
         if (sqrtRatioAX96 > sqrtRatioBX96)
             (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
 
-        return
-            FullMath.mulDiv(
-                liquidity,
-                sqrtRatioBX96 - sqrtRatioAX96,
-                FixedPoint96.Q96
-            );
+        unchecked {
+            return
+                FullMath.mulDiv(
+                    liquidity,
+                    sqrtRatioBX96 - sqrtRatioAX96,
+                    FixedPoint96.Q96
+                );
+        }
     }
 
     /// @notice Computes the token0 and token1 value for a given amount of liquidity, the current
