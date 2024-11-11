@@ -320,9 +320,6 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             revert Errors.InvalidData("Size cannot be 0");
         }
 
-        // check settlement state
-        Epoch.load(position.epochId).validateNotSettled();
-
         QuoteOrTradeInputParams memory inputParams = QuoteOrTradeInputParams({
             oldPosition: position,
             initialSize: position.positionSize(),
