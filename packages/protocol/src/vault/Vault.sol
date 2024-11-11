@@ -58,11 +58,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
      */
     uint256 pendingSharesToBurn;
 
-    /**
-     * uninvested collateral
-     */
-    uint256 uninvestedCollateral;
-
     constructor(
         string memory _name,
         string memory _symbol,
@@ -203,7 +198,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
         // Process the epoch transition and pass the collateral received
         uint256 totalCollateralAfterTransition = _processEpochTransition(
-            collateralReceived + uninvestedCollateral
+            collateralReceived
         );
 
         /*
@@ -273,19 +268,18 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(epochData.pool)
             .slot0();
 
+        // get quote for collateral amount - some dust to account for rounding
+        uint256 dust = 1e4;
         // Calculate token amounts for the liquidity position
         (uint256 amount0, uint256 amount1, ) = market
             .quoteLiquidityPositionTokens(
                 currentEpochId,
-                totalCollateral,
+                totalCollateral - dust,
                 sqrtPriceX96,
                 TickMath.getSqrtRatioAtTick(epochData.baseAssetMinPriceTick),
                 TickMath.getSqrtRatioAtTick(epochData.baseAssetMaxPriceTick)
             );
 
-        // Reduce the token amounts by a little to account for slippage
-        amount0 = amount0.mulDiv(999999999, 1000000000);
-        amount1 = amount1.mulDiv(999999999, 1000000000);
         // Prepare liquidity mint parameters
         IFoilStructs.LiquidityMintParams memory params = IFoilStructs
             .LiquidityMintParams({
@@ -306,10 +300,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 balanceBefore = collateralAsset.balanceOf(address(this));
         // Create the liquidity position
         (newPositionId, , , , , , ) = market.createLiquidityPosition(params);
-        // Calculate the uninvested collateral
-        uninvestedCollateral =
-            collateralAsset.balanceOf(address(this)) -
-            (balanceBefore - totalCollateral);
     }
 
     function asset()
