@@ -12,6 +12,7 @@ library Errors {
     error InvalidEpoch();
     error InvalidMarket();
     error EpochNotSettled(uint256 epochId);
+    error ExpiredEpochNotSettled(uint256 epochEndTime);
     error EpochAlreadyStarted();
     error EpochSettled();
     error ExpiredEpoch();
