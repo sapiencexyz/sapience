@@ -8,12 +8,12 @@ export const Investors = () => {
           Backed by
         </h1>
 
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid gap-4 md:grid-cols-2 md:gap-0">
           <div>
-            <h2 className="text-4xl font-black uppercase tracking-wide">
+            <h2 className="mb-5 mt-2 h-9 text-5xl font-black uppercase leading-none">
               Zeal Capital
             </h2>
-            <h3>Joe Buttram</h3>
+            <h3 className="font-medium text-muted-foreground">Joe Buttram</h3>
           </div>
           <div>
             <Image
@@ -21,13 +21,15 @@ export const Investors = () => {
               alt="Crucible Capital"
               width={1000}
               height={1000}
-              className="h-full w-auto object-contain"
+              className="mx-auto mb-3.5 mt-3.5 h-9 w-auto object-contain"
             />
-            <h3>Meltem Demirors</h3>
+            <h3 className="font-medium text-muted-foreground">
+              Meltem Demirors
+            </h3>
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-2.5">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
           <div>
             <Image
               src="/assets/cms.png"
@@ -45,8 +47,8 @@ export const Investors = () => {
               height={80}
               className="mx-auto mb-2 h-[80px] w-[80px] rounded-full object-cover grayscale"
             />
-            <h2 className="text-xl">Cobie</h2>
-            <h4>@cobie</h4>
+            <h2 className="mb-1 text-xl">Cobie</h2>
+            <h4 className="font-medium text-muted-foreground">@cobie</h4>
             <h5 className="align-center text-sm text-muted-foreground">
               via
               <Image
@@ -66,8 +68,8 @@ export const Investors = () => {
               height={80}
               className="mx-auto mb-2 h-[80px] w-[80px] rounded-full object-cover grayscale"
             />
-            <h2 className="text-xl">Larry</h2>
-            <h4>The Block</h4>
+            <h2 className="mb-1 text-xl">Larry</h2>
+            <h4 className="font-medium text-muted-foreground">The Block</h4>
             <h5 className="align-center text-sm text-muted-foreground">
               via
               <Image
@@ -90,7 +92,7 @@ export const Investors = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-2.5">
+        <div className="grid grid-cols-2 gap-8 md:grid-cols-4 md:gap-2">
           <div>
             <Image
               src="/assets/ismail.jpg"
@@ -99,8 +101,8 @@ export const Investors = () => {
               height={80}
               className="mx-auto mb-2 h-[80px] w-[80px] rounded-full object-cover grayscale"
             />
-            <h2 className="text-xl">Ismail</h2>
-            <h4>Celestia</h4>
+            <h2 className="mb-1 text-xl">Ismail</h2>
+            <h4 className="font-medium text-muted-foreground">Celestia</h4>
           </div>
           <div>
             <Image
@@ -110,8 +112,10 @@ export const Investors = () => {
               height={80}
               className="mx-auto mb-2 h-[80px] w-[80px] rounded-full object-cover grayscale"
             />
-            <h2 className="text-xl">Dean</h2>
-            <h4>@deaneigenmann</h4>
+            <h2 className="mb-1 text-xl">Dean</h2>
+            <h4 className="font-medium text-muted-foreground">
+              @deaneigenmann
+            </h4>
           </div>
           <div>
             <Image
@@ -121,8 +125,8 @@ export const Investors = () => {
               height={80}
               className="mx-auto mb-2 h-[80px] w-[80px] rounded-full object-cover grayscale"
             />
-            <h2 className="text-xl">Steven</h2>
-            <h4>The Block</h4>
+            <h2 className="mb-1 text-xl">Steven</h2>
+            <h4 className="font-medium text-muted-foreground">The Block</h4>
           </div>
           <div>
             <Image
@@ -132,8 +136,8 @@ export const Investors = () => {
               height={80}
               className="mx-auto mb-2 h-[80px] w-[80px] rounded-full object-cover grayscale"
             />
-            <h2 className="text-xl">MacLane</h2>
-            <h4>Threshold</h4>
+            <h2 className="mb-1 text-xl">MacLane</h2>
+            <h4 className="font-medium text-muted-foreground">Threshold</h4>
           </div>
         </div>
       </div>
