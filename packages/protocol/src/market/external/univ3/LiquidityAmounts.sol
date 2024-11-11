@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.2 <0.9.0;
-/// @notice based on Uniswap V3's TickMath library, but migrated to use Solidity 0.8.2 onwards
+/// @notice based on Uniswap V3's v3-periphery library, but migrated to use Solidity 0.8.2 onwards
 
 import "./FullMath.sol";
 import "./FixedPoint96.sol";

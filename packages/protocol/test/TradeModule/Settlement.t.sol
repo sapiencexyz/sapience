@@ -16,7 +16,6 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {Errors} from "../../src/market/storage/Errors.sol";
 import {Position} from "../../src/market/storage/Position.sol";
 import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
-import {MigrationMathUtils} from "../../src/market/external/univ3/MigrationMathUtils.sol";
 
 contract TradePositionSettlement is TestTrade {
     using Cannon for Vm;
@@ -62,7 +61,12 @@ contract TradePositionSettlement is TestTrade {
         );
         uint160 startingSqrtPriceX96 = INITIAL_PRICE_SQRT;
 
-        (foil, ) = createEpoch(5200, 28200, startingSqrtPriceX96,MIN_TRADE_SIZE); // 1.709 to 17.09 (1.6819839204636384 to 16.774485460620674)
+        (foil, ) = createEpoch(
+            5200,
+            28200,
+            startingSqrtPriceX96,
+            MIN_TRADE_SIZE
+        ); // 1.709 to 17.09 (1.6819839204636384 to 16.774485460620674)
 
         lp1 = TestUser.createUser("LP1", 20_000_000 ether);
         trader1 = TestUser.createUser("Trader1", 20_000_000 ether);
