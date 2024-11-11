@@ -3,9 +3,11 @@ import Image from 'next/image';
 
 export const PoweredBy = () => {
   return (
-    <div className="container mx-auto w-full max-w-4xl px-4 py-12 md:px-6">
+    <div className="container mx-auto w-full max-w-4xl px-4 pb-20 pt-5 md:px-6">
       <div className="grid text-center">
-        <h1 className="text-2xl font-semibold text-primary">Powered By</h1>
+        <h1 className="text-sm font-medium uppercase tracking-widest text-gray-500">
+          Powered By
+        </h1>
         <div className="grid grid-cols-1 items-center gap-4 md:grid-cols-3">
           <div className="flex h-28 items-center justify-center p-4">
             <Image

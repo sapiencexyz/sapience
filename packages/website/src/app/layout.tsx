@@ -27,13 +27,22 @@ export const metadata: Metadata = {
     title: APP_NAME,
     description: APP_DESCRIPTION,
     images: {
-      url: 'https://og-image.sznm.dev/**nextarter-tailwind**.sznm.dev.png?theme=dark&md=1&fontSize=125px&images=https%3A%2F%2Fsznm.dev%2Favataaars.svg&widths=250',
+      url: '',
       alt: 'foil.xyz og-image',
     },
   },
   twitter: {
     creator: '@foilxyz',
     card: 'summary_large_image',
+  },
+  icons: {
+    icon: '/assets/favicon.svg',
+    shortcut: '/assets/favicon.svg',
+    apple: '/assets/favicon.svg',
+    other: {
+      rel: 'mask-icon',
+      url: '/assets/favicon.svg',
+    },
   },
 };
 

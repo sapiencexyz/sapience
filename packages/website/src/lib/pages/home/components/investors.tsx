@@ -4,7 +4,7 @@ export const Investors = () => {
   return (
     <div className="container mx-auto max-w-3xl px-4 py-12 md:px-6">
       <div className="grid gap-2.5 space-y-6 py-12 text-center">
-        <h1 className="text-center text-sm font-semibold text-primary">
+        <h1 className="text-sm font-medium uppercase tracking-widest text-gray-500">
           Backed by
         </h1>
 
@@ -16,7 +16,13 @@ export const Investors = () => {
             <h3>Joe Buttram</h3>
           </div>
           <div>
-            <h2>Crucible Capital</h2>
+            <Image
+              src="/assets/crucible.png"
+              alt="Crucible Capital"
+              width={1000}
+              height={1000}
+              className="h-full w-auto object-contain"
+            />
             <h3>Meltem Demirors</h3>
           </div>
         </div>
@@ -40,18 +46,17 @@ export const Investors = () => {
               className="mx-auto mb-2 h-[80px] w-[80px] rounded-full object-cover grayscale"
             />
             <h2 className="text-xl">Cobie</h2>
-            <h4>
-              @cobie
-            </h4>
-              <h5 className="text-sm text-muted-foreground align-center">via 
-                <Image
-                  src="/assets/echo.svg"
-                  alt="echo"
-                  width={40}
-                  height={1}
-                  className="inline-block h-6 ml-1.5"
-                />
-              </h5>
+            <h4>@cobie</h4>
+            <h5 className="align-center text-sm text-muted-foreground">
+              via
+              <Image
+                src="/assets/echo.svg"
+                alt="echo"
+                width={40}
+                height={1}
+                className="ml-1.5 inline-block h-6"
+              />
+            </h5>
           </div>
           <div>
             <Image
@@ -62,22 +67,21 @@ export const Investors = () => {
               className="mx-auto mb-2 h-[80px] w-[80px] rounded-full object-cover grayscale"
             />
             <h2 className="text-xl">Larry</h2>
-            <h4>
-              The Block
-            </h4>
-              <h5 className="text-sm text-muted-foreground align-center">via 
-                <Image
-                  src="/assets/echo.svg"
-                  alt="echo"
-                  width={40}
-                  height={1}
-                  className="inline-block h-6 ml-1.5"
-                />
-              </h5>
+            <h4>The Block</h4>
+            <h5 className="align-center text-sm text-muted-foreground">
+              via
+              <Image
+                src="/assets/echo.svg"
+                alt="echo"
+                width={40}
+                height={1}
+                className="ml-1.5 inline-block h-6"
+              />
+            </h5>
           </div>
           <div>
             <Image
-              src="/assets/publicworks.jpg"
+              src="/assets/publicworks.svg"
               alt="Public Works"
               width={1000}
               height={1000}

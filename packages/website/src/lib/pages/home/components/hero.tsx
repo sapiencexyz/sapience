@@ -10,14 +10,17 @@ export const Hero = () => {
 
   return (
     <div className="relative h-[100dvh] w-full overflow-hidden border-b border-border">
-      <div className="relative z-[2] mx-auto flex min-h-[100dvh] w-full flex-col items-center justify-center gap-3 px-4 pt-0 text-center md:gap-7 md:pt-12">
-        <h1 className="text-3xl font-bold leading-[1.15] text-white drop-shadow-[1px_1px_3px_#000000] md:text-5xl">
+      <motion.div
+        className="relative z-[2] mx-auto flex min-h-[100dvh] w-full flex-col items-center justify-center gap-3 px-4 text-center md:gap-7"
+        style={{ opacity }}
+      >
+        <h1 className="text-3xl font-bold text-white drop-shadow-[1px_1px_3px_rgba(0,0,0,0.75)] md:text-6xl">
           Gas and Blobspace with Stable Pricing
         </h1>
-        <h2 className="mb-0 max-w-[560px] text-lg font-semibold leading-[1.15] text-white drop-shadow-[1px_1px_3px_#000000] md:text-2xl">
+        <h2 className="mb-0 text-lg font-semibold text-white drop-shadow-[1px_1px_3px_rgba(0,0,0,0.75)] md:text-3xl">
           Lock in your onchain costs regardless of network congestion
         </h2>
-      </div>
+      </motion.div>
 
       <div className="absolute left-0 top-0 z-[2] h-[100dvh] w-[100dvw] bg-[url('../../../public/assets/dotgrid.svg')] bg-[length:45px_45px] bg-repeat opacity-[0.33]" />
 
