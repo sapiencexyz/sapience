@@ -1,21 +1,30 @@
 'use client';
 
-import { formatDuration, intervalToDuration } from 'date-fns';
-import { ArrowUpDown, HelpCircle, Loader2 } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
+/* eslint-disable sonarjs/cognitive-complexity */
+
+import { formatDuration, intervalToDuration, format } from 'date-fns';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-  type FC,
-  type FormEvent,
-  useState,
-  useEffect,
-  useContext,
-  useRef,
-  useMemo,
-} from 'react';
+  ArrowUpDown,
+  ChartNoAxesColumn,
+  ChevronLeft,
+  HelpCircle,
+  Loader2,
+} from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { type FC, useState, useEffect, useContext, useMemo } from 'react';
 import React from 'react';
+import CountUp from 'react-countup';
 import { useForm } from 'react-hook-form';
-import type { AbiFunction, WriteContractErrorType } from 'viem';
-import { decodeEventLog, formatUnits, zeroAddress } from 'viem';
+import type { AbiFunction } from 'viem';
+import {
+  decodeEventLog,
+  formatUnits,
+  zeroAddress,
+  isAddress,
+  createPublicClient,
+  http,
+} from 'viem';
 import { mainnet, sepolia } from 'viem/chains';
 import {
   useWaitForTransactionReceipt,
@@ -29,12 +38,6 @@ import {
 } from 'wagmi';
 
 import erc20ABI from '../../erc20abi.json';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '~/components/ui/accordion';
 import { Button } from '~/components/ui/button';
 import {
   Dialog,
@@ -59,9 +62,9 @@ import {
 import { useToast } from '~/hooks/use-toast';
 import { useMarketList } from '~/lib/context/MarketListProvider';
 import { MarketContext } from '~/lib/context/MarketProvider';
-import { getChain } from '~/lib/util/util';
 
 import NumberDisplay from './numberDisplay';
+import SimpleBarChart from './SimpleBarChart';
 import SizeInput from './sizeInput';
 
 interface SubscribeProps {
@@ -70,6 +73,15 @@ interface SubscribeProps {
   epoch?: number;
   showMarketSwitcher?: boolean;
 }
+
+const publicClient = createPublicClient({
+  chain: mainnet,
+  transport: process.env.NEXT_PUBLIC_INFURA_API_KEY
+    ? http(
+        `https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
+      )
+    : http('https://ethereum-rpc.publicnode.com'),
+});
 
 const Subscribe: FC<SubscribeProps> = ({
   marketAddress: propMarketAddress,
@@ -86,11 +98,15 @@ const Subscribe: FC<SubscribeProps> = ({
   const [fillPriceInEth, setFillPriceInEth] = useState<bigint>(BigInt(0));
   const [txnStep, setTxnStep] = useState(0);
   const [isMarketSelectorOpen, setIsMarketSelectorOpen] = useState(false);
-  const [walletAddressInput, setWalletAddressInput] = useState<string>('');
   const [isEstimating, setIsEstimating] = useState(false);
-  const [accordionIndex, setAccordionIndex] = useState<string | undefined>(
-    undefined
-  );
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+  const [estimationResults, setEstimationResults] = useState<{
+    totalGasUsed: number;
+    ethPaid: number;
+    avgGasPerTx: number;
+    avgGasPrice: number;
+    chartData: { timestamp: number; value: number }[];
+  } | null>(null);
 
   // Form setup
   const form = useForm({
@@ -195,7 +211,7 @@ const Subscribe: FC<SubscribeProps> = ({
   // Format start and end times
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp * 1000);
-    return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+    return format(date, 'MMMM do');
   };
 
   // Allowance check
@@ -347,8 +363,13 @@ const Subscribe: FC<SubscribeProps> = ({
     }
   }, [fillPrice, collateralAssetDecimals, stEthPerToken]);
 
-  // Update onSubmit to use the single formValues definition
+  // Update onSubmit to check for dialog interactions
   const onSubmit = async (values: any) => {
+    // Return early if we're just opening/closing dialogs
+    if (isMarketSelectorOpen || isAnalyticsOpen) {
+      return;
+    }
+
     if (BigInt(formValues.size) === BigInt(0)) {
       toast({
         title: 'Invalid size',
@@ -433,54 +454,40 @@ const Subscribe: FC<SubscribeProps> = ({
 
     const isDisabled =
       pendingTxn ||
-      isLoadingCollateralChange ||
       Boolean(quoteError) ||
-      BigInt(formValues.size) <= BigInt(0);
+      BigInt(formValues.size) <= BigInt(0) ||
+      isLoadingCollateralChange;
 
     return (
-      <Button className="w-full" size="lg" type="submit" disabled={isDisabled}>
-        {(() => {
-          if (isLoadingCollateralChange) {
-            return (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Loading Quote</span>
-              </>
-            );
-          }
-
-          if (requireApproval) {
-            return `Approve ${collateralAssetTicker} Transfer`;
-          }
-
-          return 'Create Subscription';
-        })()}
-      </Button>
+      <div className="relative">
+        {isLoadingCollateralChange && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Loader2 className="h-4 w-4 animate-spin" />
+          </div>
+        )}
+        <Button
+          className="w-full"
+          size="lg"
+          type="submit"
+          disabled={isDisabled}
+        >
+          {requireApproval
+            ? `Approve ${collateralAssetTicker} Transfer`
+            : 'Create Subscription'}
+        </Button>
+      </div>
     );
   };
-
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, []);
 
   const marketName =
     markets.find((m) => m.address === marketAddress)?.name || 'Choose Market';
 
-  useEffect(() => {
-    if (address) {
-      setWalletAddressInput(address);
-    }
-  }, [address]);
-
   const handleEstimateUsage = async () => {
-    if (!walletAddressInput) {
+    const formWalletAddress = form.getValues('walletAddress');
+    if (!formWalletAddress) {
       toast({
         title: 'Invalid Address',
-        description: 'Please enter a wallet address to estimate usage.',
+        description: 'Please enter a wallet address or ENS name.',
         duration: 3000,
       });
       return;
@@ -488,6 +495,27 @@ const Subscribe: FC<SubscribeProps> = ({
 
     setIsEstimating(true);
     try {
+      let resolvedAddress = formWalletAddress;
+      if (!isAddress(formWalletAddress)) {
+        try {
+          const ensAddress = await publicClient.getEnsAddress({
+            name: formWalletAddress,
+          });
+          if (!ensAddress) {
+            throw new Error('Could not resolve ENS name');
+          }
+          resolvedAddress = ensAddress;
+        } catch (error) {
+          toast({
+            title: 'Invalid Address',
+            description: 'Please enter a valid wallet address or ENS name.',
+            duration: 3000,
+          });
+          setIsEstimating(false);
+          return;
+        }
+      }
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_FOIL_API_URL}/estimate`,
         {
@@ -496,7 +524,7 @@ const Subscribe: FC<SubscribeProps> = ({
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            walletAddress: walletAddressInput,
+            walletAddress: resolvedAddress,
             chainId: finalChainId,
             marketAddress: finalMarketAddress,
             epochId: finalEpoch,
@@ -508,28 +536,26 @@ const Subscribe: FC<SubscribeProps> = ({
         throw new Error('Failed to fetch estimate');
       }
 
-      const duration = formatDuration(
-        intervalToDuration({
-          start: Number(startTime) * 1000,
-          end: Number(endTime) * 1000,
-        })
-      );
       const data = await response.json();
-      setSizeValue(BigInt(Math.floor(data.totalGasUsed)));
-      setAccordionIndex(undefined);
-      if (sizeValue === BigInt(0)) {
+
+      // Add check for no gas usage
+      if (!data.totalGasUsed || data.totalGasUsed === 0) {
         toast({
-          title: 'Estimate Complete',
-          description: `This wallet hasn't used any gas in the last ${duration}.`,
+          title: 'Recent Data Unavailable',
+          description: `This address hasn't used gas in the last ${formattedDuration}.`,
           duration: 5000,
         });
-      } else {
-        toast({
-          title: 'Estimate Complete',
-          description: `Gas amount has been populated based on this wallet's usage in the last ${duration}.`,
-          duration: 5000,
-        });
+        return;
       }
+
+      // Store the results if there is gas usage
+      setEstimationResults({
+        totalGasUsed: data.totalGasUsed,
+        ethPaid: data.ethPaid || 0,
+        avgGasPerTx: data.avgGasPerTx || 0,
+        avgGasPrice: data.avgGasPrice || 0,
+        chartData: data.chartData || [],
+      });
     } catch (error) {
       toast({
         title: 'Estimation Failed',
@@ -543,6 +569,18 @@ const Subscribe: FC<SubscribeProps> = ({
 
   const formattedStartTime = startTime ? formatDate(Number(startTime)) : '';
   const formattedEndTime = endTime ? formatDate(Number(endTime)) : '';
+
+  // Add this new formatted duration calculation
+  const formattedDuration = useMemo(() => {
+    if (!startTime || !endTime) return '';
+
+    const duration = intervalToDuration({
+      start: new Date(Number(startTime) * 1000),
+      end: new Date(Number(endTime) * 1000),
+    });
+
+    return formatDuration(duration, { format: ['months', 'days'] });
+  }, [startTime, endTime]);
 
   // Now we can define collateralDeltaLimit after allowance is initialized
   const collateralDeltaLimit = useMemo(() => {
@@ -578,83 +616,206 @@ const Subscribe: FC<SubscribeProps> = ({
     }
   };
 
+  useEffect(() => {
+    if (!isAnalyticsOpen) {
+      setEstimationResults(null);
+      form.setValue('walletAddress', '');
+    }
+  }, [isAnalyticsOpen]);
+
   return (
     <Form {...form}>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{marketName} Subscription</h2>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <div className="flex items-center mb-5">
+          <div className="border border-border rounded-full p-1.5 mr-2 h-8 w-8 overflow-hidden">
+            <img src="/eth.svg" alt="Ethereum" width="100%" height="100%" />
+          </div>
+
+          <h2 className="text-lg md:text-2xl font-semibold">
+            {marketName} Subscription
+          </h2>
+
           {showMarketSwitcher && (
             <Button
               type="button"
               variant="ghost"
               size="sm"
               onClick={() => setIsMarketSelectorOpen(true)}
+              className="px-2.5 ml-auto text-muted-foreground"
             >
-              <ArrowUpDown className="h-4 w-4" />
+              <ArrowUpDown />
             </Button>
           )}
         </div>
 
-        <div className="flex items-center gap-1">
-          <TooltipProvider delayDuration={0}>
-            <Tooltip>
-              <p>
-                Enter the amount of gas you expect to use between{' '}
-                {formattedStartTime} and {formattedEndTime}.
-                <TooltipTrigger asChild>
-                  <HelpCircle className="inline-block h-4 w-4 text-muted-foreground ml-1 relative top-[-3px]" />
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-xs">
-                  <p>
-                    If the average gas price in this time exceeds the quote
-                    you&apos;re provided in gwei, you will be able to redeem a
-                    rebate from Foil at the end of this period.
-                  </p>
-                </TooltipContent>
-              </p>
-            </Tooltip>
-          </TooltipProvider>
+        <div className="flex items-center flex-col mb-6">
+          <p className="mb-6">
+            Enter the amount of gas you expect to use between{' '}
+            {formattedStartTime} and {formattedEndTime}.
+          </p>
+
+          <Button
+            variant="outline"
+            onClick={() => setIsAnalyticsOpen(true)}
+            className="w-full shadow-sm"
+          >
+            <ChartNoAxesColumn className="text-muted-foreground" />
+            Wallet Analytics
+          </Button>
         </div>
 
-        <Accordion
-          type="single"
-          collapsible
-          value={accordionIndex}
-          onValueChange={(val) => setAccordionIndex(val)}
-        >
-          <AccordionItem value="0" className="border-none">
-            <AccordionTrigger className="text-sm uppercase font-medium text-muted-foreground">
-              Estimate Gas Usage
-            </AccordionTrigger>
-            <AccordionContent>
-              <div className="border p-6 rounded-sm space-y-4">
-                <FormField
-                  control={form.control}
-                  name="walletAddress"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Wallet Address</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          disabled={isEstimating}
-                          placeholder="0x..."
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <Button
-                  className="w-full"
-                  onClick={handleEstimateUsage}
-                  disabled={isEstimating}
-                >
-                  {isEstimating ? 'Estimating...' : 'Estimate Usage'}
-                </Button>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
+        <Dialog open={isAnalyticsOpen} onOpenChange={setIsAnalyticsOpen}>
+          <DialogContent className="max-w-96 overflow-hidden focus:ring-0 focus:outline-none">
+            <DialogHeader className="relative">
+              <AnimatePresence mode="wait">
+                {estimationResults ? (
+                  <motion.div
+                    key="back-button"
+                    initial={{ opacity: 0, x: 32 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 32 }}
+                    transition={{
+                      duration: 0.3,
+                      ease: 'easeInOut',
+                    }}
+                    className="absolute left-0 -top-1.5 -left-1.5"
+                  >
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEstimationResults(null)}
+                      className="p-0 h-auto text-muted-foreground"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      <span className="sr-only">Go back</span>
+                    </Button>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+
+              <DialogTitle className="tracking-normal text-center pt-3">
+                Estimate Gas Usage
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4 pt-1">
+              <AnimatePresence mode="wait">
+                {!estimationResults ? (
+                  <motion.div
+                    key="input-form"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{
+                      duration: 0.2,
+                      ease: 'easeInOut',
+                    }}
+                  >
+                    <FormField
+                      control={form.control}
+                      name="walletAddress"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Wallet Address</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="vitalik.eth"
+                              autoComplete="off"
+                              spellCheck={false}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleEstimateUsage();
+                                }
+                              }}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <Button
+                      size="lg"
+                      className="w-full mt-5"
+                      onClick={handleEstimateUsage}
+                      disabled={isEstimating}
+                    >
+                      {isEstimating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          Generating
+                        </>
+                      ) : (
+                        'Generate Analytics'
+                      )}
+                    </Button>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="results"
+                    initial={{ opacity: 0, height: 140 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 140 }}
+                    transition={{
+                      duration: 0.2,
+                      height: {
+                        duration: 0.5,
+                        ease: 'easeOut',
+                      },
+                      opacity: {
+                        duration: 0.2,
+                        ease: 'easeOut',
+                      },
+                    }}
+                  >
+                    <div className="mb-5">
+                      <SimpleBarChart data={estimationResults.chartData} />
+                    </div>
+                    <p className="text-lg mb-2">
+                      {form.getValues('walletAddress')} used{' '}
+                      <CountUp
+                        end={estimationResults.totalGasUsed}
+                        separator=","
+                        duration={1.5}
+                      />{' '}
+                      gas (costing{' '}
+                      <NumberDisplay value={estimationResults.ethPaid} /> ETH)
+                      over the last {formattedDuration}.
+                    </p>
+                    <div className="flex flex-col gap-0.5 mb-6">
+                      <p className="text-sm text-muted-foreground">
+                        The average cost per transaction was{' '}
+                        {estimationResults.avgGasPerTx.toLocaleString()} gas.
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        The average gas price paid was{' '}
+                        {estimationResults.avgGasPrice.toLocaleString()} gwei.
+                      </p>
+                    </div>
+                    <div className="border border-border p-6 rounded-lg shadow-sm bg-primary/5">
+                      <p className="mb-4">
+                        Generate a quote for a subscription of this much gas
+                        over {formattedDuration}, starting on{' '}
+                        {formattedStartTime}.
+                      </p>
+                      <Button
+                        className="w-full"
+                        size="lg"
+                        variant="default"
+                        onClick={() => {
+                          setSizeValue(BigInt(estimationResults.totalGasUsed));
+                          setIsAnalyticsOpen(false);
+                        }}
+                      >
+                        Generate Quote
+                      </Button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <FormField
           control={form.control}
@@ -667,44 +828,73 @@ const Subscribe: FC<SubscribeProps> = ({
                 label="Gas Amount"
                 {...field}
               />
-              {quoteError && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <p className="text-red-500 text-sm font-medium flex items-center">
-                        <span className="mr-2">
-                          Foil was unable to generate a quote
-                        </span>{' '}
-                        <HelpCircle className="h-4 w-4" />
-                      </p>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="max-w-xs">{quoteError}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
+              <p className="text-sm text-muted-foreground mt-2">
+                If the average gas price exceeds the quote during the period,
+                you can redeem a rebate.
+              </p>
             </>
           )}
         />
 
-        {!quoteError && (
-          <div className="bg-muted p-4 rounded-lg space-y-2">
-            <p className="text-sm font-semibold text-muted-foreground">Quote</p>
-
-            <div className="flex items-center gap-3">
-              <p className="text-lg">
-                <NumberDisplay
-                  value={formatUnits(collateralDelta, collateralAssetDecimals)}
-                />{' '}
-                {collateralAssetTicker}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                <NumberDisplay value={formatUnits(fillPriceInEth, 9)} /> gwei
-              </p>
+        <div className=" bg-muted p-4 rounded-lg space-y-2 my-7">
+          <p className="text-sm font-semibold text-muted-foreground">Quote</p>
+          {quoteError ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <p className="text-red-500 text-sm font-medium flex items-center pt-1">
+                    <span className="mr-1">
+                      Foil was unable to generate a quote.
+                    </span>{' '}
+                    <HelpCircle className="h-4 w-4" />
+                  </p>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">{quoteError}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <div className="flex gap-3 items-baseline min-h-[28px]">
+              <AnimatePresence mode="wait">
+                {isLoadingCollateralChange ? (
+                  <motion.div
+                    key="loading"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex items-center justify-center mx-auto -translate-y-1"
+                  >
+                    <Loader2 className="h-7 w-7 animate-spin opacity-50" />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="content"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <div className="flex gap-3 items-baseline">
+                      <p className="text-lg">
+                        <NumberDisplay
+                          value={formatUnits(
+                            collateralDelta,
+                            collateralAssetDecimals
+                          )}
+                        />{' '}
+                        {collateralAssetTicker}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        <NumberDisplay value={formatUnits(fillPriceInEth, 9)} />{' '}
+                        gwei
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {renderActionButton()}
 
@@ -712,7 +902,7 @@ const Subscribe: FC<SubscribeProps> = ({
           open={isMarketSelectorOpen}
           onOpenChange={setIsMarketSelectorOpen}
         >
-          <DialogContent>
+          <DialogContent className="max-w-96 overflow-hidden">
             <DialogHeader>
               <DialogTitle>Select Market</DialogTitle>
             </DialogHeader>

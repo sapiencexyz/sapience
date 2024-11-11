@@ -5,6 +5,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useMediaQuery } from 'usehooks-ts';
 import { useAccount } from 'wagmi';
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '~/components/ui/tabs';
@@ -65,6 +66,7 @@ const Market = ({
   const { epoch } = params;
   const contractId = `${chainId}:${marketAddress}`;
   const { toast } = useToast();
+  const isLargeScreen = useMediaQuery('(min-width: 1024px)'); // 1024px is Tailwind's 'lg' breakpoint
 
   // useEffect to handle table resize
   useEffect(() => {
@@ -254,17 +256,17 @@ const Market = ({
       epoch={Number(epoch)}
     >
       <AddEditPositionProvider>
-        <div className="flex flex-col w-full h-[calc(100vh-64px)] overflow-hidden">
+        <div className="flex flex-col w-full h-[calc(100vh-64px)] overflow-y-auto lg:overflow-hidden">
           <EpochHeader />
-          <div className="flex flex-col flex-1 overflow-hidden">
-            <div className="flex flex-col flex-1 overflow-hidden px-6 gap-8 md:flex-row">
-              <div
-                className="flex flex-col w-full h-full overflow-hidden"
-                id="chart-stat-flex"
-              >
+          <div className="flex flex-col flex-1 lg:overflow-y-auto md:overflow-visible">
+            <div className="flex flex-col flex-1 px-4 md:px-6 gap-4 md:gap-8 md:flex-row min-h-0">
+              <div className="w-full order-2 md:order-2 md:max-w-[360px] pb-3">
+                <MarketSidebar isTrade={isTrade} />
+              </div>
+              <div className="flex flex-col w-full order-1 md:order-1">
                 <Stats />
 
-                <div className="flex flex-1 id-chart-flex min-h-0">
+                <div className="flex flex-1 id-chart-flex min-h-[400px] md:min-h-0 overflow-visible lg:overflow-hidden">
                   {renderChart()}
                 </div>
                 <div className="flex justify-between w-full items-center mt-1 mb-3 flex-shrink-0">
@@ -286,18 +288,17 @@ const Market = ({
                   />
                 </div>
               </div>
-              <div className="w-full md:max-w-[360px] pb-3">
-                <MarketSidebar isTrade={isTrade} />
-              </div>
             </div>
             {transactions.length > 0 && (
               <div
-                className="flex id-table-flex border-t border-border position-relative justify-center items-center relative"
-                style={{ height: `${tableFlexHeight}px` }}
+                className="flex id-table-flex border-t border-border position-relative justify-center items-center relative lg:h-[172px]"
+                style={{
+                  height: isLargeScreen ? `${tableFlexHeight}px` : 'auto',
+                }}
               >
                 <div
                   ref={resizeRef}
-                  className="absolute top-0 left-0 right-0 h-1 cursor-ns-resize hover:bg-gray-30"
+                  className="absolute top-0 left-0 right-0 h-1 cursor-ns-resize hover:bg-gray-30 hidden lg:block"
                 />
                 {isLoadingAccountData ? (
                   <div className="flex justify-center items-center">
@@ -310,23 +311,26 @@ const Market = ({
                   >
                     <TabsList>
                       <TabsTrigger value="transactions">
-                        Your Transactions
+                        <span className="hidden lg:inline">Your </span>
+                        Transactions
                       </TabsTrigger>
                       <TabsTrigger value="trader-positions">
-                        Your Trader Positions
+                        <span className="hidden lg:inline">Your </span>
+                        Trader Positions
                       </TabsTrigger>
                       <TabsTrigger value="lp-positions">
-                        Your LP Positions
+                        <span className="hidden lg:inline">Your </span>
+                        LP Positions
                       </TabsTrigger>
                     </TabsList>
                     <div className="flex-grow overflow-y-auto">
-                      <TabsContent value="transactions">
+                      <TabsContent value="transactions" className="mt-0">
                         <TransactionTable transactions={transactions} />
                       </TabsContent>
-                      <TabsContent value="trader-positions">
+                      <TabsContent value="trader-positions" className="mt-0">
                         <TraderPositionsTable positions={traderPositions} />
                       </TabsContent>
-                      <TabsContent value="lp-positions">
+                      <TabsContent value="lp-positions" className="mt-0">
                         <LiquidityPositionsTable positions={lpPositions} />
                       </TabsContent>
                     </div>

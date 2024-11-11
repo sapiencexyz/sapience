@@ -23,7 +23,7 @@ import type { VolumeChartData, TimeWindow } from '~/lib/interfaces/interfaces';
 import { formatXAxisTick, getXTicksToShow } from '~/lib/util/chartUtil';
 import { getDisplayTextForVolumeWindow } from '~/lib/util/util';
 
-const turquoise = '#00FFD1';
+const barColor = 'hsl(var(--chart-3))';
 
 dayjs.extend(utc);
 
@@ -94,7 +94,7 @@ const CustomTooltip: React.FC<
   );
 };
 
-const VolumeChart = ({ data, color = turquoise, activeWindow }: ChartProps) => {
+const VolumeChart = ({ data, color = barColor, activeWindow }: ChartProps) => {
   const volumeOverTimeframe = useMemo(() => {
     return data.reduce((sum, item) => {
       return sum + item.volume;

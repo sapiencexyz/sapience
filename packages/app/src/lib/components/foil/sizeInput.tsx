@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowUpDown } from 'lucide-react';
+import { ArrowUpDown, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Dispatch, SetStateAction } from 'react';
 import { useEffect, useState } from 'react';
 
@@ -155,18 +155,20 @@ const SizeInput: React.FC<Props> = ({
             step="any"
             onWheel={(e) => e.currentTarget.blur()}
             onChange={(e) => handleSizeChange(e.target.value)}
-            className="rounded-r-none"
+            className="rounded-r-none border-r-0"
           />
           <Button
             type="button"
-            variant="outline"
-            className="rounded-l-none px-3 h-10"
+            variant="secondary"
+            className="rounded-l-none px-3 h-10 border border-border"
             onClick={handleUpdateInputType}
           >
-            <span>
-              {inputType === 'collateral' ? collateralAssetTicker : inputType}
+            {inputType === 'collateral' ? collateralAssetTicker : inputType}
+
+            <span className="flex flex-col scale-75">
+              <ChevronUp className="h-1 w-1 translate-y-1/4" />
+              <ChevronDown className="h-1 w-1 -translate-y-1/4" />
             </span>
-            <ArrowUpDown className="ml-2 h-4 w-4" />
           </Button>
         </div>
         {error && (
