@@ -1,5 +1,5 @@
 {
-  "address": "0xFB5555d4a850046e134b75C3D5279c1B476ad728",
+  "address": "0xCF8223882ca4ABAFb65f61D52EBce70c75975d5C",
   "abi": [
     {
       "type": "constructor",
@@ -76,6 +76,11 @@
           "name": "callbackRecipient",
           "type": "address",
           "internalType": "address"
+        },
+        {
+          "name": "minTradeSize",
+          "type": "uint256",
+          "internalType": "uint256"
         },
         {
           "name": "epochParams",
@@ -323,6 +328,12 @@
           "type": "address",
           "indexed": false,
           "internalType": "address"
+        },
+        {
+          "name": "minTradeSize",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
         },
         {
           "name": "epochParams",
@@ -682,12 +693,12 @@
     "0xE006B58cA5aB7ba53863012dc3067A14b965C1da"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x016e9ac1b27f41a9dd404d741ad9f6f1bc72360f0879efdd7cde176fbdf421f1",
-  "deployTxnBlockNumber": "6973600",
-  "deployTimestamp": "1730252724",
+  "deployTxnHash": "0x16876c7c76b381424f4968b80b4c9a77c09d4522b27c7b62e466f5a4caf4f162",
+  "deployTxnBlockNumber": "7032044",
+  "deployTimestamp": "1731009012",
   "sourceName": "src/market/modules/ConfigurationModule.sol",
   "contractName": "ConfigurationModule",
   "deployedOn": "deploy.ConfigurationModule",
-  "gasUsed": 4179840,
-  "gasCost": "2029633198"
+  "gasUsed": 4187650,
+  "gasCost": "3967905275"
 }

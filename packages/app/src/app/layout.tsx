@@ -7,7 +7,6 @@ import { LoadingSpinner } from '~/lib/components/foil/loadingSpinner';
 import { LoadingProvider } from '~/lib/context/LoadingContext';
 import { Toaster } from '@/components/ui/toaster';
 import Layout from '~/lib/layout';
-// import { spacemonoRegular, figtreeFont } from '~/lib/styles/theme/fonts';
 
 type RootLayoutProps = {
   children: React.ReactNode;

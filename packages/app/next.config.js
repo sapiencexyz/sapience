@@ -13,4 +13,12 @@ module.exports = withPWA({
   eslint: {
     dirs: ['src'],
   },
+  // Because we import the 403.html file in middleware.ts, we need to tell webpack to treat it as an asset.
+  webpack: (config) => {
+    config.module.rules.push({
+      test: /\.html$/,
+      type: 'asset/source',
+    });
+    return config;
+  },
 });

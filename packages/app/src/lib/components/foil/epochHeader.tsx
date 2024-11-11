@@ -24,28 +24,30 @@ const EpochHeader = () => {
   if (startTime) {
     const dateMilliseconds = Number(startTime) * 1000;
     const date = new Date(dateMilliseconds);
-    startTimeString = format(date, 'PPpp');
+    startTimeString = format(date, 'M/d/yy h:mm a');
   }
   if (endTime) {
     const dateMilliseconds = Number(endTime) * 1000;
     const date = new Date(dateMilliseconds);
     relativeTime = formatDistanceToNow(date);
-    formattedTime = format(date, 'PPpp');
-    endTimeString = format(date, 'PPpp');
+    formattedTime = format(date, 'M/d/yy h:mm a');
+    endTimeString = format(date, 'M/d/yy h:mm a');
   }
 
   return (
     <div className="flex items-center flex-col w-full">
-      <div className="w-full items-start flex flex-col lg:flex-row px-6 py-4">
-        <h1 className="text-2xl font-bold mb-0 self-start lg:self-end">
-          {currentMarket ? currentMarket.name : 'Market Name Not Found'}
-        </h1>
-        <div className="mt-2">
-          <EpochSelector />
+      <div className="w-full items-center flex flex-col lg:flex-row px-6 py-4">
+        <div className="w-full lg:w-auto flex justify-between lg:justify-start items-center">
+          <h1 className="text-2xl font-bold mb-0">
+            {currentMarket ? currentMarket.name : 'Market Name Not Found'}
+          </h1>
+          <div className="mt-0 lg:ml-4">
+            <EpochSelector />
+          </div>
         </div>
 
-        <div className="flex flex-col items-start lg:items-end mt-4 lg:mt-auto mb-0 lg:mb-1 lg:ml-auto w-full lg:w-auto">
-          <div className="flex flex-wrap gap-2 lg:gap-6">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center mt-4 lg:mt-0 mb-0 lg:ml-auto lg:flex-1 w-full">
+          <div className="flex flex-wrap gap-x-6 gap-y-2 lg:justify-end w-full">
             <a
               className="text-sm hover:no-underline inline-flex items-center"
               target="_blank"
@@ -79,7 +81,10 @@ const EpochHeader = () => {
                 <FaRegChartBar />
               </span>
               <span className="font-medium mr-1">Contract Price Range:</span>
-              {tickToPrice(epochParams.baseAssetMinPriceTick).toLocaleString()}-
+              {tickToPrice(
+                epochParams.baseAssetMinPriceTick
+              ).toLocaleString()}{' '}
+              -{' '}
               {tickToPrice(epochParams.baseAssetMaxPriceTick).toLocaleString()}{' '}
               Ggas/wstETH
             </div>

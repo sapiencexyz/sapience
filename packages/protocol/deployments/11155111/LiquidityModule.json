@@ -1,5 +1,5 @@
 {
-  "address": "0x9596E014489f87002B1A8E4D72b28eB250aEFaEA",
+  "address": "0x99d87e8f41991926cEE4AC85B856dfe67FEcbB05",
   "abi": [
     {
       "type": "function",
@@ -65,7 +65,12 @@
           "internalType": "uint256"
         },
         {
-          "name": "collateralAmount",
+          "name": "requiredCollateralAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "totalDepositedCollateralAmount",
           "type": "uint256",
           "internalType": "uint256"
         },
@@ -230,7 +235,12 @@
           "internalType": "uint256"
         },
         {
-          "name": "collateralAmount",
+          "name": "requiredCollateralAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "totalDepositedCollateralAmount",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -287,6 +297,30 @@
       "stateMutability": "view"
     },
     {
+      "type": "function",
+      "name": "quoteRequiredCollateral",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "liquidity",
+          "type": "uint128",
+          "internalType": "uint128"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "requiredCollateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
       "type": "event",
       "name": "CollateralDeposited",
       "inputs": [
@@ -309,7 +343,13 @@
           "internalType": "uint256"
         },
         {
-          "name": "collateralAmount",
+          "name": "depositedCollateralAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateralAmountAdded",
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
@@ -701,6 +741,17 @@
     },
     {
       "type": "error",
+      "name": "InvalidTransferRecipient",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "NotAccountOwnerOrAuthorized",
       "inputs": [
         {
@@ -817,12 +868,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x2a3226364793734af0c0120a6abbe312c8898cfbc8577a3308b84b3b4e5c169f",
-  "deployTxnBlockNumber": "6973592",
-  "deployTimestamp": "1730252628",
+  "deployTxnHash": "0x608de6ae7205022178b74e0457ca928e10489b52e745f2b5784db7193aa418b4",
+  "deployTxnBlockNumber": "7032038",
+  "deployTimestamp": "1731008928",
   "sourceName": "src/market/modules/LiquidityModule.sol",
   "contractName": "LiquidityModule",
   "deployedOn": "deploy.LiquidityModule",
-  "gasUsed": 3058130,
-  "gasCost": "2280008405"
+  "gasUsed": 3320329,
+  "gasCost": "4207678586"
 }

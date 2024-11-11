@@ -5,6 +5,11 @@ import * as React from 'react';
 
 import type { ToastActionElement, ToastProps } from '~/components/ui/toast';
 
+// Add custom styles to the toast props
+interface CustomToastProps extends ToastProps {
+  style?: React.CSSProperties;
+}
+
 const TOAST_LIMIT = 1;
 const TOAST_REMOVE_DELAY = 1000000;
 
@@ -141,8 +146,16 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, 'id'>;
 
-function toast({ ...props }: Toast) {
+function toast({ ...props }: Toast & CustomToastProps) {
   const id = genId();
+
+  // Add default styles for error toasts
+  const defaultStyle: React.CSSProperties = {
+    maxWidth: '500px',
+    width: '100%',
+    wordBreak: 'break-word',
+    whiteSpace: 'pre-wrap',
+  };
 
   const update = (props: ToasterToast) =>
     dispatch({
@@ -157,6 +170,10 @@ function toast({ ...props }: Toast) {
       ...props,
       id,
       open: true,
+      style: {
+        ...defaultStyle,
+        ...props.style,
+      },
       onOpenChange: (open) => {
         if (!open) dismiss();
       },

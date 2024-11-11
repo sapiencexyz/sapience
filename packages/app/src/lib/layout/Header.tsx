@@ -18,14 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '~/components/ui/popover';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-  SheetClose,
-} from '~/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger } from '~/components/ui/sheet';
 import { useMarketList } from '~/lib/context/MarketListProvider';
 
 const getMarketHref = (path: string, market: any, withEpochs: boolean) => {
@@ -172,23 +165,9 @@ const NavLinks = ({
       <Accordion type="multiple">
         {publicMarkets.map((market) => (
           <AccordionItem key={market.id} value={market.id.toString()}>
-            <AccordionTrigger className="hover:no-underline">
-              <Link
-                href={getMarketHref(path, market, withEpochs)}
-                onClick={(e) => {
-                  if (withEpochs) {
-                    e.preventDefault();
-                  } else if (onClose) {
-                    onClose();
-                  }
-                }}
-                className="hover:no-underline"
-              >
-                {market.name}
-              </Link>
-            </AccordionTrigger>
+            <AccordionTrigger>{market.name}</AccordionTrigger>
             {withEpochs && (
-              <AccordionContent className="pl-4">
+              <AccordionContent>
                 <div className="flex flex-col space-y-2">
                   {market.epochs.map((epoch) => (
                     <Link
