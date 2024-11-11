@@ -7,7 +7,7 @@ import {IFoil} from "../../src/market/interfaces/IFoil.sol";
 import {TestTrade} from "../helpers/TestTrade.sol";
 import {TestUser} from "../helpers/TestUser.sol";
 import {DecimalPrice} from "../../src/market/libraries/DecimalPrice.sol";
-import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
+import {DecimalMath} from "../../src/market/libraries/DecimalMath.sol";
 import {SafeCastI256, SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {Errors} from "../../src/market/storage/Errors.sol";
