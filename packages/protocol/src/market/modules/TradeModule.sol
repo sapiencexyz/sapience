@@ -212,7 +212,10 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             position.rebalanceCollateral();
 
             // 4. Transfer the released collateral to the trader (pnl)
-            int256 deltaCollateral = position.updateCollateral(0);
+            // Notice: under normal operations, the required collateral should be zero, but if somehow there is a "bad debt" it needs to be repaid.
+            int256 deltaCollateral = position.updateCollateral(
+                outputParams.requiredCollateral
+            );
 
             // Check if the collateral is within the limit
             _checkDeltaCollateralLimit(deltaCollateral, deltaCollateralLimit);
@@ -493,10 +496,10 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             if (collateralLoss > params.oldPosition.depositedCollateralAmount) {
                 // If the collateral to return is more than the deposited collateral, then the position is in a loss
                 // and the collateral should be reduced to zero
-                output.position.depositedCollateralAmount = params
-                    .oldPosition
-                    .depositedCollateralAmount;
-                extraCollateralRequired = collateralLoss;
+                output.position.depositedCollateralAmount = 0;
+                extraCollateralRequired =
+                    collateralLoss -
+                    params.oldPosition.depositedCollateralAmount;
             } else {
                 output.position.depositedCollateralAmount =
                     params.oldPosition.depositedCollateralAmount -
