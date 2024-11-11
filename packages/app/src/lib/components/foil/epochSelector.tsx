@@ -46,7 +46,7 @@ const EpochSelector: React.FC = () => {
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-96">
           <DialogHeader>
             <DialogTitle>Select Epoch</DialogTitle>
           </DialogHeader>
