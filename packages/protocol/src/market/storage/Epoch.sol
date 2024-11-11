@@ -141,9 +141,9 @@ library Epoch {
                     epochParams.feeRate
                 )
         );
-        IUniswapV3Pool(epoch.pool).initialize(startingSqrtPriceX96); // starting price
+        epoch.pool.initialize(startingSqrtPriceX96); // starting price
 
-        int24 spacing = IUniswapV3Pool(epoch.pool).tickSpacing();
+        int24 spacing = epoch.pool.tickSpacing();
         // store min/max prices
         epoch.sqrtPriceMinX96 = TickMath.getSqrtRatioAtTick(
             epoch.params.baseAssetMinPriceTick
