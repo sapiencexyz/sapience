@@ -222,7 +222,7 @@ library Epoch {
     }
 
     /**
-     * @notice Gets the reuired collateral amount to cover the loan amounts
+     * @notice Gets the required collateral amount to cover the loan amounts
      *
      * @param self Epoch storage
      * @param ownedGasAmount Amount of gas owned by the trader
