@@ -3,13 +3,13 @@ import Image from 'next/image';
 
 export const PoweredBy = () => {
   return (
-    <div className="container mx-auto w-full max-w-4xl px-4 pb-20 pt-5 md:px-6">
+    <div className="container mx-auto w-full max-w-3xl px-4 pb-24 pt-5 md:px-6">
       <div className="grid text-center">
-        <h1 className="text-sm font-medium uppercase tracking-widest text-gray-500">
+        <h1 className="mb-6 text-sm font-medium uppercase tracking-widest text-gray-500">
           Powered By
         </h1>
-        <div className="grid grid-cols-1 items-center gap-4 md:grid-cols-3">
-          <div className="flex h-28 items-center justify-center p-4">
+        <div className="mx-auto grid max-w-48 grid-cols-1 items-center gap-4 md:max-w-none md:grid-cols-3">
+          <div className="flex items-center justify-center">
             <Image
               src="/assets/ethereum.svg"
               alt="Ethereum"
@@ -18,7 +18,7 @@ export const PoweredBy = () => {
               className="h-full w-auto object-contain grayscale filter"
             />
           </div>
-          <div className="flex h-24 items-center justify-center p-4">
+          <div className="-mt-1 flex items-center justify-center">
             <Image
               src="/assets/uniswap.svg"
               alt="Uniswap"
@@ -27,7 +27,7 @@ export const PoweredBy = () => {
               className="h-full w-auto object-contain grayscale filter"
             />
           </div>
-          <div className="flex h-16 items-center justify-center p-4">
+          <div className="mt-4 flex h-8 items-center justify-center md:mt-0">
             <Image
               src="/assets/uma.svg"
               alt="UMA"

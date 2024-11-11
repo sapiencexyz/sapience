@@ -2,7 +2,7 @@ import Image from 'next/image';
 
 export const Investors = () => {
   return (
-    <div className="container mx-auto max-w-3xl px-4 py-12 md:px-6">
+    <div className="container mx-auto max-w-3xl px-4 py-20 md:px-6">
       <div className="grid gap-2.5 space-y-6 py-12 text-center">
         <h1 className="text-sm font-medium uppercase tracking-widest text-gray-500">
           Backed by
