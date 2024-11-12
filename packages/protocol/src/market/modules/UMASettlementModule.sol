@@ -26,6 +26,8 @@ contract UMASettlementModule is
 
         validateSubmission(epoch, market, msg.sender);
 
+        require(epoch.assertionId == bytes32(0), "Assertion already submitted");
+
         IERC20 bondCurrency = IERC20(epoch.params.bondCurrency);
         OptimisticOracleV3Interface optimisticOracleV3 = OptimisticOracleV3Interface(
                 epoch.params.optimisticOracleV3
@@ -108,6 +110,9 @@ contract UMASettlementModule is
                 settlement.settlementPriceD18
             );
         }
+
+        // clear the assertionId
+        epoch.assertionId = bytes32(0);
     }
 
     function assertionDisputedCallback(

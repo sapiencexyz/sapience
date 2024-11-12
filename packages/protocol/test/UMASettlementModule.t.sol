@@ -231,4 +231,34 @@ contract UmaSettleMarket is TestEpoch {
             "The settlement price is the undisputed value"
         );
     }
+
+    function test_revert_if_assertion_already_submitted() public {
+        bool settled;
+        uint256 settlementPriceD18;
+
+        vm.warp(endTime + 1);
+
+        vm.startPrank(owner);
+        IMintableToken(epochParams.bondCurrency).approve(
+            address(foil),
+            epochParams.bondAmount
+        );
+        bytes32 assertionId = foil.submitSettlementPrice(epochId, 10 ether);
+
+        vm.expectRevert("Assertion already submitted");
+        foil.submitSettlementPrice(epochId, 10 ether);
+
+        vm.stopPrank();
+
+        vm.startPrank(optimisticOracleV3);
+        foil.assertionResolvedCallback(assertionId, true);
+        vm.stopPrank();
+
+        (, , , , , , , , settled, settlementPriceD18, ) = foil.getLatestEpoch();
+        assertTrue(settled, "The epoch is settled");
+        assertTrue(
+            settlementPriceD18 == 10 ether,
+            "The settlement price is as submitted"
+        );
+    }
 }
