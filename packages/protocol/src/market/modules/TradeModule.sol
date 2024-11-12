@@ -4,7 +4,8 @@ pragma solidity >=0.8.25 <0.9.0;
 import "../storage/Position.sol";
 import "../storage/ERC721Storage.sol";
 import "../storage/Trade.sol";
-import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
+import "../libraries/DecimalMath.sol";
+
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {SafeCastI256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 import {SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
@@ -322,9 +323,6 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             revert Errors.InvalidData("Size cannot be 0");
         }
 
-        // check settlement state
-        Epoch.load(position.epochId).validateNotSettled();
-
         QuoteOrTradeInputParams memory inputParams = QuoteOrTradeInputParams({
             oldPosition: position,
             initialSize: position.positionSize(),
@@ -448,14 +446,26 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         }
 
         // 2- Get PnL and vEth involved in the transaction from initial size to zero (intermediate close the position).
-        output.tradeRatioD18 = runtime.tradedVEth.divDecimal(
-            runtime.tradedVGas
-        );
+        output.tradeRatioD18 = runtime.isLongDirection
+            ? runtime.tradedVEth.divDecimal(runtime.tradedVGas)
+            : runtime.tradedVEth.divDecimalRoundUp(runtime.tradedVGas);
+
+        if (
+            output.tradeRatioD18 < epoch.minPriceD18 ||
+            output.tradeRatioD18 > epoch.maxPriceD18
+        ) {
+            revert Errors.TradePriceOutOfBounds(
+                output.tradeRatioD18,
+                epoch.minPriceD18,
+                epoch.maxPriceD18
+            );
+        }
+
         // vEth to compensate the gas (either to pay borrowedVGas or borrowerVEth paid from the vGas tokens from the close trade)
         runtime.vEthToZero = (params.initialSize * -1).mulDecimal(
             output.tradeRatioD18.toInt()
         );
-        // net vEth from oritinal positon minus the vEth to zero
+        // net vEth from original positon minus the vEth to zero
         output.closePnL =
             params.oldPosition.vEthAmount.toInt() -
             params.oldPosition.borrowedVEth.toInt() -

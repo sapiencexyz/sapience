@@ -14,7 +14,7 @@ import {SafeCastI256, SafeCastU256} from "@synthetixio/core-contracts/contracts/
 import {Position} from "../../src/market/storage/Position.sol";
 import {Errors} from "../../src/market/storage/Errors.sol";
 
-import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
+import {DecimalMath} from "../../src/market/libraries/DecimalMath.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 contract TradePositionDumb is TestTrade {
@@ -829,6 +829,26 @@ contract TradePositionDumb is TestTrade {
             expectedStateData,
             "Short2Long Reduce"
         );
+    }
+
+    function test_revertIf_TradePriceOutOfBounds() public {
+        int256 initialPositionSize = 1 ether;
+
+        uint256 positionId;
+
+        vm.startPrank(trader1);
+        positionId = addTraderPosition(foil, epochId, initialPositionSize);
+
+        // Send more collateral than required, just checking the position can be created/modified
+        vm.expectPartialRevert(Errors.TradePriceOutOfBounds.selector);
+        foil.modifyTraderPosition(
+            positionId,
+            initialPositionSize - 1,
+            0,
+            block.timestamp + 30 minutes
+        );
+
+        vm.stopPrank();
     }
 
     // //////////////// //

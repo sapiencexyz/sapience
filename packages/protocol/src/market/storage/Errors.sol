@@ -12,6 +12,7 @@ library Errors {
     error InvalidEpoch();
     error InvalidMarket();
     error EpochNotSettled(uint256 epochId);
+    error ExpiredEpochNotSettled(uint256 epochEndTime);
     error EpochAlreadyStarted();
     error EpochSettled();
     error ExpiredEpoch();
@@ -48,4 +49,9 @@ library Errors {
     error OnlyFeeCollector();
     error InvalidCallbackResolutionInterface(address callbackRecipient);
     error InvalidTransferRecipient(address recipient);
+    error TradePriceOutOfBounds(
+        uint256 tradeRatioD18,
+        uint256 minTradeRatioD18,
+        uint256 maxTradeRatioD18
+    );
 }

@@ -6,7 +6,8 @@ import "./Trade.sol";
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {SafeCastU256, SafeCastI256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
-import {DecimalMath} from "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
+
+import {DecimalMath} from "../libraries/DecimalMath.sol";
 import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
 import {ERC721Storage} from "./ERC721Storage.sol";
 import {Errors} from "./Errors.sol";
@@ -285,18 +286,5 @@ library Position {
             self.depositedCollateralAmount -= self.borrowedVEth;
             self.borrowedVEth = 0;
         }
-    }
-
-    function getRequiredCollateral(
-        Data storage self
-    ) internal view returns (uint256 requiredCollateral) {
-        Epoch.Data storage epoch = Epoch.load(self.epochId);
-
-        requiredCollateral = epoch.getCollateralRequirementsForTrade(
-            self.vGasAmount,
-            self.vEthAmount,
-            self.borrowedVGas,
-            self.borrowedVEth
-        );
     }
 }
