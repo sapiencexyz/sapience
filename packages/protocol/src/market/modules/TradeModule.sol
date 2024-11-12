@@ -4,7 +4,8 @@ pragma solidity >=0.8.25 <0.9.0;
 import "../storage/Position.sol";
 import "../storage/ERC721Storage.sol";
 import "../storage/Trade.sol";
-import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
+import "../libraries/DecimalMath.sol";
+
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {SafeCastI256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 import {SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
@@ -212,7 +213,10 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             position.rebalanceCollateral();
 
             // 4. Transfer the released collateral to the trader (pnl)
-            int256 deltaCollateral = position.updateCollateral(0);
+            // Notice: under normal operations, the required collateral should be zero, but if somehow there is a "bad debt" it needs to be repaid.
+            int256 deltaCollateral = position.updateCollateral(
+                outputParams.requiredCollateral
+            );
 
             // Check if the collateral is within the limit
             _checkDeltaCollateralLimit(deltaCollateral, deltaCollateralLimit);
@@ -318,9 +322,6 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         if (deltaSize == 0) {
             revert Errors.InvalidData("Size cannot be 0");
         }
-
-        // check settlement state
-        Epoch.load(position.epochId).validateNotSettled();
 
         QuoteOrTradeInputParams memory inputParams = QuoteOrTradeInputParams({
             oldPosition: position,
@@ -445,9 +446,9 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         }
 
         // 2- Get PnL and vEth involved in the transaction from initial size to zero (intermediate close the position).
-        output.tradeRatioD18 = runtime.tradedVEth.divDecimal(
-            runtime.tradedVGas
-        );
+        output.tradeRatioD18 = runtime.isLongDirection
+            ? runtime.tradedVEth.divDecimal(runtime.tradedVGas)
+            : runtime.tradedVEth.divDecimalRoundUp(runtime.tradedVGas);
 
         if (
             output.tradeRatioD18 < epoch.minPriceD18 ||
@@ -464,7 +465,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         runtime.vEthToZero = (params.initialSize * -1).mulDecimal(
             output.tradeRatioD18.toInt()
         );
-        // net vEth from oritinal positon minus the vEth to zero
+        // net vEth from original positon minus the vEth to zero
         output.closePnL =
             params.oldPosition.vEthAmount.toInt() -
             params.oldPosition.borrowedVEth.toInt() -
@@ -505,10 +506,10 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             if (collateralLoss > params.oldPosition.depositedCollateralAmount) {
                 // If the collateral to return is more than the deposited collateral, then the position is in a loss
                 // and the collateral should be reduced to zero
-                output.position.depositedCollateralAmount = params
-                    .oldPosition
-                    .depositedCollateralAmount;
-                extraCollateralRequired = collateralLoss;
+                output.position.depositedCollateralAmount = 0;
+                extraCollateralRequired =
+                    collateralLoss -
+                    params.oldPosition.depositedCollateralAmount;
             } else {
                 output.position.depositedCollateralAmount =
                     params.oldPosition.depositedCollateralAmount -

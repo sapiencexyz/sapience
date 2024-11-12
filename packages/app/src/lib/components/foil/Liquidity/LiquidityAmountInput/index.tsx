@@ -79,9 +79,9 @@ const LiquidityAmountInput = ({
   }
 
   return (
-    <div className={errors.depositAmount ? 'space-y-1' : ''}>
+    <div>
       <Label htmlFor="collateral">Collateral</Label>
-      <div className="relative flex">
+      <div className="relative flex mt-2">
         <Input
           id="collateral"
           type="number"
@@ -118,12 +118,12 @@ const LiquidityAmountInput = ({
             },
           })}
         />
-        <div className="absolute inset-y-0 right-0 flex items-center px-3 border border-l-0 border-input bg-muted">
+        <div className="absolute inset-y-0 right-0 flex items-center px-3 border border-input bg-muted rounded-r-md">
           {collateralAssetTicker}
         </div>
       </div>
       {errors.depositAmount && (
-        <p className="text-sm text-destructive">
+        <p className="text-sm text-destructive mt-1">
           {errors.depositAmount.message?.toString()}
         </p>
       )}

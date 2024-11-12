@@ -3,7 +3,7 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
-import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
+import "../libraries/DecimalMath.sol";
 
 import "../external/VirtualToken.sol";
 import "../libraries/DecimalPrice.sol";
@@ -141,9 +141,9 @@ library Epoch {
                     epochParams.feeRate
                 )
         );
-        IUniswapV3Pool(epoch.pool).initialize(startingSqrtPriceX96); // starting price
+        epoch.pool.initialize(startingSqrtPriceX96); // starting price
 
-        int24 spacing = IUniswapV3Pool(epoch.pool).tickSpacing();
+        int24 spacing = epoch.pool.tickSpacing();
         // store min/max prices
         epoch.sqrtPriceMinX96 = TickMath.getSqrtRatioAtTick(
             epoch.params.baseAssetMinPriceTick
@@ -211,15 +211,9 @@ library Epoch {
         }
     }
 
-    function validateSettlementSanity(Data storage self) internal view {
-        if (block.timestamp >= self.endTime && !self.settled) {
-            revert Errors.EpochNotSettled(self.endTime);
-        }
-    }
-
     function validateNotSettled(Data storage self) internal view {
         if (block.timestamp >= self.endTime && !self.settled) {
-            revert Errors.EpochNotSettled(self.endTime);
+            revert Errors.ExpiredEpochNotSettled(self.endTime);
         }
 
         if (self.settled) {
@@ -228,7 +222,7 @@ library Epoch {
     }
 
     /**
-     * @notice Gets the reuired collateral amount to cover the loan amounts
+     * @notice Gets the required collateral amount to cover the loan amounts
      *
      * @param self Epoch storage
      * @param ownedGasAmount Amount of gas owned by the trader
@@ -359,8 +353,8 @@ library Epoch {
             ? totalDebtValue - totalOwnedValue
             : 0;
 
-        // Adding 2 wei to prevent round up errors. Insignificant amount for normal operations but to prevent potential issues
-        requiredCollateral += 2;
+        // Adding 2 wei to prevent round up errors if greater than 0. Insignificant amount for normal operations but to prevent potential issues
+        if (requiredCollateral > 0) requiredCollateral += 2;
     }
 
     function validateOwnedAndDebtAtPrice(

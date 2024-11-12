@@ -870,12 +870,14 @@ const AddEditLiquidity: React.FC = () => {
     <Form {...form}>
       <form onSubmit={handleSubmit(handleFormSubmit)}>
         <h2 className="text-xl font-semibold mb-3">Pool Liquidity</h2>
-        <LiquidityAmountInput
-          isEdit={isEdit}
-          walletBalance={walletBalance}
-          positionCollateralAmount={positionCollateralAmount}
-          collateralAssetTicker={collateralAssetTicker}
-        />
+        <div className="mb-4">
+          <LiquidityAmountInput
+            isEdit={isEdit}
+            walletBalance={walletBalance}
+            positionCollateralAmount={positionCollateralAmount}
+            collateralAssetTicker={collateralAssetTicker}
+          />
+        </div>
 
         <LiquidityPriceInput
           label="Low Price"

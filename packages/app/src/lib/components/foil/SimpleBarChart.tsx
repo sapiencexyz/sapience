@@ -1,7 +1,7 @@
-import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useRef } from 'react';
 import CountUp from 'react-countup';
-import { BarChart, ResponsiveContainer, XAxis, Tooltip, Bar } from 'recharts';
+import { BarChart, ResponsiveContainer, XAxis, Bar } from 'recharts';
 
 const barColor = 'rgba(0, 0, 0, 0.5)';
 const axisColor = 'rgba(0, 0, 0, 0.2)';
@@ -10,13 +10,14 @@ const SimpleBarChart = ({ data }: { data: any[] }) => {
   const [value, setValue] = useState<string>('');
   const [prevValue, setPrevValue] = useState<number>(0);
   const [label, setLabel] = useState<string>('');
+  const lastTooltipIndex = useRef<number | null>(null);
 
   return (
     <div className="flex flex-1 relative w-full h-[100px]">
       {value.length ? (
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
           className="min-h-[50px] w-full absolute top-0 left-0 z-[2]"
         >
@@ -31,9 +32,18 @@ const SimpleBarChart = ({ data }: { data: any[] }) => {
               />
               {' gas'}
             </span>
-            <span className="text-xs text-muted-foreground ml-auto">
-              {label}
-            </span>
+            <AnimatePresence>
+              <motion.span
+                key={label}
+                initial={{ opacity: 0, position: 'absolute', right: 0, top: 5 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="text-xs text-muted-foreground ml-auto"
+              >
+                {label}
+              </motion.span>
+            </AnimatePresence>
           </p>
         </motion.div>
       ) : null}
@@ -46,7 +56,10 @@ const SimpleBarChart = ({ data }: { data: any[] }) => {
               if (state?.activePayload?.[0]) {
                 const newValue = state.activePayload[0].value.toString();
 
-                if (newValue !== value) {
+                if (
+                  newValue !== value ||
+                  state.activeTooltipIndex !== lastTooltipIndex.current
+                ) {
                   setPrevValue(parseInt(value, 10) || 0);
                   setValue(newValue);
                   setLabel(
@@ -69,6 +82,7 @@ const SimpleBarChart = ({ data }: { data: any[] }) => {
                       minute: 'numeric',
                     })}`
                   );
+                  lastTooltipIndex.current = state.activeTooltipIndex ?? null;
                 }
               }
             }}

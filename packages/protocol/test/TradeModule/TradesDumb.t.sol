@@ -14,7 +14,7 @@ import {SafeCastI256, SafeCastU256} from "@synthetixio/core-contracts/contracts/
 import {Position} from "../../src/market/storage/Position.sol";
 import {Errors} from "../../src/market/storage/Errors.sol";
 
-import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
+import {DecimalMath} from "../../src/market/libraries/DecimalMath.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 contract TradePositionDumb is TestTrade {
@@ -424,7 +424,7 @@ contract TradePositionDumb is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             0,
-            requiredCollateral - 2,
+            requiredCollateral + 2,
             block.timestamp + 30 minutes
         );
 
@@ -476,7 +476,7 @@ contract TradePositionDumb is TestTrade {
         foil.modifyTraderPosition(
             positionId,
             0,
-            requiredCollateral - 2,
+            requiredCollateral + 2,
             block.timestamp + 30 minutes
         );
 

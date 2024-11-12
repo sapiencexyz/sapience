@@ -6,7 +6,7 @@ import {IFoil} from "../../src/market/interfaces/IFoil.sol";
 import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
 import {Position} from "../../src/market/storage/Position.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
-import {DecimalMath} from "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
+import {DecimalMath} from "../../src/market/libraries/DecimalMath.sol";
 import {SafeCastU256, SafeCastI256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 
 import "./TestEpoch.sol";

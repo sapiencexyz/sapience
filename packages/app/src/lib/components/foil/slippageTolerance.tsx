@@ -15,7 +15,7 @@ const SlippageTolerance: React.FC = () => {
   };
 
   return (
-    <div className="mb-4">
+    <div className="mb-5">
       <Label>Slippage Tolerance</Label>
       <div className="flex items-center gap-4 mt-2">
         <Button

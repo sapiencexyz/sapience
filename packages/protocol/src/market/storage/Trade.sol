@@ -6,7 +6,7 @@ import {Market} from "./Market.sol";
 import {Errors} from "./Errors.sol";
 import {ISwapRouter} from "../interfaces/external/ISwapRouter.sol";
 import {IQuoterV2} from "../interfaces/external/IQuoterV2.sol";
-import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
+import {DecimalMath} from "../libraries/DecimalMath.sol";
 
 // import "forge-std/console2.sol";
 
