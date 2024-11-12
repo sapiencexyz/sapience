@@ -12,7 +12,7 @@ const manifest = (): MetadataRoute.Manifest => ({
   prefer_related_applications: false,
   icons: [
     {
-      src: '/favicon.svg',
+      src: 'assets/favicon.svg',
       purpose: 'any',
       sizes: '48x48 72x72 96x96 128x128 256x256',
     },

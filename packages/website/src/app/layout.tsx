@@ -1,19 +1,18 @@
 import type { Metadata, Viewport } from 'next';
-import type React from 'react';
 
-import Providers from '~/app/providers';
-import Layout from '~/lib/layout';
-import '../lib/styles/globals.css';
+import Layout from '@/lib/layout';
+import { fontSans } from '@/lib/styles/fonts';
+import { cn } from '@/lib/styles/utils';
 
-type RootLayoutProps = {
-  children: React.ReactNode;
-};
+import '@/lib/styles/globals.css';
 
 const APP_NAME = 'Foil';
+const APP_DESCRIPTION =
+  'Lock in your onchain costs regardless of network congestion';
 
 export const metadata: Metadata = {
-  title: { default: APP_NAME, template: '%s | Foil' },
-  description: '',
+  title: APP_NAME,
+  description: APP_DESCRIPTION,
   applicationName: APP_NAME,
   appleWebApp: {
     capable: true,
@@ -25,12 +24,25 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: 'https://foil.xyz',
-    title: 'foil',
-    description: '',
+    title: APP_NAME,
+    description: APP_DESCRIPTION,
+    images: {
+      url: '',
+      alt: 'foil.xyz og-image',
+    },
   },
   twitter: {
-    creator: '',
+    creator: '@foilxyz',
     card: 'summary_large_image',
+  },
+  icons: {
+    icon: '/assets/favicon.svg',
+    shortcut: '/assets/favicon.svg',
+    apple: '/assets/favicon.svg',
+    other: {
+      rel: 'mask-icon',
+      url: '/assets/favicon.svg',
+    },
   },
 };
 
@@ -40,13 +52,22 @@ export const viewport: Viewport = {
   themeColor: '#FFFFFF',
 };
 
+interface RootLayoutProps {
+  children: React.ReactNode;
+}
+
 const RootLayout = ({ children }: RootLayoutProps) => {
   return (
-    <html lang="en">
-      <body>
-        <Providers>
-          <Layout>{children}</Layout>
-        </Providers>
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={cn(
+          'min-h-screen bg-background font-sans antialiased',
+          fontSans.variable
+        )}
+      >
+        <Layout>
+          <div className="flex-1">{children}</div>
+        </Layout>
       </body>
     </html>
   );

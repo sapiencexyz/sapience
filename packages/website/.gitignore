@@ -5,6 +5,9 @@
 /.pnp
 .pnp.js
 
+# vscode
+.vscode/settings.json
+
 # testing
 /coverage
 
@@ -47,6 +50,3 @@ sitemap*.xml
 
 # Turbo
 .turbo
-
-# VS Code
-.vscode/settings.json
