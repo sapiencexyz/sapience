@@ -71,8 +71,7 @@ contract UMASettlementModule is
         epoch.settlement = Epoch.Settlement({
             settlementPriceD18: settlementPriceD18,
             submissionTime: block.timestamp,
-            disputed: false,
-            disputer: address(0)
+            disputed: false
         });
 
         emit SettlementSubmitted(epochId, settlementPriceD18, block.timestamp);
