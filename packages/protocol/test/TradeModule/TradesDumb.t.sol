@@ -263,7 +263,7 @@ contract TradePositionDumb is TestTrade {
         vm.startPrank(trader2);
         vm.expectRevert(
             abi.encodeWithSelector(
-                Errors.NotAccountOwnerOrAuthorized.selector,
+                Errors.NotAccountOwner.selector,
                 positionId,
                 trader2
             )
@@ -283,7 +283,7 @@ contract TradePositionDumb is TestTrade {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                Errors.NotAccountOwnerOrAuthorized.selector,
+                Errors.NotAccountOwner.selector,
                 1337,
                 trader1
             )

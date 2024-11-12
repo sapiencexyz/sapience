@@ -134,7 +134,7 @@ library Position {
         }
 
         if (ERC721Storage._ownerOf(self.id) != msg.sender) {
-            revert Errors.NotAccountOwnerOrAuthorized(self.id, msg.sender);
+            revert Errors.NotAccountOwner(self.id, msg.sender);
         }
     }
 
