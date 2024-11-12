@@ -446,10 +446,20 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         }
 
         // 2- Get PnL and vEth involved in the transaction from initial size to zero (intermediate close the position).
-        // Notice: we use divDecimalRoundUp for short direction to get the worst ratio for each direction
         output.tradeRatioD18 = runtime.isLongDirection
             ? runtime.tradedVEth.divDecimal(runtime.tradedVGas)
             : runtime.tradedVEth.divDecimalRoundUp(runtime.tradedVGas);
+
+        if (
+            output.tradeRatioD18 < epoch.minPriceD18 ||
+            output.tradeRatioD18 > epoch.maxPriceD18
+        ) {
+            revert Errors.TradePriceOutOfBounds(
+                output.tradeRatioD18,
+                epoch.minPriceD18,
+                epoch.maxPriceD18
+            );
+        }
 
         // vEth to compensate the gas (either to pay borrowedVGas or borrowerVEth paid from the vGas tokens from the close trade)
         runtime.vEthToZero = (params.initialSize * -1).mulDecimal(
