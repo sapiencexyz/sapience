@@ -135,7 +135,7 @@ contract UMASettlementModule is
         address caller
     ) internal view {
         require(
-            block.timestamp > epoch.endTime,
+            block.timestamp >= epoch.endTime,
             "Market epoch activity is still allowed"
         );
         require(!epoch.settled, "Market epoch already settled");
