@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem } from '@/components/ui/form';
 import { useForm, ControllerRenderProps } from 'react-hook-form';
 
-const SHEET_URL = 'https://sheet.best/api/sheets/6888888888888888';
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbz4_JnldtbjiTGe7YwTgSDO2iqKtB5EfP1qnj3igYCmL1_sxRq2oZL-G4gBDNQKcFWw1w/exec';
 
 interface EmailCaptureButtonProps {
   children: React.ReactNode;
@@ -21,6 +21,7 @@ interface EmailCaptureButtonProps {
 const EmailCaptureButton: React.FC<EmailCaptureButtonProps> = ({ children }) => {
   const [open, setOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm({
     defaultValues: {
@@ -29,22 +30,31 @@ const EmailCaptureButton: React.FC<EmailCaptureButtonProps> = ({ children }) => 
   });
 
   const handleSubmit = async (values: { email: string }) => {
+    setIsLoading(true);
     try {
+      const formData = new FormData();
+      formData.append('email', values.email);
+
       const response = await fetch(SHEET_URL, {
         method: 'POST',
+        mode: 'no-cors',
+        body: JSON.stringify({ email: values.email }),
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email: values.email }),
       });
 
-      if (response.ok) {
+      if (response.type === 'opaque') {
         setSubmitted(true);
       } else {
-        console.error('Failed to submit email');
+        throw new Error('Unexpected response type');
       }
+
+      setSubmitted(true);
     } catch (error) {
       console.error('Error submitting email:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -58,10 +68,10 @@ const EmailCaptureButton: React.FC<EmailCaptureButtonProps> = ({ children }) => 
         <DialogContent className="max-w-sm">
 
           {submitted ? (
-            <DialogTitle className="text-center mt-4 leading-tight tracking-normal">Your email has been successfully submitted.</DialogTitle>
+            <DialogTitle className="text-center mt-4 mb-1 leading-tight tracking-normal">Your email has been submitted</DialogTitle>
           ) : (
             <>
-            <DialogTitle className="text-center mt-4 leading-tight tracking-normal">Share your email for priority access to Foil&apos;s upcoming testnet competition</DialogTitle>
+            <DialogTitle className="text-center mt-4 mb-1 leading-tight tracking-normal">Share your email for priority access to Foil&apos;s upcoming testnet competition</DialogTitle>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
                 <FormField
@@ -81,8 +91,8 @@ const EmailCaptureButton: React.FC<EmailCaptureButtonProps> = ({ children }) => 
                 />
 
                 <DialogFooter>
-                  <Button className="w-full" type="submit">
-                    Submit
+                  <Button className="w-full" type="submit" disabled={isLoading}>
+                    {isLoading ? 'Submitting...' : 'Submit'}
                   </Button>
                 </DialogFooter>
               </form>
