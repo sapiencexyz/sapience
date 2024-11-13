@@ -1,5 +1,5 @@
 {
-  "address": "0xa566652E94310E7eE5aa193988d9978aEFDdD76E",
+  "address": "0x37861d120310df7eFF8c3ceFDA8F00Deab824E71",
   "abi": [
     {
       "type": "function",
@@ -23,12 +23,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x230d4186bbf58fedebd58aa355d00796e49c4b38eea1b31fd50b7a9ca055c67c",
-  "deployTxnBlockNumber": "7070298",
-  "deployTimestamp": "1731524352",
+  "deployTxnHash": "0x35d84efd24c6595b89e0d041e9eeb69acd831c641b89ea39707bfc12719aee92",
+  "deployTxnBlockNumber": "7070737",
+  "deployTimestamp": "1731529896",
   "sourceName": "src/market/modules/ERC165Module.sol",
   "contractName": "ERC165Module",
   "deployedOn": "deploy.ERC165Module",
   "gasUsed": 109841,
-  "gasCost": "292382407"
+  "gasCost": "275403485"
 }
