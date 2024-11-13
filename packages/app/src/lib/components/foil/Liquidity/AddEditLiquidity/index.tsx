@@ -381,31 +381,33 @@ const AddEditLiquidity: React.FC = () => {
   }, [isEdit, depositAmount, requiredCollateral, collateralAssetDecimals]);
 
   const finalDelta: bigint = useMemo(() => {
-    if (!isEdit) {
-      // Double-check the delta before submission
-      const newDepositAmountBigInt = parseUnits(
-        depositAmount !== '' ? depositAmount : '0',
+    const currentDepositAmountBigInt = BigInt(
+      positionData?.depositedCollateralAmount || 0
+    );
+    let newDepositAmountBigInt = parseUnits('0', collateralAssetDecimals);
+    if (!isEdit && depositAmount !== '') {
+      newDepositAmountBigInt = parseUnits(
+        depositAmount,
         collateralAssetDecimals
       );
-
-      const currentDepositAmountBigInt = BigInt(
-        positionData?.depositedCollateralAmount || 0
-      );
-      const calculatedDelta =
-        newDepositAmountBigInt - currentDepositAmountBigInt;
-
-      // Use the calculated delta if it differs from the state (shouldn't happen, but just in case)
-      return calculatedDelta !== collateralAmountDelta
-        ? calculatedDelta
-        : collateralAmountDelta;
+    } else if (isEdit && requiredCollateral) {
+      newDepositAmountBigInt = requiredCollateral;
     }
-    return BigInt(0);
+
+    // Double-check the delta before submission
+    const calculatedDelta = newDepositAmountBigInt - currentDepositAmountBigInt;
+
+    // Use the calculated delta if it differs from the state (shouldn't happen, but just in case)
+    return calculatedDelta !== collateralAmountDelta
+      ? calculatedDelta
+      : collateralAmountDelta;
   }, [
     depositAmount,
     positionData,
     collateralAssetDecimals,
     collateralAmountDelta,
     isEdit,
+    requiredCollateral,
   ]);
 
   const requireApproval: boolean = useMemo(() => {
@@ -413,11 +415,13 @@ const AddEditLiquidity: React.FC = () => {
       finalDelta,
       collateralAssetDecimals
     );
+    if (isEdit && isDecrease) return false;
+    if (finalDelta <= 0) return false;
     return (
       !allowance ||
       parseFloat(allowance) < parseFloat(collateralAmountDeltaFormatted)
     );
-  }, [allowance, finalDelta, collateralAssetDecimals]);
+  }, [allowance, finalDelta, collateralAssetDecimals, isEdit, isDecrease]);
 
   /// //// USE EFFECTS ///////
   // handle successful txn
@@ -776,12 +780,6 @@ const AddEditLiquidity: React.FC = () => {
 
     if (isEdit && isDecrease) {
       return handleDecreaseLiquidity();
-    }
-
-    if (finalDelta <= 0) {
-      // No increase in deposit, proceed with creating or increasing liquidity
-      handleCreateOrIncreaseLiquidity();
-      return;
     }
 
     if (requireApproval) {
