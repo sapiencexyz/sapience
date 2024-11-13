@@ -59,4 +59,5 @@ library Errors {
         uint160 minSqrtPriceX96,
         uint160 maxSqrtPriceX96
     );
+    error InvalidBondAmount(uint256 bondAmount, uint256 minBond);
 }
