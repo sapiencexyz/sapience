@@ -1,5 +1,5 @@
 {
-  "address": "0x6D91F25e4f6783422884aD11c70a56B435A1Eec7",
+  "address": "0xE9e504d51d882b05d5e586cb48306f56B6A4c642",
   "abi": [
     {
       "type": "function",
@@ -355,19 +355,19 @@
     },
     {
       "type": "error",
-      "name": "EpochNotSettled",
+      "name": "EpochSettled",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ExpiredEpochNotSettled",
       "inputs": [
         {
-          "name": "epochId",
+          "name": "epochEndTime",
           "type": "uint256",
           "internalType": "uint256"
         }
       ]
-    },
-    {
-      "type": "error",
-      "name": "EpochSettled",
-      "inputs": []
     },
     {
       "type": "error",
@@ -462,7 +462,12 @@
     },
     {
       "type": "error",
-      "name": "NotAccountOwnerOrAuthorized",
+      "name": "MathOverflowedMulDiv",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NotAccountOwner",
       "inputs": [
         {
           "name": "tokenId",
@@ -484,16 +489,6 @@
     {
       "type": "error",
       "name": "OverflowInt256ToUint256",
-      "inputs": []
-    },
-    {
-      "type": "error",
-      "name": "OverflowInt256ToUint256",
-      "inputs": []
-    },
-    {
-      "type": "error",
-      "name": "OverflowUint256ToInt256",
       "inputs": []
     },
     {
@@ -561,6 +556,27 @@
     },
     {
       "type": "error",
+      "name": "TradePriceOutOfBounds",
+      "inputs": [
+        {
+          "name": "tradeRatioD18",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "minTradeRatioD18",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "maxTradeRatioD18",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "TransactionExpired",
       "inputs": [
         {
@@ -583,12 +599,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xfc8efb9ebfb779cc76f32c544052025c71ea8073b967ad89f8e49dc13ae58f6d",
-  "deployTxnBlockNumber": "7032041",
-  "deployTimestamp": "1731008964",
+  "deployTxnHash": "0xe40c08bf22538f01adc3c5c09b6b86a0ae1a6a9ec5d90b3d505548328da06724",
+  "deployTxnBlockNumber": "7070302",
+  "deployTimestamp": "1731524400",
   "sourceName": "src/market/modules/TradeModule.sol",
   "contractName": "TradeModule",
   "deployedOn": "deploy.TradeModule",
-  "gasUsed": 2497785,
-  "gasCost": "3882480258"
+  "gasUsed": 2550000,
+  "gasCost": "289742182"
 }

@@ -1,5 +1,5 @@
 {
-  "address": "0x6b2e198c11300bcf1152a47a382465c6fc874d8b",
+  "address": "0x4a61f58c535fd18e3bb1f14bbf4b362f78dfa8cf",
   "abi": [
     {
       "type": "constructor",
@@ -648,11 +648,6 @@
     },
     {
       "type": "error",
-      "name": "OverflowInt24ToUint256",
-      "inputs": []
-    },
-    {
-      "type": "error",
       "name": "OwnableUnauthorizedAccount",
       "inputs": [
         {
@@ -682,6 +677,11 @@
           "internalType": "uint256"
         }
       ]
+    },
+    {
+      "type": "error",
+      "name": "T",
+      "inputs": []
     },
     {
       "type": "error",
@@ -857,6 +857,45 @@
       ],
       "outputs": [],
       "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "getTokensFromLiquidity",
+      "inputs": [
+        {
+          "name": "liquidity",
+          "type": "uint128",
+          "internalType": "uint128"
+        },
+        {
+          "name": "sqrtPriceX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        },
+        {
+          "name": "sqrtPriceAX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        },
+        {
+          "name": "sqrtPriceBX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "amount0",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "amount1",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "pure"
     },
     {
       "type": "function",
@@ -1421,7 +1460,7 @@
     },
     {
       "type": "error",
-      "name": "NotAccountOwnerOrAuthorized",
+      "name": "NotAccountOwner",
       "inputs": [
         {
           "name": "tokenId",
@@ -1927,19 +1966,19 @@
     },
     {
       "type": "error",
-      "name": "EpochNotSettled",
+      "name": "EpochSettled",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ExpiredEpochNotSettled",
       "inputs": [
         {
-          "name": "epochId",
+          "name": "epochEndTime",
           "type": "uint256",
           "internalType": "uint256"
         }
       ]
-    },
-    {
-      "type": "error",
-      "name": "EpochSettled",
-      "inputs": []
     },
     {
       "type": "error",
@@ -1962,6 +2001,11 @@
           "internalType": "uint256"
         }
       ]
+    },
+    {
+      "type": "error",
+      "name": "MathOverflowedMulDiv",
+      "inputs": []
     },
     {
       "type": "error",
@@ -1988,6 +2032,27 @@
       "type": "error",
       "name": "PositionSizeBelowMin",
       "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "TradePriceOutOfBounds",
+      "inputs": [
+        {
+          "name": "tradeRatioD18",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "minTradeRatioD18",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "maxTradeRatioD18",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
     },
     {
       "type": "constructor",
@@ -2946,15 +3011,26 @@
         }
       ],
       "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "EpochNotSettled",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
     }
   ],
   "deployedOn": "router.Foil",
-  "deployTxnHash": "0x831c2e63d61d66e418615e65610308698a8eeb8f66344b026f067917964da61e",
-  "deployTxnBlockNumber": "7032045",
-  "deployTimestamp": "1731009024",
+  "deployTxnHash": "0x6900d594c748043bcd08537586f0949f0aaa180795a46000cf6f1e80a67b8510",
+  "deployTxnBlockNumber": "7070306",
+  "deployTimestamp": "1731524448",
   "contractName": "Foil",
   "sourceName": "Foil.sol",
   "highlight": true,
-  "gasUsed": 541842,
-  "gasCost": "4033114384"
+  "gasUsed": 550203,
+  "gasCost": "321993297"
 }
