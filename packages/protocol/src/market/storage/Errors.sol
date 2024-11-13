@@ -54,4 +54,9 @@ library Errors {
         uint256 minTradeRatioD18,
         uint256 maxTradeRatioD18
     );
+    error InvalidStartingPrice(
+        uint160 startingSqrtPriceX96,
+        uint160 minSqrtPriceX96,
+        uint160 maxSqrtPriceX96
+    );
 }

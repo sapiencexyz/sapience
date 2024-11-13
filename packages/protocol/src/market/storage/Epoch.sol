@@ -158,6 +158,18 @@ library Epoch {
             epoch.sqrtPriceMinX96
         );
 
+        // Validate starting price is within the range
+        if (
+            startingSqrtPriceX96 < epoch.sqrtPriceMinX96 ||
+            startingSqrtPriceX96 > epoch.sqrtPriceMaxX96
+        ) {
+            revert Errors.InvalidStartingPrice(
+                startingSqrtPriceX96,
+                epoch.sqrtPriceMinX96,
+                epoch.sqrtPriceMaxX96
+            );
+        }
+
         // mint max; track tokens loaned by in FAccount
         epoch.ethToken.mint(address(this), type(uint256).max);
         epoch.gasToken.mint(address(this), type(uint256).max);
