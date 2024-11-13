@@ -487,6 +487,21 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         );
     }
 
+    function getTokensFromLiquidity(
+        uint128 liquidity,
+        uint160 sqrtPriceX96,
+        uint160 sqrtPriceAX96,
+        uint160 sqrtPriceBX96
+    ) external pure override returns (uint256 amount0, uint256 amount1) {
+        return
+            LiquidityAmounts.getAmountsForLiquidity(
+                sqrtPriceX96,
+                sqrtPriceAX96,
+                sqrtPriceBX96,
+                liquidity
+            );
+    }
+
     function _closeLiquidityPosition(
         Market.Data storage market,
         Position.Data storage position
