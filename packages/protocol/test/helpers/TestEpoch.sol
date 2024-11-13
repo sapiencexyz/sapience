@@ -19,7 +19,6 @@ import "forge-std/console2.sol";
 contract TestEpoch is TestUser {
     using Cannon for Vm;
 
-    uint256 constant BOND_AMOUNT = 5 ether;
     uint256 internal constant Q128 = 0x100000000000000000000000000000000;
     uint256 constant CREATE_EPOCH_SALT = 4;
 
@@ -100,6 +99,7 @@ contract TestEpoch is TestUser {
         address callbackRecipient,
         uint256 minTradeSize
     ) public returns (address) {
+        uint256 bondAmount = 5 ether;
         address owner = createUser("Owner", 10_000_000 ether);
         vm.startPrank(0x70997970C51812dc3A010C7d01b50e0d17dc79C8);
         IFoil(vm.getAddress("Foil")).initializeMarket(
@@ -112,7 +112,7 @@ contract TestEpoch is TestUser {
                 feeRate: 10000,
                 assertionLiveness: 21600,
                 bondCurrency: vm.getAddress("BondCurrency.Token"),
-                bondAmount: BOND_AMOUNT,
+                bondAmount: bondAmount,
                 claimStatement: "wstGwei/gas",
                 uniswapPositionManager: vm.getAddress(
                     "Uniswap.NonfungiblePositionManager"
@@ -136,10 +136,13 @@ contract TestEpoch is TestUser {
             vm.getAddress("BondCurrency.Token")
         );
         IFoil foil = IFoil(vm.getAddress("Foil"));
-        bondCurrency.mint(BOND_AMOUNT * 2, owner);
+        (, , , , IFoilStructs.MarketParams memory marketParams) = foil
+            .getMarket();
+        uint256 bondAmount = marketParams.bondAmount;
+        bondCurrency.mint(bondAmount * 2, owner);
         vm.startPrank(owner);
 
-        bondCurrency.approve(address(foil), BOND_AMOUNT);
+        bondCurrency.approve(address(foil), bondAmount);
         bytes32 assertionId = foil.submitSettlementPrice(epochId, price);
         vm.stopPrank();
 
