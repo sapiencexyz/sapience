@@ -26,6 +26,8 @@ contract UMASettlementModule is
 
         validateSubmission(epoch, market, msg.sender);
 
+        require(epoch.assertionId == bytes32(0), "Assertion already submitted");
+
         IERC20 bondCurrency = IERC20(epoch.params.bondCurrency);
         OptimisticOracleV3Interface optimisticOracleV3 = OptimisticOracleV3Interface(
                 epoch.params.optimisticOracleV3
@@ -69,8 +71,7 @@ contract UMASettlementModule is
         epoch.settlement = Epoch.Settlement({
             settlementPriceD18: settlementPriceD18,
             submissionTime: block.timestamp,
-            disputed: false,
-            disputer: address(0)
+            disputed: false
         });
 
         emit SettlementSubmitted(epochId, settlementPriceD18, block.timestamp);
@@ -108,6 +109,9 @@ contract UMASettlementModule is
                 settlement.settlementPriceD18
             );
         }
+
+        // clear the assertionId
+        epoch.assertionId = bytes32(0);
     }
 
     function assertionDisputedCallback(
@@ -131,7 +135,7 @@ contract UMASettlementModule is
         address caller
     ) internal view {
         require(
-            block.timestamp > epoch.endTime,
+            block.timestamp >= epoch.endTime,
             "Market epoch activity is still allowed"
         );
         require(!epoch.settled, "Market epoch already settled");

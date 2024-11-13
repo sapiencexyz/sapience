@@ -166,7 +166,7 @@ contract CreateLiquidityPosition is TestEpoch {
         vm.prank(lp1);
         (
             uint256 id,
-            uint256 requiredCollateral,
+            ,
             uint256 totalDepositedCollateralAmount,
             uint256 uniswapNftId,
             uint128 liquidity,
@@ -300,7 +300,7 @@ contract CreateLiquidityPosition is TestEpoch {
         vm.startPrank(lp1);
         (
             uint256 id,
-            uint256 requiredCollateral,
+            ,
             uint256 totalDepositedCollateralAmount,
             uint256 uniswapNftId,
             uint128 liquidity,

@@ -26,7 +26,7 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
         Market.Data storage market = Market.load();
 
         if (ERC721Storage._ownerOf(positionId) != msg.sender) {
-            revert Errors.NotAccountOwnerOrAuthorized(positionId, msg.sender);
+            revert Errors.NotAccountOwner(positionId, msg.sender);
         }
 
         // Ensure the epoch has ended

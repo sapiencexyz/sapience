@@ -127,7 +127,7 @@ contract SettleLPTest is TestTrade {
         address randomUser = address(0x1234);
         vm.expectRevert(
             abi.encodeWithSelector(
-                Errors.NotAccountOwnerOrAuthorized.selector,
+                Errors.NotAccountOwner.selector,
                 lpPositionId,
                 randomUser
             )

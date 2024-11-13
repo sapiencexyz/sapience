@@ -24,7 +24,6 @@ library Epoch {
         uint256 settlementPriceD18;
         uint256 submissionTime;
         bool disputed;
-        address disputer;
     }
 
     struct Data {

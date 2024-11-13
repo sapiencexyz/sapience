@@ -60,6 +60,7 @@ interface ITradeModule {
     ) external;
 
     /** @dev Quotes the required collateral to create a new trader position.
+     * @dev warning: this function shouldn't be called on-chain since it will incur on gas usage. It executes and expect an internal txn to revert
      * @param epochId The epoch id.
      * @param size The position size.
      * @return requiredCollateral The required collateral.
@@ -71,6 +72,7 @@ interface ITradeModule {
     ) external returns (uint256 requiredCollateral, uint256 fillPrice);
 
     /** @dev Quotes the required collateral to modify an existing trader position.
+     * @dev warning: this function shouldn't be called on-chain since it will incur on gas usage. It executes and expect an internal txn to revert
      * @param positionId The position id.
      * @param size The new position size.
      * @return expectedCollateralDelta The expected change in collateral. Negative means sender will receive some collateral back, positive some collateral needs to be collected.

@@ -25,7 +25,7 @@ library Errors {
         int256 collateralRequired,
         int256 maxCollateral
     );
-    error NotAccountOwnerOrAuthorized(uint256 tokenId, address sender);
+    error NotAccountOwner(uint256 tokenId, address sender);
     error InvalidPositionKind();
     error InvalidRange(int24 requestedTick, int24 boundedTick);
     error PositionAlreadySettled(uint256 positionId);
