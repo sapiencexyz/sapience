@@ -77,12 +77,24 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     }
 
     function initializeFirstEpoch(
-        uint256 _initialStartTime,
-        uint160 _initialSqrtPriceX96
+        uint256 initialStartTime,
+        uint160 initialSqrtPriceX96
     ) external onlyInitializer {
         require(!initialized, "Already Initialized");
 
-        _initializeEpoch(_initialStartTime, _initialSqrtPriceX96);
+        uint256 startingSharePrice = 1e18;
+        epochSharePrices[0] = startingSharePrice;
+
+        uint256 collateralAmount = _calculateNextCollateral(
+            0,
+            startingSharePrice
+        );
+
+        _createEpochAndPosition(
+            initialStartTime,
+            initialSqrtPriceX96,
+            collateralAmount
+        );
         initialized = true;
     }
 
@@ -107,7 +119,28 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     function resolutionCallback(
         uint160 previousResolutionSqrtPriceX96
     ) external onlyMarket {
-        _createNextEpoch(previousResolutionSqrtPriceX96);
+        uint256 collateralReceived;
+        if (positionId != 0) {
+            collateralReceived = market.settlePosition(positionId);
+        }
+
+        uint256 sharePrice = _updateSharePrice(collateralReceived);
+
+        uint256 totalCollateralAfterTransition = _calculateNextCollateral(
+            collateralReceived,
+            sharePrice
+        );
+
+        // Set up the start time for the new epoch
+        (IFoilStructs.EpochData memory epochData, ) = market.getLatestEpoch();
+
+        // Adjust the start time for the next epoch
+        uint256 newEpochStartTime = epochData.endTime + duration;
+        _createEpochAndPosition(
+            newEpochStartTime,
+            previousResolutionSqrtPriceX96,
+            totalCollateralAfterTransition
+        );
     }
 
     function supportsInterface(
@@ -121,9 +154,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             super.supportsInterface(interfaceId);
     }
 
-    function _initializeEpoch(
+    function _createEpochAndPosition(
         uint256 startTime,
-        uint160 startingSqrtPriceX96
+        uint160 startingSqrtPriceX96,
+        uint256 collateralAmount
     ) private {
         require(address(market) != address(0), "Market address not set");
 
@@ -142,6 +176,12 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             block.timestamp
         );
         currentEpochId = newEpochId;
+
+        if (collateralAmount > 0) {
+            positionId = _createNewLiquidityPosition(collateralAmount);
+        } else {
+            positionId = 0;
+        }
     }
 
     function _calculateTickBounds(
@@ -183,55 +223,27 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             (baseAssetMaxPriceTick % 200);
     }
 
-    function _createNextEpoch(uint160 previousResolutionSqrtPriceX96) private {
-        // Set up the start time for the new epoch
-        (IFoilStructs.EpochData memory epochData, ) = market.getLatestEpoch();
-
-        // Adjust the start time for the next epoch
-        uint256 newEpochStartTime = epochData.endTime + duration;
-
-        // Settle the position and get the collateral received
-        uint256 collateralReceived;
-        if (positionId != 0) {
-            collateralReceived = market.settlePosition(positionId);
-        }
-
-        // Process the epoch transition and pass the collateral received
-        uint256 totalCollateralAfterTransition = _processEpochTransition(
-            collateralReceived
-        );
-
-        /*
-            TODO: update market params with new min/max price bounds for the next epoch
-        */
-
-        // Move to the next epoch
-        _initializeEpoch(newEpochStartTime, previousResolutionSqrtPriceX96);
-
-        // Call _createNewLiquidityPosition with the correct totalCollateral
-        if (totalCollateralAfterTransition > 0) {
-            positionId = _createNewLiquidityPosition(
-                totalCollateralAfterTransition
-            );
-        } else {
-            positionId = 0;
-        }
-    }
-
-    function _processEpochTransition(
-        uint256 collateralFromPreviousEpoch
-    ) internal returns (uint256 totalCollateralForNextEpoch) {
-        // Get the share price for the closing epoch
+    function _updateSharePrice(
+        uint256 collateralReceived
+    ) private returns (uint256 sharePrice) {
+        // Get the total shares in circulation
         uint256 totalShares = totalSupply();
-        uint256 sharePrice;
-        if (totalShares > 0 && collateralFromPreviousEpoch > 0) {
-            sharePrice = collateralFromPreviousEpoch.mulDiv(1e18, totalShares); // any rounding?
-        } else {
-            sharePrice = 1e18;
-        }
 
+        // Calculate share price based on collateral and total shares
+        sharePrice = totalShares > 0 && collateralReceived > 0
+            ? collateralReceived.mulDiv(1e18, totalShares)
+            : 1e18;
+
+        // Store the share price for the current epoch
         epochSharePrices[currentEpochId] = sharePrice;
 
+        return sharePrice;
+    }
+
+    function _calculateNextCollateral(
+        uint256 collateralFromPreviousEpoch,
+        uint256 sharePrice
+    ) internal returns (uint256 totalCollateralForNextEpoch) {
         totalCollateralForNextEpoch =
             collateralFromPreviousEpoch +
             totalPendingDeposits -
@@ -296,8 +308,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
         // Approve collateral transfer to the market
         collateralAsset.approve(address(market), totalCollateral);
-
-        uint256 balanceBefore = collateralAsset.balanceOf(address(this));
         // Create the liquidity position
         (newPositionId, , , , , , ) = market.createLiquidityPosition(params);
     }
@@ -312,9 +322,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     }
 
     function totalAssets() public view override returns (uint256) {
-        return
-            market.getPositionCollateralValue(positionId) +
-            uninvestedCollateral;
+        return market.getPositionCollateralValue(positionId);
     }
 
     function totalSupply()

@@ -367,8 +367,9 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             ,
             stack.tokensOwed0,
             stack.tokensOwed1
-        ) = INonfungiblePositionManager(epoch.params.uniswapPositionManager)
-            .positions(position.uniswapPositionId);
+        ) = INonfungiblePositionManager(
+            epoch.marketParams.uniswapPositionManager
+        ).positions(position.uniswapPositionId);
 
         (stack.sqrtPriceX96, , , , , , ) = epoch.pool.slot0();
 

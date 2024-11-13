@@ -8,8 +8,7 @@ import {IVault} from "../../src/vault/interfaces/IVault.sol";
 
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 import {TickMath} from "../../src/market/external/univ3/TickMath.sol";
-import {TestTrade} from "../helpers/TestTrade.sol";
-import {TestEpoch} from "../helpers/TestEpoch.sol";
+import {TestVault} from "../helpers/TestVault.sol";
 import {TestUser} from "../helpers/TestUser.sol";
 import {DecimalPrice} from "../../src/market/libraries/DecimalPrice.sol";
 import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
@@ -21,14 +20,13 @@ import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
 import {MigrationMathUtils} from "../../src/market/external/univ3/MigrationMathUtils.sol";
 import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
 
-contract VaultTest is TestTrade {
+contract VaultTest is TestVault {
     using Cannon for Vm;
     using DecimalMath for uint256;
     using DecimalMath for int256;
     using SafeCastI256 for int256;
     using SafeCastU256 for uint256;
 
-    address owner;
     address lp1;
     IFoil foil;
     IVault vault;
@@ -42,14 +40,19 @@ contract VaultTest is TestTrade {
     uint256 INITIAL_LP_BALANCE = 100_000 ether;
     IFoilStructs.EpochData epochData;
 
-    uint256 MIN_TRADE_SIZE = 10_000; // 10,000 vGas
+    uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
+    uint256 constant BOND_AMOUNT = 100 ether;
 
     function setUp() public {
         address[] memory feeCollectors = new address[](0);
 
         lp1 = TestUser.createUser("LP1", INITIAL_LP_BALANCE);
 
-        (foil, vault, collateralAsset, owner) = _initializeVault(feeCollectors);
+        (foil, vault, collateralAsset) = initializeVault(
+            feeCollectors,
+            BOND_AMOUNT,
+            MIN_TRADE_SIZE
+        );
 
         initialStartTime = block.timestamp + 60;
     }
@@ -62,7 +65,7 @@ contract VaultTest is TestTrade {
     function test_revertsWhenInitializeFirstEpochAgain() public {
         initializeFirstEpoch(initialSqrtPriceX96, initialStartTime);
 
-        vm.startPrank(0x70997970C51812dc3A010C7d01b50e0d17dc79C8);
+        vm.startPrank(vaultOwner);
 
         vm.expectRevert("Already Initialized");
         vault.initializeFirstEpoch(initialStartTime, initialSqrtPriceX96);
@@ -114,7 +117,11 @@ contract VaultTest is TestTrade {
 
         // Settle
         vm.warp(epochData.endTime + 1);
-        settleEpochFromVault(epochData.epochId, updatedSqrtPriceX96, owner);
+        settleEpochFromVault(
+            epochData.epochId,
+            updatedSqrtPriceX96,
+            vaultOwner
+        );
 
         // New epoch created
         (epochData, ) = foil.getLatestEpoch();
@@ -160,7 +167,11 @@ contract VaultTest is TestTrade {
 
         // Settle
         vm.warp(epochData.endTime + 1);
-        settleEpochFromVault(epochData.epochId, updatedSqrtPriceX96, owner);
+        settleEpochFromVault(
+            epochData.epochId,
+            updatedSqrtPriceX96,
+            vaultOwner
+        );
 
         // New epoch created
         (epochData, ) = foil.getLatestEpoch();
@@ -181,84 +192,5 @@ contract VaultTest is TestTrade {
 
         assertGe(epochData.maxPriceD18, 45 ether);
         assertApproxEqRel(epochData.maxPriceD18, 45 ether, 0.02 ether);
-    }
-
-    /////////////
-    // Helpers //
-    /////////////
-    function _initializeVault(
-        address[] memory feeCollectors
-    )
-        internal
-        returns (
-            IFoil foilContract,
-            IVault vaultContract,
-            IMintableToken collateralAssetContract,
-            address ownerUser
-        )
-    {
-        ownerUser = createUser("Owner", 10_000_000 ether);
-        foilContract = IFoil(vm.getAddress("Foil"));
-        vaultContract = IVault(vm.getAddress("Vault"));
-        collateralAssetContract = IMintableToken(
-            vm.getAddress("CollateralAsset.Token")
-        );
-
-        vm.startPrank(0x70997970C51812dc3A010C7d01b50e0d17dc79C8);
-        // Initialize Market (by owner, links fail market with vault)
-        foilContract.initializeMarket(
-            address(vaultContract),
-            address(collateralAssetContract),
-            feeCollectors,
-            address(vaultContract),
-            MIN_TRADE_SIZE,
-            IFoilStructs.MarketParams({
-                feeRate: 10000,
-                assertionLiveness: 21600,
-                bondCurrency: vm.getAddress("BondCurrency.Token"),
-                bondAmount: BOND_AMOUNT,
-                claimStatement: "wstGwei/gas",
-                uniswapPositionManager: vm.getAddress(
-                    "Uniswap.NonfungiblePositionManager"
-                ),
-                uniswapSwapRouter: vm.getAddress("Uniswap.SwapRouter"),
-                uniswapQuoter: vm.getAddress("Uniswap.QuoterV2"),
-                optimisticOracleV3: vm.getAddress("UMA.OptimisticOracleV3")
-            })
-        );
-        vm.stopPrank();
-    }
-
-    function initializeFirstEpoch(
-        uint160 _initialSqrtPriceX96,
-        uint256 _initialStartTime
-    ) internal {
-        vm.startPrank(0x70997970C51812dc3A010C7d01b50e0d17dc79C8);
-
-        // Initialize Epoch (by owner, kicks the ball with the first epoch)
-        vault.initializeFirstEpoch(_initialStartTime, _initialSqrtPriceX96);
-
-        vm.stopPrank();
-    }
-
-    function settleEpochFromVault(
-        uint256 epochId,
-        uint160 price,
-        address submitter
-    ) internal {
-        IMintableToken bondCurrency = IMintableToken(
-            vm.getAddress("BondCurrency.Token")
-        );
-        bondCurrency.mint(BOND_AMOUNT * 2, submitter);
-        vm.startPrank(submitter);
-
-        bondCurrency.approve(address(vault), BOND_AMOUNT);
-        bytes32 assertionId = vault.submitMarketSettlementPrice(epochId, price);
-        vm.stopPrank();
-
-        address optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
-        vm.startPrank(optimisticOracleV3);
-        foil.assertionResolvedCallback(assertionId, true);
-        vm.stopPrank();
     }
 }
