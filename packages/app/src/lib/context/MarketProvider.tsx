@@ -33,7 +33,7 @@ export interface MarketContextType {
   poolAddress: `0x${string}`;
   pool: Pool | null;
   collateralAssetDecimals: number;
-  epoch: number;
+  epoch: number | undefined;
   epochSettled: boolean;
   settlementPrice?: bigint;
   foilData: any;
@@ -50,7 +50,7 @@ export interface MarketContextType {
 interface MarketProviderProps {
   chainId: number;
   address: string;
-  epoch: number;
+  epoch?: number;
   children: ReactNode;
 }
 
@@ -105,7 +105,8 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     abi: foilData.abi,
     address: state.address as `0x${string}`,
     functionName: 'getEpoch',
-    args: [epoch],
+    args: [epoch ?? 0],
+    query: { enabled: epoch !== undefined },
   }) as any;
 
   const collateralTickerFunctionResult = useReadContract({

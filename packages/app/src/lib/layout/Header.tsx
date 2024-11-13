@@ -144,7 +144,7 @@ const NavLinks = ({
   };
 
   const renderMobileMarketLinks = (path: string, withEpochs = false) => {
-    if (path === 'subscribe') {
+    if (path === 'subscribe' || path === 'earn') {
       return (
         <div className="flex flex-col space-y-2">
           {publicMarkets.map((market) => (
@@ -196,14 +196,12 @@ const NavLinks = ({
           <div className="font-bold mb-1">Subscribe</div>
           {renderMobileMarketLinks('subscribe')}
         </div>
-        {/*
         <div>
           <div className="font-bold mb-1">
             Earn
           </div>
           {renderMobileMarketLinks('earn')}
         </div>
-        */}
         <div>
           <div className="font-bold mb-1">Trade</div>
           {renderMobileMarketLinks('trade', true)}
@@ -226,7 +224,7 @@ const NavLinks = ({
   return (
     <div className="flex gap-3">
       <NavPopover label="Subscribe" path="subscribe" />
-      {/* <NavPopover label="Earn" path="earn" /> */}
+      <NavPopover label="Earn" path="earn" />
       <NavPopover label="Trade" path="trade" withEpochs />
       <NavPopover label="Pool" path="pool" withEpochs />
       <Link href="https://docs.foil.xyz" className="hover:no-underline">

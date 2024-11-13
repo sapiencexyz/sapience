@@ -6,8 +6,8 @@ privateSourceCode=true
 owner = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
 startTime = "<%= parseInt(timestamp) %>"
 endTime = "<%= parseInt(timestamp) + 604800 %>"
-baseAssetMinPriceTick = "5200" # 1.709
-baseAssetMaxPriceTick = "28200" # 17.09
+baseAssetMinPriceTick = "16000" # 5
+baseAssetMaxPriceTick = "39000" # 50
 feeRate = "10000" # 1%
 startingSqrtPriceX96 = "146497135921788803112962621440" # 3.419
 assertionLiveness = "21600" # 6 hours
