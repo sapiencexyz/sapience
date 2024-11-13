@@ -102,14 +102,12 @@ library ERC721Storage {
             revert IERC721Foil.TokenAlreadyMinted(tokenId);
         }
 
-        _beforeTransfer(address(0), to, tokenId);
-
         store.balanceOf[to] += 1;
         store.ownerOf[tokenId] = to;
 
-        _postTransfer(address(0), to, tokenId);
-
         emit IERC721Foil.Transfer(address(0), to, tokenId);
+
+        _enumarebleTransfer(address(0), to, tokenId);
     }
 
     function _burn(uint256 tokenId) internal {
@@ -118,14 +116,12 @@ library ERC721Storage {
 
         _approve(address(0), tokenId);
 
-        _beforeTransfer(holder, address(0), tokenId);
-
         store.balanceOf[holder] -= 1;
         delete store.ownerOf[tokenId];
 
-        _postTransfer(holder, address(0), tokenId);
-
         emit IERC721Foil.Transfer(holder, address(0), tokenId);
+
+        _enumarebleTransfer(holder, address(0), tokenId);
     }
 
     function _transfer(address from, address to, uint256 tokenId) internal {
@@ -139,8 +135,6 @@ library ERC721Storage {
             revert AddressError.ZeroAddress();
         }
 
-        _beforeTransfer(from, to, tokenId);
-
         // Clear approvals from the previous holder
         _approve(address(0), tokenId);
 
@@ -148,9 +142,9 @@ library ERC721Storage {
         store.balanceOf[to] += 1;
         store.ownerOf[tokenId] = to;
 
-        _postTransfer(from, to, tokenId);
-
         emit IERC721Foil.Transfer(from, to, tokenId);
+
+        _enumarebleTransfer(from, to, tokenId);
     }
 
     function _approve(address to, uint256 tokenId) internal {
@@ -182,7 +176,7 @@ library ERC721Storage {
         }
     }
 
-    function _beforeTransfer(
+    function _enumarebleTransfer(
         address from,
         address to,
         uint256 tokenId
@@ -203,12 +197,6 @@ library ERC721Storage {
             ERC721EnumerableStorage._addTokenToOwnerEnumeration(to, tokenId);
         }
     }
-
-    function _postTransfer(
-        address from,
-        address to,
-        uint256 tokenId // solhint-disable-next-line no-empty-blocks
-    ) internal {}
 
     function _initialize(
         string memory tokenName,
