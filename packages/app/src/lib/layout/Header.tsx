@@ -63,8 +63,8 @@ const NavPopover = ({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" className="gap-2">
-          {label} <ChevronDown className="h-4 w-4" />
+        <Button variant="ghost" className="gap-1">
+          {label}<ChevronDown />
         </Button>
       </PopoverTrigger>
       <PopoverContent

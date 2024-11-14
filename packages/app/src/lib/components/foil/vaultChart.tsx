@@ -28,15 +28,15 @@ const data: DataPoint[] = [
 
 const VaultChart: React.FC = () => {
   return (
-    <div style={{ width: '100%', height: 400 }}>
+    <div style={{ width: '100%', height: '100%' }}>
       <ResponsiveContainer>
         <LineChart
           data={data}
           margin={{
-            top: 20,
-            right: 30,
-            left: 20,
-            bottom: 20,
+            top: 0,
+            right: 0,
+            left: 0,
+            bottom: 0,
           }}
         >
           <CartesianGrid strokeDasharray="3 3" />
