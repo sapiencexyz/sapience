@@ -108,6 +108,15 @@ library Epoch {
 
         epoch.feeRateD18 = uint256(epochParams.feeRate) * 1e12;
 
+        // check market.epochParams.bondAmount is greater than the minimum bond for the assertion currency
+        uint256 minUMABond = OptimisticOracleV3Interface(
+            epochParams.optimisticOracleV3
+        ).getMinimumBond(epochParams.bondCurrency);
+        if (epochParams.bondAmount < minUMABond) {
+            // Cap the bond amount at the minimum bond for the assertion currency
+            epoch.params.bondAmount = minUMABond;
+        }
+
         VirtualToken tokenA = new VirtualToken{salt: bytes32(salt)}(
             address(this),
             "Token A",
@@ -157,6 +166,18 @@ library Epoch {
         epoch.minPriceD18 = DecimalPrice.sqrtRatioX96ToPrice(
             epoch.sqrtPriceMinX96
         );
+
+        // Validate starting price is within the range
+        if (
+            startingSqrtPriceX96 < epoch.sqrtPriceMinX96 ||
+            startingSqrtPriceX96 > epoch.sqrtPriceMaxX96
+        ) {
+            revert Errors.InvalidStartingPrice(
+                startingSqrtPriceX96,
+                epoch.sqrtPriceMinX96,
+                epoch.sqrtPriceMaxX96
+            );
+        }
 
         // mint max; track tokens loaned by in FAccount
         epoch.ethToken.mint(address(this), type(uint256).max);
