@@ -13,8 +13,6 @@ import {ERC721Storage} from "./ERC721Storage.sol";
 import {Errors} from "./Errors.sol";
 import {Market} from "./Market.sol";
 
-// import "forge-std/console2.sol";
-
 library Position {
     using SafeCastU256 for uint256;
     using SafeCastI256 for int256;

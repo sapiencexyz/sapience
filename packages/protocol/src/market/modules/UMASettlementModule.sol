@@ -11,8 +11,6 @@ import {IUMASettlementModule} from "../interfaces/IUMASettlementModule.sol";
 import {OptimisticOracleV3Interface} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import "../libraries/DecimalPrice.sol";
 
-// import "forge-std/console2.sol";
-
 contract UMASettlementModule is
     IUMASettlementModule,
     ReentrancyGuardUpgradeable

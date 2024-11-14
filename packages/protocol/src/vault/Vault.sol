@@ -13,13 +13,13 @@ import "../market/external/univ3/TickMath.sol";
 import "../market/interfaces/IFoil.sol";
 import "../market/interfaces/IFoilStructs.sol";
 import "./interfaces/IVault.sol";
-import "forge-std/console2.sol";
 
 contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
     using SetUtil for SetUtil.UintSet;
     using Math for uint256;
 
+    /// @notice immutable variables (initially set)
     IFoil public immutable market;
     IERC20 public immutable collateralAsset;
     uint256 public immutable duration;
@@ -38,26 +38,43 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
      */
     uint256 public positionId;
 
+    /**
+     * holds the pending transactions for each user
+     * @dev each user can have at most one pending transaction at a time
+     * @dev user has to complete the request before making a new one
+     * @dev user can also cancel the request by withdrawing shares or collateral
+     */
     mapping(address => UserPendingTransaction) userPendingTransactions;
+
+    /**
+     * holds the share price for each epoch
+     * @dev this allows us to historically track share price to honor requests made in previous epochs
+     */
     mapping(uint256 => uint256) epochSharePrices;
 
     /**
      * total pending deposits
+     * @dev tracks all pending deposits requested in current epoch
+     * @dev when epoch settles, once reconciled, this value is reset to 0
      */
     uint256 totalPendingDeposits;
 
     /**
      * total pending withdrawals
+     * @dev tracks all pending withdrawals requested in current epoch
+     * @dev when epoch settles, once reconciled, this value is reset to 0
      */
     uint256 totalPendingWithdrawals;
 
     /**
      * pending shares to burn
+     * @dev these shares are taken into account when calculating totalSupply
+     * @dev pending withdrawals are added to this amount, and when redeemed, this value is reduced
      */
     uint256 pendingSharesToBurn;
 
     /**
-     *  minimum collateral required to create liquidity position
+     *  minimum collateral required to create liquidity position and to request deposit
      */
     uint256 constant minimumCollateral = 1e3;
 
@@ -79,6 +96,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         vaultInitializer = msg.sender;
     }
 
+    /// @notice initializes the first epoch
+    /// @dev can only be called by the vault initializer
+    /// @dev price is set to 1e18
+    /// @dev any pending deposits prior to the first epoch are used to create the initial liquidity position
     function initializeFirstEpoch(
         uint256 initialStartTime,
         uint160 initialSqrtPriceX96
@@ -119,6 +140,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         assertionId = market.submitSettlementPrice(epochId, price);
     }
 
+    /// @notice callback function called by market when an epoch is settled
+    /// @dev collateral received is reconciled with pending txns to determine collateral for next liquidity position
+    /// @dev share price is updated based on the collateral received
     function resolutionCallback(
         uint160 previousResolutionSqrtPriceX96
     ) external onlyMarket {
@@ -143,6 +167,8 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             previousResolutionSqrtPriceX96,
             totalCollateralAfterTransition
         );
+
+        emit EpochProcessed(epochData.epochId, sharePrice);
     }
 
     function supportsInterface(
@@ -448,7 +474,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
         totalPendingDeposits += assets;
 
-        emit DepositRequest(msg.sender, currentEpochId, assets);
+        emit DepositRequest(msg.sender, currentEpochId, pendingTxn.amount);
 
         return pendingTxn;
     }

@@ -15,8 +15,6 @@ import "./Errors.sol";
 import "./Market.sol";
 import {SafeCastI256, SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 
-// import "forge-std/console2.sol";
-
 library Epoch {
     using DecimalMath for uint256;
     using SafeCastI256 for int256;

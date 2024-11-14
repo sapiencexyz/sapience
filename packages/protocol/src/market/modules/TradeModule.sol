@@ -11,8 +11,6 @@ import {SafeCastI256} from "@synthetixio/core-contracts/contracts/utils/SafeCast
 import {SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 import {ITradeModule} from "../interfaces/ITradeModule.sol";
 
-// import "forge-std/console2.sol";
-
 /**
  * @title Module for trade positions.
  * @dev See ITradeModule.

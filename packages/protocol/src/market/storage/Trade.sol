@@ -8,8 +8,6 @@ import {ISwapRouter} from "../interfaces/external/ISwapRouter.sol";
 import {IQuoterV2} from "../interfaces/external/IQuoterV2.sol";
 import {DecimalMath} from "../libraries/DecimalMath.sol";
 
-// import "forge-std/console2.sol";
-
 library Trade {
     using Epoch for Epoch.Data;
     using DecimalMath for uint256;
