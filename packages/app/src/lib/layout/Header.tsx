@@ -63,9 +63,9 @@ const NavPopover = ({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" className="gap-1">
-          {label}
-          <ChevronDown />
+        <Button variant="ghost">
+          <span className="text-lg">{label}</span>
+          <ChevronDown className="text-muted-foreground" />
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -221,13 +221,15 @@ const NavLinks = ({
   }
 
   return (
-    <div className="flex gap-3">
+    <div className="flex gap-5">
       <NavPopover label="Subscribe" path="subscribe" />
       <NavPopover label="Earn" path="earn" />
       <NavPopover label="Trade" path="trade" withEpochs />
       <NavPopover label="Pool" path="pool" withEpochs />
       <Link href="https://docs.foil.xyz" className="hover:no-underline">
-        <Button variant="ghost">Docs</Button>
+        <Button variant="ghost" className=" text-lg">
+          Docs
+        </Button>
       </Link>
     </div>
   );
