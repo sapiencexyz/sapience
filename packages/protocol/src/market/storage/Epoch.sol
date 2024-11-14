@@ -117,13 +117,13 @@ library Epoch {
         epoch.baseAssetMaxPriceTick = baseAssetMaxPriceTick;
         epoch.feeRateD18 = uint256(marketParams.feeRate) * 1e12;
 
-        // check market.epochParams.bondAmount is greater than the minimum bond for the assertion currency
+        // check market.marketParams.bondAmount is greater than the minimum bond for the assertion currency
         uint256 minUMABond = OptimisticOracleV3Interface(
-            epochParams.optimisticOracleV3
-        ).getMinimumBond(epochParams.bondCurrency);
-        if (epochParams.bondAmount < minUMABond) {
+            marketParams.optimisticOracleV3
+        ).getMinimumBond(marketParams.bondCurrency);
+        if (marketParams.bondAmount < minUMABond) {
             // Cap the bond amount at the minimum bond for the assertion currency
-            epoch.params.bondAmount = minUMABond;
+            epoch.marketParams.bondAmount = minUMABond;
         }
         VirtualToken tokenA = _createVirtualToken(salt, "Token A", "tknA");
         VirtualToken tokenB = _createVirtualToken(salt + 1, "Token B", "tknB");

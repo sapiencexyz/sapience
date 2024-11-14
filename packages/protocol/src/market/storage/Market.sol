@@ -64,10 +64,13 @@ library Market {
 
         // check market.epochParams.bondAmount is greater than the minimum bond for the assertion currency
         uint256 minUMABond = OptimisticOracleV3Interface(
-            epochParams.optimisticOracleV3
-        ).getMinimumBond(epochParams.bondCurrency);
-        if (epochParams.bondAmount < minUMABond) {
-            revert Errors.InvalidBondAmount(epochParams.bondAmount, minUMABond);
+            marketParams.optimisticOracleV3
+        ).getMinimumBond(marketParams.bondCurrency);
+        if (marketParams.bondAmount < minUMABond) {
+            revert Errors.InvalidBondAmount(
+                marketParams.bondAmount,
+                minUMABond
+            );
         }
 
         if (callbackRecipient != address(0)) {
