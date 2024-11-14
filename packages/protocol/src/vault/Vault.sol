@@ -37,7 +37,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
      */
     uint256 public positionId;
 
-    /* new storage */
     mapping(address => UserPendingTransaction) userPendingTransactions;
     mapping(uint256 => uint256) epochSharePrices;
 
@@ -424,23 +423,22 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     function requestDeposit(
         uint256 assets
     ) external returns (IVault.UserPendingTransaction memory) {
+        require(assets > minimumCollateral, "Deposit amount is too low");
         collateralAsset.safeTransferFrom(msg.sender, address(this), assets);
 
         UserPendingTransaction storage pendingTxn = userPendingTransactions[
             msg.sender
         ];
 
-        // only allow deposit if no withdrawal is pending
-        if (pendingTxn.transactionType == TransactionType.WITHDRAW) {
-            revert("Cannot deposit while withdrawal is pending");
-        }
+        require(
+            pendingTxn.requestInitiatedEpoch == currentEpochId,
+            "Previous deposit request is not completed"
+        );
 
-        if (
-            pendingTxn.requestInitiatedEpoch != 0 &&
-            pendingTxn.requestInitiatedEpoch != currentEpochId
-        ) {
-            revert("Previous deposit request is not completed");
-        }
+        require(
+            pendingTxn.transactionType != TransactionType.WITHDRAW,
+            "Cannot deposit while withdrawal is pending"
+        );
 
         pendingTxn.requestInitiatedEpoch = currentEpochId;
         pendingTxn.amount += assets;
@@ -460,13 +458,20 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             msg.sender
         ];
 
-        if (pendingTxn.transactionType != TransactionType.DEPOSIT) {
-            revert("No deposit request to withdraw from");
-        }
+        require(
+            pendingTxn.transactionType == TransactionType.DEPOSIT,
+            "No deposit request to withdraw from"
+        );
 
-        if (assets > pendingTxn.amount) {
-            revert("Insufficient deposit request to withdraw");
-        }
+        require(
+            assets <= pendingTxn.amount,
+            "Insufficient deposit request to withdraw"
+        );
+
+        require(
+            pendingTxn.requestInitiatedEpoch == currentEpochId,
+            "Previous deposit request is not in the same epoch"
+        );
 
         pendingTxn.amount -= assets;
         totalPendingDeposits -= assets;
@@ -577,6 +582,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             shares <= pendingTxn.amount,
             "Insufficient deposit request to withdraw"
         );
+        require(
+            pendingTxn.requestInitiatedEpoch == currentEpochId,
+            "Previous deposit request is not in the same epoch"
+        );
 
         pendingTxn.amount -= shares;
         totalPendingWithdrawals -= shares;
@@ -684,13 +693,13 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         ];
 
         require(
-            pendingTxn.requestInitiatedEpoch != currentEpochId,
-            "Previous deposit request is not in the same epoch"
+            pendingTxn.transactionType == TransactionType.DEPOSIT,
+            "No deposit request to mint"
         );
 
         require(
-            pendingTxn.transactionType == TransactionType.DEPOSIT,
-            "No deposit request to mint"
+            pendingTxn.requestInitiatedEpoch != currentEpochId,
+            "Deposit/Mint requires current epoch to settle"
         );
 
         uint256 sharePrice = epochSharePrices[pendingTxn.requestInitiatedEpoch];

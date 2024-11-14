@@ -27,7 +27,6 @@ contract VaultIntegrationTest is TestVault {
     using SafeCastI256 for int256;
     using SafeCastU256 for uint256;
 
-    uint256 public constant INITIAL_MINT = 1000000 ether;
     IFoil foil;
     IVault vault;
     IMintableToken collateralAsset;
@@ -50,8 +49,6 @@ contract VaultIntegrationTest is TestVault {
 
     address trader1;
     address trader2;
-
-    uint256 previousEpochSharePrice = 1e18;
 
     function setUp() public {
         address[] memory feeCollectors = new address[](0);
