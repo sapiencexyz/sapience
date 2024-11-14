@@ -64,7 +64,8 @@ const NavPopover = ({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" className="gap-1">
-          {label}<ChevronDown />
+          {label}
+          <ChevronDown />
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -197,9 +198,7 @@ const NavLinks = ({
           {renderMobileMarketLinks('subscribe')}
         </div>
         <div>
-          <div className="font-bold mb-1">
-            Earn
-          </div>
+          <div className="font-bold mb-1">Earn</div>
           {renderMobileMarketLinks('earn')}
         </div>
         <div>
