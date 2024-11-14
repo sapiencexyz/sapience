@@ -83,7 +83,6 @@ contract TradePositionSlippage is TestTrade {
 
         (
             IFoilStructs.EpochData memory epochData,
-            IFoilStructs.MarketParams memory _epochParams
         ) = foil.getLatestEpoch();
         epochId = epochData.epochId;
         pool = epochData.pool;

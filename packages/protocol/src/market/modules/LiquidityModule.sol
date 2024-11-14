@@ -8,8 +8,6 @@ import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
 import {ILiquidityModule} from "../interfaces/ILiquidityModule.sol";
 import {Pool} from "../libraries/Pool.sol";
 
-// import "forge-std/console2.sol";
-
 contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
     using Position for Position.Data;
     using Epoch for Epoch.Data;
@@ -586,7 +584,6 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         } else {
             position.kind = IFoilStructs.PositionKind.Trade;
         }
-
         collateralAmount = position.depositedCollateralAmount;
 
         // Emit an event for the closed position

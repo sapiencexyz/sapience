@@ -32,7 +32,7 @@ interface IVaultAsyncDeposit {
 
     function claimableDepositRequest(
         address owner
-    ) external view returns (uint256 assets);
+    ) external view returns (uint256 sharesAmount);
 }
 
 interface IVaultAsyncRedeem {
@@ -63,17 +63,24 @@ interface IVaultAsyncRedeem {
 
     function claimableRedeemRequest(
         address owner
-    ) external view returns (uint256 shares);
+    ) external view returns (uint256 collateralAmount);
 
     function redeem(address owner) external returns (uint256 assets);
     function withdraw(address owner) external returns (uint256 sharesAmount);
+}
+
+interface IVaultViews {
+    function pendingValues() external view returns (uint256, uint256, uint256);
+    function epochSharePrice(uint256 epochId) external view returns (uint256);
+    function getPositionId() external view returns (uint256);
 }
 
 interface IVault is
     IERC4626,
     IVaultAsyncDeposit,
     IVaultAsyncRedeem,
-    IResolutionCallback
+    IResolutionCallback,
+    IVaultViews
 {
     enum TransactionType {
         NULL,

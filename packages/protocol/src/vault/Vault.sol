@@ -14,8 +14,6 @@ import "../market/interfaces/IFoil.sol";
 import "../market/interfaces/IFoilStructs.sol";
 import "./interfaces/IVault.sol";
 
-// import "forge-std/console2.sol";
-
 contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
     using SetUtil for SetUtil.UintSet;
@@ -32,7 +30,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     /**
      * current epoch id in market contract
      */
-    uint256 currentEpochId;
+    uint256 public currentEpochId;
 
     /**
      * holds the vault position id on the active (running or future) epoch
@@ -57,6 +55,11 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
      * pending shares to burn
      */
     uint256 pendingSharesToBurn;
+
+    /**
+     *  minimum collateral required to create liquidity position
+     */
+    uint256 constant minimumCollateral = 1e3;
 
     constructor(
         string memory _name,
@@ -85,7 +88,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 startingSharePrice = 1e18;
         epochSharePrices[0] = startingSharePrice;
 
-        uint256 collateralAmount = _calculateNextCollateral(
+        uint256 collateralAmount = _reconcilePendingTransactions(
             0,
             startingSharePrice
         );
@@ -123,10 +126,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         if (positionId != 0) {
             collateralReceived = market.settlePosition(positionId);
         }
-
         uint256 sharePrice = _updateSharePrice(collateralReceived);
 
-        uint256 totalCollateralAfterTransition = _calculateNextCollateral(
+        uint256 totalCollateralAfterTransition = _reconcilePendingTransactions(
             collateralReceived,
             sharePrice
         );
@@ -154,6 +156,15 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             super.supportsInterface(interfaceId);
     }
 
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external pure returns (bytes4) {
+        return this.onERC721Received.selector;
+    }
+
     function _createEpochAndPosition(
         uint256 startTime,
         uint160 startingSqrtPriceX96,
@@ -177,7 +188,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         );
         currentEpochId = newEpochId;
 
-        if (collateralAmount > 0) {
+        if (collateralAmount > minimumCollateral) {
             positionId = _createNewLiquidityPosition(collateralAmount);
         } else {
             positionId = 0;
@@ -240,31 +251,26 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         return sharePrice;
     }
 
-    function _calculateNextCollateral(
+    function _reconcilePendingTransactions(
         uint256 collateralFromPreviousEpoch,
         uint256 sharePrice
     ) internal returns (uint256 totalCollateralForNextEpoch) {
         totalCollateralForNextEpoch =
             collateralFromPreviousEpoch +
             totalPendingDeposits -
-            totalPendingWithdrawals.mulDiv(sharePrice, 1e18); // any rounding?
-        // TODO check if it overflows
+            totalPendingWithdrawals.mulDiv(
+                sharePrice,
+                1e18,
+                Math.Rounding.Floor
+            ); // any rounding?
 
-        uint256 newShares = totalCollateralForNextEpoch.mulDiv(
-            1e18,
-            sharePrice
-        ); // any rounding?
+        uint256 newShares = totalPendingDeposits.mulDiv(1e18, sharePrice); // any rounding?
 
-        uint256 currentShares = totalSupply();
-
-        if (newShares > currentShares) {
-            // need to mint more shares
-            _mint(address(this), newShares - currentShares);
-        } else {
-            pendingSharesToBurn =
-                (pendingSharesToBurn + currentShares) -
-                newShares;
+        if (newShares > 0) {
+            _mint(address(this), newShares);
         }
+
+        pendingSharesToBurn += totalPendingWithdrawals;
 
         totalPendingWithdrawals = 0;
         totalPendingDeposits = 0;
@@ -489,19 +495,24 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
     function claimableDepositRequest(
         address owner
-    ) external view override returns (uint256 assets) {
+    ) external view override returns (uint256 sharesAmount) {
         UserPendingTransaction storage pendingTxn = userPendingTransactions[
             owner
         ];
 
-        if (pendingTxn.requestInitiatedEpoch == currentEpochId) {
+        if (
+            pendingTxn.requestInitiatedEpoch == currentEpochId ||
+            pendingTxn.transactionType != TransactionType.DEPOSIT
+        ) {
             return 0;
         }
 
-        return
-            pendingTxn.transactionType == TransactionType.DEPOSIT
-                ? pendingTxn.amount
-                : 0;
+        uint256 sharePrice = epochSharePrices[pendingTxn.requestInitiatedEpoch];
+        sharesAmount = pendingTxn.amount.mulDiv(
+            10 ** 18,
+            sharePrice,
+            Math.Rounding.Floor
+        );
     }
 
     function deposit(
@@ -531,17 +542,16 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             msg.sender
         ];
 
-        // only allow deposit if no withdrawal is pending
-        if (pendingTxn.transactionType == TransactionType.DEPOSIT) {
-            revert("Cannot redeem while deposit is pending");
-        }
+        require(
+            pendingTxn.transactionType != TransactionType.DEPOSIT,
+            "Cannot redeem while deposit is pending"
+        );
+        require(
+            pendingTxn.requestInitiatedEpoch == 0 ||
+                pendingTxn.requestInitiatedEpoch == currentEpochId,
+            "Previous deposit request is not in the same epoch"
+        );
 
-        if (
-            pendingTxn.requestInitiatedEpoch != 0 &&
-            pendingTxn.requestInitiatedEpoch != currentEpochId
-        ) {
-            revert("Previous deposit request is not in the same epoch");
-        }
         pendingTxn.requestInitiatedEpoch = currentEpochId;
         pendingTxn.amount += shares;
         pendingTxn.transactionType = TransactionType.WITHDRAW;
@@ -559,14 +569,14 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         UserPendingTransaction storage pendingTxn = userPendingTransactions[
             msg.sender
         ];
-
-        if (pendingTxn.transactionType != TransactionType.WITHDRAW) {
-            revert("No withdraw request to redeem");
-        }
-
-        if (shares > pendingTxn.amount) {
-            revert("Insufficient deposit request to withdraw");
-        }
+        require(
+            pendingTxn.transactionType == TransactionType.WITHDRAW,
+            "No withdraw request to redeem"
+        );
+        require(
+            shares <= pendingTxn.amount,
+            "Insufficient deposit request to withdraw"
+        );
 
         pendingTxn.amount -= shares;
         totalPendingWithdrawals -= shares;
@@ -593,19 +603,24 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
     function claimableRedeemRequest(
         address owner
-    ) external view override returns (uint256 shares) {
+    ) external view override returns (uint256 collateralAmount) {
         UserPendingTransaction storage pendingTxn = userPendingTransactions[
             owner
         ];
 
-        if (pendingTxn.requestInitiatedEpoch == currentEpochId) {
+        if (
+            pendingTxn.requestInitiatedEpoch == currentEpochId ||
+            pendingTxn.transactionType != TransactionType.WITHDRAW
+        ) {
             return 0;
         }
 
-        return
-            pendingTxn.transactionType == TransactionType.WITHDRAW
-                ? pendingTxn.amount
-                : 0;
+        uint256 sharePrice = epochSharePrices[pendingTxn.requestInitiatedEpoch];
+        collateralAmount = sharePrice.mulDiv(
+            pendingTxn.amount,
+            10 ** 18,
+            Math.Rounding.Floor
+        );
     }
 
     function redeem(
@@ -668,16 +683,15 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             receiver
         ];
 
-        if (
-            pendingTxn.requestInitiatedEpoch == currentEpochId ||
-            pendingTxn.requestInitiatedEpoch == 0
-        ) {
-            revert("Previous deposit request is not in the same epoch");
-        }
+        require(
+            pendingTxn.requestInitiatedEpoch != currentEpochId,
+            "Previous deposit request is not in the same epoch"
+        );
 
-        if (pendingTxn.transactionType != TransactionType.DEPOSIT) {
-            revert("No deposit request to mint");
-        }
+        require(
+            pendingTxn.transactionType == TransactionType.DEPOSIT,
+            "No deposit request to mint"
+        );
 
         uint256 sharePrice = epochSharePrices[pendingTxn.requestInitiatedEpoch];
         sharesAmount = pendingTxn.amount.mulDiv(
@@ -689,7 +703,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         assets = pendingTxn.amount;
 
         // transfer shares to receiver
-        transfer(receiver, sharesAmount);
+        _transfer(address(this), receiver, sharesAmount);
 
         resetTransaction(receiver);
 
@@ -703,16 +717,16 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             owner
         ];
 
-        if (
-            pendingTxn.requestInitiatedEpoch != currentEpochId ||
-            pendingTxn.requestInitiatedEpoch == 0
-        ) {
-            revert("Previous withdraw request is not in the same epoch");
-        }
+        require(
+            pendingTxn.requestInitiatedEpoch != currentEpochId &&
+                pendingTxn.requestInitiatedEpoch != 0,
+            "Previous withdraw request is not in the same epoch"
+        );
 
-        if (pendingTxn.transactionType != TransactionType.WITHDRAW) {
-            revert("No withdraw request to redeem");
-        }
+        require(
+            pendingTxn.transactionType == TransactionType.WITHDRAW,
+            "No withdraw request to redeem"
+        );
 
         sharesAmount = pendingTxn.amount;
         uint256 sharePrice = epochSharePrices[pendingTxn.requestInitiatedEpoch];
@@ -720,13 +734,38 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
         // Burn the shares
         _burn(owner, sharesAmount);
-
         collateralAsset.safeTransfer(owner, assets);
-
         pendingSharesToBurn -= sharesAmount;
 
         resetTransaction(owner);
 
         emit Withdraw(msg.sender, owner, owner, assets, sharesAmount);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                               VIEWS
+    //////////////////////////////////////////////////////////////*/
+
+    function pendingValues()
+        external
+        view
+        override
+        returns (uint256, uint256, uint256)
+    {
+        return (
+            totalPendingDeposits,
+            totalPendingWithdrawals,
+            pendingSharesToBurn
+        );
+    }
+
+    function epochSharePrice(
+        uint256 epochId
+    ) external view override returns (uint256) {
+        return epochSharePrices[epochId];
+    }
+
+    function getPositionId() external view returns (uint256) {
+        return positionId;
     }
 }

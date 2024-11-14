@@ -254,15 +254,12 @@ contract UmaSettleMarket is TestEpoch {
     }
 
     function test_revert_if_assertion_already_submitted() public {
-        bool settled;
-        uint256 settlementPriceD18;
-
         vm.warp(endTime + 1);
 
         vm.startPrank(owner);
-        IMintableToken(epochParams.bondCurrency).approve(
+        IMintableToken(marketParams.bondCurrency).approve(
             address(foil),
-            epochParams.bondAmount
+            marketParams.bondAmount
         );
         bytes32 assertionId = foil.submitSettlementPrice(epochId, 10 ether);
 
@@ -275,10 +272,10 @@ contract UmaSettleMarket is TestEpoch {
         foil.assertionResolvedCallback(assertionId, true);
         vm.stopPrank();
 
-        (, , , , , , , , settled, settlementPriceD18, ) = foil.getLatestEpoch();
-        assertTrue(settled, "The epoch is settled");
+        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
+        assertTrue(epochData.settled, "The epoch is settled");
         assertTrue(
-            settlementPriceD18 == 10 ether,
+            epochData.settlementPriceD18 == 10 ether,
             "The settlement price is as submitted"
         );
     }

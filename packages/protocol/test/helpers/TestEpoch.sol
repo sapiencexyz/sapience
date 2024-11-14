@@ -14,8 +14,6 @@ import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
 import {DecimalPrice} from "../../src/market/libraries/DecimalPrice.sol";
 import {TestUser} from "./TestUser.sol";
 
-import "forge-std/console2.sol";
-
 contract TestEpoch is TestUser {
     using Cannon for Vm;
 

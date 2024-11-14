@@ -17,7 +17,6 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {Errors} from "../../src/market/storage/Errors.sol";
 import {Position} from "../../src/market/storage/Position.sol";
 import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
-import {MigrationMathUtils} from "../../src/market/external/univ3/MigrationMathUtils.sol";
 import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
 
 contract VaultTest is TestVault {
