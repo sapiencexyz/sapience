@@ -106,17 +106,29 @@ const Earn: FC = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-12">
+    <div className="container mx-auto px-4 py-9">
       <div className="max-w-7xl mx-auto">
-        <div className="border border-border rounded-full p-1.5 mx-auto h-16 w-16 overflow-hidden mb-5">
+        <div className="border border-border rounded-full p-1.5 mx-auto h-14 w-14 overflow-hidden mb-4">
           <img src="/eth.svg" alt="Ethereum" width="100%" height="100%" />
         </div>
-        <h2 className="text-4xl font-bold text-center mb-3">
-          {collateralAssetTicker} Vault
+        <h2 className="text-4xl font-bold text-center mb-2">
+          Foil {collateralAssetTicker} Vault
         </h2>
-        <div className="text-center text-sm text-muted-foreground mb-8 font-medium tracking-wide">
-          TVL: 132 wstETH ($23,302) - 23% Fee APY{' '}
-          <HelpCircle className="inline -mt-0.5 mr-1 h-3.5 w-3.5" />
+        <div className="text-center font-light  text-muted-foreground">
+          <span className="font-medium tracking-wider">TVL</span> 420 wstETH
+          <span className="ml-8 mr-1">
+            12% <span className="ml-1 font-medium tracking-wider">APY</span>
+          </span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <HelpCircle className="inline -mt-1 h-3.5 w-3.5" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>This is based on annualized fees over the last 30 days.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
@@ -217,12 +229,12 @@ const Earn: FC = () => {
                           Number(vaultShares) > 0 || !hasCollateralChanged
                         }
                       >
-                        Update
+                        Deposit
                       </Button>
 
                       <Separator className="mt-6 mb-4" />
 
-                      <p className="text-center text-sm">
+                      <p className="text-center text-sm font-medium">
                         The current epoch ends in approximately 4 days.
                       </p>
 
@@ -285,12 +297,12 @@ const Earn: FC = () => {
                           Number(collateralAmount) > 0 || !hasSharesChanged
                         }
                       >
-                        Update
+                        Deposit
                       </Button>
 
                       <Separator className="mt-6 mb-4" />
 
-                      <p className="text-center text-sm">
+                      <p className="text-center text-sm font-medium">
                         The current epoch ends in approximately 4 days.
                       </p>
 
