@@ -1,38 +1,16 @@
 'use client';
 
-import { formatDuration, intervalToDuration, format } from 'date-fns';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowUpDown,
+  BookTextIcon,
   ChartNoAxesColumn,
   ChevronLeft,
   HelpCircle,
   Loader2,
 } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { type FC, useState, useEffect, useContext, useMemo } from 'react';
+import { type FC, useState, useContext, useMemo } from 'react';
 import React from 'react';
 import { useForm } from 'react-hook-form';
-import type { AbiFunction } from 'viem';
-import {
-  decodeEventLog,
-  formatUnits,
-  zeroAddress,
-  isAddress,
-  createPublicClient,
-  http,
-} from 'viem';
-import { mainnet, sepolia } from 'viem/chains';
-import {
-  useWaitForTransactionReceipt,
-  useWriteContract,
-  useAccount,
-  useReadContract,
-  useSimulateContract,
-  useChainId,
-  useSwitchChain,
-  useConnect,
-} from 'wagmi';
 
 import { Button } from '~/components/ui/button';
 import { Separator } from '~/components/ui/separator';
@@ -49,6 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { useToast } from '~/hooks/use-toast';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import VaultChart from './vaultChart';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '~/components/ui/tooltip';
 
 interface FormValues {
   collateralAmount: string;
@@ -62,8 +41,8 @@ const Earn: FC = () => {
 
   const form = useForm<FormValues>({
     defaultValues: {
-      collateralAmount: '',
-      vaultShares: '',
+      collateralAmount: '0',
+      vaultShares: '0',
     },
   });
 
@@ -114,24 +93,33 @@ const Earn: FC = () => {
   return (
     <div className="container mx-auto px-4 py-12">
       <div className="max-w-7xl mx-auto">
+          <div className="border border-border rounded-full p-1.5 mx-auto h-16 w-16 overflow-hidden mb-5">
+            <img src="/eth.svg" alt="Ethereum" width="100%" height="100%" />
+          </div>
         <h2 className="text-4xl font-bold text-center mb-3">
           {collateralAssetTicker} Vault
         </h2>
-        <div className="text-center text-sm text-muted-foreground mb-8">
-          TVL: X wst ($X) - X% APY (based on trailing 2 month performance)
+        <div className="text-center text-sm text-muted-foreground mb-8 font-medium tracking-wide">
+          TVL: 132 wstETH ($23,302) - 23% Fee APY <HelpCircle className="inline -mt-0.5 mr-1 h-3.5 w-3.5" />
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="md:col-span-2">
-            <VaultChart />
+          <div className="md:col-span-2 h-full flex flex-col">
+            <h2 className="text-2xl font-light tracking-tight text-muted-foreground mb-5">Vault Performance</h2>
+            <div className="h-full">
+              <VaultChart />
+            </div>
           </div>
           
           <div>
             <div className="border border-border rounded-lg shadow-sm p-6">
-              <p className="mb-4 text-lg">
-                Deposit your collateral into the vault to earn rewards. At the end of an epoch, redeem your vault tokens for more collateral if the vault has profited.
+              <p className="mb-1 text-md">
+                Deposit collateral to have the vault smart contract provide liquidity to the market and roll between epochs automatically.
               </p>
-              
+              <div className=" mb-4">
+                <a href="https://docs.foil.xyz/token-vault" target="_blank" className="underline text-xs text-muted-foreground"><BookTextIcon className="inline -mt-0.5 mr-1 h-3.5 w-3.5" />Read the docs</a>
+              </div>
+
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)}>
                   <Tabs 
@@ -144,23 +132,41 @@ const Earn: FC = () => {
                       <TabsTrigger value="withdraw">Withdraw wstETH</TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="deposit" className="space-y-4">
+                    <TabsContent value="deposit">
                       <FormField
                         control={form.control}
                         name="collateralAmount"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Collateral Pending Conversion</FormLabel>
+                            <FormLabel className="flex items-center gap-1">
+                              Collateral Pending Conversion
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <HelpCircle className="h-4 w-4" />
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-xs">
+                                    <p>At the start of the next epoch, this collateral will be converted to vault shares (fstETH) for redemption.</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </FormLabel>
                             <FormControl>
-                              <Input 
-                                placeholder="Enter amount" 
-                                type="number"
-                                step="any"
-                                {...field}
-                              />
+                              <div className="flex">
+                                <Input 
+                                  placeholder="Enter amount" 
+                                  type="number"
+                                  step="any"
+                                  className="rounded-r-none border-r-0"
+                                  {...field}
+                                />
+                                <div className="inline-flex items-center justify-center rounded-r-md border border-l-0 border-input bg-secondary px-3 text-sm text-secondary-foreground h-10">
+                                  wstETH
+                                </div>
+                              </div>
                             </FormControl>
                             <p className="text-sm text-muted-foreground">
-                              Your wstETH wallet balance: 0
+                              Wallet Balance: 0 wstETH
                             </p>
                             <FormMessage />
                           </FormItem>
@@ -171,40 +177,56 @@ const Earn: FC = () => {
 
                       <Button 
                         type="submit" 
-                        className="w-full mt-6"
+                        className="w-full mt-4"
                         disabled={Number(vaultShares) > 0}
                       >
                         Update
                       </Button>
 
-                      <Separator className="my-12" />
+                      <Separator className="mt-6 mb-4" />
 
                       <p className="text-center text-sm">
-                        The current epoch ends in approximately X days.
+                        The current epoch ends in approximately 4 days.
                       </p>
 
-                      <Button type="submit" className="w-full mt-6">
+                      <Button type="submit" className="w-full mt-3" disabled>
                         Redeem fstETH
                       </Button>
                     </TabsContent>
 
-                    <TabsContent value="withdraw" className="space-y-4">
+                    <TabsContent value="withdraw">
                       <FormField
                         control={form.control}
                         name="vaultShares"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Vault Shares Pending Conversion</FormLabel>
+                            <FormLabel className="flex items-center gap-1">Vault Shares Pending Conversion
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <HelpCircle className="h-4 w-4" />
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-xs">
+                                    <p>At the start of the next epoch, these vault shares will be converted to collateral (wstETH) for redemption.</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider></FormLabel>
                             <FormControl>
-                              <Input 
-                                placeholder="Enter amount"
-                                type="number"
-                                step="any"
-                                {...field}
-                              />
+                              <div className="flex">
+                                <Input 
+                                  placeholder="Enter amount"
+                                  type="number"
+                                  step="any"
+                                  className="rounded-r-none border-r-0"
+                                  {...field}
+                                />
+                                <div className="inline-flex items-center justify-center rounded-r-md border border-l-0 border-input bg-secondary px-3 text-sm text-secondary-foreground h-10">
+                                  wstETH
+                                </div>
+                              </div>
                             </FormControl>
                             <p className="text-sm text-muted-foreground">
-                              Your fstETH wallet balance: 0
+                              Wallet Balance: 0 fstETH
                             </p>
                             <FormMessage />
                           </FormItem>
@@ -215,19 +237,19 @@ const Earn: FC = () => {
 
                       <Button 
                         type="submit" 
-                        className="w-full mt-6"
+                        className="w-full mt-4"
                         disabled={Number(collateralAmount) > 0}
                       >
                         Update
                       </Button>
 
-                      <Separator className="my-12" />
+                      <Separator className="mt-6 mb-4" />
 
                       <p className="text-center text-sm">
-                        The current epoch ends in approximately X days.
+                        The current epoch ends in approximately 4 days.
                       </p>
 
-                      <Button type="submit" className="w-full mt-6">
+                      <Button type="submit" className="w-full mt-3" disabled>
                         Redeem wstETH
                       </Button>
                     </TabsContent>
