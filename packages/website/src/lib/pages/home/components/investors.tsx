@@ -10,8 +10,8 @@ export const Investors = () => {
 
         <div className="grid gap-4 md:grid-cols-2 md:gap-0">
           <div>
-            <h2 className="mb-5 mt-2 h-9 text-5xl font-black uppercase leading-none">
-              Zeal Capital
+            <h2 className="mb-10 mt-2 h-9 text-7xl font-black uppercase tracking-widest">
+              Zeal
             </h2>
             <h3 className="font-medium text-muted-foreground">Joe Buttram</h3>
           </div>
@@ -21,7 +21,7 @@ export const Investors = () => {
               alt="Crucible Capital"
               width={1000}
               height={1000}
-              className="mx-auto mb-3.5 mt-3.5 h-9 w-auto object-contain"
+              className="mx-auto mb-3.5 mt-3.5 h-14 w-auto object-contain"
             />
             <h3 className="font-medium text-muted-foreground">
               Meltem Demirors

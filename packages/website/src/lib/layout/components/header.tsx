@@ -18,9 +18,7 @@ export const Header = () => {
           >
             Docs
           </a>
-          <EmailCaptureButton>
-            Go to App
-          </EmailCaptureButton>
+          <EmailCaptureButton>Go to App</EmailCaptureButton>
         </div>
       </section>
     </header>
