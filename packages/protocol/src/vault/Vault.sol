@@ -576,14 +576,15 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         ];
 
         require(
+            pendingTxn.transactionType != TransactionType.DEPOSIT,
+            "Cannot redeem while deposit is pending"
+        );
+
+        require(
             pendingTxn.amount + shares <= balanceOf(msg.sender),
             "Insufficient shares to redeem"
         );
 
-        require(
-            pendingTxn.transactionType != TransactionType.DEPOSIT,
-            "Cannot redeem while deposit is pending"
-        );
         require(
             pendingTxn.requestInitiatedEpoch == currentEpochId ||
                 pendingTxn.amount == 0,

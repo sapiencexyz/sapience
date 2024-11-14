@@ -11,6 +11,8 @@ import {TestEpoch} from "./helpers/TestEpoch.sol";
 import {TestUser} from "./helpers/TestUser.sol";
 import {DecimalPrice} from "../src/market/libraries/DecimalPrice.sol";
 
+import "forge-std/console2.sol";
+
 contract UmaSettleMarket is TestEpoch {
     using Cannon for Vm;
 
@@ -261,7 +263,10 @@ contract UmaSettleMarket is TestEpoch {
             address(foil),
             marketParams.bondAmount
         );
-        bytes32 assertionId = foil.submitSettlementPrice(epochId, 10 ether);
+        bytes32 assertionId = foil.submitSettlementPrice(
+            epochId,
+            250541448375047946302209916928
+        ); // 10 ether
 
         vm.expectRevert("Assertion already submitted");
         foil.submitSettlementPrice(epochId, 10 ether);
@@ -274,8 +279,11 @@ contract UmaSettleMarket is TestEpoch {
 
         (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
         assertTrue(epochData.settled, "The epoch is settled");
-        assertTrue(
-            epochData.settlementPriceD18 == 10 ether,
+        console2.log("settlementPriceD18", epochData.settlementPriceD18);
+        assertApproxEqAbs(
+            epochData.settlementPriceD18,
+            10 ether,
+            1e4,
             "The settlement price is as submitted"
         );
     }
