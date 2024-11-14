@@ -13,6 +13,7 @@ import "../market/external/univ3/TickMath.sol";
 import "../market/interfaces/IFoil.sol";
 import "../market/interfaces/IFoilStructs.sol";
 import "./interfaces/IVault.sol";
+import "forge-std/console2.sol";
 
 contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
@@ -431,7 +432,8 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         ];
 
         require(
-            pendingTxn.requestInitiatedEpoch == currentEpochId,
+            pendingTxn.requestInitiatedEpoch == currentEpochId ||
+                pendingTxn.amount == 0,
             "Previous deposit request is not completed"
         );
 
@@ -548,13 +550,18 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         ];
 
         require(
+            pendingTxn.amount + shares <= balanceOf(msg.sender),
+            "Insufficient shares to redeem"
+        );
+
+        require(
             pendingTxn.transactionType != TransactionType.DEPOSIT,
             "Cannot redeem while deposit is pending"
         );
         require(
-            pendingTxn.requestInitiatedEpoch == 0 ||
-                pendingTxn.requestInitiatedEpoch == currentEpochId,
-            "Previous deposit request is not in the same epoch"
+            pendingTxn.requestInitiatedEpoch == currentEpochId ||
+                pendingTxn.amount == 0,
+            "Previous redeem request is not in the same epoch"
         );
 
         pendingTxn.requestInitiatedEpoch = currentEpochId;
@@ -580,7 +587,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         );
         require(
             shares <= pendingTxn.amount,
-            "Insufficient deposit request to withdraw"
+            "Insufficient shares to withdraw from request"
         );
         require(
             pendingTxn.requestInitiatedEpoch == currentEpochId,
@@ -727,14 +734,14 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         ];
 
         require(
-            pendingTxn.requestInitiatedEpoch != currentEpochId &&
-                pendingTxn.requestInitiatedEpoch != 0,
-            "Previous withdraw request is not in the same epoch"
+            pendingTxn.transactionType == TransactionType.WITHDRAW,
+            "No withdraw request to redeem"
         );
 
         require(
-            pendingTxn.transactionType == TransactionType.WITHDRAW,
-            "No withdraw request to redeem"
+            pendingTxn.requestInitiatedEpoch != currentEpochId &&
+                pendingTxn.requestInitiatedEpoch != 0,
+            "Previous withdraw request is in the current epoch"
         );
 
         sharesAmount = pendingTxn.amount;

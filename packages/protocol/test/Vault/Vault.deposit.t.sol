@@ -120,16 +120,6 @@ contract VaultDepositTest is TestVault {
         vm.stopPrank();
     }
 
-    function settleCurrentEpoch() public returns (uint256 sharePrice) {
-        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
-        vm.warp(epochData.endTime + 1);
-        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(epochData.pool)
-            .slot0();
-        settleEpoch(epochData.epochId, sqrtPriceX96, address(vault));
-
-        return vault.epochSharePrice(epochData.epochId);
-    }
-
     function test_depositReverts_whenDepositNotCollected() public {
         vm.prank(vaultOwner);
         vault.initializeFirstEpoch(epochStartTime, initialSqrtPriceX96);
@@ -192,5 +182,20 @@ contract VaultDepositTest is TestVault {
             10 ether,
             "Shares minted should equal 10 ether"
         );
+    }
+
+    function test_requestDepositReverts_whenRedeemPending() public {
+        vm.prank(vaultOwner);
+        vault.initializeFirstEpoch(epochStartTime, initialSqrtPriceX96);
+
+        vm.prank(lp1);
+        vault.deposit(0, lp1);
+
+        vm.prank(lp1);
+        vault.requestRedeem(5 ether);
+
+        vm.prank(lp1);
+        vm.expectRevert("Cannot deposit while withdrawal is pending");
+        vault.requestDeposit(10 ether);
     }
 }
