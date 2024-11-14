@@ -26,7 +26,7 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
         Market.Data storage market = Market.load();
 
         if (ERC721Storage._ownerOf(positionId) != msg.sender) {
-            revert Errors.NotAccountOwnerOrAuthorized(positionId, msg.sender);
+            revert Errors.NotAccountOwner(positionId, msg.sender);
         }
 
         // Ensure the epoch has ended
@@ -72,7 +72,7 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
 
         // Collect fees from the Uniswap position
         (uint256 amount0, uint256 amount1) = INonfungiblePositionManager(
-            epoch.params.uniswapPositionManager
+            epoch.marketParams.uniswapPositionManager
         ).collect(
                 INonfungiblePositionManager.CollectParams({
                     tokenId: position.uniswapPositionId,

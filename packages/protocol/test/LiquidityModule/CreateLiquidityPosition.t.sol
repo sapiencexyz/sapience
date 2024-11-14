@@ -50,7 +50,11 @@ contract CreateLiquidityPosition is TestEpoch {
 
         lp1 = TestUser.createUser("LP1", INITIAL_LP_BALANCE);
 
-        (epochId, , , pool, tokenA, tokenB, , , , , ) = foil.getLatestEpoch();
+        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
+        epochId = epochData.epochId;
+        pool = epochData.pool;
+        tokenA = epochData.ethToken;
+        tokenB = epochData.gasToken;
     }
 
     function test_revertWhen_invalidEpoch() public {
@@ -125,8 +129,8 @@ contract CreateLiquidityPosition is TestEpoch {
 
     function test_revertWhen_epochExpired() public {
         // Fast forward to after the epoch end time
-        (, uint256 epochEndTime, , , , , , , , ) = foil.getEpoch(epochId);
-        vm.warp(epochEndTime + 1);
+        (IFoilStructs.EpochData memory epochData, ) = foil.getEpoch(epochId);
+        vm.warp(epochData.endTime + 1);
 
         vm.expectRevert(Errors.ExpiredEpoch.selector);
         vm.prank(lp1);
@@ -166,7 +170,7 @@ contract CreateLiquidityPosition is TestEpoch {
         vm.prank(lp1);
         (
             uint256 id,
-            uint256 requiredCollateral,
+            ,
             uint256 totalDepositedCollateralAmount,
             uint256 uniswapNftId,
             uint128 liquidity,
@@ -300,7 +304,7 @@ contract CreateLiquidityPosition is TestEpoch {
         vm.startPrank(lp1);
         (
             uint256 id,
-            uint256 requiredCollateral,
+            ,
             uint256 totalDepositedCollateralAmount,
             uint256 uniswapNftId,
             uint128 liquidity,

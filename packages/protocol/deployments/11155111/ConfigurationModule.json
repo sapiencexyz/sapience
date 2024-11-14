@@ -1,5 +1,5 @@
 {
-  "address": "0xCF8223882ca4ABAFb65f61D52EBce70c75975d5C",
+  "address": "0xCC8020d1A0712Fb78a65256B9Cc7703d5091950E",
   "abi": [
     {
       "type": "constructor",
@@ -648,11 +648,6 @@
     },
     {
       "type": "error",
-      "name": "OverflowInt24ToUint256",
-      "inputs": []
-    },
-    {
-      "type": "error",
       "name": "OwnableUnauthorizedAccount",
       "inputs": [
         {
@@ -685,6 +680,11 @@
     },
     {
       "type": "error",
+      "name": "T",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "TokensAlreadyCreated",
       "inputs": []
     }
@@ -693,12 +693,12 @@
     "0xE006B58cA5aB7ba53863012dc3067A14b965C1da"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x16876c7c76b381424f4968b80b4c9a77c09d4522b27c7b62e466f5a4caf4f162",
-  "deployTxnBlockNumber": "7032044",
-  "deployTimestamp": "1731009012",
+  "deployTxnHash": "0x515960bf615a85f1192c32f29ca3d3665f8dda446faccf1c8e547bb44b0664b6",
+  "deployTxnBlockNumber": "7070305",
+  "deployTimestamp": "1731524436",
   "sourceName": "src/market/modules/ConfigurationModule.sol",
   "contractName": "ConfigurationModule",
   "deployedOn": "deploy.ConfigurationModule",
-  "gasUsed": 4187650,
-  "gasCost": "3967905275"
+  "gasUsed": 4105106,
+  "gasCost": "305599723"
 }

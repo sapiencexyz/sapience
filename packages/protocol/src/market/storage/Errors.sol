@@ -25,7 +25,7 @@ library Errors {
         int256 collateralRequired,
         int256 maxCollateral
     );
-    error NotAccountOwnerOrAuthorized(uint256 tokenId, address sender);
+    error NotAccountOwner(uint256 tokenId, address sender);
     error InvalidPositionKind();
     error InvalidRange(int24 requestedTick, int24 boundedTick);
     error PositionAlreadySettled(uint256 positionId);
@@ -36,6 +36,7 @@ library Errors {
     error InvalidInternalTradeSize(uint256 tradeSize);
     error DeltaTradeIsZero();
     error PositionSizeBelowMin();
+    error InvalidFeeRate(uint24 feeRate);
     error OwnableUnauthorizedAccount(address sender);
     error OnlyInitializer(address sender, address initializer);
     error StartTimeTooEarly(uint256 startTime, uint256 blockTime);

@@ -175,4 +175,18 @@ interface ILiquidityModule {
         uint256 positionId,
         uint256 collateralAmount
     ) external;
+
+    /**
+     * @notice Gets the amount of tokens from liquidity
+     * @param liquidity The amount of liquidity
+     * @param sqrtPriceX96 The current sqrt price
+     * @param sqrtPriceAX96 The sqrt price of the lower tick
+     * @param sqrtPriceBX96 The sqrt price of the upper tick
+     */
+    function getTokensFromLiquidity(
+        uint128 liquidity,
+        uint160 sqrtPriceX96,
+        uint160 sqrtPriceAX96,
+        uint160 sqrtPriceBX96
+    ) external view returns (uint256 amount0, uint256 amount1);
 }

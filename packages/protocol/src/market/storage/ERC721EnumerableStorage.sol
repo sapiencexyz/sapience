@@ -12,9 +12,9 @@ library ERC721EnumerableStorage {
         keccak256(abi.encode("io.synthetix.core-contracts.ERC721Enumerable"));
 
     struct Data {
-        mapping(uint256 => uint256) ownedTokensIndex;
-        mapping(uint256 => uint256) allTokensIndex;
-        mapping(address => mapping(uint256 => uint256)) ownedTokens;
+        mapping(uint256 tokenId => uint256) ownedTokensIndex;
+        mapping(uint256 tokenId => uint256) allTokensIndex;
+        mapping(address owner => mapping(uint256 index => uint256 tokenId)) ownedTokens;
         uint256[] allTokens;
     }
 
@@ -49,14 +49,15 @@ library ERC721EnumerableStorage {
      * @notice index is offset by +1 at creation time
      */
     function tokenByIndex(uint256 index) public view returns (uint256) {
-        if (index > totalSupply()) {
+        if (index >= totalSupply()) {
             revert IERC721Enumerable.IndexOverrun(index, totalSupply());
         }
         return load().allTokens[index];
     }
 
     function _addTokenToOwnerEnumeration(address to, uint256 tokenId) internal {
-        uint256 length = ERC721Storage.load().balanceOf[to];
+        // Notice, balance was already incremented by 1 in ERC721Storage
+        uint256 length = ERC721Storage.load().balanceOf[to] - 1;
         Data storage self = load();
         self.ownedTokens[to][length] = tokenId;
         self.ownedTokensIndex[tokenId] = length;
@@ -88,7 +89,8 @@ library ERC721EnumerableStorage {
         // then delete the last slot (swap and pop).
         Data storage self = load();
 
-        uint256 lastTokenIndex = ERC721Storage.load().balanceOf[from] - 1;
+        // Notice, balance was already decremented by 1 in ERC721Storage
+        uint256 lastTokenIndex = ERC721Storage.load().balanceOf[from];
         uint256 tokenIndex = self.ownedTokensIndex[tokenId];
 
         // When the token to delete is the last token, the swap operation is unnecessary

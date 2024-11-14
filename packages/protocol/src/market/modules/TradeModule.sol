@@ -133,7 +133,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         }
 
         if (ERC721Storage._ownerOf(positionId) != msg.sender) {
-            revert Errors.NotAccountOwnerOrAuthorized(positionId, msg.sender);
+            revert Errors.NotAccountOwner(positionId, msg.sender);
         }
 
         Position.Data storage position = Position.loadValid(positionId);
@@ -305,7 +305,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         )
     {
         if (ERC721Storage._ownerOf(positionId) != msg.sender) {
-            revert Errors.NotAccountOwnerOrAuthorized(positionId, msg.sender);
+            revert Errors.NotAccountOwner(positionId, msg.sender);
         }
 
         Position.Data storage position = Position.loadValid(positionId);

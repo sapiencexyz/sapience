@@ -10,10 +10,10 @@ interface IConfigurationModule {
         address feeCollectorNFT,
         address callbackRecipient,
         uint256 minTradeSize,
-        IFoilStructs.EpochParams epochParams
+        IFoilStructs.MarketParams marketParams
     );
 
-    event MarketUpdated(IFoilStructs.EpochParams epochParams);
+    event MarketUpdated(IFoilStructs.MarketParams marketParams);
 
     event EpochCreated(
         uint epochId,
@@ -39,7 +39,7 @@ interface IConfigurationModule {
      * @param feeCollectors Addresses of fee collectors
      * @param callbackRecipient recipient of callback on resolution of epoch, can be address(0)
      * @param minTradeSize Minimum trade size for a position
-     * @param epochParams Parameters used when new epochs are created
+     * @param marketParams Parameters used when new epochs are created
      */
     function initializeMarket(
         address owner,
@@ -47,15 +47,19 @@ interface IConfigurationModule {
         address[] calldata feeCollectors,
         address callbackRecipient,
         uint256 minTradeSize,
-        IFoilStructs.EpochParams memory epochParams
+        IFoilStructs.MarketParams memory marketParams
     ) external;
 
-    function updateMarket(IFoilStructs.EpochParams memory epochParams) external;
+    function updateMarket(
+        IFoilStructs.MarketParams memory marketParams
+    ) external;
 
     function createEpoch(
         uint256 startTime,
         uint256 endTime,
         uint160 startingSqrtPriceX96,
+        int24 baseAssetMinPriceTick,
+        int24 baseAssetMaxPriceTick,
         uint256 salt
     ) external returns (uint256 epochId);
 }

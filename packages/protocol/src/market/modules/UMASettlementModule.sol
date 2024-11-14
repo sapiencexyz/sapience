@@ -9,6 +9,9 @@ import {Epoch} from "../storage/Epoch.sol";
 import {Market} from "../storage/Market.sol";
 import {IUMASettlementModule} from "../interfaces/IUMASettlementModule.sol";
 import {OptimisticOracleV3Interface} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
+import "../libraries/DecimalPrice.sol";
+
+// import "forge-std/console2.sol";
 
 contract UMASettlementModule is
     IUMASettlementModule,
@@ -19,36 +22,38 @@ contract UMASettlementModule is
 
     function submitSettlementPrice(
         uint256 epochId,
-        uint256 settlementPriceD18
+        uint160 settlementSqrtPriceX96
     ) external nonReentrant returns (bytes32) {
         Market.Data storage market = Market.load();
         Epoch.Data storage epoch = Epoch.loadValid(epochId);
 
         validateSubmission(epoch, market, msg.sender);
 
-        IERC20 bondCurrency = IERC20(epoch.params.bondCurrency);
+        require(epoch.assertionId == bytes32(0), "Assertion already submitted");
+
+        IERC20 bondCurrency = IERC20(epoch.marketParams.bondCurrency);
         OptimisticOracleV3Interface optimisticOracleV3 = OptimisticOracleV3Interface(
-                epoch.params.optimisticOracleV3
+                epoch.marketParams.optimisticOracleV3
             );
 
         bondCurrency.safeTransferFrom(
             msg.sender,
             address(this),
-            epoch.params.bondAmount
+            epoch.marketParams.bondAmount
         );
         bondCurrency.approve(
             address(optimisticOracleV3),
-            epoch.params.bondAmount
+            epoch.marketParams.bondAmount
         );
 
         bytes memory claim = abi.encodePacked(
-            string(epoch.params.claimStatement),
+            string(epoch.marketParams.claimStatement),
             " between timestamps ",
             Strings.toString(epoch.startTime),
             " and ",
             Strings.toString(epoch.endTime),
             "(inclusive) is ",
-            Strings.toString(settlementPriceD18),
+            Strings.toString(settlementSqrtPriceX96),
             "."
         );
 
@@ -57,9 +62,9 @@ contract UMASettlementModule is
             msg.sender,
             address(this),
             address(0),
-            epoch.params.assertionLiveness,
-            IERC20(epoch.params.bondCurrency),
-            epoch.params.bondAmount,
+            epoch.marketParams.assertionLiveness,
+            IERC20(epoch.marketParams.bondCurrency),
+            epoch.marketParams.bondAmount,
             optimisticOracleV3.defaultIdentifier(),
             bytes32(0)
         );
@@ -67,13 +72,16 @@ contract UMASettlementModule is
         market.epochIdByAssertionId[epoch.assertionId] = epochId;
 
         epoch.settlement = Epoch.Settlement({
-            settlementPriceD18: settlementPriceD18,
+            settlementPriceSqrtX96: settlementSqrtPriceX96,
             submissionTime: block.timestamp,
-            disputed: false,
-            disputer: address(0)
+            disputed: false
         });
 
-        emit SettlementSubmitted(epochId, settlementPriceD18, block.timestamp);
+        emit SettlementSubmitted(
+            epochId,
+            settlementSqrtPriceX96,
+            block.timestamp
+        );
 
         return epoch.assertionId;
     }
@@ -81,7 +89,7 @@ contract UMASettlementModule is
     function assertionResolvedCallback(
         bytes32 assertionId,
         bool assertedTruthfully
-    ) external nonReentrant {
+    ) external {
         assertedTruthfully;
         Market.Data storage market = Market.load();
         uint256 epochId = market.epochIdByAssertionId[assertionId];
@@ -92,22 +100,29 @@ contract UMASettlementModule is
         Epoch.Settlement storage settlement = epoch.settlement;
 
         if (!epoch.settlement.disputed) {
-            epoch.setSettlementPriceInRange(settlement.settlementPriceD18);
+            epoch.setSettlementPriceInRange(
+                DecimalPrice.sqrtRatioX96ToPrice(
+                    settlement.settlementPriceSqrtX96
+                )
+            );
             epoch.settled = true;
 
             // Call the callback recipient
             if (address(market.callbackRecipient) != address(0)) {
                 market.callbackRecipient.resolutionCallback(
-                    settlement.settlementPriceD18
+                    settlement.settlementPriceSqrtX96
                 );
             }
 
             emit EpochSettled(
                 epochId,
                 assertionId,
-                settlement.settlementPriceD18
+                settlement.settlementPriceSqrtX96
             );
         }
+
+        // clear the assertionId
+        epoch.assertionId = bytes32(0);
     }
 
     function assertionDisputedCallback(
@@ -131,7 +146,7 @@ contract UMASettlementModule is
         address caller
     ) internal view {
         require(
-            block.timestamp > epoch.endTime,
+            block.timestamp >= epoch.endTime,
             "Market epoch activity is still allowed"
         );
         require(!epoch.settled, "Market epoch already settled");
@@ -144,7 +159,7 @@ contract UMASettlementModule is
         bytes32 assertionId
     ) internal view {
         OptimisticOracleV3Interface optimisticOracleV3 = OptimisticOracleV3Interface(
-                epoch.params.optimisticOracleV3
+                epoch.marketParams.optimisticOracleV3
             );
 
         require(
