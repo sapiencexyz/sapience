@@ -311,15 +311,15 @@ const Market = ({
                   >
                     <TabsList>
                       <TabsTrigger value="transactions">
-                        <span className="hidden lg:inline">Your </span>
+                        <span className="hidden lg:inline">Your&nbsp;</span>
                         Transactions
                       </TabsTrigger>
                       <TabsTrigger value="trader-positions">
-                        <span className="hidden lg:inline">Your </span>
+                        <span className="hidden lg:inline">Your&nbsp;</span>
                         Trader Positions
                       </TabsTrigger>
                       <TabsTrigger value="lp-positions">
-                        <span className="hidden lg:inline">Your </span>
+                        <span className="hidden lg:inline">Your&nbsp;</span>
                         LP Positions
                       </TabsTrigger>
                     </TabsList>

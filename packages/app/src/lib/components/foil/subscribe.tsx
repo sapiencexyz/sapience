@@ -772,7 +772,10 @@ const Subscribe: FC<SubscribeProps> = ({
                       <SimpleBarChart data={estimationResults.chartData} />
                     </div>
                     <p className="text-lg mb-2">
-                      {form.getValues('walletAddress')} used{' '}
+                      {form.getValues('walletAddress').endsWith('.eth')
+                        ? form.getValues('walletAddress')
+                        : `${form.getValues('walletAddress').slice(0, 6)}...${form.getValues('walletAddress').slice(-4)}`}{' '}
+                      used{' '}
                       <CountUp
                         end={estimationResults.totalGasUsed}
                         separator=","
