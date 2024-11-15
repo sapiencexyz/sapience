@@ -507,16 +507,11 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         );
 
         pendingTxn.amount -= assets;
-        require(
-            pendingTxn.amount >= minimumCollateral,
-            "Amount must be greater than minimum collateral"
-        );
-
         totalPendingDeposits -= assets;
 
         collateralAsset.safeTransfer(msg.sender, assets);
 
-        if (pendingTxn.amount == 0) {
+        if (pendingTxn.amount <= minimumCollateral) {
             resetTransaction(msg.sender);
         }
 
@@ -633,13 +628,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         );
 
         pendingTxn.amount -= shares;
-        require(
-            pendingTxn.amount >= minimumCollateral,
-            "Amount must be greater than minimum collateral"
-        );
         totalPendingWithdrawals -= shares;
 
-        if (pendingTxn.amount == 0) {
+        if (pendingTxn.amount <= minimumCollateral) {
             resetTransaction(msg.sender);
         }
 
