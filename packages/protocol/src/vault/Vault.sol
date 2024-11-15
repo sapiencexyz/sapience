@@ -161,6 +161,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         (IFoilStructs.EpochData memory epochData, ) = market.getLatestEpoch();
 
         // Adjust the start time for the next epoch
+        // The idea is there will be two vaults (yin/yang) that are created duration apart
         uint256 newEpochStartTime = epochData.endTime + duration;
         _createEpochAndPosition(
             newEpochStartTime,
@@ -287,10 +288,14 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             totalPendingWithdrawals.mulDiv(
                 sharePrice,
                 1e18,
-                Math.Rounding.Floor
-            ); // any rounding?
+                Math.Rounding.Ceil
+            );
 
-        uint256 newShares = totalPendingDeposits.mulDiv(1e18, sharePrice); // any rounding?
+        uint256 newShares = totalPendingDeposits.mulDiv(
+            1e18,
+            sharePrice,
+            Math.Rounding.Floor
+        );
 
         if (newShares > 0) {
             _mint(address(this), newShares);
@@ -502,6 +507,11 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         );
 
         pendingTxn.amount -= assets;
+        require(
+            pendingTxn.amount >= minimumCollateral,
+            "Amount must be greater than minimum collateral"
+        );
+
         totalPendingDeposits -= assets;
 
         collateralAsset.safeTransfer(msg.sender, assets);
@@ -571,6 +581,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     function requestRedeem(
         uint256 shares
     ) external override returns (IVault.UserPendingTransaction memory) {
+        require(shares > minimumCollateral, "Shares amount is too low");
         UserPendingTransaction storage pendingTxn = userPendingTransactions[
             msg.sender
         ];
@@ -622,6 +633,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         );
 
         pendingTxn.amount -= shares;
+        require(
+            pendingTxn.amount >= minimumCollateral,
+            "Amount must be greater than minimum collateral"
+        );
         totalPendingWithdrawals -= shares;
 
         if (pendingTxn.amount == 0) {

@@ -191,5 +191,14 @@ contract VaultTest is TestVault {
 
         assertGe(epochData.maxPriceD18, 45 ether);
         assertApproxEqRel(epochData.maxPriceD18, 45 ether, 0.02 ether);
+
+        // Check that the vault's position in the market has the correct collateral amount
+        uint256 positionId = vault.getPositionId();
+        Position.Data memory position = foil.getPosition(positionId);
+        assertEq(
+            position.depositedCollateralAmount,
+            100 ether,
+            "Position collateral should match deposit amount"
+        );
     }
 }

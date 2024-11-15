@@ -42,7 +42,7 @@ library Market {
         uint256 minTradeSize,
         IFoilStructs.MarketParams memory marketParams
     ) internal returns (Data storage market) {
-        validateEpochParams(marketParams);
+        validateMarketParams(marketParams);
 
         require(
             IERC20Metadata(collateralAsset).decimals() == 18,
@@ -100,14 +100,14 @@ library Market {
     function updateValid(
         IFoilStructs.MarketParams memory marketParams
     ) internal returns (Data storage market) {
-        validateEpochParams(marketParams);
+        validateMarketParams(marketParams);
 
         market = load();
 
         market.marketParams = marketParams;
     }
 
-    function validateEpochParams(
+    function validateMarketParams(
         IFoilStructs.MarketParams memory marketParams
     ) internal pure {
         uint24 feeRate = marketParams.feeRate;

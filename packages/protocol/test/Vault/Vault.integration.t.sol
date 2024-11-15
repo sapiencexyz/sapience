@@ -116,7 +116,7 @@ contract VaultIntegrationTest is TestVault {
         vm.stopPrank();
     }
 
-    function settleEpoch() public returns (uint256 sharePrice) {
+    function settleCurrentEpoch() public returns (uint256 sharePrice) {
         // Warp to end of epoch
         (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
         vm.warp(epochData.endTime + 1);
@@ -172,7 +172,7 @@ contract VaultIntegrationTest is TestVault {
         vm.prank(lp1);
         vault.requestRedeem(5 ether);
         checkPendingValues(30 ether, 5 ether);
-        uint256 firstEpochSharePrice = settleEpoch();
+        uint256 firstEpochSharePrice = settleCurrentEpoch();
 
         // ============= EPOCH 2 =============
         // Trader activity
@@ -213,7 +213,7 @@ contract VaultIntegrationTest is TestVault {
         vm.prank(lp5);
         vault.requestDeposit(15 ether);
 
-        uint256 secondEpochSharePrice = settleEpoch();
+        uint256 secondEpochSharePrice = settleCurrentEpoch();
 
         // ============= EPOCH 3 =============
         uint256 expectedLp3Shares = (5 ether * 1e18) / firstEpochSharePrice;
@@ -293,7 +293,7 @@ contract VaultIntegrationTest is TestVault {
 
         RedeemStack memory stack;
 
-        stack.sharePrice = settleEpoch();
+        stack.sharePrice = settleCurrentEpoch();
 
         // Check LP1 redemption
         vm.prank(lp1);
