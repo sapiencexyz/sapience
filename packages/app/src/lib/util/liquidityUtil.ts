@@ -3,13 +3,8 @@
 import type { Token } from '@uniswap/sdk-core';
 import { CurrencyAmount } from '@uniswap/sdk-core';
 import type { FeeAmount } from '@uniswap/v3-sdk';
-import { Pool, SqrtPriceMath, TickMath, tickToPrice } from '@uniswap/v3-sdk';
+import { Pool, TickMath, tickToPrice } from '@uniswap/v3-sdk';
 import JSBI from 'jsbi';
-import { parseUnits } from 'viem';
-
-import { TOKEN_DECIMALS } from '../constants/constants';
-
-import { JSBIAbs } from './util';
 
 export interface GraphTick {
   tickIdx: string;
@@ -321,28 +316,4 @@ async function calculateLockedLiqudity(
     price1: tick.price1,
     isCurrent: tick.isCurrent,
   };
-}
-
-function getTokenAmountsFromLiquidity(
-  tickLower: number,
-  tickUpper: number,
-  liquidity: JSBI
-): { amount0: JSBI; amount1: JSBI } {
-  const sqrtRatioA = TickMath.getSqrtRatioAtTick(tickLower);
-  const sqrtRatioB = TickMath.getSqrtRatioAtTick(tickUpper);
-
-  const amount0 = SqrtPriceMath.getAmount0Delta(
-    sqrtRatioA,
-    sqrtRatioB,
-    liquidity,
-    true
-  );
-  const amount1 = SqrtPriceMath.getAmount1Delta(
-    sqrtRatioA,
-    sqrtRatioB,
-    liquidity,
-    true
-  );
-
-  return { amount0, amount1 };
 }
