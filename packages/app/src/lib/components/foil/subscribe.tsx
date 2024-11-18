@@ -208,6 +208,10 @@ const Subscribe: FC<SubscribeProps> = ({
   const finalChainId = chainId || contextChainId;
   const finalEpoch = epoch || contextEpoch;
 
+  if (!finalEpoch) {
+    throw new Error('Epoch is not defined');
+  }
+
   // Format start and end times
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp * 1000);

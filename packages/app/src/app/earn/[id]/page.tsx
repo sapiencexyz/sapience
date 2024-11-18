@@ -10,7 +10,7 @@ const EarnPage = ({ params }: { params: { id: string; epoch: string } }) => {
 
   return (
     <MarketProvider chainId={Number(chainId)} address={marketAddress}>
-      <Earn marketAddress={marketAddress} chainId={Number(chainId)} />
+      <Earn />
     </MarketProvider>
   );
 };

@@ -62,6 +62,11 @@ const AddEditLiquidity: React.FC = () => {
     refetchUniswapData,
     address: marketAddress,
   } = useContext(MarketContext);
+
+  if (!epoch) {
+    throw new Error('Epoch is not defined');
+  }
+
   const { toast } = useToast();
   const account = useAccount();
   const { isConnected } = account;

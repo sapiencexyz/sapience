@@ -83,6 +83,10 @@ export default function AddEditTrade() {
     refetchUniswapData,
   } = useContext(MarketContext);
 
+  if (!epoch) {
+    throw new Error('Epoch is not defined');
+  }
+
   const { toast } = useToast();
 
   const isLong = option === 'Long';
