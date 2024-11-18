@@ -481,13 +481,14 @@ library Epoch {
         uint160 sqrtPriceAX96,
         uint160 sqrtPriceBX96
     ) internal view returns (uint256 requiredCollateral) {
+        // Note: +1 to prevent rounding errors when calculating collateral requirements inside collateralRequirementAtMinTick and collateralRequirementAtMaxTick
         uint256 collateralRequirementAtMin = collateralRequirementAtMinTick(
             self,
             liquidity,
             sqrtPriceAX96,
             sqrtPriceBX96,
-            loanAmount0,
-            loanAmount1,
+            loanAmount0 + 1,
+            loanAmount1 + 1,
             tokensOwed0,
             tokensOwed1
         );
@@ -496,8 +497,8 @@ library Epoch {
             liquidity,
             sqrtPriceAX96,
             sqrtPriceBX96,
-            loanAmount0,
-            loanAmount1,
+            loanAmount0 + 1,
+            loanAmount1 + 1,
             tokensOwed0,
             tokensOwed1
         );
