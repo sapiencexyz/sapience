@@ -48,6 +48,8 @@ export async function middleware(request: NextRequest) {
     response.cookies.set('debug', 'true');
   }
 
+  // DISABLED FOR TESTNET COMPETITION
+  /*
   if (process.env.NODE_ENV === 'production' && (await isGeofenced(request))) {
     return new NextResponse(html403, {
       status: 403,
@@ -56,6 +58,8 @@ export async function middleware(request: NextRequest) {
       },
     });
   }
+  */
+
   return response;
 }
 
