@@ -48,12 +48,13 @@ contract TradePositionSettlement is TestTrade {
     int24 LP_UPPER_TICK = 16200; //3.52
     uint256 SETTLEMENT_PRICE_D18 = 10 ether;
     uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
+    uint160 SETTLEMENT_PRICE_SQRT_D18 = 250541448375047946302209916928; // 10.0
 
     address optimisticOracleV3;
     uint256 endTime;
     uint256 minPriceD18;
     uint256 maxPriceD18;
-    IFoilStructs.EpochParams epochParams;
+    IFoilStructs.MarketParams marketParams;
 
     function setUp() public {
         collateralAsset = IMintableToken(
@@ -71,7 +72,18 @@ contract TradePositionSettlement is TestTrade {
         lp1 = TestUser.createUser("LP1", 20_000_000 ether);
         trader1 = TestUser.createUser("Trader1", 20_000_000 ether);
 
-        (epochId, , , pool, tokenA, tokenB, , , , , ) = foil.getLatestEpoch();
+        (
+            IFoilStructs.EpochData memory epochData,
+            IFoilStructs.MarketParams memory _epochParams
+        ) = foil.getLatestEpoch();
+        epochId = epochData.epochId;
+        pool = epochData.pool;
+        tokenA = epochData.ethToken;
+        tokenB = epochData.gasToken;
+        endTime = epochData.endTime;
+        minPriceD18 = epochData.minPriceD18;
+        maxPriceD18 = epochData.maxPriceD18;
+        marketParams = _epochParams;
 
         uniCastedPool = IUniswapV3Pool(pool);
         feeRate = uint256(uniCastedPool.fee()) * 1e12;
@@ -92,21 +104,8 @@ contract TradePositionSettlement is TestTrade {
         optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
 
         (owner, , , , ) = foil.getMarket();
-        (
-            epochId,
-            ,
-            endTime,
-            ,
-            ,
-            ,
-            minPriceD18,
-            maxPriceD18,
-            ,
-            ,
-            epochParams
-        ) = foil.getLatestEpoch();
 
-        bondCurrency.mint(epochParams.bondAmount * 2, owner);
+        bondCurrency.mint(marketParams.bondAmount * 2, owner);
     }
 
     function test_createTraderPosition_long_RevertIf_Settled() public {
@@ -248,13 +247,13 @@ contract TradePositionSettlement is TestTrade {
         vm.warp(endTime + 1);
 
         vm.startPrank(owner);
-        IMintableToken(epochParams.bondCurrency).approve(
+        IMintableToken(marketParams.bondCurrency).approve(
             address(foil),
-            epochParams.bondAmount
+            marketParams.bondAmount
         );
         bytes32 assertionId = foil.submitSettlementPrice(
             epochId,
-            SETTLEMENT_PRICE_D18
+            SETTLEMENT_PRICE_SQRT_D18
         );
         vm.stopPrank();
 

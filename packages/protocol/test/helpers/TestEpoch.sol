@@ -14,12 +14,9 @@ import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
 import {DecimalPrice} from "../../src/market/libraries/DecimalPrice.sol";
 import {TestUser} from "./TestUser.sol";
 
-import "forge-std/console2.sol";
-
 contract TestEpoch is TestUser {
     using Cannon for Vm;
 
-    uint256 constant BOND_AMOUNT = 5 ether;
     uint256 internal constant Q128 = 0x100000000000000000000000000000000;
     uint256 constant CREATE_EPOCH_SALT = 4;
 
@@ -48,8 +45,6 @@ contract TestEpoch is TestUser {
         uint256 minTradeSize
     ) public returns (IFoil, address) {
         address owner = initializeMarket(
-            minTick,
-            maxTick,
             feeCollectors,
             address(0),
             minTradeSize
@@ -61,6 +56,8 @@ contract TestEpoch is TestUser {
             block.timestamp,
             block.timestamp + 30 days,
             startingSqrtPriceX96,
+            minTick,
+            maxTick,
             CREATE_EPOCH_SALT
         );
 
@@ -76,8 +73,6 @@ contract TestEpoch is TestUser {
     ) public returns (IFoil, address) {
         address[] memory feeCollectors = new address[](0);
         address owner = initializeMarket(
-            minTick,
-            maxTick,
             feeCollectors,
             callbackRecipient,
             minTradeSize
@@ -89,6 +84,8 @@ contract TestEpoch is TestUser {
             block.timestamp,
             block.timestamp + 30 days,
             startingSqrtPriceX96,
+            minTick,
+            maxTick,
             CREATE_EPOCH_SALT
         );
 
@@ -96,27 +93,24 @@ contract TestEpoch is TestUser {
     }
 
     function initializeMarket(
-        int24 minTick,
-        int24 maxTick,
         address[] memory feeCollectors,
         address callbackRecipient,
         uint256 minTradeSize
     ) public returns (address) {
+        uint256 bondAmount = 5 ether;
         address owner = createUser("Owner", 10_000_000 ether);
-        vm.startPrank(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266);
+        vm.startPrank(0x70997970C51812dc3A010C7d01b50e0d17dc79C8);
         IFoil(vm.getAddress("Foil")).initializeMarket(
             owner,
             vm.getAddress("CollateralAsset.Token"),
             feeCollectors,
             callbackRecipient,
             minTradeSize,
-            IFoilStructs.EpochParams({
-                baseAssetMinPriceTick: minTick,
-                baseAssetMaxPriceTick: maxTick,
+            IFoilStructs.MarketParams({
                 feeRate: 10000,
                 assertionLiveness: 21600,
                 bondCurrency: vm.getAddress("BondCurrency.Token"),
-                bondAmount: BOND_AMOUNT,
+                bondAmount: bondAmount,
                 claimStatement: "wstGwei/gas",
                 uniswapPositionManager: vm.getAddress(
                     "Uniswap.NonfungiblePositionManager"
@@ -133,17 +127,20 @@ contract TestEpoch is TestUser {
 
     function settleEpoch(
         uint256 epochId,
-        uint256 price,
+        uint160 price,
         address owner
     ) internal {
         IMintableToken bondCurrency = IMintableToken(
             vm.getAddress("BondCurrency.Token")
         );
         IFoil foil = IFoil(vm.getAddress("Foil"));
-        bondCurrency.mint(BOND_AMOUNT * 2, owner);
+        (, , , , IFoilStructs.MarketParams memory marketParams) = foil
+            .getMarket();
+        uint256 bondAmount = marketParams.bondAmount;
+        bondCurrency.mint(bondAmount * 2, owner);
         vm.startPrank(owner);
 
-        bondCurrency.approve(address(foil), BOND_AMOUNT);
+        bondCurrency.approve(address(foil), bondAmount);
         bytes32 assertionId = foil.submitSettlementPrice(epochId, price);
         vm.stopPrank();
 
@@ -164,16 +161,16 @@ contract TestEpoch is TestUser {
         returns (uint256 loanAmount0, uint256 loanAmount1, uint256 liquidity)
     {
         IFoil foil = IFoil(vm.getAddress("Foil"));
-        (uint256 epochId, , , address pool, , , , , , , ) = foil
-            .getLatestEpoch();
-        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
+        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
+        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(epochData.pool)
+            .slot0();
 
         uint160 sqrtPriceAX96 = uint160(TickMath.getSqrtRatioAtTick(lowerTick));
         uint160 sqrtPriceBX96 = uint160(TickMath.getSqrtRatioAtTick(upperTick));
 
         (loanAmount0, loanAmount1, liquidity) = foil
             .quoteLiquidityPositionTokens(
-                epochId,
+                epochData.epochId,
                 collateralAmount,
                 sqrtPriceX96,
                 sqrtPriceAX96,
@@ -198,19 +195,11 @@ contract TestEpoch is TestUser {
     {
         IFoil foil = IFoil(vm.getAddress("Foil"));
         (
-            ,
-            ,
-            ,
-            address pool,
-            ,
-            ,
-            ,
-            ,
-            ,
-            ,
-            IFoilStructs.EpochParams memory epochParams
+            IFoilStructs.EpochData memory epochData,
+            IFoilStructs.MarketParams memory marketParams
         ) = foil.getLatestEpoch();
-        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
+        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(epochData.pool)
+            .slot0();
 
         (
             ,
@@ -225,7 +214,7 @@ contract TestEpoch is TestUser {
             ,
             tokensOwed0,
             tokensOwed1
-        ) = INonfungiblePositionManager(epochParams.uniswapPositionManager)
+        ) = INonfungiblePositionManager(marketParams.uniswapPositionManager)
             .positions(uniswapPositionId);
 
         (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
@@ -260,7 +249,7 @@ contract TestEpoch is TestUser {
 
         OwedTokensData memory data;
 
-        (, , , , IFoilStructs.EpochParams memory epochParams) = foil
+        (, , , , IFoilStructs.MarketParams memory marketParams) = foil
             .getMarket();
 
         // Fetch the current fee growth global values
@@ -269,11 +258,9 @@ contract TestEpoch is TestUser {
         data.feeGrowthGlobal1X128 = IUniswapV3Pool(data.pool)
             .feeGrowthGlobal1X128();
 
-        (, , , data.pool, , , , , , , ) = foil.getLatestEpoch();
-
         bytes32 positionKey = keccak256(
             abi.encodePacked(
-                address(epochParams.uniswapPositionManager),
+                address(marketParams.uniswapPositionManager),
                 data.tickLower,
                 data.tickUpper
             )

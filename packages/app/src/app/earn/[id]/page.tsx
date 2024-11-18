@@ -1,9 +1,18 @@
-const Earn = () => {
+'use client';
+
+import React from 'react';
+
+import Earn from '~/lib/components/foil/earn';
+import { MarketProvider } from '~/lib/context/MarketProvider';
+
+const EarnPage = ({ params }: { params: { id: string; epoch: string } }) => {
+  const [chainId, marketAddress] = params.id.split('%3A');
+
   return (
-    <div className="flex flex-col items-center min-h-[70vh] gap-4 mb-8 w-full">
-      Vault UI coming soon
-    </div>
+    <MarketProvider chainId={Number(chainId)} address={marketAddress}>
+      <Earn marketAddress={marketAddress} chainId={Number(chainId)} />
+    </MarketProvider>
   );
 };
 
-export default Earn;
+export default EarnPage;

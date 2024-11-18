@@ -36,6 +36,8 @@ contract SettleLPTest is TestTrade {
     int24 constant MAX_TICK = 29800;
     uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
     uint256 constant settlementPrice = 10 ether;
+    uint160 constant settlementPriceSqrt = 250541448375047946302209916928;
+    uint256 constant BOND_AMOUNT = 5 ether;
 
     function setUp() public {
         collateralAsset = IMintableToken(
@@ -55,7 +57,11 @@ contract SettleLPTest is TestTrade {
             MIN_TRADE_SIZE
         );
 
-        (epochId, , , pool, tokenA, tokenB, , , , , ) = foil.getLatestEpoch();
+        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
+        epochId = epochData.epochId;
+        pool = epochData.pool;
+        tokenA = epochData.ethToken;
+        tokenB = epochData.gasToken;
 
         // Create LP position
         provideLiquidity(lp1, 100 ether);
@@ -146,11 +152,11 @@ contract SettleLPTest is TestTrade {
 
     function test_settleLp() public {
         // Warp to end of epoch
-        (, , uint256 endTime, , , , , , , , ) = foil.getLatestEpoch();
-        vm.warp(endTime + 1);
+        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
+        vm.warp(epochData.endTime + 1);
 
         // Set settlement price
-        settleEpoch(epochId, settlementPrice, owner);
+        settleEpoch(epochId, settlementPriceSqrt, owner);
 
         // Settle LP position
         vm.prank(lp1);
@@ -163,7 +169,7 @@ contract SettleLPTest is TestTrade {
 
         assertEq(
             IMockVault(vm.getAddress("MockVault")).getLastSettlementPrice(),
-            settlementPrice
+            settlementPriceSqrt
         );
 
         // TODO: fix this, need to calculate tokens that were collected which is a bit tricky

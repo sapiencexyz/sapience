@@ -63,8 +63,9 @@ const NavPopover = ({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" className="gap-2">
-          {label} <ChevronDown className="h-4 w-4" />
+        <Button variant="ghost">
+          <span className="text-lg">{label}</span>
+          <ChevronDown className="text-muted-foreground" />
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -144,7 +145,7 @@ const NavLinks = ({
   };
 
   const renderMobileMarketLinks = (path: string, withEpochs = false) => {
-    if (path === 'subscribe') {
+    if (path === 'subscribe' || path === 'earn') {
       return (
         <div className="flex flex-col space-y-2">
           {publicMarkets.map((market) => (
@@ -196,14 +197,10 @@ const NavLinks = ({
           <div className="font-bold mb-1">Subscribe</div>
           {renderMobileMarketLinks('subscribe')}
         </div>
-        {/*
         <div>
-          <div className="font-bold mb-1">
-            Earn
-          </div>
+          <div className="font-bold mb-1">Earn</div>
           {renderMobileMarketLinks('earn')}
         </div>
-        */}
         <div>
           <div className="font-bold mb-1">Trade</div>
           {renderMobileMarketLinks('trade', true)}
@@ -224,13 +221,15 @@ const NavLinks = ({
   }
 
   return (
-    <div className="flex gap-3">
+    <div className="flex gap-5">
       <NavPopover label="Subscribe" path="subscribe" />
-      {/* <NavPopover label="Earn" path="earn" /> */}
+      <NavPopover label="Earn" path="earn" />
       <NavPopover label="Trade" path="trade" withEpochs />
       <NavPopover label="Pool" path="pool" withEpochs />
       <Link href="https://docs.foil.xyz" className="hover:no-underline">
-        <Button variant="ghost">Docs</Button>
+        <Button variant="ghost" className=" text-lg">
+          Docs
+        </Button>
       </Link>
     </div>
   );

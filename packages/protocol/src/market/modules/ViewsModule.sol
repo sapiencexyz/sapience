@@ -23,7 +23,7 @@ contract ViewsModule is IViewsModule {
             address collateralAsset,
             address feeCollectorNFT,
             address callbackRecipient,
-            IFoilStructs.EpochParams memory epochParams
+            IFoilStructs.MarketParams memory marketParams
         )
     {
         Market.Data storage market = Market.load();
@@ -32,7 +32,7 @@ contract ViewsModule is IViewsModule {
             address(market.collateralAsset),
             address(market.feeCollectorNFT),
             address(market.callbackRecipient),
-            market.epochParams
+            market.marketParams
         );
     }
 
@@ -43,31 +43,27 @@ contract ViewsModule is IViewsModule {
         view
         override
         returns (
-            uint256 startTime,
-            uint256 endTime,
-            address pool,
-            address ethToken,
-            address gasToken,
-            uint256 minPriceD18,
-            uint256 maxPriceD18,
-            bool settled,
-            uint256 settlementPriceD18,
-            IFoilStructs.EpochParams memory params
+            IFoilStructs.EpochData memory epochData,
+            IFoilStructs.MarketParams memory params
         )
     {
         Epoch.Data storage epoch = Epoch.load(id);
-        return (
-            epoch.startTime,
-            epoch.endTime,
-            address(epoch.pool),
-            address(epoch.ethToken),
-            address(epoch.gasToken),
-            epoch.minPriceD18,
-            epoch.maxPriceD18,
-            epoch.settled,
-            epoch.settlementPriceD18,
-            epoch.params
-        );
+        epochData = IFoilStructs.EpochData({
+            epochId: epoch.id,
+            startTime: epoch.startTime,
+            endTime: epoch.endTime,
+            pool: address(epoch.pool),
+            ethToken: address(epoch.ethToken),
+            gasToken: address(epoch.gasToken),
+            minPriceD18: epoch.minPriceD18,
+            maxPriceD18: epoch.maxPriceD18,
+            baseAssetMinPriceTick: epoch.baseAssetMinPriceTick,
+            baseAssetMaxPriceTick: epoch.baseAssetMaxPriceTick,
+            settled: epoch.settled,
+            settlementPriceD18: epoch.settlementPriceD18
+        });
+
+        return (epochData, epoch.marketParams);
     }
 
     function getLatestEpoch()
@@ -75,39 +71,32 @@ contract ViewsModule is IViewsModule {
         view
         override
         returns (
-            uint256 epochId,
-            uint256 startTime,
-            uint256 endTime,
-            address pool,
-            address ethToken,
-            address gasToken,
-            uint256 minPriceD18,
-            uint256 maxPriceD18,
-            bool settled,
-            uint256 settlementPriceD18,
-            IFoilStructs.EpochParams memory params
+            IFoilStructs.EpochData memory epochData,
+            IFoilStructs.MarketParams memory params
         )
     {
-        epochId = Market.load().lastEpochId;
+        uint256 epochId = Market.load().lastEpochId;
 
         if (epochId == 0) {
             revert Errors.NoEpochsCreated();
         }
         Epoch.Data storage epoch = Epoch.load(epochId);
+        epochData = IFoilStructs.EpochData({
+            epochId: epochId,
+            startTime: epoch.startTime,
+            endTime: epoch.endTime,
+            pool: address(epoch.pool),
+            ethToken: address(epoch.ethToken),
+            gasToken: address(epoch.gasToken),
+            minPriceD18: epoch.minPriceD18,
+            maxPriceD18: epoch.maxPriceD18,
+            baseAssetMinPriceTick: epoch.baseAssetMinPriceTick,
+            baseAssetMaxPriceTick: epoch.baseAssetMaxPriceTick,
+            settled: epoch.settled,
+            settlementPriceD18: epoch.settlementPriceD18
+        });
 
-        return (
-            epochId,
-            epoch.startTime,
-            epoch.endTime,
-            address(epoch.pool),
-            address(epoch.ethToken),
-            address(epoch.gasToken),
-            epoch.minPriceD18,
-            epoch.maxPriceD18,
-            epoch.settled,
-            epoch.settlementPriceD18,
-            epoch.params
-        );
+        return (epochData, epoch.marketParams);
     }
 
     function getPosition(
@@ -235,8 +224,9 @@ contract ViewsModule is IViewsModule {
             ,
             uint128 tokensOwed0,
             uint128 tokensOwed1
-        ) = INonfungiblePositionManager(epoch.params.uniswapPositionManager)
-                .positions(position.uniswapPositionId);
+        ) = INonfungiblePositionManager(
+                epoch.marketParams.uniswapPositionManager
+            ).positions(position.uniswapPositionId);
 
         // Get the current sqrt price from the pool
         (uint160 sqrtPriceX96, , , , , , ) = epoch.pool.slot0();

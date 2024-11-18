@@ -37,7 +37,7 @@ contract ConfigurationModule is
         address[] calldata feeCollectors,
         address callbackRecipient,
         uint256 minTradeSize,
-        IFoilStructs.EpochParams memory epochParams
+        IFoilStructs.MarketParams memory marketParams
     ) external override nonReentrant {
         if (msg.sender != marketInitializer) {
             revert Errors.OnlyInitializer(msg.sender, marketInitializer);
@@ -60,7 +60,7 @@ contract ConfigurationModule is
             feeCollectorNFT,
             callbackRecipient,
             minTradeSize,
-            epochParams
+            marketParams
         );
         emit MarketInitialized(
             initialOwner,
@@ -68,22 +68,24 @@ contract ConfigurationModule is
             feeCollectorNFT,
             callbackRecipient,
             minTradeSize,
-            epochParams
+            marketParams
         );
     }
 
     function updateMarket(
-        IFoilStructs.EpochParams memory epochParams
+        IFoilStructs.MarketParams memory marketParams
     ) external override onlyOwner {
-        Market.updateValid(epochParams);
+        Market.updateValid(marketParams);
 
-        emit MarketUpdated(epochParams);
+        emit MarketUpdated(marketParams);
     }
 
     function createEpoch(
         uint256 startTime,
         uint256 endTime,
         uint160 startingSqrtPriceX96,
+        int24 baseAssetMinPriceTick,
+        int24 baseAssetMaxPriceTick,
         uint256 salt
     ) external override nonReentrant onlyOwner returns (uint256 epochId) {
         // load the market to check if it's already created
@@ -96,6 +98,8 @@ contract ConfigurationModule is
             startTime,
             endTime,
             startingSqrtPriceX96,
+            baseAssetMinPriceTick,
+            baseAssetMaxPriceTick,
             salt
         );
         emit EpochCreated(newEpochId, startTime, endTime, startingSqrtPriceX96);

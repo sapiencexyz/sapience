@@ -8,8 +8,6 @@ import {ISwapRouter} from "../interfaces/external/ISwapRouter.sol";
 import {IQuoterV2} from "../interfaces/external/IQuoterV2.sol";
 import {DecimalMath} from "../libraries/DecimalMath.sol";
 
-// import "forge-std/console2.sol";
-
 library Trade {
     using Epoch for Epoch.Data;
     using DecimalMath for uint256;
@@ -49,15 +47,15 @@ library Trade {
                     tokenIn: tokenIn,
                     tokenOut: tokenOut,
                     amountIn: amountIn,
-                    fee: epoch.params.feeRate,
+                    fee: epoch.marketParams.feeRate,
                     sqrtPriceLimitX96: 0
                 });
-            (amountOut, , , ) = IQuoterV2(epoch.params.uniswapQuoter)
+            (amountOut, , , ) = IQuoterV2(epoch.marketParams.uniswapQuoter)
                 .quoteExactInputSingle(params);
         } else {
             ISwapRouter.ExactInputSingleParams memory swapParams = ISwapRouter
                 .ExactInputSingleParams({
-                    fee: epoch.params.feeRate,
+                    fee: epoch.marketParams.feeRate,
                     recipient: address(this),
                     deadline: block.timestamp,
                     tokenIn: tokenIn,
@@ -68,7 +66,7 @@ library Trade {
                     sqrtPriceLimitX96: 0
                 });
 
-            amountOut = ISwapRouter(epoch.params.uniswapSwapRouter)
+            amountOut = ISwapRouter(epoch.marketParams.uniswapSwapRouter)
                 .exactInputSingle(swapParams);
         }
 
@@ -117,11 +115,11 @@ library Trade {
                     tokenIn: tokenIn,
                     tokenOut: tokenOut,
                     amount: amountOut,
-                    fee: epoch.params.feeRate,
+                    fee: epoch.marketParams.feeRate,
                     sqrtPriceLimitX96: 0
                 });
 
-            (amountIn, , , ) = IQuoterV2(epoch.params.uniswapQuoter)
+            (amountIn, , , ) = IQuoterV2(epoch.marketParams.uniswapQuoter)
                 .quoteExactOutputSingle(params);
         } else {
             ISwapRouter.ExactOutputSingleParams memory swapParams = ISwapRouter
@@ -129,7 +127,7 @@ library Trade {
                     tokenIn: tokenIn,
                     tokenOut: tokenOut,
                     amountOut: amountOut,
-                    fee: epoch.params.feeRate,
+                    fee: epoch.marketParams.feeRate,
                     recipient: address(this),
                     deadline: block.timestamp,
                     // Notice, not limiting the trade in any way since we are limiting the collateral required afterwards.
@@ -137,7 +135,7 @@ library Trade {
                     amountInMaximum: type(uint256).max
                 });
 
-            amountIn = ISwapRouter(epoch.params.uniswapSwapRouter)
+            amountIn = ISwapRouter(epoch.marketParams.uniswapSwapRouter)
                 .exactOutputSingle(swapParams);
         }
         if (expectedAmountOutVEth > 0) {
