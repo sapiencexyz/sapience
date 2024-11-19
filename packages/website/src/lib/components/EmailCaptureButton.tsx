@@ -63,7 +63,9 @@ const EmailCaptureButton: React.FC<EmailCaptureButtonProps> = ({
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>{children}</Button>
+      <Button onClick={() => setOpen(true)} className="font-semibold rounded-2xl p-6">
+        {children}
+      </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-sm">

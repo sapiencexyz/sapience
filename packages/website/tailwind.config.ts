@@ -12,6 +12,8 @@ export default {
   	},
   	extend: {
   		borderRadius: {
+			'4xl': '36px',
+			'3xl': '28px',
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
