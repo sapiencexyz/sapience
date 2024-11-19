@@ -92,9 +92,8 @@ export default function AddEditTrade() {
   const isLong = option === 'Long';
 
   const sizeChangeInContractUnit = useMemo(() => {
-    const multiplier = isLong ? BigInt(1) : BigInt(-1);
-    return multiplier * sizeChange * BigInt(1e9);
-  }, [sizeChange, isLong]);
+    return sizeChange * BigInt(1e9);
+  }, [sizeChange]);
 
   const formError = useMemo(() => {
     if (Number(quotedResultingWalletBalance) < 0) {
@@ -159,12 +158,13 @@ export default function AddEditTrade() {
   const desiredSizeInContractUnit = useMemo(() => {
     if (!isEdit) return sizeChangeInContractUnit;
 
-    const currentSize = isLong
+    const originalPositionIsLong = positionData?.vGasAmount > BigInt(0);
+    const currentSize = originalPositionIsLong
       ? positionData?.vGasAmount || BigInt(0)
       : -(positionData?.borrowedVGas || BigInt(0));
 
     return currentSize + sizeChangeInContractUnit;
-  }, [isEdit, positionData, sizeChangeInContractUnit, isLong]);
+  }, [isEdit, positionData, sizeChangeInContractUnit]);
 
   // Collateral balance for current address/account
   const { data: collateralBalance } = useReadContract({
@@ -237,6 +237,7 @@ export default function AddEditTrade() {
           title: 'Error',
           description: `There was an issue creating/updating your position: ${(error as Error).message}`,
         });
+        setPendingTxn(false);
       },
       onSuccess: () => {
         toast({
@@ -255,6 +256,7 @@ export default function AddEditTrade() {
           title: 'Approval Failed',
           description: `Failed to approve: ${(error as Error).message}`,
         });
+        setPendingTxn(false);
       },
       onSuccess: async () => {
         await refetchAllowance();
@@ -363,7 +365,11 @@ export default function AddEditTrade() {
   }, [isEdit, quoteCreatePositionResult.data, quoteModifyPositionResult.data]);
 
   const priceImpact: number = useMemo(() => {
-    if (pool?.token0Price && quotedFillPrice) {
+    if (
+      pool?.token0Price &&
+      quotedFillPrice &&
+      sizeChangeInContractUnit !== BigInt(0)
+    ) {
       const fillPrice = Number(quotedFillPrice) / 1e18;
       const referencePrice = parseFloat(pool.token0Price.toSignificant(18));
       return Math.abs((fillPrice / referencePrice - 1) * 100);
@@ -384,20 +390,12 @@ export default function AddEditTrade() {
 
   const {
     register,
-    control,
     handleSubmit,
-    formState: { errors, isValid },
+    formState: { errors },
     setValue,
     reset,
-    getValues,
     watch,
   } = form;
-
-  // Watch form values
-  const size = useWatch({
-    control,
-    name: 'size',
-  });
 
   // Watch slippage value from form
   const formSlippage = watch('slippage');
@@ -551,19 +549,25 @@ export default function AddEditTrade() {
       );
     }
 
+    const isFetchingQuote = isEdit
+      ? quoteModifyPositionResult.isFetching
+      : quoteCreatePositionResult.isFetching;
     const isLoading =
       pendingTxn ||
       isLoadingCollateralChange ||
-      (sizeChangeInContractUnit !== BigInt(0) &&
-        (isEdit
-          ? quoteModifyPositionResult.isFetching
-          : quoteCreatePositionResult.isFetching));
+      (sizeChangeInContractUnit !== BigInt(0) && isFetchingQuote);
 
     let buttonTxt = isEdit ? 'Update Position' : 'Create Position';
+    if (
+      desiredSizeInContractUnit === BigInt(0) &&
+      sizeChangeInContractUnit !== BigInt(0)
+    ) {
+      buttonTxt = 'Close Position';
+    }
     if (requireApproval) {
       buttonTxt = `Approve ${collateralAssetTicker} Transfer`;
     }
-    if (isLoading && !formError) {
+    if (isFetchingQuote && !formError) {
       buttonTxt = 'Fetching Collateral Change...';
     }
     return (
