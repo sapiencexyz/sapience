@@ -14,7 +14,7 @@ export const FAQ = () => {
             <h2 className="text-lg font-semibold">FAQ</h2>
           </div>
         </div>
-        <div className="p-4 md:px-24 md:py-8">
+        <div className="pt-4 md:px-24 md:py-8">
           <Accordion type="single" collapsible>
             <AccordionItem value="what-is-foil">
               <AccordionTrigger className="text-left hover:no-underline md:my-2">
