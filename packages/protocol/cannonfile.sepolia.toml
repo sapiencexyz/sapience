@@ -130,20 +130,20 @@ depends=["deploy.Vault2"]
 
 
 # START EPOCHS
-# [invoke.initializeFirstEpochForVault1]
-# target="Vault1"
-# from = "<%= settings.owner %>"
-# func="initializeFirstEpoch"
-# args=[
-#   "<%= settings.startingSqrtPriceX96 %>"
-# ]
-# depends=["invoke.initializeMarketForVault1"]
+[invoke.initializeFirstEpochForVault1]
+target="Vault1"
+from = "<%= settings.owner %>"
+func="initializeFirstEpoch"
+args=[
+  "<%= settings.startingSqrtPriceX96 %>"
+]
+depends=["invoke.initializeMarketForVault1"]
 
-# [invoke.initializeFirstEpochForVault2]
-# target="Vault2"
-# from = "<%= settings.owner %>"
-# func="initializeFirstEpoch"
-# args=[
-#   "<%= settings.startingSqrtPriceX96 %>"
-# ]
-# depends=["invoke.initializeMarketForVault2"]
+[invoke.initializeFirstEpochForVault2]
+target="Vault2"
+from = "<%= settings.owner %>"
+func="initializeFirstEpoch"
+args=[
+  "<%= settings.startingSqrtPriceX96 %>"
+]
+depends=["invoke.initializeMarketForVault2"]
