@@ -19,13 +19,16 @@ export const Header = () => {
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
           >
-            <span className="font-semibold">
-              <span className="hidden md:inline">
-                ⛽ Foil&apos;s Testnet Competition is coming soon
-              </span>
-              <span className="pl-2.5 md:hidden">
-                ⛽&nbsp;Testnet Competition Coming Soon
-              </span>
+            <span className="ml-1 font-semibold">
+              ⛽{' '}
+              <a
+                href="https://forms.gle/4gZcMgQFtjeET7t59"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-1 underline decoration-1 underline-offset-4"
+              >
+                Sign up for the Testnet Competition
+              </a>
             </span>
             <button
               onClick={() => setShowBanner(false)}
