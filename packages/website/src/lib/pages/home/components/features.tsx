@@ -2,27 +2,25 @@ import EmailCaptureButton from '@/lib/components/EmailCaptureButton';
 
 export const Features = () => {
   return (
-    <div className="container mx-auto max-w-screen-lg px-4 py-20 md:px-6 md:text-center">
-      <div className="grid grid-cols-1 gap-6 py-6 md:gap-14 md:py-12 lg:grid-cols-3">
-        <div className="rounded-lg border border-border p-6 shadow-sm">
-          <h2 className="mb-2 text-3xl font-semibold text-primary">
-            Subscribe
-          </h2>
-          <div className="mb-5 text-xl leading-relaxed text-muted-foreground">
+    <div className="z-10 w-full px-4 pt-6 text-center md:px-14 md:pt-0">
+      <div className="grid grid-cols-1 gap-6 md:-mt-40 md:gap-14 md:pt-12 lg:grid-cols-3">
+        <div className="rounded-4xl border border-border bg-white p-14">
+          <h2 className="mb-4 text-3xl font-bold text-primary">Subscribe</h2>
+          <div className="mx-auto mb-7 max-w-56 text-xl">
             Estimate usage and hedge transaction costs.
           </div>
           <EmailCaptureButton>Subscribe</EmailCaptureButton>
         </div>
-        <div className="rounded-lg border border-border p-6 shadow-sm">
-          <h2 className="mb-2 text-3xl font-semibold text-primary">Trade</h2>
-          <div className="mb-5 text-xl leading-relaxed text-muted-foreground">
+        <div className="rounded-4xl border border-border bg-white p-14">
+          <h2 className="mb-4 text-3xl font-bold text-primary">Trade</h2>
+          <div className="mx-auto mb-7 max-w-56 text-xl">
             Buy and sell exposure to gas and blob prices.
           </div>
           <EmailCaptureButton>Trade</EmailCaptureButton>
         </div>
-        <div className="rounded-lg border border-border p-6 shadow-sm">
-          <h2 className="mb-2 text-3xl font-semibold text-primary">Earn</h2>
-          <div className="mb-5 text-xl leading-relaxed text-muted-foreground">
+        <div className="rounded-4xl border border-border bg-white p-14">
+          <h2 className="mb-4 text-3xl font-bold text-primary">Earn</h2>
+          <div className="mx-auto mb-7 max-w-56 text-xl">
             Provide liquidity and boost LST yield.
           </div>
           <EmailCaptureButton>Earn</EmailCaptureButton>

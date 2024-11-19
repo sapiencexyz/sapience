@@ -3,38 +3,33 @@ import Image from 'next/image';
 
 export const PoweredBy = () => {
   return (
-    <div className="container mx-auto w-full max-w-3xl px-4 pb-24 pt-5 md:px-6">
-      <div className="grid text-center">
-        <h1 className="mb-6 text-sm font-medium uppercase tracking-widest text-gray-500">
-          Powered By
-        </h1>
-        <div className="mx-auto grid max-w-48 grid-cols-1 items-center gap-4 md:max-w-none md:grid-cols-3">
-          <div className="flex items-center justify-center">
-            <Image
-              src="/assets/ethereum.svg"
-              alt="Ethereum"
-              width={0}
-              height={0}
-              className="h-full w-auto object-contain grayscale filter"
-            />
-          </div>
-          <div className="-mt-1 flex items-center justify-center">
-            <Image
-              src="/assets/uniswap.svg"
-              alt="Uniswap"
-              width={0}
-              height={0}
-              className="h-full w-auto object-contain grayscale filter"
-            />
-          </div>
-          <div className="mt-4 flex h-8 items-center justify-center md:mt-0">
-            <Image
-              src="/assets/uma.svg"
-              alt="UMA"
-              width={0}
-              height={0}
-              className="h-full w-auto object-contain grayscale filter"
-            />
+    <div className="my-12 w-full px-4 md:px-14">
+      <div className="rounded-4xl border border-border p-14 text-center">
+        <div className="mx-auto inline-block rounded-4xl border border-border px-8 py-2.5">
+          <h2 className="text-lg font-semibold">Powered By</h2>
+        </div>
+        <div className="grid w-full">
+          <div className="flex flex-col items-center justify-center md:flex-row md:space-x-20">
+            <div className="flex items-center justify-center">
+              <Image
+                src="/assets/ethereum.png"
+                alt="Ethereum"
+                width={250}
+                height={150}
+              />
+            </div>
+            <div className="flex items-center justify-center">
+              <Image
+                src="/assets/uniswap.png"
+                alt="Uniswap"
+                width={250}
+                height={150}
+                className="h-full w-auto"
+              />
+            </div>
+            <div className="flex items-center justify-center">
+              <Image src="/assets/uma.png" alt="UMA" width={250} height={150} />
+            </div>
           </div>
         </div>
       </div>

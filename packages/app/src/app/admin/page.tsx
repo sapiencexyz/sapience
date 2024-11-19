@@ -2,12 +2,17 @@
 
 import axios from 'axios';
 import { useState } from 'react';
+import { useSignMessage } from 'wagmi';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { toast } from '~/hooks/use-toast';
 import MarketsTable from '~/lib/components/MarketsTable';
-import { API_BASE_URL } from '~/lib/constants/constants';
+import {
+  ADMIN_AUTHENTICATE_MSG,
+  API_BASE_URL,
+} from '~/lib/constants/constants';
 import type { RenderJob } from '~/lib/interfaces/interfaces';
 
 const JobStatus = ({
@@ -48,18 +53,40 @@ const Admin = () => {
   const [loadingAction, setLoadingAction] = useState<{
     [actionName: string]: boolean;
   }>({});
+  const { signMessageAsync } = useSignMessage();
 
   const handleReindex = async () => {
-    setLoadingAction((prev) => ({ ...prev, reindex: true }));
-    const response = await axios.get(
-      `${API_BASE_URL}/reindex?chainId=${chainId}&address=${address}`
-    );
-    if (response.data.success && response.data.job) {
-      setJob(response.data.job);
-    } else {
+    try {
+      setLoadingAction((prev) => ({ ...prev, reindex: true }));
+      const timestamp = Date.now();
+
+      const signature = await signMessageAsync({
+        message: ADMIN_AUTHENTICATE_MSG,
+      });
+      const response = await axios.get(
+        `${API_BASE_URL}/reindex?chainId=${chainId}&address=${address}&signature=${signature}&timestamp=${timestamp}`
+      );
+      if (response.data.success && response.data.job) {
+        setJob(response.data.job);
+      } else {
+        setJob(undefined);
+        toast({
+          title: 'Failed to get position from uniswap',
+          description: `Unable to reindex: ${response.data.error}`,
+          variant: 'destructive',
+        });
+      }
+      setLoadingAction((prev) => ({ ...prev, reindex: false }));
+    } catch (e: any) {
+      console.error('error:', e);
       setJob(undefined);
+      toast({
+        title: 'Failed to get position from uniswap',
+        description: `Unable to reindex: ${e?.response?.data?.error}`,
+        variant: 'destructive',
+      });
+      setLoadingAction((prev) => ({ ...prev, reindex: false }));
     }
-    setLoadingAction((prev) => ({ ...prev, reindex: false }));
   };
 
   const handleGetStatus = async () => {

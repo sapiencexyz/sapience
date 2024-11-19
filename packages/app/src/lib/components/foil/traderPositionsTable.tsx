@@ -43,13 +43,18 @@ interface Props {
 }
 
 // First, define cell components outside the main component
-const PositionCell = ({ row }: { row: any }) => (
-  <Link
-    href={`/positions/${row.original.chain?.id}:${row.original.address}/${row.original.positionId}`}
-  >
-    #{row.original.positionId.toString()}
-  </Link>
-);
+const PositionCell = ({ row }: { row: any }) => {
+  const isClosed =
+    row.original.baseToken - row.original.borrowedBaseToken === 0;
+  return (
+    <Link
+      href={`/positions/${row.original.chain?.id}:${row.original.address}/${row.original.positionId}`}
+    >
+      #{row.original.positionId.toString()}
+      {isClosed ? ' (Closed)' : ''}
+    </Link>
+  );
+};
 
 const CollateralCell = ({ cell }: { cell: any }) => (
   <>

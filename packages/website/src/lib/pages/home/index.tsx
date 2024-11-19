@@ -1,3 +1,4 @@
+import { Corners } from './components/corners';
 import { Hero } from './components/hero';
 import { Features } from './components/features';
 import { PoweredBy } from './components/powered-by';
@@ -8,6 +9,7 @@ import { FAQ } from './components/faq';
 const Home = () => {
   return (
     <div className="w-100 flex min-h-[100dvh] flex-col items-center justify-center">
+      <Corners />
       <Hero />
       <Features />
       <PoweredBy />

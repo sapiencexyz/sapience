@@ -4,9 +4,9 @@ export const Investors = () => {
   return (
     <div className="container mx-auto max-w-3xl px-4 py-20 md:px-6">
       <div className="grid gap-2.5 space-y-6 py-12 text-center">
-        <h1 className="text-sm font-medium uppercase tracking-widest text-gray-500">
-          Backed by
-        </h1>
+        <div className="mx-auto mb-6 inline-block rounded-4xl border border-border px-8 py-2.5">
+          <h2 className="text-lg font-semibold">Backed By</h2>
+        </div>
 
         <div className="grid gap-4 md:grid-cols-2 md:gap-0">
           <div>
