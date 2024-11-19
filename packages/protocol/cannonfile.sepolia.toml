@@ -14,8 +14,16 @@ assertionLiveness = "21600" # 6 hours
 bondAmount = "5000000000"
 claimStatement = "<%= stringToHex('The sum of gas used divided by the sum of base fees paid on Ethereum Mainnet across all blocks, divided by the wstETH/ETH ratio at the end of the period, represented with 18 decimal places') %>"
 optimisticOracleV3 = "0xFd9e2642a170aDD10F53Ee14a93FcF2F31924944"
-callbackRecipient = "0x0000000000000000000000000000000000000000"
 minTradeSize = "10000"
+# Vaults Settings
+vault1Name="Foil Vault Yin"
+vault1Symbol = "FVLT1"
+vault2Name="Foil Vault Yang"
+vault2Symbol = "FVLT2"
+lowerBoundMultiplier = "0.5773502691896257" # sqrt(1/3) 
+upperBoundMultiplier = "1.7320508075688772" # sqrt(3)
+duration = "2419200" # 28 days in seconds
+totalVaults = "2"
 depends = []
 
 # [pull.Uniswap]
@@ -52,7 +60,7 @@ artifact="ERC165Module"
 [deploy.SettlementModule]
 artifact="SettlementModule"
 
-[router.Foil]
+[router.Foil1]
 contracts=[
   "ConfigurationModule",
   "LiquidityModule",
@@ -65,30 +73,77 @@ contracts=[
 ]
 highlight=true
 
-[invoke.initializeMarket]
-target="Foil"
+[router.Foil2]
+contracts=[
+  "ConfigurationModule",
+  "LiquidityModule",
+  "UMASettlementModule",
+  "TradeModule",
+  "NftModule",
+  "ViewsModule",
+  "ERC165Module",
+  "SettlementModule"
+]
+highlight=true
+
+# VAULT 1
+[deploy.Vault1]
+artifact="Vault"
+from="<%= settings.owner %>"
+args=[ "<%= settings.vault1Name %>", "<%= settings.vault1Symbol %>", "<%= Foil1.address %>", "<%= imports.wstETH.contracts.Token.address %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "0", "<%= settings.totalVaults %>" ]
+depends = ['router.Foil1', 'pull.wstETH', 'var.settings']
+
+[invoke.initializeMarketForVault1]
+target="Foil1"
 func="initializeMarket"
 from="<%= settings.owner %>"
 args=[
-  "<%= settings.owner %>",
+  "<%= Vault1.address %>",
   "<%= imports.wstETH.contracts.Token.address %>",
   [],
-  "<%= settings.callbackRecipient %>",
+  "<%= Vault1.address %>",
   "<%= settings.minTradeSize %>",
   { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.USDC.contracts.Token.address %>", bondAmount = "<%= settings.bondAmount %>", claimStatement = "<%= settings.claimStatement %>", uniswapPositionManager = "0x1238536071E1c677A632429e3655c799b22cDA52", uniswapSwapRouter = "0x65669fe35312947050c450bd5d36e6361f85ec12", uniswapQuoter = "0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>" }
 ]
-depends=["router.Foil"]
+depends=["deploy.Vault1"]
 
-[invoke.createEpoch]
-target="Foil"
-from = "<%= settings.owner %>"
-func="createEpoch"
+# VAULT 2
+[deploy.Vault2]
+artifact="Vault"
+from="<%= settings.owner %>"
+args=[ "<%= settings.vault2Name %>", "<%= settings.vault2Symbol %>", "<%= Foil2.address %>", "<%= imports.wstETH.contracts.Token.address %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "1", "<%= settings.totalVaults %>" ]
+depends = ['router.Foil2', 'pull.wstETH', 'var.settings']
+
+[invoke.initializeMarketForVault2]
+target="Foil2"
+func="initializeMarket"
+from="<%= settings.owner %>"
 args=[
-  "<%= settings.startTime %>",
-  "<%= settings.endTime %>",
-  "<%= settings.startingSqrtPriceX96 %>",
-  "<%= settings.baseAssetMinPriceTick %>",
-  "<%= settings.baseAssetMaxPriceTick %>",
-  "4"
+  "<%= Vault2.address %>",
+  "<%= imports.wstETH.contracts.Token.address %>",
+  [],
+  "<%= Vault2.address %>", 
+  "<%= settings.minTradeSize %>",
+  { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.USDC.contracts.Token.address %>", bondAmount = "<%= settings.bondAmount %>", claimStatement = "<%= settings.claimStatement %>", uniswapPositionManager = "0x1238536071E1c677A632429e3655c799b22cDA52", uniswapSwapRouter = "0x65669fe35312947050c450bd5d36e6361f85ec12", uniswapQuoter = "0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>" }
 ]
-depends=["invoke.initializeMarket"]
+depends=["deploy.Vault2"]
+
+
+# START EPOCHS
+# [invoke.initializeFirstEpochForVault1]
+# target="Vault1"
+# from = "<%= settings.owner %>"
+# func="initializeFirstEpoch"
+# args=[
+#   "<%= settings.startingSqrtPriceX96 %>"
+# ]
+# depends=["invoke.initializeMarketForVault1"]
+
+# [invoke.initializeFirstEpochForVault2]
+# target="Vault2"
+# from = "<%= settings.owner %>"
+# func="initializeFirstEpoch"
+# args=[
+#   "<%= settings.startingSqrtPriceX96 %>"
+# ]
+# depends=["invoke.initializeMarketForVault2"]
