@@ -99,6 +99,8 @@ args=[
   "<%= settings.startTime %>",
   "<%= settings.endTime %>",
   "<%= settings.startingSqrtPriceX96 %>",
+  "<%= settings.baseAssetMinPriceTick %>",
+  "<%= settings.baseAssetMaxPriceTick %>",
   "4"
 ]
 depends=["invoke.initializeMarket"]
