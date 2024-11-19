@@ -168,7 +168,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         // Set up the start time for the new epoch
         (IFoilStructs.EpochData memory epochData, ) = market.getLatestEpoch();
         _createEpochAndPosition(
-            _calculateNextStartTime(epochData.endTime),
+            _calculateNextStartTime(epochData.startTime),
             previousResolutionSqrtPriceX96,
             totalCollateralAfterTransition
         );
@@ -227,10 +227,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     }
 
     function _calculateNextStartTime(
-        uint256 previousEndTime
-    ) private view returns (uint256 startTime) {
+        uint256 previousStartTime
+    ) private view returns (uint256) {
         uint256 vaultCycleDuration = duration * totalVaults;
-        uint256 previousStartTime = previousEndTime - duration;
         uint256 iterationsToSkip = (block.timestamp - previousStartTime) /
             (duration * totalVaults);
 
