@@ -122,7 +122,7 @@ contract VaultDepositTest is TestVault {
 
     function test_depositReverts_whenDepositNotCollected() public {
         vm.prank(vaultOwner);
-        vault.initializeFirstEpoch(epochStartTime, initialSqrtPriceX96);
+        vault.initializeFirstEpoch(initialSqrtPriceX96);
 
         vm.startPrank(lp1);
         vm.expectRevert("Previous deposit request is not completed");
@@ -135,7 +135,7 @@ contract VaultDepositTest is TestVault {
         public
     {
         vm.prank(vaultOwner);
-        vault.initializeFirstEpoch(epochStartTime, initialSqrtPriceX96);
+        vault.initializeFirstEpoch(initialSqrtPriceX96);
 
         vm.startPrank(lp1);
         vm.expectRevert("Previous deposit request is not in the same epoch");
@@ -146,7 +146,7 @@ contract VaultDepositTest is TestVault {
 
     function test_claimDeposit_whenEpochEnded() public {
         vm.prank(vaultOwner);
-        vault.initializeFirstEpoch(epochStartTime, initialSqrtPriceX96);
+        vault.initializeFirstEpoch(initialSqrtPriceX96);
 
         uint256 claimable = vault.claimableDepositRequest(lp1);
         assertEq(
@@ -172,7 +172,7 @@ contract VaultDepositTest is TestVault {
 
     function test_depositWorks_whenRequestPending() public {
         vm.prank(vaultOwner);
-        vault.initializeFirstEpoch(epochStartTime, initialSqrtPriceX96);
+        vault.initializeFirstEpoch(initialSqrtPriceX96);
 
         vm.prank(lp1);
         vault.deposit(0, lp1);
@@ -186,7 +186,7 @@ contract VaultDepositTest is TestVault {
 
     function test_requestDepositReverts_whenRedeemPending() public {
         vm.prank(vaultOwner);
-        vault.initializeFirstEpoch(epochStartTime, initialSqrtPriceX96);
+        vault.initializeFirstEpoch(initialSqrtPriceX96);
 
         vm.prank(lp1);
         vault.deposit(0, lp1);

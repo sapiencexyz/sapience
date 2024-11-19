@@ -2,6 +2,7 @@
 pragma solidity >=0.8.25 <0.9.0;
 
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import {IFoilStructs} from "../../market/interfaces/IFoilStructs.sol";
 import "./IResolutionCallback.sol";
 
 /**
@@ -184,6 +185,15 @@ interface IVaultViews {
      * @return The position ID
      */
     function getPositionId() external view returns (uint256);
+
+    /**
+     * @notice Get the current epoch data and market parameters
+     * @return epochData The current epoch on the foil market's data
+     */
+    function getCurrentEpoch()
+        external
+        view
+        returns (IFoilStructs.EpochData memory epochData);
 }
 
 /**
@@ -227,13 +237,9 @@ interface IVault is
 
     /**
      * @notice Initialize the first epoch of the vault
-     * @param initialStartTime The start time for the first epoch
      * @param initialSqrtPriceX96 The initial sqrt price
      */
-    function initializeFirstEpoch(
-        uint256 initialStartTime,
-        uint160 initialSqrtPriceX96
-    ) external;
+    function initializeFirstEpoch(uint160 initialSqrtPriceX96) external;
 
     /**
      * @notice Submit the market settlement price for an epoch

@@ -22,11 +22,14 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     /// @notice immutable variables (initially set)
     IFoil public immutable market;
     IERC20 public immutable collateralAsset;
-    uint256 public immutable duration;
     uint256 public immutable lowerBoundMultiplier;
     uint256 public immutable upperBoundMultiplier;
     address immutable vaultInitializer;
     bool initialized; // flag indicating if vaultInitializer already called initializeFirstEpoch
+
+    uint256 public immutable duration;
+    uint256 public immutable vaultIndex;
+    uint256 public immutable totalVaults;
 
     /**
      * current epoch id in market contract
@@ -83,14 +86,18 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         string memory _symbol,
         address _marketAddress,
         address _collateralAssetAddress,
-        uint256 _duration,
         uint256 _lowerBoundMultiplier,
-        uint256 _upperBoundMultiplier
+        uint256 _upperBoundMultiplier,
+        uint256 _duration,
+        uint256 _vaultIndex,
+        uint256 _totalVaults
     ) ERC20(_name, _symbol) {
         market = IFoil(_marketAddress);
         collateralAsset = IERC20(_collateralAssetAddress);
 
         duration = _duration;
+        vaultIndex = _vaultIndex;
+        totalVaults = _totalVaults;
         lowerBoundMultiplier = _lowerBoundMultiplier;
         upperBoundMultiplier = _upperBoundMultiplier;
         vaultInitializer = msg.sender;
@@ -101,10 +108,11 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     /// @dev price is set to 1e18
     /// @dev any pending deposits prior to the first epoch are used to create the initial liquidity position
     function initializeFirstEpoch(
-        uint256 initialStartTime,
         uint160 initialSqrtPriceX96
     ) external onlyInitializer {
         require(!initialized, "Already Initialized");
+
+        uint256 initialStartTime = block.timestamp + (vaultIndex * duration);
 
         uint256 startingSharePrice = 1e18;
         epochSharePrices[0] = startingSharePrice;
@@ -159,12 +167,8 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
         // Set up the start time for the new epoch
         (IFoilStructs.EpochData memory epochData, ) = market.getLatestEpoch();
-
-        // Adjust the start time for the next epoch
-        // The idea is there will be two vaults (yin/yang) that are created duration apart
-        uint256 newEpochStartTime = epochData.endTime + duration;
         _createEpochAndPosition(
-            newEpochStartTime,
+            _calculateNextStartTime(epochData.endTime),
             previousResolutionSqrtPriceX96,
             totalCollateralAfterTransition
         );
@@ -220,6 +224,18 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         } else {
             positionId = 0;
         }
+    }
+
+    function _calculateNextStartTime(
+        uint256 previousEndTime
+    ) private view returns (uint256 startTime) {
+        uint256 vaultCycleDuration = duration * totalVaults;
+        uint256 previousStartTime = previousEndTime - duration;
+        uint256 iterationsToSkip = (block.timestamp - previousStartTime) /
+            (duration * totalVaults);
+
+        return
+            previousStartTime + (vaultCycleDuration * (iterationsToSkip + 1));
     }
 
     function _calculateTickBounds(
@@ -816,5 +832,13 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
     function getPositionId() external view returns (uint256) {
         return positionId;
+    }
+
+    function getCurrentEpoch()
+        external
+        view
+        returns (IFoilStructs.EpochData memory epochData)
+    {
+        (epochData, ) = market.getLatestEpoch();
     }
 }
