@@ -23,8 +23,8 @@ export const Header = () => {
               <span className="hidden md:inline">
                 ⛽ Foil&apos;s Testnet Competition is coming soon
               </span>
-              <span className="pl-3 md:hidden">
-                ⛽&nbsp;&nbsp;Testnet Competition Coming Soon
+              <span className="pl-2.5 md:hidden">
+                ⛽&nbsp;Testnet Competition Coming Soon
               </span>
             </span>
             <button

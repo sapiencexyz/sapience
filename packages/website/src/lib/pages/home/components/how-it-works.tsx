@@ -5,6 +5,7 @@ import { MoveLeftIcon, MoveRightIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
+import { useMediaQuery } from 'usehooks-ts';
 
 const slides = [
   {
@@ -49,6 +50,7 @@ export const HowItWorks = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const isInView = useIsInViewport(containerRef);
+  const isDesktop = useMediaQuery('(min-width: 768px)');
 
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % slides.length);
@@ -83,7 +85,7 @@ export const HowItWorks = () => {
             duration: 0.8,
             ease: 'easeInOut',
           }}
-          className="relative w-full px-8 py-5 text-center text-2xl font-bold text-white drop-shadow-[1px_1px_3px_rgba(0,0,0,0.75)] md:mt-8 md:px-20 md:text-6xl md:leading-loose md:tracking-wide"
+          className="relative w-full max-w-[1700px] px-8 py-5 text-center text-2xl font-bold text-white drop-shadow-[1px_1px_3px_rgba(0,0,0,0.75)] md:mt-8 md:px-20 md:text-6xl md:leading-loose md:tracking-wide"
         >
           {slides[currentSlide].title}
         </motion.h1>
@@ -117,7 +119,7 @@ export const HowItWorks = () => {
                 height: '100%',
               }}
             >
-              <div className="block h-full w-full md:hidden">
+              {!isDesktop ? (
                 <Image
                   src={slide.image}
                   alt={slide.title}
@@ -125,13 +127,12 @@ export const HowItWorks = () => {
                   className="object-cover"
                   priority
                 />
-              </div>
-              <div className="hidden h-full w-full md:block">
+              ) : (
                 <Spline
                   className="!block h-full w-full object-cover"
                   scene={slide.scene}
                 />
-              </div>
+              )}
             </motion.div>
           </motion.div>
         ))}
