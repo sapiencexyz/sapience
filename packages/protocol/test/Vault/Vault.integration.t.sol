@@ -76,7 +76,7 @@ contract VaultIntegrationTest is TestVault {
 
         epochStartTime = block.timestamp + 60;
         vm.prank(vaultOwner);
-        vault.initializeFirstEpoch(epochStartTime, initialSqrtPriceX96);
+        vault.initializeFirstEpoch(initialSqrtPriceX96);
 
         // collect deposits
         vm.prank(lp1);

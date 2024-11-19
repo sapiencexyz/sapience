@@ -51,7 +51,7 @@ contract VaultRedeemTest is TestVault {
 
         // Initialize first epoch and mint shares
         vm.prank(vaultOwner);
-        vault.initializeFirstEpoch(epochStartTime, initialSqrtPriceX96);
+        vault.initializeFirstEpoch(initialSqrtPriceX96);
 
         vm.prank(lp1);
         vault.deposit(0, lp1);

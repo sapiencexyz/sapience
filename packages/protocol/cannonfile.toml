@@ -86,7 +86,7 @@ args=[
   [],
   "<%= settings.callbackRecipient %>",
   "<%= settings.minTradeSize %>",
-  { baseAssetMinPriceTick = "<%= settings.baseAssetMinPriceTick %>", baseAssetMaxPriceTick = "<%= settings.baseAssetMaxPriceTick %>", feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.BondCurrency.contracts.Token.address %>", bondAmount= "<%= settings.bondAmount %>", claimStatement= "<%= settings.claimStatement %>",  uniswapPositionManager =  "<%= imports.Uniswap.contracts.NonfungiblePositionManager.address %>", uniswapSwapRouter = "<%= imports.Uniswap.contracts.SwapRouter.address %>", uniswapQuoter = "<%= imports.Uniswap.contracts.QuoterV2.address %>", optimisticOracleV3 = "<%= imports.UMA.contracts.OptimisticOracleV3.address %>" }
+  { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.BondCurrency.contracts.Token.address %>", bondAmount= "<%= settings.bondAmount %>", claimStatement= "<%= settings.claimStatement %>",  uniswapPositionManager =  "<%= imports.Uniswap.contracts.NonfungiblePositionManager.address %>", uniswapSwapRouter = "<%= imports.Uniswap.contracts.SwapRouter.address %>", uniswapQuoter = "<%= imports.Uniswap.contracts.QuoterV2.address %>", optimisticOracleV3 = "<%= imports.UMA.contracts.OptimisticOracleV3.address %>" }
 ]
 depends=["router.Foil"]
 
@@ -99,6 +99,8 @@ args=[
   "<%= settings.startTime %>",
   "<%= settings.endTime %>",
   "<%= settings.startingSqrtPriceX96 %>",
+  "<%= settings.baseAssetMinPriceTick %>",
+  "<%= settings.baseAssetMaxPriceTick %>",
   "4"
 ]
 depends=["invoke.initializeMarket"]

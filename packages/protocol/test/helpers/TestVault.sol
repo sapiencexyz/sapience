@@ -29,17 +29,33 @@ contract TestVault is TestTrade {
     {
         foilContract = IFoil(vm.getAddress("Foil"));
         vaultContract = IVault(vm.getAddress("Vault"));
+
+        collateralAssetContract = initializeMarketWithVault(
+            foilContract,
+            address(vaultContract),
+            feeCollectors,
+            minTradeSize,
+            bondAmount
+        );
+    }
+
+    function initializeMarketWithVault(
+        IFoil foil,
+        address vault,
+        address[] memory feeCollectors,
+        uint256 minTradeSize,
+        uint256 bondAmount
+    ) internal returns (IMintableToken collateralAssetContract) {
         collateralAssetContract = IMintableToken(
             vm.getAddress("CollateralAsset.Token")
         );
-
         vm.startPrank(vaultOwner);
         // Initialize Market (by owner, links fail market with vault)
-        foilContract.initializeMarket(
-            address(vaultContract),
+        foil.initializeMarket(
+            vault,
             address(collateralAssetContract),
             feeCollectors,
-            address(vaultContract),
+            vault,
             minTradeSize,
             IFoilStructs.MarketParams({
                 feeRate: 10000,
@@ -58,15 +74,11 @@ contract TestVault is TestTrade {
         vm.stopPrank();
     }
 
-    function initializeFirstEpoch(
-        uint160 _initialSqrtPriceX96,
-        uint256 _initialStartTime
-    ) internal {
+    function initializeFirstEpoch(uint160 _initialSqrtPriceX96) internal {
         vm.startPrank(vaultOwner);
 
         // Initialize Epoch (by owner, kicks the ball with the first epoch)
         IVault(vm.getAddress("Vault")).initializeFirstEpoch(
-            _initialStartTime,
             _initialSqrtPriceX96
         );
 

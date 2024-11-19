@@ -130,10 +130,20 @@ contract TestEpoch is TestUser {
         uint160 price,
         address owner
     ) internal {
+        IFoil foil = IFoil(vm.getAddress("Foil"));
+        settleEpochWithFoil(foil, epochId, price, owner);
+    }
+
+    function settleEpochWithFoil(
+        IFoil foil,
+        uint256 epochId,
+        uint160 price,
+        address owner
+    ) internal {
         IMintableToken bondCurrency = IMintableToken(
             vm.getAddress("BondCurrency.Token")
         );
-        IFoil foil = IFoil(vm.getAddress("Foil"));
+
         (, , , , IFoilStructs.MarketParams memory marketParams) = foil
             .getMarket();
         uint256 bondAmount = marketParams.bondAmount;
