@@ -3,7 +3,7 @@ import EmailCaptureButton from '@/lib/components/EmailCaptureButton';
 export const Features = () => {
   return (
     <div className="z-10 w-full px-4 pt-6 text-center md:px-14 md:pt-0">
-      <div className="grid grid-cols-1 gap-6 md:-mt-40 md:gap-14 md:pt-12 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 md:-mt-40 md:gap-6 md:pt-12 lg:grid-cols-3">
         <div className="rounded-4xl border border-border bg-white p-14">
           <h2 className="mb-4 text-3xl font-bold text-primary">Subscribe</h2>
           <div className="mx-auto mb-7 max-w-56 text-xl">

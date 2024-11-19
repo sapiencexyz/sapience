@@ -138,12 +138,18 @@ export const HowItWorks = () => {
         ))}
       </div>
 
-      <div className="absolute bottom-[40px] z-10 flex items-center gap-2 rounded-3xl border border-[rgba(218,216,209,0.2)] bg-white px-8 py-5 md:bottom-[120px]">
-        <button className="h-6 w-6" onClick={prevSlide}>
+      <div className="absolute bottom-[40px] z-10 flex items-center gap-2 rounded-3xl border border-[rgba(218,216,209,0.2)] bg-white md:bottom-[120px]">
+        <button
+          className="flex h-full items-center px-8 py-5"
+          onClick={prevSlide}
+        >
           <MoveLeftIcon className="h-6 w-6" />
         </button>
-        <div className="mx-4 h-[18px] w-[1px] bg-[#DAD8D1]" />
-        <button className="h-6 w-6" onClick={nextSlide}>
+        <div className="h-[18px] w-[1px] bg-[#DAD8D1]" />
+        <button
+          className="flex h-full items-center px-8 py-5"
+          onClick={nextSlide}
+        >
           <MoveRightIcon className="h-6 w-6" />
         </button>
       </div>
