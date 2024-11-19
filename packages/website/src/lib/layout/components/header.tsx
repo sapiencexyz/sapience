@@ -14,7 +14,7 @@ export const Header = () => {
       <AnimatePresence>
         {showBanner && (
           <motion.div
-            className="relative mb-6 rounded-4xl bg-black p-2 text-left text-background md:text-center"
+            className="relative mb-6 rounded-4xl bg-primary p-2 text-left text-background md:text-center"
             initial={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}

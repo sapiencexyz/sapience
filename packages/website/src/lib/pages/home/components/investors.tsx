@@ -3,7 +3,7 @@ import Image from 'next/image';
 export const Investors = () => {
   return (
     <div className="my-12 w-full px-4 md:px-14">
-      <div className="rounded-4xl border border-border pb-8 pt-16 text-center">
+      <div className="rounded-4xl border border-border p-8 pt-16 text-center">
         <div className="mx-auto grid max-w-3xl gap-2.5 space-y-6 py-12 text-center">
           <div className="mx-auto mb-6 inline-block rounded-4xl border border-border px-8 py-2.5">
             <h2 className="text-lg font-semibold">Backed By</h2>
@@ -61,7 +61,7 @@ export const Investors = () => {
                 />
               </h5>
             </div>
-            <div>
+            <div className="order-last md:order-none">
               <Image
                 src="/assets/larry.jpg"
                 alt="Larry"
@@ -82,7 +82,7 @@ export const Investors = () => {
                 />
               </h5>
             </div>
-            <div>
+            <div className="order-3 md:order-none">
               <Image
                 src="/assets/publicworks.svg"
                 alt="Public Works"
