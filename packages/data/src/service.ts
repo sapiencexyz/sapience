@@ -36,6 +36,7 @@ import dotenv from "dotenv";
 import path from "path";
 import { RenderJob } from "./models/RenderJob";
 import { getMarketStartEndBlock } from "./controllers/marketHelpers";
+import { isValidWalletSignature } from "./middleware";
 
 const PORT = 3001;
 
@@ -513,11 +514,19 @@ const startServer = async () => {
   });
 
   app.get("/reindex", async (req, res) => {
-    const { address, chainId } = req.query;
+    const { address, chainId, signature, timestamp } = req.query;
     if (typeof chainId !== "string" || typeof address !== "string") {
       return res.status(400).json({ error: "Invalid request parameters" });
     }
     try {
+      const isAuthenticated = await isValidWalletSignature(
+        signature as `0x${string}`,
+        Number(timestamp)
+      );
+      if (!isAuthenticated) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
       const RENDER_API_KEY = process.env.RENDER_API_KEY;
       if (!RENDER_API_KEY) {
         throw new Error("RENDER_API_KEY not set");
@@ -845,7 +854,8 @@ const startServer = async () => {
         return res.status(404).json({ error: "Epoch not found" });
       }
 
-      const duration = Number(epoch.endTimestamp) - Number(epoch.startTimestamp);
+      const duration =
+        Number(epoch.endTimestamp) - Number(epoch.startTimestamp);
       const startTime = Math.floor(Date.now() / 1000) - duration;
 
       // Fetch transactions from Etherscan
@@ -869,7 +879,7 @@ const startServer = async () => {
             `&sort=desc` +
             `&apikey=${ETHERSCAN_API_KEY}`
         );
-        
+
         const data = await response.json();
         if (data.status !== "1" || !data.result.length) break;
 
@@ -910,7 +920,7 @@ const startServer = async () => {
         .map((_, i) => {
           const bucketStart = startTime + i * bucketDuration;
           const bucketEnd = bucketStart + bucketDuration;
-          
+
           const bucketGasUsed = transactions
             .filter(
               (tx) =>
