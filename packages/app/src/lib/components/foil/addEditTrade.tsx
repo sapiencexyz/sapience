@@ -1,7 +1,7 @@
 /* eslint-disable sonarjs/cognitive-complexity */
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { debounce } from 'lodash';
-import { HelpCircle, AlertTriangle } from 'lucide-react';
+import { HelpCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import { useState, useEffect, useContext, useMemo } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import type { AbiFunction, WriteContractErrorType } from 'viem';
@@ -551,11 +551,6 @@ export default function AddEditTrade() {
       );
     }
 
-    let buttonTxt = isEdit ? 'Update Position' : 'Create Position';
-    if (requireApproval) {
-      buttonTxt = `Approve ${collateralAssetTicker} Transfer`;
-    }
-
     const isLoading =
       pendingTxn ||
       isLoadingCollateralChange ||
@@ -564,6 +559,13 @@ export default function AddEditTrade() {
           ? quoteModifyPositionResult.isFetching
           : quoteCreatePositionResult.isFetching));
 
+    let buttonTxt = isEdit ? 'Update Position' : 'Create Position';
+    if (requireApproval) {
+      buttonTxt = `Approve ${collateralAssetTicker} Transfer`;
+    }
+    if (isLoading && !formError) {
+      buttonTxt = 'Fetching Collateral Change...';
+    }
     return (
       <div className="mb-4">
         <Button
@@ -576,7 +578,7 @@ export default function AddEditTrade() {
           size="lg"
         >
           {isLoading && !formError ? (
-            <span className="loading loading-spinner" />
+            <Loader2 className="h-6 w-6 animate-spin" />
           ) : null}
           {buttonTxt}
         </Button>
