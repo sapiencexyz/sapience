@@ -4,20 +4,24 @@ import Spline from '@splinetool/react-spline';
 import { MoveLeftIcon, MoveRightIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 
 const slides = [
   {
     title: 'Liquidity providers can earn yield on their liquid staking tokens',
     scene: 'https://prod.spline.design/5aaP9EfPgQReptDE/scene.splinecode',
+    image: '/assets/howitworks1.png',
   },
   {
     title:
       'Buyers purchase subscriptions and profit when average costs increase',
     scene: 'https://prod.spline.design/rFtuFMkIkTJ7Cs5A/scene.splinecode',
+    image: '/assets/howitworks2.png',
   },
   {
     title: 'Paymasters and roll-ups can offer fixed costs to users',
     scene: 'https://prod.spline.design/BBIcMw9OjhboBEjl/scene.splinecode',
+    image: '/assets/howitworks3.png',
   },
 ];
 
@@ -57,7 +61,7 @@ export const HowItWorks = () => {
   return (
     <div
       ref={containerRef}
-      className="relative flex h-[800px] w-full flex-col items-center border-b border-t border-border bg-black"
+      className="relative flex h-[500px] w-full flex-col items-center border-b border-t border-border bg-black md:h-[800px]"
     >
       <div className="absolute inset-4 z-[2] md:inset-14">
         <div className="relative h-full w-full overflow-hidden rounded-4xl border border-border">
@@ -79,7 +83,7 @@ export const HowItWorks = () => {
             duration: 0.8,
             ease: 'easeInOut',
           }}
-          className="relative mt-8 w-full px-20 py-5 text-center text-4xl font-bold text-white drop-shadow-[1px_1px_3px_rgba(0,0,0,0.75)] md:text-6xl md:leading-loose md:tracking-wide"
+          className="relative w-full px-8 py-5 text-center text-2xl font-bold text-white drop-shadow-[1px_1px_3px_rgba(0,0,0,0.75)] md:mt-8 md:px-20 md:text-6xl md:leading-loose md:tracking-wide"
         >
           {slides[currentSlide].title}
         </motion.h1>
@@ -113,16 +117,27 @@ export const HowItWorks = () => {
                 height: '100%',
               }}
             >
-              <Spline
-                className="!block h-full w-full object-cover"
-                scene={slide.scene}
-              />
+              <div className="block h-full w-full md:hidden">
+                <Image
+                  src={slide.image}
+                  alt={slide.title}
+                  fill
+                  className="object-cover"
+                  priority
+                />
+              </div>
+              <div className="hidden h-full w-full md:block">
+                <Spline
+                  className="!block h-full w-full object-cover"
+                  scene={slide.scene}
+                />
+              </div>
             </motion.div>
           </motion.div>
         ))}
       </div>
 
-      <div className="absolute bottom-[120px] z-10 flex items-center gap-2 rounded-3xl border border-[rgba(218,216,209,0.2)] bg-white px-8 py-5">
+      <div className="absolute bottom-[40px] z-10 flex items-center gap-2 rounded-3xl border border-[rgba(218,216,209,0.2)] bg-white px-8 py-5 md:bottom-[120px]">
         <button className="h-6 w-6" onClick={prevSlide}>
           <MoveLeftIcon className="h-6 w-6" />
         </button>

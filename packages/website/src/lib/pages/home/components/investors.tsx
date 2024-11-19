@@ -11,7 +11,7 @@ export const Investors = () => {
 
           <div className="grid gap-4 md:grid-cols-2 md:gap-0">
             <div>
-              <h2 className="mb-10 mt-2 h-9 text-7xl font-black uppercase tracking-widest">
+              <h2 className="mb-10 mt-2 h-9 text-7xl font-black uppercase tracking-wider">
                 Zeal
               </h2>
               <h3 className="font-medium text-muted-foreground">Joe Buttram</h3>
@@ -48,7 +48,7 @@ export const Investors = () => {
                 height={80}
                 className="mx-auto mb-2 h-[80px] w-[80px] rounded-full object-cover grayscale"
               />
-              <h2 className="mb-1 text-xl">Cobie</h2>
+              <h2 className="mb-1 text-xl font-semibold">Cobie</h2>
               <h4 className="font-medium text-muted-foreground">@cobie</h4>
               <h5 className="align-center text-sm text-muted-foreground">
                 via
@@ -69,7 +69,7 @@ export const Investors = () => {
                 height={80}
                 className="mx-auto mb-2 h-[80px] w-[80px] rounded-full object-cover grayscale"
               />
-              <h2 className="mb-1 text-xl">Larry</h2>
+              <h2 className="mb-1 text-xl font-semibold">Larry</h2>
               <h4 className="font-medium text-muted-foreground">The Block</h4>
               <h5 className="align-center text-sm text-muted-foreground">
                 via
@@ -102,7 +102,7 @@ export const Investors = () => {
                 height={80}
                 className="mx-auto mb-2 h-[80px] w-[80px] rounded-full object-cover grayscale"
               />
-              <h2 className="mb-1 text-xl">Ismail</h2>
+              <h2 className="mb-1 text-xl font-semibold">Ismail</h2>
               <h4 className="font-medium text-muted-foreground">Celestia</h4>
             </div>
             <div>
@@ -113,7 +113,7 @@ export const Investors = () => {
                 height={80}
                 className="mx-auto mb-2 h-[80px] w-[80px] rounded-full object-cover grayscale"
               />
-              <h2 className="mb-1 text-xl">Dean</h2>
+              <h2 className="mb-1 text-xl font-semibold">Dean</h2>
               <h4 className="font-medium text-muted-foreground">
                 @deaneigenmann
               </h4>
@@ -126,7 +126,7 @@ export const Investors = () => {
                 height={80}
                 className="mx-auto mb-2 h-[80px] w-[80px] rounded-full object-cover grayscale"
               />
-              <h2 className="mb-1 text-xl">Steven</h2>
+              <h2 className="mb-1 text-xl font-semibold">Steven</h2>
               <h4 className="font-medium text-muted-foreground">The Block</h4>
             </div>
             <div>
@@ -137,7 +137,7 @@ export const Investors = () => {
                 height={80}
                 className="mx-auto mb-2 h-[80px] w-[80px] rounded-full object-cover grayscale"
               />
-              <h2 className="mb-1 text-xl">MacLane</h2>
+              <h2 className="mb-1 text-xl font-semibold">MacLane</h2>
               <h4 className="font-medium text-muted-foreground">Threshold</h4>
             </div>
           </div>
