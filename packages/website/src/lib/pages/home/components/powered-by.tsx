@@ -4,7 +4,7 @@ import Image from 'next/image';
 export const PoweredBy = () => {
   return (
     <div className="my-12 w-full px-4 md:px-14">
-      <div className="rounded-4xl border border-border p-14 text-center">
+      <div className="rounded-4xl border border-border pb-8 pt-16 text-center">
         <div className="mx-auto inline-block rounded-4xl border border-border px-8 py-2.5">
           <h2 className="text-lg font-semibold">Powered By</h2>
         </div>
