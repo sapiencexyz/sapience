@@ -9,7 +9,9 @@ export const FAQ = () => {
   return (
     <div className="container mx-auto max-w-2xl px-4 py-16 md:px-6">
       <div className="grid gap-2.5">
-        <h1 className="text-center text-3xl font-semibold text-primary">FAQ</h1>
+        <div className="mx-auto mb-14 inline-block rounded-4xl border border-border bg-white px-8 py-2.5">
+          <h2 className="text-lg font-semibold">FAQ</h2>
+        </div>
         <Accordion type="single" collapsible>
           <AccordionItem value="what-is-foil">
             <AccordionTrigger>What is Foil?</AccordionTrigger>

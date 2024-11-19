@@ -10,20 +10,24 @@ export const Header = () => {
   const [showBanner, setShowBanner] = useState(true);
 
   return (
-    <header className="bg-base-100/80 position-fixed sticky top-0 z-20 w-full border-b border-border bg-background md:bg-transparent md:backdrop-blur-md p-4 md:px-14 md:py-6">
+    <header className="bg-base-100/80 position-fixed sticky top-0 z-20 w-full border-b border-border bg-background p-4 md:bg-transparent md:px-14 md:py-6 md:backdrop-blur-md">
       <AnimatePresence>
         {showBanner && (
-          <motion.div 
-            className="bg-black p-2 text-left md:text-center text-background rounded-4xl mb-6 relative"
+          <motion.div
+            className="relative mb-6 rounded-4xl bg-black p-2 text-left text-background md:text-center"
             initial={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
           >
             <span className="font-semibold">
-              <span className="hidden md:inline">⛽ Foil&apos;s Testnet Competition is coming soon</span>
-              <span className="md:hidden pl-3">⛽&nbsp;&nbsp;Testnet Competition Coming Soon</span>
+              <span className="hidden md:inline">
+                ⛽ Foil&apos;s Testnet Competition is coming soon
+              </span>
+              <span className="pl-3 md:hidden">
+                ⛽&nbsp;&nbsp;Testnet Competition Coming Soon
+              </span>
             </span>
-            <button 
+            <button
               onClick={() => setShowBanner(false)}
               className="absolute right-5 top-1/2 -translate-y-1/2 text-background hover:opacity-70"
             >
@@ -37,7 +41,7 @@ export const Header = () => {
         <div className="ml-auto flex items-center gap-4 md:gap-8">
           <a
             href="https://docs.foil.xyz"
-            className="text-foreground decoration-1 underline-offset-2 hover:underline font-semibold"
+            className="font-semibold text-foreground decoration-1 underline-offset-2 hover:underline"
           >
             Docs
           </a>

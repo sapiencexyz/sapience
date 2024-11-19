@@ -11,6 +11,18 @@ export default {
   		sans: ['var(--font-sans)', ...fontFamily.sans]
   	},
   	extend: {
+	fontSize: {
+		'6xl': ['79px', {
+			lineHeight: '93px',
+			letterSpacing: '2%',
+		  }],
+	},
+    lineHeight: {
+      'loose': '93px',
+    },
+    letterSpacing: {
+      'wide': '2%',
+    },
   		borderRadius: {
 			'4xl': '36px',
 			'3xl': '28px',

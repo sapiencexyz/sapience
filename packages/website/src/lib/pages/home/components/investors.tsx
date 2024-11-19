@@ -4,10 +4,8 @@ export const Investors = () => {
   return (
     <div className="container mx-auto max-w-3xl px-4 py-20 md:px-6">
       <div className="grid gap-2.5 space-y-6 py-12 text-center">
-        <div className="inline-block mx-auto border border-border rounded-4xl px-8 py-2.5 mb-6">
-        <h2 className="font-semibold text-lg">
-          Backed By
-        </h2>
+        <div className="mx-auto mb-6 inline-block rounded-4xl border border-border px-8 py-2.5">
+          <h2 className="text-lg font-semibold">Backed By</h2>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 md:gap-0">
