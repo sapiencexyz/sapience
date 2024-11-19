@@ -1,5 +1,5 @@
 {
-  "address": "0x40E6A9478Ff1cc4FF771D36aaF2CD7ea5c0262C5",
+  "address": "0xE2c29Ea6aF42f5307a472Cc4479230C6Ef0122ef",
   "abi": [
     {
       "type": "function",
@@ -13,55 +13,50 @@
       ],
       "outputs": [
         {
-          "name": "startTime",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "endTime",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "pool",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "ethToken",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "gasToken",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "minPriceD18",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "maxPriceD18",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "settled",
-          "type": "bool",
-          "internalType": "bool"
-        },
-        {
-          "name": "settlementPriceD18",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "params",
+          "name": "epochData",
           "type": "tuple",
-          "internalType": "struct IFoilStructs.EpochParams",
+          "internalType": "struct IFoilStructs.EpochData",
           "components": [
+            {
+              "name": "epochId",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "startTime",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "endTime",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "pool",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "ethToken",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "gasToken",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "minPriceD18",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "maxPriceD18",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
             {
               "name": "baseAssetMinPriceTick",
               "type": "int24",
@@ -72,6 +67,23 @@
               "type": "int24",
               "internalType": "int24"
             },
+            {
+              "name": "settled",
+              "type": "bool",
+              "internalType": "bool"
+            },
+            {
+              "name": "settlementPriceD18",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ]
+        },
+        {
+          "name": "params",
+          "type": "tuple",
+          "internalType": "struct IFoilStructs.MarketParams",
+          "components": [
             {
               "name": "feeRate",
               "type": "uint24",
@@ -128,60 +140,50 @@
       "inputs": [],
       "outputs": [
         {
-          "name": "epochId",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "startTime",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "endTime",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "pool",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "ethToken",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "gasToken",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "minPriceD18",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "maxPriceD18",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "settled",
-          "type": "bool",
-          "internalType": "bool"
-        },
-        {
-          "name": "settlementPriceD18",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "params",
+          "name": "epochData",
           "type": "tuple",
-          "internalType": "struct IFoilStructs.EpochParams",
+          "internalType": "struct IFoilStructs.EpochData",
           "components": [
+            {
+              "name": "epochId",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "startTime",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "endTime",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "pool",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "ethToken",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "gasToken",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "minPriceD18",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "maxPriceD18",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
             {
               "name": "baseAssetMinPriceTick",
               "type": "int24",
@@ -192,6 +194,23 @@
               "type": "int24",
               "internalType": "int24"
             },
+            {
+              "name": "settled",
+              "type": "bool",
+              "internalType": "bool"
+            },
+            {
+              "name": "settlementPriceD18",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ]
+        },
+        {
+          "name": "params",
+          "type": "tuple",
+          "internalType": "struct IFoilStructs.MarketParams",
+          "components": [
             {
               "name": "feeRate",
               "type": "uint24",
@@ -268,20 +287,10 @@
           "internalType": "address"
         },
         {
-          "name": "epochParams",
+          "name": "marketParams",
           "type": "tuple",
-          "internalType": "struct IFoilStructs.EpochParams",
+          "internalType": "struct IFoilStructs.MarketParams",
           "components": [
-            {
-              "name": "baseAssetMinPriceTick",
-              "type": "int24",
-              "internalType": "int24"
-            },
-            {
-              "name": "baseAssetMaxPriceTick",
-              "type": "int24",
-              "internalType": "int24"
-            },
             {
               "name": "feeRate",
               "type": "uint24",
@@ -513,12 +522,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x7fd7fdeb2530bdee6695181d8b4ee60485bc2b9f611058663c510a30a1d4ade7",
-  "deployTxnBlockNumber": "7070744",
-  "deployTimestamp": "1731530004",
+  "deployTxnHash": "0xc935982fb48b6810e55f27555f4f5c66c8f432171f9395464677dfd636cc20e1",
+  "deployTxnBlockNumber": "7111820",
+  "deployTimestamp": "1732054692",
   "sourceName": "src/market/modules/ViewsModule.sol",
   "contractName": "ViewsModule",
   "deployedOn": "deploy.ViewsModule",
-  "gasUsed": 1689750,
-  "gasCost": "373016663"
+  "gasUsed": 1658695,
+  "gasCost": "1777833037"
 }
