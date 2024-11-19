@@ -3,7 +3,7 @@
 import Spline from '@splinetool/react-spline';
 import { MoveLeftIcon, MoveRightIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 const slides = [
   {
@@ -21,8 +21,30 @@ const slides = [
   },
 ];
 
+function useIsInViewport(ref: React.RefObject<HTMLElement>) {
+  const [isIntersecting, setIsIntersecting] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => {
+      setIsIntersecting(entry.isIntersecting);
+    });
+
+    if (ref.current) {
+      observer.observe(ref.current);
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [ref]);
+
+  return isIntersecting;
+}
+
 export const HowItWorks = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isInView = useIsInViewport(containerRef);
 
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % slides.length);
@@ -33,7 +55,10 @@ export const HowItWorks = () => {
   };
 
   return (
-    <div className="relative flex h-[800px] w-full flex-col items-center border-b border-t border-border bg-black bg-secondary">
+    <div
+      ref={containerRef}
+      className="relative flex h-[800px] w-full flex-col items-center border-b border-t border-border bg-black"
+    >
       <div className="absolute inset-4 z-[2] md:inset-14">
         <div className="relative h-full w-full overflow-hidden rounded-4xl border border-border">
           <div className="absolute inset-0 bg-[url('../../../public/assets/dotgrid.svg')] bg-[length:45px_45px] bg-repeat opacity-[0.33]" />
@@ -50,7 +75,10 @@ export const HowItWorks = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{
+            duration: 0.8,
+            ease: 'easeInOut',
+          }}
           className="relative mt-8 w-full px-20 py-5 text-center text-4xl font-bold text-white drop-shadow-[1px_1px_3px_rgba(0,0,0,0.75)] md:text-6xl md:leading-loose md:tracking-wide"
         >
           {slides[currentSlide].title}
@@ -62,17 +90,34 @@ export const HowItWorks = () => {
           <motion.div
             key={index}
             initial={{ opacity: 0 }}
-            animate={{ opacity: index === currentSlide ? 1 : 0 }}
-            transition={{ duration: 0.5 }}
+            animate={{ opacity: isInView && index === currentSlide ? 1 : 0 }}
+            transition={{
+              duration: 0.8,
+              ease: 'easeInOut',
+            }}
             style={{
               position: 'absolute',
               inset: 0,
+              display: 'block',
+              height: '100%',
             }}
           >
-            <Spline
-              className="h-full w-full object-cover"
-              scene={slide.scene}
-            />
+            <motion.div
+              initial={{ scale: 1.1 }}
+              animate={{ scale: isInView ? 1 : 1.1 }}
+              transition={{
+                duration: 1,
+                ease: 'easeOut',
+              }}
+              style={{
+                height: '100%',
+              }}
+            >
+              <Spline
+                className="!block h-full w-full object-cover"
+                scene={slide.scene}
+              />
+            </motion.div>
           </motion.div>
         ))}
       </div>

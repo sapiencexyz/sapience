@@ -2,14 +2,40 @@
 
 import { useScroll, motion, useTransform } from 'framer-motion';
 import Spline from '@splinetool/react-spline';
+import { useState, useRef, useEffect } from 'react';
+
+function useIsInViewport(ref: React.RefObject<HTMLElement>) {
+  const [isIntersecting, setIsIntersecting] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => {
+      setIsIntersecting(entry.isIntersecting);
+    });
+
+    if (ref.current) {
+      observer.observe(ref.current);
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [ref]);
+
+  return isIntersecting;
+}
 
 export const Hero = () => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isInView = useIsInViewport(containerRef);
   const { scrollYProgress } = useScroll();
   const y = useTransform(scrollYProgress, [0, 1], ['0%', '200%']);
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0.25]);
 
   return (
-    <div className="relative h-[1000px] w-full overflow-hidden">
+    <div
+      ref={containerRef}
+      className="relative h-[1000px] w-full overflow-hidden"
+    >
       <motion.div
         className="relative z-[2] mx-auto flex min-h-[1000px] w-full max-w-screen-md flex-col items-center gap-3 px-4 pt-60 text-center md:gap-4"
         style={{ opacity }}
@@ -29,7 +55,9 @@ export const Hero = () => {
         style={{ y, opacity }}
       >
         <div className="h-[1000px] scale-150 opacity-90">
-          <Spline scene="https://prod.spline.design/gyoZ1cjoFk5-20wQ/scene.splinecode" />
+          {isInView && (
+            <Spline scene="https://prod.spline.design/gyoZ1cjoFk5-20wQ/scene.splinecode" />
+          )}
         </div>
       </motion.div>
     </div>
