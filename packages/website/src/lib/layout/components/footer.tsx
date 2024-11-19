@@ -7,13 +7,13 @@ import { Button } from '@/components/ui/button';
 
 export const Footer = () => {
   return (
-    <footer className="py-6 text-center">
-      <div className="flex justify-center gap-4">
+    <footer className="relative m-4 rounded-4xl bg-[#353537] py-16 text-center md:m-14">
+      <div className="absolute inset-0 bg-[url('../../../public/assets/dotgrid.svg')] bg-[length:45px_45px] bg-repeat opacity-[0.33]" />
+      <div className="relative flex justify-center gap-8">
         <Button
-          variant="outline"
           size="icon"
           asChild
-          className="hover:text-primary"
+          className="border border-white/70 bg-[#353537] hover:text-primary"
         >
           <a
             href="https://discord.gg/foil"
@@ -21,15 +21,14 @@ export const Footer = () => {
             rel="noopener noreferrer"
             aria-label="Discord"
           >
-            <DiscordLogoIcon className="h-5 w-5" />
+            <DiscordLogoIcon className="h-5 w-5 text-white opacity-70" />
           </a>
         </Button>
 
         <Button
-          variant="outline"
           size="icon"
           asChild
-          className="hover:text-primary"
+          className="border border-white/70 bg-[#353537] hover:text-primary"
         >
           <a
             href="https://twitter.com/foilxyz"
@@ -37,15 +36,14 @@ export const Footer = () => {
             rel="noopener noreferrer"
             aria-label="Twitter"
           >
-            <TwitterLogoIcon className="h-5 w-5" />
+            <TwitterLogoIcon className="h-5 w-5 text-white opacity-70" />
           </a>
         </Button>
 
         <Button
-          variant="outline"
           size="icon"
           asChild
-          className="hover:text-primary"
+          className="border border-white/70 bg-[#353537] hover:text-primary"
         >
           <a
             href="https://github.com/foilxyz"
@@ -53,7 +51,7 @@ export const Footer = () => {
             rel="noopener noreferrer"
             aria-label="GitHub"
           >
-            <GitHubLogoIcon className="h-5 w-5" />
+            <GitHubLogoIcon className="h-5 w-5 text-white opacity-70" />
           </a>
         </Button>
       </div>
