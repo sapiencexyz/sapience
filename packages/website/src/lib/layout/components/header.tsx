@@ -10,7 +10,7 @@ export const Header = () => {
   const [showBanner, setShowBanner] = useState(true);
 
   return (
-    <header className="bg-base-100/80 position-fixed sticky top-0 z-10 w-full border-b border-border bg-background md:bg-transparent md:backdrop-blur-md p-4 md:px-14 md:py-6">
+    <header className="bg-base-100/80 position-fixed sticky top-0 z-20 w-full border-b border-border bg-background md:bg-transparent md:backdrop-blur-md p-4 md:px-14 md:py-6">
       <AnimatePresence>
         {showBanner && (
           <motion.div 
