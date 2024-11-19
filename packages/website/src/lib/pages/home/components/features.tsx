@@ -31,7 +31,7 @@ export const Features = () => {
             <AnimatePresence>
               {isHovered1 && (
                 <motion.div 
-                  className="absolute inset-x-0 top-1/2 bottom-0 w-full h-full"
+                  className="absolute inset-x-0 top-1/2 bottom-0 w-full h-full scale-[1.5]"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 20 }}
@@ -59,10 +59,10 @@ export const Features = () => {
             <AnimatePresence>
               {isHovered2 && (
                 <motion.div 
-                  className="absolute inset-x-0 top-1/2 bottom-0 w-full h-full"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
+                  className="absolute inset-x-0 top-1/2 bottom-0 w-full h-full scale-[1.5]"
+                  initial={{ opacity: 0, x: 50, y: -30 }}
+                  animate={{ opacity: 1, x: 50, y: -50 }}
+                  exit={{ opacity: 0, x: 50, y: -30 }}
                   transition={{ duration: 0.3, ease: "easeOut" }}
                 >
                   <Spline scene="https://prod.spline.design/UeFGrlFVniWxvAFh/scene.splinecode" />
@@ -88,9 +88,9 @@ export const Features = () => {
               {isHovered3 && (
                 <motion.div 
                   className="absolute inset-x-0 top-1/2 bottom-0 w-full h-full"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: -30 }}
+                  animate={{ opacity: 1, y: -50 }}
+                  exit={{ opacity: 0, y: -30 }}
                   transition={{ duration: 0.3, ease: "easeOut" }}
                 >
                   <Spline scene="https://prod.spline.design/kve56rmjyCpgEW3G/scene.splinecode" />
