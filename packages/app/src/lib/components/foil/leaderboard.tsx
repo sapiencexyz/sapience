@@ -81,9 +81,9 @@ const PositionCell = ({ row }: { row: { original: Position } }) => (
   </Link>
 );
 
-const PnLCell = ({ cell }: { cell: { getValue: () => string } }) => (
+const PnLCell = ({ cell }: { cell: { getValue: () => unknown } }) => (
   <>
-    <NumberDisplay value={cell.getValue()} /> wstETH
+    <NumberDisplay value={cell.getValue() as number} /> wstETH
   </>
 );
 
