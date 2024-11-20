@@ -11,6 +11,7 @@ import { ChevronDown, ChevronUp, ArrowUpDown, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useContext, useState, useMemo } from 'react';
 
+import MarketAddress from '../MarketAddress';
 import {
   Table,
   TableBody,
@@ -39,7 +40,7 @@ interface Position {
   };
   address: string;
   isLP: boolean;
-  // Add other position properties as needed
+  owner: string;
 }
 
 const useEpochPositions = (marketId: string, epochId: string) => {
@@ -87,6 +88,9 @@ const PnLCell = ({ cell }: { cell: { getValue: () => unknown } }) => (
   </>
 );
 
+const OwnerCell = ({ cell }: { cell: { getValue: () => unknown } }) =>
+  cell.getValue() as string;
+
 const Leaderboard = ({ params }: Props) => {
   const { pool } = useContext(MarketContext);
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -109,9 +113,10 @@ const Leaderboard = ({ params }: Props) => {
         cell: PositionCell,
       },
       {
-        id: 'type',
-        header: 'Type',
-        accessorFn: (row) => (row.isLP ? 'LP' : 'Trader'),
+        id: 'owner',
+        header: 'Owner',
+        accessorFn: (row) => row.owner,
+        cell: OwnerCell,
       },
       {
         id: 'pnl',
