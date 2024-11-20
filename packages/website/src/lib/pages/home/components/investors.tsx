@@ -31,7 +31,7 @@ export const Investors = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-            <div>
+            <div className="order-2 mb-6 md:order-none md:mb-0">
               <Image
                 src="/assets/cms.png"
                 alt="CMS"
@@ -40,7 +40,7 @@ export const Investors = () => {
                 className="h-full w-auto object-contain"
               />
             </div>
-            <div>
+            <div className="order-4 md:order-none">
               <Image
                 src="/assets/cobie.jpg"
                 alt="Cobie"
@@ -61,7 +61,7 @@ export const Investors = () => {
                 />
               </h5>
             </div>
-            <div className="order-last md:order-none">
+            <div className="order-5 md:order-none">
               <Image
                 src="/assets/larry.jpg"
                 alt="Larry"
@@ -82,7 +82,7 @@ export const Investors = () => {
                 />
               </h5>
             </div>
-            <div className="order-3 md:order-none">
+            <div className="order-3 mb-6 md:order-none md:mb-0">
               <Image
                 src="/assets/publicworks.svg"
                 alt="Public Works"
