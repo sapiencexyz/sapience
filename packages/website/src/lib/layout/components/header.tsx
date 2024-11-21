@@ -25,14 +25,14 @@ export const Header = () => {
                 href="https://forms.gle/4gZcMgQFtjeET7t59"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="ml-1 underline decoration-1 underline-offset-4"
+                className="ml-1 inline-block -translate-y-[0.5px] underline decoration-[0.5px] underline-offset-4"
               >
                 Sign up for the Testnet Competition
               </a>
             </span>
             <button
               onClick={() => setShowBanner(false)}
-              className="absolute right-5 top-1/2 -translate-y-1/2 text-background hover:opacity-70"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-background hover:opacity-70"
             >
               <X size={18} />
             </button>
@@ -41,7 +41,7 @@ export const Header = () => {
       </AnimatePresence>
       <section className="flex items-center justify-between">
         <Image src="/assets/logo.svg" alt="Logo" width={132} height={132} />
-        <div className="ml-auto flex items-center gap-4 md:gap-8">
+        <div className="ml-auto flex items-center gap-6 md:gap-8">
           <a
             href="https://docs.foil.xyz"
             className="font-semibold text-foreground decoration-1 underline-offset-2 hover:underline"
