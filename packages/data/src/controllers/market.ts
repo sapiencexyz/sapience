@@ -31,6 +31,11 @@ import {
   upsertMarketPrice,
   updateTransactionFromPositionSettledEvent,
 } from "./marketHelpers";
+import { Client, TextChannel, EmbedBuilder } from 'discord.js';
+
+const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
+const DISCORD_CHANNEL_ID = process.env.DISCORD_CHANNEL_ID;
+const discordClient = new Client({ intents: [] });
 
 // Called when the process starts, upserts markets in the database to match those in the constants.ts file
 export const initializeMarket = async (marketInfo: MarketInfo) => {
@@ -101,8 +106,9 @@ export const indexMarketEvents = async (market: Market, abi: Abi) => {
       const logIndex = log.logIndex || 0;
       const logData = JSON.parse(serializedLog); // Parse back to JSON object
 
-      // Extract epochId from logData (adjust this based on your event structure)
       const epochId = logData.args?.epochId || 0;
+
+      await alertEvent(chainId, market.address, epochId, blockNumber, block.timestamp, logData);
 
       await upsertEvent(
         chainId,
@@ -185,6 +191,48 @@ export const reindexMarketEvents = async (market: Market, abi: Abi) => {
     } catch (error) {
       console.error(`Error processing block ${blockNumber}:`, error);
     }
+  }
+};
+
+const alertEvent = async (
+  chainId: number,
+  address: string,
+  epochId: any,
+  blockNumber: bigint,
+  timestamp: bigint,
+  logData: any
+) => {
+  try {
+    if (!DISCORD_TOKEN || !DISCORD_CHANNEL_ID) {
+      console.warn('Discord credentials not configured, skipping alert');
+      return;
+    }
+
+    const channel = await discordClient.channels.fetch(DISCORD_CHANNEL_ID) as TextChannel;
+    
+    const embed = new EmbedBuilder()
+      .setTitle(`New Market Event: ${logData.eventName}`)
+      .setColor('#0099ff')
+      .addFields(
+        { name: 'Chain ID', value: chainId.toString(), inline: true },
+        { name: 'Market Address', value: address, inline: true },
+        { name: 'Epoch ID', value: epochId.toString(), inline: true },
+        { name: 'Block Number', value: blockNumber.toString(), inline: true },
+        { name: 'Timestamp', value: new Date(Number(timestamp) * 1000).toISOString(), inline: true }
+      )
+      .setTimestamp();
+
+    // Add event-specific details if available
+    if (logData.args) {
+      const argsField = Object.entries(logData.args)
+        .map(([key, value]) => `${key}: ${value}`)
+        .join('\n');
+      embed.addFields({ name: 'Event Arguments', value: `\`\`\`${argsField}\`\`\`` });
+    }
+
+    await channel.send({ embeds: [embed] });
+  } catch (error) {
+    console.error('Failed to send Discord alert:', error);
   }
 };
 
@@ -371,3 +419,4 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
     await upsertMarketPrice(newTransaction);
   }
 };
+
