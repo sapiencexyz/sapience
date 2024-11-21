@@ -3,15 +3,16 @@ import {
   useReactTable,
   flexRender,
   getCoreRowModel,
-  getSortedRowModel,
   type ColumnDef,
-  type SortingState,
 } from '@tanstack/react-table';
-import { ChevronDown, ChevronUp, ArrowUpDown, Loader2 } from 'lucide-react';
+import { Loader2, Copy } from 'lucide-react';
 import Link from 'next/link';
-import { useContext, useState, useMemo } from 'react';
+import { useContext, useState, useMemo, useEffect } from 'react';
+import { getEnsName } from 'viem/ens';
+import { usePublicClient } from 'wagmi';
 
-import MarketAddress from '../MarketAddress';
+import { badgeVariants } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -20,6 +21,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { useToast } from '~/hooks/use-toast';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import { calculatePnL } from '~/lib/util/positionUtil';
@@ -41,6 +49,12 @@ interface Position {
   address: string;
   isLP: boolean;
   owner: string;
+}
+
+interface GroupedPosition {
+  owner: string;
+  positions: Position[];
+  totalPnL: number;
 }
 
 const useEpochPositions = (marketId: string, epochId: string) => {
@@ -73,91 +87,158 @@ const useEpochPositions = (marketId: string, epochId: string) => {
   });
 };
 
-const PositionCell = ({ row }: { row: { original: Position } }) => (
-  <Link
-    href={`/positions/${row.original.chain?.id}:${row.original.address}/${row.original.positionId}`}
-    className="text-primary underline"
-  >
-    #{row.original.positionId.toString()}
-  </Link>
+const PositionCell = ({ row }: { row: { original: GroupedPosition } }) => (
+  <div className="flex flex-wrap gap-1.5 max-w-[180px]">
+    {row.original.positions.map((position, index) => (
+      <Link
+        key={position.positionId}
+        href={`/positions/${position.chain?.id}:${position.address}/${position.positionId}`}
+        className={badgeVariants({ variant: 'outline' })}
+      >
+        #{position.positionId.toString()}
+      </Link>
+    ))}
+  </div>
 );
 
 const PnLCell = ({ cell }: { cell: { getValue: () => unknown } }) => (
-  <>
+  <span className="text-xl">
     <NumberDisplay value={cell.getValue() as number} /> wstETH
-  </>
+  </span>
 );
 
-const OwnerCell = ({ cell }: { cell: { getValue: () => unknown } }) =>
-  cell.getValue() as string;
+const formatAddress = (address: string): string => {
+  if (!address) return '';
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+};
+
+const AddressDisplay = ({ address }: { address: string }) => {
+  const publicClient = usePublicClient();
+  const [ensName, setEnsName] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const resolveEns = async () => {
+      if (!publicClient) return;
+      try {
+        const ens = await getEnsName(publicClient, {
+          address: address as `0x${string}`,
+        });
+        if (ens) setEnsName(ens);
+      } catch (error) {
+        console.error('Error resolving ENS:', error);
+      }
+    };
+    resolveEns();
+  }, [address, publicClient]);
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await navigator.clipboard.writeText(address);
+    toast({
+      description: 'Address copied to clipboard',
+      duration: 2000,
+    });
+  };
+
+  return (
+    <div className="flex items-center gap-2 text-xl">
+      <span>{ensName || formatAddress(address)}</span>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 p-0.5"
+              onClick={handleCopy}
+            >
+              <Copy className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Copy address</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </div>
+  );
+};
+
+const OwnerCell = ({ cell }: { cell: { getValue: () => unknown } }) => (
+  <AddressDisplay address={cell.getValue() as string} />
+);
+
+const RankCell = ({ row }: { row: { index: number } }) => (
+  <span className="text-4xl font-bold">{row.index + 1}</span>
+);
 
 const Leaderboard = ({ params }: Props) => {
   const { pool } = useContext(MarketContext);
-  const [sorting, setSorting] = useState<SortingState>([]);
   const { data: positions, isLoading } = useEpochPositions(
     params.id,
     params.epoch
   );
 
-  const columns = useMemo<ColumnDef<Position>[]>(
+  const columns = useMemo<ColumnDef<GroupedPosition>[]>(
     () => [
       {
         id: 'rank',
         header: 'Rank',
-        cell: ({ row }) => row.index + 1,
-      },
-      {
-        id: 'position',
-        header: 'Position',
-        accessorFn: (row) => row.positionId,
-        cell: PositionCell,
+        cell: RankCell,
       },
       {
         id: 'owner',
-        header: 'Owner',
+        header: 'Wallet Address',
         accessorFn: (row) => row.owner,
         cell: OwnerCell,
       },
       {
         id: 'pnl',
         header: 'Profit/Loss',
-        accessorFn: (row) => calculatePnL(row, pool),
+        accessorFn: (row) => row.totalPnL,
         cell: PnLCell,
+      },
+      {
+        id: 'positions',
+        header: 'Positions',
+        cell: PositionCell,
       },
     ],
     [pool]
   );
 
-  const allPositions = useMemo(() => {
-    if (!positions) return [];
-    return positions
-      .map((position) => ({
-        ...position,
-        pnl: calculatePnL(position, pool),
-      }))
-      .sort((a, b) => b.pnl - a.pnl);
+  const groupedPositions = useMemo(() => {
+    if (!positions) return [] as GroupedPosition[];
+
+    // Group positions by owner
+    const groupedByOwner = positions.reduce<Record<string, GroupedPosition>>(
+      (acc, position) => {
+        if (!acc[position.owner]) {
+          acc[position.owner] = {
+            owner: position.owner,
+            positions: [],
+            totalPnL: 0,
+          };
+        }
+        acc[position.owner].positions.push(position);
+        acc[position.owner].totalPnL += calculatePnL(position, pool);
+        return acc;
+      },
+      {}
+    );
+
+    // Convert to array and sort by total PnL
+    return Object.values(groupedByOwner).sort(
+      (a, b) => b.totalPnL - a.totalPnL
+    );
   }, [positions, pool]);
 
-  const table = useReactTable({
-    data: allPositions,
+  const table = useReactTable<GroupedPosition>({
+    data: groupedPositions,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
-    state: {
-      sorting,
-    },
   });
-
-  const getSortIcon = (sortDirection: false | 'desc' | 'asc') => {
-    if (sortDirection === 'desc') {
-      return <ChevronDown className="h-3 w-3" aria-label="sorted descending" />;
-    }
-    if (sortDirection === 'asc') {
-      return <ChevronUp className="h-3 w-3" aria-label="sorted ascending" />;
-    }
-    return <ArrowUpDown className="h-3 w-3" aria-label="sortable" />;
-  };
 
   if (isLoading) {
     return (
@@ -174,22 +255,13 @@ const Leaderboard = ({ params }: Props) => {
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
+            <TableRow key={headerGroup.id} className="hover:bg-transparent">
               {headerGroup.headers.map((header) => (
-                <TableHead
-                  key={header.id}
-                  onClick={header.column.getToggleSortingHandler()}
-                  className="cursor-pointer"
-                >
-                  <span className="flex items-center">
-                    {flexRender(
-                      header.column.columnDef.header,
-                      header.getContext()
-                    )}
-                    <span className="ml-2 inline-block">
-                      {getSortIcon(header.column.getIsSorted())}
-                    </span>
-                  </span>
+                <TableHead key={header.id}>
+                  {flexRender(
+                    header.column.columnDef.header,
+                    header.getContext()
+                  )}
                 </TableHead>
               ))}
             </TableRow>
@@ -197,7 +269,7 @@ const Leaderboard = ({ params }: Props) => {
         </TableHeader>
         <TableBody>
           {table.getRowModel().rows.map((row) => (
-            <TableRow key={row.id}>
+            <TableRow key={row.id} className="hover:bg-transparent">
               {row.getVisibleCells().map((cell) => (
                 <TableCell key={cell.id}>
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
