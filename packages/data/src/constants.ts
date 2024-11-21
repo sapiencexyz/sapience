@@ -23,18 +23,20 @@ const safeRequire = (path: string): Deployment | null => {
 const FULL_MARKET_LIST = [
   {
     name: "Development Gas",
-    deployment: safeRequire("@/protocol/deployments/13370/Foil.json"),
+    deployment: safeRequire("@/protocol/deployments/13370/Foil1.json"),
     marketChainId: cannon.id,
     priceIndexer: new evmIndexer(mainnet.id),
     public: true,
   },
   {
     name: "Ethereum Gas",
-    deployment: safeRequire("@/protocol/deployments/11155111/Foil.json"),
+    deployment: safeRequire("@/protocol/deployments/11155111/Foil1.json"),
     marketChainId: sepolia.id,
     priceIndexer: new evmIndexer(mainnet.id),
     public: true,
-  }
+  },
 ];
 
-export const MARKET_INFO = FULL_MARKET_LIST.filter((market) => market.deployment !== null) as MarketInfo[];
+export const MARKET_INFO = FULL_MARKET_LIST.filter(
+  (market) => market.deployment !== null
+) as MarketInfo[];

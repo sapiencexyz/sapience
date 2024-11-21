@@ -9,7 +9,7 @@ const useFoilDeployment = (chainId?: number) => {
     const loadFoilData = async () => {
       try {
         const foil = await import(
-          `@/protocol/deployments/${chainId}/Foil.json`
+          `@/protocol/deployments/${chainId}/Foil1.json`
         );
         setFoilData(foil);
       } catch (err) {

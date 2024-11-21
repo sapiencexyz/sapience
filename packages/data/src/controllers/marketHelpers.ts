@@ -150,9 +150,13 @@ export const createOrModifyPosition = async (transaction: Transaction) => {
     position.quoteToken ||
     eventArgs.addedAmount1?.toString();
   position.borrowedBaseToken =
-    eventArgs.borrowedVGas?.toString() || eventArgs.loanAmount0?.toString() || position.borrowedBaseToken;
+    eventArgs.borrowedVGas?.toString() ||
+    eventArgs.loanAmount0?.toString() ||
+    position.borrowedBaseToken;
   position.borrowedQuoteToken =
-    eventArgs.borrowedVEth?.toString() || eventArgs.loanAmount1?.toString() || position.borrowedQuoteToken;
+    eventArgs.borrowedVEth?.toString() ||
+    eventArgs.loanAmount1?.toString() ||
+    position.borrowedQuoteToken;
 
   position.collateral = (
     BigInt(originalCollateral) + BigInt(transaction.collateralDelta)
@@ -267,7 +271,9 @@ export const createOrUpdateEpochFromContract = async (
     functionName,
     args,
   });
-  const _epochId = epochId || Number(epochReadResult[0]);
+  const epochData = epochReadResult[0];
+  console.log("epochReadResult", epochReadResult);
+  const _epochId = epochId || Number(epochData.epochId);
 
   // check if epoch already exists in db
   let existingEpoch = await epochRepository.findOne({
@@ -278,15 +284,14 @@ export const createOrUpdateEpochFromContract = async (
   });
   const updatedEpoch = existingEpoch || new Epoch();
 
-  const idxAdjustment = epochId ? 0 : 1; // getLatestEpoch returns and extra param at 0 index
+  //const idxAdjustment = epochId ? 0 : 1; // getLatestEpoch returns and extra param at 0 index
 
   updatedEpoch.epochId = _epochId;
-  updatedEpoch.startTimestamp = epochReadResult[0 + idxAdjustment].toString();
-  updatedEpoch.endTimestamp = epochReadResult[1 + idxAdjustment].toString();
-  updatedEpoch.settled = epochReadResult[7 + idxAdjustment];
-  updatedEpoch.settlementPriceD18 =
-    epochReadResult[8 + idxAdjustment].toString();
-  const epochParamsRaw = epochReadResult[9 + idxAdjustment];
+  updatedEpoch.startTimestamp = epochData.startTime.toString();
+  updatedEpoch.endTimestamp = epochData.endTime.toString();
+  updatedEpoch.settled = epochData.settled;
+  updatedEpoch.settlementPriceD18 = epochData.settlementPriceD18.toString();
+  const epochParamsRaw = epochReadResult[1];
   const epochParams: EpochParams = {
     ...epochParamsRaw,
     assertionLiveness: epochParamsRaw.assertionLiveness.toString(),
