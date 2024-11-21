@@ -38,15 +38,15 @@ export const Features = () => {
                   transition={{
                     ease: 'easeOut',
                     opacity: {
-                      enter: { delay: 1, duration: 0.3 },
+                      enter: { delay: 2, duration: 0.3 },
                       exit: { delay: 0, duration: 0.3 },
                     },
                     y: {
-                      enter: { delay: 1, duration: 0.3 },
+                      enter: { delay: 2, duration: 0.3 },
                       exit: { delay: 0, duration: 0.3 },
                     },
                     scale: {
-                      enter: { delay: 1, duration: 0.3 },
+                      enter: { delay: 2, duration: 0.3 },
                       exit: { delay: 0, duration: 0.3 },
                     },
                   }}
@@ -80,15 +80,15 @@ export const Features = () => {
                   transition={{
                     ease: 'easeOut',
                     opacity: {
-                      enter: { delay: 1, duration: 0.3 },
+                      enter: { delay: 2, duration: 0.3 },
                       exit: { delay: 0, duration: 0.3 },
                     },
                     y: {
-                      enter: { delay: 1, duration: 0.3 },
+                      enter: { delay: 2, duration: 0.3 },
                       exit: { delay: 0, duration: 0.3 },
                     },
                     scale: {
-                      enter: { delay: 1, duration: 0.3 },
+                      enter: { delay: 2, duration: 0.3 },
                       exit: { delay: 0, duration: 0.3 },
                     },
                   }}
@@ -122,15 +122,15 @@ export const Features = () => {
                   transition={{
                     ease: 'easeOut',
                     opacity: {
-                      enter: { delay: 1, duration: 0.3 },
+                      enter: { delay: 2, duration: 0.3 },
                       exit: { delay: 0, duration: 0.3 },
                     },
                     y: {
-                      enter: { delay: 1, duration: 0.3 },
+                      enter: { delay: 2, duration: 0.3 },
                       exit: { delay: 0, duration: 0.3 },
                     },
                     scale: {
-                      enter: { delay: 1, duration: 0.3 },
+                      enter: { delay: 2, duration: 0.3 },
                       exit: { delay: 0, duration: 0.3 },
                     },
                   }}

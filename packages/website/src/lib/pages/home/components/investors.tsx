@@ -11,20 +11,22 @@ export const Investors = () => {
 
           <div className="grid gap-4 md:grid-cols-2 md:gap-0">
             <div>
-              <h2 className="mb-10 mt-2 h-9 text-7xl font-black uppercase tracking-wider">
+              <h2 className="text-6xl font-black uppercase tracking-wider md:text-8xl">
                 Zeal
               </h2>
-              <h3 className="font-medium text-muted-foreground">Joe Buttram</h3>
+              <h3 className="-mt-1 font-medium text-muted-foreground md:mt-0.5">
+                Joe Buttram
+              </h3>
             </div>
             <div>
               <Image
-                src="/assets/crucible.png"
+                src="/assets/crucible.jpg"
                 alt="Crucible Capital"
                 width={1000}
                 height={1000}
-                className="mx-auto mb-3.5 mt-3.5 h-14 w-auto object-contain"
+                className="mx-auto -mt-2 w-auto object-contain"
               />
-              <h3 className="font-medium text-muted-foreground">
+              <h3 className="-mt-3 font-medium text-muted-foreground">
                 Meltem Demirors
               </h3>
             </div>
