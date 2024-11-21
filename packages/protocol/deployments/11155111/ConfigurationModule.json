@@ -1,5 +1,5 @@
 {
-  "address": "0x212aDC10288CbBC9F94C42697369eb0D2755475f",
+  "address": "0x9a1061bA5486f94c3776d7188e30Cb3b8C51ecd9",
   "abi": [
     {
       "type": "constructor",
@@ -37,6 +37,16 @@
           "name": "startingSqrtPriceX96",
           "type": "uint160",
           "internalType": "uint160"
+        },
+        {
+          "name": "baseAssetMinPriceTick",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "baseAssetMaxPriceTick",
+          "type": "int24",
+          "internalType": "int24"
         },
         {
           "name": "salt",
@@ -83,20 +93,10 @@
           "internalType": "uint256"
         },
         {
-          "name": "epochParams",
+          "name": "marketParams",
           "type": "tuple",
-          "internalType": "struct IFoilStructs.EpochParams",
+          "internalType": "struct IFoilStructs.MarketParams",
           "components": [
-            {
-              "name": "baseAssetMinPriceTick",
-              "type": "int24",
-              "internalType": "int24"
-            },
-            {
-              "name": "baseAssetMaxPriceTick",
-              "type": "int24",
-              "internalType": "int24"
-            },
             {
               "name": "feeRate",
               "type": "uint24",
@@ -192,20 +192,10 @@
       "name": "updateMarket",
       "inputs": [
         {
-          "name": "epochParams",
+          "name": "marketParams",
           "type": "tuple",
-          "internalType": "struct IFoilStructs.EpochParams",
+          "internalType": "struct IFoilStructs.MarketParams",
           "components": [
-            {
-              "name": "baseAssetMinPriceTick",
-              "type": "int24",
-              "internalType": "int24"
-            },
-            {
-              "name": "baseAssetMaxPriceTick",
-              "type": "int24",
-              "internalType": "int24"
-            },
             {
               "name": "feeRate",
               "type": "uint24",
@@ -336,21 +326,11 @@
           "internalType": "uint256"
         },
         {
-          "name": "epochParams",
+          "name": "marketParams",
           "type": "tuple",
           "indexed": false,
-          "internalType": "struct IFoilStructs.EpochParams",
+          "internalType": "struct IFoilStructs.MarketParams",
           "components": [
-            {
-              "name": "baseAssetMinPriceTick",
-              "type": "int24",
-              "internalType": "int24"
-            },
-            {
-              "name": "baseAssetMaxPriceTick",
-              "type": "int24",
-              "internalType": "int24"
-            },
             {
               "name": "feeRate",
               "type": "uint24",
@@ -406,21 +386,11 @@
       "name": "MarketUpdated",
       "inputs": [
         {
-          "name": "epochParams",
+          "name": "marketParams",
           "type": "tuple",
           "indexed": false,
-          "internalType": "struct IFoilStructs.EpochParams",
+          "internalType": "struct IFoilStructs.MarketParams",
           "components": [
-            {
-              "name": "baseAssetMinPriceTick",
-              "type": "int24",
-              "internalType": "int24"
-            },
-            {
-              "name": "baseAssetMaxPriceTick",
-              "type": "int24",
-              "internalType": "int24"
-            },
             {
               "name": "feeRate",
               "type": "uint24",
@@ -564,12 +534,39 @@
     },
     {
       "type": "error",
+      "name": "InvalidBondAmount",
+      "inputs": [
+        {
+          "name": "bondAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "minBond",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "InvalidCallbackResolutionInterface",
       "inputs": [
         {
           "name": "callbackRecipient",
           "type": "address",
           "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidFeeRate",
+      "inputs": [
+        {
+          "name": "feeRate",
+          "type": "uint24",
+          "internalType": "uint24"
         }
       ]
     },
@@ -601,12 +598,22 @@
     },
     {
       "type": "error",
-      "name": "InvalidTickSpacing",
+      "name": "InvalidStartingPrice",
       "inputs": [
         {
-          "name": "feeRate",
-          "type": "uint24",
-          "internalType": "uint24"
+          "name": "startingSqrtPriceX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        },
+        {
+          "name": "minSqrtPriceX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        },
+        {
+          "name": "maxSqrtPriceX96",
+          "type": "uint160",
+          "internalType": "uint160"
         }
       ]
     },
@@ -693,12 +700,12 @@
     "0xE006B58cA5aB7ba53863012dc3067A14b965C1da"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0xa4f69c1285ccfc08e908517d755cc0c2acd2f82f3e10e352dc1d8be07a12e5ab",
-  "deployTxnBlockNumber": "7070745",
-  "deployTimestamp": "1731530016",
+  "deployTxnHash": "0x757daabc7ab8f03eab597076f2cbf3fd0882c9dc0a15a51d3bd1285effdf6753",
+  "deployTxnBlockNumber": "7111821",
+  "deployTimestamp": "1732054704",
   "sourceName": "src/market/modules/ConfigurationModule.sol",
   "contractName": "ConfigurationModule",
   "deployedOn": "deploy.ConfigurationModule",
-  "gasUsed": 4105106,
-  "gasCost": "365260407"
+  "gasUsed": 4197905,
+  "gasCost": "1837501548"
 }

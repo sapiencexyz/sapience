@@ -1,5 +1,5 @@
 {
-  "address": "0x83116bB80fbB4c6230E0b18cd1D39B179fe50C4c",
+  "address": "0xC81e2f37f98Fa6761fC4DA00a28fC65567c5C3E3",
   "abi": [
     {
       "type": "function",
@@ -42,9 +42,9 @@
           "internalType": "uint256"
         },
         {
-          "name": "settlementPriceD18",
-          "type": "uint256",
-          "internalType": "uint256"
+          "name": "settlementSqrtPriceX96",
+          "type": "uint160",
+          "internalType": "uint160"
         }
       ],
       "outputs": [
@@ -73,10 +73,10 @@
           "internalType": "bytes32"
         },
         {
-          "name": "settlementPriceD18",
-          "type": "uint256",
+          "name": "settlementSqrtPriceX96",
+          "type": "uint160",
           "indexed": false,
-          "internalType": "uint256"
+          "internalType": "uint160"
         }
       ],
       "anonymous": false
@@ -124,10 +124,10 @@
           "internalType": "uint256"
         },
         {
-          "name": "price",
-          "type": "uint256",
+          "name": "settlementSqrtPriceX96",
+          "type": "uint160",
           "indexed": false,
-          "internalType": "uint256"
+          "internalType": "uint160"
         },
         {
           "name": "submissionTime",
@@ -199,12 +199,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x76fb2d5bc192a922e066a58e46b07e37a0fb38b549445fa888cba962949f1040",
-  "deployTxnBlockNumber": "7070743",
-  "deployTimestamp": "1731529992",
+  "deployTxnHash": "0x1de0daf1677b81f1bbc4fcd0afdd23e58f794d61615244a7555eeb10d271b7ea",
+  "deployTxnBlockNumber": "7111819",
+  "deployTimestamp": "1732054680",
   "sourceName": "src/market/modules/UMASettlementModule.sol",
   "contractName": "UMASettlementModule",
   "deployedOn": "deploy.UMASettlementModule",
-  "gasUsed": 949798,
-  "gasCost": "382511910"
+  "gasUsed": 982564,
+  "gasCost": "1826270014"
 }

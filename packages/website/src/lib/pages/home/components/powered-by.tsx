@@ -24,7 +24,6 @@ export const PoweredBy = () => {
                 alt="Uniswap"
                 width={250}
                 height={150}
-                className="h-full w-auto"
               />
             </div>
             <div className="flex items-center justify-center">
