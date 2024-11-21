@@ -1,11 +1,8 @@
 name="foil"
 version="<%= package.version %>"
-privateSourceCode=true
 
 [var.settings]
 owner="0xE006B58cA5aB7ba53863012dc3067A14b965C1da"
-startTime = "<%= parseInt(timestamp) + 600 %>"
-endTime = "<%= parseInt(timestamp) + 600 + 604800 %>"
 baseAssetMinPriceTick = "16000" # 5
 baseAssetMaxPriceTick = "39000" # 50
 feeRate = "10000" # 1%
@@ -22,7 +19,7 @@ vault2Name="Foil Vault Yang"
 vault2Symbol = "FVLT2"
 lowerBoundMultiplier = "0.5773502691896257" # sqrt(1/3) 
 upperBoundMultiplier = "1.7320508075688772" # sqrt(3)
-duration = "2419200" # 28 days in seconds
+duration = "86400" # 1 day in seconds
 totalVaults = "2"
 depends = []
 
