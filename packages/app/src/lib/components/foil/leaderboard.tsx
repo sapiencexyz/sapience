@@ -100,11 +100,16 @@ const PositionCell = ({ row }: { row: { original: GroupedPosition } }) => (
   </div>
 );
 
-const PnLCell = ({ cell }: { cell: { getValue: () => unknown } }) => (
-  <span className="md:text-xl whitespace-nowrap">
-    <NumberDisplay value={cell.getValue() as number} /> wstETH
-  </span>
-);
+const PnLCell = ({ cell }: { cell: { getValue: () => unknown } }) => {
+  const value = cell.getValue() as number;
+  const prefix = value > 0 ? '+' : '';
+  return (
+    <span className="md:text-xl whitespace-nowrap">
+      {prefix}
+      <NumberDisplay value={value} /> wstETH
+    </span>
+  );
+};
 
 const formatAddress = (address: string): string => {
   if (!address) return '';
