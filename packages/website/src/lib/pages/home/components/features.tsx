@@ -15,8 +15,8 @@ export const Features = () => {
   return (
     <div className="z-10 w-full px-4 pt-6 text-center md:px-14 md:pt-0">
       <div className="grid grid-cols-1 gap-6 md:-mt-40 md:gap-6 md:pt-12 lg:grid-cols-3">
-        <div 
-          className="rounded-4xl border border-border bg-white p-14 hover:bg-[#363538] transition-colors hover:border-black hover:text-white relative overflow-hidden"
+        <div
+          className="relative overflow-hidden rounded-4xl border border-border bg-white p-14 transition-colors hover:bg-[#363538] hover:text-white"
           onMouseEnter={() => setIsHovered1(true)}
           onMouseLeave={() => setIsHovered1(false)}
         >
@@ -30,12 +30,26 @@ export const Features = () => {
           {isDesktop && (
             <AnimatePresence>
               {isHovered1 && (
-                <motion.div 
-                  className="absolute inset-x-0 top-1/2 bottom-0 w-full h-full scale-[1.5]"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
-                  transition={{ duration: 0.3, ease: "easeOut" }}
+                <motion.div
+                  className="absolute inset-x-0 bottom-0 top-1/2 h-full w-full"
+                  initial={{ opacity: 0, y: 20, scale: 1.4 }}
+                  animate={{ opacity: 1, y: 0, scale: 1.5 }}
+                  exit={{ opacity: 0, y: 20, scale: 1.4 }}
+                  transition={{
+                    ease: 'easeOut',
+                    opacity: {
+                      enter: { delay: 1, duration: 0.3 },
+                      exit: { delay: 0, duration: 0.3 },
+                    },
+                    y: {
+                      enter: { delay: 1, duration: 0.3 },
+                      exit: { delay: 0, duration: 0.3 },
+                    },
+                    scale: {
+                      enter: { delay: 1, duration: 0.3 },
+                      exit: { delay: 0, duration: 0.3 },
+                    },
+                  }}
                 >
                   <Spline scene="https://prod.spline.design/7JZzAjAE4Qn13sVS/scene.splinecode" />
                 </motion.div>
@@ -43,8 +57,8 @@ export const Features = () => {
             </AnimatePresence>
           )}
         </div>
-        <div 
-          className="rounded-4xl border border-border bg-white p-14 hover:bg-[#EFDED2] transition-colors relative overflow-hidden"
+        <div
+          className="relative overflow-hidden rounded-4xl border border-border bg-white p-14 transition-colors hover:bg-[#EFDED2]"
           onMouseEnter={() => setIsHovered2(true)}
           onMouseLeave={() => setIsHovered2(false)}
         >
@@ -58,12 +72,26 @@ export const Features = () => {
           {isDesktop && (
             <AnimatePresence>
               {isHovered2 && (
-                <motion.div 
-                  className="absolute inset-x-0 top-1/2 bottom-0 w-full h-full scale-[1.5]"
-                  initial={{ opacity: 0, x: 50, y: -30 }}
-                  animate={{ opacity: 1, x: 50, y: -50 }}
-                  exit={{ opacity: 0, x: 50, y: -30 }}
-                  transition={{ duration: 0.3, ease: "easeOut" }}
+                <motion.div
+                  className="absolute inset-x-0 bottom-0 top-1/2 h-full w-full"
+                  initial={{ opacity: 0, y: -30, scale: 1.4, x: 70 }}
+                  animate={{ opacity: 1, y: -50, scale: 1.5, x: 70 }}
+                  exit={{ opacity: 0, y: -30, scale: 1.4, x: 70 }}
+                  transition={{
+                    ease: 'easeOut',
+                    opacity: {
+                      enter: { delay: 1, duration: 0.3 },
+                      exit: { delay: 0, duration: 0.3 },
+                    },
+                    y: {
+                      enter: { delay: 1, duration: 0.3 },
+                      exit: { delay: 0, duration: 0.3 },
+                    },
+                    scale: {
+                      enter: { delay: 1, duration: 0.3 },
+                      exit: { delay: 0, duration: 0.3 },
+                    },
+                  }}
                 >
                   <Spline scene="https://prod.spline.design/UeFGrlFVniWxvAFh/scene.splinecode" />
                 </motion.div>
@@ -71,13 +99,13 @@ export const Features = () => {
             </AnimatePresence>
           )}
         </div>
-        <div 
-          className="rounded-4xl border border-border bg-white p-14 hover:bg-[#8D895E] transition-colors relative overflow-hidden"
+        <div
+          className="relative overflow-hidden rounded-4xl border border-border bg-white p-14 transition-colors hover:bg-[#8D895E] hover:text-white"
           onMouseEnter={() => setIsHovered3(true)}
           onMouseLeave={() => setIsHovered3(false)}
         >
           <div className="relative z-10">
-            <h2 className="mb-4 text-3xl font-bold text-primary">Earn</h2>
+            <h2 className="mb-4 text-3xl font-bold">Earn</h2>
             <div className="mx-auto mb-7 max-w-56 text-xl">
               Provide liquidity and boost LST yield.
             </div>
@@ -86,14 +114,28 @@ export const Features = () => {
           {isDesktop && (
             <AnimatePresence>
               {isHovered3 && (
-                <motion.div 
-                  className="absolute inset-x-0 top-1/2 bottom-0 w-full h-full"
-                  initial={{ opacity: 0, y: -30 }}
-                  animate={{ opacity: 1, y: -50 }}
-                  exit={{ opacity: 0, y: -30 }}
-                  transition={{ duration: 0.3, ease: "easeOut" }}
+                <motion.div
+                  className="absolute inset-x-0 bottom-0 top-1/2 h-full w-full"
+                  initial={{ opacity: 0, y: 20, scale: 1.4 }}
+                  animate={{ opacity: 1, y: 0, scale: 1.5 }}
+                  exit={{ opacity: 0, y: 20, scale: 1.4 }}
+                  transition={{
+                    ease: 'easeOut',
+                    opacity: {
+                      enter: { delay: 1, duration: 0.3 },
+                      exit: { delay: 0, duration: 0.3 },
+                    },
+                    y: {
+                      enter: { delay: 1, duration: 0.3 },
+                      exit: { delay: 0, duration: 0.3 },
+                    },
+                    scale: {
+                      enter: { delay: 1, duration: 0.3 },
+                      exit: { delay: 0, duration: 0.3 },
+                    },
+                  }}
                 >
-                  <Spline scene="https://prod.spline.design/dr1dJxsGY8eTQvkt/scene.splinecode" />
+                  <Spline scene="https://prod.spline.design/7CmxSKnIOio6fOz8/scene.splinecode" />
                 </motion.div>
               )}
             </AnimatePresence>
