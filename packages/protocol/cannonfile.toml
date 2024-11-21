@@ -14,9 +14,9 @@ callbackRecipient = "0x0000000000000000000000000000000000000000"
 minTradeSize = "10000"
 # Vault Settings
 vault1Name="Foil Vault Yin"
-vault1Symbol = "FVLT1"
+vault1Symbol = "fYIN"
 vault2Name="Foil Vault Yang"
-vault2Symbol = "FVLT2"
+vault2Symbol = "fYANG"
 lowerBoundMultiplier = "0.5773502691896257" # sqrt(1/3) 
 upperBoundMultiplier = "1.7320508075688772" # sqrt(3)
 duration = "86400" # 1 day in seconds

@@ -10,7 +10,7 @@ const useFoilDeployment = (chainId?: number) => {
     const loadFoilData = async () => {
       try {
         const foil = await import(
-          `@/protocol/deployments/${chainId}/Foil1.json`
+          `@/protocol/deployments/${chainId}/FoilYin.json`
         );
         const foilVault = await import(
           `@/protocol/deployments/${chainId}/Vault1.json`
