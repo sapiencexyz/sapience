@@ -27,7 +27,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useToast } from '~/hooks/use-toast';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import { calculatePnL } from '~/lib/util/positionUtil';
@@ -88,12 +87,12 @@ const useEpochPositions = (marketId: string, epochId: string) => {
 };
 
 const PositionCell = ({ row }: { row: { original: GroupedPosition } }) => (
-  <div className="flex flex-wrap gap-1.5 max-w-[180px]">
+  <div className="flex flex-wrap gap-1.5 w-[160px]">
     {row.original.positions.map((position, index) => (
       <Link
         key={position.positionId}
         href={`/positions/${position.chain?.id}:${position.address}/${position.positionId}`}
-        className={badgeVariants({ variant: 'outline' })}
+        className={`${badgeVariants({ variant: 'outline' })} hover:bg-muted transition-background`}
       >
         #{position.positionId.toString()}
       </Link>
@@ -102,7 +101,7 @@ const PositionCell = ({ row }: { row: { original: GroupedPosition } }) => (
 );
 
 const PnLCell = ({ cell }: { cell: { getValue: () => unknown } }) => (
-  <span className="text-xl">
+  <span className="md:text-xl whitespace-nowrap">
     <NumberDisplay value={cell.getValue() as number} /> wstETH
   </span>
 );
@@ -115,7 +114,7 @@ const formatAddress = (address: string): string => {
 const AddressDisplay = ({ address }: { address: string }) => {
   const publicClient = usePublicClient();
   const [ensName, setEnsName] = useState<string | null>(null);
-  const { toast } = useToast();
+  const [showCopied, setShowCopied] = useState(false);
 
   useEffect(() => {
     const resolveEns = async () => {
@@ -135,29 +134,27 @@ const AddressDisplay = ({ address }: { address: string }) => {
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
     await navigator.clipboard.writeText(address);
-    toast({
-      description: 'Address copied to clipboard',
-      duration: 2000,
-    });
+    setShowCopied(true);
+    setTimeout(() => setShowCopied(false), 1000);
   };
 
   return (
-    <div className="flex items-center gap-2 text-xl">
+    <div className="flex items-center gap-2 md:text-xl">
       <span>{ensName || formatAddress(address)}</span>
       <TooltipProvider>
-        <Tooltip>
+        <Tooltip open={showCopied}>
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 p-0.5"
+              className="h-5 w-5 p-0.5"
               onClick={handleCopy}
             >
-              <Copy className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+              <Copy className="h-3 w-3 text-muted-foreground hover:text-foreground" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Copy address</p>
+            <p>Copied!</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -170,7 +167,9 @@ const OwnerCell = ({ cell }: { cell: { getValue: () => unknown } }) => (
 );
 
 const RankCell = ({ row }: { row: { index: number } }) => (
-  <span className="text-4xl font-bold">{row.index + 1}</span>
+  <span className="text-xl md:text-4xl font-bold flex justify-center">
+    {row.index + 1}
+  </span>
 );
 
 const Leaderboard = ({ params }: Props) => {
@@ -249,36 +248,40 @@ const Leaderboard = ({ params }: Props) => {
   }
 
   return (
-    <div className="container max-w-screen-md mx-auto py-12">
-      <h1 className="text-5xl font-bold mb-8 text-center">🏆 Leaderboard 🏆</h1>
+    <div className="container max-w-screen-md mx-auto flex items-center p-12">
+      <div className="border border-border rounded-lg w-full">
+        <h1 className="text-2xl md:text-5xl font-bold mb-2 md:mt-10 md:mb-8 text-center">
+          🏆 Leaderboard 🏆
+        </h1>
 
-      <Table>
-        <TableHeader>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id} className="hover:bg-transparent">
-              {headerGroup.headers.map((header) => (
-                <TableHead key={header.id}>
-                  {flexRender(
-                    header.column.columnDef.header,
-                    header.getContext()
-                  )}
-                </TableHead>
-              ))}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody>
-          {table.getRowModel().rows.map((row) => (
-            <TableRow key={row.id} className="hover:bg-transparent">
-              {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id} className="hover:bg-transparent">
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id}>
+                    {flexRender(
+                      header.column.columnDef.header,
+                      header.getContext()
+                    )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows.map((row) => (
+              <TableRow key={row.id} className="hover:bg-transparent">
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell key={cell.id}>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 };
