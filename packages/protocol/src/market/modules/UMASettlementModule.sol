@@ -50,7 +50,7 @@ contract UMASettlementModule is
             Strings.toString(epoch.startTime),
             " and ",
             Strings.toString(epoch.endTime),
-            "(inclusive) is ",
+            " (inclusive) is ",
             Strings.toString(settlementSqrtPriceX96),
             "."
         );
