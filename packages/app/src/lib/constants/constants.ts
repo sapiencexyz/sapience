@@ -39,11 +39,11 @@ export const BLANK_MARKET: MarketContextType = {
   owner: '',
   stEthPerToken: 0,
   useMarketUnits: false,
+  baseAssetMinPriceTick: 0,
+  baseAssetMaxPriceTick: 0,
   setUseMarketUnits: () => {},
-  epochParams: {
+  marketParams: {
     assertionLiveness: BigInt(0),
-    baseAssetMinPriceTick: 0,
-    baseAssetMaxPriceTick: 0,
     bondAmount: BigInt(0),
     bondCurrency: '',
     feeRate: 0,

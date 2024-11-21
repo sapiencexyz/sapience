@@ -11,7 +11,7 @@ import { Market } from "./Market";
 import { IndexPrice } from "./IndexPrice";
 import { Position } from "./Position";
 import { NUMERIC_PRECISION } from "../constants";
-import { EpochParams } from "./EpochParams";
+import { MarketParams } from "./MarketParams";
 
 @Entity()
 @Unique(["market", "epochId"])
@@ -48,8 +48,8 @@ export class Epoch {
   })
   startingSqrtPriceX96: string | null;
 
-  @Column(() => EpochParams)
-  epochParams: EpochParams;
+  @Column(() => MarketParams)
+  marketParams: MarketParams;
 
   @Column({
     type: "numeric",
@@ -64,4 +64,26 @@ export class Epoch {
     nullable: true,
   })
   settled: boolean | null;
+
+  @Column("int", { nullable: true })
+  baseAssetMinPriceTick: number | null;
+
+  @Column("int", { nullable: true })
+  baseAssetMaxPriceTick: number | null;
+
+  @Column({
+    type: "numeric",
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
+  minPriceD18: string | null;
+
+  @Column({
+    type: "numeric",
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
+  maxPriceD18: string | null;
 }

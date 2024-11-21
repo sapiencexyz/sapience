@@ -16,7 +16,7 @@ import {
 } from '../constants/constants';
 import erc20ABI from '../erc20abi.json';
 import { useUniswapPool } from '../hooks/useUniswapPool';
-import type { EpochParams } from '../interfaces/interfaces';
+import type { EpochData, MarketParams } from '../interfaces/interfaces';
 import { gweiToEther } from '../util/util';
 import { useToast } from '~/hooks/use-toast';
 
@@ -29,7 +29,9 @@ export interface MarketContextType {
   averagePrice: number;
   startTime: number;
   endTime: number;
-  epochParams: EpochParams;
+  marketParams: MarketParams;
+  baseAssetMinPriceTick: number;
+  baseAssetMaxPriceTick: number;
   poolAddress: `0x${string}`;
   pool: Pool | null;
   collateralAssetDecimals: number;
@@ -260,12 +262,12 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
         'marketViewFunctionResult data: ',
         marketViewFunctionResult.data
       );
-      const epochParams: EpochParams = marketViewFunctionResult.data[4];
+      const marketParams: MarketParams = marketViewFunctionResult.data[4];
       setState((currentState) => ({
         ...currentState,
         owner: marketViewFunctionResult?.data[0],
         collateralAsset: marketViewFunctionResult?.data[1],
-        epochParams,
+        marketParams,
       }));
     }
   }, [marketViewFunctionResult.data]);
@@ -276,13 +278,16 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
         'epochViewFunctionResult data: ',
         epochViewFunctionResult.data
       );
+      const epochData: EpochData = epochViewFunctionResult.data[0];
       setState((currentState) => ({
         ...currentState,
-        startTime: epochViewFunctionResult.data[0],
-        endTime: epochViewFunctionResult.data[1],
-        poolAddress: epochViewFunctionResult.data[2],
-        epochSettled: epochViewFunctionResult.data[7],
-        settlementPrice: epochViewFunctionResult.data[8],
+        startTime: Number(epochData.startTime),
+        endTime: Number(epochData.endTime),
+        poolAddress: epochData.pool,
+        epochSettled: epochData.settled,
+        settlementPrice: epochData.settlementPriceD18,
+        baseAssetMaxPriceTick: epochData.baseAssetMaxPriceTick,
+        baseAssetMinPriceTick: epochData.baseAssetMinPriceTick,
       }));
     }
   }, [epochViewFunctionResult.data]);

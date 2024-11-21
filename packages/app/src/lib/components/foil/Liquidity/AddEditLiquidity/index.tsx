@@ -54,13 +54,15 @@ const AddEditLiquidity: React.FC = () => {
     epoch,
     pool,
     collateralAsset,
-    epochParams,
     collateralAssetTicker,
     collateralAssetDecimals,
     chainId,
     foilData,
+    baseAssetMinPriceTick,
+    baseAssetMaxPriceTick,
     refetchUniswapData,
     address: marketAddress,
+    marketParams,
   } = useContext(MarketContext);
 
   if (!epoch) {
@@ -75,11 +77,11 @@ const AddEditLiquidity: React.FC = () => {
     defaultValues: {
       depositAmount: '0',
       modifyLiquidity: '100',
-      lowPrice: epochParams?.baseAssetMinPriceTick
-        ? tickToPrice(epochParams.baseAssetMinPriceTick).toString()
+      lowPrice: baseAssetMinPriceTick
+        ? tickToPrice(baseAssetMinPriceTick).toString()
         : '0',
-      highPrice: epochParams?.baseAssetMaxPriceTick
-        ? tickToPrice(epochParams.baseAssetMaxPriceTick).toString()
+      highPrice: baseAssetMaxPriceTick
+        ? tickToPrice(baseAssetMaxPriceTick).toString()
         : '0',
       slippage: '0.5',
     },
@@ -162,12 +164,12 @@ const AddEditLiquidity: React.FC = () => {
     refetch: refetchUniswapPosition,
   } = useReadContract({
     abi: INONFUNGIBLE_POSITION_MANAGER.abi,
-    address: epochParams.uniswapPositionManager,
+    address: marketParams.uniswapPositionManager,
     functionName: 'positions',
     args: [positionData?.uniswapPositionId || BigInt('0')],
     query: {
       enabled: Boolean(
-        epochParams.uniswapPositionManager !== '0x' &&
+        marketParams.uniswapPositionManager !== '0x' &&
           positionData?.uniswapPositionId &&
           isEdit
       ),
@@ -628,16 +630,9 @@ const AddEditLiquidity: React.FC = () => {
 
   useEffect(() => {
     if (isEdit) return;
-    console.log('updating prices: ', epochParams);
-    setValue(
-      'lowPrice',
-      tickToPrice(epochParams.baseAssetMinPriceTick).toString()
-    );
-    setValue(
-      'highPrice',
-      tickToPrice(epochParams.baseAssetMaxPriceTick).toString()
-    );
-  }, [epochParams, isEdit, setValue]);
+    setValue('lowPrice', tickToPrice(baseAssetMinPriceTick).toString());
+    setValue('highPrice', tickToPrice(baseAssetMaxPriceTick).toString());
+  }, [baseAssetMinPriceTick, baseAssetMaxPriceTick, isEdit, setValue]);
 
   useEffect(() => {
     if (!uniswapPosition) return;
@@ -938,7 +933,7 @@ const AddEditLiquidity: React.FC = () => {
           name="lowPrice"
           control={control}
           isDisabled={isEdit}
-          minAllowedPrice={tickToPrice(epochParams.baseAssetMinPriceTick)}
+          minAllowedPrice={tickToPrice(baseAssetMinPriceTick)}
           maxAllowedPrice={Number(highPrice)}
         />
 
@@ -948,7 +943,7 @@ const AddEditLiquidity: React.FC = () => {
           control={control}
           isDisabled={isEdit}
           minAllowedPrice={Number(lowPrice)}
-          maxAllowedPrice={tickToPrice(epochParams.baseAssetMaxPriceTick)}
+          maxAllowedPrice={tickToPrice(baseAssetMaxPriceTick)}
         />
         <SlippageTolerance />
 

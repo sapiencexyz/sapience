@@ -11,8 +11,15 @@ import { tickToPrice } from '~/lib/util/util';
 import EpochSelector from './epochSelector';
 
 const EpochHeader = () => {
-  const { chain, address, collateralAsset, epochParams, startTime, endTime } =
-    useContext(MarketContext);
+  const {
+    chain,
+    address,
+    collateralAsset,
+    startTime,
+    endTime,
+    baseAssetMinPriceTick,
+    baseAssetMaxPriceTick,
+  } = useContext(MarketContext);
   const { markets } = useMarketList();
 
   const currentMarket = markets.find((market) => market.address === address);
@@ -81,12 +88,8 @@ const EpochHeader = () => {
                 <FaRegChartBar />
               </span>
               <span className="font-medium mr-1">Contract Price Range:</span>
-              {tickToPrice(
-                epochParams.baseAssetMinPriceTick
-              ).toLocaleString()}{' '}
-              -{' '}
-              {tickToPrice(epochParams.baseAssetMaxPriceTick).toLocaleString()}{' '}
-              Ggas/wstETH
+              {tickToPrice(baseAssetMinPriceTick).toLocaleString()} -{' '}
+              {tickToPrice(baseAssetMaxPriceTick).toLocaleString()} Ggas/wstETH
             </div>
 
             <div className="inline-flex items-center text-sm">

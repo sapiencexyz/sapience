@@ -65,10 +65,8 @@ export enum PositionKind {
   Trade,
 }
 
-export interface EpochParams {
+export interface MarketParams {
   assertionLiveness: bigint;
-  baseAssetMaxPriceTick: number;
-  baseAssetMinPriceTick: number;
   bondAmount: bigint;
   bondCurrency: string;
   feeRate: number;
@@ -79,13 +77,28 @@ export interface EpochParams {
   uniswapSwapRouter: string;
 }
 
+export interface EpochData {
+  epochId: string;
+  startTime: bigint;
+  endTime: bigint;
+  pool: `0x${string}`;
+  ethToken: string;
+  gasToken: string;
+  minPriceD18: bigint;
+  maxPriceD18: bigint;
+  baseAssetMinPriceTick: number;
+  baseAssetMaxPriceTick: number;
+  settled: boolean;
+  settlementPriceD18: bigint;
+}
+
 export interface MarketCreatedUpdatedEventLog {
   owner: string;
   uniswapPositionManager: string;
   collateralAsset?: string;
   uniswapSwapRouter: string;
   optimisticOracleV3: string;
-  epochParams: EpochParams;
+  marketParams: MarketParams;
 }
 
 export interface EpochCreatedEventLog {

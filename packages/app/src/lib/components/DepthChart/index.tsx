@@ -206,9 +206,8 @@ const DepthChart: React.FC = () => {
     pool,
     chainId,
     poolAddress,
-    epochParams,
-    useMarketUnits,
-    stEthPerToken,
+    baseAssetMinPriceTick,
+    baseAssetMaxPriceTick,
   } = useContext(MarketContext);
   const activeTickValue = pool?.tickCurrent || 0;
   const tickSpacing = pool ? pool?.tickSpacing : TICK_SPACING_DEFAULT;
@@ -221,14 +220,14 @@ const DepthChart: React.FC = () => {
   const ticks = useMemo(() => {
     const tickRange: number[] = [];
     for (
-      let i = epochParams.baseAssetMinPriceTick;
-      i < epochParams.baseAssetMaxPriceTick + tickSpacing;
+      let i = baseAssetMinPriceTick;
+      i < baseAssetMaxPriceTick + tickSpacing;
       i += tickSpacing
     ) {
       tickRange.push(i);
     }
     return tickRange;
-  }, [epochParams, tickSpacing]);
+  }, [tickSpacing, baseAssetMaxPriceTick, baseAssetMinPriceTick]);
 
   const contracts = useMemo(() => {
     if (poolAddress === '0x' || !chainId) return [];

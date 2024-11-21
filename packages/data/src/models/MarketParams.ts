@@ -1,13 +1,7 @@
 import { Column } from "typeorm";
 import { NUMERIC_PRECISION } from "../constants";
 
-export class EpochParams {
-  @Column("int", { nullable: true })
-  baseAssetMinPriceTick: number | null;
-
-  @Column("int", { nullable: true })
-  baseAssetMaxPriceTick: number | null;
-
+export class MarketParams {
   @Column("int", { nullable: true })
   feeRate: number | null;
 

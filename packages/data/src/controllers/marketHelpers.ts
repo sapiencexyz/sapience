@@ -7,7 +7,7 @@ import {
   resourcePriceRepository,
 } from "../db";
 import { Event } from "../models/Event";
-import { EpochParams } from "../models/EpochParams";
+import { MarketParams } from "../models/MarketParams";
 import { Market } from "../models/Market";
 import { Epoch } from "../models/Epoch";
 import { Position } from "../models/Position";
@@ -24,6 +24,7 @@ import {
   EventType,
   MarketInfo,
   PositionSettledEventLog,
+  EpochData,
 } from "../interfaces";
 import { MarketPrice } from "../models/MarketPrice";
 import { getBlockByTimestamp, getProviderForChain } from "../helpers";
@@ -244,13 +245,13 @@ export const createOrUpdateMarketFromContract = async (
   updatedMarket.chainId = chainId;
   updatedMarket.owner = marketReadResult[0];
   updatedMarket.collateralAsset = marketReadResult[1];
-  const epochParamsRaw = marketReadResult[4];
-  const marketEpochParams: EpochParams = {
-    ...epochParamsRaw,
-    assertionLiveness: epochParamsRaw.assertionLiveness.toString(),
-    bondAmount: epochParamsRaw.bondAmount.toString(),
+  const marketParamsRaw = marketReadResult[4];
+  const marketParams: MarketParams = {
+    ...marketParamsRaw,
+    assertionLiveness: marketParamsRaw.assertionLiveness.toString(),
+    bondAmount: marketParamsRaw.bondAmount.toString(),
   };
-  updatedMarket.epochParams = marketEpochParams;
+  updatedMarket.marketParams = marketParams;
   await marketRepository.save(updatedMarket);
   return updatedMarket;
 };
@@ -271,7 +272,7 @@ export const createOrUpdateEpochFromContract = async (
     functionName,
     args,
   });
-  const epochData = epochReadResult[0];
+  const epochData: EpochData = epochReadResult[0];
   console.log("epochReadResult", epochReadResult);
   const _epochId = epochId || Number(epochData.epochId);
 
@@ -284,21 +285,23 @@ export const createOrUpdateEpochFromContract = async (
   });
   const updatedEpoch = existingEpoch || new Epoch();
 
-  //const idxAdjustment = epochId ? 0 : 1; // getLatestEpoch returns and extra param at 0 index
-
   updatedEpoch.epochId = _epochId;
-  updatedEpoch.startTimestamp = epochData.startTime.toString();
-  updatedEpoch.endTimestamp = epochData.endTime.toString();
+  updatedEpoch.startTimestamp = Number(epochData.startTime.toString());
+  updatedEpoch.endTimestamp = Number(epochData.endTime.toString());
   updatedEpoch.settled = epochData.settled;
   updatedEpoch.settlementPriceD18 = epochData.settlementPriceD18.toString();
-  const epochParamsRaw = epochReadResult[1];
-  const epochParams: EpochParams = {
-    ...epochParamsRaw,
-    assertionLiveness: epochParamsRaw.assertionLiveness.toString(),
-    bondAmount: epochParamsRaw.bondAmount.toString(),
+  updatedEpoch.baseAssetMinPriceTick = epochData.baseAssetMinPriceTick;
+  updatedEpoch.baseAssetMaxPriceTick = epochData.baseAssetMaxPriceTick;
+  updatedEpoch.maxPriceD18 = epochData.maxPriceD18.toString();
+  updatedEpoch.minPriceD18 = epochData.minPriceD18.toString();
+  const marketParamsRaw = epochReadResult[1];
+  const marketParams: MarketParams = {
+    ...marketParamsRaw,
+    assertionLiveness: marketParamsRaw.assertionLiveness.toString(),
+    bondAmount: marketParamsRaw.bondAmount.toString(),
   };
   updatedEpoch.market = market;
-  updatedEpoch.epochParams = epochParams;
+  updatedEpoch.marketParams = marketParams;
   await epochRepository.save(updatedEpoch);
   console.log("saved epoch:", updatedEpoch);
 };
@@ -324,18 +327,16 @@ export const createOrUpdateMarketFromEvent = async (
   if (eventArgs.collateralAsset) {
     market.collateralAsset = eventArgs.collateralAsset;
   }
-  market.epochParams = {
-    baseAssetMinPriceTick: Number(eventArgs.epochParams.baseAssetMinPriceTick),
-    baseAssetMaxPriceTick: Number(eventArgs.epochParams.baseAssetMaxPriceTick),
-    feeRate: Number(eventArgs.epochParams.feeRate),
-    assertionLiveness: eventArgs?.epochParams?.assertionLiveness.toString(),
-    bondCurrency: eventArgs?.epochParams?.bondCurrency,
-    bondAmount: eventArgs?.epochParams?.bondAmount.toString(),
-    claimStatement: eventArgs?.epochParams?.claimStatement,
-    uniswapPositionManager: eventArgs?.epochParams?.uniswapPositionManager,
-    uniswapSwapRouter: eventArgs?.epochParams?.uniswapSwapRouter,
-    uniswapQuoter: eventArgs?.epochParams?.uniswapQuoter,
-    optimisticOracleV3: eventArgs?.epochParams?.optimisticOracleV3,
+  market.marketParams = {
+    feeRate: Number(eventArgs.marketParams.feeRate),
+    assertionLiveness: eventArgs?.marketParams?.assertionLiveness.toString(),
+    bondCurrency: eventArgs?.marketParams?.bondCurrency,
+    bondAmount: eventArgs?.marketParams?.bondAmount.toString(),
+    claimStatement: eventArgs?.marketParams?.claimStatement,
+    uniswapPositionManager: eventArgs?.marketParams?.uniswapPositionManager,
+    uniswapSwapRouter: eventArgs?.marketParams?.uniswapSwapRouter,
+    uniswapQuoter: eventArgs?.marketParams?.uniswapQuoter,
+    optimisticOracleV3: eventArgs?.marketParams?.optimisticOracleV3,
   };
   const newMarket = await marketRepository.save(market);
   return newMarket;
@@ -546,7 +547,7 @@ export const createEpochFromEvent = async (
   newEpoch.startTimestamp = Number(eventArgs.startTime);
   newEpoch.endTimestamp = Number(eventArgs.endTime);
   newEpoch.startingSqrtPriceX96 = eventArgs.startingSqrtPriceX96;
-  newEpoch.epochParams = market.epochParams;
+  newEpoch.marketParams = market.marketParams;
 
   const epoch = await epochRepository.save(newEpoch);
   return epoch;

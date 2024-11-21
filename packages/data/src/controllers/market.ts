@@ -6,7 +6,7 @@ import {
   marketRepository,
   transactionRepository,
 } from "../db";
-import { EpochParams } from "../models/EpochParams";
+import { MarketParams } from "../models/MarketParams";
 import { Event } from "../models/Event";
 import { Market } from "../models/Market";
 import { Transaction, TransactionType } from "../models/Transaction";
@@ -72,13 +72,13 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
   updatedMarket.chainId = marketInfo.marketChainId;
   updatedMarket.owner = marketReadResult[0];
   updatedMarket.collateralAsset = marketReadResult[1];
-  const epochParamsRaw = marketReadResult[4];
-  const marketEpochParams: EpochParams = {
-    ...epochParamsRaw,
-    assertionLiveness: epochParamsRaw.assertionLiveness.toString(),
-    bondAmount: epochParamsRaw.bondAmount.toString(),
+  const marketParamsRaw = marketReadResult[4];
+  const marketEpochParams: MarketParams = {
+    ...marketParamsRaw,
+    assertionLiveness: marketParamsRaw.assertionLiveness.toString(),
+    bondAmount: marketParamsRaw.bondAmount.toString(),
   };
-  updatedMarket.epochParams = marketEpochParams;
+  updatedMarket.marketParams = marketEpochParams;
   await marketRepository.save(updatedMarket);
   return updatedMarket;
 };

@@ -8,7 +8,7 @@ import {
 } from "typeorm";
 import { Epoch } from "./Epoch";
 import { ResourcePrice } from "./ResourcePrice";
-import { EpochParams } from "./EpochParams";
+import { MarketParams } from "./MarketParams";
 import { Event } from "./Event";
 
 @Entity()
@@ -49,8 +49,8 @@ export class Market {
   @Column({ type: "varchar", nullable: true })
   collateralAsset: string | null;
 
-  @Column(() => EpochParams)
-  epochParams: EpochParams;
+  @Column(() => MarketParams)
+  marketParams: MarketParams;
 
   @Column()
   public: boolean;
