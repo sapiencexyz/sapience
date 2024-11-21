@@ -93,7 +93,7 @@ export const Features = () => {
                   exit={{ opacity: 0, y: -30 }}
                   transition={{ duration: 0.3, ease: "easeOut" }}
                 >
-                  <Spline scene="https://prod.spline.design/kve56rmjyCpgEW3G/scene.splinecode" />
+                  <Spline scene="https://prod.spline.design/dr1dJxsGY8eTQvkt/scene.splinecode" />
                 </motion.div>
               )}
             </AnimatePresence>
