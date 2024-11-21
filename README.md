@@ -19,6 +19,7 @@
 - Run `pnpm simulate-deploy:sepolia --rpc-url <rpc-url> --private-key <private-key>` to verify there are no issues
 - Run `pnpm deploy:sepolia --rpc-url <rpc-url> --private-key <private-key>`
 - Run `pnpm cannon publish foil --chain-id 11155111 --private-key <private-key>`
+- Run `pnpm cannon verify foil --chain-id 11155111 --api-key <etherscan-api-key>`
 - `git add .`
 - `git commit -m "Foil v<version-number>"`
 - `git tag v<version-number>`

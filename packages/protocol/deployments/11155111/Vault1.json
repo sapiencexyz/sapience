@@ -1,5 +1,5 @@
 {
-  "address": "0x1e67663BA848053CF2454f028acbef971790AA87",
+  "address": "0xFCeac7b16526Bc1F60fEEE0063d204512C05557e",
   "abi": [
     {
       "type": "constructor",
@@ -1608,21 +1608,21 @@
   "constructorArgs": [
     "Foil Vault Yin",
     "FVLT1",
-    "0x7fe03c6f43abce5ffbf99a8b41e09a2a63c3027c",
+    "0x0ca1b6feffd97781db059a4f10697036c82058e8",
     "0xb82381a3fbd3fafa77b3a7be693342618240067b",
     "577350269189625700",
     "1732050807568877200",
-    "2419200",
+    "86400",
     "0",
     "2"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x19269ec5559ff1a32f3ac58061dc67715dc899010ed4e49ac8cd26d05648803e",
-  "deployTxnBlockNumber": "7111824",
-  "deployTimestamp": "1732054740",
+  "deployTxnHash": "0x5dfb9628a29e7c9586a1ef9e973e0355962c5258032986ca1ba26a7140365464",
+  "deployTxnBlockNumber": "7124648",
+  "deployTimestamp": "1732218396",
   "sourceName": "src/vault/Vault.sol",
   "contractName": "Vault",
   "deployedOn": "deploy.Vault1",
-  "gasUsed": 3670252,
-  "gasCost": "1811830352"
+  "gasUsed": 3670264,
+  "gasCost": "19285242115"
 }

@@ -1,6 +1,83 @@
 {
-  "address": "0x7fe03c6f43abce5ffbf99a8b41e09a2a63c3027c",
+  "address": "0x0ca1b6feffd97781db059a4f10697036c82058e8",
   "abi": [
+    {
+      "name": "facets",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "tuple[]",
+          "components": [
+            {
+              "type": "address",
+              "name": "facetAddress"
+            },
+            {
+              "type": "bytes4[]",
+              "name": "functionSelectors"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "facetFunctionSelectors",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "facet"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes4[]",
+          "name": "functionSelectors"
+        }
+      ]
+    },
+    {
+      "name": "facetAddresses",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address[]",
+          "name": "addresses"
+        }
+      ]
+    },
+    {
+      "name": "facetAddress",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [
+        {
+          "type": "bytes4",
+          "name": "functionSelector"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "emitDiamondCutEvent",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
     {
       "type": "constructor",
       "inputs": [
@@ -3041,12 +3118,12 @@
     }
   ],
   "deployedOn": "router.Foil1",
-  "deployTxnHash": "0x2e32a638422b266386098a059267e6349c21f8337b54ebad9c55904ba0e88e07",
-  "deployTxnBlockNumber": "7111822",
-  "deployTimestamp": "1732054716",
+  "deployTxnHash": "0xfef9f5689a57bd1772f34285e258a49e06ba09b2339c41391d6c1bd9443c783a",
+  "deployTxnBlockNumber": "7124646",
+  "deployTimestamp": "1732218372",
   "contractName": "Foil1",
   "sourceName": "Foil1.sol",
   "highlight": true,
-  "gasUsed": 550167,
-  "gasCost": "1833172884"
+  "gasUsed": 3858210,
+  "gasCost": "20289631764"
 }
