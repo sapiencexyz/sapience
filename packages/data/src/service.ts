@@ -1,4 +1,4 @@
-import "./instrument.js";
+import "./instrument";
 import "reflect-metadata";
 import dataSource, {
   eventRepository,

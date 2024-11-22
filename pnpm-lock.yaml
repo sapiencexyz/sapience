@@ -231,9 +231,6 @@ importers:
       '@sentry/node':
         specifier: ^8.40.0
         version: 8.40.0
-      '@sentry/profiling-node':
-        specifier: ^8.40.0
-        version: 8.40.0
       cors:
         specifier: ^2.8.5
         version: 2.8.5
@@ -4325,11 +4322,6 @@ packages:
       '@opentelemetry/instrumentation': ^0.54.0
       '@opentelemetry/sdk-trace-base': ^1.26.0
       '@opentelemetry/semantic-conventions': ^1.27.0
-
-  '@sentry/profiling-node@8.40.0':
-    resolution: {integrity: sha512-JktVHpy33iIEuOs75gDRCUavDyxsJESQK5Fyi7T3SpL9ymwhlcPesJ6Y4x7GscX5yNJAIOnWbVblcxA0QrxDxg==}
-    engines: {node: '>=14.18'}
-    hasBin: true
 
   '@sentry/react@8.40.0':
     resolution: {integrity: sha512-Ohq/po83r9sh/DCO6VAxx4xU+1ztvFzmXTl3fUnAEc+2bFJK1MsRt6BWfG37XxjQN//mfmyS9KEBgsOpOyd4LQ==}
@@ -19858,16 +19850,6 @@ snapshots:
       '@opentelemetry/semantic-conventions': 1.28.0
       '@sentry/core': 8.40.0
       '@sentry/types': 8.40.0
-
-  '@sentry/profiling-node@8.40.0':
-    dependencies:
-      '@sentry/core': 8.40.0
-      '@sentry/node': 8.40.0
-      '@sentry/types': 8.40.0
-      detect-libc: 2.0.3
-      node-abi: 3.67.0
-    transitivePeerDependencies:
-      - supports-color
 
   '@sentry/react@8.40.0(react@18.3.1)':
     dependencies:
