@@ -41,6 +41,12 @@ const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const DISCORD_CHANNEL_ID = process.env.DISCORD_CHANNEL_ID;
 const discordClient = new Client({ intents: [] });
 
+if (DISCORD_TOKEN) {
+  discordClient.login(DISCORD_TOKEN).catch(error => {
+    console.error('Failed to login to Discord:', error);
+  });
+}
+
 // Called when the process starts, upserts markets in the database to match those in the constants.ts file
 export const initializeMarket = async (marketInfo: MarketInfo) => {
   let existingMarket = await marketRepository.findOne({
@@ -149,7 +155,7 @@ export const reindexMarketEvents = async (market: Market, abi: Abi) => {
   await initializeDataSource();
   const client = getProviderForChain(market.chainId);
 
-  const startBlock = market.deployTxnBlockNumber;
+  const startBlock = market.deployTxnBlockNumber || 0;
   const endBlock = await client.getBlockNumber();
   const chainId = await client.getChainId();
 
@@ -216,6 +222,12 @@ const alertEvent = async (
   try {
     if (!DISCORD_TOKEN || !DISCORD_CHANNEL_ID) {
       console.warn("Discord credentials not configured, skipping alert");
+      return;
+    }
+
+    // Add check for client readiness
+    if (!discordClient.isReady()) {
+      console.warn("Discord client not ready, skipping alert");
       return;
     }
 
