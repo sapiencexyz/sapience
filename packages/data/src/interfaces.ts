@@ -93,7 +93,7 @@ export interface EpochData {
 }
 
 export interface MarketCreatedUpdatedEventLog {
-  owner: string;
+  initialOwner?: string;
   uniswapPositionManager: string;
   collateralAsset?: string;
   uniswapSwapRouter: string;

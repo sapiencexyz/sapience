@@ -1,3 +1,4 @@
+/* eslint-disable sonarjs/cognitive-complexity */
 /* eslint-disable react/no-unstable-nested-components */
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -48,6 +49,7 @@ import {
   TOKEN_DECIMALS,
 } from '~/lib/constants/constants';
 import { useMarketList, type Market } from '~/lib/context/MarketListProvider';
+import type { EpochData, MarketParams } from '~/lib/interfaces/interfaces';
 import { formatAmount } from '~/lib/util/numberUtil';
 import { gweiToEther } from '~/lib/util/util';
 
@@ -390,7 +392,7 @@ const EpochItem: React.FC<{
     }
   }, [endTimestamp, chainId && collateralAsset]);
 
-  const { data: epochData, refetch: refetchEpochData } = useReadContract({
+  const { data: getEpochData, refetch: refetchEpochData } = useReadContract({
     address: market.address as `0x${string}`,
     abi: foilData?.abi,
     functionName: 'getEpoch',
@@ -400,12 +402,17 @@ const EpochItem: React.FC<{
       enabled: !loading && !error && !!foilData,
     },
   }) as any;
-  const epochSettled = epochData ? epochData[7] : undefined;
-  const settlementPrice = epochData ? epochData[8] : undefined;
-  const bondAmount =
-    epochData && epochData[9] ? epochData[9].bondAmount : undefined;
-  const bondCurrency =
-    epochData && epochData[9] ? epochData[9].bondCurrency : undefined;
+  console.log('getEpochData', getEpochData);
+  const epochData: EpochData | undefined = getEpochData
+    ? getEpochData[0]
+    : undefined;
+  const marketParams: MarketParams | undefined = getEpochData
+    ? getEpochData[1]
+    : undefined;
+  const epochSettled = epochData ? epochData.settled : undefined;
+  const settlementPrice = epochData ? epochData.settlementPriceD18 : undefined;
+  const bondAmount = marketParams ? marketParams.bondAmount : undefined;
+  const bondCurrency = marketParams ? marketParams.bondCurrency : undefined;
 
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
     abi: erc20ABI as AbiFunction[],
@@ -423,6 +430,7 @@ const EpochItem: React.FC<{
     useWriteContract({
       mutation: {
         onError: (settleError) => {
+          console.error('Failed to settle: ', settleError);
           toast({
             variant: 'destructive',
             title: 'Failed to settle',
@@ -446,6 +454,7 @@ const EpochItem: React.FC<{
   const { data: approveHash, writeContract: approveWrite } = useWriteContract({
     mutation: {
       onError: (error) => {
+        console.error('Failed to approve: ', error);
         resetAfterError();
         toast({
           variant: 'destructive',
@@ -546,7 +555,7 @@ const EpochItem: React.FC<{
       <div className="space-y-2">
         <p className="text-lg">{formatAmount(priceAdjusted)}</p>
         <Button
-          disabled={!epochData}
+          disabled={!getEpochData}
           onClick={
             requireApproval ? handleApproveSettle : handleSettleWithPrice
           }
@@ -555,7 +564,7 @@ const EpochItem: React.FC<{
             ? `Approve ${collateralTickerFunctionResult.data} Transfer`
             : 'Settle with Price'}
         </Button>
-        {!epochData && (
+        {!getEpochData && (
           <p className="text-sm text-red-500 text-center">
             Could not get epoch data for market
           </p>
@@ -564,7 +573,8 @@ const EpochItem: React.FC<{
     );
   };
 
-  const requireApproval = !allowance || bondAmount > (allowance as bigint);
+  const requireApproval =
+    !allowance || (bondAmount && bondAmount > (allowance as bigint));
 
   return renderSettledCell();
 };

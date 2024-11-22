@@ -17,7 +17,11 @@ import {
   MarketCreatedUpdatedEventLog,
   MarketInfo,
 } from "../interfaces";
-import { getProviderForChain, bigintReplacer } from "../helpers";
+import {
+  getProviderForChain,
+  bigintReplacer,
+  sqrtPriceX96ToSettlementPriceD18,
+} from "../helpers";
 import {
   createEpochFromEvent,
   createOrModifyPosition,
@@ -31,7 +35,7 @@ import {
   upsertMarketPrice,
   updateTransactionFromPositionSettledEvent,
 } from "./marketHelpers";
-import { Client, TextChannel, EmbedBuilder } from 'discord.js';
+import { Client, TextChannel, EmbedBuilder } from "discord.js";
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const DISCORD_CHANNEL_ID = process.env.DISCORD_CHANNEL_ID;
@@ -108,7 +112,14 @@ export const indexMarketEvents = async (market: Market, abi: Abi) => {
 
       const epochId = logData.args?.epochId || 0;
 
-      await alertEvent(chainId, market.address, epochId, blockNumber, block.timestamp, logData);
+      await alertEvent(
+        chainId,
+        market.address,
+        epochId,
+        blockNumber,
+        block.timestamp,
+        logData
+      );
 
       await upsertEvent(
         chainId,
@@ -204,21 +215,27 @@ const alertEvent = async (
 ) => {
   try {
     if (!DISCORD_TOKEN || !DISCORD_CHANNEL_ID) {
-      console.warn('Discord credentials not configured, skipping alert');
+      console.warn("Discord credentials not configured, skipping alert");
       return;
     }
 
-    const channel = await discordClient.channels.fetch(DISCORD_CHANNEL_ID) as TextChannel;
-    
+    const channel = (await discordClient.channels.fetch(
+      DISCORD_CHANNEL_ID
+    )) as TextChannel;
+
     const embed = new EmbedBuilder()
       .setTitle(`New Market Event: ${logData.eventName}`)
-      .setColor('#0099ff')
+      .setColor("#0099ff")
       .addFields(
-        { name: 'Chain ID', value: chainId.toString(), inline: true },
-        { name: 'Market Address', value: address, inline: true },
-        { name: 'Epoch ID', value: epochId.toString(), inline: true },
-        { name: 'Block Number', value: blockNumber.toString(), inline: true },
-        { name: 'Timestamp', value: new Date(Number(timestamp) * 1000).toISOString(), inline: true }
+        { name: "Chain ID", value: chainId.toString(), inline: true },
+        { name: "Market Address", value: address, inline: true },
+        { name: "Epoch ID", value: epochId.toString(), inline: true },
+        { name: "Block Number", value: blockNumber.toString(), inline: true },
+        {
+          name: "Timestamp",
+          value: new Date(Number(timestamp) * 1000).toISOString(),
+          inline: true,
+        }
       )
       .setTimestamp();
 
@@ -226,13 +243,16 @@ const alertEvent = async (
     if (logData.args) {
       const argsField = Object.entries(logData.args)
         .map(([key, value]) => `${key}: ${value}`)
-        .join('\n');
-      embed.addFields({ name: 'Event Arguments', value: `\`\`\`${argsField}\`\`\`` });
+        .join("\n");
+      embed.addFields({
+        name: "Event Arguments",
+        value: `\`\`\`${argsField}\`\`\``,
+      });
     }
 
     await channel.send({ embeds: [embed] });
   } catch (error) {
-    console.error('Failed to send Discord alert:', error);
+    console.error("Failed to send Discord alert:", error);
   }
 };
 
@@ -338,7 +358,13 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       });
       if (epoch) {
         epoch.settled = true;
-        epoch.settlementPriceD18 = event.logData.args.settlementPriceD18;
+        const settlementSqrtPriceX96: bigint = BigInt(
+          event.logData.args.settlementSqrtPriceX96.toString()
+        );
+        const settlementPriceD18 = sqrtPriceX96ToSettlementPriceD18(
+          settlementSqrtPriceX96
+        );
+        epoch.settlementPriceD18 = settlementPriceD18.toString();
         await epochRepository.save(epoch);
       } else {
         console.error("Epoch not found for market: ", market);
@@ -419,4 +445,3 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
     await upsertMarketPrice(newTransaction);
   }
 };
-

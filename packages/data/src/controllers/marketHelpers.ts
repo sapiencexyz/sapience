@@ -327,16 +327,14 @@ export const createOrUpdateMarketFromEvent = async (
   if (eventArgs.collateralAsset) {
     market.collateralAsset = eventArgs.collateralAsset;
   }
+  if (eventArgs.initialOwner) {
+    market.owner = eventArgs.initialOwner;
+  }
   market.marketParams = {
+    ...eventArgs.marketParams,
     feeRate: Number(eventArgs.marketParams.feeRate),
     assertionLiveness: eventArgs?.marketParams?.assertionLiveness.toString(),
-    bondCurrency: eventArgs?.marketParams?.bondCurrency,
     bondAmount: eventArgs?.marketParams?.bondAmount.toString(),
-    claimStatement: eventArgs?.marketParams?.claimStatement,
-    uniswapPositionManager: eventArgs?.marketParams?.uniswapPositionManager,
-    uniswapSwapRouter: eventArgs?.marketParams?.uniswapSwapRouter,
-    uniswapQuoter: eventArgs?.marketParams?.uniswapQuoter,
-    optimisticOracleV3: eventArgs?.marketParams?.optimisticOracleV3,
   };
   const newMarket = await marketRepository.save(market);
   return newMarket;

@@ -248,3 +248,21 @@ export async function getBlockBeforeTimestamp(
 
   return closestBlock;
 }
+
+/**
+ * Converts settlementSqrtPriceX96 to settlementPriceD18
+ * @param settlementSqrtPriceX96 sqrt price in X96 format as bigint
+ * @returns bigint price with 18 decimals
+ */
+export function sqrtPriceX96ToSettlementPriceD18(
+  settlementSqrtPriceX96: bigint
+): bigint {
+  // First divide by 2^96 to get sqrt price
+  const sqrtPrice = settlementSqrtPriceX96 / BigInt(2 ** 96);
+
+  // Square the price
+  const price = sqrtPrice * sqrtPrice;
+
+  // Convert to D18 by multiplying by 10^18
+  return price * BigInt(10 ** 18);
+}
