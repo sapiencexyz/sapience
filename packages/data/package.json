@@ -10,9 +10,9 @@
     "dev:service": "tsx watch src/service.ts",
     "dev:worker": "tsx watch src/worker.ts",
     "start": "concurrently \"pnpm run start:service\" \"pnpm run start:worker\"",
-    "start:service": "ts-node src/service.ts",
-    "start:worker": "ts-node src/worker.ts",
-    "start:reindex": "ts-node src/worker.ts reindexMarket $*",
+    "start:service": "tsx src/service.ts",
+    "start:worker": "tsx src/worker.ts",
+    "start:reindex": "tsx src/worker.ts reindexMarket $*",
     "test": "echo \"Error: no test specified\" && exit 1",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org foil --project data ./dist && sentry-cli sourcemaps upload --org foil --project data ./dist"
   },
@@ -41,7 +41,6 @@
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
     "eslint": "^9.15.0",
-    "ts-node": "^10.9.2",
     "tsx": "^4.19.2"
   },
   "engines": {
