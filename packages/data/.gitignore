@@ -1,2 +1,4 @@
 dist
 data
+# Sentry Config File
+.sentryclirc

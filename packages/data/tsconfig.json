@@ -12,7 +12,14 @@
       "strictPropertyInitialization": false,
       "resolveJsonModule": true,
       "baseUrl": ".",
-      "paths": {"@/protocol/*": ["../protocol/*"]}
+      "paths": {"@/protocol/*": ["../protocol/*"]},
+      "sourceMap": true,
+      "inlineSources": true,
+
+      // Set `sourceRoot` to  "/" to strip the build path prefix
+      // from generated source code references.
+      // This improves issue grouping in Sentry.
+      "sourceRoot": "/"
     },
     "include": ["src"],
     "exclude": ["node_modules", "**/*.spec.ts"]
