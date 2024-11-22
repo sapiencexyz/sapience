@@ -62,7 +62,10 @@ const startServer = async () => {
   // Middleware to parse JSON bodies
   app.use(express.json());
 
-  Sentry.setupExpressErrorHandler(app);
+  // Only set up Sentry error handling in production
+  if (process.env.NODE_ENV === "production") {
+    Sentry.setupExpressErrorHandler(app);
+  }
 
   const corsOptions: cors.CorsOptions = {
     origin: (
