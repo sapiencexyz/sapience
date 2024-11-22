@@ -37,11 +37,10 @@ import path from "path";
 import { RenderJob } from "./models/RenderJob";
 import { getMarketStartEndBlock } from "./controllers/marketHelpers";
 import { isValidWalletSignature } from "./middleware";
+import * as Sentry from "@sentry/node";
 import "./instrument.js";
 
 const PORT = 3001;
-
-const Sentry = require("@sentry/node");
 
 // Load environment variables
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
