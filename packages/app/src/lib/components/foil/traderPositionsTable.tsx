@@ -48,7 +48,7 @@ const PositionCell = ({ row }: { row: any }) => {
     row.original.baseToken - row.original.borrowedBaseToken === 0;
   return (
     <Link
-      href={`/positions/${row.original.chain?.id}:${row.original.address}/${row.original.positionId}`}
+      href={`/positions/${row.original.epoch?.market?.chainId}:${row.original.epoch?.market?.address}/${row.original.positionId}`}
     >
       #{row.original.positionId.toString()}
       {isClosed ? ' (Closed)' : ''}
@@ -132,7 +132,9 @@ const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
     const unitsAdjustedEntryPrice = useMarketUnits
       ? entryPrice
       : convertWstEthToGwei(entryPrice, stEthPerToken);
-    return formatUnits(BigInt(unitsAdjustedEntryPrice), 18);
+    return isNaN(unitsAdjustedEntryPrice)
+      ? 0
+      : formatUnits(BigInt(unitsAdjustedEntryPrice), 18);
   };
 
   const columns = useMemo<ColumnDef<any>[]>(
