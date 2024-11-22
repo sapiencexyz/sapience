@@ -1,3 +1,4 @@
+import "./instrument.js";
 import "reflect-metadata";
 import dataSource, {
   eventRepository,
@@ -38,7 +39,6 @@ import { RenderJob } from "./models/RenderJob";
 import { getMarketStartEndBlock } from "./controllers/marketHelpers";
 import { isValidWalletSignature } from "./middleware";
 import * as Sentry from "@sentry/node";
-import "./instrument.js";
 
 const PORT = 3001;
 
