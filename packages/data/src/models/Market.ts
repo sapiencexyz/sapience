@@ -31,17 +31,17 @@ export class Market {
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column()
+  @Column({ type: "varchar" })
   address: string;
 
-  @Column()
+  @Column({ type: "integer" })
   chainId: number;
 
-  @Column()
-  deployTimestamp: number;
+  @Column({ type: "integer", nullable: true })
+  deployTimestamp: number | null;
 
-  @Column()
-  deployTxnBlockNumber: number;
+  @Column({ type: "integer", nullable: true })
+  deployTxnBlockNumber: number | null;
 
   @Column({ type: "varchar", nullable: true })
   owner: string | null;
@@ -52,7 +52,7 @@ export class Market {
   @Column(() => MarketParams)
   marketParams: MarketParams;
 
-  @Column()
+  @Column({ type: "boolean", default: false })
   public: boolean;
 
   @Column({ type: "varchar", nullable: true })

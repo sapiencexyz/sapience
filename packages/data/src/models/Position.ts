@@ -30,10 +30,10 @@ export class Position {
   @ManyToOne(() => Epoch, (epoch) => epoch.positions)
   epoch: Epoch;
 
-  @Column()
+  @Column({ type: "integer" })
   positionId: number;
 
-  @Column({ nullable: true })
+  @Column({ type: "varchar", nullable: true })
   owner: string;
 
   @Column({
@@ -71,7 +71,7 @@ export class Position {
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
   collateral: string; // ETH
 
-  @Column()
+  @Column({ type: "boolean" })
   isLP: boolean; // true for event name
 
   @Column({

@@ -1,10 +1,11 @@
+import "reflect-metadata";
 import { initializeDataSource } from "./db";
 import {
   indexMarketEvents,
   initializeMarket,
   reindexMarketEvents,
 } from "./controllers/market";
-import { MARKET_INFO } from "./constants";
+import { MARKET_INFO } from "./markets";
 import { createOrUpdateEpochFromContract } from "./controllers/marketHelpers";
 
 async function main() {

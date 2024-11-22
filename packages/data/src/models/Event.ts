@@ -28,13 +28,13 @@ export class Event {
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column()
-  blockNumber: number;
+  @Column({ type: "integer", nullable: true })
+  blockNumber: number | null;
 
   @Column({ type: "bigint" })
-  timestamp: string; //In seconds
+  timestamp: string; // In seconds
 
-  @Column()
+  @Column({ type: "integer" })
   logIndex: number;
 
   @Column({ type: "json" })

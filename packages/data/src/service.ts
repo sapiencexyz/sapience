@@ -1,5 +1,5 @@
-import "./instrument";
 import "reflect-metadata";
+import "./instrument";
 import dataSource, {
   eventRepository,
   initializeDataSource,
@@ -39,10 +39,14 @@ import { RenderJob } from "./models/RenderJob";
 import { getMarketStartEndBlock } from "./controllers/marketHelpers";
 import { isValidWalletSignature } from "./middleware";
 import * as Sentry from "@sentry/node";
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
 const PORT = 3001;
 
 // Load environment variables
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 const startServer = async () => {

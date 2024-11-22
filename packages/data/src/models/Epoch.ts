@@ -31,14 +31,14 @@ export class Epoch {
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column()
+  @Column({ type: "integer" })
   epochId: number;
 
-  @Column()
-  startTimestamp: number;
+  @Column({ type: "integer", nullable: true })
+  startTimestamp: number | null   ;
 
-  @Column()
-  endTimestamp: number;
+  @Column({ type: "integer", nullable: true })
+  endTimestamp: number | null;
 
   @Column({
     type: "numeric",

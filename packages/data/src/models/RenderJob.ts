@@ -13,9 +13,9 @@ export class RenderJob {
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column()
+  @Column({ type: "varchar" })
   jobId: string;
 
-  @Column()
+  @Column({ type: "varchar" })
   serviceId: string;
 }

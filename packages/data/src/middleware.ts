@@ -7,7 +7,10 @@ const ADMIN_AUTHENTICATE_MSG =
   "Please sign this message to authenticate yourself as an admin.";
 
 // Load environment variables
-dotenv.config({ path: path.resolve(__dirname, "../.env") });
+dotenv.config({ path: path.resolve(
+  new URL('.', import.meta.url).pathname,
+  "../.env"
+) });
 const ALLOWED_ADDRESSES =
   process.env.ALLOWED_ADDRESSES?.split(",").map((a) => a.toLowerCase()) || [];
 const MESSAGE_EXPIRY = 5 * 60 * 1000; // 5 minutes in milliseconds

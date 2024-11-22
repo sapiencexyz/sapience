@@ -12,6 +12,12 @@ import { epochRepository } from "./db";
 import { Deployment } from "./interfaces";
 import dotenv from "dotenv";
 import path from "path";
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+// Replace __dirname reference with this
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Load environment variables
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
