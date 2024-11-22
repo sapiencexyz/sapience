@@ -225,6 +225,15 @@ importers:
 
   packages/data:
     dependencies:
+      '@sentry/cli':
+        specifier: ^2.39.0
+        version: 2.39.0(encoding@0.1.13)
+      '@sentry/node':
+        specifier: ^8.40.0
+        version: 8.40.0
+      '@sentry/profiling-node':
+        specifier: ^8.40.0
+        version: 8.40.0
       cors:
         specifier: ^2.8.5
         version: 2.8.5
@@ -4190,8 +4199,19 @@ packages:
     engines: {node: '>=10'}
     os: [darwin]
 
+  '@sentry/cli-darwin@2.39.0':
+    resolution: {integrity: sha512-D3MbVK1gv3NIdwocYESbSWsiDRphmnXILFKKvfqTqnJ07oMh8qHh+saCBCUj8sECSinZIvWJP2weERg4zy8WsA==}
+    engines: {node: '>=10'}
+    os: [darwin]
+
   '@sentry/cli-linux-arm64@2.38.2':
     resolution: {integrity: sha512-4Fp/jjQpNZj4Th+ZckMQvldAuuP0ZcyJ9tJCP1CCOn5poIKPYtY6zcbTP036R7Te14PS4ALOcDNX3VNKfpsifA==}
+    engines: {node: '>=10'}
+    cpu: [arm64]
+    os: [linux, freebsd]
+
+  '@sentry/cli-linux-arm64@2.39.0':
+    resolution: {integrity: sha512-TAm5xQlrXr8aznQqvBvhTfS8+hbBdpoQ7SMVWtwI00Pf0dcg0N/yTGKAh9d25broPnZNyA2UjOrL4LuwLMc9Xw==}
     engines: {node: '>=10'}
     cpu: [arm64]
     os: [linux, freebsd]
@@ -4202,8 +4222,20 @@ packages:
     cpu: [arm]
     os: [linux, freebsd]
 
+  '@sentry/cli-linux-arm@2.39.0':
+    resolution: {integrity: sha512-vL0X4hbujasgse7+ip06eOmgAxwQe82MFPZHtJhGz4okVwKkfaXat+2Quzl5qPpTBMNLbRCTQVs+yROF7MaNew==}
+    engines: {node: '>=10'}
+    cpu: [arm]
+    os: [linux, freebsd]
+
   '@sentry/cli-linux-i686@2.38.2':
     resolution: {integrity: sha512-6zVJN10dHIn4R1v+fxuzlblzVBhIVwsaN/S7aBED6Vn1HhAyAcNG2tIzeCLGeDfieYjXlE2sCI82sZkQBCbAGw==}
+    engines: {node: '>=10'}
+    cpu: [x86, ia32]
+    os: [linux, freebsd]
+
+  '@sentry/cli-linux-i686@2.39.0':
+    resolution: {integrity: sha512-Vytl5egCAuzOQeex8m/iKBGYKM+7uVBCZnEGlx+QJy7OgK9N/UEepeGZ8ISuoZJC4lQKHTi2eve5ZweXwdBLyw==}
     engines: {node: '>=10'}
     cpu: [x86, ia32]
     os: [linux, freebsd]
@@ -4214,8 +4246,20 @@ packages:
     cpu: [x64]
     os: [linux, freebsd]
 
+  '@sentry/cli-linux-x64@2.39.0':
+    resolution: {integrity: sha512-eeuQKiqffU8lzsG3PLCBtHPnla25pnir5H2v1EoBc/Q7N/zuwUWhKzrecxbS4H9hPQQD88NfW9JxHSLCGclxQA==}
+    engines: {node: '>=10'}
+    cpu: [x64]
+    os: [linux, freebsd]
+
   '@sentry/cli-win32-i686@2.38.2':
     resolution: {integrity: sha512-DYfSvd5qLPerLpIxj3Xu2rRe3CIlpGOOfGSNI6xvJ5D8j6hqbOHlCzvfC4oBWYVYGtxnwQLMeDGJ7o7RMYulig==}
+    engines: {node: '>=10'}
+    cpu: [x86, ia32]
+    os: [win32]
+
+  '@sentry/cli-win32-i686@2.39.0':
+    resolution: {integrity: sha512-kkQo5rrEToR8H1zKpnOyAaMi4xFVOg5RhklwiB1YDlv6+cpy4lWISNWkUhVpe6jMIHaxvADLzYOPwbyBVsWiqg==}
     engines: {node: '>=10'}
     cpu: [x86, ia32]
     os: [win32]
@@ -4226,8 +4270,19 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@sentry/cli-win32-x64@2.39.0':
+    resolution: {integrity: sha512-QVuw/WIWKRASGOKmVUiXIDGIFSqMFUZFWR2wSPmbTqxgTTsoDNYBQIYLsOw/bT+tkZBMiUxVdsdDKofPlHwzdw==}
+    engines: {node: '>=10'}
+    cpu: [x64]
+    os: [win32]
+
   '@sentry/cli@2.38.2':
     resolution: {integrity: sha512-CR0oujpAnhegK2pBAv6ZReMqbFTuNJLDZLvoD1B+syrKZX+R+oxkgT2e1htsBbht+wGxAsluVWsIAydSws1GAA==}
+    engines: {node: '>= 10'}
+    hasBin: true
+
+  '@sentry/cli@2.39.0':
+    resolution: {integrity: sha512-1Zb2F/yuccNqzbgj/I12Rktm0vtOobkG6I75/6o9Tk+nNuCD7tC+SO5b8bUDKrc3gDE+AI067wbaPKnXXjAwig==}
     engines: {node: '>= 10'}
     hasBin: true
 
@@ -4270,6 +4325,11 @@ packages:
       '@opentelemetry/instrumentation': ^0.54.0
       '@opentelemetry/sdk-trace-base': ^1.26.0
       '@opentelemetry/semantic-conventions': ^1.27.0
+
+  '@sentry/profiling-node@8.40.0':
+    resolution: {integrity: sha512-JktVHpy33iIEuOs75gDRCUavDyxsJESQK5Fyi7T3SpL9ymwhlcPesJ6Y4x7GscX5yNJAIOnWbVblcxA0QrxDxg==}
+    engines: {node: '>=14.18'}
+    hasBin: true
 
   '@sentry/react@8.40.0':
     resolution: {integrity: sha512-Ohq/po83r9sh/DCO6VAxx4xU+1ztvFzmXTl3fUnAEc+2bFJK1MsRt6BWfG37XxjQN//mfmyS9KEBgsOpOyd4LQ==}
@@ -19605,22 +19665,43 @@ snapshots:
   '@sentry/cli-darwin@2.38.2':
     optional: true
 
+  '@sentry/cli-darwin@2.39.0':
+    optional: true
+
   '@sentry/cli-linux-arm64@2.38.2':
+    optional: true
+
+  '@sentry/cli-linux-arm64@2.39.0':
     optional: true
 
   '@sentry/cli-linux-arm@2.38.2':
     optional: true
 
+  '@sentry/cli-linux-arm@2.39.0':
+    optional: true
+
   '@sentry/cli-linux-i686@2.38.2':
+    optional: true
+
+  '@sentry/cli-linux-i686@2.39.0':
     optional: true
 
   '@sentry/cli-linux-x64@2.38.2':
     optional: true
 
+  '@sentry/cli-linux-x64@2.39.0':
+    optional: true
+
   '@sentry/cli-win32-i686@2.38.2':
     optional: true
 
+  '@sentry/cli-win32-i686@2.39.0':
+    optional: true
+
   '@sentry/cli-win32-x64@2.38.2':
+    optional: true
+
+  '@sentry/cli-win32-x64@2.39.0':
     optional: true
 
   '@sentry/cli@2.38.2(encoding@0.1.13)':
@@ -19638,6 +19719,25 @@ snapshots:
       '@sentry/cli-linux-x64': 2.38.2
       '@sentry/cli-win32-i686': 2.38.2
       '@sentry/cli-win32-x64': 2.38.2
+    transitivePeerDependencies:
+      - encoding
+      - supports-color
+
+  '@sentry/cli@2.39.0(encoding@0.1.13)':
+    dependencies:
+      https-proxy-agent: 5.0.1
+      node-fetch: 2.7.0(encoding@0.1.13)
+      progress: 2.0.3
+      proxy-from-env: 1.1.0
+      which: 2.0.2
+    optionalDependencies:
+      '@sentry/cli-darwin': 2.39.0
+      '@sentry/cli-linux-arm': 2.39.0
+      '@sentry/cli-linux-arm64': 2.39.0
+      '@sentry/cli-linux-i686': 2.39.0
+      '@sentry/cli-linux-x64': 2.39.0
+      '@sentry/cli-win32-i686': 2.39.0
+      '@sentry/cli-win32-x64': 2.39.0
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -19758,6 +19858,16 @@ snapshots:
       '@opentelemetry/semantic-conventions': 1.28.0
       '@sentry/core': 8.40.0
       '@sentry/types': 8.40.0
+
+  '@sentry/profiling-node@8.40.0':
+    dependencies:
+      '@sentry/core': 8.40.0
+      '@sentry/node': 8.40.0
+      '@sentry/types': 8.40.0
+      detect-libc: 2.0.3
+      node-abi: 3.67.0
+    transitivePeerDependencies:
+      - supports-color
 
   '@sentry/react@8.40.0(react@18.3.1)':
     dependencies:
@@ -21632,6 +21742,10 @@ snapshots:
   acorn-jsx@5.3.2(acorn@8.12.1):
     dependencies:
       acorn: 8.12.1
+
+  acorn-jsx@5.3.2(acorn@8.14.0):
+    dependencies:
+      acorn: 8.14.0
 
   acorn-walk@8.3.4:
     dependencies:
@@ -28518,8 +28632,8 @@ snapshots:
 
   micromark-extension-mdxjs@3.0.0:
     dependencies:
-      acorn: 8.12.1
-      acorn-jsx: 5.3.2(acorn@8.12.1)
+      acorn: 8.14.0
+      acorn-jsx: 5.3.2(acorn@8.14.0)
       micromark-extension-mdx-expression: 3.0.0
       micromark-extension-mdx-jsx: 3.0.1
       micromark-extension-mdx-md: 2.0.0
@@ -28822,7 +28936,7 @@ snapshots:
 
   mlly@1.7.1:
     dependencies:
-      acorn: 8.12.1
+      acorn: 8.14.0
       pathe: 1.1.2
       pkg-types: 1.2.0
       ufo: 1.5.4

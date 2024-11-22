@@ -37,8 +37,11 @@ import path from "path";
 import { RenderJob } from "./models/RenderJob";
 import { getMarketStartEndBlock } from "./controllers/marketHelpers";
 import { isValidWalletSignature } from "./middleware";
+import "./instrument.js";
 
 const PORT = 3001;
+
+const Sentry = require("@sentry/node");
 
 // Load environment variables
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
@@ -55,6 +58,8 @@ const startServer = async () => {
   const app = express();
   // Middleware to parse JSON bodies
   app.use(express.json());
+
+  Sentry.setupExpressErrorHandler(app);
 
   const corsOptions: cors.CorsOptions = {
     origin: (
@@ -78,6 +83,10 @@ const startServer = async () => {
   };
 
   app.use(cors(corsOptions));
+
+  app.get("/debug-sentry", function mainHandler(req, res) {
+    throw new Error("My first Sentry error!");
+  });
 
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
