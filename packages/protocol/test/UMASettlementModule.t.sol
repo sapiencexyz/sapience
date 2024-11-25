@@ -69,7 +69,7 @@ contract UmaSettleMarket is TestEpoch {
     function test_only_owner_settle() public {
         vm.warp(endTime + 1);
         vm.expectRevert("Only owner can call this function");
-        foil.submitSettlementPrice(epochId, SQRT_PRICE_11Eth);
+        foil.submitSettlementPrice(epochId, address(0), SQRT_PRICE_11Eth);
     }
 
     function test_settle_in_range() public {
@@ -86,6 +86,7 @@ contract UmaSettleMarket is TestEpoch {
         );
         bytes32 assertionId = foil.submitSettlementPrice(
             epochId,
+            owner,
             SQRT_PRICE_10Eth
         );
         vm.stopPrank();
@@ -120,6 +121,7 @@ contract UmaSettleMarket is TestEpoch {
         );
         bytes32 assertionId = foil.submitSettlementPrice(
             epochId,
+            owner,
             maxPriceSqrtX96PlusOne
         );
         vm.stopPrank();
@@ -150,6 +152,7 @@ contract UmaSettleMarket is TestEpoch {
         );
         bytes32 assertionId = foil.submitSettlementPrice(
             epochId,
+            owner,
             minPriceSqrtX96MinusOne
         );
         vm.stopPrank();
@@ -174,7 +177,7 @@ contract UmaSettleMarket is TestEpoch {
             marketParams.bondAmount
         );
         vm.expectRevert("Market epoch activity is still allowed");
-        foil.submitSettlementPrice(epochId, minPriceSqrtX96MinusOne);
+        foil.submitSettlementPrice(epochId, owner, minPriceSqrtX96MinusOne);
         vm.stopPrank();
     }
 
@@ -188,6 +191,7 @@ contract UmaSettleMarket is TestEpoch {
         );
         bytes32 assertionId = foil.submitSettlementPrice(
             epochId,
+            owner,
             SQRT_PRICE_10Eth
         );
         vm.stopPrank();
@@ -202,7 +206,7 @@ contract UmaSettleMarket is TestEpoch {
             marketParams.bondAmount
         );
         vm.expectRevert("Market epoch already settled");
-        foil.submitSettlementPrice(epochId, SQRT_PRICE_10Eth);
+        foil.submitSettlementPrice(epochId, owner, SQRT_PRICE_10Eth);
         vm.stopPrank();
     }
 
@@ -217,6 +221,7 @@ contract UmaSettleMarket is TestEpoch {
         );
         bytes32 assertionId = foil.submitSettlementPrice(
             epochId,
+            owner,
             SQRT_PRICE_10Eth
         );
         vm.stopPrank();
@@ -236,6 +241,7 @@ contract UmaSettleMarket is TestEpoch {
         );
         bytes32 assertionId2 = foil.submitSettlementPrice(
             epochId,
+            owner,
             SQRT_PRICE_11Eth
         );
         vm.stopPrank();
@@ -265,11 +271,12 @@ contract UmaSettleMarket is TestEpoch {
         );
         bytes32 assertionId = foil.submitSettlementPrice(
             epochId,
+            owner,
             250541448375047946302209916928
         ); // 10 ether
 
         vm.expectRevert("Assertion already submitted");
-        foil.submitSettlementPrice(epochId, 10 ether);
+        foil.submitSettlementPrice(epochId, owner, 10 ether);
 
         vm.stopPrank();
 

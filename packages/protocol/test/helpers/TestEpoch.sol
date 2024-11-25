@@ -151,7 +151,7 @@ contract TestEpoch is TestUser {
         vm.startPrank(owner);
 
         bondCurrency.approve(address(foil), bondAmount);
-        bytes32 assertionId = foil.submitSettlementPrice(epochId, price);
+        bytes32 assertionId = foil.submitSettlementPrice(epochId, owner, price);
         vm.stopPrank();
 
         address optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
