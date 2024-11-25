@@ -321,7 +321,9 @@ const EpochItem: React.FC<{
   const [loadingStEthPerToken, setLoadingStEthPerToken] = useState(false);
   const [stEthPerToken, setStEthPerToken] = useState(0);
   const { toast } = useToast();
-  const { foilData, loading, error } = useFoilDeployment(market?.chainId);
+  const { foilData, loading, error, foilVaultData } = useFoilDeployment(
+    market?.chainId
+  );
   const { chainId, collateralAsset } = market;
   const { endTimestamp } = epoch;
   const [txnStep, setTxnStep] = useState(0);
@@ -418,11 +420,12 @@ const EpochItem: React.FC<{
     abi: erc20ABI as AbiFunction[],
     address: bondCurrency as `0x${string}`,
     functionName: 'allowance',
-    args: [address, market.address],
+    args: [address, foilVaultData.address],
     account: address || zeroAddress,
     chainId: market.chainId,
     query: {
-      enabled: !!address && !!bondAmount,
+      enabled:
+        !!address && !!bondAmount && !loading && !error && !!foilVaultData,
     },
   });
 
@@ -510,9 +513,9 @@ const EpochItem: React.FC<{
 
   const handleSettleWithPrice = () => {
     settleWithPrice({
-      address: market.address as `0x${string}`,
-      abi: foilData.abi,
-      functionName: 'submitSettlementPrice',
+      address: foilVaultData.address as `0x${string}`,
+      abi: foilVaultData.abi,
+      functionName: 'submitMarketSettlementPrice',
       args: [
         epoch.epochId,
         parseUnits(priceAdjusted.toString(), TOKEN_DECIMALS),
@@ -526,7 +529,7 @@ const EpochItem: React.FC<{
       abi: erc20ABI,
       address: bondCurrency as `0x${string}`,
       functionName: 'approve',
-      args: [market.address, bondAmount],
+      args: [foilVaultData.address, bondAmount],
       chainId,
     });
     setTxnStep(1);
@@ -536,6 +539,11 @@ const EpochItem: React.FC<{
     setTxnStep(0);
     setLoadingAction((prev) => ({ ...prev, settle: false }));
   };
+
+  const buttonIsLoading =
+    loadingAction.settle ||
+    loadingStEthPerToken ||
+    stEthPerTokenResult.isLoading;
 
   const renderSettledCell = () => {
     if (epochSettled) {
@@ -555,11 +563,12 @@ const EpochItem: React.FC<{
       <div className="space-y-2">
         <p className="text-lg">{formatAmount(priceAdjusted)}</p>
         <Button
-          disabled={!getEpochData}
+          disabled={!getEpochData || buttonIsLoading}
           onClick={
             requireApproval ? handleApproveSettle : handleSettleWithPrice
           }
         >
+          {buttonIsLoading && <Loader2 className="animate-spin" />}
           {requireApproval
             ? `Approve ${collateralTickerFunctionResult.data} Transfer`
             : 'Settle with Price'}
