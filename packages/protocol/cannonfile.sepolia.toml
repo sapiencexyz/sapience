@@ -14,9 +14,9 @@ optimisticOracleV3 = "0xFd9e2642a170aDD10F53Ee14a93FcF2F31924944"
 minTradeSize = "10000"
 # Vaults Settings
 vault1Name="Foil Vault Yin"
-vault1Symbol = "FVLT1"
+vault1Symbol = "fYIN"
 vault2Name="Foil Vault Yang"
-vault2Symbol = "FVLT2"
+vault2Symbol = "fYANG"
 lowerBoundMultiplier = "0.5773502691896257" # sqrt(1/3) 
 upperBoundMultiplier = "1.7320508075688772" # sqrt(3)
 duration = "2419200" # 28 day in seconds
@@ -57,7 +57,7 @@ artifact="ERC165Module"
 [deploy.SettlementModule]
 artifact="SettlementModule"
 
-[router.Foil1]
+[router.FoilYin]
 contracts=[
   "ConfigurationModule",
   "LiquidityModule",
@@ -70,7 +70,7 @@ contracts=[
 ]
 highlight=true
 
-[router.Foil2]
+[router.FoilYang]
 contracts=[
   "ConfigurationModule",
   "LiquidityModule",
@@ -84,65 +84,63 @@ contracts=[
 highlight=true
 
 # VAULT 1
-[deploy.Vault1]
+[deploy.VaultYin]
 artifact="Vault"
 from="<%= settings.owner %>"
-args=[ "<%= settings.vault1Name %>", "<%= settings.vault1Symbol %>", "<%= Foil1.address %>", "<%= imports.wstETH.contracts.Token.address %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "0", "<%= settings.totalVaults %>" ]
-highlight=true
-depends = ['router.Foil1', 'pull.wstETH', 'var.settings']
+args=[ "<%= settings.vault1Name %>", "<%= settings.vault1Symbol %>", "<%= FoilYin.address %>", "<%= imports.wstETH.contracts.Token.address %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "0", "<%= settings.totalVaults %>" ]
+depends = ['router.FoilYin', 'pull.wstETH', 'var.settings']
 
-[invoke.initializeMarketForVault1]
-target="Foil1"
+[invoke.initializeMarketForVaultYin]
+target="FoilYin"
 func="initializeMarket"
 from="<%= settings.owner %>"
 args=[
-  "<%= Vault1.address %>",
+  "<%= VaultYin.address %>",
   "<%= imports.wstETH.contracts.Token.address %>",
   [],
-  "<%= Vault1.address %>",
+  "<%= VaultYin.address %>",
   "<%= settings.minTradeSize %>",
   { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.USDC.contracts.Token.address %>", bondAmount = "<%= settings.bondAmount %>", claimStatement = "<%= settings.claimStatement %>", uniswapPositionManager = "0x1238536071E1c677A632429e3655c799b22cDA52", uniswapSwapRouter = "0x65669fe35312947050c450bd5d36e6361f85ec12", uniswapQuoter = "0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>" }
 ]
-depends=["deploy.Vault1"]
+depends=["deploy.VaultYin"]
 
 # VAULT 2
-[deploy.Vault2]
+[deploy.VaultYang]
 artifact="Vault"
 from="<%= settings.owner %>"
-args=[ "<%= settings.vault2Name %>", "<%= settings.vault2Symbol %>", "<%= Foil2.address %>", "<%= imports.wstETH.contracts.Token.address %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "1", "<%= settings.totalVaults %>" ]
-highlight=true
-depends = ['router.Foil2', 'pull.wstETH', 'var.settings']
+args=[ "<%= settings.vault2Name %>", "<%= settings.vault2Symbol %>", "<%= FoilYang.address %>", "<%= imports.wstETH.contracts.Token.address %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "1", "<%= settings.totalVaults %>" ]
+depends = ['router.FoilYang', 'pull.wstETH', 'var.settings']
 
-[invoke.initializeMarketForVault2]
-target="Foil2"
+[invoke.initializeMarketForVaultYang]
+target="FoilYang"
 func="initializeMarket"
 from="<%= settings.owner %>"
 args=[
-  "<%= Vault2.address %>",
+  "<%= VaultYang.address %>",
   "<%= imports.wstETH.contracts.Token.address %>",
   [],
-  "<%= Vault2.address %>", 
+  "<%= VaultYang.address %>", 
   "<%= settings.minTradeSize %>",
   { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.USDC.contracts.Token.address %>", bondAmount = "<%= settings.bondAmount %>", claimStatement = "<%= settings.claimStatement %>", uniswapPositionManager = "0x1238536071E1c677A632429e3655c799b22cDA52", uniswapSwapRouter = "0x65669fe35312947050c450bd5d36e6361f85ec12", uniswapQuoter = "0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>" }
 ]
-depends=["deploy.Vault2"]
+depends=["deploy.VaultYang"]
 
 
 # START EPOCHS
-[invoke.initializeFirstEpochForVault1]
-target="Vault1"
+[invoke.initializeFirstEpochForVaultYin]
+target="VaultYin"
 from = "<%= settings.owner %>"
 func="initializeFirstEpoch"
 args=[
   "<%= settings.startingSqrtPriceX96 %>"
 ]
-depends=["invoke.initializeMarketForVault1"]
+depends=["invoke.initializeMarketForVaultYin"]
 
-[invoke.initializeFirstEpochForVault2]
-target="Vault2"
+[invoke.initializeFirstEpochForVaultYang]
+target="VaultYang"
 from = "<%= settings.owner %>"
 func="initializeFirstEpoch"
 args=[
   "<%= settings.startingSqrtPriceX96 %>"
 ]
-depends=["invoke.initializeMarketForVault2"]
+depends=["invoke.initializeMarketForVaultYang"]
