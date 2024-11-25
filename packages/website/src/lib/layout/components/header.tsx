@@ -27,7 +27,7 @@ export const Header = () => {
                 rel="noopener noreferrer"
                 className="ml-1 inline-block -translate-y-[0.5px] underline decoration-[0.5px] underline-offset-4"
               >
-                Sign up for the Testnet Competition
+                Join the Testnet Competition
               </a>
             </span>
             <button
