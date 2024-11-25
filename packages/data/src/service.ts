@@ -996,75 +996,43 @@ const startServer = async () => {
         order: { positionId: "ASC" },
       });
 
-      // First get the prices for all epochs
-      const epochPrices: Record<number, number> = {};
       const marketAddress = address;
-      for (const position of positions) {
-        const epochId = position.epoch.epochId;
+      const client =
+        Number(chainId) === cannon.id
+          ? sepoliaPublicClient
+          : getProviderForChain(Number(chainId));
 
-        if (!epochPrices[epochId]) {
-          // Get the pool prices for the market
-          const client =
-            Number(chainId) === cannon.id
-              ? sepoliaPublicClient
-              : getProviderForChain(Number(chainId));
+      const calculateOpenPositionValue = async (position: Position) => {
+        const collateralValue = await client.readContract({
+          address: marketAddress as `0x${string}`,
+          abi: [
+            {
+              type: "function",
+              name: "getPositionCollateralValue",
+              inputs: [
+                {
+                  name: "positionId",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+              outputs: [
+                {
+                  name: "collateralValue",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+              stateMutability: "view",
+            },
+          ],
+          functionName: "getPositionCollateralValue",
+          args: [BigInt(position.id)],
+        });
 
-          console.log("Address:", marketAddress as `0x${string}`);
-          console.log("EpochId:", epochId);
+        console.log("collateralValue", collateralValue);
 
-          // const price18Digits = await client.readContract({
-          //   address: marketAddress as `0x${string}`,
-          //   abi: [
-          //     {
-          //       type: "function",
-          //       name: "getReferencePrice",
-          //       inputs: [
-          //         {
-          //           name: "epochId",
-          //           type: "uint256",
-          //           internalType: "uint256",
-          //         },
-          //       ],
-          //       outputs: [
-          //         {
-          //           name: "price18Digits",
-          //           type: "uint256",
-          //           internalType: "uint256",
-          //         },
-          //       ],
-          //       stateMutability: "view",
-          //     },
-          //   ],
-          //   functionName: "getReferencePrice",
-          //   args: [BigInt(epochId)],
-          // });
-
-          // epochPrices[epochId] = Number(price18Digits);
-          epochPrices[epochId] = Number(1);
-        }
-      }
-
-      const calculateOpenPositionValue = (
-        position: Position,
-        epochPrices: Record<number, number>
-      ) => {
-        let positionValue = 0;
-        if (position.isLP) {
-          positionValue = 0;
-        } else {
-          // trade position: positionValue = vEthToken - borrowedVEth + (vGasToken - borrowedVGas) * marketPrice
-          const marketPrice = epochPrices[position.epoch.epochId];
-          positionValue =
-            Number(position.baseToken) -
-            Number(position.borrowedBaseToken) +
-            (Number(position.quoteToken) -
-              Number(position.borrowedQuoteToken)) *
-              marketPrice;
-        }
-
-        console.log("positionValue", positionValue);
-
-        return positionValue;
+        return Number(collateralValue);
       };
 
       const calculatePositionCollateralFlow = (transactions: Transaction[]) => {
@@ -1077,8 +1045,6 @@ const startServer = async () => {
 
       interface GroupedPosition {
         owner: string;
-        // positions: Position[];
-        // transactions: Transaction[];
         totalPnL: number;
       }
 
@@ -1092,8 +1058,9 @@ const startServer = async () => {
         }
 
         const positionPnL =
-          calculateOpenPositionValue(position, epochPrices) -
+          (await calculateOpenPositionValue(position)) -
           calculatePositionCollateralFlow(position.transactions);
+
         groupedByOwner[position.owner].totalPnL += positionPnL;
       }
 
