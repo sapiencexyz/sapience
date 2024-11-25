@@ -1,5 +1,5 @@
 {
-  "address": "0x3B9cc3D9f30199fC43915D322aEc9F9AC606d1f2",
+  "address": "0xc66eE059727b5d80488c23421b240059bf2FFAE5",
   "abi": [
     {
       "type": "function",
@@ -76,6 +76,11 @@
               "name": "settlementPriceD18",
               "type": "uint256",
               "internalType": "uint256"
+            },
+            {
+              "name": "assertionId",
+              "type": "bytes32",
+              "internalType": "bytes32"
             }
           ]
         },
@@ -203,6 +208,11 @@
               "name": "settlementPriceD18",
               "type": "uint256",
               "internalType": "uint256"
+            },
+            {
+              "name": "assertionId",
+              "type": "bytes32",
+              "internalType": "bytes32"
             }
           ]
         },
@@ -433,6 +443,25 @@
     },
     {
       "type": "function",
+      "name": "getPositionPnl",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "pnl",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "getPositionSize",
       "inputs": [
         {
@@ -522,12 +551,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x8099af247c9168e2e912c9ccf7ea7008ef8f241b23787b7dba6845777202075f",
-  "deployTxnBlockNumber": "7124641",
-  "deployTimestamp": "1732218288",
+  "deployTxnHash": "0x46e6dc6f34703e6518817c01d65e07955b802f9187c4a779808b85594d9e4d38",
+  "deployTxnBlockNumber": "7151809",
+  "deployTimestamp": "1732565376",
   "sourceName": "src/market/modules/ViewsModule.sol",
   "contractName": "ViewsModule",
   "deployedOn": "deploy.ViewsModule",
-  "gasUsed": 1658695,
-  "gasCost": "16619424220"
+  "gasUsed": 1660723,
+  "gasCost": "15990574375"
 }

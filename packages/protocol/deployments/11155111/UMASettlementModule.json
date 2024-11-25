@@ -1,5 +1,5 @@
 {
-  "address": "0x94054DA0b208842652dEb2Ff6AaF218186B87Ab2",
+  "address": "0x37EF589f67A56c1afF7f37df6D8B0311F704DB27",
   "abi": [
     {
       "type": "function",
@@ -40,6 +40,11 @@
           "name": "epochId",
           "type": "uint256",
           "internalType": "uint256"
+        },
+        {
+          "name": "asserter",
+          "type": "address",
+          "internalType": "address"
         },
         {
           "name": "settlementSqrtPriceX96",
@@ -124,6 +129,12 @@
           "internalType": "uint256"
         },
         {
+          "name": "asserter",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
           "name": "settlementSqrtPriceX96",
           "type": "uint160",
           "indexed": false,
@@ -199,12 +210,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x367bed858d62bf0df6dc22dfd89b4b4636a4b47130620d20600996b2443920c8",
-  "deployTxnBlockNumber": "7124640",
-  "deployTimestamp": "1732218276",
+  "deployTxnHash": "0x36dedd921177c17a68a5767d7e32d58fff15184743edb6745f8f3159b589dfdc",
+  "deployTxnBlockNumber": "7151808",
+  "deployTimestamp": "1732565364",
   "sourceName": "src/market/modules/UMASettlementModule.sol",
   "contractName": "UMASettlementModule",
   "deployedOn": "deploy.UMASettlementModule",
-  "gasUsed": 982780,
-  "gasCost": "17176087557"
+  "gasUsed": 993145,
+  "gasCost": "15946287005"
 }
