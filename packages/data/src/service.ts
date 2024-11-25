@@ -39,8 +39,8 @@ import { RenderJob } from "./models/RenderJob";
 import { getMarketStartEndBlock } from "./controllers/marketHelpers";
 import { isValidWalletSignature } from "./middleware";
 import * as Sentry from "@sentry/node";
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { fileURLToPath } from "url";
+import { dirname } from "path";
 
 const PORT = 3001;
 
@@ -959,6 +959,152 @@ const startServer = async () => {
       });
     } catch (error) {
       console.error("Error calculating gas usage:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get the leaderboard data for a given market
+  app.get("/leaderboard", async (req, res) => {
+    const { contractId } = req.query;
+
+    if (typeof contractId !== "string") {
+      return res.status(400).json({ error: "Invalid parameters" });
+    }
+
+    const [chainId, address] = contractId.split(":");
+    const where: any = {};
+
+    if (chainId && address) {
+      const market = await marketRepository.findOne({
+        where: { chainId: Number(chainId), address: String(address) },
+      });
+
+      if (!market) {
+        return res.status(404).json({ error: "Market not found" });
+      }
+
+      // Query for positions related to any epoch of this market
+      where.epoch = { market: { id: market.id } };
+    } else {
+      return res.status(400).json({ error: "Invalid contractId format" });
+    }
+
+    try {
+      const positions = await positionRepository.find({
+        where,
+        relations: ["epoch", "epoch.market", "transactions"],
+        order: { positionId: "ASC" },
+      });
+
+      // First get the prices for all epochs
+      const epochPrices: Record<number, number> = {};
+      const marketAddress = address;
+      for (const position of positions) {
+        const epochId = position.epoch.epochId;
+
+        if (!epochPrices[epochId]) {
+          // Get the pool prices for the market
+          const client =
+            Number(chainId) === cannon.id
+              ? sepoliaPublicClient
+              : getProviderForChain(Number(chainId));
+
+          console.log("Address:", marketAddress as `0x${string}`);
+          console.log("EpochId:", epochId);
+
+          // const price18Digits = await client.readContract({
+          //   address: marketAddress as `0x${string}`,
+          //   abi: [
+          //     {
+          //       type: "function",
+          //       name: "getReferencePrice",
+          //       inputs: [
+          //         {
+          //           name: "epochId",
+          //           type: "uint256",
+          //           internalType: "uint256",
+          //         },
+          //       ],
+          //       outputs: [
+          //         {
+          //           name: "price18Digits",
+          //           type: "uint256",
+          //           internalType: "uint256",
+          //         },
+          //       ],
+          //       stateMutability: "view",
+          //     },
+          //   ],
+          //   functionName: "getReferencePrice",
+          //   args: [BigInt(epochId)],
+          // });
+
+          // epochPrices[epochId] = Number(price18Digits);
+          epochPrices[epochId] = Number(1);
+        }
+      }
+
+      const calculateOpenPositionValue = (
+        position: Position,
+        epochPrices: Record<number, number>
+      ) => {
+        let positionValue = 0;
+        if (position.isLP) {
+          positionValue = 0;
+        } else {
+          // trade position: positionValue = vEthToken - borrowedVEth + (vGasToken - borrowedVGas) * marketPrice
+          const marketPrice = epochPrices[position.epoch.epochId];
+          positionValue =
+            Number(position.baseToken) -
+            Number(position.borrowedBaseToken) +
+            (Number(position.quoteToken) -
+              Number(position.borrowedQuoteToken)) *
+              marketPrice;
+        }
+
+        console.log("positionValue", positionValue);
+
+        return positionValue;
+      };
+
+      const calculatePositionCollateralFlow = (transactions: Transaction[]) => {
+        let collateralFlow = 0;
+        for (const transaction of transactions) {
+          collateralFlow += Number(transaction.collateralDelta);
+        }
+        return collateralFlow;
+      };
+
+      interface GroupedPosition {
+        owner: string;
+        // positions: Position[];
+        // transactions: Transaction[];
+        totalPnL: number;
+      }
+
+      const groupedByOwner: Record<string, GroupedPosition> = {};
+      for (const position of positions) {
+        if (!groupedByOwner[position.owner]) {
+          groupedByOwner[position.owner] = {
+            owner: position.owner,
+            totalPnL: 0,
+          };
+        }
+
+        const positionPnL =
+          calculateOpenPositionValue(position, epochPrices) -
+          calculatePositionCollateralFlow(position.transactions);
+        groupedByOwner[position.owner].totalPnL += positionPnL;
+      }
+
+      // Convert to array and sort by total PnL
+      const sortedPositions = Object.values(groupedByOwner).sort(
+        (a, b) => b.totalPnL - a.totalPnL
+      );
+
+      res.json(sortedPositions);
+    } catch (error) {
+      console.error("Error fetching positions:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
