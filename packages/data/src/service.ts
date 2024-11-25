@@ -39,8 +39,8 @@ import { RenderJob } from "./models/RenderJob";
 import { getMarketStartEndBlock } from "./controllers/marketHelpers";
 import { isValidWalletSignature } from "./middleware";
 import * as Sentry from "@sentry/node";
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { fileURLToPath } from "url";
+import { dirname } from "path";
 
 const PORT = 3001;
 
@@ -959,6 +959,119 @@ const startServer = async () => {
       });
     } catch (error) {
       console.error("Error calculating gas usage:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get the leaderboard data for a given market
+  app.get("/leaderboard", async (req, res) => {
+    const { contractId } = req.query;
+
+    if (typeof contractId !== "string") {
+      return res.status(400).json({ error: "Invalid parameters" });
+    }
+
+    const [chainId, address] = contractId.split(":");
+    const where: any = {};
+
+    if (chainId && address) {
+      const market = await marketRepository.findOne({
+        where: { chainId: Number(chainId), address: String(address) },
+      });
+
+      if (!market) {
+        return res.status(404).json({ error: "Market not found" });
+      }
+
+      // Query for positions related to any epoch of this market
+      where.epoch = { market: { id: market.id } };
+    } else {
+      return res.status(400).json({ error: "Invalid contractId format" });
+    }
+
+    try {
+      const positions = await positionRepository.find({
+        where,
+        relations: ["epoch", "epoch.market", "transactions"],
+        order: { positionId: "ASC" },
+      });
+
+      const marketAddress = address;
+      const client = getProviderForChain(Number(chainId));
+
+      const calculateOpenPositionValue = async (position: Position) => {
+        const collateralValue = await client.readContract({
+          address: marketAddress as `0x${string}`,
+          abi: [
+            {
+              type: "function",
+              name: "getPositionCollateralValue",
+              inputs: [
+                {
+                  name: "positionId",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+              outputs: [
+                {
+                  name: "collateralValue",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+              stateMutability: "view",
+            },
+          ],
+          functionName: "getPositionCollateralValue",
+          args: [BigInt(position.id)],
+        });
+
+        return Number(collateralValue);
+      };
+
+      const calculatePositionCollateralFlow = (transactions: Transaction[]) => {
+        let collateralFlow = 0;
+        for (const transaction of transactions) {
+          collateralFlow += Number(transaction.collateralDelta);
+        }
+        return collateralFlow;
+      };
+
+      interface GroupedPosition {
+        owner: string;
+        positions: Position[];
+        totalPnL: number;
+      }
+
+      const groupedByOwner: Record<string, GroupedPosition> = {};
+      for (const position of positions) {
+        if (!groupedByOwner[position.owner]) {
+          groupedByOwner[position.owner] = {
+            owner: position.owner,
+            positions: [],
+            totalPnL: 0,
+          };
+        }
+
+        const positionPnL =
+          (await calculateOpenPositionValue(position)) -
+          calculatePositionCollateralFlow(position.transactions);
+
+        position.transactions = [];
+        groupedByOwner[position.owner].positions.push(position);
+
+        groupedByOwner[position.owner].totalPnL += positionPnL;
+      }
+
+      // Convert to array and sort by total PnL
+      const sortedPositions = Object.values(groupedByOwner).sort(
+        (a, b) => b.totalPnL - a.totalPnL
+      );
+
+      res.json(sortedPositions);
+    } catch (error) {
+      console.error("Error fetching positions:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

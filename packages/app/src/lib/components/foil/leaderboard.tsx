@@ -29,7 +29,6 @@ import {
 } from '@/components/ui/tooltip';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { MarketContext } from '~/lib/context/MarketProvider';
-import { calculatePnL } from '~/lib/util/positionUtil';
 
 import NumberDisplay from './numberDisplay';
 
@@ -46,6 +45,12 @@ interface Position {
     id: string;
   };
   address: string;
+  epoch: {
+    market?: {
+      chainId?: string;
+      address?: string;
+    };
+  };
   isLP: boolean;
   owner: string;
 }
@@ -56,32 +61,21 @@ interface GroupedPosition {
   totalPnL: number;
 }
 
-const useEpochPositions = (marketId: string, epochId: string) => {
+const useLeaderboard = (marketId: string, epochId: string) => {
   return useQuery({
-    queryKey: ['epochPositions', marketId, epochId],
+    queryKey: ['epochLeaderboard', marketId, epochId],
     queryFn: async () => {
-      // Get trader positions
-      const traderResponse = await fetch(
-        `${API_BASE_URL}/positions?contractId=${marketId}&isLP=false`
+      // Get leaderboard and positions
+      const leaderboardResponse = await fetch(
+        `${API_BASE_URL}/leaderboard?contractId=${marketId}`
       );
-      if (!traderResponse.ok) {
-        throw new Error('Failed to fetch trader positions');
+      if (!leaderboardResponse.ok) {
+        throw new Error('Failed to fetch leaderboard positions');
       }
 
-      // Get LP positions
-      const lpResponse = await fetch(
-        `${API_BASE_URL}/positions?contractId=${marketId}&isLP=true`
-      );
-      if (!lpResponse.ok) {
-        throw new Error('Failed to fetch LP positions');
-      }
+      const [leaderboard] = await Promise.all([leaderboardResponse.json()]);
 
-      const [traderPositions, lpPositions] = await Promise.all([
-        traderResponse.json(),
-        lpResponse.json(),
-      ]);
-
-      return [...traderPositions, ...lpPositions];
+      return [...leaderboard];
     },
   });
 };
@@ -91,10 +85,10 @@ const PositionCell = ({ row }: { row: { original: GroupedPosition } }) => (
     {row.original.positions.map((position, index) => (
       <Link
         key={position.positionId}
-        href={`/positions/${position.chain?.id}:${position.address}/${position.positionId}`}
+        href={`/positions/${position?.epoch?.market?.chainId}:${position.epoch?.market?.address}/${position.positionId}`}
         className={`${badgeVariants({ variant: 'outline' })} hover:bg-muted transition-background`}
       >
-        #{position.positionId.toString()}
+        #{position.positionId?.toString()}
       </Link>
     ))}
   </div>
@@ -106,7 +100,7 @@ const PnLCell = ({ cell }: { cell: { getValue: () => unknown } }) => {
   return (
     <span className="md:text-xl whitespace-nowrap">
       {prefix}
-      <NumberDisplay value={value} /> wstETH
+      <NumberDisplay value={value / 1e18} /> wstETH
     </span>
   );
 };
@@ -179,7 +173,7 @@ const RankCell = ({ row }: { row: { index: number } }) => (
 
 const Leaderboard = ({ params }: Props) => {
   const { pool } = useContext(MarketContext);
-  const { data: positions, isLoading } = useEpochPositions(
+  const { data: leaderboardPositions, isLoading } = useLeaderboard(
     params.id,
     params.epoch
   );
@@ -209,34 +203,34 @@ const Leaderboard = ({ params }: Props) => {
         cell: PositionCell,
       },
     ],
-    [pool]
+    []
   );
 
   const groupedPositions = useMemo(() => {
-    if (!positions) return [] as GroupedPosition[];
+    if (!leaderboardPositions) return [] as GroupedPosition[];
+    console.log('leaderboardPositions', leaderboardPositions);
 
-    // Group positions by owner
-    const groupedByOwner = positions.reduce<Record<string, GroupedPosition>>(
-      (acc, position) => {
-        if (!acc[position.owner]) {
-          acc[position.owner] = {
-            owner: position.owner,
-            positions: [],
-            totalPnL: 0,
-          };
-        }
-        acc[position.owner].positions.push(position);
-        acc[position.owner].totalPnL += calculatePnL(position, pool);
-        return acc;
-      },
-      {}
-    );
+    // Group leaderboardPositions by owner
+    const groupedByOwner = leaderboardPositions.reduce<
+      Record<string, GroupedPosition>
+    >((acc, position) => {
+      if (!acc[position.owner]) {
+        acc[position.owner] = {
+          owner: position.owner,
+          positions: [],
+          totalPnL: 0,
+        };
+      }
+      acc[position.owner].positions = position.positions;
+      acc[position.owner].totalPnL = position.totalPnL;
+      return acc;
+    }, {});
 
     // Convert to array and sort by total PnL
     return Object.values(groupedByOwner).sort(
       (a, b) => b.totalPnL - a.totalPnL
     );
-  }, [positions, pool]);
+  }, [leaderboardPositions]);
 
   const table = useReactTable<GroupedPosition>({
     data: groupedPositions,
