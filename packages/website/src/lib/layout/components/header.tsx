@@ -22,7 +22,7 @@ export const Header = () => {
             <span className="ml-1 font-semibold">
               ⛽{' '}
               <a
-                href="https://app.foil.xyz"
+                href="https://mirror.xyz/0xC388FBA22945B103496f0B89E47cd332229514b8/dF8MPB_DNhaAhGuHGcUiVBaY4LcLMT8hxYS-8QGFux4"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="ml-1 inline-block -translate-y-[0.5px] underline decoration-[0.5px] underline-offset-4"
