@@ -41,11 +41,7 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
 
         // Perform settlement logic based on position kind
         if (position.kind == IFoilStructs.PositionKind.Liquidity) {
-            withdrawableCollateral = _settleLiquidityPosition(
-                position,
-                market,
-                epoch
-            );
+            withdrawableCollateral = _settleLiquidityPosition(position, epoch);
         } else if (position.kind == IFoilStructs.PositionKind.Trade) {
             withdrawableCollateral = position.settle(epoch.settlementPriceD18);
         } else {
@@ -59,12 +55,11 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
 
     function _settleLiquidityPosition(
         Position.Data storage position,
-        Market.Data storage market,
         Epoch.Data storage epoch
     ) internal returns (uint256) {
         // Get current token amounts using Pool library
-        (uint256 currentAmount0, uint256 currentAmount1, , , ) = Pool
-            .getCurrentPositionTokenAmounts(market, epoch, position);
+        (uint256 currentAmount0, uint256 currentAmount1, , , , , ) = Pool
+            .getCurrentPositionTokenAmounts(epoch, position);
 
         // Update the position's token amounts with the current values
         position.vGasAmount += currentAmount0;

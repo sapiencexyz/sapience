@@ -80,7 +80,7 @@ contract VaultDurationTest is TestVault {
         vm.stopPrank();
     }
 
-    function test_epochStartTimesAreStaggered() public {
+    function test_epochStartTimesAreStaggered() public view {
         // First vault should start at current block timestamp
         assertEq(
             vault1.getCurrentEpoch().startTime,

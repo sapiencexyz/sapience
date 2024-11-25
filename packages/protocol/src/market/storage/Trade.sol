@@ -144,16 +144,4 @@ library Trade {
             requiredAmountInVEth = amountIn;
         }
     }
-
-    function getReferencePrice(
-        uint256 epochId
-    ) internal view returns (uint256 price18Digits) {
-        Epoch.Data storage epoch = Epoch.load(epochId);
-
-        if (epoch.settled) {
-            return epoch.settlementPriceD18;
-        } else {
-            return epoch.getCurrentPoolPrice();
-        }
-    }
 }

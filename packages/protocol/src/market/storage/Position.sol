@@ -12,11 +12,13 @@ import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
 import {ERC721Storage} from "./ERC721Storage.sol";
 import {Errors} from "./Errors.sol";
 import {Market} from "./Market.sol";
+import {Pool} from "../libraries/Pool.sol";
 
 library Position {
     using SafeCastU256 for uint256;
     using SafeCastI256 for int256;
     using DecimalMath for uint256;
+    using DecimalMath for int256;
     using SafeERC20 for IERC20;
     using Market for Market.Data;
 
@@ -286,5 +288,46 @@ library Position {
             self.depositedCollateralAmount -= self.borrowedVEth;
             self.borrowedVEth = 0;
         }
+    }
+
+    function getPnl(Data storage self) internal view returns (int256) {
+        Epoch.Data storage epoch = Epoch.load(self.epochId);
+
+        uint256 gasPriceD18 = epoch.getReferencePrice();
+
+        // Initialize net virtual GAS and ETH positions
+        int256 netVGAS;
+        int256 netVETH;
+
+        // If the position is a Liquidity Provider (LP) position
+        if (self.kind == IFoilStructs.PositionKind.Liquidity) {
+            // Get the current amounts and fees owed from the Uniswap position manager
+            (
+                uint256 amount0,
+                uint256 amount1,
+                ,
+                ,
+                ,
+                uint256 tokensOwed0,
+                uint256 tokensOwed1
+            ) = Pool.getCurrentPositionTokenAmounts(epoch, self);
+
+            // Add these amounts to the position's vGasAmount and vEthAmount
+            uint256 totalVGAS = self.vGasAmount + amount0 + tokensOwed0;
+            uint256 totalVETH = self.vEthAmount + amount1 + tokensOwed1;
+
+            netVGAS = int256(totalVGAS) - int256(self.borrowedVGas);
+            netVETH = int256(totalVETH) - int256(self.borrowedVEth);
+        } else {
+            // For trader positions, use the stored values
+            netVGAS = int256(self.vGasAmount) - int256(self.borrowedVGas);
+            netVETH = int256(self.vEthAmount) - int256(self.borrowedVEth);
+        }
+
+        // Calculate the net value of virtual GAS holdings in ETH terms
+        int256 netVGASValue = netVGAS.mulDecimal(int256(gasPriceD18));
+
+        // Total net value in ETH terms (profit or loss)
+        return netVETH + netVGASValue;
     }
 }
