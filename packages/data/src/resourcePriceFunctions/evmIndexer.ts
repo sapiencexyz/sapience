@@ -16,7 +16,7 @@ class EvmIndexer {
     const used = block?.gasUsed;
     if (!value || !block.number) {
       console.error(
-        `No baseFeePerGas for block ${block.number} on market ${market.chainId}:${market.address}`
+        `No baseFeePerGas for block ${block?.number} on market ${market.chainId}:${market.address}`
       );
       return;
     }
