@@ -1027,8 +1027,6 @@ const startServer = async () => {
           args: [BigInt(position.id)],
         });
 
-        console.log("collateralValue", collateralValue);
-
         return Number(collateralValue);
       };
 
