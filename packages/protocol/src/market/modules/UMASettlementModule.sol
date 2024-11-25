@@ -20,6 +20,7 @@ contract UMASettlementModule is
 
     function submitSettlementPrice(
         uint256 epochId,
+        address asserter,
         uint160 settlementSqrtPriceX96
     ) external nonReentrant returns (bytes32) {
         Market.Data storage market = Market.load();
@@ -57,7 +58,7 @@ contract UMASettlementModule is
 
         epoch.assertionId = optimisticOracleV3.assertTruth(
             claim,
-            msg.sender,
+            asserter,
             address(this),
             address(0),
             epoch.marketParams.assertionLiveness,
@@ -77,6 +78,7 @@ contract UMASettlementModule is
 
         emit SettlementSubmitted(
             epochId,
+            asserter,
             settlementSqrtPriceX96,
             block.timestamp
         );

@@ -253,6 +253,7 @@ contract TradePositionSettlement is TestTrade {
         );
         bytes32 assertionId = foil.submitSettlementPrice(
             epochId,
+            owner,
             SETTLEMENT_PRICE_SQRT_D18
         );
         vm.stopPrank();

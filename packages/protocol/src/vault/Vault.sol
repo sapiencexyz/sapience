@@ -145,7 +145,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         );
 
         bondCurrency.approve(address(market), marketParams.bondAmount);
-        assertionId = market.submitSettlementPrice(epochId, price);
+        assertionId = market.submitSettlementPrice(epochId, msg.sender, price);
     }
 
     /// @notice callback function called by market when an epoch is settled
