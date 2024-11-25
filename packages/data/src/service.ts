@@ -997,10 +997,7 @@ const startServer = async () => {
       });
 
       const marketAddress = address;
-      const client =
-        Number(chainId) === cannon.id
-          ? sepoliaPublicClient
-          : getProviderForChain(Number(chainId));
+      const client = getProviderForChain(Number(chainId));
 
       const calculateOpenPositionValue = async (position: Position) => {
         const collateralValue = await client.readContract({
