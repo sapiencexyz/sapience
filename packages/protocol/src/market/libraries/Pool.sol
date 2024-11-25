@@ -11,7 +11,6 @@ import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePo
 
 library Pool {
     function getCurrentPositionTokenAmounts(
-        Market.Data storage market,
         Epoch.Data storage epoch,
         Position.Data storage position
     )
@@ -22,10 +21,13 @@ library Pool {
             uint256 amount1,
             int24 lowerTick,
             int24 upperTick,
-            uint128 liquidity
+            uint128 liquidity,
+            uint256 tokensOwed0,
+            uint256 tokensOwed1
         )
     {
-        market; // silence warnings
+        uint128 tokensOwed0U128;
+        uint128 tokensOwed1U128;
         // get liquidity given tokenId
         (
             ,
@@ -38,8 +40,8 @@ library Pool {
             liquidity,
             ,
             ,
-            ,
-
+            tokensOwed0U128,
+            tokensOwed1U128
         ) = INonfungiblePositionManager(
             epoch.marketParams.uniswapPositionManager
         ).positions(position.uniswapPositionId);
@@ -53,5 +55,7 @@ library Pool {
             sqrtPriceBX96,
             liquidity
         );
+        tokensOwed0 = uint256(tokensOwed0U128);
+        tokensOwed1 = uint256(tokensOwed1U128);
     }
 }

@@ -142,8 +142,10 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             stack.previousAmount1,
             stack.lowerTick,
             stack.upperTick,
-            stack.previousLiquidity
-        ) = Pool.getCurrentPositionTokenAmounts(market, epoch, position);
+            stack.previousLiquidity,
+            ,
+
+        ) = Pool.getCurrentPositionTokenAmounts(epoch, position);
 
         stack.decreaseParams = INonfungiblePositionManager
             .DecreaseLiquidityParams({
@@ -257,8 +259,10 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             stack.previousAmount1,
             stack.lowerTick,
             stack.upperTick,
-            stack.previousLiquidity
-        ) = Pool.getCurrentPositionTokenAmounts(market, epoch, position);
+            stack.previousLiquidity,
+            ,
+
+        ) = Pool.getCurrentPositionTokenAmounts(epoch, position);
 
         stack.increaseParams = INonfungiblePositionManager
             .IncreaseLiquidityParams({
