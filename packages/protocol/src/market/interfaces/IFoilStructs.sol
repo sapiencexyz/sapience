@@ -63,5 +63,6 @@ interface IFoilStructs {
         int24 baseAssetMaxPriceTick;
         bool settled;
         uint256 settlementPriceD18;
+        bytes32 assertionId;
     }
 }

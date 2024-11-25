@@ -622,4 +622,11 @@ library Epoch {
             return 0;
         }
     }
+
+    function getReferencePrice(
+        Data storage self
+    ) internal view returns (uint256) {
+        return
+            self.settled ? self.settlementPriceD18 : getCurrentPoolPrice(self);
+    }
 }

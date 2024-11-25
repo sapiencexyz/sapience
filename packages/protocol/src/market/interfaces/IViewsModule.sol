@@ -66,4 +66,13 @@ interface IViewsModule {
     function getPositionCollateralValue(
         uint256 positionId
     ) external view returns (uint256 collateralValue);
+
+    /**
+     * @notice Gets the current PnL of a position (either Trade or Liquidity)
+     * @param positionId id of the position
+     * @return pnl the PnL of the position in collateral units
+     */
+    function getPositionPnl(
+        uint256 positionId
+    ) external view returns (int256 pnl);
 }

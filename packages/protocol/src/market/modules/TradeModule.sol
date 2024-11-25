@@ -65,7 +65,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         position.epochId = epochId;
         position.kind = IFoilStructs.PositionKind.Trade;
 
-        uint256 initialPrice = Trade.getReferencePrice(epochId);
+        uint256 initialPrice = epoch.getReferencePrice();
 
         QuoteOrTradeInputParams memory inputParams = QuoteOrTradeInputParams({
             oldPosition: position,
@@ -98,7 +98,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         // Validate after trading that collateral is enough
         position.afterTradeCheck();
 
-        uint256 finalPrice = Trade.getReferencePrice(epochId);
+        uint256 finalPrice = epoch.getReferencePrice();
 
         epoch.validateCurrentPoolPriceInRange();
 
@@ -152,7 +152,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         // check if epoch is not settled
         epoch.validateNotSettled();
 
-        uint256 initialPrice = Trade.getReferencePrice(position.epochId);
+        uint256 initialPrice = epoch.getReferencePrice();
 
         QuoteOrTradeInputParams memory inputParams = QuoteOrTradeInputParams({
             oldPosition: position,
@@ -235,7 +235,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             position.afterTradeCheck();
         }
 
-        uint256 finalPrice = Trade.getReferencePrice(position.epochId);
+        uint256 finalPrice = epoch.getReferencePrice();
 
         epoch.validateCurrentPoolPriceInRange();
 
