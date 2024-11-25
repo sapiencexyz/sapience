@@ -95,10 +95,10 @@ target="FoilYin"
 func="initializeMarket"
 from="<%= settings.owner %>"
 args=[
-  "<%= Vault1.address %>",
+  "<%= VaultYin.address %>",
   "<%= imports.wstETH.contracts.Token.address %>",
   [],
-  "<%= Vault1.address %>",
+  "<%= VaultYin.address %>",
   "<%= settings.minTradeSize %>",
   { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.USDC.contracts.Token.address %>", bondAmount = "<%= settings.bondAmount %>", claimStatement = "<%= settings.claimStatement %>", uniswapPositionManager = "0x1238536071E1c677A632429e3655c799b22cDA52", uniswapSwapRouter = "0x65669fe35312947050c450bd5d36e6361f85ec12", uniswapQuoter = "0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>" }
 ]
@@ -116,10 +116,10 @@ target="FoilYang"
 func="initializeMarket"
 from="<%= settings.owner %>"
 args=[
-  "<%= Vault2.address %>",
+  "<%= VaultYang.address %>",
   "<%= imports.wstETH.contracts.Token.address %>",
   [],
-  "<%= Vault2.address %>", 
+  "<%= VaultYang.address %>", 
   "<%= settings.minTradeSize %>",
   { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.USDC.contracts.Token.address %>", bondAmount = "<%= settings.bondAmount %>", claimStatement = "<%= settings.claimStatement %>", uniswapPositionManager = "0x1238536071E1c677A632429e3655c799b22cDA52", uniswapSwapRouter = "0x65669fe35312947050c450bd5d36e6361f85ec12", uniswapQuoter = "0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>" }
 ]
