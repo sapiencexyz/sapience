@@ -1042,6 +1042,7 @@ const startServer = async () => {
 
       interface GroupedPosition {
         owner: string;
+        positions: Position[];
         totalPnL: number;
       }
 
@@ -1050,6 +1051,7 @@ const startServer = async () => {
         if (!groupedByOwner[position.owner]) {
           groupedByOwner[position.owner] = {
             owner: position.owner,
+            positions: [],
             totalPnL: 0,
           };
         }
@@ -1057,6 +1059,9 @@ const startServer = async () => {
         const positionPnL =
           (await calculateOpenPositionValue(position)) -
           calculatePositionCollateralFlow(position.transactions);
+
+        position.transactions = [];
+        groupedByOwner[position.owner].positions.push(position);
 
         groupedByOwner[position.owner].totalPnL += positionPnL;
       }
