@@ -197,10 +197,10 @@ const NavLinks = ({
           <div className="font-bold mb-1">Subscribe</div>
           {renderMobileMarketLinks('subscribe')}
         </div>
-        <div>
+        {/* <div>
           <div className="font-bold mb-1">Earn</div>
           {renderMobileMarketLinks('earn')}
-        </div>
+        </div> */}
         <div>
           <div className="font-bold mb-1">Trade</div>
           {renderMobileMarketLinks('trade', true)}
@@ -209,6 +209,13 @@ const NavLinks = ({
           <div className="font-bold mb-1">Pool</div>
           {renderMobileMarketLinks('pool', true)}
         </div>
+        <Link
+          href="/leaderboard/11155111:0x4243f3d11353aaeb404e31e160eec362d066637c/epochs/1"
+          onClick={() => onClose?.()}
+          className="hover:no-underline"
+        >
+          🏆 Leaderboard
+        </Link>
         <Link
           href="https://docs.foil.xyz"
           onClick={() => onClose?.()}
@@ -222,10 +229,46 @@ const NavLinks = ({
 
   return (
     <div className="flex gap-5">
+      {/* 
       <NavPopover label="Subscribe" path="subscribe" />
-      <NavPopover label="Earn" path="earn" />
+      <NavPopover label="Earn" path="earn" /> 
       <NavPopover label="Trade" path="trade" withEpochs />
       <NavPopover label="Pool" path="pool" withEpochs />
+      */}
+      <Link
+        href="/subscribe/11155111:0x4243f3d11353aaeb404e31e160eec362d066637c/epochs/1"
+        className="hover:no-underline"
+      >
+        <Button variant="ghost" className=" text-lg">
+          Subscribe
+        </Button>
+      </Link>
+
+      <Link
+        href="/trade/11155111:0x4243f3d11353aaeb404e31e160eec362d066637c/epochs/1"
+        className="hover:no-underline"
+      >
+        <Button variant="ghost" className=" text-lg">
+          Trade
+        </Button>
+      </Link>
+
+      <Link
+        href="/pool/11155111:0x4243f3d11353aaeb404e31e160eec362d066637c/epochs/1"
+        className="hover:no-underline"
+      >
+        <Button variant="ghost" className=" text-lg">
+          Pool
+        </Button>
+      </Link>
+      <Link
+        href="/leaderboard/11155111:0x4243f3d11353aaeb404e31e160eec362d066637c/epochs/1"
+        className="hover:no-underline"
+      >
+        <Button variant="ghost" className=" text-lg">
+          🏆 Leaderboard
+        </Button>
+      </Link>
       <Link href="https://docs.foil.xyz" className="hover:no-underline">
         <Button variant="ghost" className=" text-lg">
           Docs

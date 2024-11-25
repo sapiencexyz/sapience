@@ -1,10 +1,10 @@
 'use client';
 
-import EmailCaptureButton from '@/lib/components/EmailCaptureButton';
 import Spline from '@splinetool/react-spline';
 import { useMediaQuery } from 'usehooks-ts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 
 export const Features = () => {
   const isDesktop = useMediaQuery('(min-width: 768px)');
@@ -25,7 +25,12 @@ export const Features = () => {
             <div className="mx-auto mb-7 max-w-56 text-xl">
               Estimate usage and hedge transaction costs.
             </div>
-            <EmailCaptureButton>Subscribe</EmailCaptureButton>
+
+            <Button asChild className="rounded-2xl p-6 font-semibold">
+              <a href="https://app.foil.xyz/subscribe/11155111:0x4243f3d11353aaeb404e31e160eec362d066637c/epochs/1">
+                Subscribe
+              </a>
+            </Button>
           </div>
           {isDesktop && (
             <AnimatePresence>
@@ -67,7 +72,12 @@ export const Features = () => {
             <div className="mx-auto mb-7 max-w-56 text-xl">
               Buy and sell exposure to gas and blob prices.
             </div>
-            <EmailCaptureButton>Trade</EmailCaptureButton>
+
+            <Button asChild className="rounded-2xl p-6 font-semibold">
+              <a href="https://app.foil.xyz/trade/11155111:0x4243f3d11353aaeb404e31e160eec362d066637c/epochs/1">
+                Trade
+              </a>
+            </Button>
           </div>
           {isDesktop && (
             <AnimatePresence>
@@ -109,7 +119,12 @@ export const Features = () => {
             <div className="mx-auto mb-7 max-w-56 text-xl">
               Provide liquidity and boost LST yield.
             </div>
-            <EmailCaptureButton>Earn</EmailCaptureButton>
+
+            <Button asChild className="rounded-2xl p-6 font-semibold">
+              <a href="https://app.foil.xyz/pool/11155111:0x4243f3d11353aaeb404e31e160eec362d066637c/epochs/1">
+                Earn
+              </a>
+            </Button>
           </div>
           {isDesktop && (
             <AnimatePresence>

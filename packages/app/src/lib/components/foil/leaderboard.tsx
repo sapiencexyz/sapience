@@ -249,7 +249,7 @@ const Leaderboard = ({ params }: Props) => {
   return (
     <div className="container max-w-screen-md mx-auto flex items-center p-12">
       <div className="border border-border rounded-lg w-full">
-        <h1 className="text-2xl md:text-5xl font-bold mb-2 md:mt-10 md:mb-8 text-center">
+        <h1 className="text-2xl md:text-5xl font-bold my-4 md:mt-10 md:mb-8 text-center">
           🏆 Leaderboard 🏆
         </h1>
 

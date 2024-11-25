@@ -121,8 +121,8 @@ function processTicks(
   const tickIdxToTickDictionary: Record<string, GraphTick> = Object.fromEntries(
     graphTicks.map((graphTick) => [graphTick.tickIdx, graphTick])
   );
-  const minTick = Number(graphTicks[0].tickIdx);
-  const maxTick = Number(graphTicks[graphTicks.length - 1].tickIdx);
+  const minTick = Number(graphTicks[0]?.tickIdx);
+  const maxTick = Number(graphTicks[graphTicks.length - 1]?.tickIdx);
 
   const liquidity = poolLiquidity;
 

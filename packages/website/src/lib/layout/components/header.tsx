@@ -1,10 +1,10 @@
 'use client';
 
-import EmailCaptureButton from '@/lib/components/EmailCaptureButton';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import { X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export const Header = () => {
   const [showBanner, setShowBanner] = useState(true);
@@ -22,7 +22,7 @@ export const Header = () => {
             <span className="ml-1 font-semibold">
               ⛽{' '}
               <a
-                href="https://forms.gle/4gZcMgQFtjeET7t59"
+                href="https://app.foil.xyz"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="ml-1 inline-block -translate-y-[0.5px] underline decoration-[0.5px] underline-offset-4"
@@ -48,7 +48,9 @@ export const Header = () => {
           >
             Docs
           </a>
-          <EmailCaptureButton>Go to App</EmailCaptureButton>
+          <Button asChild className="rounded-2xl p-6 font-semibold">
+            <a href="https://app.foil.xyz">Go to App</a>
+          </Button>
         </div>
       </section>
     </header>
