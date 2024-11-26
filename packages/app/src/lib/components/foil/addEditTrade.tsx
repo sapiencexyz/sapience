@@ -258,8 +258,7 @@ export default function AddEditTrade() {
         });
         setPendingTxn(false);
       },
-      onSuccess: async () => {
-        await refetchAllowance();
+      onSuccess: () => {
         toast({
           title: 'Approval Submitted',
           description: 'Waiting for confirmation...',
@@ -316,6 +315,7 @@ export default function AddEditTrade() {
 
   useEffect(() => {
     if (approveSuccess && txnStep === 1) {
+      refetchAllowance();
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
 
       if (isEdit) {
@@ -421,6 +421,10 @@ export default function AddEditTrade() {
 
   // Update handleSubmit to use form values
   const onSubmit = async (values: any) => {
+    if (!isConnected) {
+      return;
+    }
+
     setPendingTxn(true);
 
     if (requireApproval) {
@@ -685,8 +689,9 @@ export default function AddEditTrade() {
     );
   };
 
-  const requireApproval =
-    !allowance || collateralDeltaLimit > (allowance as bigint);
+  const requireApproval: boolean = useMemo(() => {
+    return !allowance || collateralDeltaLimit > (allowance as bigint);
+  }, [allowance, collateralDeltaLimit]);
 
   return (
     <Form {...form}>

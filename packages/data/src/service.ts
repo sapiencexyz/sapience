@@ -706,8 +706,15 @@ const startServer = async () => {
   });
 
   app.post("/updateMarketPrivacy", async (req, res) => {
-    const { address, chainId } = req.body;
+    const { address, chainId, signature, timestamp } = req.body;
     try {
+      const isAuthenticated = await isValidWalletSignature(
+        signature as `0x${string}`,
+        Number(timestamp)
+      );
+      if (!isAuthenticated) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
       const market = await marketRepository.findOne({
         where: {
           chainId: Number(chainId),

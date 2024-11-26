@@ -38,7 +38,8 @@ import {
 import { Client, TextChannel, EmbedBuilder } from "discord.js";
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-const DISCORD_CHANNEL_ID = process.env.DISCORD_CHANNEL_ID;
+const DISCORD_PRIVATE_CHANNEL_ID = process.env.DISCORD_PRIVATE_CHANNEL_ID;
+const DISCORD_PUBLIC_CHANNEL_ID = process.env.DISCORD_PUBLIC_CHANNEL_ID;
 const discordClient = new Client({ intents: [] });
 
 if (DISCORD_TOKEN) {
@@ -220,7 +221,7 @@ const alertEvent = async (
   logData: any
 ) => {
   try {
-    if (!DISCORD_TOKEN || !DISCORD_CHANNEL_ID) {
+    if (!DISCORD_TOKEN) {
       console.warn("Discord credentials not configured, skipping alert");
       return;
     }
@@ -231,38 +232,75 @@ const alertEvent = async (
       return;
     }
 
-    const channel = (await discordClient.channels.fetch(
-      DISCORD_CHANNEL_ID
-    )) as TextChannel;
+    if(DISCORD_PUBLIC_CHANNEL_ID && logData.eventName !== EventType.Transfer){
+      const publicChannel = (await discordClient.channels.fetch(
+        DISCORD_PUBLIC_CHANNEL_ID
+      )) as TextChannel;
 
-    const embed = new EmbedBuilder()
-      .setTitle(`New Market Event: ${logData.eventName}`)
-      .setColor("#0099ff")
-      .addFields(
-        { name: "Chain ID", value: chainId.toString(), inline: true },
-        { name: "Market Address", value: address, inline: true },
-        { name: "Epoch ID", value: epochId.toString(), inline: true },
-        { name: "Block Number", value: blockNumber.toString(), inline: true },
-        {
-          name: "Timestamp",
-          value: new Date(Number(timestamp) * 1000).toISOString(),
-          inline: true,
-        }
-      )
-      .setTimestamp();
+      const embed = new EmbedBuilder()
+        .setTitle(`New Market Event: ${logData.eventName}`)
+        .setColor("#0099ff")
+        .addFields(
+          { name: "Chain ID", value: chainId.toString(), inline: true },
+          { name: "Market Address", value: address, inline: true },
+          { name: "Epoch ID", value: epochId.toString(), inline: true },
+          { name: "Block Number", value: blockNumber.toString(), inline: true },
+          {
+            name: "Timestamp",
+            value: new Date(Number(timestamp) * 1000).toISOString(),
+            inline: true,
+          }
+        )
+        .setTimestamp();
 
-    // Add event-specific details if available
-    if (logData.args) {
-      const argsField = Object.entries(logData.args)
-        .map(([key, value]) => `${key}: ${value}`)
-        .join("\n");
-      embed.addFields({
-        name: "Event Arguments",
-        value: `\`\`\`${argsField}\`\`\``,
-      });
+      // Add event-specific details if available
+      if (logData.args) {
+        const argsField = Object.entries(logData.args)
+          .map(([key, value]) => `${key}: ${value}`)
+          .join("\n");
+        embed.addFields({
+          name: "Event Arguments",
+          value: `\`\`\`${argsField}\`\`\``,
+        });
+      }
+
+      await publicChannel.send({ embeds: [embed] });
     }
 
-    await channel.send({ embeds: [embed] });
+    if(DISCORD_PRIVATE_CHANNEL_ID){
+      const privateChannel = (await discordClient.channels.fetch(
+        DISCORD_PRIVATE_CHANNEL_ID
+      )) as TextChannel;
+
+      const embed = new EmbedBuilder()
+        .setTitle(`New Market Event: ${logData.eventName}`)
+        .setColor("#0099ff")
+        .addFields(
+          { name: "Chain ID", value: chainId.toString(), inline: true },
+          { name: "Market Address", value: address, inline: true },
+          { name: "Epoch ID", value: epochId.toString(), inline: true },
+          { name: "Block Number", value: blockNumber.toString(), inline: true },
+          {
+            name: "Timestamp",
+            value: new Date(Number(timestamp) * 1000).toISOString(),
+            inline: true,
+          }
+        )
+        .setTimestamp();
+
+      // Add event-specific details if available
+      if (logData.args) {
+        const argsField = Object.entries(logData.args)
+          .map(([key, value]) => `${key}: ${value}`)
+          .join("\n");
+        embed.addFields({
+          name: "Event Arguments",
+          value: `\`\`\`${argsField}\`\`\``,
+        });
+      }
+
+      await privateChannel.send({ embeds: [embed] });
+    }
   } catch (error) {
     console.error("Failed to send Discord alert:", error);
   }

@@ -12,11 +12,11 @@ class EvmIndexer {
   }
 
   private async storeBlockPrice(block: Block, market: Market) {
-    const value = block.baseFeePerGas; // in wei
-    const used = block.gasUsed;
+    const value = block?.baseFeePerGas; // in wei
+    const used = block?.gasUsed;
     if (!value || !block.number) {
       console.error(
-        `No baseFeePerGas for block ${block.number} on market ${market.chainId}:${market.address}`
+        `No baseFeePerGas for block ${block?.number} on market ${market.chainId}:${market.address}`
       );
       return;
     }

@@ -19,6 +19,7 @@ import * as Chains from 'viem/chains';
 import {
   useAccount,
   useReadContract,
+  useSignMessage,
   useWaitForTransactionReceipt,
   useWriteContract,
 } from 'wagmi';
@@ -44,6 +45,7 @@ import {
 } from '@/components/ui/table';
 import { useToast } from '~/hooks/use-toast';
 import {
+  ADMIN_AUTHENTICATE_MSG,
   API_BASE_URL,
   DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS,
   TOKEN_DECIMALS,
@@ -124,6 +126,7 @@ const MarketsTable: React.FC = () => {
     { id: 'startTimestamp', desc: true },
   ]);
   const { toast } = useToast();
+  const { signMessageAsync } = useSignMessage();
 
   const data = useMemo(
     () =>
@@ -218,9 +221,16 @@ const MarketsTable: React.FC = () => {
 
   const updateMarketPrivacy = async (market: Market) => {
     setLoadingAction((prev) => ({ ...prev, [market.address]: true }));
+    const timestamp = Date.now();
+
+    const signature = await signMessageAsync({
+      message: ADMIN_AUTHENTICATE_MSG,
+    });
     const response = await axios.post(`${API_BASE_URL}/updateMarketPrivacy`, {
       address: market.address,
       chainId: market.chainId,
+      signature,
+      timestamp,
     });
     if (response.data.success) {
       await refetchMarkets();
@@ -465,9 +475,6 @@ const EpochItem: React.FC<{
           description: (error as Error).message,
         });
       },
-      onSuccess: async () => {
-        await refetchAllowance();
-      },
     },
   });
 
@@ -477,6 +484,7 @@ const EpochItem: React.FC<{
 
   useEffect(() => {
     if (isApproveSuccess && txnStep === 1) {
+      refetchAllowance();
       handleSettleWithPrice();
     }
   }, [isApproveSuccess, txnStep]);

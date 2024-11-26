@@ -155,6 +155,8 @@ function toast({ ...props }: Toast & CustomToastProps) {
     width: '100%',
     wordBreak: 'break-word',
     whiteSpace: 'pre-wrap',
+    flexDirection: 'column',
+    overflowY: 'scroll',
   };
 
   const update = (props: ToasterToast) =>

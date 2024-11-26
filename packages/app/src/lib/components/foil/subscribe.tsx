@@ -299,8 +299,7 @@ const Subscribe: FC<SubscribeProps> = ({
         });
         resetAfterError();
       },
-      onSuccess: async () => {
-        await refetchAllowance();
+      onSuccess: () => {
         toast({
           title: 'Approval Submitted',
           description: 'Waiting for confirmation...',
@@ -352,6 +351,7 @@ const Subscribe: FC<SubscribeProps> = ({
 
   useEffect(() => {
     if (approveSuccess && txnStep === 1) {
+      refetchAllowance();
       handleCreateTraderPosition();
     }
   }, [approveSuccess, txnStep]);
@@ -369,12 +369,12 @@ const Subscribe: FC<SubscribeProps> = ({
 
   // Update onSubmit to check for dialog interactions
   const onSubmit = async (values: any) => {
-    // Return early if we're just opening/closing dialogs
-    if (isMarketSelectorOpen || isAnalyticsOpen) {
+    // Return early if we're just opening/closing dialogs or not connected
+    if (isMarketSelectorOpen || isAnalyticsOpen || !isConnected) {
       return;
     }
 
-    if (BigInt(formValues.size) === BigInt(0)) {
+    if (sizeValue === BigInt(0)) {
       toast({
         title: 'Invalid size',
         description: 'Please enter a positive gas amount.',
@@ -425,6 +425,7 @@ const Subscribe: FC<SubscribeProps> = ({
       walletAddress: '',
       slippage: '0.5',
     });
+    refetchAllowance();
     setSizeValue(BigInt(0));
     setPendingTxn(false);
     setTxnStep(0);
@@ -459,7 +460,7 @@ const Subscribe: FC<SubscribeProps> = ({
     const isDisabled =
       pendingTxn ||
       Boolean(quoteError) ||
-      BigInt(formValues.size) <= BigInt(0) ||
+      sizeValue <= BigInt(0) ||
       isLoadingCollateralChange;
 
     return (
@@ -825,14 +826,18 @@ const Subscribe: FC<SubscribeProps> = ({
         </Dialog>
 
         <FormField
-          control={form.control}
+          control={control}
           name="sizeInput"
           render={({ field }) => (
             <>
               <SizeInput
-                setSize={setSizeValue}
+                setSize={(newSize) => {
+                  setSizeValue(newSize);
+                  field.onChange(newSize.toString());
+                }}
                 size={sizeValue}
                 label="Gas Amount"
+                error={quoteError || undefined}
                 {...field}
               />
               <p className="text-sm text-muted-foreground mt-2">
