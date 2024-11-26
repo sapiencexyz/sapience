@@ -833,6 +833,10 @@ const AddEditLiquidity: React.FC = () => {
     setTxnStep(2);
   };
   const handleFormSubmit = (e: any) => {
+    if (!isConnected) {
+      return;
+    }
+
     setPendingTxn(true);
 
     if (isEdit && isDecrease) {

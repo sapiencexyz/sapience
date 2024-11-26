@@ -369,8 +369,8 @@ const Subscribe: FC<SubscribeProps> = ({
 
   // Update onSubmit to check for dialog interactions
   const onSubmit = async (values: any) => {
-    // Return early if we're just opening/closing dialogs
-    if (isMarketSelectorOpen || isAnalyticsOpen) {
+    // Return early if we're just opening/closing dialogs or not connected
+    if (isMarketSelectorOpen || isAnalyticsOpen || !isConnected) {
       return;
     }
 

@@ -421,6 +421,10 @@ export default function AddEditTrade() {
 
   // Update handleSubmit to use form values
   const onSubmit = async (values: any) => {
+    if (!isConnected) {
+      return;
+    }
+
     setPendingTxn(true);
 
     if (requireApproval) {
