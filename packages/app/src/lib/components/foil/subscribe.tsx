@@ -374,7 +374,7 @@ const Subscribe: FC<SubscribeProps> = ({
       return;
     }
 
-    if (BigInt(formValues.size) === BigInt(0)) {
+    if (sizeValue === BigInt(0)) {
       toast({
         title: 'Invalid size',
         description: 'Please enter a positive gas amount.',
@@ -460,7 +460,7 @@ const Subscribe: FC<SubscribeProps> = ({
     const isDisabled =
       pendingTxn ||
       Boolean(quoteError) ||
-      BigInt(formValues.size) <= BigInt(0) ||
+      sizeValue <= BigInt(0) ||
       isLoadingCollateralChange;
 
     return (
@@ -826,14 +826,18 @@ const Subscribe: FC<SubscribeProps> = ({
         </Dialog>
 
         <FormField
-          control={form.control}
+          control={control}
           name="sizeInput"
           render={({ field }) => (
             <>
               <SizeInput
-                setSize={setSizeValue}
+                setSize={(newSize) => {
+                  setSizeValue(newSize);
+                  field.onChange(newSize.toString());
+                }}
                 size={sizeValue}
                 label="Gas Amount"
+                error={quoteError || undefined}
                 {...field}
               />
               <p className="text-sm text-muted-foreground mt-2">
