@@ -299,8 +299,7 @@ const Subscribe: FC<SubscribeProps> = ({
         });
         resetAfterError();
       },
-      onSuccess: async () => {
-        await refetchAllowance();
+      onSuccess: () => {
         toast({
           title: 'Approval Submitted',
           description: 'Waiting for confirmation...',
@@ -352,6 +351,7 @@ const Subscribe: FC<SubscribeProps> = ({
 
   useEffect(() => {
     if (approveSuccess && txnStep === 1) {
+      refetchAllowance();
       handleCreateTraderPosition();
     }
   }, [approveSuccess, txnStep]);
@@ -425,6 +425,7 @@ const Subscribe: FC<SubscribeProps> = ({
       walletAddress: '',
       slippage: '0.5',
     });
+    refetchAllowance();
     setSizeValue(BigInt(0));
     setPendingTxn(false);
     setTxnStep(0);

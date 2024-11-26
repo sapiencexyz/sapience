@@ -230,7 +230,10 @@ const AddEditLiquidity: React.FC = () => {
         });
       },
       onSuccess: () => {
-        refetchAllowance();
+        toast({
+          title: 'Approval Submitted',
+          description: 'Waiting for confirmation...',
+        });
       },
     },
   });

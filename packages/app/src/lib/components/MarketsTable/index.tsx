@@ -475,9 +475,6 @@ const EpochItem: React.FC<{
           description: (error as Error).message,
         });
       },
-      onSuccess: async () => {
-        await refetchAllowance();
-      },
     },
   });
 
@@ -487,6 +484,7 @@ const EpochItem: React.FC<{
 
   useEffect(() => {
     if (isApproveSuccess && txnStep === 1) {
+      refetchAllowance();
       handleSettleWithPrice();
     }
   }, [isApproveSuccess, txnStep]);
@@ -542,7 +540,6 @@ const EpochItem: React.FC<{
       args: [foilVaultData.address, bondAmount],
       chainId,
     });
-    refetchAllowance();
     setTxnStep(1);
   };
 
