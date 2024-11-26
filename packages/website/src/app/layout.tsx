@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import Layout from '@/lib/layout';
 import { fontSans } from '@/lib/styles/fonts';
 import { cn } from '@/lib/styles/utils';
+import { Analytics } from "@vercel/analytics/react"
 
 import '@/lib/styles/globals.css';
 
@@ -65,6 +66,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
           fontSans.variable
         )}
       >
+        <Analytics />
         <Layout>
           <div className="flex-1">{children}</div>
         </Layout>
