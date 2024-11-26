@@ -232,7 +232,7 @@ const alertEvent = async (
       return;
     }
 
-    if(DISCORD_PUBLIC_CHANNEL_ID){
+    if(DISCORD_PUBLIC_CHANNEL_ID && logData.eventName !== EventType.Transfer){
       const publicChannel = (await discordClient.channels.fetch(
         DISCORD_PUBLIC_CHANNEL_ID
       )) as TextChannel;
