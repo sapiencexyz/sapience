@@ -81,7 +81,7 @@ const useLeaderboard = (marketId: string, epochId: string) => {
 };
 
 const PositionCell = ({ row }: { row: { original: GroupedPosition } }) => (
-  <div className="flex flex-wrap gap-1.5 w-[160px]">
+  <div className="flex flex-wrap gap-1.5">
     {row.original.positions.map((position, index) => (
       <Link
         key={position.positionId}
@@ -247,7 +247,7 @@ const Leaderboard = ({ params }: Props) => {
   }
 
   return (
-    <div className="container max-w-screen-md mx-auto flex items-center p-12">
+    <div className="container max-w-screen-lg mx-auto flex items-center p-12">
       <div className="border border-border rounded-lg w-full">
         <h1 className="text-2xl md:text-5xl font-bold my-4 md:mt-10 md:mb-8 text-center">
           🏆 Leaderboard 🏆
