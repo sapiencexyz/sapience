@@ -4,7 +4,6 @@ import {
   marketPriceRepository,
   marketRepository,
   positionRepository,
-  resourcePriceRepository,
 } from "../db";
 import { Event } from "../models/Event";
 import { MarketParams } from "../models/MarketParams";
@@ -28,9 +27,6 @@ import {
 } from "../interfaces";
 import { MarketPrice } from "../models/MarketPrice";
 import { getBlockByTimestamp, getProviderForChain } from "../helpers";
-import { ResourcePrice } from "../models/ResourcePrice";
-import { LessThanOrEqual } from "typeorm";
-import { MARKET_INFO } from "src/constants";
 
 /**
  * Handles a Transfer event by updating the owner of the corresponding Position.

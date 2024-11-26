@@ -9,6 +9,7 @@ import {
 import { Epoch } from "./Epoch";
 import { ResourcePrice } from "./ResourcePrice";
 import { MarketParams } from "./MarketParams";
+import { CollateralTransfer } from "./CollateralTransfer";
 import { Event } from "./Event";
 
 @Entity()
@@ -21,6 +22,9 @@ export class Market {
 
   @OneToMany(() => ResourcePrice, (price) => price.market)
   resourcePrices: ResourcePrice[];
+
+  @OneToMany(() => CollateralTransfer, (transfer) => transfer.market)
+  collateralTransfers: CollateralTransfer[];
 
   @OneToMany(() => Event, (event) => event.market)
   events: Event[];

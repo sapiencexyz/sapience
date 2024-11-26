@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import "./instrument";
 import dataSource, {
+  collateralTransferRepository,
   eventRepository,
   initializeDataSource,
   renderJobRepository,
@@ -41,6 +42,7 @@ import { isValidWalletSignature } from "./middleware";
 import * as Sentry from "@sentry/node";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+import { CollateralTransfer } from "./models/CollateralTransfer";
 
 const PORT = 3001;
 
@@ -973,6 +975,7 @@ const startServer = async () => {
 
     const [chainId, address] = contractId.split(":");
     const where: any = {};
+    let marketId: number | undefined;
 
     if (chainId && address) {
       const market = await marketRepository.findOne({
@@ -983,6 +986,8 @@ const startServer = async () => {
         return res.status(404).json({ error: "Market not found" });
       }
 
+      marketId = market.id;
+
       // Query for positions related to any epoch of this market
       where.epoch = { market: { id: market.id } };
     } else {
@@ -992,8 +997,12 @@ const startServer = async () => {
     try {
       const positions = await positionRepository.find({
         where,
-        relations: ["epoch", "epoch.market", "transactions"],
+        relations: ["epoch", "epoch.market"],
         order: { positionId: "ASC" },
+      });
+
+      const collateralTransfers = await collateralTransferRepository.find({
+        where: { market: { id: marketId } },
       });
 
       const marketAddress = address;
@@ -1030,10 +1039,15 @@ const startServer = async () => {
         return Number(collateralValue);
       };
 
-      const calculatePositionCollateralFlow = (transactions: Transaction[]) => {
+      const calculatePositionCollateralFlow = (
+        collateralTransfers: CollateralTransfer[],
+        owner: string
+      ) => {
         let collateralFlow = 0;
-        for (const transaction of transactions) {
-          collateralFlow += Number(transaction.collateralDelta);
+        for (const transfer of collateralTransfers) {
+          if (transfer.owner === owner) {
+            collateralFlow += Number(transfer.collateral);
+          }
         }
         return collateralFlow;
       };
@@ -1056,7 +1070,7 @@ const startServer = async () => {
 
         const positionPnL =
           (await calculateOpenPositionValue(position)) -
-          calculatePositionCollateralFlow(position.transactions);
+          calculatePositionCollateralFlow(collateralTransfers, position.owner);
 
         position.transactions = [];
         groupedByOwner[position.owner].positions.push(position);
