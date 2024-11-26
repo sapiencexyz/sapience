@@ -69,7 +69,7 @@ artifact="ERC165Module"
 [deploy.SettlementModule]
 artifact="SettlementModule"
 
-[router.Foil1]
+[router.FoilYin]
 contracts=[
   "ConfigurationModule",
   "LiquidityModule",
@@ -82,7 +82,7 @@ contracts=[
 ]
 highlight=true
 
-[router.Foil2]
+[router.FoilYang]
 contracts=[
   "ConfigurationModule",
   "LiquidityModule",
@@ -96,50 +96,50 @@ contracts=[
 highlight=true
 
 # VAULT 1
-[deploy.Vault1]
+[deploy.VaultYin]
 artifact="Vault"
 from="<%= settings.owner %>"
-args=[ "<%= settings.vault1Name %>", "<%= settings.vault1Symbol %>", "<%= Foil1.address %>", "<%= CollateralAsset.Token.address %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "0", "<%= settings.totalVaults %>" ]
-depends = ['router.Foil1', 'clone.CollateralAsset', 'var.settings']
+args=[ "<%= settings.vault1Name %>", "<%= settings.vault1Symbol %>", "<%= FoilYin.address %>", "<%= CollateralAsset.Token.address %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "0", "<%= settings.totalVaults %>" ]
+depends = ['router.FoilYin', 'clone.CollateralAsset', 'var.settings']
 
 [invoke.initializeMarketForVault1]
-target="Foil1"
+target="FoilYin"
 func="initializeMarket"
 from="<%= settings.owner %>"
 args=[
-  "<%= Vault1.address %>",
+  "<%= VaultYin.address %>",
   "<%= CollateralAsset.Token.address %>",
   [],
-  "<%= Vault1.address %>",
+  "<%= VaultYin.address %>",
   "<%= settings.minTradeSize %>",
   { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.BondCurrency.contracts.Token.address %>", bondAmount= "<%= settings.bondAmount %>", claimStatement= "<%= settings.claimStatement %>",  uniswapPositionManager =  "<%= imports.Uniswap.contracts.NonfungiblePositionManager.address %>", uniswapSwapRouter = "<%= imports.Uniswap.contracts.SwapRouter.address %>", uniswapQuoter = "<%= imports.Uniswap.contracts.QuoterV2.address %>", optimisticOracleV3 = "<%= imports.UMA.contracts.OptimisticOracleV3.address %>" }
 ]
-depends=["deploy.Vault1", "clone.BondCurrency"]
+depends=["deploy.VaultYin", "clone.BondCurrency"]
 
 # VAULT 2
-[deploy.Vault2]
+[deploy.VaultYang]
 artifact="Vault"
 from="<%= settings.owner %>"
-args=[ "<%= settings.vault2Name %>", "<%= settings.vault2Symbol %>", "<%= Foil2.address %>", "<%= CollateralAsset.Token.address %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "1", "<%= settings.totalVaults %>" ]
-depends = ['router.Foil2', 'clone.CollateralAsset', 'var.settings']
+args=[ "<%= settings.vault2Name %>", "<%= settings.vault2Symbol %>", "<%= FoilYang.address %>", "<%= CollateralAsset.Token.address %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "1", "<%= settings.totalVaults %>" ]
+depends = ['router.FoilYang', 'clone.CollateralAsset', 'var.settings']
 
 [invoke.initializeMarketForVault2]
-target="Foil2"
+target="FoilYang"
 func="initializeMarket"
 from="<%= settings.owner %>"
 args=[
-  "<%= Vault2.address %>",
+  "<%= VaultYang.address %>",
   "<%= CollateralAsset.Token.address %>",
   [],
-  "<%= Vault2.address %>", 
+  "<%= VaultYang.address %>", 
   "<%= settings.minTradeSize %>",
   { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.BondCurrency.contracts.Token.address %>", bondAmount= "<%= settings.bondAmount %>", claimStatement= "<%= settings.claimStatement %>",  uniswapPositionManager =  "<%= imports.Uniswap.contracts.NonfungiblePositionManager.address %>", uniswapSwapRouter = "<%= imports.Uniswap.contracts.SwapRouter.address %>", uniswapQuoter = "<%= imports.Uniswap.contracts.QuoterV2.address %>", optimisticOracleV3 = "<%= imports.UMA.contracts.OptimisticOracleV3.address %>" }
 ]
-depends=["deploy.Vault2", "clone.BondCurrency"]
+depends=["deploy.VaultYang", "clone.BondCurrency"]
 
 # START EPOCHS
 [invoke.initializeFirstEpochForVault1]
-target="Vault1"
+target="VaultYin"
 from = "<%= settings.owner %>"
 func="initializeFirstEpoch"
 args=[
@@ -148,7 +148,7 @@ args=[
 depends=["invoke.initializeMarketForVault1"]
 
 [invoke.initializeFirstEpochForVault2]
-target="Vault2"
+target="VaultYang"
 from = "<%= settings.owner %>"
 func="initializeFirstEpoch"
 args=[

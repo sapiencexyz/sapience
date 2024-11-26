@@ -430,6 +430,7 @@ export default function AddEditTrade() {
         functionName: 'approve',
         args: [marketAddress, collateralDeltaLimit],
       });
+      refetchAllowance();
       setTxnStep(1);
     } else if (isEdit) {
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);

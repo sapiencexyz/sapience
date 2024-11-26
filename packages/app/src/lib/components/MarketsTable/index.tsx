@@ -542,6 +542,7 @@ const EpochItem: React.FC<{
       args: [foilVaultData.address, bondAmount],
       chainId,
     });
+    refetchAllowance();
     setTxnStep(1);
   };
 

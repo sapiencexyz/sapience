@@ -239,6 +239,7 @@ const AddEditLiquidity: React.FC = () => {
     useWriteContract({
       mutation: {
         onError: (error) => {
+          console.error('Failed to add liquidity', error);
           resetAfterError();
           toast({
             variant: 'destructive',
@@ -253,7 +254,7 @@ const AddEditLiquidity: React.FC = () => {
     useWriteContract({
       mutation: {
         onError: (error) => {
-          console.error(' Failed to increase liquidity', error);
+          console.error('Failed to increase liquidity', error);
           resetAfterError();
           toast({
             variant: 'destructive',
@@ -268,6 +269,7 @@ const AddEditLiquidity: React.FC = () => {
     useWriteContract({
       mutation: {
         onError: (error) => {
+          console.error('Failed to decrease liquidity', error);
           resetAfterError();
           toast({
             variant: 'destructive',
@@ -546,6 +548,7 @@ const AddEditLiquidity: React.FC = () => {
   // handle successful approval
   useEffect(() => {
     if (isApproveSuccess && txnStep === 1) {
+      refetchAllowance();
       handleCreateOrIncreaseLiquidity();
     }
   }, [isApproveSuccess, txnStep]);

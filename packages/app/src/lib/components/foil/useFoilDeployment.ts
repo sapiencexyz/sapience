@@ -13,7 +13,7 @@ const useFoilDeployment = (chainId?: number) => {
           `@/protocol/deployments/${chainId}/FoilYin.json`
         );
         const foilVault = await import(
-          `@/protocol/deployments/${chainId}/Vault1.json`
+          `@/protocol/deployments/${chainId}/VaultYin.json`
         );
         setFoilData(foil);
         setFoilVaultData(foilVault);
