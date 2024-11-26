@@ -60,7 +60,7 @@ const LiquidityAmountInput = ({
                 return (
                   change <= 0 ||
                   (walletBalance && change <= parseFloat(walletBalance)) ||
-                  'Insufficient balance in wallet'
+                  'Insufficient wallet balance'
                 );
               },
             })}
@@ -123,7 +123,7 @@ const LiquidityAmountInput = ({
         </div>
       </div>
       {errors.depositAmount && (
-        <p className="text-sm text-destructive mt-1">
+        <p className="text-sm text-destructive mt-2">
           {errors.depositAmount.message?.toString()}
         </p>
       )}
