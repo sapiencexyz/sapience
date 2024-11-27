@@ -409,12 +409,12 @@ const AddEditLiquidity: React.FC = () => {
   }, [deltaEthToken, slippage]);
 
   const walletBalance = useMemo(() => {
-    if (!collateralAmountData) return null;
+    if (!collateralAmountData || !isConnected) return '0';
     return formatUnits(
       BigInt(collateralAmountData.toString()),
       collateralAssetDecimals
     );
-  }, [collateralAmountData, collateralAssetDecimals]);
+  }, [collateralAmountData, collateralAssetDecimals, isConnected]);
 
   const walletBalanceAfter = useMemo(() => {
     if (!walletBalance) return null;
@@ -833,6 +833,10 @@ const AddEditLiquidity: React.FC = () => {
     setTxnStep(2);
   };
   const handleFormSubmit = (e: any) => {
+    if (!isConnected) {
+      return;
+    }
+
     setPendingTxn(true);
 
     if (isEdit && isDecrease) {
@@ -925,7 +929,7 @@ const AddEditLiquidity: React.FC = () => {
     <Form {...form}>
       <form onSubmit={handleSubmit(handleFormSubmit)}>
         <h2 className="text-xl font-semibold mb-3">Pool Liquidity</h2>
-        <div className="mb-4">
+        <div className="mb-3">
           <LiquidityAmountInput
             isEdit={isEdit}
             walletBalance={walletBalance}
@@ -1024,26 +1028,23 @@ const AddEditLiquidity: React.FC = () => {
             </div>
           )}
 
-          {isConnected &&
-            walletBalance !== null &&
-            walletBalanceAfter !== null && (
-              <div>
-                <p className="text-sm text-gray-600 font-semibold mb-0.5">
-                  Wallet Balance
-                </p>
-                <p className="text-sm text-gray-600 mb-0.5">
-                  <NumberDisplay value={walletBalance} />{' '}
-                  {collateralAssetTicker}
-                  {!isAmountUnchanged && (
-                    <>
-                      {' '}
-                      → <NumberDisplay value={walletBalanceAfter} />{' '}
-                      {collateralAssetTicker}
-                    </>
-                  )}
-                </p>
-              </div>
-            )}
+          {isConnected && walletBalance && (
+            <div>
+              <p className="text-sm text-gray-600 font-semibold mb-0.5">
+                Wallet Balance
+              </p>
+              <p className="text-sm text-gray-600 mb-0.5">
+                <NumberDisplay value={walletBalance} /> {collateralAssetTicker}
+                {!isAmountUnchanged && walletBalanceAfter && (
+                  <>
+                    {' '}
+                    → <NumberDisplay value={walletBalanceAfter} />{' '}
+                    {collateralAssetTicker}
+                  </>
+                )}
+              </p>
+            </div>
+          )}
         </div>
       </form>
     </Form>
