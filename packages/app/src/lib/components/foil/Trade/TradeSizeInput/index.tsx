@@ -199,8 +199,9 @@ const TradeSizeInput: React.FC<Props> = ({
 
       iterations++;
     }
-    console.log('bestSize', bestSize);
-    setValue('size', bestSize, {
+    console.log('bestSize', bestSize * BigInt(1e9)); // In Ggas
+    // update value, bestSize is in Ggas
+    setValue('size', bestSize * BigInt(1e9), {
       shouldValidate: true,
     });
     setValue('fetchingSizeFromCollateralInput', false);
