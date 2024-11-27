@@ -147,6 +147,14 @@ export default function AddEditTrade() {
     if (isDirty && Number(sizeCollateralInput) < minInputValue)
       return `Size must be greater than ${minInputValue} ${inputType}`;
 
+    if (
+      inputType === 'collateral' &&
+      Number(sizeCollateralInput) !== 0 &&
+      sizeChangeInGas === BigInt(0) &&
+      !fetchingSizeFromCollateralInput
+    ) {
+      return 'Unable to find a size for this collateral amount';
+    }
     return '';
   }, [
     quoteError,
@@ -159,6 +167,7 @@ export default function AddEditTrade() {
     sizeCollateralInput,
     isDirty,
     sizeChangeIsNonzero,
+    fetchingSizeFromCollateralInput,
   ]);
 
   // Position data
