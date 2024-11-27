@@ -205,14 +205,6 @@ export default function AddEditTrade() {
     return BigInt(0);
   }, [positionData, isEdit]);
 
-  useEffect(() => {
-    const originalPositionIsLong = positionData?.vGasAmount > BigInt(0);
-    const currentSize = originalPositionIsLong
-      ? positionData?.vGasAmount || BigInt(0)
-      : -(positionData?.borrowedVGas || BigInt(0));
-    console.log('currentSize', currentSize);
-  }, [positionData]);
-
   const desiredSizeInContractUnit = useMemo(() => {
     if (!isEdit) return sizeChangeInGas;
 
@@ -676,8 +668,6 @@ export default function AddEditTrade() {
         </div>
 
         <SlippageTolerance />
-        <div>liquidity:s {liquidity.toString()} Ggas</div>
-        <div>sizeChangeIn Ggas: {formatUnits(sizeChangeInGas, 9)} Ggas</div>
         {renderActionButton()}
 
         <div className="flex flex-col gap-2">

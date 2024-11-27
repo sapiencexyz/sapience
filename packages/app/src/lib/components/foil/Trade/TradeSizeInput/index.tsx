@@ -174,7 +174,6 @@ const TradeSizeInput: React.FC<Props> = ({
         });
         if (!result?.result) break;
 
-        console.log('result', result);
         const [quotedCollateral] = result.result;
         const quotedCollateralBigInt = BigInt(quotedCollateral.toString());
         const diff =
@@ -199,8 +198,8 @@ const TradeSizeInput: React.FC<Props> = ({
 
       iterations++;
     }
-    console.log('bestSize', bestSize * BigInt(1e9)); // In Ggas
-    // update value, bestSize is in Ggas
+    // update value, bestSize is in Ggas so we need to multiply by 1e9
+    // TODO: double check this, seems like it works fine without multiplying on editing a position
     setValue('size', bestSize * BigInt(1e9), {
       shouldValidate: true,
     });
@@ -234,7 +233,6 @@ const TradeSizeInput: React.FC<Props> = ({
 
   return (
     <div className="w-full">
-      ************
       <FormItem>
         <FormLabel>Size {isEdit ? 'Change' : ''}</FormLabel>
         <div className="flex">
@@ -281,14 +279,7 @@ const TradeSizeInput: React.FC<Props> = ({
         {error && (
           <p className="text-sm font-medium text-destructive mt-2">{error}</p>
         )}
-        <div>Size: {size.toString()}</div>
-        <div>
-          Size Formmatted:{' '}
-          {inputType === 'Ggas' ? formatUnits(size, 9) : size.toString()}
-        </div>
-        <div>min size: {minInputValue}</div>
       </FormItem>
-      ************
     </div>
   );
 };
