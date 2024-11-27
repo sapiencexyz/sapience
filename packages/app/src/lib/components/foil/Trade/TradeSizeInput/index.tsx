@@ -19,7 +19,7 @@ import { cn } from '~/lib/utils';
 
 interface Props {
   minInputValue: number;
-  nftId?: number;
+  nftId: number;
   positionData?: FoilPosition;
   isLong?: boolean;
   allowCollateralInput?: boolean;
@@ -168,12 +168,13 @@ const TradeSizeInput: React.FC<Props> = ({
             ? 'quoteModifyTraderPosition'
             : 'quoteCreateTraderPosition',
           args: isEdit
-            ? [nftId || 1, sizeInContractUnits]
+            ? [nftId, sizeInContractUnits]
             : [epoch || 1, sizeInContractUnits],
           account: address || zeroAddress,
         });
         if (!result?.result) break;
 
+        console.log('result', result);
         const [quotedCollateral] = result.result;
         const quotedCollateralBigInt = BigInt(quotedCollateral.toString());
         const diff =
@@ -198,6 +199,7 @@ const TradeSizeInput: React.FC<Props> = ({
 
       iterations++;
     }
+    console.log('bestSize', bestSize);
     setValue('size', bestSize, {
       shouldValidate: true,
     });
@@ -233,7 +235,7 @@ const TradeSizeInput: React.FC<Props> = ({
     <div className="w-full">
       ************
       <FormItem>
-        <FormLabel>Size {nftId && nftId > 0 ? 'Change' : ''}</FormLabel>
+        <FormLabel>Size {isEdit ? 'Change' : ''}</FormLabel>
         <div className="flex">
           <Input
             id="sizeCollateralInput"
