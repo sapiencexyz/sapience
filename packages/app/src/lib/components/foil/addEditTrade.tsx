@@ -94,6 +94,7 @@ export default function AddEditTrade() {
   const sizeChangeInContractUnit = useMemo(() => {
     return sizeChange * BigInt(1e9);
   }, [sizeChange]);
+  const isNonZeroSizeChange = sizeChangeInContractUnit !== BigInt(0);
 
   const formError = useMemo(() => {
     if (Number(quotedResultingWalletBalance) < 0) {
@@ -192,7 +193,7 @@ export default function AddEditTrade() {
     args: [epoch, desiredSizeInContractUnit],
     chainId,
     account: address || zeroAddress,
-    query: { enabled: !isEdit && sizeChangeInContractUnit !== BigInt(0) },
+    query: { enabled: !isEdit && isNonZeroSizeChange },
   });
 
   const quoteModifyPositionResult = useSimulateContract({
@@ -202,15 +203,11 @@ export default function AddEditTrade() {
     args: [nftId, desiredSizeInContractUnit],
     chainId,
     account: address || zeroAddress,
-    query: { enabled: isEdit && sizeChangeInContractUnit !== BigInt(0) },
+    query: { enabled: isEdit && isNonZeroSizeChange },
   });
 
   useEffect(() => {
-    if (
-      quoteModifyPositionResult?.error &&
-      isEdit &&
-      sizeChangeInContractUnit !== BigInt(0)
-    ) {
+    if (quoteModifyPositionResult?.error && isEdit && isNonZeroSizeChange) {
       setQuoteError(quoteModifyPositionResult.error.message);
     } else if (quoteCreatePositionResult.error && !isEdit) {
       setQuoteError(quoteCreatePositionResult.error.message);
@@ -365,11 +362,7 @@ export default function AddEditTrade() {
   }, [isEdit, quoteCreatePositionResult.data, quoteModifyPositionResult.data]);
 
   const priceImpact: number = useMemo(() => {
-    if (
-      pool?.token0Price &&
-      quotedFillPrice &&
-      sizeChangeInContractUnit !== BigInt(0)
-    ) {
+    if (pool?.token0Price && quotedFillPrice && isNonZeroSizeChange) {
       const fillPrice = Number(quotedFillPrice) / 1e18;
       const referencePrice = parseFloat(pool.token0Price.toSignificant(18));
       return Math.abs((fillPrice / referencePrice - 1) * 100);
@@ -383,6 +376,7 @@ export default function AddEditTrade() {
       size: '0',
       option: 'Long',
       slippage: '0.5',
+      fetchingSizeFromCollateralInput: false,
     },
     mode: 'onChange',
     reValidateMode: 'onChange',
@@ -399,6 +393,9 @@ export default function AddEditTrade() {
 
   // Watch slippage value from form
   const formSlippage = watch('slippage');
+  const fetchingSizeFromCollateralInput = watch(
+    'fetchingSizeFromCollateralInput'
+  );
 
   // Calculate collateralDeltaLimit using watched slippage value
   const collateralDeltaLimit = useMemo(() => {
@@ -467,18 +464,22 @@ export default function AddEditTrade() {
   };
 
   // Update resetAfterSuccess to reset form values properly
-  const resetAfterSuccess = () => {
+  const resetAfterSuccess = async () => {
     reset({
       size: '0',
       option: 'Long',
       slippage: '0.5',
+      fetchingSizeFromCollateralInput: false,
     });
+    setSizeChange(BigInt(0));
     setPendingTxn(false);
-    refreshPositions();
-    refetchPositionData();
-    refetchUniswapData();
-    refetchAllowance();
     setTxnStep(0);
+    await Promise.all([
+      refreshPositions(),
+      refetchAllowance(),
+      refetchPositionData(),
+      refetchUniswapData(),
+    ]);
   };
 
   useEffect(() => {
@@ -558,14 +559,12 @@ export default function AddEditTrade() {
       : quoteCreatePositionResult.isFetching;
     const isLoading =
       pendingTxn ||
+      fetchingSizeFromCollateralInput ||
       isLoadingCollateralChange ||
-      (sizeChangeInContractUnit !== BigInt(0) && isFetchingQuote);
+      (isNonZeroSizeChange && isFetchingQuote);
 
     let buttonTxt = isEdit ? 'Update Position' : 'Create Position';
-    if (
-      desiredSizeInContractUnit === BigInt(0) &&
-      sizeChangeInContractUnit !== BigInt(0)
-    ) {
+    if (desiredSizeInContractUnit === BigInt(0) && isNonZeroSizeChange) {
       buttonTxt = 'Close Position';
     }
     if (requireApproval) {
@@ -573,6 +572,9 @@ export default function AddEditTrade() {
     }
     if (isFetchingQuote && !formError) {
       buttonTxt = 'Fetching Collateral Change...';
+    }
+    if (fetchingSizeFromCollateralInput) {
+      buttonTxt = 'Fetching Size Change....';
     }
     return (
       <div className="mb-4">
@@ -609,6 +611,7 @@ export default function AddEditTrade() {
     // Binary search parameters
     let low = BigInt(0);
     let high = (targetCollateral * BigInt(2)) / BigInt(1e9);
+    setValue('fetchingSizeFromCollateralInput', true);
 
     while (low <= high && iterations < maxIterations) {
       currentSize = (low + high) / BigInt(2);
@@ -655,7 +658,12 @@ export default function AddEditTrade() {
       iterations++;
     }
 
+    if (bestSize <= BigInt(0)) {
+      setQuoteError('Could not find a size that matches your collateral');
+    }
+
     setSizeChange(bestSize);
+    setValue('fetchingSizeFromCollateralInput', false);
   };
 
   // Debounce the search to avoid too many calls
@@ -763,7 +771,7 @@ export default function AddEditTrade() {
                   )}
                 />{' '}
                 Ggas
-                {sizeChangeInContractUnit !== BigInt(0) && (
+                {isNonZeroSizeChange && (
                   <>
                     {' '}
                     →{' '}
