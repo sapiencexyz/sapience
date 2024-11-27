@@ -10,7 +10,7 @@ import {
 import { Market } from "./Market";
 
 @Entity()
-@Unique(["market", "timestamp"])
+@Unique(["market", "timestamp", "logIndex"])
 export class CollateralTransfer {
   @PrimaryGeneratedColumn()
   id: number;
@@ -23,6 +23,12 @@ export class CollateralTransfer {
 
   @Column({ type: "integer" })
   timestamp: number;
+
+  @Column({ type: "integer", nullable: true })
+  blockNumber: number | null;
+
+  @Column({ type: "integer" })
+  logIndex: number;
 
   @Column({ type: "varchar" })
   owner: string;

@@ -1040,7 +1040,7 @@ const startServer = async () => {
             },
           ],
           functionName: "getPositionCollateralValue",
-          args: [BigInt(position.id)],
+          args: [BigInt(position.positionId)],
         });
 
         return Number(collateralValue);
@@ -1068,16 +1068,19 @@ const startServer = async () => {
       const groupedByOwner: Record<string, GroupedPosition> = {};
       for (const position of positions) {
         if (!groupedByOwner[position.owner]) {
+          const collateralFlow =
+            calculatePositionCollateralFlow(
+              collateralTransfers,
+              position.owner
+            ) * -1;
           groupedByOwner[position.owner] = {
             owner: position.owner,
             positions: [],
-            totalPnL: 0,
+            totalPnL: collateralFlow,
           };
         }
 
-        const positionPnL =
-          (await calculateOpenPositionValue(position)) -
-          calculatePositionCollateralFlow(collateralTransfers, position.owner);
+        const positionPnL = await calculateOpenPositionValue(position);
 
         position.transactions = [];
         groupedByOwner[position.owner].positions.push(position);

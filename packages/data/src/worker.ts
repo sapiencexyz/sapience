@@ -57,11 +57,11 @@ export async function reindexMarket(
 
   await Promise.all([
     reindexMarketEvents(market, marketInfo.deployment.abi),
+    reindexCollateralEvents(market),
     marketInfo.priceIndexer.indexBlockPriceFromTimestamp(
       market,
       initialTimestamp || market.deployTimestamp || 0
     ),
-    reindexCollateralEvents(market),
   ]);
   console.log("finished reindexing market", address, "on chain", chainId);
 }
