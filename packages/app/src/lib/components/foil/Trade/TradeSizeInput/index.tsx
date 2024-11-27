@@ -198,7 +198,6 @@ const TradeSizeInput: React.FC<Props> = ({
 
       iterations++;
     }
-    // TODO: figure out if bestSize is in gas
     setValue('size', bestSize, {
       shouldValidate: true,
     });

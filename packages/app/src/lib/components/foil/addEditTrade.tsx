@@ -537,6 +537,7 @@ export default function AddEditTrade() {
     collateralAssetDecimals,
     collateralDeltaLimit,
     positionData,
+    quotedCollateralDelta,
   ]);
 
   const currentChainId = useChainId();
@@ -606,9 +607,7 @@ export default function AddEditTrade() {
           disabled={!!formError || isLoading || !sizeChangeIsNonzero}
           size="lg"
         >
-          {isLoading && !formError ? (
-            <Loader2 className="h-6 w-6 animate-spin" />
-          ) : null}
+          {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : null}
           {buttonTxt}
         </Button>
         {renderPriceImpactWarning()}
