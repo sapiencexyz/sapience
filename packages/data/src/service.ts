@@ -121,6 +121,61 @@ const startServer = async () => {
   });
 
   // Get market price data for rendering candlestick/boxplot charts filtered by contractId
+  app.get("/prices/tradingView-data", async (req, res) => {
+    const { contractId, epochId, timeWindow, from, to } = req.query;
+
+    if (
+      typeof contractId !== "string" ||
+      typeof epochId !== "string" ||
+      typeof timeWindow !== "string"
+    ) {
+      return res.status(400).json({ error: "Invalid request parameters" });
+    }
+    const [chainId, address] = contractId.split(":");
+
+    try {
+      //  const endTimestamp = Math.floor(Date.now() / 1000);
+      // const startTimestamp = getStartTimestampFromTimeWindow(
+      //   timeWindow as TimeWindow
+      // );
+
+      const marketPrices = await getMarketPricesInTimeRange(
+        Number(from),
+        Number(to),
+        chainId,
+        address,
+        epochId
+      );
+
+      const groupedPrices = groupMarketPricesByTimeWindow(
+        marketPrices,
+        timeWindow as TimeWindow
+      );
+
+      // Create candlestick data from grouped prices
+      const chartData = groupedPrices.map((group) => {
+        const prices = group.entities;
+        const open = prices[0]?.value || 0;
+        const close = prices[prices.length - 1]?.value || 0;
+        const high = Math.max(...prices.map((p) => Number(p.value)));
+        const low = Math.min(...prices.map((p) => Number(p.value)));
+        return {
+          startTimestamp: group.startTimestamp,
+          endTimestamp: group.endTimestamp,
+          open,
+          close,
+          low,
+          high,
+        };
+      });
+      res.json(chartData);
+    } catch (error) {
+      console.error("Error fetching market prices:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get market price data for rendering candlestick/boxplot charts filtered by contractId
   app.get("/prices/chart-data", async (req, res) => {
     const { contractId, epochId, timeWindow } = req.query;
 
