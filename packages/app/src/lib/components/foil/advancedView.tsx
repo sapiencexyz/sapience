@@ -26,6 +26,7 @@ import { API_BASE_URL } from '~/lib/constants/constants';
 import { AddEditPositionProvider } from '~/lib/context/AddEditPositionContext';
 import { MarketProvider } from '~/lib/context/MarketProvider';
 import { ChartType, TimeWindow } from '~/lib/interfaces/interfaces';
+import TradingViewWidget from './TradingViewWidget';
 
 const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
 
@@ -193,6 +194,9 @@ const Market = ({
   const renderChart = () => {
     if (chartType === ChartType.PRICE) {
       return (
+        <div className="flex-1 flex border border-border overflow-hidden rounded-lg">
+        <TradingViewWidget />
+        {/*
         <Chart
           activeWindow={selectedWindow}
           data={{
@@ -201,6 +205,7 @@ const Market = ({
           }}
           isLoading={idxLoading}
         />
+        */}</div>
       );
     }
     if (chartType === ChartType.VOLUME) {

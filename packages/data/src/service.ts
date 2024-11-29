@@ -121,23 +121,19 @@ const startServer = async () => {
   });
 
   // Get market price data for rendering candlestick/boxplot charts filtered by contractId
-  app.get("/prices/tradingView-data", async (req, res) => {
-    const { contractId, epochId, timeWindow, from, to } = req.query;
+  app.get("/prices/trading-view", async (req, res) => {
+    const { from, to, interval, contractId } = req.query;
 
-    if (
-      typeof contractId !== "string" ||
-      typeof epochId !== "string" ||
-      typeof timeWindow !== "string"
-    ) {
-      return res.status(400).json({ error: "Invalid request parameters" });
+    if (!contractId || !from || !to || !interval) {
+      return res.status(400).json({ error: "Missing required parameters" });
     }
-    const [chainId, address] = contractId.split(":");
 
     try {
-      //  const endTimestamp = Math.floor(Date.now() / 1000);
-      // const startTimestamp = getStartTimestampFromTimeWindow(
-      //   timeWindow as TimeWindow
-      // );
+      // Parse the custom symbol format: FOIL:chainId:address:epochId
+      const [prefix, chainId, address, epochId] = (contractId as string).split(':');
+      if (prefix !== 'FOIL' || !chainId || !address || !epochId) {
+        return res.status(400).json({ error: "Invalid symbol format" });
+      }
 
       const marketPrices = await getMarketPricesInTimeRange(
         Number(from),
@@ -147,33 +143,53 @@ const startServer = async () => {
         epochId
       );
 
-      const groupedPrices = groupMarketPricesByTimeWindow(
-        marketPrices,
-        timeWindow as TimeWindow
-      );
+      // Convert interval to seconds
+      const intervalMap: Record<string, number> = {
+        '1': 60,
+        '5': 300,
+        '15': 900,
+        '30': 1800,
+        '60': 3600,
+        '240': 14400,
+        'D': 86400,
+        'W': 604800,
+      };
 
-      // Create candlestick data from grouped prices
-      const chartData = groupedPrices.map((group) => {
-        const prices = group.entities;
-        const open = prices[0]?.value || 0;
-        const close = prices[prices.length - 1]?.value || 0;
-        const high = Math.max(...prices.map((p) => Number(p.value)));
-        const low = Math.min(...prices.map((p) => Number(p.value)));
-        return {
-          startTimestamp: group.startTimestamp,
-          endTimestamp: group.endTimestamp,
-          open,
-          close,
-          low,
-          high,
-        };
-      });
-      res.json(chartData);
+      const intervalSeconds = intervalMap[interval as string] || 86400;
+      const groupedPrices = groupPricesByInterval(marketPrices, intervalSeconds);
+
+      res.json(groupedPrices);
     } catch (error) {
       console.error("Error fetching market prices:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
+
+  // Helper function to group prices by interval
+  function groupPricesByInterval(prices: any[], intervalSeconds: number) {
+    const groups: Record<number, any> = {};
+    
+    prices.forEach(price => {
+      const timestamp = Math.floor(Number(price.timestamp) / intervalSeconds) * intervalSeconds;
+      
+      if (!groups[timestamp]) {
+        groups[timestamp] = {
+          timestamp,
+          open: Number(price.value),
+          high: Number(price.value),
+          low: Number(price.value),
+          close: Number(price.value),
+          volume: 0
+        };
+      } else {
+        groups[timestamp].high = Math.max(groups[timestamp].high, Number(price.value));
+        groups[timestamp].low = Math.min(groups[timestamp].low, Number(price.value));
+        groups[timestamp].close = Number(price.value);
+      }
+    });
+
+    return Object.values(groups).sort((a, b) => a.timestamp - b.timestamp);
+  }
 
   // Get market price data for rendering candlestick/boxplot charts filtered by contractId
   app.get("/prices/chart-data", async (req, res) => {

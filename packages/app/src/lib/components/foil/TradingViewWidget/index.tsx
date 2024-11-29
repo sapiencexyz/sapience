@@ -6,6 +6,7 @@ import { useContext, useEffect, useRef, useState } from 'react';
 
 import { MarketContext } from '~/lib/context/MarketProvider';
 import type { PriceChartData } from '~/lib/interfaces/interfaces';
+import { API_BASE_URL } from '~/lib/constants/constants';
 
 // Declare a construct signature for TradingView.widget
 declare global {
@@ -31,72 +32,48 @@ const TradingViewWidget: React.FC = () => {
     address: marketAddress,
     collateralAssetTicker,
     epoch,
+    chainId
   } = useContext(MarketContext);
 
   const createDatafeed = () => {
     return {
       onReady: (callback: (config: any) => void) => {
+        console.log('onReady called');
         setTimeout(() =>
           callback({
-            supported_resolutions: [
-              '1',
-              '5',
-              '15',
-              '30',
-              '60',
-              '1D',
-              '1W',
-              '1M',
-            ],
-            supports_time: true,
+            supported_resolutions: ['1', '5', '15', '30', '60', '240', 'D', 'W'],
+            supports_search: true,
+            supports_group_request: false,
             supports_marks: false,
             supports_timescale_marks: false,
+            supports_time: true,
+            exchanges: [
+              { value: 'FOIL', name: 'FOIL', desc: 'FOIL Markets' }
+            ],
+            symbols_types: [
+              { name: 'crypto', value: 'crypto' }
+            ]
           })
         );
       },
+
       searchSymbols: (
         userInput: string,
         exchange: string,
         symbolType: string,
         onResult: (result: any[]) => void
       ) => {
-        // Return the market as the only searchable symbol
+        console.log('searchSymbols called', { userInput, exchange, symbolType });
+        const symbol = `FOIL:${chainId}:${marketAddress}:${epoch}`;
         onResult([
           {
-            symbol: marketAddress,
-            full_name: marketAddress,
-            description: collateralAssetTicker || 'Market',
-            exchange: 'Custom',
-            type: 'crypto',
-          },
+            symbol,
+            full_name: symbol,
+            description: `FOIL Market ${epoch}`,
+            exchange: 'FOIL',
+            type: 'crypto'
+          }
         ]);
-      },
-
-      resolveSymbol: (
-        symbolName: string,
-        onSymbolResolvedCallback: (symbolInfo: any) => void,
-        onResolveErrorCallback: (error: any) => void
-      ) => {
-        // Always resolve to our market symbol regardless of input
-        const symbolInfo = {
-          ticker: collateralAssetTicker,
-          name: collateralAssetTicker,
-          description: collateralAssetTicker || 'Market',
-          type: 'crypto',
-          session: '24x7',
-          timezone: 'Etc/UTC',
-          exchange: 'Custom',
-          minmov: 1,
-          pricescale: 100000000,
-          has_intraday: true,
-          has_no_volume: false,
-          has_weekly_and_monthly: true,
-          supported_resolutions: ['1', '5', '15', '30', '60', '1D', '1W', '1M'],
-          volume_precision: 8,
-          data_status: 'streaming',
-        };
-
-        setTimeout(() => onSymbolResolvedCallback(symbolInfo));
       },
 
       getBars: async (
@@ -106,27 +83,21 @@ const TradingViewWidget: React.FC = () => {
           from: number;
           to: number;
           firstDataRequest: boolean;
+          countBack?: number;
         },
         onHistoryCallback: (
           bars: PriceChartData[],
           meta: { noData?: boolean }
-        ) => void
+        ) => void,
+        onErrorCallback: (error: string) => void
       ) => {
         try {
-          // Convert resolution to something your API understands
-          // const interval = resolution.includes('D')
-          //   ? parseInt(resolution, 10) * 24 * 60
-          //   : parseInt(resolution, 10);
-          const interval = '1D'; // use for now
-
-          // Fetch data from your API
           const response = await fetch(
-            `/api/prices/tradingView-data?` +
-              `from=${periodParams.from}&` +
-              `to=${periodParams.to}&` +
-              `interval=${interval}&` +
-              `contractId=${marketAddress}&` +
-              `epochId=${epoch}`
+            `${API_BASE_URL}/prices/trading-view?` +
+            `from=${periodParams.from}&` +
+            `to=${periodParams.to}&` +
+            `interval=${resolution}&` +
+            `contractId=${symbolInfo.ticker}`
           );
 
           if (!response.ok) {
@@ -140,21 +111,19 @@ const TradingViewWidget: React.FC = () => {
             return;
           }
 
-          // Transform your API data to match TradingView's format if necessary
           const bars = data.map((bar) => ({
-            startTimestamp: bar.startTimestamp * 1000, // Convert to milliseconds if needed
-            endTimestamp: bar.endTimestamp * 1000, // Convert to milliseconds if needed
-            open: bar.open,
-            high: bar.high,
-            low: bar.low,
-            close: bar.close,
-            // volume: bar.volume,
+            time: bar.startTimestamp * 1000,
+            open: parseFloat(bar.open),
+            high: parseFloat(bar.high),
+            low: parseFloat(bar.low),
+            close: parseFloat(bar.close),
+            volume: parseFloat(bar.volume || '0')
           }));
 
           onHistoryCallback(bars, { noData: false });
         } catch (error) {
-          console.error('Error fetching market data:', error);
-          onHistoryCallback([], { noData: true });
+          console.error('Error in getBars:', error);
+          onErrorCallback((error as Error).message);
         }
       },
 
@@ -169,6 +138,45 @@ const TradingViewWidget: React.FC = () => {
 
       unsubscribeBars: () => {
         // Cleanup any real-time subscriptions
+      },
+
+      resolveSymbol: (
+        symbolName: string,
+        onSymbolResolvedCallback: (symbolInfo: any) => void,
+        onResolveErrorCallback: (error: string) => void
+      ) => {
+        console.log('resolveSymbol called', symbolName);
+        
+        const symbol = `FOIL:${chainId}:${marketAddress}:${epoch}`;
+        
+        // Always resolve the current market symbol
+        if (symbolName === symbol) {
+          const symbolInfo = {
+            ticker: symbol,
+            name: symbol,
+            full_name: symbol,
+            description: `FOIL Market ${epoch}`,
+            type: 'crypto',
+            session: '24x7',
+            timezone: 'Etc/UTC',
+            exchange: 'FOIL',
+            listed_exchange: 'FOIL',
+            minmov: 1,
+            pricescale: 100, // Adjust this based on your price precision
+            has_intraday: true,
+            has_daily: true,
+            has_weekly_and_monthly: true,
+            supported_resolutions: ['1', '5', '15', '30', '60', '240', 'D', 'W'],
+            volume_precision: 2,
+            data_status: 'streaming',
+          };
+          
+          console.log('Symbol resolved:', symbolInfo);
+          onSymbolResolvedCallback(symbolInfo);
+        } else {
+          console.log('Symbol resolution failed');
+          onResolveErrorCallback('invalid_symbol');
+        }
       },
     };
   };
@@ -187,26 +195,33 @@ const TradingViewWidget: React.FC = () => {
     function createWidget() {
       if (document.getElementById('tradingview_c10e9') && window.TradingView) {
         cleanupWidget();
+        
+        const symbol = `FOIL:${chainId}:${marketAddress}:${epoch}`;
+        console.log('Creating widget with symbol:', symbol);
+        
         widgetRef.current = new window.TradingView.widget({
           autosize: true,
-          //   symbol: `ETH`,
-          //   symbol: `${collateralAssetTicker}`,
-          symbol: collateralAssetTicker || 'MARKET',
+          symbol,
           interval: '15',
           timezone: 'Etc/UTC',
-          // backgroundColor: 'blue',
-          theme,
+          theme: theme === 'dark' ? 'dark' : 'light',
           style: '1',
           locale: 'en',
           enable_publishing: false,
           withdateranges: true,
-          hide_side_toolbar: false,
-          save_image: true,
-          show_popup_button: true,
-          popup_width: '1000',
-          popup_height: '650',
+          hide_drawing_toolbar: true,
           container_id: 'tradingview_c10e9',
-          datafeed: createDatafeed(), // Use our custom datafeed
+          library_path: '/charting_library/',
+          client_id: 'tradingview.com',
+          user_id: 'public_user_id',
+          datafeed: createDatafeed(),
+          disabled_features: ['use_localstorage_for_settings'],
+          enabled_features: ['study_templates'],
+          overrides: {
+            "mainSeriesProperties.style": 1,
+            "symbolWatermarkProperties.color": "#944",
+            "volumePaneSize": "medium"
+          }
         });
       }
     }
@@ -232,12 +247,12 @@ const TradingViewWidget: React.FC = () => {
       cleanupWidget();
       onLoadScriptRef.current = null;
     };
-  }, [marketAddress, collateralAssetTicker, theme]);
+  }, [marketAddress, epoch, chainId, theme]);
 
   return (
     <div
       className="tradingview-widget-container"
-      style={{ height: '60vh', width: '100%' }}
+      style={{ height: '100%', width: '100%' }}
     >
       <div
         id="tradingview_c10e9"

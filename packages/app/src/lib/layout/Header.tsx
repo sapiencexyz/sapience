@@ -269,14 +269,6 @@ const NavLinks = ({
           🏆 Leaderboard
         </Button>
       </Link>
-      <Link
-        href="/price/11155111:0x4243f3d11353aaeb404e31e160eec362d066637c/epochs/1"
-        className="hover:no-underline"
-      >
-        <Button variant="ghost" className=" text-lg">
-          Price (Pro)
-        </Button>
-      </Link>
       <Link href="https://docs.foil.xyz" className="hover:no-underline">
         <Button variant="ghost" className=" text-lg">
           Docs
