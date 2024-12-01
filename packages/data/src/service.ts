@@ -122,17 +122,23 @@ const startServer = async () => {
 
   // Get market price data for rendering candlestick/boxplot charts filtered by contractId
   app.get("/prices/trading-view", async (req, res) => {
-    const { from, to, interval, contractId } = req.query;
+    const { from, to, resolution, symbol } = req.query;
 
-    if (!contractId || !from || !to || !interval) {
-      return res.status(400).json({ error: "Missing required parameters" });
+    if (!symbol || !from || !to || !resolution) {
+      return res.status(400).json({ 
+        s: "error",
+        errmsg: "Missing required parameters" 
+      });
     }
 
     try {
       // Parse the custom symbol format: FOIL:chainId:address:epochId
-      const [prefix, chainId, address, epochId] = (contractId as string).split(':');
+      const [prefix, chainId, address, epochId] = (symbol as string).split(':');
       if (prefix !== 'FOIL' || !chainId || !address || !epochId) {
-        return res.status(400).json({ error: "Invalid symbol format" });
+        return res.status(400).json({ 
+          s: "error", 
+          errmsg: "Invalid symbol format" 
+        });
       }
 
       const marketPrices = await getMarketPricesInTimeRange(
@@ -143,7 +149,13 @@ const startServer = async () => {
         epochId
       );
 
-      // Convert interval to seconds
+      if (marketPrices.length === 0) {
+        return res.json({
+          s: "no_data"
+        });
+      }
+
+      // Convert resolution to seconds
       const intervalMap: Record<string, number> = {
         '1': 60,
         '5': 300,
@@ -155,13 +167,36 @@ const startServer = async () => {
         'W': 604800,
       };
 
-      const intervalSeconds = intervalMap[interval as string] || 86400;
+      const intervalSeconds = intervalMap[resolution as string] || 86400;
       const groupedPrices = groupPricesByInterval(marketPrices, intervalSeconds);
 
-      res.json(groupedPrices);
+      // Format response according to UDF specification
+      const response = {
+        s: "ok",
+        t: [] as number[],  // timestamps
+        o: [] as number[],  // open prices
+        h: [] as number[],  // high prices
+        l: [] as number[],  // low prices
+        c: [] as number[],  // close prices
+        v: [] as number[]   // volumes (optional)
+      };
+
+      groupedPrices.forEach(bar => {
+        response.t.push(bar.timestamp);
+        response.o.push(bar.open);
+        response.h.push(bar.high);
+        response.l.push(bar.low);
+        response.c.push(bar.close);
+        response.v.push(bar.volume || 0);
+      });
+
+      res.json(response);
     } catch (error) {
       console.error("Error fetching market prices:", error);
-      res.status(500).json({ error: "Internal server error" });
+      res.status(500).json({ 
+        s: "error",
+        errmsg: "Internal server error" 
+      });
     }
   });
 
@@ -1151,6 +1186,159 @@ const startServer = async () => {
     } catch (error) {
       console.error("Error fetching positions:", error);
       res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // UDF Configuration endpoint
+  app.get("/udf/config", async (req, res) => {
+    res.json({
+      supported_resolutions: ['1', '5', '15', '30', '60', '240', 'D', 'W'],
+      supports_group_request: false,
+      supports_marks: false,
+      supports_search: true,
+      supports_timescale_marks: false
+    });
+  });
+
+  // UDF Symbol resolve endpoint
+  app.get("/udf/symbols", async (req, res) => {
+    const { symbol } = req.query;
+    if (!symbol) {
+      return res.status(400).json({ s: "error", errmsg: "Symbol not provided" });
+    }
+
+    try {
+      // Parse the custom symbol format: FOIL:chainId:address:epochId
+      const [prefix, chainId, address, epochId] = (symbol as string).split(':');
+      if (prefix !== 'FOIL' || !chainId || !address || !epochId) {
+        return res.status(404).json({ s: "error", errmsg: "Symbol not found" });
+      }
+
+      const market = await marketRepository.findOne({
+        where: { chainId: Number(chainId), address },
+        relations: ["epochs"],
+      });
+
+      if (!market) {
+        return res.status(404).json({ s: "error", errmsg: "Symbol not found" });
+      }
+
+      // Return symbol info in UDF format
+      res.json({
+        name: symbol,
+        ticker: symbol,
+        description: `${market.name} - Epoch ${epochId}`,
+        type: "crypto",
+        session: "24x7",
+        timezone: "Etc/UTC",
+        minmov: 1,
+        pricescale: 100,
+        has_intraday: true,
+        supported_resolutions: ['1', '5', '15', '30', '60', '240', 'D', 'W'],
+        volume_precision: 8,
+        data_status: "streaming",
+      });
+    } catch (error) {
+      console.error("Error resolving symbol:", error);
+      res.status(500).json({ s: "error", errmsg: "Internal server error" });
+    }
+  });
+
+  // UDF History endpoint
+  app.get("/udf/history", async (req, res) => {
+    const { symbol, from, to, resolution, countback } = req.query;
+
+    if (!symbol) {
+      return res.status(400).json({ s: "error", errmsg: "Symbol not provided" });
+    }
+
+    try {
+      // Parse the custom symbol format: FOIL:chainId:address:epochId
+      const [prefix, chainId, address, epochId] = (symbol as string).split(':');
+      if (prefix !== 'FOIL' || !chainId || !address || !epochId) {
+        return res.status(400).json({ s: "error", errmsg: "Invalid symbol format" });
+      }
+
+      const startTime = countback ? undefined : Number(from);
+      const endTime = Number(to);
+
+      const marketPrices = await getMarketPricesInTimeRange(
+        startTime || 0,
+        endTime,
+        chainId,
+        address,
+        epochId
+      );
+
+      if (marketPrices.length === 0) {
+        return res.json({
+          s: "no_data"
+        });
+      }
+
+      // Convert resolution to seconds
+      const intervalMap: Record<string, number> = {
+        '1': 60,
+        '5': 300,
+        '15': 900,
+        '30': 1800,
+        '60': 3600,
+        '240': 14400,
+        'D': 86400,
+        'W': 604800,
+      };
+
+      const intervalSeconds = intervalMap[resolution as string] || 86400;
+      const groupedPrices = groupPricesByInterval(marketPrices, intervalSeconds);
+
+      // If countback is specified, limit the results
+      if (countback) {
+        groupedPrices.splice(0, groupedPrices.length - Number(countback));
+      }
+
+      // Format response according to UDF specification
+      res.json({
+        s: "ok",
+        t: groupedPrices.map(bar => bar.timestamp),
+        o: groupedPrices.map(bar => bar.open),
+        h: groupedPrices.map(bar => bar.high),
+        l: groupedPrices.map(bar => bar.low),
+        c: groupedPrices.map(bar => bar.close),
+        v: groupedPrices.map(bar => bar.volume || 0)
+      });
+    } catch (error) {
+      console.error("Error fetching history:", error);
+      res.status(500).json({ s: "error", errmsg: "Internal server error" });
+    }
+  });
+
+  // UDF Search endpoint
+  app.get("/udf/search", async (req, res) => {
+    const { query, limit } = req.query;
+    
+    try {
+      const markets = await marketRepository.find({
+        relations: ["epochs"],
+        take: Number(limit) || 30
+      });
+
+      const results = markets.flatMap(market => 
+        market.epochs.map(epoch => ({
+          symbol: `FOIL:${market.chainId}:${market.address}:${epoch.epochId}`,
+          full_name: `FOIL:${market.chainId}:${market.address}:${epoch.epochId}`,
+          description: `${market.name} - Epoch ${epoch.epochId}`,
+          exchange: "FOIL",
+          type: "crypto"
+        }))
+      ).filter(result => 
+        !query || 
+        result.description.toLowerCase().includes((query as string).toLowerCase())
+      );
+
+      res.json(results);
+    } catch (error) {
+      console.error("Error searching symbols:", error);
+      res.status(500).json({ s: "error", errmsg: "Internal server error" });
     }
   });
 };

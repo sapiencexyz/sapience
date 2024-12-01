@@ -1,265 +1,111 @@
-/* eslint-disable new-cap */
-/* eslint-disable no-new */
-import { useTheme } from 'next-themes';
-import type React from 'react';
-import { useContext, useEffect, useRef, useState } from 'react';
-
-import { MarketContext } from '~/lib/context/MarketProvider';
-import type { PriceChartData } from '~/lib/interfaces/interfaces';
+import { useEffect, useRef } from 'react';
+import {
+	widget,
+	ChartingLibraryWidgetOptions,
+	LanguageCode,
+	ResolutionString,
+} from '../../charting_library';
+import * as React from 'react';
 import { API_BASE_URL } from '~/lib/constants/constants';
+import { MarketContext } from '~/lib/context/MarketProvider';
 
-// Declare a construct signature for TradingView.widget
-declare global {
-  interface TradingViewWidget {
-    new (config: any): any;
-  }
+export interface ChartContainerProps {
+	symbol: ChartingLibraryWidgetOptions['symbol'];
+	interval: ChartingLibraryWidgetOptions['interval'];
 
-  interface Window {
-    TradingView?: {
-      widget: TradingViewWidget;
-    };
-  }
+	// BEWARE: no trailing slash is expected in feed URL
+	datafeedUrl: string;
+	libraryPath: ChartingLibraryWidgetOptions['library_path'];
+	chartsStorageUrl: ChartingLibraryWidgetOptions['charts_storage_url'];
+	chartsStorageApiVersion: ChartingLibraryWidgetOptions['charts_storage_api_version'];
+	clientId: ChartingLibraryWidgetOptions['client_id'];
+	userId: ChartingLibraryWidgetOptions['user_id'];
+	fullscreen: ChartingLibraryWidgetOptions['fullscreen'];
+	autosize: ChartingLibraryWidgetOptions['autosize'];
+	studiesOverrides: ChartingLibraryWidgetOptions['studies_overrides'];
+	container: ChartingLibraryWidgetOptions['container'];
 }
 
-let tvScriptLoadingPromise: Promise<void> | undefined;
-
-const TradingViewWidget: React.FC = () => {
-  const { theme } = useTheme();
-  const onLoadScriptRef = useRef<null | (() => void)>(null);
-  const widgetRef = useRef<any>(null);
-
-  const {
-    address: marketAddress,
-    collateralAssetTicker,
-    epoch,
-    chainId
-  } = useContext(MarketContext);
-
-  const createDatafeed = () => {
-    return {
-      onReady: (callback: (config: any) => void) => {
-        console.log('onReady called');
-        setTimeout(() =>
-          callback({
-            supported_resolutions: ['1', '5', '15', '30', '60', '240', 'D', 'W'],
-            supports_search: true,
-            supports_group_request: false,
-            supports_marks: false,
-            supports_timescale_marks: false,
-            supports_time: true,
-            exchanges: [
-              { value: 'FOIL', name: 'FOIL', desc: 'FOIL Markets' }
-            ],
-            symbols_types: [
-              { name: 'crypto', value: 'crypto' }
-            ]
-          })
-        );
-      },
-
-      searchSymbols: (
-        userInput: string,
-        exchange: string,
-        symbolType: string,
-        onResult: (result: any[]) => void
-      ) => {
-        console.log('searchSymbols called', { userInput, exchange, symbolType });
-        const symbol = `FOIL:${chainId}:${marketAddress}:${epoch}`;
-        onResult([
-          {
-            symbol,
-            full_name: symbol,
-            description: `FOIL Market ${epoch}`,
-            exchange: 'FOIL',
-            type: 'crypto'
-          }
-        ]);
-      },
-
-      getBars: async (
-        symbolInfo: any,
-        resolution: string,
-        periodParams: {
-          from: number;
-          to: number;
-          firstDataRequest: boolean;
-          countBack?: number;
-        },
-        onHistoryCallback: (
-          bars: PriceChartData[],
-          meta: { noData?: boolean }
-        ) => void,
-        onErrorCallback: (error: string) => void
-      ) => {
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/prices/trading-view?` +
-            `from=${periodParams.from}&` +
-            `to=${periodParams.to}&` +
-            `interval=${resolution}&` +
-            `contractId=${symbolInfo.ticker}`
-          );
-
-          if (!response.ok) {
-            throw new Error('Failed to fetch market data');
-          }
-
-          const data: PriceChartData[] = await response.json();
-
-          if (!data || data.length === 0) {
-            onHistoryCallback([], { noData: true });
-            return;
-          }
-
-          const bars = data.map((bar) => ({
-            time: bar.startTimestamp * 1000,
-            open: parseFloat(bar.open),
-            high: parseFloat(bar.high),
-            low: parseFloat(bar.low),
-            close: parseFloat(bar.close),
-            volume: parseFloat(bar.volume || '0')
-          }));
-
-          onHistoryCallback(bars, { noData: false });
-        } catch (error) {
-          console.error('Error in getBars:', error);
-          onErrorCallback((error as Error).message);
-        }
-      },
-
-      subscribeBars: (
-        symbolInfo: any,
-        resolution: string,
-        onRealtimeCallback: (bar: PriceChartData) => void
-      ) => {
-        // Implement real-time updates if needed
-        // You could use WebSocket here to receive live updates
-      },
-
-      unsubscribeBars: () => {
-        // Cleanup any real-time subscriptions
-      },
-
-      resolveSymbol: (
-        symbolName: string,
-        onSymbolResolvedCallback: (symbolInfo: any) => void,
-        onResolveErrorCallback: (error: string) => void
-      ) => {
-        console.log('resolveSymbol called', symbolName);
-        
-        const symbol = `FOIL:${chainId}:${marketAddress}:${epoch}`;
-        
-        // Always resolve the current market symbol
-        if (symbolName === symbol) {
-          const symbolInfo = {
-            ticker: symbol,
-            name: symbol,
-            full_name: symbol,
-            description: `FOIL Market ${epoch}`,
-            type: 'crypto',
-            session: '24x7',
-            timezone: 'Etc/UTC',
-            exchange: 'FOIL',
-            listed_exchange: 'FOIL',
-            minmov: 1,
-            pricescale: 100, // Adjust this based on your price precision
-            has_intraday: true,
-            has_daily: true,
-            has_weekly_and_monthly: true,
-            supported_resolutions: ['1', '5', '15', '30', '60', '240', 'D', 'W'],
-            volume_precision: 2,
-            data_status: 'streaming',
-          };
-          
-          console.log('Symbol resolved:', symbolInfo);
-          onSymbolResolvedCallback(symbolInfo);
-        } else {
-          console.log('Symbol resolution failed');
-          onResolveErrorCallback('invalid_symbol');
-        }
-      },
-    };
-  };
-
-  useEffect(() => {
-    const cleanupWidget = () => {
-      if (widgetRef.current) {
-        const container = document.getElementById('tradingview_c10e9');
-        if (container) {
-          container.innerHTML = '';
-        }
-        widgetRef.current = null;
-      }
-    };
-
-    function createWidget() {
-      if (document.getElementById('tradingview_c10e9') && window.TradingView) {
-        cleanupWidget();
-        
-        const symbol = `FOIL:${chainId}:${marketAddress}:${epoch}`;
-        console.log('Creating widget with symbol:', symbol);
-        
-        widgetRef.current = new window.TradingView.widget({
-          autosize: true,
-          symbol,
-          interval: '15',
-          timezone: 'Etc/UTC',
-          theme: theme === 'dark' ? 'dark' : 'light',
-          style: '1',
-          locale: 'en',
-          enable_publishing: false,
-          withdateranges: true,
-          hide_drawing_toolbar: true,
-          container_id: 'tradingview_c10e9',
-          library_path: '/charting_library/',
-          client_id: 'tradingview.com',
-          user_id: 'public_user_id',
-          datafeed: createDatafeed(),
-          disabled_features: ['use_localstorage_for_settings'],
-          enabled_features: ['study_templates'],
-          overrides: {
-            "mainSeriesProperties.style": 1,
-            "symbolWatermarkProperties.color": "#944",
-            "volumePaneSize": "medium"
-          }
-        });
-      }
-    }
-
-    onLoadScriptRef.current = createWidget;
-
-    if (!tvScriptLoadingPromise) {
-      tvScriptLoadingPromise = new Promise((resolve) => {
-        const script = document.createElement('script');
-        script.id = 'tradingview-widget-loading-script';
-        script.src = 'https://s3.tradingview.com/tv.js';
-        script.type = 'text/javascript';
-        script.onload = () => resolve();
-        document.head.appendChild(script);
-      });
-    }
-
-    tvScriptLoadingPromise.then(() => {
-      if (onLoadScriptRef.current) onLoadScriptRef.current();
-    });
-
-    return () => {
-      cleanupWidget();
-      onLoadScriptRef.current = null;
-    };
-  }, [marketAddress, epoch, chainId, theme]);
-
-  return (
-    <div
-      className="tradingview-widget-container"
-      style={{ height: '100%', width: '100%' }}
-    >
-      <div
-        id="tradingview_c10e9"
-        style={{ height: 'calc(100% - 32px)', width: '100%' }}
-      />
-    </div>
-  );
+const getLanguageFromURL = (): LanguageCode | null => {
+	const regex = new RegExp('[\\?&]lang=([^&#]*)');
+	const results = regex.exec(location.search);
+	return results === null ? null : decodeURIComponent(results[1].replace(/\+/g, ' ')) as LanguageCode;
 };
 
-export default TradingViewWidget;
+export const TVChartContainer = () => {
+  const {
+    address: marketAddress,
+    epoch,
+    chainId
+  } = React.useContext(MarketContext);
+  const symbol = `FOIL:${chainId}:${marketAddress}:${epoch}`;
+  const datafeedUrl = `${API_BASE_URL}/udf`;
+
+	const chartContainerRef = useRef<HTMLDivElement>() as React.MutableRefObject<HTMLInputElement>;
+
+	const defaultProps: Omit<ChartContainerProps, 'container'> = {
+		symbol: 'AAPL',
+		interval: 'D' as ResolutionString,
+		datafeedUrl: 'https://demo_feed.tradingview.com',
+		libraryPath: '/charting_library/',
+		chartsStorageUrl: 'https://saveload.tradingview.com',
+		chartsStorageApiVersion: '1.1',
+		clientId: 'tradingview.com',
+		userId: 'public_user_id',
+		fullscreen: false,
+		autosize: true,
+		studiesOverrides: {},
+	};
+
+	useEffect(() => {
+		const widgetOptions: ChartingLibraryWidgetOptions = {
+			symbol: symbol,
+			// BEWARE: no trailing slash is expected in feed URL
+			// tslint:disable-next-line:no-any
+			datafeed: new (window as any).Datafeeds.UDFCompatibleDatafeed(datafeedUrl),
+			interval: defaultProps.interval as ChartingLibraryWidgetOptions['interval'],
+			container: chartContainerRef.current,
+			library_path: defaultProps.libraryPath as string,
+
+			locale: getLanguageFromURL() || 'en',
+			disabled_features: ['use_localstorage_for_settings'],
+			enabled_features: ['study_templates'],
+			charts_storage_url: defaultProps.chartsStorageUrl,
+			charts_storage_api_version: defaultProps.chartsStorageApiVersion,
+			client_id: defaultProps.clientId,
+			user_id: defaultProps.userId,
+			fullscreen: defaultProps.fullscreen,
+			autosize: defaultProps.autosize,
+			studies_overrides: defaultProps.studiesOverrides,
+		};
+
+		const tvWidget = new widget(widgetOptions);
+
+		tvWidget.onChartReady(() => {
+			tvWidget.headerReady().then(() => {
+				const button = tvWidget.createButton();
+				button.setAttribute('title', 'Click to show a notification popup');
+				button.classList.add('apply-common-tooltip');
+				button.addEventListener('click', () => tvWidget.showNoticeDialog({
+						title: 'Notification',
+						body: 'TradingView Charting Library API works correctly',
+						callback: () => {
+							console.log('Noticed!');
+						},
+					}));
+				button.innerHTML = 'Check API';
+			});
+		});
+
+		return () => {
+			tvWidget.remove();
+		};
+	});
+
+	return (
+		<div
+			ref={ chartContainerRef }
+			className={ 'TVChartContainer' }
+		/>
+	);
+};
