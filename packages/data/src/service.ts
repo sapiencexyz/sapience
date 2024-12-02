@@ -1063,20 +1063,21 @@ const startServer = async () => {
         owner: string;
         positions: Position[];
         totalPnL: number;
+        totalCollateralFlow: number;
       }
 
       const groupedByOwner: Record<string, GroupedPosition> = {};
       for (const position of positions) {
         if (!groupedByOwner[position.owner]) {
-          const collateralFlow =
-            calculatePositionCollateralFlow(
-              collateralTransfers,
-              position.owner
-            ) * -1;
+          const collateralFlow = calculatePositionCollateralFlow(
+            collateralTransfers,
+            position.owner
+          );
           groupedByOwner[position.owner] = {
             owner: position.owner,
             positions: [],
-            totalPnL: collateralFlow,
+            totalPnL: -collateralFlow,
+            totalCollateralFlow: collateralFlow,
           };
         }
 
