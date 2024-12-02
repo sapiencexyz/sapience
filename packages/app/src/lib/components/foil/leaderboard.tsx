@@ -59,6 +59,7 @@ interface GroupedPosition {
   owner: string;
   positions: Position[];
   totalPnL: number;
+  totalCollateralFlow: number;
 }
 
 const useLeaderboard = (marketId: string, epochId: string) => {
@@ -171,6 +172,17 @@ const RankCell = ({ row }: { row: { index: number } }) => (
   </span>
 );
 
+const RoiCell = ({ cell }: { cell: { getValue: () => unknown } }) => {
+  const value = cell.getValue() as number;
+  const prefix = value > 0 ? '+' : '';
+  return (
+    <span className="text-xl md:text-4xl font-bold flex justify-center">
+      {prefix}
+      <NumberDisplay value={value} /> %
+    </span>
+  );
+};
+
 const Leaderboard = ({ params }: Props) => {
   const { pool } = useContext(MarketContext);
   const { data: leaderboardPositions, isLoading } = useLeaderboard(
@@ -190,6 +202,12 @@ const Leaderboard = ({ params }: Props) => {
         header: 'Wallet Address',
         accessorFn: (row) => row.owner,
         cell: OwnerCell,
+      },
+      {
+        id: 'roi',
+        header: 'ROI',
+        accessorFn: (row) => row.totalPnL / row.totalCollateralFlow,
+        cell: RoiCell,
       },
       {
         id: 'pnl',
@@ -219,16 +237,19 @@ const Leaderboard = ({ params }: Props) => {
           owner: position.owner,
           positions: [],
           totalPnL: 0,
+          totalCollateralFlow: 0,
         };
       }
       acc[position.owner].positions = position.positions;
       acc[position.owner].totalPnL = position.totalPnL;
+      acc[position.owner].totalCollateralFlow = position.totalCollateralFlow;
       return acc;
     }, {});
 
     // Convert to array and sort by total PnL
     return Object.values(groupedByOwner).sort(
-      (a, b) => b.totalPnL - a.totalPnL
+      (a, b) =>
+        b.totalPnL / b.totalCollateralFlow - a.totalPnL / a.totalCollateralFlow
     );
   }, [leaderboardPositions]);
 
