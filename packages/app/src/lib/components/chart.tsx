@@ -1,130 +1,16 @@
-/* eslint-disable sonarjs/cognitive-complexity */
-import dayjs from 'dayjs';
+import type { UTCTimestamp, BarData, LineData } from 'lightweight-charts';
+import { createChart, CrosshairMode, Time } from 'lightweight-charts';
+import { useEffect, useRef, useState, useContext } from 'react';
 import type React from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-import { useContext, useEffect, useRef, useState, useMemo } from 'react';
-import type { TooltipProps } from 'recharts';
-import {
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  ComposedChart,
-  Bar,
-  Tooltip,
-  Line,
-} from 'recharts';
 
 import type { PriceChartData, TimeWindow } from '../interfaces/interfaces';
-import { formatXAxisTick, getXTicksToShow } from '../util/chartUtil';
 import { formatAmount } from '../util/numberUtil';
 import {
   convertGgasPerWstEthToGwei,
   getDisplayTextForVolumeWindow,
 } from '../util/util';
 import { MarketContext } from '~/lib/context/MarketProvider';
-
-const grayColor = 'hsl(var(--chart-3))';
-const greenColor = 'hsl(var(--chart-2))';
-const redColor = 'hsl(var(--chart-1))';
-
-const CustomBarShape: React.FC<{
-  x: number;
-  // y: number;
-  width: number;
-  // height: number;
-  payload: any;
-  yAxisDomain: [number, number];
-  chartHeight: number;
-  gridOffsetFromParent: number;
-}> = ({
-  x,
-  width,
-  payload,
-  yAxisDomain,
-  chartHeight,
-  gridOffsetFromParent,
-}) => {
-  if (!payload.close && !payload.open && !payload.high && !payload.low)
-    return null;
-  const candleColor = payload.open < payload.close ? greenColor : redColor;
-
-  const scaleY = (value: number) => {
-    const scaled = (value - yAxisDomain[0]) / (yAxisDomain[1] - yAxisDomain[0]);
-    return chartHeight - scaled * chartHeight + gridOffsetFromParent;
-  };
-
-  const lowY = scaleY(payload.low);
-  const highY = scaleY(payload.high);
-  const openY = scaleY(payload.open);
-  const closeY = scaleY(payload.close);
-
-  const barHeight = Math.max(Math.abs(openY - closeY), 1);
-  const wickHeight = Math.abs(lowY - highY);
-
-  return (
-    <>
-      {/* Wick */}
-      <rect
-        x={x + width / 2 - 0.5}
-        y={highY}
-        width={1}
-        height={wickHeight}
-        fill={candleColor}
-      />
-      {/* Body */}
-      <rect
-        x={x}
-        y={Math.min(openY, closeY)}
-        width={width}
-        height={barHeight}
-        fill={candleColor}
-        rx="2px"
-      />
-    </>
-  );
-};
-
-interface CustomTooltipProps {
-  setValue: Dispatch<SetStateAction<string>>; // used for value on hover
-  setLabel: Dispatch<SetStateAction<string>>; // used for label of value
-}
-const CustomTooltip: React.FC<
-  TooltipProps<number, string> & CustomTooltipProps
-> = ({ payload, setValue, setLabel }) => {
-  useEffect(() => {
-    if (payload && payload[0]) {
-      const start = payload[0].payload.startTimestamp;
-      const end = payload[0].payload.endTimestamp;
-      const startFormatted = dayjs(start).format('MMM D, h:mm A');
-      const endFormatted = dayjs(end).format('MMM D, h:mm A');
-
-      const close: number = payload[0].payload.close || 0;
-
-      setValue(formatAmount(close));
-      setLabel(`${startFormatted} - ${endFormatted}`);
-    }
-  }, [payload, setLabel, setValue]);
-
-  if (!payload || !payload[0]) return null;
-
-  const payloadData = payload?.[0]?.payload;
-  const close: number | null = payloadData?.close;
-  const open: number | null = payloadData?.open;
-  const high: number | null = payloadData?.high;
-  const low: number | null = payloadData?.low;
-  const price = payloadData?.price;
-  if (!close && !open && !high && !low && !price) return null;
-  return (
-    <div className="bg-background p-2 border border-border rounded-md">
-      <p>Close: {close ? formatAmount(close) : '-'}</p>
-      <p>Open: {open ? formatAmount(open) : '-'}</p>
-      <p>High: {high ? formatAmount(high) : '-'}</p>
-      <p>Low: {low ? formatAmount(low) : '-'}</p>
-      <p>Price: {price ? formatAmount(price) : '-'}</p>
-    </div>
-  );
-};
 
 interface Props {
   data: {
@@ -145,192 +31,164 @@ const CandlestickChart: React.FC<Props> = ({
   activeWindow,
   isLoading,
 }) => {
-  const [value, setValue] = useState<string>('');
-  const timePeriodLabel = useMemo(() => {
-    return getDisplayTextForVolumeWindow(activeWindow);
-  }, [activeWindow]);
-  const [label, setLabel] = useState<string>(timePeriodLabel);
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<any>(null);
+  const resizeObserverRef = useRef<ResizeObserver>();
   const { pool, stEthPerToken, useMarketUnits } = useContext(MarketContext);
-  const currPrice: string | number = useMemo(() => {
-    return useMarketUnits
-      ? pool?.token0Price.toSignificant(18) || 0
-      : convertGgasPerWstEthToGwei(
-          Number(pool?.token0Price.toSignificant(18) || 0),
-          stEthPerToken
-        );
-  }, [pool?.token0Price, useMarketUnits, stEthPerToken]);
-  const [yAxisDomain, setYAxisDomain] = useState<[number, number]>([0, 0]);
-  const [chartDimensions, setChartDimensions] = useState({
-    width: 0,
-    height: 0,
-  });
-  const [gridOffsetFromParent, setGridOffsetFromParent] = useState(0);
 
-  const chartRef = useRef(null);
+  const [timePeriodLabel, setTimePeriodLabel] = useState<string>('');
+  const [priceLabel, setPriceLabel] = useState<string>('');
 
-  const combinedData = useMemo(() => {
-    let lastClose = 0;
-    return data.marketPrices.map((mp, i) => {
-      if (mp.close) {
-        lastClose = mp.close;
-      }
+  useEffect(() => {
+    setTimePeriodLabel(getDisplayTextForVolumeWindow(activeWindow));
+  }, [activeWindow]);
 
-      const price = data.indexPrices[i]?.price || 0;
-      const priceAdjusted = isLoading ? 0 : price / (stEthPerToken || 1);
-      const displayPriceValue = useMarketUnits
-        ? priceAdjusted
-        : convertGgasPerWstEthToGwei(priceAdjusted, stEthPerToken);
+  useEffect(() => {
+    if (chartContainerRef.current) {
+      const chart = createChart(chartContainerRef.current, {
+        width: chartContainerRef.current.clientWidth,
+        height: 500,
+        layout: {
+          textColor: '#ffffff',
+        },
+        grid: {
+          vertLines: {
+            color: 'rgba(197, 203, 206, 0.5)',
+          },
+          horzLines: {
+            color: 'rgba(197, 203, 206, 0.5)',
+          },
+        },
+        crosshair: {
+          mode: CrosshairMode.Normal,
+        },
+        timeScale: {
+          borderColor: '#cccccc',
+          timeVisible: true,
+          secondsVisible: false,
+        },
+      });
 
-      if (!mp.close && !mp.open && !mp.high && !mp.low && lastClose) {
-        return {
-          ...mp,
-          high: useMarketUnits
-            ? lastClose
-            : convertGgasPerWstEthToGwei(lastClose, stEthPerToken),
-          low: useMarketUnits
-            ? lastClose
-            : convertGgasPerWstEthToGwei(lastClose, stEthPerToken),
-          open: useMarketUnits
-            ? lastClose
-            : convertGgasPerWstEthToGwei(lastClose, stEthPerToken),
-          close: useMarketUnits
-            ? lastClose
-            : convertGgasPerWstEthToGwei(lastClose, stEthPerToken),
-          price: displayPriceValue || undefined,
-        };
-      }
+      chartRef.current = chart;
 
-      return {
-        ...mp,
-        high: useMarketUnits
-          ? mp.high
-          : convertGgasPerWstEthToGwei(mp.high, stEthPerToken),
-        low: useMarketUnits
-          ? mp.low
-          : convertGgasPerWstEthToGwei(mp.low, stEthPerToken),
-        open: useMarketUnits
-          ? mp.open
-          : convertGgasPerWstEthToGwei(mp.open, stEthPerToken),
-        close: useMarketUnits
-          ? mp.close
-          : convertGgasPerWstEthToGwei(mp.close, stEthPerToken),
-        price: displayPriceValue || undefined,
+      const candlestickSeries = chart.addCandlestickSeries({
+        upColor: '#26a69a',
+        downColor: '#ef5350',
+        borderVisible: false,
+        wickUpColor: '#26a69a',
+        wickDownColor: '#ef5350',
+      });
+
+      const indexPriceSeries = chart.addAreaSeries({
+        lineColor: 'blue',
+        topColor: 'rgba(128, 128, 128, 0.4)',
+        bottomColor: 'rgba(128, 128, 128, 0.0)',
+        lineStyle: 2,
+      });
+
+      const combinedData = data.marketPrices
+        .map((mp, i) => {
+          const timestamp = (mp.endTimestamp / 1000) as UTCTimestamp;
+          const indexPrice = data.indexPrices[i]?.price || 0;
+          const adjustedPrice = isLoading
+            ? 0
+            : indexPrice / (stEthPerToken || 1);
+
+          if (!mp.open || !mp.high || !mp.low || !mp.close) {
+            return null;
+          }
+
+          const displayPriceValue = useMarketUnits
+            ? adjustedPrice
+            : convertGgasPerWstEthToGwei(adjustedPrice, stEthPerToken);
+
+          const candleData: BarData = {
+            time: timestamp,
+            open: useMarketUnits
+              ? Number(mp.open)
+              : Number(convertGgasPerWstEthToGwei(mp.open, stEthPerToken)),
+            high: useMarketUnits
+              ? Number(mp.high)
+              : Number(convertGgasPerWstEthToGwei(mp.high, stEthPerToken)),
+            low: useMarketUnits
+              ? Number(mp.low)
+              : Number(convertGgasPerWstEthToGwei(mp.low, stEthPerToken)),
+            close: useMarketUnits
+              ? Number(mp.close)
+              : Number(convertGgasPerWstEthToGwei(mp.close, stEthPerToken)),
+          };
+
+          const lineData: LineData = {
+            time: timestamp,
+            value: displayPriceValue || 0,
+          };
+
+          return { candleData, lineData };
+        })
+        .filter((item): item is NonNullable<typeof item> => item !== null);
+
+      const candleSeriesData = combinedData.map((d) => d.candleData);
+      const lineSeriesData = combinedData.map((d) => d.lineData);
+
+      candlestickSeries.setData(candleSeriesData);
+      indexPriceSeries.setData(lineSeriesData);
+
+      chart.subscribeCrosshairMove((param: any) => {
+        if (
+          param === undefined ||
+          param.time === undefined ||
+          param.point === undefined
+        ) {
+          setPriceLabel('');
+          return;
+        }
+
+        const candlePrice = param.seriesData.get(candlestickSeries);
+        if (candlePrice) {
+          setPriceLabel(
+            `${formatAmount(candlePrice.close)} ${
+              useMarketUnits ? 'Ggas/wstETH' : 'gwei'
+            }`
+          );
+        }
+      });
+
+      resizeObserverRef.current = new ResizeObserver((entries) => {
+        const { width, height } = entries[0].contentRect;
+        chart.applyOptions({ width, height });
+        setTimeout(() => {
+          chart.timeScale().fitContent();
+        }, 0);
+      });
+
+      resizeObserverRef.current.observe(chartContainerRef.current);
+
+      return () => {
+        if (resizeObserverRef.current && chartContainerRef.current) {
+          resizeObserverRef.current.unobserve(chartContainerRef.current);
+        }
+        chart.remove();
       };
-    });
-  }, [data, useMarketUnits, stEthPerToken, isLoading]);
-
-  useEffect(() => {
-    setLabel(timePeriodLabel);
-  }, [timePeriodLabel]);
-
-  const updateChartDimensions = () => {
-    if (chartRef.current) {
-      const parentElement = (chartRef.current as any).container;
-      const gridElement = parentElement?.querySelector(
-        '.recharts-cartesian-grid'
-      );
-
-      if (gridElement && parentElement) {
-        const gridRect = gridElement.getBoundingClientRect();
-        const parentRect = parentElement.getBoundingClientRect();
-
-        setChartDimensions({
-          width: gridRect.width,
-          height: gridRect.height,
-        });
-        setGridOffsetFromParent(gridRect.top - parentRect.top);
-      }
     }
-  };
+  }, [
+    data,
+    isLoading,
+    stEthPerToken,
+    useMarketUnits,
+    activeWindow,
+    pool?.token0Price,
+  ]);
 
-  useEffect(() => {
-    const highs = combinedData.map((d) => d.high);
-    const indexPrices = combinedData.map((d) => d.price ?? 0);
-    const max = Math.max(...highs, ...indexPrices);
-    const maxWithBuffer = Math.floor(max * 1.1 + 1);
-    setYAxisDomain([0, maxWithBuffer]);
-  }, [combinedData]);
-
-  const formatYAxisTick = (value: number) => {
-    return value.toLocaleString(undefined, {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    });
-  };
-
-  const renderShape = useMemo(() => {
-    return (props: any) => {
-      return (
-        <CustomBarShape
-          {...props}
-          yAxisDomain={yAxisDomain}
-          chartHeight={chartDimensions.height}
-          gridOffsetFromParent={gridOffsetFromParent}
-        />
+  const currPrice = useMarketUnits
+    ? pool?.token0Price.toSignificant(18) || 0
+    : convertGgasPerWstEthToGwei(
+        Number(pool?.token0Price.toSignificant(18) || 0),
+        stEthPerToken
       );
-    };
-  }, [yAxisDomain, chartDimensions.height, gridOffsetFromParent]);
-
-  // Temporary hack, doesn't seem to rendering after initial resizing
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      updateChartDimensions();
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, []);
 
   return (
-    <div className="flex flex-1 relative">
-      <div className="min-h-[50px] w-fit absolute top-0 left-0 z-[2]">
-        <p className="min-h-[24px]">
-          {value
-            ? `${value.toLocaleString()}`
-            : formatAmount(Number(currPrice))}{' '}
-          {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
-        </p>
-        <p className="text-sm">{label ? `${label}` : ''}</p>
-      </div>
-      <ResponsiveContainer
-        height="95%"
-        width="100%"
-        onResize={updateChartDimensions}
-      >
-        <ComposedChart
-          data={combinedData}
-          ref={chartRef}
-          margin={{ top: 70, right: 0, bottom: 0, left: 0 }}
-          onMouseLeave={() => {
-            setLabel(timePeriodLabel);
-            setValue('');
-          }}
-        >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis
-            dataKey="endTimestamp"
-            tickFormatter={(timestamp) =>
-              formatXAxisTick(timestamp, activeWindow)
-            }
-            ticks={getXTicksToShow(data.marketPrices, activeWindow)}
-            minTickGap={10}
-            allowDataOverflow
-          />
-          <YAxis domain={yAxisDomain} tickFormatter={formatYAxisTick} />
-          <Tooltip
-            contentStyle={{}}
-            content={<CustomTooltip setLabel={setLabel} setValue={setValue} />}
-          />
-          <Bar dataKey="close" shape={renderShape} />
-          <Line
-            type="monotone"
-            dataKey="price"
-            stroke={grayColor}
-            strokeWidth={1.5}
-            dot={false}
-            strokeDasharray="5 5"
-          />
-        </ComposedChart>
-      </ResponsiveContainer>
+    <div className="flex flex-1">
+      <div ref={chartContainerRef} className="w-full h-full" />
     </div>
   );
 };
