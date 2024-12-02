@@ -176,7 +176,7 @@ const RoiCell = ({ cell }: { cell: { getValue: () => unknown } }) => {
   const value = cell.getValue() as number;
   const prefix = value > 0 ? '+' : '';
   return (
-    <span className="text-xl md:text-4xl font-bold flex justify-center">
+    <span className="md:text-xl whitespace-nowrap">
       {prefix}
       <NumberDisplay value={value} /> %
     </span>
