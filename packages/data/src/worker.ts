@@ -7,6 +7,10 @@ import {
 } from "./controllers/market";
 import { MARKET_INFO } from "./markets";
 import { createOrUpdateEpochFromContract } from "./controllers/marketHelpers";
+import {
+  indexCollateralEvents,
+  reindexCollateralEvents,
+} from "./controllers/collateral";
 
 async function main() {
   await initializeDataSource();
@@ -25,6 +29,7 @@ async function main() {
     await createOrUpdateEpochFromContract(marketInfo, market);
     jobs.push(indexMarketEvents(market, marketInfo.deployment.abi));
     jobs.push(marketInfo.priceIndexer.watchBlocksForMarket(market));
+    jobs.push(indexCollateralEvents(market));
   }
 
   await Promise.all(jobs);
@@ -52,9 +57,10 @@ export async function reindexMarket(
 
   await Promise.all([
     reindexMarketEvents(market, marketInfo.deployment.abi),
+    reindexCollateralEvents(market),
     marketInfo.priceIndexer.indexBlockPriceFromTimestamp(
       market,
-      initialTimestamp || market.deployTimestamp
+      initialTimestamp || market.deployTimestamp || 0
     ),
   ]);
   console.log("finished reindexing market", address, "on chain", chainId);

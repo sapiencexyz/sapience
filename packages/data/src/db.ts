@@ -8,6 +8,7 @@ import { Epoch } from "./models/Epoch";
 import { MarketPrice } from "./models/MarketPrice";
 import { RenderJob } from "./models/RenderJob";
 import { IndexPrice } from "./models/IndexPrice";
+import { CollateralTransfer } from "./models/CollateralTransfer";
 
 const isProduction = process.env.NODE_ENV === "production";
 const devDatabase = process.env.POSTGRES_DB;
@@ -32,6 +33,7 @@ const devDataSource: DataSource = new DataSource({
     MarketPrice,
     RenderJob,
     IndexPrice,
+    CollateralTransfer,
   ],
 });
 
@@ -50,6 +52,7 @@ const postgresDataSource: DataSource = new DataSource({
     MarketPrice,
     RenderJob,
     IndexPrice,
+    CollateralTransfer,
   ],
 });
 
@@ -78,5 +81,7 @@ export const resourcePriceRepository = dataSource.getRepository(ResourcePrice);
 export const marketPriceRepository = dataSource.getRepository(MarketPrice);
 export const renderJobRepository = dataSource.getRepository(RenderJob);
 export const indexPriceRepository = dataSource.getRepository(IndexPrice);
+export const collateralTransferRepository =
+  dataSource.getRepository(CollateralTransfer);
 
 export default dataSource;
