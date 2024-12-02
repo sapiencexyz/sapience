@@ -1,5 +1,7 @@
 /* eslint-disable sonarjs/cognitive-complexity */
 /* eslint-disable react/no-unstable-nested-components */
+/* eslint-disable jsx-a11y/label-has-associated-control */
+/* eslint-disable jsx-a11y/control-has-associated-label */
 import { useQuery } from '@tanstack/react-query';
 import {
   useReactTable,
@@ -10,6 +12,7 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import axios from 'axios';
+import { formatDistanceToNow } from 'date-fns';
 import { ChevronDown, ChevronUp, ArrowUpDown, Loader2 } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useState, useMemo } from 'react';
@@ -28,12 +31,6 @@ import erc20ABI from '../../erc20abi.json';
 import useFoilDeployment from '../foil/useFoilDeployment';
 import MarketAddress from '../MarketAddress';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
 import {
   Table,
@@ -55,7 +52,13 @@ import type { EpochData, MarketParams } from '~/lib/interfaces/interfaces';
 import { formatAmount } from '~/lib/util/numberUtil';
 import { gweiToEther } from '~/lib/util/util';
 
-// Move component definitions outside of MarketsTable
+// Add new interface near the top
+interface MissingBlocks {
+  [key: string]: {
+    resourcePrice?: number[];
+    events?: number[];
+  };
+}
 
 const renderSortIcon = (isSorted: string | false) => {
   if (isSorted === 'desc') {
@@ -67,9 +70,43 @@ const renderSortIcon = (isSorted: string | false) => {
   return <ArrowUpDown className="h-3 w-3" aria-label="sortable" />;
 };
 
-const AddressCell: React.FC<{ address: string }> = ({ address }) => (
-  <MarketAddress address={address} />
-);
+const AddressCell: React.FC<{ address: string; chainId: number }> = ({
+  address,
+  chainId,
+}) => {
+  const getExplorerUrl = (chainId: number, address: string) => {
+    const chain = Object.values(Chains).find((c) => c.id === chainId);
+    return chain?.blockExplorers?.default?.url
+      ? `${chain.blockExplorers.default.url}/address/${address}`
+      : `https://etherscan.io/address/${address}`;
+  };
+
+  return (
+    <div className="flex items-center space-x-2">
+      <MarketAddress address={address} />
+      <a
+        href={getExplorerUrl(chainId, address)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-blue-500 hover:text-blue-600"
+      >
+        <svg
+          className="h-4 w-4 inline-block"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+          />
+        </svg>
+      </a>
+    </div>
+  );
+};
 
 const PublicCell: React.FC<{
   isPublic: boolean;
@@ -77,44 +114,15 @@ const PublicCell: React.FC<{
   loading: boolean;
   onUpdate: (market: Market) => void;
 }> = ({ isPublic, market, loading, onUpdate }) => (
-  <>
+  <div className="flex items-center gap-2">
     <Switch
       checked={isPublic}
       onCheckedChange={() => onUpdate(market)}
       disabled={loading}
+      aria-label="Toggle market public status"
     />
-    {loading && <Loader2 className="h-4 w-4 block mt-2 animate-spin" />}
-  </>
-);
-
-const ActionsCell: React.FC<{
-  market: Market;
-  epochId: number;
-  loading: boolean;
-  onGetMissing: (m: Market, epochId: number, model: string) => void;
-}> = ({ market, epochId, loading, onGetMissing }) => (
-  <DropdownMenu>
-    <DropdownMenuTrigger asChild>
-      <Button variant="outline" size="sm">
-        Get Missing Blocks
-        <ChevronDown className="ml-2 h-4 w-4" />
-      </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent>
-      <DropdownMenuItem
-        disabled={loading}
-        onClick={() => onGetMissing(market, epochId, 'ResourcePrice')}
-      >
-        Resource Prices
-      </DropdownMenuItem>
-      <DropdownMenuItem
-        disabled={loading}
-        onClick={() => onGetMissing(market, epochId, 'Event')}
-      >
-        Events
-      </DropdownMenuItem>
-    </DropdownMenuContent>
-  </DropdownMenu>
+    {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+  </div>
 );
 
 const MarketsTable: React.FC = () => {
@@ -123,10 +131,11 @@ const MarketsTable: React.FC = () => {
     [actionName: string]: boolean;
   }>({});
   const [sorting, setSorting] = useState<SortingState>([
-    { id: 'startTimestamp', desc: true },
+    { id: 'endTimestamp', desc: true },
   ]);
   const { toast } = useToast();
   const { signMessageAsync } = useSignMessage();
+  const [missingBlocks, setMissingBlocks] = useState<MissingBlocks>({});
 
   const data = useMemo(
     () =>
@@ -142,18 +151,43 @@ const MarketsTable: React.FC = () => {
     [markets]
   );
 
+  // Add new function to fetch missing blocks
+  const fetchMissingBlocks = async (market: Market, epochId: number) => {
+    try {
+      const [resourcePriceRes, eventsRes] = await Promise.all([
+        axios.get(
+          `${API_BASE_URL}/missing-blocks?chainId=${market.chainId}&address=${market.address}&epochId=${epochId}&model=ResourcePrice`
+        ),
+        axios.get(
+          `${API_BASE_URL}/missing-blocks?chainId=${market.chainId}&address=${market.address}&epochId=${epochId}&model=Event`
+        ),
+      ]);
+
+      setMissingBlocks((prev) => ({
+        ...prev,
+        [`${market.address}-${epochId}`]: {
+          resourcePrice: resourcePriceRes.data.missingBlockNumbers,
+          events: eventsRes.data.missingBlockNumbers,
+        },
+      }));
+    } catch (error) {
+      console.error('Error fetching missing blocks:', error);
+    }
+  };
+
+  // Add useEffect to fetch missing blocks when markets load
+  useEffect(() => {
+    if (!isLoading && markets.length > 0) {
+      markets.forEach((market) => {
+        market.epochs.forEach((epoch) => {
+          fetchMissingBlocks(market, epoch.epochId);
+        });
+      });
+    }
+  }, [markets, isLoading]);
+
   const columns = useMemo<ColumnDef<any>[]>(
     () => [
-      {
-        id: 'marketAddress',
-        header: 'Address',
-        cell: ({ row }) => <AddressCell address={row.original.marketAddress} />,
-      },
-      {
-        id: 'chainId',
-        header: 'Chain',
-        accessorKey: 'chainId',
-      },
       {
         id: 'isPublic',
         header: 'Public',
@@ -167,35 +201,55 @@ const MarketsTable: React.FC = () => {
         ),
       },
       {
+        id: 'marketAddress',
+        header: 'Address',
+        cell: ({ row }) => (
+          <AddressCell
+            address={row.original.marketAddress}
+            chainId={row.original.chainId}
+          />
+        ),
+      },
+      {
+        id: 'chainId',
+        header: 'Chain',
+        accessorKey: 'chainId',
+      },
+      {
         id: 'epochId',
         header: 'Epoch',
         accessorKey: 'epochId',
       },
       {
-        id: 'startTimestamp',
-        header: 'Start',
-        accessorKey: 'startTimestamp',
-        cell: ({ getValue }) =>
-          new Date((getValue() as number) * 1000).toLocaleString(),
-      },
-      {
         id: 'endTimestamp',
         header: 'End',
         accessorKey: 'endTimestamp',
-        cell: ({ getValue }) =>
-          new Date((getValue() as number) * 1000).toLocaleString(),
+        cell: ({ getValue }) => {
+          const timestamp = getValue() as number;
+          const date = new Date(timestamp * 1000);
+          const now = new Date();
+          return date < now
+            ? `${formatDistanceToNow(date)} ago`
+            : `in ${formatDistanceToNow(date)}`;
+        },
       },
       {
-        id: 'actions',
-        header: '',
-        cell: ({ row }) => (
-          <ActionsCell
-            market={row.original.market}
-            epochId={row.original.epochId}
-            loading={loadingAction.getMissing}
-            onGetMissing={handleGetMissing}
-          />
-        ),
+        id: 'missingPriceBlocks',
+        header: 'Missing Index Price Blocks',
+        cell: ({ row }) => {
+          const key = `${row.original.marketAddress}-${row.original.epochId}`;
+          const blocks = missingBlocks[key]?.resourcePrice;
+          return blocks ? blocks.length : 'Loading...';
+        },
+      },
+      {
+        id: 'missingEventBlocks',
+        header: 'Missing Market Event Blocks',
+        cell: ({ row }) => {
+          const key = `${row.original.marketAddress}-${row.original.epochId}`;
+          const blocks = missingBlocks[key]?.events;
+          return blocks ? blocks.length : 'Loading...';
+        },
       },
       {
         id: 'settlement',
@@ -205,7 +259,7 @@ const MarketsTable: React.FC = () => {
         ),
       },
     ],
-    [loadingAction]
+    [missingBlocks, loadingAction]
   );
 
   const table = useReactTable({
@@ -236,38 +290,6 @@ const MarketsTable: React.FC = () => {
       await refetchMarkets();
     }
     setLoadingAction((prev) => ({ ...prev, [market.address]: false }));
-  };
-
-  const handleGetMissing = async (
-    m: Market,
-    epochId: number,
-    model: string
-  ) => {
-    setLoadingAction((prev) => ({
-      ...prev,
-      getMissing: true,
-    }));
-    try {
-      const response = await axios.get(
-        `${API_BASE_URL}/missing-blocks?chainId=${m.chainId}&address=${m.address}&epochId=${epochId}&model=${model}`
-      );
-      console.log('response', response);
-      toast({
-        title: 'Finished Getting Missing Blocks',
-        description: `${response.data.missingBlockNumbers.length} missing blocks found. See console for more info`,
-        duration: 9000,
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'There was an issue getting missing blocks.',
-        duration: 9000,
-      });
-    }
-    setLoadingAction((prev) => ({
-      ...prev,
-      getMissing: false,
-    }));
   };
 
   if (isLoading) {

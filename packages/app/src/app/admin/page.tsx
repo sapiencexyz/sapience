@@ -1,3 +1,5 @@
+/* eslint-disable jsx-a11y/label-has-associated-control */
+
 'use client';
 
 import axios from 'axios';
@@ -114,19 +116,25 @@ const Admin = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <p className="text-sm font-medium">Market Address</p>
-              <Input
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-              />
+              <label className="block">
+                <span className="text-sm font-medium">Market Address</span>
+                <Input
+                  id="marketAddress"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                />
+              </label>
             </div>
 
             <div className="space-y-2">
-              <p className="text-sm font-medium">Chain ID</p>
-              <Input
-                value={chainId}
-                onChange={(e) => setChainId(e.target.value)}
-              />
+              <label className="block">
+                <span className="text-sm font-medium">Chain ID</span>
+                <Input
+                  id="chainId"
+                  value={chainId}
+                  onChange={(e) => setChainId(e.target.value)}
+                />
+              </label>
             </div>
 
             <Button
@@ -151,13 +159,17 @@ const Admin = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <p className="text-sm font-medium">Service ID</p>
-              <Input value={job?.serviceId || ''} readOnly />
+              <label className="block">
+                <span className="text-sm font-medium">Service ID</span>
+                <Input id="serviceId" value={job?.serviceId || ''} readOnly />
+              </label>
             </div>
 
             <div className="space-y-2">
-              <p className="text-sm font-medium">Job ID</p>
-              <Input value={job?.id || ''} readOnly />
+              <label className="block">
+                <span className="text-sm font-medium">Job ID</span>
+                <Input id="jobId" value={job?.id || ''} readOnly />
+              </label>
             </div>
 
             <Button
