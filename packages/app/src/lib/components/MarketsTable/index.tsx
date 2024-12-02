@@ -13,7 +13,14 @@ import {
 } from '@tanstack/react-table';
 import axios from 'axios';
 import { formatDistanceToNow } from 'date-fns';
-import { ChevronDown, ChevronUp, ArrowUpDown, Loader2, Download } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  ArrowUpDown,
+  Loader2,
+  Download,
+  AlertCircle,
+} from 'lucide-react';
 import type React from 'react';
 import { useEffect, useState, useMemo } from 'react';
 import type { AbiFunction } from 'viem';
@@ -40,6 +47,12 @@ import {
   TableHead,
   TableCell,
 } from '@/components/ui/table';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useToast } from '~/hooks/use-toast';
 import {
   ADMIN_AUTHENTICATE_MSG,
@@ -185,8 +198,11 @@ const MarketsTable: React.FC = () => {
     }
   }, [markets, isLoading]);
 
-
-  function handleReindex(reindex: 'price' | 'events', marketAddress: any, epochId: any): void {
+  function handleReindex(
+    reindex: 'price' | 'events',
+    marketAddress: any,
+    epochId: any
+  ): void {
     throw new Error('Function not implemented.');
   }
 
@@ -251,7 +267,13 @@ const MarketsTable: React.FC = () => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => handleReindex('price', row.original.marketAddress, row.original.epochId)}
+                  onClick={() =>
+                    handleReindex(
+                      'price',
+                      row.original.marketAddress,
+                      row.original.epochId
+                    )
+                  }
                   className="h-6 w-6 p-0"
                 >
                   <Download className="h-4 w-4" />
@@ -274,7 +296,13 @@ const MarketsTable: React.FC = () => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => handleReindex('events', row.original.marketAddress, row.original.epochId)}
+                  onClick={() =>
+                    handleReindex(
+                      'events',
+                      row.original.marketAddress,
+                      row.original.epochId
+                    )
+                  }
                   className="h-6 w-6 p-0"
                 >
                   <Download className="h-4 w-4" />
@@ -609,11 +637,26 @@ const EpochItem: React.FC<{
     stEthPerTokenResult.isLoading;
 
   const renderSettledCell = () => {
+    const currentTime = Math.floor(Date.now() / 1000);
+    const isEpochEnded = epoch.endTimestamp && currentTime > epoch.endTimestamp;
+
+    const getButtonText = () => {
+      if (!isEpochEnded) {
+        return 'Epoch Active';
+      }
+      if (requireApproval) {
+        return `Approve ${collateralTickerFunctionResult.data} Transfer`;
+      }
+      return 'Settle with Price';
+    };
+
     if (epochSettled) {
       return (
         <div className="space-y-1">
           <p className="text-lg">{Number(settlementPrice)}</p>
-          <Button disabled size="sm">Settled</Button>
+          <Button disabled size="sm">
+            Settled
+          </Button>
         </div>
       );
     }
@@ -625,23 +668,30 @@ const EpochItem: React.FC<{
     return (
       <div className="space-y-2">
         <p>{formatAmount(priceAdjusted)}</p>
-        <Button
-          size="sm"
-          disabled={!getEpochData || buttonIsLoading}
-          onClick={
-            requireApproval ? handleApproveSettle : handleSettleWithPrice
-          }
-        >
-          {buttonIsLoading && <Loader2 className="animate-spin" />}
-          {requireApproval
-            ? `Approve ${collateralTickerFunctionResult.data} Transfer`
-            : 'Settle with Price'}
-        </Button>
-        {!getEpochData && (
-          <p className="text-sm text-red-500 text-center">
-            Could not get epoch data for market
-          </p>
-        )}
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            disabled={!getEpochData || buttonIsLoading || !isEpochEnded}
+            onClick={
+              requireApproval ? handleApproveSettle : handleSettleWithPrice
+            }
+          >
+            {buttonIsLoading && <Loader2 className="animate-spin" />}
+            {getButtonText()}
+          </Button>
+          {!getEpochData && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <AlertCircle className="h-4 w-4 text-red-500" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Could not get epoch data for market</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
       </div>
     );
   };
