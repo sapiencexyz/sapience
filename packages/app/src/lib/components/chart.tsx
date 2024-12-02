@@ -1,5 +1,6 @@
 import type { UTCTimestamp, BarData, LineData } from 'lightweight-charts';
 import { createChart, CrosshairMode, Time } from 'lightweight-charts';
+import { useTheme } from 'next-themes';
 import { useEffect, useRef, useState, useContext } from 'react';
 import type React from 'react';
 import type { Dispatch, SetStateAction } from 'react';
@@ -35,13 +36,7 @@ const CandlestickChart: React.FC<Props> = ({
   const chartRef = useRef<any>(null);
   const resizeObserverRef = useRef<ResizeObserver>();
   const { pool, stEthPerToken, useMarketUnits } = useContext(MarketContext);
-
-  const [timePeriodLabel, setTimePeriodLabel] = useState<string>('');
-  const [priceLabel, setPriceLabel] = useState<string>('');
-
-  useEffect(() => {
-    setTimePeriodLabel(getDisplayTextForVolumeWindow(activeWindow));
-  }, [activeWindow]);
+  const { theme } = useTheme();
 
   useEffect(() => {
     if (chartContainerRef.current) {
@@ -49,21 +44,28 @@ const CandlestickChart: React.FC<Props> = ({
         width: chartContainerRef.current.clientWidth,
         height: 500,
         layout: {
-          textColor: '#ffffff',
+          background: { color: theme === 'dark' ? '#09090B' : '#ffffff' },
+          textColor: theme === 'dark' ? '#ffffff' : '#000000',
         },
         grid: {
           vertLines: {
-            color: 'rgba(197, 203, 206, 0.5)',
+            color:
+              theme === 'dark'
+                ? 'rgba(197, 203, 206, 0.2)'
+                : 'rgba(197, 203, 206, 0.5)',
           },
           horzLines: {
-            color: 'rgba(197, 203, 206, 0.5)',
+            color:
+              theme === 'dark'
+                ? 'rgba(197, 203, 206, 0.2)'
+                : 'rgba(197, 203, 206, 0.5)',
           },
         },
         crosshair: {
           mode: CrosshairMode.Normal,
         },
         timeScale: {
-          borderColor: '#cccccc',
+          borderColor: theme === 'dark' ? '#363537' : '#cccccc',
           timeVisible: true,
           secondsVisible: false,
         },
@@ -133,26 +135,6 @@ const CandlestickChart: React.FC<Props> = ({
       candlestickSeries.setData(candleSeriesData);
       indexPriceSeries.setData(lineSeriesData);
 
-      chart.subscribeCrosshairMove((param: any) => {
-        if (
-          param === undefined ||
-          param.time === undefined ||
-          param.point === undefined
-        ) {
-          setPriceLabel('');
-          return;
-        }
-
-        const candlePrice = param.seriesData.get(candlestickSeries);
-        if (candlePrice) {
-          setPriceLabel(
-            `${formatAmount(candlePrice.close)} ${
-              useMarketUnits ? 'Ggas/wstETH' : 'gwei'
-            }`
-          );
-        }
-      });
-
       resizeObserverRef.current = new ResizeObserver((entries) => {
         const { width, height } = entries[0].contentRect;
         chart.applyOptions({ width, height });
@@ -177,14 +159,8 @@ const CandlestickChart: React.FC<Props> = ({
     useMarketUnits,
     activeWindow,
     pool?.token0Price,
+    theme,
   ]);
-
-  const currPrice = useMarketUnits
-    ? pool?.token0Price.toSignificant(18) || 0
-    : convertGgasPerWstEthToGwei(
-        Number(pool?.token0Price.toSignificant(18) || 0),
-        stEthPerToken
-      );
 
   return (
     <div className="flex flex-1">
