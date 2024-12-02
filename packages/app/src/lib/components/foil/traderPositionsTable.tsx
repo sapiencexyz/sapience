@@ -37,6 +37,7 @@ import { calculatePnL } from '~/lib/util/positionUtil';
 import { convertWstEthToGwei } from '~/lib/util/util';
 
 import NumberDisplay from './numberDisplay';
+import { useReadContract } from 'wagmi';
 
 interface Props {
   positions: any[];
@@ -86,6 +87,31 @@ const PnLHeaderCell = () => (
     </TooltipProvider>
   </span>
 );
+
+const PnLCell = ({ cell }: { cell: any }) => {
+  const { chainId, address } = cell.getValue();
+  const positionID = cell.row.original.positionId;
+
+  const res = useReadContract({
+    chainId,
+    address,
+    abi: [
+      {
+        type: 'function',
+        name: 'getPositionPnl',
+        inputs: [{ type: 'uint256' }],
+        outputs: [{ type: 'int256' }],
+        stateMutability: 'view',
+      },
+    ],
+    functionName: 'getPositionPnl',
+    args: [positionID],
+  });
+
+  return res.isLoading || chainId === undefined ? null : (
+    <NumberDisplay value={res.data} />
+  );
+};
 
 const SettledCell = ({ cell }: { cell: any }) =>
   cell.getValue() ? <Check className="h-4 w-4 text-green-500 mr-2" /> : null;
@@ -172,8 +198,8 @@ const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
       {
         id: 'pnl',
         header: PnLHeaderCell,
-        accessorFn: (row) => calculatePnL(row, pool),
-        cell: CollateralCell,
+        accessorFn: (row) => ({ row, pool, address, chainId: chain?.id }),
+        cell: PnLCell,
       },
       {
         id: 'settled',
@@ -182,7 +208,7 @@ const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
         cell: SettledCell,
       },
     ],
-    [useMarketUnits]
+    [address, calculateEntryPrice, chain, pool]
   );
 
   const table = useReactTable({
