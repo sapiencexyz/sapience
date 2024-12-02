@@ -13,7 +13,7 @@ import {
 } from '@tanstack/react-table';
 import axios from 'axios';
 import { formatDistanceToNow } from 'date-fns';
-import { ChevronDown, ChevronUp, ArrowUpDown, Loader2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, ArrowUpDown, Loader2, Download } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useState, useMemo } from 'react';
 import type { AbiFunction } from 'viem';
@@ -82,16 +82,15 @@ const AddressCell: React.FC<{ address: string; chainId: number }> = ({
   };
 
   return (
-    <div className="flex items-center space-x-2">
+    <div className="flex space-x-2">
       <MarketAddress address={address} />
       <a
         href={getExplorerUrl(chainId, address)}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-blue-500 hover:text-blue-600"
       >
         <svg
-          className="h-4 w-4 inline-block"
+          className="h-4 w-4 inline-block -translate-y-0.5"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -186,6 +185,11 @@ const MarketsTable: React.FC = () => {
     }
   }, [markets, isLoading]);
 
+
+  function handleReindex(reindex: 'price' | 'events', marketAddress: any, epochId: any): void {
+    throw new Error('Function not implemented.');
+  }
+
   const columns = useMemo<ColumnDef<any>[]>(
     () => [
       {
@@ -239,7 +243,22 @@ const MarketsTable: React.FC = () => {
         cell: ({ row }) => {
           const key = `${row.original.marketAddress}-${row.original.epochId}`;
           const blocks = missingBlocks[key]?.resourcePrice;
-          return blocks ? blocks.length : 'Loading...';
+
+          return (
+            <div className="flex items-center gap-2">
+              <span>{blocks ? blocks.length : 'Loading...'}</span>
+              {blocks && blocks.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleReindex('price', row.original.marketAddress, row.original.epochId)}
+                  className="h-6 w-6 p-0"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          );
         },
       },
       {
@@ -248,7 +267,21 @@ const MarketsTable: React.FC = () => {
         cell: ({ row }) => {
           const key = `${row.original.marketAddress}-${row.original.epochId}`;
           const blocks = missingBlocks[key]?.events;
-          return blocks ? blocks.length : 'Loading...';
+          return (
+            <div className="flex items-center gap-2">
+              <span>{blocks ? blocks.length : 'Loading...'}</span>
+              {blocks && blocks.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleReindex('events', row.original.marketAddress, row.original.epochId)}
+                  className="h-6 w-6 p-0"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          );
         },
       },
       {
@@ -580,7 +613,7 @@ const EpochItem: React.FC<{
       return (
         <div className="space-y-1">
           <p className="text-lg">{Number(settlementPrice)}</p>
-          <Button disabled>Settled</Button>
+          <Button disabled size="sm">Settled</Button>
         </div>
       );
     }
@@ -591,8 +624,9 @@ const EpochItem: React.FC<{
 
     return (
       <div className="space-y-2">
-        <p className="text-lg">{formatAmount(priceAdjusted)}</p>
+        <p>{formatAmount(priceAdjusted)}</p>
         <Button
+          size="sm"
           disabled={!getEpochData || buttonIsLoading}
           onClick={
             requireApproval ? handleApproveSettle : handleSettleWithPrice
