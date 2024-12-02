@@ -35,6 +35,7 @@ import { calculatePnL } from '~/lib/util/positionUtil';
 import { tickToPrice } from '~/lib/util/util';
 
 import NumberDisplay from './numberDisplay';
+import { useReadContract } from 'wagmi';
 
 interface Props {
   positions: any[];
@@ -75,6 +76,29 @@ const PriceCell = ({ cell }: { cell: any }) => (
     <NumberDisplay value={cell.getValue()} /> Ggas/wstETH
   </>
 );
+
+const PnLCell = ({ cell }: { cell: any }) => {
+  const { chainId, address } = cell.getValue();
+  const positionID = cell.row.original.positionId;
+
+  const res = useReadContract({
+    chainId,
+    address,
+    abi: [
+      {
+        type: 'function',
+        name: 'getPositionPnl',
+        inputs: [{ type: 'uint256' }],
+        outputs: [{ type: 'int256' }],
+        stateMutability: 'view',
+      },
+    ],
+    functionName: 'getPositionPnl',
+    args: [positionID],
+  });
+
+  return res.isLoading ? null : <NumberDisplay value={res.data} />;
+};
 
 const PnLHeaderCell = () => (
   <span className="flex items-center">
@@ -162,8 +186,8 @@ const createColumns = (
   {
     id: 'pnl',
     header: PnLHeaderCell,
-    accessorFn: (row: any) => calculatePnL(row, pool),
-    cell: CollateralCell,
+    accessorFn: (row: any) => ({ row, pool, address, chainId: chain.id }),
+    cell: PnLCell,
   },
   ...(expired
     ? [
@@ -186,7 +210,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({ positions }) => {
   // Use the createColumns function instead of defining columns directly
   const columns = useMemo(
     () => createColumns(chain, address, pool, expired),
-    [chain?.id, address, pool, expired]
+    [chain, address, pool, expired]
   );
 
   const table = useReactTable({
