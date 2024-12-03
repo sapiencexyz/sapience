@@ -4,7 +4,7 @@ import dataSource, {
   collateralTransferRepository,
   eventRepository,
   initializeDataSource,
-  renderJobRepository,
+  renderJobRepository
 } from "./db"; /// !IMPORTANT: Keep as top import to prevent issues with db initialization
 import cors from "cors";
 import { ResourcePrice } from "./models/ResourcePrice";
@@ -1085,7 +1085,162 @@ const startServer = async () => {
       res.json(sortedPositions);
     })
   );
+
+  app.post(
+    '/reindexMissingBlocks',
+    handleAsyncErrors(async (req, res, next) => {
+      const { chainId, address, epochId, model, signature, timestamp } = req.body;
+
+      // Authenticate the user
+      const isAuthenticated = await isValidWalletSignature(
+        signature as `0x${string}`,
+        Number(timestamp)
+      );
+      if (!isAuthenticated) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      // Validate model
+      if (!['ResourcePrice', 'Event'].includes(model)) {
+        res.status(400).json({ error: 'Invalid model' });
+        return;
+      }
+
+      // Find the market and epoch
+      const { market, epoch } = await getMarketAndEpoch(
+        marketRepository,
+        epochRepository,
+        chainId,
+        address,
+        epochId
+      );
+
+      if (!market || !epoch) {
+        res.status(404).json({ error: 'Market or Epoch not found' });
+        return;
+      }
+
+      // Get block numbers
+      const { startBlockNumber, endBlockNumber, error } = await getMarketStartEndBlock(market, epochId);
+      if (error || !startBlockNumber || !endBlockNumber) {
+        res.status(500).json({ error });
+        return;
+      }
+
+      // Fetch missing blocks
+      let existingBlockNumbersSet: Set<number> = new Set();
+      let repository;
+
+      if (model === 'ResourcePrice') {
+        repository = resourcePriceRepository;
+      } else if (model === 'Event') {
+        repository = eventRepository;
+      }
+
+      const existingEntries = await repository.find({
+        where: {
+          market: { id: market.id },
+          epoch: { id: epoch.id },
+          blockNumber: Between(startBlockNumber, endBlockNumber),
+        },
+        select: ['blockNumber'],
+      });
+
+      existingBlockNumbersSet = new Set(existingEntries.map((entry) => Number(entry.blockNumber)));
+
+      const missingBlockNumbers = [];
+      for (let blockNumber = startBlockNumber; blockNumber <= endBlockNumber; blockNumber++) {
+        if (!existingBlockNumbersSet.has(blockNumber)) {
+          missingBlockNumbers.push(blockNumber);
+        }
+      }
+
+      if (missingBlockNumbers.length === 0) {
+        res.json({ success: true, message: 'No missing blocks to reindex.' });
+        return;
+      }
+
+      // Reindex missing blocks
+      const client = getProviderForChain(Number(chainId));
+      const indexingErrors = [];
+
+      for (const blockNumber of missingBlockNumbers) {
+        try {
+          if (model === 'ResourcePrice') {
+            // Implement your logic to fetch and store ResourcePrice at the given blockNumber
+            // Example:
+            const resourcePrice = await fetchResourcePrice(client, address, blockNumber);
+            // Store resourcePrice in database
+            const newResourcePrice = new ResourcePrice();
+            newResourcePrice.blockNumber = blockNumber;
+            newResourcePrice.market = market;
+            newResourcePrice.epoch = epoch;
+            newResourcePrice.value = resourcePrice;
+            await resourcePriceRepository.save(newResourcePrice);
+          } else if (model === 'Event') {
+            // Implement your logic to fetch and store Events at the given blockNumber
+            const events = await fetchEvents(client, address, blockNumber);
+            for (const eventData of events) {
+              const newEvent = new Event();
+              // Populate event data
+              newEvent.blockNumber = blockNumber;
+              newEvent.market = market;
+              newEvent.epoch = epoch;
+              // ... other event properties
+              await eventRepository.save(newEvent);
+            }
+          }
+        } catch (e) {
+          console.error(`Error reindexing block ${blockNumber}:`, e);
+          indexingErrors.push(`Block ${blockNumber}: ${e.message}`);
+        }
+      }
+
+      if (indexingErrors.length > 0) {
+        res.json({
+          success: false,
+          message: 'Reindexing completed with errors.',
+          errors: indexingErrors,
+        });
+      } else {
+        res.json({ success: true, message: 'Reindexing of missing blocks completed.' });
+      }
+    })
+  );
 };
+
+async function fetchResourcePrice(
+  client: any,
+  marketAddress: string,
+  blockNumber: number
+): Promise<number> {
+  // Implement your logic to fetch the resource price at the given blockNumber
+  // For example:
+  const price = await client.readContract({
+    address: marketAddress as `0x${string}`,
+    abi: [ /* ABI for resource price function */ ],
+    functionName: 'getResourcePrice',
+    blockNumber: BigInt(blockNumber),
+  });
+  return Number(price);
+}
+
+async function fetchEvents(
+  client: any,
+  marketAddress: string,
+  blockNumber: number
+): Promise<any[]> {
+  // Implement your logic to fetch events at the given blockNumber
+  // For example:
+  const events = await client.getLogs({
+    address: marketAddress as `0x${string}`,
+    topics: [/* Event topics */],
+    fromBlock: BigInt(blockNumber),
+    toBlock: BigInt(blockNumber),
+  });
+  return events;
+}
 
 startServer().catch((e) => console.error("Unable to start server: ", e));
 

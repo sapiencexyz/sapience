@@ -11,7 +11,8 @@
     "dev:docs": "pnpm --filter docs run dev",
     "dev:website": "pnpm --filter website run dev",
     "dev:data": "concurrently \"NODE_ENV=development pnpm --filter data run dev:service\" \"NODE_ENV=development pnpm --filter data run dev:worker\"",
-    "start:reindex": "pnpm --filter data run start:reindex"
+    "start:reindex": "pnpm --filter data run start:reindex",
+    "start:reindex-missing": "pnpm --filter data run start:reindex-missing"
   },
   "keywords": [],
   "author": "",

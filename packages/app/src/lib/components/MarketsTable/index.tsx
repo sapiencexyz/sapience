@@ -96,25 +96,13 @@ const AddressCell: React.FC<{ address: string; chainId: number }> = ({
 
   return (
     <div className="flex space-x-2">
-      <MarketAddress address={address} />
       <a
         href={getExplorerUrl(chainId, address)}
         target="_blank"
         rel="noopener noreferrer"
+        className="underline"
       >
-        <svg
-          className="h-4 w-4 inline-block -translate-y-0.5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-          />
-        </svg>
+        {`${address.slice(0, 6)}...${address.slice(-4)}`}
       </a>
     </div>
   );
@@ -198,13 +186,58 @@ const MarketsTable: React.FC = () => {
     }
   }, [markets, isLoading]);
 
-  function handleReindex(
-    reindex: 'price' | 'events',
-    marketAddress: any,
-    epochId: any
-  ): void {
-    throw new Error('Function not implemented.');
-  }
+  const handleReindex = async (
+    reindexType: 'price' | 'events',
+    marketAddress: string,
+    epochId: number,
+    chainId: number
+  ) => {
+    try {
+      setLoadingAction((prev) => ({ ...prev, [`reindex-${marketAddress}-${epochId}-${reindexType}`]: true }));
+      const timestamp = Date.now();
+
+      const signature = await signMessageAsync({
+        message: ADMIN_AUTHENTICATE_MSG,
+      });
+
+      const response = await axios.post(
+        `${API_BASE_URL}/reindexMissingBlocks`,
+        {
+          chainId,
+          address: marketAddress,
+          epochId,
+          model: reindexType === 'price' ? 'ResourcePrice' : 'Event',
+          signature,
+          timestamp,
+        }
+      );
+
+      if (response.data.success) {
+        toast({
+          title: 'Reindexing started',
+          description: response.data.message,
+          variant: 'default',
+        });
+        // Optionally refresh missing blocks data
+        fetchMissingBlocks(market, epochId);
+      } else {
+        toast({
+          title: 'Reindexing failed',
+          description: response.data.error,
+          variant: 'destructive',
+        });
+      }
+    } catch (e: any) {
+      console.error('Error in handleReindex:', e);
+      toast({
+        title: 'Reindexing failed',
+        description: e?.response?.data?.error || e.message || 'An error occurred',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingAction((prev) => ({ ...prev, [`reindex-${marketAddress}-${epochId}-${reindexType}`]: false }));
+    }
+  };
 
   const columns = useMemo<ColumnDef<any>[]>(
     () => [
@@ -262,16 +295,16 @@ const MarketsTable: React.FC = () => {
 
           return (
             <div className="flex items-center gap-2">
-              <span>{blocks ? blocks.length : 'Loading...'}</span>
+              <span>{blocks ? blocks.length.toLocaleString() : 'Loading...'}</span>
               {blocks && blocks.length > 0 && (
                 <Button
-                  variant="ghost"
                   size="icon"
                   onClick={() =>
                     handleReindex(
                       'price',
                       row.original.marketAddress,
-                      row.original.epochId
+                      row.original.epochId,
+                      row.original.chainId
                     )
                   }
                   className="h-6 w-6 p-0"
@@ -291,16 +324,16 @@ const MarketsTable: React.FC = () => {
           const blocks = missingBlocks[key]?.events;
           return (
             <div className="flex items-center gap-2">
-              <span>{blocks ? blocks.length : 'Loading...'}</span>
+              <span>{blocks ? blocks.length.toLocaleString() : 'Loading...'}</span>
               {blocks && blocks.length > 0 && (
                 <Button
-                  variant="ghost"
                   size="icon"
                   onClick={() =>
                     handleReindex(
                       'events',
                       row.original.marketAddress,
-                      row.original.epochId
+                      row.original.epochId,
+                      row.original.chainId
                     )
                   }
                   className="h-6 w-6 p-0"
@@ -454,7 +487,7 @@ const MarketsTable: React.FC = () => {
           {table.getRowModel().rows.map((row) => (
             <TableRow key={row.id}>
               {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id}>
+                <TableCell key={cell.id} className="text-lg">
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </TableCell>
               ))}
