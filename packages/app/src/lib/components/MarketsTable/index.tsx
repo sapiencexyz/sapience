@@ -154,7 +154,7 @@ const MarketsTable: React.FC = () => {
   const fetchMissingBlocks = async (market: Market, epochId: number) => {
     try {
       const response = await axios.get(
-        `${API_BASE_URL}/missing-blocks?chainId=${market.chainId}&address=${market.address}&epochId=${epochId}&model=ResourcePrice`
+        `${API_BASE_URL}/missing-blocks?chainId=${market.chainId}&address=${market.address}&epochId=${epochId}`
       );
 
       setMissingBlocks((prev) => ({

@@ -527,8 +527,7 @@ const startServer = async () => {
   const getMissingBlocks = async (
     chainId: string,
     address: string,
-    epochId: string,
-    model: string
+    epochId: string
   ): Promise<{ missingBlockNumbers: number[] | null; error?: string }> => {
     // Find the market
     const market = await marketRepository.findOne({
@@ -547,45 +546,29 @@ const startServer = async () => {
       return { missingBlockNumbers: null, error: "Market configuration not found" };
     }
 
-    // Get block numbers using the appropriate chain ID
+    // Get block numbers using the price indexer client
     const { startBlockNumber, endBlockNumber, error } = await getMarketStartEndBlock(
       market,
       epochId,
-      model === "ResourcePrice" ? marketInfo.priceIndexer.client : undefined
+      marketInfo.priceIndexer.client
     );
     
     if (error || !startBlockNumber || !endBlockNumber) {
       return { missingBlockNumbers: null, error };
     }
 
-    let existingBlockNumbersSet: Set<number> = new Set();
-    if (model === "ResourcePrice") {
-      const resourcePrices = await resourcePriceRepository.find({
-        where: {
-          market: { id: market.id },
-          blockNumber: Between(startBlockNumber, endBlockNumber),
-        },
-        select: ["blockNumber"],
-      });
+    // Get existing block numbers for ResourcePrice
+    const resourcePrices = await resourcePriceRepository.find({
+      where: {
+        market: { id: market.id },
+        blockNumber: Between(startBlockNumber, endBlockNumber),
+      },
+      select: ["blockNumber"],
+    });
 
-      existingBlockNumbersSet = new Set(
-        resourcePrices.map((ip) => Number(ip.blockNumber))
-      );
-    } else if (model === "Event") {
-      const events = await eventRepository.find({
-        where: {
-          market: { id: market.id },
-          blockNumber: Between(startBlockNumber, endBlockNumber),
-        },
-        select: ["blockNumber"],
-      });
-
-      existingBlockNumbersSet = new Set(
-        events.map((ip) => Number(ip.blockNumber))
-      );
-    } else {
-      return { missingBlockNumbers: null, error: "Invalid model" };
-    }
+    const existingBlockNumbersSet = new Set(
+      resourcePrices.map((ip) => Number(ip.blockNumber))
+    );
 
     // Find missing block numbers within the range
     const missingBlockNumbers = [];
@@ -598,23 +581,21 @@ const startServer = async () => {
     return { missingBlockNumbers };
   };
 
-  // Update the existing missing-blocks endpoint
+  // Update the missing-blocks endpoint
   app.get(
     "/missing-blocks",
-    validateRequestParams(["chainId", "address", "epochId", "model"]),
+    validateRequestParams(["chainId", "address", "epochId"]),
     handleAsyncErrors(async (req, res, next) => {
-      const { chainId, address, epochId, model } = req.query as {
+      const { chainId, address, epochId } = req.query as {
         chainId: string;
         address: string;
         epochId: string;
-        model: string;
       };
 
       const { missingBlockNumbers, error } = await getMissingBlocks(
         chainId,
         address,
-        epochId,
-        model
+        epochId
       );
 
       if (error) {
@@ -1154,7 +1135,7 @@ const startServer = async () => {
   app.post(
     '/reindexMissingBlocks',
     handleAsyncErrors(async (req, res, next) => {
-      const { chainId, address, epochId, model, signature, timestamp } = req.body;
+      const { chainId, address, epochId, signature, timestamp } = req.body;
 
       // Authenticate the user
       const isAuthenticated = await isValidWalletSignature(
@@ -1219,7 +1200,7 @@ const startServer = async () => {
       }
 
       if (process.env.NODE_ENV !== 'production') {
-        const startCommand = `pnpm run start:reindex-missing ${chainId} ${address} ${epochId} ${model}`;
+        const startCommand = `pnpm run start:reindex-missing ${chainId} ${address} ${epochId}`;
         try {
           const result = await executeLocalReindex(startCommand);
           res.json({ success: true, job: result });
@@ -1229,7 +1210,7 @@ const startServer = async () => {
         return;
       }
 
-      const startCommand = `pnpm run start:reindex-missing ${chainId} ${address} ${epochId} ${model}`;
+      const startCommand = `pnpm run start:reindex-missing ${chainId} ${address} ${epochId}`;
       const job = await createRenderJob(id, startCommand);
 
       const jobDb = new RenderJob();

@@ -8,6 +8,12 @@ import { useSignMessage } from 'wagmi';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { toast } from '~/hooks/use-toast';
 import MarketsTable from '~/lib/components/MarketsTable';
@@ -55,7 +61,11 @@ const Admin = () => {
   const [loadingAction, setLoadingAction] = useState<{
     [actionName: string]: boolean;
   }>({});
+  const [reindexOpen, setReindexOpen] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
   const { signMessageAsync } = useSignMessage();
+  const [manualServiceId, setManualServiceId] = useState('');
+  const [manualJobId, setManualJobId] = useState('');
 
   const handleReindex = async () => {
     try {
@@ -92,10 +102,14 @@ const Admin = () => {
   };
 
   const handleGetStatus = async () => {
-    if (!job) return;
+    const serviceId = manualServiceId || job?.serviceId;
+    const jobId = manualJobId || job?.id;
+
+    if (!serviceId || !jobId) return;
+
     setLoadingAction((prev) => ({ ...prev, getStatus: true }));
     const response = await axios.get(
-      `${API_BASE_URL}/reindexStatus?jobId=${job.id}&serviceId=${job.serviceId}`
+      `${API_BASE_URL}/reindexStatus?jobId=${jobId}&serviceId=${serviceId}`
     );
 
     if (response.data.success && response.data.job) {
@@ -109,12 +123,17 @@ const Admin = () => {
     <div className="w-full">
       <MarketsTable />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl mx-auto pb-8">
-        <Card className="max-w-2xl w-full">
-          <CardHeader>
-            <CardTitle>Reindex Market</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      <div className="flex gap-4 my-4 ml-4">
+        <Button onClick={() => setReindexOpen(true)}>Reindex Market</Button>
+        <Button onClick={() => setStatusOpen(true)}>Check Job Status</Button>
+      </div>
+
+      <Dialog open={reindexOpen} onOpenChange={setReindexOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reindex Market</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
             <div className="space-y-2">
               <label className="block">
                 <span className="text-sm font-medium">Market Address</span>
@@ -150,31 +169,45 @@ const Admin = () => {
             </Button>
 
             {job ? <JobStatus job={job} lastRefresh={lastRefresh} /> : null}
-          </CardContent>
-        </Card>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-        <Card className="max-w-2xl w-full">
-          <CardHeader>
-            <CardTitle>Check Job Status</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      <Dialog open={statusOpen} onOpenChange={setStatusOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Check Job Status</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
             <div className="space-y-2">
               <label className="block">
                 <span className="text-sm font-medium">Service ID</span>
-                <Input id="serviceId" value={job?.serviceId || ''} readOnly />
+                <Input
+                  id="serviceId"
+                  value={manualServiceId || job?.serviceId || ''}
+                  onChange={(e) => setManualServiceId(e.target.value)}
+                />
               </label>
             </div>
 
             <div className="space-y-2">
               <label className="block">
                 <span className="text-sm font-medium">Job ID</span>
-                <Input id="jobId" value={job?.id || ''} readOnly />
+                <Input
+                  id="jobId"
+                  value={manualJobId || job?.id || ''}
+                  onChange={(e) => setManualJobId(e.target.value)}
+                />
               </label>
             </div>
 
             <Button
               onClick={handleGetStatus}
-              disabled={!job || loadingAction.getStatus}
+              disabled={
+                (!manualServiceId && !job?.serviceId) ||
+                (!manualJobId && !job?.id) ||
+                loadingAction.getStatus
+              }
               className="w-full"
             >
               {loadingAction.getStatus ? (
@@ -183,9 +216,9 @@ const Admin = () => {
                 'Submit'
               )}
             </Button>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

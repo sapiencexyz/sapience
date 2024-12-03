@@ -105,8 +105,8 @@ export async function reindexMissingBlocks(
     );
   } else {
     await Promise.all([
-      reindexMarketEvents(market, marketInfo.deployment.abi, true),
-      reindexCollateralEvents(market, true),
+      reindexMarketEvents(market, marketInfo.deployment.abi),
+      reindexCollateralEvents(market),
     ]);
   }
 
