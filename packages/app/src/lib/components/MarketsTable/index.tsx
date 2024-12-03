@@ -193,7 +193,10 @@ const MarketsTable: React.FC = () => {
     chainId: number
   ) => {
     try {
-      setLoadingAction((prev) => ({ ...prev, [`reindex-${marketAddress}-${epochId}-${reindexType}`]: true }));
+      setLoadingAction((prev) => ({
+        ...prev,
+        [`reindex-${marketAddress}-${epochId}-${reindexType}`]: true,
+      }));
       const timestamp = Date.now();
 
       const signature = await signMessageAsync({
@@ -218,8 +221,11 @@ const MarketsTable: React.FC = () => {
           description: response.data.message,
           variant: 'default',
         });
-        // Optionally refresh missing blocks data
-        fetchMissingBlocks(market, epochId);
+        // Find the market object and pass it to fetchMissingBlocks
+        const market = markets.find((m) => m.address === marketAddress);
+        if (market) {
+          fetchMissingBlocks(market, epochId);
+        }
       } else {
         toast({
           title: 'Reindexing failed',
@@ -231,11 +237,15 @@ const MarketsTable: React.FC = () => {
       console.error('Error in handleReindex:', e);
       toast({
         title: 'Reindexing failed',
-        description: e?.response?.data?.error || e.message || 'An error occurred',
+        description:
+          e?.response?.data?.error || e.message || 'An error occurred',
         variant: 'destructive',
       });
     } finally {
-      setLoadingAction((prev) => ({ ...prev, [`reindex-${marketAddress}-${epochId}-${reindexType}`]: false }));
+      setLoadingAction((prev) => ({
+        ...prev,
+        [`reindex-${marketAddress}-${epochId}-${reindexType}`]: false,
+      }));
     }
   };
 
@@ -275,7 +285,7 @@ const MarketsTable: React.FC = () => {
       },
       {
         id: 'endTimestamp',
-        header: 'End',
+        header: 'Ends',
         accessorKey: 'endTimestamp',
         cell: ({ getValue }) => {
           const timestamp = getValue() as number;
@@ -288,14 +298,16 @@ const MarketsTable: React.FC = () => {
       },
       {
         id: 'missingPriceBlocks',
-        header: 'Missing Index Price Blocks',
+        header: 'Missing Price Blocks',
         cell: ({ row }) => {
           const key = `${row.original.marketAddress}-${row.original.epochId}`;
           const blocks = missingBlocks[key]?.resourcePrice;
 
           return (
             <div className="flex items-center gap-2">
-              <span>{blocks ? blocks.length.toLocaleString() : 'Loading...'}</span>
+              <span>
+                {blocks ? blocks.length.toLocaleString() : 'Loading...'}
+              </span>
               {blocks && blocks.length > 0 && (
                 <Button
                   size="icon"
@@ -318,13 +330,15 @@ const MarketsTable: React.FC = () => {
       },
       {
         id: 'missingEventBlocks',
-        header: 'Missing Market Event Blocks',
+        header: 'Missing Market Blocks',
         cell: ({ row }) => {
           const key = `${row.original.marketAddress}-${row.original.epochId}`;
           const blocks = missingBlocks[key]?.events;
           return (
             <div className="flex items-center gap-2">
-              <span>{blocks ? blocks.length.toLocaleString() : 'Loading...'}</span>
+              <span>
+                {blocks ? blocks.length.toLocaleString() : 'Loading...'}
+              </span>
               {blocks && blocks.length > 0 && (
                 <Button
                   size="icon"
@@ -348,68 +362,16 @@ const MarketsTable: React.FC = () => {
       {
         id: 'settlementPrice',
         header: 'Settlement Price',
-        cell: ({ row }) => {
-          const market = row.original.market;
-          const epoch = row.original;
-          const [stEthPerToken, setStEthPerToken] = useState(0);
-          
-          const stEthPerTokenResult = useReadContract({
-            chainId: market.chainId === Chains.cannon.id ? Chains.sepolia.id : market.chainId,
-            abi: [
-              {
-                inputs: [],
-                name: 'stEthPerToken',
-                outputs: [
-                  {
-                    internalType: 'uint256',
-                    name: '',
-                    type: 'uint256',
-                  },
-                ],
-                stateMutability: 'view',
-                type: 'function',
-              },
-            ],
-            address:
-              market.chainId === Chains.cannon.id
-                ? DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS
-                : (market.collateralAsset as `0x${string}`),
-            functionName: 'stEthPerToken',
-          });
-
-          useEffect(() => {
-            if (stEthPerTokenResult.data) {
-              setStEthPerToken(Number(gweiToEther(stEthPerTokenResult.data)));
-            }
-          }, [stEthPerTokenResult.data]);
-
-          const { data: latestPrice, isLoading: isLatestPriceLoading } = useQuery({
-            queryKey: ['latestPrice', `${market?.chainId}:${market?.address}`],
-            queryFn: async () => {
-              const response = await fetch(
-                `${API_BASE_URL}/prices/index/latest?contractId=${market.chainId}:${market.address}&epochId=${epoch.epochId}`
-              );
-              if (!response.ok) {
-                throw new Error('Network response was not ok');
-              }
-              const data = await response.json();
-              return data.price;
-            },
-            enabled: epoch.epochId !== 0 || market !== undefined,
-          });
-
-          const priceAdjusted = latestPrice / (stEthPerToken || 1);
-
-          if (isLatestPriceLoading || stEthPerTokenResult.isLoading) {
-            return <span>Loading...</span>;
-          }
-
-          return <span>{formatAmount(priceAdjusted)}</span>;
-        },
+        cell: ({ row }) => (
+          <SettlementPriceTableCell
+            market={row.original.market}
+            epoch={row.original}
+          />
+        ),
       },
       {
         id: 'settlement',
-        header: 'Settlement',
+        header: 'Settle',
         cell: ({ row }) => (
           <EpochItem market={row.original.market} epoch={row.original} />
         ),
@@ -763,7 +725,9 @@ const EpochItem: React.FC<{
           <Button
             size="sm"
             disabled={!getEpochData || buttonIsLoading || !isEpochEnded}
-            onClick={requireApproval ? handleApproveSettle : handleSettleWithPrice}
+            onClick={
+              requireApproval ? handleApproveSettle : handleSettleWithPrice
+            }
           >
             {buttonIsLoading && <Loader2 className="animate-spin" />}
             {getButtonText()}
@@ -791,34 +755,104 @@ const EpochItem: React.FC<{
   return renderSettledCell();
 };
 
+// Add new SettlementPriceTableCell component
+const SettlementPriceTableCell: React.FC<{
+  market: Market;
+  epoch: any;
+}> = ({ market, epoch }) => {
+  const [stEthPerToken, setStEthPerToken] = useState(0);
+
+  const stEthPerTokenResult = useReadContract({
+    chainId:
+      market.chainId === Chains.cannon.id ? Chains.sepolia.id : market.chainId,
+    abi: [
+      {
+        inputs: [],
+        name: 'stEthPerToken',
+        outputs: [
+          {
+            internalType: 'uint256',
+            name: '',
+            type: 'uint256',
+          },
+        ],
+        stateMutability: 'view',
+        type: 'function',
+      },
+    ],
+    address:
+      market.chainId === Chains.cannon.id
+        ? DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS
+        : (market.collateralAsset as `0x${string}`),
+    functionName: 'stEthPerToken',
+  });
+
+  useEffect(() => {
+    if (stEthPerTokenResult.data) {
+      setStEthPerToken(Number(gweiToEther(stEthPerTokenResult.data)));
+    }
+  }, [stEthPerTokenResult.data]);
+
+  const { data: latestPrice, isLoading: isLatestPriceLoading } = useQuery({
+    queryKey: ['latestPrice', `${market?.chainId}:${market?.address}`],
+    queryFn: async () => {
+      const response = await fetch(
+        `${API_BASE_URL}/prices/index/latest?contractId=${market.chainId}:${market.address}&epochId=${epoch.epochId}`
+      );
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      const data = await response.json();
+      return data.price;
+    },
+    enabled: epoch.epochId !== 0 || market !== undefined,
+  });
+
+  const priceAdjusted = latestPrice / (stEthPerToken || 1);
+
+  if (isLatestPriceLoading || stEthPerTokenResult.isLoading) {
+    return <span>Loading...</span>;
+  }
+
+  return <span>{formatAmount(priceAdjusted)}</span>;
+};
+
 // Define SettlementPriceCell component
 const SettlementPriceCell: React.FC<{
   market: Market;
   epoch: any;
 }> = ({ market, epoch }) => {
   const [settlementPrice, setSettlementPrice] = useState<number | null>(null);
-  const [loadingSettlementPrice, setLoadingSettlementPrice] = useState<boolean>(true);
+  const [loadingSettlementPrice, setLoadingSettlementPrice] =
+    useState<boolean>(true);
   const [error, setError] = useState<boolean>(false);
 
-  const { foilData, loading: loadingFoilData, error: foilDataError } = useFoilDeployment(
-    market.chainId
-  );
+  const {
+    foilData,
+    loading: loadingFoilData,
+    error: foilDataError,
+  } = useFoilDeployment(market.chainId);
 
-  const { data: getEpochData, isLoading: isLoadingEpochData, error: getEpochDataError } =
-    useReadContract({
-      address: market.address as `0x${string}`,
-      abi: foilData?.abi,
-      functionName: 'getEpoch',
-      args: [BigInt(epoch.epochId)],
-      chainId: market.chainId,
+  const {
+    data: getEpochData,
+    isLoading: isLoadingEpochData,
+    error: getEpochDataError,
+  } = useReadContract({
+    address: market.address as `0x${string}`,
+    abi: foilData?.abi,
+    functionName: 'getEpoch',
+    args: [BigInt(epoch.epochId)],
+    chainId: market.chainId,
+    query: {
       enabled: !loadingFoilData && !foilDataError && !!foilData,
-    }) as any;
+    },
+  }) as any;
 
   useEffect(() => {
     if (getEpochData) {
       const epochData: EpochData | undefined = getEpochData[0];
       if (epochData && epochData.settled) {
-        const settlementPriceD18 = epochData.settlementPriceD18;
+        const { settlementPriceD18 } = epochData;
         // Adjust the settlement price as per your decimals (assuming 18 decimals)
         const price = Number(settlementPriceD18) / 1e18;
         setSettlementPrice(price);
@@ -827,7 +861,10 @@ const SettlementPriceCell: React.FC<{
       }
       setLoadingSettlementPrice(false);
     } else if (!isLoadingEpochData && (getEpochDataError || foilDataError)) {
-      console.error('Error fetching epoch data:', getEpochDataError || foilDataError);
+      console.error(
+        'Error fetching epoch data:',
+        getEpochDataError || foilDataError
+      );
       setError(true);
       setLoadingSettlementPrice(false);
     }
@@ -842,10 +879,8 @@ const SettlementPriceCell: React.FC<{
 
   if (settlementPrice !== null) {
     return <span>{formatAmount(settlementPrice)}</span>;
-  } else {
-    return <span>Not Settled</span>;
   }
+  return <span>Not Settled</span>;
 };
 
 export default MarketsTable;
-

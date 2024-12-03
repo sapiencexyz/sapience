@@ -549,30 +549,23 @@ export const createEpochFromEvent = async (
 
 export const getMarketStartEndBlock = async (
   market: Market,
-  epochId: string
+  epochId: string,
+  overrideClient?: PublicClient
 ) => {
-  // Find the epoch within the market
   const epoch = await epochRepository.findOne({
-    where: {
-      market: { id: market.id },
-      epochId: Number(epochId),
-    },
+    where: { market: { id: market.id }, epochId: Number(epochId) },
   });
 
   if (!epoch) {
     return { error: "Epoch not found" };
   }
 
-  // Get start and end timestamps
-  const startTimestamp = Number(epoch.startTimestamp);
   const now = Math.floor(Date.now() / 1000);
+  const startTimestamp = Number(epoch.startTimestamp);
   const endTimestamp = Math.min(Number(epoch.endTimestamp), now);
 
-  console.log("startTimestamp", startTimestamp);
-  console.log("endTimestamp", endTimestamp);
-
   // Get the client for the specified chain ID
-  const client = getProviderForChain(market.chainId);
+  const client = overrideClient || getProviderForChain(market.chainId);
 
   // Get the blocks corresponding to the start and end timestamps
   const startBlock = await getBlockByTimestamp(client, startTimestamp);

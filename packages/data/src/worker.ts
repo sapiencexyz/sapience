@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { eventRepository, initializeDataSource, resourcePriceRepository } from "./db";
+import { initializeDataSource } from "./db";
 import {
   indexMarketEvents,
   initializeMarket,
@@ -11,9 +11,6 @@ import {
   indexCollateralEvents,
   reindexCollateralEvents,
 } from "./controllers/collateral";
-import { Between } from "typeorm";
-import { ResourcePrice } from "./models/ResourcePrice";
-import { Event } from "./models/Event";
 import { getMarketStartEndBlock } from "./controllers/marketHelpers";
 import { getProviderForChain } from "./helpers";
 
@@ -96,86 +93,24 @@ export async function reindexMissingBlocks(
     throw new Error(`Failed to get block range: ${error}`);
   }
 
-  // Get missing blocks
-  const repository = model === 'ResourcePrice' ? resourcePriceRepository : eventRepository;
-  const existingEntries = await repository.find({
-    where: {
-      market: { id: market.id },
-      blockNumber: Between(startBlockNumber, endBlockNumber),
-    },
-    select: ['blockNumber'],
-  });
-  const existingBlockNumbersSet = new Set(existingEntries.map(entry => Number(entry.blockNumber)));
+  if (model === 'ResourcePrice') {
+    const block = await getProviderForChain(chainId).getBlock({ blockNumber: BigInt(startBlockNumber) });
+      if (!block.timestamp) throw new Error("Could not get block timestamp");
 
-  const missingBlockNumbers = [];
-  for (let blockNumber = startBlockNumber; blockNumber <= endBlockNumber; blockNumber++) {
-    if (!existingBlockNumbersSet.has(blockNumber)) {
-      missingBlockNumbers.push(blockNumber);
-    }
-  }
-
-  if (missingBlockNumbers.length === 0) {
-    console.log('No missing blocks found');
-    return;
-  }
-
-  console.log(`Found ${missingBlockNumbers.length} missing blocks`);
-
-  // Reindex missing blocks
-  const client = getProviderForChain(Number(chainId));
-  const indexingErrors = [];
-
-  for (const blockNumber of missingBlockNumbers) {
-    try {
-      if (model === 'ResourcePrice') {
-        const block = await client.getBlock({
-          blockNumber: BigInt(blockNumber),
-        });
-        
-        if (block.baseFeePerGas) {
-          const resourcePrice = new ResourcePrice();
-          resourcePrice.market = market;
-          resourcePrice.timestamp = Number(block.timestamp);
-          resourcePrice.value = block.baseFeePerGas.toString();
-          resourcePrice.used = block.gasUsed.toString();
-          resourcePrice.blockNumber = blockNumber;
-          await resourcePriceRepository.save(resourcePrice);
-          console.log(`Indexed resource price for block ${blockNumber}`);
-        }
-      } else {
-        const logs = await client.getLogs({
-          address: address as `0x${string}`,
-          fromBlock: BigInt(blockNumber),
-          toBlock: BigInt(blockNumber),
-        });
-
-        for (const log of logs) {
-          const block = await client.getBlock({
-            blockNumber: log.blockNumber,
-          });
-
-          const event = new Event();
-          event.market = market;
-          event.blockNumber = Number(log.blockNumber);
-          event.logIndex = (log.logIndex || 0).toString();
-          event.timestamp = Number(block.timestamp);
-          event.transactionHash = log.transactionHash || '';
-          event.logData = log;
-          await eventRepository.save(event);
-          console.log(`Indexed event for block ${blockNumber}`);
-        }
-      }
-    } catch (e) {
-      console.error(`Error reindexing block ${blockNumber}:`, e);
-      indexingErrors.push(`Block ${blockNumber}: ${e.message}`);
-    }
-  }
-
-  if (indexingErrors.length > 0) {
-    console.error('Indexing completed with errors:', indexingErrors);
+    await marketInfo.priceIndexer.indexBlockPriceFromTimestamp(
+      market,
+      Number(block.timestamp),
+      startBlockNumber,
+      true
+    );
   } else {
-    console.log('Indexing completed successfully');
+    await Promise.all([
+      reindexMarketEvents(market, marketInfo.deployment.abi, true),
+      reindexCollateralEvents(market, true),
+    ]);
   }
+
+  console.log(`Finished reindexing ${model}s for market ${address} on chain ${chainId}`);
 }
 
 if (process.argv[2] === "reindexMarket") {
