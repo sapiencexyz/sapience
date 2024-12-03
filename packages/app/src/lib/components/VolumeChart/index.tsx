@@ -123,7 +123,7 @@ const VolumeChart = ({ data, color = barColor, activeWindow }: ChartProps) => {
 
   return (
     <div className="flex flex-1 relative">
-      <div className="min-h-[50px] w-fit absolute top-0 left-0 z-[2] bg-white opacity-80">
+      <div className="min-h-[50px] w-fit absolute top-0 left-0 z-[2] bg-background opacity-80">
         <p className="text-base">
           {value ? `${value.toLocaleString()} Ggas` : '0 Ggas'}
         </p>

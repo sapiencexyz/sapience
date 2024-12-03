@@ -63,7 +63,7 @@ export const indexCollateralEvents = async (market: Market) => {
 };
 
 // Iterates over all blocks from the market's deploy block to the current block and calls upsertCollateralTransferEvent for each one.
-export const reindexCollateralEvents = async (market: Market) => {
+export const reindexCollateralEvents = async (market: Market, skipExisting: boolean = false) => {
   console.log(
     "reindexing collateral transfer events for market",
     market.address
@@ -80,6 +80,19 @@ export const reindexCollateralEvents = async (market: Market) => {
   for (let blockNumber = startBlock; blockNumber <= endBlock; blockNumber++) {
     console.log("Indexing collateral transfer events from block ", blockNumber);
     try {
+      if (skipExisting) {
+        const existingTransfer = await collateralTransferRepository.findOne({
+          where: {
+            market: { id: market.id },
+            blockNumber: Number(blockNumber)
+          }
+        });
+        if (existingTransfer) {
+          console.log(`Skipping block ${blockNumber}, transfer exists`);
+          continue;
+        }
+      }
+      
       const fromLogs = await client.getLogs({
         address: collateralAddress as `0x${string}`,
         event: parseAbiItem(

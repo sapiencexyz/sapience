@@ -13,7 +13,14 @@ import {
 } from '@tanstack/react-table';
 import axios from 'axios';
 import { formatDistanceToNow } from 'date-fns';
-import { ChevronDown, ChevronUp, ArrowUpDown, Loader2 } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  ArrowUpDown,
+  Loader2,
+  Download,
+  AlertCircle,
+} from 'lucide-react';
 import type React from 'react';
 import { useEffect, useState, useMemo } from 'react';
 import type { AbiFunction } from 'viem';
@@ -40,6 +47,12 @@ import {
   TableHead,
   TableCell,
 } from '@/components/ui/table';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useToast } from '~/hooks/use-toast';
 import {
   ADMIN_AUTHENTICATE_MSG,
@@ -82,27 +95,14 @@ const AddressCell: React.FC<{ address: string; chainId: number }> = ({
   };
 
   return (
-    <div className="flex items-center space-x-2">
-      <MarketAddress address={address} />
+    <div className="flex space-x-2">
       <a
         href={getExplorerUrl(chainId, address)}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-blue-500 hover:text-blue-600"
+        className="underline"
       >
-        <svg
-          className="h-4 w-4 inline-block"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-          />
-        </svg>
+        {`${address.slice(0, 6)}...${address.slice(-4)}`}
       </a>
     </div>
   );
@@ -186,6 +186,69 @@ const MarketsTable: React.FC = () => {
     }
   }, [markets, isLoading]);
 
+  const handleReindex = async (
+    reindexType: 'price' | 'events',
+    marketAddress: string,
+    epochId: number,
+    chainId: number
+  ) => {
+    try {
+      setLoadingAction((prev) => ({
+        ...prev,
+        [`reindex-${marketAddress}-${epochId}-${reindexType}`]: true,
+      }));
+      const timestamp = Date.now();
+
+      const signature = await signMessageAsync({
+        message: ADMIN_AUTHENTICATE_MSG,
+      });
+
+      const response = await axios.post(
+        `${API_BASE_URL}/reindexMissingBlocks`,
+        {
+          chainId,
+          address: marketAddress,
+          epochId,
+          model: reindexType === 'price' ? 'ResourcePrice' : 'Event',
+          signature,
+          timestamp,
+        }
+      );
+
+      if (response.data.success) {
+        toast({
+          title: 'Reindexing started',
+          description: response.data.message,
+          variant: 'default',
+        });
+        // Find the market object and pass it to fetchMissingBlocks
+        const market = markets.find((m) => m.address === marketAddress);
+        if (market) {
+          fetchMissingBlocks(market, epochId);
+        }
+      } else {
+        toast({
+          title: 'Reindexing failed',
+          description: response.data.error,
+          variant: 'destructive',
+        });
+      }
+    } catch (e: any) {
+      console.error('Error in handleReindex:', e);
+      toast({
+        title: 'Reindexing failed',
+        description:
+          e?.response?.data?.error || e.message || 'An error occurred',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingAction((prev) => ({
+        ...prev,
+        [`reindex-${marketAddress}-${epochId}-${reindexType}`]: false,
+      }));
+    }
+  };
+
   const columns = useMemo<ColumnDef<any>[]>(
     () => [
       {
@@ -222,7 +285,7 @@ const MarketsTable: React.FC = () => {
       },
       {
         id: 'endTimestamp',
-        header: 'End',
+        header: 'Ends',
         accessorKey: 'endTimestamp',
         cell: ({ getValue }) => {
           const timestamp = getValue() as number;
@@ -235,25 +298,80 @@ const MarketsTable: React.FC = () => {
       },
       {
         id: 'missingPriceBlocks',
-        header: 'Missing Index Price Blocks',
+        header: 'Missing Price Blocks',
         cell: ({ row }) => {
           const key = `${row.original.marketAddress}-${row.original.epochId}`;
           const blocks = missingBlocks[key]?.resourcePrice;
-          return blocks ? blocks.length : 'Loading...';
+
+          return (
+            <div className="flex items-center gap-2">
+              <span>
+                {blocks ? blocks.length.toLocaleString() : 'Loading...'}
+              </span>
+              {blocks && blocks.length > 0 && (
+                <Button
+                  size="icon"
+                  onClick={() =>
+                    handleReindex(
+                      'price',
+                      row.original.marketAddress,
+                      row.original.epochId,
+                      row.original.chainId
+                    )
+                  }
+                  className="h-6 w-6 p-0"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          );
         },
       },
       {
         id: 'missingEventBlocks',
-        header: 'Missing Market Event Blocks',
+        header: 'Missing Market Blocks',
         cell: ({ row }) => {
           const key = `${row.original.marketAddress}-${row.original.epochId}`;
           const blocks = missingBlocks[key]?.events;
-          return blocks ? blocks.length : 'Loading...';
+          return (
+            <div className="flex items-center gap-2">
+              <span>
+                {blocks ? blocks.length.toLocaleString() : 'Loading...'}
+              </span>
+              {blocks && blocks.length > 0 && (
+                <Button
+                  size="icon"
+                  onClick={() =>
+                    handleReindex(
+                      'events',
+                      row.original.marketAddress,
+                      row.original.epochId,
+                      row.original.chainId
+                    )
+                  }
+                  className="h-6 w-6 p-0"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          );
         },
       },
       {
+        id: 'settlementPrice',
+        header: 'Settlement Price',
+        cell: ({ row }) => (
+          <SettlementPriceTableCell
+            market={row.original.market}
+            epoch={row.original}
+          />
+        ),
+      },
+      {
         id: 'settlement',
-        header: 'Settlement',
+        header: 'Settle',
         cell: ({ row }) => (
           <EpochItem market={row.original.market} epoch={row.original} />
         ),
@@ -294,7 +412,7 @@ const MarketsTable: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center py-8">
         <Loader2 className="h-8 w-8 animate-spin" />
         <p className="mt-2">Loading Markets...</p>
       </div>
@@ -331,7 +449,7 @@ const MarketsTable: React.FC = () => {
           {table.getRowModel().rows.map((row) => (
             <TableRow key={row.id}>
               {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id}>
+                <TableCell key={cell.id} className="text-lg">
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </TableCell>
               ))}
@@ -576,12 +694,24 @@ const EpochItem: React.FC<{
     stEthPerTokenResult.isLoading;
 
   const renderSettledCell = () => {
+    const currentTime = Math.floor(Date.now() / 1000);
+    const isEpochEnded = epoch.endTimestamp && currentTime > epoch.endTimestamp;
+
+    const getButtonText = () => {
+      if (!isEpochEnded) {
+        return 'Epoch Active';
+      }
+      if (requireApproval) {
+        return `Approve ${collateralTickerFunctionResult.data} Transfer`;
+      }
+      return 'Settle with Price';
+    };
+
     if (epochSettled) {
       return (
-        <div className="space-y-1">
-          <p className="text-lg">{Number(settlementPrice)}</p>
-          <Button disabled>Settled</Button>
-        </div>
+        <Button disabled size="sm">
+          Settled
+        </Button>
       );
     }
 
@@ -591,23 +721,30 @@ const EpochItem: React.FC<{
 
     return (
       <div className="space-y-2">
-        <p className="text-lg">{formatAmount(priceAdjusted)}</p>
-        <Button
-          disabled={!getEpochData || buttonIsLoading}
-          onClick={
-            requireApproval ? handleApproveSettle : handleSettleWithPrice
-          }
-        >
-          {buttonIsLoading && <Loader2 className="animate-spin" />}
-          {requireApproval
-            ? `Approve ${collateralTickerFunctionResult.data} Transfer`
-            : 'Settle with Price'}
-        </Button>
-        {!getEpochData && (
-          <p className="text-sm text-red-500 text-center">
-            Could not get epoch data for market
-          </p>
-        )}
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            disabled={!getEpochData || buttonIsLoading || !isEpochEnded}
+            onClick={
+              requireApproval ? handleApproveSettle : handleSettleWithPrice
+            }
+          >
+            {buttonIsLoading && <Loader2 className="animate-spin" />}
+            {getButtonText()}
+          </Button>
+          {!getEpochData && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <AlertCircle className="h-4 w-4 text-red-500" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Could not get epoch data for market</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
       </div>
     );
   };
@@ -616,6 +753,134 @@ const EpochItem: React.FC<{
     !allowance || (bondAmount && bondAmount > (allowance as bigint));
 
   return renderSettledCell();
+};
+
+// Add new SettlementPriceTableCell component
+const SettlementPriceTableCell: React.FC<{
+  market: Market;
+  epoch: any;
+}> = ({ market, epoch }) => {
+  const [stEthPerToken, setStEthPerToken] = useState(0);
+
+  const stEthPerTokenResult = useReadContract({
+    chainId:
+      market.chainId === Chains.cannon.id ? Chains.sepolia.id : market.chainId,
+    abi: [
+      {
+        inputs: [],
+        name: 'stEthPerToken',
+        outputs: [
+          {
+            internalType: 'uint256',
+            name: '',
+            type: 'uint256',
+          },
+        ],
+        stateMutability: 'view',
+        type: 'function',
+      },
+    ],
+    address:
+      market.chainId === Chains.cannon.id
+        ? DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS
+        : (market.collateralAsset as `0x${string}`),
+    functionName: 'stEthPerToken',
+  });
+
+  useEffect(() => {
+    if (stEthPerTokenResult.data) {
+      setStEthPerToken(Number(gweiToEther(stEthPerTokenResult.data)));
+    }
+  }, [stEthPerTokenResult.data]);
+
+  const { data: latestPrice, isLoading: isLatestPriceLoading } = useQuery({
+    queryKey: ['latestPrice', `${market?.chainId}:${market?.address}`],
+    queryFn: async () => {
+      const response = await fetch(
+        `${API_BASE_URL}/prices/index/latest?contractId=${market.chainId}:${market.address}&epochId=${epoch.epochId}`
+      );
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      const data = await response.json();
+      return data.price;
+    },
+    enabled: epoch.epochId !== 0 || market !== undefined,
+  });
+
+  const priceAdjusted = latestPrice / (stEthPerToken || 1);
+
+  if (isLatestPriceLoading || stEthPerTokenResult.isLoading) {
+    return <span>Loading...</span>;
+  }
+
+  return <span>{formatAmount(priceAdjusted)}</span>;
+};
+
+// Define SettlementPriceCell component
+const SettlementPriceCell: React.FC<{
+  market: Market;
+  epoch: any;
+}> = ({ market, epoch }) => {
+  const [settlementPrice, setSettlementPrice] = useState<number | null>(null);
+  const [loadingSettlementPrice, setLoadingSettlementPrice] =
+    useState<boolean>(true);
+  const [error, setError] = useState<boolean>(false);
+
+  const {
+    foilData,
+    loading: loadingFoilData,
+    error: foilDataError,
+  } = useFoilDeployment(market.chainId);
+
+  const {
+    data: getEpochData,
+    isLoading: isLoadingEpochData,
+    error: getEpochDataError,
+  } = useReadContract({
+    address: market.address as `0x${string}`,
+    abi: foilData?.abi,
+    functionName: 'getEpoch',
+    args: [BigInt(epoch.epochId)],
+    chainId: market.chainId,
+    query: {
+      enabled: !loadingFoilData && !foilDataError && !!foilData,
+    },
+  }) as any;
+
+  useEffect(() => {
+    if (getEpochData) {
+      const epochData: EpochData | undefined = getEpochData[0];
+      if (epochData && epochData.settled) {
+        const { settlementPriceD18 } = epochData;
+        // Adjust the settlement price as per your decimals (assuming 18 decimals)
+        const price = Number(settlementPriceD18) / 1e18;
+        setSettlementPrice(price);
+      } else {
+        setSettlementPrice(null);
+      }
+      setLoadingSettlementPrice(false);
+    } else if (!isLoadingEpochData && (getEpochDataError || foilDataError)) {
+      console.error(
+        'Error fetching epoch data:',
+        getEpochDataError || foilDataError
+      );
+      setError(true);
+      setLoadingSettlementPrice(false);
+    }
+  }, [getEpochData, isLoadingEpochData, getEpochDataError, foilDataError]);
+  if (loadingSettlementPrice || loadingFoilData || isLoadingEpochData) {
+    return <span>Loading...</span>;
+  }
+
+  if (error) {
+    return <span>Error</span>;
+  }
+
+  if (settlementPrice !== null) {
+    return <span>{formatAmount(settlementPrice)}</span>;
+  }
+  return <span>Not Settled</span>;
 };
 
 export default MarketsTable;

@@ -106,10 +106,10 @@ const Admin = () => {
   };
 
   return (
-    <div className="w-full my-10 space-y-8">
+    <div className="w-full">
       <MarketsTable />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl mx-auto pb-8">
         <Card className="max-w-2xl w-full">
           <CardHeader>
             <CardTitle>Reindex Market</CardTitle>
