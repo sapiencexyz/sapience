@@ -40,9 +40,9 @@ async function main() {
 export async function reindexMarket(
   chainId: number,
   address: string,
-  initialTimestamp?: number
+  epochId: string
 ) {
-  console.log("reindexing market", address, "on chain", chainId);
+  console.log("reindexing market", address, "on chain", chainId, "epoch", epochId);
 
   await initializeDataSource();
   const marketInfo = MARKET_INFO.find(
@@ -60,10 +60,6 @@ export async function reindexMarket(
   await Promise.all([
     reindexMarketEvents(market, marketInfo.deployment.abi),
     reindexCollateralEvents(market),
-    marketInfo.priceIndexer.indexBlockPriceFromTimestamp(
-      market,
-      initialTimestamp || market.deployTimestamp || 0
-    ),
   ]);
   console.log("finished reindexing market", address, "on chain", chainId);
 }
@@ -146,7 +142,7 @@ if (process.argv[2] === "reindexMarket") {
       );
       process.exit(1);
     }
-    await reindexMarket(chainId, address, initialTimestamp);
+    await reindexMarket(chainId, address);
     console.log("DONE");
     process.exit(0);
   };

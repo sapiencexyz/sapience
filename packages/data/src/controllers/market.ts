@@ -152,11 +152,11 @@ export const indexMarketEvents = async (market: Market, abi: Abi) => {
 };
 
 // Iterates over all blocks from the market's deploy block to the current block and calls upsertEvent for each one.
-export const reindexMarketEvents = async (market: Market, abi: Abi) => {
+export const reindexMarketEvents = async (market: Market, abi: Abi, epochId: number) => {
   await initializeDataSource();
   const client = getProviderForChain(market.chainId);
 
-  const startBlock = market.deployTxnBlockNumber || 0;
+  const startBlock = // do something with epochId
   const endBlock = await client.getBlockNumber();
   const chainId = await client.getChainId();
 

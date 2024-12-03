@@ -63,7 +63,7 @@ export const indexCollateralEvents = async (market: Market) => {
 };
 
 // Iterates over all blocks from the market's deploy block to the current block and calls upsertCollateralTransferEvent for each one.
-export const reindexCollateralEvents = async (market: Market) => {
+export const reindexCollateralEvents = async (market: Market, epochId: number) => {
   console.log(
     "reindexing collateral transfer events for market",
     market.address
@@ -73,7 +73,7 @@ export const reindexCollateralEvents = async (market: Market) => {
   const collateralAddress =
     market.collateralAsset || "0xB82381A3fBD3FaFA77B3a7bE693342618240067b";
 
-  const startBlock = market.deployTxnBlockNumber || 0;
+  const startBlock = // do something with epochId
   const endBlock = await client.getBlockNumber();
   const chainId = await client.getChainId();
 
