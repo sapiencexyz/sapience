@@ -109,7 +109,7 @@ const PnLCell = ({ cell }: { cell: any }) => {
   });
 
   return res.isLoading || chainId === undefined ? null : (
-    <NumberDisplay value={res.data} />
+    <NumberDisplay value={res.data || 0} />
   );
 };
 
