@@ -1135,7 +1135,7 @@ const startServer = async () => {
   app.post(
     '/reindexMissingBlocks',
     handleAsyncErrors(async (req, res, next) => {
-      const { chainId, address, epochId, signature, timestamp } = req.body;
+      const { chainId, address, epochId, signature, timestamp, model } = req.body;
 
       // Authenticate the user
       const isAuthenticated = await isValidWalletSignature(
@@ -1145,6 +1145,19 @@ const startServer = async () => {
       if (!isAuthenticated) {
         res.status(401).json({ error: 'Unauthorized' });
         return;
+      }
+
+      // Get epoch start timestamp if needed for market reindexing
+      let epochStartTimestamp;
+      if (model !== 'ResourcePrice') {
+        const { epoch } = await getMarketAndEpoch(
+          marketRepository,
+          epochRepository,
+          chainId,
+          address,
+          epochId
+        );
+        epochStartTimestamp = Number(epoch.startTimestamp);
       }
 
       const RENDER_API_KEY = process.env.RENDER_API_KEY;
@@ -1199,8 +1212,11 @@ const startServer = async () => {
         throw new Error("Background worker not found");
       }
 
+      const startCommand = model === 'ResourcePrice' 
+        ? `pnpm run start:reindex-missing ${chainId} ${address} ${epochId} ResourcePrice` 
+        : `pnpm run start:reindex-market ${chainId} ${address} ${epochStartTimestamp}`;
+
       if (process.env.NODE_ENV !== 'production') {
-        const startCommand = `pnpm run start:reindex-missing ${chainId} ${address} ${epochId} ResourcePrice`;
         try {
           const result = await executeLocalReindex(startCommand);
           res.json({ success: true, job: result });
@@ -1210,7 +1226,6 @@ const startServer = async () => {
         return;
       }
 
-      const startCommand = `pnpm run start:reindex-missing ${chainId} ${address} ${epochId} ResourcePrice`;
       const job = await createRenderJob(id, startCommand);
 
       const jobDb = new RenderJob();
