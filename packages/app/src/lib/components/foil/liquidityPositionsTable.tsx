@@ -97,7 +97,7 @@ const PnLCell = ({ cell }: { cell: any }) => {
     args: [positionID],
   });
 
-  return res.isLoading ? null : <NumberDisplay value={res.data} />;
+  return res.isLoading ? null : <NumberDisplay value={res.data || 0} />;
 };
 
 const PnLHeaderCell = () => (
