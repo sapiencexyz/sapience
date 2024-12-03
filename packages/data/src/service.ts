@@ -1219,7 +1219,7 @@ const startServer = async () => {
       }
 
       if (process.env.NODE_ENV !== 'production') {
-        const startCommand = `pnpm run start:reindexMissing ${chainId} ${address} ${epochId} ${model}`;
+        const startCommand = `pnpm run start:reindex-missing ${chainId} ${address} ${epochId} ${model}`;
         try {
           const result = await executeLocalReindex(startCommand);
           res.json({ success: true, job: result });
@@ -1229,7 +1229,7 @@ const startServer = async () => {
         return;
       }
 
-      const startCommand = `pnpm run start:reindexMissing ${chainId} ${address} ${epochId} ${model}`;
+      const startCommand = `pnpm run start:reindex-missing ${chainId} ${address} ${epochId} ${model}`;
       const job = await createRenderJob(id, startCommand);
 
       const jobDb = new RenderJob();
