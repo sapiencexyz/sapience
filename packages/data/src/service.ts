@@ -4,7 +4,7 @@ import dataSource, {
   collateralTransferRepository,
   eventRepository,
   initializeDataSource,
-  renderJobRepository
+  renderJobRepository,
 } from "./db"; /// !IMPORTANT: Keep as top import to prevent issues with db initialization
 import cors from "cors";
 import { ResourcePrice } from "./models/ResourcePrice";
@@ -56,33 +56,35 @@ dotenv.config({ path: path.resolve(__dirname, "../.env") });
 const executeLocalReindex = async (startCommand: string): Promise<any> => {
   return new Promise((resolve, reject) => {
     // Use dynamic import for child_process
-    import('child_process').then(({ spawn }) => {
-      const [command, ...args] = startCommand.split(' ');
-      
-      const process = spawn(command, args, {
-        stdio: ['ignore', 'pipe', 'pipe']
-      });
+    import("child_process")
+      .then(({ spawn }) => {
+        const [command, ...args] = startCommand.split(" ");
 
-      let output = '';
+        const process = spawn(command, args, {
+          stdio: ["ignore", "pipe", "pipe"],
+        });
 
-      process.stdout.on('data', (data: Buffer) => {
-        output += data;
-      });
+        let output = "";
 
-      process.stderr.on('data', (data: Buffer) => {
-        console.error(`Error: ${data}`);
-      });
+        process.stdout.on("data", (data: Buffer) => {
+          output += data;
+        });
 
-      process.on('close', (code: number) => {
-        if (code === 0) {
-          resolve({ id: 'local', status: 'completed', output });
-        } else {
-          reject(new Error(`Process exited with code ${code}`));
-        }
+        process.stderr.on("data", (data: Buffer) => {
+          console.error(`Error: ${data}`);
+        });
+
+        process.on("close", (code: number) => {
+          if (code === 0) {
+            resolve({ id: "local", status: "completed", output });
+          } else {
+            reject(new Error(`Process exited with code ${code}`));
+          }
+        });
+      })
+      .catch((error) => {
+        reject(new Error("Failed to load child_process module"));
       });
-    }).catch(error => {
-      reject(new Error('Failed to load child_process module'));
-    });
   });
 };
 
@@ -136,11 +138,11 @@ const startServer = async () => {
   });
 
   // Helper middleware to handle async errors
-  const handleAsyncErrors = (
-    fn: (req: Request, res: Response, next: NextFunction) => Promise<void>
-  ) => (req: Request, res: Response, next: NextFunction) => {
-    Promise.resolve(fn(req, res, next)).catch(next);
-  };
+  const handleAsyncErrors =
+    (fn: (req: Request, res: Response, next: NextFunction) => Promise<void>) =>
+    (req: Request, res: Response, next: NextFunction) => {
+      Promise.resolve(fn(req, res, next)).catch(next);
+    };
 
   // Helper function to parse and validate contractId
   const parseContractId = (
@@ -177,18 +179,15 @@ const startServer = async () => {
   };
 
   // Middleware to validate request parameters
-  const validateRequestParams = (params: string[]) => (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
-    for (const param of params) {
-      if (typeof req.query[param] !== "string") {
-        return res.status(400).json({ error: `Invalid parameter: ${param}` });
+  const validateRequestParams =
+    (params: string[]) => (req: Request, res: Response, next: NextFunction) => {
+      for (const param of params) {
+        if (typeof req.query[param] !== "string") {
+          return res.status(400).json({ error: `Invalid parameter: ${param}` });
+        }
       }
-    }
-    next();
-  };
+      next();
+    };
 
   // Global error handler
   app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
@@ -228,12 +227,12 @@ const startServer = async () => {
         epochId: string;
         timeWindow: TimeWindow;
       };
-  
+
       const { chainId, address } = parseContractId(contractId);
-  
+
       const endTimestamp = Math.floor(Date.now() / 1000);
       const startTimestamp = getStartTimestampFromTimeWindow(timeWindow);
-  
+
       const marketPrices = await getMarketPricesInTimeRange(
         startTimestamp,
         endTimestamp,
@@ -241,9 +240,12 @@ const startServer = async () => {
         address,
         epochId
       );
-  
-      const groupedPrices = groupMarketPricesByTimeWindow(marketPrices, timeWindow);
-  
+
+      const groupedPrices = groupMarketPricesByTimeWindow(
+        marketPrices,
+        timeWindow
+      );
+
       // Create candlestick data from grouped prices
       const chartData = groupedPrices.map((group) => {
         const prices = group.entities;
@@ -260,7 +262,7 @@ const startServer = async () => {
           high,
         };
       });
-  
+
       res.json(chartData);
     })
   );
@@ -415,9 +417,7 @@ const startServer = async () => {
       position.baseToken = formatDbBigInt(position.baseToken);
       position.quoteToken = formatDbBigInt(position.quoteToken);
       position.borrowedBaseToken = formatDbBigInt(position.borrowedBaseToken);
-      position.borrowedQuoteToken = formatDbBigInt(
-        position.borrowedQuoteToken
-      );
+      position.borrowedQuoteToken = formatDbBigInt(position.borrowedQuoteToken);
       position.collateral = formatDbBigInt(position.collateral);
 
       res.json(position);
@@ -508,10 +508,7 @@ const startServer = async () => {
             // Convert baseTokenDelta to BigNumber and get its absolute value
             const absBaseTokenDelta = Math.abs(
               parseFloat(
-                formatUnits(
-                  BigInt(transaction.baseTokenDelta),
-                  TOKEN_PRECISION
-                )
+                formatUnits(BigInt(transaction.baseTokenDelta), TOKEN_PRECISION)
               )
             );
 
@@ -539,20 +536,25 @@ const startServer = async () => {
 
     // Find the market info to get the correct chain for price indexing
     const marketInfo = MARKET_INFO.find(
-      (m) => m.marketChainId === market.chainId && 
-             m.deployment.address.toLowerCase() === market.address.toLowerCase()
+      (m) =>
+        m.marketChainId === market.chainId &&
+        m.deployment.address.toLowerCase() === market.address.toLowerCase()
     );
     if (!marketInfo) {
-      return { missingBlockNumbers: null, error: "Market configuration not found" };
+      return {
+        missingBlockNumbers: null,
+        error: "Market configuration not found",
+      };
     }
 
     // Get block numbers using the price indexer client
-    const { startBlockNumber, endBlockNumber, error } = await getMarketStartEndBlock(
-      market,
-      epochId,
-      marketInfo.priceIndexer.client
-    );
-    
+    const { startBlockNumber, endBlockNumber, error } =
+      await getMarketStartEndBlock(
+        market,
+        epochId,
+        marketInfo.priceIndexer.client
+      );
+
     if (error || !startBlockNumber || !endBlockNumber) {
       return { missingBlockNumbers: null, error };
     }
@@ -572,7 +574,11 @@ const startServer = async () => {
 
     // Find missing block numbers within the range
     const missingBlockNumbers = [];
-    for (let blockNumber = startBlockNumber; blockNumber <= endBlockNumber; blockNumber++) {
+    for (
+      let blockNumber = startBlockNumber;
+      blockNumber <= endBlockNumber;
+      blockNumber++
+    ) {
       if (!existingBlockNumbersSet.has(blockNumber)) {
         missingBlockNumbers.push(blockNumber);
       }
@@ -1043,6 +1049,7 @@ const startServer = async () => {
 
       const collateralTransfers = await collateralTransferRepository.find({
         where: { market: { id: marketId } },
+        order: { timestamp: "ASC" },
       });
 
       const marketAddress = address;
@@ -1084,12 +1091,14 @@ const startServer = async () => {
         owner: string
       ) => {
         let collateralFlow = 0;
+        let maxCollateral = 0;
         for (const transfer of collateralTransfers) {
           if (transfer.owner === owner) {
             collateralFlow += Number(transfer.collateral);
           }
+          maxCollateral = Math.max(maxCollateral, collateralFlow);
         }
-        return collateralFlow;
+        return { collateralFlow, maxCollateral };
       };
 
       interface GroupedPosition {
@@ -1097,20 +1106,23 @@ const startServer = async () => {
         positions: Position[];
         totalPnL: number;
         totalCollateralFlow: number;
+        ownerMaxCollateral: number;
       }
 
       const groupedByOwner: Record<string, GroupedPosition> = {};
       for (const position of positions) {
         if (!groupedByOwner[position.owner]) {
-          const collateralFlow = calculatePositionCollateralFlow(
-            collateralTransfers,
-            position.owner
-          );
+          const { collateralFlow, maxCollateral } =
+            calculatePositionCollateralFlow(
+              collateralTransfers,
+              position.owner
+            );
           groupedByOwner[position.owner] = {
             owner: position.owner,
             positions: [],
             totalPnL: -collateralFlow,
             totalCollateralFlow: collateralFlow,
+            ownerMaxCollateral: maxCollateral,
           };
         }
 
@@ -1133,7 +1145,7 @@ const startServer = async () => {
 
   // Update the reindexMissingBlocks endpoint
   app.post(
-    '/reindexMissingBlocks',
+    "/reindexMissingBlocks",
     handleAsyncErrors(async (req, res, next) => {
       const { chainId, address, epochId, signature, timestamp } = req.body;
 
@@ -1143,7 +1155,7 @@ const startServer = async () => {
         Number(timestamp)
       );
       if (!isAuthenticated) {
-        res.status(401).json({ error: 'Unauthorized' });
+        res.status(401).json({ error: "Unauthorized" });
         return;
       }
 
@@ -1199,7 +1211,7 @@ const startServer = async () => {
         throw new Error("Background worker not found");
       }
 
-      if (process.env.NODE_ENV !== 'production') {
+      if (process.env.NODE_ENV !== "production") {
         const startCommand = `pnpm run start:reindex-missing ${chainId} ${address} ${epochId}`;
         try {
           const result = await executeLocalReindex(startCommand);
@@ -1217,7 +1229,7 @@ const startServer = async () => {
       jobDb.jobId = job.id;
       jobDb.serviceId = job.serviceId;
       await renderJobRepository.save(jobDb);
-      
+
       res.json({ success: true, job });
     })
   );
