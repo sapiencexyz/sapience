@@ -65,11 +65,10 @@ import type { EpochData, MarketParams } from '~/lib/interfaces/interfaces';
 import { formatAmount } from '~/lib/util/numberUtil';
 import { gweiToEther } from '~/lib/util/util';
 
-// Add new interface near the top
+// Update interface to only include resourcePrice
 interface MissingBlocks {
   [key: string]: {
     resourcePrice?: number[];
-    events?: number[];
   };
 }
 
@@ -151,23 +150,17 @@ const MarketsTable: React.FC = () => {
     [markets]
   );
 
-  // Add new function to fetch missing blocks
+  // Simplify fetchMissingBlocks to only fetch resource price blocks
   const fetchMissingBlocks = async (market: Market, epochId: number) => {
     try {
-      const [resourcePriceRes, eventsRes] = await Promise.all([
-        axios.get(
-          `${API_BASE_URL}/missing-blocks?chainId=${market.chainId}&address=${market.address}&epochId=${epochId}&model=ResourcePrice`
-        ),
-        axios.get(
-          `${API_BASE_URL}/missing-blocks?chainId=${market.chainId}&address=${market.address}&epochId=${epochId}&model=Event`
-        ),
-      ]);
+      const response = await axios.get(
+        `${API_BASE_URL}/missing-blocks?chainId=${market.chainId}&address=${market.address}&epochId=${epochId}&model=ResourcePrice`
+      );
 
       setMissingBlocks((prev) => ({
         ...prev,
         [`${market.address}-${epochId}`]: {
-          resourcePrice: resourcePriceRes.data.missingBlockNumbers,
-          events: eventsRes.data.missingBlockNumbers,
+          resourcePrice: response.data.missingBlockNumbers,
         },
       }));
     } catch (error) {
@@ -281,7 +274,34 @@ const MarketsTable: React.FC = () => {
       {
         id: 'epochId',
         header: 'Epoch',
-        accessorKey: 'epochId',
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <span>{row.original.epochId}</span>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    onClick={() =>
+                      handleReindex(
+                        'events',
+                        row.original.marketAddress,
+                        row.original.epochId,
+                        row.original.chainId
+                      )
+                    }
+                    className="h-6 w-6 p-0"
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Reindex Events</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        ),
       },
       {
         id: 'endTimestamp',
@@ -309,51 +329,29 @@ const MarketsTable: React.FC = () => {
                 {blocks ? blocks.length.toLocaleString() : 'Loading...'}
               </span>
               {blocks && blocks.length > 0 && (
-                <Button
-                  size="icon"
-                  onClick={() =>
-                    handleReindex(
-                      'price',
-                      row.original.marketAddress,
-                      row.original.epochId,
-                      row.original.chainId
-                    )
-                  }
-                  className="h-6 w-6 p-0"
-                >
-                  <Download className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          );
-        },
-      },
-      {
-        id: 'missingEventBlocks',
-        header: 'Missing Market Blocks',
-        cell: ({ row }) => {
-          const key = `${row.original.marketAddress}-${row.original.epochId}`;
-          const blocks = missingBlocks[key]?.events;
-          return (
-            <div className="flex items-center gap-2">
-              <span>
-                {blocks ? blocks.length.toLocaleString() : 'Loading...'}
-              </span>
-              {blocks && blocks.length > 0 && (
-                <Button
-                  size="icon"
-                  onClick={() =>
-                    handleReindex(
-                      'events',
-                      row.original.marketAddress,
-                      row.original.epochId,
-                      row.original.chainId
-                    )
-                  }
-                  className="h-6 w-6 p-0"
-                >
-                  <Download className="h-4 w-4" />
-                </Button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        onClick={() =>
+                          handleReindex(
+                            'price',
+                            row.original.marketAddress,
+                            row.original.epochId,
+                            row.original.chainId
+                          )
+                        }
+                        className="h-6 w-6 p-0"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Reindex Missing Price Blocks</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )}
             </div>
           );
