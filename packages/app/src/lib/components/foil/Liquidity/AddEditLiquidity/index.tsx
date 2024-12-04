@@ -963,30 +963,24 @@ const AddEditLiquidity: React.FC = () => {
           <PositionSelector isLP />
 
           <div>
-            <p className="text-sm text-gray-600 font-semibold mb-0.5">
-              Base Token
-            </p>
-            <p className="text-sm text-gray-600 mb-0.5">
+            <p className="text-sm font-semibold mb-0.5">Base Token</p>
+            <p className="text-sm mb-0.5">
               <NumberDisplay value={baseToken} /> vGGas (Min.{' '}
               <NumberDisplay value={minAmountTokenA} />)
             </p>
           </div>
 
           <div>
-            <p className="text-sm text-gray-600 font-semibold mb-0.5">
-              Quote Token
-            </p>
-            <p className="text-sm text-gray-600 mb-0.5">
+            <p className="text-sm font-semibold mb-0.5">Quote Token</p>
+            <p className="text-sm mb-0.5">
               <NumberDisplay value={quoteToken} /> vWstETH (Min.{' '}
               <NumberDisplay value={minAmountTokenB} />)
             </p>
           </div>
           {isEdit && (
             <div>
-              <p className="text-sm text-gray-600 font-semibold mb-0.5">
-                Liquidity
-              </p>
-              <p className="text-sm text-gray-600 mb-0.5">
+              <p className="text-sm font-semibold mb-0.5">Liquidity</p>
+              <p className="text-sm mb-0.5">
                 <NumberDisplay
                   value={formatUnits(
                     liquidity || BigInt(0),
@@ -1011,10 +1005,10 @@ const AddEditLiquidity: React.FC = () => {
 
           {isEdit && (
             <div>
-              <p className="text-sm text-gray-600 font-semibold mb-0.5">
+              <p className="text-sm font-semibold mb-0.5">
                 Position Collateral
               </p>
-              <p className="text-sm text-gray-600 mb-0.5">
+              <p className="text-sm mb-0.5">
                 <NumberDisplay value={positionCollateralAmount} />{' '}
                 {collateralAssetTicker}
                 {!isAmountUnchanged && (
@@ -1030,10 +1024,8 @@ const AddEditLiquidity: React.FC = () => {
 
           {isConnected && walletBalance && (
             <div>
-              <p className="text-sm text-gray-600 font-semibold mb-0.5">
-                Wallet Balance
-              </p>
-              <p className="text-sm text-gray-600 mb-0.5">
+              <p className="text-sm font-semibold mb-0.5">Wallet Balance</p>
+              <p className="text-sm mb-0.5">
                 <NumberDisplay value={walletBalance} /> {collateralAssetTicker}
                 {!isAmountUnchanged && walletBalanceAfter && (
                   <>

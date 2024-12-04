@@ -760,10 +760,8 @@ export default function AddEditTrade() {
           <PositionSelector isLP={false} />
           {isEdit && (
             <div>
-              <p className="text-sm text-gray-600 font-semibold mb-0.5">
-                Position Size
-              </p>
-              <p className="text-sm text-gray-600 mb-0.5">
+              <p className="text-sm  font-semibold mb-0.5">Position Size</p>
+              <p className="text-sm  mb-0.5">
                 <NumberDisplay
                   value={formatUnits(
                     originalPositionSizeInContractUnit,
@@ -789,7 +787,7 @@ export default function AddEditTrade() {
           )}
           {!isLoadingCollateralChange && isConnected && (
             <div>
-              <p className="text-sm text-gray-600 font-semibold mb-0.5 flex items-center">
+              <p className="text-sm  font-semibold mb-0.5 flex items-center">
                 Wallet Balance
                 {sizeChange !== BigInt(0) && (
                   <TooltipProvider>
@@ -808,7 +806,7 @@ export default function AddEditTrade() {
                   </TooltipProvider>
                 )}
               </p>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm ">
                 <NumberDisplay value={walletBalance} /> {collateralAssetTicker}
                 {sizeChange !== BigInt(0) && !quoteError && (
                   <>
@@ -831,10 +829,10 @@ export default function AddEditTrade() {
           )}
           {!isLoadingCollateralChange && (
             <div>
-              <p className="text-sm text-gray-600 font-semibold mb-0.5">
+              <p className="text-sm  font-semibold mb-0.5">
                 Position Collateral
               </p>
-              <p className="text-sm text-gray-600 mb-0.5">
+              <p className="text-sm  mb-0.5">
                 <NumberDisplay
                   value={formatUnits(
                     positionData?.depositedCollateralAmount || BigInt(0),
@@ -867,10 +865,10 @@ export default function AddEditTrade() {
           )}
           {quotedFillPrice && (
             <div>
-              <p className="text-sm text-gray-600 font-semibold mb-0.5">
+              <p className="text-sm  font-semibold mb-0.5">
                 Estimated Fill Price
               </p>
-              <p className="text-sm text-gray-600 mb-0.5">
+              <p className="text-sm  mb-0.5">
                 <NumberDisplay value={quotedFillPrice} /> Ggas/
                 {collateralAssetTicker}
               </p>
@@ -878,11 +876,11 @@ export default function AddEditTrade() {
           )}
           {priceImpact !== 0 && (
             <div>
-              <p className="text-sm text-gray-600 font-semibold mb-0.5">
+              <p className="text-sm  font-semibold mb-0.5">
                 Estimated Price Impact
               </p>
               <p
-                className={`${showPriceImpactWarning ? 'text-red-500' : 'text-gray-600'} text-sm font-medium mb-0.5`}
+                className={`${showPriceImpactWarning ? 'text-red-500' : ''} text-sm font-medium mb-0.5`}
               >
                 {Number(priceImpact.toFixed(2)).toString()}%
               </p>
