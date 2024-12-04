@@ -279,7 +279,7 @@ const alertEvent = async (
         case EventType.LiquidityPositionDecreased:
         case EventType.LiquidityPositionClosed:
           const action = logData.eventName === EventType.LiquidityPositionDecreased || logData.eventName === EventType.LiquidityPositionClosed ? 'Removed' : 'Added';
-          const rawLiquidityGas = Number(logData.args.increasedAmount0 || logData.args.amount0) / 1e18;
+          const rawLiquidityGas = Number(logData.args.addedAmount0 ||logData.args.increasedAmount0 || logData.args.amount0) / 1e18;
           
           // Format with commas and only show decimals if significant
           const liquidityGas = rawLiquidityGas.toLocaleString('en-US', {
