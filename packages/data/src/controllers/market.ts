@@ -259,7 +259,7 @@ const alertEvent = async (
         case EventType.TraderPositionModified:
           const tradeDirection = BigInt(logData.args.finalPrice) > BigInt(logData.args.initialPrice) ? 'Long' : 'Short';
           const gasAmount = (Number(logData.args.vGasAmount) / 1e9).toFixed(6);
-          const priceGwei = (Number(logData.args.tradeRatio) / 1e9).toFixed(2);
+          const priceGwei = (Number(logData.args.tradeRatio) / 1e18).toFixed(2);
           
           title = `${tradeDirection === 'Long' ? '<:pepegas:1313887905508364288>' : '<:peepoangry:1313887206687117313>'} **Trade Executed**: ${tradeDirection} ${gasAmount} Ggas @ ${priceGwei} wstGwei`;
           break;
@@ -272,8 +272,8 @@ const alertEvent = async (
           const liquidityGas = (Number(logData.args.addedAmount0 || logData.args.amount0) / 1e9).toFixed(6);
           const lowerTick = logData.args.lowerTick;
           const upperTick = logData.args.upperTick;
-          const lowerPrice = (1.0001 ** lowerTick / 1e9).toFixed(1);
-          const upperPrice = (1.0001 ** upperTick / 1e9).toFixed(1);
+          const lowerPrice = (1.0001 ** lowerTick / 1e18).toFixed(1);
+          const upperPrice = (1.0001 ** upperTick / 1e18).toFixed(1);
           
           title = `<:pepeliquid:1313887190056439859> **Liquidity Modified**: ${action} ${liquidityGas} Ggas liquidity from [${lowerPrice} - ${upperPrice}] wstGwei`;
           break;
