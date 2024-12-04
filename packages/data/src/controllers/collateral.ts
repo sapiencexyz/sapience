@@ -9,6 +9,7 @@ import { CollateralTransfer } from "../models/CollateralTransfer";
 import collateralAbi from "./abi/collateralAbi.json";
 import { decodeEventLog, Log, parseAbiItem } from "viem";
 import { getProviderForChain, bigintReplacer } from "../helpers";
+import { getMarketStartEndBlock } from "./marketHelpers";
 
 // Called when the process starts after initialization. Watches events for a given market and calls upsertCollateralTransferEvent for each one.
 export const indexCollateralEvents = async (market: Market) => {
@@ -63,7 +64,7 @@ export const indexCollateralEvents = async (market: Market) => {
 };
 
 // Iterates over all blocks from the market's deploy block to the current block and calls upsertCollateralTransferEvent for each one.
-export const reindexCollateralEvents = async (market: Market) => {
+export const reindexCollateralEvents = async (market: Market, epochId: number) => {
   console.log(
     "reindexing collateral transfer events for market",
     market.address
@@ -73,7 +74,18 @@ export const reindexCollateralEvents = async (market: Market) => {
   const collateralAddress =
     market.collateralAsset || "0xB82381A3fBD3FaFA77B3a7bE693342618240067b";
 
-  const startBlock = market.deployTxnBlockNumber || 0;
+  // Get block range for the epoch
+  const { startBlockNumber, error } = await getMarketStartEndBlock(
+    market,
+    epochId.toString(),
+    client
+  );
+
+  if (error || !startBlockNumber) {
+    throw new Error(`Failed to get start block for epoch ${epochId}: ${error}`);
+  }
+
+  const startBlock = startBlockNumber;
   const endBlock = await client.getBlockNumber();
   const chainId = await client.getChainId();
 

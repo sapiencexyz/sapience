@@ -1159,19 +1159,6 @@ const startServer = async () => {
         return;
       }
 
-      // Get epoch start timestamp if needed for market reindexing
-      let epochStartTimestamp;
-      if (model !== 'ResourcePrice') {
-        const { epoch } = await getMarketAndEpoch(
-          marketRepository,
-          epochRepository,
-          chainId,
-          address,
-          epochId
-        );
-        epochStartTimestamp = Number(epoch.startTimestamp);
-      }
-
       const RENDER_API_KEY = process.env.RENDER_API_KEY;
       if (!RENDER_API_KEY) {
         throw new Error("RENDER_API_KEY not set");
@@ -1226,7 +1213,7 @@ const startServer = async () => {
 
       const startCommand = model === 'ResourcePrice' 
         ? `pnpm run start:reindex-missing ${chainId} ${address} ${epochId} ResourcePrice` 
-        : `pnpm run start:reindex-market ${chainId} ${address} ${epochStartTimestamp}`;
+        : `pnpm run start:reindex-market ${chainId} ${address} ${epochId}`;
 
       if (process.env.NODE_ENV !== 'production') {
         try {

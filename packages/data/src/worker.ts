@@ -40,9 +40,9 @@ async function main() {
 export async function reindexMarket(
   chainId: number,
   address: string,
-  initialTimestamp?: number
+  epochId: string
 ) {
-  console.log("reindexing market", address, "on chain", chainId);
+  console.log("reindexing market", address, "on chain", chainId, "epoch", epochId);
 
   await initializeDataSource();
   const marketInfo = MARKET_INFO.find(
@@ -58,12 +58,8 @@ export async function reindexMarket(
   const market = await initializeMarket(marketInfo);
 
   await Promise.all([
-    reindexMarketEvents(market, marketInfo.deployment.abi),
-    reindexCollateralEvents(market),
-    marketInfo.priceIndexer.indexBlockPriceFromTimestamp(
-      market,
-      initialTimestamp || market.deployTimestamp || 0
-    ),
+    reindexMarketEvents(market, marketInfo.deployment.abi, Number(epochId)),
+    reindexCollateralEvents(market, Number(epochId)),
   ]);
   console.log("finished reindexing market", address, "on chain", chainId);
 }
@@ -126,8 +122,8 @@ export async function reindexMissingBlocks(
     );
   } else {
     await Promise.all([
-      reindexMarketEvents(market, marketInfo.deployment.abi),
-      reindexCollateralEvents(market),
+      reindexMarketEvents(market, marketInfo.deployment.abi, Number(epochId)),
+      reindexCollateralEvents(market, Number(epochId)),
     ]);
   }
 
@@ -138,15 +134,15 @@ if (process.argv[2] === "reindexMarket") {
   const callReindex = async () => {
     const chainId = parseInt(process.argv[3], 10);
     const address = process.argv[4];
-    const initialTimestamp = parseInt(process.argv[5], 10);
+    const epochId = process.argv[5];
 
     if (isNaN(chainId) || !address) {
       console.error(
-        "Invalid arguments. Usage: tsx src/worker.ts reindexMarket <chainId> <address>"
+        "Invalid arguments. Usage: tsx src/worker.ts reindexMarket <chainId> <address> <epochId>"
       );
       process.exit(1);
     }
-    await reindexMarket(chainId, address, initialTimestamp);
+    await reindexMarket(chainId, address, epochId);
     console.log("DONE");
     process.exit(0);
   };
