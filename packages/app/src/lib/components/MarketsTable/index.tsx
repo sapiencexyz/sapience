@@ -371,7 +371,11 @@ const MarketsTable: React.FC = () => {
         id: 'settlement',
         header: 'Settle',
         cell: ({ row }) => (
-          <EpochItem market={row.original.market} epoch={row.original} />
+          <EpochItem
+            market={row.original.market}
+            epoch={row.original}
+            missingBlocks={missingBlocks}
+          />
         ),
       },
     ],
@@ -463,7 +467,8 @@ const MarketsTable: React.FC = () => {
 const EpochItem: React.FC<{
   epoch: Market['epochs'][0];
   market: Market;
-}> = ({ market, epoch }) => {
+  missingBlocks: MissingBlocks;
+}> = ({ market, epoch, missingBlocks }) => {
   const account = useAccount();
   const { address } = account;
   const [loadingStEthPerToken, setLoadingStEthPerToken] = useState(false);
@@ -695,9 +700,22 @@ const EpochItem: React.FC<{
     const currentTime = Math.floor(Date.now() / 1000);
     const isEpochEnded = epoch.endTimestamp && currentTime > epoch.endTimestamp;
 
+    // Check for missing blocks
+    const key = `${market.address}-${epoch.epochId}`;
+    const missingBlocksCount =
+      missingBlocks[key]?.resourcePrice?.length ?? null;
+    const areMissingBlocksLoading = missingBlocksCount === null;
+    const hasMissingBlocks = missingBlocksCount && missingBlocksCount > 0;
+
     const getButtonText = () => {
       if (!isEpochEnded) {
         return 'Epoch Active';
+      }
+      if (areMissingBlocksLoading) {
+        return 'Loading Blocks...';
+      }
+      if (hasMissingBlocks) {
+        return 'Missing Blocks';
       }
       if (requireApproval) {
         return `Approve ${collateralTickerFunctionResult.data} Transfer`;
@@ -722,7 +740,13 @@ const EpochItem: React.FC<{
         <div className="flex items-center gap-2">
           <Button
             size="sm"
-            disabled={!getEpochData || buttonIsLoading || !isEpochEnded}
+            disabled={
+              !getEpochData ||
+              buttonIsLoading ||
+              !isEpochEnded ||
+              areMissingBlocksLoading ||
+              Boolean(hasMissingBlocks)
+            }
             onClick={
               requireApproval ? handleApproveSettle : handleSettleWithPrice
             }

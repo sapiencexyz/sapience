@@ -17,6 +17,7 @@ import Link from 'next/link';
 import type React from 'react';
 import { useContext, useState, useMemo } from 'react';
 import { formatUnits } from 'viem';
+import { useReadContract } from 'wagmi';
 
 import { MarketContext } from '../../context/MarketProvider';
 import {
@@ -37,7 +38,6 @@ import { calculatePnL } from '~/lib/util/positionUtil';
 import { convertWstEthToGwei } from '~/lib/util/util';
 
 import NumberDisplay from './numberDisplay';
-import { useReadContract } from 'wagmi';
 
 interface Props {
   positions: any[];

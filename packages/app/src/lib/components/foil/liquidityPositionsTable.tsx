@@ -15,6 +15,7 @@ import {
 import Link from 'next/link';
 import type React from 'react';
 import { useContext, useState, useMemo } from 'react';
+import { useReadContract } from 'wagmi';
 
 import {
   Table,
@@ -35,7 +36,6 @@ import { calculatePnL } from '~/lib/util/positionUtil';
 import { tickToPrice } from '~/lib/util/util';
 
 import NumberDisplay from './numberDisplay';
-import { useReadContract } from 'wagmi';
 
 interface Props {
   positions: any[];

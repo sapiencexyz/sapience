@@ -37,6 +37,8 @@ import {
   getMarketStartEndBlock,
 } from "./marketHelpers";
 import { Client, TextChannel, EmbedBuilder } from "discord.js";
+import { MARKET_INFO } from "../markets";
+import * as Chains from 'viem/chains';
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const DISCORD_PRIVATE_CHANNEL_ID = process.env.DISCORD_PRIVATE_CHANNEL_ID;
@@ -244,37 +246,64 @@ const alertEvent = async (
       return;
     }
 
-    if(DISCORD_PUBLIC_CHANNEL_ID && logData.eventName !== EventType.Transfer){
+    if(DISCORD_PUBLIC_CHANNEL_ID && logData.eventName !== EventType.Transfer) {
       const publicChannel = (await discordClient.channels.fetch(
         DISCORD_PUBLIC_CHANNEL_ID
       )) as TextChannel;
 
+      let title = '';
+
+      // Format based on event type
+      switch(logData.eventName) {
+        case EventType.TraderPositionCreated:
+        case EventType.TraderPositionModified:
+          const tradeDirection = BigInt(logData.args.finalPrice) > BigInt(logData.args.initialPrice) ? 'Long' : 'Short';
+          const gasAmount = (Number(logData.args.vGasAmount) / 1e9).toFixed(2);
+          const priceGwei = (Number(logData.args.tradeRatio) / 1e9).toFixed(2);
+          
+          title = `${tradeDirection === 'Long' ? ':pepegas:' : ':peepoangry:'} Trade Executed: ${tradeDirection} ${gasAmount} Ggas @ ${priceGwei} wstGwei`;
+          break;
+
+        case EventType.LiquidityPositionCreated:
+        case EventType.LiquidityPositionIncreased:
+        case EventType.LiquidityPositionDecreased:
+        case EventType.LiquidityPositionClosed:
+          const action = logData.eventName === EventType.LiquidityPositionDecreased || logData.eventName === EventType.LiquidityPositionClosed ? 'Remove' : 'Add';
+          const liquidityGas = (Number(logData.args.addedAmount0 || logData.args.amount0) / 1e9).toFixed(2);
+          const lowerTick = logData.args.lowerTick;
+          const upperTick = logData.args.upperTick;
+          const lowerPrice = (1.0001 ** lowerTick / 1e9).toFixed(1);
+          const upperPrice = (1.0001 ** upperTick / 1e9).toFixed(1);
+          
+          title = `:pepeliquid: Liquidity Modified: ${action} ${liquidityGas} Ggas liquidity from [${lowerPrice} - ${upperPrice}] wstGwei`;
+          break;
+
+        default:
+          return; // Skip other events
+      }
+
+      // Get block explorer URL based on chain ID
+      const getBlockExplorerUrl = (chainId: number, txHash: string) => {
+        const chain = Object.values(Chains).find((c) => c.id === chainId);
+        return chain?.blockExplorers?.default?.url
+          ? `${chain.blockExplorers.default.url}/tx/${txHash}`
+          : `https://etherscan.io/tx/${txHash}`;
+      };
+
+      // Get market name from MARKET_INFO
+      const marketName = MARKET_INFO.find(m => m.deployment.address === address)?.name || "Foil Market";
+
       const embed = new EmbedBuilder()
-        .setTitle(`New Market Event: ${logData.eventName}`)
+        .setTitle(title)
         .setColor("#0099ff")
         .addFields(
-          { name: "Chain ID", value: chainId.toString(), inline: true },
-          { name: "Market Address", value: address, inline: true },
-          { name: "Epoch ID", value: epochId.toString(), inline: true },
-          { name: "Block Number", value: blockNumber.toString(), inline: true },
-          {
-            name: "Timestamp",
-            value: new Date(Number(timestamp) * 1000).toISOString(),
-            inline: true,
-          }
+          { name: "Market", value: marketName, inline: false },
+          { name: "Epoch", value: `${new Date(Number(timestamp) * 1000).toLocaleDateString()} - ${new Date((Number(timestamp) + 2419200) * 1000).toLocaleDateString()}`, inline: false },
+          { name: "Position", value: logData.args.positionId.toString(), inline: true },
+          { name: "User", value: logData.args.sender, inline: true },
+          { name: "Transaction", value: getBlockExplorerUrl(chainId, logData.transactionHash), inline: true }
         )
         .setTimestamp();
-
-      // Add event-specific details if available
-      if (logData.args) {
-        const argsField = Object.entries(logData.args)
-          .map(([key, value]) => `${key}: ${value}`)
-          .join("\n");
-        embed.addFields({
-          name: "Event Arguments",
-          value: `\`\`\`${argsField}\`\`\``,
-        });
-      }
 
       await publicChannel.send({ embeds: [embed] });
     }
