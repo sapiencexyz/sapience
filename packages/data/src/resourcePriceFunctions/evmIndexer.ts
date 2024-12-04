@@ -32,8 +32,7 @@ class EvmIndexer {
 
   async indexBlockPriceFromTimestamp(
     market: Market,
-    timestamp: number,
-    skipExisting: boolean = false
+    timestamp: number
   ): Promise<boolean> {
     const initalBlock = await getBlockByTimestamp(this.client, timestamp);
     if (!initalBlock.number) {
@@ -48,20 +47,26 @@ class EvmIndexer {
     ) {
       try {
         console.log("Indexing gas from block ", blockNumber);
-        
-        if (skipExisting) {
-          const existingPrice = await resourcePriceRepository.findOne({
-            where: {
-              market: { id: market.id },
-              blockNumber: Number(blockNumber)
-            }
-          });
-          if (existingPrice) {
-            console.log(`Skipping existing block ${blockNumber}`);
-            continue;
-          }
-        }
 
+        const block = await this.client.getBlock({
+          blockNumber: BigInt(blockNumber),
+        });
+        await this.storeBlockPrice(block, market);
+      } catch (error) {
+        console.error(`Error processing block ${blockNumber}:`, error);
+      }
+    }
+    return true;
+  }
+
+  async indexBlocks(
+    market: Market,
+    blocks: number[]
+  ): Promise<boolean> {
+    for (const blockNumber of blocks) {
+      try {
+        console.log("Indexing gas from block", blockNumber);
+        
         const block = await this.client.getBlock({
           blockNumber: BigInt(blockNumber),
         });

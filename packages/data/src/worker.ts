@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { initializeDataSource } from "./db";
+import { initializeDataSource, resourcePriceRepository } from "./db";
 import {
   indexMarketEvents,
   initializeMarket,
@@ -12,7 +12,7 @@ import {
   reindexCollateralEvents,
 } from "./controllers/collateral";
 import { getMarketStartEndBlock } from "./controllers/marketHelpers";
-import { getProviderForChain } from "./helpers";
+import { Between } from "typeorm";
 
 async function main() {
   await initializeDataSource();
@@ -87,21 +87,42 @@ export async function reindexMissingBlocks(
   }
   const market = await initializeMarket(marketInfo);
 
-  // Get block range
-  const { startBlockNumber, endBlockNumber, error } = await getMarketStartEndBlock(market, epochId);
-  if (error || !startBlockNumber || !endBlockNumber) {
-    throw new Error(`Failed to get block range: ${error}`);
-  }
-
   if (model === 'ResourcePrice') {
-    const block = await getProviderForChain(chainId).getBlock({ blockNumber: BigInt(startBlockNumber) });
-      if (!block.timestamp) throw new Error("Could not get block timestamp");
-
-    await marketInfo.priceIndexer.indexBlockPriceFromTimestamp(
+    // Get block numbers using the price indexer client
+    const { startBlockNumber, endBlockNumber, error } = await getMarketStartEndBlock(
       market,
-      Number(block.timestamp),
-      startBlockNumber,
-      true
+      epochId,
+      marketInfo.priceIndexer.client
+    );
+    
+    if (error || !startBlockNumber || !endBlockNumber) {
+      return { missingBlockNumbers: null, error };
+    }
+
+    // Get existing block numbers for ResourcePrice
+    const resourcePrices = await resourcePriceRepository.find({
+      where: {
+        market: { id: market.id },
+        blockNumber: Between(startBlockNumber, endBlockNumber),
+      },
+      select: ["blockNumber"],
+    });
+
+    const existingBlockNumbersSet = new Set(
+      resourcePrices.map((ip) => Number(ip.blockNumber))
+    );
+
+    // Find missing block numbers within the range
+    const missingBlockNumbers = [];
+    for (let blockNumber = startBlockNumber; blockNumber <= endBlockNumber; blockNumber++) {
+      if (!existingBlockNumbersSet.has(blockNumber)) {
+        missingBlockNumbers.push(blockNumber);
+      }
+    }
+
+    await marketInfo.priceIndexer.indexBlocks(
+      market,
+      missingBlockNumbers
     );
   } else {
     await Promise.all([
@@ -121,7 +142,7 @@ if (process.argv[2] === "reindexMarket") {
 
     if (isNaN(chainId) || !address) {
       console.error(
-        "Invalid arguments. Usage: ts-node src/worker.ts reindexMarket <chainId> <address>"
+        "Invalid arguments. Usage: tsx src/worker.ts reindexMarket <chainId> <address>"
       );
       process.exit(1);
     }
@@ -139,7 +160,7 @@ if (process.argv[2] === "reindexMarket") {
 
     if (isNaN(chainId) || !address || !epochId || !['ResourcePrice', 'Event'].includes(model)) {
       console.error(
-        "Invalid arguments. Usage: ts-node src/worker.ts reindexMissing <chainId> <address> <epochId> <ResourcePrice|Event>"
+        "Invalid arguments. Usage: tsx src/worker.ts reindexMissing <chainId> <address> <epochId> <ResourcePrice|Event>"
       );
       process.exit(1);
     }
