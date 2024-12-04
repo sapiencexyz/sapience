@@ -258,7 +258,7 @@ const alertEvent = async (
         case EventType.TraderPositionCreated:
         case EventType.TraderPositionModified:
           const tradeDirection = BigInt(logData.args.finalPrice) > BigInt(logData.args.initialPrice) ? 'Long' : 'Short';
-          const rawGasAmount = Number(logData.args.vGasAmount) / 1e18;
+          const rawGasAmount = Number(logData.args.vGasAmount || logData.args.borrowedVGas) / 1e18;
           const rawPriceGwei = Number(logData.args.tradeRatio) / 1e18;
           
           // Format with commas and only show decimals if significant
@@ -278,7 +278,7 @@ const alertEvent = async (
         case EventType.LiquidityPositionIncreased:
         case EventType.LiquidityPositionDecreased:
         case EventType.LiquidityPositionClosed:
-          const action = logData.eventName === EventType.LiquidityPositionDecreased || logData.eventName === EventType.LiquidityPositionClosed ? 'Remove' : 'Add';
+          const action = logData.eventName === EventType.LiquidityPositionDecreased || logData.eventName === EventType.LiquidityPositionClosed ? 'Removed' : 'Added';
           const rawLiquidityGas = Number(logData.args.increasedAmount0 || logData.args.amount0) / 1e18;
           
           // Format with commas and only show decimals if significant
@@ -304,7 +304,7 @@ const alertEvent = async (
             priceRangeText = ` from ${lowerPrice} - ${upperPrice} wstGwei`;
           }
           
-          title = `<:pepeliquid:1313887190056439859> **Liquidity Modified:** ${action} ${liquidityGas} Ggas liquidity${priceRangeText}`;
+          title = `<:pepeliquid:1313887190056439859> **Liquidity Modified:** ${action} ${liquidityGas} Ggas ${priceRangeText}`;
           break;
         default:
           return; // Skip other events
