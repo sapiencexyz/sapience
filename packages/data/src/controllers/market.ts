@@ -279,29 +279,33 @@ const alertEvent = async (
         case EventType.LiquidityPositionDecreased:
         case EventType.LiquidityPositionClosed:
           const action = logData.eventName === EventType.LiquidityPositionDecreased || logData.eventName === EventType.LiquidityPositionClosed ? 'Remove' : 'Add';
-          const rawLiquidityGas = Number(logData.args.addedAmount0 || logData.args.amount0) / 1e18;
-          const lowerTick = logData.args.lowerTick;
-          const upperTick = logData.args.upperTick;
-          const rawLowerPrice = 1.0001 ** lowerTick / 1e18;
-          const rawUpperPrice = 1.0001 ** upperTick / 1e18;
+          const rawLiquidityGas = Number(logData.args.increasedAmount0 || logData.args.amount0) / 1e18;
           
           // Format with commas and only show decimals if significant
           const liquidityGas = rawLiquidityGas.toLocaleString('en-US', {
             minimumFractionDigits: 0,
             maximumFractionDigits: 6
           });
-          const lowerPrice = rawLowerPrice.toLocaleString('en-US', {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 1
-          });
-          const upperPrice = rawUpperPrice.toLocaleString('en-US', {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 1
-          });
-          
-          title = `<:pepeliquid:1313887190056439859> **Liquidity Modified**: ${action} ${liquidityGas} Ggas liquidity from [${lowerPrice} - ${upperPrice}] wstGwei`;
-          break;
 
+          let priceRangeText = '';
+          if (logData.args.lowerTick !== undefined && logData.args.upperTick !== undefined) {
+            const rawLowerPrice = 1.0001 ** logData.args.lowerTick;
+            const rawUpperPrice = 1.0001 ** logData.args.upperTick;
+            
+            const lowerPrice = rawLowerPrice.toLocaleString('en-US', {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 2
+            });
+            const upperPrice = rawUpperPrice.toLocaleString('en-US', {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 2
+            });
+            
+            priceRangeText = ` from ${lowerPrice} - ${upperPrice} wstGwei`;
+          }
+          
+          title = `<:pepeliquid:1313887190056439859> **Liquidity Modified**: ${action} ${liquidityGas} Ggas liquidity${priceRangeText}`;
+          break;
         default:
           return; // Skip other events
       }
