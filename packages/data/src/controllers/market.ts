@@ -294,18 +294,17 @@ const alertEvent = async (
       const marketName = MARKET_INFO.find(m => m.deployment.address === address)?.name || "Foil Market";
 
       const embed = new EmbedBuilder()
-        .setTitle(title)
-        .setColor("#0099ff")
+        .setColor("#2b2b2e")
         .addFields(
           { name: "Market", value: marketName, inline: false },
-          { name: "Epoch", value: `${new Date(Number(timestamp) * 1000).toLocaleDateString()} - ${new Date((Number(timestamp) + 2419200) * 1000).toLocaleDateString()}`, inline: false },
+          { name: "Epoch", value: epochId.toString(), inline: true },
           { name: "Position", value: logData.args.positionId.toString(), inline: true },
           { name: "User", value: logData.args.sender, inline: true },
-          { name: "Transaction", value: getBlockExplorerUrl(chainId, logData.transactionHash), inline: true }
+          { name: "Transaction", value: getBlockExplorerUrl(chainId, logData.transactionHash) }
         )
         .setTimestamp();
 
-      await publicChannel.send({ embeds: [embed] });
+      await publicChannel.send({ content: title, embeds: [embed] });
     }
 
     if(DISCORD_PRIVATE_CHANNEL_ID){
@@ -315,7 +314,7 @@ const alertEvent = async (
 
       const embed = new EmbedBuilder()
         .setTitle(`New Market Event: ${logData.eventName}`)
-        .setColor("#0099ff")
+        .setColor("#2b2b2e")
         .addFields(
           { name: "Chain ID", value: chainId.toString(), inline: true },
           { name: "Market Address", value: address, inline: true },
