@@ -23,9 +23,9 @@ export default function MarketSidebar({ isTrade }: { isTrade: boolean }) {
 
   if (endTime === 0) {
     return (
-      <div className="h-full border border-gray-300 rounded-md w-full flex-1 flex flex-col my-8">
+      <div className="h-full border border-border rounded-md w-full flex-1 flex flex-col my-8">
         <div className="h-full flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-400 opacity-50" />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-border opacity-50" />
         </div>
       </div>
     );
