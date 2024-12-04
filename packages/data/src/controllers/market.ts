@@ -34,6 +34,7 @@ import {
   updateTransactionFromTradeModifiedEvent,
   upsertMarketPrice,
   updateTransactionFromPositionSettledEvent,
+  getMarketStartEndBlock,
 } from "./marketHelpers";
 import { Client, TextChannel, EmbedBuilder } from "discord.js";
 
@@ -155,10 +156,21 @@ export const indexMarketEvents = async (market: Market, abi: Abi) => {
 export const reindexMarketEvents = async (market: Market, abi: Abi, epochId: number) => {
   await initializeDataSource();
   const client = getProviderForChain(market.chainId);
-
-  const startBlock = // do something with epochId
-  const endBlock = await client.getBlockNumber();
   const chainId = await client.getChainId();
+
+  // Get block range for the epoch
+  const { startBlockNumber, error } = await getMarketStartEndBlock(
+    market,
+    epochId.toString(),
+    client
+  );
+
+  if (error || !startBlockNumber) {
+    throw new Error(`Failed to get start block for epoch ${epochId}: ${error}`);
+  }
+
+  const startBlock = startBlockNumber;
+  const endBlock = await client.getBlockNumber();
 
   for (let blockNumber = startBlock; blockNumber <= endBlock; blockNumber++) {
     console.log("Indexing market events from block ", blockNumber);
