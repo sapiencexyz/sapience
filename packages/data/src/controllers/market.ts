@@ -304,7 +304,7 @@ const alertEvent = async (
             priceRangeText = ` from ${lowerPrice} - ${upperPrice} wstGwei`;
           }
           
-          title = `<:pepeliquid:1313887190056439859> **Liquidity Modified:** ${action} ${liquidityGas} Ggas ${priceRangeText}`;
+          title = `<:pepeliquid:1313887190056439859> **Liquidity Modified:** ${action} ${liquidityGas} Ggas${priceRangeText}`;
           break;
         default:
           return; // Skip other events
