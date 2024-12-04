@@ -13,7 +13,6 @@ import {
 } from "./controllers/collateral";
 import { getMarketStartEndBlock } from "./controllers/marketHelpers";
 import { Between } from "typeorm";
-import pRetry from 'p-retry';
 
 async function main() {
   await initializeDataSource();
@@ -30,11 +29,9 @@ async function main() {
     );
     // initialize epoch
     await createOrUpdateEpochFromContract(marketInfo, market);
-
-    // Wrap each job with pRetry
-    jobs.push(pRetry(() => indexMarketEvents(market, marketInfo.deployment.abi), { retries: Infinity }));
-    jobs.push(pRetry(() => marketInfo.priceIndexer.watchBlocksForMarket(market), { retries: Infinity }));
-    jobs.push(pRetry(() => indexCollateralEvents(market), { retries: Infinity }));
+    jobs.push(indexMarketEvents(market, marketInfo.deployment.abi));
+    jobs.push(marketInfo.priceIndexer.watchBlocksForMarket(market));
+    jobs.push(indexCollateralEvents(market));
   }
 
   await Promise.all(jobs);
