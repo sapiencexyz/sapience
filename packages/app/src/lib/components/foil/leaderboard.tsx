@@ -60,6 +60,7 @@ interface GroupedPosition {
   positions: Position[];
   totalPnL: number;
   totalCollateralFlow: number;
+  ownerMaxCollateral: number;
 }
 
 const useLeaderboard = (marketId: string, epochId: string) => {
@@ -206,7 +207,7 @@ const Leaderboard = ({ params }: Props) => {
       {
         id: 'roi',
         header: 'ROI',
-        accessorFn: (row) => row.totalPnL / row.totalCollateralFlow,
+        accessorFn: (row) => row.totalPnL / row.ownerMaxCollateral,
         cell: RoiCell,
       },
       {
@@ -238,18 +239,20 @@ const Leaderboard = ({ params }: Props) => {
           positions: [],
           totalPnL: 0,
           totalCollateralFlow: 0,
+          ownerMaxCollateral: 0,
         };
       }
       acc[position.owner].positions = position.positions;
       acc[position.owner].totalPnL = position.totalPnL;
       acc[position.owner].totalCollateralFlow = position.totalCollateralFlow;
+      acc[position.owner].ownerMaxCollateral = position.ownerMaxCollateral;
       return acc;
     }, {});
 
     // Convert to array and sort by total PnL
     return Object.values(groupedByOwner).sort(
       (a, b) =>
-        b.totalPnL / b.totalCollateralFlow - a.totalPnL / a.totalCollateralFlow
+        b.totalPnL / b.ownerMaxCollateral - a.totalPnL / a.ownerMaxCollateral
     );
   }, [leaderboardPositions]);
 
