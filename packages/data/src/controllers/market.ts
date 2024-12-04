@@ -261,7 +261,7 @@ const alertEvent = async (
           const gasAmount = (Number(logData.args.vGasAmount) / 1e9).toFixed(2);
           const priceGwei = (Number(logData.args.tradeRatio) / 1e9).toFixed(2);
           
-          title = `${tradeDirection === 'Long' ? ':pepegas:' : ':peepoangry:'} Trade Executed: ${tradeDirection} ${gasAmount} Ggas @ ${priceGwei} wstGwei`;
+          title = `${tradeDirection === 'Long' ? '<:pepegas:1313887905508364288>' : '<:peepoangry:1313887206687117313>'} Trade Executed: ${tradeDirection} ${gasAmount} Ggas @ ${priceGwei} wstGwei`;
           break;
 
         case EventType.LiquidityPositionCreated:
@@ -275,7 +275,7 @@ const alertEvent = async (
           const lowerPrice = (1.0001 ** lowerTick / 1e9).toFixed(1);
           const upperPrice = (1.0001 ** upperTick / 1e9).toFixed(1);
           
-          title = `:pepeliquid: Liquidity Modified: ${action} ${liquidityGas} Ggas liquidity from [${lowerPrice} - ${upperPrice}] wstGwei`;
+          title = `<:pepeliquid:1313887190056439859> Liquidity Modified: ${action} ${liquidityGas} Ggas liquidity from [${lowerPrice} - ${upperPrice}] wstGwei`;
           break;
 
         default:
@@ -296,10 +296,9 @@ const alertEvent = async (
       const embed = new EmbedBuilder()
         .setColor("#2b2b2e")
         .addFields(
-          { name: "Market", value: marketName, inline: false },
-          { name: "Epoch", value: epochId.toString(), inline: true },
+          { name: "Market", value: `${marketName} (Epoch ${epochId.toString()})`, inline: true },
           { name: "Position", value: logData.args.positionId.toString(), inline: true },
-          { name: "User", value: logData.args.sender, inline: true },
+          { name: "Account", value: logData.args.sender, inline: true },
           { name: "Transaction", value: getBlockExplorerUrl(chainId, logData.transactionHash) }
         )
         .setTimestamp();
