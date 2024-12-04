@@ -271,7 +271,7 @@ const alertEvent = async (
             maximumFractionDigits: 2
           });
           
-          title = `${tradeDirection === 'Long' ? '<:pepegas:1313887905508364288>' : '<:peepoangry:1313887206687117313>'} **Trade Executed**: ${tradeDirection} ${gasAmount} Ggas @ ${priceGwei} wstGwei`;
+          title = `${tradeDirection === 'Long' ? '<:pepegas:1313887905508364288>' : '<:peepoangry:1313887206687117313>'} **Trade Executed:** ${tradeDirection} ${gasAmount} Ggas @ ${priceGwei} wstGwei`;
           break;
 
         case EventType.LiquidityPositionCreated:
@@ -304,7 +304,7 @@ const alertEvent = async (
             priceRangeText = ` from ${lowerPrice} - ${upperPrice} wstGwei`;
           }
           
-          title = `<:pepeliquid:1313887190056439859> **Liquidity Modified**: ${action} ${liquidityGas} Ggas liquidity${priceRangeText}`;
+          title = `<:pepeliquid:1313887190056439859> **Liquidity Modified:** ${action} ${liquidityGas} Ggas liquidity${priceRangeText}`;
           break;
         default:
           return; // Skip other events
