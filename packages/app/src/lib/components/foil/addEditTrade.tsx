@@ -377,6 +377,7 @@ export default function AddEditTrade() {
       option: 'Long',
       slippage: '0.5',
       fetchingSizeFromCollateralInput: false,
+      isClosePosition: false,
     },
     mode: 'onChange',
     reValidateMode: 'onChange',
@@ -434,14 +435,21 @@ export default function AddEditTrade() {
       setTxnStep(1);
     } else if (isEdit) {
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
+      // Handle close button case
+      const callSizeInContractUnit = values.isClosePosition
+        ? BigInt(0)
+        : desiredSizeInContractUnit;
+      const callCollateralDeltaLimit = values.isClosePosition
+        ? BigInt(0)
+        : collateralDeltaLimit;
       writeContract({
         abi: foilData.abi,
         address: marketAddress as `0x${string}`,
         functionName: 'modifyTraderPosition',
         args: [
           nftId,
-          desiredSizeInContractUnit,
-          collateralDeltaLimit,
+          callSizeInContractUnit,
+          callCollateralDeltaLimit,
           deadline,
         ],
       });
@@ -470,6 +478,7 @@ export default function AddEditTrade() {
       option: 'Long',
       slippage: '0.5',
       fetchingSizeFromCollateralInput: false,
+      isClosePosition: false,
     });
     setSizeChange(BigInt(0));
     setPendingTxn(false);
@@ -585,6 +594,45 @@ export default function AddEditTrade() {
           disabled={
             !!formError || isLoading || sizeChangeInContractUnit === BigInt(0)
           }
+          size="lg"
+        >
+          {isLoading && !formError ? (
+            <Loader2 className="h-6 w-6 animate-spin" />
+          ) : null}
+          {buttonTxt}
+        </Button>
+        {renderPriceImpactWarning()}
+      </div>
+    );
+  };
+
+  const renderCloseButton = () => {
+    if (!isEdit || !isConnected || currentChainId !== chainId) return null;
+
+    const isFetchingQuote = quoteModifyPositionResult.isFetching;
+    const isLoading =
+      pendingTxn ||
+      fetchingSizeFromCollateralInput ||
+      isLoadingCollateralChange ||
+      (isNonZeroSizeChange && isFetchingQuote);
+
+    let buttonTxt = 'Close Position';
+
+    if (requireApproval) {
+      buttonTxt = `Approve ${collateralAssetTicker} Transfer`;
+    }
+
+    if (isFetchingQuote && !formError) return null;
+    if (fetchingSizeFromCollateralInput) return null;
+
+    return (
+      <div className="mb-4">
+        <Button
+          onClick={() => setValue('isClosePosition', true)}
+          className="w-full"
+          variant="default"
+          type="submit"
+          disabled={!!formError || isLoading}
           size="lg"
         >
           {isLoading && !formError ? (
@@ -782,6 +830,7 @@ export default function AddEditTrade() {
                     Ggas
                   </>
                 )}
+                {renderCloseButton()}
               </p>
             </div>
           )}
