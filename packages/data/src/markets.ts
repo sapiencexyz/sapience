@@ -1,5 +1,6 @@
 import { mainnet, sepolia, cannon } from 'viem/chains';
 import evmIndexer from './resourcePriceFunctions/evmIndexer';
+import celestiaIndexer from './resourcePriceFunctions/tiaIndexer';
 import { Deployment, MarketInfo } from './interfaces';
 
 const safeRequire = async (path: string): Promise<Deployment | null> => {
@@ -19,9 +20,10 @@ const initializeMarkets = async () => {
         '@/protocol/deployments/13370/FoilYin.json'
       ),
       marketChainId: cannon.id,
-      priceIndexer: new evmIndexer(mainnet.id),
+      priceIndexer: new celestiaIndexer('https://api-mainnet.celenium.io'),//new evmIndexer(mainnet.id),
       public: true,
-    },
+    }//,
+    /*
     {
       name: 'Ethereum Gas',
       deployment: await safeRequire(
@@ -31,6 +33,7 @@ const initializeMarkets = async () => {
       priceIndexer: new evmIndexer(mainnet.id),
       public: true,
     },
+    */
   ];
 
   return FULL_MARKET_LIST.filter(

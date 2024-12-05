@@ -272,3 +272,5 @@ export function sqrtPriceX96ToSettlementPriceD18(
   // Convert to D18 by multiplying by 10^18
   return price * BigInt(10 ** 18);
 }
+
+export const CELENIUM_API_KEY = process.env.CELENIUM_API_KEY;

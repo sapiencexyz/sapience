@@ -3,8 +3,9 @@ import { ResourcePrice } from "../models/ResourcePrice";
 import { type Market } from "../models/Market";
 import { getBlockByTimestamp, getProviderForChain } from "../helpers";
 import { Block, type PublicClient } from "viem";
+import { IResourcePriceIndexer } from "./ResourcePriceIndexerInterface";
 
-class EvmIndexer {
+class EvmIndexer implements IResourcePriceIndexer {
   public client: PublicClient;
 
   constructor(chainId: number) {
