@@ -377,6 +377,7 @@ export default function AddEditTrade() {
       option: 'Long',
       slippage: '0.5',
       fetchingSizeFromCollateralInput: false,
+      isClosePosition: false,
     },
     mode: 'onChange',
     reValidateMode: 'onChange',
@@ -434,14 +435,21 @@ export default function AddEditTrade() {
       setTxnStep(1);
     } else if (isEdit) {
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
+      // Handle close button case
+      const callSizeInContractUnit = values.isClosePosition
+        ? BigInt(0)
+        : desiredSizeInContractUnit;
+      const callCollateralDeltaLimit = values.isClosePosition
+        ? BigInt(0)
+        : collateralDeltaLimit;
       writeContract({
         abi: foilData.abi,
         address: marketAddress as `0x${string}`,
         functionName: 'modifyTraderPosition',
         args: [
           nftId,
-          desiredSizeInContractUnit,
-          collateralDeltaLimit,
+          callSizeInContractUnit,
+          callCollateralDeltaLimit,
           deadline,
         ],
       });
@@ -470,6 +478,7 @@ export default function AddEditTrade() {
       option: 'Long',
       slippage: '0.5',
       fetchingSizeFromCollateralInput: false,
+      isClosePosition: false,
     });
     setSizeChange(BigInt(0));
     setPendingTxn(false);
@@ -592,6 +601,40 @@ export default function AddEditTrade() {
           ) : null}
           {buttonTxt}
         </Button>
+        {renderPriceImpactWarning()}
+      </div>
+    );
+  };
+
+  const renderCloseButton = () => {
+    if (!isEdit || !isConnected || currentChainId !== chainId) return null;
+
+    const isFetchingQuote = quoteModifyPositionResult.isFetching;
+    const isLoading =
+      pendingTxn ||
+      fetchingSizeFromCollateralInput ||
+      isLoadingCollateralChange ||
+      (isNonZeroSizeChange && isFetchingQuote);
+
+    let buttonTxt = 'Close Position';
+
+    if (requireApproval) {
+      buttonTxt = `Approve ${collateralAssetTicker} Transfer`;
+    }
+
+    if (isFetchingQuote && !formError) return null;
+    if (fetchingSizeFromCollateralInput) return null;
+
+    return (
+      <div className="mb-4 text-center -mt-2">
+        <button
+          onClick={() => setValue('isClosePosition', true)}
+          className="text-sm underline hover:opacity-80 disabled:opacity-50"
+          type="submit"
+          disabled={!!formError || isLoading}
+        >
+          {buttonTxt}
+        </button>
         {renderPriceImpactWarning()}
       </div>
     );
@@ -755,6 +798,7 @@ export default function AddEditTrade() {
 
         <SlippageTolerance />
         {renderActionButton()}
+        {renderCloseButton()}
 
         <div className="flex flex-col gap-2">
           <PositionSelector isLP={false} />
