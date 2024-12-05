@@ -626,20 +626,15 @@ export default function AddEditTrade() {
     if (fetchingSizeFromCollateralInput) return null;
 
     return (
-      <div className="mb-4">
-        <Button
+      <div className="mb-4 text-center -mt-2">
+        <button
           onClick={() => setValue('isClosePosition', true)}
-          className="w-full"
-          variant="default"
+          className="text-sm underline hover:opacity-80 disabled:opacity-50"
           type="submit"
           disabled={!!formError || isLoading}
-          size="lg"
         >
-          {isLoading && !formError ? (
-            <Loader2 className="h-6 w-6 animate-spin" />
-          ) : null}
           {buttonTxt}
-        </Button>
+        </button>
         {renderPriceImpactWarning()}
       </div>
     );
@@ -803,6 +798,7 @@ export default function AddEditTrade() {
 
         <SlippageTolerance />
         {renderActionButton()}
+        {renderCloseButton()}
 
         <div className="flex flex-col gap-2">
           <PositionSelector isLP={false} />
@@ -830,7 +826,6 @@ export default function AddEditTrade() {
                     Ggas
                   </>
                 )}
-                {renderCloseButton()}
               </p>
             </div>
           )}
