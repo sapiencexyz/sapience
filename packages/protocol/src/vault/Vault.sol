@@ -79,7 +79,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     /**
      *  minimum collateral required to create liquidity position and to request deposit
      */
-    uint256 constant minimumCollateral = 1e3;
+    uint256 constant minimumCollateral = 1e8;
 
     /**
      * store tick spacing for the pool on initialization
@@ -340,7 +340,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             .slot0();
 
         // get quote for collateral amount - some dust to account for rounding
-        uint256 dust = 1e3;
+        uint256 dust = 1e8;
         // Calculate token amounts for the liquidity position
         (uint256 amount0, uint256 amount1, ) = market
             .quoteLiquidityPositionTokens(
