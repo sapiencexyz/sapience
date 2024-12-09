@@ -5,6 +5,7 @@ import "../storage/Position.sol";
 import "../storage/ERC721Storage.sol";
 import "../storage/Trade.sol";
 import "../libraries/DecimalMath.sol";
+import {IFoilPositionEvents} from "../interfaces/IFoilPositionEvents.sol";
 
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {SafeCastI256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
@@ -93,7 +94,9 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         }
 
         // Transfer the locked collateral to the market
-        position.updateCollateral(outputParams.requiredCollateral);
+        int256 deltaCollateral = position.updateCollateral(
+            outputParams.requiredCollateral
+        );
 
         // Validate after trading that collateral is enough
         position.afterTradeCheck();
@@ -102,7 +105,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
         epoch.validateCurrentPoolPriceInRange();
 
-        emit TraderPositionCreated(
+        emit IFoilPositionEvents.TraderPositionCreated(
             msg.sender,
             epochId,
             positionId,
@@ -115,6 +118,25 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             finalPrice,
             outputParams.tradeRatioD18
         );
+
+        // emit the event
+        _emitPositionUpdated(
+            IFoilPositionEvents.PositionUpdatedEventData({
+                sender: msg.sender,
+                position: position,
+                transactionType: IFoilPositionEvents
+                    .TransactionType
+                    .CreateTradePosition,
+                deltaCollateral: deltaCollateral
+            })
+        );
+    }
+
+    struct ModifyTraderPositionRuntime {
+        int256 deltaSize;
+        int256 deltaCollateral;
+        uint256 initialPrice;
+        uint256 finalPrice;
     }
 
     /**
@@ -126,6 +148,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         int256 deltaCollateralLimit,
         uint256 deadline
     ) external nonReentrant {
+        ModifyTraderPositionRuntime memory runtime;
         if (block.timestamp > deadline) {
             revert Errors.TransactionExpired(deadline, block.timestamp);
         }
@@ -140,8 +163,8 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             revert Errors.InvalidPositionKind();
         }
 
-        int256 deltaSize = size - position.positionSize();
-        if (deltaSize == 0) {
+        runtime.deltaSize = size - position.positionSize();
+        if (runtime.deltaSize == 0) {
             revert Errors.DeltaTradeIsZero();
         }
 
@@ -152,13 +175,13 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         // check if epoch is not settled
         epoch.validateNotSettled();
 
-        uint256 initialPrice = epoch.getReferencePrice();
+        runtime.initialPrice = epoch.getReferencePrice();
 
         QuoteOrTradeInputParams memory inputParams = QuoteOrTradeInputParams({
             oldPosition: position,
             initialSize: position.positionSize(),
             targetSize: size,
-            deltaSize: deltaSize,
+            deltaSize: runtime.deltaSize,
             isQuote: false
         });
 
@@ -212,34 +235,64 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
             // 4. Transfer the released collateral to the trader (pnl)
             // Notice: under normal operations, the required collateral should be zero, but if somehow there is a "bad debt" it needs to be repaid.
-            int256 deltaCollateral = position.updateCollateral(
+            runtime.deltaCollateral = position.updateCollateral(
                 outputParams.requiredCollateral
             );
 
             // Check if the collateral is within the limit
-            _checkDeltaCollateralLimit(deltaCollateral, deltaCollateralLimit);
+            _checkDeltaCollateralLimit(
+                runtime.deltaCollateral,
+                deltaCollateralLimit
+            );
 
             // Now the position should be closed. All the vToken and collateral values set to zero
+
+            // emit the event
+            _emitPositionUpdated(
+                IFoilPositionEvents.PositionUpdatedEventData({
+                    sender: msg.sender,
+                    position: position,
+                    transactionType: IFoilPositionEvents
+                        .TransactionType
+                        .CloseTradePosition,
+                    deltaCollateral: runtime.deltaCollateral
+                })
+            );
         } else {
             // Not closing, proced as a normal trade
 
             // Transfer the locked collateral to the market or viceversa
-            int256 deltaCollateral = position.updateCollateral(
+            runtime.deltaCollateral = position.updateCollateral(
                 outputParams.requiredCollateral
             );
 
             // Check if the collateral is within the limit
-            _checkDeltaCollateralLimit(deltaCollateral, deltaCollateralLimit);
+            _checkDeltaCollateralLimit(
+                runtime.deltaCollateral,
+                deltaCollateralLimit
+            );
 
             // Validate after trading that collateral is enough
             position.afterTradeCheck();
+
+            // emit the event
+            _emitPositionUpdated(
+                IFoilPositionEvents.PositionUpdatedEventData({
+                    sender: msg.sender,
+                    position: position,
+                    transactionType: IFoilPositionEvents
+                        .TransactionType
+                        .ModifyTradePosition,
+                    deltaCollateral: runtime.deltaCollateral
+                })
+            );
         }
 
-        uint256 finalPrice = epoch.getReferencePrice();
+        runtime.finalPrice = epoch.getReferencePrice();
 
         epoch.validateCurrentPoolPriceInRange();
 
-        emit TraderPositionModified(
+        emit IFoilPositionEvents.TraderPositionModified(
             msg.sender,
             position.epochId,
             positionId,
@@ -248,8 +301,8 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             position.vGasAmount,
             position.borrowedVEth,
             position.borrowedVGas,
-            initialPrice,
-            finalPrice,
+            runtime.initialPrice,
+            runtime.finalPrice,
             outputParams.tradeRatioD18
         );
     }
@@ -531,5 +584,22 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         output.expectedDeltaCollateral =
             output.requiredCollateral.toInt() -
             output.position.depositedCollateralAmount.toInt();
+    }
+
+    function _emitPositionUpdated(
+        IFoilPositionEvents.PositionUpdatedEventData memory eventData
+    ) private {
+        emit IFoilPositionEvents.PositionUpdated(
+            eventData.sender,
+            eventData.position.epochId,
+            eventData.position.id,
+            eventData.transactionType,
+            eventData.deltaCollateral,
+            eventData.position.depositedCollateralAmount,
+            eventData.position.vEthAmount,
+            eventData.position.vGasAmount,
+            eventData.position.borrowedVEth,
+            eventData.position.borrowedVGas
+        );
     }
 }

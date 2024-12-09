@@ -11,6 +11,7 @@ import {ILiquidityModule} from "../../src/market/interfaces/ILiquidityModule.sol
 import {Position} from "../../src/market/storage/Position.sol";
 import {Errors} from "../../src/market/storage/Errors.sol";
 import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
+import {IFoilPositionEvents} from "../../src/market/interfaces/IFoilPositionEvents.sol";
 
 contract DepositCollateralTest is TestTrade {
     using Cannon for Vm;
@@ -153,7 +154,7 @@ contract DepositCollateralTest is TestTrade {
 
         vm.startPrank(feeCollector);
         vm.expectEmit(true, true, true, true);
-        emit ILiquidityModule.CollateralDeposited(
+        emit IFoilPositionEvents.CollateralDeposited(
             feeCollector,
             epochId,
             feeCollectorPositionId,

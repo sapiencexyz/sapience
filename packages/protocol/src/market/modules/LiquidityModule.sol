@@ -4,6 +4,7 @@ pragma solidity >=0.8.25 <0.9.0;
 import "../storage/ERC721EnumerableStorage.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "../storage/Position.sol";
+import {IFoilPositionEvents} from "../interfaces/IFoilPositionEvents.sol";
 import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
 import {ILiquidityModule} from "../interfaces/ILiquidityModule.sol";
 import {Pool} from "../libraries/Pool.sol";
@@ -96,10 +97,12 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             })
         );
 
-        position.updateCollateral(totalDepositedCollateralAmount);
+        int256 deltaCollateral = position.updateCollateral(
+            totalDepositedCollateralAmount
+        );
 
         _emitLiquidityPositionCreated(
-            ILiquidityModule.LiquidityPositionCreatedEventData({
+            IFoilPositionEvents.LiquidityPositionCreatedEventData({
                 sender: msg.sender,
                 epochId: epoch.id,
                 positionId: id,
@@ -109,6 +112,18 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 addedAmount1: addedAmount1,
                 lowerTick: params.lowerTick,
                 upperTick: params.upperTick
+            })
+        );
+
+        // emit the event
+        _emitPositionUpdated(
+            IFoilPositionEvents.PositionUpdatedEventData({
+                sender: msg.sender,
+                position: position,
+                transactionType: IFoilPositionEvents
+                    .TransactionType
+                    .CreateLiquidityPosition,
+                deltaCollateral: deltaCollateral
             })
         );
     }
@@ -208,14 +223,17 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         // return collateral that isn't required when decreasing position
         // this is checked in updateValidLp but ignored when feeCollector
         // so we add the check here and return any excess collateral
+        int256 deltaCollateral;
         if (stack.newCollateralAmount > stack.requiredCollateralAmount) {
-            position.updateCollateral(stack.requiredCollateralAmount);
+            deltaCollateral = position.updateCollateral(
+                stack.requiredCollateralAmount
+            );
             collateralAmount = stack.requiredCollateralAmount;
         } else {
             collateralAmount = stack.newCollateralAmount;
         }
 
-        emit LiquidityPositionDecreased(
+        emit IFoilPositionEvents.LiquidityPositionDecreased(
             msg.sender,
             epoch.id,
             position.id,
@@ -225,6 +243,18 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             decreasedAmount1,
             stack.loanAmount0,
             stack.loanAmount1
+        );
+
+        // emit the event
+        _emitPositionUpdated(
+            IFoilPositionEvents.PositionUpdatedEventData({
+                sender: msg.sender,
+                position: position,
+                transactionType: IFoilPositionEvents
+                    .TransactionType
+                    .DecreaseLiquidityPosition,
+                deltaCollateral: deltaCollateral
+            })
         );
     }
 
@@ -318,9 +348,11 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             })
         );
 
-        position.updateCollateral(totalDepositedCollateralAmount);
+        int256 deltaCollateral = position.updateCollateral(
+            totalDepositedCollateralAmount
+        );
 
-        emit LiquidityPositionIncreased(
+        emit IFoilPositionEvents.LiquidityPositionIncreased(
             msg.sender,
             epoch.id,
             position.id,
@@ -330,6 +362,18 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             amount1,
             stack.loanAmount0,
             stack.loanAmount1
+        );
+
+        // emit the event
+        _emitPositionUpdated(
+            IFoilPositionEvents.PositionUpdatedEventData({
+                sender: msg.sender,
+                position: position,
+                transactionType: IFoilPositionEvents
+                    .TransactionType
+                    .IncreaseLiquidityPosition,
+                deltaCollateral: deltaCollateral
+            })
         );
     }
 
@@ -482,16 +526,28 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         Position.Data storage position = Position.loadValid(positionId);
         position.validateLp();
         // add to the collateral instead of updating
-        position.updateCollateral(
+        int256 deltaCollateral = position.updateCollateral(
             position.depositedCollateralAmount + collateralAmount
         );
 
-        emit CollateralDeposited(
+        emit IFoilPositionEvents.CollateralDeposited(
             msg.sender,
             position.epochId,
             position.id,
             position.depositedCollateralAmount,
             collateralAmount
+        );
+
+        // emit the event
+        _emitPositionUpdated(
+            IFoilPositionEvents.PositionUpdatedEventData({
+                sender: msg.sender,
+                position: position,
+                transactionType: IFoilPositionEvents
+                    .TransactionType
+                    .DepositCollateral,
+                deltaCollateral: deltaCollateral
+            })
         );
     }
 
@@ -583,15 +639,40 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 ERC721Storage._ownerOf(position.id),
                 position.depositedCollateralAmount
             );
+            int256 deltaCollateral = -int256(
+                position.depositedCollateralAmount
+            );
             position.depositedCollateralAmount = 0;
             position.kind = IFoilStructs.PositionKind.Unknown;
+            // emit the event
+            _emitPositionUpdated(
+                IFoilPositionEvents.PositionUpdatedEventData({
+                    sender: msg.sender,
+                    position: position,
+                    transactionType: IFoilPositionEvents
+                        .TransactionType
+                        .CloseLiquidityPosition,
+                    deltaCollateral: deltaCollateral
+                })
+            );
         } else {
             position.kind = IFoilStructs.PositionKind.Trade;
+            // emit the event
+            _emitPositionUpdated(
+                IFoilPositionEvents.PositionUpdatedEventData({
+                    sender: msg.sender,
+                    position: position,
+                    transactionType: IFoilPositionEvents
+                        .TransactionType
+                        .TransitionLiquidityToTrade,
+                    deltaCollateral: 0
+                })
+            );
         }
         collateralAmount = position.depositedCollateralAmount;
 
         // Emit an event for the closed position
-        emit LiquidityPositionClosed(
+        emit IFoilPositionEvents.LiquidityPositionClosed(
             msg.sender,
             epoch.id,
             position.id,
@@ -604,9 +685,9 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
     }
 
     function _emitLiquidityPositionCreated(
-        ILiquidityModule.LiquidityPositionCreatedEventData memory eventData
+        IFoilPositionEvents.LiquidityPositionCreatedEventData memory eventData
     ) private {
-        emit LiquidityPositionCreated(
+        emit IFoilPositionEvents.LiquidityPositionCreated(
             eventData.sender,
             eventData.epochId,
             eventData.positionId,
@@ -616,6 +697,23 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             eventData.addedAmount1,
             eventData.lowerTick,
             eventData.upperTick
+        );
+    }
+
+    function _emitPositionUpdated(
+        IFoilPositionEvents.PositionUpdatedEventData memory eventData
+    ) private {
+        emit IFoilPositionEvents.PositionUpdated(
+            eventData.sender,
+            eventData.position.epochId,
+            eventData.position.id,
+            eventData.transactionType,
+            eventData.deltaCollateral,
+            eventData.position.depositedCollateralAmount,
+            eventData.position.vEthAmount,
+            eventData.position.vGasAmount,
+            eventData.position.borrowedVEth,
+            eventData.position.borrowedVGas
         );
     }
 }
