@@ -40,7 +40,7 @@ class TiaIndexer implements IResourcePriceIndexer {
   private async getBlockFromCelenium(blockNumber: number) {
 
     const response = await fetch(
-      `${this.celeniumEndpoint}/v1/block/${blockNumber}?stats=true`,
+      `https://${this.celeniumEndpoint}/v1/block/${blockNumber}?stats=true`,
       { headers }
     );
     if (!response.ok) {
@@ -79,7 +79,7 @@ class TiaIndexer implements IResourcePriceIndexer {
 
   private async getLatestBlockNumber(): Promise<number> {
     const response = await fetch(
-      `${this.celeniumEndpoint}/v1/block/count`,
+      `https://${this.celeniumEndpoint}/v1/block/count`,
       { headers }
     );
     if (!response.ok) {
@@ -153,7 +153,7 @@ class TiaIndexer implements IResourcePriceIndexer {
   }
 
   private setupWebSocket() {
-    const wsUrl = new URL(`${this.celeniumEndpoint}/v1/ws`);
+    const wsUrl = new URL(`wss://${this.celeniumEndpoint}/v1/ws`);
     
     const options = {
         headers: {

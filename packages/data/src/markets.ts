@@ -20,7 +20,7 @@ const initializeMarkets = async () => {
         '@/protocol/deployments/13370/FoilYin.json'
       ),
       marketChainId: cannon.id,
-      priceIndexer: new celestiaIndexer('https://api-mainnet.celenium.io'),//new evmIndexer(mainnet.id),
+      priceIndexer: new celestiaIndexer('api-mainnet.celenium.io'),//new evmIndexer(mainnet.id),
       public: true,
     }//,
     /*
