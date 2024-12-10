@@ -297,6 +297,8 @@ contract VaultRedeemTest is TestVault {
 
         settleCurrentEpoch();
 
+        vault.redeem(lp1);
+
         // shares burned
         assertEq(
             vault.balanceOf(address(vault)),
