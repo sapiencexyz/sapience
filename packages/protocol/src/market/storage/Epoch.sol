@@ -209,9 +209,17 @@ library Epoch {
         string memory symbol
     ) private returns (VirtualToken token) {
         uint256 currentSalt = initialSalt;
+        uint256 currentBlockNumber = block.number;
         while (true) {
+            bytes32 salt = keccak256(
+                abi.encodePacked(
+                    currentSalt,
+                    currentBlockNumber,
+                    block.coinbase
+                )
+            );
             try
-                new VirtualToken{salt: bytes32(currentSalt)}(
+                new VirtualToken{salt: bytes32(salt)}(
                     address(this),
                     name,
                     symbol
@@ -220,6 +228,7 @@ library Epoch {
                 return _token;
             } catch {
                 currentSalt++;
+                currentBlockNumber++;
             }
         }
     }
