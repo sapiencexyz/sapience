@@ -32,13 +32,13 @@ import {
   updateTransactionFromLiquidityClosedEvent,
   updateTransactionFromLiquidityModifiedEvent,
   updateTransactionFromTradeModifiedEvent,
-  upsertMarketPrice,
+  insertMarketPrice,
   updateTransactionFromPositionSettledEvent,
   getMarketStartEndBlock,
 } from "./marketHelpers";
 import { Client, TextChannel, EmbedBuilder } from "discord.js";
 import { MARKET_INFO } from "../markets";
-import * as Chains from 'viem/chains';
+import * as Chains from "viem/chains";
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const DISCORD_PRIVATE_CHANNEL_ID = process.env.DISCORD_PRIVATE_CHANNEL_ID;
@@ -46,8 +46,8 @@ const DISCORD_PUBLIC_CHANNEL_ID = process.env.DISCORD_PUBLIC_CHANNEL_ID;
 const discordClient = new Client({ intents: [] });
 
 if (DISCORD_TOKEN) {
-  discordClient.login(DISCORD_TOKEN).catch(error => {
-    console.error('Failed to login to Discord:', error);
+  discordClient.login(DISCORD_TOKEN).catch((error) => {
+    console.error("Failed to login to Discord:", error);
   });
 }
 
@@ -155,7 +155,11 @@ export const indexMarketEvents = async (market: Market, abi: Abi) => {
 };
 
 // Iterates over all blocks from the market's deploy block to the current block and calls upsertEvent for each one.
-export const reindexMarketEvents = async (market: Market, abi: Abi, epochId: number) => {
+export const reindexMarketEvents = async (
+  market: Market,
+  abi: Abi,
+  epochId: number
+) => {
   await initializeDataSource();
   const client = getProviderForChain(market.chainId);
   const chainId = await client.getChainId();
@@ -246,64 +250,80 @@ const alertEvent = async (
       return;
     }
 
-    if(DISCORD_PUBLIC_CHANNEL_ID && logData.eventName !== EventType.Transfer) {
+    if (DISCORD_PUBLIC_CHANNEL_ID && logData.eventName !== EventType.Transfer) {
       const publicChannel = (await discordClient.channels.fetch(
         DISCORD_PUBLIC_CHANNEL_ID
       )) as TextChannel;
 
-      let title = '';
+      let title = "";
 
       // Format based on event type
-      switch(logData.eventName) {
+      switch (logData.eventName) {
         case EventType.TraderPositionCreated:
         case EventType.TraderPositionModified:
-          const tradeDirection = BigInt(logData.args.finalPrice) > BigInt(logData.args.initialPrice) ? 'Long' : 'Short';
-          const rawGasAmount = Number(logData.args.vGasAmount || logData.args.borrowedVGas) / 1e18;
+          const tradeDirection =
+            BigInt(logData.args.finalPrice) > BigInt(logData.args.initialPrice)
+              ? "Long"
+              : "Short";
+          const rawGasAmount =
+            Number(logData.args.vGasAmount || logData.args.borrowedVGas) / 1e18;
           const rawPriceGwei = Number(logData.args.tradeRatio) / 1e18;
-          
+
           // Format with commas and only show decimals if significant
-          const gasAmount = rawGasAmount.toLocaleString('en-US', {
+          const gasAmount = rawGasAmount.toLocaleString("en-US", {
             minimumFractionDigits: 0,
-            maximumFractionDigits: 6
+            maximumFractionDigits: 6,
           });
-          const priceGwei = rawPriceGwei.toLocaleString('en-US', {
+          const priceGwei = rawPriceGwei.toLocaleString("en-US", {
             minimumFractionDigits: 0,
-            maximumFractionDigits: 2
+            maximumFractionDigits: 2,
           });
-          
-          title = `${tradeDirection === 'Long' ? '<:pepegas:1313887905508364288>' : '<:peepoangry:1313887206687117313>'} **Trade Executed:** ${tradeDirection} ${gasAmount} Ggas @ ${priceGwei} wstGwei`;
+
+          title = `${tradeDirection === "Long" ? "<:pepegas:1313887905508364288>" : "<:peepoangry:1313887206687117313>"} **Trade Executed:** ${tradeDirection} ${gasAmount} Ggas @ ${priceGwei} wstGwei`;
           break;
 
         case EventType.LiquidityPositionCreated:
         case EventType.LiquidityPositionIncreased:
         case EventType.LiquidityPositionDecreased:
         case EventType.LiquidityPositionClosed:
-          const action = logData.eventName === EventType.LiquidityPositionDecreased || logData.eventName === EventType.LiquidityPositionClosed ? 'Removed' : 'Added';
-          const rawLiquidityGas = Number(logData.args.addedAmount0 ||logData.args.increasedAmount0 || logData.args.amount0) / 1e18;
-          
+          const action =
+            logData.eventName === EventType.LiquidityPositionDecreased ||
+            logData.eventName === EventType.LiquidityPositionClosed
+              ? "Removed"
+              : "Added";
+          const rawLiquidityGas =
+            Number(
+              logData.args.addedAmount0 ||
+                logData.args.increasedAmount0 ||
+                logData.args.amount0
+            ) / 1e18;
+
           // Format with commas and only show decimals if significant
-          const liquidityGas = rawLiquidityGas.toLocaleString('en-US', {
+          const liquidityGas = rawLiquidityGas.toLocaleString("en-US", {
             minimumFractionDigits: 0,
-            maximumFractionDigits: 6
+            maximumFractionDigits: 6,
           });
 
-          let priceRangeText = '';
-          if (logData.args.lowerTick !== undefined && logData.args.upperTick !== undefined) {
+          let priceRangeText = "";
+          if (
+            logData.args.lowerTick !== undefined &&
+            logData.args.upperTick !== undefined
+          ) {
             const rawLowerPrice = 1.0001 ** logData.args.lowerTick;
             const rawUpperPrice = 1.0001 ** logData.args.upperTick;
-            
-            const lowerPrice = rawLowerPrice.toLocaleString('en-US', {
+
+            const lowerPrice = rawLowerPrice.toLocaleString("en-US", {
               minimumFractionDigits: 0,
-              maximumFractionDigits: 2
+              maximumFractionDigits: 2,
             });
-            const upperPrice = rawUpperPrice.toLocaleString('en-US', {
+            const upperPrice = rawUpperPrice.toLocaleString("en-US", {
               minimumFractionDigits: 0,
-              maximumFractionDigits: 2
+              maximumFractionDigits: 2,
             });
-            
+
             priceRangeText = ` from ${lowerPrice} - ${upperPrice} wstGwei`;
           }
-          
+
           title = `<:pepeliquid:1313887190056439859> **Liquidity Modified:** ${action} ${liquidityGas} Ggas${priceRangeText}`;
           break;
         default:
@@ -319,22 +339,35 @@ const alertEvent = async (
       };
 
       // Get market name from MARKET_INFO
-      const marketName = MARKET_INFO.find(m => m.deployment.address === address)?.name || "Foil Market";
+      const marketName =
+        MARKET_INFO.find((m) => m.deployment.address === address)?.name ||
+        "Foil Market";
 
       const embed = new EmbedBuilder()
         .setColor("#2b2b2e")
         .addFields(
-          { name: "Market", value: `${marketName} (Epoch ${epochId.toString()})`, inline: true },
-          { name: "Position", value: logData.args.positionId.toString(), inline: true },
+          {
+            name: "Market",
+            value: `${marketName} (Epoch ${epochId.toString()})`,
+            inline: true,
+          },
+          {
+            name: "Position",
+            value: logData.args.positionId.toString(),
+            inline: true,
+          },
           { name: "Account", value: logData.args.sender },
-          { name: "Transaction", value: getBlockExplorerUrl(chainId, logData.transactionHash) }
+          {
+            name: "Transaction",
+            value: getBlockExplorerUrl(chainId, logData.transactionHash),
+          }
         )
         .setTimestamp();
 
       await publicChannel.send({ content: title, embeds: [embed] });
     }
 
-    if(DISCORD_PRIVATE_CHANNEL_ID){
+    if (DISCORD_PRIVATE_CHANNEL_ID) {
       const privateChannel = (await discordClient.channels.fetch(
         DISCORD_PRIVATE_CHANNEL_ID
       )) as TextChannel;
@@ -488,13 +521,23 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       }
       skipTransaction = true;
       break;
+    case EventType.Transfer:
+      console.log("Handling Transfer event: ", event);
+      await handleTransferEvent(event);
+      skipTransaction = true;
+      break;
+    case EventType.PositionUpdated:
+      console.log("Handling Position Updated event: ", event);
+      await handlePositionUpdatedEvent(event);
+      // skipTransaction = true;
+      break;
+
     case EventType.LiquidityPositionCreated:
       console.log("Creating liquidity position from event: ", event);
       updateTransactionFromAddLiquidityEvent(newTransaction, event);
       break;
     case EventType.LiquidityPositionClosed:
       console.log("Closing liquidity position from event: ", event);
-      newTransaction.type = TransactionType.REMOVE_LIQUIDITY;
       await updateTransactionFromLiquidityClosedEvent(
         newTransaction,
         event,
@@ -545,11 +588,6 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
         ),
       ]);
       break;
-    case EventType.Transfer:
-      console.log("Handling Transfer event: ", event);
-      await handleTransferEvent(event);
-      skipTransaction = true;
-      break;
     default:
       skipTransaction = true;
       break;
@@ -559,6 +597,6 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
     console.log("Saving new transaction: ", newTransaction);
     await transactionRepository.save(newTransaction);
     await createOrModifyPosition(newTransaction);
-    await upsertMarketPrice(newTransaction);
+    await insertMarketPrice(newTransaction);
   }
 };

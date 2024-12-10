@@ -7,10 +7,10 @@ import {
 } from "./controllers/market";
 import { MARKET_INFO } from "./markets";
 import { createOrUpdateEpochFromContract } from "./controllers/marketHelpers";
-import {
-  indexCollateralEvents,
-  reindexCollateralEvents,
-} from "./controllers/collateral";
+// import {
+//   indexCollateralEvents,
+//   reindexCollateralEvents,
+// } from "./controllers/collateral";
 import { getMarketStartEndBlock } from "./controllers/marketHelpers";
 import { Between } from "typeorm";
 
@@ -31,7 +31,7 @@ async function main() {
     await createOrUpdateEpochFromContract(marketInfo, market);
     jobs.push(indexMarketEvents(market, marketInfo.deployment.abi));
     jobs.push(marketInfo.priceIndexer.watchBlocksForMarket(market));
-    jobs.push(indexCollateralEvents(market));
+    // jobs.push(indexCollateralEvents(market));
   }
 
   await Promise.all(jobs);
@@ -42,7 +42,14 @@ export async function reindexMarket(
   address: string,
   epochId: string
 ) {
-  console.log("reindexing market", address, "on chain", chainId, "epoch", epochId);
+  console.log(
+    "reindexing market",
+    address,
+    "on chain",
+    chainId,
+    "epoch",
+    epochId
+  );
 
   await initializeDataSource();
   const marketInfo = MARKET_INFO.find(
@@ -59,7 +66,7 @@ export async function reindexMarket(
 
   await Promise.all([
     reindexMarketEvents(market, marketInfo.deployment.abi, Number(epochId)),
-    reindexCollateralEvents(market, Number(epochId)),
+    // reindexCollateralEvents(market, Number(epochId)),
   ]);
   console.log("finished reindexing market", address, "on chain", chainId);
 }
@@ -68,10 +75,12 @@ export async function reindexMissingBlocks(
   chainId: number,
   address: string,
   epochId: string,
-  model: 'ResourcePrice' | 'Event'
+  model: "ResourcePrice" | "Event"
 ) {
-  console.log(`Starting reindex of missing ${model}s for market ${chainId}:${address}, epoch ${epochId}`);
-  
+  console.log(
+    `Starting reindex of missing ${model}s for market ${chainId}:${address}, epoch ${epochId}`
+  );
+
   await initializeDataSource();
   const marketInfo = MARKET_INFO.find(
     (m) =>
@@ -79,18 +88,21 @@ export async function reindexMissingBlocks(
       m.deployment.address.toLowerCase() === address.toLowerCase()
   );
   if (!marketInfo) {
-    throw new Error(`Market not found for chainId ${chainId} and address ${address}`);
+    throw new Error(
+      `Market not found for chainId ${chainId} and address ${address}`
+    );
   }
   const market = await initializeMarket(marketInfo);
 
-  if (model === 'ResourcePrice') {
+  if (model === "ResourcePrice") {
     // Get block numbers using the price indexer client
-    const { startBlockNumber, endBlockNumber, error } = await getMarketStartEndBlock(
-      market,
-      epochId,
-      marketInfo.priceIndexer.client
-    );
-    
+    const { startBlockNumber, endBlockNumber, error } =
+      await getMarketStartEndBlock(
+        market,
+        epochId,
+        marketInfo.priceIndexer.client
+      );
+
     if (error || !startBlockNumber || !endBlockNumber) {
       return { missingBlockNumbers: null, error };
     }
@@ -110,24 +122,27 @@ export async function reindexMissingBlocks(
 
     // Find missing block numbers within the range
     const missingBlockNumbers = [];
-    for (let blockNumber = startBlockNumber; blockNumber <= endBlockNumber; blockNumber++) {
+    for (
+      let blockNumber = startBlockNumber;
+      blockNumber <= endBlockNumber;
+      blockNumber++
+    ) {
       if (!existingBlockNumbersSet.has(blockNumber)) {
         missingBlockNumbers.push(blockNumber);
       }
     }
 
-    await marketInfo.priceIndexer.indexBlocks(
-      market,
-      missingBlockNumbers
-    );
+    await marketInfo.priceIndexer.indexBlocks(market, missingBlockNumbers);
   } else {
     await Promise.all([
       reindexMarketEvents(market, marketInfo.deployment.abi, Number(epochId)),
-      reindexCollateralEvents(market, Number(epochId)),
+      // reindexCollateralEvents(market, Number(epochId)),
     ]);
   }
 
-  console.log(`Finished reindexing ${model}s for market ${address} on chain ${chainId}`);
+  console.log(
+    `Finished reindexing ${model}s for market ${address} on chain ${chainId}`
+  );
 }
 
 if (process.argv[2] === "reindexMarket") {
@@ -152,9 +167,14 @@ if (process.argv[2] === "reindexMarket") {
     const chainId = parseInt(process.argv[3], 10);
     const address = process.argv[4];
     const epochId = process.argv[5];
-    const model = process.argv[6] as 'ResourcePrice' | 'Event';
+    const model = process.argv[6] as "ResourcePrice" | "Event";
 
-    if (isNaN(chainId) || !address || !epochId || !['ResourcePrice', 'Event'].includes(model)) {
+    if (
+      isNaN(chainId) ||
+      !address ||
+      !epochId ||
+      !["ResourcePrice", "Event"].includes(model)
+    ) {
       console.error(
         "Invalid arguments. Usage: tsx src/worker.ts reindexMissing <chainId> <address> <epochId> <ResourcePrice|Event>"
       );
