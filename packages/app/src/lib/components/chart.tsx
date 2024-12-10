@@ -35,11 +35,17 @@ const CandlestickChart: React.FC<Props> = ({
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
   const resizeObserverRef = useRef<ResizeObserver>();
+  const candlestickSeriesRef = useRef<any>(null);
+  const indexPriceSeriesRef = useRef<any>(null);
   const { pool, stEthPerToken, useMarketUnits } = useContext(MarketContext);
   const { theme } = useTheme();
 
   useEffect(() => {
     if (chartContainerRef.current) {
+      if (chartRef.current) {
+        chartRef.current.remove();
+      }
+
       const chart = createChart(chartContainerRef.current, {
         width: chartContainerRef.current.clientWidth,
         height: 500,
@@ -73,7 +79,7 @@ const CandlestickChart: React.FC<Props> = ({
 
       chartRef.current = chart;
 
-      const candlestickSeries = chart.addCandlestickSeries({
+      candlestickSeriesRef.current = chart.addCandlestickSeries({
         upColor: '#26a69a',
         downColor: '#ef5350',
         borderVisible: false,
@@ -81,7 +87,7 @@ const CandlestickChart: React.FC<Props> = ({
         wickDownColor: '#ef5350',
       });
 
-      const indexPriceSeries = chart.addAreaSeries({
+      indexPriceSeriesRef.current = chart.addAreaSeries({
         lineColor: 'blue',
         topColor: 'rgba(128, 128, 128, 0.4)',
         bottomColor: 'rgba(128, 128, 128, 0.0)',
@@ -132,24 +138,30 @@ const CandlestickChart: React.FC<Props> = ({
       const candleSeriesData = combinedData.map((d) => d.candleData);
       const lineSeriesData = combinedData.map((d) => d.lineData);
 
-      candlestickSeries.setData(candleSeriesData);
-      indexPriceSeries.setData(lineSeriesData);
+      candlestickSeriesRef.current.setData(candleSeriesData);
+      indexPriceSeriesRef.current.setData(lineSeriesData);
 
-      resizeObserverRef.current = new ResizeObserver((entries) => {
+      const handleResize = (entries: ResizeObserverEntry[]) => {
+        if (!chartRef.current) return;
         const { width, height } = entries[0].contentRect;
-        chart.applyOptions({ width, height });
+        chartRef.current.applyOptions({ width, height });
         setTimeout(() => {
-          chart.timeScale().fitContent();
+          chartRef.current?.timeScale().fitContent();
         }, 0);
-      });
+      };
 
+      resizeObserverRef.current = new ResizeObserver(handleResize);
       resizeObserverRef.current.observe(chartContainerRef.current);
 
       return () => {
         if (resizeObserverRef.current && chartContainerRef.current) {
           resizeObserverRef.current.unobserve(chartContainerRef.current);
+          resizeObserverRef.current.disconnect();
         }
-        chart.remove();
+        if (chartRef.current) {
+          chartRef.current.remove();
+          chartRef.current = null;
+        }
       };
     }
   }, [
