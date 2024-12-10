@@ -14,9 +14,54 @@ import {
 import { getMarketStartEndBlock } from "./controllers/marketHelpers";
 import { Between } from "typeorm";
 
+const MAX_RETRIES = Infinity;
+const RETRY_DELAY = 5000; // 5 seconds
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function withRetry<T>(
+  operation: () => Promise<T>,
+  name: string,
+  maxRetries: number = MAX_RETRIES
+): Promise<T> {
+  let lastError: Error | undefined;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error as Error;
+      console.error(`Attempt ${attempt}/${maxRetries} failed for ${name}:`, error);
+      
+      if (attempt < maxRetries) {
+        console.log(`Retrying ${name} in ${RETRY_DELAY/1000} seconds...`);
+        await delay(RETRY_DELAY);
+      }
+    }
+  }
+  
+  throw new Error(`All ${maxRetries} attempts failed for ${name}. Last error: ${lastError?.message}`);
+}
+
+function createResilientProcess<T>(
+  process: () => Promise<T>,
+  name: string
+): () => Promise<T | void> {
+  return async () => {
+    while (true) {
+      try {
+        return await withRetry(process, name);
+      } catch (error) {
+        console.error(`Process ${name} failed after all retries. Restarting...`, error);
+        await delay(RETRY_DELAY);
+      }
+    }
+  };
+}
+
 async function main() {
   await initializeDataSource();
-  let jobs = [];
+  const jobs: Promise<void>[] = [];
   console.log("starting worker");
 
   for (const marketInfo of MARKET_INFO) {
@@ -27,11 +72,29 @@ async function main() {
       "on chain",
       market.chainId
     );
-    // initialize epoch
+    
     await createOrUpdateEpochFromContract(marketInfo, market);
-    jobs.push(indexMarketEvents(market, marketInfo.deployment.abi));
-    jobs.push(marketInfo.priceIndexer.watchBlocksForMarket(market));
-    jobs.push(indexCollateralEvents(market));
+
+    jobs.push(
+      createResilientProcess(
+        () => indexMarketEvents(market, marketInfo.deployment.abi),
+        `indexMarketEvents-${market.address}`
+      )()
+    );
+    
+    jobs.push(
+      createResilientProcess(
+        () => marketInfo.priceIndexer.watchBlocksForMarket(market),
+        `watchBlocksForMarket-${market.address}`
+      )()
+    );
+    
+    jobs.push(
+      createResilientProcess(
+        () => indexCollateralEvents(market),
+        `indexCollateralEvents-${market.address}`
+      )()
+    );
   }
 
   await Promise.all(jobs);
