@@ -340,7 +340,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             .slot0();
 
         // get quote for collateral amount - some dust to account for rounding
-        uint256 dust = 1e8;
+        uint256 dust = 1e4;
         // Calculate token amounts for the liquidity position
         (uint256 amount0, uint256 amount1, ) = market
             .quoteLiquidityPositionTokens(
