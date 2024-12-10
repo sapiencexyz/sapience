@@ -30,7 +30,6 @@ import {
 } from "../interfaces";
 import { MarketPrice } from "../models/MarketPrice";
 import { getBlockByTimestamp, getProviderForChain } from "../helpers";
-import { upsertEntitiesFromEvent } from "./market";
 import { CollateralTransfer } from "src/models/CollateralTransfer";
 
 /**
@@ -91,7 +90,9 @@ export const handlePositionSettledEvent = async (event: Event) => {
  * Creates or modifies a Position in the database based on the given Transaction.
  * @param transaction the Transaction to use for creating/modifying the position
  */
-export const createOrModifyPosition = async (transaction: Transaction) => {
+export const createOrModifyPositionFromTransaction = async (
+  transaction: Transaction
+) => {
   const eventArgs = transaction.event.logData.args;
   const epochId = eventArgs.epochId;
 
@@ -168,23 +169,6 @@ export const insertMarketPrice = async (transaction: Transaction) => {
     console.log("upserting market price: ", newMp);
     await marketPriceRepository.save(newMp);
   }
-};
-
-const isLpPosition = (transaction: Transaction) => {
-  if (transaction.type === TransactionType.ADD_LIQUIDITY) {
-    return true;
-  } else if (transaction.type === TransactionType.REMOVE_LIQUIDITY) {
-    // for remove liquidity, check if the position closed and market price changed, which means it becomes a trade position
-    const eventName = transaction.event.logData.eventName;
-    if (
-      eventName === EventType.LiquidityPositionClosed &&
-      `${transaction.event.logData.args.kind}` === "2"
-    ) {
-      return false;
-    }
-    return true;
-  }
-  return false;
 };
 
 export const createOrUpdateMarketFromContract = async (

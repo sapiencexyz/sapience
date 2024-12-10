@@ -52,7 +52,7 @@ export class Transaction {
   quoteTokenDelta: string; // vETH (signed)
 
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
-  collateralDelta: string; // ETH
+  collateralDelta: string; // wstETH
 
   @Column({
     type: "numeric",
