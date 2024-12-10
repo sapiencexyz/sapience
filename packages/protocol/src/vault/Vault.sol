@@ -528,14 +528,17 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             "Previous deposit request is not in the same epoch"
         );
 
-        pendingTxn.amount -= assets;
-        totalPendingDeposits -= assets;
+        uint256 remainingAssets = pendingTxn.amount - assets;
 
-        collateralAsset.safeTransfer(msg.sender, assets);
-
-        if (pendingTxn.amount <= minimumCollateral) {
+        if (remainingAssets <= minimumCollateral) {
+            assets = pendingTxn.amount;
             resetTransaction(msg.sender);
+        } else {
+            pendingTxn.amount -= assets;
         }
+
+        totalPendingDeposits -= assets;
+        collateralAsset.safeTransfer(msg.sender, assets);
 
         emit DepositRequestWithdrawn(
             msg.sender,
@@ -652,12 +655,16 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             "Previous deposit request is not in the same epoch"
         );
 
-        pendingTxn.amount -= shares;
-        totalPendingWithdrawals -= shares;
+        uint256 remainingShares = pendingTxn.amount - shares;
 
-        if (pendingTxn.amount <= minimumCollateral) {
+        if (remainingShares <= minimumCollateral) {
+            shares = pendingTxn.amount;
             resetTransaction(msg.sender);
+        } else {
+            pendingTxn.amount -= shares;
         }
+
+        totalPendingWithdrawals -= shares;
 
         emit RedeemRequestWithdrawn(
             msg.sender,

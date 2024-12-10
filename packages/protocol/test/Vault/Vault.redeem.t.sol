@@ -146,6 +146,34 @@ contract VaultRedeemTest is TestVault {
         );
     }
 
+    function test_withdrawRequestReturnsEverything_whenLeftoverIsBelowMinimum()
+        public
+    {
+        vm.startPrank(lp1);
+        vault.requestRedeem(1 ether);
+
+        (, uint256 totalPendingWithdrawals, ) = vault.pendingValues();
+        assertEq(
+            totalPendingWithdrawals,
+            1 ether,
+            "Total pending withdrawals should be 1 ether - 1e7"
+        );
+
+        vault.withdrawRequestRedeem(1 ether - 1e7);
+        vm.stopPrank();
+
+        (, uint256 totalPendingWithdrawalsAfter, ) = vault.pendingValues();
+        assertEq(
+            totalPendingWithdrawalsAfter,
+            0,
+            "Total pending withdrawals should be 0"
+        );
+
+        IVault.UserPendingTransaction memory pendingTxn = vault
+            .pendingRedeemRequest(lp2);
+        assertEq(pendingTxn.amount, 0, "Pending redeem amount should be 0");
+    }
+
     function test_requestRedeemMultipleTimesAddsAmount() public {
         vm.startPrank(lp1);
 
