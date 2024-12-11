@@ -238,7 +238,6 @@ if (process.argv[2] === "reindexMarket") {
     const chainId = parseInt(process.argv[3], 10);
     const address = process.argv[4];
     const epochId = process.argv[5];
-    const model = process.argv[6];
 
     if (isNaN(chainId) || !address || !epochId) {
       console.error(
