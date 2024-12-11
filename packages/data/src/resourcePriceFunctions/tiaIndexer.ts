@@ -7,7 +7,7 @@ import { CELENIUM_API_KEY } from '../helpers';
 
 const headers: HeadersInit = {};
 if (CELENIUM_API_KEY) {
-  headers.apikey = CELENIUM_API_KEY;
+  headers.apiKey = CELENIUM_API_KEY;
 }
 
 class TiaIndexer implements IResourcePriceIndexer {
@@ -20,7 +20,7 @@ class TiaIndexer implements IResourcePriceIndexer {
 
   private async storeBlockPrice(block: any, market: Market) {
     const used = block?.stats?.blobs_size;
-    const value = block?.stats?.fee?.toNumber() / used;
+    const value = block?.stats?.fee / used;
     if (!value || !block.height) {
       console.error(
         `No resource price for block ${block?.height} on market ${market.chainId}:${market.address}`
@@ -157,7 +157,7 @@ class TiaIndexer implements IResourcePriceIndexer {
     
     const options = {
         headers: {
-            'apikey': process.env.CELENIUM_API_KEY || ''
+            'apiKey': process.env.CELENIUM_API_KEY || ''
         }
     };
     
