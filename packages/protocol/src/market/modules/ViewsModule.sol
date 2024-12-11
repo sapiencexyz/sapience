@@ -163,4 +163,8 @@ contract ViewsModule is IViewsModule {
 
         return collateralValue;
     }
+
+    function getMarketTickSpacing() external view override returns (int24) {
+        return Epoch.getTickSpacingForFee(Market.load().marketParams.feeRate);
+    }
 }
