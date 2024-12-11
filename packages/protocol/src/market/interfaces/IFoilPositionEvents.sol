@@ -9,36 +9,59 @@ interface IFoilPositionEvents {
         address indexed sender,
         uint256 indexed epochId,
         uint256 indexed positionId,
-        uint256 collateralAmount,
         uint128 liquidity,
         uint256 addedAmount0,
         uint256 addedAmount1,
         int24 lowerTick,
-        int24 upperTick
+        int24 upperTick,
+        // Position State
+        uint256 positionCollateralAmount,
+        uint256 positionVethAmount,
+        uint256 positionVgasAmount,
+        uint256 positionBorrowedVeth,
+        uint256 positionBorrowedVgas,
+        // Delta Collateral
+        int256 deltaCollateral
     );
 
     event LiquidityPositionDecreased(
         address indexed sender,
         uint256 indexed epochId,
         uint256 indexed positionId,
-        uint256 collateralAmount,
+        uint256 requiredCollateralAmount,
         uint128 liquidity,
         uint256 decreasedAmount0,
         uint256 decreasedAmount1,
         uint256 loanAmount0,
-        uint256 loanAmount1
+        uint256 loanAmount1,
+        // Position State
+        uint256 positionCollateralAmount,
+        uint256 positionVethAmount,
+        uint256 positionVgasAmount,
+        uint256 positionBorrowedVeth,
+        uint256 positionBorrowedVgas,
+        // Delta Collateral
+        int256 deltaCollateral
     );
 
     event LiquidityPositionIncreased(
         address indexed sender,
         uint256 indexed epochId,
         uint256 indexed positionId,
-        uint256 collateralAmount,
+        uint256 requiredCollateralAmount,
         uint128 liquidity,
         uint256 increasedAmount0,
         uint256 increasedAmount1,
         uint256 loanAmount0,
-        uint256 loanAmount1
+        uint256 loanAmount1,
+        // Position State
+        uint256 positionCollateralAmount,
+        uint256 positionVethAmount,
+        uint256 positionVgasAmount,
+        uint256 positionBorrowedVeth,
+        uint256 positionBorrowedVgas,
+        // Delta Collateral
+        int256 deltaCollateral
     );
 
     event LiquidityPositionClosed(
@@ -49,27 +72,99 @@ interface IFoilPositionEvents {
         uint256 collectedAmount0,
         uint256 collectedAmount1,
         uint256 loanAmount0,
-        uint256 loanAmount1
+        uint256 loanAmount1,
+        // Position State
+        uint256 positionCollateralAmount,
+        uint256 positionVethAmount,
+        uint256 positionVgasAmount,
+        uint256 positionBorrowedVeth,
+        uint256 positionBorrowedVgas,
+        // Delta Collateral
+        int256 deltaCollateral
     );
 
     event CollateralDeposited(
         address indexed sender,
         uint256 indexed epochId,
         uint256 indexed positionId,
-        uint256 depositedCollateralAmount,
-        uint256 collateralAmountAdded
+        // Position State
+        uint256 positionCollateralAmount,
+        uint256 positionVethAmount,
+        uint256 positionVgasAmount,
+        uint256 positionBorrowedVeth,
+        uint256 positionBorrowedVgas,
+        // Delta Collateral
+        int256 deltaCollateral
     );
 
     struct LiquidityPositionCreatedEventData {
         address sender;
         uint256 epochId;
         uint256 positionId;
-        uint256 depositedCollateralAmount;
         uint128 liquidity;
         uint256 addedAmount0;
         uint256 addedAmount1;
         int24 lowerTick;
         int24 upperTick;
+        uint256 positionCollateralAmount;
+        uint256 positionVethAmount;
+        uint256 positionVgasAmount;
+        uint256 positionBorrowedVeth;
+        uint256 positionBorrowedVgas;
+        int256 deltaCollateral;
+    }
+
+    struct LiquidityPositionDecreasedEventData {
+        address sender;
+        uint256 epochId;
+        uint256 positionId;
+        uint256 requiredCollateralAmount;
+        uint128 liquidity;
+        uint256 decreasedAmount0;
+        uint256 decreasedAmount1;
+        uint256 loanAmount0;
+        uint256 loanAmount1;
+        uint256 positionCollateralAmount;
+        uint256 positionVethAmount;
+        uint256 positionVgasAmount;
+        uint256 positionBorrowedVeth;
+        uint256 positionBorrowedVgas;
+        int256 deltaCollateral;
+    }
+
+    struct LiquidityPositionIncreasedEventData {
+        address sender;
+        uint256 epochId;
+        uint256 positionId;
+        uint256 requiredCollateralAmount;
+        uint128 liquidity;
+        uint256 increasedAmount0;
+        uint256 increasedAmount1;
+        uint256 loanAmount0;
+        uint256 loanAmount1;
+        uint256 positionCollateralAmount;
+        uint256 positionVethAmount;
+        uint256 positionVgasAmount;
+        uint256 positionBorrowedVeth;
+        uint256 positionBorrowedVgas;
+        int256 deltaCollateral;
+    }
+
+    struct LiquidityPositionClosedEventData {
+        address sender;
+        uint256 epochId;
+        uint256 positionId;
+        IFoilStructs.PositionKind positionKind;
+        uint256 collectedAmount0;
+        uint256 collectedAmount1;
+        uint256 loanAmount0;
+        uint256 loanAmount1;
+        uint256 positionCollateralAmount;
+        uint256 positionVethAmount;
+        uint256 positionVgasAmount;
+        uint256 positionBorrowedVeth;
+        uint256 positionBorrowedVgas;
+        int256 deltaCollateral;
     }
 
     // Trade Position Events
@@ -77,62 +172,68 @@ interface IFoilPositionEvents {
         address indexed sender,
         uint256 indexed epochId,
         uint256 indexed positionId,
-        uint256 collateralAmount,
-        uint256 vEthAmount,
-        uint256 vGasAmount,
-        uint256 borrowedVEth,
-        uint256 borrowedVGas,
+        uint256 requiredCollateral,
         uint256 initialPrice,
         uint256 finalPrice,
-        uint256 tradeRatio
+        uint256 tradeRatio,
+        // Position State
+        uint256 positionCollateralAmount,
+        uint256 positionVethAmount,
+        uint256 positionVgasAmount,
+        uint256 positionBorrowedVeth,
+        uint256 positionBorrowedVgas,
+        // Delta Collateral
+        int256 deltaCollateral
     );
 
     event TraderPositionModified(
         address indexed sender,
         uint256 indexed epochId,
         uint256 indexed positionId,
-        uint256 collateralAmount,
-        uint256 vEthAmount,
-        uint256 vGasAmount,
-        uint256 borrowedVEth,
-        uint256 borrowedVGas,
+        uint256 requiredCollateral,
         uint256 initialPrice,
         uint256 finalPrice,
-        uint256 tradeRatio
+        uint256 tradeRatio,
+        // Position State
+        uint256 positionCollateralAmount,
+        uint256 positionVethAmount,
+        uint256 positionVgasAmount,
+        uint256 positionBorrowedVeth,
+        uint256 positionBorrowedVgas,
+        // Delta Collateral
+        int256 deltaCollateral
     );
 
-    // Generic Position Updated Events
-    enum TransactionType {
-        Undefined,
-        CreateLiquidityPosition,
-        IncreaseLiquidityPosition,
-        DecreaseLiquidityPosition,
-        CloseLiquidityPosition,
-        TransitionLiquidityToTrade,
-        DepositCollateral,
-        CreateTradePosition,
-        ModifyTradePosition,
-        CloseTradePosition
+    struct TraderPositionModifiedEventData {
+        address sender;
+        uint256 epochId;
+        uint256 positionId;
+        uint256 requiredCollateral;
+        uint256 initialPrice;
+        uint256 finalPrice;
+        uint256 tradeRatio;
+        uint256 positionCollateralAmount;
+        uint256 positionVethAmount;
+        uint256 positionVgasAmount;
+        uint256 positionBorrowedVeth;
+        uint256 positionBorrowedVgas;
+        int256 deltaCollateral;
     }
 
-    event PositionUpdated(
-        address indexed sender,
-        uint256 indexed epochId,
-        uint256 indexed positionId,
-        TransactionType transactionType,
-        int256 deltaCollateral,
-        uint256 collateralAmount,
-        uint256 vEthAmount,
-        uint256 vGasAmount,
-        uint256 borrowedVEth,
-        uint256 borrowedVGas
-    );
-
-    struct PositionUpdatedEventData {
-        TransactionType transactionType;
+    struct TraderPositionCreatedEventData {
         address sender;
+        uint256 epochId;
+        uint256 positionId;
+        uint256 requiredCollateral;
+        uint256 initialPrice;
+        uint256 finalPrice;
+        uint256 tradeRatio;
+        uint256 positionCollateralAmount;
+        uint256 positionVethAmount;
+        uint256 positionVgasAmount;
+        uint256 positionBorrowedVeth;
+        uint256 positionBorrowedVgas;
         int256 deltaCollateral;
-        Position.Data position;
     }
 
     // Settlement Events

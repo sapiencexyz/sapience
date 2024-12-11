@@ -105,28 +105,20 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
         epoch.validateCurrentPoolPriceInRange();
 
-        emit IFoilPositionEvents.TraderPositionCreated(
-            msg.sender,
-            epochId,
-            positionId,
-            outputParams.requiredCollateral,
-            position.vEthAmount,
-            position.vGasAmount,
-            position.borrowedVEth,
-            position.borrowedVGas,
-            initialPrice,
-            finalPrice,
-            outputParams.tradeRatioD18
-        );
-
-        // emit the event
-        _emitPositionUpdated(
-            IFoilPositionEvents.PositionUpdatedEventData({
+        _emitTraderPositionCreated(
+            IFoilPositionEvents.TraderPositionCreatedEventData({
                 sender: msg.sender,
-                position: position,
-                transactionType: IFoilPositionEvents
-                    .TransactionType
-                    .CreateTradePosition,
+                epochId: epochId,
+                positionId: positionId,
+                requiredCollateral: outputParams.requiredCollateral,
+                initialPrice: initialPrice,
+                finalPrice: finalPrice,
+                tradeRatio: outputParams.tradeRatioD18,
+                positionCollateralAmount: position.depositedCollateralAmount,
+                positionVethAmount: position.vEthAmount,
+                positionVgasAmount: position.vGasAmount,
+                positionBorrowedVeth: position.borrowedVEth,
+                positionBorrowedVgas: position.borrowedVGas,
                 deltaCollateral: deltaCollateral
             })
         );
@@ -246,18 +238,6 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             );
 
             // Now the position should be closed. All the vToken and collateral values set to zero
-
-            // emit the event
-            _emitPositionUpdated(
-                IFoilPositionEvents.PositionUpdatedEventData({
-                    sender: msg.sender,
-                    position: position,
-                    transactionType: IFoilPositionEvents
-                        .TransactionType
-                        .CloseTradePosition,
-                    deltaCollateral: runtime.deltaCollateral
-                })
-            );
         } else {
             // Not closing, proced as a normal trade
 
@@ -274,36 +254,28 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
             // Validate after trading that collateral is enough
             position.afterTradeCheck();
-
-            // emit the event
-            _emitPositionUpdated(
-                IFoilPositionEvents.PositionUpdatedEventData({
-                    sender: msg.sender,
-                    position: position,
-                    transactionType: IFoilPositionEvents
-                        .TransactionType
-                        .ModifyTradePosition,
-                    deltaCollateral: runtime.deltaCollateral
-                })
-            );
         }
 
         runtime.finalPrice = epoch.getReferencePrice();
 
         epoch.validateCurrentPoolPriceInRange();
 
-        emit IFoilPositionEvents.TraderPositionModified(
-            msg.sender,
-            position.epochId,
-            positionId,
-            outputParams.requiredCollateral,
-            position.vEthAmount,
-            position.vGasAmount,
-            position.borrowedVEth,
-            position.borrowedVGas,
-            runtime.initialPrice,
-            runtime.finalPrice,
-            outputParams.tradeRatioD18
+        _emitTraderPositionModified(
+            IFoilPositionEvents.TraderPositionModifiedEventData({
+                sender: msg.sender,
+                epochId: position.epochId,
+                positionId: positionId,
+                requiredCollateral: outputParams.requiredCollateral,
+                initialPrice: runtime.initialPrice,
+                finalPrice: runtime.finalPrice,
+                tradeRatio: outputParams.tradeRatioD18,
+                positionCollateralAmount: position.depositedCollateralAmount,
+                positionVethAmount: position.vEthAmount,
+                positionVgasAmount: position.vGasAmount,
+                positionBorrowedVeth: position.borrowedVEth,
+                positionBorrowedVgas: position.borrowedVGas,
+                deltaCollateral: runtime.deltaCollateral
+            })
         );
     }
 
@@ -586,20 +558,43 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             output.position.depositedCollateralAmount.toInt();
     }
 
-    function _emitPositionUpdated(
-        IFoilPositionEvents.PositionUpdatedEventData memory eventData
-    ) private {
-        emit IFoilPositionEvents.PositionUpdated(
+    function _emitTraderPositionCreated(
+        IFoilPositionEvents.TraderPositionCreatedEventData memory eventData
+    ) internal {
+        emit IFoilPositionEvents.TraderPositionCreated(
             eventData.sender,
-            eventData.position.epochId,
-            eventData.position.id,
-            eventData.transactionType,
-            eventData.deltaCollateral,
-            eventData.position.depositedCollateralAmount,
-            eventData.position.vEthAmount,
-            eventData.position.vGasAmount,
-            eventData.position.borrowedVEth,
-            eventData.position.borrowedVGas
+            eventData.epochId,
+            eventData.positionId,
+            eventData.requiredCollateral,
+            eventData.initialPrice,
+            eventData.finalPrice,
+            eventData.tradeRatio,
+            eventData.positionCollateralAmount,
+            eventData.positionVethAmount,
+            eventData.positionVgasAmount,
+            eventData.positionBorrowedVeth,
+            eventData.positionBorrowedVgas,
+            eventData.deltaCollateral
+        );
+    }
+
+    function _emitTraderPositionModified(
+        IFoilPositionEvents.TraderPositionModifiedEventData memory eventData
+    ) internal {
+        emit IFoilPositionEvents.TraderPositionModified(
+            eventData.sender,
+            eventData.epochId,
+            eventData.positionId,
+            eventData.requiredCollateral,
+            eventData.initialPrice,
+            eventData.finalPrice,
+            eventData.tradeRatio,
+            eventData.positionCollateralAmount,
+            eventData.positionVethAmount,
+            eventData.positionVgasAmount,
+            eventData.positionBorrowedVeth,
+            eventData.positionBorrowedVgas,
+            eventData.deltaCollateral
         );
     }
 }

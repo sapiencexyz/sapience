@@ -152,6 +152,11 @@ contract DepositCollateralTest is TestTrade {
     function test_depositCollateralEmitsEvent() public {
         uint256 amountToDeposit = 5 ether;
 
+        // Get position data
+        Position.Data memory position = foil.getPosition(
+            feeCollectorPositionId
+        );
+
         vm.startPrank(feeCollector);
         vm.expectEmit(true, true, true, true);
         emit IFoilPositionEvents.CollateralDeposited(
@@ -159,7 +164,11 @@ contract DepositCollateralTest is TestTrade {
             epochId,
             feeCollectorPositionId,
             amountToDeposit + COLLATERAL_AMOUNT,
-            amountToDeposit
+            position.vEthAmount,
+            position.vGasAmount,
+            position.borrowedVEth,
+            position.borrowedVGas,
+            int256(amountToDeposit)
         );
         foil.depositCollateral(feeCollectorPositionId, amountToDeposit);
         vm.stopPrank();
