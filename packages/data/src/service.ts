@@ -1134,7 +1134,7 @@ const startServer = async () => {
   app.post(
     "/reindexMissingBlocks",
     handleAsyncErrors(async (req, res, next) => {
-      const { chainId, address, epochId, signature, timestamp, model } = req.body;
+      const { chainId, address, epochId, signature, timestamp } = req.body;
 
       // Authenticate the user
       const isAuthenticated = await isValidWalletSignature(
@@ -1198,9 +1198,7 @@ const startServer = async () => {
         throw new Error("Background worker not found");
       }
 
-      const startCommand = model === 'ResourcePrice' 
-        ? `pnpm run start:reindex-missing ${chainId} ${address} ${epochId} ResourcePrice` 
-        : `pnpm run start:reindex-market ${chainId} ${address} ${epochId}`;
+      const startCommand = `pnpm run start:reindex-missing ${chainId} ${address} ${epochId}`;
 
       if (process.env.NODE_ENV !== 'production') {
         try {

@@ -13,6 +13,7 @@ import {
 } from "./controllers/collateral";
 import { getMarketStartEndBlock } from "./controllers/marketHelpers";
 import { Between } from "typeorm";
+import * as Sentry from "@sentry/node";
 
 const MAX_RETRIES = Infinity;
 const RETRY_DELAY = 5000; // 5 seconds
@@ -33,6 +34,14 @@ async function withRetry<T>(
       lastError = error as Error;
       console.error(`Attempt ${attempt}/${maxRetries} failed for ${name}:`, error);
       
+      // Report error to Sentry with context
+      Sentry.withScope((scope) => {
+        scope.setExtra("attempt", attempt);
+        scope.setExtra("maxRetries", maxRetries);
+        scope.setExtra("operationName", name);
+        Sentry.captureException(error);
+      });
+      
       if (attempt < maxRetries) {
         console.log(`Retrying ${name} in ${RETRY_DELAY/1000} seconds...`);
         await delay(RETRY_DELAY);
@@ -40,7 +49,9 @@ async function withRetry<T>(
     }
   }
   
-  throw new Error(`All ${maxRetries} attempts failed for ${name}. Last error: ${lastError?.message}`);
+  const finalError = new Error(`All ${maxRetries} attempts failed for ${name}. Last error: ${lastError?.message}`);
+  Sentry.captureException(finalError);
+  throw finalError;
 }
 
 function createResilientProcess<T>(
@@ -105,49 +116,59 @@ export async function reindexMarket(
   address: string,
   epochId: string
 ) {
-  console.log("reindexing market", address, "on chain", chainId, "epoch", epochId);
+  try {
+    console.log("reindexing market", address, "on chain", chainId, "epoch", epochId);
 
-  await initializeDataSource();
-  const marketInfo = MARKET_INFO.find(
-    (m) =>
-      m.marketChainId === chainId &&
-      m.deployment.address.toLowerCase() === address.toLowerCase()
-  );
-  if (!marketInfo) {
-    throw new Error(
-      `Market not found for chainId ${chainId} and address ${address}`
+    await initializeDataSource();
+    const marketInfo = MARKET_INFO.find(
+      (m) =>
+        m.marketChainId === chainId &&
+        m.deployment.address.toLowerCase() === address.toLowerCase()
     );
-  }
-  const market = await initializeMarket(marketInfo);
+    if (!marketInfo) {
+      throw new Error(
+        `Market not found for chainId ${chainId} and address ${address}`
+      );
+    }
+    const market = await initializeMarket(marketInfo);
 
-  await Promise.all([
-    reindexMarketEvents(market, marketInfo.deployment.abi, Number(epochId)),
-    reindexCollateralEvents(market, Number(epochId)),
-  ]);
-  console.log("finished reindexing market", address, "on chain", chainId);
+    await Promise.all([
+      reindexMarketEvents(market, marketInfo.deployment.abi, Number(epochId)),
+      reindexCollateralEvents(market, Number(epochId)),
+    ]);
+    
+    console.log("finished reindexing market", address, "on chain", chainId);
+  } catch (error) {
+    console.error("Error in reindexMarket:", error);
+    Sentry.withScope((scope) => {
+      scope.setExtra("chainId", chainId);
+      scope.setExtra("address", address);
+      scope.setExtra("epochId", epochId);
+      Sentry.captureException(error);
+    });
+    throw error;
+  }
 }
 
 export async function reindexMissingBlocks(
   chainId: number,
   address: string,
   epochId: string,
-  model: 'ResourcePrice' | 'Event'
 ) {
-  console.log(`Starting reindex of missing ${model}s for market ${chainId}:${address}, epoch ${epochId}`);
-  
-  await initializeDataSource();
-  const marketInfo = MARKET_INFO.find(
-    (m) =>
-      m.marketChainId === chainId &&
-      m.deployment.address.toLowerCase() === address.toLowerCase()
-  );
-  if (!marketInfo) {
-    throw new Error(`Market not found for chainId ${chainId} and address ${address}`);
-  }
-  const market = await initializeMarket(marketInfo);
+  try {
+    console.log(`Starting reindex of missing resource blocks for market ${chainId}:${address}, epoch ${epochId}`);
+    
+    await initializeDataSource();
+    const marketInfo = MARKET_INFO.find(
+      (m) =>
+        m.marketChainId === chainId &&
+        m.deployment.address.toLowerCase() === address.toLowerCase()
+    );
+    if (!marketInfo) {
+      throw new Error(`Market not found for chainId ${chainId} and address ${address}`);
+    }
+    const market = await initializeMarket(marketInfo);
 
-  if (model === 'ResourcePrice') {
-    // Get block numbers using the price indexer client
     const { startBlockNumber, endBlockNumber, error } = await getMarketStartEndBlock(
       market,
       epochId,
@@ -158,7 +179,6 @@ export async function reindexMissingBlocks(
       return { missingBlockNumbers: null, error };
     }
 
-    // Get existing block numbers for ResourcePrice
     const resourcePrices = await resourcePriceRepository.find({
       where: {
         market: { id: market.id },
@@ -171,7 +191,6 @@ export async function reindexMissingBlocks(
       resourcePrices.map((ip) => Number(ip.blockNumber))
     );
 
-    // Find missing block numbers within the range
     const missingBlockNumbers = [];
     for (let blockNumber = startBlockNumber; blockNumber <= endBlockNumber; blockNumber++) {
       if (!existingBlockNumbersSet.has(blockNumber)) {
@@ -183,14 +202,18 @@ export async function reindexMissingBlocks(
       market,
       missingBlockNumbers
     );
-  } else {
-    await Promise.all([
-      reindexMarketEvents(market, marketInfo.deployment.abi, Number(epochId)),
-      reindexCollateralEvents(market, Number(epochId)),
-    ]);
-  }
 
-  console.log(`Finished reindexing ${model}s for market ${address} on chain ${chainId}`);
+    console.log(`Finished reindexing resource blocks for market ${address} on chain ${chainId}`);
+  } catch (error) {
+    console.error(`Error in reindexMissingBlocks:`, error);
+    Sentry.withScope((scope) => {
+      scope.setExtra("chainId", chainId);
+      scope.setExtra("address", address);
+      scope.setExtra("epochId", epochId);
+      Sentry.captureException(error);
+    });
+    throw error;
+  }
 }
 
 if (process.argv[2] === "reindexMarket") {
@@ -223,7 +246,7 @@ if (process.argv[2] === "reindexMarket") {
       );
       process.exit(1);
     }
-    await reindexMissingBlocks(chainId, address, epochId, model);
+    await reindexMissingBlocks(chainId, address, epochId);
     console.log("DONE");
     process.exit(0);
   };
