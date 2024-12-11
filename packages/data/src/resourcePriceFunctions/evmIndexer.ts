@@ -3,6 +3,7 @@ import { ResourcePrice } from "../models/ResourcePrice";
 import { type Market } from "../models/Market";
 import { getBlockByTimestamp, getProviderForChain } from "../helpers";
 import { Block, type PublicClient } from "viem";
+import Sentry from "../sentry";
 
 class EvmIndexer {
   public client: PublicClient;
@@ -53,6 +54,12 @@ class EvmIndexer {
         });
         await this.storeBlockPrice(block, market);
       } catch (error) {
+        Sentry.withScope((scope) => {
+          scope.setExtra('blockNumber', blockNumber);
+          scope.setExtra('market', `${market.chainId}:${market.address}`);
+          scope.setExtra('timestamp', timestamp);
+          Sentry.captureException(error);
+        });
         console.error(`Error processing block ${blockNumber}:`, error);
       }
     }
@@ -72,6 +79,11 @@ class EvmIndexer {
         });
         await this.storeBlockPrice(block, market);
       } catch (error) {
+        Sentry.withScope((scope) => {
+          scope.setExtra('blockNumber', blockNumber);
+          scope.setExtra('market', `${market.chainId}:${market.address}`);
+          Sentry.captureException(error);
+        });
         console.error(`Error processing block ${blockNumber}:`, error);
       }
     }
@@ -84,7 +96,14 @@ class EvmIndexer {
     );
     this.client.watchBlocks({
       onBlock: (block) => this.storeBlockPrice(block, market),
-      onError: (error) => console.error(error),
+      onError: (error) => {
+        Sentry.withScope((scope) => {
+          scope.setExtra('market', `${market.chainId}:${market.address}`);
+          scope.setExtra('chainId', this.client.chain?.id);
+          Sentry.captureException(error);
+        });
+        console.error(error);
+      },
     });
   }
 }

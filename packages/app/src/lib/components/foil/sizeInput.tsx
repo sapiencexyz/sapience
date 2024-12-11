@@ -122,14 +122,20 @@ const SizeInput: React.FC<Props> = ({
   };
 
   const handleSizeChange = (newVal: string) => {
-    const numberPattern = /^(0|[1-9]\d*)(\.\d*)?$/;
+    const numberPattern = /^(0|[1-9]\d*)((\.|,)\d*)?$/;
 
     let processedVal = newVal;
-    if (sizeInput === '0' && newVal !== '0' && newVal !== '0.') {
+    if (
+      sizeInput === '0' &&
+      newVal !== '0' &&
+      newVal !== '0.' &&
+      newVal !== '0,'
+    ) {
       processedVal = newVal.replace(/^0+/, '');
     }
 
     if (processedVal === '' || numberPattern.test(processedVal)) {
+      processedVal = processedVal.replace(/,/, '.');
       setSizeInput(processedVal);
 
       if (inputType === 'collateral') {
