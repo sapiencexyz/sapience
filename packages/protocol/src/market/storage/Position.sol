@@ -118,6 +118,13 @@ library Position {
             self.borrowedVGas,
             self.borrowedVEth
         );
+
+        if (self.depositedCollateralAmount < Market.load().minCollateral) {
+            revert Errors.CollateralBelowMin(
+                self.depositedCollateralAmount,
+                Market.load().minCollateral
+            );
+        }
     }
 
     function preValidateLp(Data storage self) internal view {

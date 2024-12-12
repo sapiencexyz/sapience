@@ -40,6 +40,7 @@ contract VaultTest is TestVault {
     IFoilStructs.EpochData epochData;
 
     uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
+    uint256 constant MIN_COLLATERAL = 10_000; // 10,000 wstETH;
     uint256 constant BOND_AMOUNT = 100 ether;
 
     function setUp() public {
@@ -50,7 +51,8 @@ contract VaultTest is TestVault {
         (foil, vault, collateralAsset) = initializeVault(
             feeCollectors,
             BOND_AMOUNT,
-            MIN_TRADE_SIZE
+            MIN_TRADE_SIZE,
+            MIN_COLLATERAL
         );
 
         initialStartTime = block.timestamp + 60;

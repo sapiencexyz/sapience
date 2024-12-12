@@ -24,6 +24,7 @@ library Market {
         IFoilStructs.MarketParams marketParams;
         mapping(bytes32 => uint256) epochIdByAssertionId;
         uint256 minTradeSize;
+        uint256 minCollateral;
     }
 
     function load() internal pure returns (Data storage market) {
@@ -40,6 +41,7 @@ library Market {
         address feeCollectorNFT,
         address callbackRecipient,
         uint256 minTradeSize,
+        uint256 minCollateral,
         IFoilStructs.MarketParams memory marketParams
     ) internal returns (Data storage market) {
         validateMarketParams(marketParams);
@@ -60,6 +62,7 @@ library Market {
         market.collateralAsset = IERC20(collateralAsset);
         market.feeCollectorNFT = IERC721(feeCollectorNFT);
         market.minTradeSize = minTradeSize;
+        market.minCollateral = minCollateral;
         market.marketParams = marketParams;
 
         // check market.epochParams.bondAmount is greater than the minimum bond for the assertion currency

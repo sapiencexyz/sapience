@@ -37,6 +37,7 @@ contract ConfigurationModule is
         address[] calldata feeCollectors,
         address callbackRecipient,
         uint256 minTradeSize,
+        uint256 minCollateral,
         IFoilStructs.MarketParams memory marketParams
     ) external override nonReentrant {
         if (msg.sender != marketInitializer) {
@@ -60,6 +61,7 @@ contract ConfigurationModule is
             feeCollectorNFT,
             callbackRecipient,
             minTradeSize,
+            minCollateral,
             marketParams
         );
         emit MarketInitialized(
@@ -68,6 +70,7 @@ contract ConfigurationModule is
             feeCollectorNFT,
             callbackRecipient,
             minTradeSize,
+            minCollateral,
             marketParams
         );
     }

@@ -61,6 +61,7 @@ contract TradePositionDumb is TestTrade {
     uint256 PLUS_FEE_MULTIPLIER_D18 = 1.01 ether;
     uint256 MINUS_FEE_MULTIPLIER_D18 = 0.99 ether;
     uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
+    uint256 constant MIN_COLLATERAL = 0; // 0 wstETH; (don't use the minCollateral)
 
     function setUp() public {
         collateralAsset = IMintableToken(
@@ -73,7 +74,8 @@ contract TradePositionDumb is TestTrade {
             EPOCH_LOWER_TICK,
             EPOCH_UPPER_TICK,
             startingSqrtPriceX96,
-            MIN_TRADE_SIZE
+            MIN_TRADE_SIZE,
+            MIN_COLLATERAL
         );
 
         lp1 = TestUser.createUser("LP1", 10_000_000_000 ether);
@@ -837,6 +839,26 @@ contract TradePositionDumb is TestTrade {
     }
 
     function test_revertIf_TradePriceOutOfBounds() public {
+        int256 initialPositionSize = 1 ether;
+
+        uint256 positionId;
+
+        vm.startPrank(trader1);
+        positionId = addTraderPosition(foil, epochId, initialPositionSize);
+
+        // Send more collateral than required, just checking the position can be created/modified
+        vm.expectPartialRevert(Errors.TradePriceOutOfBounds.selector);
+        foil.modifyTraderPosition(
+            positionId,
+            initialPositionSize - 1,
+            0,
+            block.timestamp + 30 minutes
+        );
+
+        vm.stopPrank();
+    }
+
+    function test_revertIf_TradeWithSmallCollateralAmount() public {
         int256 initialPositionSize = 1 ether;
 
         uint256 positionId;

@@ -63,6 +63,7 @@ contract TradePositionSlippage is TestTrade {
     int256 SLIPPAGE_MULTIPLIER_INCREASE = 1.02 ether;
     int256 SLIPPAGE_MULTIPLIER_DECREASE = 0.98 ether;
     uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
+    uint256 constant MIN_COLLATERAL = 10_000; // 10,000 wstETH;
 
     function setUp() public {
         collateralAsset = IMintableToken(
@@ -75,15 +76,14 @@ contract TradePositionSlippage is TestTrade {
             EPOCH_LOWER_TICK,
             EPOCH_UPPER_TICK,
             startingSqrtPriceX96,
-            MIN_TRADE_SIZE
+            MIN_TRADE_SIZE,
+            MIN_COLLATERAL
         );
 
         lp1 = TestUser.createUser("LP1", 10_000_000_000 ether);
         trader1 = TestUser.createUser("Trader1", 10_000_000 ether);
 
-        (
-            IFoilStructs.EpochData memory epochData,
-        ) = foil.getLatestEpoch();
+        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
         epochId = epochData.epochId;
         pool = epochData.pool;
         tokenA = epochData.ethToken;

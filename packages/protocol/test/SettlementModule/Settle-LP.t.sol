@@ -35,6 +35,7 @@ contract SettleLPTest is TestTrade {
     int24 constant MIN_TICK = 16000;
     int24 constant MAX_TICK = 29800;
     uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
+    uint256 constant MIN_COLLATERAL = 10_000; // 10,000 wstETH;
     uint256 constant settlementPrice = 10 ether;
     uint160 constant settlementPriceSqrt = 250541448375047946302209916928;
     uint256 constant BOND_AMOUNT = 5 ether;
@@ -54,7 +55,8 @@ contract SettleLPTest is TestTrade {
             MAX_TICK,
             startingSqrtPriceX96,
             vm.getAddress("MockVault"),
-            MIN_TRADE_SIZE
+            MIN_TRADE_SIZE,
+            MIN_COLLATERAL
         );
 
         (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
