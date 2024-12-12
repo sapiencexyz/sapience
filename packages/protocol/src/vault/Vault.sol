@@ -237,6 +237,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     function _calculateNextStartTime(
         uint256 previousStartTime
     ) private view returns (uint256) {
+        if (totalVaults == 1) {
+            return block.timestamp;
+        }
+
         uint256 vaultCycleDuration = duration * totalVaults;
         uint256 iterationsToSkip = (block.timestamp - previousStartTime) /
             (duration * totalVaults);
@@ -487,7 +491,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         require(
             pendingTxn.requestInitiatedEpoch == currentEpochId ||
                 pendingTxn.amount == 0,
-            "Previous deposit request is not completed"
+            "Previous withdraw request is not in the same epoch"
         );
 
         require(
