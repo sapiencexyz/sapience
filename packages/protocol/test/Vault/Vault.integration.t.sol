@@ -38,7 +38,7 @@ contract VaultIntegrationTest is TestVault {
     uint256 INITIAL_LP_BALANCE = 100_000 ether;
     // IFoilStructs.EpochData epochData;
 
-    uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas    
+    uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
     uint256 constant BOND_AMOUNT = 100 ether;
 
     address lp1;
