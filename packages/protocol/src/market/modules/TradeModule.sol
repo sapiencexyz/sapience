@@ -145,7 +145,9 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             revert Errors.DeltaTradeIsZero();
         }
 
+        // Checking both the new size and the delta size to avoid small trades that can mess with rounding errors
         _checkTradeSize(size);
+        _checkTradeSize(deltaSize);
 
         Epoch.Data storage epoch = Epoch.load(position.epochId);
 
