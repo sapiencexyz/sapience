@@ -12,6 +12,7 @@ import { Market } from "../models/Market";
 import { Epoch } from "../models/Epoch";
 import { Position } from "../models/Position";
 import { Transaction, TransactionType } from "../models/Transaction";
+import { CollateralTransfer } from "../models/CollateralTransfer";
 import { PublicClient } from "viem";
 import {
   Deployment,
@@ -21,16 +22,12 @@ import {
   LiquidityPositionCreatedEventLog,
   LiquidityPositionModifiedEventLog,
   TradePositionEventLog,
-  EventType,
-  EventTransactionType,
   MarketInfo,
   PositionSettledEventLog,
-  PositionUpdatedEventLog,
   EpochData,
 } from "../interfaces";
 import { MarketPrice } from "../models/MarketPrice";
 import { getBlockByTimestamp, getProviderForChain } from "../helpers";
-import { CollateralTransfer } from "src/models/CollateralTransfer";
 
 /**
  * Handles a Transfer event by updating the owner of the corresponding Position.
@@ -549,103 +546,103 @@ export const getMarketStartEndBlock = async (
 };
 
 // TODO: implement this
-export const handlePositionUpdatedEvent = async (transaction: Transaction) => {
-  const event = transaction.event;
-  const eventArgs = event.logData.args as PositionUpdatedEventLog;
-  const epochId = eventArgs.epochId;
-  const chainId = event.market.chainId;
-  const address = event.market.address;
+// export const handlePositionUpdatedEvent = async (transaction: Transaction) => {
+//   const event = transaction.event;
+//   const eventArgs = event.logData.args as PositionUpdatedEventLog;
+//   const epochId = eventArgs.epochId;
+//   const chainId = event.market.chainId;
+//   const address = event.market.address;
 
-  const existingPosition = await positionRepository.findOne({
-    where: {
-      positionId: Number(event.logData.args.positionId),
-      epoch: {
-        market: {
-          address,
-          chainId,
-        },
-        epochId: Number(epochId),
-      },
-    },
-    relations: [
-      "transactions",
-      "epoch",
-      "epoch.market",
-      "transactions.event",
-      "transactions.marketPrice",
-    ],
-  });
+//   const existingPosition = await positionRepository.findOne({
+//     where: {
+//       positionId: Number(event.logData.args.positionId),
+//       epoch: {
+//         market: {
+//           address,
+//           chainId,
+//         },
+//         epochId: Number(epochId),
+//       },
+//     },
+//     relations: [
+//       "transactions",
+//       "epoch",
+//       "epoch.market",
+//       "transactions.event",
+//       "transactions.marketPrice",
+//     ],
+//   });
 
-  // // Find market and/or epoch associated with the event
-  let market = await marketRepository.findOne({
-    where: { chainId, address },
-  });
+//   // // Find market and/or epoch associated with the event
+//   let market = await marketRepository.findOne({
+//     where: { chainId, address },
+//   });
 
-  // marketInitialized should handle creating the market, throw if not found
-  if (!market) {
-    throw new Error(
-      `Market not found for chainId ${chainId} and address ${address}. Cannot upsert event into db.`
-    );
-  }
+//   // marketInitialized should handle creating the market, throw if not found
+//   if (!market) {
+//     throw new Error(
+//       `Market not found for chainId ${chainId} and address ${address}. Cannot upsert event into db.`
+//     );
+//   }
 
-  const epoch = await epochRepository.findOne({
-    where: {
-      epochId: Number(epochId),
-      market: {
-        address: event.market.address,
-        chainId: event.market.chainId,
-      },
-    },
-  });
-  if (!epoch) {
-    console.error(
-      "Epoch not found: ",
-      epochId,
-      "market:",
-      transaction.event.market.address
-    );
-    return;
-  }
+//   const epoch = await epochRepository.findOne({
+//     where: {
+//       epochId: Number(epochId),
+//       market: {
+//         address: event.market.address,
+//         chainId: event.market.chainId,
+//       },
+//     },
+//   });
+//   if (!epoch) {
+//     console.error(
+//       "Epoch not found: ",
+//       epochId,
+//       "market:",
+//       transaction.event.market.address
+//     );
+//     return;
+//   }
 
-  const position = existingPosition || new Position();
+//   const position = existingPosition || new Position();
 
-  position.isLP = isLpPositionFromPositionUpdatedEvent(
-    eventArgs.transactionType
-  );
-  position.positionId = Number(eventArgs.positionId);
-  position.owner = eventArgs.sender || position.owner;
+//   position.isLP = isLpPositionFromPositionUpdatedEvent(
+//     eventArgs.transactionType
+//   );
+//   position.positionId = Number(eventArgs.positionId);
+//   position.owner = eventArgs.sender || position.owner;
 
-  position.baseToken = eventArgs.vGasAmount?.toString();
-  position.quoteToken = eventArgs.vEthAmount?.toString();
-  position.borrowedBaseToken = eventArgs.borrowedVGas?.toString();
-  position.borrowedQuoteToken = eventArgs.borrowedVEth?.toString();
+//   position.baseToken = eventArgs.vGasAmount?.toString();
+//   position.quoteToken = eventArgs.vEthAmount?.toString();
+//   position.borrowedBaseToken = eventArgs.borrowedVGas?.toString();
+//   position.borrowedQuoteToken = eventArgs.borrowedVEth?.toString();
 
-  position.collateral = eventArgs.collateralAmount?.toString();
+//   position.collateral = eventArgs.collateralAmount?.toString();
 
-  console.log("Saving position: ", position);
-  await positionRepository.save(position);
+//   console.log("Saving position: ", position);
+//   await positionRepository.save(position);
 
-  // Create a new Event entity
-  const collateralTransfer = new CollateralTransfer();
-  collateralTransfer.market = market;
-  collateralTransfer.owner = position.owner;
-  collateralTransfer.collateral = eventArgs.deltaCollateral;
-  collateralTransfer.timestamp = Number(event.timestamp || "0");
-  collateralTransfer.blockNumber = Number(event.blockNumber || 0);
-  collateralTransfer.logIndex = event.logIndex || 0;
+//   // Create a new Event entity
+//   const collateralTransfer = new CollateralTransfer();
+//   collateralTransfer.market = market;
+//   collateralTransfer.owner = position.owner;
+//   collateralTransfer.collateral = eventArgs.deltaCollateral;
+//   collateralTransfer.timestamp = Number(event.timestamp || "0");
+//   collateralTransfer.blockNumber = Number(event.blockNumber || 0);
+//   collateralTransfer.logIndex = event.logIndex || 0;
 
-  console.log("Saving new collateral transfer event..");
-  await collateralTransferRepository.save(collateralTransfer);
-};
+//   console.log("Saving new collateral transfer event..");
+//   await collateralTransferRepository.save(collateralTransfer);
+// };
 
-const isLpPositionFromPositionUpdatedEvent = (
-  transactionType: EventTransactionType
-) => {
-  return (
-    transactionType === EventTransactionType.CreateLiquidityPosition ||
-    transactionType === EventTransactionType.IncreaseLiquidityPosition ||
-    transactionType === EventTransactionType.DecreaseLiquidityPosition ||
-    transactionType === EventTransactionType.CloseLiquidityPosition ||
-    transactionType === EventTransactionType.DepositCollateral
-  );
-};
+// const isLpPositionFromPositionUpdatedEvent = (
+//   transactionType: EventTransactionType
+// ) => {
+//   return (
+//     transactionType === EventTransactionType.CreateLiquidityPosition ||
+//     transactionType === EventTransactionType.IncreaseLiquidityPosition ||
+//     transactionType === EventTransactionType.DecreaseLiquidityPosition ||
+//     transactionType === EventTransactionType.CloseLiquidityPosition ||
+//     transactionType === EventTransactionType.DepositCollateral
+//   );
+// };

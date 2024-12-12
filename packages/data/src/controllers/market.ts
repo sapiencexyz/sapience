@@ -24,7 +24,6 @@ import {
 } from "../helpers";
 import {
   createEpochFromEvent,
-  createOrModifyPosition,
   createOrUpdateMarketFromEvent,
   handleTransferEvent,
   handlePositionSettledEvent,
@@ -272,7 +271,7 @@ const alertEvent = async (
           // Format with commas and only show decimals if significant
           const gasAmount = rawGasAmount.toLocaleString("en-US", {
             minimumFractionDigits: 0,
-            maximumFractionDigits: 9
+            maximumFractionDigits: 9,
           });
           const priceGwei = rawPriceGwei.toLocaleString("en-US", {
             minimumFractionDigits: 0,
@@ -525,11 +524,6 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       console.log("Handling Transfer event: ", event);
       await handleTransferEvent(event);
       skipTransaction = true;
-      break;
-    case EventType.PositionUpdated:
-      console.log("Handling Position Updated event: ", event);
-      await handlePositionUpdatedEvent(event);
-      // skipTransaction = true;
       break;
 
     case EventType.LiquidityPositionCreated:
