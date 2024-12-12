@@ -24,8 +24,7 @@ contract TestEpoch is TestUser {
         int24 minTick,
         int24 maxTick,
         uint160 startingSqrtPriceX96,
-        uint256 minTradeSize,
-        uint256 minCollateral
+        uint256 minTradeSize
     ) public returns (IFoil, address) {
         address[] memory feeCollectors = new address[](0);
         return
@@ -34,8 +33,7 @@ contract TestEpoch is TestUser {
                 maxTick,
                 startingSqrtPriceX96,
                 feeCollectors,
-                minTradeSize,
-                minCollateral
+                minTradeSize
             );
     }
 
@@ -44,14 +42,12 @@ contract TestEpoch is TestUser {
         int24 maxTick,
         uint160 startingSqrtPriceX96,
         address[] memory feeCollectors,
-        uint256 minTradeSize,
-        uint256 minCollateral
+        uint256 minTradeSize
     ) public returns (IFoil, address) {
         address owner = initializeMarket(
             feeCollectors,
             address(0),
-            minTradeSize,
-            minCollateral
+            minTradeSize
         );
         IFoil foil = IFoil(vm.getAddress("Foil"));
 
@@ -73,15 +69,13 @@ contract TestEpoch is TestUser {
         int24 maxTick,
         uint160 startingSqrtPriceX96,
         address callbackRecipient,
-        uint256 minTradeSize,
-        uint256 minCollateral
+        uint256 minTradeSize
     ) public returns (IFoil, address) {
         address[] memory feeCollectors = new address[](0);
         address owner = initializeMarket(
             feeCollectors,
             callbackRecipient,
-            minTradeSize,
-            minCollateral
+            minTradeSize
         );
         IFoil foil = IFoil(vm.getAddress("Foil"));
 
@@ -101,8 +95,7 @@ contract TestEpoch is TestUser {
     function initializeMarket(
         address[] memory feeCollectors,
         address callbackRecipient,
-        uint256 minTradeSize,
-        uint256 minCollateral
+        uint256 minTradeSize
     ) public returns (address) {
         uint256 bondAmount = 5 ether;
         address owner = createUser("Owner", 10_000_000 ether);
@@ -113,7 +106,6 @@ contract TestEpoch is TestUser {
             feeCollectors,
             callbackRecipient,
             minTradeSize,
-            minCollateral,
             IFoilStructs.MarketParams({
                 feeRate: 10000,
                 assertionLiveness: 21600,

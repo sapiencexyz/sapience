@@ -119,10 +119,10 @@ library Position {
             self.borrowedVEth
         );
 
-        if (self.depositedCollateralAmount < Market.load().minCollateral) {
+        if (self.depositedCollateralAmount < Market.MIN_COLLATERAL) {
             revert Errors.CollateralBelowMin(
                 self.depositedCollateralAmount,
-                Market.load().minCollateral
+                Market.MIN_COLLATERAL
             );
         }
     }

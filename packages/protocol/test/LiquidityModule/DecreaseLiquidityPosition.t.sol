@@ -32,7 +32,6 @@ contract DecreaseLiquidityPosition is TestTrade {
     uint256 constant INITIAL_LP_BALANCE = 100_000_000 ether;
     uint256 constant INITIAL_COLLATERAL_AMOUNT = 100 ether;
     uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
-    uint256 constant MIN_COLLATERAL = 10_000; // 10,000 wstETH;
     uint256 positionId;
 
     function setUp() public {
@@ -46,8 +45,7 @@ contract DecreaseLiquidityPosition is TestTrade {
             MIN_TICK,
             MAX_TICK,
             startingSqrtPriceX96,
-            MIN_TRADE_SIZE,
-            MIN_COLLATERAL
+            MIN_TRADE_SIZE
         );
 
         lp1 = TestUser.createUser("LP1", INITIAL_LP_BALANCE);

@@ -10,7 +10,6 @@ interface IConfigurationModule {
         address feeCollectorNFT,
         address callbackRecipient,
         uint256 minTradeSize,
-        uint256 minCollateral,
         IFoilStructs.MarketParams marketParams
     );
 
@@ -40,7 +39,6 @@ interface IConfigurationModule {
      * @param feeCollectors Addresses of fee collectors
      * @param callbackRecipient recipient of callback on resolution of epoch, can be address(0)
      * @param minTradeSize Minimum trade size for a position
-     * @param minCollateral Minimum collateral for a position
      * @param marketParams Parameters used when new epochs are created
      */
     function initializeMarket(
@@ -49,7 +47,6 @@ interface IConfigurationModule {
         address[] calldata feeCollectors,
         address callbackRecipient,
         uint256 minTradeSize,
-        uint256 minCollateral,
         IFoilStructs.MarketParams memory marketParams
     ) external;
 

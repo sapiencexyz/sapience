@@ -39,7 +39,6 @@ contract VaultIntegrationTest is TestVault {
     // IFoilStructs.EpochData epochData;
 
     uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas    
-    uint256 constant MIN_COLLATERAL = 10_000; // 10,000 wstETH;
     uint256 constant BOND_AMOUNT = 100 ether;
 
     address lp1;
@@ -66,8 +65,7 @@ contract VaultIntegrationTest is TestVault {
         (foil, vault, collateralAsset) = initializeVault(
             feeCollectors,
             BOND_AMOUNT,
-            MIN_TRADE_SIZE,
-            MIN_COLLATERAL
+            MIN_TRADE_SIZE
         );
 
         vm.prank(lp1);

@@ -28,7 +28,6 @@ contract DepositCollateralTest is TestTrade {
     int24 constant LOWER_TICK = 19400;
     int24 constant UPPER_TICK = 24800;
     uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
-    uint256 constant MIN_COLLATERAL = 10_000; // 10,000 wstETH;
 
     function setUp() public {
         collateralAsset = IMintableToken(
@@ -47,8 +46,7 @@ contract DepositCollateralTest is TestTrade {
             UPPER_TICK,
             startingSqrtPriceX96,
             feeCollectors,
-            MIN_TRADE_SIZE,
-            MIN_COLLATERAL
+            MIN_TRADE_SIZE
         );
 
         (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();

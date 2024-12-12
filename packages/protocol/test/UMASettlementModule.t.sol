@@ -27,7 +27,6 @@ contract UmaSettleMarket is TestEpoch {
     uint256 maxPriceD18;
     IFoilStructs.MarketParams marketParams;
     uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
-    uint256 constant MIN_COLLATERAL = 10_000; // 10,000 wstETH;
 
     uint160 minPriceSqrtX96 = 176318465955203702497835220992;
     uint160 maxPriceSqrtX96 = 351516737644262680948788690944;
@@ -50,8 +49,7 @@ contract UmaSettleMarket is TestEpoch {
             16000,
             29800,
             startingSqrtPriceX96,
-            MIN_TRADE_SIZE,
-            MIN_COLLATERAL
+            MIN_TRADE_SIZE
         );
 
         (owner, , , , ) = foil.getMarket();

@@ -58,7 +58,6 @@ contract VaultDurationTest is TestVault {
             address(vault),
             new address[](0),
             10_000,
-            10_000,
             100 ether
         );
     }

@@ -48,7 +48,6 @@ contract SettleTradeTest is TestTrade {
     int24 LP_UPPER_TICK = 16200; //3.52
     uint256 SETTLEMENT_PRICE_D18 = 10 ether;
     uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
-    uint256 constant MIN_COLLATERAL = 10_000; // 10,000 wstETH;
     uint160 SETTLEMENT_PRICE_SQRT_D18 = 250541448375047946302209916928; // 10.0
 
     address optimisticOracleV3;
@@ -67,8 +66,7 @@ contract SettleTradeTest is TestTrade {
             5200,
             28200,
             startingSqrtPriceX96,
-            MIN_TRADE_SIZE,
-            MIN_COLLATERAL
+            MIN_TRADE_SIZE
         ); // 1.709 to 17.09 (1.6819839204636384 to 16.774485460620674)
 
         lp1 = TestUser.createUser("LP1", 20_000_000 ether);

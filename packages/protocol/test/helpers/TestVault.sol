@@ -18,8 +18,7 @@ contract TestVault is TestTrade {
     function initializeVault(
         address[] memory feeCollectors,
         uint256 bondAmount,
-        uint256 minTradeSize,
-        uint256 minCollateral
+        uint256 minTradeSize
     )
         internal
         returns (
@@ -36,7 +35,6 @@ contract TestVault is TestTrade {
             address(vaultContract),
             feeCollectors,
             minTradeSize,
-            minCollateral,
             bondAmount
         );
     }
@@ -46,7 +44,6 @@ contract TestVault is TestTrade {
         address vault,
         address[] memory feeCollectors,
         uint256 minTradeSize,
-        uint256 minCollateral,
         uint256 bondAmount
     ) internal returns (IMintableToken collateralAssetContract) {
         collateralAssetContract = IMintableToken(
@@ -60,7 +57,6 @@ contract TestVault is TestTrade {
             feeCollectors,
             vault,
             minTradeSize,
-            minCollateral,
             IFoilStructs.MarketParams({
                 feeRate: 10000,
                 assertionLiveness: 21600,

@@ -33,7 +33,6 @@ contract CreateLiquidityPosition is TestEpoch {
     uint256 constant dust = 1e8;
     uint256 constant INITIAL_LP_BALANCE = 100_000_000 ether;
     uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
-    uint256 constant MIN_COLLATERAL = 10_000; // 10,000 wstETH;
 
     function setUp() public {
         collateralAsset = IMintableToken(
@@ -46,8 +45,7 @@ contract CreateLiquidityPosition is TestEpoch {
             MIN_TICK,
             MAX_TICK,
             startingSqrtPriceX96,
-            MIN_TRADE_SIZE,
-            MIN_COLLATERAL
+            MIN_TRADE_SIZE
         );
 
         lp1 = TestUser.createUser("LP1", INITIAL_LP_BALANCE);
