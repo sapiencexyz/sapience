@@ -14,7 +14,7 @@ import { Transaction } from "./Transaction";
 import { Market } from "./Market";
 
 @Entity()
-@Unique(["market", "blockNumber", "logIndex"])
+@Unique(["transactionHash"])
 export class Event {
   @OneToOne(() => Transaction, (transaction) => transaction.event)
   transaction: Transaction;
@@ -28,8 +28,11 @@ export class Event {
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column({ type: "integer", nullable: true })
-  blockNumber: number | null;
+  @Column({ type: "integer" })
+  blockNumber: number;
+
+  @Column({ type: "string" })
+  transactionHash: string;
 
   @Column({ type: "bigint" })
   timestamp: string; // In seconds
@@ -54,16 +57,6 @@ export class Event {
   @AfterInsert()
   async afterInsert() {
     console.log("Event inserted: " + this.id);
-    try {
-      await upsertEntitiesFromEvent(this);
-    } catch (e) {
-      console.error("Error upserting entities from event:", e);
-    }
-  }
-
-  @AfterUpdate()
-  async afterUpdate() {
-    console.log(`Event updated: ${this.id}`);
     try {
       await upsertEntitiesFromEvent(this);
     } catch (e) {

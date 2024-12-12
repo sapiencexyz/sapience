@@ -11,6 +11,7 @@ import { Event } from "./Event";
 import { Position } from "./Position";
 import { MarketPrice } from "./MarketPrice";
 import { NUMERIC_PRECISION } from "../constants";
+import { CollateralTransfer } from "./CollateralTransfer";
 
 export enum TransactionType {
   ADD_LIQUIDITY = "addLiquidity",
@@ -22,9 +23,11 @@ export enum TransactionType {
 
 @Entity()
 export class Transaction {
-  @OneToOne(() => MarketPrice, (mp) => mp.transaction)
-  @JoinColumn()
-  marketPrice: MarketPrice;
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @CreateDateColumn()
+  createdAt: Date;
 
   @OneToOne(() => Event, (event) => event.transaction)
   @JoinColumn()
@@ -33,26 +36,13 @@ export class Transaction {
   @ManyToOne(() => Position, (position) => position.transactions)
   position: Position;
 
-  @PrimaryGeneratedColumn()
-  id: number;
+  @OneToOne(() => MarketPrice, (mp) => mp.transaction)
+  @JoinColumn()
+  marketPrice: MarketPrice;
 
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @Column({
-    type: "simple-enum",
-    enum: TransactionType,
-  })
-  type: TransactionType;
-
-  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
-  baseTokenDelta: string; // vGas (signed)
-
-  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
-  quoteTokenDelta: string; // vETH (signed)
-
-  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
-  collateralDelta: string; // wstETH
+  @OneToOne(() => CollateralTransfer, (ct) => ct.transaction)
+  @JoinColumn()
+  collateralTransfer: CollateralTransfer;
 
   @Column({
     type: "numeric",
@@ -61,4 +51,46 @@ export class Transaction {
     nullable: true,
   })
   tradeRatioD18: string;
+
+  @Column({
+    type: "simple-enum",
+    enum: TransactionType,
+  })
+  type: TransactionType;
+
+  // Position State at the time of the transaction
+  @Column({
+    type: "numeric",
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
+  baseToken: string; // vGas tokenamount 0
+
+  @Column({
+    type: "numeric",
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
+  quoteToken: string; // vETH tokenamount 1
+
+  @Column({
+    type: "numeric",
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
+  borrowedBaseToken: string;
+
+  @Column({
+    type: "numeric",
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
+  borrowedQuoteToken: string;
+
+  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
+  collateral: string; // ETH
 }

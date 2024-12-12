@@ -5,12 +5,12 @@ import {
   Column,
   CreateDateColumn,
   Unique,
-  ManyToOne,
+  OneToOne,
 } from "typeorm";
-import { Market } from "./Market";
+import { Transaction } from "./Transaction";
 
 @Entity()
-@Unique(["market", "timestamp", "logIndex"])
+@Unique(["transactionHash"])
 export class CollateralTransfer {
   @PrimaryGeneratedColumn()
   id: number;
@@ -18,17 +18,14 @@ export class CollateralTransfer {
   @CreateDateColumn()
   createdAt: Date;
 
-  @ManyToOne(() => Market, (market) => market.collateralTransfers)
-  market: Market;
+  @OneToOne(() => Transaction, (transaction) => transaction.collateralTransfer)
+  transaction: Transaction;
+
+  @Column({ type: "string" })
+  transactionHash: string;
 
   @Column({ type: "integer" })
   timestamp: number;
-
-  @Column({ type: "integer", nullable: true })
-  blockNumber: number | null;
-
-  @Column({ type: "integer" })
-  logIndex: number;
 
   @Column({ type: "varchar" })
   owner: string;

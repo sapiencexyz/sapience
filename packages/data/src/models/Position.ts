@@ -36,6 +36,33 @@ export class Position {
   @Column({ type: "varchar", nullable: true })
   owner: string;
 
+  // Position params
+  @Column({ type: "boolean" })
+  isLP: boolean; // true for event name
+
+  @Column({
+    type: "numeric",
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
+  highPriceTick: string;
+
+  @Column({
+    type: "numeric",
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
+  lowPriceTick: string;
+
+  @Column({
+    type: "boolean",
+    nullable: true,
+  })
+  isSettled: boolean | null;
+
+  // Latest Position State
   @Column({
     type: "numeric",
     precision: NUMERIC_PRECISION,
@@ -70,30 +97,4 @@ export class Position {
 
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
   collateral: string; // ETH
-
-  @Column({ type: "boolean" })
-  isLP: boolean; // true for event name
-
-  @Column({
-    type: "numeric",
-    precision: NUMERIC_PRECISION,
-    scale: 0,
-    nullable: true,
-  })
-  highPriceTick: string;
-
-  @Column({
-    type: "numeric",
-    precision: NUMERIC_PRECISION,
-    scale: 0,
-    nullable: true,
-  })
-  lowPriceTick: string;
-
-  @Column({
-    type: "boolean",
-    nullable: true,
-  })
-  isSettled: boolean | null;
-
 }
