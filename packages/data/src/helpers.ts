@@ -30,6 +30,8 @@ const createInfuraWebSocketTransport = (network: string): Transport => {
     return http();
   }
 
+  console.log(`[${network}] Creating WebSocket connection...`);
+
   return webSocket(
     `wss://${network}.infura.io/ws/v3/${process.env.INFURA_API_KEY}`,
     {
