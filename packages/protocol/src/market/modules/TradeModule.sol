@@ -465,8 +465,12 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         }
 
         // 3- Regenerate the new position after the trade and closure
-        if (params.targetSize >= 0) {
+        if (params.targetSize > 0) {
             // End position is LONG
+            // Sanity check. borrowedVEth should be larger than zero if the position is long
+            if (runtime.vEthFromZero == 0) {
+                revert Errors.InvalidInternalTradeSize(runtime.vEthFromZero);
+            }
             output.position.vGasAmount = params.targetSize.abs();
             output.position.vEthAmount = 0;
             output.position.borrowedVGas = 0;
