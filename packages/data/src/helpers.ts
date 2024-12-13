@@ -5,6 +5,7 @@ import {
   formatUnits,
   http,
   webSocket,
+  type Transport,
 } from "viem";
 import { mainnet, sepolia, cannon } from "viem/chains";
 import { TOKEN_PRECISION } from "./constants";
@@ -23,18 +24,46 @@ const __dirname = dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 const clientMap = new Map<number, PublicClient>();
 
+// added reconnection configurations from viem. 
+const createInfuraWebSocketTransport = (network: string): Transport => {
+  if (!process.env.INFURA_API_KEY) {
+    return http();
+  }
+
+  return webSocket(
+    `wss://${network}.infura.io/ws/v3/${process.env.INFURA_API_KEY}`,
+    {
+      key: network,
+      reconnect: {
+        attempts: 5,
+        delay: 1000,
+      },
+      retryCount: 5,
+      timeout: 30000,
+      keepAlive: true
+    }
+  );
+};
+
+// Added these multicalls for mainnet and sepolia if we want to use multicalls if we dont it doesnt make a difference. 
 export const mainnetPublicClient = createPublicClient({
   chain: mainnet,
   transport: process.env.INFURA_API_KEY
-    ? webSocket(`wss://mainnet.infura.io/ws/v3/${process.env.INFURA_API_KEY}`)
+    ? createInfuraWebSocketTransport('mainnet')
     : http(),
+  batch: {
+    multicall: true,
+  },
 });
 
 export const sepoliaPublicClient = createPublicClient({
   chain: sepolia,
   transport: process.env.INFURA_API_KEY
-    ? webSocket(`wss://sepolia.infura.io/ws/v3/${process.env.INFURA_API_KEY}`)
+    ? createInfuraWebSocketTransport('sepolia')
     : http(),
+  batch: {
+    multicall: true,
+  },
 });
 
 export const cannonPublicClient = createPublicClient({
