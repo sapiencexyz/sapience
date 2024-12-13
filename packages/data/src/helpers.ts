@@ -6,7 +6,6 @@ import {
   http,
   webSocket,
   type Transport,
-  type WebSocketTransport
 } from "viem";
 import { mainnet, sepolia, cannon } from "viem/chains";
 import { TOKEN_PRECISION } from "./constants";
