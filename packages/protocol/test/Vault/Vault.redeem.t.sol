@@ -284,4 +284,26 @@ contract VaultRedeemTest is TestVault {
             "LP1 balance should be reduced by 5 ether after redeeming"
         );
     }
+
+    function test_redeemTransfersSharesToVault() public {
+        vm.prank(lp1);
+        vault.requestRedeem(1 ether);
+
+        assertEq(
+            vault.balanceOf(address(vault)),
+            1 ether,
+            "Vault should have 1 ether"
+        );
+
+        settleCurrentEpoch();
+
+        vault.redeem(lp1);
+
+        // shares burned
+        assertEq(
+            vault.balanceOf(address(vault)),
+            0,
+            "Vault should have 0 shares"
+        );
+    }
 }

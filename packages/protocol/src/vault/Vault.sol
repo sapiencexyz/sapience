@@ -81,6 +81,11 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
      */
     uint256 constant minimumCollateral = 1e3;
 
+    /**
+     * store tick spacing for the pool on initialization
+     */
+    int24 tickSpacing;
+
     constructor(
         string memory _name,
         string memory _symbol,
@@ -113,6 +118,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         require(!initialized, "Already Initialized");
 
         uint256 initialStartTime = block.timestamp + (vaultIndex * duration);
+        // set tick spacing in storage once to reuse
+        // for future epoch creations
+        tickSpacing = market.getMarketTickSpacing();
 
         uint256 startingSharePrice = 1e18;
         epochSharePrices[0] = startingSharePrice;
@@ -267,13 +275,12 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             uint160(upperBoundSqrtPriceX96)
         );
 
-        // adjust to floor based on tick spacing
         baseAssetMinPriceTick =
             baseAssetMinPriceTick -
-            (baseAssetMinPriceTick % 200);
+            (baseAssetMinPriceTick % tickSpacing);
         baseAssetMaxPriceTick =
             baseAssetMaxPriceTick -
-            (baseAssetMaxPriceTick % 200);
+            (baseAssetMaxPriceTick % tickSpacing);
     }
 
     function _updateSharePrice(
@@ -612,6 +619,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             "Previous redeem request is not in the same epoch"
         );
 
+        // transfer shares to vault
+        _transfer(msg.sender, address(this), shares);
+
         pendingTxn.requestInitiatedEpoch = currentEpochId;
         pendingTxn.amount += shares;
         pendingTxn.transactionType = TransactionType.WITHDRAW;
@@ -797,7 +807,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         assets = sharePrice.mulDiv(sharesAmount, 10 ** 18, Math.Rounding.Floor);
 
         // Burn the shares
-        _burn(owner, sharesAmount);
+        _burn(address(this), sharesAmount);
         collateralAsset.safeTransfer(owner, assets);
         pendingSharesToBurn -= sharesAmount;
 
