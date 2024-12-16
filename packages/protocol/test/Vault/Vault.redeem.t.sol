@@ -323,6 +323,19 @@ contract VaultRedeemTest is TestVault {
             "Vault should have 1 ether"
         );
 
+        vm.prank(lp1);
+        vault.withdrawRequestRedeem(0.5 ether);
+        assertEq(
+            vault.balanceOf(lp1),
+            9.5 ether,
+            "LP1 should have 9.5 ether after withdrawing request"
+        );
+        assertEq(
+            vault.balanceOf(address(vault)),
+            0.5 ether,
+            "Vault should have 0.5 ether after partial withdrawal"
+        );
+
         settleCurrentEpoch();
 
         vault.redeem(lp1);

@@ -665,6 +665,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         }
 
         totalPendingWithdrawals -= shares;
+        _transfer(address(this), msg.sender, shares);
 
         emit RedeemRequestWithdrawn(
             msg.sender,
