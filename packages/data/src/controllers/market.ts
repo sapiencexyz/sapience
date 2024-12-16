@@ -264,7 +264,7 @@ const alertEvent = async (
           // Format with commas and only show decimals if significant
           const gasAmount = rawGasAmount.toLocaleString('en-US', {
             minimumFractionDigits: 0,
-            maximumFractionDigits: 6
+            maximumFractionDigits: 9
           });
           const priceGwei = rawPriceGwei.toLocaleString('en-US', {
             minimumFractionDigits: 0,

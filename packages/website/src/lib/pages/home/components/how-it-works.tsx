@@ -128,10 +128,12 @@ export const HowItWorks = () => {
                   priority
                 />
               ) : (
-                <Spline
-                  className="!block h-full w-full object-cover"
-                  scene={slide.scene}
-                />
+                isInView && (
+                  <Spline
+                    className="!block h-full w-full object-cover"
+                    scene={slide.scene}
+                  />
+                )
               )}
             </motion.div>
           </motion.div>

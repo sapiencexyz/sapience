@@ -43,7 +43,6 @@ import * as Sentry from "@sentry/node";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { CollateralTransfer } from "./models/CollateralTransfer";
-import { Event } from "./models/Event";
 import { MARKET_INFO } from "./markets";
 
 const PORT = 3001;
@@ -100,11 +99,6 @@ const startServer = async () => {
   const app = express();
   // Middleware to parse JSON bodies
   app.use(express.json());
-
-  // Only set up Sentry error handling in production
-  if (process.env.NODE_ENV === "production") {
-    Sentry.setupExpressErrorHandler(app);
-  }
 
   const corsOptions: cors.CorsOptions = {
     origin: (
@@ -189,14 +183,7 @@ const startServer = async () => {
       next();
     };
 
-  // Global error handler
-  app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-    console.error("An error occurred:", err.message);
-    res.status(500).json({ error: "Internal server error" });
-  });
-
   // Routes
-
   app.get(
     "/markets",
     handleAsyncErrors(async (req, res, next) => {
@@ -1212,10 +1199,10 @@ const startServer = async () => {
       }
 
       const startCommand = model === 'ResourcePrice' 
-        ? `pnpm run start:reindex-missing ${chainId} ${address} ${epochId} ResourcePrice` 
+        ? `pnpm run start:reindex-missing ${chainId} ${address} ${epochId}`
         : `pnpm run start:reindex-market ${chainId} ${address} ${epochId}`;
 
-      if (process.env.NODE_ENV !== 'production') {
+      if (process.env.NODE_ENV !== "production") {
         try {
           const result = await executeLocalReindex(startCommand);
           res.json({ success: true, job: result });
@@ -1235,6 +1222,17 @@ const startServer = async () => {
       res.json({ success: true, job });
     })
   );
+
+  // Only set up Sentry error handling in production
+  if (process.env.NODE_ENV === "production") {
+    Sentry.setupExpressErrorHandler(app);
+  }
+  
+  // Global error handler
+  app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+    console.error("An error occurred:", err.message);
+    res.status(500).json({ error: "Internal server error" });
+  });
 };
 
 startServer().catch((e) => console.error("Unable to start server: ", e));
