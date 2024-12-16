@@ -226,6 +226,11 @@ interface IVault is
      */
     event EpochProcessed(uint256 indexed epochId, uint256 newSharePrice);
 
+    event VaultPositionSettled(
+        uint256 indexed epochId,
+        uint256 collateralReceived
+    );
+
     /**
      * @notice Initialize the first epoch of the vault
      * @param initialSqrtPriceX96 The initial sqrt price

@@ -86,6 +86,8 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
      */
     int24 tickSpacing;
 
+    bool vaultCorrupted;
+
     constructor(
         string memory _name,
         string memory _symbol,
@@ -116,6 +118,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint160 initialSqrtPriceX96
     ) external onlyInitializer {
         require(!initialized, "Already Initialized");
+        require(address(market) != address(0), "Market address not set");
 
         uint256 initialStartTime = block.timestamp + (vaultIndex * duration);
         // set tick spacing in storage once to reuse
@@ -125,7 +128,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 startingSharePrice = 1e18;
         epochSharePrices[0] = startingSharePrice;
 
-        uint256 collateralAmount = _reconcilePendingTransactions(
+        uint256 collateralAmount = _calculateNextCollateral(
             0,
             startingSharePrice
         );
@@ -156,6 +159,22 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         assertionId = market.submitSettlementPrice(epochId, msg.sender, price);
     }
 
+    function forceSettlePosition()
+        external
+        onlyInitializer
+        returns (uint256 sharePrice, uint256 collateralReceived)
+    {
+        uint256 collateralReceived = market.settlePosition(positionId);
+
+        emit VaultPositionSettled(currentEpochId, collateralReceived);
+
+        _updateSharePrice(collateralReceived);
+
+        vaultCorrupted = true;
+
+        return (sharePrice, collateralReceived);
+    }
+
     /// @notice callback function called by market when an epoch is settled
     /// @dev collateral received is reconciled with pending txns to determine collateral for next liquidity position
     /// @dev share price is updated based on the collateral received
@@ -165,23 +184,28 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 collateralReceived;
         if (positionId != 0) {
             collateralReceived = market.settlePosition(positionId);
+            emit VaultPositionSettled(currentEpochId, collateralReceived);
         }
         uint256 sharePrice = _updateSharePrice(collateralReceived);
-
-        uint256 totalCollateralAfterTransition = _reconcilePendingTransactions(
-            collateralReceived,
-            sharePrice
-        );
 
         // Set up the start time for the new epoch
         (IFoilStructs.EpochData memory epochData, ) = market.getLatestEpoch();
         _createEpochAndPosition(
             _calculateNextStartTime(epochData.startTime),
             previousResolutionSqrtPriceX96,
-            totalCollateralAfterTransition
+            calculateNextCollateral(collateralReceived, sharePrice)
         );
 
-        emit EpochProcessed(epochData.epochId, sharePrice);
+        try createNewEpochAndPosition() {} catch {
+            vaultCorrupted = true;
+
+            emit VaultCorrupted();
+        }
+
+        vaultCorrupted = false;
+        _reconcilePendingTransactions(sharePrice);
+
+        emit EpochProcessed(currentEpochId, sharePrice);
     }
 
     function supportsInterface(
@@ -203,20 +227,48 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         return this.onERC721Received.selector;
     }
 
+    function createNewEpochAndPosition(
+        uint256 startTime,
+        uint160 previousResolutionSqrtPriceX96,
+        uint256 collateralAvailable
+    ) public {
+        require(
+            (vaultCorrupted && msg.sender == vaultInitializer) ||
+                msg.sender == address(this),
+            "Action not allowed"
+        );
+
+        uint256 sharePrice = _updateSharePrice(collateralAvailable);
+
+        (IFoilStructs.EpochData memory epochData, ) = market.getLatestEpoch();
+        _createEpochAndPosition(
+            startTime,
+            previousResolutionSqrtPriceX96,
+            _calculateNextCollateral(
+                collateralAvailable,
+                epochSharePrices[currentEpochId]
+            )
+        );
+
+        _reconcilePendingTransactions(sharePrice);
+
+        vaultCorrupted = false;
+
+        emit EpochProcessed(currentEpochId, sharePrice);
+    }
+
     function _createEpochAndPosition(
         uint256 startTime,
         uint160 startingSqrtPriceX96,
         uint256 collateralAmount
     ) private {
-        require(address(market) != address(0), "Market address not set");
-
         // get lower and upper bounds for the price tick for the new epoch
         (
             int24 baseAssetMinPriceTick,
             int24 baseAssetMaxPriceTick
         ) = _calculateTickBounds(startingSqrtPriceX96);
 
-        uint256 newEpochId = IFoil(market).createEpoch(
+        currentEpochId = IFoil(market).createEpoch(
             startTime,
             startTime + duration,
             startingSqrtPriceX96,
@@ -224,7 +276,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             baseAssetMaxPriceTick,
             block.timestamp
         );
-        currentEpochId = newEpochId;
 
         if (collateralAmount > minimumCollateral) {
             positionId = _createNewLiquidityPosition(collateralAmount);
@@ -303,11 +354,11 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         return sharePrice;
     }
 
-    function _reconcilePendingTransactions(
+    function _calculateNextCollateral(
         uint256 collateralFromPreviousEpoch,
         uint256 sharePrice
-    ) internal returns (uint256 totalCollateralForNextEpoch) {
-        totalCollateralForNextEpoch =
+    ) internal returns (uint256) {
+        return
             collateralFromPreviousEpoch +
             totalPendingDeposits -
             totalPendingWithdrawals.mulDiv(
@@ -315,7 +366,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
                 1e18,
                 Math.Rounding.Ceil
             );
+    }
 
+    function _reconcilePendingTransactions(uint256 sharePrice) internal {
         uint256 newShares = totalPendingDeposits.mulDiv(
             1e18,
             sharePrice,
