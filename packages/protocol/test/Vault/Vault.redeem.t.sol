@@ -146,6 +146,34 @@ contract VaultRedeemTest is TestVault {
         );
     }
 
+    function test_withdrawRequestReturnsEverything_whenLeftoverIsBelowMinimum()
+        public
+    {
+        vm.startPrank(lp1);
+        vault.requestRedeem(1 ether);
+
+        (, uint256 totalPendingWithdrawals, ) = vault.pendingValues();
+        assertEq(
+            totalPendingWithdrawals,
+            1 ether,
+            "Total pending withdrawals should be 1 ether - 1e7"
+        );
+
+        vault.withdrawRequestRedeem(1 ether - 1e7);
+        vm.stopPrank();
+
+        (, uint256 totalPendingWithdrawalsAfter, ) = vault.pendingValues();
+        assertEq(
+            totalPendingWithdrawalsAfter,
+            0,
+            "Total pending withdrawals should be 0"
+        );
+
+        IVault.UserPendingTransaction memory pendingTxn = vault
+            .pendingRedeemRequest(lp2);
+        assertEq(pendingTxn.amount, 0, "Pending redeem amount should be 0");
+    }
+
     function test_requestRedeemMultipleTimesAddsAmount() public {
         vm.startPrank(lp1);
 
@@ -293,6 +321,19 @@ contract VaultRedeemTest is TestVault {
             vault.balanceOf(address(vault)),
             1 ether,
             "Vault should have 1 ether"
+        );
+
+        vm.prank(lp1);
+        vault.withdrawRequestRedeem(0.5 ether);
+        assertEq(
+            vault.balanceOf(lp1),
+            9.5 ether,
+            "LP1 should have 9.5 ether after withdrawing request"
+        );
+        assertEq(
+            vault.balanceOf(address(vault)),
+            0.5 ether,
+            "Vault should have 0.5 ether after partial withdrawal"
         );
 
         settleCurrentEpoch();
