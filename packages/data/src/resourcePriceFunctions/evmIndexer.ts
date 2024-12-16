@@ -73,7 +73,6 @@ class EvmIndexer {
     for (const blockNumber of blocks) {
       try {
         console.log("Indexing gas from block", blockNumber);
-        
         const block = await this.client.getBlock({
           blockNumber: BigInt(blockNumber),
         });
