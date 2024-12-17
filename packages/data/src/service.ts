@@ -672,7 +672,7 @@ const startServer = async () => {
           item?.service?.id &&
           (process.env.NODE_ENV === "staging" 
             ? item?.service?.branch === "staging"
-            : true)
+            : item?.service?.branch === "main")
         ) {
           id = item?.service.id;
           break;
