@@ -81,9 +81,7 @@ contract TradePositionSlippage is TestTrade {
         lp1 = TestUser.createUser("LP1", 10_000_000_000 ether);
         trader1 = TestUser.createUser("Trader1", 10_000_000 ether);
 
-        (
-            IFoilStructs.EpochData memory epochData,
-        ) = foil.getLatestEpoch();
+        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
         epochId = epochData.epochId;
         pool = epochData.pool;
         tokenA = epochData.ethToken;

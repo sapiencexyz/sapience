@@ -11,6 +11,7 @@ import {ILiquidityModule} from "../../src/market/interfaces/ILiquidityModule.sol
 import {Position} from "../../src/market/storage/Position.sol";
 import {Errors} from "../../src/market/storage/Errors.sol";
 import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
+import {IFoilPositionEvents} from "../../src/market/interfaces/IFoilPositionEvents.sol";
 
 contract DepositCollateralTest is TestTrade {
     using Cannon for Vm;
@@ -151,14 +152,23 @@ contract DepositCollateralTest is TestTrade {
     function test_depositCollateralEmitsEvent() public {
         uint256 amountToDeposit = 5 ether;
 
+        // Get position data
+        Position.Data memory position = foil.getPosition(
+            feeCollectorPositionId
+        );
+
         vm.startPrank(feeCollector);
         vm.expectEmit(true, true, true, true);
-        emit ILiquidityModule.CollateralDeposited(
+        emit IFoilPositionEvents.CollateralDeposited(
             feeCollector,
             epochId,
             feeCollectorPositionId,
             amountToDeposit + COLLATERAL_AMOUNT,
-            amountToDeposit
+            position.vEthAmount,
+            position.vGasAmount,
+            position.borrowedVEth,
+            position.borrowedVGas,
+            int256(amountToDeposit)
         );
         foil.depositCollateral(feeCollectorPositionId, amountToDeposit);
         vm.stopPrank();

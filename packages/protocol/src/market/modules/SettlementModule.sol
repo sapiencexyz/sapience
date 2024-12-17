@@ -11,6 +11,7 @@ import {DecimalPrice} from "../libraries/DecimalPrice.sol";
 import {ERC721Storage} from "../storage/ERC721Storage.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {ISettlementModule} from "../interfaces/ISettlementModule.sol";
+import {IFoilPositionEvents} from "../interfaces/IFoilPositionEvents.sol";
 import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePositionManager.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
@@ -53,7 +54,10 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
             withdrawableCollateral
         );
 
-        emit PositionSettled(positionId, withdrawnCollateral);
+        emit IFoilPositionEvents.PositionSettled(
+            positionId,
+            withdrawableCollateral
+        );
     }
 
     function _settleLiquidityPosition(

@@ -9,6 +9,7 @@ import "./IConfigurationModule.sol";
 import "./IViewsModule.sol";
 import "./IUMASettlementModule.sol";
 import "./ISettlementModule.sol";
+import "./IFoilPositionEvents.sol";
 
 interface IFoil is
     ILiquidityModule,
@@ -16,5 +17,6 @@ interface IFoil is
     IConfigurationModule,
     IViewsModule,
     IUMASettlementModule,
-    ISettlementModule
+    ISettlementModule,
+    IFoilPositionEvents
 {}
