@@ -14,6 +14,7 @@ library Errors {
     error EpochNotSettled(uint256 epochId);
     error ExpiredEpochNotSettled(uint256 epochEndTime);
     error EpochAlreadyStarted();
+    error EpochNotStarted(uint256 epochId, uint256 epochStartTime);
     error EpochSettled();
     error ExpiredEpoch();
     error TokensAlreadyCreated();

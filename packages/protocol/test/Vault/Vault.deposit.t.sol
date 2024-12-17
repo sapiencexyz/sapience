@@ -62,8 +62,9 @@ contract VaultDepositTest is TestVault {
     }
 
     function test_pendingTxn_isAccurate() public view {
-        IVault.UserPendingTransaction memory pendingTxn = vault
-            .pendingDepositRequest(lp1);
+        IVault.UserPendingTransaction memory pendingTxn = vault.pendingRequest(
+            lp1
+        );
 
         assertEq(
             pendingTxn.amount,
@@ -86,8 +87,9 @@ contract VaultDepositTest is TestVault {
         vm.startPrank(lp1);
         vault.requestDeposit(10 ether);
 
-        IVault.UserPendingTransaction memory pendingTxn = vault
-            .pendingDepositRequest(lp1);
+        IVault.UserPendingTransaction memory pendingTxn = vault.pendingRequest(
+            lp1
+        );
         assertEq(
             pendingTxn.amount,
             20 ether,
@@ -109,8 +111,9 @@ contract VaultDepositTest is TestVault {
         vm.startPrank(lp1);
         vault.withdrawRequestDeposit(5 ether);
 
-        IVault.UserPendingTransaction memory pendingTxn = vault
-            .pendingDepositRequest(lp1);
+        IVault.UserPendingTransaction memory pendingTxn = vault.pendingRequest(
+            lp1
+        );
         assertEq(
             pendingTxn.amount,
             5 ether,
@@ -133,8 +136,9 @@ contract VaultDepositTest is TestVault {
         vault.withdrawRequestDeposit(10 ether - 1e7);
         vm.stopPrank();
 
-        IVault.UserPendingTransaction memory pendingTxn = vault
-            .pendingDepositRequest(lp2);
+        IVault.UserPendingTransaction memory pendingTxn = vault.pendingRequest(
+            lp2
+        );
         assertEq(pendingTxn.amount, 0, "Pending deposit amount should be 0");
 
         (uint256 totalPendingDeposits, , ) = vault.pendingValues();
@@ -163,7 +167,7 @@ contract VaultDepositTest is TestVault {
         vault.initializeFirstEpoch(initialSqrtPriceX96);
 
         vm.startPrank(lp1);
-        vm.expectRevert("Previous deposit request is not completed");
+        vm.expectRevert("Previous deposit request is not in the same epoch");
         vault.requestDeposit(10 ether);
 
         vm.stopPrank();

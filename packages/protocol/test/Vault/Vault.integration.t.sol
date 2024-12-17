@@ -201,7 +201,7 @@ contract VaultIntegrationTest is TestVault {
 
         // Verify lp3 cannot request deposit while previous deposit is pending
         vm.prank(lp3);
-        vm.expectRevert("Previous deposit request is not completed");
+        vm.expectRevert("Previous deposit request is not in the same epoch");
         vault.requestDeposit(1 ether);
 
         // Verify lp3 cannot request redeem while deposit is pending
