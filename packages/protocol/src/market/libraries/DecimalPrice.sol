@@ -16,6 +16,6 @@ library DecimalPrice {
             1
         );
         price = sqrtRatioX96Squared >> 96;
-        price = Math.mulDiv(sqrtRatioX96Squared, 1e18, Q96);
+        price = Math.mulDiv(price, 1e18, Q96);
     }
 }
