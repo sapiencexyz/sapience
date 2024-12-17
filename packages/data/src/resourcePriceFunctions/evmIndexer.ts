@@ -25,7 +25,8 @@ class EvmIndexer {
       );
       return;
     }
-
+    // added a try catch to prevent the watcher from crashing here if no basefee or block number was found. 
+    // it will skip the block and continue watching. We can reindex any missing blocks later.
     try {
       const price = new ResourcePrice();
       price.market = market;
@@ -102,7 +103,7 @@ class EvmIndexer {
       console.log('Already watching blocks for this market');
       return;
     }
-
+    // suggested using a watch some re-connectiong logic if the watcher crashes. and attempts to reconnect. 
     const startWatching = () => {
       console.log(
         `Watching base fee per gas on chain ID ${this.client.chain?.id} for market ${market.chainId}:${market.address}`
