@@ -14,7 +14,7 @@ import { Transaction } from "./Transaction";
 import { Market } from "./Market";
 
 @Entity()
-@Unique(["transactionHash"])
+@Unique(["transactionHash", "market", "blockNumber", "logIndex"])
 export class Event {
   @OneToOne(() => Transaction, (transaction) => transaction.event)
   transaction: Transaction;

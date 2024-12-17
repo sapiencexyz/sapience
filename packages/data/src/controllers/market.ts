@@ -425,7 +425,7 @@ const upsertEvent = async (
     logData,
   });
 
-  // // Find market and/or epoch associated with the event
+  // Find market and/or epoch associated with the event
   let market = await marketRepository.findOne({
     where: { chainId, address },
   });
@@ -445,9 +445,15 @@ const upsertEvent = async (
   newEvent.timestamp = timeStamp.toString();
   newEvent.logIndex = logIndex;
   newEvent.logData = logData;
+  newEvent.transactionHash = logData.transactionHash;
 
   // insert the event
-  await eventRepository.upsert(newEvent, ["market", "blockNumber", "logIndex"]);
+  await eventRepository.upsert(newEvent, [
+    "transactionHash",
+    "market",
+    "blockNumber",
+    "logIndex",
+  ]);
 };
 
 // Triggered by the callback in the Event model, this upserts related entities (Transaction, Position, MarketPrice).
@@ -466,6 +472,7 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
   const market = event.market;
 
   switch (event.logData.eventName) {
+    // Market events
     case EventType.MarketInitialized:
       console.log("initializing market. event: ", event);
       const marketCreatedArgs = event.logData
@@ -490,6 +497,8 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       );
       skipTransaction = true;
       break;
+
+    // Epoch events
     case EventType.EpochCreated:
       console.log("creating epoch. event: ", event);
       const epochCreatedArgs = event.logData.args as EpochCreatedEventLog;
@@ -520,12 +529,26 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       }
       skipTransaction = true;
       break;
+
+    // Position events
     case EventType.Transfer:
       console.log("Handling Transfer event: ", event);
       await handleTransferEvent(event);
       skipTransaction = true;
       break;
+    case EventType.PositionSettled:
+      console.log("Handling Position Settled from event: ", event);
+      await Promise.all([
+        handlePositionSettledEvent(event),
+        updateTransactionFromPositionSettledEvent(
+          newTransaction,
+          event,
+          event.logData.args.epochId
+        ),
+      ]);
+      break;
 
+    // Liquidity events
     case EventType.LiquidityPositionCreated:
       console.log("Creating liquidity position from event: ", event);
       updateTransactionFromAddLiquidityEvent(newTransaction, event);
@@ -555,6 +578,8 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
         event.logData.args.epochId
       );
       break;
+
+    // Trader events
     case EventType.TraderPositionCreated:
       console.log("Creating trader position from event: ", event);
       await updateTransactionFromTradeModifiedEvent(
@@ -571,17 +596,7 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
         event.logData.args.epochId
       );
       break;
-    case EventType.PositionSettled:
-      console.log("Handling Position Settled from event: ", event);
-      await Promise.all([
-        handlePositionSettledEvent(event),
-        updateTransactionFromPositionSettledEvent(
-          newTransaction,
-          event,
-          event.logData.args.epochId
-        ),
-      ]);
-      break;
+
     default:
       skipTransaction = true;
       break;
