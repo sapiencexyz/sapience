@@ -4,34 +4,6 @@ pragma solidity >=0.8.2 <0.9.0;
 import {IFoilStructs} from "./IFoilStructs.sol";
 
 interface ITradeModule {
-    event TraderPositionCreated(
-        address indexed sender,
-        uint256 indexed epochId,
-        uint256 indexed positionId,
-        uint256 collateralAmount,
-        uint256 vEthAmount,
-        uint256 vGasAmount,
-        uint256 borrowedVEth,
-        uint256 borrowedVGas,
-        uint256 initialPrice,
-        uint256 finalPrice,
-        uint256 tradeRatio
-    );
-
-    event TraderPositionModified(
-        address indexed sender,
-        uint256 indexed epochId,
-        uint256 indexed positionId,
-        uint256 collateralAmount,
-        uint256 vEthAmount,
-        uint256 vGasAmount,
-        uint256 borrowedVEth,
-        uint256 borrowedVGas,
-        uint256 initialPrice,
-        uint256 finalPrice,
-        uint256 tradeRatio
-    );
-
     /** @dev Create a new trader position.
      * @param epochId The epoch id.
      * @param size The position size.

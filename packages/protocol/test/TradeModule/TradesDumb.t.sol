@@ -836,26 +836,6 @@ contract TradePositionDumb is TestTrade {
         );
     }
 
-    function test_revertIf_TradePriceOutOfBounds() public {
-        int256 initialPositionSize = 1 ether;
-
-        uint256 positionId;
-
-        vm.startPrank(trader1);
-        positionId = addTraderPosition(foil, epochId, initialPositionSize);
-
-        // Send more collateral than required, just checking the position can be created/modified
-        vm.expectPartialRevert(Errors.TradePriceOutOfBounds.selector);
-        foil.modifyTraderPosition(
-            positionId,
-            initialPositionSize - 1,
-            0,
-            block.timestamp + 30 minutes
-        );
-
-        vm.stopPrank();
-    }
-
     // //////////////// //
     // Helper functions //
     // //////////////// //

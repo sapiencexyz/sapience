@@ -120,6 +120,44 @@ contract VaultDepositTest is TestVault {
         vm.stopPrank();
     }
 
+    function test_withdrawRequestReturnsEverything_whenLeftoverIsBelowMinimum()
+        public
+    {
+        (uint256 totalPendingDepositsBefore, , ) = vault.pendingValues();
+        uint256 vaultBalanceBefore = collateralAsset.balanceOf(address(vault));
+
+        vm.startPrank(lp2);
+        vault.requestDeposit(10 ether);
+        uint256 balanceBefore = collateralAsset.balanceOf(lp2);
+
+        vault.withdrawRequestDeposit(10 ether - 1e7);
+        vm.stopPrank();
+
+        IVault.UserPendingTransaction memory pendingTxn = vault
+            .pendingDepositRequest(lp2);
+        assertEq(pendingTxn.amount, 0, "Pending deposit amount should be 0");
+
+        (uint256 totalPendingDeposits, , ) = vault.pendingValues();
+        assertEq(
+            totalPendingDeposits,
+            totalPendingDepositsBefore,
+            "Total pending deposits should be same as prior to request"
+        );
+
+        uint256 balanceAfter = collateralAsset.balanceOf(lp2);
+        assertEq(
+            balanceBefore + 10 ether,
+            balanceAfter,
+            "LP Balance should go up by 10 ether"
+        );
+
+        assertEq(
+            collateralAsset.balanceOf(address(vault)),
+            vaultBalanceBefore,
+            "Vault balance should be same as prior to request"
+        );
+    }
+
     function test_depositReverts_whenDepositNotCollected() public {
         vm.prank(vaultOwner);
         vault.initializeFirstEpoch(initialSqrtPriceX96);
