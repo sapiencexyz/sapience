@@ -55,15 +55,6 @@ interface IVaultAsyncDeposit {
     ) external returns (IVault.UserPendingTransaction memory pendingTxn);
 
     /**
-     * @notice Get the pending deposit request for an address
-     * @param owner The address to check
-     * @return pendingTxn The pending transaction details
-     */
-    function pendingDepositRequest(
-        address owner
-    ) external view returns (IVault.UserPendingTransaction memory pendingTxn);
-
-    /**
      * @notice Get the claimable shares amount for a pending deposit
      * @dev the shares amount is calculated only after the epoch the request was made is resolved
      * @param owner The address to check
@@ -126,15 +117,6 @@ interface IVaultAsyncRedeem {
     ) external returns (IVault.UserPendingTransaction memory pendingTxn);
 
     /**
-     * @notice Get the pending redeem request for an address
-     * @param owner The address to check
-     * @return pendingTxn The pending transaction details
-     */
-    function pendingRedeemRequest(
-        address owner
-    ) external view returns (IVault.UserPendingTransaction memory pendingTxn);
-
-    /**
      * @notice Get the claimable collateral amount for a pending redemption
      * @dev the collateral amount is calculated only after the epoch the request was made is resolved
      * @param owner The address to check
@@ -172,6 +154,15 @@ interface IVaultViews {
      * @return Three uint256 values representing pending amounts
      */
     function pendingValues() external view returns (uint256, uint256, uint256);
+
+    /**
+     * @notice Get the pending deposit/withdraw request for an address
+     * @param owner The address to check
+     * @return pendingTxn The pending transaction details
+     */
+    function pendingRequest(
+        address owner
+    ) external view returns (IVault.UserPendingTransaction memory);
 
     /**
      * @notice Get the share price for a specific epoch

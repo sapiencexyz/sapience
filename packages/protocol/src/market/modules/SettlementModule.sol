@@ -48,9 +48,12 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
             revert Errors.InvalidPositionKind();
         }
 
-        market.withdrawCollateral(msg.sender, withdrawableCollateral);
+        uint256 withdrawnCollateral = market.withdrawCollateral(
+            msg.sender,
+            withdrawableCollateral
+        );
 
-        emit PositionSettled(positionId, withdrawableCollateral);
+        emit PositionSettled(positionId, withdrawnCollateral);
     }
 
     function _settleLiquidityPosition(

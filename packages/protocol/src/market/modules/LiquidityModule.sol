@@ -579,7 +579,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             position.vGasAmount == 0 &&
             position.borrowedVEth == 0
         ) {
-            market.withdrawCollateral(
+            collateralAmount = market.withdrawCollateral(
                 ERC721Storage._ownerOf(position.id),
                 position.depositedCollateralAmount
             );
@@ -588,7 +588,6 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         } else {
             position.kind = IFoilStructs.PositionKind.Trade;
         }
-        collateralAmount = position.depositedCollateralAmount;
 
         // Emit an event for the closed position
         emit LiquidityPositionClosed(
