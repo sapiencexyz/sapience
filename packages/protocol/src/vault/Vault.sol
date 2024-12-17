@@ -79,7 +79,12 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     /**
      *  minimum collateral required to create liquidity position and to request deposit
      */
-    uint256 constant minimumCollateral = 1e3;
+    uint256 constant minimumCollateral = 1e8;
+
+    /**
+     * store tick spacing for the pool on initialization
+     */
+    int24 tickSpacing;
 
     constructor(
         string memory _name,
@@ -113,6 +118,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         require(!initialized, "Already Initialized");
 
         uint256 initialStartTime = block.timestamp + (vaultIndex * duration);
+        // set tick spacing in storage once to reuse
+        // for future epoch creations
+        tickSpacing = market.getMarketTickSpacing();
 
         uint256 startingSharePrice = 1e18;
         epochSharePrices[0] = startingSharePrice;
@@ -267,13 +275,12 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             uint160(upperBoundSqrtPriceX96)
         );
 
-        // adjust to floor based on tick spacing
         baseAssetMinPriceTick =
             baseAssetMinPriceTick -
-            (baseAssetMinPriceTick % 200);
+            (baseAssetMinPriceTick % tickSpacing);
         baseAssetMaxPriceTick =
             baseAssetMaxPriceTick -
-            (baseAssetMaxPriceTick % 200);
+            (baseAssetMaxPriceTick % tickSpacing);
     }
 
     function _updateSharePrice(
@@ -521,14 +528,17 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             "Previous deposit request is not in the same epoch"
         );
 
-        pendingTxn.amount -= assets;
-        totalPendingDeposits -= assets;
+        uint256 remainingAssets = pendingTxn.amount - assets;
 
-        collateralAsset.safeTransfer(msg.sender, assets);
-
-        if (pendingTxn.amount <= minimumCollateral) {
+        if (remainingAssets <= minimumCollateral) {
+            assets = pendingTxn.amount;
             resetTransaction(msg.sender);
+        } else {
+            pendingTxn.amount -= assets;
         }
+
+        totalPendingDeposits -= assets;
+        collateralAsset.safeTransfer(msg.sender, assets);
 
         emit DepositRequestWithdrawn(
             msg.sender,
@@ -612,6 +622,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             "Previous redeem request is not in the same epoch"
         );
 
+        // transfer shares to vault
+        _transfer(msg.sender, address(this), shares);
+
         pendingTxn.requestInitiatedEpoch = currentEpochId;
         pendingTxn.amount += shares;
         pendingTxn.transactionType = TransactionType.WITHDRAW;
@@ -642,12 +655,17 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             "Previous deposit request is not in the same epoch"
         );
 
-        pendingTxn.amount -= shares;
-        totalPendingWithdrawals -= shares;
+        uint256 remainingShares = pendingTxn.amount - shares;
 
-        if (pendingTxn.amount <= minimumCollateral) {
+        if (remainingShares <= minimumCollateral) {
+            shares = pendingTxn.amount;
             resetTransaction(msg.sender);
+        } else {
+            pendingTxn.amount -= shares;
         }
+
+        totalPendingWithdrawals -= shares;
+        _transfer(address(this), msg.sender, shares);
 
         emit RedeemRequestWithdrawn(
             msg.sender,
@@ -797,7 +815,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         assets = sharePrice.mulDiv(sharesAmount, 10 ** 18, Math.Rounding.Floor);
 
         // Burn the shares
-        _burn(owner, sharesAmount);
+        _burn(address(this), sharesAmount);
         collateralAsset.safeTransfer(owner, assets);
         pendingSharesToBurn -= sharesAmount;
 

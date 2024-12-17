@@ -14,6 +14,8 @@ import {Errors} from "./Errors.sol";
 library Market {
     using SafeERC20 for IERC20;
 
+    uint256 constant MIN_COLLATERAL = 10_000; // 10,000 wstETH (in wei);
+
     struct Data {
         address owner;
         address pendingOwner;
