@@ -242,16 +242,10 @@ if (process.argv[2] === "reindexMarket") {
     const chainId = parseInt(process.argv[3], 10);
     const address = process.argv[4];
     const epochId = process.argv[5];
-    const model = process.argv[6] as "ResourcePrice" | "Event";
 
-    if (
-      isNaN(chainId) ||
-      !address ||
-      !epochId ||
-      !["ResourcePrice", "Event"].includes(model)
-    ) {
+    if (isNaN(chainId) || !address || !epochId) {
       console.error(
-        "Invalid arguments. Usage: tsx src/worker.ts reindexMissing <chainId> <address> <epochId> <ResourcePrice|Event>"
+        "Invalid arguments. Usage: tsx src/worker.ts reindexMissing <chainId> <address> <epochId>"
       );
       process.exit(1);
     }

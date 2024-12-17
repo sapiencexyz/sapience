@@ -75,4 +75,6 @@ interface IViewsModule {
     function getPositionPnl(
         uint256 positionId
     ) external view returns (int256 pnl);
+
+    function getMarketTickSpacing() external view returns (int24);
 }
