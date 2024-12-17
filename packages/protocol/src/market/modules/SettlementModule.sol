@@ -21,7 +21,7 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
 
     function settlePosition(
         uint256 positionId
-    ) external override nonReentrant returns (uint256 withdrawableCollateral) {
+    ) external override nonReentrant returns (uint256 withdrawnCollateral) {
         Position.Data storage position = Position.loadValid(positionId);
         Epoch.Data storage epoch = Epoch.loadValid(position.epochId);
         Market.Data storage market = Market.load();
@@ -41,6 +41,7 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
         }
 
         // Perform settlement logic based on position kind
+        uint256 withdrawableCollateral;
         if (position.kind == IFoilStructs.PositionKind.Liquidity) {
             withdrawableCollateral = _settleLiquidityPosition(position, epoch);
         } else if (position.kind == IFoilStructs.PositionKind.Trade) {
@@ -49,14 +50,22 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
             revert Errors.InvalidPositionKind();
         }
 
-        uint256 withdrawnCollateral = market.withdrawCollateral(
+        withdrawnCollateral = market.withdrawCollateral(
             msg.sender,
             withdrawableCollateral
         );
 
+        int256 deltaCollateral = -int256(withdrawnCollateral);
+
         emit IFoilPositionEvents.PositionSettled(
             positionId,
-            withdrawableCollateral
+            withdrawnCollateral,
+            position.depositedCollateralAmount,
+            position.vEthAmount,
+            position.vGasAmount,
+            position.borrowedVEth,
+            position.borrowedVGas,
+            deltaCollateral
         );
     }
 
