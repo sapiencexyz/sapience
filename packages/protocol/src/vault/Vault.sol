@@ -490,7 +490,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         require(
             pendingTxn.requestInitiatedEpoch == currentEpochId ||
                 pendingTxn.amount == 0,
-            "Previous withdraw request is not in the same epoch"
+            "Previous deposit request is not in the same epoch"
         );
 
         require(

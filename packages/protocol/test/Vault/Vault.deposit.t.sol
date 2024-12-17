@@ -167,7 +167,7 @@ contract VaultDepositTest is TestVault {
         vault.initializeFirstEpoch(initialSqrtPriceX96);
 
         vm.startPrank(lp1);
-        vm.expectRevert("Previous deposit request is not completed");
+        vm.expectRevert("Previous deposit request is not in the same epoch");
         vault.requestDeposit(10 ether);
 
         vm.stopPrank();

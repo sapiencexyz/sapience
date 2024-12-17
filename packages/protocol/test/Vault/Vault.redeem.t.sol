@@ -120,7 +120,7 @@ contract VaultRedeemTest is TestVault {
         settleCurrentEpoch();
 
         vm.prank(lp1);
-        vm.expectRevert("Previous deposit request is not in the same epoch");
+        vm.expectRevert("Previous withdraw request is not in the same epoch");
         vault.withdrawRequestRedeem(1 ether);
     }
 

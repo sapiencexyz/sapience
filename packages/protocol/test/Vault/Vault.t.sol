@@ -129,7 +129,7 @@ contract VaultTest is TestVault {
         endTimeAfter = epochData.endTime;
 
         assertEq(epochIdAfter, epochIdBefore + 1);
-        assertEq(startTimeAfter, endTimeBefore + DEFAULT_DURATION);
+        assertEq(startTimeAfter, endTimeBefore + 1);
         assertEq(endTimeAfter, startTimeAfter + DEFAULT_DURATION);
 
         // check new bounds
@@ -179,7 +179,7 @@ contract VaultTest is TestVault {
         endTimeAfter = epochData.endTime;
 
         assertEq(epochIdAfter, epochIdBefore + 1);
-        assertEq(startTimeAfter, endTimeBefore + DEFAULT_DURATION);
+        assertEq(startTimeAfter, endTimeBefore + 1);
         assertEq(endTimeAfter, startTimeAfter + DEFAULT_DURATION);
 
         // check new bounds
