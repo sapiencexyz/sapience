@@ -191,7 +191,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             interfaceId == type(IVault).interfaceId ||
             interfaceId == type(IERC165).interfaceId ||
             interfaceId == type(IResolutionCallback).interfaceId ||
-            interfaceId == type(IERC4626).interfaceId ||
             super.supportsInterface(interfaceId);
     }
 
@@ -237,6 +236,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     function _calculateNextStartTime(
         uint256 previousStartTime
     ) private view returns (uint256) {
+        if (totalVaults == 1) {
+            return block.timestamp;
+        }
+
         uint256 vaultCycleDuration = duration * totalVaults;
         uint256 iterationsToSkip = (block.timestamp - previousStartTime) /
             (duration * totalVaults);
@@ -487,7 +490,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         require(
             pendingTxn.requestInitiatedEpoch == currentEpochId ||
                 pendingTxn.amount == 0,
-            "Previous deposit request is not completed"
+            "Previous deposit request is not in the same epoch"
         );
 
         require(
@@ -548,12 +551,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         );
 
         return pendingTxn;
-    }
-
-    function pendingDepositRequest(
-        address owner
-    ) external view override returns (IVault.UserPendingTransaction memory) {
-        return userPendingTransactions[owner];
     }
 
     function claimableDepositRequest(
@@ -652,7 +649,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         );
         require(
             pendingTxn.requestInitiatedEpoch == currentEpochId,
-            "Previous deposit request is not in the same epoch"
+            "Previous withdraw request is not in the same epoch"
         );
 
         uint256 remainingShares = pendingTxn.amount - shares;
@@ -675,12 +672,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         );
 
         return pendingTxn;
-    }
-
-    function pendingRedeemRequest(
-        address owner
-    ) external view override returns (IVault.UserPendingTransaction memory) {
-        return userPendingTransactions[owner];
     }
 
     function claimableRedeemRequest(
@@ -857,5 +848,11 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         returns (IFoilStructs.EpochData memory epochData)
     {
         (epochData, ) = market.getLatestEpoch();
+    }
+
+    function pendingRequest(
+        address owner
+    ) external view override returns (IVault.UserPendingTransaction memory) {
+        return userPendingTransactions[owner];
     }
 }

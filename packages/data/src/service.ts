@@ -667,7 +667,13 @@ const startServer = async () => {
       let id: string = "";
       const renderServices: any[] = await fetchRenderServices();
       for (const item of renderServices) {
-        if (item?.service?.name === "background-worker" && item?.service?.id) {
+        if (
+          item?.service?.type === "background_worker" && 
+          item?.service?.id &&
+          (process.env.NODE_ENV === "staging" 
+            ? item?.service?.branch === "staging"
+            : item?.service?.branch === "main")
+        ) {
           id = item?.service.id;
           break;
         }

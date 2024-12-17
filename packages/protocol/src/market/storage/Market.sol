@@ -165,8 +165,11 @@ library Market {
         Data storage self,
         address user,
         uint256 amount
-    ) internal {
-        self.collateralAsset.safeTransfer(user, amount);
+    ) internal returns (uint256 withdrawnAmount) {
+        uint256 balance = self.collateralAsset.balanceOf(address(this));
+        withdrawnAmount = amount > balance ? balance : amount;
+
+        self.collateralAsset.safeTransfer(user, withdrawnAmount);
     }
 
     function transferOwnership(Data storage self, address newOwner) internal {
