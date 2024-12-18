@@ -11,7 +11,7 @@ import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 import {IFoil} from "../../src/market/interfaces/IFoil.sol";
 import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
 import {DecimalPrice} from "../../src/market/libraries/DecimalPrice.sol";
-
+import "forge-std/console2.sol";
 contract VaultDepositTest is TestVault {
     using Cannon for Vm;
 

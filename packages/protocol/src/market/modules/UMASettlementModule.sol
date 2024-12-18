@@ -105,13 +105,24 @@ contract UMASettlementModule is
                     settlement.settlementPriceSqrtX96
                 )
             );
-            epoch.settled = true;
 
             // Call the callback recipient
             if (address(market.callbackRecipient) != address(0)) {
-                market.callbackRecipient.resolutionCallback(
-                    settlement.settlementPriceSqrtX96
-                );
+                try
+                    market.callbackRecipient.resolutionCallback(
+                        settlement.settlementPriceSqrtX96
+                    )
+                {} catch Error(string memory reason) {
+                    emit ResolutionCallbackFailure(
+                        bytes(reason),
+                        settlement.settlementPriceSqrtX96
+                    );
+                } catch (bytes memory reason) {
+                    emit ResolutionCallbackFailure(
+                        reason,
+                        settlement.settlementPriceSqrtX96
+                    );
+                }
             }
 
             emit EpochSettled(

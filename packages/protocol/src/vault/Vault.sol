@@ -13,6 +13,7 @@ import "../market/external/univ3/TickMath.sol";
 import "../market/interfaces/IFoil.sol";
 import "../market/interfaces/IFoilStructs.sol";
 import "./interfaces/IVault.sol";
+import "forge-std/console2.sol";
 
 contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
@@ -86,7 +87,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
      */
     int24 tickSpacing;
 
-    bool vaultCorrupted;
+    bool __VAULT_HALTED;
 
     constructor(
         string memory _name,
@@ -164,13 +165,12 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         onlyInitializer
         returns (uint256 sharePrice, uint256 collateralReceived)
     {
-        uint256 collateralReceived = market.settlePosition(positionId);
-
-        emit VaultPositionSettled(currentEpochId, collateralReceived);
-
+        collateralReceived = market.settlePosition(positionId);
         _updateSharePrice(collateralReceived);
 
-        vaultCorrupted = true;
+        __VAULT_HALTED = true;
+
+        emit VaultPositionSettled(currentEpochId, collateralReceived);
 
         return (sharePrice, collateralReceived);
     }
@@ -186,26 +186,25 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             collateralReceived = market.settlePosition(positionId);
             emit VaultPositionSettled(currentEpochId, collateralReceived);
         }
-        uint256 sharePrice = _updateSharePrice(collateralReceived);
+        _updateSharePrice(collateralReceived);
 
         // Set up the start time for the new epoch
         (IFoilStructs.EpochData memory epochData, ) = market.getLatestEpoch();
-        _createEpochAndPosition(
-            _calculateNextStartTime(epochData.startTime),
-            previousResolutionSqrtPriceX96,
-            calculateNextCollateral(collateralReceived, sharePrice)
-        );
 
-        try createNewEpochAndPosition() {} catch {
-            vaultCorrupted = true;
+        try
+            this.createNewEpochAndPosition(
+                _calculateNextStartTime(epochData.startTime),
+                previousResolutionSqrtPriceX96,
+                collateralReceived
+            )
+        {} catch Error(string memory reason) {
+            __VAULT_HALTED = true;
 
-            emit VaultCorrupted();
+            emit VaultHalted(bytes(reason));
+        } catch {
+            __VAULT_HALTED = true;
+            emit VaultHalted("Unknown error");
         }
-
-        vaultCorrupted = false;
-        _reconcilePendingTransactions(sharePrice);
-
-        emit EpochProcessed(currentEpochId, sharePrice);
     }
 
     function supportsInterface(
@@ -230,29 +229,29 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     function createNewEpochAndPosition(
         uint256 startTime,
         uint160 previousResolutionSqrtPriceX96,
-        uint256 collateralAvailable
+        uint256 previousEpochCollateralReceived
     ) public {
         require(
-            (vaultCorrupted && msg.sender == vaultInitializer) ||
+            (__VAULT_HALTED && msg.sender == vaultInitializer) ||
                 msg.sender == address(this),
             "Action not allowed"
         );
 
-        uint256 sharePrice = _updateSharePrice(collateralAvailable);
+        // get previous share price to use for reconciling pending txns
+        uint256 sharePrice = epochSharePrices[currentEpochId];
 
-        (IFoilStructs.EpochData memory epochData, ) = market.getLatestEpoch();
         _createEpochAndPosition(
             startTime,
             previousResolutionSqrtPriceX96,
             _calculateNextCollateral(
-                collateralAvailable,
+                previousEpochCollateralReceived,
                 epochSharePrices[currentEpochId]
             )
         );
 
-        _reconcilePendingTransactions(sharePrice);
+        __VAULT_HALTED = false;
 
-        vaultCorrupted = false;
+        _reconcilePendingTransactions(sharePrice);
 
         emit EpochProcessed(currentEpochId, sharePrice);
     }
@@ -357,7 +356,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     function _calculateNextCollateral(
         uint256 collateralFromPreviousEpoch,
         uint256 sharePrice
-    ) internal returns (uint256) {
+    ) internal view returns (uint256) {
         return
             collateralFromPreviousEpoch +
             totalPendingDeposits -
@@ -369,6 +368,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     }
 
     function _reconcilePendingTransactions(uint256 sharePrice) internal {
+        console2.log("reconcile txns");
         uint256 newShares = totalPendingDeposits.mulDiv(
             1e18,
             sharePrice,
@@ -378,6 +378,8 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         if (newShares > 0) {
             _mint(address(this), newShares);
         }
+
+        console2.log("newShares", newShares);
 
         pendingSharesToBurn += totalPendingWithdrawals;
 
@@ -848,9 +850,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             "No withdraw request to redeem"
         );
 
+        // if vault is halted, allow withdrawals since new epoch could not be created
         require(
-            pendingTxn.requestInitiatedEpoch != currentEpochId &&
-                pendingTxn.requestInitiatedEpoch != 0,
+            (pendingTxn.requestInitiatedEpoch != currentEpochId ||
+                __VAULT_HALTED) && pendingTxn.requestInitiatedEpoch != 0,
             "Previous withdraw request is in the current epoch"
         );
 
