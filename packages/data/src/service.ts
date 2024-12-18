@@ -425,6 +425,7 @@ const startServer = async () => {
         epochId?: string;
         positionId?: string;
       };
+      console.log(contractId, epochId, positionId);
 
       const { chainId, address } = parseContractId(contractId);
 
@@ -435,7 +436,9 @@ const startServer = async () => {
         .innerJoinAndSelect("epoch.market", "market")
         .innerJoinAndSelect("transaction.event", "event") // Join Event data
         .where("market.chainId = :chainId", { chainId })
-        .andWhere("market.address = :address", { address });
+        .andWhere("market.address = :address", { address })
+        .orderBy("position.positionId", "ASC")
+        .addOrderBy("event.blockNumber", "ASC");
 
       if (epochId) {
         queryBuilder.andWhere("epoch.epochId = :epochId", { epochId });
@@ -448,19 +451,53 @@ const startServer = async () => {
       }
 
       const transactions = await queryBuilder.getMany();
+      const formattedTransactions = [];
 
       // Format data
+      let lastPositionId = 0;
+      let lastBaseToken = BigInt(0);
+      let lastQuoteToken = BigInt(0);
+      let lastCollateral = BigInt(0);
       for (const transaction of transactions) {
-        transaction.baseTokenDelta = formatDbBigInt(transaction.baseTokenDelta);
-        transaction.quoteTokenDelta = formatDbBigInt(
-          transaction.quoteTokenDelta
-        );
-        transaction.collateralDelta = formatDbBigInt(
-          transaction.collateralDelta
-        );
-        transaction.tradeRatioD18 = formatDbBigInt(transaction.tradeRatioD18);
+        const formattedTransaction = {
+          ...transaction,
+          collateralDelta: "0",
+          baseTokenDelta: "0",
+          quoteTokenDelta: "0",
+        };
+        if (transaction.position.positionId !== lastPositionId) {
+          lastPositionId = transaction.position.positionId;
+          formattedTransaction.collateralDelta = formatDbBigInt(
+            transaction.position.collateral
+          );
+          formattedTransaction.baseTokenDelta = formatDbBigInt(
+            transaction.position.baseToken
+          );
+          formattedTransaction.quoteTokenDelta = formatDbBigInt(
+            transaction.position.quoteToken
+          );
+        } else {
+          formattedTransaction.baseTokenDelta = formatDbBigInt(
+            (BigInt(transaction.position.baseToken) - lastBaseToken).toString()
+          );
+          formattedTransaction.quoteTokenDelta = formatDbBigInt(
+            (
+              BigInt(transaction.position.quoteToken) - lastQuoteToken
+            ).toString()
+          );
+          formattedTransaction.collateralDelta = formatDbBigInt(
+            (
+              BigInt(transaction.position.collateral) - lastCollateral
+            ).toString()
+          );
+        }
+
+        formattedTransactions.push(formattedTransaction);
+        lastBaseToken = BigInt(transaction.position.baseToken);
+        lastQuoteToken = BigInt(transaction.position.quoteToken);
+        lastCollateral = BigInt(transaction.position.collateral);
       }
-      res.json(transactions);
+      res.json(formattedTransactions);
     })
   );
 
@@ -499,7 +536,7 @@ const startServer = async () => {
             // Convert baseTokenDelta to BigNumber and get its absolute value
             const absBaseTokenDelta = Math.abs(
               parseFloat(
-                formatUnits(BigInt(transaction.baseTokenDelta), TOKEN_PRECISION)
+                formatUnits(BigInt(transaction.baseToken), TOKEN_PRECISION)
               )
             );
 
@@ -898,13 +935,11 @@ const startServer = async () => {
       });
 
       transactions.forEach((transaction) => {
-        transaction.baseTokenDelta = formatDbBigInt(transaction.baseTokenDelta);
-        transaction.quoteTokenDelta = formatDbBigInt(
-          transaction.quoteTokenDelta
+        transaction.baseToken = formatDbBigInt(transaction.position.baseToken);
+        transaction.quoteToken = formatDbBigInt(
+          transaction.position.quoteToken
         );
-        transaction.collateralDelta = formatDbBigInt(
-          transaction.collateralDelta
-        );
+        transaction.collateral = formatDbBigInt(transaction.collateral);
         transaction.tradeRatioD18 = formatDbBigInt(transaction.tradeRatioD18);
       });
 
@@ -1040,14 +1075,19 @@ const startServer = async () => {
 
       const positions = await positionRepository.find({
         where,
-        relations: ["epoch", "epoch.market"],
+        relations: [
+          "epoch",
+          "epoch.market",
+          "transactions",
+          "transactions.collateralTransfer",
+        ],
         order: { positionId: "ASC" },
       });
 
-      const collateralTransfers = await collateralTransferRepository.find({
-        where: { market: { id: marketId } },
-        order: { timestamp: "ASC" },
-      });
+      // const collateralTransfers = await collateralTransferRepository.find({
+      //   where: { market: { id: marketId } },
+      //   order: { timestamp: "ASC" },
+      // });
 
       const marketAddress = address;
       const client = getProviderForChain(Number(chainId));
