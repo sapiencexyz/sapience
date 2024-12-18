@@ -1,9 +1,10 @@
 /* eslint-disable sonarjs/cognitive-complexity */
 import { useConnectModal } from '@rainbow-me/rainbowkit';
+import { debounce } from 'lodash';
 import { HelpCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import { useState, useEffect, useContext, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
-import type { AbiFunction } from 'viem';
+import { useForm, useWatch } from 'react-hook-form';
+import type { AbiFunction, WriteContractErrorType } from 'viem';
 import { decodeEventLog, formatUnits, parseUnits, zeroAddress } from 'viem';
 import {
   useWaitForTransactionReceipt,
@@ -13,6 +14,7 @@ import {
   useSimulateContract,
   useChainId,
   useSwitchChain,
+  usePublicClient,
 } from 'wagmi';
 
 import erc20ABI from '../../erc20abi.json';
@@ -34,53 +36,18 @@ import {
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
+import { removeLeadingZeros } from '~/lib/util/util';
 
 import NumberDisplay from './numberDisplay';
 import PositionSelector from './positionSelector';
+import SizeInput from './sizeInput';
 import SlippageTolerance from './slippageTolerance';
-import TradeSizeInput from './Trade/TradeSizeInput';
 
 export default function AddEditTrade() {
   const { nftId, refreshPositions, setNftId } = useAddEditPosition();
 
   // form states
-  const form = useForm({
-    defaultValues: {
-      sizeCollateralInput: '', // the display value of the size/collateral input
-      size: BigInt(0), // the actual size value
-      fetchingSizeFromCollateralInput: false, // whether we're currently fetching the size from collateral
-      inputType: 'Ggas', // the unit type of the size/collateral input
-      option: 'Long',
-      slippage: '0.5',
-    },
-    mode: 'onChange',
-    reValidateMode: 'onChange',
-  });
-
-  const {
-    handleSubmit,
-    formState: { errors, isDirty },
-    reset,
-    watch,
-    setValue,
-  } = form;
-
-  // Watch slippage value from form
-  const formSlippage = watch('slippage');
-  const sizeChangeInGas: bigint = watch('size');
-  const sizeCollateralInput = watch('sizeCollateralInput');
-  const inputType = watch('inputType');
-  const fetchingSizeFromCollateralInput = watch(
-    'fetchingSizeFromCollateralInput'
-  );
-  const sizeChangeIsNonzero = sizeChangeInGas !== BigInt(0);
-  const getMin = () => {
-    if (inputType === 'collateral') return 0;
-    if (inputType === 'Ggas') return 1e-9;
-    return 1;
-  };
-  const minInputValue: number = getMin();
-
+  const [sizeChange, setSizeChange] = useState<bigint>(BigInt(0));
   const [option, setOption] = useState<'Long' | 'Short'>('Long');
 
   // component states
@@ -97,6 +64,7 @@ export default function AddEditTrade() {
   const [resultingPositionCollateral, setResultingPositionCollateral] =
     useState<bigint>(BigInt(0));
   const [txnStep, setTxnStep] = useState(0);
+  const [collateralInput, setCollateralInput] = useState<bigint>(BigInt(0));
 
   const account = useAccount();
   const { isConnected, address } = account;
@@ -123,14 +91,21 @@ export default function AddEditTrade() {
 
   const isLong = option === 'Long';
 
+  const sizeChangeInContractUnit = useMemo(() => {
+    return sizeChange * BigInt(1e9);
+  }, [sizeChange]);
+  const isNonZeroSizeChange = sizeChangeInContractUnit !== BigInt(0);
+
   const formError = useMemo(() => {
     if (Number(quotedResultingWalletBalance) < 0) {
       return 'Insufficient wallet balance to perform this trade.';
     }
-    const sizeChangeGgas = Number(formatUnits(sizeChangeInGas, 9));
     if (
-      sizeChangeIsNonzero &&
-      (!liquidity || (isLong && sizeChangeGgas > liquidity))
+      sizeChangeInContractUnit > BigInt(0) &&
+      (!liquidity ||
+        (isLong &&
+          parseFloat(formatUnits(sizeChangeInContractUnit, TOKEN_DECIMALS)) >
+            Number(liquidity)))
     ) {
       return 'Not enough liquidity to perform this trade.';
     }
@@ -138,36 +113,13 @@ export default function AddEditTrade() {
       console.error('quoteError', quoteError);
       return 'The protocol cannot generate a quote for this order.';
     }
-    if (
-      (isDirty && sizeCollateralInput === '') ||
-      sizeCollateralInput === '0'
-    ) {
-      return 'Size is required';
-    }
-    if (isDirty && Number(sizeCollateralInput) < minInputValue)
-      return `Size must be greater than ${minInputValue} ${inputType}`;
-
-    if (
-      inputType === 'collateral' &&
-      Number(sizeCollateralInput) !== 0 &&
-      sizeChangeInGas === BigInt(0) &&
-      !fetchingSizeFromCollateralInput
-    ) {
-      return 'Unable to find a size for this collateral amount';
-    }
     return '';
   }, [
     quoteError,
     liquidity,
-    sizeChangeInGas,
+    sizeChangeInContractUnit,
     isLong,
     quotedResultingWalletBalance,
-    inputType,
-    minInputValue,
-    sizeCollateralInput,
-    isDirty,
-    sizeChangeIsNonzero,
-    fetchingSizeFromCollateralInput,
   ]);
 
   // Position data
@@ -184,10 +136,9 @@ export default function AddEditTrade() {
   useEffect(() => {
     if (positionData && isEdit) {
       setOption(positionData.vGasAmount > BigInt(0) ? 'Long' : 'Short');
+      setSizeChange(BigInt(0));
     }
-    setValue('size', BigInt(0), { shouldDirty: false });
-    setValue('sizeCollateralInput', '', { shouldDirty: false });
-  }, [positionData, isEdit, setValue]);
+  }, [positionData, isEdit]);
 
   const originalPositionSizeInContractUnit: bigint = useMemo(() => {
     if (isEdit && positionData) {
@@ -206,15 +157,15 @@ export default function AddEditTrade() {
   }, [positionData, isEdit]);
 
   const desiredSizeInContractUnit = useMemo(() => {
-    if (!isEdit) return sizeChangeInGas;
+    if (!isEdit) return sizeChangeInContractUnit;
 
     const originalPositionIsLong = positionData?.vGasAmount > BigInt(0);
     const currentSize = originalPositionIsLong
       ? positionData?.vGasAmount || BigInt(0)
       : -(positionData?.borrowedVGas || BigInt(0));
 
-    return currentSize + sizeChangeInGas * BigInt(1e9);
-  }, [isEdit, positionData, sizeChangeInGas]);
+    return currentSize + sizeChangeInContractUnit;
+  }, [isEdit, positionData, sizeChangeInContractUnit]);
 
   // Collateral balance for current address/account
   const { data: collateralBalance } = useReadContract({
@@ -242,7 +193,7 @@ export default function AddEditTrade() {
     args: [epoch, desiredSizeInContractUnit],
     chainId,
     account: address || zeroAddress,
-    query: { enabled: !isEdit && sizeChangeIsNonzero },
+    query: { enabled: !isEdit && isNonZeroSizeChange },
   });
 
   const quoteModifyPositionResult = useSimulateContract({
@@ -252,11 +203,11 @@ export default function AddEditTrade() {
     args: [nftId, desiredSizeInContractUnit],
     chainId,
     account: address || zeroAddress,
-    query: { enabled: isEdit && sizeChangeIsNonzero },
+    query: { enabled: isEdit && isNonZeroSizeChange },
   });
 
   useEffect(() => {
-    if (quoteModifyPositionResult?.error && isEdit && sizeChangeIsNonzero) {
+    if (quoteModifyPositionResult?.error && isEdit && isNonZeroSizeChange) {
       setQuoteError(quoteModifyPositionResult.error.message);
     } else if (quoteCreatePositionResult.error && !isEdit) {
       setQuoteError(quoteCreatePositionResult.error.message);
@@ -266,9 +217,8 @@ export default function AddEditTrade() {
   }, [
     quoteCreatePositionResult.error,
     quoteModifyPositionResult?.error,
-    sizeChangeInGas,
+    sizeChangeInContractUnit,
     isEdit,
-    sizeChangeIsNonzero,
   ]);
 
   const isLoadingCollateralChange = isEdit
@@ -412,7 +362,7 @@ export default function AddEditTrade() {
   }, [isEdit, quoteCreatePositionResult.data, quoteModifyPositionResult.data]);
 
   const priceImpact: number = useMemo(() => {
-    if (pool?.token0Price && quotedFillPrice && sizeChangeIsNonzero) {
+    if (pool?.token0Price && quotedFillPrice && isNonZeroSizeChange) {
       const fillPrice = Number(quotedFillPrice) / 1e18;
       const referencePrice = parseFloat(pool.token0Price.toSignificant(18));
       return Math.abs((fillPrice / referencePrice - 1) * 100);
@@ -420,6 +370,33 @@ export default function AddEditTrade() {
     return 0;
   }, [quotedFillPrice, pool]);
   const showPriceImpactWarning = priceImpact > HIGH_PRICE_IMPACT;
+
+  const form = useForm({
+    defaultValues: {
+      size: '0',
+      option: 'Long',
+      slippage: '0.5',
+      fetchingSizeFromCollateralInput: false,
+      isClosePosition: false,
+    },
+    mode: 'onChange',
+    reValidateMode: 'onChange',
+  });
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setValue,
+    reset,
+    watch,
+  } = form;
+
+  // Watch slippage value from form
+  const formSlippage = watch('slippage');
+  const fetchingSizeFromCollateralInput = watch(
+    'fetchingSizeFromCollateralInput'
+  );
 
   // Calculate collateralDeltaLimit using watched slippage value
   const collateralDeltaLimit = useMemo(() => {
@@ -458,14 +435,21 @@ export default function AddEditTrade() {
       setTxnStep(1);
     } else if (isEdit) {
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
+      // Handle close button case
+      const callSizeInContractUnit = values.isClosePosition
+        ? BigInt(0)
+        : desiredSizeInContractUnit;
+      const callCollateralDeltaLimit = values.isClosePosition
+        ? BigInt(0)
+        : collateralDeltaLimit;
       writeContract({
         abi: foilData.abi,
         address: marketAddress as `0x${string}`,
         functionName: 'modifyTraderPosition',
         args: [
           nftId,
-          desiredSizeInContractUnit,
-          collateralDeltaLimit,
+          callSizeInContractUnit,
+          callCollateralDeltaLimit,
           deadline,
         ],
       });
@@ -488,20 +472,23 @@ export default function AddEditTrade() {
   };
 
   // Update resetAfterSuccess to reset form values properly
-  const resetAfterSuccess = () => {
+  const resetAfterSuccess = async () => {
     reset({
-      size: BigInt(0),
+      size: '0',
       option: 'Long',
-      sizeCollateralInput: '',
       slippage: '0.5',
       fetchingSizeFromCollateralInput: false,
+      isClosePosition: false,
     });
+    setSizeChange(BigInt(0));
     setPendingTxn(false);
-    refreshPositions();
-    refetchPositionData();
-    refetchUniswapData();
-    refetchAllowance();
     setTxnStep(0);
+    await Promise.all([
+      refreshPositions(),
+      refetchAllowance(),
+      refetchPositionData(),
+      refetchUniswapData(),
+    ]);
   };
 
   useEffect(() => {
@@ -538,7 +525,6 @@ export default function AddEditTrade() {
     collateralAssetDecimals,
     collateralDeltaLimit,
     positionData,
-    quotedCollateralDelta,
   ]);
 
   const currentChainId = useChainId();
@@ -584,10 +570,10 @@ export default function AddEditTrade() {
       pendingTxn ||
       fetchingSizeFromCollateralInput ||
       isLoadingCollateralChange ||
-      (sizeChangeIsNonzero && isFetchingQuote);
+      (isNonZeroSizeChange && isFetchingQuote);
 
     let buttonTxt = isEdit ? 'Update Position' : 'Create Position';
-    if (desiredSizeInContractUnit === BigInt(0) && sizeChangeIsNonzero) {
+    if (desiredSizeInContractUnit === BigInt(0) && isNonZeroSizeChange) {
       buttonTxt = 'Close Position';
     }
     if (requireApproval) {
@@ -605,16 +591,144 @@ export default function AddEditTrade() {
           className="w-full"
           variant="default"
           type="submit"
-          disabled={!!formError || isLoading || !sizeChangeIsNonzero}
+          disabled={
+            !!formError || isLoading || sizeChangeInContractUnit === BigInt(0)
+          }
           size="lg"
         >
-          {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : null}
+          {isLoading && !formError ? (
+            <Loader2 className="h-6 w-6 animate-spin" />
+          ) : null}
           {buttonTxt}
         </Button>
         {renderPriceImpactWarning()}
       </div>
     );
   };
+
+  const renderCloseButton = () => {
+    if (!isEdit || !isConnected || currentChainId !== chainId) return null;
+
+    const isFetchingQuote = quoteModifyPositionResult.isFetching;
+    const isLoading =
+      pendingTxn ||
+      fetchingSizeFromCollateralInput ||
+      isLoadingCollateralChange ||
+      (isNonZeroSizeChange && isFetchingQuote);
+
+    let buttonTxt = 'Close Position';
+
+    if (requireApproval) {
+      buttonTxt = `Approve ${collateralAssetTicker} Transfer`;
+    }
+
+    if (isFetchingQuote && !formError) return null;
+    if (fetchingSizeFromCollateralInput) return null;
+
+    return (
+      <div className="mb-4 text-center -mt-2">
+        <button
+          onClick={() => setValue('isClosePosition', true)}
+          className="text-sm underline hover:opacity-80 disabled:opacity-50"
+          type="submit"
+          disabled={!!formError || isLoading}
+        >
+          {buttonTxt}
+        </button>
+        {renderPriceImpactWarning()}
+      </div>
+    );
+  };
+
+  const findSizeForCollateral = async () => {
+    if (!collateralInput || collateralInput === BigInt(0)) return;
+
+    // Start with an initial guess based on current price
+    const targetCollateral = collateralInput;
+    let currentSize = BigInt(0);
+    let bestSize = BigInt(0);
+    let bestDiff = targetCollateral;
+    let iterations = 0;
+    const maxIterations = 10;
+
+    // Binary search parameters
+    let low = BigInt(0);
+    let high = (targetCollateral * BigInt(2)) / BigInt(1e9);
+    setValue('fetchingSizeFromCollateralInput', true);
+
+    while (low <= high && iterations < maxIterations) {
+      currentSize = (low + high) / BigInt(2);
+      const sizeInContractUnits =
+        currentSize * BigInt(1e9) * (isLong ? BigInt(1) : BigInt(-1));
+
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const result = await publicClient?.simulateContract({
+          abi: foilData.abi,
+          address: marketAddress as `0x${string}`,
+          functionName: isEdit
+            ? 'quoteModifyTraderPosition'
+            : 'quoteCreateTraderPosition',
+          args: isEdit
+            ? [nftId, sizeInContractUnits]
+            : [epoch, sizeInContractUnits],
+          account: address || zeroAddress,
+        });
+
+        if (!result?.result) break;
+
+        const [quotedCollateral] = result.result;
+        const quotedCollateralBigInt = BigInt(quotedCollateral.toString());
+        const diff =
+          quotedCollateralBigInt > targetCollateral
+            ? quotedCollateralBigInt - targetCollateral
+            : targetCollateral - quotedCollateralBigInt;
+
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          bestSize = currentSize;
+        }
+
+        if (quotedCollateralBigInt > targetCollateral) {
+          high = currentSize - BigInt(1);
+        } else {
+          low = currentSize + BigInt(1);
+        }
+      } catch (error) {
+        high = currentSize - BigInt(1);
+      }
+
+      iterations++;
+    }
+
+    if (bestSize <= BigInt(0)) {
+      setQuoteError('Could not find a size that matches your collateral');
+    }
+
+    setSizeChange(bestSize);
+    setValue('fetchingSizeFromCollateralInput', false);
+  };
+
+  // Debounce the search to avoid too many calls
+  const debouncedFindSize = useMemo(
+    () => debounce(findSizeForCollateral, 500),
+    [collateralInput, isEdit, originalPositionSizeInContractUnit]
+  );
+
+  useEffect(() => {
+    if (collateralInput > BigInt(0)) {
+      debouncedFindSize();
+    }
+    return () => {
+      debouncedFindSize.cancel();
+    };
+  }, [collateralInput, debouncedFindSize]);
+
+  const handleCollateralAmountChange = (amount: bigint) => {
+    setCollateralInput(amount);
+  };
+
+  const publicClient = usePublicClient();
 
   const renderPriceImpactWarning = () => {
     if (!showPriceImpactWarning) return null;
@@ -650,13 +764,28 @@ export default function AddEditTrade() {
         <div className="mb-4">
           <div className={errors.size ? 'space-y-1' : ''}>
             <div className="relative flex">
-              <TradeSizeInput
+              <SizeInput
                 nftId={nftId}
-                positionData={positionData}
+                setSize={setSizeChange}
                 isLong={isLong}
-                allowCollateralInput
+                positionData={positionData}
                 error={formError}
-                minInputValue={minInputValue}
+                defaultToGas={false}
+                allowCollateralInput
+                collateralAssetTicker={collateralAssetTicker}
+                onCollateralAmountChange={handleCollateralAmountChange}
+                {...register('size', {
+                  onChange: (e) => {
+                    const processed = removeLeadingZeros(e.target.value);
+                    setValue('size', processed, {
+                      shouldValidate: true,
+                    });
+                  },
+                  validate: (value) => {
+                    if (value === '') return 'Size is required';
+                    return true;
+                  },
+                })}
               />
             </div>
             {errors.size && (
@@ -669,15 +798,14 @@ export default function AddEditTrade() {
 
         <SlippageTolerance />
         {renderActionButton()}
+        {renderCloseButton()}
 
         <div className="flex flex-col gap-2">
           <PositionSelector isLP={false} />
           {isEdit && (
             <div>
-              <p className="text-sm text-gray-600 font-semibold mb-0.5">
-                Position Size
-              </p>
-              <p className="text-sm text-gray-600 mb-0.5">
+              <p className="text-sm  font-semibold mb-0.5">Position Size</p>
+              <p className="text-sm  mb-0.5">
                 <NumberDisplay
                   value={formatUnits(
                     originalPositionSizeInContractUnit,
@@ -685,7 +813,7 @@ export default function AddEditTrade() {
                   )}
                 />{' '}
                 Ggas
-                {sizeChangeIsNonzero && (
+                {isNonZeroSizeChange && (
                   <>
                     {' '}
                     →{' '}
@@ -703,9 +831,9 @@ export default function AddEditTrade() {
           )}
           {!isLoadingCollateralChange && isConnected && (
             <div>
-              <p className="text-sm text-gray-600 font-semibold mb-0.5 flex items-center">
+              <p className="text-sm  font-semibold mb-0.5 flex items-center">
                 Wallet Balance
-                {sizeChangeIsNonzero && (
+                {sizeChange !== BigInt(0) && (
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger>
@@ -722,9 +850,9 @@ export default function AddEditTrade() {
                   </TooltipProvider>
                 )}
               </p>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm ">
                 <NumberDisplay value={walletBalance} /> {collateralAssetTicker}
-                {sizeChangeIsNonzero && !quoteError && (
+                {sizeChange !== BigInt(0) && !quoteError && (
                   <>
                     {' '}
                     → <NumberDisplay
@@ -745,10 +873,10 @@ export default function AddEditTrade() {
           )}
           {!isLoadingCollateralChange && (
             <div>
-              <p className="text-sm text-gray-600 font-semibold mb-0.5">
+              <p className="text-sm  font-semibold mb-0.5">
                 Position Collateral
               </p>
-              <p className="text-sm text-gray-600 mb-0.5">
+              <p className="text-sm  mb-0.5">
                 <NumberDisplay
                   value={formatUnits(
                     positionData?.depositedCollateralAmount || BigInt(0),
@@ -756,7 +884,7 @@ export default function AddEditTrade() {
                   )}
                 />{' '}
                 {collateralAssetTicker}
-                {sizeChangeIsNonzero && !quoteError && (
+                {sizeChange !== BigInt(0) && !quoteError && (
                   <>
                     {' '}
                     →{' '}
@@ -781,10 +909,10 @@ export default function AddEditTrade() {
           )}
           {quotedFillPrice && (
             <div>
-              <p className="text-sm text-gray-600 font-semibold mb-0.5">
+              <p className="text-sm  font-semibold mb-0.5">
                 Estimated Fill Price
               </p>
-              <p className="text-sm text-gray-600 mb-0.5">
+              <p className="text-sm  mb-0.5">
                 <NumberDisplay value={quotedFillPrice} /> Ggas/
                 {collateralAssetTicker}
               </p>
@@ -792,11 +920,11 @@ export default function AddEditTrade() {
           )}
           {priceImpact !== 0 && (
             <div>
-              <p className="text-sm text-gray-600 font-semibold mb-0.5">
+              <p className="text-sm  font-semibold mb-0.5">
                 Estimated Price Impact
               </p>
               <p
-                className={`${showPriceImpactWarning ? 'text-red-500' : 'text-gray-600'} text-sm font-medium mb-0.5`}
+                className={`${showPriceImpactWarning ? 'text-red-500' : ''} text-sm font-medium mb-0.5`}
               >
                 {Number(priceImpact.toFixed(2)).toString()}%
               </p>

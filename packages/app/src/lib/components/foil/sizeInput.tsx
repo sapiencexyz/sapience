@@ -154,6 +154,7 @@ const SizeInput: React.FC<Props> = ({
   };
 
   const handleSizeChange = (newVal: string) => {
+
     const isUserInputValid: 
       Record<
         InputFormType, 
@@ -164,11 +165,11 @@ const SizeInput: React.FC<Props> = ({
           return numberPatternGas.test(value);
         },
         Ggas: (value: string) => {
-          const numberPatternGGas = /^(0|[1-9]\d*)?(\.(\d{0,9}))?$/; // giga = 10^9
+          const numberPatternGGas = /^(0|[1-9]\d*)?((\.|,)(\d{0,9}))?$/; // giga = 10^9
           return numberPatternGGas.test(value);
         },
         collateral: (value: string) => {
-          const numberPatternCollateral = /^(0|[1-9]\d*)?(\.(\d{0,18}))?$/; // assuming collateral has 18 decimals
+          const numberPatternCollateral = /^(0|[1-9]\d*)?((\.|,)(\d{0,18}))?$/; // assuming collateral has 18 decimals
           return numberPatternCollateral.test(value);
         },
       };
@@ -178,7 +179,7 @@ const SizeInput: React.FC<Props> = ({
     if (processedVal[0] === '.') {
       processedVal = '0' + processedVal;
     }
-    if (sizeInput === '0' && newVal !== '0' && newVal !== '0.') {
+    if (sizeInput === '0' && newVal !== '0' && newVal !== '0.' && newVal !== '0,') {
       processedVal = newVal.replace(/^0+/, '');
     }
 
@@ -186,7 +187,9 @@ const SizeInput: React.FC<Props> = ({
     if (processedVal === '' || isUserInputValid[inputType](processedVal)) {
       // console.log(processedVal, inputType)
       // case when we switch gas <-> GGas and the input is 0. -> useEffect is NOT triggered, hence need this setState
+      processedVal = processedVal.replace(/,/, '.');
       setSizeInput(processedVal); 
+
 
       if (inputType === 'collateral') {
         processCollateralInput(processedVal);

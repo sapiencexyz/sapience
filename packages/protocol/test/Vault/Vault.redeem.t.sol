@@ -90,7 +90,7 @@ contract VaultRedeemTest is TestVault {
         vm.prank(lp1);
         vault.requestRedeem(1 ether);
 
-        assertEq(vault.pendingRedeemRequest(lp1).amount, 1 ether);
+        assertEq(vault.pendingRequest(lp1).amount, 1 ether);
     }
 
     function test_withdrawRequestRedeemReverts_whenNoRequest() public {
@@ -120,7 +120,7 @@ contract VaultRedeemTest is TestVault {
         settleCurrentEpoch();
 
         vm.prank(lp1);
-        vm.expectRevert("Previous deposit request is not in the same epoch");
+        vm.expectRevert("Previous withdraw request is not in the same epoch");
         vault.withdrawRequestRedeem(1 ether);
     }
 
@@ -131,8 +131,9 @@ contract VaultRedeemTest is TestVault {
         vm.prank(lp1);
         vault.withdrawRequestRedeem(1 ether);
 
-        IVault.UserPendingTransaction memory pendingTxn = vault
-            .pendingRedeemRequest(lp1);
+        IVault.UserPendingTransaction memory pendingTxn = vault.pendingRequest(
+            lp1
+        );
         assertEq(pendingTxn.amount, 0, "Pending redeem amount should be 0");
         assertEq(
             uint8(pendingTxn.transactionType),
@@ -146,13 +147,43 @@ contract VaultRedeemTest is TestVault {
         );
     }
 
+    function test_withdrawRequestReturnsEverything_whenLeftoverIsBelowMinimum()
+        public
+    {
+        vm.startPrank(lp1);
+        vault.requestRedeem(1 ether);
+
+        (, uint256 totalPendingWithdrawals, ) = vault.pendingValues();
+        assertEq(
+            totalPendingWithdrawals,
+            1 ether,
+            "Total pending withdrawals should be 1 ether - 1e7"
+        );
+
+        vault.withdrawRequestRedeem(1 ether - 1e7);
+        vm.stopPrank();
+
+        (, uint256 totalPendingWithdrawalsAfter, ) = vault.pendingValues();
+        assertEq(
+            totalPendingWithdrawalsAfter,
+            0,
+            "Total pending withdrawals should be 0"
+        );
+
+        IVault.UserPendingTransaction memory pendingTxn = vault.pendingRequest(
+            lp2
+        );
+        assertEq(pendingTxn.amount, 0, "Pending redeem amount should be 0");
+    }
+
     function test_requestRedeemMultipleTimesAddsAmount() public {
         vm.startPrank(lp1);
 
         vault.requestRedeem(1 ether);
 
-        IVault.UserPendingTransaction memory pendingTxn = vault
-            .pendingRedeemRequest(lp1);
+        IVault.UserPendingTransaction memory pendingTxn = vault.pendingRequest(
+            lp1
+        );
         assertEq(
             pendingTxn.amount,
             1 ether,
@@ -161,7 +192,7 @@ contract VaultRedeemTest is TestVault {
 
         vault.requestRedeem(2 ether);
 
-        pendingTxn = vault.pendingRedeemRequest(lp1);
+        pendingTxn = vault.pendingRequest(lp1);
         assertEq(
             pendingTxn.amount,
             3 ether,
@@ -282,6 +313,41 @@ contract VaultRedeemTest is TestVault {
             vault.balanceOf(lp1),
             5 ether,
             "LP1 balance should be reduced by 5 ether after redeeming"
+        );
+    }
+
+    function test_redeemTransfersSharesToVault() public {
+        vm.prank(lp1);
+        vault.requestRedeem(1 ether);
+
+        assertEq(
+            vault.balanceOf(address(vault)),
+            1 ether,
+            "Vault should have 1 ether"
+        );
+
+        vm.prank(lp1);
+        vault.withdrawRequestRedeem(0.5 ether);
+        assertEq(
+            vault.balanceOf(lp1),
+            9.5 ether,
+            "LP1 should have 9.5 ether after withdrawing request"
+        );
+        assertEq(
+            vault.balanceOf(address(vault)),
+            0.5 ether,
+            "Vault should have 0.5 ether after partial withdrawal"
+        );
+
+        settleCurrentEpoch();
+
+        vault.redeem(lp1);
+
+        // shares burned
+        assertEq(
+            vault.balanceOf(address(vault)),
+            0,
+            "Vault should have 0 shares"
         );
     }
 }

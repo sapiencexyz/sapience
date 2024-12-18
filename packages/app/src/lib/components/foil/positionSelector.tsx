@@ -41,10 +41,8 @@ const PositionSelector: React.FC<{ isLP?: boolean | null }> = ({ isLP }) => {
 
   return (
     <div>
-      <p className="text-sm text-muted-foreground font-semibold mb-0.5">
-        Position
-      </p>
-      <p className="text-sm text-muted-foreground items-center flex">
+      <p className="text-sm font-semibold mb-0.5">Position</p>
+      <p className="text-sm items-center flex">
         {nftId ? `#${nftId}` : 'New Position'}{' '}
         <Button
           type="button"

@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import "./instrument";
 import dataSource, {
+  collateralTransferRepository,
   eventRepository,
   initializeDataSource,
   renderJobRepository,
@@ -11,8 +12,8 @@ import { IndexPrice } from "./models/IndexPrice";
 import { Position } from "./models/Position";
 import { cannon } from "viem/chains";
 import { Market } from "./models/Market";
-import express from "express";
-import { Between } from "typeorm";
+import express, { Request, Response, NextFunction } from "express";
+import { Between, Repository } from "typeorm";
 import { Transaction } from "./models/Transaction";
 import { Epoch } from "./models/Epoch";
 import { formatUnits } from "viem";
@@ -41,6 +42,8 @@ import { isValidWalletSignature } from "./middleware";
 import * as Sentry from "@sentry/node";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+import { CollateralTransfer } from "./models/CollateralTransfer";
+import { MARKET_INFO } from "./markets";
 
 const PORT = 3001;
 
@@ -48,6 +51,41 @@ const PORT = 3001;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
+
+const executeLocalReindex = async (startCommand: string): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    // Use dynamic import for child_process
+    import("child_process")
+      .then(({ spawn }) => {
+        const [command, ...args] = startCommand.split(" ");
+
+        const process = spawn(command, args, {
+          stdio: ["ignore", "pipe", "pipe"],
+        });
+
+        let output = "";
+
+        process.stdout.on("data", (data: Buffer) => {
+          output += data;
+        });
+
+        process.stderr.on("data", (data: Buffer) => {
+          console.error(`Error: ${data}`);
+        });
+
+        process.on("close", (code: number) => {
+          if (code === 0) {
+            resolve({ id: "local", status: "completed", output });
+          } else {
+            reject(new Error(`Process exited with code ${code}`));
+          }
+        });
+      })
+      .catch((error) => {
+        reject(new Error("Failed to load child_process module"));
+      });
+  });
+};
 
 const startServer = async () => {
   await initializeDataSource();
@@ -61,11 +99,6 @@ const startServer = async () => {
   const app = express();
   // Middleware to parse JSON bodies
   app.use(express.json());
-
-  // Only set up Sentry error handling in production
-  if (process.env.NODE_ENV === "production") {
-    Sentry.setupExpressErrorHandler(app);
-  }
 
   const corsOptions: cors.CorsOptions = {
     origin: (
@@ -98,8 +131,62 @@ const startServer = async () => {
     console.log(`Server is running on port ${PORT}`);
   });
 
-  app.get("/markets", async (req, res) => {
-    try {
+  // Helper middleware to handle async errors
+  const handleAsyncErrors =
+    (fn: (req: Request, res: Response, next: NextFunction) => Promise<void>) =>
+    (req: Request, res: Response, next: NextFunction) => {
+      Promise.resolve(fn(req, res, next)).catch(next);
+    };
+
+  // Helper function to parse and validate contractId
+  const parseContractId = (
+    contractId: string
+  ): { chainId: string; address: string } => {
+    const [chainId, address] = contractId.split(":");
+    if (!chainId || !address) {
+      throw new Error("Invalid contractId format");
+    }
+    return { chainId, address };
+  };
+
+  // Helper function to get market and epoch
+  const getMarketAndEpoch = async (
+    marketRepository: Repository<Market>,
+    epochRepository: Repository<Epoch>,
+    chainId: string,
+    address: string,
+    epochId: string
+  ): Promise<{ market: Market; epoch: Epoch }> => {
+    const market = await marketRepository.findOne({
+      where: { chainId: Number(chainId), address },
+    });
+    if (!market) {
+      throw new Error("Market not found");
+    }
+    const epoch = await epochRepository.findOne({
+      where: { market: { id: market.id }, epochId: Number(epochId) },
+    });
+    if (!epoch) {
+      throw new Error("Epoch not found");
+    }
+    return { market, epoch };
+  };
+
+  // Middleware to validate request parameters
+  const validateRequestParams =
+    (params: string[]) => (req: Request, res: Response, next: NextFunction) => {
+      for (const param of params) {
+        if (typeof req.query[param] !== "string") {
+          return res.status(400).json({ error: `Invalid parameter: ${param}` });
+        }
+      }
+      next();
+    };
+
+  // Routes
+  app.get(
+    "/markets",
+    handleAsyncErrors(async (req, res, next) => {
       const markets = await marketRepository.find({
         relations: ["epochs"],
       });
@@ -114,30 +201,24 @@ const startServer = async () => {
       }));
 
       res.json(formattedMarkets);
-    } catch (error) {
-      console.error("Error fetching markets:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+    })
+  );
 
-  // Get market price data for rendering candlestick/boxplot charts filtered by contractId
-  app.get("/prices/chart-data", async (req, res) => {
-    const { contractId, epochId, timeWindow } = req.query;
+  // Get market price data for rendering charts
+  app.get(
+    "/prices/chart-data",
+    validateRequestParams(["contractId", "epochId", "timeWindow"]),
+    handleAsyncErrors(async (req, res, next) => {
+      const { contractId, epochId, timeWindow } = req.query as {
+        contractId: string;
+        epochId: string;
+        timeWindow: TimeWindow;
+      };
 
-    if (
-      typeof contractId !== "string" ||
-      typeof epochId !== "string" ||
-      typeof timeWindow !== "string"
-    ) {
-      return res.status(400).json({ error: "Invalid request parameters" });
-    }
-    const [chainId, address] = contractId.split(":");
+      const { chainId, address } = parseContractId(contractId);
 
-    try {
       const endTimestamp = Math.floor(Date.now() / 1000);
-      const startTimestamp = getStartTimestampFromTimeWindow(
-        timeWindow as TimeWindow
-      );
+      const startTimestamp = getStartTimestampFromTimeWindow(timeWindow);
 
       const marketPrices = await getMarketPricesInTimeRange(
         startTimestamp,
@@ -149,7 +230,7 @@ const startServer = async () => {
 
       const groupedPrices = groupMarketPricesByTimeWindow(
         marketPrices,
-        timeWindow as TimeWindow
+        timeWindow
       );
 
       // Create candlestick data from grouped prices
@@ -168,47 +249,36 @@ const startServer = async () => {
           high,
         };
       });
+
       res.json(chartData);
-    } catch (error) {
-      console.error("Error fetching market prices:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+    })
+  );
 
   // Get index prices for a specified epoch and time window
-  app.get("/prices/index", async (req, res) => {
-    let { contractId, epochId, timeWindow } = req.query;
+  app.get(
+    "/prices/index",
+    validateRequestParams(["contractId", "epochId"]),
+    handleAsyncErrors(async (req, res, next) => {
+      let { timeWindow } = req.query;
+      const { contractId, epochId } = req.query as {
+        contractId: string;
+        epochId: string;
+        timeWindow: TimeWindow;
+      };
 
-    if (typeof contractId !== "string" || typeof epochId !== "string") {
-      return res.status(400).json({ error: "Invalid request parameters" });
-    }
-    if (!timeWindow) {
-      timeWindow = TimeWindow.W;
-    }
-    const [chainId, address] = contractId.split(":");
-
-    try {
-      const market = await marketRepository.findOne({
-        where: {
-          chainId: Number(chainId),
-          address: address,
-        },
-      });
-
-      if (!market) {
-        return res.status(404).json({ error: "Market not found" });
+      if (!timeWindow) {
+        timeWindow = TimeWindow.W;
       }
 
-      const epoch = await epochRepository.findOne({
-        where: {
-          market: { id: market.id },
-          epochId: Number(epochId),
-        },
-      });
+      const { chainId, address } = parseContractId(contractId);
 
-      if (!epoch) {
-        return res.status(404).json({ error: "Epoch not found" });
-      }
+      const { epoch } = await getMarketAndEpoch(
+        marketRepository,
+        epochRepository,
+        chainId,
+        address,
+        epochId
+      );
 
       const endTimestamp = Math.min(
         Number(epoch.endTimestamp),
@@ -228,9 +298,10 @@ const startServer = async () => {
       );
 
       if (indexPrices.length === 0) {
-        return res.status(404).json({
+        res.status(404).json({
           error: "No price data found for the specified epoch and time window",
         });
+        return;
       }
 
       const groupedPrices = groupIndexPricesByTimeWindow(
@@ -248,46 +319,42 @@ const startServer = async () => {
       });
 
       res.json(chartData);
-    } catch (error) {
-      console.error("Error fetching index prices:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+    })
+  );
 
-  app.get("/positions", async (req, res) => {
-    const { isLP, contractId } = req.query;
+  // Get positions
+  app.get(
+    "/positions",
+    validateRequestParams(["contractId"]),
+    handleAsyncErrors(async (req, res, next) => {
+      const { isLP, contractId } = req.query as {
+        isLP: string;
+        contractId: string;
+      };
 
-    if (typeof contractId !== "string") {
-      return res.status(400).json({ error: "Invalid contractId" });
-    }
+      const { chainId, address } = parseContractId(contractId);
 
-    const [chainId, address] = contractId.split(":");
-    const where: any = {};
-
-    if (chainId && address) {
       const market = await marketRepository.findOne({
         where: { chainId: Number(chainId), address: String(address) },
       });
 
       if (!market) {
-        return res.status(404).json({ error: "Market not found" });
+        res.status(404).json({ error: "Market not found" });
+        return;
       }
 
       // Query for positions related to any epoch of this market
-      where.epoch = { market: { id: market.id } };
-    } else {
-      return res.status(400).json({ error: "Invalid contractId format" });
-    }
+      const where: any = { epoch: { market: { id: market.id } } };
 
-    where.isLP = isLP === "true";
+      where.isLP = isLP === "true";
 
-    try {
       const positions = await positionRepository.find({
         where,
         relations: ["epoch", "epoch.market"],
         order: { positionId: "ASC" },
       });
-      // format the data
+
+      // Format the data
       for (const position of positions) {
         position.baseToken = formatDbBigInt(position.baseToken);
         position.quoteToken = formatDbBigInt(position.quoteToken);
@@ -298,30 +365,26 @@ const startServer = async () => {
         position.collateral = formatDbBigInt(position.collateral);
       }
       res.json(positions);
-    } catch (error) {
-      console.error("Error fetching positions:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+    })
+  );
 
   // Get a single position by positionId
-  app.get("/positions/:positionId", async (req, res) => {
-    const { positionId } = req.params;
-    const { contractId } = req.query;
+  app.get(
+    "/positions/:positionId",
+    validateRequestParams(["contractId"]),
+    handleAsyncErrors(async (req, res, next) => {
+      const { positionId } = req.params;
+      const { contractId } = req.query as { contractId: string };
 
-    if (typeof positionId !== "string" || typeof contractId !== "string") {
-      return res.status(400).json({ error: "Invalid parameters" });
-    }
+      const { chainId, address } = parseContractId(contractId);
 
-    const [chainId, address] = contractId.split(":");
-
-    try {
       const market = await marketRepository.findOne({
         where: { chainId: Number(chainId), address: String(address) },
       });
 
       if (!market) {
-        return res.status(404).json({ error: "Market not found" });
+        res.status(404).json({ error: "Market not found" });
+        return;
       }
 
       const position = await positionRepository.findOne({
@@ -333,7 +396,8 @@ const startServer = async () => {
       });
 
       if (!position) {
-        return res.status(404).json({ error: "Position not found" });
+        res.status(404).json({ error: "Position not found" });
+        return;
       }
 
       // Format the data
@@ -344,21 +408,22 @@ const startServer = async () => {
       position.collateral = formatDbBigInt(position.collateral);
 
       res.json(position);
-    } catch (error) {
-      console.error("Error fetching position:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+    })
+  );
 
-  app.get("/transactions", async (req, res) => {
-    const { contractId, epochId, positionId } = req.query;
+  // Get transactions
+  app.get(
+    "/transactions",
+    validateRequestParams(["contractId"]),
+    handleAsyncErrors(async (req, res, next) => {
+      const { contractId, epochId, positionId } = req.query as {
+        contractId: string;
+        epochId?: string;
+        positionId?: string;
+      };
 
-    if (typeof contractId !== "string") {
-      return res.status(400).json({ error: "Invalid contractId" });
-    }
-    const [chainId, address] = contractId.split(":");
+      const { chainId, address } = parseContractId(contractId);
 
-    try {
       const queryBuilder = transactionRepository
         .createQueryBuilder("transaction")
         .innerJoinAndSelect("transaction.position", "position")
@@ -380,7 +445,7 @@ const startServer = async () => {
 
       const transactions = await queryBuilder.getMany();
 
-      // format data
+      // Format data
       for (const transaction of transactions) {
         transaction.baseTokenDelta = formatDbBigInt(transaction.baseTokenDelta);
         transaction.quoteTokenDelta = formatDbBigInt(
@@ -392,38 +457,34 @@ const startServer = async () => {
         transaction.tradeRatioD18 = formatDbBigInt(transaction.tradeRatioD18);
       }
       res.json(transactions);
-    } catch (error) {
-      console.error("Error fetching transactions:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+    })
+  );
 
-  app.get("/volume", async (req, res) => {
-    const { timeWindow, contractId, epochId } = req.query;
+  // Get volume
+  app.get(
+    "/volume",
+    validateRequestParams(["contractId", "timeWindow"]),
+    handleAsyncErrors(async (req, res, next) => {
+      const { timeWindow, contractId } = req.query as {
+        timeWindow: TimeWindow;
+        contractId: string;
+      };
 
-    if (
-      typeof contractId !== "string" ||
-      typeof timeWindow !== "string" ||
-      typeof epochId !== "string"
-    ) {
-      return res.status(400).json({ error: "Invalid request parameters" });
-    }
-    const [chainId, address] = contractId.split(":");
+      const { chainId, address } = parseContractId(contractId);
 
-    try {
       const endTimestamp = Math.floor(Date.now() / 1000);
-      const startTimestamp = getStartTimestampFromTimeWindow(
-        timeWindow as TimeWindow
-      );
+      const startTimestamp = getStartTimestampFromTimeWindow(timeWindow);
+
       const transactions = await getTransactionsInTimeRange(
         startTimestamp,
         endTimestamp,
         chainId,
         address
       );
+
       const groupedTransactions = groupTransactionsByTimeWindow(
         transactions,
-        timeWindow as TimeWindow
+        timeWindow
       );
 
       const volume = groupedTransactions.map((group) => {
@@ -444,102 +505,119 @@ const startServer = async () => {
         };
       });
       res.json(volume);
-    } catch (error) {
-      console.error("Error fetching transactions:", error);
-      res.status(500).json({ error: "Internal server error" });
+    })
+  );
+
+  const getMissingBlocks = async (
+    chainId: string,
+    address: string,
+    epochId: string
+  ): Promise<{ missingBlockNumbers: number[] | null; error?: string }> => {
+    // Find the market
+    const market = await marketRepository.findOne({
+      where: { chainId: Number(chainId), address },
+    });
+    if (!market) {
+      return { missingBlockNumbers: null, error: "Market not found" };
     }
-  });
 
-  app.get("/missing-blocks", async (req, res) => {
-    const { chainId, address, epochId, model } = req.query;
+    // Find the market info to get the correct chain for price indexing
+    const marketInfo = MARKET_INFO.find(
+      (m) =>
+        m.marketChainId === market.chainId &&
+        m.deployment.address.toLowerCase() === market.address.toLowerCase()
+    );
+    if (!marketInfo) {
+      return {
+        missingBlockNumbers: null,
+        error: "Market configuration not found",
+      };
+    }
 
-    if (
-      typeof chainId !== "string" ||
-      typeof address !== "string" ||
-      typeof epochId !== "string" ||
-      typeof model !== "string"
+    // Get block numbers using the price indexer client
+    const { startBlockNumber, endBlockNumber, error } =
+      await getMarketStartEndBlock(
+        market,
+        epochId,
+        marketInfo.priceIndexer.client
+      );
+
+    if (error || !startBlockNumber || !endBlockNumber) {
+      return { missingBlockNumbers: null, error };
+    }
+
+    // Get existing block numbers for ResourcePrice
+    const resourcePrices = await resourcePriceRepository.find({
+      where: {
+        market: { id: market.id },
+        blockNumber: Between(startBlockNumber, endBlockNumber),
+      },
+      select: ["blockNumber"],
+    });
+
+    const existingBlockNumbersSet = new Set(
+      resourcePrices.map((ip) => Number(ip.blockNumber))
+    );
+
+    // Find missing block numbers within the range
+    const missingBlockNumbers = [];
+    for (
+      let blockNumber = startBlockNumber;
+      blockNumber <= endBlockNumber;
+      blockNumber++
     ) {
-      return res.status(400).json({ error: "Invalid request parameters" });
+      if (!existingBlockNumbersSet.has(blockNumber)) {
+        missingBlockNumbers.push(blockNumber);
+      }
     }
 
-    try {
-      // Find the market
-      const market = await marketRepository.findOne({
-        where: { chainId: Number(chainId), address },
-      });
-      if (!market) {
-        return res.status(500).json({ error: "Market not found" });
-      }
-      // get block numbers
-      const { startBlockNumber, endBlockNumber, error } =
-        await getMarketStartEndBlock(market, epochId);
-      if (error || !startBlockNumber || !endBlockNumber) {
-        return res.status(500).json({ error });
-      }
-      console.log("startBlockNumber", startBlockNumber);
-      console.log("endBlockNumber", endBlockNumber);
+    return { missingBlockNumbers };
+  };
 
-      let existingBlockNumbersSet: Set<number> = new Set();
-      if (model === "ResourcePrice") {
-        const resourcePrices = await resourcePriceRepository.find({
-          where: {
-            market: { id: market.id },
-            blockNumber: Between(startBlockNumber, endBlockNumber),
-          },
-          select: ["blockNumber"],
-        });
+  // Update the missing-blocks endpoint
+  app.get(
+    "/missing-blocks",
+    validateRequestParams(["chainId", "address", "epochId"]),
+    handleAsyncErrors(async (req, res, next) => {
+      const { chainId, address, epochId } = req.query as {
+        chainId: string;
+        address: string;
+        epochId: string;
+      };
 
-        existingBlockNumbersSet = new Set(
-          resourcePrices.map((ip) => Number(ip.blockNumber))
-        );
-      } else if (model === "Event") {
-        // Retrieve all indexed block numbers within the range from the ResourcePrice repository
-        const events = await eventRepository.find({
-          where: {
-            market: { id: market.id },
-            blockNumber: Between(startBlockNumber, endBlockNumber),
-          },
-          select: ["blockNumber"],
-        });
+      const { missingBlockNumbers, error } = await getMissingBlocks(
+        chainId,
+        address,
+        epochId
+      );
 
-        existingBlockNumbersSet = new Set(
-          events.map((ip) => Number(ip.blockNumber))
-        );
-      } else {
-        return res.status(500).json({ error: "Invalid model" });
-      }
-
-      // Find missing block numbers within the range
-      const missingBlockNumbers = [];
-      for (
-        let blockNumber = startBlockNumber;
-        blockNumber <= endBlockNumber;
-        blockNumber++
-      ) {
-        if (!existingBlockNumbersSet.has(blockNumber)) {
-          missingBlockNumbers.push(blockNumber);
-        }
+      if (error) {
+        res.status(500).json({ error });
+        return;
       }
 
       res.json({ missingBlockNumbers });
-    } catch (error) {
-      console.error("Error fetching missing blocks:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+    })
+  );
 
-  app.get("/reindex", async (req, res) => {
-    const { address, chainId, signature, timestamp } = req.query;
-    if (typeof chainId !== "string" || typeof address !== "string") {
-      return res.status(400).json({ error: "Invalid request parameters" });
-    }
-    try {
+  app.post(
+    "/reindex",
+    validateRequestParams(["address", "chainId", "signature", "timestamp"]),
+    handleAsyncErrors(async (req, res, next) => {
+      const { address, chainId, signature, timestamp } = req.query as {
+        address: string;
+        chainId: string;
+        signature: string;
+        timestamp: string;
+      };
+
       const isAuthenticated = await isValidWalletSignature(
         signature as `0x${string}`,
         Number(timestamp)
       );
       if (!isAuthenticated) {
-        return res.status(401).json({ error: "Unauthorized" });
+        res.status(401).json({ error: "Unauthorized" });
+        return;
       }
 
       const RENDER_API_KEY = process.env.RENDER_API_KEY;
@@ -589,7 +667,13 @@ const startServer = async () => {
       let id: string = "";
       const renderServices: any[] = await fetchRenderServices();
       for (const item of renderServices) {
-        if (item?.service?.name === "background-worker" && item?.service?.id) {
+        if (
+          item?.service?.type === "background_worker" && 
+          item?.service?.id &&
+          (process.env.NODE_ENV === "staging" 
+            ? item?.service?.branch === "staging"
+            : item?.service?.branch === "main")
+        ) {
           id = item?.service.id;
           break;
         }
@@ -597,28 +681,27 @@ const startServer = async () => {
       if (!id) {
         throw new Error("Background worker not found");
       }
-      console.log("id = ", id);
-      // const startCommand = `node -e "require('./packages/data/src/worker').reindexMarket('${chainId}', '${address}')"`;
+
       const startCommand = `pnpm run start:reindex ${chainId} ${address}`;
       const job = await createRenderJob(id, startCommand);
-      console.log("job", job);
+
       const jobDb = new RenderJob();
       jobDb.jobId = job.id;
       jobDb.serviceId = job.serviceId;
       await renderJobRepository.save(jobDb);
       res.json({ success: true, job });
-    } catch (error) {
-      console.error("Error reindexing:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+    })
+  );
 
-  app.get("/reindexStatus", async (req, res) => {
-    const { jobId, serviceId } = req.query;
-    if (typeof jobId !== "string" || typeof serviceId !== "string") {
-      return res.status(400).json({ error: "Invalid request parameters" });
-    }
-    try {
+  app.get(
+    "/reindexStatus",
+    validateRequestParams(["jobId", "serviceId"]),
+    handleAsyncErrors(async (req, res, next) => {
+      const { jobId, serviceId } = req.query as {
+        jobId: string;
+        serviceId: string;
+      };
+
       const RENDER_API_KEY = process.env.RENDER_API_KEY;
       if (!RENDER_API_KEY) {
         throw new Error("RENDER_API_KEY not set");
@@ -637,44 +720,28 @@ const startServer = async () => {
       }
 
       const job = await response.json();
-      console.log("job", job);
       res.json({ success: true, job });
-    } catch (error) {
-      console.error("Error fetching job status:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+    })
+  );
 
-  app.get("/prices/index/latest", async (req, res) => {
-    const { contractId, epochId } = req.query;
+  app.get(
+    "/prices/index/latest",
+    validateRequestParams(["contractId", "epochId"]),
+    handleAsyncErrors(async (req, res, next) => {
+      const { contractId, epochId } = req.query as {
+        contractId: string;
+        epochId: string;
+      };
 
-    if (typeof contractId !== "string" || typeof epochId !== "string") {
-      return res.status(400).json({ error: "Invalid request parameters" });
-    }
-    const [chainId, address] = contractId.split(":");
+      const { chainId, address } = parseContractId(contractId);
 
-    try {
-      const market = await marketRepository.findOne({
-        where: {
-          chainId: Number(chainId),
-          address: address,
-        },
-      });
-
-      if (!market) {
-        return res.status(404).json({ error: "Market not found" });
-      }
-
-      const epoch = await epochRepository.findOne({
-        where: {
-          market: { id: market.id },
-          epochId: Number(epochId),
-        },
-      });
-
-      if (!epoch) {
-        return res.status(404).json({ error: "Epoch not found" });
-      }
+      const { epoch } = await getMarketAndEpoch(
+        marketRepository,
+        epochRepository,
+        chainId,
+        address,
+        epochId
+      );
 
       const latestPrice = await indexPriceRepository.findOne({
         where: {
@@ -688,30 +755,31 @@ const startServer = async () => {
       });
 
       if (!latestPrice) {
-        return res.status(404).json({
+        res.status(404).json({
           error: "No price data found for the specified epoch",
         });
+        return;
       }
 
       res.json({
         timestamp: Number(latestPrice.timestamp),
         price: Number(latestPrice.value),
       });
-    } catch (error) {
-      console.error("Error fetching latest index price:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+    })
+  );
 
-  app.post("/updateMarketPrivacy", async (req, res) => {
-    const { address, chainId, signature, timestamp } = req.body;
-    try {
+  app.post(
+    "/updateMarketPrivacy",
+    handleAsyncErrors(async (req, res, next) => {
+      const { address, chainId, signature, timestamp } = req.body;
+
       const isAuthenticated = await isValidWalletSignature(
         signature as `0x${string}`,
         Number(timestamp)
       );
       if (!isAuthenticated) {
-        return res.status(401).json({ error: "Unauthorized" });
+        res.status(401).json({ error: "Unauthorized" });
+        return;
       }
       const market = await marketRepository.findOne({
         where: {
@@ -721,7 +789,8 @@ const startServer = async () => {
       });
 
       if (!market) {
-        return res.status(404).json({ error: "Market not found" });
+        res.status(404).json({ error: "Market not found" });
+        return;
       }
 
       market.public = !market.public;
@@ -729,37 +798,32 @@ const startServer = async () => {
       await marketRepository.save(market);
 
       res.json({ success: true });
-    } catch (e) {
-      console.error("Error updating market privacy:", e);
-      res.status(500).json({ error: `Internal server error: ${e}` });
-    }
-  });
+    })
+  );
 
-  app.get("/getStEthPerTokenAtTimestamp", async (req, res) => {
-    const { chainId, collateralAssetAddress, endTime } = req.query;
+  app.get(
+    "/getStEthPerTokenAtTimestamp",
+    validateRequestParams(["chainId", "collateralAssetAddress"]),
+    handleAsyncErrors(async (req, res, next) => {
+      const { chainId, collateralAssetAddress, endTime } = req.query as {
+        chainId: string;
+        collateralAssetAddress: string;
+        endTime?: string;
+      };
 
-    if (
-      typeof chainId !== "string" ||
-      typeof collateralAssetAddress !== "string"
-    ) {
-      return res.status(400).json({ error: "Invalid request parameters" });
-    }
-
-    try {
       const client =
         Number(chainId) === cannon.id
           ? sepoliaPublicClient
           : getProviderForChain(Number(chainId));
 
-      // get last block
+      // Get last block
       const block = await getBlockBeforeTimestamp(client, Number(endTime));
-      console.log("block number:", block.number);
-
       if (!block.number) {
-        return res.status(404).json({ error: "Block not found" });
+        res.status(404).json({ error: "Block not found" });
+        return;
       }
 
-      // for testing on local dev node
+      // For testing on local dev node
       const DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS =
         "0xB82381A3fBD3FaFA77B3a7bE693342618240067b";
       const address =
@@ -788,25 +852,22 @@ const startServer = async () => {
         blockNumber: block.number,
       });
 
-      console.log("stEthPerTokenResult =", stEthPerTokenResult);
-
       res.json({
         stEthPerToken: stEthPerTokenResult.toString(),
       });
-    } catch (error) {
-      console.error("Error fetching latest resource price:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+    })
+  );
 
-  app.get("/accounts/:address", async (req, res) => {
-    const { address } = req.params;
+  app.get(
+    "/accounts/:address",
+    handleAsyncErrors(async (req, res, next) => {
+      const { address } = req.params;
 
-    if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
-      return res.status(400).json({ error: "Invalid address format" });
-    }
+      if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+        res.status(400).json({ error: "Invalid address format" });
+        return;
+      }
 
-    try {
       const positions = await positionRepository.find({
         where: { owner: address },
         relations: ["epoch", "epoch.market", "transactions"],
@@ -844,37 +905,21 @@ const startServer = async () => {
       });
 
       res.json({ positions, transactions });
-    } catch (error) {
-      console.error("Error fetching account data:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+    })
+  );
 
-  app.post("/estimate", async (req, res) => {
-    const { walletAddress, chainId, marketAddress, epochId } = req.body;
+  app.post(
+    "/estimate",
+    handleAsyncErrors(async (req, res, next) => {
+      const { walletAddress, chainId, marketAddress, epochId } = req.body;
 
-    try {
-      const market = await marketRepository.findOne({
-        where: {
-          chainId: Number(chainId),
-          address: marketAddress,
-        },
-      });
-
-      if (!market) {
-        return res.status(404).json({ error: "Market not found" });
-      }
-
-      const epoch = await epochRepository.findOne({
-        where: {
-          market: { id: market.id },
-          epochId: Number(epochId),
-        },
-      });
-
-      if (!epoch) {
-        return res.status(404).json({ error: "Epoch not found" });
-      }
+      const { epoch } = await getMarketAndEpoch(
+        marketRepository,
+        epochRepository,
+        chainId,
+        marketAddress,
+        epochId
+      );
 
       const duration =
         Number(epoch.endTimestamp) - Number(epoch.startTimestamp);
@@ -916,7 +961,8 @@ const startServer = async () => {
       }
 
       if (transactions.length === 0) {
-        return res.json({ totalGasUsed: 0 });
+        res.json({ totalGasUsed: 0 });
+        return;
       }
 
       // Calculate metrics
@@ -964,43 +1010,39 @@ const startServer = async () => {
         avgGasPrice,
         chartData,
       });
-    } catch (error) {
-      console.error("Error calculating gas usage:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+    })
+  );
 
   // Get the leaderboard data for a given market
-  app.get("/leaderboard", async (req, res) => {
-    const { contractId } = req.query;
+  app.get(
+    "/leaderboard",
+    validateRequestParams(["contractId"]),
+    handleAsyncErrors(async (req, res, next) => {
+      const { contractId } = req.query as { contractId: string };
 
-    if (typeof contractId !== "string") {
-      return res.status(400).json({ error: "Invalid parameters" });
-    }
+      const { chainId, address } = parseContractId(contractId);
 
-    const [chainId, address] = contractId.split(":");
-    const where: any = {};
-
-    if (chainId && address) {
       const market = await marketRepository.findOne({
         where: { chainId: Number(chainId), address: String(address) },
       });
 
       if (!market) {
-        return res.status(404).json({ error: "Market not found" });
+        res.status(404).json({ error: "Market not found" });
+        return;
       }
 
-      // Query for positions related to any epoch of this market
-      where.epoch = { market: { id: market.id } };
-    } else {
-      return res.status(400).json({ error: "Invalid contractId format" });
-    }
+      const where: any = { epoch: { market: { id: market.id } } };
+      const marketId = market.id;
 
-    try {
       const positions = await positionRepository.find({
         where,
-        relations: ["epoch", "epoch.market", "transactions"],
+        relations: ["epoch", "epoch.market"],
         order: { positionId: "ASC" },
+      });
+
+      const collateralTransfers = await collateralTransferRepository.find({
+        where: { market: { id: marketId } },
+        order: { timestamp: "ASC" },
       });
 
       const marketAddress = address;
@@ -1031,39 +1073,53 @@ const startServer = async () => {
             },
           ],
           functionName: "getPositionCollateralValue",
-          args: [BigInt(position.id)],
+          args: [BigInt(position.positionId)],
         });
 
         return Number(collateralValue);
       };
 
-      const calculatePositionCollateralFlow = (transactions: Transaction[]) => {
+      const calculatePositionCollateralFlow = (
+        collateralTransfers: CollateralTransfer[],
+        owner: string
+      ) => {
         let collateralFlow = 0;
-        for (const transaction of transactions) {
-          collateralFlow += Number(transaction.collateralDelta);
+        let maxCollateral = 0;
+        for (const transfer of collateralTransfers) {
+          if (transfer.owner === owner) {
+            collateralFlow += Number(transfer.collateral);
+          }
+          maxCollateral = Math.max(maxCollateral, collateralFlow);
         }
-        return collateralFlow;
+        return { collateralFlow, maxCollateral };
       };
 
       interface GroupedPosition {
         owner: string;
         positions: Position[];
         totalPnL: number;
+        totalCollateralFlow: number;
+        ownerMaxCollateral: number;
       }
 
       const groupedByOwner: Record<string, GroupedPosition> = {};
       for (const position of positions) {
         if (!groupedByOwner[position.owner]) {
+          const { collateralFlow, maxCollateral } =
+            calculatePositionCollateralFlow(
+              collateralTransfers,
+              position.owner
+            );
           groupedByOwner[position.owner] = {
             owner: position.owner,
             positions: [],
-            totalPnL: 0,
+            totalPnL: -collateralFlow,
+            totalCollateralFlow: collateralFlow,
+            ownerMaxCollateral: maxCollateral,
           };
         }
 
-        const positionPnL =
-          (await calculateOpenPositionValue(position)) -
-          calculatePositionCollateralFlow(position.transactions);
+        const positionPnL = await calculateOpenPositionValue(position);
 
         position.transactions = [];
         groupedByOwner[position.owner].positions.push(position);
@@ -1077,10 +1133,112 @@ const startServer = async () => {
       );
 
       res.json(sortedPositions);
-    } catch (error) {
-      console.error("Error fetching positions:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
+    })
+  );
+
+  // Update the reindexMissingBlocks endpoint
+  app.post(
+    "/reindexMissingBlocks",
+    handleAsyncErrors(async (req, res, next) => {
+      const { chainId, address, epochId, signature, timestamp, model } = req.body;
+
+      // Authenticate the user
+      const isAuthenticated = await isValidWalletSignature(
+        signature as `0x${string}`,
+        Number(timestamp)
+      );
+      if (!isAuthenticated) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+
+      const RENDER_API_KEY = process.env.RENDER_API_KEY;
+      if (!RENDER_API_KEY) {
+        throw new Error("RENDER_API_KEY not set");
+      }
+
+      async function fetchRenderServices() {
+        const url = "https://api.render.com/v1/services?limit=100";
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            accept: "application/json",
+            authorization: `Bearer ${RENDER_API_KEY}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return await response.json();
+      }
+
+      async function createRenderJob(serviceId: string, startCommand: string) {
+        const url = `https://api.render.com/v1/services/${serviceId}/jobs`;
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${RENDER_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            startCommand: startCommand,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return await response.json();
+      }
+
+      let id: string = "";
+      const renderServices: any[] = await fetchRenderServices();
+      for (const item of renderServices) {
+        if (item?.service?.name === "background-worker" && item?.service?.id) {
+          id = item?.service.id;
+          break;
+        }
+      }
+      if (!id) {
+        throw new Error("Background worker not found");
+      }
+
+      const startCommand = model === 'ResourcePrice' 
+        ? `pnpm run start:reindex-missing ${chainId} ${address} ${epochId}`
+        : `pnpm run start:reindex-market ${chainId} ${address} ${epochId}`;
+
+      if (process.env.NODE_ENV !== "production") {
+        try {
+          const result = await executeLocalReindex(startCommand);
+          res.json({ success: true, job: result });
+        } catch (error: any) {
+          res.status(500).json({ error: error.message });
+        }
+        return;
+      }
+
+      const job = await createRenderJob(id, startCommand);
+
+      const jobDb = new RenderJob();
+      jobDb.jobId = job.id;
+      jobDb.serviceId = job.serviceId;
+      await renderJobRepository.save(jobDb);
+
+      res.json({ success: true, job });
+    })
+  );
+
+  // Only set up Sentry error handling in production
+  if (process.env.NODE_ENV === "production") {
+    Sentry.setupExpressErrorHandler(app);
+  }
+  
+  // Global error handler
+  app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+    console.error("An error occurred:", err.message);
+    res.status(500).json({ error: "Internal server error" });
   });
 };
+
 startServer().catch((e) => console.error("Unable to start server: ", e));

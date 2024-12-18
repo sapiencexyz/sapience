@@ -3,9 +3,14 @@ import { ResourcePrice } from "../models/ResourcePrice";
 import { type Market } from "../models/Market";
 import { getBlockByTimestamp, getProviderForChain } from "../helpers";
 import { Block, type PublicClient } from "viem";
+import Sentry from "../sentry";
 
 class EvmIndexer {
   public client: PublicClient;
+  private isWatching: boolean = false;
+  private reconnectAttempts: number = 0;
+  private maxReconnectAttempts: number = 5;
+  private reconnectDelay: number = 5000; // 5 seconds
 
   constructor(chainId: number) {
     this.client = getProviderForChain(chainId);
@@ -15,19 +20,23 @@ class EvmIndexer {
     const value = block?.baseFeePerGas; // in wei
     const used = block?.gasUsed;
     if (!value || !block.number) {
-      console.error(
-        `No baseFeePerGas for block ${block?.number} on market ${market.chainId}:${market.address}`
+      console.warn(
+        `No baseFeePerGas for block ${block?.number} on market ${market.chainId}:${market.address}. Skipping block.`
       );
       return;
     }
 
-    const price = new ResourcePrice();
-    price.market = market;
-    price.timestamp = Number(block.timestamp);
-    price.value = value.toString();
-    price.used = used.toString();
-    price.blockNumber = Number(block.number);
-    await resourcePriceRepository.upsert(price, ["market", "timestamp"]);
+    try {
+      const price = new ResourcePrice();
+      price.market = market;
+      price.timestamp = Number(block.timestamp);
+      price.value = value.toString();
+      price.used = used.toString();
+      price.blockNumber = Number(block.number);
+      await resourcePriceRepository.upsert(price, ["market", "timestamp"]);
+    } catch (error) {
+      console.error('Error storing block price:', error);
+    }
   }
 
   async indexBlockPriceFromTimestamp(
@@ -47,11 +56,41 @@ class EvmIndexer {
     ) {
       try {
         console.log("Indexing gas from block ", blockNumber);
+
         const block = await this.client.getBlock({
           blockNumber: BigInt(blockNumber),
         });
         await this.storeBlockPrice(block, market);
       } catch (error) {
+        Sentry.withScope((scope) => {
+          scope.setExtra('blockNumber', blockNumber);
+          scope.setExtra('market', `${market.chainId}:${market.address}`);
+          scope.setExtra('timestamp', timestamp);
+          Sentry.captureException(error);
+        });
+        console.error(`Error processing block ${blockNumber}:`, error);
+      }
+    }
+    return true;
+  }
+
+  async indexBlocks(
+    market: Market,
+    blocks: number[]
+  ): Promise<boolean> {
+    for (const blockNumber of blocks) {
+      try {
+        console.log("Indexing gas from block", blockNumber);
+        const block = await this.client.getBlock({
+          blockNumber: BigInt(blockNumber),
+        });
+        await this.storeBlockPrice(block, market);
+      } catch (error) {
+        Sentry.withScope((scope) => {
+          scope.setExtra('blockNumber', blockNumber);
+          scope.setExtra('market', `${market.chainId}:${market.address}`);
+          Sentry.captureException(error);
+        });
         console.error(`Error processing block ${blockNumber}:`, error);
       }
     }
@@ -59,13 +98,55 @@ class EvmIndexer {
   }
 
   async watchBlocksForMarket(market: Market) {
-    console.log(
-      `Watching base fee per gas on chain ID ${this.client.chain?.id} for market ${market.chainId}:${market.address}`
-    );
-    this.client.watchBlocks({
-      onBlock: (block) => this.storeBlockPrice(block, market),
-      onError: (error) => console.error(error),
-    });
+    if (this.isWatching) {
+      console.log('Already watching blocks for this market');
+      return;
+    }
+
+    const startWatching = () => {
+      console.log(
+        `Watching base fee per gas on chain ID ${this.client.chain?.id} for market ${market.chainId}:${market.address}`
+      );
+
+      this.isWatching = true;
+
+      const unwatch = this.client.watchBlocks({
+        onBlock: async (block) => {
+          try {
+            await this.storeBlockPrice(block, market);
+            this.reconnectAttempts = 0;
+          } catch (error) {
+            console.error('Error processing block:', error);
+
+          }
+        },
+        onError: (error) => {
+          Sentry.withScope((scope) => {
+            scope.setExtra('market', `${market.chainId}:${market.address}`);
+            scope.setExtra('chainId', this.client.chain?.id);
+            Sentry.captureException(error);
+          });
+          console.error('Watch error:', error);
+
+
+          this.isWatching = false;
+          unwatch?.();
+
+          if (this.reconnectAttempts < this.maxReconnectAttempts) {
+            this.reconnectAttempts++;
+            console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
+            setTimeout(() => {
+              startWatching();
+            }, this.reconnectDelay);
+          } else {
+            console.error('Max reconnection attempts reached. Stopping watch.');
+            Sentry.captureMessage('Max reconnection attempts reached for block watcher');
+          }
+        },
+      });
+    };
+
+    startWatching();
   }
 }
 

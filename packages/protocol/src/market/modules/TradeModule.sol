@@ -5,6 +5,7 @@ import "../storage/Position.sol";
 import "../storage/ERC721Storage.sol";
 import "../storage/Trade.sol";
 import "../libraries/DecimalMath.sol";
+import {IFoilPositionEvents} from "../interfaces/IFoilPositionEvents.sol";
 
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {SafeCastI256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
@@ -43,6 +44,10 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         _checkTradeSize(size);
 
         Epoch.Data storage epoch = Epoch.load(epochId);
+
+        if (block.timestamp < epoch.startTime) {
+            revert Errors.EpochNotStarted(epochId, epoch.startTime);
+        }
 
         // check if epoch is not settled
         epoch.validateNotSettled();
@@ -93,7 +98,9 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         }
 
         // Transfer the locked collateral to the market
-        position.updateCollateral(outputParams.requiredCollateral);
+        int256 deltaCollateral = position.updateCollateral(
+            outputParams.requiredCollateral
+        );
 
         // Validate after trading that collateral is enough
         position.afterTradeCheck();
@@ -102,19 +109,30 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
         epoch.validateCurrentPoolPriceInRange();
 
-        emit TraderPositionCreated(
-            msg.sender,
-            epochId,
-            positionId,
-            outputParams.requiredCollateral,
-            position.vEthAmount,
-            position.vGasAmount,
-            position.borrowedVEth,
-            position.borrowedVGas,
-            initialPrice,
-            finalPrice,
-            outputParams.tradeRatioD18
+        _emitTraderPositionCreated(
+            IFoilPositionEvents.TraderPositionCreatedEventData({
+                sender: msg.sender,
+                epochId: epochId,
+                positionId: positionId,
+                requiredCollateral: outputParams.requiredCollateral,
+                initialPrice: initialPrice,
+                finalPrice: finalPrice,
+                tradeRatio: outputParams.tradeRatioD18,
+                positionCollateralAmount: position.depositedCollateralAmount,
+                positionVethAmount: position.vEthAmount,
+                positionVgasAmount: position.vGasAmount,
+                positionBorrowedVeth: position.borrowedVEth,
+                positionBorrowedVgas: position.borrowedVGas,
+                deltaCollateral: deltaCollateral
+            })
         );
+    }
+
+    struct ModifyTraderPositionRuntime {
+        int256 deltaSize;
+        int256 deltaCollateral;
+        uint256 initialPrice;
+        uint256 finalPrice;
     }
 
     /**
@@ -126,6 +144,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         int256 deltaCollateralLimit,
         uint256 deadline
     ) external nonReentrant {
+        ModifyTraderPositionRuntime memory runtime;
         if (block.timestamp > deadline) {
             revert Errors.TransactionExpired(deadline, block.timestamp);
         }
@@ -140,28 +159,31 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             revert Errors.InvalidPositionKind();
         }
 
-        int256 deltaSize = size - position.positionSize();
-        if (deltaSize == 0) {
+        runtime.deltaSize = size - position.positionSize();
+        if (runtime.deltaSize == 0) {
             revert Errors.DeltaTradeIsZero();
         }
 
+        // Checking both the new size and the delta size to avoid small trades that can mess with rounding errors
         _checkTradeSize(size);
+        _checkTradeSize(runtime.deltaSize);
 
         Epoch.Data storage epoch = Epoch.load(position.epochId);
 
         // check if epoch is not settled
         epoch.validateNotSettled();
 
-        uint256 initialPrice = epoch.getReferencePrice();
+        runtime.initialPrice = epoch.getReferencePrice();
 
         QuoteOrTradeInputParams memory inputParams = QuoteOrTradeInputParams({
             oldPosition: position,
             initialSize: position.positionSize(),
             targetSize: size,
-            deltaSize: deltaSize,
+            deltaSize: runtime.deltaSize,
             isQuote: false
         });
 
+        // Do the trade
         QuoteOrTradeOutputParams memory outputParams = _quoteOrTrade(
             inputParams
         );
@@ -212,45 +234,55 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
             // 4. Transfer the released collateral to the trader (pnl)
             // Notice: under normal operations, the required collateral should be zero, but if somehow there is a "bad debt" it needs to be repaid.
-            int256 deltaCollateral = position.updateCollateral(
+            runtime.deltaCollateral = position.updateCollateral(
                 outputParams.requiredCollateral
             );
 
             // Check if the collateral is within the limit
-            _checkDeltaCollateralLimit(deltaCollateral, deltaCollateralLimit);
+            _checkDeltaCollateralLimit(
+                runtime.deltaCollateral,
+                deltaCollateralLimit
+            );
 
             // Now the position should be closed. All the vToken and collateral values set to zero
         } else {
             // Not closing, proced as a normal trade
 
             // Transfer the locked collateral to the market or viceversa
-            int256 deltaCollateral = position.updateCollateral(
+            runtime.deltaCollateral = position.updateCollateral(
                 outputParams.requiredCollateral
             );
 
             // Check if the collateral is within the limit
-            _checkDeltaCollateralLimit(deltaCollateral, deltaCollateralLimit);
+            _checkDeltaCollateralLimit(
+                runtime.deltaCollateral,
+                deltaCollateralLimit
+            );
 
             // Validate after trading that collateral is enough
             position.afterTradeCheck();
         }
 
-        uint256 finalPrice = epoch.getReferencePrice();
+        runtime.finalPrice = epoch.getReferencePrice();
 
         epoch.validateCurrentPoolPriceInRange();
 
-        emit TraderPositionModified(
-            msg.sender,
-            position.epochId,
-            positionId,
-            outputParams.requiredCollateral,
-            position.vEthAmount,
-            position.vGasAmount,
-            position.borrowedVEth,
-            position.borrowedVGas,
-            initialPrice,
-            finalPrice,
-            outputParams.tradeRatioD18
+        _emitTraderPositionModified(
+            IFoilPositionEvents.TraderPositionModifiedEventData({
+                sender: msg.sender,
+                epochId: position.epochId,
+                positionId: positionId,
+                requiredCollateral: outputParams.requiredCollateral,
+                initialPrice: runtime.initialPrice,
+                finalPrice: runtime.finalPrice,
+                tradeRatio: outputParams.tradeRatioD18,
+                positionCollateralAmount: position.depositedCollateralAmount,
+                positionVethAmount: position.vEthAmount,
+                positionVgasAmount: position.vGasAmount,
+                positionBorrowedVeth: position.borrowedVEth,
+                positionBorrowedVgas: position.borrowedVGas,
+                deltaCollateral: runtime.deltaCollateral
+            })
         );
     }
 
@@ -377,8 +409,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         uint256 tradedVEth;
         int256 signedTradedVGas;
         int256 signedTradedVEth;
-        int256 vEthToZero; // required vEth to close the initial position (to zero)
-        int256 vEthFromZero; // vEth involved in the transaction from zero to target size
+        uint256 vEthFromZero; // vEth involved in the transaction from zero to target size
     }
 
     struct QuoteOrTradeInputParams {
@@ -410,11 +441,9 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             .depositedCollateralAmount;
 
         // 1- Get or quote the transacted tokens (vEth and vGas)
+        runtime.signedTradedVGas = params.deltaSize;
+        runtime.tradedVGas = params.deltaSize.abs();
         if (runtime.isLongDirection) {
-            // Pick the right values based on the direction
-            runtime.signedTradedVGas = params.deltaSize;
-            runtime.tradedVGas = params.deltaSize.toUint();
-
             // Long direction; Quote or Trade
             (runtime.tradedVEth, ) = Trade.swapOrQuoteTokensExactOut(
                 epoch,
@@ -424,10 +453,6 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             );
             runtime.signedTradedVEth = runtime.tradedVEth.toInt();
         } else {
-            // Pick the right values based on the direction
-            runtime.signedTradedVGas = params.deltaSize;
-            runtime.tradedVGas = (params.deltaSize * -1).toUint();
-
             // Short direction; Quote or Trade
             (runtime.tradedVEth, ) = Trade.swapOrQuoteTokensExactIn(
                 epoch,
@@ -438,15 +463,24 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             runtime.signedTradedVEth = runtime.tradedVEth.toInt() * -1;
         }
 
-        // Sanity check. vGas on trade is zero means someting went really wrong (or )
-        if (runtime.tradedVGas == 0) {
+        // Sanity check. vEth on trade is zero means someting went really wrong (maybe too small trade size, or not enough virtual tokens in the pool)
+        if (runtime.tradedVEth == 0) {
             revert Errors.InvalidInternalTradeSize(0);
         }
 
         // 2- Get PnL and vEth involved in the transaction from initial size to zero (intermediate close the position).
-        output.tradeRatioD18 = runtime.isLongDirection
-            ? runtime.tradedVEth.divDecimal(runtime.tradedVGas)
-            : runtime.tradedVEth.divDecimalRoundUp(runtime.tradedVGas);
+        (
+            output.tradeRatioD18,
+            output.closePnL,
+            runtime.vEthFromZero
+        ) = calculateCloseEthAndPnl(
+            runtime.tradedVEth,
+            runtime.tradedVGas,
+            runtime.signedTradedVEth,
+            params.initialSize,
+            params.targetSize,
+            params.oldPosition
+        );
 
         if (
             output.tradeRatioD18 < epoch.minPriceD18 ||
@@ -459,34 +493,22 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             );
         }
 
-        // vEth to compensate the gas (either to pay borrowedVGas or borrowerVEth paid from the vGas tokens from the close trade)
-        runtime.vEthToZero = (params.initialSize * -1).mulDecimal(
-            output.tradeRatioD18.toInt()
-        );
-        // net vEth from original positon minus the vEth to zero
-        output.closePnL =
-            params.oldPosition.vEthAmount.toInt() -
-            params.oldPosition.borrowedVEth.toInt() -
-            runtime.vEthToZero;
-        // vEth from the trade that wasn't used to close the initial position (should be same as targetSize*tradeRatio, but there can be some rounding errors)
-        runtime.vEthFromZero = runtime.signedTradedVEth - runtime.vEthToZero;
-
         // 3- Regenerate the new position after the trade and closure
         if (params.targetSize > 0) {
             // End position is LONG
-            output.position.vGasAmount = params.targetSize.toUint();
+            // Sanity check. borrowedVEth should be larger than zero if the position is long
+            if (runtime.vEthFromZero == 0) {
+                revert Errors.InvalidInternalTradeSize(runtime.vEthFromZero);
+            }
+            output.position.vGasAmount = params.targetSize.abs();
             output.position.vEthAmount = 0;
             output.position.borrowedVGas = 0;
-            output.position.borrowedVEth = runtime.vEthFromZero > 0
-                ? runtime.vEthFromZero.toUint()
-                : (runtime.vEthFromZero * -1).toUint();
+            output.position.borrowedVEth = runtime.vEthFromZero;
         } else {
             // End position is SHORT
             output.position.vGasAmount = 0;
-            output.position.vEthAmount = runtime.vEthFromZero > 0
-                ? runtime.vEthFromZero.toUint()
-                : (runtime.vEthFromZero * -1).toUint();
-            output.position.borrowedVGas = (params.targetSize * -1).toUint();
+            output.position.vEthAmount = runtime.vEthFromZero;
+            output.position.borrowedVGas = params.targetSize.abs();
             output.position.borrowedVEth = 0;
         }
 
@@ -531,5 +553,115 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         output.expectedDeltaCollateral =
             output.requiredCollateral.toInt() -
             output.position.depositedCollateralAmount.toInt();
+    }
+
+    function _emitTraderPositionCreated(
+        IFoilPositionEvents.TraderPositionCreatedEventData memory eventData
+    ) internal {
+        emit IFoilPositionEvents.TraderPositionCreated(
+            eventData.sender,
+            eventData.epochId,
+            eventData.positionId,
+            eventData.requiredCollateral,
+            eventData.initialPrice,
+            eventData.finalPrice,
+            eventData.tradeRatio,
+            eventData.positionCollateralAmount,
+            eventData.positionVethAmount,
+            eventData.positionVgasAmount,
+            eventData.positionBorrowedVeth,
+            eventData.positionBorrowedVgas,
+            eventData.deltaCollateral
+        );
+    }
+
+    function _emitTraderPositionModified(
+        IFoilPositionEvents.TraderPositionModifiedEventData memory eventData
+    ) internal {
+        emit IFoilPositionEvents.TraderPositionModified(
+            eventData.sender,
+            eventData.epochId,
+            eventData.positionId,
+            eventData.requiredCollateral,
+            eventData.initialPrice,
+            eventData.finalPrice,
+            eventData.tradeRatio,
+            eventData.positionCollateralAmount,
+            eventData.positionVethAmount,
+            eventData.positionVgasAmount,
+            eventData.positionBorrowedVeth,
+            eventData.positionBorrowedVgas,
+            eventData.deltaCollateral
+        );
+    }
+
+    function calculateCloseEthAndPnl(
+        uint256 tradedVEth,
+        uint256 tradedVGas,
+        int256 signedTradedVEth,
+        int256 initialSize,
+        int256 targetSize,
+        Position.Data memory oldPosition
+    )
+        internal
+        pure
+        returns (uint256 tradeRatioD18, int256 closePnL, uint256 vEthFromZero)
+    {
+        // Notice: This function will use rounding up/low depending on the direction of the trade and the initial/final position size
+        // This is to avoid rounding errors when the position is closed
+        // The assumption (to allow the market to always be in a good state) is that the rounding up/down will always punish the trader
+        // It means:
+        // - closePnL will always tend to be more negative (-1 if rounding is needed)
+
+        // Get both versions of the tradeRatioD18 (rounded down and rounded up)
+        uint256 tradeRatioD18RoundDown = tradedVEth.divDecimal(tradedVGas);
+        uint256 tradeRatioD18RoundUp = tradedVEth.divDecimalRoundUp(tradedVGas);
+
+        // Use the truncated value as the tradeRatioD18 (used later in the event and validations)
+        tradeRatioD18 = tradeRatioD18RoundDown;
+
+        // get both versions of vEthToZero using both tradeRatioD18
+        // vEth to compensate the gas (either to pay borrowedVGas or borrowedVEth tokens from the close trade)
+        int256 vEthToZeroRoundDown = (initialSize * -1).mulDecimal(
+            tradeRatioD18RoundDown.toInt()
+        );
+        int256 vEthToZeroRoundUp = (initialSize * -1).mulDecimal(
+            tradeRatioD18RoundUp.toInt()
+        );
+
+        // Calculate the closePnL as net vEth from original positon minus the vEth to zero
+        // net vEth from original positon minus the vEth to zero (closing Profit based on the new trade ratio. Using the worst case scenario)
+        closePnL =
+            oldPosition.vEthAmount.toInt() -
+            oldPosition.borrowedVEth.toInt() -
+            (initialSize > 0 ? vEthToZeroRoundDown : vEthToZeroRoundUp);
+
+        // vEth from the trade that wasn't used to close the initial position (should be same as targetSize*tradeRatio, but there can be some rounding errors)
+        // vEthFromZero = signedTradedVEth - vEthToZero
+        // But we need to use the worst case scenario on the tradeRatio rounding depending on the target size
+        // If target size is positive (LONG) the vEth is debt => should be the higher
+        // If target size is negative (SHORT) the vEth is credit => should be the lower
+        if (targetSize == 0) {
+            vEthFromZero = 0;
+            // Skip the rest since is just for getting the vEthFromZero with the proper rounding
+        } else {
+            uint256 vEthFromZeroFromRoundDown = (signedTradedVEth -
+                vEthToZeroRoundDown).abs();
+            uint256 vEthFromZeroFromRoundUp = (signedTradedVEth -
+                vEthToZeroRoundUp).abs();
+            if (targetSize > 0) {
+                vEthFromZero = vEthFromZeroFromRoundDown >
+                    vEthFromZeroFromRoundUp
+                    ? vEthFromZeroFromRoundDown
+                    : vEthFromZeroFromRoundUp;
+            } else {
+                vEthFromZero = vEthFromZeroFromRoundDown <
+                    vEthFromZeroFromRoundUp
+                    ? vEthFromZeroFromRoundDown
+                    : vEthFromZeroFromRoundUp;
+            }
+        }
+
+        return (tradeRatioD18, closePnL, vEthFromZero);
     }
 }

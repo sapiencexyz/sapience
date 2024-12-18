@@ -14,6 +14,8 @@ import {Errors} from "./Errors.sol";
 library Market {
     using SafeERC20 for IERC20;
 
+    uint256 constant MIN_COLLATERAL = 10_000; // 10,000 wstETH (in wei);
+
     struct Data {
         address owner;
         address pendingOwner;
@@ -163,8 +165,11 @@ library Market {
         Data storage self,
         address user,
         uint256 amount
-    ) internal {
-        self.collateralAsset.safeTransfer(user, amount);
+    ) internal returns (uint256 withdrawnAmount) {
+        uint256 balance = self.collateralAsset.balanceOf(address(this));
+        withdrawnAmount = amount > balance ? balance : amount;
+
+        self.collateralAsset.safeTransfer(user, withdrawnAmount);
     }
 
     function transferOwnership(Data storage self, address newOwner) internal {

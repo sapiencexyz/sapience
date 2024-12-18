@@ -34,8 +34,11 @@ import {
   updateTransactionFromTradeModifiedEvent,
   upsertMarketPrice,
   updateTransactionFromPositionSettledEvent,
+  getMarketStartEndBlock,
 } from "./marketHelpers";
 import { Client, TextChannel, EmbedBuilder } from "discord.js";
+import { MARKET_INFO } from "../markets";
+import * as Chains from 'viem/chains';
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const DISCORD_PRIVATE_CHANNEL_ID = process.env.DISCORD_PRIVATE_CHANNEL_ID;
@@ -152,13 +155,24 @@ export const indexMarketEvents = async (market: Market, abi: Abi) => {
 };
 
 // Iterates over all blocks from the market's deploy block to the current block and calls upsertEvent for each one.
-export const reindexMarketEvents = async (market: Market, abi: Abi) => {
+export const reindexMarketEvents = async (market: Market, abi: Abi, epochId: number) => {
   await initializeDataSource();
   const client = getProviderForChain(market.chainId);
-
-  const startBlock = market.deployTxnBlockNumber || 0;
-  const endBlock = await client.getBlockNumber();
   const chainId = await client.getChainId();
+
+  // Get block range for the epoch
+  const { startBlockNumber, error } = await getMarketStartEndBlock(
+    market,
+    epochId.toString(),
+    client
+  );
+
+  if (error || !startBlockNumber) {
+    throw new Error(`Failed to get start block for epoch ${epochId}: ${error}`);
+  }
+
+  const startBlock = startBlockNumber;
+  const endBlock = await client.getBlockNumber();
 
   for (let blockNumber = startBlock; blockNumber <= endBlock; blockNumber++) {
     console.log("Indexing market events from block ", blockNumber);
@@ -232,39 +246,92 @@ const alertEvent = async (
       return;
     }
 
-    if(DISCORD_PUBLIC_CHANNEL_ID && logData.eventName !== EventType.Transfer){
+    if(DISCORD_PUBLIC_CHANNEL_ID && logData.eventName !== EventType.Transfer) {
       const publicChannel = (await discordClient.channels.fetch(
         DISCORD_PUBLIC_CHANNEL_ID
       )) as TextChannel;
 
-      const embed = new EmbedBuilder()
-        .setTitle(`New Market Event: ${logData.eventName}`)
-        .setColor("#0099ff")
-        .addFields(
-          { name: "Chain ID", value: chainId.toString(), inline: true },
-          { name: "Market Address", value: address, inline: true },
-          { name: "Epoch ID", value: epochId.toString(), inline: true },
-          { name: "Block Number", value: blockNumber.toString(), inline: true },
-          {
-            name: "Timestamp",
-            value: new Date(Number(timestamp) * 1000).toISOString(),
-            inline: true,
+      let title = '';
+
+      // Format based on event type
+      switch(logData.eventName) {
+        case EventType.TraderPositionCreated:
+        case EventType.TraderPositionModified:
+          const tradeDirection = BigInt(logData.args.finalPrice) > BigInt(logData.args.initialPrice) ? 'Long' : 'Short';
+          const rawGasAmount = Number(logData.args.vGasAmount || logData.args.borrowedVGas) / 1e18;
+          const rawPriceGwei = Number(logData.args.tradeRatio) / 1e18;
+          
+          // Format with commas and only show decimals if significant
+          const gasAmount = rawGasAmount.toLocaleString('en-US', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 9
+          });
+          const priceGwei = rawPriceGwei.toLocaleString('en-US', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
+          });
+          
+          title = `${tradeDirection === 'Long' ? '<:pepegas:1313887905508364288>' : '<:peepoangry:1313887206687117313>'} **Trade Executed:** ${tradeDirection} ${gasAmount} Ggas @ ${priceGwei} wstGwei`;
+          break;
+
+        case EventType.LiquidityPositionCreated:
+        case EventType.LiquidityPositionIncreased:
+        case EventType.LiquidityPositionDecreased:
+        case EventType.LiquidityPositionClosed:
+          const action = logData.eventName === EventType.LiquidityPositionDecreased || logData.eventName === EventType.LiquidityPositionClosed ? 'Removed' : 'Added';
+          const rawLiquidityGas = Number(logData.args.addedAmount0 ||logData.args.increasedAmount0 || logData.args.amount0) / 1e18;
+          
+          // Format with commas and only show decimals if significant
+          const liquidityGas = rawLiquidityGas.toLocaleString('en-US', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 6
+          });
+
+          let priceRangeText = '';
+          if (logData.args.lowerTick !== undefined && logData.args.upperTick !== undefined) {
+            const rawLowerPrice = 1.0001 ** logData.args.lowerTick;
+            const rawUpperPrice = 1.0001 ** logData.args.upperTick;
+            
+            const lowerPrice = rawLowerPrice.toLocaleString('en-US', {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 2
+            });
+            const upperPrice = rawUpperPrice.toLocaleString('en-US', {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 2
+            });
+            
+            priceRangeText = ` from ${lowerPrice} - ${upperPrice} wstGwei`;
           }
+          
+          title = `<:pepeliquid:1313887190056439859> **Liquidity Modified:** ${action} ${liquidityGas} Ggas${priceRangeText}`;
+          break;
+        default:
+          return; // Skip other events
+      }
+
+      // Get block explorer URL based on chain ID
+      const getBlockExplorerUrl = (chainId: number, txHash: string) => {
+        const chain = Object.values(Chains).find((c) => c.id === chainId);
+        return chain?.blockExplorers?.default?.url
+          ? `${chain.blockExplorers.default.url}/tx/${txHash}`
+          : `https://etherscan.io/tx/${txHash}`;
+      };
+
+      // Get market name from MARKET_INFO
+      const marketName = MARKET_INFO.find(m => m.deployment.address === address)?.name || "Foil Market";
+
+      const embed = new EmbedBuilder()
+        .setColor("#2b2b2e")
+        .addFields(
+          { name: "Market", value: `${marketName} (Epoch ${epochId.toString()})`, inline: true },
+          { name: "Position", value: logData.args.positionId.toString(), inline: true },
+          { name: "Account", value: logData.args.sender },
+          { name: "Transaction", value: getBlockExplorerUrl(chainId, logData.transactionHash) }
         )
         .setTimestamp();
 
-      // Add event-specific details if available
-      if (logData.args) {
-        const argsField = Object.entries(logData.args)
-          .map(([key, value]) => `${key}: ${value}`)
-          .join("\n");
-        embed.addFields({
-          name: "Event Arguments",
-          value: `\`\`\`${argsField}\`\`\``,
-        });
-      }
-
-      await publicChannel.send({ embeds: [embed] });
+      await publicChannel.send({ content: title, embeds: [embed] });
     }
 
     if(DISCORD_PRIVATE_CHANNEL_ID){
@@ -274,7 +341,7 @@ const alertEvent = async (
 
       const embed = new EmbedBuilder()
         .setTitle(`New Market Event: ${logData.eventName}`)
-        .setColor("#0099ff")
+        .setColor("#2b2b2e")
         .addFields(
           { name: "Chain ID", value: chainId.toString(), inline: true },
           { name: "Market Address", value: address, inline: true },

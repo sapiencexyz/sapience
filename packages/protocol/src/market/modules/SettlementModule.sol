@@ -11,6 +11,7 @@ import {DecimalPrice} from "../libraries/DecimalPrice.sol";
 import {ERC721Storage} from "../storage/ERC721Storage.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {ISettlementModule} from "../interfaces/ISettlementModule.sol";
+import {IFoilPositionEvents} from "../interfaces/IFoilPositionEvents.sol";
 import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePositionManager.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
@@ -20,7 +21,7 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
 
     function settlePosition(
         uint256 positionId
-    ) external override nonReentrant returns (uint256 withdrawableCollateral) {
+    ) external override nonReentrant returns (uint256 withdrawnCollateral) {
         Position.Data storage position = Position.loadValid(positionId);
         Epoch.Data storage epoch = Epoch.loadValid(position.epochId);
         Market.Data storage market = Market.load();
@@ -40,6 +41,7 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
         }
 
         // Perform settlement logic based on position kind
+        uint256 withdrawableCollateral;
         if (position.kind == IFoilStructs.PositionKind.Liquidity) {
             withdrawableCollateral = _settleLiquidityPosition(position, epoch);
         } else if (position.kind == IFoilStructs.PositionKind.Trade) {
@@ -48,9 +50,23 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
             revert Errors.InvalidPositionKind();
         }
 
-        market.withdrawCollateral(msg.sender, withdrawableCollateral);
+        withdrawnCollateral = market.withdrawCollateral(
+            msg.sender,
+            withdrawableCollateral
+        );
 
-        emit PositionSettled(positionId, withdrawableCollateral);
+        int256 deltaCollateral = -int256(withdrawnCollateral);
+
+        emit IFoilPositionEvents.PositionSettled(
+            positionId,
+            withdrawnCollateral,
+            position.depositedCollateralAmount,
+            position.vEthAmount,
+            position.vGasAmount,
+            position.borrowedVEth,
+            position.borrowedVGas,
+            deltaCollateral
+        );
     }
 
     function _settleLiquidityPosition(

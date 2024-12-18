@@ -45,7 +45,9 @@ const getTypeDisplay = (type: string) => {
 
 const TransactionTable: React.FC<Props> = ({ transactions }) => {
   const { address, chain } = useContext(MarketContext);
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: 'time', desc: true },
+  ]);
 
   const columns = useMemo<ColumnDef<any>[]>(
     () => [

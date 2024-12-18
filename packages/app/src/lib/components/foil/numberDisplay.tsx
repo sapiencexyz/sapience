@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/tooltip';
 
 type NumberDisplayProps = {
-  value: number | string;
+  value: number | string | bigint;
 };
 
 const NumberDisplay: React.FC<NumberDisplayProps> = ({ value }) => {

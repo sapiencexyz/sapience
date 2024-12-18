@@ -209,9 +209,17 @@ library Epoch {
         string memory symbol
     ) private returns (VirtualToken token) {
         uint256 currentSalt = initialSalt;
+        uint256 currentBlockNumber = block.number;
         while (true) {
+            bytes32 salt = keccak256(
+                abi.encodePacked(
+                    currentSalt,
+                    currentBlockNumber,
+                    block.coinbase
+                )
+            );
             try
-                new VirtualToken{salt: bytes32(currentSalt)}(
+                new VirtualToken{salt: bytes32(salt)}(
                     address(this),
                     name,
                     symbol
@@ -220,6 +228,7 @@ library Epoch {
                 return _token;
             } catch {
                 currentSalt++;
+                currentBlockNumber++;
             }
         }
     }
@@ -266,7 +275,7 @@ library Epoch {
         int24 minPriceTick,
         int24 maxPriceTick
     ) internal view {
-        int24 tickSpacing = _getTickSpacingForFee(self.marketParams.feeRate);
+        int24 tickSpacing = getTickSpacingForFee(self.marketParams.feeRate);
         if (minPriceTick % tickSpacing != 0) {
             revert Errors.InvalidBaseAssetMinPriceTick(
                 minPriceTick,
@@ -609,7 +618,7 @@ library Epoch {
         }
     }
 
-    function _getTickSpacingForFee(uint24 fee) internal pure returns (int24) {
+    function getTickSpacingForFee(uint24 fee) internal pure returns (int24) {
         if (fee == 100) {
             return 1;
         } else if (fee == 500) {

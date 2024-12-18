@@ -72,7 +72,8 @@ contract TradePositionBasicFuzz is TestTrade {
         (foil, ) = createEpoch(
             EPOCH_LOWER_TICK,
             EPOCH_UPPER_TICK,
-            startingSqrtPriceX96,MIN_TRADE_SIZE
+            startingSqrtPriceX96,
+            MIN_TRADE_SIZE
         );
 
         lp1 = TestUser.createUser("LP1", 10_000_000_000 ether);

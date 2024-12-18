@@ -104,6 +104,9 @@ importers:
       jsbi:
         specifier: '3'
         version: 3.2.5
+      lightweight-charts:
+        specifier: ^4.2.1
+        version: 4.2.1
       lodash:
         specifier: ^4.17.21
         version: 4.17.21
@@ -327,8 +330,8 @@ importers:
         specifier: ^1.4.4
         version: 1.4.4
       '@usecannon/cli':
-        specifier: 2.20.0-alpha.0
-        version: 2.20.0-alpha.0(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.6.2)(utf-8-validate@5.0.10)
+        specifier: 2.20.1
+        version: 2.20.1(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.6.2)(utf-8-validate@5.0.10)
     devDependencies:
       '@types/chai':
         specifier: ^4.3.19
@@ -5237,16 +5240,16 @@ packages:
     engines: {node: '>=10'}
     deprecated: Please upgrade to 1.0.1
 
-  '@usecannon/builder@2.20.0-alpha.0':
-    resolution: {integrity: sha512-Uan1XndjjYfQYI9P45984ZZp1lBGDyVLpkvRCGrRc1+lbfghEecCm1MMQ83gy3uQ5BOG8LpL9cAuyxtn+e6xzw==}
+  '@usecannon/builder@2.20.1':
+    resolution: {integrity: sha512-fArDas3TxRRlmA1ZMBLwkAXE5zA+06T9JewEh8kWG26h4qFuU5i70IqfAv08F0r428x5Y+6QBL5iviUjwQNR4A==}
     engines: {node: '>=16.0.0'}
 
-  '@usecannon/cli@2.20.0-alpha.0':
-    resolution: {integrity: sha512-4z2ppeBiEmRQ28zBxy8kjkmKC1YbituN6bv+hXFPy7dyctCT0zVnjmMgIDDs6UgaKS2OH60EHIIs+zi4BLq5kg==}
+  '@usecannon/cli@2.20.1':
+    resolution: {integrity: sha512-0B6ro4GbdU+MEmOj3Q58dnQ+sQJVGNid6Dx+xHTHjtV+UdsuqMeqqp2KchLsxAlZmJYDmTReBzfaQwbWpqnoSw==}
     hasBin: true
 
-  '@usecannon/router@4.1.0':
-    resolution: {integrity: sha512-FpEmBz/s+cE4j9gAJecbuir/GgpbJKwhewxIoaUTrIajPNORrC08y4aUu/sF2mxIZvonivkSsBW5WHlsBW5Hug==}
+  '@usecannon/router@4.1.3':
+    resolution: {integrity: sha512-s6YfUovQoh1bW10LWHhrRQHUd+IK1L69daqBa+kGxMGpGwmx12LqjUdT+inB2YjtbYy7FLaLd+DV6tegIi2wXQ==}
 
   '@usecannon/web-solc@0.5.1':
     resolution: {integrity: sha512-wK8J1snp1ikYzpxA8LzhQwp+6cvmLDnFG2EaMLmqtQZD/FIz7xh8IaSgHUliwDBm9zdsPEIvXvhDvanyZ7IBuw==}
@@ -5503,9 +5506,11 @@ packages:
 
   abstract-leveldown@2.6.3:
     resolution: {integrity: sha512-2++wDf/DYqkPR3o5tbfdhF96EfMApo1GpPfzOsR/ZYXdkSmELlvOOEAl9iKkRsktMPHdGjO4rtkBpf2I7TiTeA==}
+    deprecated: Superseded by abstract-level (https://github.com/Level/community#faq)
 
   abstract-leveldown@2.7.2:
     resolution: {integrity: sha512-+OVvxH2rHVEhWLdbudP6p0+dNMXu8JA1CbhP19T8paTYAcX7oJ4OVjT+ZUVpv7mITxXHqDMej+GdqXBmXkw09w==}
+    deprecated: Superseded by abstract-level (https://github.com/Level/community#faq)
 
   accepts@1.3.8:
     resolution: {integrity: sha512-PYAthTa2m2VKxuvSD3DPC/Gy+U+sOA1LAuT8mkmRuvw+NACSaeXEQ+NHcVF7rONl6qcaxV3Uuemwawk+7+SJLw==}
@@ -7145,6 +7150,7 @@ packages:
 
   deferred-leveldown@1.2.2:
     resolution: {integrity: sha512-uukrWD2bguRtXilKt6cAWKyoXrTSMo5m7crUdLfWQmu8kIm88w3QZoUL+6nhpfKVmhHANER6Re3sKoNoZ3IKMA==}
+    deprecated: Superseded by abstract-level (https://github.com/Level/community#faq)
 
   define-data-property@1.1.4:
     resolution: {integrity: sha512-rBMvIzlpA8v6E+SJZoo++HAYqsLrkg7MSfIinMPFhmkorw7X+dOXVJQs+QT69zGkzMyfDnIMN2Wid1+NbL3T+A==}
@@ -8092,6 +8098,9 @@ packages:
 
   fake-merkle-patricia-tree@1.0.1:
     resolution: {integrity: sha512-Tgq37lkc9pUIgIKw5uitNUKcgcYL3R6JvXtKQbOf/ZSavXbidsksgp/pAY6p//uhw0I4yoMsvTSovvVIsk/qxA==}
+
+  fancy-canvas@2.1.0:
+    resolution: {integrity: sha512-nifxXJ95JNLFR2NgRV4/MxVP45G9909wJTEKz5fg/TZS20JJZA6hfgRVh/bC9bwl2zBtBNcYPjiBE4njQHVBwQ==}
 
   fast-check@3.1.1:
     resolution: {integrity: sha512-3vtXinVyuUKCKFKYcwXhGE6NtGWkqF8Yh3rvMZNzmwz8EPrgoc/v4pDdLHyLnCyCI5MZpZZkDEwFyXyEONOxpA==}
@@ -9906,6 +9915,7 @@ packages:
 
   levelup@1.3.9:
     resolution: {integrity: sha512-VVGHfKIlmw8w1XqpGOAGwq6sZm2WwWLmlDcULkKWQXEA5EopA8OBNJ2Ck2v6bdk8HeEZSbCSEgzXadyQFm76sQ==}
+    deprecated: Superseded by abstract-level (https://github.com/Level/community#faq)
 
   leven@3.1.0:
     resolution: {integrity: sha512-qsda+H8jTaUaN/x5vzW2rzc+8Rw4TAQ/4KjB46IwK5VH+IlVeeeje/EoZRpiXvIqjFgK84QffqPztGI3VBLG1A==}
@@ -9925,6 +9935,9 @@ packages:
 
   lighthouse-logger@1.4.2:
     resolution: {integrity: sha512-gPWxznF6TKmUHrOQjlVo2UbaL2EJ71mb2CCeRs/2qBpi4L/g4LUVc9+3lKQ6DTUZwJswfM7ainGrLO1+fOqa2g==}
+
+  lightweight-charts@4.2.1:
+    resolution: {integrity: sha512-nE2zCZ5Gp7KZbVHUJi6QhQLkYRvYyxsQTnSLEXIFmc8iHOFBT4rk/Dbyecq+CLW59FNuoCPNOYjZnS63/uHDrA==}
 
   lilconfig@2.1.0:
     resolution: {integrity: sha512-utWOt/GHzuUxnLKxB6dk81RoOeoNeHgbrXiuGk4yyF5qlRz+iIVWu56E2fqGHFrXz0QNUhLB/8nKqvRH66JKGQ==}
@@ -10299,6 +10312,7 @@ packages:
 
   memdown@1.4.1:
     resolution: {integrity: sha512-iVrGHZB8i4OQfM155xx8akvG9FIj+ht14DX5CQkCTG4EHzZ3d3sgckIf/Lm9ivZalEsFuEVnWv2B2WZvbrro2w==}
+    deprecated: Superseded by memory-level (https://github.com/Level/community#faq)
 
   memoize-one@5.2.1:
     resolution: {integrity: sha512-zYiwtZUcYyXKo/np96AGZAckk+FWWsUdJ3cHGGmld7+AhvcWmQyGCYUh1hc4Q/pkOhb65dQR/pqCyK0cOaHz4Q==}
@@ -14198,9 +14212,6 @@ packages:
 
   web-encoding@1.1.5:
     resolution: {integrity: sha512-HYLeVCdJ0+lBYV2FvNZmv3HJ2Nt0QYXqZojk3d9FJOLkwnuhzM9tmamh8d7HPM8QqjKH8DeHkFTx+CFlWpZZDA==}
-
-  web-solc@0.5.1:
-    resolution: {integrity: sha512-Z/hBplZq1+4i4bYeIeD9N3vP1BLUBXpSDa4h0Ipm2Z2cHv7x7DtZ2zFb0E1L1VZo4BF+OJGVtGlT+nTUXGgncQ==}
 
   web3-bzz@1.10.0:
     resolution: {integrity: sha512-o9IR59io3pDUsXTsps5pO5hW1D5zBmg46iNc2t4j2DkaYHNdDLwk2IP9ukoM2wg47QILfPEJYzhTfkS/CcX0KA==}
@@ -19845,7 +19856,7 @@ snapshots:
   '@safe-global/safe-apps-sdk@9.1.0(bufferutil@4.0.8)(typescript@5.6.2)(utf-8-validate@5.0.10)(zod@3.23.8)':
     dependencies:
       '@safe-global/safe-gateway-typescript-sdk': 3.22.2
-      viem: 2.21.21(bufferutil@4.0.8)(typescript@5.6.2)(utf-8-validate@5.0.10)(zod@3.23.8)
+      viem: 2.21.49(bufferutil@4.0.8)(typescript@5.6.2)(utf-8-validate@5.0.10)(zod@3.23.8)
     transitivePeerDependencies:
       - bufferutil
       - typescript
@@ -20875,7 +20886,7 @@ snapshots:
 
   '@types/pbkdf2@3.1.2':
     dependencies:
-      '@types/node': 20.16.5
+      '@types/node': 20.17.6
 
   '@types/pg-pool@2.0.6':
     dependencies:
@@ -21374,17 +21385,18 @@ snapshots:
       '@uniswap/v3-core': 1.0.0
       '@uniswap/v3-periphery': 1.4.4
 
-  '@usecannon/builder@2.20.0-alpha.0(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.6.2)(utf-8-validate@5.0.10)':
+  '@usecannon/builder@2.20.1(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.6.2)(utf-8-validate@5.0.10)':
     dependencies:
-      '@usecannon/router': 4.1.0
+      '@usecannon/router': 4.1.3
       '@usecannon/web-solc': 0.5.1
       axios: 1.7.7(debug@4.3.7)
-      axios-retry: 4.5.0(axios@1.7.7)
+      axios-retry: 4.5.0(axios@1.7.7(debug@4.3.7))
       buffer: 6.0.3
       chalk: 4.1.2
       debug: 4.3.7(supports-color@8.1.1)
       form-data: 4.0.1
       fuse.js: 7.0.0
+      json-stable-stringify: 1.1.1
       lodash: 4.17.21
       pako: 2.1.0
       promise-events: 0.2.4
@@ -21398,10 +21410,10 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@usecannon/cli@2.20.0-alpha.0(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.6.2)(utf-8-validate@5.0.10)':
+  '@usecannon/cli@2.20.1(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.6.2)(utf-8-validate@5.0.10)':
     dependencies:
       '@iarna/toml': 3.0.0
-      '@usecannon/builder': 2.20.0-alpha.0(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.6.2)(utf-8-validate@5.0.10)
+      '@usecannon/builder': 2.20.1(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.6.2)(utf-8-validate@5.0.10)
       abitype: 1.0.6(typescript@5.6.2)(zod@3.23.8)
       chalk: 4.1.2
       commander: 12.1.0
@@ -21425,7 +21437,7 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@usecannon/router@4.1.0':
+  '@usecannon/router@4.1.3':
     dependencies:
       '@ethersproject/abi': 5.7.0
       '@ethersproject/keccak256': 5.7.0
@@ -21434,9 +21446,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@usecannon/web-solc@0.5.1':
-    dependencies:
-      web-solc: 0.5.1
+  '@usecannon/web-solc@0.5.1': {}
 
   '@vanilla-extract/babel-plugin-debug-ids@1.0.6':
     dependencies:
@@ -22378,7 +22388,7 @@ snapshots:
 
   axe-core@4.10.0: {}
 
-  axios-retry@4.5.0(axios@1.7.7):
+  axios-retry@4.5.0(axios@1.7.7(debug@4.3.7)):
     dependencies:
       axios: 1.7.7(debug@4.3.7)
       is-retry-allowed: 2.2.0
@@ -25609,6 +25619,8 @@ snapshots:
     dependencies:
       checkpoint-store: 1.1.0
 
+  fancy-canvas@2.1.0: {}
+
   fast-check@3.1.1:
     dependencies:
       pure-rand: 5.0.5
@@ -27995,6 +28007,10 @@ snapshots:
       marky: 1.2.5
     transitivePeerDependencies:
       - supports-color
+
+  lightweight-charts@4.2.1:
+    dependencies:
+      fancy-canvas: 2.1.0
 
   lilconfig@2.1.0: {}
 
@@ -33552,10 +33568,6 @@ snapshots:
       util: 0.12.5
     optionalDependencies:
       '@zxing/text-encoding': 0.9.0
-
-  web-solc@0.5.1:
-    dependencies:
-      semver: 7.6.3
 
   web3-bzz@1.10.0(bufferutil@4.0.8)(utf-8-validate@5.0.10):
     dependencies:

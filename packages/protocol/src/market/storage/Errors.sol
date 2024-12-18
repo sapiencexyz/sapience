@@ -14,6 +14,7 @@ library Errors {
     error EpochNotSettled(uint256 epochId);
     error ExpiredEpochNotSettled(uint256 epochEndTime);
     error EpochAlreadyStarted();
+    error EpochNotStarted(uint256 epochId, uint256 epochStartTime);
     error EpochSettled();
     error ExpiredEpoch();
     error TokensAlreadyCreated();
@@ -25,6 +26,7 @@ library Errors {
         int256 collateralRequired,
         int256 maxCollateral
     );
+    error CollateralBelowMin(uint256 collateralRequired, uint256 minCollateral);
     error NotAccountOwner(uint256 tokenId, address sender);
     error InvalidPositionKind();
     error InvalidRange(int24 requestedTick, int24 boundedTick);

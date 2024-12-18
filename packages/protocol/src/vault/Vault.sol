@@ -79,7 +79,12 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     /**
      *  minimum collateral required to create liquidity position and to request deposit
      */
-    uint256 constant minimumCollateral = 1e3;
+    uint256 constant minimumCollateral = 1e8;
+
+    /**
+     * store tick spacing for the pool on initialization
+     */
+    int24 tickSpacing;
 
     constructor(
         string memory _name,
@@ -113,6 +118,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         require(!initialized, "Already Initialized");
 
         uint256 initialStartTime = block.timestamp + (vaultIndex * duration);
+        // set tick spacing in storage once to reuse
+        // for future epoch creations
+        tickSpacing = market.getMarketTickSpacing();
 
         uint256 startingSharePrice = 1e18;
         epochSharePrices[0] = startingSharePrice;
@@ -183,7 +191,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             interfaceId == type(IVault).interfaceId ||
             interfaceId == type(IERC165).interfaceId ||
             interfaceId == type(IResolutionCallback).interfaceId ||
-            interfaceId == type(IERC4626).interfaceId ||
             super.supportsInterface(interfaceId);
     }
 
@@ -229,6 +236,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     function _calculateNextStartTime(
         uint256 previousStartTime
     ) private view returns (uint256) {
+        if (totalVaults == 1) {
+            return block.timestamp;
+        }
+
         uint256 vaultCycleDuration = duration * totalVaults;
         uint256 iterationsToSkip = (block.timestamp - previousStartTime) /
             (duration * totalVaults);
@@ -267,13 +278,12 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             uint160(upperBoundSqrtPriceX96)
         );
 
-        // adjust to floor based on tick spacing
         baseAssetMinPriceTick =
             baseAssetMinPriceTick -
-            (baseAssetMinPriceTick % 200);
+            (baseAssetMinPriceTick % tickSpacing);
         baseAssetMaxPriceTick =
             baseAssetMaxPriceTick -
-            (baseAssetMaxPriceTick % 200);
+            (baseAssetMaxPriceTick % tickSpacing);
     }
 
     function _updateSharePrice(
@@ -480,7 +490,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         require(
             pendingTxn.requestInitiatedEpoch == currentEpochId ||
                 pendingTxn.amount == 0,
-            "Previous deposit request is not completed"
+            "Previous deposit request is not in the same epoch"
         );
 
         require(
@@ -521,14 +531,17 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             "Previous deposit request is not in the same epoch"
         );
 
-        pendingTxn.amount -= assets;
-        totalPendingDeposits -= assets;
+        uint256 remainingAssets = pendingTxn.amount - assets;
 
-        collateralAsset.safeTransfer(msg.sender, assets);
-
-        if (pendingTxn.amount <= minimumCollateral) {
+        if (remainingAssets <= minimumCollateral) {
+            assets = pendingTxn.amount;
             resetTransaction(msg.sender);
+        } else {
+            pendingTxn.amount -= assets;
         }
+
+        totalPendingDeposits -= assets;
+        collateralAsset.safeTransfer(msg.sender, assets);
 
         emit DepositRequestWithdrawn(
             msg.sender,
@@ -538,12 +551,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         );
 
         return pendingTxn;
-    }
-
-    function pendingDepositRequest(
-        address owner
-    ) external view override returns (IVault.UserPendingTransaction memory) {
-        return userPendingTransactions[owner];
     }
 
     function claimableDepositRequest(
@@ -612,6 +619,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             "Previous redeem request is not in the same epoch"
         );
 
+        // transfer shares to vault
+        _transfer(msg.sender, address(this), shares);
+
         pendingTxn.requestInitiatedEpoch = currentEpochId;
         pendingTxn.amount += shares;
         pendingTxn.transactionType = TransactionType.WITHDRAW;
@@ -639,15 +649,20 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         );
         require(
             pendingTxn.requestInitiatedEpoch == currentEpochId,
-            "Previous deposit request is not in the same epoch"
+            "Previous withdraw request is not in the same epoch"
         );
 
-        pendingTxn.amount -= shares;
-        totalPendingWithdrawals -= shares;
+        uint256 remainingShares = pendingTxn.amount - shares;
 
-        if (pendingTxn.amount <= minimumCollateral) {
+        if (remainingShares <= minimumCollateral) {
+            shares = pendingTxn.amount;
             resetTransaction(msg.sender);
+        } else {
+            pendingTxn.amount -= shares;
         }
+
+        totalPendingWithdrawals -= shares;
+        _transfer(address(this), msg.sender, shares);
 
         emit RedeemRequestWithdrawn(
             msg.sender,
@@ -657,12 +672,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         );
 
         return pendingTxn;
-    }
-
-    function pendingRedeemRequest(
-        address owner
-    ) external view override returns (IVault.UserPendingTransaction memory) {
-        return userPendingTransactions[owner];
     }
 
     function claimableRedeemRequest(
@@ -797,7 +806,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         assets = sharePrice.mulDiv(sharesAmount, 10 ** 18, Math.Rounding.Floor);
 
         // Burn the shares
-        _burn(owner, sharesAmount);
+        _burn(address(this), sharesAmount);
         collateralAsset.safeTransfer(owner, assets);
         pendingSharesToBurn -= sharesAmount;
 
@@ -839,5 +848,11 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         returns (IFoilStructs.EpochData memory epochData)
     {
         (epochData, ) = market.getLatestEpoch();
+    }
+
+    function pendingRequest(
+        address owner
+    ) external view override returns (IVault.UserPendingTransaction memory) {
+        return userPendingTransactions[owner];
     }
 }
