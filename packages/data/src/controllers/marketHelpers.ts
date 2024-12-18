@@ -113,7 +113,10 @@ export const createOrModifyPositionFromTransaction = async (
 
   const existingPosition = await positionRepository.findOne({
     where: {
-      epoch: epoch,
+      epoch: {
+        epochId: epochId,
+        market: { address: transaction.event.market.address },
+      },
       positionId: transaction.event.logData.args.positionId,
     },
     relations: [
@@ -134,9 +137,10 @@ export const createOrModifyPositionFromTransaction = async (
 
   position.positionId = Number(eventArgs.positionId);
   position.epoch = epoch;
+  position.owner = eventArgs.sender || position.owner;
+  position.isLP = isLpPosition(transaction);
   position.transactions = position.transactions || [];
   position.transactions.push(transaction);
-  position.isLP = isLpPosition(transaction);
 
   // Latest position state
   position.baseToken = eventArgs.positionVethAmount;
