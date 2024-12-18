@@ -13,7 +13,6 @@ import "../market/external/univ3/TickMath.sol";
 import "../market/interfaces/IFoil.sol";
 import "../market/interfaces/IFoilStructs.sol";
 import "./interfaces/IVault.sol";
-import "forge-std/console2.sol";
 
 contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
@@ -139,6 +138,8 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             initialSqrtPriceX96,
             collateralAmount
         );
+        _reconcilePendingTransactions(startingSharePrice);
+
         initialized = true;
     }
 
@@ -199,7 +200,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             )
         {} catch Error(string memory reason) {
             __VAULT_HALTED = true;
-
             emit VaultHalted(bytes(reason));
         } catch {
             __VAULT_HALTED = true;
@@ -368,7 +368,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     }
 
     function _reconcilePendingTransactions(uint256 sharePrice) internal {
-        console2.log("reconcile txns");
         uint256 newShares = totalPendingDeposits.mulDiv(
             1e18,
             sharePrice,
@@ -378,8 +377,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         if (newShares > 0) {
             _mint(address(this), newShares);
         }
-
-        console2.log("newShares", newShares);
 
         pendingSharesToBurn += totalPendingWithdrawals;
 
