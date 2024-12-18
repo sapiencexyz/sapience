@@ -258,7 +258,11 @@ const alertEvent = async (
         case EventType.TraderPositionCreated:
         case EventType.TraderPositionModified:
           const tradeDirection = BigInt(logData.args.finalPrice) > BigInt(logData.args.initialPrice) ? 'Long' : 'Short';
-          const rawGasAmount = Number(logData.args.vGasAmount || logData.args.borrowedVGas) / 1e18;
+          const totalGasAmount = (
+            BigInt(logData.args.vGasAmount || 0) +
+            BigInt(logData.args.borrowedVGas || 0)
+          );
+          const rawGasAmount = Number(totalGasAmount) / 1e18;
           const rawPriceGwei = Number(logData.args.tradeRatio) / 1e18;
           
           // Format with commas and only show decimals if significant
@@ -270,7 +274,7 @@ const alertEvent = async (
             minimumFractionDigits: 0,
             maximumFractionDigits: 2
           });
-          
+
           title = `${tradeDirection === 'Long' ? '<:pepegas:1313887905508364288>' : '<:peepoangry:1313887206687117313>'} **Trade Executed:** ${tradeDirection} ${gasAmount} Ggas @ ${priceGwei} wstGwei`;
           break;
 
@@ -279,9 +283,22 @@ const alertEvent = async (
         case EventType.LiquidityPositionDecreased:
         case EventType.LiquidityPositionClosed:
           const action = logData.eventName === EventType.LiquidityPositionDecreased || logData.eventName === EventType.LiquidityPositionClosed ? 'Removed' : 'Added';
-          const rawLiquidityGas = Number(logData.args.addedAmount0 ||logData.args.increasedAmount0 || logData.args.amount0) / 1e18;
-          
-          // Format with commas and only show decimals if significant
+
+          let amount0;
+          if (logData.eventName === EventType.LiquidityPositionClosed) {
+            amount0 = BigInt(logData.args.collectedAmount0 || 0);
+          } else if (logData.eventName === EventType.LiquidityPositionDecreased) {
+            amount0 = BigInt(logData.args.amount0 || 0);
+          } else {
+            amount0 = BigInt(logData.args.addedAmount0 || logData.args.increasedAmount0 || logData.args.amount0 || 0);
+          }
+
+          if (amount0 === 0n) {
+            return;
+          }
+
+          const rawLiquidityGas = Number(amount0) / 1e18;
+
           const liquidityGas = rawLiquidityGas.toLocaleString('en-US', {
             minimumFractionDigits: 0,
             maximumFractionDigits: 6
@@ -291,7 +308,7 @@ const alertEvent = async (
           if (logData.args.lowerTick !== undefined && logData.args.upperTick !== undefined) {
             const rawLowerPrice = 1.0001 ** logData.args.lowerTick;
             const rawUpperPrice = 1.0001 ** logData.args.upperTick;
-            
+
             const lowerPrice = rawLowerPrice.toLocaleString('en-US', {
               minimumFractionDigits: 0,
               maximumFractionDigits: 2
@@ -300,10 +317,10 @@ const alertEvent = async (
               minimumFractionDigits: 0,
               maximumFractionDigits: 2
             });
-            
+
             priceRangeText = ` from ${lowerPrice} - ${upperPrice} wstGwei`;
           }
-          
+
           title = `<:pepeliquid:1313887190056439859> **Liquidity Modified:** ${action} ${liquidityGas} Ggas${priceRangeText}`;
           break;
         default:
@@ -334,7 +351,7 @@ const alertEvent = async (
       await publicChannel.send({ content: title, embeds: [embed] });
     }
 
-    if(DISCORD_PRIVATE_CHANNEL_ID){
+    if (DISCORD_PRIVATE_CHANNEL_ID) {
       const privateChannel = (await discordClient.channels.fetch(
         DISCORD_PRIVATE_CHANNEL_ID
       )) as TextChannel;
