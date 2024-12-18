@@ -584,10 +584,12 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
   }
 
   if (!skipTransaction) {
+    // Fill transaction with collateral transfer
+    await insertCollateralTransfer(newTransaction);
+    // Fill transaction with market price
+    await insertMarketPrice(newTransaction);
     console.log("Saving new transaction: ", newTransaction);
     await transactionRepository.save(newTransaction);
     await createOrModifyPositionFromTransaction(newTransaction);
-    await insertMarketPrice(newTransaction);
-    await insertCollateralTransfer(newTransaction);
   }
 };

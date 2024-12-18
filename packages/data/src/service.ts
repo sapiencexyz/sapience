@@ -158,16 +158,20 @@ const startServer = async () => {
     epochId: string
   ): Promise<{ market: Market; epoch: Epoch }> => {
     const market = await marketRepository.findOne({
-      where: { chainId: Number(chainId), address },
+      where: { chainId: Number(chainId), address: address.toLowerCase() },
     });
     if (!market) {
-      throw new Error("Market not found");
+      throw new Error(
+        `Market not found for chainId ${chainId} and address ${address}`
+      );
     }
     const epoch = await epochRepository.findOne({
       where: { market: { id: market.id }, epochId: Number(epochId) },
     });
     if (!epoch) {
-      throw new Error("Epoch not found");
+      throw new Error(
+        `Epoch not found for chainId ${chainId} and address ${address} and epochId ${epochId}`
+      );
     }
     return { market, epoch };
   };
@@ -668,9 +672,9 @@ const startServer = async () => {
       const renderServices: any[] = await fetchRenderServices();
       for (const item of renderServices) {
         if (
-          item?.service?.type === "background_worker" && 
+          item?.service?.type === "background_worker" &&
           item?.service?.id &&
-          (process.env.NODE_ENV === "staging" 
+          (process.env.NODE_ENV === "staging"
             ? item?.service?.branch === "staging"
             : item?.service?.branch === "main")
         ) {
@@ -1140,7 +1144,8 @@ const startServer = async () => {
   app.post(
     "/reindexMissingBlocks",
     handleAsyncErrors(async (req, res, next) => {
-      const { chainId, address, epochId, signature, timestamp, model } = req.body;
+      const { chainId, address, epochId, signature, timestamp, model } =
+        req.body;
 
       // Authenticate the user
       const isAuthenticated = await isValidWalletSignature(
@@ -1204,9 +1209,10 @@ const startServer = async () => {
         throw new Error("Background worker not found");
       }
 
-      const startCommand = model === 'ResourcePrice' 
-        ? `pnpm run start:reindex-missing ${chainId} ${address} ${epochId}`
-        : `pnpm run start:reindex-market ${chainId} ${address} ${epochId}`;
+      const startCommand =
+        model === "ResourcePrice"
+          ? `pnpm run start:reindex-missing ${chainId} ${address} ${epochId}`
+          : `pnpm run start:reindex-market ${chainId} ${address} ${epochId}`;
 
       if (process.env.NODE_ENV !== "production") {
         try {
@@ -1233,7 +1239,7 @@ const startServer = async () => {
   if (process.env.NODE_ENV === "production") {
     Sentry.setupExpressErrorHandler(app);
   }
-  
+
   // Global error handler
   app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     console.error("An error occurred:", err.message);
