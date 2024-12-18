@@ -1,16 +1,12 @@
+/* eslint-disable sonarjs/cognitive-complexity */
 import type { UTCTimestamp, BarData, LineData } from 'lightweight-charts';
-import { createChart, CrosshairMode, Time } from 'lightweight-charts';
+import { createChart, CrosshairMode } from 'lightweight-charts';
 import { useTheme } from 'next-themes';
-import { useEffect, useRef, useState, useContext } from 'react';
+import { useEffect, useRef, useContext } from 'react';
 import type React from 'react';
-import type { Dispatch, SetStateAction } from 'react';
 
 import type { PriceChartData, TimeWindow } from '../interfaces/interfaces';
-import { formatAmount } from '../util/numberUtil';
-import {
-  convertGgasPerWstEthToGwei,
-  getDisplayTextForVolumeWindow,
-} from '../util/util';
+import { convertGgasPerWstEthToGwei } from '../util/util';
 import { MarketContext } from '~/lib/context/MarketProvider';
 
 interface Props {
@@ -87,7 +83,7 @@ const CandlestickChart: React.FC<Props> = ({
         wickDownColor: '#ef5350',
       });
 
-      if(!isLoading){
+      if (!isLoading) {
         indexPriceSeriesRef.current = chart.addAreaSeries({
           lineColor: 'blue',
           topColor: 'rgba(128, 128, 128, 0.4)',
@@ -142,7 +138,7 @@ const CandlestickChart: React.FC<Props> = ({
 
       candlestickSeriesRef.current.setData(candleSeriesData);
 
-      if(!isLoading){
+      if (!isLoading) {
         indexPriceSeriesRef.current.setData(lineSeriesData);
       }
 
