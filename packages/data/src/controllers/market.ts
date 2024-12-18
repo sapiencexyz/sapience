@@ -25,6 +25,7 @@ import {
 import {
   createEpochFromEvent,
   createOrUpdateMarketFromEvent,
+  createOrModifyPositionFromTransaction,
   handleTransferEvent,
   handlePositionSettledEvent,
   updateTransactionFromAddLiquidityEvent,
@@ -34,6 +35,7 @@ import {
   insertMarketPrice,
   updateTransactionFromPositionSettledEvent,
   getMarketStartEndBlock,
+  insertCollateralTransfer,
 } from "./marketHelpers";
 import { Client, TextChannel, EmbedBuilder } from "discord.js";
 import { MARKET_INFO } from "../markets";
@@ -540,11 +542,7 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       console.log("Handling Position Settled from event: ", event);
       await Promise.all([
         handlePositionSettledEvent(event),
-        updateTransactionFromPositionSettledEvent(
-          newTransaction,
-          event,
-          event.logData.args.epochId
-        ),
+        updateTransactionFromPositionSettledEvent(newTransaction, event),
       ]);
       break;
 
@@ -555,46 +553,29 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       break;
     case EventType.LiquidityPositionClosed:
       console.log("Closing liquidity position from event: ", event);
-      await updateTransactionFromLiquidityClosedEvent(
-        newTransaction,
-        event,
-        event.logData.args.epochId
-      );
+      await updateTransactionFromLiquidityClosedEvent(newTransaction, event);
       break;
     case EventType.LiquidityPositionDecreased:
       console.log("Decreasing liquidity position from event: ", event);
       await updateTransactionFromLiquidityModifiedEvent(
         newTransaction,
         event,
-        event.logData.args.epochId,
         true
       );
       break;
     case EventType.LiquidityPositionIncreased:
       console.log("Increasing liquidity position from event: ", event);
-      await updateTransactionFromLiquidityModifiedEvent(
-        newTransaction,
-        event,
-        event.logData.args.epochId
-      );
+      await updateTransactionFromLiquidityModifiedEvent(newTransaction, event);
       break;
 
     // Trader events
     case EventType.TraderPositionCreated:
       console.log("Creating trader position from event: ", event);
-      await updateTransactionFromTradeModifiedEvent(
-        newTransaction,
-        event,
-        event.logData.args.epochId
-      );
+      await updateTransactionFromTradeModifiedEvent(newTransaction, event);
       break;
     case EventType.TraderPositionModified:
       console.log("Modifying trader position from event: ", event);
-      await updateTransactionFromTradeModifiedEvent(
-        newTransaction,
-        event,
-        event.logData.args.epochId
-      );
+      await updateTransactionFromTradeModifiedEvent(newTransaction, event);
       break;
 
     default:
@@ -605,7 +586,8 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
   if (!skipTransaction) {
     console.log("Saving new transaction: ", newTransaction);
     await transactionRepository.save(newTransaction);
-    await createOrModifyPosition(newTransaction);
+    await createOrModifyPositionFromTransaction(newTransaction);
     await insertMarketPrice(newTransaction);
+    await insertCollateralTransfer(newTransaction);
   }
 };

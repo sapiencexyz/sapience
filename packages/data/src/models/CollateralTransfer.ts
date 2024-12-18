@@ -24,8 +24,8 @@ export class CollateralTransfer {
   @Column({ type: "string" })
   transactionHash: string;
 
-  @Column({ type: "integer" })
-  timestamp: number;
+  @Column({ type: "bigint" })
+  timestamp: string;
 
   @Column({ type: "varchar" })
   owner: string;
