@@ -87,12 +87,14 @@ const CandlestickChart: React.FC<Props> = ({
         wickDownColor: '#ef5350',
       });
 
-      indexPriceSeriesRef.current = chart.addAreaSeries({
-        lineColor: 'blue',
-        topColor: 'rgba(128, 128, 128, 0.4)',
-        bottomColor: 'rgba(128, 128, 128, 0.0)',
-        lineStyle: 2,
-      });
+      if(!isLoading){
+        indexPriceSeriesRef.current = chart.addAreaSeries({
+          lineColor: 'blue',
+          topColor: 'rgba(128, 128, 128, 0.4)',
+          bottomColor: 'rgba(128, 128, 128, 0.0)',
+          lineStyle: 2,
+        });
+      }
 
       const combinedData = data.marketPrices
         .map((mp, i) => {
@@ -139,7 +141,10 @@ const CandlestickChart: React.FC<Props> = ({
       const lineSeriesData = combinedData.map((d) => d.lineData);
 
       candlestickSeriesRef.current.setData(candleSeriesData);
-      indexPriceSeriesRef.current.setData(lineSeriesData);
+
+      if(!isLoading){
+        indexPriceSeriesRef.current.setData(lineSeriesData);
+      }
 
       const handleResize = (entries: ResizeObserverEntry[]) => {
         if (!chartRef.current) return;
