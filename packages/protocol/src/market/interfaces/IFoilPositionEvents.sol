@@ -106,11 +106,13 @@ interface IFoilPositionEvents {
         uint256 addedAmount1;
         int24 lowerTick;
         int24 upperTick;
+        // Position State
         uint256 positionCollateralAmount;
         uint256 positionVethAmount;
         uint256 positionVgasAmount;
         uint256 positionBorrowedVeth;
         uint256 positionBorrowedVgas;
+        // Delta Collateral
         int256 deltaCollateral;
     }
 
@@ -124,11 +126,13 @@ interface IFoilPositionEvents {
         uint256 decreasedAmount1;
         uint256 loanAmount0;
         uint256 loanAmount1;
+        // Position State
         uint256 positionCollateralAmount;
         uint256 positionVethAmount;
         uint256 positionVgasAmount;
         uint256 positionBorrowedVeth;
         uint256 positionBorrowedVgas;
+        // Delta Collateral
         int256 deltaCollateral;
     }
 
@@ -142,11 +146,13 @@ interface IFoilPositionEvents {
         uint256 increasedAmount1;
         uint256 loanAmount0;
         uint256 loanAmount1;
+        // Position State
         uint256 positionCollateralAmount;
         uint256 positionVethAmount;
         uint256 positionVgasAmount;
         uint256 positionBorrowedVeth;
         uint256 positionBorrowedVgas;
+        // Delta Collateral
         int256 deltaCollateral;
     }
 
@@ -159,11 +165,13 @@ interface IFoilPositionEvents {
         uint256 collectedAmount1;
         uint256 loanAmount0;
         uint256 loanAmount1;
+        // Position State
         uint256 positionCollateralAmount;
         uint256 positionVethAmount;
         uint256 positionVgasAmount;
         uint256 positionBorrowedVeth;
         uint256 positionBorrowedVgas;
+        // Delta Collateral
         int256 deltaCollateral;
     }
 
@@ -212,11 +220,13 @@ interface IFoilPositionEvents {
         uint256 initialPrice;
         uint256 finalPrice;
         uint256 tradeRatio;
+        // Position State
         uint256 positionCollateralAmount;
         uint256 positionVethAmount;
         uint256 positionVgasAmount;
         uint256 positionBorrowedVeth;
         uint256 positionBorrowedVgas;
+        // Delta Collateral
         int256 deltaCollateral;
     }
 
@@ -228,11 +238,13 @@ interface IFoilPositionEvents {
         uint256 initialPrice;
         uint256 finalPrice;
         uint256 tradeRatio;
+        // Position State
         uint256 positionCollateralAmount;
         uint256 positionVethAmount;
         uint256 positionVgasAmount;
         uint256 positionBorrowedVeth;
         uint256 positionBorrowedVgas;
+        // Delta Collateral
         int256 deltaCollateral;
     }
 
@@ -242,5 +254,16 @@ interface IFoilPositionEvents {
      * @param positionId The ID of the settled position
      * @param withdrawnCollateral The amount of collateral withdrawn after settlement
      */
-    event PositionSettled(uint256 positionId, uint256 withdrawnCollateral);
+    event PositionSettled(
+        uint256 positionId,
+        uint256 withdrawnCollateral,
+        // Position State
+        uint256 positionCollateralAmount,
+        uint256 positionVethAmount,
+        uint256 positionVgasAmount,
+        uint256 positionBorrowedVeth,
+        uint256 positionBorrowedVgas,
+        // Delta Collateral
+        int256 deltaCollateral
+    );
 }

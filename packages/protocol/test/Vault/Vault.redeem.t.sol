@@ -90,7 +90,7 @@ contract VaultRedeemTest is TestVault {
         vm.prank(lp1);
         vault.requestRedeem(1 ether);
 
-        assertEq(vault.pendingRedeemRequest(lp1).amount, 1 ether);
+        assertEq(vault.pendingRequest(lp1).amount, 1 ether);
     }
 
     function test_withdrawRequestRedeemReverts_whenNoRequest() public {
@@ -120,7 +120,7 @@ contract VaultRedeemTest is TestVault {
         settleCurrentEpoch();
 
         vm.prank(lp1);
-        vm.expectRevert("Previous deposit request is not in the same epoch");
+        vm.expectRevert("Previous withdraw request is not in the same epoch");
         vault.withdrawRequestRedeem(1 ether);
     }
 
@@ -131,8 +131,9 @@ contract VaultRedeemTest is TestVault {
         vm.prank(lp1);
         vault.withdrawRequestRedeem(1 ether);
 
-        IVault.UserPendingTransaction memory pendingTxn = vault
-            .pendingRedeemRequest(lp1);
+        IVault.UserPendingTransaction memory pendingTxn = vault.pendingRequest(
+            lp1
+        );
         assertEq(pendingTxn.amount, 0, "Pending redeem amount should be 0");
         assertEq(
             uint8(pendingTxn.transactionType),
@@ -169,8 +170,9 @@ contract VaultRedeemTest is TestVault {
             "Total pending withdrawals should be 0"
         );
 
-        IVault.UserPendingTransaction memory pendingTxn = vault
-            .pendingRedeemRequest(lp2);
+        IVault.UserPendingTransaction memory pendingTxn = vault.pendingRequest(
+            lp2
+        );
         assertEq(pendingTxn.amount, 0, "Pending redeem amount should be 0");
     }
 
@@ -179,8 +181,9 @@ contract VaultRedeemTest is TestVault {
 
         vault.requestRedeem(1 ether);
 
-        IVault.UserPendingTransaction memory pendingTxn = vault
-            .pendingRedeemRequest(lp1);
+        IVault.UserPendingTransaction memory pendingTxn = vault.pendingRequest(
+            lp1
+        );
         assertEq(
             pendingTxn.amount,
             1 ether,
@@ -189,7 +192,7 @@ contract VaultRedeemTest is TestVault {
 
         vault.requestRedeem(2 ether);
 
-        pendingTxn = vault.pendingRedeemRequest(lp1);
+        pendingTxn = vault.pendingRequest(lp1);
         assertEq(
             pendingTxn.amount,
             3 ether,
