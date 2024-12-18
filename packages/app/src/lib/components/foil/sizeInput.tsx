@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowUpDown, ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { Dispatch, SetStateAction } from 'react';
 import { useEffect, useState } from 'react';
 
@@ -24,9 +24,9 @@ interface Props {
 }
 
 enum InputFormType {
-  Gas = "gas",
-  Ggas = "Ggas",
-  Collateral = "collateral",
+  Gas = 'gas',
+  Ggas = 'Ggas',
+  Collateral = 'collateral',
 }
 
 const SizeInput: React.FC<Props> = ({
@@ -62,9 +62,10 @@ const SizeInput: React.FC<Props> = ({
     }
 
     const absoluteSize = size < 0 ? -size : size;
-    const numberValue = inputType === InputFormType.Gas
-      ? absoluteSize.toString()
-      : convertGasToGgas(absoluteSize.toString());
+    const numberValue =
+      inputType === InputFormType.Gas
+        ? absoluteSize.toString()
+        : convertGasToGgas(absoluteSize.toString());
 
     setSizeInput(numberValue);
   }, [size]);
@@ -73,32 +74,29 @@ const SizeInput: React.FC<Props> = ({
     const integerPart: string = (BigInt(value) / BigInt(1e9)).toString();
     // decimal part = prefix of zeros if gas is < 10^9, then the useful decimals
     if (BigInt(value) % BigInt(1e9) !== BigInt(0)) {
-      const decimalPart: string = 
-      '0'.repeat(
-        Math.max((9 - (BigInt(value) % BigInt(1e9)).toString().length), 0)
-      ) + 
-      (
-        (BigInt(value) % BigInt(1e9)).toString().replace(/0+$/, '')
-      );
-      return integerPart + '.' + decimalPart;
-    } 
+      const decimalPart: string =
+        '0'.repeat(
+          Math.max(9 - (BigInt(value) % BigInt(1e9)).toString().length, 0)
+        ) + (BigInt(value) % BigInt(1e9)).toString().replace(/0+$/, '');
+      return `${integerPart}.${decimalPart}`;
+    }
     return integerPart;
-  }
+  };
 
   const convertGgasToGas = (value: string) => {
     // case when we have decimals
     if (value.indexOf('.') > -1) {
-      let [integerPart, decimalPart]: string[] = value.split('.');
+      const [integerPart, decimalPart]: string[] = value.split('.');
       // console.log(`Integer part: ${integerPart}, decimal part: ${decimalPart}`);
-      return (BigInt(integerPart) * BigInt(1e9) + BigInt(decimalPart) * BigInt(10 ** (9 - decimalPart.length))).toString();
+      return (
+        BigInt(integerPart) * BigInt(1e9) +
+        BigInt(decimalPart) * BigInt(10 ** (9 - decimalPart.length))
+      ).toString();
     } // else if the whole number is an integer
     return (BigInt(value) * BigInt(1e9)).toString();
-  }
+  };
 
-
-  const getNextInputType = (
-    currentType: InputFormType
-  ): InputFormType => {
+  const getNextInputType = (currentType: InputFormType): InputFormType => {
     if (allowCollateralInput) {
       const mapping: Record<InputFormType, InputFormType> = {
         gas: InputFormType.Ggas,
@@ -107,7 +105,9 @@ const SizeInput: React.FC<Props> = ({
       } as const;
       return mapping[currentType];
     }
-    return currentType === InputFormType.Gas ? InputFormType.Ggas : InputFormType.Gas;
+    return currentType === InputFormType.Gas
+      ? InputFormType.Ggas
+      : InputFormType.Gas;
   };
 
   const convertValue = (
@@ -115,8 +115,10 @@ const SizeInput: React.FC<Props> = ({
     fromType: string,
     toType: string
   ): string => {
-    if (fromType === InputFormType.Gas && toType === InputFormType.Ggas) return convertGasToGgas(value);
-    else if (fromType === InputFormType.Ggas && toType === InputFormType.Gas) return convertGgasToGas(value);
+    if (fromType === InputFormType.Gas && toType === InputFormType.Ggas)
+      return convertGasToGgas(value);
+    if (fromType === InputFormType.Ggas && toType === InputFormType.Gas)
+      return convertGgasToGas(value);
     return '0'; // Reset value when switching to/from collateral
   };
 
@@ -140,13 +142,14 @@ const SizeInput: React.FC<Props> = ({
   const processCollateralInput = (value: string) => {
     const collateralAmount = value === '' ? 0 : parseFloat(value);
     // TODO (Vlad): onCollateralAmountChange is undefined when passed in component; is something wrong here?
-    onCollateralAmountChange?.(BigInt(Math.floor(collateralAmount * 1e18))); 
+    onCollateralAmountChange?.(BigInt(Math.floor(collateralAmount * 1e18)));
   };
 
   const processSizeInput = (value: string) => {
     let sizeInGas: bigint;
     if (value === '') sizeInGas = BigInt(0);
-    else if (inputType === InputFormType.Ggas) sizeInGas = BigInt(convertGgasToGas(value));
+    else if (inputType === InputFormType.Ggas)
+      sizeInGas = BigInt(convertGgasToGas(value));
     else sizeInGas = BigInt(value); // if (inputType === InputFormType.Gas)
 
     const sign = isLong ? BigInt(1) : BigInt(-1);
@@ -154,12 +157,8 @@ const SizeInput: React.FC<Props> = ({
   };
 
   const handleSizeChange = (newVal: string) => {
-
-    const isUserInputValid: 
-      Record<
-        InputFormType, 
-        (value: string) => boolean
-      > = {
+    const isUserInputValid: Record<InputFormType, (value: string) => boolean> =
+      {
         gas: (value: string) => {
           const numberPatternGas = /^(0|[1-9]\d*)$/; // gas can never be a float
           return numberPatternGas.test(value);
@@ -174,22 +173,24 @@ const SizeInput: React.FC<Props> = ({
         },
       };
 
-
     let processedVal = newVal;
     if (processedVal[0] === '.') {
-      processedVal = '0' + processedVal;
+      processedVal = `0${processedVal}`;
     }
-    if (sizeInput === '0' && newVal !== '0' && newVal !== '0.' && newVal !== '0,') {
+    if (
+      sizeInput === '0' &&
+      newVal !== '0' &&
+      newVal !== '0.' &&
+      newVal !== '0,'
+    ) {
       processedVal = newVal.replace(/^0+/, '');
     }
-
 
     if (processedVal === '' || isUserInputValid[inputType](processedVal)) {
       // console.log(processedVal, inputType)
       // case when we switch gas <-> GGas and the input is 0. -> useEffect is NOT triggered, hence need this setState
       processedVal = processedVal.replace(/,/, '.');
-      setSizeInput(processedVal); 
-
+      setSizeInput(processedVal);
 
       if (inputType === 'collateral') {
         processCollateralInput(processedVal);
@@ -200,7 +201,6 @@ const SizeInput: React.FC<Props> = ({
       // console.log("Bad input!", inputType, processedVal)
     }
   };
-
 
   return (
     <div className="w-full">
