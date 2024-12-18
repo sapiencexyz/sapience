@@ -25,6 +25,7 @@ import {
   MarketInfo,
   PositionSettledEventLog,
   EpochData,
+  EventType,
 } from "../interfaces";
 import { MarketPrice } from "../models/MarketPrice";
 import { getBlockByTimestamp, getProviderForChain } from "../helpers";
@@ -135,13 +136,14 @@ export const createOrModifyPositionFromTransaction = async (
   position.epoch = epoch;
   position.transactions = position.transactions || [];
   position.transactions.push(transaction);
+  position.isLP = isLpPosition(transaction);
 
   // Latest position state
   position.baseToken = eventArgs.positionVethAmount;
   position.quoteToken = eventArgs.positionVgasAmount;
   position.borrowedBaseToken = eventArgs.positionBorrowedVeth;
   position.borrowedQuoteToken = eventArgs.positionBorrowedVgas;
-  position.collateral = eventArgs.withdrawableCollateral;
+  position.collateral = eventArgs.positionCollateralAmount;
 
   // LP Position configuration
   if (eventArgs.upperTick && eventArgs.lowerTick) {
@@ -151,7 +153,6 @@ export const createOrModifyPositionFromTransaction = async (
 
   // Non-setted position data
   // position.owner = ;
-  // position.isLP = ;
   // position.settled = ;
 
   console.log("Saving position: ", position);
@@ -168,7 +169,7 @@ const updateTransactionStateFromEvent = (
   transaction.quoteToken = eventArgs.positionVgasAmount;
   transaction.borrowedBaseToken = eventArgs.positionBorrowedVeth;
   transaction.borrowedQuoteToken = eventArgs.positionBorrowedVgas;
-  transaction.collateral = eventArgs.withdrawableCollateral;
+  transaction.collateral = eventArgs.positionCollateralAmount;
 
   if (eventArgs.tradeRatio) {
     transaction.tradeRatioD18 = eventArgs.tradeRatio;
@@ -199,7 +200,7 @@ export const insertCollateralTransfer = async (transaction: Transaction) => {
   newCollateralTransfer.transactionHash = transaction.event.transactionHash;
 
   newCollateralTransfer.collateral = eventArgs.deltaCollateral;
-  newCollateralTransfer.timestamp = transaction.event.timestamp;
+  newCollateralTransfer.timestamp = Number(transaction.event.timestamp);
 
   console.log("upserting collateral transfer: ", newCollateralTransfer);
   await collateralTransferRepository.save(newCollateralTransfer);
@@ -232,9 +233,10 @@ export const createOrUpdateMarketFromContract = async (
   chainId: number,
   initialMarket?: Market
 ) => {
+  const address = contractDeployment.address.toLowerCase();
   // get market and epoch from contract
   const marketReadResult: any = await client.readContract({
-    address: contractDeployment.address as `0x${string}`,
+    address: address as `0x${string}`,
     abi: contractDeployment.abi,
     functionName: "getMarket",
   });
@@ -244,14 +246,14 @@ export const createOrUpdateMarketFromContract = async (
   if (!updatedMarket) {
     // check if market already exists in db
     let existingMarket = await marketRepository.findOne({
-      where: { address: contractDeployment.address, chainId },
+      where: { address, chainId },
       relations: ["epochs"],
     });
     updatedMarket = existingMarket || new Market();
   }
 
   // update market params appropriately
-  updatedMarket.address = contractDeployment.address;
+  updatedMarket.address = address;
   updatedMarket.deployTxnBlockNumber = Number(
     contractDeployment.deployTxnBlockNumber
   );
@@ -513,4 +515,21 @@ export const getMarketStartEndBlock = async (
   const startBlockNumber = Number(startBlock.number);
   const endBlockNumber = Number(endBlock.number);
   return { startBlockNumber, endBlockNumber };
+};
+
+const isLpPosition = (transaction: Transaction) => {
+  if (transaction.type === TransactionType.ADD_LIQUIDITY) {
+    return true;
+  } else if (transaction.type === TransactionType.REMOVE_LIQUIDITY) {
+    // for remove liquidity, check if the position closed and kind is 2, which means it becomes a trade position
+    const eventName = transaction.event.logData.eventName;
+    if (
+      eventName === EventType.LiquidityPositionClosed &&
+      `${transaction.event.logData.args.kind}` === "2"
+    ) {
+      return false;
+    }
+    return true;
+  }
+  return false;
 };
