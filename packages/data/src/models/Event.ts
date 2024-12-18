@@ -31,7 +31,7 @@ export class Event {
   @Column({ type: "integer" })
   blockNumber: number;
 
-  @Column({ type: "string" })
+  @Column({ type: "varchar" })
   transactionHash: string;
 
   @Column({ type: "bigint" })

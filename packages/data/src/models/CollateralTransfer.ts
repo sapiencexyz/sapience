@@ -21,11 +21,11 @@ export class CollateralTransfer {
   @OneToOne(() => Transaction, (transaction) => transaction.collateralTransfer)
   transaction: Transaction;
 
-  @Column({ type: "string" })
+  @Column({ type: "varchar" })
   transactionHash: string;
 
-  @Column({ type: "bigint" })
-  timestamp: string;
+  @Column({ type: "integer" })
+  timestamp: number;
 
   @Column({ type: "varchar" })
   owner: string;
