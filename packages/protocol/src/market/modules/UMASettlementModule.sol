@@ -112,7 +112,10 @@ contract UMASettlementModule is
                     market.callbackRecipient.resolutionCallback(
                         settlement.settlementPriceSqrtX96
                     )
-                {} catch Error(string memory reason) {
+                // multiple catches by design to ensure any error is caught/logged
+                {
+
+                } catch Error(string memory reason) {
                     emit ResolutionCallbackFailure(
                         bytes(reason),
                         settlement.settlementPriceSqrtX96

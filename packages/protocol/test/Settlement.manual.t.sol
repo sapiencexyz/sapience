@@ -98,8 +98,10 @@ contract ManualSettlementTest is TestTrade {
     }
 
     function test_manual_settlement_reverts_if_too_early() public {
+        uint256 epochDuration = endTime - block.timestamp;
+        uint256 requiredDelay = epochDuration * 2;
         // Warp to just after epoch end but before required delay
-        vm.warp(endTime + 1);
+        vm.warp(requiredDelay - 1);
 
         // Expect revert when trying to settle too early
         vm.expectRevert();
