@@ -11,6 +11,8 @@ import {IUMASettlementModule} from "../interfaces/IUMASettlementModule.sol";
 import {OptimisticOracleV3Interface} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import "../libraries/DecimalPrice.sol";
 
+import "forge-std/console2.sol";
+
 contract UMASettlementModule is
     IUMASettlementModule,
     ReentrancyGuardUpgradeable
@@ -106,6 +108,11 @@ contract UMASettlementModule is
                 )
             );
 
+            console2.log(
+                "settlement.settlementPriceSqrtX96",
+                settlement.settlementPriceSqrtX96
+            );
+
             // Call the callback recipient
             if (address(market.callbackRecipient) != address(0)) {
                 try
@@ -113,11 +120,14 @@ contract UMASettlementModule is
                         settlement.settlementPriceSqrtX96
                     )
                 {} catch Error(string memory reason) {
+                    console2.log("reason", reason);
                     emit ResolutionCallbackFailure(
                         bytes(reason),
                         settlement.settlementPriceSqrtX96
                     );
                 } catch (bytes memory reason) {
+                    console2.log("reason");
+                    console2.logBytes(reason);
                     emit ResolutionCallbackFailure(
                         reason,
                         settlement.settlementPriceSqrtX96

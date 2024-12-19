@@ -185,6 +185,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     function resolutionCallback(
         uint160 previousResolutionSqrtPriceX96
     ) external onlyMarket {
+        console2.log("resolutionCallback");
         uint256 collateralReceived;
         if (positionId != 0) {
             collateralReceived = market.settlePosition(positionId);

@@ -19,6 +19,7 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
     using Position for Position.Data;
     using Market for Market.Data;
     using Epoch for Epoch.Data;
+
     function settlePosition(
         uint256 positionId
     ) external override nonReentrant returns (uint256 withdrawnCollateral) {
