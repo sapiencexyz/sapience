@@ -15,6 +15,11 @@ interface IUMASettlementModule {
         uint160 settlementSqrtPriceX96
     );
 
+    event ResolutionCallbackFailure(
+        bytes reason,
+        uint160 settlementSqrtPriceX96
+    );
+
     function submitSettlementPrice(
         uint256 epochId,
         address asserter,
