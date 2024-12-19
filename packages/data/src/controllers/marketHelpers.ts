@@ -207,6 +207,9 @@ export const insertCollateralTransfer = async (transaction: Transaction) => {
   newCollateralTransfer.collateral = eventArgs.deltaCollateral;
   newCollateralTransfer.timestamp = Number(transaction.event.timestamp);
 
+  // Ensure the transaction has a collateralTransfer reference
+  transaction.collateralTransfer = newCollateralTransfer;
+
   console.log("upserting collateral transfer: ", newCollateralTransfer);
   await collateralTransferRepository.save(newCollateralTransfer);
 };
@@ -227,6 +230,10 @@ export const insertMarketPrice = async (transaction: Transaction) => {
     newMp.value = finalPrice;
     newMp.timestamp = transaction.event.timestamp;
     newMp.transaction = transaction;
+
+    // Ensure the transaction has a marketPrice reference
+    transaction.marketPrice = newMp;
+
     console.log("upserting market price: ", newMp);
     await marketPriceRepository.save(newMp);
   }
