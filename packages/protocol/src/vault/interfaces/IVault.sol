@@ -37,6 +37,12 @@ interface IVaultAsyncDeposit {
     );
 
     /**
+     * @notice Emitted when the creation of the new epoch or position fails
+     * @dev this is a temporary halt and the vault can be resumed by calling the `createNewEpochAndPosition` function
+     */
+    event VaultHalted(bytes reason);
+
+    /**
      * @notice Request to deposit assets into the vault
      * @param assets The amount of collateral to deposit into vault
      * @return pendingTxn The pending transaction details
@@ -53,15 +59,6 @@ interface IVaultAsyncDeposit {
     function withdrawRequestDeposit(
         uint256 assets
     ) external returns (IVault.UserPendingTransaction memory pendingTxn);
-
-    /**
-     * @notice Get the pending deposit request for an address
-     * @param owner The address to check
-     * @return pendingTxn The pending transaction details
-     */
-    function pendingDepositRequest(
-        address owner
-    ) external view returns (IVault.UserPendingTransaction memory pendingTxn);
 
     /**
      * @notice Get the claimable shares amount for a pending deposit
@@ -126,15 +123,6 @@ interface IVaultAsyncRedeem {
     ) external returns (IVault.UserPendingTransaction memory pendingTxn);
 
     /**
-     * @notice Get the pending redeem request for an address
-     * @param owner The address to check
-     * @return pendingTxn The pending transaction details
-     */
-    function pendingRedeemRequest(
-        address owner
-    ) external view returns (IVault.UserPendingTransaction memory pendingTxn);
-
-    /**
      * @notice Get the claimable collateral amount for a pending redemption
      * @dev the collateral amount is calculated only after the epoch the request was made is resolved
      * @param owner The address to check
@@ -174,6 +162,15 @@ interface IVaultViews {
     function pendingValues() external view returns (uint256, uint256, uint256);
 
     /**
+     * @notice Get the pending deposit/withdraw request for an address
+     * @param owner The address to check
+     * @return pendingTxn The pending transaction details
+     */
+    function pendingRequest(
+        address owner
+    ) external view returns (IVault.UserPendingTransaction memory);
+
+    /**
      * @notice Get the share price for a specific epoch
      * @param epochId The epoch ID to query
      * @return The share price for the epoch
@@ -194,6 +191,12 @@ interface IVaultViews {
         external
         view
         returns (IFoilStructs.EpochData memory epochData);
+
+    /**
+     * @notice Check if the vault is halted
+     * @return bool True if the vault is halted, false otherwise
+     */
+    function isHalted() external view returns (bool);
 }
 
 /**
@@ -235,6 +238,11 @@ interface IVault is
      */
     event EpochProcessed(uint256 indexed epochId, uint256 newSharePrice);
 
+    event VaultPositionSettled(
+        uint256 indexed epochId,
+        uint256 collateralReceived
+    );
+
     /**
      * @notice Initialize the first epoch of the vault
      * @param initialSqrtPriceX96 The initial sqrt price
@@ -251,4 +259,14 @@ interface IVault is
         uint256 epochId,
         uint160 priceSqrtX96
     ) external returns (bytes32 assertionId);
+
+    function forceSettlePosition()
+        external
+        returns (uint256 sharePrice, uint256 collateralReceived);
+
+    function createNewEpochAndPosition(
+        uint256 startTime,
+        uint160 previousResolutionSqrtPriceX96,
+        uint256 previousEpochCollateralReceived
+    ) external;
 }

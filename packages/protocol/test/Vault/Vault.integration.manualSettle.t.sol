@@ -18,6 +18,7 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {Errors} from "../../src/market/storage/Errors.sol";
 import {Position} from "../../src/market/storage/Position.sol";
 import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
+import {IResolutionCallback} from "../../src/vault/interfaces/IResolutionCallback.sol";
 import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
 
 contract VaultIntegrationTest is TestVault {
@@ -123,7 +124,26 @@ contract VaultIntegrationTest is TestVault {
         // Settle at current pool price
         (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(epochData.pool)
             .slot0();
+
+        // MOCK REVERT ON CALLBACK
+        vm.mockCallRevert(
+            address(vault),
+            abi.encodeWithSelector(
+                IResolutionCallback.resolutionCallback.selector
+            ),
+            "Forced revert"
+        );
         settleEpoch(epochData.epochId, sqrtPriceX96, address(vault));
+
+        /* RECOVER VAULT */
+        vm.startPrank(vaultOwner);
+        (, uint256 collateralReceived) = vault.forceSettlePosition();
+        vault.createNewEpochAndPosition(
+            block.timestamp,
+            sqrtPriceX96,
+            collateralReceived
+        );
+        vm.stopPrank();
 
         // After settlement, pending deposits and withdrawals should be 0
         (uint256 pendingDeposits, uint256 pendingWithdrawals, ) = vault

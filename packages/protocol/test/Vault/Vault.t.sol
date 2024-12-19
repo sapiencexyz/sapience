@@ -17,6 +17,8 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {Errors} from "../../src/market/storage/Errors.sol";
 import {Position} from "../../src/market/storage/Position.sol";
 import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
+import {IResolutionCallback} from "../../src/vault/interfaces/IResolutionCallback.sol";
+import {IUMASettlementModule} from "../../src/market/interfaces/IUMASettlementModule.sol";
 import "@synthetixio/core-contracts/contracts/utils/DecimalMath.sol";
 
 contract VaultTest is TestVault {
@@ -97,6 +99,51 @@ contract VaultTest is TestVault {
         );
     }
 
+    function test_resolutionCallbackFails() public {
+        initializeFirstEpoch(initialSqrtPriceX96);
+
+        (epochData, ) = foil.getLatestEpoch();
+
+        vm.warp(epochData.endTime + 1);
+
+        /* manual orchestration of settle for mocking purposes */
+        (, , , , IFoilStructs.MarketParams memory marketParams) = foil
+            .getMarket();
+
+        IMintableToken bondCurrency = IMintableToken(
+            vm.getAddress("BondCurrency.Token")
+        );
+        bondCurrency.mint(marketParams.bondAmount * 2, vaultOwner);
+        vm.startPrank(vaultOwner);
+
+        bondCurrency.approve(address(vault), marketParams.bondAmount);
+        bytes32 assertionId = vault.submitMarketSettlementPrice(
+            epochData.epochId,
+            updatedSqrtPriceX96
+        );
+        vm.stopPrank();
+
+        address optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
+        vm.startPrank(optimisticOracleV3);
+
+        vm.mockCallRevert(
+            vm.getAddress("Vault"),
+            abi.encodeWithSelector(
+                IResolutionCallback.resolutionCallback.selector,
+                updatedSqrtPriceX96
+            ),
+            "Resolution callback failed"
+        );
+
+        vm.expectEmit(true, true, true, true);
+        emit IUMASettlementModule.ResolutionCallbackFailure(
+            bytes("Resolution callback failed"),
+            updatedSqrtPriceX96
+        );
+
+        foil.assertionResolvedCallback(assertionId, true);
+    }
+
     function test_settleEpochCreatesNewEpochWithoutLiquidity() public {
         uint256 epochIdBefore;
         uint256 startTimeBefore;
@@ -129,7 +176,7 @@ contract VaultTest is TestVault {
         endTimeAfter = epochData.endTime;
 
         assertEq(epochIdAfter, epochIdBefore + 1);
-        assertEq(startTimeAfter, endTimeBefore + DEFAULT_DURATION);
+        assertEq(startTimeAfter, endTimeBefore + 1);
         assertEq(endTimeAfter, startTimeAfter + DEFAULT_DURATION);
 
         // check new bounds
@@ -179,7 +226,7 @@ contract VaultTest is TestVault {
         endTimeAfter = epochData.endTime;
 
         assertEq(epochIdAfter, epochIdBefore + 1);
-        assertEq(startTimeAfter, endTimeBefore + DEFAULT_DURATION);
+        assertEq(startTimeAfter, endTimeBefore + 1);
         assertEq(endTimeAfter, startTimeAfter + DEFAULT_DURATION);
 
         // check new bounds

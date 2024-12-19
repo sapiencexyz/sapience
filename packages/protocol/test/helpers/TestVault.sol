@@ -8,7 +8,7 @@ import {IFoil} from "../../src/market/interfaces/IFoil.sol";
 import {IVault} from "../../src/vault/interfaces/IVault.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
-
+import {IResolutionCallback} from "../../src/vault/interfaces/IResolutionCallback.sol";
 contract TestVault is TestTrade {
     using Cannon for Vm;
 

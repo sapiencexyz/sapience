@@ -457,10 +457,16 @@ library Epoch {
         }
     }
 
+    function getCurrentPoolPriceSqrtX96(
+        Data storage self
+    ) internal view returns (uint160 sqrtPriceX96) {
+        (sqrtPriceX96, , , , , , ) = self.pool.slot0();
+    }
+
     function getCurrentPoolPrice(
         Data storage self
     ) internal view returns (uint256 decimalPrice) {
-        (uint160 sqrtPriceX96, , , , , , ) = self.pool.slot0();
+        uint160 sqrtPriceX96 = getCurrentPoolPriceSqrtX96(self);
 
         return DecimalPrice.sqrtRatioX96ToPrice(sqrtPriceX96);
     }
@@ -608,7 +614,7 @@ library Epoch {
     function setSettlementPriceInRange(
         Data storage self,
         uint256 settlementPriceD18
-    ) internal {
+    ) internal returns (uint256) {
         if (settlementPriceD18 > self.maxPriceD18) {
             self.settlementPriceD18 = self.maxPriceD18;
         } else if (settlementPriceD18 < self.minPriceD18) {
@@ -616,6 +622,10 @@ library Epoch {
         } else {
             self.settlementPriceD18 = settlementPriceD18;
         }
+
+        self.settled = true;
+
+        return self.settlementPriceD18;
     }
 
     function getTickSpacingForFee(uint24 fee) internal pure returns (int24) {

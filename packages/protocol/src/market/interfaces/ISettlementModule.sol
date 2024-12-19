@@ -15,9 +15,12 @@ interface ISettlementModule {
     function settlePosition(uint256 positionId) external returns (uint256);
 
     /**
-     * @notice Event emitted when a position is settled
-     * @param positionId The ID of the settled position
-     * @param withdrawnCollateral The amount of collateral withdrawn after settlement
+     * @notice The function may be called by anyone to set the settlement price to be whatever the uniswap pool price is
+     * @return settlementPriceX96 settlement price that was set
      */
-    event PositionSettled(uint256 positionId, uint256 withdrawnCollateral);
+    function __manual_setSettlementPrice()
+        external
+        returns (uint160 settlementPriceX96);
+
+    event EpochManualSettlement(uint256 epochId, uint256 settlementPriceD18);
 }
