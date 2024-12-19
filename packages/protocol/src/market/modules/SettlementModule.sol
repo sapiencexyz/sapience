@@ -74,7 +74,7 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
         override
         returns (uint160 settlementPriceX96)
     {
-        uint256 DURATION_MULTIPLIER = 6;
+        uint256 DURATION_MULTIPLIER = 2;
 
         Market.Data storage market = Market.load();
         Epoch.Data storage epoch = Epoch.loadValid(market.lastEpochId);
@@ -90,7 +90,16 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
         }
 
         settlementPriceX96 = epoch.getCurrentPoolPriceSqrtX96();
-        epoch.setSettlementPriceInRange(settlementPriceX96);
+        epoch.setSettlementPriceInRange(
+            DecimalPrice.sqrtRatioX96ToPrice(settlementPriceX96)
+        );
+
+        // update settlement
+        epoch.settlement = Epoch.Settlement({
+            settlementPriceSqrtX96: settlementPriceX96,
+            submissionTime: block.timestamp,
+            disputed: false
+        });
 
         emit EpochManualSettlement(epoch.id, settlementPriceX96);
     }

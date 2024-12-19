@@ -11,7 +11,7 @@ import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 import {IFoil} from "../../src/market/interfaces/IFoil.sol";
 import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
 import {DecimalPrice} from "../../src/market/libraries/DecimalPrice.sol";
-import "forge-std/console2.sol";
+
 contract VaultDepositTest is TestVault {
     using Cannon for Vm;
 
@@ -24,7 +24,6 @@ contract VaultDepositTest is TestVault {
 
     uint256 DEFAULT_DURATION = 2419200; // 28 days in seconds
     uint256 INITIAL_LP_BALANCE = 100_000 ether;
-    // IFoilStructs.EpochData epochData;
 
     uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
     uint256 constant BOND_AMOUNT = 100 ether;

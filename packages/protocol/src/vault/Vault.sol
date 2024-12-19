@@ -14,6 +14,8 @@ import "../market/interfaces/IFoil.sol";
 import "../market/interfaces/IFoilStructs.sol";
 import "./interfaces/IVault.sol";
 
+import "forge-std/console2.sol";
+
 contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
     using SetUtil for SetUtil.UintSet;
@@ -163,6 +165,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
     function forceSettlePosition()
         external
+        override
         onlyInitializer
         returns (uint256 sharePrice, uint256 collateralReceived)
     {
@@ -230,7 +233,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 startTime,
         uint160 previousResolutionSqrtPriceX96,
         uint256 previousEpochCollateralReceived
-    ) public {
+    ) public override {
         require(
             (__VAULT_HALTED && msg.sender == vaultInitializer) ||
                 msg.sender == address(this),
@@ -661,7 +664,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         );
 
         require(
-            pendingTxn.amount + shares <= balanceOf(msg.sender),
+            shares <= balanceOf(msg.sender),
             "Insufficient shares to redeem"
         );
 
@@ -861,7 +864,14 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         // Burn the shares
         _burn(address(this), sharesAmount);
         collateralAsset.safeTransfer(owner, assets);
-        pendingSharesToBurn -= sharesAmount;
+
+        // if vault is halted, transaction reconciliation has not happened
+        // so we can directly decrease the pendingWithdrawals
+        if (__VAULT_HALTED) {
+            totalPendingWithdrawals -= sharesAmount;
+        } else {
+            pendingSharesToBurn -= sharesAmount;
+        }
 
         resetTransaction(owner);
 
@@ -907,5 +917,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         address owner
     ) external view override returns (IVault.UserPendingTransaction memory) {
         return userPendingTransactions[owner];
+    }
+
+    function isHalted() external view returns (bool) {
+        return __VAULT_HALTED;
     }
 }

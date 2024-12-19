@@ -191,6 +191,12 @@ interface IVaultViews {
         external
         view
         returns (IFoilStructs.EpochData memory epochData);
+
+    /**
+     * @notice Check if the vault is halted
+     * @return bool True if the vault is halted, false otherwise
+     */
+    function isHalted() external view returns (bool);
 }
 
 /**
@@ -253,4 +259,14 @@ interface IVault is
         uint256 epochId,
         uint160 priceSqrtX96
     ) external returns (bytes32 assertionId);
+
+    function forceSettlePosition()
+        external
+        returns (uint256 sharePrice, uint256 collateralReceived);
+
+    function createNewEpochAndPosition(
+        uint256 startTime,
+        uint160 previousResolutionSqrtPriceX96,
+        uint256 previousEpochCollateralReceived
+    ) external;
 }
