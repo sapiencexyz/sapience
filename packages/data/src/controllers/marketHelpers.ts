@@ -143,10 +143,10 @@ export const createOrModifyPositionFromTransaction = async (
   position.transactions.push(transaction);
 
   // Latest position state
-  position.baseToken = eventArgs.positionVethAmount;
-  position.quoteToken = eventArgs.positionVgasAmount;
-  position.borrowedBaseToken = eventArgs.positionBorrowedVeth;
-  position.borrowedQuoteToken = eventArgs.positionBorrowedVgas;
+  position.baseToken = eventArgs.positionVgasAmount;
+  position.quoteToken = eventArgs.positionVethAmount;
+  position.borrowedBaseToken = eventArgs.positionBorrowedVgas;
+  position.borrowedQuoteToken = eventArgs.positionBorrowedVeth;
   position.collateral = eventArgs.positionCollateralAmount;
 
   // LP Position configuration
@@ -169,10 +169,11 @@ const updateTransactionStateFromEvent = (
 ) => {
   const eventArgs = event.logData.args;
   // Latest position state
-  transaction.baseToken = eventArgs.positionVethAmount;
-  transaction.quoteToken = eventArgs.positionVgasAmount;
-  transaction.borrowedBaseToken = eventArgs.positionBorrowedVeth;
-  transaction.borrowedQuoteToken = eventArgs.positionBorrowedVgas;
+  transaction.baseToken = eventArgs.positionVgasAmount;
+  transaction.quoteToken = eventArgs.positionVethAmount;
+  transaction.borrowedBaseToken = eventArgs.positionBorrowedVgas;
+  transaction.borrowedQuoteToken = eventArgs.positionBorrowedVeth;
+
   transaction.collateral = eventArgs.positionCollateralAmount;
 
   if (eventArgs.tradeRatio) {

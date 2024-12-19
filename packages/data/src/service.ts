@@ -262,6 +262,7 @@ const startServer = async () => {
   app.get(
     "/prices/index",
     validateRequestParams(["contractId", "epochId"]),
+
     handleAsyncErrors(async (req, res, next) => {
       let { timeWindow } = req.query;
       const { contractId, epochId } = req.query as {
@@ -465,25 +466,30 @@ const startServer = async () => {
           baseTokenDelta: "0",
           quoteTokenDelta: "0",
         };
+        const currentBaseTokenBalance =
+          BigInt(transaction.position.baseToken) -
+          BigInt(transaction.position.borrowedBaseToken);
+        const currentQuoteTokenBalance =
+          BigInt(transaction.position.quoteToken) -
+          BigInt(transaction.position.borrowedQuoteToken);
+
         if (transaction.position.positionId !== lastPositionId) {
           lastPositionId = transaction.position.positionId;
           formattedTransaction.collateralDelta = formatDbBigInt(
             transaction.position.collateral
           );
           formattedTransaction.baseTokenDelta = formatDbBigInt(
-            transaction.position.baseToken
+            currentBaseTokenBalance.toString()
           );
           formattedTransaction.quoteTokenDelta = formatDbBigInt(
-            transaction.position.quoteToken
+            currentQuoteTokenBalance.toString()
           );
         } else {
           formattedTransaction.baseTokenDelta = formatDbBigInt(
-            (BigInt(transaction.position.baseToken) - lastBaseToken).toString()
+            (currentBaseTokenBalance - lastBaseToken).toString()
           );
           formattedTransaction.quoteTokenDelta = formatDbBigInt(
-            (
-              BigInt(transaction.position.quoteToken) - lastQuoteToken
-            ).toString()
+            (currentQuoteTokenBalance - lastQuoteToken).toString()
           );
           formattedTransaction.collateralDelta = formatDbBigInt(
             (
@@ -493,8 +499,8 @@ const startServer = async () => {
         }
 
         formattedTransactions.push(formattedTransaction);
-        lastBaseToken = BigInt(transaction.position.baseToken);
-        lastQuoteToken = BigInt(transaction.position.quoteToken);
+        lastBaseToken = currentBaseTokenBalance;
+        lastQuoteToken = currentQuoteTokenBalance;
         lastCollateral = BigInt(transaction.position.collateral);
       }
       res.json(formattedTransactions);
