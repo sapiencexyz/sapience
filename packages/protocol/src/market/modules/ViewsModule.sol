@@ -8,7 +8,7 @@ import "../interfaces/IViewsModule.sol";
 import "../interfaces/IFoilStructs.sol";
 import {SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 import {DecimalMath} from "../libraries/DecimalMath.sol";
-import "forge-std/console2.sol";
+
 contract ViewsModule is IViewsModule {
     using Position for Position.Data;
     using Epoch for Epoch.Data;

@@ -14,8 +14,6 @@ import "../market/interfaces/IFoil.sol";
 import "../market/interfaces/IFoilStructs.sol";
 import "./interfaces/IVault.sol";
 
-import "forge-std/console2.sol";
-
 contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
     using SetUtil for SetUtil.UintSet;
@@ -185,7 +183,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     function resolutionCallback(
         uint160 previousResolutionSqrtPriceX96
     ) external onlyMarket {
-        console2.log("resolutionCallback");
         uint256 collateralReceived;
         if (positionId != 0) {
             collateralReceived = market.settlePosition(positionId);
