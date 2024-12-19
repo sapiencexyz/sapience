@@ -259,7 +259,9 @@ const alertEvent = async (
         case EventType.TraderPositionCreated:
         case EventType.TraderPositionModified:
           const tradeDirection = BigInt(logData.args.finalPrice) > BigInt(logData.args.initialPrice) ? 'Long' : 'Short';
+
           const gasAmount = convertGasToGgas(logData.args.vGasAmount || logData.args.borrowedVGas);
+
           const rawPriceGwei = Number(logData.args.tradeRatio) / 1e18;
 
           const priceGwei = rawPriceGwei.toLocaleString('en-US', {
@@ -276,6 +278,7 @@ const alertEvent = async (
         case EventType.LiquidityPositionClosed:
           const action = logData.eventName === EventType.LiquidityPositionDecreased || logData.eventName === EventType.LiquidityPositionClosed ? 'Removed' : 'Added';
           const liquidityGas = convertGasToGgas(logData.args.addedAmount0 || logData.args.increasedAmount0 || logData.args.amount0);
+
 
           let priceRangeText = '';
           if (logData.args.lowerTick !== undefined && logData.args.upperTick !== undefined) {
