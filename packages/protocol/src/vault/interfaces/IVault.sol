@@ -37,6 +37,12 @@ interface IVaultAsyncDeposit {
     );
 
     /**
+     * @notice Emitted when the creation of the new epoch or position fails
+     * @dev this is a temporary halt and the vault can be resumed by calling the `createNewEpochAndPosition` function
+     */
+    event VaultHalted(bytes reason);
+
+    /**
      * @notice Request to deposit assets into the vault
      * @param assets The amount of collateral to deposit into vault
      * @return pendingTxn The pending transaction details
@@ -185,6 +191,12 @@ interface IVaultViews {
         external
         view
         returns (IFoilStructs.EpochData memory epochData);
+
+    /**
+     * @notice Check if the vault is halted
+     * @return bool True if the vault is halted, false otherwise
+     */
+    function isHalted() external view returns (bool);
 }
 
 /**
@@ -226,6 +238,11 @@ interface IVault is
      */
     event EpochProcessed(uint256 indexed epochId, uint256 newSharePrice);
 
+    event VaultPositionSettled(
+        uint256 indexed epochId,
+        uint256 collateralReceived
+    );
+
     /**
      * @notice Initialize the first epoch of the vault
      * @param initialSqrtPriceX96 The initial sqrt price
@@ -242,4 +259,14 @@ interface IVault is
         uint256 epochId,
         uint160 priceSqrtX96
     ) external returns (bytes32 assertionId);
+
+    function forceSettlePosition()
+        external
+        returns (uint256 sharePrice, uint256 collateralReceived);
+
+    function createNewEpochAndPosition(
+        uint256 startTime,
+        uint160 previousResolutionSqrtPriceX96,
+        uint256 previousEpochCollateralReceived
+    ) external;
 }
