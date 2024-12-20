@@ -428,7 +428,6 @@ const startServer = async () => {
         epochId?: string;
         positionId?: string;
       };
-      console.log(contractId, epochId, positionId);
 
       const { chainId, address } = parseContractId(contractId);
 
@@ -1254,7 +1253,6 @@ const startServer = async () => {
     let lastQuoteToken = BigInt(0);
     let lastCollateral = BigInt(0);
     for (const transaction of transactions) {
-      console.log("LLL transaction:", transaction);
       transaction.tradeRatioD18 = formatDbBigInt(transaction.tradeRatioD18);
 
       const formattedTransaction = {
@@ -1269,11 +1267,8 @@ const startServer = async () => {
       const currentQuoteTokenBalance =
         BigInt(transaction.position.quoteToken) -
         BigInt(transaction.position.borrowedQuoteToken);
-      console.log("LLL currentBaseTokenBalance:", currentBaseTokenBalance);
-      console.log("LLL currentQuoteTokenBalance:", currentQuoteTokenBalance);
 
       if (transaction.position.positionId !== lastPositionId) {
-        console.log("LLL new position");
         lastPositionId = transaction.position.positionId;
         formattedTransaction.collateralDelta = formatDbBigInt(
           transaction.position.collateral
@@ -1284,9 +1279,7 @@ const startServer = async () => {
         formattedTransaction.quoteTokenDelta = formatDbBigInt(
           currentQuoteTokenBalance.toString()
         );
-        console.log("LLL formattedTransaction:", formattedTransaction);
       } else {
-        console.log("LLL same position");
         formattedTransaction.baseTokenDelta = formatDbBigInt(
           (currentBaseTokenBalance - lastBaseToken).toString()
         );
