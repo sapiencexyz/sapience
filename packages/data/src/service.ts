@@ -142,7 +142,7 @@ const startServer = async () => {
   const parseContractId = (
     contractId: string
   ): { chainId: string; address: string } => {
-    const [chainId, address] = contractId.split(":");
+    const [chainId, address] = contractId.toLowerCase().split(":");
     if (!chainId || !address) {
       throw new Error("Invalid contractId format");
     }
@@ -158,7 +158,7 @@ const startServer = async () => {
     epochId: string
   ): Promise<{ market: Market; epoch: Epoch }> => {
     const market = await marketRepository.findOne({
-      where: { chainId: Number(chainId), address: address.toLowerCase() },
+      where: { chainId: Number(chainId), address: address },
     });
     if (!market) {
       throw new Error(
@@ -188,6 +188,8 @@ const startServer = async () => {
     };
 
   // Routes
+
+  // route /markets: Get markets
   app.get(
     "/markets",
     handleAsyncErrors(async (req, res, next) => {
@@ -208,7 +210,7 @@ const startServer = async () => {
     })
   );
 
-  // Get market price data for rendering charts
+  // route /prices/chart-data: Get market price data for rendering charts
   app.get(
     "/prices/chart-data",
     validateRequestParams(["contractId", "epochId", "timeWindow"]),
@@ -258,7 +260,7 @@ const startServer = async () => {
     })
   );
 
-  // Get index prices for a specified epoch and time window
+  // route /prices/index: Get index prices for a specified epoch and time window
   app.get(
     "/prices/index",
     validateRequestParams(["contractId", "epochId"]),
@@ -327,7 +329,7 @@ const startServer = async () => {
     })
   );
 
-  // Get positions
+  // route /positions: Get positions
   app.get(
     "/positions",
     validateRequestParams(["contractId"]),
@@ -373,7 +375,7 @@ const startServer = async () => {
     })
   );
 
-  // Get a single position by positionId
+  // route /positions/:positionId: Get a single position by positionId
   app.get(
     "/positions/:positionId",
     validateRequestParams(["contractId"]),
@@ -416,7 +418,7 @@ const startServer = async () => {
     })
   );
 
-  // Get transactions
+  // route /transactions: Get transactions
   app.get(
     "/transactions",
     validateRequestParams(["contractId"]),
@@ -452,62 +454,13 @@ const startServer = async () => {
       }
 
       const transactions = await queryBuilder.getMany();
-      const formattedTransactions = [];
+      const formattedTransactions = hidrateTransactions(transactions);
 
-      // Format data
-      let lastPositionId = 0;
-      let lastBaseToken = BigInt(0);
-      let lastQuoteToken = BigInt(0);
-      let lastCollateral = BigInt(0);
-      for (const transaction of transactions) {
-        const formattedTransaction = {
-          ...transaction,
-          collateralDelta: "0",
-          baseTokenDelta: "0",
-          quoteTokenDelta: "0",
-        };
-        const currentBaseTokenBalance =
-          BigInt(transaction.position.baseToken) -
-          BigInt(transaction.position.borrowedBaseToken);
-        const currentQuoteTokenBalance =
-          BigInt(transaction.position.quoteToken) -
-          BigInt(transaction.position.borrowedQuoteToken);
-
-        if (transaction.position.positionId !== lastPositionId) {
-          lastPositionId = transaction.position.positionId;
-          formattedTransaction.collateralDelta = formatDbBigInt(
-            transaction.position.collateral
-          );
-          formattedTransaction.baseTokenDelta = formatDbBigInt(
-            currentBaseTokenBalance.toString()
-          );
-          formattedTransaction.quoteTokenDelta = formatDbBigInt(
-            currentQuoteTokenBalance.toString()
-          );
-        } else {
-          formattedTransaction.baseTokenDelta = formatDbBigInt(
-            (currentBaseTokenBalance - lastBaseToken).toString()
-          );
-          formattedTransaction.quoteTokenDelta = formatDbBigInt(
-            (currentQuoteTokenBalance - lastQuoteToken).toString()
-          );
-          formattedTransaction.collateralDelta = formatDbBigInt(
-            (
-              BigInt(transaction.position.collateral) - lastCollateral
-            ).toString()
-          );
-        }
-
-        formattedTransactions.push(formattedTransaction);
-        lastBaseToken = currentBaseTokenBalance;
-        lastQuoteToken = currentQuoteTokenBalance;
-        lastCollateral = BigInt(transaction.position.collateral);
-      }
       res.json(formattedTransactions);
     })
   );
 
-  // Get volume
+  // route /volume: Get volume
   app.get(
     "/volume",
     validateRequestParams(["contractId", "timeWindow"]),
@@ -621,7 +574,7 @@ const startServer = async () => {
     return { missingBlockNumbers };
   };
 
-  // Update the missing-blocks endpoint
+  // route /missing-blocks: Update the missing-blocks endpoint
   app.get(
     "/missing-blocks",
     validateRequestParams(["chainId", "address", "epochId"]),
@@ -647,6 +600,7 @@ const startServer = async () => {
     })
   );
 
+  // route /reindex
   app.post(
     "/reindex",
     validateRequestParams(["address", "chainId", "signature", "timestamp"]),
@@ -740,6 +694,7 @@ const startServer = async () => {
     })
   );
 
+  // route /reindexStatus
   app.get(
     "/reindexStatus",
     validateRequestParams(["jobId", "serviceId"]),
@@ -771,6 +726,7 @@ const startServer = async () => {
     })
   );
 
+  // route /prices/index/latest
   app.get(
     "/prices/index/latest",
     validateRequestParams(["contractId", "epochId"]),
@@ -815,6 +771,7 @@ const startServer = async () => {
     })
   );
 
+  // route /updateMarketPrivacy
   app.post(
     "/updateMarketPrivacy",
     handleAsyncErrors(async (req, res, next) => {
@@ -848,6 +805,7 @@ const startServer = async () => {
     })
   );
 
+  // route /getStEthPerTokenAtTimestamp
   app.get(
     "/getStEthPerTokenAtTimestamp",
     validateRequestParams(["chainId", "collateralAssetAddress"]),
@@ -905,6 +863,7 @@ const startServer = async () => {
     })
   );
 
+  // route /accounts/:address: Get account data (positions and transactions)
   app.get(
     "/accounts/:address",
     handleAsyncErrors(async (req, res, next) => {
@@ -940,19 +899,13 @@ const startServer = async () => {
         position.collateral = formatDbBigInt(position.collateral);
       });
 
-      transactions.forEach((transaction) => {
-        transaction.baseToken = formatDbBigInt(transaction.position.baseToken);
-        transaction.quoteToken = formatDbBigInt(
-          transaction.position.quoteToken
-        );
-        transaction.collateral = formatDbBigInt(transaction.collateral);
-        transaction.tradeRatioD18 = formatDbBigInt(transaction.tradeRatioD18);
-      });
+      const formattedTransactions = hidrateTransactions(transactions);
 
-      res.json({ positions, transactions });
+      res.json({ positions, transactions: formattedTransactions });
     })
   );
 
+  // route /estimate
   app.post(
     "/estimate",
     handleAsyncErrors(async (req, res, next) => {
@@ -962,7 +915,7 @@ const startServer = async () => {
         marketRepository,
         epochRepository,
         chainId,
-        marketAddress,
+        marketAddress.toLowerCase(),
         epochId
       );
 
@@ -1058,7 +1011,7 @@ const startServer = async () => {
     })
   );
 
-  // Get the leaderboard data for a given market
+  // route /leaderboard: Get the leaderboard data for a given market
   app.get(
     "/leaderboard",
     validateRequestParams(["contractId"]),
@@ -1186,7 +1139,7 @@ const startServer = async () => {
     })
   );
 
-  // Update the reindexMissingBlocks endpoint
+  // route /reindexMissingBlocks: Update the reindexMissingBlocks endpoint
   app.post(
     "/reindexMissingBlocks",
     handleAsyncErrors(async (req, res, next) => {
@@ -1291,6 +1244,67 @@ const startServer = async () => {
     console.error("An error occurred:", err.message);
     res.status(500).json({ error: "Internal server error" });
   });
+
+  const hidrateTransactions = (transactions: Transaction[]) => {
+    const formattedTransactions = [];
+
+    // Format data
+    let lastPositionId = 0;
+    let lastBaseToken = BigInt(0);
+    let lastQuoteToken = BigInt(0);
+    let lastCollateral = BigInt(0);
+    for (const transaction of transactions) {
+      console.log("LLL transaction:", transaction);
+      transaction.tradeRatioD18 = formatDbBigInt(transaction.tradeRatioD18);
+
+      const formattedTransaction = {
+        ...transaction,
+        collateralDelta: "0",
+        baseTokenDelta: "0",
+        quoteTokenDelta: "0",
+      };
+      const currentBaseTokenBalance =
+        BigInt(transaction.position.baseToken) -
+        BigInt(transaction.position.borrowedBaseToken);
+      const currentQuoteTokenBalance =
+        BigInt(transaction.position.quoteToken) -
+        BigInt(transaction.position.borrowedQuoteToken);
+      console.log("LLL currentBaseTokenBalance:", currentBaseTokenBalance);
+      console.log("LLL currentQuoteTokenBalance:", currentQuoteTokenBalance);
+
+      if (transaction.position.positionId !== lastPositionId) {
+        console.log("LLL new position");
+        lastPositionId = transaction.position.positionId;
+        formattedTransaction.collateralDelta = formatDbBigInt(
+          transaction.position.collateral
+        );
+        formattedTransaction.baseTokenDelta = formatDbBigInt(
+          currentBaseTokenBalance.toString()
+        );
+        formattedTransaction.quoteTokenDelta = formatDbBigInt(
+          currentQuoteTokenBalance.toString()
+        );
+        console.log("LLL formattedTransaction:", formattedTransaction);
+      } else {
+        console.log("LLL same position");
+        formattedTransaction.baseTokenDelta = formatDbBigInt(
+          (currentBaseTokenBalance - lastBaseToken).toString()
+        );
+        formattedTransaction.quoteTokenDelta = formatDbBigInt(
+          (currentQuoteTokenBalance - lastQuoteToken).toString()
+        );
+        formattedTransaction.collateralDelta = formatDbBigInt(
+          (BigInt(transaction.position.collateral) - lastCollateral).toString()
+        );
+      }
+
+      formattedTransactions.push(formattedTransaction);
+      lastBaseToken = currentBaseTokenBalance;
+      lastQuoteToken = currentQuoteTokenBalance;
+      lastCollateral = BigInt(transaction.position.collateral);
+    }
+    return formattedTransactions;
+  };
 };
 
 startServer().catch((e) => console.error("Unable to start server: ", e));
