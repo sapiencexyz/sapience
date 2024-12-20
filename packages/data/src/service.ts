@@ -896,6 +896,8 @@ const startServer = async () => {
           position.borrowedQuoteToken
         );
         position.collateral = formatDbBigInt(position.collateral);
+        console.log("LLL position.transactions:", position.transactions);
+        position.transactions = hidrateTransactions(position.transactions);
       });
 
       const formattedTransactions = hidrateTransactions(transactions);
@@ -1255,6 +1257,7 @@ const startServer = async () => {
     for (const transaction of transactions) {
       transaction.tradeRatioD18 = formatDbBigInt(transaction.tradeRatioD18);
 
+      console.log("LLL to hidrate:", transaction);
       const formattedTransaction = {
         ...transaction,
         collateralDelta: "0",
@@ -1262,16 +1265,14 @@ const startServer = async () => {
         quoteTokenDelta: "0",
       };
       const currentBaseTokenBalance =
-        BigInt(transaction.position.baseToken) -
-        BigInt(transaction.position.borrowedBaseToken);
+        BigInt(transaction.baseToken) - BigInt(transaction.borrowedBaseToken);
       const currentQuoteTokenBalance =
-        BigInt(transaction.position.quoteToken) -
-        BigInt(transaction.position.borrowedQuoteToken);
+        BigInt(transaction.quoteToken) - BigInt(transaction.borrowedQuoteToken);
 
       if (transaction.position.positionId !== lastPositionId) {
         lastPositionId = transaction.position.positionId;
         formattedTransaction.collateralDelta = formatDbBigInt(
-          transaction.position.collateral
+          transaction.collateral
         );
         formattedTransaction.baseTokenDelta = formatDbBigInt(
           currentBaseTokenBalance.toString()
@@ -1287,7 +1288,7 @@ const startServer = async () => {
           (currentQuoteTokenBalance - lastQuoteToken).toString()
         );
         formattedTransaction.collateralDelta = formatDbBigInt(
-          (BigInt(transaction.position.collateral) - lastCollateral).toString()
+          (BigInt(transaction.collateral) - lastCollateral).toString()
         );
       }
 
