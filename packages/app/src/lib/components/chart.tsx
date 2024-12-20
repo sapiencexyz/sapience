@@ -1,16 +1,12 @@
+/* eslint-disable sonarjs/cognitive-complexity */
 import type { UTCTimestamp, BarData, LineData } from 'lightweight-charts';
-import { createChart, CrosshairMode, Time } from 'lightweight-charts';
+import { createChart, CrosshairMode } from 'lightweight-charts';
 import { useTheme } from 'next-themes';
-import { useEffect, useRef, useState, useContext } from 'react';
+import { useEffect, useRef, useContext } from 'react';
 import type React from 'react';
-import type { Dispatch, SetStateAction } from 'react';
 
 import type { PriceChartData, TimeWindow } from '../interfaces/interfaces';
-import { formatAmount } from '../util/numberUtil';
-import {
-  convertGgasPerWstEthToGwei,
-  getDisplayTextForVolumeWindow,
-} from '../util/util';
+import { convertGgasPerWstEthToGwei } from '../util/util';
 import { MarketContext } from '~/lib/context/MarketProvider';
 
 interface Props {
@@ -87,12 +83,14 @@ const CandlestickChart: React.FC<Props> = ({
         wickDownColor: '#ef5350',
       });
 
-      indexPriceSeriesRef.current = chart.addAreaSeries({
-        lineColor: 'blue',
-        topColor: 'rgba(128, 128, 128, 0.4)',
-        bottomColor: 'rgba(128, 128, 128, 0.0)',
-        lineStyle: 2,
-      });
+      if (!isLoading) {
+        indexPriceSeriesRef.current = chart.addAreaSeries({
+          lineColor: 'blue',
+          topColor: 'rgba(128, 128, 128, 0.4)',
+          bottomColor: 'rgba(128, 128, 128, 0.0)',
+          lineStyle: 2,
+        });
+      }
 
       const combinedData = data.marketPrices
         .map((mp, i) => {
@@ -139,7 +137,10 @@ const CandlestickChart: React.FC<Props> = ({
       const lineSeriesData = combinedData.map((d) => d.lineData);
 
       candlestickSeriesRef.current.setData(candleSeriesData);
-      indexPriceSeriesRef.current.setData(lineSeriesData);
+
+      if (!isLoading) {
+        indexPriceSeriesRef.current.setData(lineSeriesData);
+      }
 
       const handleResize = (entries: ResizeObserverEntry[]) => {
         if (!chartRef.current) return;
