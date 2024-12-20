@@ -93,4 +93,21 @@ export class Transaction {
 
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
   collateral: string; // ETH
+
+  // LP Delta Token Amounts
+  @Column({
+    type: "numeric",
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
+  lpBaseDeltaToken: string; // vGas tokenamount 0
+
+  @Column({
+    type: "numeric",
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
+  lpQuoteDeltaToken: string; // vETH tokenamount 1
 }

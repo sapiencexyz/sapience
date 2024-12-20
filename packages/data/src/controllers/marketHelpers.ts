@@ -387,6 +387,9 @@ export const updateTransactionFromAddLiquidityEvent = (
   newTransaction.type = TransactionType.ADD_LIQUIDITY;
 
   updateTransactionStateFromEvent(newTransaction, event);
+
+  newTransaction.lpBaseDeltaToken = event.logData.args.addedAmount0;
+  newTransaction.lpQuoteDeltaToken = event.logData.args.addedAmount1;
 };
 
 /**
@@ -402,6 +405,9 @@ export const updateTransactionFromLiquidityClosedEvent = async (
   newTransaction.type = TransactionType.REMOVE_LIQUIDITY;
 
   updateTransactionStateFromEvent(newTransaction, event);
+
+  newTransaction.lpBaseDeltaToken = event.logData.args.collectedAmount0;
+  newTransaction.lpQuoteDeltaToken = event.logData.args.collectedAmount1;
 };
 
 /**
@@ -421,6 +427,17 @@ export const updateTransactionFromLiquidityModifiedEvent = async (
     : TransactionType.ADD_LIQUIDITY;
 
   updateTransactionStateFromEvent(newTransaction, event);
+
+  newTransaction.lpBaseDeltaToken = isDecrease
+    ? (
+        BigInt(event.logData.args.decreasedAmount0 ?? "0") * BigInt(-1)
+      ).toString()
+    : event.logData.args.increasedAmount0;
+  newTransaction.lpQuoteDeltaToken = isDecrease
+    ? (
+        BigInt(event.logData.args.decreasedAmount1 ?? "0") * BigInt(-1)
+      ).toString()
+    : event.logData.args.increasedAmount1;
 };
 
 /**
