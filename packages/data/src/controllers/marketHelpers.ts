@@ -440,7 +440,7 @@ export const updateTransactionFromAddLiquidityEvent = (
     .args as LiquidityPositionCreatedEventLog;
   newTransaction.baseTokenDelta = eventArgsAddLiquidity.addedAmount0;
   newTransaction.quoteTokenDelta = eventArgsAddLiquidity.addedAmount1;
-  newTransaction.collateralDelta = eventArgsAddLiquidity.collateralAmount;
+  newTransaction.collateralDelta = eventArgsAddLiquidity.deltaCollateral;
 };
 
 /**
@@ -474,13 +474,14 @@ export const updateTransactionFromTradeModifiedEvent = async (
   const collateralInitial = initialPosition ? initialPosition.collateral : "0";
 
   newTransaction.baseTokenDelta = (
-    BigInt(eventArgsCreateTrade.vGasAmount) - BigInt(baseTokenInitial)
+    BigInt(eventArgsCreateTrade.positionVgasAmount) - BigInt(baseTokenInitial)
   ).toString();
   newTransaction.quoteTokenDelta = (
-    BigInt(eventArgsCreateTrade.vEthAmount) - BigInt(quoteTokenInitial)
+    BigInt(eventArgsCreateTrade.positionVethAmount) - BigInt(quoteTokenInitial)
   ).toString();
   newTransaction.collateralDelta = (
-    BigInt(eventArgsCreateTrade.collateralAmount) - BigInt(collateralInitial)
+    BigInt(eventArgsCreateTrade.positionCollateralAmount) -
+    BigInt(collateralInitial)
   ).toString();
 
   newTransaction.tradeRatioD18 = eventArgsCreateTrade.tradeRatio;

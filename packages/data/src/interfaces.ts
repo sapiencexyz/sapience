@@ -19,11 +19,11 @@ export enum EventType {
 export interface TradePositionEventLog {
   epochId: string;
   positionId: string;
-  collateralAmount: string;
-  vEthAmount: string;
-  vGasAmount: string;
-  borrowedVEth: string;
-  borrowedVGas: string;
+  positionCollateralAmount: string;
+  positionVethAmount: string;
+  positionVgasAmount: string;
+  positionBorrowedVeth: string;
+  positionBorrowedVgas: string;
   initialPrice: string;
   finalPrice: string;
   tradeRatio: string;
@@ -31,7 +31,7 @@ export interface TradePositionEventLog {
 
 export interface LiquidityPositionCreatedEventLog {
   positionId: string;
-  collateralAmount: string;
+  deltaCollateral: string;
   addedAmount0: string;
   addedAmount1: string;
   liquidity: string;
