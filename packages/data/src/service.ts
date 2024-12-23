@@ -1,8 +1,6 @@
 import "reflect-metadata";
 import "./instrument";
 import dataSource, {
-  collateralTransferRepository,
-  eventRepository,
   initializeDataSource,
   renderJobRepository,
 } from "./db"; /// !IMPORTANT: Keep as top import to prevent issues with db initialization
@@ -42,7 +40,6 @@ import { isValidWalletSignature } from "./middleware";
 import * as Sentry from "@sentry/node";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
-import { CollateralTransfer } from "./models/CollateralTransfer";
 import { MARKET_INFO } from "./markets";
 
 const PORT = 3001;

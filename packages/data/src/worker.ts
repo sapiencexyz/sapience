@@ -7,10 +7,6 @@ import {
 } from "./controllers/market";
 import { MARKET_INFO } from "./markets";
 import { createOrUpdateEpochFromContract } from "./controllers/marketHelpers";
-// import {
-//   indexCollateralEvents,
-//   reindexCollateralEvents,
-// } from "./controllers/collateral";
 import { getMarketStartEndBlock } from "./controllers/marketHelpers";
 import { Between } from "typeorm";
 import * as Sentry from "@sentry/node";
@@ -18,7 +14,7 @@ import * as Sentry from "@sentry/node";
 const MAX_RETRIES = Infinity;
 const RETRY_DELAY = 5000; // 5 seconds
 
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function withRetry<T>(
   operation: () => Promise<T>,
@@ -26,14 +22,17 @@ async function withRetry<T>(
   maxRetries: number = MAX_RETRIES
 ): Promise<T> {
   let lastError: Error | undefined;
-  
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       return await operation();
     } catch (error) {
       lastError = error as Error;
-      console.error(`Attempt ${attempt}/${maxRetries} failed for ${name}:`, error);
-      
+      console.error(
+        `Attempt ${attempt}/${maxRetries} failed for ${name}:`,
+        error
+      );
+
       // Report error to Sentry with context
       Sentry.withScope((scope) => {
         scope.setExtra("attempt", attempt);
@@ -41,15 +40,17 @@ async function withRetry<T>(
         scope.setExtra("operationName", name);
         Sentry.captureException(error);
       });
-      
+
       if (attempt < maxRetries) {
-        console.log(`Retrying ${name} in ${RETRY_DELAY/1000} seconds...`);
+        console.log(`Retrying ${name} in ${RETRY_DELAY / 1000} seconds...`);
         await delay(RETRY_DELAY);
       }
     }
   }
-  
-  const finalError = new Error(`All ${maxRetries} attempts failed for ${name}. Last error: ${lastError?.message}`);
+
+  const finalError = new Error(
+    `All ${maxRetries} attempts failed for ${name}. Last error: ${lastError?.message}`
+  );
   Sentry.captureException(finalError);
   throw finalError;
 }
@@ -63,7 +64,10 @@ function createResilientProcess<T>(
       try {
         return await withRetry(process, name);
       } catch (error) {
-        console.error(`Process ${name} failed after all retries. Restarting...`, error);
+        console.error(
+          `Process ${name} failed after all retries. Restarting...`,
+          error
+        );
         await delay(RETRY_DELAY);
       }
     }
@@ -83,7 +87,7 @@ async function main() {
       "on chain",
       market.chainId
     );
-    
+
     await createOrUpdateEpochFromContract(marketInfo, market);
 
     jobs.push(
@@ -92,20 +96,13 @@ async function main() {
         `indexMarketEvents-${market.address}`
       )()
     );
-    
+
     jobs.push(
       createResilientProcess(
         () => marketInfo.priceIndexer.watchBlocksForMarket(market),
         `watchBlocksForMarket-${market.address}`
       )()
     );
-    
-//     jobs.push(
-//       createResilientProcess(
-//         () => indexCollateralEvents(market),
-//         `indexCollateralEvents-${market.address}`
-//       )()
-//     );
   }
 
   await Promise.all(jobs);
@@ -117,7 +114,14 @@ export async function reindexMarket(
   epochId: string
 ) {
   try {
-    console.log("reindexing market", address, "on chain", chainId, "epoch", epochId);
+    console.log(
+      "reindexing market",
+      address,
+      "on chain",
+      chainId,
+      "epoch",
+      epochId
+    );
 
     await initializeDataSource();
     const marketInfo = MARKET_INFO.find(
@@ -134,9 +138,8 @@ export async function reindexMarket(
 
     await Promise.all([
       reindexMarketEvents(market, marketInfo.deployment.abi, Number(epochId)),
-//       reindexCollateralEvents(market, Number(epochId)),
     ]);
-    
+
     console.log("finished reindexing market", address, "on chain", chainId);
   } catch (error) {
     console.error("Error in reindexMarket:", error);
@@ -153,11 +156,13 @@ export async function reindexMarket(
 export async function reindexMissingBlocks(
   chainId: number,
   address: string,
-  epochId: string,
+  epochId: string
 ) {
   try {
-    console.log(`Starting reindex of missing resource blocks for market ${chainId}:${address}, epoch ${epochId}`);
-    
+    console.log(
+      `Starting reindex of missing resource blocks for market ${chainId}:${address}, epoch ${epochId}`
+    );
+
     await initializeDataSource();
     const marketInfo = MARKET_INFO.find(
       (m) =>
@@ -165,16 +170,19 @@ export async function reindexMissingBlocks(
         m.deployment.address.toLowerCase() === address.toLowerCase()
     );
     if (!marketInfo) {
-      throw new Error(`Market not found for chainId ${chainId} and address ${address}`);
+      throw new Error(
+        `Market not found for chainId ${chainId} and address ${address}`
+      );
     }
     const market = await initializeMarket(marketInfo);
 
-    const { startBlockNumber, endBlockNumber, error } = await getMarketStartEndBlock(
-      market,
-      epochId,
-      marketInfo.priceIndexer.client
-    );
-    
+    const { startBlockNumber, endBlockNumber, error } =
+      await getMarketStartEndBlock(
+        market,
+        epochId,
+        marketInfo.priceIndexer.client
+      );
+
     if (error || !startBlockNumber || !endBlockNumber) {
       return { missingBlockNumbers: null, error };
     }
@@ -202,12 +210,11 @@ export async function reindexMissingBlocks(
       }
     }
 
-    await marketInfo.priceIndexer.indexBlocks(
-      market,
-      missingBlockNumbers
-    );
+    await marketInfo.priceIndexer.indexBlocks(market, missingBlockNumbers);
 
-    console.log(`Finished reindexing resource blocks for market ${address} on chain ${chainId}`);
+    console.log(
+      `Finished reindexing resource blocks for market ${address} on chain ${chainId}`
+    );
   } catch (error) {
     console.error(`Error in reindexMissingBlocks:`, error);
     Sentry.withScope((scope) => {

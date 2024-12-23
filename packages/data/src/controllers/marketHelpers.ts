@@ -18,12 +18,8 @@ import {
   Deployment,
   EpochCreatedEventLog,
   MarketCreatedUpdatedEventLog,
-  LiquidityPositionClosedEventLog,
-  LiquidityPositionCreatedEventLog,
-  LiquidityPositionModifiedEventLog,
   TradePositionEventLog,
   MarketInfo,
-  PositionSettledEventLog,
   EpochData,
   EventType,
 } from "../interfaces";

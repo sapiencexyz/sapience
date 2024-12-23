@@ -9,7 +9,7 @@ import {
 import { MarketParams } from "../models/MarketParams";
 import { Event } from "../models/Event";
 import { Market } from "../models/Market";
-import { Transaction, TransactionType } from "../models/Transaction";
+import { Transaction } from "../models/Transaction";
 import { Abi, decodeEventLog, Log } from "viem";
 import {
   EpochCreatedEventLog,
