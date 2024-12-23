@@ -36,6 +36,50 @@ export class Position {
   @Column({ type: "varchar", nullable: true })
   owner: string;
 
+  // Position params
+  @Column({ type: "boolean" })
+  isLP: boolean; // true for event name
+
+  @Column({
+    type: "numeric",
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
+  highPriceTick: string;
+
+  @Column({
+    type: "numeric",
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
+  lowPriceTick: string;
+
+  @Column({
+    type: "boolean",
+    nullable: true,
+  })
+  isSettled: boolean | null;
+
+  // LP Delta Token Amounts
+  @Column({
+    type: "numeric",
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
+  lpBaseToken: string; // vGas tokenamount 0
+
+  @Column({
+    type: "numeric",
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
+  lpQuoteToken: string; // vETH tokenamount 1
+
+  // Latest Position State
   @Column({
     type: "numeric",
     precision: NUMERIC_PRECISION,
@@ -70,30 +114,4 @@ export class Position {
 
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
   collateral: string; // ETH
-
-  @Column({ type: "boolean" })
-  isLP: boolean; // true for event name
-
-  @Column({
-    type: "numeric",
-    precision: NUMERIC_PRECISION,
-    scale: 0,
-    nullable: true,
-  })
-  highPriceTick: string;
-
-  @Column({
-    type: "numeric",
-    precision: NUMERIC_PRECISION,
-    scale: 0,
-    nullable: true,
-  })
-  lowPriceTick: string;
-
-  @Column({
-    type: "boolean",
-    nullable: true,
-  })
-  isSettled: boolean | null;
-
 }

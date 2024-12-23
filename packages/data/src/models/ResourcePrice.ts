@@ -41,10 +41,4 @@ export class ResourcePrice {
     console.log("Resource price inserted for block: " + this.blockNumber);
     await upsertIndexPriceFromResourcePrice(this);
   }
-
-  @AfterUpdate()
-  async afterUpdate() {
-    console.log(`Resource price updated: ${this.id}`);
-    await upsertIndexPriceFromResourcePrice(this);
-  }
 }
