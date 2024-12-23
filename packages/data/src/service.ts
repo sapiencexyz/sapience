@@ -370,6 +370,8 @@ const startServer = async () => {
           position.borrowedQuoteToken
         );
         position.collateral = formatDbBigInt(position.collateral);
+        position.lpBaseToken = formatDbBigInt(position.lpBaseToken);
+        position.lpQuoteToken = formatDbBigInt(position.lpQuoteToken);
       }
       res.json(positions);
     })
@@ -413,6 +415,8 @@ const startServer = async () => {
       position.borrowedBaseToken = formatDbBigInt(position.borrowedBaseToken);
       position.borrowedQuoteToken = formatDbBigInt(position.borrowedQuoteToken);
       position.collateral = formatDbBigInt(position.collateral);
+      position.lpBaseToken = formatDbBigInt(position.lpBaseToken);
+      position.lpQuoteToken = formatDbBigInt(position.lpQuoteToken);
 
       res.json(position);
     })
@@ -453,9 +457,9 @@ const startServer = async () => {
       }
 
       const transactions = await queryBuilder.getMany();
-      const formattedTransactions = hidrateTransactions(transactions);
+      const hydratedPositions = hydrateTransactions(transactions);
 
-      res.json(formattedTransactions);
+      res.json(hydratedPositions);
     })
   );
 
@@ -896,13 +900,15 @@ const startServer = async () => {
           position.borrowedQuoteToken
         );
         position.collateral = formatDbBigInt(position.collateral);
-        console.log("LLL position.transactions:", position.transactions);
-        position.transactions = hidrateTransactions(position.transactions);
+        position.lpBaseToken = formatDbBigInt(position.lpBaseToken);
+        position.lpQuoteToken = formatDbBigInt(position.lpQuoteToken);
+
+        position.transactions = hydrateTransactions(position.transactions);
       });
 
-      const formattedTransactions = hidrateTransactions(transactions);
+      const hydratedPositions = hydrateTransactions(transactions);
 
-      res.json({ positions, transactions: formattedTransactions });
+      res.json({ positions, transactions: hydratedPositions });
     })
   );
 
@@ -1246,8 +1252,8 @@ const startServer = async () => {
     res.status(500).json({ error: "Internal server error" });
   });
 
-  const hidrateTransactions = (transactions: Transaction[]) => {
-    const formattedTransactions = [];
+  const hydrateTransactions = (transactions: Transaction[]) => {
+    const hydratedPositions = [];
 
     // Format data
     let lastPositionId = 0;
@@ -1257,47 +1263,53 @@ const startServer = async () => {
     for (const transaction of transactions) {
       transaction.tradeRatioD18 = formatDbBigInt(transaction.tradeRatioD18);
 
-      console.log("LLL to hidrate:", transaction);
-      const formattedTransaction = {
+      const hydratedTransaction = {
         ...transaction,
         collateralDelta: "0",
         baseTokenDelta: "0",
         quoteTokenDelta: "0",
       };
-      const currentBaseTokenBalance =
-        BigInt(transaction.baseToken) - BigInt(transaction.borrowedBaseToken);
-      const currentQuoteTokenBalance =
-        BigInt(transaction.quoteToken) - BigInt(transaction.borrowedQuoteToken);
 
-      if (transaction.position.positionId !== lastPositionId) {
+      // if transactions come from the position.transactions it doesn't have a .position, but all the transactions correspond to the same position
+      if (
+        transaction.position &&
+        transaction.position.positionId !== lastPositionId
+      ) {
+        lastBaseToken = BigInt(0);
+        lastQuoteToken = BigInt(0);
+        lastCollateral = BigInt(0);
         lastPositionId = transaction.position.positionId;
-        formattedTransaction.collateralDelta = formatDbBigInt(
-          transaction.collateral
-        );
-        formattedTransaction.baseTokenDelta = formatDbBigInt(
-          currentBaseTokenBalance.toString()
-        );
-        formattedTransaction.quoteTokenDelta = formatDbBigInt(
-          currentQuoteTokenBalance.toString()
-        );
-      } else {
-        formattedTransaction.baseTokenDelta = formatDbBigInt(
-          (currentBaseTokenBalance - lastBaseToken).toString()
-        );
-        formattedTransaction.quoteTokenDelta = formatDbBigInt(
-          (currentQuoteTokenBalance - lastQuoteToken).toString()
-        );
-        formattedTransaction.collateralDelta = formatDbBigInt(
-          (BigInt(transaction.collateral) - lastCollateral).toString()
-        );
       }
 
-      formattedTransactions.push(formattedTransaction);
-      lastBaseToken = currentBaseTokenBalance;
-      lastQuoteToken = currentQuoteTokenBalance;
-      lastCollateral = BigInt(transaction.position.collateral);
+      // If the transaction is from a liquidity position, use the lpDeltaToken values
+      // Otherwise, use the baseToken and quoteToken values from the previous transaction (trade with history)
+      const currentBaseTokenBalance =
+        transaction.lpBaseDeltaToken ||
+        BigInt(transaction.baseToken) - lastBaseToken;
+      const currentQuoteTokenBalance =
+        transaction.lpQuoteDeltaToken ||
+        BigInt(transaction.quoteToken) - lastQuoteToken;
+      const currentCollateralBalance =
+        BigInt(transaction.collateral) - lastCollateral;
+
+      hydratedTransaction.baseTokenDelta = formatDbBigInt(
+        currentBaseTokenBalance.toString()
+      );
+      hydratedTransaction.quoteTokenDelta = formatDbBigInt(
+        currentQuoteTokenBalance.toString()
+      );
+      hydratedTransaction.collateralDelta = formatDbBigInt(
+        currentCollateralBalance.toString()
+      );
+
+      hydratedPositions.push(hydratedTransaction);
+
+      // set up for next transaction
+      lastBaseToken = BigInt(currentBaseTokenBalance);
+      lastQuoteToken = BigInt(currentQuoteTokenBalance);
+      lastCollateral = BigInt(currentCollateralBalance);
     }
-    return formattedTransactions;
+    return hydratedPositions;
   };
 };
 

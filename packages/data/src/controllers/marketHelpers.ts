@@ -149,6 +149,11 @@ export const createOrModifyPositionFromTransaction = async (
   position.borrowedQuoteToken = eventArgs.positionBorrowedVeth;
   position.collateral = eventArgs.positionCollateralAmount;
 
+  // LP Position state
+  position.lpBaseToken = eventArgs.loanAmount0 || eventArgs.addedAmount0 || "0";
+  position.lpQuoteToken =
+    eventArgs.loanAmount1 || eventArgs.addedAmount1 || "0";
+
   // LP Position configuration
   if (eventArgs.upperTick && eventArgs.lowerTick) {
     position.highPriceTick = eventArgs.upperTick.toString();

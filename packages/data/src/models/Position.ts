@@ -62,6 +62,23 @@ export class Position {
   })
   isSettled: boolean | null;
 
+  // LP Delta Token Amounts
+  @Column({
+    type: "numeric",
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
+  lpBaseToken: string; // vGas tokenamount 0
+
+  @Column({
+    type: "numeric",
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
+  lpQuoteToken: string; // vETH tokenamount 1
+
   // Latest Position State
   @Column({
     type: "numeric",
