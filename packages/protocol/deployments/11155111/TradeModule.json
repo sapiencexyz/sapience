@@ -1,5 +1,5 @@
 {
-  "address": "0x982CA9073729A4305d7511a3F269dDce3caEE6d3",
+  "address": "0x5774CcbC689b2D1CfF7B10f1AfDC56D659AAA07C",
   "abi": [
     {
       "type": "function",
@@ -162,31 +162,7 @@
           "internalType": "uint256"
         },
         {
-          "name": "collateralAmount",
-          "type": "uint256",
-          "indexed": false,
-          "internalType": "uint256"
-        },
-        {
-          "name": "vEthAmount",
-          "type": "uint256",
-          "indexed": false,
-          "internalType": "uint256"
-        },
-        {
-          "name": "vGasAmount",
-          "type": "uint256",
-          "indexed": false,
-          "internalType": "uint256"
-        },
-        {
-          "name": "borrowedVEth",
-          "type": "uint256",
-          "indexed": false,
-          "internalType": "uint256"
-        },
-        {
-          "name": "borrowedVGas",
+          "name": "requiredCollateral",
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
@@ -208,6 +184,42 @@
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
+        },
+        {
+          "name": "positionCollateralAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "positionVethAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "positionVgasAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "positionBorrowedVeth",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "positionBorrowedVgas",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "deltaCollateral",
+          "type": "int256",
+          "indexed": false,
+          "internalType": "int256"
         }
       ],
       "anonymous": false
@@ -235,31 +247,7 @@
           "internalType": "uint256"
         },
         {
-          "name": "collateralAmount",
-          "type": "uint256",
-          "indexed": false,
-          "internalType": "uint256"
-        },
-        {
-          "name": "vEthAmount",
-          "type": "uint256",
-          "indexed": false,
-          "internalType": "uint256"
-        },
-        {
-          "name": "vGasAmount",
-          "type": "uint256",
-          "indexed": false,
-          "internalType": "uint256"
-        },
-        {
-          "name": "borrowedVEth",
-          "type": "uint256",
-          "indexed": false,
-          "internalType": "uint256"
-        },
-        {
-          "name": "borrowedVGas",
+          "name": "requiredCollateral",
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
@@ -281,6 +269,42 @@
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
+        },
+        {
+          "name": "positionCollateralAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "positionVethAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "positionVgasAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "positionBorrowedVeth",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "positionBorrowedVgas",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "deltaCollateral",
+          "type": "int256",
+          "indexed": false,
+          "internalType": "int256"
         }
       ],
       "anonymous": false
@@ -334,6 +358,22 @@
     },
     {
       "type": "error",
+      "name": "CollateralBelowMin",
+      "inputs": [
+        {
+          "name": "collateralRequired",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "minCollateral",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "CollateralLimitReached",
       "inputs": [
         {
@@ -352,6 +392,22 @@
       "type": "error",
       "name": "DeltaTradeIsZero",
       "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "EpochNotStarted",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "epochStartTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
     },
     {
       "type": "error",
@@ -599,12 +655,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x489bcba620e5db92942a20761dbae97bee1ba34e7a07a16cfeec3679f07d174f",
-  "deployTxnBlockNumber": "7151807",
-  "deployTimestamp": "1732565352",
+  "deployTxnHash": "0x61f42282d1b884886b9c5174af945c106dd781b76e214144160f8fe2a8032504",
+  "deployTxnBlockNumber": "7313122",
+  "deployTimestamp": "1734636120",
   "sourceName": "src/market/modules/TradeModule.sol",
   "contractName": "TradeModule",
   "deployedOn": "deploy.TradeModule",
-  "gasUsed": 2546115,
-  "gasCost": "15837282573"
+  "gasUsed": 2668817,
+  "gasCost": "12404555053"
 }
