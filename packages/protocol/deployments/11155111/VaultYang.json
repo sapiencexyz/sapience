@@ -1,5 +1,5 @@
 {
-  "address": "0xD25e0E8f7f1A11453E1dADabcD59B10a14Cc0fb4",
+  "address": "0x42E5D0e2EeDf603449043f06a7a740A8C65d71eF",
   "abi": [
     {
       "type": "constructor",
@@ -223,6 +223,29 @@
     },
     {
       "type": "function",
+      "name": "createNewEpochAndPosition",
+      "inputs": [
+        {
+          "name": "startTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "previousResolutionSqrtPriceX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        },
+        {
+          "name": "previousEpochCollateralReceived",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
       "name": "currentEpochId",
       "inputs": [],
       "outputs": [
@@ -302,6 +325,24 @@
         }
       ],
       "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "forceSettlePosition",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "sharePrice",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateralReceived",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
     },
     {
       "type": "function",
@@ -408,6 +449,19 @@
       ],
       "outputs": [],
       "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "isHalted",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
     },
     {
       "type": "function",
@@ -584,43 +638,7 @@
     },
     {
       "type": "function",
-      "name": "pendingDepositRequest",
-      "inputs": [
-        {
-          "name": "owner",
-          "type": "address",
-          "internalType": "address"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "",
-          "type": "tuple",
-          "internalType": "struct IVault.UserPendingTransaction",
-          "components": [
-            {
-              "name": "amount",
-              "type": "uint256",
-              "internalType": "uint256"
-            },
-            {
-              "name": "transactionType",
-              "type": "uint8",
-              "internalType": "enum IVault.TransactionType"
-            },
-            {
-              "name": "requestInitiatedEpoch",
-              "type": "uint256",
-              "internalType": "uint256"
-            }
-          ]
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
-      "name": "pendingRedeemRequest",
+      "name": "pendingRequest",
       "inputs": [
         {
           "name": "owner",
@@ -1420,6 +1438,38 @@
     },
     {
       "type": "event",
+      "name": "VaultHalted",
+      "inputs": [
+        {
+          "name": "reason",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "VaultPositionSettled",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateralReceived",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
       "name": "Withdraw",
       "inputs": [
         {
@@ -1613,7 +1663,7 @@
   "constructorArgs": [
     "Foil Vault Yang",
     "fYANG",
-    "0xdd4a954c272dfc2549cde68914b63bc8b2d2583a",
+    "0xf878e6aebd95c158a8bcca62f668179b527cfe36",
     "0xb82381a3fbd3fafa77b3a7be693342618240067b",
     "577350269189625700",
     "1732050807568877200",
@@ -1622,12 +1672,12 @@
     "2"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0xc55023162b943c7d4f5960d8ac8e682d508423e0db4f36f393e334fb05d3b365",
-  "deployTxnBlockNumber": "7151814",
-  "deployTimestamp": "1732565448",
+  "deployTxnHash": "0x8ad366da15a547779781cb65f7b35e493e645ad3a3dd3e1b908c657f5c6b1855",
+  "deployTxnBlockNumber": "7313128",
+  "deployTimestamp": "1734636216",
   "sourceName": "src/vault/Vault.sol",
   "contractName": "Vault",
   "deployedOn": "deploy.VaultYang",
-  "gasUsed": 3678268,
-  "gasCost": "16635787116"
+  "gasUsed": 4045473,
+  "gasCost": "14355497486"
 }

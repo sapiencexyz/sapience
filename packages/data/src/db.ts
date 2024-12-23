@@ -10,7 +10,7 @@ import { RenderJob } from "./models/RenderJob";
 import { IndexPrice } from "./models/IndexPrice";
 import { CollateralTransfer } from "./models/CollateralTransfer";
 
-const isProduction = process.env.NODE_ENV === "production";
+const isLive = process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging";
 const devDatabase = process.env.POSTGRES_DB;
 const devUsername = process.env.POSTGRES_USER;
 
@@ -56,7 +56,7 @@ const postgresDataSource: DataSource = new DataSource({
   ],
 });
 
-const dataSource = isProduction ? postgresDataSource : devDataSource;
+const dataSource = isLive ? postgresDataSource : devDataSource;
 
 // Initialize database connection
 export const initializeDataSource = async () => {
