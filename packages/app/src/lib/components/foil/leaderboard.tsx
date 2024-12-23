@@ -201,7 +201,7 @@ const Leaderboard = ({ params }: Props) => {
       {
         id: 'owner',
         header: 'Wallet Address',
-        accessorFn: (row) => row.owner,
+        accessorKey: 'owner',
         cell: OwnerCell,
       },
       {
@@ -213,7 +213,7 @@ const Leaderboard = ({ params }: Props) => {
       {
         id: 'pnl',
         header: 'Profit/Loss',
-        accessorFn: (row) => row.totalPnL,
+        accessorKey: 'totalPnL',
         cell: PnLCell,
       },
       {

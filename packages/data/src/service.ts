@@ -13,7 +13,7 @@ import { Position } from "./models/Position";
 import { cannon } from "viem/chains";
 import { Market } from "./models/Market";
 import express, { Request, Response, NextFunction } from "express";
-import { Between, Repository } from "typeorm";
+import { Between, In, Repository } from "typeorm";
 import { Transaction } from "./models/Transaction";
 import { Epoch } from "./models/Epoch";
 import { formatUnits } from "viem";
@@ -1041,19 +1041,8 @@ const startServer = async () => {
 
       const positions = await positionRepository.find({
         where,
-        relations: [
-          "epoch",
-          "epoch.market",
-          "transactions",
-          "transactions.collateralTransfer",
-        ],
         order: { positionId: "ASC" },
       });
-
-      // const collateralTransfers = await collateralTransferRepository.find({
-      //   where: { market: { id: marketId } },
-      //   order: { timestamp: "ASC" },
-      // });
 
       const marketAddress = address;
       const client = getProviderForChain(Number(chainId));
@@ -1089,17 +1078,32 @@ const startServer = async () => {
         return Number(collateralValue);
       };
 
-      const calculatePositionCollateralFlow = (
-        collateralTransfers: CollateralTransfer[],
-        owner: string
-      ) => {
+      const calculateCollateralFlow = async (positions: Position[]) => {
+        // console.log(
+        //   "LLL positions",
+        //   positions.map((p) => p.positionId)
+        // );
+        const transactions = await transactionRepository.find({
+          where: {
+            position: { positionId: In(positions.map((p) => p.positionId)) },
+          },
+          relations: ["position", "collateralTransfer"],
+        });
+
+        // console.log(
+        //   "LLL transactions",
+        //   transactions.map((t) => ({
+        //     id: t.position.positionId,
+        //     collateral: t.collateralTransfer?.collateral,
+        //   }))
+        // );
         let collateralFlow = 0;
         let maxCollateral = 0;
-        for (const transfer of collateralTransfers) {
-          if (transfer.owner === owner) {
-            collateralFlow += Number(transfer.collateral);
+        for (const transaction of transactions) {
+          if (transaction.collateralTransfer) {
+            collateralFlow += Number(transaction.collateralTransfer.collateral);
+            maxCollateral = Math.max(maxCollateral, collateralFlow);
           }
-          maxCollateral = Math.max(maxCollateral, collateralFlow);
         }
         return { collateralFlow, maxCollateral };
       };
@@ -1115,26 +1119,28 @@ const startServer = async () => {
       const groupedByOwner: Record<string, GroupedPosition> = {};
       for (const position of positions) {
         if (!groupedByOwner[position.owner]) {
-          const { collateralFlow, maxCollateral } =
-            calculatePositionCollateralFlow(
-              collateralTransfers,
-              position.owner
-            );
           groupedByOwner[position.owner] = {
             owner: position.owner,
             positions: [],
-            totalPnL: -collateralFlow,
-            totalCollateralFlow: collateralFlow,
-            ownerMaxCollateral: maxCollateral,
+            totalPnL: 0,
+            totalCollateralFlow: 0,
+            ownerMaxCollateral: 0,
           };
         }
 
         const positionPnL = await calculateOpenPositionValue(position);
-
-        position.transactions = [];
-        groupedByOwner[position.owner].positions.push(position);
-
         groupedByOwner[position.owner].totalPnL += positionPnL;
+
+        groupedByOwner[position.owner].positions.push(position);
+      }
+
+      for (const owner in groupedByOwner) {
+        const { collateralFlow, maxCollateral } = await calculateCollateralFlow(
+          groupedByOwner[owner].positions
+        );
+        groupedByOwner[owner].totalPnL -= collateralFlow;
+        groupedByOwner[owner].totalCollateralFlow = -collateralFlow;
+        groupedByOwner[owner].ownerMaxCollateral = maxCollateral;
       }
 
       // Convert to array and sort by total PnL
