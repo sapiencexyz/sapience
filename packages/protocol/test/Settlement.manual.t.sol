@@ -11,6 +11,7 @@ import {TestTrade} from "./helpers/TestTrade.sol";
 import {TestUser} from "./helpers/TestUser.sol";
 import {DecimalPrice} from "../src/market/libraries/DecimalPrice.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import {Errors} from "../src/market/storage/Errors.sol";
 
 contract ManualSettlementTest is TestTrade {
     using Cannon for Vm;
@@ -92,6 +93,10 @@ contract ManualSettlementTest is TestTrade {
             DecimalPrice.sqrtRatioX96ToPrice(sqrtPriceX96),
             "Settlement price should match"
         );
+
+        // Attempt to settle again should revert
+        vm.expectRevert(Errors.EpochSettled.selector);
+        foil.__manual_setSettlementPrice();
 
         vm.prank(lp1);
         foil.settlePosition(lpPositionId);
