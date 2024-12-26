@@ -865,7 +865,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
         // if vault is halted, transaction reconciliation has not happened
         // so we can directly decrease the pendingWithdrawals
-        if (__VAULT_HALTED) {
+        if (
+            __VAULT_HALTED && pendingTxn.requestInitiatedEpoch == currentEpochId
+        ) {
             totalPendingWithdrawals -= sharesAmount;
         } else {
             pendingSharesToBurn -= sharesAmount;
