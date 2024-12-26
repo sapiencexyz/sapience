@@ -7,7 +7,6 @@ import {
   Unique,
   ManyToOne,
   AfterInsert,
-  AfterUpdate,
 } from "typeorm";
 import { Market } from "./Market";
 import { upsertIndexPriceFromResourcePrice } from "src/controllers/price";

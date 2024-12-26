@@ -3,7 +3,6 @@ import {
   PrimaryGeneratedColumn,
   Column,
   AfterInsert,
-  AfterUpdate,
   CreateDateColumn,
   OneToOne,
   Unique,

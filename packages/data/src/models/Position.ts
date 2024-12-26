@@ -8,11 +8,7 @@ import {
   Unique,
 } from "typeorm";
 import { Transaction } from "./Transaction";
-import {
-  TOKEN_PRECISION,
-  DECIMAL_SCALE,
-  NUMERIC_PRECISION,
-} from "../constants";
+import { NUMERIC_PRECISION } from "../constants";
 import { Epoch } from "./Epoch";
 
 @Entity()
