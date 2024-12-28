@@ -410,6 +410,8 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         int256 signedTradedVGas;
         int256 signedTradedVEth;
         uint256 vEthFromZero; // vEth involved in the transaction from zero to target size
+        uint256 tradeRatioD18RoundDown;
+        uint256 tradeRatioD18RoundUp;
     }
 
     struct QuoteOrTradeInputParams {
@@ -470,7 +472,8 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
         // 2- Get PnL and vEth involved in the transaction from initial size to zero (intermediate close the position).
         (
-            output.tradeRatioD18,
+            runtime.tradeRatioD18RoundDown,
+            runtime.tradeRatioD18RoundUp,
             output.closePnL,
             runtime.vEthFromZero
         ) = calculateCloseEthAndPnl(
@@ -482,16 +485,25 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             params.oldPosition
         );
 
-        if (
-            output.tradeRatioD18 < epoch.minPriceD18 ||
-            output.tradeRatioD18 > epoch.maxPriceD18
-        ) {
+        // Check if the tradeRatioD18 is within the bounds
+        if (runtime.tradeRatioD18RoundDown < epoch.minPriceD18) {
             revert Errors.TradePriceOutOfBounds(
-                output.tradeRatioD18,
+                runtime.tradeRatioD18RoundDown,
                 epoch.minPriceD18,
                 epoch.maxPriceD18
             );
         }
+
+        if (runtime.tradeRatioD18RoundUp > epoch.maxPriceD18) {
+            revert Errors.TradePriceOutOfBounds(
+                runtime.tradeRatioD18RoundUp,
+                epoch.minPriceD18,
+                epoch.maxPriceD18
+            );
+        }
+
+        // Use the truncated value as the tradeRatioD18 (used later in the event, the difference between roundDown and roundUp is not important in the event and quote functions as it is informative)
+        output.tradeRatioD18 = runtime.tradeRatioD18RoundDown;
 
         // 3- Regenerate the new position after the trade and closure
         if (params.targetSize > 0) {
@@ -605,7 +617,12 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
     )
         internal
         pure
-        returns (uint256 tradeRatioD18, int256 closePnL, uint256 vEthFromZero)
+        returns (
+            uint256 tradeRatioD18RoundDown,
+            uint256 tradeRatioD18RoundUp,
+            int256 closePnL,
+            uint256 vEthFromZero
+        )
     {
         // Notice: This function will use rounding up/low depending on the direction of the trade and the initial/final position size
         // This is to avoid rounding errors when the position is closed
@@ -614,11 +631,8 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         // - closePnL will always tend to be more negative (-1 if rounding is needed)
 
         // Get both versions of the tradeRatioD18 (rounded down and rounded up)
-        uint256 tradeRatioD18RoundDown = tradedVEth.divDecimal(tradedVGas);
-        uint256 tradeRatioD18RoundUp = tradedVEth.divDecimalRoundUp(tradedVGas);
-
-        // Use the truncated value as the tradeRatioD18 (used later in the event and validations)
-        tradeRatioD18 = tradeRatioD18RoundDown;
+        tradeRatioD18RoundDown = tradedVEth.divDecimal(tradedVGas);
+        tradeRatioD18RoundUp = tradedVEth.divDecimalRoundUp(tradedVGas);
 
         // get both versions of vEthToZero using both tradeRatioD18
         // vEth to compensate the gas (either to pay borrowedVGas or borrowedVEth tokens from the close trade)
@@ -662,6 +676,11 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             }
         }
 
-        return (tradeRatioD18, closePnL, vEthFromZero);
+        return (
+            tradeRatioD18RoundDown,
+            tradeRatioD18RoundUp,
+            closePnL,
+            vEthFromZero
+        );
     }
 }
