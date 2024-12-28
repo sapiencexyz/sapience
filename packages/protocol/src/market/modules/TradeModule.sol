@@ -90,7 +90,11 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         position.borrowedVGas = outputParams.position.borrowedVGas;
 
         // Check if the collateral is within the limit
-        if (outputParams.requiredCollateral > deltaCollateralLimit) {
+        // Notice: if deltaCollateralLimit is zero, it means no limit, so no need to check
+        if (
+            deltaCollateralLimit > 0 &&
+            outputParams.requiredCollateral > deltaCollateralLimit
+        ) {
             revert Errors.CollateralLimitReached(
                 outputParams.requiredCollateral.toInt(),
                 deltaCollateralLimit.toInt()
