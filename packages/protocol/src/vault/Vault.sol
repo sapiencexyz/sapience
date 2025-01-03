@@ -262,8 +262,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint160 startingSqrtPriceX96,
         uint256 collateralAmount
     ) private {
+        // positionId is only 0 when creating the first epoch
         require(
-            collateralAmount > minimumCollateral,
+            collateralAmount > minimumCollateral || positionId == 0,
             "Minimum collateral for next epoch not met"
         );
 
@@ -282,7 +283,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             block.timestamp
         );
 
-        positionId = _createNewLiquidityPosition(collateralAmount);
+        // positionId is only 0 when creating the first epoch
+        if (positionId != 0) {
+            positionId = _createNewLiquidityPosition(collateralAmount);
+        }
     }
 
     function _calculateNextStartTime(
