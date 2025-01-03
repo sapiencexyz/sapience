@@ -10,6 +10,7 @@ import { createOrUpdateEpochFromContract } from "./controllers/marketHelpers";
 import { getMarketStartEndBlock } from "./controllers/marketHelpers";
 import { Between } from "typeorm";
 import * as Sentry from "@sentry/node";
+import CelestiaIndexer from "./resourcePriceFunctions/celestiaIndexer";
 
 const MAX_RETRIES = Infinity;
 const RETRY_DELAY = 5000; // 5 seconds
@@ -261,6 +262,24 @@ if (process.argv[2] === "reindexMarket") {
     process.exit(0);
   };
   callReindexMissing();
+} else if (process.argv[2] === "testCelestia") {
+  let celestiaIndexer: CelestiaIndexer = new CelestiaIndexer();
+  const callTestCelestia = async () => {
+    await celestiaIndexer.start();
+    console.log("DONE");
+  };
+  await callTestCelestia();
+  let isRunning = true;
+  process.on("SIGINT", () => {
+    isRunning = false;
+    celestiaIndexer.stop();
+    console.log("Celestia indexer stopped");
+  });
+
+  while (isRunning) {
+    celestiaIndexer.pollStatus();
+    await delay(100000);
+  }
 } else {
   main();
 }
