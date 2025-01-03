@@ -201,10 +201,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             )
         {} catch Error(string memory reason) {
             __VAULT_HALTED = true;
-            emit VaultHalted(bytes(reason));
+            emit VaultHalted(bytes(reason), collateralReceived);
         } catch {
             __VAULT_HALTED = true;
-            emit VaultHalted("Unknown error");
+            emit VaultHalted("Unknown error", collateralReceived);
         }
     }
 
@@ -262,6 +262,11 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint160 startingSqrtPriceX96,
         uint256 collateralAmount
     ) private {
+        require(
+            collateralAmount > minimumCollateral,
+            "Minimum collateral for next epoch not met"
+        );
+
         // get lower and upper bounds for the price tick for the new epoch
         (
             int24 baseAssetMinPriceTick,
@@ -277,11 +282,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             block.timestamp
         );
 
-        if (collateralAmount > minimumCollateral) {
-            positionId = _createNewLiquidityPosition(collateralAmount);
-        } else {
-            positionId = 0;
-        }
+        positionId = _createNewLiquidityPosition(collateralAmount);
     }
 
     function _calculateNextStartTime(
