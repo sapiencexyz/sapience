@@ -80,6 +80,10 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
         Market.Data storage market = Market.load();
         Epoch.Data storage epoch = Epoch.loadValid(market.lastEpochId);
 
+        if (epoch.settled) {
+            revert Errors.EpochSettled();
+        }
+
         uint256 epochDuration = epoch.endTime - epoch.startTime;
         uint256 requiredDelay = epochDuration * DURATION_MULTIPLIER;
         uint256 timeSinceEnd = block.timestamp - epoch.endTime;

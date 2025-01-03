@@ -497,6 +497,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     function maxWithdraw(
         address owner
     ) external view override returns (uint256 maxAssets) {
+        if (owner == address(this)) {
+            return 0;
+        }
         // Maximum assets that can be withdrawn
         return convertToAssets(balanceOf(owner));
     }
@@ -504,6 +507,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     function maxRedeem(
         address owner
     ) external view override returns (uint256 maxShares) {
+        if (owner == address(this)) {
+            return 0;
+        }
         // Maximum shares that can be redeemed
         return balanceOf(owner);
     }
@@ -870,7 +876,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
         // if vault is halted, transaction reconciliation has not happened
         // so we can directly decrease the pendingWithdrawals
-        if (__VAULT_HALTED) {
+        if (
+            __VAULT_HALTED && pendingTxn.requestInitiatedEpoch == currentEpochId
+        ) {
             totalPendingWithdrawals -= sharesAmount;
         } else {
             pendingSharesToBurn -= sharesAmount;

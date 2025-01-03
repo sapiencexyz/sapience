@@ -253,6 +253,7 @@ interface IVault is
 
     /**
      * @notice Submit the market settlement price for an epoch
+     * @notice ***WARNING*** msg.sender receives the bond amount so if it's a contract, please be wary of this.
      * @param epochId The epoch ID to settle
      * @param priceSqrtX96 The settlement price in sqrt form
      * @return assertionId The ID of the settlement assertion

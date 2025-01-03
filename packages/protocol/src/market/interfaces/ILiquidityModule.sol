@@ -46,6 +46,13 @@ interface ILiquidityModule {
         uint256 loanAmount1;
     }
 
+    /**
+     * @notice Decreases the liquidity position
+     * @param params The parameters for decreasing the liquidity position
+     * @return amount0 The amount of token0 decreased
+     * @return amount1 The amount of token1 decreased
+     * @return collateralAmount If position is closed, the amount of collateral returned.  If position is not closed, then this amount is current collateral amount backing the position.
+     */
     function decreaseLiquidityPosition(
         IFoilStructs.LiquidityDecreaseParams memory params
     )
