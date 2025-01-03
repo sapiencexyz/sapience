@@ -4,11 +4,9 @@ import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Suspense, useEffect } from 'react';
 
-import { MarketLayout } from '~/lib/components/market/MarketLayout';
-import { MarketNav } from '~/lib/components/market/MarketNav';
 import { useMarketList } from '~/lib/context/MarketListProvider';
 
-const ExploreContent = () => {
+const EarnContent = () => {
   const router = useRouter();
   const { markets, isLoading } = useMarketList();
 
@@ -17,7 +15,7 @@ const ExploreContent = () => {
       const publicMarkets = markets.filter(market => market.public);
       if (publicMarkets.length > 0) {
         const firstMarket = publicMarkets[0];
-        router.replace(`/${firstMarket.chainId}:${firstMarket.address}`);
+        router.replace(`/earn/${firstMarket.chainId}:${firstMarket.address}`);
       }
     }
   }, [markets, isLoading, router]);
@@ -33,13 +31,18 @@ const ExploreContent = () => {
   return null;
 };
 
-const HomePage = () => {
+const EarnPage = () => {
   return (
-    <MarketLayout
-      nav={<MarketNav type="market" />}
-      content={<ExploreContent />}
-    />
+    <Suspense
+      fallback={
+        <div className="flex justify-center items-center w-full m-10">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      }
+    >
+      <EarnContent />
+    </Suspense>
   );
 };
 
-export default HomePage;
+export default EarnPage; 

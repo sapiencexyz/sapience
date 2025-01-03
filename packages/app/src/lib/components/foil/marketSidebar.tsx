@@ -3,6 +3,7 @@ import { useContext, useEffect } from 'react';
 
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { MarketContext } from '~/lib/context/MarketProvider';
+import { ScrollArea } from '~/components/ui/scroll-area';
 
 import AddEditTrade from './addEditTrade';
 import AddEditLiquidity from './Liquidity/AddEditLiquidity';
@@ -42,8 +43,10 @@ export default function MarketSidebar({ isTrade }: { isTrade: boolean }) {
   };
 
   return (
-    <div className="h-full border border-border rounded-md w-full flex-1 flex flex-col p-6 overflow-y-auto shadow-sm">
-      {renderContent()}
+    <div className="h-full border border-border rounded-md w-full flex-1 flex flex-col p-6 shadow-sm">
+      <ScrollArea className="h-full">
+        {renderContent()}
+      </ScrollArea>
     </div>
   );
 }
