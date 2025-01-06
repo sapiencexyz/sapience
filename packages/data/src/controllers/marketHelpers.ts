@@ -4,6 +4,7 @@ import {
   marketPriceRepository,
   marketRepository,
   positionRepository,
+  collateralTransferRepository,
 } from "../db";
 import { Event } from "../models/Event";
 import { MarketParams } from "../models/MarketParams";
@@ -11,19 +12,16 @@ import { Market } from "../models/Market";
 import { Epoch } from "../models/Epoch";
 import { Position } from "../models/Position";
 import { Transaction, TransactionType } from "../models/Transaction";
+import { CollateralTransfer } from "../models/CollateralTransfer";
 import { PublicClient } from "viem";
 import {
   Deployment,
   EpochCreatedEventLog,
   MarketCreatedUpdatedEventLog,
-  LiquidityPositionClosedEventLog,
-  LiquidityPositionCreatedEventLog,
-  LiquidityPositionModifiedEventLog,
   TradePositionEventLog,
-  EventType,
   MarketInfo,
-  PositionSettledEventLog,
   EpochData,
+  EventType,
 } from "../interfaces";
 import { MarketPrice } from "../models/MarketPrice";
 import { getBlockByTimestamp, getProviderForChain } from "../helpers";
@@ -63,7 +61,7 @@ export const handleTransferEvent = async (event: Event) => {
  * @param event The Transfer event
  */
 export const handlePositionSettledEvent = async (event: Event) => {
-  const { positionId, withdrawnCollateral } = event.logData.args;
+  const { positionId } = event.logData.args;
 
   let existingPosition = await positionRepository.findOne({
     where: {
@@ -78,6 +76,7 @@ export const handlePositionSettledEvent = async (event: Event) => {
   }
 
   existingPosition.isSettled = true;
+
   await positionRepository.save(existingPosition);
   console.log(`Updated isSettled state of position ${positionId} to true`);
 };
@@ -86,26 +85,11 @@ export const handlePositionSettledEvent = async (event: Event) => {
  * Creates or modifies a Position in the database based on the given Transaction.
  * @param transaction the Transaction to use for creating/modifying the position
  */
-export const createOrModifyPosition = async (transaction: Transaction) => {
-  const eventArgs = transaction.event.logData.args; //as LiquidityPositionModifiedEventLog;
+export const createOrModifyPositionFromTransaction = async (
+  transaction: Transaction
+) => {
+  const eventArgs = transaction.event.logData.args;
   const epochId = eventArgs.epochId;
-
-  const existingPosition = await positionRepository.findOne({
-    where: {
-      epoch: {
-        epochId: epochId,
-        market: { address: transaction.event.market.address },
-      },
-      positionId: transaction.event.logData.args.positionId,
-    },
-    relations: [
-      "transactions",
-      "epoch",
-      "epoch.market",
-      "transactions.event",
-      "transactions.marketPrice",
-    ],
-  });
 
   const epoch = await epochRepository.findOne({
     where: {
@@ -123,58 +107,119 @@ export const createOrModifyPosition = async (transaction: Transaction) => {
     return;
   }
 
-  const originalCollateral = existingPosition
-    ? existingPosition.collateral
-    : "0";
+  const existingPosition = await positionRepository.findOne({
+    where: {
+      epoch: {
+        epochId: epochId,
+        market: { address: transaction.event.market.address },
+      },
+      positionId: transaction.event.logData.args.positionId,
+    },
+    relations: [
+      "transactions",
+      "epoch",
+      "epoch.market",
+      "transactions.event",
+      "transactions.marketPrice",
+      "transactions.collateralTransfer",
+    ],
+  });
+
   const position = existingPosition || new Position();
 
   if (existingPosition) {
     console.log("existing position: ", existingPosition);
   }
-  console.log("eventArgs: =", eventArgs);
 
-  position.isLP = isLpPosition(transaction);
   position.positionId = Number(eventArgs.positionId);
+  position.epoch = epoch;
   position.owner = eventArgs.sender || position.owner;
-  position.baseToken =
-    eventArgs.vGasAmount?.toString() ||
-    eventArgs.loanAmount0?.toString() ||
-    position.baseToken ||
-    eventArgs.addedAmount0?.toString();
-  position.quoteToken =
-    eventArgs.vEthAmount?.toString() ||
-    eventArgs.loanAmount1?.toString() ||
-    position.quoteToken ||
-    eventArgs.addedAmount1?.toString();
-  position.borrowedBaseToken =
-    eventArgs.borrowedVGas?.toString() ||
-    eventArgs.loanAmount0?.toString() ||
-    position.borrowedBaseToken;
-  position.borrowedQuoteToken =
-    eventArgs.borrowedVEth?.toString() ||
-    eventArgs.loanAmount1?.toString() ||
-    position.borrowedQuoteToken;
+  position.isLP = isLpPosition(transaction);
+  position.transactions = position.transactions || [];
+  position.transactions.push(transaction);
 
-  position.collateral = (
-    BigInt(originalCollateral) + BigInt(transaction.collateralDelta)
-  ).toString();
+  // Latest position state
+  position.baseToken = eventArgs.positionVgasAmount;
+  position.quoteToken = eventArgs.positionVethAmount;
+  position.borrowedBaseToken = eventArgs.positionBorrowedVgas;
+  position.borrowedQuoteToken = eventArgs.positionBorrowedVeth;
+  position.collateral = eventArgs.positionCollateralAmount;
+
+  // LP Position state
+  position.lpBaseToken = eventArgs.loanAmount0 || eventArgs.addedAmount0 || "0";
+  position.lpQuoteToken =
+    eventArgs.loanAmount1 || eventArgs.addedAmount1 || "0";
+
+  // LP Position configuration
   if (eventArgs.upperTick && eventArgs.lowerTick) {
     position.highPriceTick = eventArgs.upperTick.toString();
     position.lowPriceTick = eventArgs.lowerTick.toString();
   }
-  position.epoch = epoch;
-  position.transactions = position.transactions || [];
-  position.transactions.push(transaction);
+
+  // Non-setted position data
+  // position.owner = ;
+  // position.settled = ;
 
   console.log("Saving position: ", position);
   await positionRepository.save(position);
+};
+
+const updateTransactionStateFromEvent = (
+  transaction: Transaction,
+  event: Event
+) => {
+  const eventArgs = event.logData.args;
+  // Latest position state
+  transaction.baseToken = eventArgs.positionVgasAmount;
+  transaction.quoteToken = eventArgs.positionVethAmount;
+  transaction.borrowedBaseToken = eventArgs.positionBorrowedVgas;
+  transaction.borrowedQuoteToken = eventArgs.positionBorrowedVeth;
+
+  transaction.collateral = eventArgs.positionCollateralAmount;
+
+  if (eventArgs.tradeRatio) {
+    transaction.tradeRatioD18 = eventArgs.tradeRatio;
+  }
+};
+
+/**
+ * Upsert a CollateralTransfer given a Transaction.
+ * @param transaction the Transaction to upsert a CollateralTransfer for
+ */
+export const insertCollateralTransfer = async (transaction: Transaction) => {
+  const eventArgs = transaction.event.logData.args;
+
+  if (!eventArgs.deltaCollateral || eventArgs.deltaCollateral == "0") {
+    console.log(
+      "Delta collateral not found in eventArgs",
+      eventArgs.deltaCollateral
+    );
+    return;
+  }
+
+  console.log("Upserting delta colalteral for transaction: ", transaction);
+  // upsert market price
+  const newCollateralTransfer = new CollateralTransfer();
+
+  newCollateralTransfer.owner = transaction.event.logData.args.sender;
+  newCollateralTransfer.transaction = transaction;
+  newCollateralTransfer.transactionHash = transaction.event.transactionHash;
+
+  newCollateralTransfer.collateral = eventArgs.deltaCollateral;
+  newCollateralTransfer.timestamp = Number(transaction.event.timestamp);
+
+  // Ensure the transaction has a collateralTransfer reference
+  transaction.collateralTransfer = newCollateralTransfer;
+
+  console.log("upserting collateral transfer: ", newCollateralTransfer);
+  await collateralTransferRepository.save(newCollateralTransfer);
 };
 
 /**
  * Upsert a MarketPrice given a Transaction.
  * @param transaction the Transaction to upsert a MarketPrice for
  */
-export const upsertMarketPrice = async (transaction: Transaction) => {
+export const insertMarketPrice = async (transaction: Transaction) => {
   if (
     transaction.type === TransactionType.LONG ||
     transaction.type === TransactionType.SHORT
@@ -186,26 +231,13 @@ export const upsertMarketPrice = async (transaction: Transaction) => {
     newMp.value = finalPrice;
     newMp.timestamp = transaction.event.timestamp;
     newMp.transaction = transaction;
+
+    // Ensure the transaction has a marketPrice reference
+    transaction.marketPrice = newMp;
+
     console.log("upserting market price: ", newMp);
     await marketPriceRepository.save(newMp);
   }
-};
-
-const isLpPosition = (transaction: Transaction) => {
-  if (transaction.type === TransactionType.ADD_LIQUIDITY) {
-    return true;
-  } else if (transaction.type === TransactionType.REMOVE_LIQUIDITY) {
-    // for remove liquidity, check if the position closed and market price changed, which means it becomes a trade position
-    const eventName = transaction.event.logData.eventName;
-    if (
-      eventName === EventType.LiquidityPositionClosed &&
-      `${transaction.event.logData.args.kind}` === "2"
-    ) {
-      return false;
-    }
-    return true;
-  }
-  return false;
 };
 
 export const createOrUpdateMarketFromContract = async (
@@ -214,9 +246,10 @@ export const createOrUpdateMarketFromContract = async (
   chainId: number,
   initialMarket?: Market
 ) => {
+  const address = contractDeployment.address.toLowerCase();
   // get market and epoch from contract
   const marketReadResult: any = await client.readContract({
-    address: contractDeployment.address as `0x${string}`,
+    address: address as `0x${string}`,
     abi: contractDeployment.abi,
     functionName: "getMarket",
   });
@@ -226,14 +259,14 @@ export const createOrUpdateMarketFromContract = async (
   if (!updatedMarket) {
     // check if market already exists in db
     let existingMarket = await marketRepository.findOne({
-      where: { address: contractDeployment.address, chainId },
+      where: { address, chainId },
       relations: ["epochs"],
     });
     updatedMarket = existingMarket || new Market();
   }
 
   // update market params appropriately
-  updatedMarket.address = contractDeployment.address;
+  updatedMarket.address = address;
   updatedMarket.deployTxnBlockNumber = Number(
     contractDeployment.deployTxnBlockNumber
   );
@@ -344,6 +377,23 @@ export const getTradeTypeFromEvent = (eventArgs: TradePositionEventLog) => {
 };
 
 /**
+ * Updates a Transaction with the relevant information from a LiquidityPositionCreatedEventLog event.
+ * @param newTransaction the Transaction to update
+ * @param event the Event containing the LiquidityPositionCreatedEventLog args
+ */
+export const updateTransactionFromAddLiquidityEvent = (
+  newTransaction: Transaction,
+  event: Event
+) => {
+  newTransaction.type = TransactionType.ADD_LIQUIDITY;
+
+  updateTransactionStateFromEvent(newTransaction, event);
+
+  newTransaction.lpBaseDeltaToken = event.logData.args.addedAmount0;
+  newTransaction.lpQuoteDeltaToken = event.logData.args.addedAmount1;
+};
+
+/**
  * Updates a Transaction with the relevant information from a LiquidityPositionModifiedEventLog event.
  * @param newTransaction the Transaction to update
  * @param event the Event containing the LiquidityPositionModifiedEventLog args
@@ -351,30 +401,14 @@ export const getTradeTypeFromEvent = (eventArgs: TradePositionEventLog) => {
  */
 export const updateTransactionFromLiquidityClosedEvent = async (
   newTransaction: Transaction,
-  event: Event,
-  epochId: number
+  event: Event
 ) => {
   newTransaction.type = TransactionType.REMOVE_LIQUIDITY;
 
-  const eventArgs = event.logData.args as LiquidityPositionClosedEventLog;
-  const originalPosition = await positionRepository.findOne({
-    where: {
-      positionId: Number(eventArgs.positionId),
-      epoch: {
-        epochId,
-        market: { address: event.market.address },
-      },
-    },
-    relations: ["epoch", "epoch.market"],
-  });
-  if (!originalPosition) {
-    throw new Error(`Position not found: ${eventArgs.positionId}`);
-  }
-  const collateralDeltaBigInt =
-    BigInt("-1") * BigInt(originalPosition.collateral);
-  newTransaction.baseTokenDelta = eventArgs.collectedAmount0;
-  newTransaction.quoteTokenDelta = eventArgs.collectedAmount1;
-  newTransaction.collateralDelta = collateralDeltaBigInt.toString();
+  updateTransactionStateFromEvent(newTransaction, event);
+
+  newTransaction.lpBaseDeltaToken = event.logData.args.collectedAmount0;
+  newTransaction.lpQuoteDeltaToken = event.logData.args.collectedAmount1;
 };
 
 /**
@@ -386,61 +420,25 @@ export const updateTransactionFromLiquidityClosedEvent = async (
 export const updateTransactionFromLiquidityModifiedEvent = async (
   newTransaction: Transaction,
   event: Event,
-  epochId: number,
   isDecrease?: boolean
 ) => {
+  const epochId = event.logData.args.epochId;
   newTransaction.type = isDecrease
     ? TransactionType.REMOVE_LIQUIDITY
     : TransactionType.ADD_LIQUIDITY;
-  const eventArgsModifyLiquidity = event.logData
-    .args as LiquidityPositionModifiedEventLog;
-  console.log("eventArgsModifyLiquidity", eventArgsModifyLiquidity);
-  const originalPosition = await positionRepository.findOne({
-    where: {
-      positionId: Number(eventArgsModifyLiquidity.positionId),
-      epoch: {
-        epochId,
-        market: { address: event.market.address },
-      },
-    },
-    relations: ["epoch", "epoch.market"],
-  });
-  if (!originalPosition) {
-    throw new Error(
-      `Position not found: ${eventArgsModifyLiquidity.positionId}`
-    );
-  }
-  const collateralDeltaBigInt =
-    BigInt(eventArgsModifyLiquidity.collateralAmount) -
-    BigInt(originalPosition.collateral ?? "0");
-  newTransaction.baseTokenDelta = isDecrease
+
+  updateTransactionStateFromEvent(newTransaction, event);
+
+  newTransaction.lpBaseDeltaToken = isDecrease
     ? (
         BigInt(event.logData.args.decreasedAmount0 ?? "0") * BigInt(-1)
       ).toString()
-    : (event.logData.args.increasedAmount0 ?? "0");
-  newTransaction.quoteTokenDelta = isDecrease
+    : event.logData.args.increasedAmount0;
+  newTransaction.lpQuoteDeltaToken = isDecrease
     ? (
         BigInt(event.logData.args.decreasedAmount1 ?? "0") * BigInt(-1)
       ).toString()
-    : (event.logData.args.increasedAmount1 ?? "0");
-  newTransaction.collateralDelta = collateralDeltaBigInt.toString();
-};
-
-/**
- * Updates a Transaction with the relevant information from a LiquidityPositionCreatedEventLog event.
- * @param newTransaction the Transaction to update
- * @param event the Event containing the LiquidityPositionCreatedEventLog args
- */
-export const updateTransactionFromAddLiquidityEvent = (
-  newTransaction: Transaction,
-  event: Event
-) => {
-  newTransaction.type = TransactionType.ADD_LIQUIDITY;
-  const eventArgsAddLiquidity = event.logData
-    .args as LiquidityPositionCreatedEventLog;
-  newTransaction.baseTokenDelta = eventArgsAddLiquidity.addedAmount0;
-  newTransaction.quoteTokenDelta = eventArgsAddLiquidity.addedAmount1;
-  newTransaction.collateralDelta = eventArgsAddLiquidity.collateralAmount;
+    : event.logData.args.increasedAmount1;
 };
 
 /**
@@ -450,71 +448,35 @@ export const updateTransactionFromAddLiquidityEvent = (
  */
 export const updateTransactionFromTradeModifiedEvent = async (
   newTransaction: Transaction,
-  event: Event,
-  epochId: number
+  event: Event
 ) => {
-  const eventArgsCreateTrade = event.logData.args as TradePositionEventLog;
   newTransaction.type = getTradeTypeFromEvent(
     event.logData.args as TradePositionEventLog
   );
 
-  const initialPosition = await positionRepository.findOne({
-    where: {
-      positionId: Number(eventArgsCreateTrade.positionId),
-      epoch: {
-        epochId,
-        market: { address: event.market.address },
-      },
-    },
-    relations: ["epoch"],
-  });
-
-  const baseTokenInitial = initialPosition ? initialPosition.baseToken : "0";
-  const quoteTokenInitial = initialPosition ? initialPosition.quoteToken : "0";
-  const collateralInitial = initialPosition ? initialPosition.collateral : "0";
-
-  newTransaction.baseTokenDelta = (
-    BigInt(eventArgsCreateTrade.vGasAmount) - BigInt(baseTokenInitial)
-  ).toString();
-  newTransaction.quoteTokenDelta = (
-    BigInt(eventArgsCreateTrade.vEthAmount) - BigInt(quoteTokenInitial)
-  ).toString();
-  newTransaction.collateralDelta = (
-    BigInt(eventArgsCreateTrade.collateralAmount) - BigInt(collateralInitial)
-  ).toString();
-
-  newTransaction.tradeRatioD18 = eventArgsCreateTrade.tradeRatio;
+  updateTransactionStateFromEvent(newTransaction, event);
 };
 
 export const updateTransactionFromPositionSettledEvent = async (
   newTransaction: Transaction,
-  event: Event,
-  epochId: number
+  event: Event
 ) => {
-  const eventArgs = event.logData.args as PositionSettledEventLog;
+  const epochId = event.logData.args.epochId;
   newTransaction.type = TransactionType.SETTLE_POSITION;
 
-  const initialPosition = await positionRepository.findOne({
+  const epoch = await epochRepository.findOne({
     where: {
-      positionId: Number(eventArgs.positionId),
-      epoch: {
-        epochId,
-        market: { address: event.market.address },
-      },
+      epochId,
+      market: { address: event.market.address },
     },
-    relations: ["epoch"],
   });
 
-  const baseTokenInitial = initialPosition?.baseToken || "0";
-  const quoteTokenInitial = initialPosition?.quoteToken || "0";
-  const settlementPriceD18 = initialPosition?.epoch.settlementPriceD18 || "0";
+  if (!epoch) {
+    throw new Error(`Epoch not found: ${epochId}`);
+  }
 
-  newTransaction.baseTokenDelta = (-BigInt(baseTokenInitial)).toString();
-  newTransaction.quoteTokenDelta = (-BigInt(quoteTokenInitial)).toString();
-  newTransaction.collateralDelta = BigInt(
-    eventArgs.withdrawableCollateral
-  ).toString();
-  newTransaction.tradeRatioD18 = settlementPriceD18;
+  updateTransactionStateFromEvent(newTransaction, event);
+  newTransaction.tradeRatioD18 = epoch?.settlementPriceD18 || "0";
 };
 
 /**
@@ -583,4 +545,21 @@ export const getMarketStartEndBlock = async (
   const startBlockNumber = Number(startBlock.number);
   const endBlockNumber = Number(endBlock.number);
   return { startBlockNumber, endBlockNumber };
+};
+
+const isLpPosition = (transaction: Transaction) => {
+  if (transaction.type === TransactionType.ADD_LIQUIDITY) {
+    return true;
+  } else if (transaction.type === TransactionType.REMOVE_LIQUIDITY) {
+    // for remove liquidity, check if the position closed and kind is 2, which means it becomes a trade position
+    const eventName = transaction.event.logData.eventName;
+    if (
+      eventName === EventType.LiquidityPositionClosed &&
+      `${transaction.event.logData.args.kind}` === "2"
+    ) {
+      return false;
+    }
+    return true;
+  }
+  return false;
 };

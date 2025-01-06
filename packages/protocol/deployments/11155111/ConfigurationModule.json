@@ -1,5 +1,5 @@
 {
-  "address": "0xFa97B4C10891fb624a52A6D5717583fd8CAD2e6B",
+  "address": "0xb48caB476fE68fF6799Cc082c4B5f5BD1590a2f3",
   "abi": [
     {
       "type": "constructor",
@@ -629,6 +629,11 @@
     },
     {
       "type": "error",
+      "name": "MathOverflowedMulDiv",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "NotInitializing",
       "inputs": []
     },
@@ -700,12 +705,12 @@
     "0xE006B58cA5aB7ba53863012dc3067A14b965C1da"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0xe0bc895ba6f38a56ea21e974586a04b6e15569d65b80ce28ae62fb549ac60083",
-  "deployTxnBlockNumber": "7151810",
-  "deployTimestamp": "1732565400",
+  "deployTxnHash": "0xaaaf7550b8995ee35ee3268b45073b3767666e5b818831c67165acd639e6a0d8",
+  "deployTxnBlockNumber": "7313125",
+  "deployTimestamp": "1734636156",
   "sourceName": "src/market/modules/ConfigurationModule.sol",
   "contractName": "ConfigurationModule",
   "deployedOn": "deploy.ConfigurationModule",
-  "gasUsed": 4197917,
-  "gasCost": "16030328720"
+  "gasUsed": 4259258,
+  "gasCost": "12779966590"
 }

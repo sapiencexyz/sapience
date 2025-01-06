@@ -18,6 +18,7 @@ import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol
 contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
     using Position for Position.Data;
     using Market for Market.Data;
+    using Epoch for Epoch.Data;
 
     function settlePosition(
         uint256 positionId
@@ -67,6 +68,45 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
             position.borrowedVGas,
             deltaCollateral
         );
+    }
+
+    function __manual_setSettlementPrice()
+        external
+        override
+        returns (uint160 settlementPriceX96)
+    {
+        uint256 DURATION_MULTIPLIER = 2;
+
+        Market.Data storage market = Market.load();
+        Epoch.Data storage epoch = Epoch.loadValid(market.lastEpochId);
+
+        if (epoch.settled) {
+            revert Errors.EpochSettled();
+        }
+
+        uint256 epochDuration = epoch.endTime - epoch.startTime;
+        uint256 requiredDelay = epochDuration * DURATION_MULTIPLIER;
+        uint256 timeSinceEnd = block.timestamp - epoch.endTime;
+
+        if (timeSinceEnd < requiredDelay) {
+            revert Errors.ManualSettlementTooEarly(
+                requiredDelay - timeSinceEnd
+            );
+        }
+
+        settlementPriceX96 = epoch.getCurrentPoolPriceSqrtX96();
+        epoch.setSettlementPriceInRange(
+            DecimalPrice.sqrtRatioX96ToPrice(settlementPriceX96)
+        );
+
+        // update settlement
+        epoch.settlement = Epoch.Settlement({
+            settlementPriceSqrtX96: settlementPriceX96,
+            submissionTime: block.timestamp,
+            disputed: false
+        });
+
+        emit EpochManualSettlement(epoch.id, settlementPriceX96);
     }
 
     function _settleLiquidityPosition(

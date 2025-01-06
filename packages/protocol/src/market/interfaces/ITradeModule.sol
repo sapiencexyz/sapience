@@ -7,7 +7,7 @@ interface ITradeModule {
     /** @dev Create a new trader position.
      * @param epochId The epoch id.
      * @param size The position size.
-     * @param maxCollateral The maximum collateral that can be deposited.
+     * @param maxCollateral The maximum collateral that can be deposited. If 0, no limit.
      * @param deadline The deadline for the transaction.
      * @return positionId The position id.
      */
@@ -21,7 +21,7 @@ interface ITradeModule {
     /** @dev Modify an existing trader position.
      * @param positionId The position id.
      * @param size The new position size.
-     * @param deltaCollateralLimit The change in the collateral limit. Positive for adding collateral, negative for reomving (closing a position means minimum profit to withdraw)
+     * @param deltaCollateralLimit The change in the collateral limit. Positive for adding collateral, negative for reomving (closing a position means minimum profit to withdraw). If 0, no limit.
      * @param deadline The deadline for the transaction.
      */
     function modifyTraderPosition(
