@@ -128,15 +128,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 startingSharePrice = 1e18;
         epochSharePrices[0] = startingSharePrice;
 
-        uint256 collateralAmount = _calculateNextCollateral(
-            0,
-            startingSharePrice
-        );
-
         _createEpochAndPosition(
             initialStartTime,
             initialSqrtPriceX96,
-            collateralAmount
+            0 // collateral received, should be 0 for first epoch
         );
         _reconcilePendingTransactions(startingSharePrice);
 
@@ -201,10 +196,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             )
         {} catch Error(string memory reason) {
             __VAULT_HALTED = true;
-            emit VaultHalted(bytes(reason));
+            emit VaultHalted(bytes(reason), collateralReceived);
         } catch {
             __VAULT_HALTED = true;
-            emit VaultHalted("Unknown error");
+            emit VaultHalted("Unknown error", collateralReceived);
         }
     }
 
@@ -238,21 +233,16 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             "Action not allowed"
         );
 
-        // get previous share price to use for reconciling pending txns
         uint256 sharePrice = epochSharePrices[currentEpochId];
 
         _createEpochAndPosition(
             startTime,
             previousResolutionSqrtPriceX96,
-            _calculateNextCollateral(
-                previousEpochCollateralReceived,
-                epochSharePrices[currentEpochId]
-            )
+            previousEpochCollateralReceived
         );
+        _reconcilePendingTransactions(sharePrice);
 
         __VAULT_HALTED = false;
-
-        _reconcilePendingTransactions(sharePrice);
 
         emit EpochProcessed(currentEpochId, sharePrice);
     }
@@ -260,8 +250,26 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     function _createEpochAndPosition(
         uint256 startTime,
         uint160 startingSqrtPriceX96,
-        uint256 collateralAmount
+        uint256 previousEpochCollateralReceived
     ) private {
+        uint256 sharePrice = epochSharePrices[currentEpochId];
+
+        uint256 collateralAmount = _calculateNextCollateral(
+            previousEpochCollateralReceived,
+            sharePrice
+        );
+
+        // if all shares are being redeemed, then ignore the check as there could be some dust remaining which will cause
+        // the revert to trigger
+        bool fullRedemption = totalSupply() - totalPendingWithdrawals == 0;
+        // if share price is greater than 0, then we need to meet the minimum collateral
+        require(
+            collateralAmount > minimumCollateral ||
+                previousEpochCollateralReceived == 0 ||
+                fullRedemption,
+            "Minimum collateral for next epoch not met"
+        );
+
         // get lower and upper bounds for the price tick for the new epoch
         (
             int24 baseAssetMinPriceTick,

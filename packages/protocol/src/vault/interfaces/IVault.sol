@@ -37,12 +37,6 @@ interface IVaultAsyncDeposit {
     );
 
     /**
-     * @notice Emitted when the creation of the new epoch or position fails
-     * @dev this is a temporary halt and the vault can be resumed by calling the `createNewEpochAndPosition` function
-     */
-    event VaultHalted(bytes reason);
-
-    /**
      * @notice Request to deposit assets into the vault
      * @param assets The amount of collateral to deposit into vault
      * @return pendingTxn The pending transaction details
@@ -242,6 +236,14 @@ interface IVault is
         uint256 indexed epochId,
         uint256 collateralReceived
     );
+
+    /**
+     * @notice Emitted when the creation of the new epoch or position fails
+     * @dev this is a temporary halt and the vault can be resumed by calling the `createNewEpochAndPosition` function
+     * @param reason The reason the vault was halted
+     * @param collateralReceived The amount of collateral received from the previous epoch's vault position
+     */
+    event VaultHalted(bytes reason, uint256 collateralReceived);
 
     /**
      * @notice Initialize the first epoch of the vault
