@@ -1,6 +1,19 @@
 {
-  "address": "0x0658E9C0c886CD559C40E21F81ca2A758CE46450",
+  "address": "0xC7FcE13ec1281d4B4B60478fc5aE88dA48C0b38B",
   "abi": [
+    {
+      "type": "function",
+      "name": "__manual_setSettlementPrice",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "settlementPriceX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
     {
       "type": "function",
       "name": "settlePosition",
@@ -13,12 +26,31 @@
       ],
       "outputs": [
         {
-          "name": "withdrawableCollateral",
+          "name": "withdrawnCollateral",
           "type": "uint256",
           "internalType": "uint256"
         }
       ],
       "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "EpochManualSettlement",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "settlementPriceD18",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
     },
     {
       "type": "event",
@@ -48,6 +80,42 @@
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
+        },
+        {
+          "name": "positionCollateralAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "positionVethAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "positionVgasAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "positionBorrowedVeth",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "positionBorrowedVgas",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "deltaCollateral",
+          "type": "int256",
+          "indexed": false,
+          "internalType": "int256"
         }
       ],
       "anonymous": false
@@ -118,6 +186,17 @@
     },
     {
       "type": "error",
+      "name": "ManualSettlementTooEarly",
+      "inputs": [
+        {
+          "name": "requiredDelay",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "MathOverflowedMulDiv",
       "inputs": []
     },
@@ -177,12 +256,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xce53fe9efe6fa9527cf1cefb173b3d2195185aa5fe6515e470ca489b65d97250",
-  "deployTxnBlockNumber": "7151806",
-  "deployTimestamp": "1732565340",
+  "deployTxnHash": "0x276233f5a5219653db2578f8ea1c4968dd97f33271c3ba888b0c6c2cadeffd39",
+  "deployTxnBlockNumber": "7313121",
+  "deployTimestamp": "1734636108",
   "sourceName": "src/market/modules/SettlementModule.sol",
   "contractName": "SettlementModule",
   "deployedOn": "deploy.SettlementModule",
-  "gasUsed": 1141185,
-  "gasCost": "16039528010"
+  "gasUsed": 1352654,
+  "gasCost": "11869803253"
 }

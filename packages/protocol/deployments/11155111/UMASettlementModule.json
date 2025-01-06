@@ -1,5 +1,5 @@
 {
-  "address": "0x37EF589f67A56c1afF7f37df6D8B0311F704DB27",
+  "address": "0xB129C919514Ec75d13930Ed578944F14310Ef0fc",
   "abi": [
     {
       "type": "function",
@@ -101,6 +101,25 @@
     },
     {
       "type": "event",
+      "name": "ResolutionCallbackFailure",
+      "inputs": [
+        {
+          "name": "reason",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "settlementSqrtPriceX96",
+          "type": "uint160",
+          "indexed": false,
+          "internalType": "uint160"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
       "name": "SettlementDisputed",
       "inputs": [
         {
@@ -188,6 +207,11 @@
     },
     {
       "type": "error",
+      "name": "MathOverflowedMulDiv",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "NotInitializing",
       "inputs": []
     },
@@ -210,12 +234,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x36dedd921177c17a68a5767d7e32d58fff15184743edb6745f8f3159b589dfdc",
-  "deployTxnBlockNumber": "7151808",
-  "deployTimestamp": "1732565364",
+  "deployTxnHash": "0xa58f40f9ed6db3e3e0c484ae720b8ced202bb77f8391c14f8628c25372453ce9",
+  "deployTxnBlockNumber": "7313123",
+  "deployTimestamp": "1734636132",
   "sourceName": "src/market/modules/UMASettlementModule.sol",
   "contractName": "UMASettlementModule",
   "deployedOn": "deploy.UMASettlementModule",
-  "gasUsed": 993145,
-  "gasCost": "15946287005"
+  "gasUsed": 1134901,
+  "gasCost": "13031329598"
 }

@@ -7,7 +7,6 @@ import {
   Unique,
   ManyToOne,
   AfterInsert,
-  AfterUpdate,
 } from "typeorm";
 import { Market } from "./Market";
 import { upsertIndexPriceFromResourcePrice } from "src/controllers/price";
@@ -38,13 +37,7 @@ export class ResourcePrice {
 
   @AfterInsert()
   async afterInsert() {
-    console.log("Resource price inserted: " + this.id);
-    await upsertIndexPriceFromResourcePrice(this);
-  }
-
-  @AfterUpdate()
-  async afterUpdate() {
-    console.log(`Resource price updated: ${this.id}`);
+    console.log("Resource price inserted for block: " + this.blockNumber);
     await upsertIndexPriceFromResourcePrice(this);
   }
 }

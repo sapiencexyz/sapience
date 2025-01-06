@@ -158,9 +158,7 @@ const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
     const unitsAdjustedEntryPrice = useMarketUnits
       ? entryPrice
       : convertWstEthToGwei(entryPrice, stEthPerToken);
-    return isNaN(unitsAdjustedEntryPrice)
-      ? 0
-      : formatUnits(BigInt(unitsAdjustedEntryPrice), 18);
+    return isNaN(unitsAdjustedEntryPrice) ? 0 : unitsAdjustedEntryPrice;
   };
 
   const columns = useMemo<ColumnDef<any>[]>(
@@ -201,12 +199,16 @@ const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
         accessorFn: (row) => ({ row, pool, address, chainId: chain?.id }),
         cell: PnLCell,
       },
-      {
-        id: 'settled',
-        header: 'Settled',
-        accessorFn: (row) => row.isSettled,
-        cell: SettledCell,
-      },
+      ...(expired
+        ? [
+            {
+              id: 'settled',
+              header: 'Settled',
+              accessorKey: 'isSettled',
+              cell: SettledCell,
+            },
+          ]
+        : []),
     ],
     [address, calculateEntryPrice, chain, pool]
   );
