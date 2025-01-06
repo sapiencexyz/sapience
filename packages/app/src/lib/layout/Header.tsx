@@ -210,13 +210,6 @@ const NavLinks = ({
           {renderMobileMarketLinks('pool', true)}
         </div>
         <Link
-          href="/leaderboard/11155111:0x4243f3d11353aaeb404e31e160eec362d066637c/epochs/1"
-          onClick={() => onClose?.()}
-          className="hover:no-underline"
-        >
-          🏆 Leaderboard
-        </Link>
-        <Link
           href="https://docs.foil.xyz"
           onClick={() => onClose?.()}
           className="hover:no-underline"
@@ -236,7 +229,7 @@ const NavLinks = ({
       <NavPopover label="Pool" path="pool" withEpochs />
       */}
       <Link
-        href="/subscribe/11155111:0x4243f3d11353aaeb404e31e160eec362d066637c/epochs/1"
+        href="/subscribe/11155111:0xa898b018aebbcd87e88a4d0dac5105b3f106d7d7/epochs/1"
         className="hover:no-underline"
       >
         <Button variant="ghost" className=" text-lg">
@@ -245,7 +238,7 @@ const NavLinks = ({
       </Link>
 
       <Link
-        href="/trade/11155111:0x4243f3d11353aaeb404e31e160eec362d066637c/epochs/1"
+        href="/trade/11155111:0xa898b018aebbcd87e88a4d0dac5105b3f106d7d7/epochs/1"
         className="hover:no-underline"
       >
         <Button variant="ghost" className=" text-lg">
@@ -254,19 +247,11 @@ const NavLinks = ({
       </Link>
 
       <Link
-        href="/pool/11155111:0x4243f3d11353aaeb404e31e160eec362d066637c/epochs/1"
+        href="/pool/11155111:0xa898b018aebbcd87e88a4d0dac5105b3f106d7d7/epochs/1"
         className="hover:no-underline"
       >
         <Button variant="ghost" className=" text-lg">
           Pool
-        </Button>
-      </Link>
-      <Link
-        href="/leaderboard/11155111:0x4243f3d11353aaeb404e31e160eec362d066637c/epochs/1"
-        className="hover:no-underline"
-      >
-        <Button variant="ghost" className=" text-lg">
-          🏆 Leaderboard
         </Button>
       </Link>
       <Link href="https://docs.foil.xyz" className="hover:no-underline">
