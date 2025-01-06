@@ -185,6 +185,12 @@ interface IVaultViews {
         external
         view
         returns (IFoilStructs.EpochData memory epochData);
+
+    /**
+     * @notice Check if the vault is halted
+     * @return bool True if the vault is halted, false otherwise
+     */
+    function isHalted() external view returns (bool);
 }
 
 /**
@@ -226,6 +232,19 @@ interface IVault is
      */
     event EpochProcessed(uint256 indexed epochId, uint256 newSharePrice);
 
+    event VaultPositionSettled(
+        uint256 indexed epochId,
+        uint256 collateralReceived
+    );
+
+    /**
+     * @notice Emitted when the creation of the new epoch or position fails
+     * @dev this is a temporary halt and the vault can be resumed by calling the `createNewEpochAndPosition` function
+     * @param reason The reason the vault was halted
+     * @param collateralReceived The amount of collateral received from the previous epoch's vault position
+     */
+    event VaultHalted(bytes reason, uint256 collateralReceived);
+
     /**
      * @notice Initialize the first epoch of the vault
      * @param initialSqrtPriceX96 The initial sqrt price
@@ -234,6 +253,7 @@ interface IVault is
 
     /**
      * @notice Submit the market settlement price for an epoch
+     * @notice ***WARNING*** msg.sender receives the bond amount so if it's a contract, please be wary of this.
      * @param epochId The epoch ID to settle
      * @param priceSqrtX96 The settlement price in sqrt form
      * @return assertionId The ID of the settlement assertion
@@ -242,4 +262,14 @@ interface IVault is
         uint256 epochId,
         uint160 priceSqrtX96
     ) external returns (bytes32 assertionId);
+
+    function forceSettlePosition()
+        external
+        returns (uint256 sharePrice, uint256 collateralReceived);
+
+    function createNewEpochAndPosition(
+        uint256 startTime,
+        uint160 previousResolutionSqrtPriceX96,
+        uint256 previousEpochCollateralReceived
+    ) external;
 }

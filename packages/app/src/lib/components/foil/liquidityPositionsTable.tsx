@@ -164,13 +164,13 @@ const createColumns = (
   {
     id: 'baseToken',
     header: 'Base Token',
-    accessorKey: 'baseToken',
+    accessorKey: 'lpBaseToken',
     cell: BaseTokenCell,
   },
   {
     id: 'quoteToken',
     header: 'Quote Token',
-    accessorKey: 'quoteToken',
+    accessorKey: 'lpQuoteToken',
     cell: CollateralCell,
   },
   {

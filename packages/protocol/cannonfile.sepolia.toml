@@ -85,6 +85,7 @@ highlight=true
 
 # VAULT 1
 [deploy.VaultYin]
+highlight=true
 artifact="Vault"
 from="<%= settings.owner %>"
 args=[ "<%= settings.vault1Name %>", "<%= settings.vault1Symbol %>", "<%= FoilYin.address %>", "<%= imports.wstETH.contracts.Token.address %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "0", "<%= settings.totalVaults %>" ]
@@ -106,6 +107,7 @@ depends=["deploy.VaultYin"]
 
 # VAULT 2
 [deploy.VaultYang]
+highlight=true
 artifact="Vault"
 from="<%= settings.owner %>"
 args=[ "<%= settings.vault2Name %>", "<%= settings.vault2Symbol %>", "<%= FoilYang.address %>", "<%= imports.wstETH.contracts.Token.address %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "1", "<%= settings.totalVaults %>" ]

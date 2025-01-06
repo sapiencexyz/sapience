@@ -14,6 +14,7 @@ export enum EventType {
   EpochCreated = "EpochCreated",
   EpochSettled = "EpochSettled",
   PositionSettled = "PositionSettled",
+  PositionUpdated = "PositionUpdated",
 }
 
 export interface TradePositionEventLog {
@@ -128,4 +129,30 @@ export interface MarketInfo {
   deployment: Deployment;
   marketChainId: number;
   priceIndexer: EvmIndexer;
+}
+
+export enum EventTransactionType {
+  Undefined,
+  CreateLiquidityPosition,
+  IncreaseLiquidityPosition,
+  DecreaseLiquidityPosition,
+  CloseLiquidityPosition,
+  TransitionLiquidityToTrade,
+  DepositCollateral,
+  CreateTradePosition,
+  ModifyTradePosition,
+  CloseTradePosition,
+}
+
+export interface PositionUpdatedEventLog {
+  sender: string;
+  epochId: string;
+  positionId: string;
+  transactionType: EventTransactionType;
+  deltaCollateral: string;
+  collateralAmount: string;
+  vEthAmount: string;
+  vGasAmount: string;
+  borrowedVEth: string;
+  borrowedVGas: string;
 }

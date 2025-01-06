@@ -9,7 +9,7 @@ import {
 import { MarketParams } from "../models/MarketParams";
 import { Event } from "../models/Event";
 import { Market } from "../models/Market";
-import { Transaction, TransactionType } from "../models/Transaction";
+import { Transaction } from "../models/Transaction";
 import { Abi, decodeEventLog, Log } from "viem";
 import {
   EpochCreatedEventLog,
@@ -24,17 +24,18 @@ import {
 } from "../helpers";
 import {
   createEpochFromEvent,
-  createOrModifyPosition,
   createOrUpdateMarketFromEvent,
+  createOrModifyPositionFromTransaction,
   handleTransferEvent,
   handlePositionSettledEvent,
   updateTransactionFromAddLiquidityEvent,
   updateTransactionFromLiquidityClosedEvent,
   updateTransactionFromLiquidityModifiedEvent,
   updateTransactionFromTradeModifiedEvent,
-  upsertMarketPrice,
+  insertMarketPrice,
   updateTransactionFromPositionSettledEvent,
   getMarketStartEndBlock,
+  insertCollateralTransfer,
 } from "./marketHelpers";
 import { Client, TextChannel, EmbedBuilder } from "discord.js";
 import { MARKET_INFO } from "../markets";
@@ -47,8 +48,8 @@ const DISCORD_PUBLIC_CHANNEL_ID = process.env.DISCORD_PUBLIC_CHANNEL_ID;
 const discordClient = new Client({ intents: [] });
 
 if (DISCORD_TOKEN) {
-  discordClient.login(DISCORD_TOKEN).catch(error => {
-    console.error('Failed to login to Discord:', error);
+  discordClient.login(DISCORD_TOKEN).catch((error) => {
+    console.error("Failed to login to Discord:", error);
   });
 }
 
@@ -156,7 +157,11 @@ export const indexMarketEvents = async (market: Market, abi: Abi) => {
 };
 
 // Iterates over all blocks from the market's deploy block to the current block and calls upsertEvent for each one.
-export const reindexMarketEvents = async (market: Market, abi: Abi, epochId: number) => {
+export const reindexMarketEvents = async (
+  market: Market,
+  abi: Abi,
+  epochId: number
+) => {
   await initializeDataSource();
   const client = getProviderForChain(market.chainId);
   const chainId = await client.getChainId();
@@ -252,21 +257,18 @@ const alertEvent = async (
         DISCORD_PUBLIC_CHANNEL_ID
       )) as TextChannel;
 
-      let title = '';
+      let title = "";
 
       // Format based on event type
       switch (logData.eventName) {
         case EventType.TraderPositionCreated:
         case EventType.TraderPositionModified:
           const tradeDirection = BigInt(logData.args.finalPrice) > BigInt(logData.args.initialPrice) ? 'Long' : 'Short';
-
           const gasAmount = convertGasToGgas(logData.args.vGasAmount || logData.args.borrowedVGas);
-
           const rawPriceGwei = Number(logData.args.tradeRatio) / 1e18;
-
           const priceGwei = rawPriceGwei.toLocaleString('en-US', {
             minimumFractionDigits: 0,
-            maximumFractionDigits: 2
+            maximumFractionDigits: 2,
           });
 
           title = `${tradeDirection === 'Long' ? '<:pepegas:1313887905508364288>' : '<:peepoangry:1313887206687117313>'} **Trade Executed:** ${tradeDirection} ${gasAmount} Ggas @ ${priceGwei} wstGwei`;
@@ -279,19 +281,21 @@ const alertEvent = async (
           const action = logData.eventName === EventType.LiquidityPositionDecreased || logData.eventName === EventType.LiquidityPositionClosed ? 'Removed' : 'Added';
           const liquidityGas = convertGasToGgas(logData.args.addedAmount0 || logData.args.increasedAmount0 || logData.args.amount0);
 
-
-          let priceRangeText = '';
-          if (logData.args.lowerTick !== undefined && logData.args.upperTick !== undefined) {
+          let priceRangeText = "";
+          if (
+            logData.args.lowerTick !== undefined &&
+            logData.args.upperTick !== undefined
+          ) {
             const rawLowerPrice = 1.0001 ** logData.args.lowerTick;
             const rawUpperPrice = 1.0001 ** logData.args.upperTick;
 
             const lowerPrice = rawLowerPrice.toLocaleString('en-US', {
               minimumFractionDigits: 0,
-              maximumFractionDigits: 2
+              maximumFractionDigits: 2,
             });
-            const upperPrice = rawUpperPrice.toLocaleString('en-US', {
+            const upperPrice = rawUpperPrice.toLocaleString("en-US", {
               minimumFractionDigits: 0,
-              maximumFractionDigits: 2
+              maximumFractionDigits: 2,
             });
 
             priceRangeText = ` from ${lowerPrice} - ${upperPrice} wstGwei`;
@@ -312,15 +316,28 @@ const alertEvent = async (
       };
 
       // Get market name from MARKET_INFO
-      const marketName = MARKET_INFO.find(m => m.deployment.address === address)?.name || "Foil Market";
+      const marketName =
+        MARKET_INFO.find((m) => m.deployment.address === address)?.name ||
+        "Foil Market";
 
       const embed = new EmbedBuilder()
         .setColor("#2b2b2e")
         .addFields(
-          { name: "Market", value: `${marketName} (Epoch ${epochId.toString()})`, inline: true },
-          { name: "Position", value: logData.args.positionId.toString(), inline: true },
+          {
+            name: "Market",
+            value: `${marketName} (Epoch ${epochId.toString()})`,
+            inline: true,
+          },
+          {
+            name: "Position",
+            value: logData.args.positionId.toString(),
+            inline: true,
+          },
           { name: "Account", value: logData.args.sender },
-          { name: "Transaction", value: getBlockExplorerUrl(chainId, logData.transactionHash) }
+          {
+            name: "Transaction",
+            value: getBlockExplorerUrl(chainId, logData.transactionHash),
+          }
         )
         .setTimestamp();
 
@@ -386,7 +403,7 @@ const upsertEvent = async (
     logData,
   });
 
-  // // Find market and/or epoch associated with the event
+  // Find market and/or epoch associated with the event
   let market = await marketRepository.findOne({
     where: { chainId, address },
   });
@@ -406,9 +423,15 @@ const upsertEvent = async (
   newEvent.timestamp = timeStamp.toString();
   newEvent.logIndex = logIndex;
   newEvent.logData = logData;
+  newEvent.transactionHash = logData.transactionHash;
 
   // insert the event
-  await eventRepository.upsert(newEvent, ["market", "blockNumber", "logIndex"]);
+  await eventRepository.upsert(newEvent, [
+    "transactionHash",
+    "market",
+    "blockNumber",
+    "logIndex",
+  ]);
 };
 
 // Triggered by the callback in the Event model, this upserts related entities (Transaction, Position, MarketPrice).
@@ -427,6 +450,7 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
   const market = event.market;
 
   switch (event.logData.eventName) {
+    // Market events
     case EventType.MarketInitialized:
       console.log("initializing market. event: ", event);
       const marketCreatedArgs = event.logData
@@ -451,6 +475,8 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       );
       skipTransaction = true;
       break;
+
+    // Epoch events
     case EventType.EpochCreated:
       console.log("creating epoch. event: ", event);
       const epochCreatedArgs = event.logData.args as EpochCreatedEventLog;
@@ -481,77 +507,65 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       }
       skipTransaction = true;
       break;
+
+    // Position events
+    case EventType.Transfer:
+      console.log("Handling Transfer event: ", event);
+      await handleTransferEvent(event);
+      skipTransaction = true;
+      break;
+    case EventType.PositionSettled:
+      console.log("Handling Position Settled from event: ", event);
+      await Promise.all([
+        handlePositionSettledEvent(event),
+        updateTransactionFromPositionSettledEvent(newTransaction, event),
+      ]);
+      break;
+
+    // Liquidity events
     case EventType.LiquidityPositionCreated:
       console.log("Creating liquidity position from event: ", event);
       updateTransactionFromAddLiquidityEvent(newTransaction, event);
       break;
     case EventType.LiquidityPositionClosed:
       console.log("Closing liquidity position from event: ", event);
-      newTransaction.type = TransactionType.REMOVE_LIQUIDITY;
-      await updateTransactionFromLiquidityClosedEvent(
-        newTransaction,
-        event,
-        event.logData.args.epochId
-      );
+      await updateTransactionFromLiquidityClosedEvent(newTransaction, event);
       break;
     case EventType.LiquidityPositionDecreased:
       console.log("Decreasing liquidity position from event: ", event);
       await updateTransactionFromLiquidityModifiedEvent(
         newTransaction,
         event,
-        event.logData.args.epochId,
         true
       );
       break;
     case EventType.LiquidityPositionIncreased:
       console.log("Increasing liquidity position from event: ", event);
-      await updateTransactionFromLiquidityModifiedEvent(
-        newTransaction,
-        event,
-        event.logData.args.epochId
-      );
+      await updateTransactionFromLiquidityModifiedEvent(newTransaction, event);
       break;
+
+    // Trader events
     case EventType.TraderPositionCreated:
       console.log("Creating trader position from event: ", event);
-      await updateTransactionFromTradeModifiedEvent(
-        newTransaction,
-        event,
-        event.logData.args.epochId
-      );
+      await updateTransactionFromTradeModifiedEvent(newTransaction, event);
       break;
     case EventType.TraderPositionModified:
       console.log("Modifying trader position from event: ", event);
-      await updateTransactionFromTradeModifiedEvent(
-        newTransaction,
-        event,
-        event.logData.args.epochId
-      );
+      await updateTransactionFromTradeModifiedEvent(newTransaction, event);
       break;
-    case EventType.PositionSettled:
-      console.log("Handling Position Settled from event: ", event);
-      await Promise.all([
-        handlePositionSettledEvent(event),
-        updateTransactionFromPositionSettledEvent(
-          newTransaction,
-          event,
-          event.logData.args.epochId
-        ),
-      ]);
-      break;
-    case EventType.Transfer:
-      console.log("Handling Transfer event: ", event);
-      await handleTransferEvent(event);
-      skipTransaction = true;
-      break;
+
     default:
       skipTransaction = true;
       break;
   }
 
   if (!skipTransaction) {
+    // Fill transaction with collateral transfer
+    await insertCollateralTransfer(newTransaction);
+    // Fill transaction with market price
+    await insertMarketPrice(newTransaction);
     console.log("Saving new transaction: ", newTransaction);
     await transactionRepository.save(newTransaction);
-    await createOrModifyPosition(newTransaction);
-    await upsertMarketPrice(newTransaction);
+    await createOrModifyPositionFromTransaction(newTransaction);
   }
 };

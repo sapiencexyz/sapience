@@ -617,7 +617,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 ERC721Storage._ownerOf(position.id),
                 position.depositedCollateralAmount
             );
-            deltaCollateral = -int256(position.depositedCollateralAmount);
+            deltaCollateral = -int256(collateralAmount);
             position.depositedCollateralAmount = 0;
             position.kind = IFoilStructs.PositionKind.Unknown;
         } else {

@@ -22,7 +22,9 @@ const EpochHeader = () => {
   } = useContext(MarketContext);
   const { markets } = useMarketList();
 
-  const currentMarket = markets.find((market) => market.address === address);
+  const currentMarket = markets.find(
+    (market) => market.address.toLowerCase() === address.toLowerCase()
+  );
 
   let relativeTime = '';
   let formattedTime = '';
