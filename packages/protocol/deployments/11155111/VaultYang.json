@@ -1,5 +1,5 @@
 {
-  "address": "0x42E5D0e2EeDf603449043f06a7a740A8C65d71eF",
+  "address": "0xa55249cDf31c7eFa6AF2498db0152Af379f18bbC",
   "abi": [
     {
       "type": "constructor",
@@ -1445,6 +1445,12 @@
           "type": "bytes",
           "indexed": false,
           "internalType": "bytes"
+        },
+        {
+          "name": "collateralReceived",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
         }
       ],
       "anonymous": false
@@ -1663,7 +1669,7 @@
   "constructorArgs": [
     "Foil Vault Yang",
     "fYANG",
-    "0xf878e6aebd95c158a8bcca62f668179b527cfe36",
+    "0xa162703cd738cca804079cfc2c83193f71858366",
     "0xb82381a3fbd3fafa77b3a7be693342618240067b",
     "577350269189625700",
     "1732050807568877200",
@@ -1672,12 +1678,13 @@
     "2"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x8ad366da15a547779781cb65f7b35e493e645ad3a3dd3e1b908c657f5c6b1855",
-  "deployTxnBlockNumber": "7313128",
-  "deployTimestamp": "1734636216",
+  "deployTxnHash": "0xf61aa0b98370d232919a756f42bab48eb8884c2e4f06cf4d1dd557ae16ab3e36",
+  "deployTxnBlockNumber": "7435134",
+  "deployTimestamp": "1736192436",
   "sourceName": "src/vault/Vault.sol",
   "contractName": "Vault",
   "deployedOn": "deploy.VaultYang",
-  "gasUsed": 4045473,
-  "gasCost": "14355497486"
+  "highlight": true,
+  "gasUsed": 4102267,
+  "gasCost": "8167542408"
 }

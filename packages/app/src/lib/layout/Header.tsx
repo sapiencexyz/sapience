@@ -257,7 +257,7 @@ const NavLinks = ({
       </Link>
 
       <Link
-        href="/trade"
+        href="/trade/11155111:0xa898b018aebbcd87e88a4d0dac5105b3f106d7d7/epochs/1"
         className="hover:no-underline"
       >
         <Button variant="ghost" className="text-lg">
@@ -266,14 +266,13 @@ const NavLinks = ({
       </Link>
 
       <Link
-        href="/pool"
+        href="/pool/11155111:0xa898b018aebbcd87e88a4d0dac5105b3f106d7d7/epochs/1"
         className="hover:no-underline"
       >
         <Button variant="ghost" className="text-lg">
           Pool
         </Button>
       </Link>
-
       <Link href="https://docs.foil.xyz" className="hover:no-underline">
         <Button variant="ghost" className="text-lg">
           Docs

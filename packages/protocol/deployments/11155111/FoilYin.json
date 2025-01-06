@@ -1,5 +1,5 @@
 {
-  "address": "0xfad22ce9fcfa61e5a9e1c63bfaaf46245603139d",
+  "address": "0xa898b018aebbcd87e88a4d0dac5105b3f106d7d7",
   "abi": [
     {
       "name": "facets",
@@ -3487,12 +3487,12 @@
     }
   ],
   "deployedOn": "router.FoilYin",
-  "deployTxnHash": "0xa01dc392f374dcf8c50b731f21b2f98db3a0e909f2e70219998087742324376d",
-  "deployTxnBlockNumber": "7313127",
-  "deployTimestamp": "1734636192",
+  "deployTxnHash": "0xc4c6325404242a8d64010da985a15c33eb0f6c4e09ba5ac2b4370a7978d2fcf0",
+  "deployTxnBlockNumber": "7435133",
+  "deployTimestamp": "1736192424",
   "contractName": "FoilYin",
   "sourceName": "FoilYin.sol",
   "highlight": true,
-  "gasUsed": 2998473,
-  "gasCost": "14543470020"
+  "gasUsed": 2998353,
+  "gasCost": "8147200768"
 }
