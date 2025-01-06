@@ -240,10 +240,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             previousResolutionSqrtPriceX96,
             previousEpochCollateralReceived
         );
+        _reconcilePendingTransactions(sharePrice);
 
         __VAULT_HALTED = false;
-
-        _reconcilePendingTransactions(sharePrice);
 
         emit EpochProcessed(currentEpochId, sharePrice);
     }
@@ -260,10 +259,14 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             sharePrice
         );
 
+        // if all shares are being redeemed, then ignore the check as there could be some dust remaining which will cause
+        // the revert to trigger
+        bool fullRedemption = totalSupply() - totalPendingWithdrawals == 0;
         // if share price is greater than 0, then we need to meet the minimum collateral
         require(
             collateralAmount > minimumCollateral ||
-                previousEpochCollateralReceived == 0,
+                previousEpochCollateralReceived == 0 ||
+                fullRedemption,
             "Minimum collateral for next epoch not met"
         );
 
