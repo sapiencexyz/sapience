@@ -285,7 +285,6 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             block.timestamp
         );
 
-        // positionId is only 0 when creating the first epoch
         if (collateralAmount > minimumCollateral) {
             positionId = _createNewLiquidityPosition(collateralAmount);
         } else {
