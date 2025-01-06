@@ -13,7 +13,7 @@ import "../market/external/univ3/TickMath.sol";
 import "../market/interfaces/IFoil.sol";
 import "../market/interfaces/IFoilStructs.sol";
 import "./interfaces/IVault.sol";
-
+import "forge-std/console2.sol";
 contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
     using SetUtil for SetUtil.UintSet;
@@ -128,15 +128,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 startingSharePrice = 1e18;
         epochSharePrices[0] = startingSharePrice;
 
-        uint256 collateralAmount = _calculateNextCollateral(
-            0,
-            startingSharePrice
-        );
-
         _createEpochAndPosition(
             initialStartTime,
             initialSqrtPriceX96,
-            collateralAmount
+            0 // collateral received, should be 0 for first epoch
         );
         _reconcilePendingTransactions(startingSharePrice);
 
@@ -238,16 +233,12 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             "Action not allowed"
         );
 
-        // get previous share price to use for reconciling pending txns
         uint256 sharePrice = epochSharePrices[currentEpochId];
 
         _createEpochAndPosition(
             startTime,
             previousResolutionSqrtPriceX96,
-            _calculateNextCollateral(
-                previousEpochCollateralReceived,
-                epochSharePrices[currentEpochId]
-            )
+            previousEpochCollateralReceived
         );
 
         __VAULT_HALTED = false;
@@ -260,11 +251,19 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     function _createEpochAndPosition(
         uint256 startTime,
         uint160 startingSqrtPriceX96,
-        uint256 collateralAmount
+        uint256 previousEpochCollateralReceived
     ) private {
-        // positionId is only 0 when creating the first epoch
+        uint256 sharePrice = epochSharePrices[currentEpochId];
+
+        uint256 collateralAmount = _calculateNextCollateral(
+            previousEpochCollateralReceived,
+            sharePrice
+        );
+
+        // if share price is greater than 0, then we need to meet the minimum collateral
         require(
-            collateralAmount > minimumCollateral || positionId == 0,
+            collateralAmount > minimumCollateral ||
+                previousEpochCollateralReceived == 0,
             "Minimum collateral for next epoch not met"
         );
 
@@ -284,8 +283,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         );
 
         // positionId is only 0 when creating the first epoch
-        if (positionId != 0) {
+        if (collateralAmount > minimumCollateral) {
             positionId = _createNewLiquidityPosition(collateralAmount);
+        } else {
+            positionId = 0;
         }
     }
 
