@@ -37,12 +37,6 @@ interface IVaultAsyncDeposit {
     );
 
     /**
-     * @notice Emitted when the creation of the new epoch or position fails
-     * @dev this is a temporary halt and the vault can be resumed by calling the `createNewEpochAndPosition` function
-     */
-    event VaultHalted(bytes reason);
-
-    /**
      * @notice Request to deposit assets into the vault
      * @param assets The amount of collateral to deposit into vault
      * @return pendingTxn The pending transaction details
@@ -244,6 +238,14 @@ interface IVault is
     );
 
     /**
+     * @notice Emitted when the creation of the new epoch or position fails
+     * @dev this is a temporary halt and the vault can be resumed by calling the `createNewEpochAndPosition` function
+     * @param reason The reason the vault was halted
+     * @param collateralReceived The amount of collateral received from the previous epoch's vault position
+     */
+    event VaultHalted(bytes reason, uint256 collateralReceived);
+
+    /**
      * @notice Initialize the first epoch of the vault
      * @param initialSqrtPriceX96 The initial sqrt price
      */
@@ -251,6 +253,7 @@ interface IVault is
 
     /**
      * @notice Submit the market settlement price for an epoch
+     * @notice ***WARNING*** msg.sender receives the bond amount so if it's a contract, please be wary of this.
      * @param epochId The epoch ID to settle
      * @param priceSqrtX96 The settlement price in sqrt form
      * @return assertionId The ID of the settlement assertion

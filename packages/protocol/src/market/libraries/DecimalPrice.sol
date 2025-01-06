@@ -10,12 +10,7 @@ library DecimalPrice {
         uint160 sqrtRatioX96
     ) internal pure returns (uint256 price) {
         // Calculate the price as (sqrtRatioX96^2) / (2^192)
-        uint256 sqrtRatioX96Squared = Math.mulDiv(
-            uint256(sqrtRatioX96),
-            uint256(sqrtRatioX96),
-            1
-        );
-        price = sqrtRatioX96Squared >> 96;
+        price = Math.mulDiv(uint256(sqrtRatioX96), uint256(sqrtRatioX96), Q96);
         price = Math.mulDiv(price, 1e18, Q96);
     }
 }
