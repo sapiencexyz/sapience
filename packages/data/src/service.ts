@@ -69,10 +69,10 @@ const corsOptions: cors.CorsOptions = {
     if (process.env.NODE_ENV !== "production") {
       callback(null, true);
     } else if (
-      origin &&
-      (/^https?:\/\/([a-zA-Z0-9-]+\.)*foil\.xyz$/.test(origin) ||
-        /^https?:\/\/localhost(:\d+)?$/.test(origin) || // local testing
-        /^https?:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/.test(origin)) //staging sites
+      !origin || // Allow same-origin requests
+      /^https?:\/\/([a-zA-Z0-9-]+\.)*foil\.xyz$/.test(origin) ||
+      /^https?:\/\/localhost(:\d+)?$/.test(origin) || // local testing
+      /^https?:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/.test(origin) //staging sites
     ) {
       callback(null, true);
     } else {
