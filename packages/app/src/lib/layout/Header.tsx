@@ -2,6 +2,7 @@ import { format } from 'date-fns';
 import { Menu, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import React, { useState, useEffect } from 'react';
 
 import ConnectButton from '../components/ConnectButton';
@@ -139,9 +140,19 @@ const NavLinks = ({
 }) => {
   const { markets } = useMarketList();
   const publicMarkets = markets.filter((m) => m.public);
+  const pathname = usePathname();
 
   const formatTimestamp = (timestamp: number) => {
     return format(new Date(timestamp * 1000), 'MMM d, HH:mm');
+  };
+
+  const isActive = (path: string) => {
+    if (path === '/') return pathname === path;
+    return pathname.startsWith(path);
+  };
+
+  const getButtonClasses = (path: string) => {
+    return `text-md ${isActive(path) ? 'bg-secondary' : ''}`;
   };
 
   const renderMobileMarketLinks = (path: string, withEpochs = false) => {
@@ -230,19 +241,19 @@ const NavLinks = ({
   return (
     <div className="flex gap-5">
       <Link href="/" className="hover:no-underline">
-        <Button variant="ghost" className="text-lg">
+        <Button variant="ghost" className={getButtonClasses('/')}>
           Explore
         </Button>
       </Link>
 
       <Link href="/subscribe" className="hover:no-underline">
-        <Button variant="ghost" className="text-lg">
+        <Button variant="ghost" className={getButtonClasses('/subscribe')}>
           Subscribe
         </Button>
       </Link>
 
       <Link href="/earn" className="hover:no-underline">
-        <Button variant="ghost" className="text-lg">
+        <Button variant="ghost" className={getButtonClasses('/earn')}>
           Earn
         </Button>
       </Link>
@@ -251,7 +262,7 @@ const NavLinks = ({
         href="/trade/11155111:0xa898b018aebbcd87e88a4d0dac5105b3f106d7d7/epochs/1"
         className="hover:no-underline"
       >
-        <Button variant="ghost" className="text-lg">
+        <Button variant="ghost" className={getButtonClasses('/trade')}>
           Trade
         </Button>
       </Link>
@@ -260,12 +271,12 @@ const NavLinks = ({
         href="/pool/11155111:0xa898b018aebbcd87e88a4d0dac5105b3f106d7d7/epochs/1"
         className="hover:no-underline"
       >
-        <Button variant="ghost" className="text-lg">
+        <Button variant="ghost" className={getButtonClasses('/pool')}>
           Pool
         </Button>
       </Link>
       <Link href="https://docs.foil.xyz" className="hover:no-underline">
-        <Button variant="ghost" className="text-lg">
+        <Button variant="ghost" className="text-md">
           Docs
         </Button>
       </Link>

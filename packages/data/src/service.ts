@@ -11,7 +11,7 @@ import { Position } from "./models/Position";
 import { cannon } from "viem/chains";
 import { Market } from "./models/Market";
 import express, { Request, Response, NextFunction } from "express";
-import { Between, In, Repository } from "typeorm";
+import { Between, In, Repository, LessThanOrEqual, MoreThanOrEqual } from "typeorm";
 import { Transaction } from "./models/Transaction";
 import { Epoch } from "./models/Epoch";
 import { formatUnits } from "viem";
@@ -219,7 +219,7 @@ const startServer = async () => {
         where: {
           owner: address.toLowerCase(),
           isLP: false, // Only get non-LP positions
-          isSettled: false, // Only get active positions
+          isSettled: In([false, null]) // Include both false and null values
         },
         relations: ["epoch", "epoch.market"],
         order: {
@@ -227,9 +227,9 @@ const startServer = async () => {
         },
       });
 
-      // Filter for long positions (positive baseToken)
+      // Filter for long positions (positive baseToken), handling null values
       const longPositions = positions.filter(
-        position => BigInt(position.baseToken) > BigInt(0)
+        position => position.baseToken && BigInt(position.baseToken) > BigInt(0)
       );
 
       const formattedPositions = longPositions.map((position) => ({
