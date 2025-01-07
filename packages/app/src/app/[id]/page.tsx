@@ -23,6 +23,7 @@ import { useReactTable, getCoreRowModel } from "@tanstack/react-table";
 import { useLatestResourcePrice } from '~/lib/hooks/useResources';
 import { formatUnits } from 'viem';
 import { API_BASE_URL } from '~/lib/constants/constants';
+import NumberDisplay from '~/lib/components/foil/numberDisplay';
 
 interface ResourcePrice {
   timestamp: string;
@@ -209,6 +210,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
       }
       return response.json();
     },
+    refetchInterval: 2000,
   });
 
   if (!category) {
@@ -251,7 +253,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
                       <span className="text-2xl font-bold">Loading...</span>
                     ) : latestPrice ? (
                       <span className="text-2xl font-bold">
-                        {formatUnits(BigInt(latestPrice.value), 9)} gwei
+                        <NumberDisplay value={formatUnits(BigInt(latestPrice.value), 9)} /> gwei
                       </span>
                     ) : (
                       <span className="text-2xl font-bold">No price data</span>
