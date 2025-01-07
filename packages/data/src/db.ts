@@ -10,7 +10,8 @@ import { RenderJob } from "./models/RenderJob";
 import { IndexPrice } from "./models/IndexPrice";
 import { CollateralTransfer } from "./models/CollateralTransfer";
 
-const isLive = process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging";
+const isLive =
+  process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging";
 const devDatabase = process.env.POSTGRES_DB;
 const devUsername = process.env.POSTGRES_USER;
 
@@ -20,7 +21,7 @@ const devDataSource: DataSource = new DataSource({
   port: 5432,
   username: devUsername,
   host: "localhost",
-  url: "postgresql://localhost",
+  url: `postgresql://${devUsername}@localhost:5432/${devDatabase}`,
   synchronize: true,
   logging: ["warn", "error", "log", "info"],
   entities: [
