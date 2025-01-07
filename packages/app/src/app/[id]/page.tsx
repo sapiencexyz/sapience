@@ -10,6 +10,7 @@ import {
   TableCell,
   TableRow,
 } from "@/components/ui/table";
+import { useQuery } from '@tanstack/react-query';
 
 import { MarketLayout } from '~/lib/components/market/MarketLayout';
 import { ResourceNav } from '~/lib/components/market/ResourceNav';
@@ -21,6 +22,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useReactTable, getCoreRowModel } from "@tanstack/react-table";
 import { useLatestResourcePrice } from '~/lib/hooks/useResources';
 import { formatUnits } from 'viem';
+import { API_BASE_URL } from '~/lib/constants/constants';
+
+interface ResourcePrice {
+  timestamp: string;
+  value: string;
+}
+
+interface ResourcePricePoint {
+  timestamp: number;
+  price: number;
+}
 
 interface Epoch {
   id: number;
@@ -188,6 +200,17 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
   const category = MARKET_CATEGORIES.find(c => c.id === params.id);
   const { data: latestPrice, isLoading: isPriceLoading } = useLatestResourcePrice(params.id);
 
+  const { data: resourcePrices, isLoading: isResourcePricesLoading } = useQuery<ResourcePrice[]>({
+    queryKey: ['resourcePrices', params.id],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/resources/${params.id}/prices`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch resource prices');
+      }
+      return response.json();
+    },
+  });
+
   if (!category) {
     return (
       <div className="flex justify-center items-center py-8">
@@ -208,6 +231,11 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
 
   const placeholderPrices = generatePlaceholderPrices();
   const placeholderIndexPrices = generatePlaceholderIndexPrices();
+
+  const formattedResourcePrices: ResourcePricePoint[] = resourcePrices?.map(price => ({
+    timestamp: Number(price.timestamp) * 1000,
+    price: Number(formatUnits(BigInt(price.value), 9)),
+  })) || [];
 
   return (
     <div className="flex flex-col md:flex-row h-full">
@@ -232,13 +260,15 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
                 </div>
               </CardContent>
             </Card>
+
             <CandlestickChart 
               data={{
-                marketPrices: placeholderPrices,
-                indexPrices: placeholderIndexPrices
+                marketPrices: [],
+                indexPrices: [],
+                resourcePrices: formattedResourcePrices
               }}
               activeWindow={TimeWindow.D}
-              isLoading={false}
+              isLoading={isResourcePricesLoading}
             />
           </div>
         </div>

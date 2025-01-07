@@ -1284,14 +1284,15 @@ const startServer = async () => {
   );
 
   // route /resources/:slug/prices/latest
-  app.get("/resources/:slug/prices/latest", handleAsyncErrors(async (req, res) => {
+  app.get("/resources/:slug/prices/latest", handleAsyncErrors(async (req, res, next) => {
     const { slug } = req.params;
     
     const resourceRepository = dataSource.getRepository(Resource);
     const resource = await resourceRepository.findOne({ where: { slug } });
     
     if (!resource) {
-      return res.status(404).json({ error: "Resource not found" });
+      res.status(404).json({ error: "Resource not found" });
+      return;
     }
     
     const resourcePriceRepository = dataSource.getRepository(ResourcePrice);
@@ -1302,10 +1303,46 @@ const startServer = async () => {
     });
     
     if (!latestPrice) {
-      return res.status(404).json({ error: "No price data found" });
+      res.status(404).json({ error: "No price data found" });
+      return;
     }
     
     res.json(latestPrice);
+  }));
+
+  // route /resources/:slug/prices
+  app.get("/resources/:slug/prices", handleAsyncErrors(async (req, res, next) => {
+    const { slug } = req.params;
+    const { startTime, endTime } = req.query;
+    
+    const resourceRepository = dataSource.getRepository(Resource);
+    const resource = await resourceRepository.findOne({ where: { slug } });
+    
+    if (!resource) {
+      res.status(404).json({ error: "Resource not found" });
+      return;
+    }
+    
+    const resourcePriceRepository = dataSource.getRepository(ResourcePrice);
+    const query = resourcePriceRepository.createQueryBuilder("price")
+      .where("price.resourceId = :resourceId", { resourceId: resource.id })
+      .orderBy("price.timestamp", "ASC");
+
+    if (startTime) {
+      query.andWhere("price.timestamp >= :startTime", { startTime });
+    }
+    if (endTime) {
+      query.andWhere("price.timestamp <= :endTime", { endTime });
+    }
+
+    const prices = await query.getMany();
+    
+    if (!prices.length) {
+      res.status(404).json({ error: "No price data found" });
+      return;
+    }
+    
+    res.json(prices);
   }));
 
   // Only set up Sentry error handling in production
