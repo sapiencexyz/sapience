@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table";
 
 import { MarketLayout } from '~/lib/components/market/MarketLayout';
-import { MarketNav } from '~/lib/components/market/MarketNav';
+import { ResourceNav } from '~/lib/components/market/ResourceNav';
 import { MARKET_CATEGORIES } from '~/lib/constants/markets';
 import { useMarketList } from '~/lib/context/MarketListProvider';
 import CandlestickChart from "~/lib/components/chart";
@@ -188,7 +188,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
   if (!category) {
     return (
       <div className="flex justify-center items-center py-8">
-        <p>Category not found</p>
+        <p>Resource not found</p>
       </div>
     );
   }
@@ -232,7 +232,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
           </div>
         </div>
       </div>
-      <div className="w-full md:w-[400px] border-t md:border-t-0 md:border-l border-border pt-4 md:pt-0">
+      <div className="hidden w-full md:w-[400px] border-t md:border-t-0 md:border-l border-border pt-4 md:pt-0">
         <h2 className="text-base font-medium text-muted-foreground px-4 py-2">Periods</h2>
         <EpochsTable data={epochs} />
       </div>
@@ -243,7 +243,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
 const MarketPage = ({ params }: { params: { id: string } }) => {
   return (
     <MarketLayout
-      nav={<MarketNav type="category" />}
+      nav={<ResourceNav type="category" />}
       content={<MarketContent params={params} />}
     />
   );

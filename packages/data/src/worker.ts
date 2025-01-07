@@ -90,8 +90,14 @@ async function initializeResources() {
     if (!resource) {
       resource = new Resource();
       resource.name = resourceInfo.name;
+      resource.slug = resourceInfo.slug;
       await resourceRepository.save(resource);
       console.log("created resource:", resourceInfo.name);
+    } else if (!resource.slug) {
+      // Update existing resources with slug if missing
+      resource.slug = resourceInfo.slug;
+      await resourceRepository.save(resource);
+      console.log("updated resource with slug:", resourceInfo.name);
     }
   }
 }

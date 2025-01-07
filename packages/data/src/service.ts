@@ -1260,6 +1260,7 @@ const startServer = async () => {
       const formattedResources = resources.map((resource) => ({
         id: resource.id,
         name: resource.name,
+        slug: resource.slug,
         markets: (resource.markets || [])
           .filter(market => market.public)
           .map((market) => ({

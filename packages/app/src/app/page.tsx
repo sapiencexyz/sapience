@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Suspense, useEffect } from 'react';
 
 import { MarketLayout } from '~/lib/components/market/MarketLayout';
-import { MarketNav } from '~/lib/components/market/MarketNav';
+import { ResourceNav } from '~/lib/components/market/ResourceNav';
 import { useMarketList } from '~/lib/context/MarketListProvider';
 
 const ExploreContent = () => {
@@ -36,7 +36,7 @@ const ExploreContent = () => {
 const HomePage = () => {
   return (
     <MarketLayout
-      nav={<MarketNav type="market" />}
+      nav={<ResourceNav type="market" />}
       content={<ExploreContent />}
     />
   );
