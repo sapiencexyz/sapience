@@ -87,18 +87,21 @@ const useSubscriptions = (address?: string) => {
       }
 
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_FOIL_API_URL}/graphql`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: print(SUBSCRIPTIONS_QUERY),
-            variables: {
-              owner: address.toLowerCase(),
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_FOIL_API_URL}/graphql`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
             },
-          }),
-        });
+            body: JSON.stringify({
+              query: print(SUBSCRIPTIONS_QUERY),
+              variables: {
+                owner: address.toLowerCase(),
+              },
+            }),
+          }
+        );
 
         const { data, errors } = await response.json();
         if (errors) {

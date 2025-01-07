@@ -134,7 +134,7 @@ export class MarketResolver {
     try {
       const epochs = await dataSource.getRepository(Epoch).find({
         where: { market: { id: market.id } },
-        relations: ["positions", "indexPrices"],
+        relations: ["market", "market.resource", "positions", "indexPrices"],
       });
       
       return epochs.map(mapEpochToType);
@@ -198,6 +198,7 @@ export class ResourceResolver {
       const query = dataSource
         .getRepository(ResourcePrice)
         .createQueryBuilder("price")
+        .leftJoinAndSelect("price.resource", "resource")
         .where("price.resourceId = :resourceId", { resourceId: resource.id })
         .orderBy("price.timestamp", "ASC");
 
@@ -235,7 +236,7 @@ export class PositionResolver {
 
       const positions = await dataSource.getRepository(Position).find({
         where,
-        relations: ["epoch", "epoch.market", "transactions"],
+        relations: ["epoch", "epoch.market", "epoch.market.resource", "transactions"],
       });
 
       return positions.map(mapPositionToType);
@@ -260,7 +261,7 @@ export class TransactionResolver {
 
       const transactions = await dataSource.getRepository(Transaction).find({
         where,
-        relations: ["position", "position.epoch", "position.epoch.market", "event"],
+        relations: ["position", "position.epoch", "position.epoch.market", "position.epoch.market.resource", "event"],
       });
 
       return transactions.map(mapTransactionToType);
@@ -285,7 +286,7 @@ export class EpochResolver {
 
       const epochs = await dataSource.getRepository(Epoch).find({
         where,
-        relations: ["market", "positions", "indexPrices"],
+        relations: ["market", "market.resource", "positions", "indexPrices"],
       });
 
       return epochs.map(mapEpochToType);

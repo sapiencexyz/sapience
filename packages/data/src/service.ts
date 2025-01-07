@@ -182,7 +182,7 @@ const startServer = async () => {
 
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
-    console.log(`GraphQL endpoint available at http://localhost:${PORT}/graphql`);
+    console.log(`GraphQL endpoint available at /graphql`);
   });
 
   // Helper middleware to handle async errors
