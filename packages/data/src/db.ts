@@ -9,18 +9,16 @@ import { MarketPrice } from "./models/MarketPrice";
 import { RenderJob } from "./models/RenderJob";
 import { IndexPrice } from "./models/IndexPrice";
 import { CollateralTransfer } from "./models/CollateralTransfer";
+import { Resource } from "./models/Resource";
 
-const isLive = process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging";
+const isLive =
+  process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging";
 const devDatabase = process.env.POSTGRES_DB;
 const devUsername = process.env.POSTGRES_USER;
 
 const devDataSource: DataSource = new DataSource({
   type: "postgres",
-  database: devDatabase,
-  port: 5432,
-  username: devUsername,
-  host: "localhost",
-  url: "postgresql://localhost",
+  url: `postgresql://${devUsername}@localhost:5432/${devDatabase}`,
   synchronize: true,
   logging: ["warn", "error", "log", "info"],
   entities: [
@@ -34,6 +32,7 @@ const devDataSource: DataSource = new DataSource({
     RenderJob,
     IndexPrice,
     CollateralTransfer,
+    Resource,
   ],
 });
 
@@ -53,6 +52,7 @@ const postgresDataSource: DataSource = new DataSource({
     RenderJob,
     IndexPrice,
     CollateralTransfer,
+    Resource,
   ],
 });
 
@@ -77,6 +77,7 @@ export const epochRepository = dataSource.getRepository(Epoch);
 export const positionRepository = dataSource.getRepository(Position);
 export const transactionRepository = dataSource.getRepository(Transaction);
 export const eventRepository = dataSource.getRepository(Event);
+export const resourceRepository = dataSource.getRepository(Resource);
 export const resourcePriceRepository = dataSource.getRepository(ResourcePrice);
 export const marketPriceRepository = dataSource.getRepository(MarketPrice);
 export const renderJobRepository = dataSource.getRepository(RenderJob);

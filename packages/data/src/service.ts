@@ -40,7 +40,8 @@ import { isValidWalletSignature } from "./middleware";
 import * as Sentry from "@sentry/node";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
-import { MARKET_INFO } from "./markets";
+import { MARKETS } from "./fixtures";
+import { Resource } from "./models/Resource";
 
 const PORT = 3001;
 
@@ -522,7 +523,7 @@ const startServer = async () => {
     }
 
     // Find the market info to get the correct chain for price indexing
-    const marketInfo = MARKET_INFO.find(
+    const marketInfo = MARKETS.find(
       (m) =>
         m.marketChainId === market.chainId &&
         m.deployment.address.toLowerCase() === market.address.toLowerCase()
@@ -1241,6 +1242,42 @@ const startServer = async () => {
       await renderJobRepository.save(jobDb);
 
       res.json({ success: true, job });
+    })
+  );
+
+  // route /resources: Get resources with their public market epochs
+  app.get(
+    "/resources",
+    handleAsyncErrors(async (req, res, next) => {
+      const resources = await dataSource
+        .getRepository(Resource)
+        .createQueryBuilder("resource")
+        .leftJoinAndSelect("resource.markets", "market")
+        .leftJoinAndSelect("market.epochs", "epoch")
+        .getMany();
+
+      // Format the response to include only necessary data
+      const formattedResources = resources.map((resource) => ({
+        id: resource.id,
+        name: resource.name,
+        markets: (resource.markets || [])
+          .filter(market => market.public)
+          .map((market) => ({
+            id: market.id,
+            address: market.address,
+            chainId: market.chainId,
+            name: market.name,
+            epochs: market.epochs.map((epoch) => ({
+              id: epoch.id,
+              epochId: epoch.epochId,
+              startTimestamp: Number(epoch.startTimestamp),
+              endTimestamp: Number(epoch.endTimestamp),
+              settled: epoch.settled,
+            })),
+          })),
+      }));
+
+      res.json(formattedResources);
     })
   );
 

@@ -1,16 +1,22 @@
 import "reflect-metadata";
-import { initializeDataSource, resourcePriceRepository } from "./db";
+import {
+  initializeDataSource,
+  resourcePriceRepository,
+  resourceRepository,
+  marketRepository,
+} from "./db";
 import {
   indexMarketEvents,
   initializeMarket,
   reindexMarketEvents,
 } from "./controllers/market";
-import { MARKET_INFO } from "./markets";
+import { MARKETS, RESOURCES } from "./fixtures";
 import { createOrUpdateEpochFromContract } from "./controllers/marketHelpers";
 import { getMarketStartEndBlock } from "./controllers/marketHelpers";
 import { Between } from "typeorm";
 import * as Sentry from "@sentry/node";
 import CelestiaIndexer from "./resourcePriceFunctions/celestiaIndexer";
+import { Resource } from "./models/Resource";
 
 const MAX_RETRIES = Infinity;
 const RETRY_DELAY = 5000; // 5 seconds
@@ -75,12 +81,31 @@ function createResilientProcess<T>(
   };
 }
 
+async function initializeResources() {
+  console.log("initializing resources");
+  for (const resourceInfo of RESOURCES) {
+    let resource = await resourceRepository.findOne({
+      where: { name: resourceInfo.name },
+    });
+
+    if (!resource) {
+      resource = new Resource();
+      resource.name = resourceInfo.name;
+      await resourceRepository.save(resource);
+      console.log("created resource:", resourceInfo.name);
+    }
+  }
+}
+
 async function main() {
   await initializeDataSource();
   const jobs: Promise<void>[] = [];
   console.log("starting worker");
 
-  for (const marketInfo of MARKET_INFO) {
+  // Initialize resources first
+  await initializeResources();
+
+  for (const marketInfo of MARKETS) {
     const market = await initializeMarket(marketInfo);
     console.log(
       "initialized market",
@@ -88,6 +113,16 @@ async function main() {
       "on chain",
       market.chainId
     );
+
+    // Set the resource for the market
+    const resource = await resourceRepository.findOne({
+      where: { name: marketInfo.resource.name },
+    });
+    if (!resource) {
+      throw new Error(`Resource not found: ${marketInfo.resource.name}`);
+    }
+    market.resource = resource;
+    await marketRepository.save(market);
 
     await createOrUpdateEpochFromContract(marketInfo, market);
 
@@ -125,7 +160,7 @@ export async function reindexMarket(
     );
 
     await initializeDataSource();
-    const marketInfo = MARKET_INFO.find(
+    const marketInfo = MARKETS.find(
       (m) =>
         m.marketChainId === chainId &&
         m.deployment.address.toLowerCase() === address.toLowerCase()
@@ -165,7 +200,7 @@ export async function reindexMissingBlocks(
     );
 
     await initializeDataSource();
-    const marketInfo = MARKET_INFO.find(
+    const marketInfo = MARKETS.find(
       (m) =>
         m.marketChainId === chainId &&
         m.deployment.address.toLowerCase() === address.toLowerCase()
