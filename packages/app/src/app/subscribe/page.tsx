@@ -1,6 +1,7 @@
 'use client';
 
 import { gql } from '@apollo/client';
+import { formatDistanceToNow } from 'date-fns';
 import { print } from 'graphql';
 import { Loader2, Plus } from 'lucide-react';
 import Image from 'next/image';
@@ -10,13 +11,17 @@ import { formatUnits } from 'viem';
 import { useAccount } from 'wagmi';
 
 import { Button } from '~/components/ui/button';
-import { Dialog, DialogContent } from '~/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '~/components/ui/dialog';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '~/components/ui/popover';
-import NumberDisplay from '~/lib/components/foil/numberDisplay';
 import Subscribe from '~/lib/components/foil/subscribe';
 import { MarketProvider } from '~/lib/context/MarketProvider';
 import { useResources } from '~/lib/hooks/useResources';
@@ -48,6 +53,8 @@ const SUBSCRIPTIONS_QUERY = gql`
         id
         timestamp
         type
+        baseToken
+        quoteToken
       }
     }
   }
@@ -71,6 +78,13 @@ interface Subscription {
   borrowedBaseToken: string;
   borrowedQuoteToken: string;
   collateral: string;
+  transactions: {
+    id: string;
+    timestamp: number;
+    type: string;
+    baseToken: string;
+    quoteToken: string;
+  }[];
   createdAt: string;
 }
 
@@ -134,6 +148,10 @@ const SubscriptionsList = () => {
   const { address } = useAccount();
   const { data: subscriptions, isLoading, error } = useSubscriptions(address);
   const { data: resources, isLoading: isResourcesLoading } = useResources();
+  const [sellDialogOpen, setSellDialogOpen] = useState(false);
+  const [selectedPosition, setSelectedPosition] = useState<Subscription | null>(
+    null
+  );
 
   if (isLoading) {
     return (
@@ -168,24 +186,10 @@ const SubscriptionsList = () => {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {subscriptions.map((subscription) => {
         const resource = resources?.find(
           (r) => r.name === subscription.epoch.market.name
-        );
-        const timeUntilEnd =
-          subscription.epoch.endTimestamp * 1000 - Date.now();
-        const daysUntilEnd = Math.max(
-          0,
-          Math.floor(timeUntilEnd / (1000 * 60 * 60 * 24))
-        );
-        const hoursUntilEnd = Math.max(
-          0,
-          Math.floor((timeUntilEnd % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-        );
-        const collateralAmount = formatUnits(
-          BigInt(subscription.collateral),
-          18
         );
 
         return (
@@ -210,35 +214,101 @@ const SubscriptionsList = () => {
 
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Position</span>
+                <span className="text-sm text-muted-foreground">Amount</span>
                 <span className="text-sm font-medium">
-                  #{subscription.positionId}
+                  {formatUnits(BigInt(subscription.baseToken), 9)} Ggas
                 </span>
               </div>
 
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">
-                  Collateral
+                  Price Paid
                 </span>
                 <span className="text-sm font-medium">
-                  <NumberDisplay value={collateralAmount} /> ETH
+                  {(() => {
+                    // Find the first transaction that created the position
+                    const createTx = subscription.transactions.find(
+                      (t) => t.type === 'CREATE'
+                    );
+                    if (!createTx) return '0 Gwei';
+
+                    // Calculate price as quoteToken/baseToken
+                    const quoteAmount = BigInt(createTx.quoteToken);
+                    const baseAmount = BigInt(createTx.baseToken);
+                    if (baseAmount === BigInt(0)) return '0 Gwei';
+
+                    const price = (quoteAmount * BigInt(1e9)) / baseAmount;
+                    return `${formatUnits(price, 9)} Gwei`;
+                  })()}
                 </span>
               </div>
 
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Ends in</span>
+                <span className="text-sm text-muted-foreground">Term</span>
                 <span className="text-sm font-medium">
-                  {daysUntilEnd}d {hoursUntilEnd}h
+                  {new Date(subscription.epoch.startTimestamp * 1000)
+                    .toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                    })
+                    .toLowerCase()}{' '}
+                  -{' '}
+                  {new Date(subscription.epoch.endTimestamp * 1000)
+                    .toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                    })
+                    .toLowerCase()}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Expires</span>
+                <span className="text-sm font-medium">
+                  in{' '}
+                  {formatDistanceToNow(
+                    new Date(subscription.epoch.endTimestamp * 1000),
+                    { addSuffix: false }
+                  )}
                 </span>
               </div>
             </div>
 
-            <Button variant="outline" className="w-full mt-3">
+            <Button
+              variant="outline"
+              className="w-full mt-3"
+              onClick={() => {
+                setSelectedPosition(subscription);
+                setSellDialogOpen(true);
+              }}
+            >
               Sell Position
             </Button>
           </div>
         );
       })}
+
+      <Dialog open={sellDialogOpen} onOpenChange={setSellDialogOpen}>
+        <DialogContent className="max-w-[460px]">
+          <DialogHeader>
+            <DialogTitle>
+              Sell Position #{selectedPosition?.positionId}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="text-sm text-muted-foreground">
+              Position details and sell functionality coming soon...
+            </div>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setSellDialogOpen(false)}
+            >
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
@@ -291,10 +361,10 @@ const SubscribeContent = () => {
 
   return (
     <MarketProvider chainId={chainId} address={marketAddress} epoch={Number(1)}>
-      <div className="flex-1 flex flex-col p-6">
+      <div className="flex-1 flex flex-col p-9">
         <div className="max-w-3xl mx-auto w-full">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold">Subscriptions</h1>
+            <h1 className="text-3xl font-bold">Subscriptions</h1>
             <Popover>
               <PopoverTrigger asChild>
                 <Button>

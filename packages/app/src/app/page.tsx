@@ -1,29 +1,7 @@
 'use client';
 
-import { Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { Suspense, useEffect } from 'react';
+import { redirect } from 'next/navigation';
 
-import { MarketLayout } from '~/lib/components/market/MarketLayout';
-import { ResourceNav } from '~/lib/components/market/ResourceNav';
-import { useMarketList } from '~/lib/context/MarketListProvider';
-
-const ExploreContent = () => {
-  const { isLoading } = useMarketList();
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  return null;
-};
-
-const HomePage = () => {
-  return <MarketLayout nav={<ResourceNav />} content={<ExploreContent />} />;
-};
-
-export default HomePage;
+export default function HomePage() {
+  redirect('/resources/ethereum-gas');
+}

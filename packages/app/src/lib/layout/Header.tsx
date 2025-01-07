@@ -147,7 +147,13 @@ const NavLinks = ({
   };
 
   const isActive = (path: string) => {
-    if (path === '/') return pathname === path;
+    if (path === '/') {
+      return (
+        pathname === path ||
+        pathname.startsWith('/explore') ||
+        pathname.startsWith('/resources')
+      );
+    }
     return pathname.startsWith(path);
   };
 
