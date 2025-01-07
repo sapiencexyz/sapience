@@ -98,10 +98,7 @@ export class MarketResolver {
   @Query(() => [MarketType])
   async markets(): Promise<MarketType[]> {
     try {
-      const markets = await dataSource.getRepository(Market).find({
-        relations: ["epochs", "resource"],
-      });
-      
+      const markets = await dataSource.getRepository(Market).find();
       return markets.map(mapMarketToType);
     } catch (error) {
       console.error("Error fetching markets:", error);
@@ -117,7 +114,6 @@ export class MarketResolver {
     try {
       const market = await dataSource.getRepository(Market).findOne({
         where: { chainId, address },
-        relations: ["epochs", "resource"],
       });
       
       if (!market) return null;
@@ -134,7 +130,6 @@ export class MarketResolver {
     try {
       const epochs = await dataSource.getRepository(Epoch).find({
         where: { market: { id: market.id } },
-        relations: ["market", "market.resource", "positions", "indexPrices"],
       });
       
       return epochs.map(mapEpochToType);
@@ -150,10 +145,7 @@ export class ResourceResolver {
   @Query(() => [ResourceType])
   async resources(): Promise<ResourceType[]> {
     try {
-      const resources = await dataSource.getRepository(Resource).find({
-        relations: ["markets", "resourcePrices"],
-      });
-      
+      const resources = await dataSource.getRepository(Resource).find();
       return resources.map(mapResourceToType);
     } catch (error) {
       console.error("Error fetching resources:", error);
@@ -236,7 +228,6 @@ export class PositionResolver {
 
       const positions = await dataSource.getRepository(Position).find({
         where,
-        relations: ["epoch", "epoch.market", "epoch.market.resource", "transactions"],
       });
 
       return positions.map(mapPositionToType);
@@ -261,7 +252,6 @@ export class TransactionResolver {
 
       const transactions = await dataSource.getRepository(Transaction).find({
         where,
-        relations: ["position", "position.epoch", "position.epoch.market", "position.epoch.market.resource", "event"],
       });
 
       return transactions.map(mapTransactionToType);
@@ -286,7 +276,6 @@ export class EpochResolver {
 
       const epochs = await dataSource.getRepository(Epoch).find({
         where,
-        relations: ["market", "market.resource", "positions", "indexPrices"],
       });
 
       return epochs.map(mapEpochToType);
