@@ -5,11 +5,13 @@ import {
   CreateDateColumn,
   Unique,
   OneToMany,
+  ManyToOne,
 } from "typeorm";
 import { Epoch } from "./Epoch";
 import { ResourcePrice } from "./ResourcePrice";
 import { MarketParams } from "./MarketParams";
 import { Event } from "./Event";
+import { Resource } from "./Resource";
 
 @Entity()
 @Unique(["address", "chainId"])
@@ -24,6 +26,9 @@ export class Market {
 
   @OneToMany(() => Event, (event) => event.market)
   events: Event[];
+
+  @ManyToOne(() => Resource, (resource) => resource.markets)
+  resource: Resource;
 
   @PrimaryGeneratedColumn()
   id: number;

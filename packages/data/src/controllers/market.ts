@@ -38,7 +38,7 @@ import {
   insertCollateralTransfer,
 } from "./marketHelpers";
 import { Client, TextChannel, EmbedBuilder } from "discord.js";
-import { MARKET_INFO } from "../markets";
+import { MARKETS } from "../fixtures";
 import * as Chains from 'viem/chains';
 import { convertGasToGgas, convertGgasToGas } from "../helpers";
 
@@ -315,9 +315,9 @@ const alertEvent = async (
           : `https://etherscan.io/tx/${txHash}`;
       };
 
-      // Get market name from MARKET_INFO
+      // Get market name from MARKETS
       const marketName =
-        MARKET_INFO.find((m) => m.deployment.address === address)?.name ||
+        MARKETS.find((m) => m.deployment.address === address)?.name ||
         "Foil Market";
 
       const embed = new EmbedBuilder()

@@ -11,8 +11,18 @@ const safeRequire = async (path: string): Promise<Deployment | null> => {
   }
 };
 
+export const RESOURCES = [
+  {
+    name: 'Ethereum Gas',
+  },
+  {
+    name: 'Celestia Blobspace',
+  },
+];
+
 const initializeMarkets = async () => {
   const FULL_MARKET_LIST = [
+    /*
     {
       name: 'Development Gas',
       deployment: await safeRequire(
@@ -21,7 +31,9 @@ const initializeMarkets = async () => {
       marketChainId: cannon.id,
       priceIndexer: new evmIndexer(mainnet.id),
       public: true,
+      resource: RESOURCES[0], // Ethereum Gas
     },
+    */
     {
       name: 'Ethereum Gas',
       deployment: await safeRequire(
@@ -30,6 +42,7 @@ const initializeMarkets = async () => {
       marketChainId: sepolia.id,
       priceIndexer: new evmIndexer(mainnet.id),
       public: true,
+      resource: RESOURCES[0], // Ethereum Gas
     },
   ];
 
@@ -38,4 +51,4 @@ const initializeMarkets = async () => {
   ) as MarketInfo[];
 };
 
-export const MARKET_INFO = await initializeMarkets();
+export const MARKETS = await initializeMarkets();
