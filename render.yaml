@@ -16,7 +16,7 @@ services:
           name: database
           property: connectionString
     repo: https://github.com/foilxyz/foil
-    branch: staging
+    branch: main
 
   - name: background-worker
     type: worker
@@ -31,4 +31,4 @@ services:
           name: database
           property: connectionString
     repo: https://github.com/foilxyz/foil
-    branch: staging
+    branch: main
