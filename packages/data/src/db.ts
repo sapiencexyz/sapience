@@ -17,10 +17,6 @@ const devUsername = process.env.POSTGRES_USER;
 
 const devDataSource: DataSource = new DataSource({
   type: "postgres",
-  // database: devDatabase, not required
-  // port: 5432, not required
-  // username: devUsername, not required
-  // host: "localhost", not required
   url: `postgresql://${devUsername}@localhost:5432/${devDatabase}`,
   synchronize: true,
   logging: ["warn", "error", "log", "info"],
