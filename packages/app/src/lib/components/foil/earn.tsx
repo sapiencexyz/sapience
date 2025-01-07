@@ -106,7 +106,7 @@ const Earn: FC = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-9">
+    <div className="container mx-auto px-4 py-16">
       <div className="max-w-7xl mx-auto">
         <div className="border border-border rounded-full p-1.5 mx-auto h-14 w-14 overflow-hidden mb-4">
           <img src="/eth.svg" alt="Ethereum" width="100%" height="100%" />
@@ -131,8 +131,8 @@ const Earn: FC = () => {
           </TooltipProvider>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-          <div className="md:col-span-2 h-full flex flex-col hidden">
+        <div className="grid grid-cols-1 place-items-center">
+          <div className="lg:col-span-2 h-full flex flex-col hidden">
             <h2 className="text-2xl font-light tracking-tight text-muted-foreground mb-4">
               Vault Performance
             </h2>
@@ -141,8 +141,8 @@ const Earn: FC = () => {
             </div>
           </div>
 
-          <div className="md:pt-11 md:pb-8 md:col-start-2">
-            <div className="border border-border rounded-lg shadow-sm p-6">
+          <div className="w-full max-w-sm">
+            <div className="border border-border rounded-lg shadow-sm p-6 mt-6">
               <p className="mb-1 text-md">
                 Deposit collateral to have the vault smart contract provide
                 liquidity to the market and roll between epochs automatically.
