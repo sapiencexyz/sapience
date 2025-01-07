@@ -60,6 +60,7 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
       address: marketInfo.deployment.address,
       chainId: marketInfo.marketChainId,
     },
+    relations: ["resource"]
   });
   const market = existingMarket || new Market();
 
@@ -78,7 +79,7 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
         address: marketInfo.deployment.address,
         chainId: marketInfo.marketChainId,
       },
-      relations: ["epochs"],
+      relations: ["epochs", "resource"]
     });
     updatedMarket = existingMarket || new Market();
   }
