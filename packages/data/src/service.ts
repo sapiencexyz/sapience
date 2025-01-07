@@ -517,6 +517,7 @@ const startServer = async () => {
     // Find the market
     const market = await marketRepository.findOne({
       where: { chainId: Number(chainId), address },
+      relations: ["resource"],
     });
     if (!market) {
       return { missingBlockNumbers: null, error: "Market not found" };
@@ -550,7 +551,7 @@ const startServer = async () => {
     // Get existing block numbers for ResourcePrice
     const resourcePrices = await resourcePriceRepository.find({
       where: {
-        market: { id: market.id },
+        resource: { id: market.resource.id },
         blockNumber: Between(startBlockNumber, endBlockNumber),
       },
       select: ["blockNumber"],

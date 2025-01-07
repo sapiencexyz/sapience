@@ -25,16 +25,14 @@ class EvmIndexer {
       );
       return;
     }
-    // added a try catch to prevent the watcher from crashing here if no basefee or block number was found. 
-    // it will skip the block and continue watching. We can reindex any missing blocks later.
     try {
       const price = new ResourcePrice();
-      price.market = market;
+      price.resource = market.resource;
       price.timestamp = Number(block.timestamp);
       price.value = value.toString();
       price.used = used.toString();
       price.blockNumber = Number(block.number);
-      await resourcePriceRepository.upsert(price, ["market", "timestamp"]);
+      await resourcePriceRepository.upsert(price, ["resource", "timestamp"]);
     } catch (error) {
       console.error('Error storing block price:', error);
     }

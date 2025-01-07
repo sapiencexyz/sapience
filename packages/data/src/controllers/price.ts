@@ -11,9 +11,9 @@ import {
 export const upsertIndexPriceFromResourcePrice = async (
   resourcePrice: ResourcePrice
 ) => {
-  // Get the market associated with the resource price
+  // Get the market associated with the resource price's resource
   const market = await marketRepository.findOne({
-    where: { id: resourcePrice.market.id },
+    where: { resource: { id: resourcePrice.resource.id } },
   });
   if (!market) {
     throw new Error(`Market not found for resource price ${resourcePrice.id}`);
@@ -30,10 +30,10 @@ export const upsertIndexPriceFromResourcePrice = async (
 
   // For each of these epochs
   for (const epoch of relevantEpochs) {
-    // Get all resource prices for the market that are within the bounds of the epoch
+    // Get all resource prices for the resource that are within the bounds of the epoch
     const resourcePrices = await resourcePriceRepository.find({
       where: {
-        market: { id: market.id },
+        resource: { id: resourcePrice.resource.id },
         timestamp: Between(epoch.startTimestamp!, resourcePrice.timestamp!),
       },
       order: { timestamp: "ASC" },

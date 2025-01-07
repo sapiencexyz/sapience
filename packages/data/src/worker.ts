@@ -230,7 +230,7 @@ export async function reindexMissingBlocks(
 
     const resourcePrices = await resourcePriceRepository.find({
       where: {
-        market: { id: market.id },
+        resource: { id: market.resource.id },
         blockNumber: Between(startBlockNumber, endBlockNumber),
       },
       select: ["blockNumber"],
