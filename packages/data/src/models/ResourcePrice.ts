@@ -10,6 +10,7 @@ import {
   AfterUpdate,
 } from "typeorm";
 import { Market } from "./Market";
+import { Resource } from "./Resource";
 import { upsertIndexPriceFromResourcePrice } from "src/controllers/price";
 
 @Entity()
@@ -23,6 +24,9 @@ export class ResourcePrice {
 
   @ManyToOne(() => Market, (market) => market.resourcePrices)
   market: Market;
+
+  @ManyToOne(() => Resource, (resource) => resource.resourcePrices)
+  resource: Resource;
 
   @Column({ type: "integer" })
   blockNumber: number;

@@ -40,7 +40,7 @@ import { isValidWalletSignature } from "./middleware";
 import * as Sentry from "@sentry/node";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
-import { MARKET_INFO } from "./markets";
+import { MARKETS } from "./fixtures";
 
 const PORT = 3001;
 
@@ -522,7 +522,7 @@ const startServer = async () => {
     }
 
     // Find the market info to get the correct chain for price indexing
-    const marketInfo = MARKET_INFO.find(
+    const marketInfo = MARKETS.find(
       (m) =>
         m.marketChainId === market.chainId &&
         m.deployment.address.toLowerCase() === market.address.toLowerCase()
