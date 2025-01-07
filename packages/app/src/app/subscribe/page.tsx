@@ -16,6 +16,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '~/components/ui/popover';
+import NumberDisplay from '~/lib/components/foil/numberDisplay';
 import Subscribe from '~/lib/components/foil/subscribe';
 import { MarketProvider } from '~/lib/context/MarketProvider';
 import { useResources } from '~/lib/hooks/useResources';
@@ -55,15 +56,15 @@ const SUBSCRIPTIONS_QUERY = gql`
 interface Subscription {
   id: number;
   positionId: number;
-  market: {
-    chainId: number;
-    address: string;
-    name: string;
-  };
   epoch: {
     id: number;
     startTimestamp: number;
     endTimestamp: number;
+    market: {
+      chainId: number;
+      address: string;
+      name: string;
+    };
   };
   baseToken: string;
   quoteToken: string;
@@ -97,7 +98,7 @@ const useSubscriptions = (address?: string) => {
             body: JSON.stringify({
               query: print(SUBSCRIPTIONS_QUERY),
               variables: {
-                owner: address.toLowerCase(),
+                owner: address,
               },
             }),
           }
@@ -132,6 +133,7 @@ const useSubscriptions = (address?: string) => {
 const SubscriptionsList = () => {
   const { address } = useAccount();
   const { data: subscriptions, isLoading, error } = useSubscriptions(address);
+  const { data: resources, isLoading: isResourcesLoading } = useResources();
 
   if (isLoading) {
     return (
@@ -166,51 +168,77 @@ const SubscriptionsList = () => {
   }
 
   return (
-    <div className="space-y-4">
-      {subscriptions.map((subscription) => (
-        <div
-          key={subscription.id}
-          className="p-4 rounded-lg border bg-card text-card-foreground"
-        >
-          <div className="flex justify-between items-start mb-2">
-            <div>
-              <h3 className="font-medium">{subscription.market.name}</h3>
-              <p className="text-sm text-muted-foreground">
-                Position #{subscription.positionId}
-              </p>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      {subscriptions.map((subscription) => {
+        const resource = resources?.find(
+          (r) => r.name === subscription.epoch.market.name
+        );
+        const timeUntilEnd =
+          subscription.epoch.endTimestamp * 1000 - Date.now();
+        const daysUntilEnd = Math.max(
+          0,
+          Math.floor(timeUntilEnd / (1000 * 60 * 60 * 24))
+        );
+        const hoursUntilEnd = Math.max(
+          0,
+          Math.floor((timeUntilEnd % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+        );
+        const collateralAmount = formatUnits(
+          BigInt(subscription.collateral),
+          18
+        );
+
+        return (
+          <div
+            key={subscription.id}
+            className="p-6 rounded-lg border bg-card text-card-foreground shadow-md space-y-4 flex flex-col"
+          >
+            <div className="flex items-center space-x-2">
+              {resource && (
+                <Image
+                  src={resource.iconPath}
+                  alt={resource.name}
+                  width={24}
+                  height={24}
+                  className="rounded-full"
+                />
+              )}
+              <h3 className="font-medium truncate text-xl">
+                {subscription.epoch.market.name}
+              </h3>
             </div>
-            <div className="text-right">
-              <p className="text-sm">
-                Collateral: {formatUnits(BigInt(subscription.collateral), 18)}{' '}
-                ETH
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Created {new Date(subscription.createdAt).toLocaleDateString()}
-              </p>
+
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Position</span>
+                <span className="text-sm font-medium">
+                  #{subscription.positionId}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">
+                  Collateral
+                </span>
+                <span className="text-sm font-medium">
+                  <NumberDisplay value={collateralAmount} /> ETH
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Ends in</span>
+                <span className="text-sm font-medium">
+                  {daysUntilEnd}d {hoursUntilEnd}h
+                </span>
+              </div>
             </div>
+
+            <Button variant="outline" className="w-full mt-3">
+              Sell Position
+            </Button>
           </div>
-          <div className="text-sm grid grid-cols-2 gap-2">
-            <div>
-              <p>
-                Base Token: {formatUnits(BigInt(subscription.baseToken), 18)}
-              </p>
-              <p>
-                Quote Token: {formatUnits(BigInt(subscription.quoteToken), 18)}
-              </p>
-            </div>
-            <div>
-              <p>
-                Borrowed Base:{' '}
-                {formatUnits(BigInt(subscription.borrowedBaseToken), 18)}
-              </p>
-              <p>
-                Borrowed Quote:{' '}
-                {formatUnits(BigInt(subscription.borrowedQuoteToken), 18)}
-              </p>
-            </div>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

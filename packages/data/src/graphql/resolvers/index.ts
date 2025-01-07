@@ -25,7 +25,7 @@ const mapMarketToType = (market: Market): MarketType => ({
   name: market.name,
   public: market.public,
   epochs: market.epochs?.map(mapEpochToType) || [],
-  resource: mapResourceToType(market.resource),
+  resource: market.resource ? mapResourceToType(market.resource) : null,
   deployTimestamp: market.deployTimestamp,
   deployTxnBlockNumber: market.deployTxnBlockNumber,
   owner: market.owner,
@@ -72,7 +72,7 @@ const mapTransactionToType = (transaction: Transaction): TransactionType => ({
   id: transaction.id,
   type: transaction.type,
   timestamp: transaction.event?.timestamp ? Number(transaction.event.timestamp) : 0,
-  position: mapPositionToType(transaction.position),
+  position: transaction.position ? mapPositionToType(transaction.position) : null,
   baseToken: transaction.baseToken,
   quoteToken: transaction.quoteToken,
   collateral: transaction.collateral,
@@ -82,7 +82,7 @@ const mapResourcePriceToType = (price: ResourcePrice): ResourcePriceType => ({
   id: price.id,
   timestamp: price.timestamp,
   value: price.value,
-  resource: mapResourceToType(price.resource),
+  resource: price.resource ? mapResourceToType(price.resource) : null,
   blockNumber: price.blockNumber,
 });
 
@@ -90,7 +90,7 @@ const mapIndexPriceToType = (price: IndexPrice): IndexPriceType => ({
   id: price.id,
   timestamp: price.timestamp,
   value: price.value,
-  epoch: mapEpochToType(price.epoch),
+  epoch: price.epoch ? mapEpochToType(price.epoch) : null,
 });
 
 @Resolver(() => MarketType)
@@ -228,6 +228,7 @@ export class PositionResolver {
 
       const positions = await dataSource.getRepository(Position).find({
         where,
+        relations: ["epoch", "epoch.market"],
       });
 
       return positions.map(mapPositionToType);

@@ -20,8 +20,8 @@ export class MarketType {
   @Field(() => [EpochType])
   epochs: EpochType[];
 
-  @Field(() => ResourceType)
-  resource: ResourceType;
+  @Field(() => ResourceType, { nullable: true })
+  resource: ResourceType | null;
 
   @Field(() => Int, { nullable: true })
   deployTimestamp: number | null;
@@ -107,8 +107,8 @@ export class TransactionType {
   @Field(() => Int)
   timestamp: number;
 
-  @Field(() => PositionType)
-  position: PositionType;
+  @Field(() => PositionType, { nullable: true })
+  position: PositionType | null;
 
   @Field(() => String, { nullable: true })
   baseToken: string | null;
@@ -161,8 +161,8 @@ export class ResourcePriceType {
   @Field(() => String)
   value: string;
 
-  @Field(() => ResourceType)
-  resource: ResourceType;
+  @Field(() => ResourceType, { nullable: true })
+  resource: ResourceType | null;
 
   @Field(() => Int)
   blockNumber: number;
@@ -179,6 +179,6 @@ export class IndexPriceType {
   @Field(() => String)
   value: string;
 
-  @Field(() => EpochType)
-  epoch: EpochType;
+  @Field(() => EpochType, { nullable: true })
+  epoch: EpochType | null;
 } 

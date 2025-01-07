@@ -16,7 +16,7 @@ type EpochType {
 }
 
 type IndexPriceType {
-  epoch: EpochType!
+  epoch: EpochType
   id: ID!
   timestamp: Int!
   value: String!
@@ -33,7 +33,7 @@ type MarketType {
   name: String
   owner: String
   public: Boolean!
-  resource: ResourceType!
+  resource: ResourceType
 }
 
 type PositionType {
@@ -66,7 +66,7 @@ type Query {
 type ResourcePriceType {
   blockNumber: Int!
   id: ID!
-  resource: ResourceType!
+  resource: ResourceType
   timestamp: Int!
   value: String!
 }
@@ -83,7 +83,7 @@ type TransactionType {
   baseToken: String
   collateral: String
   id: ID!
-  position: PositionType!
+  position: PositionType
   quoteToken: String
   timestamp: Int!
   type: String!
