@@ -298,7 +298,9 @@ if (process.argv[2] === "reindexMarket") {
   };
   callReindexMissing();
 } else if (process.argv[2] === "testCelestia") {
-  let celestiaIndexer: CelestiaIndexer = new CelestiaIndexer();
+  let celestiaIndexer: CelestiaIndexer = new CelestiaIndexer(
+    "https://api-mainnet.celenium.io"
+  );
   const callTestCelestia = async () => {
     await celestiaIndexer.start();
     console.log("DONE");

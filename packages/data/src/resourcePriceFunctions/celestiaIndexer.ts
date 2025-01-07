@@ -14,6 +14,8 @@ const celeniumApiVersionUrl = "/v1";
 
 class CelestiaIndexer implements IResourcePriceIndexer {
   private isWatching: boolean = false;
+  private initialTimestamp: number = 0;
+  private nextTimestamp: number = 0;
   // private reconnectAttempts: number = 0;
   // private maxReconnectAttempts: number = 5;
   // private reconnectDelay: number = 5000; // 5 seconds
@@ -29,34 +31,64 @@ class CelestiaIndexer implements IResourcePriceIndexer {
     }
   }
 
-  private async pollCelestia() {
+  private async pollCelestia(from: number) {
     const params = new URLSearchParams({
       limit: "100",
       offset: "0",
       sort: "asc",
       status: "success",
-      // msg_type: "MsgSetWithdrawAddress",
+      msg_type: "MsgPayForBlobs",
       excluded_msg_type: "MsgUnknown",
-      // from: "1727523000",
-      // to: "1727524000",
+      from: from.toString(),
+      // to: this.nextTimestamp.toString(),
       // height: "10000",
       messages: "false",
     });
-    const response = await fetch(
-      `${this.celeniumEndpoint}/${celeniumApiVersionUrl}/tx?${params.toString()}`,
-      { headers }
-    );
 
-    const data = await response.json();
-    console.log(data);
+    console.log(
+      "LLL URL",
+      `${this.celeniumEndpoint}/${celeniumApiVersionUrl}/tx?${params.toString()}`
+    );
+    // const response = await fetch(
+    //   `${this.celeniumEndpoint}/${celeniumApiVersionUrl}/tx?${params.toString()}`,
+    //   { headers }
+    // );
+
+    // const data = await response.json();
+    // console.log(data);
+  }
+
+  private async getInitialTimestamp() {
+    if (this.nextTimestamp > 0) {
+      // If we have a next timestamp, use it as the initial timestamp (this is used when the indexer is already running)
+      this.initialTimestamp = this.nextTimestamp;
+    } else {
+      // If we don't have a next timestamp, find the latest resource price and use it as the initial timestamp
+      const latestResourcePrice = await resourcePriceRepository.find({
+        order: {
+          timestamp: "DESC",
+        },
+        take: 1,
+      });
+      console.log("LLL latestResourcePrice", latestResourcePrice);
+
+      if (!latestResourcePrice[0]?.timestamp) {
+        // If we don't have a latest resource price, set the initial timestamp to current timestamp
+        this.initialTimestamp = new Date().getTime();
+      } else {
+        this.initialTimestamp = latestResourcePrice[0]?.timestamp ?? 0;
+      }
+    }
+
+    this.nextTimestamp = this.initialTimestamp + this.pollInterval;
   }
 
   public async start() {
+    await this.getInitialTimestamp();
     this.pollTimeout = setInterval(
-      this.pollCelestia.bind(this),
+      this.pollCelestia.bind(this, this.initialTimestamp),
       this.pollInterval
     );
-    this.pollCelestia();
     console.log("Celestia indexer started");
   }
 
