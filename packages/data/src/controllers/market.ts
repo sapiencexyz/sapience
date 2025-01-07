@@ -39,7 +39,8 @@ import {
 } from "./marketHelpers";
 import { Client, TextChannel, EmbedBuilder } from "discord.js";
 import { MARKET_INFO } from "../markets";
-import * as Chains from "viem/chains";
+import * as Chains from 'viem/chains';
+import { convertGasToGgas, convertGgasToGas } from "../helpers";
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const DISCORD_PRIVATE_CHANNEL_ID = process.env.DISCORD_PRIVATE_CHANNEL_ID;
@@ -262,48 +263,23 @@ const alertEvent = async (
       switch (logData.eventName) {
         case EventType.TraderPositionCreated:
         case EventType.TraderPositionModified:
-          const tradeDirection =
-            BigInt(logData.args.finalPrice) > BigInt(logData.args.initialPrice)
-              ? "Long"
-              : "Short";
-          const rawGasAmount =
-            Number(logData.args.vGasAmount || logData.args.borrowedVGas) / 1e18;
+          const tradeDirection = BigInt(logData.args.finalPrice) > BigInt(logData.args.initialPrice) ? 'Long' : 'Short';
+          const gasAmount = convertGasToGgas(logData.args.vGasAmount || logData.args.borrowedVGas);
           const rawPriceGwei = Number(logData.args.tradeRatio) / 1e18;
-
-          // Format with commas and only show decimals if significant
-          const gasAmount = rawGasAmount.toLocaleString("en-US", {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 9,
-          });
-          const priceGwei = rawPriceGwei.toLocaleString("en-US", {
+          const priceGwei = rawPriceGwei.toLocaleString('en-US', {
             minimumFractionDigits: 0,
             maximumFractionDigits: 2,
           });
 
-          title = `${tradeDirection === "Long" ? "<:pepegas:1313887905508364288>" : "<:peepoangry:1313887206687117313>"} **Trade Executed:** ${tradeDirection} ${gasAmount} Ggas @ ${priceGwei} wstGwei`;
+          title = `${tradeDirection === 'Long' ? '<:pepegas:1313887905508364288>' : '<:peepoangry:1313887206687117313>'} **Trade Executed:** ${tradeDirection} ${gasAmount} Ggas @ ${priceGwei} wstGwei`;
           break;
 
         case EventType.LiquidityPositionCreated:
         case EventType.LiquidityPositionIncreased:
         case EventType.LiquidityPositionDecreased:
         case EventType.LiquidityPositionClosed:
-          const action =
-            logData.eventName === EventType.LiquidityPositionDecreased ||
-            logData.eventName === EventType.LiquidityPositionClosed
-              ? "Removed"
-              : "Added";
-          const rawLiquidityGas =
-            Number(
-              logData.args.addedAmount0 ||
-                logData.args.increasedAmount0 ||
-                logData.args.amount0
-            ) / 1e18;
-
-          // Format with commas and only show decimals if significant
-          const liquidityGas = rawLiquidityGas.toLocaleString("en-US", {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 6,
-          });
+          const action = logData.eventName === EventType.LiquidityPositionDecreased || logData.eventName === EventType.LiquidityPositionClosed ? 'Removed' : 'Added';
+          const liquidityGas = convertGasToGgas(logData.args.addedAmount0 || logData.args.increasedAmount0 || logData.args.amount0);
 
           let priceRangeText = "";
           if (
@@ -313,7 +289,7 @@ const alertEvent = async (
             const rawLowerPrice = 1.0001 ** logData.args.lowerTick;
             const rawUpperPrice = 1.0001 ** logData.args.upperTick;
 
-            const lowerPrice = rawLowerPrice.toLocaleString("en-US", {
+            const lowerPrice = rawLowerPrice.toLocaleString('en-US', {
               minimumFractionDigits: 0,
               maximumFractionDigits: 2,
             });

@@ -304,4 +304,30 @@ export function sqrtPriceX96ToSettlementPriceD18(
   return price * BigInt(10 ** 18);
 }
 
+export const convertGasToGgas = (value: string) => {
+  const integerPart: string = (BigInt(value) / BigInt(1e9)).toString();
+  // decimal part = prefix of zeros if gas is < 10^9, then the useful decimals
+  if (BigInt(value) % BigInt(1e9) !== BigInt(0)) {
+    const decimalPart: string =
+      '0'.repeat(
+        Math.max(9 - (BigInt(value) % BigInt(1e9)).toString().length, 0)
+      ) + (BigInt(value) % BigInt(1e9)).toString().replace(/0+$/, '');
+    return `${integerPart}.${decimalPart}`;
+  }
+  return integerPart;
+};
+
+export const convertGgasToGas = (value: string) => {
+  // case when we have decimals
+  if (value.indexOf('.') > -1) {
+    const [integerPart, decimalPart]: string[] = value.split('.');
+    // console.log(`Integer part: ${integerPart}, decimal part: ${decimalPart}`);
+    return (
+      BigInt(integerPart) * BigInt(1e9) +
+      BigInt(decimalPart) * BigInt(10 ** (9 - decimalPart.length))
+    ).toString();
+  } // else if the whole number is an integer
+  return (BigInt(value) * BigInt(1e9)).toString();
+};
+
 export const CELENIUM_API_KEY = process.env.CELENIUM_API_KEY;
