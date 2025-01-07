@@ -1283,6 +1283,31 @@ const startServer = async () => {
     })
   );
 
+  // route /resources/:slug/prices/latest
+  app.get("/resources/:slug/prices/latest", handleAsyncErrors(async (req, res) => {
+    const { slug } = req.params;
+    
+    const resourceRepository = dataSource.getRepository(Resource);
+    const resource = await resourceRepository.findOne({ where: { slug } });
+    
+    if (!resource) {
+      return res.status(404).json({ error: "Resource not found" });
+    }
+    
+    const resourcePriceRepository = dataSource.getRepository(ResourcePrice);
+    const latestPrice = await resourcePriceRepository.findOne({
+      where: { resource: { id: resource.id } },
+      order: { timestamp: "DESC" },
+      relations: ["resource"],
+    });
+    
+    if (!latestPrice) {
+      return res.status(404).json({ error: "No price data found" });
+    }
+    
+    res.json(latestPrice);
+  }));
+
   // Only set up Sentry error handling in production
   if (process.env.NODE_ENV === "production") {
     Sentry.setupExpressErrorHandler(app);

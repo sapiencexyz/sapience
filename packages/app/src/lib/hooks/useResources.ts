@@ -31,4 +31,18 @@ export const useResources = () => {
       }));
     },
   });
+};
+
+export const useLatestResourcePrice = (slug: string) => {
+  return useQuery({
+    queryKey: ["resourcePrice", slug],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/resources/${slug}/prices/latest`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch latest price");
+      }
+      return response.json();
+    },
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
 }; 

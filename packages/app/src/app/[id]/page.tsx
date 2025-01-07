@@ -19,6 +19,8 @@ import CandlestickChart from "~/lib/components/chart";
 import { TimeWindow } from "~/lib/interfaces/interfaces";
 import { Card, CardContent } from "@/components/ui/card";
 import { useReactTable, getCoreRowModel } from "@tanstack/react-table";
+import { useLatestResourcePrice } from '~/lib/hooks/useResources';
+import { formatUnits } from 'viem';
 
 interface Epoch {
   id: number;
@@ -184,6 +186,7 @@ const generatePlaceholderIndexPrices = () => {
 const MarketContent = ({ params }: { params: { id: string } }) => {
   const { markets } = useMarketList();
   const category = MARKET_CATEGORIES.find(c => c.id === params.id);
+  const { data: latestPrice, isLoading: isPriceLoading } = useLatestResourcePrice(params.id);
 
   if (!category) {
     return (
@@ -216,7 +219,15 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
                 <div className="flex flex-col">
                   <span className="text-sm text-muted-foreground">Current Price</span>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-bold">50 gwei</span>
+                    {isPriceLoading ? (
+                      <span className="text-2xl font-bold">Loading...</span>
+                    ) : latestPrice ? (
+                      <span className="text-2xl font-bold">
+                        {formatUnits(BigInt(latestPrice.value), 9)} gwei
+                      </span>
+                    ) : (
+                      <span className="text-2xl font-bold">No price data</span>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -243,7 +254,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
 const MarketPage = ({ params }: { params: { id: string } }) => {
   return (
     <MarketLayout
-      nav={<ResourceNav type="category" />}
+      nav={<ResourceNav />}
       content={<MarketContent params={params} />}
     />
   );
