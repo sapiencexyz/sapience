@@ -45,6 +45,7 @@ import { Resource } from "./models/Resource";
 import { buildSchema } from "type-graphql";
 import { ApolloServer } from "@apollo/server";
 import { expressMiddleware } from "@apollo/server/express4";
+import { ApolloServerPluginLandingPageLocalDefault } from "@apollo/server/plugin/landingPage/default";
 import {
   MarketResolver,
   ResourceResolver,
@@ -140,6 +141,13 @@ const startServer = async () => {
       console.error("GraphQL Error:", error);
       return error;
     },
+    introspection: true,
+    plugins: [
+      ApolloServerPluginLandingPageLocalDefault({
+        embed: true,
+        includeCookies: true,
+      }),
+    ],
   });
 
   // Start Apollo Server

@@ -1,5 +1,7 @@
 'use client';
 
+import { gql } from '@apollo/client';
+import { print } from 'graphql';
 import { Loader2, Plus } from 'lucide-react';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
@@ -17,6 +19,38 @@ import {
 import Subscribe from '~/lib/components/foil/subscribe';
 import { MarketProvider } from '~/lib/context/MarketProvider';
 import { useResources } from '~/lib/hooks/useResources';
+
+const SUBSCRIPTIONS_QUERY = gql`
+  query GetSubscriptions($owner: String!) {
+    positions(owner: $owner) {
+      id
+      positionId
+      isLP
+      baseToken
+      quoteToken
+      borrowedBaseToken
+      borrowedQuoteToken
+      collateral
+      epoch {
+        id
+        epochId
+        startTimestamp
+        endTimestamp
+        market {
+          id
+          chainId
+          address
+          name
+        }
+      }
+      transactions {
+        id
+        timestamp
+        type
+      }
+    }
+  }
+`;
 
 interface Subscription {
   id: number;
@@ -53,14 +87,32 @@ const useSubscriptions = (address?: string) => {
       }
 
       try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_FOIL_API_URL}/subscriptions?address=${address}`
-        );
-        if (!response.ok) {
-          throw new Error('Failed to fetch subscriptions');
+        const response = await fetch(`${process.env.NEXT_PUBLIC_FOIL_API_URL}/graphql`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: print(SUBSCRIPTIONS_QUERY),
+            variables: {
+              owner: address.toLowerCase(),
+            },
+          }),
+        });
+
+        const { data, errors } = await response.json();
+        if (errors) {
+          throw new Error(errors[0].message);
         }
-        const data = await response.json();
-        setSubscriptions(data);
+
+        // Filter for active long positions
+        const activePositions = data.positions.filter(
+          (position: any) =>
+            !position.isLP && // Not an LP position
+            BigInt(position.baseToken) > BigInt(0) // Has positive baseToken
+        );
+
+        setSubscriptions(activePositions);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error');
       } finally {

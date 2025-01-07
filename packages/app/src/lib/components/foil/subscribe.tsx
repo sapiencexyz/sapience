@@ -92,38 +92,6 @@ const publicClient = createPublicClient({
     : http('https://ethereum-rpc.publicnode.com'),
 });
 
-const SUBSCRIPTIONS_QUERY = gql`
-  query GetSubscriptions($owner: String!) {
-    positions(owner: $owner) {
-      id
-      positionId
-      isLP
-      baseToken
-      quoteToken
-      borrowedBaseToken
-      borrowedQuoteToken
-      collateral
-      epoch {
-        id
-        epochId
-        startTimestamp
-        endTimestamp
-        market {
-          id
-          chainId
-          address
-          name
-        }
-      }
-      transactions {
-        id
-        timestamp
-        type
-      }
-    }
-  }
-`;
-
 const Subscribe: FC<SubscribeProps> = ({
   marketAddress: propMarketAddress,
   chainId: propChainId,
@@ -133,47 +101,12 @@ const Subscribe: FC<SubscribeProps> = ({
   const { address } = useAccount();
   const { markets } = useMarketList();
 
-  const { data: positions, isLoading } = useQuery({
-    queryKey: ['subscriptions', address],
-    queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/graphql`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: SUBSCRIPTIONS_QUERY,
-          variables: {
-            owner: address?.toLowerCase(),
-          },
-        }),
-      });
-
-      const { data, errors } = await response.json();
-      if (errors) {
-        throw new Error(errors[0].message);
-      }
-
-      // Filter for active long positions
-      return data.positions.filter(
-        (position: any) =>
-          !position.isLP && // Not an LP position
-          BigInt(position.baseToken) > BigInt(0) // Has positive baseToken
-      );
-    },
-    enabled: !!address,
-  });
-
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
-
-  if (!positions?.length) {
+  if (!address) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-8">
-        <h2 className="text-lg font-medium">No active subscriptions</h2>
+        <h2 className="text-lg font-medium">Connect your wallet</h2>
         <p className="text-sm text-muted-foreground">
-          Subscribe to a market to get started
+          Connect your wallet to view and manage subscriptions
         </p>
       </div>
     );
@@ -181,33 +114,8 @@ const Subscribe: FC<SubscribeProps> = ({
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-medium">Active Subscriptions</h2>
-      <div className="grid gap-4">
-        {positions.map((position: any) => (
-          <Link
-            key={position.id}
-            href={`/${position.epoch.market.chainId}:${position.epoch.market.address}/${position.epoch.epochId}/${position.positionId}`}
-            className="block space-y-2 rounded-lg border p-4 hover:bg-accent/50"
-          >
-            <div className="flex items-center justify-between">
-              <span className="font-medium">
-                {position.epoch.market.name || 'Unnamed Market'}
-              </span>
-              <span className="text-sm text-muted-foreground">
-                {position.epoch.endTimestamp
-                  ? `Expires ${formatDistanceToNow(
-                      position.epoch.endTimestamp * 1000,
-                      { addSuffix: true }
-                    )}`
-                  : 'Expiry not set'}
-              </span>
-            </div>
-            <div className="text-sm text-muted-foreground">
-              Position #{position.positionId}
-            </div>
-          </Link>
-        ))}
-      </div>
+      <h2 className="text-lg font-medium">Subscribe to Market</h2>
+      {/* Add your subscription form or market selection UI here */}
     </div>
   );
 };
