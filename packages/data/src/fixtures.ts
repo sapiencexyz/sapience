@@ -22,6 +22,7 @@ export const RESOURCES = [
 
 const initializeMarkets = async () => {
   const FULL_MARKET_LIST = [
+    /*
     {
       name: 'Development Gas',
       deployment: await safeRequire(
@@ -32,6 +33,7 @@ const initializeMarkets = async () => {
       public: true,
       resource: RESOURCES[0], // Ethereum Gas
     },
+    */
     {
       name: 'Ethereum Gas',
       deployment: await safeRequire(

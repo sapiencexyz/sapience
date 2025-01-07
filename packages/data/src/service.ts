@@ -41,6 +41,7 @@ import * as Sentry from "@sentry/node";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { MARKETS } from "./fixtures";
+import { Resource } from "./models/Resource";
 
 const PORT = 3001;
 
@@ -1241,6 +1242,42 @@ const startServer = async () => {
       await renderJobRepository.save(jobDb);
 
       res.json({ success: true, job });
+    })
+  );
+
+  // route /resources: Get resources with their public market epochs
+  app.get(
+    "/resources",
+    handleAsyncErrors(async (req, res, next) => {
+      const resources = await dataSource
+        .getRepository(Resource)
+        .createQueryBuilder("resource")
+        .leftJoinAndSelect("resource.markets", "market")
+        .leftJoinAndSelect("market.epochs", "epoch")
+        .getMany();
+
+      // Format the response to include only necessary data
+      const formattedResources = resources.map((resource) => ({
+        id: resource.id,
+        name: resource.name,
+        markets: (resource.markets || [])
+          .filter(market => market.public)
+          .map((market) => ({
+            id: market.id,
+            address: market.address,
+            chainId: market.chainId,
+            name: market.name,
+            epochs: market.epochs.map((epoch) => ({
+              id: epoch.id,
+              epochId: epoch.epochId,
+              startTimestamp: Number(epoch.startTimestamp),
+              endTimestamp: Number(epoch.endTimestamp),
+              settled: epoch.settled,
+            })),
+          })),
+      }));
+
+      res.json(formattedResources);
     })
   );
 
