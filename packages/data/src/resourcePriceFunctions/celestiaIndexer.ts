@@ -1,25 +1,31 @@
-// import { resourcePriceRepository } from "../db";
-// import { ResourcePrice } from "../models/ResourcePrice";
-// import { type Market } from "../models/Market";
-// import { getBlockByTimestamp, getProviderForChain } from "../helpers";
+import { IResourcePriceIndexer } from "./IResourcePriceIndexer";
+import { resourcePriceRepository } from "../db";
+import { ResourcePrice } from "../models/ResourcePrice";
+import { type Market } from "../models/Market";
+import { CELENIUM_API_KEY } from "../helpers";
 // import Sentry from "../sentry";
 
-class CelestiaIndexer {
-  // private isWatching: boolean = false;
+const headers: HeadersInit = {};
+if (CELENIUM_API_KEY) {
+  headers.apiKey = CELENIUM_API_KEY;
+}
+
+const celeniumApiVersionUrl = "/v1";
+
+class CelestiaIndexer implements IResourcePriceIndexer {
+  private isWatching: boolean = false;
   // private reconnectAttempts: number = 0;
   // private maxReconnectAttempts: number = 5;
   // private reconnectDelay: number = 5000; // 5 seconds
+  private celeniumEndpoint: string;
 
-  private apiKey: string;
-  private baseUrl: string = "https://api-mainnet.celenium.io/v1";
   private pollInterval: number = 30000; // 30 seconds in milliseconds
   private pollTimeout?: NodeJS.Timeout;
 
-  constructor() {
-    // Get API key from environment variable
-    this.apiKey = process.env.CELESTIA_API_KEY || "";
-    if (!this.apiKey) {
-      throw new Error("CELESTIA_API_KEY environment variable not set");
+  constructor(celeniumEndpoint: string) {
+    this.celeniumEndpoint = celeniumEndpoint;
+    if (!CELENIUM_API_KEY) {
+      throw new Error("CELENIUM_API_KEY environment variable not set");
     }
   }
 
@@ -36,11 +42,10 @@ class CelestiaIndexer {
       // height: "10000",
       messages: "false",
     });
-    const response = await fetch(`${this.baseUrl}/tx?${params.toString()}`, {
-      headers: {
-        apikey: this.apiKey,
-      },
-    });
+    const response = await fetch(
+      `${this.celeniumEndpoint}/${celeniumApiVersionUrl}/tx?${params.toString()}`,
+      { headers }
+    );
 
     const data = await response.json();
     console.log(data);
@@ -64,84 +69,167 @@ class CelestiaIndexer {
     console.log("Celestia indexer status: ", this.pollTimeout);
   }
 
-  // private async storeBlockPrice(block: Block, market: Market) {
-  // private async storeBlockPrice(block: Block, market: Market) {
-  //   const value = block?.baseFeePerGas; // in wei
-  //   const used = block?.gasUsed;
-  //   if (!value || !block.number) {
-  //     console.warn(
-  //       `No baseFeePerGas for block ${block?.number} on market ${market.chainId}:${market.address}. Skipping block.`
-  //     );
-  //     return;
-  //   }
+  /**
+   * Store the block price in the database
+   * @param block
+   * @param market
+   */
+  private async storeBlockPrice(block: any, market: Market) {
+    const used = block?.stats?.blobs_size;
+    const value = block?.stats?.fee / used;
+    if (!value || !block.height) {
+      console.error(
+        `No resource price for block ${block?.height} on market ${market.chainId}:${market.address}`
+      );
+      return;
+    }
 
-  //   try {
-  //     const price = new ResourcePrice();
-  //     price.market = market;
-  //     price.timestamp = Number(block.timestamp);
-  //     price.value = value.toString();
-  //     price.used = used.toString();
-  //     price.blockNumber = Number(block.number);
-  //     await resourcePriceRepository.upsert(price, ["market", "timestamp"]);
-  //   } catch (error) {
-  //     console.error("Error storing block price:", error);
-  //   }
-  // }
+    const price = new ResourcePrice();
+    price.market = market;
+    price.timestamp = new Date(block.time).getTime();
+    price.value = value.toString();
+    price.used = used.toString();
+    price.blockNumber = Number(block.height);
+    await resourcePriceRepository.upsert(price, ["market", "timestamp"]);
+  }
 
-  // async indexBlockPriceFromTimestamp(
-  //   market: Market,
-  //   timestamp: number
-  // ): Promise<boolean> {
-  //   const initalBlock = await getBlockByTimestamp(this.client, timestamp);
-  //   if (!initalBlock.number) {
-  //     throw new Error("No block found at timestamp");
-  //   }
-  //   const currentBlock = await this.client.getBlock();
+  /**
+   * Get a block from Celenium
+   * @param blockNumber
+   * @returns Promise<any> block json data
+   */
+  private async getBlockFromCelenium(blockNumber: number) {
+    const response = await fetch(
+      `${this.celeniumEndpoint}/${celeniumApiVersionUrl}/block/${blockNumber}?stats=true`,
+      { headers }
+    );
+    if (!response.ok) {
+      throw new Error(`Failed to fetch block ${blockNumber}`);
+    }
+    return response.json();
+  }
 
-  //   for (
-  //     let blockNumber = initalBlock.number;
-  //     blockNumber <= currentBlock.number;
-  //     blockNumber++
-  //   ) {
-  //     try {
-  //       console.log("Indexing gas from block ", blockNumber);
+  /**
+   * Get a block from Celenium by timestamp
+   * @param timestamp
+   * @returns Promise<number> block number
+   */
+  private async getBlockByTimestamp(timestamp: number): Promise<number> {
+    // Get the latest block first
+    const latestBlock = await this.getBlockFromCelenium(
+      await this.getLatestBlockNumber()
+    );
 
-  //       const block = await this.client.getBlock({
-  //         blockNumber: BigInt(blockNumber),
-  //       });
-  //       await this.storeBlockPrice(block, market);
-  //     } catch (error) {
-  //       Sentry.withScope((scope) => {
-  //         scope.setExtra("blockNumber", blockNumber);
-  //         scope.setExtra("market", `${market.chainId}:${market.address}`);
-  //         scope.setExtra("timestamp", timestamp);
-  //         Sentry.captureException(error);
-  //       });
-  //       console.error(`Error processing block ${blockNumber}:`, error);
-  //     }
-  //   }
-  //   return true;
-  // }
+    let low = 1;
+    let high = latestBlock.height;
+    let closestBlock: any = null;
 
-  // async indexBlocks(market: Market, blocks: number[]): Promise<boolean> {
-  //   for (const blockNumber of blocks) {
-  //     try {
-  //       console.log("Indexing gas from block", blockNumber);
-  //       const block = await this.client.getBlock({
-  //         blockNumber: BigInt(blockNumber),
-  //       });
-  //       await this.storeBlockPrice(block, market);
-  //     } catch (error) {
-  //       Sentry.withScope((scope) => {
-  //         scope.setExtra("blockNumber", blockNumber);
-  //         scope.setExtra("market", `${market.chainId}:${market.address}`);
-  //         Sentry.captureException(error);
-  //       });
-  //       console.error(`Error processing block ${blockNumber}:`, error);
-  //     }
-  //   }
-  //   return true;
-  // }
+    // Binary search for the block with the closest timestamp
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      const block = await this.getBlockFromCelenium(mid);
+
+      if (new Date(block.time).getTime() < timestamp) {
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+        closestBlock = block;
+      }
+    }
+
+    if (!closestBlock) {
+      throw new Error("No block found at timestamp");
+    }
+
+    return closestBlock.height;
+  }
+
+  /**
+   * Get the latest block number from Celenium
+   * @returns Promise<number> block number
+   */
+  private async getLatestBlockNumber(): Promise<number> {
+    const response = await fetch(
+      `${this.celeniumEndpoint}/${celeniumApiVersionUrl}/block/count`,
+      { headers }
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch latest block number");
+    }
+    const data = await response.json();
+    return data.count;
+  }
+
+  /**
+   * Index the block price(s) from a timestamp to the current block
+   * @dev notice: this method will request all blocks from the initial (timestamp) block to the current block.
+   * @param market
+   * @param timestamp
+   * @returns Promise<boolean> true if successful
+   */
+  public async indexBlockPriceFromTimestamp(
+    market: Market,
+    timestamp: number
+  ): Promise<boolean> {
+    const initialBlockNumber = await this.getBlockByTimestamp(timestamp);
+    if (!initialBlockNumber) {
+      throw new Error("No block found at timestamp");
+    }
+    const currentBlock = await this.getBlockFromCelenium(initialBlockNumber);
+
+    for (
+      let blockNumber = initialBlockNumber;
+      blockNumber <= currentBlock.height;
+      blockNumber++
+    ) {
+      try {
+        console.log("Indexing resource price (TIA) from block ", blockNumber);
+
+        const block = await this.getBlockFromCelenium(blockNumber);
+        // TODO: Check if we need to pause or slow down the request rate to meet the Celenium API rate limit
+        // TODO: Check if we can pull several blocks at once to speed up the process (and reduce the number of requests)
+        await this.storeBlockPrice(block, market);
+      } catch (error) {
+        console.error(`Error processing block ${blockNumber}:`, error);
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Index the block price(s) from a list of block numbers
+   * @param market
+   * @param blocks
+   * @returns Promise<boolean> true if successful
+   */
+  public async indexBlocks(market: Market, blocks: number[]): Promise<boolean> {
+    for (const blockNumber of blocks) {
+      try {
+        console.log(
+          "Indexing resource price (TIA) from block (cherrypicked)",
+          blockNumber
+        );
+
+        const block = await this.getBlockFromCelenium(blockNumber);
+        // TODO: Same concerns apply as in indexBlockPriceFromTimestamp
+        await this.storeBlockPrice(block, market);
+      } catch (error) {
+        console.error(`Error processing block ${blockNumber}:`, error);
+      }
+    }
+    return true;
+  }
+
+  // TODO: Implement these methods
+  public async watchBlocksForMarket(market: Market): Promise<void> {
+    if (this.isWatching) {
+      console.log("Already watching blocks for this market");
+      return;
+    }
+
+    this.isWatching = true;
+    return;
+  }
 
   // async watchBlocksForMarket(market: Market) {
   //   if (this.isWatching) {

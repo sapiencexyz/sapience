@@ -4,8 +4,9 @@ import { type Market } from "../models/Market";
 import { getBlockByTimestamp, getProviderForChain } from "../helpers";
 import { Block, type PublicClient } from "viem";
 import Sentry from "../sentry";
+import { IResourcePriceIndexer } from "./IResourcePriceIndexer";
 
-class EvmIndexer {
+class EvmIndexer implements IResourcePriceIndexer {
   public client: PublicClient;
   private isWatching: boolean = false;
   private reconnectAttempts: number = 0;
@@ -25,7 +26,7 @@ class EvmIndexer {
       );
       return;
     }
-    // added a try catch to prevent the watcher from crashing here if no basefee or block number was found. 
+    // added a try catch to prevent the watcher from crashing here if no basefee or block number was found.
     // it will skip the block and continue watching. We can reindex any missing blocks later.
     try {
       const price = new ResourcePrice();
@@ -36,7 +37,7 @@ class EvmIndexer {
       price.blockNumber = Number(block.number);
       await resourcePriceRepository.upsert(price, ["market", "timestamp"]);
     } catch (error) {
-      console.error('Error storing block price:', error);
+      console.error("Error storing block price:", error);
     }
   }
 
@@ -64,9 +65,9 @@ class EvmIndexer {
         await this.storeBlockPrice(block, market);
       } catch (error) {
         Sentry.withScope((scope) => {
-          scope.setExtra('blockNumber', blockNumber);
-          scope.setExtra('market', `${market.chainId}:${market.address}`);
-          scope.setExtra('timestamp', timestamp);
+          scope.setExtra("blockNumber", blockNumber);
+          scope.setExtra("market", `${market.chainId}:${market.address}`);
+          scope.setExtra("timestamp", timestamp);
           Sentry.captureException(error);
         });
         console.error(`Error processing block ${blockNumber}:`, error);
@@ -75,10 +76,7 @@ class EvmIndexer {
     return true;
   }
 
-  async indexBlocks(
-    market: Market,
-    blocks: number[]
-  ): Promise<boolean> {
+  async indexBlocks(market: Market, blocks: number[]): Promise<boolean> {
     for (const blockNumber of blocks) {
       try {
         console.log("Indexing gas from block", blockNumber);
@@ -88,8 +86,8 @@ class EvmIndexer {
         await this.storeBlockPrice(block, market);
       } catch (error) {
         Sentry.withScope((scope) => {
-          scope.setExtra('blockNumber', blockNumber);
-          scope.setExtra('market', `${market.chainId}:${market.address}`);
+          scope.setExtra("blockNumber", blockNumber);
+          scope.setExtra("market", `${market.chainId}:${market.address}`);
           Sentry.captureException(error);
         });
         console.error(`Error processing block ${blockNumber}:`, error);
@@ -100,10 +98,10 @@ class EvmIndexer {
 
   async watchBlocksForMarket(market: Market) {
     if (this.isWatching) {
-      console.log('Already watching blocks for this market');
+      console.log("Already watching blocks for this market");
       return;
     }
-    // suggested using a watch some re-connectiong logic if the watcher crashes. and attempts to reconnect. 
+    // suggested using a watch some re-connectiong logic if the watcher crashes. and attempts to reconnect.
     const startWatching = () => {
       console.log(
         `Watching base fee per gas on chain ID ${this.client.chain?.id} for market ${market.chainId}:${market.address}`
@@ -117,31 +115,33 @@ class EvmIndexer {
             await this.storeBlockPrice(block, market);
             this.reconnectAttempts = 0;
           } catch (error) {
-            console.error('Error processing block:', error);
-
+            console.error("Error processing block:", error);
           }
         },
         onError: (error) => {
           Sentry.withScope((scope) => {
-            scope.setExtra('market', `${market.chainId}:${market.address}`);
-            scope.setExtra('chainId', this.client.chain?.id);
+            scope.setExtra("market", `${market.chainId}:${market.address}`);
+            scope.setExtra("chainId", this.client.chain?.id);
             Sentry.captureException(error);
           });
-          console.error('Watch error:', error);
-
+          console.error("Watch error:", error);
 
           this.isWatching = false;
           unwatch?.();
 
           if (this.reconnectAttempts < this.maxReconnectAttempts) {
             this.reconnectAttempts++;
-            console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
+            console.log(
+              `Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`
+            );
             setTimeout(() => {
               startWatching();
             }, this.reconnectDelay);
           } else {
-            console.error('Max reconnection attempts reached. Stopping watch.');
-            Sentry.captureMessage('Max reconnection attempts reached for block watcher');
+            console.error("Max reconnection attempts reached. Stopping watch.");
+            Sentry.captureMessage(
+              "Max reconnection attempts reached for block watcher"
+            );
           }
         },
       });
