@@ -304,6 +304,8 @@ if (process.argv[2] === "reindexMarket") {
   };
   callReindexMissing();
 } else if (process.argv[2] === "testCelestia") {
+  await initializeDataSource();
+
   let celestiaIndexer: CelestiaIndexer = new CelestiaIndexer(
     "https://api-mainnet.celenium.io"
   );

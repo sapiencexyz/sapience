@@ -10,7 +10,7 @@ if (CELENIUM_API_KEY) {
   headers.apiKey = CELENIUM_API_KEY;
 }
 
-const celeniumApiVersionUrl = "/v1";
+const celeniumApiVersionUrl = "v1";
 
 class CelestiaIndexer implements IResourcePriceIndexer {
   private isWatching: boolean = false;
@@ -31,7 +31,9 @@ class CelestiaIndexer implements IResourcePriceIndexer {
     }
   }
 
-  private async pollCelestia(from: number) {
+  private async pollCelestia() {
+    const from = await this.getInitialTimestamp();
+
     const params = new URLSearchParams({
       limit: "100",
       offset: "0",
@@ -40,8 +42,6 @@ class CelestiaIndexer implements IResourcePriceIndexer {
       msg_type: "MsgPayForBlobs",
       excluded_msg_type: "MsgUnknown",
       from: from.toString(),
-      // to: this.nextTimestamp.toString(),
-      // height: "10000",
       messages: "false",
     });
 
@@ -49,18 +49,29 @@ class CelestiaIndexer implements IResourcePriceIndexer {
       "LLL URL",
       `${this.celeniumEndpoint}/${celeniumApiVersionUrl}/tx?${params.toString()}`
     );
-    // const response = await fetch(
-    //   `${this.celeniumEndpoint}/${celeniumApiVersionUrl}/tx?${params.toString()}`,
-    //   { headers }
-    // );
+    const response = await fetch(
+      `${this.celeniumEndpoint}/${celeniumApiVersionUrl}/tx?${params.toString()}`
+      // { headers }
+    );
 
-    // const data = await response.json();
-    // console.log(data);
+    if (!response.ok) {
+      console.error(`HTTP error! status: ${response.status}`);
+      return;
+    }
+
+    console.log("LLL response", response);
+    const data = await response.json();
+    console.log("LLL data", data);
   }
 
   private async getInitialTimestamp() {
+    const interval = this.pollInterval / 1000;
     if (this.nextTimestamp > 0) {
       // If we have a next timestamp, use it as the initial timestamp (this is used when the indexer is already running)
+      console.log(
+        "LLL using next timestamp as initial timestamp",
+        this.nextTimestamp
+      );
       this.initialTimestamp = this.nextTimestamp;
     } else {
       // If we don't have a next timestamp, find the latest resource price and use it as the initial timestamp
@@ -74,21 +85,32 @@ class CelestiaIndexer implements IResourcePriceIndexer {
 
       if (!latestResourcePrice[0]?.timestamp) {
         // If we don't have a latest resource price, set the initial timestamp to current timestamp
-        this.initialTimestamp = new Date().getTime();
+        this.initialTimestamp = Math.floor(new Date().getTime() / 1000);
+        console.log(
+          "LLL initial timestamp set to current timestamp",
+          this.initialTimestamp
+        );
       } else {
-        this.initialTimestamp = latestResourcePrice[0]?.timestamp ?? 0;
+        this.initialTimestamp =
+          latestResourcePrice[0]?.timestamp - interval ?? 0;
+        console.log(
+          "LLL initial timestamp set to latest resource price",
+          this.initialTimestamp
+        );
       }
     }
 
-    this.nextTimestamp = this.initialTimestamp + this.pollInterval;
+    this.nextTimestamp = this.initialTimestamp + interval;
+    return this.initialTimestamp;
   }
 
   public async start() {
-    await this.getInitialTimestamp();
+    console.log("LLL starting Celestia indexer");
     this.pollTimeout = setInterval(
-      this.pollCelestia.bind(this, this.initialTimestamp),
+      this.pollCelestia.bind(this),
       this.pollInterval
     );
+    await this.pollCelestia();
     console.log("Celestia indexer started");
   }
 
@@ -116,13 +138,17 @@ class CelestiaIndexer implements IResourcePriceIndexer {
       return;
     }
 
-    const price = new ResourcePrice();
-    price.market = market;
-    price.timestamp = new Date(block.time).getTime();
-    price.value = value.toString();
-    price.used = used.toString();
-    price.blockNumber = Number(block.height);
-    await resourcePriceRepository.upsert(price, ["market", "timestamp"]);
+    try {
+      const price = new ResourcePrice();
+      price.resource = market.resource;
+      price.timestamp = new Date(block.time).getTime();
+      price.value = value.toString();
+      price.used = used.toString();
+      price.blockNumber = Number(block.height);
+      await resourcePriceRepository.upsert(price, ["resource", "timestamp"]);
+    } catch (error) {
+      console.error("Error storing block price:", error);
+    }
   }
 
   /**
