@@ -208,6 +208,55 @@ const startServer = async () => {
     })
   );
 
+  // route /subscriptions: Get all long positions for a wallet
+  app.get(
+    "/subscriptions",
+    validateRequestParams(["address"]),
+    handleAsyncErrors(async (req, res, next) => {
+      const { address } = req.query as { address: string };
+      
+      const positions = await positionRepository.find({
+        where: {
+          owner: address.toLowerCase(),
+          isLP: false, // Only get non-LP positions
+          isSettled: false, // Only get active positions
+        },
+        relations: ["epoch", "epoch.market"],
+        order: {
+          createdAt: "DESC",
+        },
+      });
+
+      // Filter for long positions (positive baseToken)
+      const longPositions = positions.filter(
+        position => BigInt(position.baseToken) > BigInt(0)
+      );
+
+      const formattedPositions = longPositions.map((position) => ({
+        id: position.id,
+        positionId: position.positionId,
+        market: {
+          chainId: position.epoch.market.chainId,
+          address: position.epoch.market.address,
+          name: position.epoch.market.name,
+        },
+        epoch: {
+          id: position.epoch.epochId,
+          startTimestamp: Number(position.epoch.startTimestamp),
+          endTimestamp: Number(position.epoch.endTimestamp),
+        },
+        baseToken: position.baseToken,
+        quoteToken: position.quoteToken,
+        borrowedBaseToken: position.borrowedBaseToken,
+        borrowedQuoteToken: position.borrowedQuoteToken,
+        collateral: position.collateral,
+        createdAt: position.createdAt,
+      }));
+
+      res.json(formattedPositions);
+    })
+  );
+
   // route /prices/chart-data: Get market price data for rendering charts
   app.get(
     "/prices/chart-data",
