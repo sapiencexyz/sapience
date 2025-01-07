@@ -193,14 +193,21 @@ const NavLinks = ({
   if (isMobile) {
     return (
       <div className="flex flex-col space-y-4">
+        <Link
+          href="/"
+          onClick={() => onClose?.()}
+          className="hover:no-underline"
+        >
+          Explore
+        </Link>
         <div>
           <div className="font-bold mb-1">Subscribe</div>
           {renderMobileMarketLinks('subscribe')}
         </div>
-        {/* <div>
+        <div>
           <div className="font-bold mb-1">Earn</div>
           {renderMobileMarketLinks('earn')}
-        </div> */}
+        </div>
         <div>
           <div className="font-bold mb-1">Trade</div>
           {renderMobileMarketLinks('trade', true)}
@@ -222,18 +229,21 @@ const NavLinks = ({
 
   return (
     <div className="flex gap-5">
-      {/* 
-      <NavPopover label="Subscribe" path="subscribe" />
-      <NavPopover label="Earn" path="earn" /> 
-      <NavPopover label="Trade" path="trade" withEpochs />
-      <NavPopover label="Pool" path="pool" withEpochs />
-      */}
-      <Link
-        href="/subscribe/11155111:0xa898b018aebbcd87e88a4d0dac5105b3f106d7d7/epochs/1"
-        className="hover:no-underline"
-      >
-        <Button variant="ghost" className=" text-lg">
+      <Link href="/" className="hover:no-underline">
+        <Button variant="ghost" className="text-lg">
+          Explore
+        </Button>
+      </Link>
+
+      <Link href="/subscribe" className="hover:no-underline">
+        <Button variant="ghost" className="text-lg">
           Subscribe
+        </Button>
+      </Link>
+
+      <Link href="/earn" className="hover:no-underline">
+        <Button variant="ghost" className="text-lg">
+          Earn
         </Button>
       </Link>
 
@@ -241,7 +251,7 @@ const NavLinks = ({
         href="/trade/11155111:0xa898b018aebbcd87e88a4d0dac5105b3f106d7d7/epochs/1"
         className="hover:no-underline"
       >
-        <Button variant="ghost" className=" text-lg">
+        <Button variant="ghost" className="text-lg">
           Trade
         </Button>
       </Link>
@@ -250,12 +260,12 @@ const NavLinks = ({
         href="/pool/11155111:0xa898b018aebbcd87e88a4d0dac5105b3f106d7d7/epochs/1"
         className="hover:no-underline"
       >
-        <Button variant="ghost" className=" text-lg">
+        <Button variant="ghost" className="text-lg">
           Pool
         </Button>
       </Link>
       <Link href="https://docs.foil.xyz" className="hover:no-underline">
-        <Button variant="ghost" className=" text-lg">
+        <Button variant="ghost" className="text-lg">
           Docs
         </Button>
       </Link>

@@ -8,7 +8,6 @@ import {
   ManyToOne,
 } from "typeorm";
 import { Epoch } from "./Epoch";
-import { ResourcePrice } from "./ResourcePrice";
 import { MarketParams } from "./MarketParams";
 import { Event } from "./Event";
 import { Resource } from "./Resource";
@@ -20,9 +19,6 @@ export class Market {
     cascade: true,
   })
   epochs: Epoch[];
-
-  @OneToMany(() => ResourcePrice, (price) => price.market)
-  resourcePrices: ResourcePrice[];
 
   @OneToMany(() => Event, (event) => event.market)
   events: Event[];

@@ -14,9 +14,11 @@ const safeRequire = async (path: string): Promise<Deployment | null> => {
 export const RESOURCES = [
   {
     name: 'Ethereum Gas',
+    slug: 'ethereum-gas',
   },
   {
     name: 'Celestia Blobspace',
+    slug: 'celestia-blobspace',
   },
 ];
 

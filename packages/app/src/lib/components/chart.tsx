@@ -13,12 +13,18 @@ interface Props {
   data: {
     marketPrices: PriceChartData[];
     indexPrices: IndexPrice[];
+    resourcePrices?: ResourcePricePoint[];
   };
   activeWindow: TimeWindow;
   isLoading: boolean;
 }
 
 interface IndexPrice {
+  timestamp: number;
+  price: number;
+}
+
+interface ResourcePricePoint {
   timestamp: number;
   price: number;
 }
@@ -33,6 +39,7 @@ const CandlestickChart: React.FC<Props> = ({
   const resizeObserverRef = useRef<ResizeObserver>();
   const candlestickSeriesRef = useRef<any>(null);
   const indexPriceSeriesRef = useRef<any>(null);
+  const resourcePriceSeriesRef = useRef<any>(null);
   const { pool, stEthPerToken, useMarketUnits } = useContext(MarketContext);
   const { theme } = useTheme();
 
@@ -90,6 +97,13 @@ const CandlestickChart: React.FC<Props> = ({
           bottomColor: 'rgba(128, 128, 128, 0.0)',
           lineStyle: 2,
         });
+
+        if (data.resourcePrices?.length) {
+          resourcePriceSeriesRef.current = chart.addLineSeries({
+            color: '#4CAF50',
+            lineWidth: 2,
+          });
+        }
       }
 
       const combinedData = data.marketPrices
@@ -140,6 +154,14 @@ const CandlestickChart: React.FC<Props> = ({
 
       if (!isLoading) {
         indexPriceSeriesRef.current.setData(lineSeriesData);
+
+        if (data.resourcePrices?.length && resourcePriceSeriesRef.current) {
+          const resourceLineData = data.resourcePrices.map((p) => ({
+            time: (p.timestamp / 1000) as UTCTimestamp,
+            value: p.price,
+          }));
+          resourcePriceSeriesRef.current.setData(resourceLineData);
+        }
       }
 
       const handleResize = (entries: ResizeObserverEntry[]) => {
