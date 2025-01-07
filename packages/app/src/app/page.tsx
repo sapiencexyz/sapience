@@ -34,12 +34,7 @@ const ExploreContent = () => {
 };
 
 const HomePage = () => {
-  return (
-    <MarketLayout
-      nav={<ResourceNav type="market" />}
-      content={<ExploreContent />}
-    />
-  );
+  return <MarketLayout nav={<ResourceNav />} content={<ExploreContent />} />;
 };
 
 export default HomePage;
