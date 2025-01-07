@@ -129,6 +129,9 @@ export interface MarketInfo {
   deployment: Deployment;
   marketChainId: number;
   priceIndexer: EvmIndexer;
+  resource: {
+    name: string;
+  };
 }
 
 export enum EventTransactionType {
