@@ -42,6 +42,17 @@ import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { MARKETS } from "./fixtures";
 import { Resource } from "./models/Resource";
+import { buildSchema } from "type-graphql";
+import { ApolloServer } from "@apollo/server";
+import { expressMiddleware } from "@apollo/server/express4";
+import {
+  MarketResolver,
+  ResourceResolver,
+  PositionResolver,
+  TransactionResolver,
+  EpochResolver,
+} from "./graphql/resolvers";
+import { createLoaders } from "./graphql/loaders";
 
 const PORT = 3001;
 
@@ -49,6 +60,27 @@ const PORT = 3001;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
+
+const corsOptions: cors.CorsOptions = {
+  origin: (
+    origin: string | undefined,
+    callback: (error: Error | null, allow?: boolean) => void
+  ) => {
+    if (process.env.NODE_ENV !== "production") {
+      callback(null, true);
+    } else if (
+      origin &&
+      (/^https?:\/\/([a-zA-Z0-9-]+\.)*foil\.xyz$/.test(origin) ||
+        /^https?:\/\/localhost(:\d+)?$/.test(origin) || // local testing
+        /^https?:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/.test(origin)) //staging sites
+    ) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  optionsSuccessStatus: 200,
+};
 
 const executeLocalReindex = async (startCommand: string): Promise<any> => {
   return new Promise((resolve, reject) => {
@@ -87,6 +119,48 @@ const executeLocalReindex = async (startCommand: string): Promise<any> => {
 
 const startServer = async () => {
   await initializeDataSource();
+  
+  // Create GraphQL schema
+  const schema = await buildSchema({
+    resolvers: [
+      MarketResolver,
+      ResourceResolver,
+      PositionResolver,
+      TransactionResolver,
+      EpochResolver,
+    ],
+    emitSchemaFile: true,
+    validate: false,
+  });
+
+  // Create Apollo Server
+  const apolloServer = new ApolloServer({
+    schema,
+    formatError: (error) => {
+      console.error("GraphQL Error:", error);
+      return error;
+    },
+  });
+
+  // Start Apollo Server
+  await apolloServer.start();
+
+  const app = express();
+  
+  // Middleware
+  app.use(express.json());
+  app.use(cors(corsOptions));
+
+  // Add GraphQL endpoint
+  app.use(
+    "/graphql",
+    expressMiddleware(apolloServer, {
+      context: async ({ req }) => ({
+        loaders: createLoaders(),
+      }),
+    })
+  );
+
   const positionRepository = dataSource.getRepository(Position);
   const epochRepository = dataSource.getRepository(Epoch);
   const resourcePriceRepository = dataSource.getRepository(ResourcePrice);
@@ -94,39 +168,13 @@ const startServer = async () => {
   const marketRepository = dataSource.getRepository(Market);
   const transactionRepository = dataSource.getRepository(Transaction);
 
-  const app = express();
-  // Middleware to parse JSON bodies
-  app.use(express.json());
-
-  const corsOptions: cors.CorsOptions = {
-    origin: (
-      origin: string | undefined,
-      callback: (error: Error | null, allow?: boolean) => void
-    ) => {
-      if (process.env.NODE_ENV !== "production") {
-        callback(null, true);
-      } else if (
-        origin &&
-        (/^https?:\/\/([a-zA-Z0-9-]+\.)*foil\.xyz$/.test(origin) ||
-          /^https?:\/\/localhost(:\d+)?$/.test(origin) || // local testing
-          /^https?:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/.test(origin)) //staging sites
-      ) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    optionsSuccessStatus: 200,
-  };
-
-  app.use(cors(corsOptions));
-
   app.get("/debug-sentry", function mainHandler(req, res) {
     throw new Error("My first Sentry error!");
   });
 
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
+    console.log(`GraphQL endpoint available at http://localhost:${PORT}/graphql`);
   });
 
   // Helper middleware to handle async errors
@@ -205,55 +253,6 @@ const startServer = async () => {
       }));
 
       res.json(formattedMarkets);
-    })
-  );
-
-  // route /subscriptions: Get all long positions for a wallet
-  app.get(
-    "/subscriptions",
-    validateRequestParams(["address"]),
-    handleAsyncErrors(async (req, res, next) => {
-      const { address } = req.query as { address: string };
-      
-      const positions = await positionRepository.find({
-        where: {
-          owner: address.toLowerCase(),
-          isLP: false, // Only get non-LP positions
-          isSettled: In([false, null]) // Include both false and null values
-        },
-        relations: ["epoch", "epoch.market"],
-        order: {
-          createdAt: "DESC",
-        },
-      });
-
-      // Filter for long positions (positive baseToken), handling null values
-      const longPositions = positions.filter(
-        position => position.baseToken && BigInt(position.baseToken) > BigInt(0)
-      );
-
-      const formattedPositions = longPositions.map((position) => ({
-        id: position.id,
-        positionId: position.positionId,
-        market: {
-          chainId: position.epoch.market.chainId,
-          address: position.epoch.market.address,
-          name: position.epoch.market.name,
-        },
-        epoch: {
-          id: position.epoch.epochId,
-          startTimestamp: Number(position.epoch.startTimestamp),
-          endTimestamp: Number(position.epoch.endTimestamp),
-        },
-        baseToken: position.baseToken,
-        quoteToken: position.quoteToken,
-        borrowedBaseToken: position.borrowedBaseToken,
-        borrowedQuoteToken: position.borrowedQuoteToken,
-        collateral: position.collateral,
-        createdAt: position.createdAt,
-      }));
-
-      res.json(formattedPositions);
     })
   );
 
