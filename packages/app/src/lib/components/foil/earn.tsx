@@ -114,7 +114,7 @@ const Earn: FC = () => {
         <h2 className="text-4xl font-bold text-center mb-2">
           Foil {collateralAssetTicker} Vault
         </h2>
-        <div className="text-center font-light  text-muted-foreground">
+        <div className="hidden text-center font-light text-muted-foreground">
           <span className="font-medium tracking-wider">TVL</span> 420 wstETH
           <span className="ml-8 mr-1">
             12% <span className="ml-1 font-medium tracking-wider">APY</span>
@@ -132,7 +132,7 @@ const Earn: FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-          <div className="md:col-span-2 h-full flex flex-col">
+          <div className="md:col-span-2 h-full flex flex-col hidden">
             <h2 className="text-2xl font-light tracking-tight text-muted-foreground mb-4">
               Vault Performance
             </h2>
@@ -141,7 +141,7 @@ const Earn: FC = () => {
             </div>
           </div>
 
-          <div className="md:pt-11 md:pb-8">
+          <div className="md:pt-11 md:pb-8 md:col-start-2">
             <div className="border border-border rounded-lg shadow-sm p-6">
               <p className="mb-1 text-md">
                 Deposit collateral to have the vault smart contract provide

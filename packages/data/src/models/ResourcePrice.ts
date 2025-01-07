@@ -9,21 +9,17 @@ import {
   AfterInsert,
   AfterUpdate,
 } from "typeorm";
-import { Market } from "./Market";
 import { Resource } from "./Resource";
 import { upsertIndexPriceFromResourcePrice } from "src/controllers/price";
 
 @Entity()
-@Unique(["market", "timestamp"])
+@Unique(["resource", "timestamp"])
 export class ResourcePrice {
   @PrimaryGeneratedColumn()
   id: number;
 
   @CreateDateColumn()
   createdAt: Date;
-
-  @ManyToOne(() => Market, (market) => market.resourcePrices)
-  market: Market;
 
   @ManyToOne(() => Resource, (resource) => resource.resourcePrices)
   resource: Resource;
