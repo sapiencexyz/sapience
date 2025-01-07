@@ -14,7 +14,7 @@ const ExploreContent = () => {
 
   useEffect(() => {
     if (!isLoading && markets.length > 0) {
-      const publicMarkets = markets.filter(market => market.public);
+      const publicMarkets = markets.filter((market) => market.public);
       if (publicMarkets.length > 0) {
         const firstMarket = publicMarkets[0];
         router.replace(`/${firstMarket.chainId}:${firstMarket.address}`);

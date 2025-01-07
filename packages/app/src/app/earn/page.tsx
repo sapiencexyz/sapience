@@ -12,7 +12,7 @@ const EarnContent = () => {
 
   useEffect(() => {
     if (!isLoading && markets.length > 0) {
-      const publicMarkets = markets.filter(market => market.public);
+      const publicMarkets = markets.filter((market) => market.public);
       if (publicMarkets.length > 0) {
         const firstMarket = publicMarkets[0];
         router.replace(`/earn/${firstMarket.chainId}:${firstMarket.address}`);
@@ -45,4 +45,4 @@ const EarnPage = () => {
   );
 };
 
-export default EarnPage; 
+export default EarnPage;

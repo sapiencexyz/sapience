@@ -1,7 +1,8 @@
 'use client';
 
 import { Loader2 } from 'lucide-react';
-import { ReactNode, Suspense } from 'react';
+import type { ReactNode } from 'react';
+import { Suspense } from 'react';
 
 interface MarketLayoutProps {
   nav: ReactNode;
@@ -23,4 +24,4 @@ export const MarketLayout = ({ nav, content }: MarketLayoutProps) => {
       </Suspense>
     </div>
   );
-}; 
+};

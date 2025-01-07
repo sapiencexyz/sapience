@@ -40,15 +40,15 @@ export const ResourceNav = () => {
               href={`/${resource.slug}`}
               className="flex-shrink-0"
             >
-              <Button 
-                variant={isSelected ? "default" : "outline"} 
+              <Button
+                variant={isSelected ? 'default' : 'outline'}
                 className={`shadow-sm gap-2 ${isSelected ? 'pointer-events-none' : ''}`}
               >
-                <Image 
-                  src={resource.iconPath} 
-                  alt={resource.name} 
-                  width={16} 
-                  height={16} 
+                <Image
+                  src={resource.iconPath}
+                  alt={resource.name}
+                  width={16}
+                  height={16}
                 />
                 {resource.name}
               </Button>
@@ -58,4 +58,4 @@ export const ResourceNav = () => {
       </div>
     </div>
   );
-}; 
+};

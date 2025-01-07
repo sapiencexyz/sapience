@@ -16,4 +16,4 @@ export const MARKET_CATEGORIES = [
     name: 'Celestia Blobspace',
     iconPath: '/tia.svg',
   },
-] as const; 
+] as const;

@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+
 import { API_BASE_URL } from '~/lib/constants/constants';
 
 export interface Resource {
@@ -35,14 +36,16 @@ export const useResources = () => {
 
 export const useLatestResourcePrice = (slug: string) => {
   return useQuery({
-    queryKey: ["resourcePrice", slug],
+    queryKey: ['resourcePrice', slug],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/resources/${slug}/prices/latest`);
+      const response = await fetch(
+        `${API_BASE_URL}/resources/${slug}/prices/latest`
+      );
       if (!response.ok) {
-        throw new Error("Failed to fetch latest price");
+        throw new Error('Failed to fetch latest price');
       }
       return response.json();
     },
     refetchInterval: 2000, // Refetch every 2 seconds
   });
-}; 
+};

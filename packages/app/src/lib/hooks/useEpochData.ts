@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useReadContract } from 'wagmi';
+
 import useFoilDeployment from '../components/foil/useFoilDeployment';
 
 export interface EpochData {
@@ -10,19 +11,27 @@ export interface EpochData {
   bondAmount: bigint;
 }
 
-export const useEpochData = (chainId: number, marketAddress: string, epochId: number) => {
-  const { foilData, loading: loadingFoilData, error: foilDataError } = useFoilDeployment(chainId);
+export const useEpochData = (
+  chainId: number,
+  marketAddress: string,
+  epochId: number
+) => {
+  const {
+    foilData,
+    loading: loadingFoilData,
+    error: foilDataError,
+  } = useFoilDeployment(chainId);
 
   const {
     data: epochData,
     isLoading: isLoadingEpochData,
-    error: epochError
+    error: epochError,
   } = useReadContract({
     address: marketAddress as `0x${string}`,
     abi: foilData?.abi,
     functionName: 'getEpoch',
     args: [BigInt(epochId)],
-    chainId: chainId,
+    chainId,
     query: {
       enabled: !loadingFoilData && !foilDataError && !!foilData,
     },
@@ -46,6 +55,6 @@ export const useEpochData = (chainId: number, marketAddress: string, epochId: nu
   return {
     data,
     loading,
-    error
+    error,
   };
-}; 
+};

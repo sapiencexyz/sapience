@@ -229,28 +229,19 @@ const NavLinks = ({
 
   return (
     <div className="flex gap-5">
-      <Link
-        href="/"
-        className="hover:no-underline"
-      >
+      <Link href="/" className="hover:no-underline">
         <Button variant="ghost" className="text-lg">
           Explore
         </Button>
       </Link>
 
-      <Link
-        href="/subscribe"
-        className="hover:no-underline"
-      >
+      <Link href="/subscribe" className="hover:no-underline">
         <Button variant="ghost" className="text-lg">
           Subscribe
         </Button>
       </Link>
 
-      <Link
-        href="/earn"
-        className="hover:no-underline"
-      >
+      <Link href="/earn" className="hover:no-underline">
         <Button variant="ghost" className="text-lg">
           Earn
         </Button>

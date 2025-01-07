@@ -1,29 +1,27 @@
 'use client';
 
-import { ChevronRight, ArrowRight } from 'lucide-react';
-import { type ColumnDef } from "@tanstack/react-table";
-import { flexRender } from "@tanstack/react-table";
-import { formatDistanceToNow } from 'date-fns';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableRow,
-} from "@/components/ui/table";
 import { useQuery } from '@tanstack/react-query';
+import { type ColumnDef } from '@tanstack/react-table';
+import {
+  flexRender,
+  useReactTable,
+  getCoreRowModel,
+} from '@tanstack/react-table';
+import { formatDistanceToNow } from 'date-fns';
+import { ChevronRight, ArrowRight } from 'lucide-react';
+import { formatUnits } from 'viem';
 
+import { Card, CardContent } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
+import CandlestickChart from '~/lib/components/chart';
+import NumberDisplay from '~/lib/components/foil/numberDisplay';
 import { MarketLayout } from '~/lib/components/market/MarketLayout';
 import { ResourceNav } from '~/lib/components/market/ResourceNav';
+import { API_BASE_URL } from '~/lib/constants/constants';
 import { MARKET_CATEGORIES } from '~/lib/constants/markets';
 import { useMarketList } from '~/lib/context/MarketListProvider';
-import CandlestickChart from "~/lib/components/chart";
-import { TimeWindow } from "~/lib/interfaces/interfaces";
-import { Card, CardContent } from "@/components/ui/card";
-import { useReactTable, getCoreRowModel } from "@tanstack/react-table";
 import { useLatestResourcePrice } from '~/lib/hooks/useResources';
-import { formatUnits } from 'viem';
-import { API_BASE_URL } from '~/lib/constants/constants';
-import NumberDisplay from '~/lib/components/foil/numberDisplay';
+import { TimeWindow } from '~/lib/interfaces/interfaces';
 
 interface ResourcePrice {
   timestamp: string;
@@ -48,11 +46,13 @@ interface Epoch {
 
 const columns: ColumnDef<Epoch>[] = [
   {
-    id: "epochId",
-    cell: ({ row }) => <span className="font-medium">#{row.original.epochId}</span>,
+    id: 'epochId',
+    cell: ({ row }) => (
+      <span className="font-medium">#{row.original.epochId}</span>
+    ),
   },
   {
-    id: "dates",
+    id: 'dates',
     cell: ({ row }) => {
       const epoch = row.original;
       const formatDate = (timestamp: number) => {
@@ -63,28 +63,30 @@ const columns: ColumnDef<Epoch>[] = [
       const now = Date.now();
       const getRelativeTime = (timestamp: number) => {
         const date = new Date(timestamp * 1000);
-        const distance = formatDistanceToNow(date, { addSuffix: true });
-        return distance;
+        return formatDistanceToNow(date, { addSuffix: true });
       };
 
       const isStarted = now / 1000 >= epoch.startTimestamp;
       const isEnded = now / 1000 >= epoch.endTimestamp;
-      const relativeText = isEnded 
-        ? `ended ${getRelativeTime(epoch.endTimestamp)}`
-        : isStarted 
-          ? `ends ${getRelativeTime(epoch.endTimestamp)}`
-          : `starts ${getRelativeTime(epoch.startTimestamp)}`;
+
+      const getRelativeText = () => {
+        if (isEnded) {
+          return `ended ${getRelativeTime(epoch.endTimestamp)}`;
+        }
+        if (isStarted) {
+          return `ends ${getRelativeTime(epoch.endTimestamp)}`;
+        }
+        return `starts ${getRelativeTime(epoch.startTimestamp)}`;
+      };
+
+      const relativeText = getRelativeText();
 
       return (
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center">
-            <span className="text-sm">
-              {formatDate(epoch.startTimestamp)}
-            </span>
+            <span className="text-sm">{formatDate(epoch.startTimestamp)}</span>
             <ArrowRight className="w-3 h-3 text-muted-foreground mx-1" />
-            <span className="text-sm">
-              {formatDate(epoch.endTimestamp)}
-            </span>
+            <span className="text-sm">{formatDate(epoch.endTimestamp)}</span>
           </div>
           <span className="text-xs text-muted-foreground">{relativeText}</span>
         </div>
@@ -92,16 +94,18 @@ const columns: ColumnDef<Epoch>[] = [
     },
   },
   {
-    id: "price",
+    id: 'price',
     cell: () => (
       <div className="flex flex-col gap-0.5">
         <span className="text-sm">50 gwei</span>
-        <span className="text-xs text-muted-foreground">500 gGas Liquidity</span>
+        <span className="text-xs text-muted-foreground">
+          500 gGas Liquidity
+        </span>
       </div>
     ),
   },
   {
-    id: "actions",
+    id: 'actions',
     cell: () => <ChevronRight className="h-6 w-6 text-muted-foreground" />,
   },
 ];
@@ -120,7 +124,7 @@ const EpochsTable = ({ data }: { data: Epoch[] }) => {
           table.getRowModel().rows.map((row) => (
             <TableRow
               key={row.id}
-              data-state={row.getIsSelected() && "selected"}
+              data-state={row.getIsSelected() && 'selected'}
               className="cursor-pointer hover:bg-accent/50 border-0"
             >
               {row.getVisibleCells().map((cell) => (
@@ -153,14 +157,14 @@ const generatePlaceholderPrices = () => {
   let basePrice = 1750;
 
   for (let i = 30; i >= 0; i--) {
-    const startTimestamp = now - (i * dayInMs);
+    const startTimestamp = now - i * dayInMs;
     const endTimestamp = startTimestamp + dayInMs;
     const volatility = 50;
     const open = basePrice + (Math.random() - 0.5) * volatility;
     const close = basePrice + (Math.random() - 0.5) * volatility;
-    const high = Math.max(open, close) + Math.random() * volatility/2;
-    const low = Math.min(open, close) - Math.random() * volatility/2;
-    
+    const high = Math.max(open, close) + (Math.random() * volatility) / 2;
+    const low = Math.min(open, close) - (Math.random() * volatility) / 2;
+
     prices.push({
       startTimestamp,
       endTimestamp,
@@ -183,10 +187,10 @@ const generatePlaceholderIndexPrices = () => {
   let basePrice = 1750;
 
   for (let i = 30; i >= 0; i--) {
-    const timestamp = now - (i * dayInMs);
+    const timestamp = now - i * dayInMs;
     const volatility = 30;
-    basePrice = basePrice + (Math.random() - 0.5) * volatility;
-    
+    basePrice += (Math.random() - 0.5) * volatility;
+
     prices.push({
       timestamp: Math.floor(timestamp / 1000),
       price: basePrice,
@@ -196,15 +200,39 @@ const generatePlaceholderIndexPrices = () => {
   return prices;
 };
 
+const renderPriceDisplay = (
+  isLoading: boolean,
+  price: ResourcePrice | undefined
+) => {
+  if (isLoading) {
+    return <span className="text-2xl font-bold">Loading...</span>;
+  }
+
+  if (!price) {
+    return <span className="text-2xl font-bold">No price data</span>;
+  }
+
+  return (
+    <span className="text-2xl font-bold">
+      <NumberDisplay value={formatUnits(BigInt(price.value), 9)} /> gwei
+    </span>
+  );
+};
+
 const MarketContent = ({ params }: { params: { id: string } }) => {
   const { markets } = useMarketList();
-  const category = MARKET_CATEGORIES.find(c => c.id === params.id);
-  const { data: latestPrice, isLoading: isPriceLoading } = useLatestResourcePrice(params.id);
+  const category = MARKET_CATEGORIES.find((c) => c.id === params.id);
+  const { data: latestPrice, isLoading: isPriceLoading } =
+    useLatestResourcePrice(params.id);
 
-  const { data: resourcePrices, isLoading: isResourcePricesLoading } = useQuery<ResourcePrice[]>({
+  const { data: resourcePrices, isLoading: isResourcePricesLoading } = useQuery<
+    ResourcePrice[]
+  >({
     queryKey: ['resourcePrices', params.id],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/resources/${params.id}/prices`);
+      const response = await fetch(
+        `${API_BASE_URL}/resources/${params.id}/prices`
+      );
       if (!response.ok) {
         throw new Error('Failed to fetch resource prices');
       }
@@ -222,22 +250,25 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
   }
 
   const epochs = markets
-    .filter(market => market.public)
-    .flatMap(market => (market.epochs || []).map(epoch => ({
-      ...epoch,
-      market: {
-        address: market.address,
-        chainId: market.chainId,
-      },
-    })));
+    .filter((market) => market.public)
+    .flatMap((market) =>
+      (market.epochs || []).map((epoch) => ({
+        ...epoch,
+        market: {
+          address: market.address,
+          chainId: market.chainId,
+        },
+      }))
+    );
 
   const placeholderPrices = generatePlaceholderPrices();
   const placeholderIndexPrices = generatePlaceholderIndexPrices();
 
-  const formattedResourcePrices: ResourcePricePoint[] = resourcePrices?.map(price => ({
-    timestamp: Number(price.timestamp) * 1000,
-    price: Number(formatUnits(BigInt(price.value), 9)),
-  })) || [];
+  const formattedResourcePrices: ResourcePricePoint[] =
+    resourcePrices?.map((price) => ({
+      timestamp: Number(price.timestamp) * 1000,
+      price: Number(formatUnits(BigInt(price.value), 9)),
+    })) || [];
 
   return (
     <div className="flex flex-col md:flex-row h-full">
@@ -247,27 +278,21 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
             <Card className="absolute top-8 left-8 z-10">
               <CardContent className="py-3 px-4">
                 <div className="flex flex-col">
-                  <span className="text-sm text-muted-foreground">Current Price</span>
+                  <span className="text-sm text-muted-foreground">
+                    Current Price
+                  </span>
                   <div className="flex items-baseline gap-2">
-                    {isPriceLoading ? (
-                      <span className="text-2xl font-bold">Loading...</span>
-                    ) : latestPrice ? (
-                      <span className="text-2xl font-bold">
-                        <NumberDisplay value={formatUnits(BigInt(latestPrice.value), 9)} /> gwei
-                      </span>
-                    ) : (
-                      <span className="text-2xl font-bold">No price data</span>
-                    )}
+                    {renderPriceDisplay(isPriceLoading, latestPrice)}
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <CandlestickChart 
+            <CandlestickChart
               data={{
                 marketPrices: [],
                 indexPrices: [],
-                resourcePrices: formattedResourcePrices
+                resourcePrices: formattedResourcePrices,
               }}
               activeWindow={TimeWindow.D}
               isLoading={isResourcePricesLoading}
@@ -276,7 +301,9 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
         </div>
       </div>
       <div className="hidden w-full md:w-[400px] border-t md:border-t-0 md:border-l border-border pt-4 md:pt-0">
-        <h2 className="text-base font-medium text-muted-foreground px-4 py-2">Periods</h2>
+        <h2 className="text-base font-medium text-muted-foreground px-4 py-2">
+          Periods
+        </h2>
         <EpochsTable data={epochs} />
       </div>
     </div>
@@ -292,4 +319,4 @@ const MarketPage = ({ params }: { params: { id: string } }) => {
   );
 };
 
-export default MarketPage; 
+export default MarketPage;
