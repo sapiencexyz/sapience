@@ -246,19 +246,19 @@ const SubscriptionsList = () => {
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Term</span>
                 <span className="text-sm font-medium">
-                  {new Date(subscription.epoch.startTimestamp * 1000)
-                    .toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                    })
-                    .toLowerCase()}{' '}
+                  {new Date(
+                    subscription.epoch.startTimestamp * 1000
+                  ).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                  })}{' '}
                   -{' '}
-                  {new Date(subscription.epoch.endTimestamp * 1000)
-                    .toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                    })
-                    .toLowerCase()}
+                  {new Date(
+                    subscription.epoch.endTimestamp * 1000
+                  ).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                  })}
                 </span>
               </div>
 
@@ -282,7 +282,7 @@ const SubscriptionsList = () => {
                 setSellDialogOpen(true);
               }}
             >
-              Sell Position
+              Close Early
             </Button>
           </div>
         );
@@ -292,7 +292,7 @@ const SubscriptionsList = () => {
         <DialogContent className="max-w-[460px]">
           <DialogHeader>
             <DialogTitle>
-              Sell Position #{selectedPosition?.positionId}
+              Close Position #{selectedPosition?.positionId}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">

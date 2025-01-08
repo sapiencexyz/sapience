@@ -300,20 +300,20 @@ const NavLinks = ({
   }
 
   return (
-    <div className="flex gap-5">
-      <Link href="/" className="hover:no-underline">
+    <div className="flex gap-2">
+      <Link href="/" className="hover:no-underline mx-0.5">
         <Button variant="ghost" className={getButtonClasses('/')}>
           Explore
         </Button>
       </Link>
 
-      <Link href="/subscribe" className="hover:no-underline">
+      <Link href="/subscribe" className="hover:no-underline mx-0.5">
         <Button variant="ghost" className={getButtonClasses('/subscribe')}>
           Subscribe
         </Button>
       </Link>
 
-      <Link href="/earn" className="hover:no-underline">
+      <Link href="/earn" className="hover:no-underline mx-0.5">
         <Button variant="ghost" className={getButtonClasses('/earn')}>
           Earn
         </Button>
@@ -322,7 +322,7 @@ const NavLinks = ({
       <ResourcePopover label="Trade" path="trade" />
       <ResourcePopover label="Pool" path="pool" />
 
-      <Link href="https://docs.foil.xyz" className="hover:no-underline">
+      <Link href="https://docs.foil.xyz" className="hover:no-underline mx-0.5">
         <Button variant="ghost" className="text-md">
           Docs
         </Button>

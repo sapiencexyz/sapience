@@ -10,6 +10,7 @@ import {
 import { formatDistanceToNow, format } from 'date-fns';
 import { ChevronRight, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import React from 'react';
 import { formatUnits } from 'viem';
 
 import { Card, CardContent } from '@/components/ui/card';
@@ -72,16 +73,21 @@ const columns: ColumnDef<Epoch>[] = [
 ];
 
 const EpochsTable = ({ data }: { data: Epoch[] }) => {
+  const [hoveredIndex, setHoveredIndex] = React.useState(0);
+
   return (
     <div className="border-y border-border">
       {data.length ? (
-        data.map((epoch) => (
+        data.map((epoch, index) => (
           <Link
             key={epoch.id}
             href={`/trade/${epoch.market.chainId}:${epoch.market.address}/epochs/${epoch.epochId}`}
             className="block hover:no-underline"
+            onMouseEnter={() => setHoveredIndex(index)}
           >
-            <div className="flex items-center justify-between cursor-pointer hover:bg-secondary px-4 py-1.5">
+            <div
+              className={`flex items-center justify-between cursor-pointer px-4 py-1.5 ${hoveredIndex === index ? 'bg-secondary' : 'hover:bg-secondary/50'}`}
+            >
               <div className="flex items-baseline">
                 <span>
                   {format(new Date(epoch.endTimestamp * 1000), 'M/d')}
