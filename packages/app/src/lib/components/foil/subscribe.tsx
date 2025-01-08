@@ -316,8 +316,8 @@ const Subscribe: FC<SubscribeProps> = ({
             if ((event as any).eventName === 'TraderPositionCreated') {
               const nftId = (event as any).args.positionId.toString();
               toast({
-                title: 'Position Created',
-                description: `Your position has been created as position ${nftId}`,
+                title: 'Subscription Created',
+                description: `Your subscription has been created as position ${nftId}`,
               });
               resetAfterSuccess();
               onClose?.();
@@ -329,7 +329,7 @@ const Subscribe: FC<SubscribeProps> = ({
         }
         toast({
           title: 'Success',
-          description: "We've created your position for you.",
+          description: "We've created your subscription for you.",
         });
         resetAfterSuccess();
         onClose?.();
