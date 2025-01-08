@@ -14,7 +14,6 @@
     "start:worker": "tsx src/worker.ts",
     "start:reindex-market": "tsx src/worker.ts reindexMarket $*",
     "start:reindex-missing": "tsx src/worker.ts reindexMissing $*",
-    "start:test-celestia": "tsx src/worker.ts testCelestia $*",
     "test": "echo \"Error: no test specified\" && exit 1",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org foil --project data ./dist && sentry-cli sourcemaps upload --org foil --project data ./dist"
   },

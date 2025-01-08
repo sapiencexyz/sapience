@@ -1,4 +1,3 @@
-import { Market } from "../models/Market";
 import { Resource } from "../models/Resource";
 
 export interface IResourcePriceIndexer {
