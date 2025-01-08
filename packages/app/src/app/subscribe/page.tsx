@@ -318,6 +318,14 @@ const SubscribeContent = () => {
   const searchParams = useSearchParams();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+  const [estimationResults, setEstimationResults] = useState<{
+    totalGasUsed: number;
+    ethPaid: number;
+    avgGasPerTx: number;
+    avgGasPrice: number;
+    chartData: { timestamp: number; value: number }[];
+  } | null>(null);
+  const [prefilledSize, setPrefilledSize] = useState<bigint | null>(null);
 
   const chainIdParam = useMemo(
     () => searchParams.get('chainId'),
@@ -386,7 +394,7 @@ const SubscribeContent = () => {
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-w-[460px]">
-            <Subscribe showMarketSwitcher={false} />
+            <Subscribe showMarketSwitcher={false} initialSize={prefilledSize} />
           </DialogContent>
         </Dialog>
 
@@ -395,7 +403,17 @@ const SubscribeContent = () => {
             <DialogHeader>
               <DialogTitle>Wallet Analytics</DialogTitle>
             </DialogHeader>
-            <div className="py-4">{/* Empty dialog content */}</div>
+            <div className="py-4">
+              <Subscribe
+                showMarketSwitcher={false}
+                onAnalyticsClose={(size) => {
+                  setPrefilledSize(size);
+                  setIsAnalyticsOpen(false);
+                  setIsDialogOpen(true);
+                }}
+                isAnalyticsMode
+              />
+            </div>
           </DialogContent>
         </Dialog>
       </div>
