@@ -76,7 +76,7 @@ const AddEditLiquidity: React.FC = () => {
   const form = useForm({
     defaultValues: {
       depositAmount: '0',
-      modifyLiquidity: '100',
+      modifyLiquidity: '0',
       lowPrice: baseAssetMinPriceTick
         ? tickToPrice(baseAssetMinPriceTick).toString()
         : '0',
@@ -126,6 +126,9 @@ const AddEditLiquidity: React.FC = () => {
   const [txnStep, setTxnStep] = useState<number>(0);
   const [pendingTxn, setPendingTxn] = useState(false);
   const [txnSuccessMsg, setTxnSuccessMsg] = useState('');
+  const [liquidityAction, setLiquidityAction] = useState<'add' | 'remove'>(
+    'add'
+  );
 
   const tickSpacing = pool ? pool?.tickSpacing : TICK_SPACING_DEFAULT;
   const tickLower = priceToTick(Number(lowPrice), tickSpacing);
@@ -141,10 +144,9 @@ const AddEditLiquidity: React.FC = () => {
   const { openConnectModal } = useConnectModal();
   const router = useRouter();
 
-  const isDecrease = isEdit && Number(modifyLiquidity) < 100;
-  const isAmountUnchanged =
-    (isEdit && Number(modifyLiquidity) === 100) ||
-    (!isEdit && (!depositAmount || Number(depositAmount) === 0));
+  const isDecrease =
+    liquidityAction === 'remove' && Number(modifyLiquidity) > 0;
+  const isAmountUnchanged = Number(modifyLiquidity) === 0;
 
   /// //// READ CONTRACT HOOKS ///////
   const { data: positionData, refetch: refetchPosition } = useReadContract({
@@ -319,15 +321,31 @@ const AddEditLiquidity: React.FC = () => {
 
   const newLiquidity = useMemo(() => {
     if (!liquidity) return BigInt(0);
-    const jsbiNewLiq = JSBI.divide(
-      JSBI.multiply(
+
+    // Handle empty or invalid input
+    const inputValue = modifyLiquidity === '' ? '0' : modifyLiquidity;
+    const percentage = parseFloat(inputValue) / 100;
+
+    // Return original liquidity if percentage is invalid
+    if (isNaN(percentage)) return BigInt(liquidity.toString());
+
+    if (liquidityAction === 'add') {
+      // For add, increase by the percentage (100% = double)
+      const multiplier = 1 + percentage;
+      const jsbiNewLiq = JSBI.multiply(
         JSBI.BigInt(liquidity.toString()),
-        JSBI.BigInt(modifyLiquidity)
-      ),
-      JSBI.BigInt(100)
+        JSBI.BigInt(Math.floor(multiplier * 100))
+      );
+      return BigInt(JSBI.divide(jsbiNewLiq, JSBI.BigInt(100)).toString());
+    }
+    // For remove, decrease by the percentage (100% = zero)
+    const multiplier = 1 - percentage;
+    const jsbiNewLiq = JSBI.multiply(
+      JSBI.BigInt(liquidity.toString()),
+      JSBI.BigInt(Math.floor(multiplier * 100))
     );
-    return BigInt(jsbiNewLiq.toString());
-  }, [modifyLiquidity, liquidity]);
+    return BigInt(JSBI.divide(jsbiNewLiq, JSBI.BigInt(100)).toString());
+  }, [modifyLiquidity, liquidity, liquidityAction]);
 
   const deltaLiquidity = JSBIAbs(
     JSBI.subtract(
@@ -863,7 +881,7 @@ const AddEditLiquidity: React.FC = () => {
       if (depositAmount === '' || parseFloat(depositAmount) === 0) {
         txt = 'Close Liquidity Position';
       } else {
-        txt = isDecrease ? 'Decrease Liquidity' : 'Increase Liquidity';
+        txt = liquidityAction === 'add' ? 'Add Liquidity' : 'Remove Liquidity';
       }
     } else {
       txt = 'Add Liquidity';
@@ -911,7 +929,7 @@ const AddEditLiquidity: React.FC = () => {
   // Set initial values when position loads
   useEffect(() => {
     if (isEdit) {
-      setValue('modifyLiquidity', '100', {
+      setValue('modifyLiquidity', '0', {
         shouldValidate: false,
         shouldDirty: false,
         shouldTouch: false,
@@ -935,6 +953,7 @@ const AddEditLiquidity: React.FC = () => {
             walletBalance={walletBalance}
             positionCollateralAmount={positionCollateralAmount}
             collateralAssetTicker={collateralAssetTicker}
+            onActionChange={setLiquidityAction}
           />
         </div>
 

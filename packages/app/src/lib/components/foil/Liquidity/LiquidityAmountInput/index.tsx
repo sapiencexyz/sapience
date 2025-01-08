@@ -11,6 +11,7 @@ interface LiquidityAmountInputProps {
   walletBalance: string | null;
   positionCollateralAmount: number;
   collateralAssetTicker: string;
+  onActionChange?: (action: 'add' | 'remove') => void;
 }
 
 const LiquidityAmountInput = ({
@@ -18,6 +19,7 @@ const LiquidityAmountInput = ({
   walletBalance,
   positionCollateralAmount,
   collateralAssetTicker,
+  onActionChange,
 }: LiquidityAmountInputProps) => {
   const {
     register,
@@ -28,6 +30,7 @@ const LiquidityAmountInput = ({
     'add'
   );
 
+  // Reset value when edit mode changes or when action changes
   useEffect(() => {
     if (isEdit) {
       setValue('modifyLiquidity', '0', {
@@ -36,16 +39,24 @@ const LiquidityAmountInput = ({
         shouldTouch: false,
       });
     }
-  }, [isEdit, setValue]);
+  }, [isEdit, setValue, liquidityAction]);
 
   if (isEdit) {
     return (
       <div className="space-y-2">
         <Tabs
           defaultValue="add"
-          onValueChange={(value) =>
-            setLiquidityAction(value as 'add' | 'remove')
-          }
+          onValueChange={(value) => {
+            const action = value as 'add' | 'remove';
+            setLiquidityAction(action);
+            onActionChange?.(action);
+            // Reset value when switching modes
+            setValue('modifyLiquidity', '0', {
+              shouldValidate: false,
+              shouldDirty: false,
+              shouldTouch: false,
+            });
+          }}
         >
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="add">Add Liquidity</TabsTrigger>
@@ -80,15 +91,18 @@ const LiquidityAmountInput = ({
                 },
                 validate: (value) => {
                   const percentage = parseFloat(value) / 100;
-                  const newAmount = positionCollateralAmount * percentage;
-                  const change = newAmount - positionCollateralAmount;
 
                   if (liquidityAction === 'add') {
+                    // For adding, calculate how much collateral would be needed
+                    const additionalAmount =
+                      positionCollateralAmount * percentage;
                     return (
-                      (walletBalance && change <= parseFloat(walletBalance)) ||
+                      (walletBalance &&
+                        additionalAmount <= parseFloat(walletBalance)) ||
                       'Insufficient wallet balance'
                     );
                   }
+                  // For removing, just ensure we're not removing more than 100%
                   return (
                     percentage <= 1 ||
                     'Cannot remove more than 100% of liquidity'
