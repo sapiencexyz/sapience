@@ -43,8 +43,8 @@ export default function MarketSidebar({ isTrade }: { isTrade: boolean }) {
   };
 
   return (
-    <div className="h-full border border-border rounded-md w-full flex-1 flex flex-col p-6 shadow-sm">
-      <ScrollArea className="h-full">{renderContent()}</ScrollArea>
-    </div>
+    <ScrollArea className="h-full border border-border rounded-md w-full flex-1 flex flex-col shadow-sm">
+      <div className="p-6">{renderContent()}</div>
+    </ScrollArea>
   );
 }
