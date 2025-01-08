@@ -8,8 +8,6 @@ import { useMarketList } from '~/lib/context/MarketListProvider';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import { tickToPrice } from '~/lib/util/util';
 
-import EpochSelector from './epochSelector';
-
 const EpochHeader = () => {
   const {
     chain,
@@ -50,9 +48,6 @@ const EpochHeader = () => {
           <h1 className="text-2xl font-bold mb-0">
             {currentMarket ? currentMarket.name : 'Market Name Not Found'}
           </h1>
-          <div className="mt-0 lg:ml-4">
-            <EpochSelector />
-          </div>
         </div>
 
         <div className="flex flex-col lg:flex-row items-start lg:items-center mt-4 lg:mt-0 mb-0 lg:ml-auto lg:flex-1 w-full">

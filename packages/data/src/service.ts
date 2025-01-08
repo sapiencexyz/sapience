@@ -8,7 +8,7 @@ import { Position } from "./models/Position";
 import { cannon } from "viem/chains";
 import { Market } from "./models/Market";
 import express, { Request, Response, NextFunction } from "express";
-import { Between, In, Repository } from "typeorm";
+import { Between, In, Repository, LessThanOrEqual, MoreThanOrEqual } from "typeorm";
 import { Transaction } from "./models/Transaction";
 import { Epoch } from "./models/Epoch";
 import { formatUnits } from "viem";
@@ -39,6 +39,18 @@ import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { MARKETS } from "./fixtures";
 import { Resource } from "./models/Resource";
+import { buildSchema } from "type-graphql";
+import { ApolloServer } from "@apollo/server";
+import { expressMiddleware } from "@apollo/server/express4";
+import { ApolloServerPluginLandingPageLocalDefault } from "@apollo/server/plugin/landingPage/default";
+import {
+  MarketResolver,
+  ResourceResolver,
+  PositionResolver,
+  TransactionResolver,
+  EpochResolver,
+} from "./graphql/resolvers";
+import { createLoaders } from "./graphql/loaders";
 
 const PORT = 3001;
 
@@ -46,6 +58,27 @@ const PORT = 3001;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
+
+const corsOptions: cors.CorsOptions = {
+  origin: (
+    origin: string | undefined,
+    callback: (error: Error | null, allow?: boolean) => void
+  ) => {
+    if (process.env.NODE_ENV !== "production") {
+      callback(null, true);
+    } else if (
+      !origin || // Allow same-origin requests
+      /^https?:\/\/([a-zA-Z0-9-]+\.)*foil\.xyz$/.test(origin) ||
+      /^https?:\/\/localhost(:\d+)?$/.test(origin) || // local testing
+      /^https?:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/.test(origin) //staging sites
+    ) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  optionsSuccessStatus: 200,
+};
 
 const executeLocalReindex = async (startCommand: string): Promise<any> => {
   return new Promise((resolve, reject) => {
@@ -84,6 +117,55 @@ const executeLocalReindex = async (startCommand: string): Promise<any> => {
 
 const startServer = async () => {
   await initializeDataSource();
+  
+  // Create GraphQL schema
+  const schema = await buildSchema({
+    resolvers: [
+      MarketResolver,
+      ResourceResolver,
+      PositionResolver,
+      TransactionResolver,
+      EpochResolver,
+    ],
+    emitSchemaFile: true,
+    validate: false,
+  });
+
+  // Create Apollo Server
+  const apolloServer = new ApolloServer({
+    schema,
+    formatError: (error) => {
+      console.error("GraphQL Error:", error);
+      return error;
+    },
+    introspection: true,
+    plugins: [
+      ApolloServerPluginLandingPageLocalDefault({
+        embed: true,
+        includeCookies: true,
+      }),
+    ],
+  });
+
+  // Start Apollo Server
+  await apolloServer.start();
+
+  const app = express();
+  
+  // Middleware
+  app.use(express.json());
+  app.use(cors(corsOptions));
+
+  // Add GraphQL endpoint
+  app.use(
+    "/graphql",
+    expressMiddleware(apolloServer, {
+      context: async ({ req }) => ({
+        loaders: createLoaders(),
+      }),
+    })
+  );
+
   const positionRepository = dataSource.getRepository(Position);
   const epochRepository = dataSource.getRepository(Epoch);
   const resourcePriceRepository = dataSource.getRepository(ResourcePrice);
@@ -91,39 +173,13 @@ const startServer = async () => {
   const marketRepository = dataSource.getRepository(Market);
   const transactionRepository = dataSource.getRepository(Transaction);
 
-  const app = express();
-  // Middleware to parse JSON bodies
-  app.use(express.json());
-
-  const corsOptions: cors.CorsOptions = {
-    origin: (
-      origin: string | undefined,
-      callback: (error: Error | null, allow?: boolean) => void
-    ) => {
-      if (process.env.NODE_ENV !== "production") {
-        callback(null, true);
-      } else if (
-        origin &&
-        (/^https?:\/\/([a-zA-Z0-9-]+\.)*foil\.xyz$/.test(origin) ||
-          /^https?:\/\/localhost(:\d+)?$/.test(origin) || // local testing
-          /^https?:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/.test(origin)) //staging sites
-      ) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    optionsSuccessStatus: 200,
-  };
-
-  app.use(cors(corsOptions));
-
   app.get("/debug-sentry", function mainHandler(req, res) {
     throw new Error("My first Sentry error!");
   });
 
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
+    console.log(`GraphQL endpoint available at /graphql`);
   });
 
   // Helper middleware to handle async errors

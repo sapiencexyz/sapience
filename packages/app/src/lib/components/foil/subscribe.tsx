@@ -4,14 +4,7 @@
 
 import { formatDuration, intervalToDuration, format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  ArrowUpDown,
-  ChartNoAxesColumn,
-  ChevronLeft,
-  HelpCircle,
-  Loader2,
-} from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { HelpCircle, Loader2 } from 'lucide-react';
 import { type FC, useState, useEffect, useContext, useMemo } from 'react';
 import React from 'react';
 import CountUp from 'react-countup';
@@ -25,7 +18,7 @@ import {
   createPublicClient,
   http,
 } from 'viem';
-import { mainnet, sepolia } from 'viem/chains';
+import { mainnet } from 'viem/chains';
 import {
   useWaitForTransactionReceipt,
   useWriteContract,
@@ -39,12 +32,6 @@ import {
 
 import erc20ABI from '../../erc20abi.json';
 import { Button } from '~/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '~/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -68,10 +55,11 @@ import SimpleBarChart from './SimpleBarChart';
 import SizeInput from './sizeInput';
 
 interface SubscribeProps {
-  marketAddress?: string;
-  chainId?: number;
-  epoch?: number;
-  showMarketSwitcher?: boolean;
+  onAnalyticsClose?: (size: bigint) => void;
+  isAnalyticsMode?: boolean;
+  initialSize?: bigint | null;
+  positionId?: number;
+  onClose?: () => void;
 }
 
 const publicClient = createPublicClient({
@@ -83,14 +71,39 @@ const publicClient = createPublicClient({
     : http('https://ethereum-rpc.publicnode.com'),
 });
 
+interface PositionData {
+  vGasAmount: bigint;
+  borrowedVGas: bigint;
+}
+
 const Subscribe: FC<SubscribeProps> = ({
-  marketAddress: propMarketAddress,
-  chainId: propChainId,
-  epoch: propEpoch,
-  showMarketSwitcher = false,
+  onAnalyticsClose,
+  isAnalyticsMode = false,
+  initialSize = null,
+  positionId,
+  onClose,
 }) => {
+  const {
+    address: contextMarketAddress,
+    chainId: contextChainId,
+    epoch: contextEpoch,
+    collateralAsset,
+    foilData,
+    stEthPerToken,
+    collateralAssetDecimals,
+    collateralAssetTicker,
+    refetchUniswapData,
+    startTime,
+    endTime,
+  } = useContext(MarketContext);
+
+  // Use prop values if provided, otherwise use context values
+  const finalMarketAddress = contextMarketAddress;
+  const finalChainId = contextChainId;
+  const finalEpoch = contextEpoch;
+
   // State declarations first
-  const [sizeValue, setSizeValue] = useState<bigint>(BigInt(0));
+  const [sizeValue, setSizeValue] = useState<bigint>(initialSize || BigInt(0));
   const [pendingTxn, setPendingTxn] = useState(false);
   const [collateralDelta, setCollateralDelta] = useState<bigint>(BigInt(0));
   const [quoteError, setQuoteError] = useState<string | null>(null);
@@ -99,7 +112,6 @@ const Subscribe: FC<SubscribeProps> = ({
   const [txnStep, setTxnStep] = useState(0);
   const [isMarketSelectorOpen, setIsMarketSelectorOpen] = useState(false);
   const [isEstimating, setIsEstimating] = useState(false);
-  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [estimationResults, setEstimationResults] = useState<{
     totalGasUsed: number;
     ethPaid: number;
@@ -130,87 +142,15 @@ const Subscribe: FC<SubscribeProps> = ({
     watch,
   } = form;
 
-  // Single definition of watched form values
-  const formValues = {
-    size: watch('sizeInput'),
-    slippage: watch('slippage'),
-  };
-
   // Rest of your hooks and effects
   const { toast } = useToast();
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const { markets } = useMarketList();
-
-  const marketAddress =
-    propMarketAddress ||
-    searchParams.get('marketAddress') ||
-    markets.filter((m) => m.public)[0]?.address;
-  const chainId =
-    propChainId ||
-    Number(searchParams.get('chainId')) ||
-    markets.filter((m) => m.public)[0]?.chainId;
-  const epoch = propEpoch || Number(searchParams.get('epoch')) || 1;
 
   const account = useAccount();
   const { isConnected, address } = account;
   const currentChainId = useChainId();
   const { switchChain } = useSwitchChain();
   const { connect, connectors } = useConnect();
-
-  const chainIdParam = useMemo(
-    () => searchParams.get('chainId'),
-    [searchParams]
-  );
-  const marketAddressParam = useMemo(
-    () => searchParams.get('marketAddress'),
-    [searchParams]
-  );
-
-  useEffect(() => {
-    if (
-      markets.filter((m) => m.public).length > 0 &&
-      (!marketAddressParam || !chainIdParam) &&
-      showMarketSwitcher
-    ) {
-      updateParams(
-        markets.filter((m) => m.public)[0].address,
-        markets.filter((m) => m.public)[0].chainId
-      );
-    }
-  }, [markets, marketAddressParam, chainIdParam]);
-
-  const updateParams = (address: string, chain: number) => {
-    const current = new URLSearchParams(Array.from(searchParams.entries()));
-    current.set('marketAddress', address);
-    current.set('chainId', chain.toString());
-    const search = current.toString();
-    const query = search ? `?${search}` : '';
-    router.push(`${window.location.pathname}${query}`);
-  };
-
-  const {
-    address: contextMarketAddress,
-    chainId: contextChainId,
-    epoch: contextEpoch,
-    collateralAsset,
-    foilData,
-    stEthPerToken,
-    collateralAssetDecimals,
-    collateralAssetTicker,
-    refetchUniswapData,
-    startTime,
-    endTime,
-  } = useContext(MarketContext);
-
-  // Use prop values if provided, otherwise use context values
-  const finalMarketAddress = marketAddress || contextMarketAddress;
-  const finalChainId = chainId || contextChainId;
-  const finalEpoch = epoch || contextEpoch;
-
-  if (!finalEpoch) {
-    throw new Error('Epoch is not defined');
-  }
 
   // Format start and end times
   const formatDate = (timestamp: number) => {
@@ -235,15 +175,44 @@ const Subscribe: FC<SubscribeProps> = ({
     abi: foilData.abi,
     address: finalMarketAddress as `0x${string}`,
     functionName: 'quoteCreateTraderPosition',
-    args: [finalEpoch, sizeInGigagas],
+    args: [finalEpoch || 0, sizeInGigagas],
     chainId: finalChainId,
     account: address || zeroAddress,
     query: { enabled: sizeValue !== BigInt(0) },
   });
 
+  // Position data
+  const { data: positionData } = useReadContract({
+    abi: foilData.abi,
+    address: finalMarketAddress as `0x${string}`,
+    functionName: 'getPosition',
+    args: positionId !== undefined ? [positionId] : undefined,
+    query: {
+      enabled: !!positionId,
+    },
+  }) as { data: PositionData };
+
+  // Quote modify position for closing
+  const quoteModifyPositionResult = useSimulateContract({
+    abi: foilData.abi,
+    address: finalMarketAddress as `0x${string}`,
+    functionName: 'quoteModifyTraderPosition',
+    args: positionId !== undefined ? [positionId, BigInt(0)] : undefined,
+    chainId: finalChainId,
+    account: address || zeroAddress,
+    query: { enabled: !!positionId },
+  });
+
   // Update the useEffect to set quoteResult and fillPrice from the result
   useEffect(() => {
-    if (quoteCreatePositionResult.data?.result !== undefined) {
+    if (positionId) {
+      if (quoteModifyPositionResult.data?.result !== undefined) {
+        const [expectedCollateralDelta, closePnLValue, fillPriceData] =
+          quoteModifyPositionResult.data.result;
+        setFillPrice(fillPriceData as bigint);
+        setCollateralDelta(expectedCollateralDelta as bigint);
+      }
+    } else if (quoteCreatePositionResult.data?.result !== undefined) {
       const [quoteResultData, fillPriceData] =
         quoteCreatePositionResult.data.result;
       setFillPrice(fillPriceData as bigint);
@@ -252,10 +221,16 @@ const Subscribe: FC<SubscribeProps> = ({
       setFillPrice(BigInt(0));
       setCollateralDelta(BigInt(0));
     }
-  }, [quoteCreatePositionResult.data]);
+  }, [
+    quoteCreatePositionResult.data,
+    quoteModifyPositionResult.data,
+    positionId,
+  ]);
 
   useEffect(() => {
-    if (quoteCreatePositionResult.error) {
+    if (positionId && quoteModifyPositionResult?.error) {
+      setQuoteError(quoteModifyPositionResult.error.message);
+    } else if (quoteCreatePositionResult.error && !positionId) {
       const errorMessage = quoteCreatePositionResult.error.message;
       // Clean up common error messages
       const cleanedMessage = errorMessage
@@ -265,9 +240,16 @@ const Subscribe: FC<SubscribeProps> = ({
     } else {
       setQuoteError(null);
     }
-  }, [quoteCreatePositionResult.error, sizeValue]);
+  }, [
+    quoteCreatePositionResult.error,
+    quoteModifyPositionResult?.error,
+    sizeValue,
+    positionId,
+  ]);
 
-  const isLoadingCollateralChange = quoteCreatePositionResult.isFetching;
+  const isLoadingCollateralChange = positionId
+    ? quoteModifyPositionResult.isFetching
+    : quoteCreatePositionResult.isFetching;
 
   // Write contract hooks
   const { data: hash, writeContract } = useWriteContract({
@@ -316,38 +298,44 @@ const Subscribe: FC<SubscribeProps> = ({
 
   useEffect(() => {
     if (isConfirmed && txnStep === 2) {
-      for (const log of createTraderPositionReceipt.logs) {
-        try {
-          const event = decodeEventLog({
-            abi: foilData.abi,
-            data: log.data,
-            topics: log.topics,
-          });
-
-          if ((event as any).eventName === 'TraderPositionCreated') {
-            const nftId = (event as any).args.positionId.toString();
-            router.push(
-              `/trade/${finalChainId}:${finalMarketAddress}/epochs/${finalEpoch}?positionId=${nftId}`
-            );
-            toast({
-              title: 'Position Created',
-              description: `Your subscription has been created as position ID: ${nftId}`,
+      if (positionId) {
+        toast({
+          title: 'Success',
+          description: 'Subscription closed',
+        });
+        onClose?.();
+      } else {
+        for (const log of createTraderPositionReceipt.logs) {
+          try {
+            const event = decodeEventLog({
+              abi: foilData.abi,
+              data: log.data,
+              topics: log.topics,
             });
-            resetAfterSuccess();
-            return;
+
+            if ((event as any).eventName === 'TraderPositionCreated') {
+              const nftId = (event as any).args.positionId.toString();
+              toast({
+                title: 'Subscription Created',
+                description: `Your subscription has been created as position ${nftId}`,
+              });
+              resetAfterSuccess();
+              onClose?.();
+              return;
+            }
+          } catch (error) {
+            // This log was not for the TraderPositionCreated event, continue to next log
           }
-        } catch (error) {
-          // This log was not for the TraderPositionCreated event, continue to next log
         }
+        toast({
+          title: 'Success',
+          description: "We've created your subscription for you.",
+        });
+        resetAfterSuccess();
+        onClose?.();
       }
-      // If we get here, no position ID was found but transaction succeeded
-      toast({
-        title: 'Success',
-        description: 'Your subscription has been created successfully.',
-      });
-      resetAfterSuccess();
     }
-  }, [isConfirmed, createTraderPositionReceipt, txnStep]);
+  }, [isConfirmed, createTraderPositionReceipt, txnStep, positionId]);
 
   useEffect(() => {
     if (approveSuccess && txnStep === 1) {
@@ -370,7 +358,7 @@ const Subscribe: FC<SubscribeProps> = ({
   // Update onSubmit to check for dialog interactions
   const onSubmit = async (values: any) => {
     // Return early if we're just opening/closing dialogs or not connected
-    if (isMarketSelectorOpen || isAnalyticsOpen || !isConnected) {
+    if (isMarketSelectorOpen || !isConnected) {
       return;
     }
 
@@ -409,7 +397,7 @@ const Subscribe: FC<SubscribeProps> = ({
       abi: foilData.abi,
       address: finalMarketAddress as `0x${string}`,
       functionName: 'createTraderPosition',
-      args: [finalEpoch, sizeInTokens, absCollateralDeltaLimit, deadline],
+      args: [finalEpoch || 0, sizeInTokens, absCollateralDeltaLimit, deadline],
     });
     setTxnStep(2);
   };
@@ -485,7 +473,8 @@ const Subscribe: FC<SubscribeProps> = ({
   };
 
   const marketName =
-    markets.find((m) => m.address === marketAddress)?.name || 'Choose Market';
+    markets.find((m) => m.address === finalMarketAddress)?.name ||
+    'Choose Market';
 
   const handleEstimateUsage = async () => {
     const formWalletAddress = form.getValues('walletAddress');
@@ -605,28 +594,249 @@ const Subscribe: FC<SubscribeProps> = ({
   const requireApproval =
     !allowance || collateralDeltaLimit > (allowance as bigint);
 
-  const handleMarketSelect = (address: string, chain: number) => {
-    updateParams(address, chain);
-    setIsMarketSelectorOpen(false);
-  };
-
-  const getChainName = (chainId: number) => {
-    switch (chainId) {
-      case mainnet.id:
-        return 'Ethereum';
-      case sepolia.id:
-        return 'Sepolia';
-      default:
-        return `Chain ${chainId}`;
-    }
-  };
-
   useEffect(() => {
-    if (!isAnalyticsOpen) {
-      setEstimationResults(null);
-      form.setValue('walletAddress', '');
+    if (initialSize) {
+      setSizeValue(initialSize);
+      form.setValue('sizeInput', initialSize.toString());
     }
-  }, [isAnalyticsOpen]);
+  }, [initialSize]);
+
+  const handleClosePosition = async () => {
+    if (!positionId || !isConnected) return;
+
+    setPendingTxn(true);
+    const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
+
+    try {
+      // Get the current position size first
+      let currentSize = BigInt(0);
+      if (positionData) {
+        currentSize =
+          positionData.vGasAmount > BigInt(0)
+            ? positionData.vGasAmount
+            : -positionData.borrowedVGas;
+      }
+
+      // Calculate the delta size (will be negative of current size)
+      const deltaSize = BigInt(0) - currentSize;
+
+      if (deltaSize === BigInt(0)) {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Position is already closed',
+        });
+        setPendingTxn(false);
+        return;
+      }
+
+      // Use absolute value of collateralDelta and add some buffer for slippage
+      const absCollateralDeltaLimit =
+        collateralDelta < BigInt(0) ? -collateralDelta : collateralDelta;
+
+      const collateralDeltaWithBuffer =
+        (absCollateralDeltaLimit * BigInt(99)) / BigInt(100); // 1% slippage buffer
+
+      writeContract({
+        abi: foilData.abi,
+        address: finalMarketAddress as `0x${string}`,
+        functionName: 'modifyTraderPosition',
+        args: [positionId, BigInt(0), collateralDeltaWithBuffer, deadline],
+      });
+      setTxnStep(2);
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: `Failed to close position: ${(error as Error).message}`,
+      });
+      setPendingTxn(false);
+    }
+  };
+
+  if (!finalEpoch) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 py-8">
+        <h2 className="text-lg font-medium">Loading...</h2>
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!address) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 py-8">
+        <h2 className="text-lg font-medium">Connect your wallet</h2>
+        <p className="text-sm text-muted-foreground">
+          Connect your wallet to view and manage subscriptions
+        </p>
+      </div>
+    );
+  }
+
+  if (isAnalyticsMode) {
+    return (
+      <Form {...form}>
+        <form onSubmit={(e) => e.preventDefault()}>
+          <AnimatePresence mode="wait">
+            {!estimationResults ? (
+              <motion.div
+                key="input-form"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{
+                  duration: 0.2,
+                  ease: 'easeInOut',
+                }}
+              >
+                <FormField
+                  control={form.control}
+                  name="walletAddress"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Wallet Address</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="vitalik.eth"
+                          autoComplete="off"
+                          spellCheck={false}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleEstimateUsage();
+                            }
+                          }}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <Button
+                  size="lg"
+                  className="w-full mt-5"
+                  onClick={handleEstimateUsage}
+                  disabled={isEstimating}
+                >
+                  {isEstimating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Generating
+                    </>
+                  ) : (
+                    'Generate Analytics'
+                  )}
+                </Button>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="results"
+                initial={{ opacity: 0, height: 140 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 140 }}
+                transition={{
+                  duration: 0.2,
+                  height: {
+                    duration: 0.5,
+                    ease: 'easeOut',
+                  },
+                  opacity: {
+                    duration: 0.2,
+                    ease: 'easeOut',
+                  },
+                }}
+              >
+                <div className="mb-5">
+                  <SimpleBarChart data={estimationResults.chartData} />
+                </div>
+                <p className="text-lg mb-2">
+                  {form.getValues('walletAddress').endsWith('.eth')
+                    ? form.getValues('walletAddress')
+                    : `${form.getValues('walletAddress').slice(0, 6)}...${form.getValues('walletAddress').slice(-4)}`}{' '}
+                  used{' '}
+                  <CountUp
+                    end={estimationResults.totalGasUsed}
+                    separator=","
+                    duration={1.5}
+                  />{' '}
+                  gas (costing{' '}
+                  <NumberDisplay value={estimationResults.ethPaid} /> ETH) over
+                  the last {formattedDuration}.
+                </p>
+                <div className="flex flex-col gap-0.5 mb-6">
+                  <p className="text-sm text-muted-foreground">
+                    The average cost per transaction was{' '}
+                    {estimationResults.avgGasPerTx.toLocaleString()} gas.
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    The average gas price paid was{' '}
+                    {estimationResults.avgGasPrice.toLocaleString()} gwei.
+                  </p>
+                </div>
+                <div className="border border-border p-6 rounded-lg shadow-sm bg-primary/5">
+                  <p className="mb-4">
+                    Generate a quote for a subscription of this much gas over{' '}
+                    {formattedDuration}, starting on {formattedStartTime}.
+                  </p>
+                  <Button
+                    className="w-full"
+                    size="lg"
+                    variant="default"
+                    onClick={() => {
+                      const size = BigInt(estimationResults.totalGasUsed);
+                      setSizeValue(size);
+                      onAnalyticsClose?.(size);
+                    }}
+                  >
+                    Generate Quote
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </form>
+      </Form>
+    );
+  }
+
+  if (positionId) {
+    return (
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <p className="text-sm font-semibold">Estimated Collateral Return</p>
+          {isLoadingCollateralChange ? (
+            <div className="flex items-center justify-center">
+              <Loader2 className="h-4 w-4 animate-spin" />
+            </div>
+          ) : (
+            <p className="text-lg">
+              <NumberDisplay
+                value={formatUnits(
+                  collateralDelta < BigInt(0)
+                    ? -collateralDelta
+                    : collateralDelta,
+                  collateralAssetDecimals
+                )}
+              />{' '}
+              {collateralAssetTicker}
+            </p>
+          )}
+        </div>
+
+        <Button
+          className="w-full"
+          onClick={handleClosePosition}
+          disabled={pendingTxn || isLoadingCollateralChange || !!quoteError}
+        >
+          {pendingTxn ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          ) : null}
+          Close Position
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <Form {...form}>
@@ -639,191 +849,12 @@ const Subscribe: FC<SubscribeProps> = ({
           <h2 className="text-lg md:text-2xl font-semibold">
             {marketName} Subscription
           </h2>
-
-          {showMarketSwitcher && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsMarketSelectorOpen(true)}
-              className="px-2.5 ml-auto text-muted-foreground"
-            >
-              <ArrowUpDown />
-            </Button>
-          )}
         </div>
 
-        <div className="flex items-center flex-col mb-6">
-          <p className="mb-6">
-            Enter the amount of gas you expect to use between{' '}
-            {formattedStartTime} and {formattedEndTime}.
-          </p>
-
-          <Button
-            variant="outline"
-            onClick={() => setIsAnalyticsOpen(true)}
-            className="w-full shadow-sm"
-          >
-            <ChartNoAxesColumn className="text-muted-foreground" />
-            Wallet Analytics
-          </Button>
-        </div>
-
-        <Dialog open={isAnalyticsOpen} onOpenChange={setIsAnalyticsOpen}>
-          <DialogContent className="max-w-96 overflow-hidden focus:ring-0 focus:outline-none">
-            <DialogHeader className="relative">
-              <AnimatePresence mode="wait">
-                {estimationResults ? (
-                  <motion.div
-                    key="back-button"
-                    initial={{ opacity: 0, x: 32 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 32 }}
-                    transition={{
-                      duration: 0.3,
-                      ease: 'easeInOut',
-                    }}
-                    className="absolute left-0 -top-1.5 -left-1.5"
-                  >
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setEstimationResults(null)}
-                      className="p-0 h-auto text-muted-foreground"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      <span className="sr-only">Go back</span>
-                    </Button>
-                  </motion.div>
-                ) : null}
-              </AnimatePresence>
-
-              <DialogTitle className="tracking-normal text-center pt-3">
-                Estimate Gas Usage
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="space-y-4 pt-1">
-              <AnimatePresence mode="wait">
-                {!estimationResults ? (
-                  <motion.div
-                    key="input-form"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{
-                      duration: 0.2,
-                      ease: 'easeInOut',
-                    }}
-                  >
-                    <FormField
-                      control={form.control}
-                      name="walletAddress"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Wallet Address</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              placeholder="vitalik.eth"
-                              autoComplete="off"
-                              spellCheck={false}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  handleEstimateUsage();
-                                }
-                              }}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <Button
-                      size="lg"
-                      className="w-full mt-5"
-                      onClick={handleEstimateUsage}
-                      disabled={isEstimating}
-                    >
-                      {isEstimating ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          Generating
-                        </>
-                      ) : (
-                        'Generate Analytics'
-                      )}
-                    </Button>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="results"
-                    initial={{ opacity: 0, height: 140 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 140 }}
-                    transition={{
-                      duration: 0.2,
-                      height: {
-                        duration: 0.5,
-                        ease: 'easeOut',
-                      },
-                      opacity: {
-                        duration: 0.2,
-                        ease: 'easeOut',
-                      },
-                    }}
-                  >
-                    <div className="mb-5">
-                      <SimpleBarChart data={estimationResults.chartData} />
-                    </div>
-                    <p className="text-lg mb-2">
-                      {form.getValues('walletAddress').endsWith('.eth')
-                        ? form.getValues('walletAddress')
-                        : `${form.getValues('walletAddress').slice(0, 6)}...${form.getValues('walletAddress').slice(-4)}`}{' '}
-                      used{' '}
-                      <CountUp
-                        end={estimationResults.totalGasUsed}
-                        separator=","
-                        duration={1.5}
-                      />{' '}
-                      gas (costing{' '}
-                      <NumberDisplay value={estimationResults.ethPaid} /> ETH)
-                      over the last {formattedDuration}.
-                    </p>
-                    <div className="flex flex-col gap-0.5 mb-6">
-                      <p className="text-sm text-muted-foreground">
-                        The average cost per transaction was{' '}
-                        {estimationResults.avgGasPerTx.toLocaleString()} gas.
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        The average gas price paid was{' '}
-                        {estimationResults.avgGasPrice.toLocaleString()} gwei.
-                      </p>
-                    </div>
-                    <div className="border border-border p-6 rounded-lg shadow-sm bg-primary/5">
-                      <p className="mb-4">
-                        Generate a quote for a subscription of this much gas
-                        over {formattedDuration}, starting on{' '}
-                        {formattedStartTime}.
-                      </p>
-                      <Button
-                        className="w-full"
-                        size="lg"
-                        variant="default"
-                        onClick={() => {
-                          setSizeValue(BigInt(estimationResults.totalGasUsed));
-                          setIsAnalyticsOpen(false);
-                        }}
-                      >
-                        Generate Quote
-                      </Button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <p className="mb-6">
+          Enter the amount of gas you expect to use between {formattedStartTime}{' '}
+          and {formattedEndTime}.
+        </p>
 
         <FormField
           control={control}
@@ -909,38 +940,6 @@ const Subscribe: FC<SubscribeProps> = ({
         </div>
 
         {renderActionButton()}
-
-        <Dialog
-          open={isMarketSelectorOpen}
-          onOpenChange={setIsMarketSelectorOpen}
-        >
-          <DialogContent className="max-w-96 overflow-hidden">
-            <DialogHeader>
-              <DialogTitle>Select Market</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-2">
-              {markets
-                .filter((m) => m.public)
-                .map((market) => (
-                  <button
-                    type="button"
-                    key={market.id}
-                    className={`w-full flex justify-between items-center p-3 rounded-lg hover:bg-muted transition-colors ${
-                      market.address === marketAddress ? 'bg-muted' : ''
-                    }`}
-                    onClick={() =>
-                      handleMarketSelect(market.address, market.chainId)
-                    }
-                  >
-                    <span className="font-medium">{market.name}</span>
-                    <span className="text-sm text-muted-foreground">
-                      {getChainName(market.chainId)}
-                    </span>
-                  </button>
-                ))}
-            </div>
-          </DialogContent>
-        </Dialog>
       </form>
     </Form>
   );

@@ -15,7 +15,7 @@ export const ResourceNav = () => {
 
   // Redirect to first resource if no resource is selected
   if (pathname === '/' && resources?.length) {
-    router.push(`/${resources[0].slug}`);
+    router.push(`/resources/${resources[0].slug}`);
     return null;
   }
 
@@ -27,7 +27,9 @@ export const ResourceNav = () => {
     );
   }
 
-  const currentResource = pathname.slice(1); // Remove leading slash
+  const currentResource = pathname.startsWith('/resources/')
+    ? pathname.slice('/resources/'.length)
+    : '';
 
   return (
     <div className="w-full border-b border-border">
@@ -37,7 +39,7 @@ export const ResourceNav = () => {
           return (
             <Link
               key={resource.id}
-              href={`/${resource.slug}`}
+              href={`/resources/${resource.slug}`}
               className="flex-shrink-0"
             >
               <Button

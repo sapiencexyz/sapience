@@ -22,6 +22,7 @@
     "prepare": "echo 'Skipping husky install'"
   },
   "dependencies": {
+    "@apollo/client": "^3.12.4",
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
     "@hookform/resolvers": "^3.9.1",
@@ -51,6 +52,7 @@
     "date-fns": "^3.6.0",
     "dayjs": "^1.11.13",
     "framer-motion": "^10.18.0",
+    "graphql": "^16.10.0",
     "jsbi": "3",
     "lightweight-charts": "^4.2.1",
     "lodash": "^4.17.21",
