@@ -7,8 +7,9 @@ import {
   useReactTable,
   getCoreRowModel,
 } from '@tanstack/react-table';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { ChevronRight, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
 import { formatUnits } from 'viem';
 
 import { Card, CardContent } from '@/components/ui/card';
@@ -20,7 +21,7 @@ import { ResourceNav } from '~/lib/components/market/ResourceNav';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { MARKET_CATEGORIES } from '~/lib/constants/markets';
 import { useMarketList } from '~/lib/context/MarketListProvider';
-import { useLatestResourcePrice } from '~/lib/hooks/useResources';
+import { useLatestResourcePrice, useResources } from '~/lib/hooks/useResources';
 import { TimeWindow } from '~/lib/interfaces/interfaces';
 
 interface ResourcePrice {
@@ -46,63 +47,23 @@ interface Epoch {
 
 const columns: ColumnDef<Epoch>[] = [
   {
-    id: 'epochId',
-    cell: ({ row }) => (
-      <span className="font-medium">#{row.original.epochId}</span>
-    ),
-  },
-  {
-    id: 'dates',
+    id: 'period',
     cell: ({ row }) => {
       const epoch = row.original;
-      const formatDate = (timestamp: number) => {
-        const date = new Date(timestamp * 1000);
-        return `${date.getMonth() + 1}/${date.getDate()}`;
-      };
-
-      const now = Date.now();
-      const getRelativeTime = (timestamp: number) => {
-        const date = new Date(timestamp * 1000);
-        return formatDistanceToNow(date, { addSuffix: true });
-      };
-
-      const isStarted = now / 1000 >= epoch.startTimestamp;
-      const isEnded = now / 1000 >= epoch.endTimestamp;
-
-      const getRelativeText = () => {
-        if (isEnded) {
-          return `ended ${getRelativeTime(epoch.endTimestamp)}`;
-        }
-        if (isStarted) {
-          return `ends ${getRelativeTime(epoch.endTimestamp)}`;
-        }
-        return `starts ${getRelativeTime(epoch.startTimestamp)}`;
-      };
-
-      const relativeText = getRelativeText();
+      const endDate = new Date(epoch.endTimestamp * 1000);
+      const weeks = Math.round(
+        (epoch.endTimestamp - epoch.startTimestamp) / (7 * 24 * 3600)
+      );
 
       return (
-        <div className="flex flex-col gap-0.5">
-          <div className="flex items-center">
-            <span className="text-sm">{formatDate(epoch.startTimestamp)}</span>
-            <ArrowRight className="w-3 h-3 text-muted-foreground mx-1" />
-            <span className="text-sm">{formatDate(epoch.endTimestamp)}</span>
-          </div>
-          <span className="text-xs text-muted-foreground">{relativeText}</span>
+        <div className="flex items-center">
+          <span>{format(endDate, 'M/d')}</span>
+          <span className="text-xs text-muted-foreground ml-2">
+            {weeks} week period
+          </span>
         </div>
       );
     },
-  },
-  {
-    id: 'price',
-    cell: () => (
-      <div className="flex flex-col gap-0.5">
-        <span className="text-sm">50 gwei</span>
-        <span className="text-xs text-muted-foreground">
-          500 gGas Liquidity
-        </span>
-      </div>
-    ),
   },
   {
     id: 'actions',
@@ -111,41 +72,38 @@ const columns: ColumnDef<Epoch>[] = [
 ];
 
 const EpochsTable = ({ data }: { data: Epoch[] }) => {
-  const table = useReactTable({
-    data,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-  });
-
   return (
-    <Table className="border-y border-border">
-      <TableBody>
-        {table.getRowModel().rows?.length ? (
-          table.getRowModel().rows.map((row) => (
-            <TableRow
-              key={row.id}
-              data-state={row.getIsSelected() && 'selected'}
-              className="cursor-pointer hover:bg-accent/50 border-0"
-            >
-              {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id} className="border-0 py-2">
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))
-        ) : (
-          <TableRow>
-            <TableCell
-              colSpan={columns.length}
-              className="h-24 text-center border-0"
-            >
-              No results.
-            </TableCell>
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
+    <div className="border-y border-border">
+      {data.length ? (
+        data.map((epoch) => (
+          <Link
+            key={epoch.id}
+            href={`/trade/${epoch.market.chainId}:${epoch.market.address}/epochs/${epoch.epochId}`}
+            className="block hover:no-underline"
+          >
+            <div className="flex items-center justify-between cursor-pointer hover:bg-secondary px-4 py-1.5">
+              <div className="flex items-baseline">
+                <span>
+                  {format(new Date(epoch.endTimestamp * 1000), 'M/d')}
+                </span>
+                <span className="text-xs text-muted-foreground ml-2">
+                  {Math.round(
+                    (epoch.endTimestamp - epoch.startTimestamp) /
+                      (7 * 24 * 3600)
+                  )}{' '}
+                  week period
+                </span>
+              </div>
+              <ChevronRight className="h-6 w-6 text-muted-foreground" />
+            </div>
+          </Link>
+        ))
+      ) : (
+        <div className="h-24 flex items-center justify-center text-sm text-muted-foreground">
+          No active periods
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -221,6 +179,7 @@ const renderPriceDisplay = (
 
 const MarketContent = ({ params }: { params: { id: string } }) => {
   const { markets } = useMarketList();
+  const { data: resources } = useResources();
   const category = MARKET_CATEGORIES.find((c) => c.id === params.id);
   const { data: latestPrice, isLoading: isPriceLoading } =
     useLatestResourcePrice(params.id);
@@ -249,9 +208,10 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
     );
   }
 
-  const epochs = markets
-    .filter((market) => market.public)
-    .flatMap((market) =>
+  // Get the current resource and its markets
+  const resource = resources?.find((r) => r.slug === params.id);
+  const epochs =
+    resource?.markets.flatMap((market) =>
       (market.epochs || []).map((epoch) => ({
         ...epoch,
         market: {
@@ -259,7 +219,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
           chainId: market.chainId,
         },
       }))
-    );
+    ) || [];
 
   const placeholderPrices = generatePlaceholderPrices();
   const placeholderIndexPrices = generatePlaceholderIndexPrices();
@@ -272,7 +232,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
 
   return (
     <div className="flex flex-col md:flex-row h-full">
-      <div className="flex-1 min-w-0">
+      <div className={`flex-1 min-w-0 ${!epochs.length ? 'w-full' : ''}`}>
         <div className="flex flex-col h-full">
           <div className="flex-1 grid relative">
             <Card className="absolute top-8 left-8 z-10">
@@ -300,12 +260,15 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
           </div>
         </div>
       </div>
-      <div className="hidden w-full md:w-[400px] border-t md:border-t-0 md:border-l border-border pt-4 md:pt-0">
-        <h2 className="text-base font-medium text-muted-foreground px-4 py-2">
-          Periods
-        </h2>
-        <EpochsTable data={epochs} />
-      </div>
+
+      {epochs.length > 0 && (
+        <div className="w-full md:w-[240px] border-t md:border-t-0 md:border-l border-border pt-4 md:pt-0">
+          <h2 className="text-base font-medium text-muted-foreground px-4 py-2">
+            Periods
+          </h2>
+          <EpochsTable data={epochs} />
+        </div>
+      )}
     </div>
   );
 };
