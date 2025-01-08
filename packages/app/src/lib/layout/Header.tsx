@@ -125,7 +125,7 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
 
                   if (!market || epochs.length === 0) {
                     return (
-                      <div className="text-sm text-muted-foreground h-full flex items-center justify-center py-4">
+                      <div className="text-sm text-muted-foreground flex items-center justify-center min-h-[60px]">
                         No active periods
                       </div>
                     );
@@ -237,7 +237,7 @@ const NavLinks = ({
 
                   if (!market || epochs.length === 0) {
                     return (
-                      <div className="text-sm text-muted-foreground h-full flex items-center justify-center py-4">
+                      <div className="text-sm text-muted-foreground flex items-center justify-center min-h-[60px]">
                         No active periods
                       </div>
                     );

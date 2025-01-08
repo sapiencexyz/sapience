@@ -324,8 +324,6 @@ const DepthChart: React.FC = () => {
       {poolData && (
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
-            width={500}
-            height={300}
             data={poolData.ticks}
             margin={{ top: 70, bottom: -40 }}
             onMouseLeave={() => {
@@ -340,11 +338,6 @@ const DepthChart: React.FC = () => {
               height={60}
               interval={0}
               tickLine={false}
-            />
-            <YAxis
-              tick={false}
-              axisLine={false}
-              padding={{ top: 0, bottom: 2 }}
             />
             <Tooltip
               content={

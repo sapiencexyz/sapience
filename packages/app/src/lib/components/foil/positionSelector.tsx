@@ -1,6 +1,7 @@
 import { Edit } from 'lucide-react';
+import Link from 'next/link';
 import type React from 'react';
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 
 import { Button } from '~/components/ui/button';
 import {
@@ -10,33 +11,32 @@ import {
   DialogTitle,
 } from '~/components/ui/dialog';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
+import { MarketContext } from '~/lib/context/MarketProvider';
 
-const PositionSelector: React.FC<{ isLP?: boolean | null }> = ({ isLP }) => {
+const PositionSelector: React.FC = () => {
   const { nftId, positions, setNftId } = useAddEditPosition();
   const [isOpen, setIsOpen] = useState(false);
+  const { chainId, address: marketAddress, epoch } = useContext(MarketContext);
 
-  let filteredPositions;
-  if (isLP === true) {
-    filteredPositions = positions?.liquidityPositions;
-  } else if (isLP === false) {
-    filteredPositions = positions?.tradePositions;
-  } else {
-    filteredPositions = [
-      ...(positions?.liquidityPositions || []),
-      ...(positions?.tradePositions || []),
-    ];
-  }
+  const allPositions = [
+    ...(positions?.liquidityPositions?.map((pos) => ({
+      ...pos,
+      type: 'lp' as const,
+    })) || []),
+    ...(positions?.tradePositions?.map((pos) => ({
+      ...pos,
+      type: 'trade' as const,
+    })) || []),
+  ];
 
   const handlePositionSelect = (selectedNftId: number) => {
     setNftId(selectedNftId);
     setIsOpen(false);
   };
 
-  // Helper function to get position type text
-  const getPositionTypeText = () => {
-    if (isLP === true) return 'Liquidity Position';
-    if (isLP === false) return 'Trader Position';
-    return 'Position';
+  const getPositionUrl = (position: { type: 'lp' | 'trade'; id: bigint }) => {
+    const baseUrl = position.type === 'lp' ? 'pool' : 'trade';
+    return `/${baseUrl}/${chainId}:${marketAddress}/epochs/${epoch}?positionId=${position.id.toString()}`;
   };
 
   return (
@@ -56,31 +56,37 @@ const PositionSelector: React.FC<{ isLP?: boolean | null }> = ({ isLP }) => {
       </p>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-[300px]">
           <DialogHeader>
-            <DialogTitle>Select {getPositionTypeText()}</DialogTitle>
+            <DialogTitle>Select Position</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col space-y-2">
-            {filteredPositions?.map((position) => (
-              <Button
-                key={Number(position.id)}
-                variant="ghost"
-                className={`flex justify-between items-center py-2 px-4 rounded-md w-full h-auto
-                  ${Number(position.id) === nftId ? 'bg-muted' : 'bg-transparent'}
-                  hover:bg-muted/50`}
-                onClick={() => handlePositionSelect(Number(position.id))}
+            {allPositions.map((position) => (
+              <Link
+                key={position.id.toString()}
+                href={getPositionUrl(position)}
+                className="w-full"
               >
-                <p className="font-bold">#{Number(position.id)}</p>
-              </Button>
+                <Button
+                  variant="ghost"
+                  className={`flex justify-between items-center py-2 px-4 rounded-md w-full h-auto
+                    ${Number(position.id) === nftId ? 'bg-muted' : 'bg-transparent'}
+                    hover:bg-muted/50`}
+                  onClick={() => handlePositionSelect(Number(position.id))}
+                >
+                  <div className="flex items-center gap-2 w-full">
+                    <p className="font-bold">#{position.id.toString()}</p>
+                    <span className="text-sm text-muted-foreground ml-auto">
+                      {position.type === 'lp'
+                        ? 'Liquidity Position'
+                        : 'Trader Position'}
+                    </span>
+                  </div>
+                </Button>
+              </Link>
             ))}
-            <Button
-              variant="ghost"
-              className={`flex justify-between items-center py-2 px-4 rounded-md w-full h-auto
-                ${nftId === 0 ? 'bg-muted' : 'bg-transparent'}
-                hover:bg-muted/50`}
-              onClick={() => handlePositionSelect(0)}
-            >
-              <p className="font-bold">New Position</p>
+            <Button className="mt-6" onClick={() => handlePositionSelect(0)}>
+              <p>Create New Position</p>
             </Button>
           </div>
         </DialogContent>

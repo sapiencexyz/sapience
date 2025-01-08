@@ -801,7 +801,7 @@ export default function AddEditTrade() {
         {renderCloseButton()}
 
         <div className="flex flex-col gap-2">
-          <PositionSelector isLP={false} />
+          <PositionSelector />
           {isEdit && (
             <div>
               <p className="text-sm  font-semibold mb-0.5">Position Size</p>

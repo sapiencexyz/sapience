@@ -1,11 +1,12 @@
 'use client';
 
 import { gql } from '@apollo/client';
+import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { print } from 'graphql';
 import { ChartNoAxesColumn, Loader2, Plus } from 'lucide-react';
 import Image from 'next/image';
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useContext, useEffect, useMemo, useState } from 'react';
 import { formatUnits } from 'viem';
 import { useAccount } from 'wagmi';
 
@@ -16,10 +17,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '~/components/ui/dialog';
+import NumberDisplay from '~/lib/components/foil/numberDisplay';
 import Subscribe from '~/lib/components/foil/subscribe';
 import { useMarketList } from '~/lib/context/MarketListProvider';
-import { MarketProvider } from '~/lib/context/MarketProvider';
+import { MarketContext, MarketProvider } from '~/lib/context/MarketProvider';
 import { useResources } from '~/lib/hooks/useResources';
+import { convertWstEthToGwei } from '~/lib/util/util';
 
 const SUBSCRIPTIONS_QUERY = gql`
   query GetSubscriptions($owner: String!) {
@@ -44,13 +47,6 @@ const SUBSCRIPTIONS_QUERY = gql`
           name
         }
       }
-      transactions {
-        id
-        timestamp
-        type
-        baseToken
-        quoteToken
-      }
     }
   }
 `;
@@ -73,70 +69,120 @@ interface Subscription {
   borrowedBaseToken: string;
   borrowedQuoteToken: string;
   collateral: string;
+  entryPrice: number;
   transactions: {
     id: string;
     timestamp: number;
     type: string;
     baseToken: string;
     quoteToken: string;
+    baseTokenDelta: string;
+    quoteTokenDelta: string;
+    tradeRatioD18: string;
   }[];
   createdAt: string;
 }
 
 const useSubscriptions = (address?: string) => {
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { useMarketUnits, stEthPerToken } = useContext(MarketContext);
 
-  useEffect(() => {
-    const fetchSubscriptions = async () => {
-      if (!address) {
-        setSubscriptions([]);
-        setIsLoading(false);
-        return;
+  const calculateEntryPrice = (position: any, transactions: any[]) => {
+    let entryPrice = 0;
+    if (!position.isLP) {
+      const isLong = BigInt(position.baseToken) > BigInt(0);
+      if (isLong) {
+        let baseTokenDeltaTotal = 0;
+        entryPrice = transactions
+          .filter((t: any) => Number(t.baseTokenDelta) > 0)
+          .reduce((acc: number, transaction: any) => {
+            baseTokenDeltaTotal += Number(transaction.baseTokenDelta);
+            return (
+              acc +
+              Number(transaction.tradeRatioD18) *
+                Number(transaction.baseTokenDelta)
+            );
+          }, 0);
+        entryPrice /= baseTokenDeltaTotal;
+      } else {
+        let quoteTokenDeltaTotal = 0;
+        entryPrice = transactions
+          .filter((t: any) => Number(t.quoteTokenDelta) > 0)
+          .reduce((acc: number, transaction: any) => {
+            quoteTokenDeltaTotal += Number(transaction.quoteTokenDelta);
+            return (
+              acc +
+              Number(transaction.tradeRatioD18) *
+                Number(transaction.quoteTokenDelta)
+            );
+          }, 0);
+        entryPrice /= quoteTokenDeltaTotal;
       }
+    }
+    const unitsAdjustedEntryPrice = useMarketUnits
+      ? entryPrice
+      : convertWstEthToGwei(entryPrice, stEthPerToken);
+    return isNaN(unitsAdjustedEntryPrice) ? 0 : unitsAdjustedEntryPrice;
+  };
 
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_FOIL_API_URL}/graphql`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              query: print(SUBSCRIPTIONS_QUERY),
-              variables: {
-                owner: address,
-              },
-            }),
-          }
-        );
+  const fetchSubscriptions = async () => {
+    if (!address) {
+      return [];
+    }
 
-        const { data, errors } = await response.json();
-        if (errors) {
-          throw new Error(errors[0].message);
-        }
-
-        // Filter for active long positions
-        const activePositions = data.positions.filter(
-          (position: any) =>
-            !position.isLP && // Not an LP position
-            BigInt(position.baseToken) > BigInt(0) // Has positive baseToken
-        );
-
-        setSubscriptions(activePositions);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
-      } finally {
-        setIsLoading(false);
+    // First fetch positions
+    const positionsResponse = await fetch(
+      `${process.env.NEXT_PUBLIC_FOIL_API_URL}/graphql`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: print(SUBSCRIPTIONS_QUERY),
+          variables: {
+            owner: address,
+          },
+        }),
       }
-    };
+    );
 
-    fetchSubscriptions();
-  }, [address]);
+    const { data: positionsData, errors } = await positionsResponse.json();
+    if (errors) {
+      throw new Error(errors[0].message);
+    }
 
-  return { data: subscriptions, isLoading, error };
+    // Filter for active long positions
+    const activePositions = positionsData.positions.filter(
+      (position: any) =>
+        !position.isLP && // Not an LP position
+        BigInt(position.baseToken) > BigInt(0) // Has positive baseToken
+    );
+
+    // For each position, fetch its transactions
+    return Promise.all(
+      activePositions.map(async (position: any) => {
+        const contractId = `${position.epoch.market.chainId}:${position.epoch.market.address}`;
+        const transactionsResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_FOIL_API_URL}/transactions?contractId=${contractId}&positionId=${position.positionId}`
+        );
+        const transactions = await transactionsResponse.json();
+
+        return {
+          ...position,
+          entryPrice: calculateEntryPrice(position, transactions),
+        };
+      })
+    );
+  };
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['subscriptions', address, useMarketUnits, stEthPerToken],
+    queryFn: fetchSubscriptions,
+    refetchInterval: 2000, // Refetch every 2 seconds
+    enabled: !!address, // Only fetch when we have an address
+  });
+
+  return { data: data || [], isLoading, error };
 };
 
 const SubscriptionsList = () => {
@@ -159,7 +205,8 @@ const SubscriptionsList = () => {
   if (error) {
     return (
       <div className="text-destructive text-center my-6">
-        Failed to load subscriptions: {error}
+        Failed to load subscriptions:{' '}
+        {error instanceof Error ? error.message : 'Unknown error'}
       </div>
     );
   }
@@ -211,30 +258,22 @@ const SubscriptionsList = () => {
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Amount</span>
                 <span className="text-sm font-medium">
-                  {formatUnits(BigInt(subscription.baseToken), 9)} Ggas
+                  <NumberDisplay
+                    value={
+                      Number(formatUnits(BigInt(subscription.baseToken), 9)) /
+                      1e9
+                    }
+                  />{' '}
+                  Ggas
                 </span>
               </div>
 
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">
-                  Price paid
+                  Entry Price
                 </span>
                 <span className="text-sm font-medium">
-                  {(() => {
-                    // Find the first transaction that created the position
-                    const createTx = subscription.transactions.find(
-                      (t) => t.type === 'CREATE'
-                    );
-                    if (!createTx) return '0 Gwei';
-
-                    // Calculate price as quoteToken/baseToken
-                    const quoteAmount = BigInt(createTx.quoteToken);
-                    const baseAmount = BigInt(createTx.baseToken);
-                    if (baseAmount === BigInt(0)) return '0 Gwei';
-
-                    const price = (quoteAmount * BigInt(1e9)) / baseAmount;
-                    return `${formatUnits(price, 9)} Gwei`;
-                  })()}
+                  {Number(subscription.entryPrice).toFixed(4)} wstETH/Ggas
                 </span>
               </div>
 
@@ -257,15 +296,17 @@ const SubscriptionsList = () => {
                 </span>
               </div>
 
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Ends in</span>
-                <span className="text-sm font-medium">
-                  {formatDistanceToNow(
-                    new Date(subscription.epoch.endTimestamp * 1000),
-                    { addSuffix: false }
-                  )}
-                </span>
-              </div>
+              {subscription.epoch.endTimestamp * 1000 > Date.now() && (
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Ends in</span>
+                  <span className="text-sm font-medium">
+                    {formatDistanceToNow(
+                      new Date(subscription.epoch.endTimestamp * 1000),
+                      { addSuffix: false }
+                    )}
+                  </span>
+                </div>
+              )}
             </div>
 
             <Button
@@ -276,7 +317,9 @@ const SubscriptionsList = () => {
                 setSellDialogOpen(true);
               }}
             >
-              Close Early
+              {subscription.epoch.endTimestamp * 1000 > Date.now()
+                ? 'Close Early'
+                : 'Settle'}
             </Button>
           </div>
         );
@@ -386,7 +429,10 @@ const SubscribeContent = () => {
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-w-[460px]">
-            <Subscribe initialSize={prefilledSize} />
+            <Subscribe
+              initialSize={prefilledSize}
+              onClose={() => setIsDialogOpen(false)}
+            />
           </DialogContent>
         </Dialog>
 
