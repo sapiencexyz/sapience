@@ -21,6 +21,12 @@ import {
 } from '~/components/ui/popover';
 import { Sheet, SheetContent, SheetTrigger } from '~/components/ui/sheet';
 import { useMarketList } from '~/lib/context/MarketListProvider';
+import {
+  useResources,
+  type Resource,
+  type Market,
+  type Epoch,
+} from '~/lib/hooks/useResources';
 
 const getMarketHref = (path: string, market: any, withEpochs: boolean) => {
   if (path === 'earn') {
@@ -32,99 +38,113 @@ const getMarketHref = (path: string, market: any, withEpochs: boolean) => {
   return `/${path}/${market.chainId}:${market.address}/epochs/${market.currentEpoch?.epochId}`;
 };
 
-const NavPopover = ({
-  label,
-  path,
-  withEpochs = false,
-}: {
-  label: string;
-  path: string;
-  withEpochs?: boolean;
-}) => {
-  const [hoveredMarket, setHoveredMarket] = useState<number | null>(null);
-  const { markets } = useMarketList();
+const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
+  const [hoveredResource, setHoveredResource] = useState<number | null>(null);
+  const { data: resources, isLoading } = useResources();
   const [open, setOpen] = useState(false);
 
-  const publicMarkets = markets.filter((m) => m.public);
-
-  const formatTimestamp = (timestamp: number) => {
-    return format(new Date(timestamp * 1000), 'MMM d');
-  };
-
   useEffect(() => {
-    if (publicMarkets.length > 0 && !hoveredMarket) {
-      setHoveredMarket(publicMarkets[0].id);
+    if (resources && resources.length > 0 && !hoveredResource) {
+      setHoveredResource(resources[0].id);
     }
-  }, [hoveredMarket, publicMarkets]);
+  }, [hoveredResource, resources]);
+
+  const formatDuration = (start: number, end: number) => {
+    const endDate = new Date(end * 1000);
+    const weeks = Math.round((end - start) / (7 * 24 * 3600));
+    return (
+      <>
+        Ends {format(endDate, 'M/d')}
+        <span className="text-xs text-muted-foreground ml-2">
+          {weeks} week period
+        </span>
+      </>
+    );
+  };
 
   const handleLinkClick = () => {
     setOpen(false);
   };
 
+  if (isLoading) {
+    return (
+      <Button variant="ghost" className="text-md">
+        {label}
+      </Button>
+    );
+  }
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost">
-          <span className="text-lg">{label}</span>
+        <Button variant="ghost" className="text-md">
+          <span>{label}</span>
           <ChevronDown className="text-muted-foreground" />
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className={`${withEpochs ? 'w-[400px]' : 'w-[220px]'} p-3`}
+        className="w-[400px] p-3"
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => {
           setOpen(false);
-          setHoveredMarket(publicMarkets[0]?.id);
+          setHoveredResource(resources?.[0]?.id ?? null);
         }}
       >
         <div className="flex">
           <div className="flex-1">
-            {publicMarkets.map((market) => (
+            {resources?.map((resource: Resource) => (
               <div
-                key={market.id}
-                onMouseEnter={() => setHoveredMarket(market.id)}
+                key={resource.id}
+                onMouseEnter={() => setHoveredResource(resource.id)}
               >
-                {market.currentEpoch && (
-                  <Link
-                    className={`text-sm w-full block rounded-md px-3 py-1.5 
-                      ${hoveredMarket === market.id ? 'bg-secondary' : 'bg-transparent'}
-                      hover:bg-secondary`}
-                    href={getMarketHref(path, market, withEpochs)}
-                    onClick={handleLinkClick}
-                  >
-                    {market.name}
-                  </Link>
-                )}
+                <div
+                  className={`text-sm w-full flex items-center gap-2 rounded-md px-3 py-1.5 
+                    ${hoveredResource === resource.id ? 'bg-secondary' : 'bg-transparent'}
+                    hover:bg-secondary cursor-pointer`}
+                >
+                  <Image
+                    src={resource.iconPath}
+                    alt={resource.name}
+                    width={16}
+                    height={16}
+                  />
+                  {resource.name}
+                </div>
               </div>
             ))}
           </div>
-          {withEpochs && (
-            <div className="flex-1 border-l border-border pl-3 ml-3">
-              {hoveredMarket && (
-                <div className="flex flex-col space-y-1">
-                  {(() => {
-                    const hoveredMarketData = publicMarkets.find(
-                      (m) => m.id === hoveredMarket
-                    );
-                    const chainId = hoveredMarketData?.chainId;
-                    const address = hoveredMarketData?.address;
+          <div className="flex-1 border-l border-border pl-3 ml-3">
+            {hoveredResource && (
+              <div className="flex flex-col space-y-1">
+                {(() => {
+                  const hoveredResourceData = resources?.find(
+                    (r: Resource) => r.id === hoveredResource
+                  );
+                  const market = hoveredResourceData?.markets?.[0];
+                  const epochs = market?.epochs ?? [];
 
-                    return hoveredMarketData?.epochs.map((epoch) => (
-                      <Link
-                        key={epoch.epochId}
-                        className="text-sm w-full block rounded-md px-3 py-1.5 hover:bg-secondary"
-                        href={`/${path}/${chainId}:${address}/epochs/${epoch.epochId}`}
-                        onClick={handleLinkClick}
-                      >
-                        {formatTimestamp(epoch.startTimestamp)} -{' '}
-                        {formatTimestamp(epoch.endTimestamp)}
-                      </Link>
-                    ));
-                  })()}
-                </div>
-              )}
-            </div>
-          )}
+                  if (!market || epochs.length === 0) {
+                    return (
+                      <div className="text-sm text-muted-foreground h-full flex items-center justify-center py-4">
+                        No active periods
+                      </div>
+                    );
+                  }
+
+                  return epochs.map((epoch: Epoch) => (
+                    <Link
+                      key={epoch.epochId}
+                      className="text-sm w-full block rounded-md px-3 py-1.5 hover:bg-secondary"
+                      href={`/${path}/${market.chainId}:${market.address}/epochs/${epoch.epochId}`}
+                      onClick={handleLinkClick}
+                    >
+                      {formatDuration(epoch.startTimestamp, epoch.endTimestamp)}
+                    </Link>
+                  ));
+                })()}
+              </div>
+            )}
+          </div>
         </div>
       </PopoverContent>
     </Popover>
@@ -139,12 +159,9 @@ const NavLinks = ({
   onClose?: () => void;
 }) => {
   const { markets } = useMarketList();
+  const { data: resources, isLoading } = useResources();
   const publicMarkets = markets.filter((m) => m.public);
   const pathname = usePathname();
-
-  const formatTimestamp = (timestamp: number) => {
-    return format(new Date(timestamp * 1000), 'MMM d, HH:mm');
-  };
 
   const isActive = (path: string) => {
     if (path === '/') {
@@ -161,14 +178,28 @@ const NavLinks = ({
     return `text-md ${isActive(path) ? 'bg-secondary' : ''}`;
   };
 
-  const renderMobileMarketLinks = (path: string, withEpochs = false) => {
+  const formatDuration = (start: number, end: number) => {
+    const startDate = new Date(start * 1000);
+    const endDate = new Date(end * 1000);
+    const weeks = Math.round((end - start) / (7 * 24 * 3600));
+    return (
+      <>
+        {format(endDate, 'M/d')}
+        <span className="text-sm text-muted-foreground ml-2">
+          {weeks} week period
+        </span>
+      </>
+    );
+  };
+
+  const renderMobileMarketLinks = (path: string) => {
     if (path === 'subscribe' || path === 'earn') {
       return (
         <div className="flex flex-col space-y-2">
           {publicMarkets.map((market) => (
             <Link
               key={market.id}
-              href={getMarketHref(path, market, withEpochs)}
+              href={getMarketHref(path, market, false)}
               onClick={() => onClose?.()}
               className="text-sm w-full block rounded-md px-3 py-1.5 hover:bg-gray-50"
             >
@@ -179,28 +210,52 @@ const NavLinks = ({
       );
     }
 
+    if (isLoading) {
+      return <div>Loading...</div>;
+    }
+
     return (
       <Accordion type="multiple">
-        {publicMarkets.map((market) => (
-          <AccordionItem key={market.id} value={market.id.toString()}>
-            <AccordionTrigger>{market.name}</AccordionTrigger>
-            {withEpochs && (
-              <AccordionContent>
-                <div className="flex flex-col space-y-2">
-                  {market.epochs.map((epoch) => (
+        {resources?.map((resource) => (
+          <AccordionItem key={resource.id} value={resource.id.toString()}>
+            <AccordionTrigger>
+              <div className="flex items-center gap-2">
+                <Image
+                  src={resource.iconPath}
+                  alt={resource.name}
+                  width={16}
+                  height={16}
+                />
+                {resource.name}
+              </div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="flex flex-col space-y-2">
+                {(() => {
+                  const market = resource.markets[0];
+                  const epochs = market?.epochs ?? [];
+
+                  if (!market || epochs.length === 0) {
+                    return (
+                      <div className="text-sm text-muted-foreground h-full flex items-center justify-center py-4">
+                        No active periods
+                      </div>
+                    );
+                  }
+
+                  return epochs.map((epoch) => (
                     <Link
                       key={epoch.epochId}
                       className="text-sm w-full block rounded-md px-3 py-1.5 hover:bg-gray-50"
                       href={`/${path}/${market.chainId}:${market.address}/epochs/${epoch.epochId}`}
                       onClick={() => onClose?.()}
                     >
-                      {formatTimestamp(epoch.startTimestamp)} -{' '}
-                      {formatTimestamp(epoch.endTimestamp)}
+                      {formatDuration(epoch.startTimestamp, epoch.endTimestamp)}
                     </Link>
-                  ))}
-                </div>
-              </AccordionContent>
-            )}
+                  ));
+                })()}
+              </div>
+            </AccordionContent>
           </AccordionItem>
         ))}
       </Accordion>
@@ -227,11 +282,11 @@ const NavLinks = ({
         </div>
         <div>
           <div className="font-bold mb-1">Trade</div>
-          {renderMobileMarketLinks('trade', true)}
+          {renderMobileMarketLinks('trade')}
         </div>
         <div>
           <div className="font-bold mb-1">Pool</div>
-          {renderMobileMarketLinks('pool', true)}
+          {renderMobileMarketLinks('pool')}
         </div>
         <Link
           href="https://docs.foil.xyz"
@@ -264,23 +319,9 @@ const NavLinks = ({
         </Button>
       </Link>
 
-      <Link
-        href="/trade/11155111:0xa898b018aebbcd87e88a4d0dac5105b3f106d7d7/epochs/1"
-        className="hover:no-underline"
-      >
-        <Button variant="ghost" className={getButtonClasses('/trade')}>
-          Trade
-        </Button>
-      </Link>
+      <ResourcePopover label="Trade" path="trade" />
+      <ResourcePopover label="Pool" path="pool" />
 
-      <Link
-        href="/pool/11155111:0xa898b018aebbcd87e88a4d0dac5105b3f106d7d7/epochs/1"
-        className="hover:no-underline"
-      >
-        <Button variant="ghost" className={getButtonClasses('/pool')}>
-          Pool
-        </Button>
-      </Link>
       <Link href="https://docs.foil.xyz" className="hover:no-underline">
         <Button variant="ghost" className="text-md">
           Docs

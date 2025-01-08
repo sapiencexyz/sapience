@@ -2,11 +2,28 @@ import { useQuery } from '@tanstack/react-query';
 
 import { API_BASE_URL } from '~/lib/constants/constants';
 
+export interface Epoch {
+  id: number;
+  epochId: number;
+  startTimestamp: number;
+  endTimestamp: number;
+  settled: boolean;
+}
+
+export interface Market {
+  id: number;
+  address: string;
+  chainId: number;
+  name: string;
+  epochs: Epoch[];
+}
+
 export interface Resource {
   id: number;
   name: string;
   slug: string;
   iconPath: string;
+  markets: Market[];
 }
 
 const mapResourceToIconPath = (name: string): string => {
