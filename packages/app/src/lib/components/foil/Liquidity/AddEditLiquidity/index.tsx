@@ -960,7 +960,7 @@ const AddEditLiquidity: React.FC = () => {
         {renderActionButton()}
 
         <div className="flex flex-col gap-2 mt-4">
-          <PositionSelector isLP />
+          <PositionSelector />
 
           <div>
             <p className="text-sm font-semibold mb-0.5">Base Token</p>
