@@ -80,6 +80,8 @@ interface SubscribeProps {
   onAnalyticsClose?: (size: bigint) => void;
   isAnalyticsMode?: boolean;
   initialSize?: bigint | null;
+  positionId?: number;
+  onClose?: () => void;
 }
 
 const publicClient = createPublicClient({
@@ -95,6 +97,8 @@ const Subscribe: FC<SubscribeProps> = ({
   onAnalyticsClose,
   isAnalyticsMode = false,
   initialSize = null,
+  positionId,
+  onClose,
 }) => {
   // State declarations first
   const { address: marketAddress, chainId, epoch } = useContext(MarketContext);
@@ -207,9 +211,38 @@ const Subscribe: FC<SubscribeProps> = ({
     query: { enabled: sizeValue !== BigInt(0) },
   });
 
+  // Position data
+  const { data: positionData } = useReadContract({
+    abi: foilData.abi,
+    address: finalMarketAddress as `0x${string}`,
+    functionName: 'getPosition',
+    args: positionId !== undefined ? [positionId] : undefined,
+    query: {
+      enabled: !!positionId,
+    },
+  });
+
+  // Quote modify position for closing
+  const quoteModifyPositionResult = useSimulateContract({
+    abi: foilData.abi,
+    address: finalMarketAddress as `0x${string}`,
+    functionName: 'quoteModifyTraderPosition',
+    args: positionId !== undefined ? [positionId, BigInt(0)] : undefined,
+    chainId: finalChainId,
+    account: address || zeroAddress,
+    query: { enabled: !!positionId },
+  });
+
   // Update the useEffect to set quoteResult and fillPrice from the result
   useEffect(() => {
-    if (quoteCreatePositionResult.data?.result !== undefined) {
+    if (positionId) {
+      if (quoteModifyPositionResult.data?.result !== undefined) {
+        const [expectedCollateralDelta, closePnL, fillPriceData] =
+          quoteModifyPositionResult.data.result;
+        setFillPrice(fillPriceData as bigint);
+        setCollateralDelta(expectedCollateralDelta as bigint);
+      }
+    } else if (quoteCreatePositionResult.data?.result !== undefined) {
       const [quoteResultData, fillPriceData] =
         quoteCreatePositionResult.data.result;
       setFillPrice(fillPriceData as bigint);
@@ -218,10 +251,16 @@ const Subscribe: FC<SubscribeProps> = ({
       setFillPrice(BigInt(0));
       setCollateralDelta(BigInt(0));
     }
-  }, [quoteCreatePositionResult.data]);
+  }, [
+    quoteCreatePositionResult.data,
+    quoteModifyPositionResult.data,
+    positionId,
+  ]);
 
   useEffect(() => {
-    if (quoteCreatePositionResult.error) {
+    if (positionId && quoteModifyPositionResult?.error) {
+      setQuoteError(quoteModifyPositionResult.error.message);
+    } else if (quoteCreatePositionResult.error && !positionId) {
       const errorMessage = quoteCreatePositionResult.error.message;
       // Clean up common error messages
       const cleanedMessage = errorMessage
@@ -231,9 +270,16 @@ const Subscribe: FC<SubscribeProps> = ({
     } else {
       setQuoteError(null);
     }
-  }, [quoteCreatePositionResult.error, sizeValue]);
+  }, [
+    quoteCreatePositionResult.error,
+    quoteModifyPositionResult?.error,
+    sizeValue,
+    positionId,
+  ]);
 
-  const isLoadingCollateralChange = quoteCreatePositionResult.isFetching;
+  const isLoadingCollateralChange = positionId
+    ? quoteModifyPositionResult.isFetching
+    : quoteCreatePositionResult.isFetching;
 
   // Write contract hooks
   const { data: hash, writeContract } = useWriteContract({
@@ -282,38 +328,42 @@ const Subscribe: FC<SubscribeProps> = ({
 
   useEffect(() => {
     if (isConfirmed && txnStep === 2) {
-      for (const log of createTraderPositionReceipt.logs) {
-        try {
-          const event = decodeEventLog({
-            abi: foilData.abi,
-            data: log.data,
-            topics: log.topics,
-          });
-
-          if ((event as any).eventName === 'TraderPositionCreated') {
-            const nftId = (event as any).args.positionId.toString();
-            router.push(
-              `/trade/${finalChainId}:${finalMarketAddress}/epochs/${finalEpoch}?positionId=${nftId}`
-            );
-            toast({
-              title: 'Position Created',
-              description: `Your subscription has been created as position ID: ${nftId}`,
+      if (positionId) {
+        toast({
+          title: 'Success',
+          description: 'Subscription closed',
+        });
+        onClose?.();
+      } else {
+        for (const log of createTraderPositionReceipt.logs) {
+          try {
+            const event = decodeEventLog({
+              abi: foilData.abi,
+              data: log.data,
+              topics: log.topics,
             });
-            resetAfterSuccess();
-            return;
+
+            if ((event as any).eventName === 'TraderPositionCreated') {
+              const nftId = (event as any).args.positionId.toString();
+              toast({
+                title: 'Position Created',
+                description: `Your position has been created as position ${nftId}`,
+              });
+              resetAfterSuccess();
+              return;
+            }
+          } catch (error) {
+            // This log was not for the TraderPositionCreated event, continue to next log
           }
-        } catch (error) {
-          // This log was not for the TraderPositionCreated event, continue to next log
         }
+        toast({
+          title: 'Success',
+          description: "We've created your position for you.",
+        });
+        resetAfterSuccess();
       }
-      // If we get here, no position ID was found but transaction succeeded
-      toast({
-        title: 'Success',
-        description: 'Your subscription has been created successfully.',
-      });
-      resetAfterSuccess();
     }
-  }, [isConfirmed, createTraderPositionReceipt, txnStep]);
+  }, [isConfirmed, createTraderPositionReceipt, txnStep, positionId]);
 
   useEffect(() => {
     if (approveSuccess && txnStep === 1) {
@@ -571,23 +621,36 @@ const Subscribe: FC<SubscribeProps> = ({
   const requireApproval =
     !allowance || collateralDeltaLimit > (allowance as bigint);
 
-  const getChainName = (chainId: number) => {
-    switch (chainId) {
-      case mainnet.id:
-        return 'Ethereum';
-      case sepolia.id:
-        return 'Sepolia';
-      default:
-        return `Chain ${chainId}`;
-    }
-  };
-
   useEffect(() => {
     if (initialSize) {
       setSizeValue(initialSize);
       form.setValue('sizeInput', initialSize.toString());
     }
   }, [initialSize]);
+
+  const handleClosePosition = async () => {
+    if (!positionId || !isConnected) return;
+
+    setPendingTxn(true);
+    const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
+
+    try {
+      writeContract({
+        abi: foilData.abi,
+        address: finalMarketAddress as `0x${string}`,
+        functionName: 'modifyTraderPosition',
+        args: [positionId, BigInt(0), collateralDeltaLimit, deadline],
+      });
+      setTxnStep(2);
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: `Failed to close position: ${(error as Error).message}`,
+      });
+      setPendingTxn(false);
+    }
+  };
 
   if (!address) {
     return (
@@ -726,6 +789,39 @@ const Subscribe: FC<SubscribeProps> = ({
     );
   }
 
+  if (positionId) {
+    return (
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <p className="text-sm font-semibold">Estimated Collateral Return</p>
+          {isLoadingCollateralChange ? (
+            <div className="flex items-center justify-center">
+              <Loader2 className="h-4 w-4 animate-spin" />
+            </div>
+          ) : (
+            <p className="text-lg">
+              <NumberDisplay
+                value={formatUnits(collateralDelta, collateralAssetDecimals)}
+              />{' '}
+              {collateralAssetTicker}
+            </p>
+          )}
+        </div>
+
+        <Button
+          className="w-full"
+          onClick={handleClosePosition}
+          disabled={pendingTxn || isLoadingCollateralChange || !!quoteError}
+        >
+          {pendingTxn ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          ) : null}
+          Close Position
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit(onSubmit)}>
@@ -739,12 +835,10 @@ const Subscribe: FC<SubscribeProps> = ({
           </h2>
         </div>
 
-        <div className="flex items-center flex-col mb-6">
-          <p className="mb-6">
-            Enter the amount of gas you expect to use between{' '}
-            {formattedStartTime} and {formattedEndTime}.
-          </p>
-        </div>
+        <p className="mb-6">
+          Enter the amount of gas you expect to use between {formattedStartTime}{' '}
+          and {formattedEndTime}.
+        </p>
 
         <FormField
           control={control}
