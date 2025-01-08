@@ -1,6 +1,7 @@
 'use client';
 
 import { gql } from '@apollo/client';
+import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { print } from 'graphql';
 import { ChartNoAxesColumn, Loader2, Plus } from 'lucide-react';
@@ -16,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '~/components/ui/dialog';
+import NumberDisplay from '~/lib/components/foil/numberDisplay';
 import Subscribe from '~/lib/components/foil/subscribe';
 import { useMarketList } from '~/lib/context/MarketListProvider';
 import { MarketContext, MarketProvider } from '~/lib/context/MarketProvider';
@@ -82,9 +84,6 @@ interface Subscription {
 }
 
 const useSubscriptions = (address?: string) => {
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const { useMarketUnits, stEthPerToken } = useContext(MarketContext);
 
   const calculateEntryPrice = (position: any, transactions: any[]) => {
@@ -125,72 +124,65 @@ const useSubscriptions = (address?: string) => {
     return isNaN(unitsAdjustedEntryPrice) ? 0 : unitsAdjustedEntryPrice;
   };
 
-  useEffect(() => {
-    const fetchSubscriptions = async () => {
-      if (!address) {
-        setSubscriptions([]);
-        setIsLoading(false);
-        return;
+  const fetchSubscriptions = async () => {
+    if (!address) {
+      return [];
+    }
+
+    // First fetch positions
+    const positionsResponse = await fetch(
+      `${process.env.NEXT_PUBLIC_FOIL_API_URL}/graphql`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: print(SUBSCRIPTIONS_QUERY),
+          variables: {
+            owner: address,
+          },
+        }),
       }
+    );
 
-      try {
-        // First fetch positions
-        const positionsResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_FOIL_API_URL}/graphql`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              query: print(SUBSCRIPTIONS_QUERY),
-              variables: {
-                owner: address,
-              },
-            }),
-          }
+    const { data: positionsData, errors } = await positionsResponse.json();
+    if (errors) {
+      throw new Error(errors[0].message);
+    }
+
+    // Filter for active long positions
+    const activePositions = positionsData.positions.filter(
+      (position: any) =>
+        !position.isLP && // Not an LP position
+        BigInt(position.baseToken) > BigInt(0) // Has positive baseToken
+    );
+
+    // For each position, fetch its transactions
+    return Promise.all(
+      activePositions.map(async (position: any) => {
+        const contractId = `${position.epoch.market.chainId}:${position.epoch.market.address}`;
+        const transactionsResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_FOIL_API_URL}/transactions?contractId=${contractId}&positionId=${position.positionId}`
         );
+        const transactions = await transactionsResponse.json();
 
-        const { data: positionsData, errors } = await positionsResponse.json();
-        if (errors) {
-          throw new Error(errors[0].message);
-        }
+        return {
+          ...position,
+          entryPrice: calculateEntryPrice(position, transactions),
+        };
+      })
+    );
+  };
 
-        // Filter for active long positions
-        const activePositions = positionsData.positions.filter(
-          (position: any) =>
-            !position.isLP && // Not an LP position
-            BigInt(position.baseToken) > BigInt(0) // Has positive baseToken
-        );
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['subscriptions', address, useMarketUnits, stEthPerToken],
+    queryFn: fetchSubscriptions,
+    refetchInterval: 2000, // Refetch every 2 seconds
+    enabled: !!address, // Only fetch when we have an address
+  });
 
-        // For each position, fetch its transactions
-        const positionsWithEntryPrice = await Promise.all(
-          activePositions.map(async (position: any) => {
-            const contractId = `${position.epoch.market.chainId}:${position.epoch.market.address}`;
-            const transactionsResponse = await fetch(
-              `${process.env.NEXT_PUBLIC_FOIL_API_URL}/transactions?contractId=${contractId}&positionId=${position.positionId}`
-            );
-            const transactions = await transactionsResponse.json();
-
-            return {
-              ...position,
-              entryPrice: calculateEntryPrice(position, transactions),
-            };
-          })
-        );
-
-        setSubscriptions(positionsWithEntryPrice);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchSubscriptions();
-  }, [address, useMarketUnits, stEthPerToken]);
-
-  return { data: subscriptions, isLoading, error };
+  return { data: data || [], isLoading, error };
 };
 
 const SubscriptionsList = () => {
@@ -213,7 +205,8 @@ const SubscriptionsList = () => {
   if (error) {
     return (
       <div className="text-destructive text-center my-6">
-        Failed to load subscriptions: {error}
+        Failed to load subscriptions:{' '}
+        {error instanceof Error ? error.message : 'Unknown error'}
       </div>
     );
   }
@@ -265,7 +258,13 @@ const SubscriptionsList = () => {
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Amount</span>
                 <span className="text-sm font-medium">
-                  {formatUnits(BigInt(subscription.baseToken), 9)} Ggas
+                  <NumberDisplay
+                    value={
+                      Number(formatUnits(BigInt(subscription.baseToken), 9)) /
+                      1e9
+                    }
+                  />{' '}
+                  Ggas
                 </span>
               </div>
 
@@ -297,15 +296,17 @@ const SubscriptionsList = () => {
                 </span>
               </div>
 
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Ends in</span>
-                <span className="text-sm font-medium">
-                  {formatDistanceToNow(
-                    new Date(subscription.epoch.endTimestamp * 1000),
-                    { addSuffix: false }
-                  )}
-                </span>
-              </div>
+              {subscription.epoch.endTimestamp * 1000 > Date.now() && (
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Ends in</span>
+                  <span className="text-sm font-medium">
+                    {formatDistanceToNow(
+                      new Date(subscription.epoch.endTimestamp * 1000),
+                      { addSuffix: false }
+                    )}
+                  </span>
+                </div>
+              )}
             </div>
 
             <Button
@@ -316,7 +317,9 @@ const SubscriptionsList = () => {
                 setSellDialogOpen(true);
               }}
             >
-              Close Early
+              {subscription.epoch.endTimestamp * 1000 > Date.now()
+                ? 'Close Early'
+                : 'Settle'}
             </Button>
           </div>
         );
@@ -426,7 +429,10 @@ const SubscribeContent = () => {
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-w-[460px]">
-            <Subscribe initialSize={prefilledSize} />
+            <Subscribe
+              initialSize={prefilledSize}
+              onClose={() => setIsDialogOpen(false)}
+            />
           </DialogContent>
         </Dialog>
 

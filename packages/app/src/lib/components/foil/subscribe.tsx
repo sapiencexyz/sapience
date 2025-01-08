@@ -804,13 +804,13 @@ const Subscribe: FC<SubscribeProps> = ({
     return (
       <div className="space-y-4">
         <div className="space-y-2">
-          <p className="text-sm font-semibold">Estimated Collateral Return</p>
           {isLoadingCollateralChange ? (
             <div className="flex items-center justify-center">
               <Loader2 className="h-4 w-4 animate-spin" />
             </div>
           ) : (
             <p className="text-lg">
+              Close your subscription early for approximately{' '}
               <NumberDisplay
                 value={formatUnits(
                   collateralDelta < BigInt(0)
@@ -819,7 +819,7 @@ const Subscribe: FC<SubscribeProps> = ({
                   collateralAssetDecimals
                 )}
               />{' '}
-              {collateralAssetTicker}
+              {collateralAssetTicker}.
             </p>
           )}
         </div>
