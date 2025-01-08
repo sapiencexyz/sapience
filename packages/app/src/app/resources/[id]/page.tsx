@@ -2,26 +2,19 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { type ColumnDef } from '@tanstack/react-table';
-import {
-  flexRender,
-  useReactTable,
-  getCoreRowModel,
-} from '@tanstack/react-table';
-import { formatDistanceToNow, format } from 'date-fns';
-import { ChevronRight, ArrowRight } from 'lucide-react';
+import { format } from 'date-fns';
+import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import React from 'react';
 import { formatUnits } from 'viem';
 
 import { Card, CardContent } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import CandlestickChart from '~/lib/components/chart';
 import NumberDisplay from '~/lib/components/foil/numberDisplay';
 import { MarketLayout } from '~/lib/components/market/MarketLayout';
 import { ResourceNav } from '~/lib/components/market/ResourceNav';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { MARKET_CATEGORIES } from '~/lib/constants/markets';
-import { useMarketList } from '~/lib/context/MarketListProvider';
 import { useLatestResourcePrice, useResources } from '~/lib/hooks/useResources';
 import { TimeWindow } from '~/lib/interfaces/interfaces';
 
@@ -184,7 +177,6 @@ const renderPriceDisplay = (
 };
 
 const MarketContent = ({ params }: { params: { id: string } }) => {
-  const { markets } = useMarketList();
   const { data: resources } = useResources();
   const category = MARKET_CATEGORIES.find((c) => c.id === params.id);
   const { data: latestPrice, isLoading: isPriceLoading } =
@@ -226,9 +218,6 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
         },
       }))
     ) || [];
-
-  const placeholderPrices = generatePlaceholderPrices();
-  const placeholderIndexPrices = generatePlaceholderIndexPrices();
 
   const formattedResourcePrices: ResourcePricePoint[] =
     resourcePrices?.map((price) => ({

@@ -810,7 +810,7 @@ const Subscribe: FC<SubscribeProps> = ({
             </div>
           ) : (
             <p className="text-lg">
-              Close your subscription early for approximately{' '}
+              Close your subscription early and receive approximately{' '}
               <NumberDisplay
                 value={formatUnits(
                   collateralDelta < BigInt(0)
