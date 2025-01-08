@@ -15,7 +15,6 @@ import { createOrUpdateEpochFromContract } from "./controllers/marketHelpers";
 import { getMarketStartEndBlock } from "./controllers/marketHelpers";
 import { Between } from "typeorm";
 import * as Sentry from "@sentry/node";
-import CelestiaIndexer from "./resourcePriceFunctions/celestiaIndexer";
 import { Resource } from "./models/Resource";
 
 const MAX_RETRIES = Infinity;
@@ -141,8 +140,8 @@ async function main() {
 
     jobs.push(
       createResilientProcess(
-        () => marketInfo.priceIndexer.watchBlocksForMarket(market),
-        `watchBlocksForMarket-${market.address}`
+        () => marketInfo.priceIndexer.watchBlocksForResource(market.resource),
+        `watchBlocksForResource-${market.address}`
       )()
     );
   }
@@ -252,7 +251,10 @@ export async function reindexMissingBlocks(
       }
     }
 
-    await marketInfo.priceIndexer.indexBlocks(market, missingBlockNumbers);
+    await marketInfo.priceIndexer.indexBlocks(
+      market.resource,
+      missingBlockNumbers
+    );
 
     console.log(
       `Finished reindexing resource blocks for market ${address} on chain ${chainId}`
@@ -303,28 +305,37 @@ if (process.argv[2] === "reindexMarket") {
     process.exit(0);
   };
   callReindexMissing();
-} else if (process.argv[2] === "testCelestia") {
-  await initializeDataSource();
+  // } else if (process.argv[2] === "testCelestia") {
+  //   await initializeDataSource();
 
-  let celestiaIndexer: CelestiaIndexer = new CelestiaIndexer(
-    "https://api-mainnet.celenium.io"
-  );
-  const callTestCelestia = async () => {
-    await celestiaIndexer.start();
-    console.log("DONE");
-  };
-  await callTestCelestia();
-  let isRunning = true;
-  process.on("SIGINT", () => {
-    isRunning = false;
-    celestiaIndexer.stop();
-    console.log("Celestia indexer stopped");
-  });
+  //   let celestiaIndexer: CelestiaIndexer = new CelestiaIndexer(
+  //     "https://api-mainnet.celenium.io"
+  //   );
 
-  while (isRunning) {
-    celestiaIndexer.pollStatus();
-    await delay(100000);
-  }
+  //   const resource = await resourceRepository.findOne({
+  //     where: { slug: "celestia-blobspace" },
+  //   });
+
+  //   if (!resource) {
+  //     throw new Error("Resource not found");
+  //   }
+
+  //   await celestiaIndexer.start(resource);
+
+  //   let isRunning = true;
+
+  //   process.on("SIGINT", () => {
+  //     isRunning = false;
+  //     console.log("Main process: Stopping Celestia indexer");
+  //     celestiaIndexer.stop();
+  //   });
+
+  //   while (isRunning) {
+  //     await delay(5000);
+  //   }
+
+  //   console.log("Main process: Celestia indexer stopped");
+  //   process.exit(0);
 } else {
   main();
 }

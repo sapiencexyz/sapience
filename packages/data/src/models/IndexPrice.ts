@@ -1,4 +1,4 @@
-import { NUMERIC_PRECISION } from "../constants";
+import { DECIMAL_SCALE, NUMERIC_PRECISION } from "../constants";
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -24,6 +24,10 @@ export class IndexPrice {
   @Column({ type: "integer" })
   timestamp: number;
 
-  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
+  @Column({
+    type: "numeric",
+    precision: NUMERIC_PRECISION,
+    scale: DECIMAL_SCALE,
+  })
   value: string;
 }

@@ -1,10 +1,11 @@
 import { Market } from "../models/Market";
+import { Resource } from "../models/Resource";
 
 export interface IResourcePriceIndexer {
   indexBlockPriceFromTimestamp(
-    market: Market,
+    resource: Resource,
     timestamp: number
   ): Promise<boolean>;
-  indexBlocks(market: Market, blocks: number[]): Promise<boolean>;
-  watchBlocksForMarket(market: Market): void;
+  indexBlocks(resource: Resource, blocks: number[]): Promise<boolean>;
+  watchBlocksForResource(resource: Resource): void;
 }

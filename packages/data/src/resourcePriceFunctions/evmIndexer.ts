@@ -5,6 +5,7 @@ import { getBlockByTimestamp, getProviderForChain } from "../helpers";
 import { Block, type PublicClient } from "viem";
 import Sentry from "../sentry";
 import { IResourcePriceIndexer } from "./IResourcePriceIndexer";
+import { Resource } from "src/models/Resource";
 
 class EvmIndexer implements IResourcePriceIndexer {
   public client: PublicClient;
@@ -17,21 +18,23 @@ class EvmIndexer implements IResourcePriceIndexer {
     this.client = getProviderForChain(chainId);
   }
 
-  private async storeBlockPrice(block: Block, market: Market) {
+  private async storeBlockPrice(block: Block, resource: Resource) {
     const value = block?.baseFeePerGas; // in wei
     const used = block?.gasUsed;
     if (!value || !block.number) {
       console.warn(
-        `No baseFeePerGas for block ${block?.number} on market ${market.chainId}:${market.address}. Skipping block.`
+        `No baseFeePerGas for block ${block?.number} on resource ${resource.slug}. Skipping block.`
       );
       return;
     }
     try {
+      const feePaid = BigInt(value) * BigInt(used);
       const price = new ResourcePrice();
-      price.resource = market.resource;
+      price.resource = resource;
       price.timestamp = Number(block.timestamp);
       price.value = value.toString();
       price.used = used.toString();
+      price.feePaid = feePaid.toString();
       price.blockNumber = Number(block.number);
       await resourcePriceRepository.upsert(price, ["resource", "timestamp"]);
     } catch (error) {
@@ -40,7 +43,7 @@ class EvmIndexer implements IResourcePriceIndexer {
   }
 
   async indexBlockPriceFromTimestamp(
-    market: Market,
+    resource: Resource,
     timestamp: number
   ): Promise<boolean> {
     const initalBlock = await getBlockByTimestamp(this.client, timestamp);
@@ -60,11 +63,11 @@ class EvmIndexer implements IResourcePriceIndexer {
         const block = await this.client.getBlock({
           blockNumber: BigInt(blockNumber),
         });
-        await this.storeBlockPrice(block, market);
+        await this.storeBlockPrice(block, resource);
       } catch (error) {
         Sentry.withScope((scope) => {
           scope.setExtra("blockNumber", blockNumber);
-          scope.setExtra("market", `${market.chainId}:${market.address}`);
+          scope.setExtra("resource", resource.slug);
           scope.setExtra("timestamp", timestamp);
           Sentry.captureException(error);
         });
@@ -74,18 +77,18 @@ class EvmIndexer implements IResourcePriceIndexer {
     return true;
   }
 
-  async indexBlocks(market: Market, blocks: number[]): Promise<boolean> {
+  async indexBlocks(resource: Resource, blocks: number[]): Promise<boolean> {
     for (const blockNumber of blocks) {
       try {
         console.log("Indexing gas from block", blockNumber);
         const block = await this.client.getBlock({
           blockNumber: BigInt(blockNumber),
         });
-        await this.storeBlockPrice(block, market);
+        await this.storeBlockPrice(block, resource);
       } catch (error) {
         Sentry.withScope((scope) => {
           scope.setExtra("blockNumber", blockNumber);
-          scope.setExtra("market", `${market.chainId}:${market.address}`);
+          scope.setExtra("resource", resource.slug);
           Sentry.captureException(error);
         });
         console.error(`Error processing block ${blockNumber}:`, error);
@@ -94,15 +97,15 @@ class EvmIndexer implements IResourcePriceIndexer {
     return true;
   }
 
-  async watchBlocksForMarket(market: Market) {
+  async watchBlocksForResource(resource: Resource) {
     if (this.isWatching) {
-      console.log("Already watching blocks for this market");
+      console.log("Already watching blocks for this resource");
       return;
     }
     // suggested using a watch some re-connectiong logic if the watcher crashes. and attempts to reconnect.
     const startWatching = () => {
       console.log(
-        `Watching base fee per gas on chain ID ${this.client.chain?.id} for market ${market.chainId}:${market.address}`
+        `Watching base fee per gas on chain ID ${this.client.chain?.id} for resource ${resource.slug}`
       );
 
       this.isWatching = true;
@@ -110,7 +113,7 @@ class EvmIndexer implements IResourcePriceIndexer {
       const unwatch = this.client.watchBlocks({
         onBlock: async (block) => {
           try {
-            await this.storeBlockPrice(block, market);
+            await this.storeBlockPrice(block, resource);
             this.reconnectAttempts = 0;
           } catch (error) {
             console.error("Error processing block:", error);
@@ -118,7 +121,7 @@ class EvmIndexer implements IResourcePriceIndexer {
         },
         onError: (error) => {
           Sentry.withScope((scope) => {
-            scope.setExtra("market", `${market.chainId}:${market.address}`);
+            scope.setExtra("resource", resource.slug);
             scope.setExtra("chainId", this.client.chain?.id);
             Sentry.captureException(error);
           });

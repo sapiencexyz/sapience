@@ -1,9 +1,6 @@
 import "reflect-metadata";
 import "./instrument";
-import dataSource, {
-  initializeDataSource,
-  renderJobRepository,
-} from "./db"; /// !IMPORTANT: Keep as top import to prevent issues with db initialization
+import dataSource, { initializeDataSource, renderJobRepository } from "./db"; /// !IMPORTANT: Keep as top import to prevent issues with db initialization
 import cors from "cors";
 import { ResourcePrice } from "./models/ResourcePrice";
 import { IndexPrice } from "./models/IndexPrice";
@@ -1078,10 +1075,6 @@ const startServer = async () => {
       };
 
       const calculateCollateralFlow = async (positions: Position[]) => {
-        // console.log(
-        //   "LLL positions",
-        //   positions.map((p) => p.positionId)
-        // );
         const transactions = await transactionRepository.find({
           where: {
             position: { positionId: In(positions.map((p) => p.positionId)) },
@@ -1089,13 +1082,6 @@ const startServer = async () => {
           relations: ["position", "collateralTransfer"],
         });
 
-        // console.log(
-        //   "LLL transactions",
-        //   transactions.map((t) => ({
-        //     id: t.position.positionId,
-        //     collateral: t.collateralTransfer?.collateral,
-        //   }))
-        // );
         let collateralFlow = 0;
         let maxCollateral = 0;
         for (const transaction of transactions) {
@@ -1263,7 +1249,7 @@ const startServer = async () => {
         name: resource.name,
         slug: resource.slug,
         markets: (resource.markets || [])
-          .filter(market => market.public)
+          .filter((market) => market.public)
           .map((market) => ({
             id: market.id,
             address: market.address,
@@ -1284,66 +1270,73 @@ const startServer = async () => {
   );
 
   // route /resources/:slug/prices/latest
-  app.get("/resources/:slug/prices/latest", handleAsyncErrors(async (req, res, next) => {
-    const { slug } = req.params;
-    
-    const resourceRepository = dataSource.getRepository(Resource);
-    const resource = await resourceRepository.findOne({ where: { slug } });
-    
-    if (!resource) {
-      res.status(404).json({ error: "Resource not found" });
-      return;
-    }
-    
-    const resourcePriceRepository = dataSource.getRepository(ResourcePrice);
-    const latestPrice = await resourcePriceRepository.findOne({
-      where: { resource: { id: resource.id } },
-      order: { timestamp: "DESC" },
-      relations: ["resource"],
-    });
-    
-    if (!latestPrice) {
-      res.status(404).json({ error: "No price data found" });
-      return;
-    }
-    
-    res.json(latestPrice);
-  }));
+  app.get(
+    "/resources/:slug/prices/latest",
+    handleAsyncErrors(async (req, res, next) => {
+      const { slug } = req.params;
+
+      const resourceRepository = dataSource.getRepository(Resource);
+      const resource = await resourceRepository.findOne({ where: { slug } });
+
+      if (!resource) {
+        res.status(404).json({ error: "Resource not found" });
+        return;
+      }
+
+      const resourcePriceRepository = dataSource.getRepository(ResourcePrice);
+      const latestPrice = await resourcePriceRepository.findOne({
+        where: { resource: { id: resource.id } },
+        order: { timestamp: "DESC" },
+        relations: ["resource"],
+      });
+
+      if (!latestPrice) {
+        res.status(404).json({ error: "No price data found" });
+        return;
+      }
+
+      res.json(latestPrice);
+    })
+  );
 
   // route /resources/:slug/prices
-  app.get("/resources/:slug/prices", handleAsyncErrors(async (req, res, next) => {
-    const { slug } = req.params;
-    const { startTime, endTime } = req.query;
-    
-    const resourceRepository = dataSource.getRepository(Resource);
-    const resource = await resourceRepository.findOne({ where: { slug } });
-    
-    if (!resource) {
-      res.status(404).json({ error: "Resource not found" });
-      return;
-    }
-    
-    const resourcePriceRepository = dataSource.getRepository(ResourcePrice);
-    const query = resourcePriceRepository.createQueryBuilder("price")
-      .where("price.resourceId = :resourceId", { resourceId: resource.id })
-      .orderBy("price.timestamp", "ASC");
+  app.get(
+    "/resources/:slug/prices",
+    handleAsyncErrors(async (req, res, next) => {
+      const { slug } = req.params;
+      const { startTime, endTime } = req.query;
 
-    if (startTime) {
-      query.andWhere("price.timestamp >= :startTime", { startTime });
-    }
-    if (endTime) {
-      query.andWhere("price.timestamp <= :endTime", { endTime });
-    }
+      const resourceRepository = dataSource.getRepository(Resource);
+      const resource = await resourceRepository.findOne({ where: { slug } });
 
-    const prices = await query.getMany();
-    
-    if (!prices.length) {
-      res.status(404).json({ error: "No price data found" });
-      return;
-    }
-    
-    res.json(prices);
-  }));
+      if (!resource) {
+        res.status(404).json({ error: "Resource not found" });
+        return;
+      }
+
+      const resourcePriceRepository = dataSource.getRepository(ResourcePrice);
+      const query = resourcePriceRepository
+        .createQueryBuilder("price")
+        .where("price.resourceId = :resourceId", { resourceId: resource.id })
+        .orderBy("price.timestamp", "ASC");
+
+      if (startTime) {
+        query.andWhere("price.timestamp >= :startTime", { startTime });
+      }
+      if (endTime) {
+        query.andWhere("price.timestamp <= :endTime", { endTime });
+      }
+
+      const prices = await query.getMany();
+
+      if (!prices.length) {
+        res.status(404).json({ error: "No price data found" });
+        return;
+      }
+
+      res.json(prices);
+    })
+  );
 
   // Only set up Sentry error handling in production
   if (process.env.NODE_ENV === "production") {

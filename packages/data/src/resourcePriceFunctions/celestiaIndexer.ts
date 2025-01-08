@@ -1,8 +1,8 @@
 import { IResourcePriceIndexer } from "./IResourcePriceIndexer";
 import { resourcePriceRepository } from "../db";
 import { ResourcePrice } from "../models/ResourcePrice";
-import { type Market } from "../models/Market";
 import { CELENIUM_API_KEY } from "../helpers";
+import { Resource } from "src/models/Resource";
 // import Sentry from "../sentry";
 
 const headers: HeadersInit = {};
@@ -11,28 +11,34 @@ if (CELENIUM_API_KEY) {
 }
 
 const celeniumApiVersionUrl = "v1";
+type Block = {
+  height: number;
+  time: number;
+  stats: {
+    blobs_size: number;
+    fee: number;
+  };
+};
 
 class CelestiaIndexer implements IResourcePriceIndexer {
   private isWatching: boolean = false;
-  private initialTimestamp: number = 0;
-  private nextTimestamp: number = 0;
-  // private reconnectAttempts: number = 0;
-  // private maxReconnectAttempts: number = 5;
-  // private reconnectDelay: number = 5000; // 5 seconds
+  private fromTimestamp: number = 0;
   private celeniumEndpoint: string;
+  private pollInterval: number;
 
-  private pollInterval: number = 30000; // 30 seconds in milliseconds
   private pollTimeout?: NodeJS.Timeout;
 
-  constructor(celeniumEndpoint: string) {
+  constructor(celeniumEndpoint: string, pollInterval: number = 3000) {
     this.celeniumEndpoint = celeniumEndpoint;
+    this.pollInterval = pollInterval;
     if (!CELENIUM_API_KEY) {
       throw new Error("CELENIUM_API_KEY environment variable not set");
     }
   }
 
-  private async pollCelestia() {
-    const from = await this.getInitialTimestamp();
+  private async pollCelestia(resource: Resource) {
+    console.log("Polling Celestia");
+    const from = await this.getfromTimestamp();
 
     const params = new URLSearchParams({
       limit: "100",
@@ -45,13 +51,9 @@ class CelestiaIndexer implements IResourcePriceIndexer {
       messages: "false",
     });
 
-    console.log(
-      "LLL URL",
-      `${this.celeniumEndpoint}/${celeniumApiVersionUrl}/tx?${params.toString()}`
-    );
     const response = await fetch(
-      `${this.celeniumEndpoint}/${celeniumApiVersionUrl}/tx?${params.toString()}`
-      // { headers }
+      `${this.celeniumEndpoint}/${celeniumApiVersionUrl}/tx?${params.toString()}`,
+      { headers }
     );
 
     if (!response.ok) {
@@ -59,58 +61,78 @@ class CelestiaIndexer implements IResourcePriceIndexer {
       return;
     }
 
-    console.log("LLL response", response);
     const data = await response.json();
-    console.log("LLL data", data);
-  }
 
-  private async getInitialTimestamp() {
-    const interval = this.pollInterval / 1000;
-    if (this.nextTimestamp > 0) {
-      // If we have a next timestamp, use it as the initial timestamp (this is used when the indexer is already running)
-      console.log(
-        "LLL using next timestamp as initial timestamp",
-        this.nextTimestamp
-      );
-      this.initialTimestamp = this.nextTimestamp;
-    } else {
-      // If we don't have a next timestamp, find the latest resource price and use it as the initial timestamp
-      const latestResourcePrice = await resourcePriceRepository.find({
-        order: {
-          timestamp: "DESC",
-        },
-        take: 1,
-      });
-      console.log("LLL latestResourcePrice", latestResourcePrice);
+    if (data.length > 0) {
+      // Regenerate (calculate) blocks from the tx data
+      const blocks = data.reduce((acc: Map<number, Block>, tx: any) => {
+        if (!acc.has(tx.height)) {
+          acc.set(tx.height, {
+            height: tx.height,
+            time: Math.floor(new Date(tx.time).getTime() / 1000),
+            stats: {
+              blobs_size: 0,
+              fee: 0,
+            },
+          });
+        }
 
-      if (!latestResourcePrice[0]?.timestamp) {
-        // If we don't have a latest resource price, set the initial timestamp to current timestamp
-        this.initialTimestamp = Math.floor(new Date().getTime() / 1000);
-        console.log(
-          "LLL initial timestamp set to current timestamp",
-          this.initialTimestamp
-        );
-      } else {
-        this.initialTimestamp =
-          latestResourcePrice[0]?.timestamp - interval ?? 0;
-        console.log(
-          "LLL initial timestamp set to latest resource price",
-          this.initialTimestamp
-        );
+        const block = acc.get(tx.height);
+        if (block) {
+          block.stats.blobs_size += Number(tx.gas_used);
+          block.stats.fee += Number(tx.fee);
+        }
+
+        return acc;
+      }, new Map());
+
+      for (const block of blocks.values()) {
+        // move the fromTimestamp to the latest block processed
+        this.fromTimestamp =
+          block.time > this.fromTimestamp ? block.time : this.fromTimestamp;
+
+        const used = block?.stats?.blobs_size;
+        const value = block?.stats?.fee / used;
+
+        await this.storeBlockPrice(block, resource);
       }
     }
-
-    this.nextTimestamp = this.initialTimestamp + interval;
-    return this.initialTimestamp;
   }
 
-  public async start() {
-    console.log("LLL starting Celestia indexer");
+  private async getfromTimestamp() {
+    if (this.fromTimestamp > 0) {
+      // If we have a next timestamp, use it as the initial timestamp (this is used when the indexer is already running)
+      return this.fromTimestamp;
+    }
+
+    // If we don't have a next timestamp, find the latest resource price and use it as the initial timestamp
+    const latestResourcePrice = await resourcePriceRepository.find({
+      order: {
+        timestamp: "DESC",
+      },
+      take: 1,
+    });
+
+    if (latestResourcePrice[0]?.timestamp) {
+      // Use the latest resource price timestamp as the initial timestamp (continue from where we left off)
+      this.fromTimestamp = latestResourcePrice[0].timestamp;
+    } else {
+      // This is the initial timestamp when the indexer is first started (nothing stored in DB yet), set the initial timestamp to current timestamp
+      this.fromTimestamp = Math.floor(new Date().getTime() / 1000);
+    }
+
+    return this.fromTimestamp;
+  }
+
+  public async start(resource: Resource) {
+    console.log("starting Celestia indexer");
     this.pollTimeout = setInterval(
-      this.pollCelestia.bind(this),
+      this.pollCelestia.bind(this, resource),
       this.pollInterval
     );
-    await this.pollCelestia();
+
+    await this.pollCelestia(resource);
+
     console.log("Celestia indexer started");
   }
 
@@ -126,24 +148,26 @@ class CelestiaIndexer implements IResourcePriceIndexer {
   /**
    * Store the block price in the database
    * @param block
-   * @param market
+   * @param resource
    */
-  private async storeBlockPrice(block: any, market: Market) {
+  private async storeBlockPrice(block: any, resource: Resource) {
     const used = block?.stats?.blobs_size;
-    const value = block?.stats?.fee / used;
+    const fee = block?.stats?.fee;
+    const value = fee / used;
     if (!value || !block.height) {
       console.error(
-        `No resource price for block ${block?.height} on market ${market.chainId}:${market.address}`
+        `No resource price for block ${block?.height} on resource ${resource.slug}`
       );
       return;
     }
 
     try {
       const price = new ResourcePrice();
-      price.resource = market.resource;
+      price.resource = resource;
       price.timestamp = new Date(block.time).getTime();
       price.value = value.toString();
       price.used = used.toString();
+      price.feePaid = fee.toString();
       price.blockNumber = Number(block.height);
       await resourcePriceRepository.upsert(price, ["resource", "timestamp"]);
     } catch (error) {
@@ -221,12 +245,12 @@ class CelestiaIndexer implements IResourcePriceIndexer {
   /**
    * Index the block price(s) from a timestamp to the current block
    * @dev notice: this method will request all blocks from the initial (timestamp) block to the current block.
-   * @param market
+   * @param resource
    * @param timestamp
    * @returns Promise<boolean> true if successful
    */
   public async indexBlockPriceFromTimestamp(
-    market: Market,
+    resource: Resource,
     timestamp: number
   ): Promise<boolean> {
     const initialBlockNumber = await this.getBlockByTimestamp(timestamp);
@@ -246,7 +270,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
         const block = await this.getBlockFromCelenium(blockNumber);
         // TODO: Check if we need to pause or slow down the request rate to meet the Celenium API rate limit
         // TODO: Check if we can pull several blocks at once to speed up the process (and reduce the number of requests)
-        await this.storeBlockPrice(block, market);
+        await this.storeBlockPrice(block, resource);
       } catch (error) {
         console.error(`Error processing block ${blockNumber}:`, error);
       }
@@ -256,11 +280,14 @@ class CelestiaIndexer implements IResourcePriceIndexer {
 
   /**
    * Index the block price(s) from a list of block numbers
-   * @param market
+   * @param resource
    * @param blocks
    * @returns Promise<boolean> true if successful
    */
-  public async indexBlocks(market: Market, blocks: number[]): Promise<boolean> {
+  public async indexBlocks(
+    resource: Resource,
+    blocks: number[]
+  ): Promise<boolean> {
     for (const blockNumber of blocks) {
       try {
         console.log(
@@ -270,7 +297,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
 
         const block = await this.getBlockFromCelenium(blockNumber);
         // TODO: Same concerns apply as in indexBlockPriceFromTimestamp
-        await this.storeBlockPrice(block, market);
+        await this.storeBlockPrice(block, resource);
       } catch (error) {
         console.error(`Error processing block ${blockNumber}:`, error);
       }
@@ -278,70 +305,17 @@ class CelestiaIndexer implements IResourcePriceIndexer {
     return true;
   }
 
-  // TODO: Implement these methods
-  public async watchBlocksForMarket(market: Market): Promise<void> {
+  public async watchBlocksForResource(resource: Resource): Promise<void> {
     if (this.isWatching) {
-      console.log("Already watching blocks for this market");
+      console.log("Already watching blocks for this resource");
       return;
     }
+
+    this.start(resource);
 
     this.isWatching = true;
     return;
   }
-
-  // async watchBlocksForMarket(market: Market) {
-  //   if (this.isWatching) {
-  //     console.log("Already watching blocks for this market");
-  //     return;
-  //   }
-
-  //   const startWatching = () => {
-  //     console.log(
-  //       `Watching base fee per gas on chain ID ${this.client.chain?.id} for market ${market.chainId}:${market.address}`
-  //     );
-
-  //     this.isWatching = true;
-
-  //     const unwatch = this.client.watchBlocks({
-  //       onBlock: async (block) => {
-  //         try {
-  //           await this.storeBlockPrice(block, market);
-  //           this.reconnectAttempts = 0;
-  //         } catch (error) {
-  //           console.error("Error processing block:", error);
-  //         }
-  //       },
-  //       onError: (error) => {
-  //         Sentry.withScope((scope) => {
-  //           scope.setExtra("market", `${market.chainId}:${market.address}`);
-  //           scope.setExtra("chainId", this.client.chain?.id);
-  //           Sentry.captureException(error);
-  //         });
-  //         console.error("Watch error:", error);
-
-  //         this.isWatching = false;
-  //         unwatch?.();
-
-  //         if (this.reconnectAttempts < this.maxReconnectAttempts) {
-  //           this.reconnectAttempts++;
-  //           console.log(
-  //             `Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`
-  //           );
-  //           setTimeout(() => {
-  //             startWatching();
-  //           }, this.reconnectDelay);
-  //         } else {
-  //           console.error("Max reconnection attempts reached. Stopping watch.");
-  //           Sentry.captureMessage(
-  //             "Max reconnection attempts reached for block watcher"
-  //           );
-  //         }
-  //       },
-  //     });
-  //   };
-
-  //   startWatching();
-  // }
 }
 
 export default CelestiaIndexer;

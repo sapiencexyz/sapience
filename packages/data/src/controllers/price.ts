@@ -39,17 +39,17 @@ export const upsertIndexPriceFromResourcePrice = async (
       order: { timestamp: "ASC" },
     });
 
-    const totalGasUsed: bigint = resourcePrices.reduce(
-      (total, price) => total + BigInt(price.used),
-      0n
+    const totalGasUsed: number = resourcePrices.reduce(
+      (total, price) => total + Number(price.used),
+      0
     );
 
-    const totalBaseFeesPaid: bigint = resourcePrices.reduce((total, price) => {
-      const baseFeePaid = BigInt(price.value) * BigInt(price.used);
-      return total + baseFeePaid;
-    }, 0n);
+    const totalBaseFeesPaid: number = resourcePrices.reduce(
+      (total, price) => total + Number(price.feePaid),
+      0
+    );
 
-    const averagePrice: bigint = totalBaseFeesPaid / totalGasUsed;
+    const averagePrice: number = totalBaseFeesPaid / totalGasUsed;
 
     // Create or update the index price associated with the epoch
     let indexPrice = await indexPriceRepository.findOne({

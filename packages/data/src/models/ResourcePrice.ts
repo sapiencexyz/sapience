@@ -1,4 +1,4 @@
-import { NUMERIC_PRECISION } from "../constants";
+import { NUMERIC_PRECISION, DECIMAL_SCALE } from "../constants";
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -30,11 +30,18 @@ export class ResourcePrice {
   @Column({ type: "integer" })
   timestamp: number;
 
-  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
+  @Column({
+    type: "numeric",
+    precision: NUMERIC_PRECISION,
+    scale: DECIMAL_SCALE,
+  })
   value: string;
 
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
   used: string;
+
+  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
+  feePaid: string;
 
   @AfterInsert()
   async afterInsert() {
