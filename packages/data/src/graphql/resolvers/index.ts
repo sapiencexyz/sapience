@@ -228,7 +228,7 @@ export class PositionResolver {
 
       const positions = await dataSource.getRepository(Position).find({
         where,
-        relations: ["epoch", "epoch.market"],
+        relations: ["epoch", "epoch.market", "transactions"],
       });
 
       return positions.map(mapPositionToType);

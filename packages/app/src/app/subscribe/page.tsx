@@ -221,19 +221,13 @@ const SubscriptionsList = () => {
                 </span>
                 <span className="text-sm font-medium">
                   {(() => {
-                    // Find the first transaction that created the position
-                    const createTx = subscription.transactions.find(
-                      (t) => t.type === 'CREATE'
-                    );
-                    if (!createTx) return '0 Gwei';
+                    const baseAmount = BigInt(subscription.baseToken);
+                    const quoteAmount = BigInt(subscription.quoteToken);
 
-                    // Calculate price as quoteToken/baseToken
-                    const quoteAmount = BigInt(createTx.quoteToken);
-                    const baseAmount = BigInt(createTx.baseToken);
-                    if (baseAmount === BigInt(0)) return '0 Gwei';
+                    if (baseAmount === BigInt(0)) return '0 wstETH/Ggas';
 
-                    const price = (quoteAmount * BigInt(1e9)) / baseAmount;
-                    return `${formatUnits(price, 9)} Gwei`;
+                    const price = (quoteAmount * BigInt(1e18)) / baseAmount;
+                    return `${Number(formatUnits(price, 18)).toFixed(4)} wstETH/Ggas`;
                   })()}
                 </span>
               </div>
