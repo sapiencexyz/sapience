@@ -335,30 +335,6 @@ const SubscribeContent = () => {
     () => searchParams.get('marketAddress'),
     [searchParams]
   );
-  const [chainId, setChainId] = useState<number>(
-    chainIdParam ? Number(chainIdParam) : 1 // Default to Ethereum mainnet
-  );
-  const [marketAddress, setMarketAddress] = useState<string>(
-    marketAddressParam || ''
-  );
-
-  useEffect(() => {
-    if (marketAddressParam) {
-      setMarketAddress(marketAddressParam);
-    }
-  }, [marketAddressParam]);
-
-  useEffect(() => {
-    if (chainIdParam) {
-      setChainId(Number(chainIdParam));
-    }
-  }, [chainIdParam]);
-
-  const handleResourceSelect = (resource: { slug: string; name: string }) => {
-    // TODO: We'll need to get the market address and chain ID based on the resource
-    // For now, we'll just open the dialog
-    setIsDialogOpen(true);
-  };
 
   if (isLoading) {
     return (
@@ -369,9 +345,13 @@ const SubscribeContent = () => {
   }
 
   return (
-    <MarketProvider chainId={chainId} address={marketAddress} epoch={Number(1)}>
+    <MarketProvider
+      chainId={11155111}
+      address="0xa898b018aebbcd87e88a4d0dac5105b3f106d7d7"
+      epoch={Number(1)}
+    >
       <div className="flex-1 flex flex-col p-9">
-        <div className="max-w-3xl mx-auto w-full">
+        <div className="max-w-4xl mx-auto w-full">
           <div className="flex justify-between md:items-center mb-6 flex-col md:flex-row">
             <h1 className="text-3xl font-bold mb-4 md:mb-0">Subscriptions</h1>
             <div className="flex gap-5">
@@ -394,7 +374,7 @@ const SubscribeContent = () => {
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-w-[460px]">
-            <Subscribe showMarketSwitcher={false} initialSize={prefilledSize} />
+            <Subscribe initialSize={prefilledSize} />
           </DialogContent>
         </Dialog>
 
@@ -405,7 +385,6 @@ const SubscribeContent = () => {
             </DialogHeader>
             <div className="py-4">
               <Subscribe
-                showMarketSwitcher={false}
                 onAnalyticsClose={(size) => {
                   setPrefilledSize(size);
                   setIsAnalyticsOpen(false);

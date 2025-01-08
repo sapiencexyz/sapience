@@ -77,10 +77,6 @@ import SimpleBarChart from './SimpleBarChart';
 import SizeInput from './sizeInput';
 
 interface SubscribeProps {
-  marketAddress?: string;
-  chainId?: number;
-  epoch?: number;
-  showMarketSwitcher?: boolean;
   onAnalyticsClose?: (size: bigint) => void;
   isAnalyticsMode?: boolean;
   initialSize?: bigint | null;
@@ -96,15 +92,12 @@ const publicClient = createPublicClient({
 });
 
 const Subscribe: FC<SubscribeProps> = ({
-  marketAddress: propMarketAddress,
-  chainId: propChainId,
-  epoch: propEpoch,
-  showMarketSwitcher = false,
   onAnalyticsClose,
   isAnalyticsMode = false,
   initialSize = null,
 }) => {
   // State declarations first
+  const { address: marketAddress, chainId, epoch } = useContext(MarketContext);
   const [sizeValue, setSizeValue] = useState<bigint>(initialSize || BigInt(0));
   const [pendingTxn, setPendingTxn] = useState(false);
   const [collateralDelta, setCollateralDelta] = useState<bigint>(BigInt(0));
@@ -156,52 +149,11 @@ const Subscribe: FC<SubscribeProps> = ({
   const searchParams = useSearchParams();
   const { markets } = useMarketList();
 
-  const marketAddress =
-    propMarketAddress ||
-    searchParams.get('marketAddress') ||
-    markets.filter((m) => m.public)[0]?.address;
-  const chainId =
-    propChainId ||
-    Number(searchParams.get('chainId')) ||
-    markets.filter((m) => m.public)[0]?.chainId;
-  const epoch = propEpoch || Number(searchParams.get('epoch')) || 1;
-
   const account = useAccount();
   const { isConnected, address } = account;
   const currentChainId = useChainId();
   const { switchChain } = useSwitchChain();
   const { connect, connectors } = useConnect();
-
-  const chainIdParam = useMemo(
-    () => searchParams.get('chainId'),
-    [searchParams]
-  );
-  const marketAddressParam = useMemo(
-    () => searchParams.get('marketAddress'),
-    [searchParams]
-  );
-
-  useEffect(() => {
-    if (
-      markets.filter((m) => m.public).length > 0 &&
-      (!marketAddressParam || !chainIdParam) &&
-      showMarketSwitcher
-    ) {
-      updateParams(
-        markets.filter((m) => m.public)[0].address,
-        markets.filter((m) => m.public)[0].chainId
-      );
-    }
-  }, [markets, marketAddressParam, chainIdParam]);
-
-  const updateParams = (address: string, chain: number) => {
-    const current = new URLSearchParams(Array.from(searchParams.entries()));
-    current.set('marketAddress', address);
-    current.set('chainId', chain.toString());
-    const search = current.toString();
-    const query = search ? `?${search}` : '';
-    router.push(`${window.location.pathname}${query}`);
-  };
 
   const {
     address: contextMarketAddress,
@@ -619,11 +571,6 @@ const Subscribe: FC<SubscribeProps> = ({
   const requireApproval =
     !allowance || collateralDeltaLimit > (allowance as bigint);
 
-  const handleMarketSelect = (address: string, chain: number) => {
-    updateParams(address, chain);
-    setIsMarketSelectorOpen(false);
-  };
-
   const getChainName = (chainId: number) => {
     switch (chainId) {
       case mainnet.id:
@@ -790,18 +737,6 @@ const Subscribe: FC<SubscribeProps> = ({
           <h2 className="text-lg md:text-2xl font-semibold">
             {marketName} Subscription
           </h2>
-
-          {showMarketSwitcher && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsMarketSelectorOpen(true)}
-              className="px-2.5 ml-auto text-muted-foreground"
-            >
-              <ArrowUpDown />
-            </Button>
-          )}
         </div>
 
         <div className="flex items-center flex-col mb-6">
@@ -895,38 +830,6 @@ const Subscribe: FC<SubscribeProps> = ({
         </div>
 
         {renderActionButton()}
-
-        <Dialog
-          open={isMarketSelectorOpen}
-          onOpenChange={setIsMarketSelectorOpen}
-        >
-          <DialogContent className="max-w-96 overflow-hidden">
-            <DialogHeader>
-              <DialogTitle>Select Market</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-2">
-              {markets
-                .filter((m) => m.public)
-                .map((market) => (
-                  <button
-                    type="button"
-                    key={market.id}
-                    className={`w-full flex justify-between items-center p-3 rounded-lg hover:bg-muted transition-colors ${
-                      market.address === marketAddress ? 'bg-muted' : ''
-                    }`}
-                    onClick={() =>
-                      handleMarketSelect(market.address, market.chainId)
-                    }
-                  >
-                    <span className="font-medium">{market.name}</span>
-                    <span className="text-sm text-muted-foreground">
-                      {getChainName(market.chainId)}
-                    </span>
-                  </button>
-                ))}
-            </div>
-          </DialogContent>
-        </Dialog>
       </form>
     </Form>
   );
