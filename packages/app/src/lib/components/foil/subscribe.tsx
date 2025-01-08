@@ -2,24 +2,9 @@
 
 /* eslint-disable sonarjs/cognitive-complexity */
 
-import { gql } from '@apollo/client';
-import { useQuery } from '@tanstack/react-query';
-import {
-  formatDuration,
-  intervalToDuration,
-  format,
-  formatDistanceToNow,
-} from 'date-fns';
+import { formatDuration, intervalToDuration, format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  ArrowUpDown,
-  ChartNoAxesColumn,
-  ChevronLeft,
-  HelpCircle,
-  Loader2,
-} from 'lucide-react';
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { HelpCircle, Loader2 } from 'lucide-react';
 import { type FC, useState, useEffect, useContext, useMemo } from 'react';
 import React from 'react';
 import CountUp from 'react-countup';
@@ -33,7 +18,7 @@ import {
   createPublicClient,
   http,
 } from 'viem';
-import { mainnet, sepolia } from 'viem/chains';
+import { mainnet } from 'viem/chains';
 import {
   useWaitForTransactionReceipt,
   useWriteContract,
@@ -47,12 +32,6 @@ import {
 
 import erc20ABI from '../../erc20abi.json';
 import { Button } from '~/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '~/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -68,7 +47,6 @@ import {
   TooltipTrigger,
 } from '~/components/ui/tooltip';
 import { useToast } from '~/hooks/use-toast';
-import { API_BASE_URL } from '~/lib/constants/constants';
 import { useMarketList } from '~/lib/context/MarketListProvider';
 import { MarketContext } from '~/lib/context/MarketProvider';
 
@@ -124,15 +102,6 @@ const Subscribe: FC<SubscribeProps> = ({
   const finalChainId = contextChainId;
   const finalEpoch = contextEpoch;
 
-  if (!finalEpoch) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-4 py-8">
-        <h2 className="text-lg font-medium">Loading...</h2>
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
   // State declarations first
   const [sizeValue, setSizeValue] = useState<bigint>(initialSize || BigInt(0));
   const [pendingTxn, setPendingTxn] = useState(false);
@@ -150,7 +119,6 @@ const Subscribe: FC<SubscribeProps> = ({
     avgGasPrice: number;
     chartData: { timestamp: number; value: number }[];
   } | null>(null);
-  const [closePnL, setClosePnL] = useState<bigint>(BigInt(0));
 
   // Form setup
   const form = useForm({
@@ -174,16 +142,8 @@ const Subscribe: FC<SubscribeProps> = ({
     watch,
   } = form;
 
-  // Single definition of watched form values
-  const formValues = {
-    size: watch('sizeInput'),
-    slippage: watch('slippage'),
-  };
-
   // Rest of your hooks and effects
   const { toast } = useToast();
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const { markets } = useMarketList();
 
   const account = useAccount();
@@ -215,7 +175,7 @@ const Subscribe: FC<SubscribeProps> = ({
     abi: foilData.abi,
     address: finalMarketAddress as `0x${string}`,
     functionName: 'quoteCreateTraderPosition',
-    args: [finalEpoch, sizeInGigagas],
+    args: [finalEpoch || 0, sizeInGigagas],
     chainId: finalChainId,
     account: address || zeroAddress,
     query: { enabled: sizeValue !== BigInt(0) },
@@ -251,18 +211,15 @@ const Subscribe: FC<SubscribeProps> = ({
           quoteModifyPositionResult.data.result;
         setFillPrice(fillPriceData as bigint);
         setCollateralDelta(expectedCollateralDelta as bigint);
-        setClosePnL(closePnLValue as bigint);
       }
     } else if (quoteCreatePositionResult.data?.result !== undefined) {
       const [quoteResultData, fillPriceData] =
         quoteCreatePositionResult.data.result;
       setFillPrice(fillPriceData as bigint);
       setCollateralDelta(quoteResultData as bigint);
-      setClosePnL(BigInt(0));
     } else {
       setFillPrice(BigInt(0));
       setCollateralDelta(BigInt(0));
-      setClosePnL(BigInt(0));
     }
   }, [
     quoteCreatePositionResult.data,
@@ -440,7 +397,7 @@ const Subscribe: FC<SubscribeProps> = ({
       abi: foilData.abi,
       address: finalMarketAddress as `0x${string}`,
       functionName: 'createTraderPosition',
-      args: [finalEpoch, sizeInTokens, absCollateralDeltaLimit, deadline],
+      args: [finalEpoch || 0, sizeInTokens, absCollateralDeltaLimit, deadline],
     });
     setTxnStep(2);
   };
@@ -652,11 +609,13 @@ const Subscribe: FC<SubscribeProps> = ({
 
     try {
       // Get the current position size first
-      const currentSize = positionData
-        ? positionData.vGasAmount > BigInt(0)
-          ? positionData.vGasAmount
-          : -positionData.borrowedVGas
-        : BigInt(0);
+      let currentSize = BigInt(0);
+      if (positionData) {
+        currentSize =
+          positionData.vGasAmount > BigInt(0)
+            ? positionData.vGasAmount
+            : -positionData.borrowedVGas;
+      }
 
       // Calculate the delta size (will be negative of current size)
       const deltaSize = BigInt(0) - currentSize;
@@ -694,6 +653,15 @@ const Subscribe: FC<SubscribeProps> = ({
       setPendingTxn(false);
     }
   };
+
+  if (!finalEpoch) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 py-8">
+        <h2 className="text-lg font-medium">Loading...</h2>
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   if (!address) {
     return (
