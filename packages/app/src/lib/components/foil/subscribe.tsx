@@ -93,6 +93,11 @@ const publicClient = createPublicClient({
     : http('https://ethereum-rpc.publicnode.com'),
 });
 
+interface PositionData {
+  vGasAmount: bigint;
+  borrowedVGas: bigint;
+}
+
 const Subscribe: FC<SubscribeProps> = ({
   onAnalyticsClose,
   isAnalyticsMode = false,
@@ -100,8 +105,35 @@ const Subscribe: FC<SubscribeProps> = ({
   positionId,
   onClose,
 }) => {
+  const {
+    address: contextMarketAddress,
+    chainId: contextChainId,
+    epoch: contextEpoch,
+    collateralAsset,
+    foilData,
+    stEthPerToken,
+    collateralAssetDecimals,
+    collateralAssetTicker,
+    refetchUniswapData,
+    startTime,
+    endTime,
+  } = useContext(MarketContext);
+
+  // Use prop values if provided, otherwise use context values
+  const finalMarketAddress = contextMarketAddress;
+  const finalChainId = contextChainId;
+  const finalEpoch = contextEpoch;
+
+  if (!finalEpoch) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 py-8">
+        <h2 className="text-lg font-medium">Loading...</h2>
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   // State declarations first
-  const { address: marketAddress, chainId, epoch } = useContext(MarketContext);
   const [sizeValue, setSizeValue] = useState<bigint>(initialSize || BigInt(0));
   const [pendingTxn, setPendingTxn] = useState(false);
   const [collateralDelta, setCollateralDelta] = useState<bigint>(BigInt(0));
@@ -118,6 +150,7 @@ const Subscribe: FC<SubscribeProps> = ({
     avgGasPrice: number;
     chartData: { timestamp: number; value: number }[];
   } | null>(null);
+  const [closePnL, setClosePnL] = useState<bigint>(BigInt(0));
 
   // Form setup
   const form = useForm({
@@ -159,29 +192,6 @@ const Subscribe: FC<SubscribeProps> = ({
   const { switchChain } = useSwitchChain();
   const { connect, connectors } = useConnect();
 
-  const {
-    address: contextMarketAddress,
-    chainId: contextChainId,
-    epoch: contextEpoch,
-    collateralAsset,
-    foilData,
-    stEthPerToken,
-    collateralAssetDecimals,
-    collateralAssetTicker,
-    refetchUniswapData,
-    startTime,
-    endTime,
-  } = useContext(MarketContext);
-
-  // Use prop values if provided, otherwise use context values
-  const finalMarketAddress = marketAddress || contextMarketAddress;
-  const finalChainId = chainId || contextChainId;
-  const finalEpoch = epoch || contextEpoch;
-
-  if (!finalEpoch) {
-    throw new Error('Epoch is not defined');
-  }
-
   // Format start and end times
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp * 1000);
@@ -220,7 +230,7 @@ const Subscribe: FC<SubscribeProps> = ({
     query: {
       enabled: !!positionId,
     },
-  });
+  }) as { data: PositionData };
 
   // Quote modify position for closing
   const quoteModifyPositionResult = useSimulateContract({
@@ -237,19 +247,22 @@ const Subscribe: FC<SubscribeProps> = ({
   useEffect(() => {
     if (positionId) {
       if (quoteModifyPositionResult.data?.result !== undefined) {
-        const [expectedCollateralDelta, closePnL, fillPriceData] =
+        const [expectedCollateralDelta, closePnLValue, fillPriceData] =
           quoteModifyPositionResult.data.result;
         setFillPrice(fillPriceData as bigint);
         setCollateralDelta(expectedCollateralDelta as bigint);
+        setClosePnL(closePnLValue as bigint);
       }
     } else if (quoteCreatePositionResult.data?.result !== undefined) {
       const [quoteResultData, fillPriceData] =
         quoteCreatePositionResult.data.result;
       setFillPrice(fillPriceData as bigint);
       setCollateralDelta(quoteResultData as bigint);
+      setClosePnL(BigInt(0));
     } else {
       setFillPrice(BigInt(0));
       setCollateralDelta(BigInt(0));
+      setClosePnL(BigInt(0));
     }
   }, [
     quoteCreatePositionResult.data,
@@ -350,6 +363,7 @@ const Subscribe: FC<SubscribeProps> = ({
                 description: `Your position has been created as position ${nftId}`,
               });
               resetAfterSuccess();
+              onClose?.();
               return;
             }
           } catch (error) {
@@ -361,6 +375,7 @@ const Subscribe: FC<SubscribeProps> = ({
           description: "We've created your position for you.",
         });
         resetAfterSuccess();
+        onClose?.();
       }
     }
   }, [isConfirmed, createTraderPositionReceipt, txnStep, positionId]);
@@ -501,7 +516,8 @@ const Subscribe: FC<SubscribeProps> = ({
   };
 
   const marketName =
-    markets.find((m) => m.address === marketAddress)?.name || 'Choose Market';
+    markets.find((m) => m.address === finalMarketAddress)?.name ||
+    'Choose Market';
 
   const handleEstimateUsage = async () => {
     const formWalletAddress = form.getValues('walletAddress');
@@ -635,11 +651,38 @@ const Subscribe: FC<SubscribeProps> = ({
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
 
     try {
+      // Get the current position size first
+      const currentSize = positionData
+        ? positionData.vGasAmount > BigInt(0)
+          ? positionData.vGasAmount
+          : -positionData.borrowedVGas
+        : BigInt(0);
+
+      // Calculate the delta size (will be negative of current size)
+      const deltaSize = BigInt(0) - currentSize;
+
+      if (deltaSize === BigInt(0)) {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Position is already closed',
+        });
+        setPendingTxn(false);
+        return;
+      }
+
+      // Use absolute value of collateralDelta and add some buffer for slippage
+      const absCollateralDeltaLimit =
+        collateralDelta < BigInt(0) ? -collateralDelta : collateralDelta;
+
+      const collateralDeltaWithBuffer =
+        (absCollateralDeltaLimit * BigInt(99)) / BigInt(100); // 1% slippage buffer
+
       writeContract({
         abi: foilData.abi,
         address: finalMarketAddress as `0x${string}`,
         functionName: 'modifyTraderPosition',
-        args: [positionId, BigInt(0), collateralDeltaLimit, deadline],
+        args: [positionId, BigInt(0), collateralDeltaWithBuffer, deadline],
       });
       setTxnStep(2);
     } catch (error) {
@@ -801,7 +844,12 @@ const Subscribe: FC<SubscribeProps> = ({
           ) : (
             <p className="text-lg">
               <NumberDisplay
-                value={formatUnits(collateralDelta, collateralAssetDecimals)}
+                value={formatUnits(
+                  collateralDelta < BigInt(0)
+                    ? -collateralDelta
+                    : collateralDelta,
+                  collateralAssetDecimals
+                )}
               />{' '}
               {collateralAssetTicker}
             </p>

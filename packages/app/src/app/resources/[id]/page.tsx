@@ -90,7 +90,7 @@ const EpochsTable = ({ data }: { data: Epoch[] }) => {
             >
               <div className="flex items-baseline">
                 <span>
-                  {format(new Date(epoch.endTimestamp * 1000), 'M/d')}
+                  Ends {format(new Date(epoch.endTimestamp * 1000), 'M/d')}
                 </span>
                 <span className="text-xs text-muted-foreground ml-2">
                   {Math.round(
