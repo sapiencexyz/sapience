@@ -3,7 +3,7 @@
 import { gql } from '@apollo/client';
 import { formatDistanceToNow } from 'date-fns';
 import { print } from 'graphql';
-import { Loader2, Plus } from 'lucide-react';
+import { ChartNoAxesColumn, Loader2, Plus } from 'lucide-react';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
@@ -317,6 +317,7 @@ const SubscribeContent = () => {
   const { data: resources, isLoading } = useResources();
   const searchParams = useSearchParams();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
 
   const chainIdParam = useMemo(
     () => searchParams.get('chainId'),
@@ -363,36 +364,21 @@ const SubscribeContent = () => {
     <MarketProvider chainId={chainId} address={marketAddress} epoch={Number(1)}>
       <div className="flex-1 flex flex-col p-9">
         <div className="max-w-3xl mx-auto w-full">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold">Subscriptions</h1>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4" />
-                  New Subscription
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[240px] p-2">
-                <div className="space-y-2">
-                  {resources?.map((resource) => (
-                    <button
-                      key={resource.id}
-                      type="button"
-                      onClick={() => handleResourceSelect(resource)}
-                      className="w-full flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors"
-                    >
-                      <Image
-                        src={resource.iconPath}
-                        alt={resource.name}
-                        width={20}
-                        height={20}
-                      />
-                      <span className="flex-1 text-left">{resource.name}</span>
-                    </button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
+          <div className="flex justify-between md:items-center mb-6 flex-col md:flex-row">
+            <h1 className="text-3xl font-bold mb-4 md:mb-0">Subscriptions</h1>
+            <div className="flex gap-5">
+              <Button
+                variant="outline"
+                onClick={() => setIsAnalyticsOpen(true)}
+              >
+                <ChartNoAxesColumn className="text-muted-foreground" />
+                Wallet Analytics
+              </Button>
+              <Button onClick={() => setIsDialogOpen(true)}>
+                <Plus className="h-4 w-4" />
+                New Subscription
+              </Button>
+            </div>
           </div>
 
           <SubscriptionsList />
@@ -401,6 +387,15 @@ const SubscribeContent = () => {
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-w-[460px]">
             <Subscribe showMarketSwitcher={false} />
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isAnalyticsOpen} onOpenChange={setIsAnalyticsOpen}>
+          <DialogContent className="max-w-[460px]">
+            <DialogHeader>
+              <DialogTitle>Wallet Analytics</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">{/* Empty dialog content */}</div>
           </DialogContent>
         </Dialog>
       </div>
