@@ -3,7 +3,7 @@
 import { gql } from '@apollo/client';
 import { formatDistanceToNow } from 'date-fns';
 import { print } from 'graphql';
-import { Loader2, Plus } from 'lucide-react';
+import { ChartNoAxesColumn, Loader2, Plus } from 'lucide-react';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
@@ -317,6 +317,15 @@ const SubscribeContent = () => {
   const { data: resources, isLoading } = useResources();
   const searchParams = useSearchParams();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+  const [estimationResults, setEstimationResults] = useState<{
+    totalGasUsed: number;
+    ethPaid: number;
+    avgGasPerTx: number;
+    avgGasPrice: number;
+    chartData: { timestamp: number; value: number }[];
+  } | null>(null);
+  const [prefilledSize, setPrefilledSize] = useState<bigint | null>(null);
 
   const chainIdParam = useMemo(
     () => searchParams.get('chainId'),
@@ -326,30 +335,6 @@ const SubscribeContent = () => {
     () => searchParams.get('marketAddress'),
     [searchParams]
   );
-  const [chainId, setChainId] = useState<number>(
-    chainIdParam ? Number(chainIdParam) : 1 // Default to Ethereum mainnet
-  );
-  const [marketAddress, setMarketAddress] = useState<string>(
-    marketAddressParam || ''
-  );
-
-  useEffect(() => {
-    if (marketAddressParam) {
-      setMarketAddress(marketAddressParam);
-    }
-  }, [marketAddressParam]);
-
-  useEffect(() => {
-    if (chainIdParam) {
-      setChainId(Number(chainIdParam));
-    }
-  }, [chainIdParam]);
-
-  const handleResourceSelect = (resource: { slug: string; name: string }) => {
-    // TODO: We'll need to get the market address and chain ID based on the resource
-    // For now, we'll just open the dialog
-    setIsDialogOpen(true);
-  };
 
   if (isLoading) {
     return (
@@ -360,39 +345,28 @@ const SubscribeContent = () => {
   }
 
   return (
-    <MarketProvider chainId={chainId} address={marketAddress} epoch={Number(1)}>
+    <MarketProvider
+      chainId={11155111}
+      address="0xa898b018aebbcd87e88a4d0dac5105b3f106d7d7"
+      epoch={Number(1)}
+    >
       <div className="flex-1 flex flex-col p-9">
-        <div className="max-w-3xl mx-auto w-full">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold">Subscriptions</h1>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4" />
-                  New Subscription
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[240px] p-2">
-                <div className="space-y-2">
-                  {resources?.map((resource) => (
-                    <button
-                      key={resource.id}
-                      type="button"
-                      onClick={() => handleResourceSelect(resource)}
-                      className="w-full flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors"
-                    >
-                      <Image
-                        src={resource.iconPath}
-                        alt={resource.name}
-                        width={20}
-                        height={20}
-                      />
-                      <span className="flex-1 text-left">{resource.name}</span>
-                    </button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
+        <div className="max-w-4xl mx-auto w-full">
+          <div className="flex justify-between md:items-center mb-6 flex-col md:flex-row">
+            <h1 className="text-3xl font-bold mb-4 md:mb-0">Subscriptions</h1>
+            <div className="flex gap-5">
+              <Button
+                variant="outline"
+                onClick={() => setIsAnalyticsOpen(true)}
+              >
+                <ChartNoAxesColumn className="text-muted-foreground" />
+                Wallet Analytics
+              </Button>
+              <Button onClick={() => setIsDialogOpen(true)}>
+                <Plus className="h-4 w-4" />
+                New Subscription
+              </Button>
+            </div>
           </div>
 
           <SubscriptionsList />
@@ -400,7 +374,25 @@ const SubscribeContent = () => {
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-w-[460px]">
-            <Subscribe showMarketSwitcher={false} />
+            <Subscribe initialSize={prefilledSize} />
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isAnalyticsOpen} onOpenChange={setIsAnalyticsOpen}>
+          <DialogContent className="max-w-[460px]">
+            <DialogHeader>
+              <DialogTitle>Wallet Analytics</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <Subscribe
+                onAnalyticsClose={(size) => {
+                  setPrefilledSize(size);
+                  setIsAnalyticsOpen(false);
+                  setIsDialogOpen(true);
+                }}
+                isAnalyticsMode
+              />
+            </div>
           </DialogContent>
         </Dialog>
       </div>
