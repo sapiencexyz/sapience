@@ -5,7 +5,6 @@ import { formatDistanceToNow } from 'date-fns';
 import { print } from 'graphql';
 import { ChartNoAxesColumn, Loader2, Plus } from 'lucide-react';
 import Image from 'next/image';
-import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { formatUnits } from 'viem';
 import { useAccount } from 'wagmi';
@@ -182,7 +181,7 @@ const SubscriptionsList = () => {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
       {subscriptions.map((subscription) => {
         const resource = resources?.find(
           (r) => r.name === subscription.epoch.market.name
@@ -218,7 +217,7 @@ const SubscriptionsList = () => {
 
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">
-                  Price Paid
+                  Price paid
                 </span>
                 <span className="text-sm font-medium">
                   {(() => {
@@ -259,9 +258,8 @@ const SubscriptionsList = () => {
               </div>
 
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Expires</span>
+                <span className="text-sm text-muted-foreground">Ends in</span>
                 <span className="text-sm font-medium">
-                  in{' '}
                   {formatDistanceToNow(
                     new Date(subscription.epoch.endTimestamp * 1000),
                     { addSuffix: false }
@@ -311,26 +309,9 @@ const SubscriptionsList = () => {
 
 const SubscribeContent = () => {
   const { data: resources, isLoading } = useResources();
-  const searchParams = useSearchParams();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
-  const [estimationResults, setEstimationResults] = useState<{
-    totalGasUsed: number;
-    ethPaid: number;
-    avgGasPerTx: number;
-    avgGasPrice: number;
-    chartData: { timestamp: number; value: number }[];
-  } | null>(null);
   const [prefilledSize, setPrefilledSize] = useState<bigint | null>(null);
-
-  const chainIdParam = useMemo(
-    () => searchParams.get('chainId'),
-    [searchParams]
-  );
-  const marketAddressParam = useMemo(
-    () => searchParams.get('marketAddress'),
-    [searchParams]
-  );
 
   const { markets } = useMarketList();
   const currentTime = Math.floor(Date.now() / 1000);

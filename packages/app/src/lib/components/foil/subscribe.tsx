@@ -2,24 +2,9 @@
 
 /* eslint-disable sonarjs/cognitive-complexity */
 
-import { gql } from '@apollo/client';
-import { useQuery } from '@tanstack/react-query';
-import {
-  formatDuration,
-  intervalToDuration,
-  format,
-  formatDistanceToNow,
-} from 'date-fns';
+import { formatDuration, intervalToDuration, format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  ArrowUpDown,
-  ChartNoAxesColumn,
-  ChevronLeft,
-  HelpCircle,
-  Loader2,
-} from 'lucide-react';
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { HelpCircle, Loader2 } from 'lucide-react';
 import { type FC, useState, useEffect, useContext, useMemo } from 'react';
 import React from 'react';
 import CountUp from 'react-countup';
@@ -33,7 +18,7 @@ import {
   createPublicClient,
   http,
 } from 'viem';
-import { mainnet, sepolia } from 'viem/chains';
+import { mainnet } from 'viem/chains';
 import {
   useWaitForTransactionReceipt,
   useWriteContract,
@@ -47,12 +32,6 @@ import {
 
 import erc20ABI from '../../erc20abi.json';
 import { Button } from '~/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '~/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -68,7 +47,6 @@ import {
   TooltipTrigger,
 } from '~/components/ui/tooltip';
 import { useToast } from '~/hooks/use-toast';
-import { API_BASE_URL } from '~/lib/constants/constants';
 import { useMarketList } from '~/lib/context/MarketListProvider';
 import { MarketContext } from '~/lib/context/MarketProvider';
 
@@ -93,6 +71,11 @@ const publicClient = createPublicClient({
     : http('https://ethereum-rpc.publicnode.com'),
 });
 
+interface PositionData {
+  vGasAmount: bigint;
+  borrowedVGas: bigint;
+}
+
 const Subscribe: FC<SubscribeProps> = ({
   onAnalyticsClose,
   isAnalyticsMode = false,
@@ -100,8 +83,26 @@ const Subscribe: FC<SubscribeProps> = ({
   positionId,
   onClose,
 }) => {
+  const {
+    address: contextMarketAddress,
+    chainId: contextChainId,
+    epoch: contextEpoch,
+    collateralAsset,
+    foilData,
+    stEthPerToken,
+    collateralAssetDecimals,
+    collateralAssetTicker,
+    refetchUniswapData,
+    startTime,
+    endTime,
+  } = useContext(MarketContext);
+
+  // Use prop values if provided, otherwise use context values
+  const finalMarketAddress = contextMarketAddress;
+  const finalChainId = contextChainId;
+  const finalEpoch = contextEpoch;
+
   // State declarations first
-  const { address: marketAddress, chainId, epoch } = useContext(MarketContext);
   const [sizeValue, setSizeValue] = useState<bigint>(initialSize || BigInt(0));
   const [pendingTxn, setPendingTxn] = useState(false);
   const [collateralDelta, setCollateralDelta] = useState<bigint>(BigInt(0));
@@ -141,16 +142,8 @@ const Subscribe: FC<SubscribeProps> = ({
     watch,
   } = form;
 
-  // Single definition of watched form values
-  const formValues = {
-    size: watch('sizeInput'),
-    slippage: watch('slippage'),
-  };
-
   // Rest of your hooks and effects
   const { toast } = useToast();
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const { markets } = useMarketList();
 
   const account = useAccount();
@@ -158,29 +151,6 @@ const Subscribe: FC<SubscribeProps> = ({
   const currentChainId = useChainId();
   const { switchChain } = useSwitchChain();
   const { connect, connectors } = useConnect();
-
-  const {
-    address: contextMarketAddress,
-    chainId: contextChainId,
-    epoch: contextEpoch,
-    collateralAsset,
-    foilData,
-    stEthPerToken,
-    collateralAssetDecimals,
-    collateralAssetTicker,
-    refetchUniswapData,
-    startTime,
-    endTime,
-  } = useContext(MarketContext);
-
-  // Use prop values if provided, otherwise use context values
-  const finalMarketAddress = marketAddress || contextMarketAddress;
-  const finalChainId = chainId || contextChainId;
-  const finalEpoch = epoch || contextEpoch;
-
-  if (!finalEpoch) {
-    throw new Error('Epoch is not defined');
-  }
 
   // Format start and end times
   const formatDate = (timestamp: number) => {
@@ -205,7 +175,7 @@ const Subscribe: FC<SubscribeProps> = ({
     abi: foilData.abi,
     address: finalMarketAddress as `0x${string}`,
     functionName: 'quoteCreateTraderPosition',
-    args: [finalEpoch, sizeInGigagas],
+    args: [finalEpoch || 0, sizeInGigagas],
     chainId: finalChainId,
     account: address || zeroAddress,
     query: { enabled: sizeValue !== BigInt(0) },
@@ -220,7 +190,7 @@ const Subscribe: FC<SubscribeProps> = ({
     query: {
       enabled: !!positionId,
     },
-  });
+  }) as { data: PositionData };
 
   // Quote modify position for closing
   const quoteModifyPositionResult = useSimulateContract({
@@ -237,7 +207,7 @@ const Subscribe: FC<SubscribeProps> = ({
   useEffect(() => {
     if (positionId) {
       if (quoteModifyPositionResult.data?.result !== undefined) {
-        const [expectedCollateralDelta, closePnL, fillPriceData] =
+        const [expectedCollateralDelta, closePnLValue, fillPriceData] =
           quoteModifyPositionResult.data.result;
         setFillPrice(fillPriceData as bigint);
         setCollateralDelta(expectedCollateralDelta as bigint);
@@ -346,10 +316,11 @@ const Subscribe: FC<SubscribeProps> = ({
             if ((event as any).eventName === 'TraderPositionCreated') {
               const nftId = (event as any).args.positionId.toString();
               toast({
-                title: 'Position Created',
-                description: `Your position has been created as position ${nftId}`,
+                title: 'Subscription Created',
+                description: `Your subscription has been created as position ${nftId}`,
               });
               resetAfterSuccess();
+              onClose?.();
               return;
             }
           } catch (error) {
@@ -358,9 +329,10 @@ const Subscribe: FC<SubscribeProps> = ({
         }
         toast({
           title: 'Success',
-          description: "We've created your position for you.",
+          description: "We've created your subscription for you.",
         });
         resetAfterSuccess();
+        onClose?.();
       }
     }
   }, [isConfirmed, createTraderPositionReceipt, txnStep, positionId]);
@@ -425,7 +397,7 @@ const Subscribe: FC<SubscribeProps> = ({
       abi: foilData.abi,
       address: finalMarketAddress as `0x${string}`,
       functionName: 'createTraderPosition',
-      args: [finalEpoch, sizeInTokens, absCollateralDeltaLimit, deadline],
+      args: [finalEpoch || 0, sizeInTokens, absCollateralDeltaLimit, deadline],
     });
     setTxnStep(2);
   };
@@ -501,7 +473,8 @@ const Subscribe: FC<SubscribeProps> = ({
   };
 
   const marketName =
-    markets.find((m) => m.address === marketAddress)?.name || 'Choose Market';
+    markets.find((m) => m.address === finalMarketAddress)?.name ||
+    'Choose Market';
 
   const handleEstimateUsage = async () => {
     const formWalletAddress = form.getValues('walletAddress');
@@ -635,11 +608,40 @@ const Subscribe: FC<SubscribeProps> = ({
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
 
     try {
+      // Get the current position size first
+      let currentSize = BigInt(0);
+      if (positionData) {
+        currentSize =
+          positionData.vGasAmount > BigInt(0)
+            ? positionData.vGasAmount
+            : -positionData.borrowedVGas;
+      }
+
+      // Calculate the delta size (will be negative of current size)
+      const deltaSize = BigInt(0) - currentSize;
+
+      if (deltaSize === BigInt(0)) {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Position is already closed',
+        });
+        setPendingTxn(false);
+        return;
+      }
+
+      // Use absolute value of collateralDelta and add some buffer for slippage
+      const absCollateralDeltaLimit =
+        collateralDelta < BigInt(0) ? -collateralDelta : collateralDelta;
+
+      const collateralDeltaWithBuffer =
+        (absCollateralDeltaLimit * BigInt(99)) / BigInt(100); // 1% slippage buffer
+
       writeContract({
         abi: foilData.abi,
         address: finalMarketAddress as `0x${string}`,
         functionName: 'modifyTraderPosition',
-        args: [positionId, BigInt(0), collateralDeltaLimit, deadline],
+        args: [positionId, BigInt(0), collateralDeltaWithBuffer, deadline],
       });
       setTxnStep(2);
     } catch (error) {
@@ -651,6 +653,15 @@ const Subscribe: FC<SubscribeProps> = ({
       setPendingTxn(false);
     }
   };
+
+  if (!finalEpoch) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 py-8">
+        <h2 className="text-lg font-medium">Loading...</h2>
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   if (!address) {
     return (
@@ -801,7 +812,12 @@ const Subscribe: FC<SubscribeProps> = ({
           ) : (
             <p className="text-lg">
               <NumberDisplay
-                value={formatUnits(collateralDelta, collateralAssetDecimals)}
+                value={formatUnits(
+                  collateralDelta < BigInt(0)
+                    ? -collateralDelta
+                    : collateralDelta,
+                  collateralAssetDecimals
+                )}
               />{' '}
               {collateralAssetTicker}
             </p>

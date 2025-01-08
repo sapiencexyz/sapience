@@ -69,6 +69,12 @@ const SizeCell = ({ cell }: { cell: any }) => (
   </>
 );
 
+const EntryPriceCell = ({ cell }: { cell: any }) => (
+  <>
+    <NumberDisplay value={cell.getValue()} /> wstETH/Ggas
+  </>
+);
+
 const PnLHeaderCell = () => (
   <span className="flex items-center gap-1">
     Profit/Loss{' '}
@@ -191,7 +197,7 @@ const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
         id: 'entryPrice',
         header: 'Entry Price',
         accessorFn: (row) => calculateEntryPrice(row),
-        cell: SizeCell,
+        cell: EntryPriceCell,
       },
       {
         id: 'pnl',
