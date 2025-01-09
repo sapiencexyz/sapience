@@ -308,37 +308,6 @@ if (process.argv[2] === "reindexMarket") {
     process.exit(0);
   };
   callReindexMissing();
-  // } else if (process.argv[2] === "testCelestia") {
-  //   await initializeDataSource();
-
-  //   let celestiaIndexer: CelestiaIndexer = new CelestiaIndexer(
-  //     "https://api-mainnet.celenium.io"
-  //   );
-
-  //   const resource = await resourceRepository.findOne({
-  //     where: { slug: "celestia-blobspace" },
-  //   });
-
-  //   if (!resource) {
-  //     throw new Error("Resource not found");
-  //   }
-
-  //   await celestiaIndexer.start(resource);
-
-  //   let isRunning = true;
-
-  //   process.on("SIGINT", () => {
-  //     isRunning = false;
-  //     console.log("Main process: Stopping Celestia indexer");
-  //     celestiaIndexer.stop();
-  //   });
-
-  //   while (isRunning) {
-  //     await delay(5000);
-  //   }
-
-  //   console.log("Main process: Celestia indexer stopped");
-  //   process.exit(0);
 } else {
   main();
 }
