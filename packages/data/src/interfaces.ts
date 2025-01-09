@@ -132,6 +132,7 @@ export interface MarketInfo {
   resource: {
     name: string;
   };
+  deployMarket: boolean;
 }
 
 export enum EventTransactionType {

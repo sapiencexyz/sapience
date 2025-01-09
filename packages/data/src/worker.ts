@@ -111,37 +111,40 @@ async function main() {
   await initializeResources();
 
   for (const marketInfo of MARKETS) {
-    const market = await initializeMarket(marketInfo);
-    console.log(
-      "initialized market",
-      market.address,
-      "on chain",
-      market.chainId
-    );
-
-    // Set the resource for the market
     const resource = await resourceRepository.findOne({
       where: { name: marketInfo.resource.name },
     });
     if (!resource) {
       throw new Error(`Resource not found: ${marketInfo.resource.name}`);
     }
-    market.resource = resource;
-    await marketRepository.save(market);
 
-    await createOrUpdateEpochFromContract(marketInfo, market);
+    if (marketInfo.deployMarket) {
+      const market = await initializeMarket(marketInfo);
+      console.log(
+        "initialized market",
+        market.address,
+        "on chain",
+        market.chainId
+      );
+
+      // Set the resource for the market
+      market.resource = resource;
+      await marketRepository.save(market);
+
+      await createOrUpdateEpochFromContract(marketInfo, market);
+
+      jobs.push(
+        createResilientProcess(
+          () => indexMarketEvents(market, marketInfo.deployment.abi),
+          `indexMarketEvents-${market.address}`
+        )()
+      );
+    }
 
     jobs.push(
       createResilientProcess(
-        () => indexMarketEvents(market, marketInfo.deployment.abi),
-        `indexMarketEvents-${market.address}`
-      )()
-    );
-
-    jobs.push(
-      createResilientProcess(
-        () => marketInfo.priceIndexer.watchBlocksForResource(market.resource),
-        `watchBlocksForResource-${market.address}`
+        () => marketInfo.priceIndexer.watchBlocksForResource(resource),
+        `watchBlocksForResource-${resource.name}`
       )()
     );
   }

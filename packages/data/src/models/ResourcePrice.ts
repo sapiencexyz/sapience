@@ -1,4 +1,4 @@
-import { NUMERIC_PRECISION, DECIMAL_SCALE } from "../constants";
+import { NUMERIC_PRECISION } from "../constants";
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -30,11 +30,7 @@ export class ResourcePrice {
   @Column({ type: "integer" })
   timestamp: number;
 
-  @Column({
-    type: "numeric",
-    precision: NUMERIC_PRECISION,
-    scale: DECIMAL_SCALE,
-  })
+  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
   value: string;
 
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
@@ -45,13 +41,15 @@ export class ResourcePrice {
 
   @AfterInsert()
   async afterInsert() {
-    console.log("Resource price inserted for block: " + this.blockNumber);
+    console.log(
+      `Resource price inserted for block: ${this.blockNumber} @ ${this.resource.name}`
+    );
     await upsertIndexPriceFromResourcePrice(this);
   }
 
   @AfterUpdate()
   async afterUpdate() {
-    console.log(`Resource price updated: ${this.id}`);
+    console.log(`Resource price updated: ${this.id} @ ${this.resource.name}`);
     await upsertIndexPriceFromResourcePrice(this);
   }
 }

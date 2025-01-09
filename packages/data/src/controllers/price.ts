@@ -11,6 +11,12 @@ import {
 export const upsertIndexPriceFromResourcePrice = async (
   resourcePrice: ResourcePrice
 ) => {
+  // Celestia Blobspace is TEMPORARILY not indexed by the protocol, so we skip it up to now
+  // TODO: remove this once the protocol is updated to index Celestia Blobspace
+  if (resourcePrice.resource.name === "Celestia Blobspace") {
+    return;
+  }
+
   // Get the market associated with the resource price's resource
   const market = await marketRepository.findOne({
     where: { resource: { id: resourcePrice.resource.id } },
@@ -39,17 +45,17 @@ export const upsertIndexPriceFromResourcePrice = async (
       order: { timestamp: "ASC" },
     });
 
-    const totalGasUsed: number = resourcePrices.reduce(
-      (total, price) => total + Number(price.used),
-      0
+    const totalGasUsed: bigint = resourcePrices.reduce(
+      (total, price) => total + BigInt(price.used),
+      0n
     );
 
-    const totalBaseFeesPaid: number = resourcePrices.reduce(
-      (total, price) => total + Number(price.feePaid),
-      0
+    const totalBaseFeesPaid: bigint = resourcePrices.reduce(
+      (total, price) => total + BigInt(price.feePaid),
+      0n
     );
 
-    const averagePrice: number = totalBaseFeesPaid / totalGasUsed;
+    const averagePrice: bigint = totalBaseFeesPaid / totalGasUsed;
 
     // Create or update the index price associated with the epoch
     let indexPrice = await indexPriceRepository.findOne({

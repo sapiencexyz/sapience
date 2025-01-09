@@ -37,7 +37,6 @@ class CelestiaIndexer implements IResourcePriceIndexer {
   }
 
   private async pollCelestia(resource: Resource) {
-    console.log("Polling Celestia");
     const from = await this.getfromTimestamp();
 
     const params = new URLSearchParams({
@@ -90,9 +89,6 @@ class CelestiaIndexer implements IResourcePriceIndexer {
         // move the fromTimestamp to the latest block processed
         this.fromTimestamp =
           block.time > this.fromTimestamp ? block.time : this.fromTimestamp;
-
-        const used = block?.stats?.blobs_size;
-        const value = block?.stats?.fee / used;
 
         await this.storeBlockPrice(block, resource);
       }
@@ -152,7 +148,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
    */
   private async storeBlockPrice(block: any, resource: Resource) {
     const used = block?.stats?.blobs_size;
-    const fee = block?.stats?.fee;
+    const fee = block?.stats?.fee * 10 ** 9; // Increase the fee to 9 digits to be compatible with the EVM indexer and UI (we use 9 decimals for the gwei)
     const value = fee / used;
     if (!value || !block.height) {
       console.error(
