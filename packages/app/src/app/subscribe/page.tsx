@@ -249,7 +249,7 @@ const SubscriptionsList = () => {
                   className="rounded-full"
                 />
               )}
-              <h3 className="font-medium truncate text-xl">
+              <h3 className="font-medium truncate  text-2xl">
                 {subscription.epoch.market.name}
               </h3>
             </div>
@@ -439,16 +439,16 @@ const SubscribeContent = () => {
         <Dialog open={isAnalyticsOpen} onOpenChange={setIsAnalyticsOpen}>
           <DialogContent className="max-w-[410px]">
             <DialogHeader>
-              <DialogTitle className="text-xl">Wallet Analytics</DialogTitle>
+              <DialogTitle className="text-2xl">Wallet Analytics</DialogTitle>
             </DialogHeader>
-              <Subscribe
-                onAnalyticsClose={(size) => {
-                  setPrefilledSize(size);
-                  setIsAnalyticsOpen(false);
-                  setIsDialogOpen(true);
-                }}
-                isAnalyticsMode
-              />
+            <Subscribe
+              onAnalyticsClose={(size) => {
+                setPrefilledSize(size);
+                setIsAnalyticsOpen(false);
+                setIsDialogOpen(true);
+              }}
+              isAnalyticsMode
+            />
           </DialogContent>
         </Dialog>
       </div>

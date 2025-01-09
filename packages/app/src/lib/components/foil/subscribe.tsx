@@ -4,7 +4,7 @@
 
 import { formatDuration, intervalToDuration, format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HelpCircle, Loader2, Info } from 'lucide-react';
+import { HelpCircle, Loader2, Info, BookTextIcon } from 'lucide-react';
 import { type FC, useState, useEffect, useContext, useMemo } from 'react';
 import React from 'react';
 import CountUp from 'react-countup';
@@ -31,6 +31,7 @@ import {
 } from 'wagmi';
 
 import erc20ABI from '../../erc20abi.json';
+import { Alert, AlertTitle, AlertDescription } from '~/components/ui/alert';
 import { Button } from '~/components/ui/button';
 import {
   Form,
@@ -53,7 +54,6 @@ import { MarketContext } from '~/lib/context/MarketProvider';
 import NumberDisplay from './numberDisplay';
 import SimpleBarChart from './SimpleBarChart';
 import SizeInput from './sizeInput';
-import { Alert, AlertTitle, AlertDescription } from '~/components/ui/alert';
 
 const TOAST_DURATION = 3000;
 const LONG_TOAST_DURATION = 5000;
@@ -900,13 +900,11 @@ const Subscribe: FC<SubscribeProps> = ({
     <Form {...form}>
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="flex items-center mb-4">
-          <div className="border border-border rounded-full p-1 mr-2 h-6 w-6 overflow-hidden">
+          <div className="border border-border rounded-full p-1 mr-2 h-8 w-8 overflow-hidden">
             <img src="/eth.svg" alt="Ethereum" width="100%" height="100%" />
           </div>
 
-          <h2 className="text-xl font-semibold">
-            {marketName} Subscription
-          </h2>
+          <h2 className="text-2xl font-semibold">{marketName} Subscription</h2>
         </div>
 
         <p className="mb-3 text-lg">
@@ -914,12 +912,11 @@ const Subscribe: FC<SubscribeProps> = ({
           and {formattedEndTime}.
         </p>
 
-<div 
-        className="mb-7">
-        <FormField
-          control={control}
-          name="sizeInput"
-          render={({ field }) => (
+        <div className="mb-7">
+          <FormField
+            control={control}
+            name="sizeInput"
+            render={({ field }) => (
               <SizeInput
                 setSize={(newSize) => {
                   setSizeValue(newSize);
@@ -930,19 +927,29 @@ const Subscribe: FC<SubscribeProps> = ({
                 error={quoteError || undefined}
                 {...field}
               />
-          )}
-        />
-</div>
+            )}
+          />
+        </div>
 
-               
-<Alert>
-  <Info className="h-4 w-4" />
-  <AlertTitle>How it works</AlertTitle>
-  <AlertDescription>
-  If the average gas price exceeds the quote during the period,
-  you can redeem a rebate.
-  </AlertDescription>
-</Alert>
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertTitle>How It Works</AlertTitle>
+          <AlertDescription>
+            <div>
+              If the average gas price exceeds the quote during the period, you
+              can redeem a rebate.
+            </div>
+            <a
+              href="https://docs.foil.xyz"
+              target="_blank"
+              className="underline text-xs text-muted-foreground mt-2 inline-block"
+              rel="noreferrer"
+            >
+              <BookTextIcon className="inline -mt-0.5 mr-1 h-3.5 w-3.5" />
+              Read the docs
+            </a>
+          </AlertDescription>
+        </Alert>
 
         <div className=" bg-muted p-4 rounded-lg space-y-2 my-7">
           <p className="text-sm font-semibold text-muted-foreground">Quote</p>
