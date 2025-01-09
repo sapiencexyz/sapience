@@ -131,16 +131,42 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
                     );
                   }
 
-                  return epochs.map((epoch: Epoch) => (
-                    <Link
-                      key={epoch.epochId}
-                      className="text-sm w-full block rounded-md px-3 py-1.5 hover:bg-secondary"
-                      href={`/${path}/${market.chainId}:${market.address}/epochs/${epoch.epochId}`}
-                      onClick={handleLinkClick}
-                    >
-                      {formatDuration(epoch.startTimestamp, epoch.endTimestamp)}
-                    </Link>
-                  ));
+                  const currentTime = Math.floor(Date.now() / 1000);
+                  const activeEpochs = epochs.filter(
+                    (epoch: Epoch) => epoch.endTimestamp > currentTime
+                  );
+
+                  return (
+                    <>
+                      {activeEpochs.length === 0 ? (
+                        <div className="text-sm text-muted-foreground flex items-center justify-center min-h-[60px]">
+                          No active periods
+                        </div>
+                      ) : (
+                        activeEpochs.map((epoch: Epoch) => (
+                          <Link
+                            key={epoch.epochId}
+                            className="text-sm w-full block rounded-md px-3 py-1.5 hover:bg-secondary"
+                            href={`/${path}/${market.chainId}:${market.address}/epochs/${epoch.epochId}`}
+                            onClick={handleLinkClick}
+                          >
+                            {formatDuration(
+                              epoch.startTimestamp,
+                              epoch.endTimestamp
+                            )}
+                          </Link>
+                        ))
+                      )}
+                      <Link
+                        href={`/markets/?resource=${hoveredResourceData.slug}`}
+                        onClick={handleLinkClick}
+                        className="text-xs text-muted-foreground hover:text-foreground flex items-center justify-end mt-2 px-3 py-1"
+                      >
+                        All periods
+                        <ChevronDown className="h-3 w-3 ml-1 rotate-[-90deg]" />
+                      </Link>
+                    </>
+                  );
                 })()}
               </div>
             )}
@@ -243,16 +269,42 @@ const NavLinks = ({
                     );
                   }
 
-                  return epochs.map((epoch) => (
-                    <Link
-                      key={epoch.epochId}
-                      className="text-sm w-full block rounded-md px-3 py-1.5 hover:bg-gray-50"
-                      href={`/${path}/${market.chainId}:${market.address}/epochs/${epoch.epochId}`}
-                      onClick={() => onClose?.()}
-                    >
-                      {formatDuration(epoch.startTimestamp, epoch.endTimestamp)}
-                    </Link>
-                  ));
+                  const currentTime = Math.floor(Date.now() / 1000);
+                  const activeEpochs = epochs.filter(
+                    (epoch) => epoch.endTimestamp > currentTime
+                  );
+
+                  return (
+                    <>
+                      {activeEpochs.length === 0 ? (
+                        <div className="text-sm text-muted-foreground flex items-center justify-center min-h-[60px]">
+                          No active periods
+                        </div>
+                      ) : (
+                        activeEpochs.map((epoch) => (
+                          <Link
+                            key={epoch.epochId}
+                            className="text-sm w-full block rounded-md px-3 py-1.5 hover:bg-gray-50"
+                            href={`/${path}/${market.chainId}:${market.address}/epochs/${epoch.epochId}`}
+                            onClick={() => onClose?.()}
+                          >
+                            {formatDuration(
+                              epoch.startTimestamp,
+                              epoch.endTimestamp
+                            )}
+                          </Link>
+                        ))
+                      )}
+                      <Link
+                        href={`/markets/?resource=${resource.slug}`}
+                        onClick={() => onClose?.()}
+                        className="text-xs text-muted-foreground hover:text-foreground flex items-center justify-end mt-2 px-3 py-1"
+                      >
+                        All periods
+                        <ChevronDown className="h-3 w-3 ml-1 rotate-[-90deg]" />
+                      </Link>
+                    </>
+                  );
                 })()}
               </div>
             </AccordionContent>

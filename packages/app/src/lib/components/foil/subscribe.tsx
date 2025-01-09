@@ -54,6 +54,16 @@ import NumberDisplay from './numberDisplay';
 import SimpleBarChart from './SimpleBarChart';
 import SizeInput from './sizeInput';
 
+const TOAST_DURATION = 3000;
+const LONG_TOAST_DURATION = 5000;
+const WAITING_MESSAGE = 'Waiting for confirmation...';
+
+interface PositionData {
+  vGasAmount: bigint;
+  borrowedVGas: bigint;
+  depositedCollateralAmount: bigint;
+}
+
 interface SubscribeProps {
   onAnalyticsClose?: (size: bigint) => void;
   isAnalyticsMode?: boolean;
@@ -70,11 +80,6 @@ const publicClient = createPublicClient({
       )
     : http('https://ethereum-rpc.publicnode.com'),
 });
-
-interface PositionData {
-  vGasAmount: bigint;
-  borrowedVGas: bigint;
-}
 
 const Subscribe: FC<SubscribeProps> = ({
   onAnalyticsClose,
@@ -112,6 +117,9 @@ const Subscribe: FC<SubscribeProps> = ({
   const [txnStep, setTxnStep] = useState(0);
   const [isMarketSelectorOpen, setIsMarketSelectorOpen] = useState(false);
   const [isEstimating, setIsEstimating] = useState(false);
+  const [withdrawableCollateral, setWithdrawableCollateral] = useState<bigint>(
+    BigInt(0)
+  );
   const [estimationResults, setEstimationResults] = useState<{
     totalGasUsed: number;
     ethPaid: number;
@@ -187,6 +195,7 @@ const Subscribe: FC<SubscribeProps> = ({
     address: finalMarketAddress as `0x${string}`,
     functionName: 'getPosition',
     args: positionId !== undefined ? [positionId] : undefined,
+    chainId: finalChainId,
     query: {
       enabled: !!positionId,
     },
@@ -265,7 +274,7 @@ const Subscribe: FC<SubscribeProps> = ({
       onSuccess: () => {
         toast({
           title: 'Transaction Submitted',
-          description: 'Waiting for confirmation...',
+          description: WAITING_MESSAGE,
         });
       },
     },
@@ -284,7 +293,7 @@ const Subscribe: FC<SubscribeProps> = ({
       onSuccess: () => {
         toast({
           title: 'Approval Submitted',
-          description: 'Waiting for confirmation...',
+          description: WAITING_MESSAGE,
         });
       },
     },
@@ -301,7 +310,10 @@ const Subscribe: FC<SubscribeProps> = ({
       if (positionId) {
         toast({
           title: 'Success',
-          description: 'Subscription closed',
+          description:
+            endTime && Date.now() / 1000 > Number(endTime)
+              ? 'Position settled successfully!'
+              : 'Position closed successfully!',
         });
         onClose?.();
       } else {
@@ -335,7 +347,7 @@ const Subscribe: FC<SubscribeProps> = ({
         onClose?.();
       }
     }
-  }, [isConfirmed, createTraderPositionReceipt, txnStep, positionId]);
+  }, [isConfirmed, createTraderPositionReceipt, txnStep, positionId, endTime]);
 
   useEffect(() => {
     if (approveSuccess && txnStep === 1) {
@@ -482,7 +494,7 @@ const Subscribe: FC<SubscribeProps> = ({
       toast({
         title: 'Invalid Address',
         description: 'Please enter a wallet address or ENS name.',
-        duration: 3000,
+        duration: TOAST_DURATION,
       });
       return;
     }
@@ -503,7 +515,7 @@ const Subscribe: FC<SubscribeProps> = ({
           toast({
             title: 'Invalid Address',
             description: 'Please enter a valid wallet address or ENS name.',
-            duration: 3000,
+            duration: TOAST_DURATION,
           });
           setIsEstimating(false);
           return;
@@ -537,7 +549,7 @@ const Subscribe: FC<SubscribeProps> = ({
         toast({
           title: 'Recent Data Unavailable',
           description: `This address hasn't used gas in the last ${formattedDuration}.`,
-          duration: 5000,
+          duration: LONG_TOAST_DURATION,
         });
         return;
       }
@@ -554,7 +566,7 @@ const Subscribe: FC<SubscribeProps> = ({
       toast({
         title: 'Estimation Failed',
         description: 'Unable to estimate gas usage. Please try again.',
-        duration: 5000,
+        duration: LONG_TOAST_DURATION,
       });
     } finally {
       setIsEstimating(false);
@@ -605,45 +617,62 @@ const Subscribe: FC<SubscribeProps> = ({
     if (!positionId || !isConnected) return;
 
     setPendingTxn(true);
-    const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
 
     try {
-      // Get the current position size first
-      let currentSize = BigInt(0);
-      if (positionData) {
-        currentSize =
-          positionData.vGasAmount > BigInt(0)
-            ? positionData.vGasAmount
-            : -positionData.borrowedVGas;
-      }
-
-      // Calculate the delta size (will be negative of current size)
-      const deltaSize = BigInt(0) - currentSize;
-
-      if (deltaSize === BigInt(0)) {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Position is already closed',
+      if (endTime && Date.now() / 1000 > Number(endTime)) {
+        // Use settlePosition if past end time
+        writeContract({
+          abi: foilData.abi,
+          address: finalMarketAddress as `0x${string}`,
+          functionName: 'settlePosition',
+          chainId: finalChainId,
+          args: [BigInt(positionId)],
         });
-        setPendingTxn(false);
-        return;
+      } else {
+        // Use modifyTraderPosition for early close
+        const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
+
+        // Get the current position size first
+        let currentSize = BigInt(0);
+        if (positionData) {
+          currentSize =
+            positionData.vGasAmount > BigInt(0)
+              ? positionData.vGasAmount
+              : -positionData.borrowedVGas;
+        }
+
+        // Calculate the delta size (will be negative of current size)
+        const deltaSize = BigInt(0) - currentSize;
+
+        if (deltaSize === BigInt(0)) {
+          toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Position is already closed',
+          });
+          setPendingTxn(false);
+          return;
+        }
+
+        // Use absolute value of collateralDelta and add some buffer for slippage
+        const absCollateralDeltaLimit =
+          collateralDelta < BigInt(0) ? -collateralDelta : collateralDelta;
+
+        const collateralDeltaWithBuffer =
+          (absCollateralDeltaLimit * BigInt(99)) / BigInt(100); // 1% slippage buffer
+
+        writeContract({
+          abi: foilData.abi,
+          address: finalMarketAddress as `0x${string}`,
+          functionName: 'modifyTraderPosition',
+          args: [positionId, BigInt(0), collateralDeltaWithBuffer, deadline],
+        });
       }
-
-      // Use absolute value of collateralDelta and add some buffer for slippage
-      const absCollateralDeltaLimit =
-        collateralDelta < BigInt(0) ? -collateralDelta : collateralDelta;
-
-      const collateralDeltaWithBuffer =
-        (absCollateralDeltaLimit * BigInt(99)) / BigInt(100); // 1% slippage buffer
-
-      writeContract({
-        abi: foilData.abi,
-        address: finalMarketAddress as `0x${string}`,
-        functionName: 'modifyTraderPosition',
-        args: [positionId, BigInt(0), collateralDeltaWithBuffer, deadline],
-      });
       setTxnStep(2);
+      toast({
+        title: 'Transaction Submitted',
+        description: WAITING_MESSAGE,
+      });
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -653,6 +682,15 @@ const Subscribe: FC<SubscribeProps> = ({
       setPendingTxn(false);
     }
   };
+
+  // Add effect to update withdrawableCollateral when positionData changes
+  useEffect(() => {
+    if (positionData) {
+      setWithdrawableCollateral(
+        BigInt((positionData as any).depositedCollateralAmount)
+      );
+    }
+  }, [positionData]);
 
   if (!finalEpoch) {
     return (
@@ -810,16 +848,31 @@ const Subscribe: FC<SubscribeProps> = ({
             </div>
           ) : (
             <p className="text-lg">
-              Close your subscription early and receive approximately{' '}
-              <NumberDisplay
-                value={formatUnits(
-                  collateralDelta < BigInt(0)
-                    ? -collateralDelta
-                    : collateralDelta,
-                  collateralAssetDecimals
-                )}
-              />{' '}
-              {collateralAssetTicker}.
+              {endTime && Date.now() / 1000 > Number(endTime) ? (
+                <>
+                  Close your position and receive{' '}
+                  <NumberDisplay
+                    value={formatUnits(
+                      withdrawableCollateral,
+                      collateralAssetDecimals
+                    )}
+                  />{' '}
+                  wstETH
+                </>
+              ) : (
+                <>
+                  Close your subscription early and receive approximately{' '}
+                  <NumberDisplay
+                    value={formatUnits(
+                      collateralDelta < BigInt(0)
+                        ? -collateralDelta
+                        : collateralDelta,
+                      collateralAssetDecimals
+                    )}
+                  />{' '}
+                  {collateralAssetTicker}
+                </>
+              )}
             </p>
           )}
         </div>
@@ -827,7 +880,11 @@ const Subscribe: FC<SubscribeProps> = ({
         <Button
           className="w-full"
           onClick={handleClosePosition}
-          disabled={pendingTxn || isLoadingCollateralChange || !!quoteError}
+          disabled={
+            pendingTxn ||
+            (!(endTime && Date.now() / 1000 > Number(endTime)) &&
+              (isLoadingCollateralChange || !!quoteError))
+          }
         >
           {pendingTxn ? (
             <Loader2 className="h-4 w-4 animate-spin mr-2" />
