@@ -1,5 +1,5 @@
 import { Abi } from "viem";
-import EvmIndexer from "./resourcePriceFunctions/evmIndexer";
+import { IResourcePriceIndexer } from "./resourcePriceFunctions/IResourcePriceIndexer";
 
 export enum EventType {
   LiquidityPositionCreated = "LiquidityPositionCreated",
@@ -128,9 +128,9 @@ export interface MarketInfo {
   public: boolean;
   deployment: Deployment;
   marketChainId: number;
-  priceIndexer: EvmIndexer;
   resource: {
     name: string;
+    priceIndexer: IResourcePriceIndexer;
   };
   deployMarket: boolean;
 }

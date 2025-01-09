@@ -143,7 +143,7 @@ async function main() {
 
     jobs.push(
       createResilientProcess(
-        () => marketInfo.priceIndexer.watchBlocksForResource(resource),
+        () => marketInfo.resource.priceIndexer.watchBlocksForResource(resource),
         `watchBlocksForResource-${resource.name}`
       )()
     );
@@ -224,7 +224,7 @@ export async function reindexMissingBlocks(
       await getMarketStartEndBlock(
         market,
         epochId,
-        marketInfo.priceIndexer.client
+        marketInfo.resource.priceIndexer.client
       );
 
     if (error || !startBlockNumber || !endBlockNumber) {
@@ -254,7 +254,7 @@ export async function reindexMissingBlocks(
       }
     }
 
-    await marketInfo.priceIndexer.indexBlocks(
+    await marketInfo.resource.priceIndexer.indexBlocks(
       market.resource,
       missingBlockNumbers
     );

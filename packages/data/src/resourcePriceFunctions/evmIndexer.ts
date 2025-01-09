@@ -1,6 +1,5 @@
 import { resourcePriceRepository } from "../db";
 import { ResourcePrice } from "../models/ResourcePrice";
-import { type Market } from "../models/Market";
 import { getBlockByTimestamp, getProviderForChain } from "../helpers";
 import { Block, type PublicClient } from "viem";
 import Sentry from "../sentry";

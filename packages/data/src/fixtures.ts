@@ -16,10 +16,12 @@ export const RESOURCES = [
   {
     name: "Ethereum Gas",
     slug: "ethereum-gas",
+    priceIndexer: new evmIndexer(mainnet.id),
   },
   {
     name: "Celestia Blobspace",
     slug: "celestia-blobspace",
+    priceIndexer: new celestiaIndexer("https://api-mainnet.celenium.io"),
   },
 ];
 
@@ -32,7 +34,6 @@ const initializeMarkets = async () => {
         "@/protocol/deployments/13370/FoilYin.json"
       ),
       marketChainId: cannon.id,
-      priceIndexer: new evmIndexer(mainnet.id),
       public: true,
       resource: RESOURCES[0], // Ethereum Gas
       deployMarket: true,
@@ -44,7 +45,6 @@ const initializeMarkets = async () => {
         "@/protocol/deployments/11155111/FoilYin.json"
       ),
       marketChainId: sepolia.id,
-      priceIndexer: new evmIndexer(mainnet.id),
       public: true,
       resource: RESOURCES[0], // Ethereum Gas
       deployMarket: true,
@@ -55,7 +55,6 @@ const initializeMarkets = async () => {
         "@/protocol/deployments/23422/FoilYin.json"
       ),
       marketChainId: 23422,
-      priceIndexer: new celestiaIndexer("https://api-mainnet.celenium.io"),
       public: true,
       resource: RESOURCES[1], // Celestia Blobspace
       deployMarket: false,

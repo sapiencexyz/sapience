@@ -21,6 +21,7 @@ type Block = {
 };
 
 class CelestiaIndexer implements IResourcePriceIndexer {
+  public client: undefined; // required by the interface
   private isWatching: boolean = false;
   private fromTimestamp: number = 0;
   private celeniumEndpoint: string;
