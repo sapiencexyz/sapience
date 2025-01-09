@@ -1,5 +1,5 @@
 {
-  "name": "docs",
+  "name": "@foil/docs",
   "private": true,
   "main": "index.js",
   "version": "0.0.0",

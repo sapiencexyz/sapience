@@ -1,7 +1,8 @@
 {
-  "name": "data",
+  "name": "@foil/data",
   "version": "1.0.0",
-  "description": "",
+  "private": true,
+  "license": "MIT",
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -18,8 +19,6 @@
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org foil --project data ./dist && sentry-cli sourcemaps upload --org foil --project data ./dist"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "@apollo/server": "^4.11.3",
     "@sentry/cli": "^2.39.0",
