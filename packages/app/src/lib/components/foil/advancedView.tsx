@@ -11,6 +11,7 @@ import { useMediaQuery } from 'usehooks-ts';
 import { formatUnits } from 'viem';
 import { useAccount } from 'wagmi';
 
+import { Button } from '~/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '~/components/ui/tabs';
 import { useToast } from '~/hooks/use-toast';
 import Chart from '~/lib/components/chart';
@@ -100,6 +101,15 @@ const Market = ({
     isTrade ? ChartType.PRICE : ChartType.LIQUIDITY
   );
   const [isRefetchingIndexPrices, setIsRefetchingIndexPrices] = useState(false);
+  const [seriesVisibility, setSeriesVisibility] = useState<{
+    candles: boolean;
+    index: boolean;
+    resource: boolean;
+  }>({
+    candles: true,
+    index: true,
+    resource: false,
+  });
   const [chainId, marketAddress] = params.id.split('%3A');
   const { epoch } = params;
   const contractId = `${chainId}:${marketAddress}`;
@@ -276,6 +286,10 @@ const Market = ({
   const idxLoading =
     isLoadingIndexPrices || isRefetchingIndexPrices || isLoadingResourcePrices;
 
+  const toggleSeries = (series: 'candles' | 'index' | 'resource') => {
+    setSeriesVisibility((prev) => ({ ...prev, [series]: !prev[series] }));
+  };
+
   const renderChart = () => {
     if (chartType === ChartType.PRICE) {
       return (
@@ -287,6 +301,8 @@ const Market = ({
             resourcePrices: resourcePrices || [],
           }}
           isLoading={idxLoading}
+          seriesVisibility={seriesVisibility}
+          toggleSeries={toggleSeries}
         />
       );
     }
@@ -300,14 +316,48 @@ const Market = ({
   };
 
   const renderLoadng = () => {
-    if (chartType === ChartType.PRICE && idxLoading) {
+    if (chartType === ChartType.PRICE) {
       return (
-        <div
-          className="flex ml-2 gap-2 justify-center items-center"
-          id="idx-loading"
-        >
-          <Loader2 className="w-4 h-4 animate-spin" />
-          <span className="text-sm">Loading Index Prices...</span>
+        <div className="flex ml-2 gap-2 items-center">
+          <Button
+            variant={seriesVisibility.candles ? 'default' : 'secondary'}
+            size="sm"
+            onClick={() => toggleSeries('candles')}
+          >
+            Market Price
+          </Button>
+          <Button
+            variant={seriesVisibility.index ? 'default' : 'secondary'}
+            size="sm"
+            onClick={() => toggleSeries('index')}
+            disabled={idxLoading}
+          >
+            {idxLoading ? (
+              <div className="flex items-center gap-2">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                <span>Index Price</span>
+              </div>
+            ) : (
+              'Index Price'
+            )}
+          </Button>
+          {(resourcePrices?.length ?? 0) > 0 && (
+            <Button
+              variant={seriesVisibility.resource ? 'default' : 'secondary'}
+              size="sm"
+              onClick={() => toggleSeries('resource')}
+              disabled={idxLoading}
+            >
+              {idxLoading ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <span>Resource Price</span>
+                </div>
+              ) : (
+                'Resource Price'
+              )}
+            </Button>
+          )}
         </div>
       );
     }
