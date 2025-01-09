@@ -36,11 +36,12 @@ import {
   updateTransactionFromPositionSettledEvent,
   getMarketStartEndBlock,
   insertCollateralTransfer,
+  createOrUpdateEpochFromContract,
 } from "./marketHelpers";
 import { Client, TextChannel, EmbedBuilder } from "discord.js";
-import { MARKETS } from "../fixtures";
 import * as Chains from 'viem/chains';
-import { convertGasToGgas, convertGgasToGas } from "../helpers";
+import { convertGasToGgas } from "../helpers";
+import { MARKETS } from "../fixtures";
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const DISCORD_PRIVATE_CHANNEL_ID = process.env.DISCORD_PRIVATE_CHANNEL_ID;
@@ -482,6 +483,15 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       console.log("creating epoch. event: ", event);
       const epochCreatedArgs = event.logData.args as EpochCreatedEventLog;
       await createEpochFromEvent(epochCreatedArgs, market);
+      
+      const marketInfo = MARKETS.find(
+        (m) =>
+          m.marketChainId === chainId &&
+          m.deployment.address.toLowerCase() === address.toLowerCase()
+      );
+      if (marketInfo) {
+        await createOrUpdateEpochFromContract(marketInfo, market, Number(epochCreatedArgs.epochId));
+      }
       skipTransaction = true;
       break;
     case EventType.EpochSettled:
