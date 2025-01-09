@@ -54,10 +54,14 @@ export default defineConfig({
       text: 'Technical Documentation', 
       collapsed: false, 
       items: [
-      { 
-        text: 'Deployments', 
-        link: 'https://usecannon.com/packages/foil',
-      },
+        { 
+          text: 'Deployments', 
+          link: 'https://usecannon.com/packages/foil',
+        },
+        { 
+          text: 'Source Code', 
+          link: 'https://github.com/foilxyz/foil',
+        },
       ], 
     }
   ]
