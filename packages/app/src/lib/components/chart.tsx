@@ -4,6 +4,7 @@ import { createChart, CrosshairMode } from 'lightweight-charts';
 import { useTheme } from 'next-themes';
 import { useEffect, useRef, useContext, useState } from 'react';
 import type React from 'react';
+import { Button } from "~/components/ui/button";
 
 import type { PriceChartData, TimeWindow } from '../interfaces/interfaces';
 import { convertGgasPerWstEthToGwei } from '../util/util';
@@ -225,25 +226,28 @@ const CandlestickChart: React.FC<Props> = ({
   return (
     <div className="flex flex-col flex-1">
       <div className="flex gap-2 mb-2">
-        <button
+        <Button
+          variant={seriesVisibility.candles ? "default" : "secondary"}
+          size="sm"
           onClick={() => toggleSeries('candles')}
-          className={`px-2 py-1 text-sm rounded ${seriesVisibility.candles ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}
         >
           Market Price
-        </button>
-        <button
+        </Button>
+        <Button
+          variant={seriesVisibility.index ? "default" : "secondary"}
+          size="sm"
           onClick={() => toggleSeries('index')}
-          className={`px-2 py-1 text-sm rounded ${seriesVisibility.index ? 'bg-blue-500 text-white' : 'bg-secondary'}`}
         >
           Index Price
-        </button>
+        </Button>
         {(data.resourcePrices?.length ?? 0) > 0 && (
-          <button
+          <Button
+            variant={seriesVisibility.resource ? "default" : "secondary"}
+            size="sm"
             onClick={() => toggleSeries('resource')}
-            className={`px-2 py-1 text-sm rounded ${seriesVisibility.resource ? 'bg-green-500 text-white' : 'bg-secondary'}`}
           >
             Resource Price
-          </button>
+          </Button>
         )}
       </div>
       <div className="flex flex-1">
