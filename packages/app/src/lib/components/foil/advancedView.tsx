@@ -2,10 +2,13 @@
 
 /* eslint-disable sonarjs/no-duplicate-string */
 
+import { gql } from '@apollo/client';
 import { useQuery } from '@tanstack/react-query';
+import { print } from 'graphql';
 import { Loader2 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useContext } from 'react';
 import { useMediaQuery } from 'usehooks-ts';
+import { formatUnits } from 'viem';
 import { useAccount } from 'wagmi';
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '~/components/ui/tabs';
@@ -25,9 +28,44 @@ import VolumeWindowSelector from '~/lib/components/VolumeWindowButtons';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { AddEditPositionProvider } from '~/lib/context/AddEditPositionContext';
 import { MarketProvider } from '~/lib/context/MarketProvider';
+import { useResources } from '~/lib/hooks/useResources';
 import { ChartType, TimeWindow } from '~/lib/interfaces/interfaces';
 
+interface ResourcePrice {
+  timestamp: string;
+  value: string;
+}
+
+interface ResourcePricePoint {
+  timestamp: number;
+  price: number;
+}
+
+const getTimeWindowSeconds = (window: TimeWindow): number => {
+  switch (window) {
+    case TimeWindow.H:
+      return 60 * 60;
+    case TimeWindow.D:
+      return 24 * 60 * 60;
+    case TimeWindow.W:
+      return 7 * 24 * 60 * 60;
+    case TimeWindow.M:
+      return 30 * 24 * 60 * 60;
+    default:
+      return 7 * 24 * 60 * 60;
+  }
+};
+
 const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
+
+const RESOURCE_PRICES_QUERY = gql`
+  query GetResourcePrices($slug: String!, $startTime: Int, $endTime: Int) {
+    resourcePrices(slug: $slug, startTime: $startTime, endTime: $endTime) {
+      timestamp
+      value
+    }
+  }
+`;
 
 const useAccountData = () => {
   const { address, isConnected } = useAccount();
@@ -66,7 +104,8 @@ const Market = ({
   const { epoch } = params;
   const contractId = `${chainId}:${marketAddress}`;
   const { toast } = useToast();
-  const isLargeScreen = useMediaQuery('(min-width: 1024px)'); // 1024px is Tailwind's 'lg' breakpoint
+  const isLargeScreen = useMediaQuery('(min-width: 1024px)');
+  const { data: resources } = useResources();
 
   // useEffect to handle table resize
   useEffect(() => {
@@ -164,6 +203,44 @@ const Market = ({
     });
   };
 
+  const useResourcePrices = () => {
+    const resource = resources?.find((r) =>
+      r.markets.some(
+        (m) => m.chainId === Number(chainId) && m.address === marketAddress
+      )
+    );
+    const epochData = resource?.markets
+      .find((m) => m.chainId === Number(chainId) && m.address === marketAddress)
+      ?.epochs.find((e) => e.epochId === Number(epoch));
+
+    return useQuery<ResourcePricePoint[]>({
+      queryKey: [
+        'resourcePrices',
+        resource?.slug,
+        epochData?.startTimestamp,
+        epochData?.endTimestamp,
+      ],
+      queryFn: async () => {
+        if (!resource?.slug || !epochData) {
+          return [];
+        }
+        const response = await fetch(
+          `${API_BASE_URL}/resources/${resource.slug}/prices?startTime=${epochData.startTimestamp}&endTime=${epochData.endTimestamp}`
+        );
+        if (!response.ok) {
+          throw new Error('Failed to fetch resource prices');
+        }
+        const data: ResourcePrice[] = await response.json();
+        return data.map((price) => ({
+          timestamp: Number(price.timestamp) * 1000,
+          price: Number(formatUnits(BigInt(price.value), 9)),
+        }));
+      },
+      refetchInterval: 2000,
+      enabled: !!resource?.slug && !!epochData,
+    });
+  };
+
   const {
     data: marketPrices,
     error: usePricesError,
@@ -179,16 +256,25 @@ const Market = ({
     refetch: refetchIndexPrices,
   } = useIndexPrices();
 
+  const {
+    data: resourcePrices,
+    error: useResourcePricesError,
+    isLoading: isLoadingResourcePrices,
+    refetch: refetchResourcePrices,
+  } = useResourcePrices();
+
   useEffect(() => {
     setIsRefetchingIndexPrices(true);
     refetchVolume();
     refetchPrices();
+    refetchResourcePrices();
     refetchIndexPrices().then(() => {
       setIsRefetchingIndexPrices(false);
     });
   }, [selectedWindow]);
 
-  const idxLoading = isLoadingIndexPrices || isRefetchingIndexPrices;
+  const idxLoading =
+    isLoadingIndexPrices || isRefetchingIndexPrices || isLoadingResourcePrices;
 
   const renderChart = () => {
     if (chartType === ChartType.PRICE) {
@@ -198,6 +284,7 @@ const Market = ({
           data={{
             marketPrices: marketPrices || [],
             indexPrices: indexPrices || [],
+            resourcePrices: resourcePrices || [],
           }}
           isLoading={idxLoading}
         />
@@ -248,6 +335,16 @@ const Market = ({
       });
     }
   }, [accountDataError, toast]);
+
+  useEffect(() => {
+    if (useResourcePricesError) {
+      toast({
+        title: 'Error loading resource prices',
+        description: useResourcePricesError.message,
+        duration: 5000,
+      });
+    }
+  }, [useResourcePricesError, toast]);
 
   return (
     <MarketProvider
