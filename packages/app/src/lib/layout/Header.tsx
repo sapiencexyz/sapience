@@ -398,13 +398,18 @@ const Header = () => {
     <header className="w-full py-3 z-[3] border-b border-border">
       <div className="mx-auto px-6 flex items-center justify-between">
         <Link href="/" className="inline-block">
-          <Image
-            src="/logo.svg"
-            alt="Foil"
-            width={100}
-            height={28}
-            className="dark:invert"
-          />
+          <div className="flex items-center gap-2">
+            <Image
+              src="/logo.svg"
+              alt="Foil"
+              width={100}
+              height={28}
+              className="dark:invert"
+            />
+            <span className="text-xs font-medium ml-1 px-1.5 py-0.5 rounded bg-primary/5 text-primary/60 border border-primary/10 tracking-widest">
+              BETA
+            </span>
+          </div>
         </Link>
 
         {isMobile ? (
