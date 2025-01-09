@@ -182,6 +182,22 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
   const { data: latestPrice, isLoading: isPriceLoading } =
     useLatestResourcePrice(params.id);
 
+  const [seriesVisibility, setSeriesVisibility] = React.useState({
+    candles: false,
+    index: false,
+    resource: true,
+  });
+
+  const toggleSeries = React.useCallback(
+    (series: 'candles' | 'index' | 'resource') => {
+      setSeriesVisibility((prev) => ({
+        ...prev,
+        [series]: !prev[series],
+      }));
+    },
+    []
+  );
+
   const { data: resourcePrices, isLoading: isResourcePricesLoading } = useQuery<
     ResourcePrice[]
   >({
@@ -251,6 +267,8 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
               }}
               activeWindow={TimeWindow.D}
               isLoading={isResourcePricesLoading}
+              seriesVisibility={seriesVisibility}
+              toggleSeries={toggleSeries}
             />
           </div>
         </div>

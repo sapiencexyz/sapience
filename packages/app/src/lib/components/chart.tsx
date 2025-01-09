@@ -4,10 +4,10 @@ import { createChart, CrosshairMode } from 'lightweight-charts';
 import { useTheme } from 'next-themes';
 import { useEffect, useRef, useContext, useState } from 'react';
 import type React from 'react';
-import { Button } from "~/components/ui/button";
 
 import type { PriceChartData, TimeWindow } from '../interfaces/interfaces';
 import { convertGgasPerWstEthToGwei } from '../util/util';
+import { Button } from '~/components/ui/button';
 import { MarketContext } from '~/lib/context/MarketProvider';
 
 interface Props {
@@ -18,6 +18,12 @@ interface Props {
   };
   activeWindow: TimeWindow;
   isLoading: boolean;
+  seriesVisibility: {
+    candles: boolean;
+    index: boolean;
+    resource: boolean;
+  };
+  toggleSeries: (series: 'candles' | 'index' | 'resource') => void;
 }
 
 interface IndexPrice {
@@ -34,6 +40,8 @@ const CandlestickChart: React.FC<Props> = ({
   data,
   activeWindow,
   isLoading,
+  seriesVisibility,
+  toggleSeries,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
@@ -43,34 +51,6 @@ const CandlestickChart: React.FC<Props> = ({
   const resourcePriceSeriesRef = useRef<any>(null);
   const { pool, stEthPerToken, useMarketUnits } = useContext(MarketContext);
   const { theme } = useTheme();
-
-  const [seriesVisibility, setSeriesVisibility] = useState<{
-    candles: boolean;
-    index: boolean;
-    resource: boolean;
-  }>({
-    candles: true,
-    index: true,
-    resource: true,
-  });
-
-  const toggleSeries = (series: 'candles' | 'index' | 'resource') => {
-    setSeriesVisibility(prev => {
-      const newVisibility = { ...prev, [series]: !prev[series] };
-
-      if (series === 'candles' && candlestickSeriesRef.current) {
-        candlestickSeriesRef.current.applyOptions({ visible: newVisibility.candles });
-      }
-      if (series === 'index' && indexPriceSeriesRef.current) {
-        indexPriceSeriesRef.current.applyOptions({ visible: newVisibility.index });
-      }
-      if (series === 'resource' && resourcePriceSeriesRef.current) {
-        resourcePriceSeriesRef.current.applyOptions({ visible: newVisibility.resource });
-      }
-
-      return newVisibility;
-    });
-  };
 
   // Split the chart creation and data updates into separate effects
 
@@ -84,7 +64,7 @@ const CandlestickChart: React.FC<Props> = ({
 
     const chart = createChart(chartContainerRef.current, {
       width: chartContainerRef.current.clientWidth,
-      height: 500,
+      height: chartContainerRef.current.clientHeight,
       layout: {
         background: { color: theme === 'dark' ? '#09090B' : '#ffffff' },
         textColor: theme === 'dark' ? '#ffffff' : '#000000',
@@ -136,17 +116,22 @@ const CandlestickChart: React.FC<Props> = ({
       lineWidth: 2,
     });
 
-    const handleResize = (entries: ResizeObserverEntry[]) => {
-      if (!chartRef.current) return;
-      const { width, height } = entries[0].contentRect;
-      chartRef.current.applyOptions({ width, height });
-      setTimeout(() => {
-        chartRef.current?.timeScale().fitContent();
-      }, 0);
+    const handleResize = () => {
+      if (!chartRef.current || !chartContainerRef.current) return;
+
+      const { clientWidth, clientHeight } = chartContainerRef.current;
+      chartRef.current.applyOptions({
+        width: clientWidth,
+        height: clientHeight,
+      });
+      chartRef.current.timeScale().fitContent();
     };
 
     resizeObserverRef.current = new ResizeObserver(handleResize);
     resizeObserverRef.current.observe(chartContainerRef.current);
+
+    // Initial resize
+    handleResize();
 
     return () => {
       if (resizeObserverRef.current && chartContainerRef.current) {
@@ -168,9 +153,7 @@ const CandlestickChart: React.FC<Props> = ({
       .map((mp, i) => {
         const timestamp = (mp.endTimestamp / 1000) as UTCTimestamp;
         const indexPrice = data.indexPrices[i]?.price || 0;
-        const adjustedPrice = isLoading
-          ? 0
-          : indexPrice / (stEthPerToken || 1);
+        const adjustedPrice = isLoading ? 0 : indexPrice / (stEthPerToken || 1);
 
         if (!mp.open || !mp.high || !mp.low || !mp.close) {
           return null;
@@ -221,36 +204,28 @@ const CandlestickChart: React.FC<Props> = ({
         resourcePriceSeriesRef.current.setData(resourceLineData);
       }
     }
-  }, [data, isLoading, stEthPerToken, useMarketUnits]);
+
+    // Update series visibility
+    if (candlestickSeriesRef.current) {
+      candlestickSeriesRef.current.applyOptions({
+        visible: seriesVisibility.candles,
+      });
+    }
+    if (indexPriceSeriesRef.current) {
+      indexPriceSeriesRef.current.applyOptions({
+        visible: seriesVisibility.index,
+      });
+    }
+    if (resourcePriceSeriesRef.current) {
+      resourcePriceSeriesRef.current.applyOptions({
+        visible: seriesVisibility.resource,
+      });
+    }
+  }, [data, isLoading, stEthPerToken, useMarketUnits, seriesVisibility]);
 
   return (
     <div className="flex flex-col flex-1">
-      <div className="flex gap-2 mb-2">
-        <Button
-          variant={seriesVisibility.candles ? "default" : "secondary"}
-          size="sm"
-          onClick={() => toggleSeries('candles')}
-        >
-          Market Price
-        </Button>
-        <Button
-          variant={seriesVisibility.index ? "default" : "secondary"}
-          size="sm"
-          onClick={() => toggleSeries('index')}
-        >
-          Index Price
-        </Button>
-        {(data.resourcePrices?.length ?? 0) > 0 && (
-          <Button
-            variant={seriesVisibility.resource ? "default" : "secondary"}
-            size="sm"
-            onClick={() => toggleSeries('resource')}
-          >
-            Resource Price
-          </Button>
-        )}
-      </div>
-      <div className="flex flex-1">
+      <div className="flex flex-1 h-full">
         <div ref={chartContainerRef} className="w-full h-full" />
       </div>
     </div>
