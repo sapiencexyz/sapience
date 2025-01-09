@@ -1,8 +1,8 @@
 {
   "name": "@foil/app",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
-  "author": "",
   "scripts": {
     "dev": "NODE_ENV=development next dev --port 3000",
     "build": "next build",

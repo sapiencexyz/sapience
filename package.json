@@ -1,7 +1,7 @@
 {
-  "name": "fh",
+  "name": "@foil/monorepo",
   "version": "0.1",
-  "description": "",
+  "private": true,
   "main": "index.js",
   "scripts": {
     "build": "pnpm --filter protocol run build && pnpm --filter app run build && pnpm --filter docs run build && pnpm --filter website run build && pnpm --filter data run build",
@@ -15,8 +15,6 @@
     "start:reindex-missing": "pnpm --filter data run start:reindex-missing"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
   "devDependencies": {
     "concurrently": "^8.2.2"
   },
