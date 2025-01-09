@@ -4,7 +4,7 @@
 
 import { formatDuration, intervalToDuration, format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HelpCircle, Loader2 } from 'lucide-react';
+import { HelpCircle, Loader2, Info } from 'lucide-react';
 import { type FC, useState, useEffect, useContext, useMemo } from 'react';
 import React from 'react';
 import CountUp from 'react-countup';
@@ -53,6 +53,7 @@ import { MarketContext } from '~/lib/context/MarketProvider';
 import NumberDisplay from './numberDisplay';
 import SimpleBarChart from './SimpleBarChart';
 import SizeInput from './sizeInput';
+import { Alert, AlertTitle, AlertDescription } from '~/components/ui/alert';
 
 const TOAST_DURATION = 3000;
 const LONG_TOAST_DURATION = 5000;
@@ -898,26 +899,27 @@ const Subscribe: FC<SubscribeProps> = ({
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="flex items-center mb-5">
-          <div className="border border-border rounded-full p-1.5 mr-2 h-8 w-8 overflow-hidden">
+        <div className="flex items-center mb-4">
+          <div className="border border-border rounded-full p-1 mr-2 h-6 w-6 overflow-hidden">
             <img src="/eth.svg" alt="Ethereum" width="100%" height="100%" />
           </div>
 
-          <h2 className="text-lg md:text-2xl font-semibold">
+          <h2 className="text-xl font-semibold">
             {marketName} Subscription
           </h2>
         </div>
 
-        <p className="mb-6">
+        <p className="mb-3 text-lg">
           Enter the amount of gas you expect to use between {formattedStartTime}{' '}
           and {formattedEndTime}.
         </p>
 
+<div 
+        className="mb-7">
         <FormField
           control={control}
           name="sizeInput"
           render={({ field }) => (
-            <>
               <SizeInput
                 setSize={(newSize) => {
                   setSizeValue(newSize);
@@ -928,13 +930,19 @@ const Subscribe: FC<SubscribeProps> = ({
                 error={quoteError || undefined}
                 {...field}
               />
-              <p className="text-sm text-muted-foreground mt-2">
-                If the average gas price exceeds the quote during the period,
-                you can redeem a rebate.
-              </p>
-            </>
           )}
         />
+</div>
+
+               
+<Alert>
+  <Info className="h-4 w-4" />
+  <AlertTitle>How it works</AlertTitle>
+  <AlertDescription>
+  If the average gas price exceeds the quote during the period,
+  you can redeem a rebate.
+  </AlertDescription>
+</Alert>
 
         <div className=" bg-muted p-4 rounded-lg space-y-2 my-7">
           <p className="text-sm font-semibold text-muted-foreground">Quote</p>

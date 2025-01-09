@@ -326,7 +326,7 @@ const SubscriptionsList = () => {
       })}
 
       <Dialog open={sellDialogOpen} onOpenChange={setSellDialogOpen}>
-        <DialogContent className="max-w-[460px]">
+        <DialogContent className="max-w-[410px]">
           <DialogHeader>
             <DialogTitle>
               Close Position #{selectedPosition?.positionId}
@@ -428,7 +428,7 @@ const SubscribeContent = () => {
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-[460px]">
+          <DialogContent className="max-w-[410px]">
             <Subscribe
               initialSize={prefilledSize}
               onClose={() => setIsDialogOpen(false)}
@@ -437,11 +437,10 @@ const SubscribeContent = () => {
         </Dialog>
 
         <Dialog open={isAnalyticsOpen} onOpenChange={setIsAnalyticsOpen}>
-          <DialogContent className="max-w-[460px]">
+          <DialogContent className="max-w-[410px]">
             <DialogHeader>
-              <DialogTitle>Wallet Analytics</DialogTitle>
+              <DialogTitle className="text-xl">Wallet Analytics</DialogTitle>
             </DialogHeader>
-            <div className="py-4">
               <Subscribe
                 onAnalyticsClose={(size) => {
                   setPrefilledSize(size);
@@ -450,7 +449,6 @@ const SubscribeContent = () => {
                 }}
                 isAnalyticsMode
               />
-            </div>
           </DialogContent>
         </Dialog>
       </div>
