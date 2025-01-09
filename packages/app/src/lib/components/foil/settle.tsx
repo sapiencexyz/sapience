@@ -27,6 +27,8 @@ export default function Settle() {
     epochSettled,
     settlementPrice,
     collateralAssetTicker,
+    useMarketUnits,
+    stEthPerToken,
   } = useContext(MarketContext);
   const { nftId, setNftId, positions } = useAddEditPosition();
   const [withdrawableCollateral, setWithdrawableCollateral] = useState<bigint>(
@@ -125,17 +127,17 @@ export default function Settle() {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-3">Settle Position</h2>
+      <h2 className="text-xl font-semibold mb-4">Settle Position</h2>
       <div className="mb-4">
         <PositionSelector />
       </div>
       {withdrawableCollateral > BigInt(0) && (
         <div className="mb-4">
-          <p className="text-sm text-muted-foreground font-semibold mb-0.5">
+          <p className="text-sm font-semibold mb-0.5">
             {!(epochSettled && settlementPrice) ? 'Anticipated' : null}{' '}
             Withdrawable Collateral
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm">
             <NumberDisplay value={formatUnits(withdrawableCollateral, 18)} />{' '}
             {collateralAssetTicker}
           </p>
@@ -143,9 +145,13 @@ export default function Settle() {
       )}
       {epochSettled && settlementPrice ? (
         <>
-          <p className="mb-4">
-            Settlement Price: {formatUnits(settlementPrice, 18)}
-          </p>
+          <div className="mb-6">
+            <p className="text-sm font-semibold mb-0.5">Settlement Price</p>
+            <p className="text-sm">
+              <NumberDisplay value={formatUnits(settlementPrice, 18)} />{' '}
+              wstETH/Ggas
+            </p>
+          </div>
           <Button
             className="w-full"
             onClick={handleSettle}
