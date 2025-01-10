@@ -54,7 +54,6 @@ const SUBSCRIPTIONS_QUERY = gql`
           id
           chainId
           address
-          name
         }
       }
     }
@@ -227,7 +226,7 @@ const SubscriptionsList = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const isInView = useIsInViewport(containerRef);
 
-  if (isLoading) {
+  if (isLoading || isResourcesLoading) {
     return (
       <div className="flex justify-center items-center w-full my-6">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -271,7 +270,10 @@ const SubscriptionsList = () => {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
       {subscriptions.map((subscription) => {
         const resource = resources?.find(
-          (r) => r.name === subscription.epoch.market.name
+          (r) => r.markets.some(m => 
+            m.chainId === subscription.epoch.market.chainId && 
+            m.address.toLowerCase() === subscription.epoch.market.address.toLowerCase()
+          )
         );
 
         return (
@@ -289,8 +291,8 @@ const SubscriptionsList = () => {
                   className="rounded-full"
                 />
               )}
-              <h3 className="font-medium truncate  text-2xl">
-                {subscription.epoch.market.name}
+              <h3 className="font-medium truncate text-2xl">
+                {resource?.name || 'Unknown Resource'}
               </h3>
             </div>
 
@@ -410,18 +412,43 @@ const SubscribeContent = () => {
   const { markets } = useMarketList();
   const currentTime = Math.floor(Date.now() / 1000);
 
-  // Find the gas market
-  const gasMarket = useMemo(() => {
-    const ethGasResource = resources?.find((r) => r.name === 'Ethereum Gas');
-    return markets.find((market) => market.name === ethGasResource?.name);
+  // Find all gas markets
+  const gasMarkets = useMemo(() => {
+    if (!resources) return [];
+    const ethGasResource = resources.find((r) => r.name === 'Ethereum Gas');
+    if (!ethGasResource) return [];
+    console.log('Resources:', resources);
+    console.log('Eth Gas Resource:', ethGasResource);
+    console.log('Markets:', markets);
+    
+    // Filter markets based on the resource's markets array
+    const filteredMarkets = markets.filter((market) => 
+      ethGasResource.markets.some(
+        resourceMarket => 
+          resourceMarket.chainId === market.chainId && 
+          resourceMarket.address.toLowerCase() === market.address.toLowerCase()
+      )
+    );
+    
+    console.log('Filtered Gas Markets:', filteredMarkets);
+    return filteredMarkets;
   }, [markets, resources]);
 
-  // Get the next epoch or most recent epoch
+  // Get all epochs from gas markets and find the target epoch
   const targetEpoch = useMemo(() => {
-    if (!gasMarket) return null;
+    if (!gasMarkets.length) return null;
+
+    // Collect all epochs from gas markets with their corresponding market data
+    const allEpochs = gasMarkets.flatMap(market => 
+      market.epochs.map(epoch => ({
+        ...epoch,
+        market
+      }))
+    );
+    console.log('All Epochs:', allEpochs);
 
     // Sort epochs by start time
-    const sortedEpochs = [...gasMarket.epochs].sort(
+    const sortedEpochs = allEpochs.sort(
       (a, b) => a.startTimestamp - b.startTimestamp
     );
 
@@ -429,10 +456,13 @@ const SubscribeContent = () => {
     const nextEpoch = sortedEpochs.find(
       (epoch) => epoch.startTimestamp > currentTime
     );
+    console.log('Current Time:', currentTime);
+    console.log('Next Epoch:', nextEpoch);
+    console.log('Most Recent Epoch:', sortedEpochs[sortedEpochs.length - 1]);
 
     // If no future epoch, get the most recent one
     return nextEpoch || sortedEpochs[sortedEpochs.length - 1] || null;
-  }, [gasMarket, currentTime]);
+  }, [gasMarkets, currentTime]);
 
   const handleNewSubscription = () => {
     setIsDialogOpen(true);
@@ -450,7 +480,7 @@ const SubscribeContent = () => {
     );
   }
 
-  if (!gasMarket || !targetEpoch) {
+  if (!gasMarkets.length || !targetEpoch) {
     return (
       <div className="text-muted-foreground text-center my-6">
         Gas market not found
@@ -459,16 +489,16 @@ const SubscribeContent = () => {
   }
 
   return (
-    <MarketProvider
-      chainId={gasMarket.chainId}
-      address={gasMarket.address}
-      epoch={targetEpoch.epochId}
-    >
       <div className="flex-1 flex flex-col">
         <div className="py-9 px-4">
           <div className="max-w-4xl mx-auto w-full">
             <div className="flex justify-between md:items-center mb-6 flex-col md:flex-row">
               <h1 className="text-3xl font-bold mb-4 md:mb-0">Subscriptions</h1>
+    <MarketProvider
+      chainId={targetEpoch.market.chainId}
+      address={targetEpoch.market.address}
+      epoch={targetEpoch.epochId}
+    >
               <div className="flex flex-row gap-3 md:gap-5 w-full md:w-auto">
                 <Button variant="outline" onClick={handleAnalytics}>
                   <ChartNoAxesColumn className="text-muted-foreground" />
@@ -479,6 +509,7 @@ const SubscribeContent = () => {
                   New Subscription
                 </Button>
               </div>
+    </MarketProvider>
             </div>
 
             <div className="flex-1">
@@ -512,7 +543,6 @@ const SubscribeContent = () => {
           </DialogContent>
         </Dialog>
       </div>
-    </MarketProvider>
   );
 };
 
