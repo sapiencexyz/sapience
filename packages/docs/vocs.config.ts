@@ -5,6 +5,7 @@ export default defineConfig({
   theme: { 
     colorScheme: 'light'
   }, 
+  logoUrl: '/images/logo.svg',
   sidebar: [
     {
       text: 'Get Started',
@@ -54,10 +55,14 @@ export default defineConfig({
       text: 'Technical Documentation', 
       collapsed: false, 
       items: [
-      { 
-        text: 'Deployments', 
-        link: 'https://usecannon.com/packages/foil',
-      },
+        { 
+          text: 'Deployments', 
+          link: 'https://usecannon.com/packages/foil',
+        },
+        { 
+          text: 'Source Code', 
+          link: 'https://github.com/foilxyz/foil',
+        },
       ], 
     }
   ]

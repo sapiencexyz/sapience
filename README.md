@@ -1,5 +1,11 @@
 # 👽 Foil
 
+Foil is a fully decentralized marketplace connecting producers of onchain computing resources with consumers.
+
+See the [website](https://foil.xyz), [app](https://app.foil.xyz), and [docs](https://docs.foil.xyz).
+
+## Develop
+
 - Start the protocol on a local node
   - `pnpm run dev:protocol` and press `i` to interact with it
 - Start the app
@@ -17,6 +23,7 @@
 - Go to `/packages/protocol`
 - Bump the version in `/packages/protocol/package.json`
 - Verify there are no issues with `pnpm simulate-deploy:sepolia --rpc-url <rpc-url> --private-key <private-key>`
+Then:
 ```
 pnpm deploy:sepolia --rpc-url <rpc-url> --private-key <private-key>
 pnpm cannon publish foil --chain-id 11155111 --private-key <private-key>
@@ -26,3 +33,5 @@ git commit -m "Foil v<version-number>"
 git tag v<version-number>
 git push origin main --tags
 ```
+
+See [deployments](https://usecannon.com/packages/foil).

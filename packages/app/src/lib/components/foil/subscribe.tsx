@@ -4,7 +4,7 @@
 
 import { formatDuration, intervalToDuration, format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HelpCircle, Loader2 } from 'lucide-react';
+import { HelpCircle, Loader2, Info, BookTextIcon } from 'lucide-react';
 import { type FC, useState, useEffect, useContext, useMemo } from 'react';
 import React from 'react';
 import CountUp from 'react-countup';
@@ -31,6 +31,7 @@ import {
 } from 'wagmi';
 
 import erc20ABI from '../../erc20abi.json';
+import { Alert, AlertTitle, AlertDescription } from '~/components/ui/alert';
 import { Button } from '~/components/ui/button';
 import {
   Form,
@@ -701,17 +702,6 @@ const Subscribe: FC<SubscribeProps> = ({
     );
   }
 
-  if (!address) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-4 py-8">
-        <h2 className="text-lg font-medium">Connect your wallet</h2>
-        <p className="text-sm text-muted-foreground">
-          Connect your wallet to view and manage subscriptions
-        </p>
-      </div>
-    );
-  }
-
   if (isAnalyticsMode) {
     return (
       <Form {...form}>
@@ -898,26 +888,24 @@ const Subscribe: FC<SubscribeProps> = ({
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="flex items-center mb-5">
-          <div className="border border-border rounded-full p-1.5 mr-2 h-8 w-8 overflow-hidden">
+        <div className="flex items-center mb-4">
+          <div className="border border-border rounded-full p-1 mr-2 h-8 w-8 overflow-hidden">
             <img src="/eth.svg" alt="Ethereum" width="100%" height="100%" />
           </div>
 
-          <h2 className="text-lg md:text-2xl font-semibold">
-            {marketName} Subscription
-          </h2>
+          <h2 className="text-2xl font-semibold">{marketName} Subscription</h2>
         </div>
 
-        <p className="mb-6">
+        <p className="mb-3 text-lg">
           Enter the amount of gas you expect to use between {formattedStartTime}{' '}
           and {formattedEndTime}.
         </p>
 
-        <FormField
-          control={control}
-          name="sizeInput"
-          render={({ field }) => (
-            <>
+        <div className="mb-7">
+          <FormField
+            control={control}
+            name="sizeInput"
+            render={({ field }) => (
               <SizeInput
                 setSize={(newSize) => {
                   setSizeValue(newSize);
@@ -928,13 +916,29 @@ const Subscribe: FC<SubscribeProps> = ({
                 error={quoteError || undefined}
                 {...field}
               />
-              <p className="text-sm text-muted-foreground mt-2">
-                If the average gas price exceeds the quote during the period,
-                you can redeem a rebate.
-              </p>
-            </>
-          )}
-        />
+            )}
+          />
+        </div>
+
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertTitle>How It Works</AlertTitle>
+          <AlertDescription>
+            <div>
+              If the average gas price exceeds the quote during the period, you
+              can redeem a rebate.
+            </div>
+            <a
+              href="https://docs.foil.xyz"
+              target="_blank"
+              className="underline text-xs text-muted-foreground mt-2 inline-block"
+              rel="noreferrer"
+            >
+              <BookTextIcon className="inline -mt-0.5 mr-1 h-3.5 w-3.5" />
+              Read the docs
+            </a>
+          </AlertDescription>
+        </Alert>
 
         <div className=" bg-muted p-4 rounded-lg space-y-2 my-7">
           <p className="text-sm font-semibold text-muted-foreground">Quote</p>
