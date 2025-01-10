@@ -920,7 +920,6 @@ const AddEditLiquidity: React.FC = () => {
 
     return (
       <Button className="w-full" size="lg" type="submit" disabled={isDisabled}>
-        {(pendingTxn || isFetching) && <Loader2 className="animate-spin" />}
         {getButtonText()}
       </Button>
     );

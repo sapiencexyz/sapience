@@ -411,10 +411,10 @@ const SubscribeContent = () => {
   const currentTime = Math.floor(Date.now() / 1000);
 
   // Find the gas market
-  const gasMarket = useMemo(
-    () => markets.find((market) => market.name === 'Ethereum Gas'),
-    [markets]
-  );
+  const gasMarket = useMemo(() => {
+    const ethGasResource = resources?.find((r) => r.name === 'Ethereum Gas');
+    return markets.find((market) => market.name === ethGasResource?.name);
+  }, [markets, resources]);
 
   // Get the next epoch or most recent epoch
   const targetEpoch = useMemo(() => {
