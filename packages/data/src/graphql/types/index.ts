@@ -91,6 +91,9 @@ export class PositionType {
 
   @Field(() => String, { nullable: true })
   lpQuoteToken: string | null;
+
+  @Field(() => Boolean, { nullable: true })
+  isSettled: boolean | null;
 }
 
 @ObjectType()

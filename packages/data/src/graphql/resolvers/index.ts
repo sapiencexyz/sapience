@@ -65,6 +65,7 @@ const mapPositionToType = (position: Position): PositionType => ({
   borrowedQuoteToken: position.borrowedQuoteToken,
   lpBaseToken: position.lpBaseToken,
   lpQuoteToken: position.lpQuoteToken,
+  isSettled: position.isSettled,
 });
 
 const mapTransactionToType = (transaction: Transaction): TransactionType => ({

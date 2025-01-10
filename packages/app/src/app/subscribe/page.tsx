@@ -44,6 +44,7 @@ const SUBSCRIPTIONS_QUERY = gql`
       borrowedBaseToken
       borrowedQuoteToken
       collateral
+      isSettled
       epoch {
         id
         epochId
@@ -164,7 +165,8 @@ const useSubscriptions = (address?: string) => {
     const activePositions = positionsData.positions.filter(
       (position: any) =>
         !position.isLP && // Not an LP position
-        BigInt(position.baseToken) > BigInt(0) // Has positive baseToken
+        BigInt(position.baseToken) > BigInt(0) && // Has positive baseToken
+        !position.isSettled // Not settled
     );
 
     // For each position, fetch its transactions
