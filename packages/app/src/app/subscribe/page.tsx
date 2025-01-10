@@ -250,7 +250,7 @@ const SubscriptionsList = () => {
             <Spline scene="https://prod.spline.design/gyoZ1cjoFk5-20wQ/scene.splinecode" />
           )}
         </div>
-        <div className="fixed z-10 max-w-[280px] md:max-w-[460px] text-accent text-xl w-full md:text-4xl font-semibold tracking-wide text-center top-[66%] md:top-[55%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-100 bg-white/10 backdrop-blur-lg p-4 rounded-lg border border-accent/20 shadow-lg">
+        <div className="fixed z-10 max-w-[280px] md:max-w-[460px] text-white text-xl w-full md:text-4xl font-semibold tracking-wide text-center top-[66%] md:top-[55%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-100 bg-white/10 backdrop-blur-lg p-4 rounded-lg border border-accent/20 shadow-lg">
           Connect your wallet to view your subscriptions
         </div>
       </div>
