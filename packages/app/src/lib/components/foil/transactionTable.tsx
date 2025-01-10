@@ -64,8 +64,11 @@ const TransactionTable: React.FC<Props> = ({ transactions }) => {
       {
         id: 'market',
         header: 'Market',
-        accessorFn: (row) =>
-          `${row.position.epoch.market.name} (Epoch ${row.position.epoch.epochId})`,
+        accessorFn: (row) => {
+          const marketName = row.position?.epoch?.market?.resource?.name || 'Unknown Market';
+          const epochId = row.position?.epoch?.epochId || '';
+          return `${marketName} (Epoch ${epochId})`;
+        },
       },
       {
         id: 'position',

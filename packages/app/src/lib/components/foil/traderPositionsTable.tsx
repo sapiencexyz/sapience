@@ -172,8 +172,8 @@ const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
       {
         id: 'market',
         header: 'Market',
-        accessorFn: (row) =>
-          `${row.epoch.market.name} (Epoch ${row.epoch.epochId})`,
+        accessorFn: (row: any) =>
+          `${row.epoch.market.resource.name} (Epoch ${row.epoch.epochId})`,
       },
       {
         id: 'position',
