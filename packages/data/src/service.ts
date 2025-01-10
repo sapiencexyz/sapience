@@ -1445,6 +1445,16 @@ const startServer = async () => {
 
       const hydratedTransaction = {
         ...transaction,
+        position: {
+          ...transaction.position,
+          epoch: {
+            ...transaction.position?.epoch,
+            market: {
+              ...transaction.position?.epoch?.market,
+              resource: transaction.position?.epoch?.market?.resource
+            }
+          }
+        },
         collateralDelta: "0",
         baseTokenDelta: "0",
         quoteTokenDelta: "0",
@@ -1485,9 +1495,9 @@ const startServer = async () => {
       hydratedPositions.push(hydratedTransaction);
 
       // set up for next transaction
-      lastBaseToken = BigInt(currentBaseTokenBalance);
-      lastQuoteToken = BigInt(currentQuoteTokenBalance);
-      lastCollateral = BigInt(currentCollateralBalance);
+      lastBaseToken = BigInt(transaction.baseToken);
+      lastQuoteToken = BigInt(transaction.quoteToken);
+      lastCollateral = BigInt(transaction.collateral);
     }
     return hydratedPositions;
   };

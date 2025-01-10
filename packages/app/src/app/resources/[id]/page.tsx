@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { type ColumnDef } from '@tanstack/react-table';
 import { format } from 'date-fns';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import React from 'react';
 import { formatUnits } from 'viem';
@@ -177,7 +177,7 @@ const renderPriceDisplay = (
 };
 
 const MarketContent = ({ params }: { params: { id: string } }) => {
-  const { data: resources } = useResources();
+  const { data: resources, isLoading: isLoadingResources } = useResources();
   const category = MARKET_CATEGORIES.find((c) => c.id === params.id);
   const { data: latestPrice, isLoading: isPriceLoading } =
     useLatestResourcePrice(params.id);
@@ -218,6 +218,14 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
     return (
       <div className="flex justify-center items-center py-8">
         <p>Resource not found</p>
+      </div>
+    );
+  }
+
+  if (isLoadingResources) {
+    return (
+      <div className="flex justify-center items-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
