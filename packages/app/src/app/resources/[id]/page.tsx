@@ -159,7 +159,8 @@ const generatePlaceholderIndexPrices = () => {
 
 const renderPriceDisplay = (
   isLoading: boolean,
-  price: ResourcePrice | undefined
+  price: ResourcePrice | undefined,
+  resourceId: string
 ) => {
   if (isLoading) {
     return <span className="text-2xl font-bold">Loading...</span>;
@@ -169,9 +170,11 @@ const renderPriceDisplay = (
     return <span className="text-2xl font-bold">No price data</span>;
   }
 
+  const unit = resourceId === 'celestia-blobspace' ? 'μTIA' : 'gwei';
+
   return (
     <span className="text-2xl font-bold">
-      <NumberDisplay value={formatUnits(BigInt(price.value), 9)} /> gwei
+      <NumberDisplay value={formatUnits(BigInt(price.value), 9)} /> {unit}
     </span>
   );
 };
@@ -261,7 +264,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
                     Current Price
                   </span>
                   <div className="flex items-baseline gap-2">
-                    {renderPriceDisplay(isPriceLoading, latestPrice)}
+                    {renderPriceDisplay(isPriceLoading, latestPrice, params.id)}
                   </div>
                 </div>
               </CardContent>
