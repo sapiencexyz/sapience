@@ -958,7 +958,7 @@ const startServer = async () => {
 
       const positions = await positionRepository.find({
         where: { owner: address },
-        relations: ["epoch", "epoch.market", "transactions"],
+        relations: ["epoch", "epoch.market", "epoch.market.resource", "transactions"],
       });
 
       const transactions = await transactionRepository.find({
@@ -967,6 +967,7 @@ const startServer = async () => {
           "position",
           "position.epoch",
           "position.epoch.market",
+          "position.epoch.market.resource",
           "event",
         ],
       });

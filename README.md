@@ -11,8 +11,8 @@ See the [website](https://foil.xyz), [app](https://app.foil.xyz), and [docs](htt
 - Start the app
   - `pnpm run dev:app` and access at http://localhost:3000
   - Connect your wallet application to http://localhost:8545 (Chain ID 13370) **Remember to reset the nonce in the wallet after restarting the node.**
-- Start the data service
-  - `pnpm run dev:data` and access at http://localhost:3001
+- Start the API
+  - `pnpm run dev:api` and access at http://localhost:3001
 - Start the website
   - `pnpm run dev:website` and access at http://localhost:3002
 - Start the docs
@@ -23,6 +23,7 @@ See the [website](https://foil.xyz), [app](https://app.foil.xyz), and [docs](htt
 - Go to `/packages/protocol`
 - Bump the version in `/packages/protocol/package.json`
 - Verify there are no issues with `pnpm simulate-deploy:sepolia --rpc-url <rpc-url> --private-key <private-key>`
+
 Then:
 ```
 pnpm deploy:sepolia --rpc-url <rpc-url> --private-key <private-key>
