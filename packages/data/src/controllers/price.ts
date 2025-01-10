@@ -16,9 +16,9 @@ export const upsertIndexPriceFromResourcePrice = async (
     where: { resource: { id: resourcePrice.resource.id } },
   });
   if (markets.length === 0) {
-    console.log(
-      `Market not found for resource price ${resourcePrice.id} ${resourcePrice.resource.name}`
-    );
+    // console.log(
+    //   `Market not found for resource price ${resourcePrice.id} ${resourcePrice.resource.name}`
+    // );
     return;
   }
   for (const market of markets) {

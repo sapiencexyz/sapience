@@ -47,6 +47,15 @@ const initializeMarkets = async () => {
       public: true,
       resource: RESOURCES[0], // Ethereum Gas
     },
+    {
+      name: "Ethereum Gas",
+      deployment: await safeRequire(
+        "@/protocol/deployments/11155111/FoilYang.json"
+      ),
+      marketChainId: sepolia.id,
+      public: true,
+      resource: RESOURCES[0], // Ethereum Gas
+    },
   ];
 
   return FULL_MARKET_LIST.filter(
