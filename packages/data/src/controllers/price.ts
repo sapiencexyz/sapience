@@ -11,65 +11,63 @@ import {
 export const upsertIndexPriceFromResourcePrice = async (
   resourcePrice: ResourcePrice
 ) => {
-  // Celestia Blobspace is TEMPORARILY not indexed by the protocol, so we skip it up to now
-  // TODO: remove this once the protocol is updated to index Celestia Blobspace
-  if (resourcePrice.resource.name === "Celestia Blobspace") {
-    return;
-  }
-
   // Get the market associated with the resource price's resource
-  const market = await marketRepository.findOne({
+  const markets = await marketRepository.find({
     where: { resource: { id: resourcePrice.resource.id } },
   });
-  if (!market) {
-    throw new Error(`Market not found for resource price ${resourcePrice.id}`);
+  if (markets.length === 0) {
+    console.log(
+      `Market not found for resource price ${resourcePrice.id} ${resourcePrice.resource.name}`
+    );
+    return;
   }
-
-  // Find all epochs associated with that market that have a startTime before or including the timestamp of the resource price and an endTime after or including the timestamp of the resource price
-  const relevantEpochs = await epochRepository.find({
-    where: {
-      market: { id: market.id },
-      startTimestamp: LessThanOrEqual(resourcePrice.timestamp),
-      endTimestamp: MoreThanOrEqual(resourcePrice.timestamp),
-    },
-  });
-
-  // For each of these epochs
-  for (const epoch of relevantEpochs) {
-    // Get all resource prices for the resource that are within the bounds of the epoch
-    const resourcePrices = await resourcePriceRepository.find({
+  for (const market of markets) {
+    // Find all epochs associated with that market that have a startTime before or including the timestamp of the resource price and an endTime after or including the timestamp of the resource price
+    const relevantEpochs = await epochRepository.find({
       where: {
-        resource: { id: resourcePrice.resource.id },
-        timestamp: Between(epoch.startTimestamp!, resourcePrice.timestamp!),
+        market: { id: market.id },
+        startTimestamp: LessThanOrEqual(resourcePrice.timestamp),
+        endTimestamp: MoreThanOrEqual(resourcePrice.timestamp),
       },
-      order: { timestamp: "ASC" },
     });
 
-    const totalGasUsed: bigint = resourcePrices.reduce(
-      (total, price) => total + BigInt(price.used),
-      0n
-    );
+    // For each of these epochs
+    for (const epoch of relevantEpochs) {
+      // Get all resource prices for the resource that are within the bounds of the epoch
+      const resourcePrices = await resourcePriceRepository.find({
+        where: {
+          resource: { id: resourcePrice.resource.id },
+          timestamp: Between(epoch.startTimestamp!, resourcePrice.timestamp!),
+        },
+        order: { timestamp: "ASC" },
+      });
 
-    const totalBaseFeesPaid: bigint = resourcePrices.reduce(
-      (total, price) => total + BigInt(price.feePaid),
-      0n
-    );
+      const totalGasUsed: bigint = resourcePrices.reduce(
+        (total, price) => total + BigInt(price.used),
+        0n
+      );
 
-    const averagePrice: bigint = totalBaseFeesPaid / totalGasUsed;
+      const totalBaseFeesPaid: bigint = resourcePrices.reduce(
+        (total, price) => total + BigInt(price.feePaid),
+        0n
+      );
 
-    // Create or update the index price associated with the epoch
-    let indexPrice = await indexPriceRepository.findOne({
-      where: { epoch: { id: epoch.id }, timestamp: resourcePrice.timestamp },
-    });
+      const averagePrice: bigint = totalBaseFeesPaid / totalGasUsed;
 
-    if (!indexPrice) {
-      indexPrice = new IndexPrice();
-      indexPrice.epoch = epoch;
-      indexPrice.timestamp = resourcePrice.timestamp;
+      // Create or update the index price associated with the epoch
+      let indexPrice = await indexPriceRepository.findOne({
+        where: { epoch: { id: epoch.id }, timestamp: resourcePrice.timestamp },
+      });
+
+      if (!indexPrice) {
+        indexPrice = new IndexPrice();
+        indexPrice.epoch = epoch;
+        indexPrice.timestamp = resourcePrice.timestamp;
+      }
+
+      indexPrice.value = averagePrice.toString();
+
+      await indexPriceRepository.save(indexPrice);
     }
-
-    indexPrice.value = averagePrice.toString();
-
-    await indexPriceRepository.save(indexPrice);
   }
 };

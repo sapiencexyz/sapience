@@ -132,7 +132,6 @@ export interface MarketInfo {
     name: string;
     priceIndexer: IResourcePriceIndexer;
   };
-  deployMarket: boolean;
 }
 
 export enum EventTransactionType {

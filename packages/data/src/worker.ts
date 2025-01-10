@@ -115,38 +115,50 @@ async function main() {
       where: { name: marketInfo.resource.name },
     });
     if (!resource) {
-      throw new Error(`Resource not found: ${marketInfo.resource.name}`);
+      console.log(`Resource not found: ${marketInfo.resource.name}`);
+      continue;
     }
 
-    if (marketInfo.deployMarket) {
-      const market = await initializeMarket(marketInfo);
-      console.log(
-        "initialized market",
-        market.address,
-        "on chain",
-        market.chainId
-      );
+    const market = await initializeMarket(marketInfo);
+    console.log(
+      "initialized market",
+      market.address,
+      "on chain",
+      market.chainId
+    );
 
-      // Set the resource for the market
-      market.resource = resource;
-      await marketRepository.save(market);
+    // Set the resource for the market
+    market.resource = resource;
+    await marketRepository.save(market);
 
-      await createOrUpdateEpochFromContract(marketInfo, market);
-
-      jobs.push(
-        createResilientProcess(
-          () => indexMarketEvents(market, marketInfo.deployment.abi),
-          `indexMarketEvents-${market.address}`
-        )()
-      );
-    }
+    await createOrUpdateEpochFromContract(marketInfo, market);
 
     jobs.push(
       createResilientProcess(
-        () => marketInfo.resource.priceIndexer.watchBlocksForResource(resource),
-        `watchBlocksForResource-${resource.name}`
+        () => indexMarketEvents(market, marketInfo.deployment.abi),
+        `indexMarketEvents-${market.address}`
       )()
     );
+  }
+
+  // Watch for new blocks for each resource
+  for (const resourceInfo of RESOURCES) {
+    const resource = await resourceRepository.findOne({
+      where: { name: resourceInfo.name },
+    });
+    if (!resource) {
+      console.log(`Resource not found: ${resourceInfo.name}`);
+      continue;
+    }
+
+    if (resourceInfo.priceIndexer) {
+      jobs.push(
+        createResilientProcess(
+          () => resourceInfo.priceIndexer.watchBlocksForResource(resource),
+          `watchBlocksForResource-${resourceInfo.name}`
+        )()
+      );
+    }
   }
 
   await Promise.all(jobs);

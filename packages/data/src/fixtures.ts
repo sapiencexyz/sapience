@@ -36,7 +36,6 @@ const initializeMarkets = async () => {
       marketChainId: cannon.id,
       public: true,
       resource: RESOURCES[0], // Ethereum Gas
-      deployMarket: true,
     },
     */
     {
@@ -47,22 +46,11 @@ const initializeMarkets = async () => {
       marketChainId: sepolia.id,
       public: true,
       resource: RESOURCES[0], // Ethereum Gas
-      deployMarket: true,
-    },
-    {
-      name: "Celestia Blobspace",
-      deployment: await safeRequire(
-        "@/protocol/deployments/23422/FoilYin.json"
-      ),
-      marketChainId: 23422,
-      public: true,
-      resource: RESOURCES[1], // Celestia Blobspace
-      deployMarket: false,
     },
   ];
 
   return FULL_MARKET_LIST.filter(
-    (market) => !market.deployMarket || market.deployment !== null
+    (market) => market.deployment !== null
   ) as MarketInfo[];
 };
 
