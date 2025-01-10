@@ -224,7 +224,11 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
 
   useEffect(() => {
     console.log('latestPrice =', latestPrice);
-    if (latestPrice !== undefined && latestPrice !== null && stEthPerTokenResult.data) {
+    if (
+      latestPrice !== undefined &&
+      latestPrice !== null &&
+      stEthPerTokenResult.data
+    ) {
       const stEthPerToken = Number(
         gweiToEther(stEthPerTokenResult.data as bigint)
       );
@@ -241,9 +245,9 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
       setState((currentState) => ({
         ...currentState,
         averagePrice: 0,
-        stEthPerToken: stEthPerTokenResult.data ? Number(
-          gweiToEther(stEthPerTokenResult.data as bigint)
-        ) : undefined,
+        stEthPerToken: stEthPerTokenResult.data
+          ? Number(gweiToEther(stEthPerTokenResult.data as bigint))
+          : undefined,
       }));
     }
   }, [latestPrice, stEthPerTokenResult.data]);
