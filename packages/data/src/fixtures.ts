@@ -39,7 +39,6 @@ const initializeMarkets = async () => {
     },
     */
     {
-      name: "Ethereum Gas",
       deployment: await safeRequire(
         "@/protocol/deployments/11155111/FoilYin.json"
       ),
@@ -48,7 +47,6 @@ const initializeMarkets = async () => {
       resource: RESOURCES[0], // Ethereum Gas
     },
     {
-      name: "Ethereum Gas",
       deployment: await safeRequire(
         "@/protocol/deployments/11155111/FoilYang.json"
       ),

@@ -8,7 +8,13 @@ import { Position } from "./models/Position";
 import { cannon } from "viem/chains";
 import { Market } from "./models/Market";
 import express, { Request, Response, NextFunction } from "express";
-import { Between, In, Repository, LessThanOrEqual, MoreThanOrEqual } from "typeorm";
+import {
+  Between,
+  In,
+  Repository,
+  LessThanOrEqual,
+  MoreThanOrEqual,
+} from "typeorm";
 import { Transaction } from "./models/Transaction";
 import { Epoch } from "./models/Epoch";
 import { formatUnits } from "viem";
@@ -185,9 +191,9 @@ const startServer = async () => {
   // Helper middleware to handle async errors
   const handleAsyncErrors =
     (fn: (req: Request, res: Response, next: NextFunction) => Promise<void>) =>
-      (req: Request, res: Response, next: NextFunction) => {
-        Promise.resolve(fn(req, res, next)).catch(next);
-      };
+    (req: Request, res: Response, next: NextFunction) => {
+      Promise.resolve(fn(req, res, next)).catch(next);
+    };
 
   // Helper function to parse and validate contractId
   const parseContractId = (
@@ -1015,13 +1021,13 @@ const startServer = async () => {
       while (true) {
         const response = await fetch(
           `https://api.etherscan.io/api?module=account&action=txlist` +
-          `&address=${walletAddress}` +
-          `&startblock=0` +
-          `&endblock=99999999` +
-          `&page=${page}` +
-          `&offset=${offset}` +
-          `&sort=desc` +
-          `&apikey=${ETHERSCAN_API_KEY}`
+            `&address=${walletAddress}` +
+            `&startblock=0` +
+            `&endblock=99999999` +
+            `&page=${page}` +
+            `&offset=${offset}` +
+            `&sort=desc` +
+            `&apikey=${ETHERSCAN_API_KEY}`
         );
 
         const data = await response.json();
@@ -1054,8 +1060,8 @@ const startServer = async () => {
       const avgGasPerTx = Math.round(totalGasUsed / transactions.length);
       const avgGasPrice = Math.round(
         transactions.reduce((sum, tx) => sum + Number(tx.gasPrice), 0) /
-        transactions.length /
-        1e9
+          transactions.length /
+          1e9
       );
 
       // Generate chart data with 50 buckets
@@ -1330,7 +1336,7 @@ const startServer = async () => {
             id: market.id,
             address: market.address,
             chainId: market.chainId,
-            name: market.name,
+            name: resource.name,
             epochs: market.epochs.map((epoch) => ({
               id: epoch.id,
               epochId: epoch.epochId,
@@ -1346,66 +1352,73 @@ const startServer = async () => {
   );
 
   // route /resources/:slug/prices/latest
-  app.get("/resources/:slug/prices/latest", handleAsyncErrors(async (req, res, next) => {
-    const { slug } = req.params;
+  app.get(
+    "/resources/:slug/prices/latest",
+    handleAsyncErrors(async (req, res, next) => {
+      const { slug } = req.params;
 
-    const resourceRepository = dataSource.getRepository(Resource);
-    const resource = await resourceRepository.findOne({ where: { slug } });
+      const resourceRepository = dataSource.getRepository(Resource);
+      const resource = await resourceRepository.findOne({ where: { slug } });
 
-    if (!resource) {
-      res.status(404).json({ error: "Resource not found" });
-      return;
-    }
+      if (!resource) {
+        res.status(404).json({ error: "Resource not found" });
+        return;
+      }
 
-    const resourcePriceRepository = dataSource.getRepository(ResourcePrice);
-    const latestPrice = await resourcePriceRepository.findOne({
-      where: { resource: { id: resource.id } },
-      order: { timestamp: "DESC" },
-      relations: ["resource"],
-    });
+      const resourcePriceRepository = dataSource.getRepository(ResourcePrice);
+      const latestPrice = await resourcePriceRepository.findOne({
+        where: { resource: { id: resource.id } },
+        order: { timestamp: "DESC" },
+        relations: ["resource"],
+      });
 
-    if (!latestPrice) {
-      res.status(404).json({ error: "No price data found" });
-      return;
-    }
+      if (!latestPrice) {
+        res.status(404).json({ error: "No price data found" });
+        return;
+      }
 
-    res.json(latestPrice);
-  }));
+      res.json(latestPrice);
+    })
+  );
 
   // route /resources/:slug/prices
-  app.get("/resources/:slug/prices", handleAsyncErrors(async (req, res, next) => {
-    const { slug } = req.params;
-    const { startTime, endTime } = req.query;
+  app.get(
+    "/resources/:slug/prices",
+    handleAsyncErrors(async (req, res, next) => {
+      const { slug } = req.params;
+      const { startTime, endTime } = req.query;
 
-    const resourceRepository = dataSource.getRepository(Resource);
-    const resource = await resourceRepository.findOne({ where: { slug } });
+      const resourceRepository = dataSource.getRepository(Resource);
+      const resource = await resourceRepository.findOne({ where: { slug } });
 
-    if (!resource) {
-      res.status(404).json({ error: "Resource not found" });
-      return;
-    }
+      if (!resource) {
+        res.status(404).json({ error: "Resource not found" });
+        return;
+      }
 
-    const resourcePriceRepository = dataSource.getRepository(ResourcePrice);
-    const query = resourcePriceRepository.createQueryBuilder("price")
-      .where("price.resourceId = :resourceId", { resourceId: resource.id })
-      .orderBy("price.timestamp", "ASC");
+      const resourcePriceRepository = dataSource.getRepository(ResourcePrice);
+      const query = resourcePriceRepository
+        .createQueryBuilder("price")
+        .where("price.resourceId = :resourceId", { resourceId: resource.id })
+        .orderBy("price.timestamp", "ASC");
 
-    if (startTime) {
-      query.andWhere("price.timestamp >= :startTime", { startTime });
-    }
-    if (endTime) {
-      query.andWhere("price.timestamp <= :endTime", { endTime });
-    }
+      if (startTime) {
+        query.andWhere("price.timestamp >= :startTime", { startTime });
+      }
+      if (endTime) {
+        query.andWhere("price.timestamp <= :endTime", { endTime });
+      }
 
-    const prices = await query.getMany();
+      const prices = await query.getMany();
 
-    if (!prices.length) {
-      res.status(404).json({ error: "No price data found" });
-      return;
-    }
+      if (!prices.length) {
+        res.status(404).json({ error: "No price data found" });
+        return;
+      }
 
-    res.json(prices);
-  }));
+      res.json(prices);
+    })
+  );
 
   // Only set up Sentry error handling in production
   if (process.env.NODE_ENV === "production") {

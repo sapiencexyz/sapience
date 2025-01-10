@@ -55,7 +55,4 @@ export class Market {
 
   @Column({ type: "boolean", default: false })
   public: boolean;
-
-  @Column({ type: "varchar", nullable: true })
-  name: string | null;
 }

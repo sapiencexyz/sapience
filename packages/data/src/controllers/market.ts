@@ -39,7 +39,7 @@ import {
   createOrUpdateEpochFromContract,
 } from "./marketHelpers";
 import { Client, TextChannel, EmbedBuilder } from "discord.js";
-import * as Chains from 'viem/chains';
+import * as Chains from "viem/chains";
 import { convertGasToGgas } from "../helpers";
 import { MARKETS } from "../fixtures";
 
@@ -61,7 +61,7 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
       address: marketInfo.deployment.address,
       chainId: marketInfo.marketChainId,
     },
-    relations: ["resource"]
+    relations: ["resource"],
   });
   const market = existingMarket || new Market();
 
@@ -80,12 +80,11 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
         address: marketInfo.deployment.address,
         chainId: marketInfo.marketChainId,
       },
-      relations: ["epochs", "resource"]
+      relations: ["epochs", "resource"],
     });
     updatedMarket = existingMarket || new Market();
   }
 
-  updatedMarket.name = marketInfo.name;
   updatedMarket.public = marketInfo.public;
   updatedMarket.address = marketInfo.deployment.address;
   updatedMarket.deployTxnBlockNumber = Number(
@@ -265,23 +264,36 @@ const alertEvent = async (
       switch (logData.eventName) {
         case EventType.TraderPositionCreated:
         case EventType.TraderPositionModified:
-          const tradeDirection = BigInt(logData.args.finalPrice) > BigInt(logData.args.initialPrice) ? 'Long' : 'Short';
-          const gasAmount = convertGasToGgas(logData.args.vGasAmount || logData.args.borrowedVGas);
+          const tradeDirection =
+            BigInt(logData.args.finalPrice) > BigInt(logData.args.initialPrice)
+              ? "Long"
+              : "Short";
+          const gasAmount = convertGasToGgas(
+            logData.args.vGasAmount || logData.args.borrowedVGas
+          );
           const rawPriceGwei = Number(logData.args.tradeRatio) / 1e18;
-          const priceGwei = rawPriceGwei.toLocaleString('en-US', {
+          const priceGwei = rawPriceGwei.toLocaleString("en-US", {
             minimumFractionDigits: 0,
             maximumFractionDigits: 2,
           });
 
-          title = `${tradeDirection === 'Long' ? '<:pepegas:1313887905508364288>' : '<:peepoangry:1313887206687117313>'} **Trade Executed:** ${tradeDirection} ${gasAmount} Ggas @ ${priceGwei} wstGwei`;
+          title = `${tradeDirection === "Long" ? "<:pepegas:1313887905508364288>" : "<:peepoangry:1313887206687117313>"} **Trade Executed:** ${tradeDirection} ${gasAmount} Ggas @ ${priceGwei} wstGwei`;
           break;
 
         case EventType.LiquidityPositionCreated:
         case EventType.LiquidityPositionIncreased:
         case EventType.LiquidityPositionDecreased:
         case EventType.LiquidityPositionClosed:
-          const action = logData.eventName === EventType.LiquidityPositionDecreased || logData.eventName === EventType.LiquidityPositionClosed ? 'Removed' : 'Added';
-          const liquidityGas = convertGasToGgas(logData.args.addedAmount0 || logData.args.increasedAmount0 || logData.args.amount0);
+          const action =
+            logData.eventName === EventType.LiquidityPositionDecreased ||
+            logData.eventName === EventType.LiquidityPositionClosed
+              ? "Removed"
+              : "Added";
+          const liquidityGas = convertGasToGgas(
+            logData.args.addedAmount0 ||
+              logData.args.increasedAmount0 ||
+              logData.args.amount0
+          );
 
           let priceRangeText = "";
           if (
@@ -291,7 +303,7 @@ const alertEvent = async (
             const rawLowerPrice = 1.0001 ** logData.args.lowerTick;
             const rawUpperPrice = 1.0001 ** logData.args.upperTick;
 
-            const lowerPrice = rawLowerPrice.toLocaleString('en-US', {
+            const lowerPrice = rawLowerPrice.toLocaleString("en-US", {
               minimumFractionDigits: 0,
               maximumFractionDigits: 2,
             });
@@ -319,7 +331,7 @@ const alertEvent = async (
 
       // Get market name from MARKETS
       const marketName =
-        MARKETS.find((m) => m.deployment.address === address)?.name ||
+        MARKETS.find((m) => m.deployment.address === address)?.resource.name ||
         "Foil Market";
 
       const embed = new EmbedBuilder()
@@ -483,14 +495,18 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       console.log("creating epoch. event: ", event);
       const epochCreatedArgs = event.logData.args as EpochCreatedEventLog;
       await createEpochFromEvent(epochCreatedArgs, market);
-      
+
       const marketInfo = MARKETS.find(
         (m) =>
           m.marketChainId === chainId &&
           m.deployment.address.toLowerCase() === address.toLowerCase()
       );
       if (marketInfo) {
-        await createOrUpdateEpochFromContract(marketInfo, market, Number(epochCreatedArgs.epochId));
+        await createOrUpdateEpochFromContract(
+          marketInfo,
+          market,
+          Number(epochCreatedArgs.epochId)
+        );
       }
       skipTransaction = true;
       break;

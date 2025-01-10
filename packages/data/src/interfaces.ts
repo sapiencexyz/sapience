@@ -124,7 +124,6 @@ export enum TimeWindow {
 }
 
 export interface MarketInfo {
-  name: string;
   public: boolean;
   deployment: Deployment;
   marketChainId: number;

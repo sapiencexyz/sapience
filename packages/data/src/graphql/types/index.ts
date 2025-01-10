@@ -11,9 +11,6 @@ export class MarketType {
   @Field(() => Int)
   chainId: number;
 
-  @Field(() => String, { nullable: true })
-  name: string | null;
-
   @Field(() => Boolean)
   public: boolean;
 
@@ -181,4 +178,4 @@ export class IndexPriceType {
 
   @Field(() => EpochType, { nullable: true })
   epoch: EpochType | null;
-} 
+}
