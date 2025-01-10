@@ -251,7 +251,7 @@ const startServer = async () => {
     "/markets",
     handleAsyncErrors(async (req, res, next) => {
       const markets = await marketRepository.find({
-        relations: ["epochs"],
+        relations: ["epochs", "resource"],
       });
 
       const formattedMarkets = markets.map((market) => ({
@@ -434,7 +434,7 @@ const startServer = async () => {
 
       const positions = await positionRepository.find({
         where,
-        relations: ["epoch", "epoch.market"],
+        relations: ["epoch", "epoch.market", "epoch.market.resource"],
         order: { positionId: "ASC" },
       });
 
@@ -478,7 +478,7 @@ const startServer = async () => {
           positionId: Number(positionId),
           epoch: { market: { id: market.id } },
         },
-        relations: ["epoch", "epoch.market"],
+        relations: ["epoch", "epoch.market", "epoch.market.resource"],
       });
 
       if (!position) {
@@ -517,7 +517,8 @@ const startServer = async () => {
         .innerJoinAndSelect("transaction.position", "position")
         .innerJoinAndSelect("position.epoch", "epoch")
         .innerJoinAndSelect("epoch.market", "market")
-        .innerJoinAndSelect("transaction.event", "event") // Join Event data
+        .innerJoinAndSelect("market.resource", "resource")
+        .innerJoinAndSelect("transaction.event", "event")
         .where("market.chainId = :chainId", { chainId })
         .andWhere("market.address = :address", { address })
         .orderBy("position.positionId", "ASC")
