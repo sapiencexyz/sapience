@@ -1,6 +1,7 @@
-import { mainnet, sepolia, cannon } from 'viem/chains';
-import evmIndexer from './resourcePriceFunctions/evmIndexer';
-import { Deployment, MarketInfo } from './interfaces';
+import { mainnet, sepolia, cannon } from "viem/chains";
+import evmIndexer from "./resourcePriceFunctions/evmIndexer";
+import celestiaIndexer from "./resourcePriceFunctions/celestiaIndexer";
+import { Deployment, MarketInfo } from "./interfaces";
 
 const safeRequire = async (path: string): Promise<Deployment | null> => {
   try {
@@ -13,12 +14,14 @@ const safeRequire = async (path: string): Promise<Deployment | null> => {
 
 export const RESOURCES = [
   {
-    name: 'Ethereum Gas',
-    slug: 'ethereum-gas',
+    name: "Ethereum Gas",
+    slug: "ethereum-gas",
+    priceIndexer: new evmIndexer(mainnet.id),
   },
   {
-    name: 'Celestia Blobspace',
-    slug: 'celestia-blobspace',
+    name: "Celestia Blobspace",
+    slug: "celestia-blobspace",
+    priceIndexer: new celestiaIndexer("https://api-mainnet.celenium.io"),
   },
 ];
 
@@ -26,30 +29,35 @@ const initializeMarkets = async () => {
   const FULL_MARKET_LIST = [
     /*
     {
-      name: 'Development Gas',
+      name: "Development Gas",
       deployment: await safeRequire(
-        '@/protocol/deployments/13370/FoilYin.json'
+        "@/protocol/deployments/13370/FoilYin.json"
       ),
       marketChainId: cannon.id,
-      priceIndexer: new evmIndexer(mainnet.id),
       public: true,
       resource: RESOURCES[0], // Ethereum Gas
     },
     */
     {
-      name: 'Ethereum Gas',
       deployment: await safeRequire(
-        '@/protocol/deployments/11155111/FoilYin.json'
+        "@/protocol/deployments/11155111/FoilYin.json"
       ),
       marketChainId: sepolia.id,
-      priceIndexer: new evmIndexer(mainnet.id),
+      public: true,
+      resource: RESOURCES[0], // Ethereum Gas
+    },
+    {
+      deployment: await safeRequire(
+        "@/protocol/deployments/11155111/FoilYang.json"
+      ),
+      marketChainId: sepolia.id,
       public: true,
       resource: RESOURCES[0], // Ethereum Gas
     },
   ];
 
   return FULL_MARKET_LIST.filter(
-    market => market.deployment !== null
+    (market) => market.deployment !== null
   ) as MarketInfo[];
 };
 

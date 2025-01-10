@@ -13,8 +13,8 @@ import { epochRepository } from "./db";
 import { Deployment } from "./interfaces";
 import dotenv from "dotenv";
 import path from "path";
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { fileURLToPath } from "url";
+import { dirname } from "path";
 
 // Replace __dirname reference with this
 const __filename = fileURLToPath(import.meta.url);
@@ -24,7 +24,7 @@ const __dirname = dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 const clientMap = new Map<number, PublicClient>();
 
-// added reconnection configurations from viem. 
+// added reconnection configurations from viem.
 const createInfuraWebSocketTransport = (network: string): Transport => {
   if (!process.env.INFURA_API_KEY) {
     return http();
@@ -42,16 +42,16 @@ const createInfuraWebSocketTransport = (network: string): Transport => {
       },
       retryCount: 5,
       timeout: 30000,
-      keepAlive: true
+      keepAlive: true,
     }
   );
 };
 
-// Added these multicalls for mainnet and sepolia if we want to use multicalls if we dont it doesnt make a difference. 
+// Added these multicalls for mainnet and sepolia if we want to use multicalls if we dont it doesnt make a difference.
 export const mainnetPublicClient = createPublicClient({
   chain: mainnet,
   transport: process.env.INFURA_API_KEY
-    ? createInfuraWebSocketTransport('mainnet')
+    ? createInfuraWebSocketTransport("mainnet")
     : http(),
   batch: {
     multicall: true,
@@ -61,7 +61,7 @@ export const mainnetPublicClient = createPublicClient({
 export const sepoliaPublicClient = createPublicClient({
   chain: sepolia,
   transport: process.env.INFURA_API_KEY
-    ? createInfuraWebSocketTransport('sepolia')
+    ? createInfuraWebSocketTransport("sepolia")
     : http(),
   batch: {
     multicall: true,
@@ -304,7 +304,6 @@ export function sqrtPriceX96ToSettlementPriceD18(
   return price * BigInt(10 ** 18);
 }
 
-
 export const convertGasToGgas = (value: string) => {
   const integerPart: string = (BigInt(value) / BigInt(1e9)).toString();
   // decimal part = prefix of zeros if gas is < 10^9, then the useful decimals
@@ -330,3 +329,5 @@ export const convertGgasToGas = (value: string) => {
   } // else if the whole number is an integer
   return (BigInt(value) * BigInt(1e9)).toString();
 };
+
+export const CELENIUM_API_KEY = process.env.CELENIUM_API_KEY;

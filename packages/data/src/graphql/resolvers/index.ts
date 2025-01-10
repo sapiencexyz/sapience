@@ -22,7 +22,6 @@ const mapMarketToType = (market: Market): MarketType => ({
   id: market.id,
   address: market.address,
   chainId: market.chainId,
-  name: market.name,
   public: market.public,
   epochs: market.epochs?.map(mapEpochToType) || [],
   resource: market.resource ? mapResourceToType(market.resource) : null,
@@ -71,8 +70,12 @@ const mapPositionToType = (position: Position): PositionType => ({
 const mapTransactionToType = (transaction: Transaction): TransactionType => ({
   id: transaction.id,
   type: transaction.type,
-  timestamp: transaction.event?.timestamp ? Number(transaction.event.timestamp) : 0,
-  position: transaction.position ? mapPositionToType(transaction.position) : null,
+  timestamp: transaction.event?.timestamp
+    ? Number(transaction.event.timestamp)
+    : 0,
+  position: transaction.position
+    ? mapPositionToType(transaction.position)
+    : null,
   baseToken: transaction.baseToken,
   quoteToken: transaction.quoteToken,
   collateral: transaction.collateral,
@@ -115,9 +118,9 @@ export class MarketResolver {
       const market = await dataSource.getRepository(Market).findOne({
         where: { chainId, address },
       });
-      
+
       if (!market) return null;
-      
+
       return mapMarketToType(market);
     } catch (error) {
       console.error("Error fetching market:", error);
@@ -131,7 +134,7 @@ export class MarketResolver {
       const epochs = await dataSource.getRepository(Epoch).find({
         where: { market: { id: market.id } },
       });
-      
+
       return epochs.map(mapEpochToType);
     } catch (error) {
       console.error("Error fetching epochs:", error);
@@ -162,9 +165,9 @@ export class ResourceResolver {
         where: { slug },
         relations: ["markets", "resourcePrices"],
       });
-      
+
       if (!resource) return null;
-      
+
       return mapResourceToType(resource);
     } catch (error) {
       console.error("Error fetching resource:", error);
@@ -202,7 +205,7 @@ export class ResourceResolver {
       }
 
       const prices = await query.getMany();
-      return prices.map(price => mapResourcePriceToType(price));
+      return prices.map((price) => mapResourcePriceToType(price));
     } catch (error) {
       console.error("Error fetching resource prices:", error);
       throw new Error("Failed to fetch resource prices");
@@ -285,4 +288,4 @@ export class EpochResolver {
       throw new Error("Failed to fetch epochs");
     }
   }
-} 
+}

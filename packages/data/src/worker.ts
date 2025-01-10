@@ -111,6 +111,14 @@ async function main() {
   await initializeResources();
 
   for (const marketInfo of MARKETS) {
+    const resource = await resourceRepository.findOne({
+      where: { name: marketInfo.resource.name },
+    });
+    if (!resource) {
+      console.log(`Resource not found: ${marketInfo.resource.name}`);
+      continue;
+    }
+
     const market = await initializeMarket(marketInfo);
     console.log(
       "initialized market",
@@ -120,12 +128,6 @@ async function main() {
     );
 
     // Set the resource for the market
-    const resource = await resourceRepository.findOne({
-      where: { name: marketInfo.resource.name },
-    });
-    if (!resource) {
-      throw new Error(`Resource not found: ${marketInfo.resource.name}`);
-    }
     market.resource = resource;
     await marketRepository.save(market);
 
@@ -137,13 +139,26 @@ async function main() {
         `indexMarketEvents-${market.address}`
       )()
     );
+  }
 
-    jobs.push(
-      createResilientProcess(
-        () => marketInfo.priceIndexer.watchBlocksForMarket(market),
-        `watchBlocksForMarket-${market.address}`
-      )()
-    );
+  // Watch for new blocks for each resource
+  for (const resourceInfo of RESOURCES) {
+    const resource = await resourceRepository.findOne({
+      where: { name: resourceInfo.name },
+    });
+    if (!resource) {
+      console.log(`Resource not found: ${resourceInfo.name}`);
+      continue;
+    }
+
+    if (resourceInfo.priceIndexer) {
+      jobs.push(
+        createResilientProcess(
+          () => resourceInfo.priceIndexer.watchBlocksForResource(resource),
+          `watchBlocksForResource-${resourceInfo.name}`
+        )()
+      );
+    }
   }
 
   await Promise.all(jobs);
@@ -221,7 +236,7 @@ export async function reindexMissingBlocks(
       await getMarketStartEndBlock(
         market,
         epochId,
-        marketInfo.priceIndexer.client
+        marketInfo.resource.priceIndexer.client
       );
 
     if (error || !startBlockNumber || !endBlockNumber) {
@@ -251,7 +266,10 @@ export async function reindexMissingBlocks(
       }
     }
 
-    await marketInfo.priceIndexer.indexBlocks(market, missingBlockNumbers);
+    await marketInfo.resource.priceIndexer.indexBlocks(
+      market.resource,
+      missingBlockNumbers
+    );
 
     console.log(
       `Finished reindexing resource blocks for market ${address} on chain ${chainId}`

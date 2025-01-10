@@ -36,15 +36,20 @@ export class ResourcePrice {
   @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
   used: string;
 
+  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
+  feePaid: string;
+
   @AfterInsert()
   async afterInsert() {
-    console.log("Resource price inserted for block: " + this.blockNumber);
+    console.log(
+      `Resource price inserted for block: ${this.blockNumber} @ ${this.resource.name}`
+    );
     await upsertIndexPriceFromResourcePrice(this);
   }
 
   @AfterUpdate()
   async afterUpdate() {
-    console.log(`Resource price updated: ${this.id}`);
+    console.log(`Resource price updated: ${this.id} @ ${this.resource.name}`);
     await upsertIndexPriceFromResourcePrice(this);
   }
 }

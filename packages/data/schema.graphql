@@ -30,7 +30,6 @@ type MarketType {
   deployTxnBlockNumber: Int
   epochs: [EpochType!]!
   id: ID!
-  name: String
   owner: String
   public: Boolean!
   resource: ResourceType
