@@ -620,7 +620,7 @@ const startServer = async () => {
       await getMarketStartEndBlock(
         market,
         epochId,
-        marketInfo.priceIndexer.client
+        marketInfo.resource.priceIndexer.client
       );
 
     if (error || !startBlockNumber || !endBlockNumber) {
