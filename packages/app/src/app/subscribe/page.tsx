@@ -1,12 +1,21 @@
 'use client';
 
 import { gql } from '@apollo/client';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
+import Spline from '@splinetool/react-spline';
 import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { print } from 'graphql';
 import { ChartNoAxesColumn, Loader2, Plus } from 'lucide-react';
 import Image from 'next/image';
-import { Suspense, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  Suspense,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useRef,
+} from 'react';
 import { formatUnits } from 'viem';
 import { useAccount } from 'wagmi';
 
@@ -185,6 +194,26 @@ const useSubscriptions = (address?: string) => {
   return { data: data || [], isLoading, error };
 };
 
+function useIsInViewport(ref: React.RefObject<HTMLElement>) {
+  const [isIntersecting, setIsIntersecting] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => {
+      setIsIntersecting(entry.isIntersecting);
+    });
+
+    if (ref.current) {
+      observer.observe(ref.current);
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [ref]);
+
+  return isIntersecting;
+}
+
 const SubscriptionsList = () => {
   const { address } = useAccount();
   const { data: subscriptions, isLoading, error } = useSubscriptions(address);
@@ -193,6 +222,8 @@ const SubscriptionsList = () => {
   const [selectedPosition, setSelectedPosition] = useState<Subscription | null>(
     null
   );
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isInView = useIsInViewport(containerRef);
 
   if (isLoading) {
     return (
@@ -213,8 +244,15 @@ const SubscriptionsList = () => {
 
   if (!address) {
     return (
-      <div className="text-muted-foreground text-center my-6">
-        Connect your wallet to view your subscriptions
+      <div ref={containerRef} className="flex flex-col items-center">
+        <div className="fixed h-screen w-screen top-[66%] md:top-[55%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[-1]">
+          {isInView && (
+            <Spline scene="https://prod.spline.design/gyoZ1cjoFk5-20wQ/scene.splinecode" />
+          )}
+        </div>
+        <div className="fixed z-10 max-w-[280px] md:max-w-[460px] text-accent text-xl w-full md:text-4xl font-semibold tracking-wide text-center top-[66%] md:top-[55%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-100 bg-white/10 backdrop-blur-lg p-4 rounded-lg border border-accent/20 shadow-lg">
+          Connect your wallet to view your subscriptions
+        </div>
       </div>
     );
   }
@@ -355,6 +393,17 @@ const SubscribeContent = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [prefilledSize, setPrefilledSize] = useState<bigint | null>(null);
+  const { address } = useAccount();
+  const { openConnectModal } = useConnectModal();
+  const [shouldOpenAfterConnect, setShouldOpenAfterConnect] = useState(false);
+
+  // Add effect to open dialog when wallet is connected after button click
+  useEffect(() => {
+    if (address && shouldOpenAfterConnect) {
+      setIsDialogOpen(true);
+      setShouldOpenAfterConnect(false);
+    }
+  }, [address, shouldOpenAfterConnect]);
 
   const { markets } = useMarketList();
   const currentTime = Math.floor(Date.now() / 1000);
@@ -383,6 +432,14 @@ const SubscribeContent = () => {
     return nextEpoch || sortedEpochs[sortedEpochs.length - 1] || null;
   }, [gasMarket, currentTime]);
 
+  const handleNewSubscription = () => {
+    setIsDialogOpen(true);
+  };
+
+  const handleAnalytics = () => {
+    setIsAnalyticsOpen(true);
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center w-full m-10">
@@ -405,26 +462,27 @@ const SubscribeContent = () => {
       address={gasMarket.address}
       epoch={targetEpoch.epochId}
     >
-      <div className="flex-1 flex flex-col p-9">
-        <div className="max-w-4xl mx-auto w-full">
-          <div className="flex justify-between md:items-center mb-6 flex-col md:flex-row">
-            <h1 className="text-3xl font-bold mb-4 md:mb-0">Subscriptions</h1>
-            <div className="flex gap-5">
-              <Button
-                variant="outline"
-                onClick={() => setIsAnalyticsOpen(true)}
-              >
-                <ChartNoAxesColumn className="text-muted-foreground" />
-                Wallet Analytics
-              </Button>
-              <Button onClick={() => setIsDialogOpen(true)}>
-                <Plus className="h-4 w-4" />
-                New Subscription
-              </Button>
+      <div className="flex-1 flex flex-col">
+        <div className="py-9 px-4">
+          <div className="max-w-4xl mx-auto w-full">
+            <div className="flex justify-between md:items-center mb-6 flex-col md:flex-row">
+              <h1 className="text-3xl font-bold mb-4 md:mb-0">Subscriptions</h1>
+              <div className="flex flex-row gap-3 md:gap-5 w-full md:w-auto">
+                <Button variant="outline" onClick={handleAnalytics}>
+                  <ChartNoAxesColumn className="text-muted-foreground" />
+                  Wallet Analytics
+                </Button>
+                <Button onClick={handleNewSubscription}>
+                  <Plus className="h-4 w-4" />
+                  New Subscription
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex-1">
+              <SubscriptionsList />
             </div>
           </div>
-
-          <SubscriptionsList />
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

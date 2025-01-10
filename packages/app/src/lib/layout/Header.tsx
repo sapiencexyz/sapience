@@ -395,7 +395,7 @@ const Header = () => {
   }, []);
 
   return (
-    <header className="w-full py-3 z-[3] border-b border-border">
+    <header className="w-full py-3 z-[3] border-b border-border bg-background/80 backdrop-blur-md">
       <div className="mx-auto px-6 flex items-center justify-between">
         <Link href="/" className="inline-block">
           <div className="flex items-center gap-2">

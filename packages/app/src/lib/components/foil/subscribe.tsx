@@ -702,17 +702,6 @@ const Subscribe: FC<SubscribeProps> = ({
     );
   }
 
-  if (!address) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-4 py-8">
-        <h2 className="text-lg font-medium">Connect your wallet</h2>
-        <p className="text-sm text-muted-foreground">
-          Connect your wallet to view and manage subscriptions
-        </p>
-      </div>
-    );
-  }
-
   if (isAnalyticsMode) {
     return (
       <Form {...form}>
