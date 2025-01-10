@@ -5,6 +5,7 @@ export default defineConfig({
   theme: { 
     colorScheme: 'light'
   }, 
+  logoUrl: '/images/logo.svg',
   sidebar: [
     {
       text: 'Get Started',
