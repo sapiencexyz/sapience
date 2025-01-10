@@ -269,10 +269,12 @@ const SubscriptionsList = () => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
       {subscriptions.map((subscription) => {
-        const resource = resources?.find(
-          (r) => r.markets.some(m => 
-            m.chainId === subscription.epoch.market.chainId && 
-            m.address.toLowerCase() === subscription.epoch.market.address.toLowerCase()
+        const resource = resources?.find((r) =>
+          r.markets.some(
+            (m) =>
+              m.chainId === subscription.epoch.market.chainId &&
+              m.address.toLowerCase() ===
+                subscription.epoch.market.address.toLowerCase()
           )
         );
 
@@ -398,7 +400,6 @@ const SubscribeContent = () => {
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [prefilledSize, setPrefilledSize] = useState<bigint | null>(null);
   const { address } = useAccount();
-  const { openConnectModal } = useConnectModal();
   const [shouldOpenAfterConnect, setShouldOpenAfterConnect] = useState(false);
 
   // Add effect to open dialog when wallet is connected after button click
@@ -420,16 +421,16 @@ const SubscribeContent = () => {
     console.log('Resources:', resources);
     console.log('Eth Gas Resource:', ethGasResource);
     console.log('Markets:', markets);
-    
+
     // Filter markets based on the resource's markets array
-    const filteredMarkets = markets.filter((market) => 
+    const filteredMarkets = markets.filter((market) =>
       ethGasResource.markets.some(
-        resourceMarket => 
-          resourceMarket.chainId === market.chainId && 
+        (resourceMarket) =>
+          resourceMarket.chainId === market.chainId &&
           resourceMarket.address.toLowerCase() === market.address.toLowerCase()
       )
     );
-    
+
     console.log('Filtered Gas Markets:', filteredMarkets);
     return filteredMarkets;
   }, [markets, resources]);
@@ -439,10 +440,10 @@ const SubscribeContent = () => {
     if (!gasMarkets.length) return null;
 
     // Collect all epochs from gas markets with their corresponding market data
-    const allEpochs = gasMarkets.flatMap(market => 
-      market.epochs.map(epoch => ({
+    const allEpochs = gasMarkets.flatMap((market) =>
+      market.epochs.map((epoch) => ({
         ...epoch,
-        market
+        market,
       }))
     );
     console.log('All Epochs:', allEpochs);
@@ -489,16 +490,16 @@ const SubscribeContent = () => {
   }
 
   return (
-      <div className="flex-1 flex flex-col">
-        <div className="py-9 px-4">
-          <div className="max-w-4xl mx-auto w-full">
-            <div className="flex justify-between md:items-center mb-6 flex-col md:flex-row">
-              <h1 className="text-3xl font-bold mb-4 md:mb-0">Subscriptions</h1>
     <MarketProvider
       chainId={targetEpoch.market.chainId}
       address={targetEpoch.market.address}
       epoch={targetEpoch.epochId}
     >
+      <div className="flex-1 flex flex-col">
+        <div className="py-9 px-4">
+          <div className="max-w-4xl mx-auto w-full">
+            <div className="flex justify-between md:items-center mb-6 flex-col md:flex-row">
+              <h1 className="text-3xl font-bold mb-4 md:mb-0">Subscriptions</h1>
               <div className="flex flex-row gap-3 md:gap-5 w-full md:w-auto">
                 <Button variant="outline" onClick={handleAnalytics}>
                   <ChartNoAxesColumn className="text-muted-foreground" />
@@ -509,7 +510,6 @@ const SubscribeContent = () => {
                   New Subscription
                 </Button>
               </div>
-    </MarketProvider>
             </div>
 
             <div className="flex-1">
@@ -543,6 +543,7 @@ const SubscribeContent = () => {
           </DialogContent>
         </Dialog>
       </div>
+    </MarketProvider>
   );
 };
 
