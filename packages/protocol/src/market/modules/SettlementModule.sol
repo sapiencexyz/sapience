@@ -58,6 +58,9 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
 
         int256 deltaCollateral = -int256(withdrawnCollateral);
 
+        // update position collateral
+        position.depositedCollateralAmount -= withdrawnCollateral;
+
         emit IFoilPositionEvents.PositionSettled(
             positionId,
             withdrawnCollateral,
