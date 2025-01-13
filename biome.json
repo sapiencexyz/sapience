@@ -1,48 +1,48 @@
 {
-	"$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
-	"vcs": {
-		"enabled": false,
-		"clientKind": "git",
-		"useIgnoreFile": false
-	},
-	"files": {
-		"ignoreUnknown": false,
-		"ignore": [
-			"**/.github",
-			"**/.husky",
-			"**/.next",
-			"**/.vscode",
-			"**/.turbo",
-			"**/.yarn",
-			"**/cache",
-			"**/coverage",
-			"**/deployments",
-			"**/out",
-			"**/node_modules",
-			"**/package-lock.json",
-			"**/pnpm-lock.yaml",
-			"**/yarn.lock"
-		]
-	},
-	"formatter": {
-		"enabled": true,
-		"indentStyle": "space"
-	},
-	"organizeImports": {
-		"enabled": true
-	},
-	"linter": {
-		"enabled": true,
-		"rules": {
-			"recommended": true
-		}
-	},
-	"javascript": {
-		"formatter": {
-			"quoteStyle": "single"
-		},
-		"parser": {
-			"unsafeParameterDecoratorsEnabled": true
-		}
-	}
+  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "vcs": {
+    "enabled": false,
+    "clientKind": "git",
+    "useIgnoreFile": false
+  },
+  "files": {
+    "ignoreUnknown": false,
+    "ignore": [
+      "**/.github",
+      "**/.husky",
+      "**/.next",
+      "**/.vscode",
+      "**/.turbo",
+      "**/.yarn",
+      "**/cache",
+      "**/coverage",
+      "**/deployments",
+      "**/out",
+      "**/node_modules",
+      "**/package-lock.json",
+      "**/pnpm-lock.yaml",
+      "**/yarn.lock"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space"
+  },
+  "organizeImports": {
+    "enabled": true
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double"
+    },
+    "parser": {
+      "unsafeParameterDecoratorsEnabled": true
+    }
+  }
 }
