@@ -18,7 +18,10 @@ export class IndexPrice {
   @CreateDateColumn()
   createdAt: Date;
 
-  @ManyToOne(() => Epoch, (epoch) => epoch.indexPrices)
+  @ManyToOne(
+    () => Epoch,
+    (epoch) => epoch.indexPrices,
+  )
   epoch: Epoch;
 
   @Column({ type: "integer" })

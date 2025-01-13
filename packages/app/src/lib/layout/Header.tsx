@@ -1,35 +1,35 @@
-import { format } from 'date-fns';
-import { Menu, ChevronDown } from 'lucide-react';
-import Image from 'next/image';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import React, { useState, useEffect } from 'react';
+import { format } from "date-fns";
+import { Menu, ChevronDown } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import React, { useState, useEffect } from "react";
 
-import ConnectButton from '../components/ConnectButton';
-import { ModeToggle } from '../components/ModeToggle';
+import ConnectButton from "../components/ConnectButton";
+import { ModeToggle } from "../components/ModeToggle";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from '~/components/ui/accordion';
-import { Button } from '~/components/ui/button';
+} from "~/components/ui/accordion";
+import { Button } from "~/components/ui/button";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '~/components/ui/popover';
-import { Sheet, SheetContent, SheetTrigger } from '~/components/ui/sheet';
-import { useMarketList } from '~/lib/context/MarketListProvider';
+} from "~/components/ui/popover";
+import { Sheet, SheetContent, SheetTrigger } from "~/components/ui/sheet";
+import { useMarketList } from "~/lib/context/MarketListProvider";
 import {
   useResources,
   type Resource,
   type Market,
   type Epoch,
-} from '~/lib/hooks/useResources';
+} from "~/lib/hooks/useResources";
 
 const getMarketHref = (path: string, market: any, withEpochs: boolean) => {
-  if (path === 'earn') {
+  if (path === "earn") {
     return `/${path}/${market.chainId}:${market.address}`;
   }
   if (withEpochs) {
@@ -54,7 +54,7 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
     const weeks = Math.round((end - start) / (7 * 24 * 3600));
     return (
       <>
-        Ends {format(endDate, 'M/d')}
+        Ends {format(endDate, "M/d")}
         <span className="text-xs text-muted-foreground ml-2">
           {weeks} week period
         </span>
@@ -99,7 +99,7 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
               >
                 <div
                   className={`text-sm w-full flex items-center gap-2 rounded-md px-3 py-1.5 
-                    ${hoveredResource === resource.id ? 'bg-secondary' : 'bg-transparent'}
+                    ${hoveredResource === resource.id ? "bg-secondary" : "bg-transparent"}
                     hover:bg-secondary cursor-pointer`}
                 >
                   <Image
@@ -118,7 +118,7 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
               <div className="flex flex-col space-y-1">
                 {(() => {
                   const hoveredResourceData = resources?.find(
-                    (r: Resource) => r.id === hoveredResource
+                    (r: Resource) => r.id === hoveredResource,
                   );
                   const market = hoveredResourceData?.markets?.[0];
                   const epochs = market?.epochs ?? [];
@@ -133,7 +133,7 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
 
                   const currentTime = Math.floor(Date.now() / 1000);
                   const activeEpochs = epochs.filter(
-                    (epoch: Epoch) => epoch.endTimestamp > currentTime
+                    (epoch: Epoch) => epoch.endTimestamp > currentTime,
                   );
 
                   return (
@@ -152,7 +152,7 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
                           >
                             {formatDuration(
                               epoch.startTimestamp,
-                              epoch.endTimestamp
+                              epoch.endTimestamp,
                             )}
                           </Link>
                         ))
@@ -190,18 +190,18 @@ const NavLinks = ({
   const pathname = usePathname();
 
   const isActive = (path: string) => {
-    if (path === '/') {
+    if (path === "/") {
       return (
         pathname === path ||
-        pathname.startsWith('/explore') ||
-        pathname.startsWith('/resources')
+        pathname.startsWith("/explore") ||
+        pathname.startsWith("/resources")
       );
     }
     return pathname.startsWith(path);
   };
 
   const getButtonClasses = (path: string) => {
-    return `text-md ${isActive(path) ? 'bg-secondary' : ''}`;
+    return `text-md ${isActive(path) ? "bg-secondary" : ""}`;
   };
 
   const formatDuration = (start: number, end: number) => {
@@ -210,7 +210,7 @@ const NavLinks = ({
     const weeks = Math.round((end - start) / (7 * 24 * 3600));
     return (
       <>
-        {format(endDate, 'M/d')}
+        {format(endDate, "M/d")}
         <span className="text-sm text-muted-foreground ml-2">
           {weeks} week period
         </span>
@@ -219,7 +219,7 @@ const NavLinks = ({
   };
 
   const renderMobileMarketLinks = (path: string) => {
-    if (path === 'subscribe' || path === 'earn') {
+    if (path === "subscribe" || path === "earn") {
       return (
         <div className="flex flex-col space-y-2">
           {publicMarkets.map((market) => (
@@ -271,7 +271,7 @@ const NavLinks = ({
 
                   const currentTime = Math.floor(Date.now() / 1000);
                   const activeEpochs = epochs.filter(
-                    (epoch) => epoch.endTimestamp > currentTime
+                    (epoch) => epoch.endTimestamp > currentTime,
                   );
 
                   return (
@@ -290,7 +290,7 @@ const NavLinks = ({
                           >
                             {formatDuration(
                               epoch.startTimestamp,
-                              epoch.endTimestamp
+                              epoch.endTimestamp,
                             )}
                           </Link>
                         ))
@@ -326,19 +326,19 @@ const NavLinks = ({
         </Link>
         <div>
           <div className="font-bold mb-1">Subscribe</div>
-          {renderMobileMarketLinks('subscribe')}
+          {renderMobileMarketLinks("subscribe")}
         </div>
         <div>
           <div className="font-bold mb-1">Earn</div>
-          {renderMobileMarketLinks('earn')}
+          {renderMobileMarketLinks("earn")}
         </div>
         <div>
           <div className="font-bold mb-1">Trade</div>
-          {renderMobileMarketLinks('trade')}
+          {renderMobileMarketLinks("trade")}
         </div>
         <div>
           <div className="font-bold mb-1">Pool</div>
-          {renderMobileMarketLinks('pool')}
+          {renderMobileMarketLinks("pool")}
         </div>
         <Link
           href="https://docs.foil.xyz"
@@ -354,19 +354,19 @@ const NavLinks = ({
   return (
     <div className="flex gap-2">
       <Link href="/" className="hover:no-underline mx-0.5">
-        <Button variant="ghost" className={getButtonClasses('/')}>
+        <Button variant="ghost" className={getButtonClasses("/")}>
           Explore
         </Button>
       </Link>
 
       <Link href="/subscribe" className="hover:no-underline mx-0.5">
-        <Button variant="ghost" className={getButtonClasses('/subscribe')}>
+        <Button variant="ghost" className={getButtonClasses("/subscribe")}>
           Subscribe
         </Button>
       </Link>
 
       <Link href="/earn" className="hover:no-underline mx-0.5">
-        <Button variant="ghost" className={getButtonClasses('/earn')}>
+        <Button variant="ghost" className={getButtonClasses("/earn")}>
           Earn
         </Button>
       </Link>
@@ -390,8 +390,8 @@ const Header = () => {
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 1024); // lg breakpoint
     checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   return (

@@ -14,7 +14,10 @@ import { Epoch } from "./Epoch";
 @Entity()
 @Unique(["positionId", "epoch"])
 export class Position {
-  @OneToMany(() => Transaction, (transaction) => transaction.position)
+  @OneToMany(
+    () => Transaction,
+    (transaction) => transaction.position,
+  )
   transactions: Transaction[];
 
   @PrimaryGeneratedColumn()
@@ -23,7 +26,10 @@ export class Position {
   @CreateDateColumn()
   createdAt: Date;
 
-  @ManyToOne(() => Epoch, (epoch) => epoch.positions)
+  @ManyToOne(
+    () => Epoch,
+    (epoch) => epoch.positions,
+  )
   epoch: Epoch;
 
   @Column({ type: "integer" })

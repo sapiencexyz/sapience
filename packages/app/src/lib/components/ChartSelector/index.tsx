@@ -1,17 +1,17 @@
-import { ChevronUp, ChevronDown, Check } from 'lucide-react';
-import { useContext, useState } from 'react';
-import type React from 'react';
-import type { Dispatch, SetStateAction } from 'react';
+import { ChevronUp, ChevronDown, Check } from "lucide-react";
+import { useContext, useState } from "react";
+import type React from "react";
+import type { Dispatch, SetStateAction } from "react";
 
-import { Button } from '~/components/ui/button';
+import { Button } from "~/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '~/components/ui/dropdown-menu';
-import { MarketContext } from '~/lib/context/MarketProvider';
-import { ChartType } from '~/lib/interfaces/interfaces';
+} from "~/components/ui/dropdown-menu";
+import { MarketContext } from "~/lib/context/MarketProvider";
+import { ChartType } from "~/lib/interfaces/interfaces";
 
 interface CustomDropdownProps {
   chartType: ChartType;
@@ -39,7 +39,7 @@ const ChartSelector: React.FC<CustomDropdownProps> = ({
       >
         <div
           className={`flex items-center justify-between w-full font-${
-            option === chartType ? 'bold' : 'normal'
+            option === chartType ? "bold" : "normal"
           }`}
         >
           {option}

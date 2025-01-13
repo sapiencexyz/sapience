@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useScroll, motion, useTransform } from 'framer-motion';
-import Spline from '@splinetool/react-spline';
-import { useState, useRef, useEffect } from 'react';
+import { useScroll, motion, useTransform } from "framer-motion";
+import Spline from "@splinetool/react-spline";
+import { useState, useRef, useEffect } from "react";
 
 function useIsInViewport(ref: React.RefObject<HTMLElement>) {
   const [isIntersecting, setIsIntersecting] = useState(false);
@@ -28,7 +28,7 @@ export const Hero = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const isInView = useIsInViewport(containerRef);
   const { scrollYProgress } = useScroll();
-  const y = useTransform(scrollYProgress, [0, 1], ['0%', '200%']);
+  const y = useTransform(scrollYProgress, [0, 1], ["0%", "200%"]);
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0.25]);
 
   return (

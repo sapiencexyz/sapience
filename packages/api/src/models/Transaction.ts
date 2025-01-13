@@ -29,18 +29,30 @@ export class Transaction {
   @CreateDateColumn()
   createdAt: Date;
 
-  @OneToOne(() => Event, (event) => event.transaction)
+  @OneToOne(
+    () => Event,
+    (event) => event.transaction,
+  )
   @JoinColumn()
   event: Event;
 
-  @ManyToOne(() => Position, (position) => position.transactions)
+  @ManyToOne(
+    () => Position,
+    (position) => position.transactions,
+  )
   position: Position;
 
-  @OneToOne(() => MarketPrice, (mp) => mp.transaction)
+  @OneToOne(
+    () => MarketPrice,
+    (mp) => mp.transaction,
+  )
   @JoinColumn()
   marketPrice: MarketPrice;
 
-  @OneToOne(() => CollateralTransfer, (ct) => ct.transaction)
+  @OneToOne(
+    () => CollateralTransfer,
+    (ct) => ct.transaction,
+  )
   @JoinColumn()
   collateralTransfer: CollateralTransfer;
 

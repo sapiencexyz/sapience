@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery } from "@tanstack/react-query";
 
-import { API_BASE_URL } from '~/lib/constants/constants';
+import { API_BASE_URL } from "~/lib/constants/constants";
 
 export interface Epoch {
   id: number;
@@ -28,22 +28,22 @@ export interface Resource {
 
 const mapResourceToIconPath = (name: string): string => {
   switch (name) {
-    case 'Ethereum Gas':
-      return '/eth.svg';
-    case 'Celestia Blobspace':
-      return '/tia.svg';
+    case "Ethereum Gas":
+      return "/eth.svg";
+    case "Celestia Blobspace":
+      return "/tia.svg";
     default:
-      return '';
+      return "";
   }
 };
 
 export const useResources = () => {
   return useQuery<Resource[]>({
-    queryKey: ['resources'],
+    queryKey: ["resources"],
     queryFn: async () => {
       const response = await fetch(`${API_BASE_URL}/resources`);
       const data = await response.json();
-      return data.map((resource: Omit<Resource, 'iconPath'>) => ({
+      return data.map((resource: Omit<Resource, "iconPath">) => ({
         ...resource,
         iconPath: mapResourceToIconPath(resource.name),
       }));
@@ -53,13 +53,13 @@ export const useResources = () => {
 
 export const useLatestResourcePrice = (slug: string) => {
   return useQuery({
-    queryKey: ['resourcePrice', slug],
+    queryKey: ["resourcePrice", slug],
     queryFn: async () => {
       const response = await fetch(
-        `${API_BASE_URL}/resources/${slug}/prices/latest`
+        `${API_BASE_URL}/resources/${slug}/prices/latest`,
       );
       if (!response.ok) {
-        throw new Error('Failed to fetch latest price');
+        throw new Error("Failed to fetch latest price");
       }
       return response.json();
     },

@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import { gql } from '@apollo/client';
-import { useConnectModal } from '@rainbow-me/rainbowkit';
-import Spline from '@splinetool/react-spline';
-import { useQuery } from '@tanstack/react-query';
-import { formatDistanceToNow } from 'date-fns';
-import { print } from 'graphql';
-import { ChartNoAxesColumn, Loader2, Plus } from 'lucide-react';
-import Image from 'next/image';
+import { gql } from "@apollo/client";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
+import Spline from "@splinetool/react-spline";
+import { useQuery } from "@tanstack/react-query";
+import { formatDistanceToNow } from "date-fns";
+import { print } from "graphql";
+import { ChartNoAxesColumn, Loader2, Plus } from "lucide-react";
+import Image from "next/image";
 import {
   Suspense,
   useContext,
@@ -15,23 +15,23 @@ import {
   useMemo,
   useState,
   useRef,
-} from 'react';
-import { formatUnits } from 'viem';
-import { useAccount } from 'wagmi';
+} from "react";
+import { formatUnits } from "viem";
+import { useAccount } from "wagmi";
 
-import { Button } from '~/components/ui/button';
+import { Button } from "~/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '~/components/ui/dialog';
-import NumberDisplay from '~/lib/components/foil/numberDisplay';
-import Subscribe from '~/lib/components/foil/subscribe';
-import { useMarketList } from '~/lib/context/MarketListProvider';
-import { MarketContext, MarketProvider } from '~/lib/context/MarketProvider';
-import { useResources } from '~/lib/hooks/useResources';
-import { convertWstEthToGwei } from '~/lib/util/util';
+} from "~/components/ui/dialog";
+import NumberDisplay from "~/lib/components/foil/numberDisplay";
+import Subscribe from "~/lib/components/foil/subscribe";
+import { useMarketList } from "~/lib/context/MarketListProvider";
+import { MarketContext, MarketProvider } from "~/lib/context/MarketProvider";
+import { useResources } from "~/lib/hooks/useResources";
+import { convertWstEthToGwei } from "~/lib/util/util";
 
 const SUBSCRIPTIONS_QUERY = gql`
   query GetSubscriptions($owner: String!) {
@@ -142,9 +142,9 @@ const useSubscriptions = (address?: string) => {
     const positionsResponse = await fetch(
       `${process.env.NEXT_PUBLIC_FOIL_API_URL}/graphql`,
       {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           query: print(SUBSCRIPTIONS_QUERY),
@@ -152,7 +152,7 @@ const useSubscriptions = (address?: string) => {
             owner: address,
           },
         }),
-      }
+      },
     );
 
     const { data: positionsData, errors } = await positionsResponse.json();
@@ -165,7 +165,7 @@ const useSubscriptions = (address?: string) => {
       (position: any) =>
         !position.isLP && // Not an LP position
         BigInt(position.baseToken) > BigInt(0) && // Has positive baseToken
-        !position.isSettled // Not settled
+        !position.isSettled, // Not settled
     );
 
     // For each position, fetch its transactions
@@ -173,7 +173,7 @@ const useSubscriptions = (address?: string) => {
       activePositions.map(async (position: any) => {
         const contractId = `${position.epoch.market.chainId}:${position.epoch.market.address}`;
         const transactionsResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_FOIL_API_URL}/transactions?contractId=${contractId}&positionId=${position.positionId}`
+          `${process.env.NEXT_PUBLIC_FOIL_API_URL}/transactions?contractId=${contractId}&positionId=${position.positionId}`,
         );
         const transactions = await transactionsResponse.json();
 
@@ -181,12 +181,12 @@ const useSubscriptions = (address?: string) => {
           ...position,
           entryPrice: calculateEntryPrice(position, transactions),
         };
-      })
+      }),
     );
   };
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['subscriptions', address, useMarketUnits, stEthPerToken],
+    queryKey: ["subscriptions", address, useMarketUnits, stEthPerToken],
     queryFn: fetchSubscriptions,
     refetchInterval: 2000, // Refetch every 2 seconds
     enabled: !!address, // Only fetch when we have an address
@@ -221,7 +221,7 @@ const SubscriptionsList = () => {
   const { data: resources, isLoading: isResourcesLoading } = useResources();
   const [sellDialogOpen, setSellDialogOpen] = useState(false);
   const [selectedPosition, setSelectedPosition] = useState<Subscription | null>(
-    null
+    null,
   );
   const containerRef = useRef<HTMLDivElement>(null);
   const isInView = useIsInViewport(containerRef);
@@ -237,8 +237,8 @@ const SubscriptionsList = () => {
   if (error) {
     return (
       <div className="text-destructive text-center my-6">
-        Failed to load subscriptions:{' '}
-        {error instanceof Error ? error.message : 'Unknown error'}
+        Failed to load subscriptions:{" "}
+        {error instanceof Error ? error.message : "Unknown error"}
       </div>
     );
   }
@@ -274,8 +274,8 @@ const SubscriptionsList = () => {
             (m) =>
               m.chainId === subscription.epoch.market.chainId &&
               m.address.toLowerCase() ===
-                subscription.epoch.market.address.toLowerCase()
-          )
+                subscription.epoch.market.address.toLowerCase(),
+          ),
         );
 
         return (
@@ -294,7 +294,7 @@ const SubscriptionsList = () => {
                 />
               )}
               <h3 className="font-medium truncate text-2xl">
-                {resource?.name || 'Unknown Resource'}
+                {resource?.name || "Unknown Resource"}
               </h3>
             </div>
 
@@ -307,7 +307,7 @@ const SubscriptionsList = () => {
                       Number(formatUnits(BigInt(subscription.baseToken), 9)) /
                       1e9
                     }
-                  />{' '}
+                  />{" "}
                   Ggas
                 </span>
               </div>
@@ -325,17 +325,17 @@ const SubscriptionsList = () => {
                 <span className="text-sm text-muted-foreground">Term</span>
                 <span className="text-sm font-medium">
                   {new Date(
-                    subscription.epoch.startTimestamp * 1000
-                  ).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                  })}{' '}
-                  -{' '}
+                    subscription.epoch.startTimestamp * 1000,
+                  ).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  })}{" "}
+                  -{" "}
                   {new Date(
-                    subscription.epoch.endTimestamp * 1000
-                  ).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
+                    subscription.epoch.endTimestamp * 1000,
+                  ).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
                   })}
                 </span>
               </div>
@@ -346,7 +346,7 @@ const SubscriptionsList = () => {
                   <span className="text-sm font-medium">
                     {formatDistanceToNow(
                       new Date(subscription.epoch.endTimestamp * 1000),
-                      { addSuffix: false }
+                      { addSuffix: false },
                     )}
                   </span>
                 </div>
@@ -362,8 +362,8 @@ const SubscriptionsList = () => {
               }}
             >
               {subscription.epoch.endTimestamp * 1000 > Date.now()
-                ? 'Close Early'
-                : 'Settle'}
+                ? "Close Early"
+                : "Settle"}
             </Button>
           </div>
         );
@@ -416,22 +416,22 @@ const SubscribeContent = () => {
   // Find all gas markets
   const gasMarkets = useMemo(() => {
     if (!resources) return [];
-    const ethGasResource = resources.find((r) => r.name === 'Ethereum Gas');
+    const ethGasResource = resources.find((r) => r.name === "Ethereum Gas");
     if (!ethGasResource) return [];
-    console.log('Resources:', resources);
-    console.log('Eth Gas Resource:', ethGasResource);
-    console.log('Markets:', markets);
+    console.log("Resources:", resources);
+    console.log("Eth Gas Resource:", ethGasResource);
+    console.log("Markets:", markets);
 
     // Filter markets based on the resource's markets array
     const filteredMarkets = markets.filter((market) =>
       ethGasResource.markets.some(
         (resourceMarket) =>
           resourceMarket.chainId === market.chainId &&
-          resourceMarket.address.toLowerCase() === market.address.toLowerCase()
-      )
+          resourceMarket.address.toLowerCase() === market.address.toLowerCase(),
+      ),
     );
 
-    console.log('Filtered Gas Markets:', filteredMarkets);
+    console.log("Filtered Gas Markets:", filteredMarkets);
     return filteredMarkets;
   }, [markets, resources]);
 
@@ -444,22 +444,22 @@ const SubscribeContent = () => {
       market.epochs.map((epoch) => ({
         ...epoch,
         market,
-      }))
+      })),
     );
-    console.log('All Epochs:', allEpochs);
+    console.log("All Epochs:", allEpochs);
 
     // Sort epochs by start time
     const sortedEpochs = allEpochs.sort(
-      (a, b) => a.startTimestamp - b.startTimestamp
+      (a, b) => a.startTimestamp - b.startTimestamp,
     );
 
     // Find the next epoch that starts in the future
     const nextEpoch = sortedEpochs.find(
-      (epoch) => epoch.startTimestamp > currentTime
+      (epoch) => epoch.startTimestamp > currentTime,
     );
-    console.log('Current Time:', currentTime);
-    console.log('Next Epoch:', nextEpoch);
-    console.log('Most Recent Epoch:', sortedEpochs[sortedEpochs.length - 1]);
+    console.log("Current Time:", currentTime);
+    console.log("Next Epoch:", nextEpoch);
+    console.log("Most Recent Epoch:", sortedEpochs[sortedEpochs.length - 1]);
 
     // If no future epoch, get the most recent one
     return nextEpoch || sortedEpochs[sortedEpochs.length - 1] || null;

@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { ArrowRight, Loader2 } from 'lucide-react';
-import Image from 'next/image';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { ArrowRight, Loader2 } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 
-import { Button } from '~/components/ui/button';
-import { useResources } from '~/lib/hooks/useResources';
+import { Button } from "~/components/ui/button";
+import { useResources } from "~/lib/hooks/useResources";
 
 export const ResourceNav = () => {
   const { data: resources, isLoading: isLoadingResources } = useResources();
@@ -14,7 +14,7 @@ export const ResourceNav = () => {
   const router = useRouter();
 
   // Redirect to first resource if no resource is selected
-  if (pathname === '/' && resources?.length) {
+  if (pathname === "/" && resources?.length) {
     router.push(`/resources/${resources[0].slug}`);
     return null;
   }
@@ -27,9 +27,9 @@ export const ResourceNav = () => {
     );
   }
 
-  const currentResource = pathname.startsWith('/resources/')
-    ? pathname.slice('/resources/'.length)
-    : '';
+  const currentResource = pathname.startsWith("/resources/")
+    ? pathname.slice("/resources/".length)
+    : "";
 
   return (
     <div className="w-full border-b border-border">
@@ -43,8 +43,8 @@ export const ResourceNav = () => {
               className="flex-shrink-0"
             >
               <Button
-                variant={isSelected ? 'default' : 'outline'}
-                className={`shadow-sm gap-2 ${isSelected ? 'pointer-events-none' : ''}`}
+                variant={isSelected ? "default" : "outline"}
+                className={`shadow-sm gap-2 ${isSelected ? "pointer-events-none" : ""}`}
               >
                 <Image
                   src={resource.iconPath}

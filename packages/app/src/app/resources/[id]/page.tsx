@@ -1,22 +1,22 @@
-'use client';
+"use client";
 
-import { useQuery } from '@tanstack/react-query';
-import { type ColumnDef } from '@tanstack/react-table';
-import { format } from 'date-fns';
-import { ChevronRight, Loader2 } from 'lucide-react';
-import Link from 'next/link';
-import React from 'react';
-import { formatUnits } from 'viem';
+import { useQuery } from "@tanstack/react-query";
+import type { ColumnDef } from "@tanstack/react-table";
+import { format } from "date-fns";
+import { ChevronRight, Loader2 } from "lucide-react";
+import Link from "next/link";
+import React from "react";
+import { formatUnits } from "viem";
 
-import { Card, CardContent } from '@/components/ui/card';
-import CandlestickChart from '~/lib/components/chart';
-import NumberDisplay from '~/lib/components/foil/numberDisplay';
-import { MarketLayout } from '~/lib/components/market/MarketLayout';
-import { ResourceNav } from '~/lib/components/market/ResourceNav';
-import { API_BASE_URL } from '~/lib/constants/constants';
-import { MARKET_CATEGORIES } from '~/lib/constants/markets';
-import { useLatestResourcePrice, useResources } from '~/lib/hooks/useResources';
-import { TimeWindow } from '~/lib/interfaces/interfaces';
+import { Card, CardContent } from "@/components/ui/card";
+import CandlestickChart from "~/lib/components/chart";
+import NumberDisplay from "~/lib/components/foil/numberDisplay";
+import { MarketLayout } from "~/lib/components/market/MarketLayout";
+import { ResourceNav } from "~/lib/components/market/ResourceNav";
+import { API_BASE_URL } from "~/lib/constants/constants";
+import { MARKET_CATEGORIES } from "~/lib/constants/markets";
+import { useLatestResourcePrice, useResources } from "~/lib/hooks/useResources";
+import { TimeWindow } from "~/lib/interfaces/interfaces";
 
 interface ResourcePrice {
   timestamp: string;
@@ -41,17 +41,17 @@ interface Epoch {
 
 const columns: ColumnDef<Epoch>[] = [
   {
-    id: 'period',
+    id: "period",
     cell: ({ row }) => {
       const epoch = row.original;
       const endDate = new Date(epoch.endTimestamp * 1000);
       const weeks = Math.round(
-        (epoch.endTimestamp - epoch.startTimestamp) / (7 * 24 * 3600)
+        (epoch.endTimestamp - epoch.startTimestamp) / (7 * 24 * 3600),
       );
 
       return (
         <div className="flex items-center">
-          <span>{format(endDate, 'M/d')}</span>
+          <span>{format(endDate, "M/d")}</span>
           <span className="text-xs text-muted-foreground ml-2">
             {weeks} week period
           </span>
@@ -60,7 +60,7 @@ const columns: ColumnDef<Epoch>[] = [
     },
   },
   {
-    id: 'actions',
+    id: "actions",
     cell: () => <ChevronRight className="h-6 w-6 text-muted-foreground" />,
   },
 ];
@@ -79,17 +79,17 @@ const EpochsTable = ({ data }: { data: Epoch[] }) => {
             onMouseEnter={() => setHoveredIndex(index)}
           >
             <div
-              className={`flex items-center justify-between cursor-pointer px-4 py-1.5 ${hoveredIndex === index ? 'bg-secondary' : 'hover:bg-secondary/50'}`}
+              className={`flex items-center justify-between cursor-pointer px-4 py-1.5 ${hoveredIndex === index ? "bg-secondary" : "hover:bg-secondary/50"}`}
             >
               <div className="flex items-baseline">
                 <span>
-                  Ends {format(new Date(epoch.endTimestamp * 1000), 'M/d')}
+                  Ends {format(new Date(epoch.endTimestamp * 1000), "M/d")}
                 </span>
                 <span className="text-xs text-muted-foreground ml-2">
                   {Math.round(
                     (epoch.endTimestamp - epoch.startTimestamp) /
-                      (7 * 24 * 3600)
-                  )}{' '}
+                      (7 * 24 * 3600),
+                  )}{" "}
                   week period
                 </span>
               </div>
@@ -160,7 +160,7 @@ const generatePlaceholderIndexPrices = () => {
 const renderPriceDisplay = (
   isLoading: boolean,
   price: ResourcePrice | undefined,
-  resourceId: string
+  resourceId: string,
 ) => {
   if (isLoading) {
     return <span className="text-2xl font-bold">Loading...</span>;
@@ -170,14 +170,14 @@ const renderPriceDisplay = (
     return <span className="text-2xl font-bold">No price data</span>;
   }
 
-  const unit = resourceId === 'celestia-blobspace' ? 'μTIA' : 'gwei';
+  const unit = resourceId === "celestia-blobspace" ? "μTIA" : "gwei";
 
   return (
     <span className="text-2xl font-bold">
       <NumberDisplay
         value={formatUnits(BigInt(price.value), 9)}
-        precision={resourceId === 'celestia-blobspace' ? 6 : 4}
-      />{' '}
+        precision={resourceId === "celestia-blobspace" ? 6 : 4}
+      />{" "}
       {unit}
     </span>
   );
@@ -196,25 +196,25 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
   });
 
   const toggleSeries = React.useCallback(
-    (series: 'candles' | 'index' | 'resource') => {
+    (series: "candles" | "index" | "resource") => {
       setSeriesVisibility((prev) => ({
         ...prev,
         [series]: !prev[series],
       }));
     },
-    []
+    [],
   );
 
   const { data: resourcePrices, isLoading: isResourcePricesLoading } = useQuery<
     ResourcePrice[]
   >({
-    queryKey: ['resourcePrices', params.id],
+    queryKey: ["resourcePrices", params.id],
     queryFn: async () => {
       const response = await fetch(
-        `${API_BASE_URL}/resources/${params.id}/prices`
+        `${API_BASE_URL}/resources/${params.id}/prices`,
       );
       if (!response.ok) {
-        throw new Error('Failed to fetch resource prices');
+        throw new Error("Failed to fetch resource prices");
       }
       return response.json();
     },
@@ -247,7 +247,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
           address: market.address,
           chainId: market.chainId,
         },
-      }))
+      })),
     ) || [];
 
   const formattedResourcePrices: ResourcePricePoint[] =
@@ -258,7 +258,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
 
   return (
     <div className="flex flex-col md:flex-row h-full">
-      <div className={`flex-1 min-w-0 ${!epochs.length ? 'w-full' : ''}`}>
+      <div className={`flex-1 min-w-0 ${!epochs.length ? "w-full" : ""}`}>
         <div className="flex flex-col h-full">
           <div className="flex-1 grid relative">
             <Card className="absolute top-8 left-8 z-10">

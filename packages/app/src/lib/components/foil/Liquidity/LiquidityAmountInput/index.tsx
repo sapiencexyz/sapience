@@ -1,17 +1,17 @@
-import { useState, useEffect } from 'react';
-import { useFormContext } from 'react-hook-form';
+import { useState, useEffect } from "react";
+import { useFormContext } from "react-hook-form";
 
-import { removeLeadingZeros } from '../../../../util/util';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { removeLeadingZeros } from "../../../../util/util";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface LiquidityAmountInputProps {
   isEdit: boolean;
   walletBalance: string | null;
   positionCollateralAmount: number;
   collateralAssetTicker: string;
-  onActionChange?: (action: 'add' | 'remove') => void;
+  onActionChange?: (action: "add" | "remove") => void;
 }
 
 const LiquidityAmountInput = ({
@@ -26,14 +26,14 @@ const LiquidityAmountInput = ({
     setValue,
     formState: { errors },
   } = useFormContext();
-  const [liquidityAction, setLiquidityAction] = useState<'add' | 'remove'>(
-    'add'
+  const [liquidityAction, setLiquidityAction] = useState<"add" | "remove">(
+    "add",
   );
 
   // Reset value when edit mode changes or when action changes
   useEffect(() => {
     if (isEdit) {
-      setValue('modifyLiquidity', '0', {
+      setValue("modifyLiquidity", "0", {
         shouldValidate: false,
         shouldDirty: false,
         shouldTouch: false,
@@ -47,11 +47,11 @@ const LiquidityAmountInput = ({
         <Tabs
           defaultValue="add"
           onValueChange={(value) => {
-            const action = value as 'add' | 'remove';
+            const action = value as "add" | "remove";
             setLiquidityAction(action);
             onActionChange?.(action);
             // Reset value when switching modes
-            setValue('modifyLiquidity', '0', {
+            setValue("modifyLiquidity", "0", {
               shouldValidate: false,
               shouldDirty: false,
               shouldTouch: false,
@@ -63,7 +63,7 @@ const LiquidityAmountInput = ({
             <TabsTrigger value="remove">Remove Liquidity</TabsTrigger>
           </TabsList>
         </Tabs>
-        <div className={errors.modifyLiquidity ? 'space-y-1' : ''}>
+        <div className={errors.modifyLiquidity ? "space-y-1" : ""}>
           <div className="relative flex">
             <Input
               id="modifyLiquidity"
@@ -73,16 +73,16 @@ const LiquidityAmountInput = ({
               step="any"
               className="pr-20"
               onWheel={(e) => e.currentTarget.blur()}
-              {...register('modifyLiquidity', {
+              {...register("modifyLiquidity", {
                 onChange: (e) => {
                   const processed = removeLeadingZeros(e.target.value);
-                  setValue('modifyLiquidity', processed, {
+                  setValue("modifyLiquidity", processed, {
                     shouldValidate: true,
                   });
                 },
                 onBlur: (e) => {
-                  if (e.target.value === '') {
-                    setValue('modifyLiquidity', '0', {
+                  if (e.target.value === "") {
+                    setValue("modifyLiquidity", "0", {
                       shouldValidate: false,
                       shouldDirty: false,
                       shouldTouch: false,
@@ -90,22 +90,22 @@ const LiquidityAmountInput = ({
                   }
                 },
                 validate: (value) => {
-                  const percentage = parseFloat(value) / 100;
+                  const percentage = Number.parseFloat(value) / 100;
 
-                  if (liquidityAction === 'add') {
+                  if (liquidityAction === "add") {
                     // For adding, calculate how much collateral would be needed
                     const additionalAmount =
                       positionCollateralAmount * percentage;
                     return (
                       (walletBalance &&
-                        additionalAmount <= parseFloat(walletBalance)) ||
-                      'Insufficient wallet balance'
+                        additionalAmount <= Number.parseFloat(walletBalance)) ||
+                      "Insufficient wallet balance"
                     );
                   }
                   // For removing, just ensure we're not removing more than 100%
                   return (
                     percentage <= 1 ||
-                    'Cannot remove more than 100% of liquidity'
+                    "Cannot remove more than 100% of liquidity"
                   );
                 },
               })}
@@ -136,16 +136,16 @@ const LiquidityAmountInput = ({
           step="any"
           className="pr-20"
           onWheel={(e) => e.currentTarget.blur()}
-          {...register('depositAmount', {
+          {...register("depositAmount", {
             onChange: (e) => {
               const processed = removeLeadingZeros(e.target.value);
-              setValue('depositAmount', processed, {
+              setValue("depositAmount", processed, {
                 shouldValidate: true,
               });
             },
             onBlur: (e) => {
-              if (e.target.value === '') {
-                setValue('depositAmount', '0', {
+              if (e.target.value === "") {
+                setValue("depositAmount", "0", {
                   shouldValidate: false,
                   shouldDirty: false,
                   shouldTouch: false,
@@ -153,13 +153,14 @@ const LiquidityAmountInput = ({
               }
             },
             validate: (value) => {
-              if (value === '' || parseFloat(value) === 0) {
-                return 'Amount is required';
+              if (value === "" || Number.parseFloat(value) === 0) {
+                return "Amount is required";
               }
               return (
                 (walletBalance &&
-                  parseFloat(value) <= parseFloat(walletBalance)) ||
-                'Insufficient balance in wallet'
+                  Number.parseFloat(value) <=
+                    Number.parseFloat(walletBalance)) ||
+                "Insufficient balance in wallet"
               );
             },
           })}

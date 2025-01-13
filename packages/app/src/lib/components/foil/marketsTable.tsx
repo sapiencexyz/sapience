@@ -1,20 +1,20 @@
-'use client';
+"use client";
 
-import type { ColumnDef, SortingState } from '@tanstack/react-table';
+import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import {
   useReactTable,
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
-} from '@tanstack/react-table';
-import { format } from 'date-fns';
-import { ChevronDown, ChevronUp, ArrowUpDown } from 'lucide-react';
-import Image from 'next/image';
-import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
-import * as React from 'react';
+} from "@tanstack/react-table";
+import { format } from "date-fns";
+import { ChevronDown, ChevronUp, ArrowUpDown } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
+import * as React from "react";
 
-import { Button } from '~/components/ui/button';
+import { Button } from "~/components/ui/button";
 import {
   Table,
   TableBody,
@@ -22,16 +22,16 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '~/components/ui/table';
-import { useMarketList } from '~/lib/context/MarketListProvider';
-import { useResources } from '~/lib/hooks/useResources';
+} from "~/components/ui/table";
+import { useMarketList } from "~/lib/context/MarketListProvider";
+import { useResources } from "~/lib/hooks/useResources";
 
 const MarketsTable = () => {
   const { markets } = useMarketList();
   const { data: resources, isLoading: isLoadingResources } = useResources();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const selectedResource = searchParams.get('resource');
+  const selectedResource = searchParams.get("resource");
 
   const data = React.useMemo(
     () =>
@@ -49,38 +49,38 @@ const MarketsTable = () => {
             return {
               marketName: market.resource.name,
               epochId: epoch.epochId,
-              period: `${format(startDate, 'PPpp')} - ${format(
+              period: `${format(startDate, "PPpp")} - ${format(
                 endDate,
-                'PPpp'
+                "PPpp",
               )}`,
               startTimestamp: epoch.startTimestamp,
               settled:
-                epoch.settlementPriceD18 > 0 ? epoch.settlementPriceD18 : 'No',
+                epoch.settlementPriceD18 > 0 ? epoch.settlementPriceD18 : "No",
               chainId: market.chainId,
               marketAddress: market.address,
             };
-          })
+          }),
         ),
-    [markets, selectedResource, resources]
+    [markets, selectedResource, resources],
   );
 
   const columns = React.useMemo<ColumnDef<any>[]>(
     () => [
       {
-        header: 'Resource',
-        accessorKey: 'marketName',
+        header: "Resource",
+        accessorKey: "marketName",
       },
       {
-        header: 'Period',
-        accessorKey: 'period',
-        sortingFn: 'basic',
+        header: "Period",
+        accessorKey: "period",
+        sortingFn: "basic",
       },
       {
-        header: 'Settled',
-        accessorKey: 'settled',
+        header: "Settled",
+        accessorKey: "settled",
       },
     ],
-    []
+    [],
   );
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -96,10 +96,10 @@ const MarketsTable = () => {
   });
 
   const renderSortIcon = (isSorted: string | false) => {
-    if (isSorted === 'desc') {
+    if (isSorted === "desc") {
       return <ChevronDown className="h-3 w-3" aria-label="sorted descending" />;
     }
-    if (isSorted === 'asc') {
+    if (isSorted === "asc") {
       return <ChevronUp className="h-3 w-3" aria-label="sorted ascending" />;
     }
     return <ArrowUpDown className="h-3 w-3" aria-label="sortable" />;
@@ -108,9 +108,9 @@ const MarketsTable = () => {
   const handleResourceClick = (slug: string | null) => {
     const params = new URLSearchParams(searchParams);
     if (slug) {
-      params.set('resource', slug);
+      params.set("resource", slug);
     } else {
-      params.delete('resource');
+      params.delete("resource");
     }
     router.push(`/markets/?${params.toString()}`);
   };
@@ -123,7 +123,7 @@ const MarketsTable = () => {
         </h1>
         <div className="flex gap-2">
           <Button
-            variant={!selectedResource ? 'default' : 'outline'}
+            variant={!selectedResource ? "default" : "outline"}
             className="shadow-sm gap-2"
             onClick={() => handleResourceClick(null)}
           >
@@ -133,7 +133,7 @@ const MarketsTable = () => {
             <Button
               key={resource.id}
               variant={
-                selectedResource === resource.slug ? 'default' : 'outline'
+                selectedResource === resource.slug ? "default" : "outline"
               }
               className="shadow-sm gap-2"
               onClick={() => handleResourceClick(resource.slug)}
@@ -164,7 +164,7 @@ const MarketsTable = () => {
                     <span className="flex items-center">
                       {flexRender(
                         header.column.columnDef.header,
-                        header.getContext()
+                        header.getContext(),
                       )}
                       <span className="ml-2 inline-block">
                         {renderSortIcon(header.column.getIsSorted())}

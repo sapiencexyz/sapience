@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import Spline from '@splinetool/react-spline';
-import { useMediaQuery } from 'usehooks-ts';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import Spline from "@splinetool/react-spline";
+import { useMediaQuery } from "usehooks-ts";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 export const Features = () => {
-  const isDesktop = useMediaQuery('(min-width: 768px)');
+  const isDesktop = useMediaQuery("(min-width: 768px)");
   const [isHovered1, setIsHovered1] = useState(false);
   const [isHovered2, setIsHovered2] = useState(false);
   const [isHovered3, setIsHovered3] = useState(false);
@@ -41,7 +41,7 @@ export const Features = () => {
                   animate={{ opacity: 1, y: 0, scale: 1.5 }}
                   exit={{ opacity: 0, y: 20, scale: 1.4 }}
                   transition={{
-                    ease: 'easeOut',
+                    ease: "easeOut",
                     opacity: {
                       enter: { delay: 2, duration: 0.3 },
                       exit: { delay: 0, duration: 0.3 },
@@ -88,7 +88,7 @@ export const Features = () => {
                   animate={{ opacity: 1, y: -50, scale: 1.5, x: 70 }}
                   exit={{ opacity: 0, y: -30, scale: 1.4, x: 70 }}
                   transition={{
-                    ease: 'easeOut',
+                    ease: "easeOut",
                     opacity: {
                       enter: { delay: 2, duration: 0.3 },
                       exit: { delay: 0, duration: 0.3 },
@@ -135,7 +135,7 @@ export const Features = () => {
                   animate={{ opacity: 1, y: 0, scale: 1.5 }}
                   exit={{ opacity: 0, y: 20, scale: 1.4 }}
                   transition={{
-                    ease: 'easeOut',
+                    ease: "easeOut",
                     opacity: {
                       enter: { delay: 2, duration: 0.3 },
                       exit: { delay: 0, duration: 0.3 },

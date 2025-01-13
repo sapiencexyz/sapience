@@ -1,12 +1,12 @@
 /* eslint-disable sonarjs/no-duplicate-string */
-import { format, formatDistanceToNow } from 'date-fns';
-import React, { useContext } from 'react';
-import { FaRegChartBar, FaCubes, FaRegCalendar } from 'react-icons/fa';
-import { IoDocumentTextOutline } from 'react-icons/io5';
+import { format, formatDistanceToNow } from "date-fns";
+import React, { useContext } from "react";
+import { FaRegChartBar, FaCubes, FaRegCalendar } from "react-icons/fa";
+import { IoDocumentTextOutline } from "react-icons/io5";
 
-import { useMarketList } from '~/lib/context/MarketListProvider';
-import { MarketContext } from '~/lib/context/MarketProvider';
-import { tickToPrice } from '~/lib/util/util';
+import { useMarketList } from "~/lib/context/MarketListProvider";
+import { MarketContext } from "~/lib/context/MarketProvider";
+import { tickToPrice } from "~/lib/util/util";
 
 const EpochHeader = () => {
   const {
@@ -21,24 +21,24 @@ const EpochHeader = () => {
   const { markets } = useMarketList();
 
   const currentMarket = markets.find(
-    (market) => market.address.toLowerCase() === address.toLowerCase()
+    (market) => market.address.toLowerCase() === address.toLowerCase(),
   );
 
-  let relativeTime = '';
-  let formattedTime = '';
-  let endTimeString = '';
-  let startTimeString = '';
+  let relativeTime = "";
+  let formattedTime = "";
+  let endTimeString = "";
+  let startTimeString = "";
   if (startTime) {
     const dateMilliseconds = Number(startTime) * 1000;
     const date = new Date(dateMilliseconds);
-    startTimeString = format(date, 'M/d/yy h:mm a');
+    startTimeString = format(date, "M/d/yy h:mm a");
   }
   if (endTime) {
     const dateMilliseconds = Number(endTime) * 1000;
     const date = new Date(dateMilliseconds);
     relativeTime = formatDistanceToNow(date);
-    formattedTime = format(date, 'M/d/yy h:mm a');
-    endTimeString = format(date, 'M/d/yy h:mm a');
+    formattedTime = format(date, "M/d/yy h:mm a");
+    endTimeString = format(date, "M/d/yy h:mm a");
   }
 
   return (
@@ -46,7 +46,7 @@ const EpochHeader = () => {
       <div className="w-full items-center flex flex-col lg:flex-row px-6 py-4">
         <div className="w-full lg:w-auto flex justify-between lg:justify-start items-center">
           <h1 className="text-2xl font-bold mb-0">
-            {currentMarket?.resource?.name || 'Market Name Not Found'}
+            {currentMarket?.resource?.name || "Market Name Not Found"}
           </h1>
         </div>
 
@@ -85,7 +85,7 @@ const EpochHeader = () => {
                 <FaRegChartBar />
               </span>
               <span className="font-medium mr-1">Contract Price Range:</span>
-              {tickToPrice(baseAssetMinPriceTick).toLocaleString()} -{' '}
+              {tickToPrice(baseAssetMinPriceTick).toLocaleString()} -{" "}
               {tickToPrice(baseAssetMaxPriceTick).toLocaleString()} Ggas/wstETH
             </div>
 

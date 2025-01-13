@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import { ChevronDown, ChevronUp } from 'lucide-react';
-import type { Dispatch, SetStateAction } from 'react';
-import { useEffect, useState } from 'react';
+import { ChevronDown, ChevronUp } from "lucide-react";
+import type { Dispatch, SetStateAction } from "react";
+import { useEffect, useState } from "react";
 
-import { Button } from '~/components/ui/button';
-import { FormItem, FormLabel } from '~/components/ui/form';
-import { Input } from '~/components/ui/input';
-import type { FoilPosition } from '~/lib/interfaces/interfaces';
+import { Button } from "~/components/ui/button";
+import { FormItem, FormLabel } from "~/components/ui/form";
+import { Input } from "~/components/ui/input";
+import type { FoilPosition } from "~/lib/interfaces/interfaces";
 
 interface Props {
   nftId?: number;
@@ -24,9 +24,9 @@ interface Props {
 }
 
 enum InputFormType {
-  Gas = 'gas',
-  Ggas = 'Ggas',
-  Collateral = 'collateral',
+  Gas = "gas",
+  Ggas = "Ggas",
+  Collateral = "collateral",
 }
 
 const SizeInput: React.FC<Props> = ({
@@ -36,19 +36,19 @@ const SizeInput: React.FC<Props> = ({
   positionData,
   isLong = true,
   error,
-  label = 'Size',
+  label = "Size",
   defaultToGas = true,
   allowCollateralInput = false,
-  collateralAssetTicker = '',
+  collateralAssetTicker = "",
   onCollateralAmountChange,
 }) => {
-  const [sizeInput, setSizeInput] = useState<string>('0');
+  const [sizeInput, setSizeInput] = useState<string>("0");
   const [inputType, setInputType] = useState<InputFormType>(
-    defaultToGas ? InputFormType.Gas : InputFormType.Ggas
+    defaultToGas ? InputFormType.Gas : InputFormType.Ggas,
   );
 
   useEffect(() => {
-    handleSizeChange('0');
+    handleSizeChange("0");
   }, [nftId, positionData]);
 
   useEffect(() => {
@@ -57,7 +57,7 @@ const SizeInput: React.FC<Props> = ({
 
   useEffect(() => {
     if (size === BigInt(0)) {
-      setSizeInput('0');
+      setSizeInput("0");
       return;
     }
 
@@ -75,9 +75,9 @@ const SizeInput: React.FC<Props> = ({
     // decimal part = prefix of zeros if gas is < 10^9, then the useful decimals
     if (BigInt(value) % BigInt(1e9) !== BigInt(0)) {
       const decimalPart: string =
-        '0'.repeat(
-          Math.max(9 - (BigInt(value) % BigInt(1e9)).toString().length, 0)
-        ) + (BigInt(value) % BigInt(1e9)).toString().replace(/0+$/, '');
+        "0".repeat(
+          Math.max(9 - (BigInt(value) % BigInt(1e9)).toString().length, 0),
+        ) + (BigInt(value) % BigInt(1e9)).toString().replace(/0+$/, "");
       return `${integerPart}.${decimalPart}`;
     }
     return integerPart;
@@ -85,8 +85,8 @@ const SizeInput: React.FC<Props> = ({
 
   const convertGgasToGas = (value: string) => {
     // case when we have decimals
-    if (value.indexOf('.') > -1) {
-      const [integerPart, decimalPart]: string[] = value.split('.');
+    if (value.indexOf(".") > -1) {
+      const [integerPart, decimalPart]: string[] = value.split(".");
       // console.log(`Integer part: ${integerPart}, decimal part: ${decimalPart}`);
       return (
         BigInt(integerPart) * BigInt(1e9) +
@@ -113,41 +113,41 @@ const SizeInput: React.FC<Props> = ({
   const convertValue = (
     value: string,
     fromType: string,
-    toType: string
+    toType: string,
   ): string => {
     if (fromType === InputFormType.Gas && toType === InputFormType.Ggas)
       return convertGasToGgas(value);
     if (fromType === InputFormType.Ggas && toType === InputFormType.Gas)
       return convertGgasToGas(value);
-    return '0'; // Reset value when switching to/from collateral
+    return "0"; // Reset value when switching to/from collateral
   };
 
   const handleUpdateInputType = () => {
     const newType = getNextInputType(inputType);
     setInputType(newType);
 
-    if (sizeInput === '') return;
+    if (sizeInput === "") return;
 
     const newValue = convertValue(sizeInput, inputType, newType);
     // const formattedValue = newValue.toLocaleString('fullwide', {
     //   useGrouping: false,
     //   maximumFractionDigits: 20,
     // });
-    if (newValue === '0') {
-      handleSizeChange('0');
+    if (newValue === "0") {
+      handleSizeChange("0");
     }
     setSizeInput(newValue);
   };
 
   const processCollateralInput = (value: string) => {
-    const collateralAmount = value === '' ? 0 : parseFloat(value);
+    const collateralAmount = value === "" ? 0 : Number.parseFloat(value);
     // TODO (Vlad): onCollateralAmountChange is undefined when passed in component; is something wrong here?
     onCollateralAmountChange?.(BigInt(Math.floor(collateralAmount * 1e18)));
   };
 
   const processSizeInput = (value: string) => {
     let sizeInGas: bigint;
-    if (value === '') sizeInGas = BigInt(0);
+    if (value === "") sizeInGas = BigInt(0);
     else if (inputType === InputFormType.Ggas)
       sizeInGas = BigInt(convertGgasToGas(value));
     else sizeInGas = BigInt(value); // if (inputType === InputFormType.Gas)
@@ -174,25 +174,25 @@ const SizeInput: React.FC<Props> = ({
       };
 
     let processedVal = newVal;
-    if (processedVal[0] === '.') {
+    if (processedVal[0] === ".") {
       processedVal = `0${processedVal}`;
     }
     if (
-      sizeInput === '0' &&
-      newVal !== '0' &&
-      newVal !== '0.' &&
-      newVal !== '0,'
+      sizeInput === "0" &&
+      newVal !== "0" &&
+      newVal !== "0." &&
+      newVal !== "0,"
     ) {
-      processedVal = newVal.replace(/^0+/, '');
+      processedVal = newVal.replace(/^0+/, "");
     }
 
-    if (processedVal === '' || isUserInputValid[inputType](processedVal)) {
+    if (processedVal === "" || isUserInputValid[inputType](processedVal)) {
       // console.log(processedVal, inputType)
       // case when we switch gas <-> GGas and the input is 0. -> useEffect is NOT triggered, hence need this setState
-      processedVal = processedVal.replace(/,/, '.');
+      processedVal = processedVal.replace(/,/, ".");
       setSizeInput(processedVal);
 
-      if (inputType === 'collateral') {
+      if (inputType === "collateral") {
         processCollateralInput(processedVal);
       } else {
         processSizeInput(processedVal);
@@ -206,7 +206,7 @@ const SizeInput: React.FC<Props> = ({
     <div className="w-full">
       <FormItem>
         <FormLabel>
-          {label} {nftId && nftId > 0 ? 'Change' : ''}
+          {label} {nftId && nftId > 0 ? "Change" : ""}
         </FormLabel>
         <div className="flex">
           <Input
@@ -225,7 +225,7 @@ const SizeInput: React.FC<Props> = ({
             className="rounded-l-none px-3 h-10 border border-border"
             onClick={handleUpdateInputType}
           >
-            {inputType === 'collateral' ? collateralAssetTicker : inputType}
+            {inputType === "collateral" ? collateralAssetTicker : inputType}
 
             <span className="flex flex-col scale-75">
               <ChevronUp className="h-1 w-1 translate-y-1/4" />

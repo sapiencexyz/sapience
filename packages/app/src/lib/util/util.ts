@@ -1,16 +1,16 @@
-import JSBI from 'jsbi';
+import JSBI from "jsbi";
 import {
   formatEther,
   type ReadContractErrorType,
   type WriteContractErrorType,
-} from 'viem';
-import * as chains from 'viem/chains';
-import type { Chain } from 'viem/chains';
+} from "viem";
+import * as chains from "viem/chains";
+import type { Chain } from "viem/chains";
 
-import { TimeWindow } from '../interfaces/interfaces';
+import { TimeWindow } from "../interfaces/interfaces";
 
 export function convertHundredthsOfBipToPercent(
-  hundredthsOfBip: number
+  hundredthsOfBip: number,
 ): number {
   // 1 bip = 0.01%
   // 1 hundredth of bip = 0.01/100 = 0.0001
@@ -19,21 +19,21 @@ export function convertHundredthsOfBipToPercent(
 
 export function getDisplayTextForVolumeWindow(volumeWindow: TimeWindow) {
   if (volumeWindow === TimeWindow.H) {
-    return 'Past Hour';
+    return "Past Hour";
   }
   if (volumeWindow === TimeWindow.D) {
-    return 'Past Day';
+    return "Past Day";
   }
   if (volumeWindow === TimeWindow.W) {
-    return 'Past Week';
+    return "Past Week";
   }
   if (volumeWindow === TimeWindow.M) {
-    return 'Past Month';
+    return "Past Month";
   }
   if (volumeWindow === TimeWindow.Y) {
-    return 'Past Year';
+    return "Past Year";
   }
-  return '';
+  return "";
 }
 
 // TODO: Adjust this based on fee rate on the market
@@ -51,14 +51,14 @@ export function getChain(chainId: number): Chain {
 
 export const convertWstEthToGwei = (
   wstEth: number,
-  stEthPerToken: number | undefined
+  stEthPerToken: number | undefined,
 ) => {
   return (wstEth * 1e9) / (stEthPerToken || 1);
 };
 
 export const convertGgasPerWstEthToGwei = (
   value: number,
-  stEthPerToken: number | undefined
+  stEthPerToken: number | undefined,
 ) => {
   return (value * (stEthPerToken || 1)) / 1e9;
 };
@@ -90,20 +90,20 @@ export const removeLeadingZeros = (input: string | number): string => {
   if (!str) return str;
 
   // Handle zero
-  if (str === '0') return '0';
+  if (str === "0") return "0";
 
   // Handle decimal numbers starting with 0 (e.g., 0.123)
   if (str.match(/^0\./)) return str;
 
   // Handle negative numbers
-  if (str.startsWith('-')) {
+  if (str.startsWith("-")) {
     const withoutMinus = str.slice(1);
     const processed = removeLeadingZeros(withoutMinus);
-    return processed === '0' ? '0' : `-${processed}`;
+    return processed === "0" ? "0" : `-${processed}`;
   }
 
   // Remove leading zeros and return
-  return str.replace(/^0+/, '') || '0';
+  return str.replace(/^0+/, "") || "0";
 };
 
 export function JSBIAbs(value: JSBI): JSBI {

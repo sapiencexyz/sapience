@@ -1,8 +1,8 @@
-import type React from 'react';
-import type { Dispatch, SetStateAction } from 'react';
+import type React from "react";
+import type { Dispatch, SetStateAction } from "react";
 
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TimeWindow } from '~/lib/interfaces/interfaces';
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TimeWindow } from "~/lib/interfaces/interfaces";
 
 interface VolumeWindowSelectorProps {
   setSelectedWindow: Dispatch<SetStateAction<TimeWindow>>;

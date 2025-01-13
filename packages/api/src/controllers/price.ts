@@ -1,5 +1,5 @@
 import { Between, LessThanOrEqual, MoreThanOrEqual } from "typeorm";
-import { ResourcePrice } from "../models/ResourcePrice";
+import type { ResourcePrice } from "../models/ResourcePrice";
 import { IndexPrice } from "../models/IndexPrice";
 import {
   epochRepository,
@@ -9,7 +9,7 @@ import {
 } from "src/db";
 
 export const upsertIndexPriceFromResourcePrice = async (
-  resourcePrice: ResourcePrice
+  resourcePrice: ResourcePrice,
 ) => {
   // Get the market associated with the resource price's resource
   const markets = await marketRepository.find({
@@ -41,12 +41,12 @@ export const upsertIndexPriceFromResourcePrice = async (
 
       const totalGasUsed: bigint = resourcePrices.reduce(
         (total, price) => total + BigInt(price.used),
-        0n
+        0n,
       );
 
       const totalBaseFeesPaid: bigint = resourcePrices.reduce(
         (total, price) => total + BigInt(price.feePaid),
-        0n
+        0n,
       );
 
       const averagePrice: bigint = totalBaseFeesPaid / totalGasUsed;

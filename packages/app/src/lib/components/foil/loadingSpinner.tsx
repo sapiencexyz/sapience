@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { Loader2 } from 'lucide-react';
+import { Loader2 } from "lucide-react";
 
-import { useLoading } from '~/lib/context/LoadingContext';
+import { useLoading } from "~/lib/context/LoadingContext";
 
 export const LoadingSpinner: React.FC = () => {
   const { isLoading } = useLoading();

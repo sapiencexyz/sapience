@@ -2,8 +2,8 @@ import {
   DiscordLogoIcon,
   GitHubLogoIcon,
   TwitterLogoIcon,
-} from '@radix-ui/react-icons';
-import { Button } from '@/components/ui/button';
+} from "@radix-ui/react-icons";
+import { Button } from "@/components/ui/button";
 
 export const Footer = () => {
   return (

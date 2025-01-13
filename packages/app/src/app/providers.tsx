@@ -1,41 +1,41 @@
-'use client';
+"use client";
 
-import { RainbowKitProvider, lightTheme } from '@rainbow-me/rainbowkit';
-import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
-import type { HttpTransport } from 'viem';
-import { defineChain } from 'viem';
-import { sepolia } from 'viem/chains';
-import { createConfig, http, WagmiProvider } from 'wagmi';
-import { injected } from 'wagmi/connectors';
+import { RainbowKitProvider, lightTheme } from "@rainbow-me/rainbowkit";
+import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
+import type { HttpTransport } from "viem";
+import { defineChain } from "viem";
+import { sepolia } from "viem/chains";
+import { createConfig, http, WagmiProvider } from "wagmi";
+import { injected } from "wagmi/connectors";
 
-import ThemeProvider from '~/components/ThemeProvider';
-import { MarketListProvider } from '~/lib/context/MarketListProvider';
+import ThemeProvider from "~/components/ThemeProvider";
+import { MarketListProvider } from "~/lib/context/MarketListProvider";
 
 const queryClient = new QueryClient();
 
 export const cannon = defineChain({
   id: 13370,
-  name: 'Cannon',
+  name: "Cannon",
   nativeCurrency: {
-    name: 'Ether',
-    symbol: 'ETH',
+    name: "Ether",
+    symbol: "ETH",
     decimals: 18,
   },
-  rpcUrls: { default: { http: ['http://localhost:8545'] } },
+  rpcUrls: { default: { http: ["http://localhost:8545"] } },
 });
 
 const transports: Record<number, HttpTransport> = {
   [sepolia.id]: http(
     process.env.NEXT_PUBLIC_INFURA_API_KEY
       ? `https://sepolia.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
-      : 'https://ethereum-sepolia-rpc.publicnode.com'
+      : "https://ethereum-sepolia-rpc.publicnode.com",
   ),
 };
 
 const chains: any = [sepolia];
 
-if (process.env.NODE_ENV !== 'production') {
-  transports[cannon.id] = http('http://localhost:8545');
+if (process.env.NODE_ENV !== "production") {
+  transports[cannon.id] = http("http://localhost:8545");
   chains.push(cannon);
 }
 

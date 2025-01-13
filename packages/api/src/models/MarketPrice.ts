@@ -10,7 +10,10 @@ import { NUMERIC_PRECISION } from "../constants";
 
 @Entity()
 export class MarketPrice {
-  @OneToOne(() => Transaction, (transaction) => transaction.marketPrice)
+  @OneToOne(
+    () => Transaction,
+    (transaction) => transaction.marketPrice,
+  )
   transaction: Transaction;
 
   @PrimaryGeneratedColumn()

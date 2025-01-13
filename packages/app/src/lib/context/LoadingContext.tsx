@@ -1,10 +1,10 @@
 // contexts/LoadingContext.tsx
 
-'use client';
+"use client";
 
-import type { ReactNode } from 'react';
-import type React from 'react';
-import { createContext, useContext, useState } from 'react';
+import type { ReactNode } from "react";
+import type React from "react";
+import { createContext, useContext, useState } from "react";
 
 interface LoadingContextType {
   isLoading: boolean;
@@ -29,7 +29,7 @@ export const LoadingProvider: React.FC<{ children: ReactNode }> = ({
 export const useLoading = () => {
   const context = useContext(LoadingContext);
   if (context === undefined) {
-    throw new Error('useLoading must be used within a LoadingProvider');
+    throw new Error("useLoading must be used within a LoadingProvider");
   }
   return context;
 };

@@ -2,7 +2,7 @@
 /* eslint-disable react/no-unstable-nested-components */
 /* eslint-disable jsx-a11y/label-has-associated-control */
 /* eslint-disable jsx-a11y/control-has-associated-label */
-import { useQuery } from '@tanstack/react-query';
+import { useQuery } from "@tanstack/react-query";
 import {
   useReactTable,
   flexRender,
@@ -10,9 +10,9 @@ import {
   getSortedRowModel,
   type ColumnDef,
   type SortingState,
-} from '@tanstack/react-table';
-import axios from 'axios';
-import { formatDistanceToNow } from 'date-fns';
+} from "@tanstack/react-table";
+import axios from "axios";
+import { formatDistanceToNow } from "date-fns";
 import {
   ChevronDown,
   ChevronUp,
@@ -20,25 +20,25 @@ import {
   Loader2,
   Download,
   AlertCircle,
-} from 'lucide-react';
-import type React from 'react';
-import { useEffect, useState, useMemo } from 'react';
-import type { AbiFunction } from 'viem';
-import { parseUnits, zeroAddress } from 'viem';
-import * as Chains from 'viem/chains';
+} from "lucide-react";
+import type React from "react";
+import { useEffect, useState, useMemo } from "react";
+import type { AbiFunction } from "viem";
+import { parseUnits, zeroAddress } from "viem";
+import * as Chains from "viem/chains";
 import {
   useAccount,
   useReadContract,
   useSignMessage,
   useWaitForTransactionReceipt,
   useWriteContract,
-} from 'wagmi';
+} from "wagmi";
 
-import erc20ABI from '../../erc20abi.json';
-import useFoilDeployment from '../foil/useFoilDeployment';
-import MarketAddress from '../MarketAddress';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
+import erc20ABI from "../../erc20abi.json";
+import useFoilDeployment from "../foil/useFoilDeployment";
+import MarketAddress from "../MarketAddress";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableHeader,
@@ -46,24 +46,24 @@ import {
   TableRow,
   TableHead,
   TableCell,
-} from '@/components/ui/table';
+} from "@/components/ui/table";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { useToast } from '~/hooks/use-toast';
+} from "@/components/ui/tooltip";
+import { useToast } from "~/hooks/use-toast";
 import {
   ADMIN_AUTHENTICATE_MSG,
   API_BASE_URL,
   DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS,
   TOKEN_DECIMALS,
-} from '~/lib/constants/constants';
-import { useMarketList, type Market } from '~/lib/context/MarketListProvider';
-import type { EpochData, MarketParams } from '~/lib/interfaces/interfaces';
-import { formatAmount } from '~/lib/util/numberUtil';
-import { gweiToEther } from '~/lib/util/util';
+} from "~/lib/constants/constants";
+import { useMarketList, type Market } from "~/lib/context/MarketListProvider";
+import type { EpochData, MarketParams } from "~/lib/interfaces/interfaces";
+import { formatAmount } from "~/lib/util/numberUtil";
+import { gweiToEther } from "~/lib/util/util";
 
 // Update interface to only include resourcePrice
 interface MissingBlocks {
@@ -73,10 +73,10 @@ interface MissingBlocks {
 }
 
 const renderSortIcon = (isSorted: string | false) => {
-  if (isSorted === 'desc') {
+  if (isSorted === "desc") {
     return <ChevronDown className="h-3 w-3" aria-label="sorted descending" />;
   }
-  if (isSorted === 'asc') {
+  if (isSorted === "asc") {
     return <ChevronUp className="h-3 w-3" aria-label="sorted ascending" />;
   }
   return <ArrowUpDown className="h-3 w-3" aria-label="sortable" />;
@@ -130,7 +130,7 @@ const MarketsTable: React.FC = () => {
     [actionName: string]: boolean;
   }>({});
   const [sorting, setSorting] = useState<SortingState>([
-    { id: 'endTimestamp', desc: true },
+    { id: "endTimestamp", desc: true },
   ]);
   const { toast } = useToast();
   const { signMessageAsync } = useSignMessage();
@@ -140,10 +140,10 @@ const MarketsTable: React.FC = () => {
     const flattenedData = markets.flatMap((market) =>
       market.epochs.map((epoch) => {
         console.log(
-          'Processing epoch:',
+          "Processing epoch:",
           epoch.epochId,
-          'for market:',
-          market.address
+          "for market:",
+          market.address,
         );
         return {
           ...epoch,
@@ -152,9 +152,9 @@ const MarketsTable: React.FC = () => {
           chainId: market.chainId,
           isPublic: market.public,
         };
-      })
+      }),
     );
-    console.log('Flattened market data:', flattenedData);
+    console.log("Flattened market data:", flattenedData);
     return flattenedData;
   }, [markets]);
 
@@ -162,7 +162,7 @@ const MarketsTable: React.FC = () => {
   const fetchMissingBlocks = async (market: Market, epochId: number) => {
     try {
       const response = await axios.get(
-        `${API_BASE_URL}/missing-blocks?chainId=${market.chainId}&address=${market.address}&epochId=${epochId}`
+        `${API_BASE_URL}/missing-blocks?chainId=${market.chainId}&address=${market.address}&epochId=${epochId}`,
       );
 
       setMissingBlocks((prev) => ({
@@ -172,7 +172,7 @@ const MarketsTable: React.FC = () => {
         },
       }));
     } catch (error) {
-      console.error('Error fetching missing blocks:', error);
+      console.error("Error fetching missing blocks:", error);
     }
   };
 
@@ -188,10 +188,10 @@ const MarketsTable: React.FC = () => {
   }, [markets, isLoading]);
 
   const handleReindex = async (
-    reindexType: 'price' | 'events',
+    reindexType: "price" | "events",
     marketAddress: string,
     epochId: number,
-    chainId: number
+    chainId: number,
   ) => {
     try {
       setLoadingAction((prev) => ({
@@ -210,17 +210,17 @@ const MarketsTable: React.FC = () => {
           chainId,
           address: marketAddress,
           epochId,
-          model: reindexType === 'price' ? 'ResourcePrice' : 'Event',
+          model: reindexType === "price" ? "ResourcePrice" : "Event",
           signature,
           timestamp,
-        }
+        },
       );
 
       if (response.data.success) {
         toast({
-          title: 'Reindexing started',
+          title: "Reindexing started",
           description: response.data.message,
-          variant: 'default',
+          variant: "default",
         });
         // Find the market object and pass it to fetchMissingBlocks
         const market = markets.find((m) => m.address === marketAddress);
@@ -229,18 +229,18 @@ const MarketsTable: React.FC = () => {
         }
       } else {
         toast({
-          title: 'Reindexing failed',
+          title: "Reindexing failed",
           description: response.data.error,
-          variant: 'destructive',
+          variant: "destructive",
         });
       }
     } catch (e: any) {
-      console.error('Error in handleReindex:', e);
+      console.error("Error in handleReindex:", e);
       toast({
-        title: 'Reindexing failed',
+        title: "Reindexing failed",
         description:
-          e?.response?.data?.error || e.message || 'An error occurred',
-        variant: 'destructive',
+          e?.response?.data?.error || e.message || "An error occurred",
+        variant: "destructive",
       });
     } finally {
       setLoadingAction((prev) => ({
@@ -253,8 +253,8 @@ const MarketsTable: React.FC = () => {
   const columns = useMemo<ColumnDef<any>[]>(
     () => [
       {
-        id: 'isPublic',
-        header: 'Public',
+        id: "isPublic",
+        header: "Public",
         cell: ({ row }) => (
           <PublicCell
             isPublic={row.original.isPublic}
@@ -265,8 +265,8 @@ const MarketsTable: React.FC = () => {
         ),
       },
       {
-        id: 'marketAddress',
-        header: 'Address',
+        id: "marketAddress",
+        header: "Address",
         cell: ({ row }) => (
           <AddressCell
             address={row.original.marketAddress}
@@ -275,13 +275,13 @@ const MarketsTable: React.FC = () => {
         ),
       },
       {
-        id: 'chainId',
-        header: 'Chain',
-        accessorKey: 'chainId',
+        id: "chainId",
+        header: "Chain",
+        accessorKey: "chainId",
       },
       {
-        id: 'epochId',
-        header: 'Epoch',
+        id: "epochId",
+        header: "Epoch",
         cell: ({ row }) => (
           <div className="flex items-center gap-2">
             <span>{row.original.epochId}</span>
@@ -292,10 +292,10 @@ const MarketsTable: React.FC = () => {
                     size="icon"
                     onClick={() =>
                       handleReindex(
-                        'events',
+                        "events",
                         row.original.marketAddress,
                         row.original.epochId,
-                        row.original.chainId
+                        row.original.chainId,
                       )
                     }
                     className="h-6 w-6 p-0"
@@ -312,9 +312,9 @@ const MarketsTable: React.FC = () => {
         ),
       },
       {
-        id: 'endTimestamp',
-        header: 'Ends',
-        accessorKey: 'endTimestamp',
+        id: "endTimestamp",
+        header: "Ends",
+        accessorKey: "endTimestamp",
         cell: ({ getValue }) => {
           const timestamp = getValue() as number;
           const date = new Date(timestamp * 1000);
@@ -325,8 +325,8 @@ const MarketsTable: React.FC = () => {
         },
       },
       {
-        id: 'missingPriceBlocks',
-        header: 'Missing Price Blocks',
+        id: "missingPriceBlocks",
+        header: "Missing Price Blocks",
         cell: ({ row }) => {
           const key = `${row.original.marketAddress}-${row.original.epochId}`;
           const blocks = missingBlocks[key]?.resourcePrice;
@@ -334,7 +334,7 @@ const MarketsTable: React.FC = () => {
           return (
             <div className="flex items-center gap-2">
               <span>
-                {blocks ? blocks.length.toLocaleString() : 'Loading...'}
+                {blocks ? blocks.length.toLocaleString() : "Loading..."}
               </span>
               {blocks && blocks.length > 0 && (
                 <TooltipProvider>
@@ -344,10 +344,10 @@ const MarketsTable: React.FC = () => {
                         size="icon"
                         onClick={() =>
                           handleReindex(
-                            'price',
+                            "price",
                             row.original.marketAddress,
                             row.original.epochId,
-                            row.original.chainId
+                            row.original.chainId,
                           )
                         }
                         className="h-6 w-6 p-0"
@@ -366,8 +366,8 @@ const MarketsTable: React.FC = () => {
         },
       },
       {
-        id: 'settlementPrice',
-        header: 'Settlement Price',
+        id: "settlementPrice",
+        header: "Settlement Price",
         cell: ({ row }) => (
           <SettlementPriceTableCell
             market={row.original.market}
@@ -376,8 +376,8 @@ const MarketsTable: React.FC = () => {
         ),
       },
       {
-        id: 'settlement',
-        header: 'Settle',
+        id: "settlement",
+        header: "Settle",
         cell: ({ row }) => (
           <EpochItem
             market={row.original.market}
@@ -387,7 +387,7 @@ const MarketsTable: React.FC = () => {
         ),
       },
     ],
-    [missingBlocks, loadingAction]
+    [missingBlocks, loadingAction],
   );
 
   const table = useReactTable({
@@ -444,7 +444,7 @@ const MarketsTable: React.FC = () => {
                   <span className="flex items-center">
                     {flexRender(
                       header.column.columnDef.header,
-                      header.getContext()
+                      header.getContext(),
                     )}
                     <span className="ml-2 inline-block">
                       {renderSortIcon(header.column.getIsSorted())}
@@ -473,7 +473,7 @@ const MarketsTable: React.FC = () => {
 
 // Move EpochItem component definition here, outside of MarketsTable
 const EpochItem: React.FC<{
-  epoch: Market['epochs'][0];
+  epoch: Market["epochs"][0];
   market: Market;
   missingBlocks: MissingBlocks;
 }> = ({ market, epoch, missingBlocks }) => {
@@ -483,7 +483,7 @@ const EpochItem: React.FC<{
   const [stEthPerToken, setStEthPerToken] = useState(0);
   const { toast } = useToast();
   const { foilData, loading, error, foilVaultData } = useFoilDeployment(
-    market?.chainId
+    market?.chainId,
   );
   const { chainId, collateralAsset } = market;
   const { endTimestamp } = epoch;
@@ -496,7 +496,7 @@ const EpochItem: React.FC<{
     chainId,
     abi: erc20ABI,
     address: market.collateralAsset as `0x${string}`,
-    functionName: 'symbol',
+    functionName: "symbol",
   });
 
   const currentTime = Math.floor(Date.now() / 1000);
@@ -506,23 +506,23 @@ const EpochItem: React.FC<{
     abi: [
       {
         inputs: [],
-        name: 'stEthPerToken',
+        name: "stEthPerToken",
         outputs: [
           {
-            internalType: 'uint256',
-            name: '',
-            type: 'uint256',
+            internalType: "uint256",
+            name: "",
+            type: "uint256",
           },
         ],
-        stateMutability: 'view',
-        type: 'function',
+        stateMutability: "view",
+        type: "function",
       },
     ],
     address:
       chainId === Chains.cannon.id
         ? DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS
         : (collateralAsset as `0x${string}`),
-    functionName: 'stEthPerToken',
+    functionName: "stEthPerToken",
   });
 
   useEffect(() => {
@@ -534,13 +534,13 @@ const EpochItem: React.FC<{
   useEffect(() => {
     const updateSettledStEthPerToken = async () => {
       setLoadingStEthPerToken(true);
-      console.log('repingging...');
+      console.log("repingging...");
       const response = await axios.get(
-        `${API_BASE_URL}/getStEthPerTokenAtTimestamp?chainId=${chainId}&collateralAssetAddress=${collateralAsset}&endTime=${endTimestamp}`
+        `${API_BASE_URL}/getStEthPerTokenAtTimestamp?chainId=${chainId}&collateralAssetAddress=${collateralAsset}&endTime=${endTimestamp}`,
       );
       if (response.data.stEthPerToken) {
         setStEthPerToken(
-          Number(gweiToEther(BigInt(response.data.stEthPerToken)))
+          Number(gweiToEther(BigInt(response.data.stEthPerToken))),
         );
       }
       setLoadingStEthPerToken(false);
@@ -558,14 +558,14 @@ const EpochItem: React.FC<{
   const { data: getEpochData, refetch: refetchEpochData } = useReadContract({
     address: market.address as `0x${string}`,
     abi: foilData?.abi,
-    functionName: 'getEpoch',
+    functionName: "getEpoch",
     args: [BigInt(epoch.epochId)],
     chainId: market.chainId,
     query: {
       enabled: !loading && !error && !!foilData,
     },
   }) as any;
-  console.log('getEpochData', getEpochData);
+  console.log("getEpochData", getEpochData);
   const epochData: EpochData | undefined = getEpochData
     ? getEpochData[0]
     : undefined;
@@ -580,7 +580,7 @@ const EpochItem: React.FC<{
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
     abi: erc20ABI as AbiFunction[],
     address: bondCurrency as `0x${string}`,
-    functionName: 'allowance',
+    functionName: "allowance",
     args: [address, foilVaultData.address],
     account: address || zeroAddress,
     chainId: market.chainId,
@@ -594,18 +594,18 @@ const EpochItem: React.FC<{
     useWriteContract({
       mutation: {
         onError: (settleError) => {
-          console.error('Failed to settle: ', settleError);
+          console.error("Failed to settle: ", settleError);
           toast({
-            variant: 'destructive',
-            title: 'Failed to settle',
+            variant: "destructive",
+            title: "Failed to settle",
             description: (settleError as Error).message,
           });
           resetAfterError();
         },
         onSuccess: () => {
           toast({
-            title: 'Transaction submitted',
-            description: 'Waiting for confirmation...',
+            title: "Transaction submitted",
+            description: "Waiting for confirmation...",
           });
         },
       },
@@ -618,11 +618,11 @@ const EpochItem: React.FC<{
   const { data: approveHash, writeContract: approveWrite } = useWriteContract({
     mutation: {
       onError: (error) => {
-        console.error('Failed to approve: ', error);
+        console.error("Failed to approve: ", error);
         resetAfterError();
         toast({
-          variant: 'destructive',
-          title: 'Failed to approve',
+          variant: "destructive",
+          title: "Failed to approve",
           description: (error as Error).message,
         });
       },
@@ -644,9 +644,9 @@ const EpochItem: React.FC<{
   useEffect(() => {
     if (isSettlementSuccess && txnStep === 2) {
       toast({
-        title: 'Successfully settled',
+        title: "Successfully settled",
         description:
-          'Note that it may take a few minutes while in the dispute period on UMA.',
+          "Note that it may take a few minutes while in the dispute period on UMA.",
       });
       refetchEpochData();
       setTxnStep(0);
@@ -656,22 +656,22 @@ const EpochItem: React.FC<{
 
   const { data: latestPrice, isLoading: isLatestPriceLoading } = useQuery({
     queryKey: [
-      'latestPrice',
+      "latestPrice",
       `${market?.chainId}:${market?.address}`,
       epoch.epochId,
     ],
     queryFn: async () => {
       console.log(
-        'Fetching price for epoch:',
+        "Fetching price for epoch:",
         epoch.epochId,
-        'market:',
-        market.address
+        "market:",
+        market.address,
       );
       const response = await fetch(
-        `${API_BASE_URL}/prices/index/latest?contractId=${market.chainId}:${market.address}&epochId=${epoch.epochId}`
+        `${API_BASE_URL}/prices/index/latest?contractId=${market.chainId}:${market.address}&epochId=${epoch.epochId}`,
       );
       if (!response.ok) {
-        throw new Error('Network response was not ok');
+        throw new Error("Network response was not ok");
       }
       const data = await response.json();
       return data.price;
@@ -684,7 +684,7 @@ const EpochItem: React.FC<{
     settleWithPrice({
       address: foilVaultData.address as `0x${string}`,
       abi: foilVaultData.abi,
-      functionName: 'submitMarketSettlementPrice',
+      functionName: "submitMarketSettlementPrice",
       args: [
         epoch.epochId,
         parseUnits(priceAdjusted.toString(), TOKEN_DECIMALS),
@@ -697,7 +697,7 @@ const EpochItem: React.FC<{
     approveWrite({
       abi: erc20ABI,
       address: bondCurrency as `0x${string}`,
-      functionName: 'approve',
+      functionName: "approve",
       args: [foilVaultData.address, bondAmount],
       chainId,
     });
@@ -727,18 +727,18 @@ const EpochItem: React.FC<{
 
     const getButtonText = () => {
       if (!isEpochEnded) {
-        return 'Epoch Active';
+        return "Epoch Active";
       }
       if (areMissingBlocksLoading) {
-        return 'Loading Blocks...';
+        return "Loading Blocks...";
       }
       if (hasMissingBlocks) {
-        return 'Missing Blocks';
+        return "Missing Blocks";
       }
       if (requireApproval) {
         return `Approve ${collateralTickerFunctionResult.data} Transfer`;
       }
-      return 'Settle with Price';
+      return "Settle with Price";
     };
 
     if (epochSettled) {
@@ -750,7 +750,7 @@ const EpochItem: React.FC<{
     }
 
     if (isLatestPriceLoading) {
-      return 'Loading Latest Price...';
+      return "Loading Latest Price...";
     }
 
     return (
@@ -808,23 +808,23 @@ const SettlementPriceTableCell: React.FC<{
     abi: [
       {
         inputs: [],
-        name: 'stEthPerToken',
+        name: "stEthPerToken",
         outputs: [
           {
-            internalType: 'uint256',
-            name: '',
-            type: 'uint256',
+            internalType: "uint256",
+            name: "",
+            type: "uint256",
           },
         ],
-        stateMutability: 'view',
-        type: 'function',
+        stateMutability: "view",
+        type: "function",
       },
     ],
     address:
       market.chainId === Chains.cannon.id
         ? DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS
         : (market.collateralAsset as `0x${string}`),
-    functionName: 'stEthPerToken',
+    functionName: "stEthPerToken",
   });
 
   useEffect(() => {
@@ -835,16 +835,16 @@ const SettlementPriceTableCell: React.FC<{
 
   const { data: latestPrice, isLoading: isLatestPriceLoading } = useQuery({
     queryKey: [
-      'latestPrice',
+      "latestPrice",
       `${market?.chainId}:${market?.address}`,
       epoch.epochId,
     ],
     queryFn: async () => {
       const response = await fetch(
-        `${API_BASE_URL}/prices/index/latest?contractId=${market.chainId}:${market.address}&epochId=${epoch.epochId}`
+        `${API_BASE_URL}/prices/index/latest?contractId=${market.chainId}:${market.address}&epochId=${epoch.epochId}`,
       );
       if (!response.ok) {
-        throw new Error('Network response was not ok');
+        throw new Error("Network response was not ok");
       }
       const data = await response.json();
       return data.price;
@@ -884,7 +884,7 @@ const SettlementPriceCell: React.FC<{
   } = useReadContract({
     address: market.address as `0x${string}`,
     abi: foilData?.abi,
-    functionName: 'getEpoch',
+    functionName: "getEpoch",
     args: [BigInt(epoch.epochId)],
     chainId: market.chainId,
     query: {
@@ -906,8 +906,8 @@ const SettlementPriceCell: React.FC<{
       setLoadingSettlementPrice(false);
     } else if (!isLoadingEpochData && (getEpochDataError || foilDataError)) {
       console.error(
-        'Error fetching epoch data:',
-        getEpochDataError || foilDataError
+        "Error fetching epoch data:",
+        getEpochDataError || foilDataError,
       );
       setError(true);
       setLoadingSettlementPrice(false);

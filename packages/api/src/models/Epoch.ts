@@ -16,13 +16,22 @@ import { MarketParams } from "./MarketParams";
 @Entity()
 @Unique(["market", "epochId"])
 export class Epoch {
-  @ManyToOne(() => Market, (market) => market.epochs)
+  @ManyToOne(
+    () => Market,
+    (market) => market.epochs,
+  )
   market: Market;
 
-  @OneToMany(() => Position, (position) => position.epoch)
+  @OneToMany(
+    () => Position,
+    (position) => position.epoch,
+  )
   positions: Position[];
 
-  @OneToMany(() => IndexPrice, (price) => price.epoch)
+  @OneToMany(
+    () => IndexPrice,
+    (price) => price.epoch,
+  )
   indexPrices: IndexPrice[];
 
   @PrimaryGeneratedColumn()
@@ -35,7 +44,7 @@ export class Epoch {
   epochId: number;
 
   @Column({ type: "integer", nullable: true })
-  startTimestamp: number | null   ;
+  startTimestamp: number | null;
 
   @Column({ type: "integer", nullable: true })
   endTimestamp: number | null;

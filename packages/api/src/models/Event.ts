@@ -15,10 +15,16 @@ import { Market } from "./Market";
 @Entity()
 @Unique(["transactionHash", "market", "blockNumber", "logIndex"])
 export class Event {
-  @OneToOne(() => Transaction, (transaction) => transaction.event)
+  @OneToOne(
+    () => Transaction,
+    (transaction) => transaction.event,
+  )
   transaction: Transaction;
 
-  @ManyToOne(() => Market, (market) => market.events)
+  @ManyToOne(
+    () => Market,
+    (market) => market.events,
+  )
   market: Market;
 
   @PrimaryGeneratedColumn()

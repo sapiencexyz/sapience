@@ -1,12 +1,12 @@
-import { Minus } from 'lucide-react';
-import type React from 'react';
+import { Minus } from "lucide-react";
+import type React from "react";
 
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from "@/components/ui/tooltip";
 
 type NumberDisplayProps = {
   value: number | string | bigint;
@@ -21,21 +21,21 @@ const NumberDisplay: React.FC<NumberDisplayProps> = ({
     let numValue: number;
     let stringValue: string;
 
-    if (typeof val === 'bigint') {
+    if (typeof val === "bigint") {
       numValue = Number(val) / 10 ** 18;
       stringValue = val.toString();
-    } else if (typeof val === 'number') {
+    } else if (typeof val === "number") {
       numValue = val;
       stringValue = val.toString();
-    } else if (typeof val === 'string') {
-      numValue = parseFloat(val);
+    } else if (typeof val === "string") {
+      numValue = Number.parseFloat(val);
       stringValue = val;
     } else {
-      return 'Invalid input';
+      return "Invalid input";
     }
 
     if (isNaN(numValue)) {
-      return 'Invalid number';
+      return "Invalid number";
     }
 
     if (Math.abs(numValue) < 1 / 10 ** precision && numValue !== 0) {

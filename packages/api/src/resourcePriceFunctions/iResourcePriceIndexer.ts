@@ -1,12 +1,12 @@
-import { Resource } from "../models/Resource";
+import type { Resource } from "../models/Resource";
 
-import { PublicClient } from "viem";
+import type { PublicClient } from "viem";
 
 export interface IResourcePriceIndexer {
   client: PublicClient | undefined;
   indexBlockPriceFromTimestamp(
     resource: Resource,
-    timestamp: number
+    timestamp: number,
   ): Promise<boolean>;
   indexBlocks(resource: Resource, blocks: number[]): Promise<boolean>;
   watchBlocksForResource(resource: Resource): Promise<void>;

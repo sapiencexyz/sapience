@@ -1,21 +1,21 @@
-import { Loader } from 'lucide-react';
-import { useState, useEffect, useContext } from 'react';
-import { formatUnits } from 'viem';
+import { Loader } from "lucide-react";
+import { useState, useEffect, useContext } from "react";
+import { formatUnits } from "viem";
 import {
   useAccount,
   useReadContract,
   useWriteContract,
   useWaitForTransactionReceipt,
-} from 'wagmi';
+} from "wagmi";
 
-import { Button } from '~/components/ui/button';
-import { useToast } from '~/hooks/use-toast';
-import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
-import { MarketContext } from '~/lib/context/MarketProvider';
-import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';
+import { Button } from "~/components/ui/button";
+import { useToast } from "~/hooks/use-toast";
+import { useAddEditPosition } from "~/lib/context/AddEditPositionContext";
+import { MarketContext } from "~/lib/context/MarketProvider";
+import { useTokenIdsOfOwner } from "~/lib/hooks/useTokenIdsOfOwner";
 
-import NumberDisplay from './numberDisplay';
-import PositionSelector from './positionSelector';
+import NumberDisplay from "./numberDisplay";
+import PositionSelector from "./positionSelector";
 
 export default function Settle() {
   const { address, isConnected } = useAccount();
@@ -32,19 +32,19 @@ export default function Settle() {
   } = useContext(MarketContext);
   const { nftId, setNftId, positions } = useAddEditPosition();
   const [withdrawableCollateral, setWithdrawableCollateral] = useState<bigint>(
-    BigInt(0)
+    BigInt(0),
   );
   const [isSettling, setIsSettling] = useState<boolean>(false);
   const { toast } = useToast();
 
   const { isLoadingBalance, isLoadingContracts, refetch } = useTokenIdsOfOwner(
-    address as `0x${string}`
+    address as `0x${string}`,
   );
 
   const { data: positionData } = useReadContract({
     address: marketAddress as `0x${string}`,
     abi: foilData.abi,
-    functionName: 'getPosition',
+    functionName: "getPosition",
     args: [nftId ?? 0],
     chainId,
   });
@@ -58,8 +58,8 @@ export default function Settle() {
   useEffect(() => {
     if (isConfirmed) {
       toast({
-        title: 'Success',
-        description: 'Position settled successfully!',
+        title: "Success",
+        description: "Position settled successfully!",
       });
       setIsSettling(false);
       refetch();
@@ -71,7 +71,7 @@ export default function Settle() {
   useEffect(() => {
     if (positionData) {
       setWithdrawableCollateral(
-        BigInt((positionData as any).depositedCollateralAmount)
+        BigInt((positionData as any).depositedCollateralAmount),
       );
     }
   }, [positionData]);
@@ -83,14 +83,14 @@ export default function Settle() {
         await writeContract({
           address: foilData.address as `0x${string}`,
           abi: foilData.abi,
-          functionName: 'settlePosition',
+          functionName: "settlePosition",
           chainId,
           args: [BigInt(nftId ?? 0)],
         });
       } catch (error) {
         toast({
-          variant: 'destructive',
-          title: 'Failed to settle position',
+          variant: "destructive",
+          title: "Failed to settle position",
           description: (error as Error).message,
         });
         setIsSettling(false);
@@ -134,11 +134,11 @@ export default function Settle() {
       {withdrawableCollateral > BigInt(0) && (
         <div className="mb-4">
           <p className="text-sm font-semibold mb-0.5">
-            {!(epochSettled && settlementPrice) ? 'Anticipated' : null}{' '}
+            {!(epochSettled && settlementPrice) ? "Anticipated" : null}{" "}
             Withdrawable Collateral
           </p>
           <p className="text-sm">
-            <NumberDisplay value={formatUnits(withdrawableCollateral, 18)} />{' '}
+            <NumberDisplay value={formatUnits(withdrawableCollateral, 18)} />{" "}
             {collateralAssetTicker}
           </p>
         </div>
@@ -148,7 +148,7 @@ export default function Settle() {
           <div className="mb-6">
             <p className="text-sm font-semibold mb-0.5">Settlement Price</p>
             <p className="text-sm">
-              <NumberDisplay value={formatUnits(settlementPrice, 18)} />{' '}
+              <NumberDisplay value={formatUnits(settlementPrice, 18)} />{" "}
               wstETH/Ggas
             </p>
           </div>

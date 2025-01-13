@@ -1,21 +1,21 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 
-'use client';
+"use client";
 
-import axios from 'axios';
-import { useState } from 'react';
+import axios from "axios";
+import { useState } from "react";
 
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import MarketsTable from '~/lib/components/MarketsTable';
-import { API_BASE_URL } from '~/lib/constants/constants';
-import type { RenderJob } from '~/lib/interfaces/interfaces';
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import MarketsTable from "~/lib/components/MarketsTable";
+import { API_BASE_URL } from "~/lib/constants/constants";
+import type { RenderJob } from "~/lib/interfaces/interfaces";
 
 const Admin = () => {
   const [job, setJob] = useState<RenderJob | undefined>();
@@ -23,8 +23,8 @@ const Admin = () => {
     [actionName: string]: boolean;
   }>({});
   const [statusOpen, setStatusOpen] = useState(false);
-  const [manualServiceId, setManualServiceId] = useState('');
-  const [manualJobId, setManualJobId] = useState('');
+  const [manualServiceId, setManualServiceId] = useState("");
+  const [manualJobId, setManualJobId] = useState("");
 
   const handleGetStatus = async () => {
     const serviceId = manualServiceId || job?.serviceId;
@@ -34,7 +34,7 @@ const Admin = () => {
 
     setLoadingAction((prev) => ({ ...prev, getStatus: true }));
     const response = await axios.get(
-      `${API_BASE_URL}/reindexStatus?jobId=${jobId}&serviceId=${serviceId}`
+      `${API_BASE_URL}/reindexStatus?jobId=${jobId}&serviceId=${serviceId}`,
     );
 
     if (response.data.success && response.data.job) {
@@ -62,7 +62,7 @@ const Admin = () => {
                 <span className="text-sm font-medium">Service ID</span>
                 <Input
                   id="serviceId"
-                  value={manualServiceId || job?.serviceId || ''}
+                  value={manualServiceId || job?.serviceId || ""}
                   onChange={(e) => setManualServiceId(e.target.value)}
                 />
               </label>
@@ -73,7 +73,7 @@ const Admin = () => {
                 <span className="text-sm font-medium">Job ID</span>
                 <Input
                   id="jobId"
-                  value={manualJobId || job?.id || ''}
+                  value={manualJobId || job?.id || ""}
                   onChange={(e) => setManualJobId(e.target.value)}
                 />
               </label>
@@ -91,7 +91,7 @@ const Admin = () => {
               {loadingAction.getStatus ? (
                 <div className="animate-spin">⌛</div>
               ) : (
-                'Submit'
+                "Submit"
               )}
             </Button>
           </div>

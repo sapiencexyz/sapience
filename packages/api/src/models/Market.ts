@@ -15,15 +15,25 @@ import { Resource } from "./Resource";
 @Entity()
 @Unique(["address", "chainId"])
 export class Market {
-  @OneToMany(() => Epoch, (epoch) => epoch.market, {
-    cascade: true,
-  })
+  @OneToMany(
+    () => Epoch,
+    (epoch) => epoch.market,
+    {
+      cascade: true,
+    },
+  )
   epochs: Epoch[];
 
-  @OneToMany(() => Event, (event) => event.market)
+  @OneToMany(
+    () => Event,
+    (event) => event.market,
+  )
   events: Event[];
 
-  @ManyToOne(() => Resource, (resource) => resource.markets)
+  @ManyToOne(
+    () => Resource,
+    (resource) => resource.markets,
+  )
   resource: Resource;
 
   @PrimaryGeneratedColumn()

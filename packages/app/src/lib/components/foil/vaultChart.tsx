@@ -1,4 +1,4 @@
-import type React from 'react';
+import type React from "react";
 import {
   LineChart,
   Line,
@@ -7,7 +7,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-} from 'recharts';
+} from "recharts";
 
 // Sample data interface
 interface DataPoint {
@@ -64,7 +64,7 @@ const VaultChart: React.FC = () => {
   const buffer = (maxValue - minValue) * 0.1;
 
   return (
-    <div style={{ width: '100%', height: '100%' }}>
+    <div style={{ width: "100%", height: "100%" }}>
       <ResponsiveContainer>
         <LineChart
           data={data}

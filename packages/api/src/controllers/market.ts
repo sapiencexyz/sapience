@@ -6,16 +6,16 @@ import {
   marketRepository,
   transactionRepository,
 } from "../db";
-import { MarketParams } from "../models/MarketParams";
+import type { MarketParams } from "../models/MarketParams";
 import { Event } from "../models/Event";
 import { Market } from "../models/Market";
 import { Transaction } from "../models/Transaction";
-import { Abi, decodeEventLog, Log } from "viem";
+import { type Abi, decodeEventLog, type Log } from "viem";
 import {
-  EpochCreatedEventLog,
+  type EpochCreatedEventLog,
   EventType,
-  MarketCreatedUpdatedEventLog,
-  MarketInfo,
+  type MarketCreatedUpdatedEventLog,
+  type MarketInfo,
 } from "../interfaces";
 import {
   getProviderForChain,
@@ -38,7 +38,7 @@ import {
   insertCollateralTransfer,
   createOrUpdateEpochFromContract,
 } from "./marketHelpers";
-import { Client, TextChannel, EmbedBuilder } from "discord.js";
+import { Client, type TextChannel, EmbedBuilder } from "discord.js";
 import * as Chains from "viem/chains";
 import { convertGasToGgas } from "../helpers";
 import { MARKETS } from "../fixtures";
@@ -56,7 +56,7 @@ if (DISCORD_TOKEN) {
 
 // Called when the process starts, upserts markets in the database to match those in the constants.ts file
 export const initializeMarket = async (marketInfo: MarketInfo) => {
-  let existingMarket = await marketRepository.findOne({
+  const existingMarket = await marketRepository.findOne({
     where: {
       address: marketInfo.deployment.address,
       chainId: marketInfo.marketChainId,
@@ -75,7 +75,7 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
 
   let updatedMarket = market;
   if (!updatedMarket) {
-    let existingMarket = await marketRepository.findOne({
+    const existingMarket = await marketRepository.findOne({
       where: {
         address: marketInfo.deployment.address,
         chainId: marketInfo.marketChainId,
@@ -88,7 +88,7 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
   updatedMarket.public = marketInfo.public;
   updatedMarket.address = marketInfo.deployment.address;
   updatedMarket.deployTxnBlockNumber = Number(
-    marketInfo.deployment.deployTxnBlockNumber
+    marketInfo.deployment.deployTxnBlockNumber,
   );
   updatedMarket.deployTimestamp = Number(marketInfo.deployment.deployTimestamp);
   updatedMarket.chainId = marketInfo.marketChainId;
@@ -131,7 +131,7 @@ export const indexMarketEvents = async (market: Market, abi: Abi) => {
         epochId,
         blockNumber,
         block.timestamp,
-        logData
+        logData,
       );
 
       await upsertEvent(
@@ -141,13 +141,13 @@ export const indexMarketEvents = async (market: Market, abi: Abi) => {
         blockNumber,
         block.timestamp,
         logIndex,
-        logData
+        logData,
       );
     }
   };
 
   console.log(
-    `Watching contract events for ${market.chainId}:${market.address}`
+    `Watching contract events for ${market.chainId}:${market.address}`,
   );
   client.watchContractEvent({
     address: market.address as `0x${string}`,
@@ -161,7 +161,7 @@ export const indexMarketEvents = async (market: Market, abi: Abi) => {
 export const reindexMarketEvents = async (
   market: Market,
   abi: Abi,
-  epochId: number
+  epochId: number,
 ) => {
   await initializeDataSource();
   const client = getProviderForChain(market.chainId);
@@ -171,7 +171,7 @@ export const reindexMarketEvents = async (
   const { startBlockNumber, error } = await getMarketStartEndBlock(
     market,
     epochId.toString(),
-    client
+    client,
   );
 
   if (error || !startBlockNumber) {
@@ -224,7 +224,7 @@ export const reindexMarketEvents = async (
           blockNumber,
           block.timestamp,
           logIndex,
-          logData
+          logData,
         );
       }
     } catch (error) {
@@ -239,7 +239,7 @@ const alertEvent = async (
   epochId: any,
   blockNumber: bigint,
   timestamp: bigint,
-  logData: any
+  logData: any,
 ) => {
   try {
     if (!DISCORD_TOKEN) {
@@ -255,7 +255,7 @@ const alertEvent = async (
 
     if (DISCORD_PUBLIC_CHANNEL_ID && logData.eventName !== EventType.Transfer) {
       const publicChannel = (await discordClient.channels.fetch(
-        DISCORD_PUBLIC_CHANNEL_ID
+        DISCORD_PUBLIC_CHANNEL_ID,
       )) as TextChannel;
 
       let title = "";
@@ -269,7 +269,7 @@ const alertEvent = async (
               ? "Long"
               : "Short";
           const gasAmount = convertGasToGgas(
-            logData.args.vGasAmount || logData.args.borrowedVGas
+            logData.args.vGasAmount || logData.args.borrowedVGas,
           );
           const rawPriceGwei = Number(logData.args.tradeRatio) / 1e18;
           const priceGwei = rawPriceGwei.toLocaleString("en-US", {
@@ -292,7 +292,7 @@ const alertEvent = async (
           const liquidityGas = convertGasToGgas(
             logData.args.addedAmount0 ||
               logData.args.increasedAmount0 ||
-              logData.args.amount0
+              logData.args.amount0,
           );
 
           let priceRangeText = "";
@@ -351,7 +351,7 @@ const alertEvent = async (
           {
             name: "Transaction",
             value: getBlockExplorerUrl(chainId, logData.transactionHash),
-          }
+          },
         )
         .setTimestamp();
 
@@ -360,7 +360,7 @@ const alertEvent = async (
 
     if (DISCORD_PRIVATE_CHANNEL_ID) {
       const privateChannel = (await discordClient.channels.fetch(
-        DISCORD_PRIVATE_CHANNEL_ID
+        DISCORD_PRIVATE_CHANNEL_ID,
       )) as TextChannel;
 
       const embed = new EmbedBuilder()
@@ -375,7 +375,7 @@ const alertEvent = async (
             name: "Timestamp",
             value: new Date(Number(timestamp) * 1000).toISOString(),
             inline: true,
-          }
+          },
         )
         .setTimestamp();
 
@@ -405,7 +405,7 @@ const upsertEvent = async (
   blockNumber: bigint,
   timeStamp: bigint,
   logIndex: number,
-  logData: any
+  logData: any,
 ) => {
   console.log("handling event upsert:", {
     chainId,
@@ -418,14 +418,14 @@ const upsertEvent = async (
   });
 
   // Find market and/or epoch associated with the event
-  let market = await marketRepository.findOne({
+  const market = await marketRepository.findOne({
     where: { chainId, address },
   });
 
   // marketInitialized should handle creating the market, throw if not found
   if (!market) {
     throw new Error(
-      `Market not found for chainId ${chainId} and address ${address}. Cannot upsert event into db.`
+      `Market not found for chainId ${chainId} and address ${address}. Cannot upsert event into db.`,
     );
   }
 
@@ -473,7 +473,7 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
         marketCreatedArgs,
         chainId,
         address,
-        market
+        market,
       );
       skipTransaction = true;
       break;
@@ -485,7 +485,7 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
         marketUpdatedArgs,
         chainId,
         address,
-        market
+        market,
       );
       skipTransaction = true;
       break;
@@ -499,13 +499,13 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       const marketInfo = MARKETS.find(
         (m) =>
           m.marketChainId === chainId &&
-          m.deployment.address.toLowerCase() === address.toLowerCase()
+          m.deployment.address.toLowerCase() === address.toLowerCase(),
       );
       if (marketInfo) {
         await createOrUpdateEpochFromContract(
           marketInfo,
           market,
-          Number(epochCreatedArgs.epochId)
+          Number(epochCreatedArgs.epochId),
         );
       }
       skipTransaction = true;
@@ -522,10 +522,10 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       if (epoch) {
         epoch.settled = true;
         const settlementSqrtPriceX96: bigint = BigInt(
-          event.logData.args.settlementSqrtPriceX96.toString()
+          event.logData.args.settlementSqrtPriceX96.toString(),
         );
         const settlementPriceD18 = sqrtPriceX96ToSettlementPriceD18(
-          settlementSqrtPriceX96
+          settlementSqrtPriceX96,
         );
         epoch.settlementPriceD18 = settlementPriceD18.toString();
         await epochRepository.save(epoch);
@@ -563,7 +563,7 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       await updateTransactionFromLiquidityModifiedEvent(
         newTransaction,
         event,
-        true
+        true,
       );
       break;
     case EventType.LiquidityPositionIncreased:

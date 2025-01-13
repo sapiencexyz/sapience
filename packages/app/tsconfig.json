@@ -18,7 +18,7 @@
     "paths": {
       "~/*": ["./*"],
       "@/components/*": ["./components/*"],
-      "@/protocol/*": ["../../protocol/*"],
+      "@/protocol/*": ["../../protocol/*"]
     },
     "incremental": true,
     "plugins": [

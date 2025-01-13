@@ -1,14 +1,14 @@
 /* eslint-disable sonarjs/cognitive-complexity */
-import type { UTCTimestamp, BarData, LineData } from 'lightweight-charts';
-import { createChart, CrosshairMode } from 'lightweight-charts';
-import { useTheme } from 'next-themes';
-import { useEffect, useRef, useContext, useState } from 'react';
-import type React from 'react';
+import type { UTCTimestamp, BarData, LineData } from "lightweight-charts";
+import { createChart, CrosshairMode } from "lightweight-charts";
+import { useTheme } from "next-themes";
+import { useEffect, useRef, useContext, useState } from "react";
+import type React from "react";
 
-import type { PriceChartData, TimeWindow } from '../interfaces/interfaces';
-import { convertGgasPerWstEthToGwei } from '../util/util';
-import { Button } from '~/components/ui/button';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import type { PriceChartData, TimeWindow } from "../interfaces/interfaces";
+import { convertGgasPerWstEthToGwei } from "../util/util";
+import { Button } from "~/components/ui/button";
+import { MarketContext } from "~/lib/context/MarketProvider";
 
 interface Props {
   data: {
@@ -23,7 +23,7 @@ interface Props {
     index: boolean;
     resource: boolean;
   };
-  toggleSeries: (series: 'candles' | 'index' | 'resource') => void;
+  toggleSeries: (series: "candles" | "index" | "resource") => void;
 }
 
 interface IndexPrice {
@@ -66,28 +66,28 @@ const CandlestickChart: React.FC<Props> = ({
       width: chartContainerRef.current.clientWidth,
       height: chartContainerRef.current.clientHeight,
       layout: {
-        background: { color: theme === 'dark' ? '#09090B' : '#ffffff' },
-        textColor: theme === 'dark' ? '#ffffff' : '#000000',
+        background: { color: theme === "dark" ? "#09090B" : "#ffffff" },
+        textColor: theme === "dark" ? "#ffffff" : "#000000",
       },
       grid: {
         vertLines: {
           color:
-            theme === 'dark'
-              ? 'rgba(197, 203, 206, 0.2)'
-              : 'rgba(197, 203, 206, 0.5)',
+            theme === "dark"
+              ? "rgba(197, 203, 206, 0.2)"
+              : "rgba(197, 203, 206, 0.5)",
         },
         horzLines: {
           color:
-            theme === 'dark'
-              ? 'rgba(197, 203, 206, 0.2)'
-              : 'rgba(197, 203, 206, 0.5)',
+            theme === "dark"
+              ? "rgba(197, 203, 206, 0.2)"
+              : "rgba(197, 203, 206, 0.5)",
         },
       },
       crosshair: {
         mode: CrosshairMode.Normal,
       },
       timeScale: {
-        borderColor: theme === 'dark' ? '#363537' : '#cccccc',
+        borderColor: theme === "dark" ? "#363537" : "#cccccc",
         timeVisible: true,
         secondsVisible: false,
       },
@@ -96,23 +96,23 @@ const CandlestickChart: React.FC<Props> = ({
     chartRef.current = chart;
 
     candlestickSeriesRef.current = chart.addCandlestickSeries({
-      upColor: '#26a69a',
-      downColor: '#ef5350',
+      upColor: "#26a69a",
+      downColor: "#ef5350",
       borderVisible: false,
-      wickUpColor: '#26a69a',
-      wickDownColor: '#ef5350',
+      wickUpColor: "#26a69a",
+      wickDownColor: "#ef5350",
     });
 
     indexPriceSeriesRef.current = chart.addAreaSeries({
-      lineColor: 'blue',
-      topColor: 'rgba(128, 128, 128, 0.4)',
-      bottomColor: 'rgba(128, 128, 128, 0.0)',
+      lineColor: "blue",
+      topColor: "rgba(128, 128, 128, 0.4)",
+      bottomColor: "rgba(128, 128, 128, 0.0)",
       lineStyle: 2,
     });
 
     // Create resource price series regardless of initial data
     resourcePriceSeriesRef.current = chart.addLineSeries({
-      color: '#4CAF50',
+      color: "#4CAF50",
       lineWidth: 2,
     });
 

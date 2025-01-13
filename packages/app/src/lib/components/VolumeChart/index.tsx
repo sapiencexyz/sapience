@@ -1,14 +1,14 @@
-import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc';
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
 import {
   type Dispatch,
   type SetStateAction,
   useEffect,
   useMemo,
   useState,
-} from 'react';
-import type React from 'react';
-import type { TooltipProps } from 'recharts';
+} from "react";
+import type React from "react";
+import type { TooltipProps } from "recharts";
 import {
   BarChart,
   ResponsiveContainer,
@@ -16,14 +16,14 @@ import {
   Tooltip,
   Bar,
   YAxis,
-} from 'recharts';
+} from "recharts";
 
-import { DECIMAL_PRECISION_DISPLAY } from '~/lib/constants/constants';
-import type { VolumeChartData, TimeWindow } from '~/lib/interfaces/interfaces';
-import { formatXAxisTick, getXTicksToShow } from '~/lib/util/chartUtil';
-import { getDisplayTextForVolumeWindow } from '~/lib/util/util';
+import { DECIMAL_PRECISION_DISPLAY } from "~/lib/constants/constants";
+import type { VolumeChartData, TimeWindow } from "~/lib/interfaces/interfaces";
+import { formatXAxisTick, getXTicksToShow } from "~/lib/util/chartUtil";
+import { getDisplayTextForVolumeWindow } from "~/lib/util/util";
 
-const barColor = 'hsl(var(--chart-3))';
+const barColor = "hsl(var(--chart-3))";
 
 dayjs.extend(utc);
 
@@ -68,8 +68,8 @@ const CustomTooltip: React.FC<
     if (payload && payload[0]) {
       const start = payload[0].payload.startTimestamp;
       const end = payload[0].payload.endTimestamp;
-      const startFormatted = dayjs(start).format('MMM D, h:mm A');
-      const endFormatted = dayjs(end).format('MMM D, h:mm A');
+      const startFormatted = dayjs(start).format("MMM D, h:mm A");
+      const endFormatted = dayjs(end).format("MMM D, h:mm A");
 
       setValue(payload[0].payload.volume || 0);
       setLabel(`${startFormatted} - ${endFormatted}`);
@@ -84,9 +84,9 @@ const CustomTooltip: React.FC<
   return (
     <div
       style={{
-        backgroundColor: 'white',
-        padding: '8px',
-        border: '1px solid #ccc',
+        backgroundColor: "white",
+        padding: "8px",
+        border: "1px solid #ccc",
       }}
     >
       <p>{`Fee: ${fee}`}</p>
@@ -125,9 +125,9 @@ const VolumeChart = ({ data, color = barColor, activeWindow }: ChartProps) => {
     <div className="flex flex-1 relative">
       <div className="min-h-[50px] w-fit absolute top-0 left-0 z-[2] bg-background opacity-80">
         <p className="text-base">
-          {value ? `${value.toLocaleString()} Ggas` : '0 Ggas'}
+          {value ? `${value.toLocaleString()} Ggas` : "0 Ggas"}
         </p>
-        <p className="text-sm text-gray-500">{label ? `${label}` : ''}</p>
+        <p className="text-sm text-gray-500">{label ? `${label}` : ""}</p>
       </div>
 
       <ResponsiveContainer width="100%" height="100%">
@@ -151,7 +151,7 @@ const VolumeChart = ({ data, color = barColor, activeWindow }: ChartProps) => {
             tickLine={false}
             axisLine={false}
             tickFormatter={(volume: number) =>
-              volume === 0 ? '' : `${volume.toFixed(DECIMAL_PRECISION_DISPLAY)}`
+              volume === 0 ? "" : `${volume.toFixed(DECIMAL_PRECISION_DISPLAY)}`
             }
           />
           <XAxis

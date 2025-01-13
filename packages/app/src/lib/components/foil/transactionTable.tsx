@@ -5,12 +5,12 @@ import {
   getSortedRowModel,
   type ColumnDef,
   type SortingState,
-} from '@tanstack/react-table';
-import { formatDistanceToNow } from 'date-fns';
-import { ChevronDown, ChevronUp, ArrowUpDown } from 'lucide-react';
-import Link from 'next/link';
-import type React from 'react';
-import { useMemo, useContext, useState } from 'react';
+} from "@tanstack/react-table";
+import { formatDistanceToNow } from "date-fns";
+import { ChevronDown, ChevronUp, ArrowUpDown } from "lucide-react";
+import Link from "next/link";
+import type React from "react";
+import { useMemo, useContext, useState } from "react";
 
 import {
   Table,
@@ -19,10 +19,10 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { MarketContext } from '~/lib/context/MarketProvider';
+} from "@/components/ui/table";
+import { MarketContext } from "~/lib/context/MarketProvider";
 
-import NumberDisplay from './numberDisplay';
+import NumberDisplay from "./numberDisplay";
 
 interface Props {
   transactions: any[];
@@ -30,14 +30,14 @@ interface Props {
 
 const getTypeDisplay = (type: string) => {
   switch (type) {
-    case 'long':
-      return 'Long';
-    case 'short':
-      return 'Short';
-    case 'addLiquidity':
-      return 'Add Liquidity';
-    case 'removeLiquidity':
-      return 'Remove Liquidity';
+    case "long":
+      return "Long";
+    case "short":
+      return "Short";
+    case "addLiquidity":
+      return "Add Liquidity";
+    case "removeLiquidity":
+      return "Remove Liquidity";
     default:
       return type;
   }
@@ -46,63 +46,63 @@ const getTypeDisplay = (type: string) => {
 const TransactionTable: React.FC<Props> = ({ transactions }) => {
   const { address, chain } = useContext(MarketContext);
   const [sorting, setSorting] = useState<SortingState>([
-    { id: 'time', desc: true },
+    { id: "time", desc: true },
   ]);
 
   const columns = useMemo<ColumnDef<any>[]>(
     () => [
       {
-        id: 'time',
-        header: 'Time',
+        id: "time",
+        header: "Time",
         accessorFn: (row) => row.event.timestamp,
         cell: ({ row }) =>
           formatDistanceToNow(
-            new Date((row.getValue('time') as number) * 1000),
-            { addSuffix: true }
+            new Date((row.getValue("time") as number) * 1000),
+            { addSuffix: true },
           ),
       },
       {
-        id: 'market',
-        header: 'Market',
+        id: "market",
+        header: "Market",
         accessorFn: (row) => {
           const marketName =
-            row.position?.epoch?.market?.resource?.name || 'Unknown Market';
-          const epochId = row.position?.epoch?.epochId || '';
+            row.position?.epoch?.market?.resource?.name || "Unknown Market";
+          const epochId = row.position?.epoch?.epochId || "";
           return `${marketName} (Epoch ${epochId})`;
         },
       },
       {
-        id: 'position',
-        header: 'Position',
+        id: "position",
+        header: "Position",
         accessorFn: (row) => row.position.positionId,
       },
       {
-        id: 'type',
-        header: 'Type',
+        id: "type",
+        header: "Type",
         accessorFn: (row) => getTypeDisplay(row.type),
       },
       {
-        id: 'collateral',
-        header: 'Collateral',
-        accessorKey: 'collateralDelta',
+        id: "collateral",
+        header: "Collateral",
+        accessorKey: "collateralDelta",
       },
       {
-        id: 'ggas',
-        header: 'Ggas',
-        accessorKey: 'baseTokenDelta',
+        id: "ggas",
+        header: "Ggas",
+        accessorKey: "baseTokenDelta",
       },
       {
-        id: 'wsteth',
-        header: 'wstETH',
-        accessorKey: 'quoteTokenDelta',
+        id: "wsteth",
+        header: "wstETH",
+        accessorKey: "quoteTokenDelta",
       },
       {
-        id: 'price',
-        header: 'Price',
+        id: "price",
+        header: "Price",
         accessorFn: (row) => row.tradeRatioD18 || 0,
       },
     ],
-    []
+    [],
   );
 
   const table = useReactTable({
@@ -117,10 +117,10 @@ const TransactionTable: React.FC<Props> = ({ transactions }) => {
   });
 
   const renderSortIcon = (isSorted: string | false) => {
-    if (isSorted === 'desc') {
+    if (isSorted === "desc") {
       return <ChevronDown className="h-3 w-3" aria-label="sorted descending" />;
     }
-    if (isSorted === 'asc') {
+    if (isSorted === "asc") {
       return <ChevronUp className="h-3 w-3" aria-label="sorted ascending" />;
     }
     return <ArrowUpDown className="h-3 w-3" aria-label="sortable" />;
@@ -129,7 +129,7 @@ const TransactionTable: React.FC<Props> = ({ transactions }) => {
   const renderCellContent = (cell: any, row: any) => {
     const value = cell.getValue();
 
-    if (cell.column.id === 'Position') {
+    if (cell.column.id === "Position") {
       return (
         <Link
           href={`/positions/${chain?.id}:${address}/${row.original.position.positionId}`}
@@ -139,7 +139,7 @@ const TransactionTable: React.FC<Props> = ({ transactions }) => {
       );
     }
 
-    if (['Collateral', 'Ggas', 'wstETH', 'Price'].includes(cell.column.id)) {
+    if (["Collateral", "Ggas", "wstETH", "Price"].includes(cell.column.id)) {
       return <NumberDisplay value={value as number} />;
     }
 
@@ -161,7 +161,7 @@ const TransactionTable: React.FC<Props> = ({ transactions }) => {
                   <span className="flex items-center">
                     {flexRender(
                       header.column.columnDef.header,
-                      header.getContext()
+                      header.getContext(),
                     )}
                     <span className="ml-2 inline-block">
                       {renderSortIcon(header.column.getIsSorted())}

@@ -27,7 +27,7 @@ export async function getTransactionsInTimeRange(
   startTimestamp: number,
   endTimestamp: number,
   chainId: string,
-  marketAddress: string
+  marketAddress: string,
 ): Promise<Transaction[]> {
   const transactionRepository = dataSource.getRepository(Transaction);
   return await transactionRepository
@@ -41,7 +41,7 @@ export async function getTransactionsInTimeRange(
       {
         startTimestamp,
         endTimestamp,
-      }
+      },
     )
     .andWhere("market.chainId = :chainId", { chainId })
     .andWhere("market.address = :marketAddress", { marketAddress })
@@ -54,7 +54,7 @@ export async function getMarketPricesInTimeRange(
   endTimestamp: number,
   chainId: string,
   address: string,
-  epochId: string
+  epochId: string,
 ) {
   const marketPriceRepository = dataSource.getRepository(MarketPrice);
   return await marketPriceRepository
@@ -81,7 +81,7 @@ export async function getIndexPricesInTimeRange(
   endTimestamp: number,
   chainId: string,
   address: string,
-  epochId: string
+  epochId: string,
 ) {
   const indexPriceRepository = dataSource.getRepository(IndexPrice);
   return await indexPriceRepository
@@ -103,18 +103,18 @@ export async function getIndexPricesInTimeRange(
 
 export function groupTransactionsByTimeWindow(
   transactions: Transaction[],
-  window: TimeWindow
+  window: TimeWindow,
 ): TransactionGroup[] {
   return groupEntitiesByTimeWindow(
     transactions,
     window,
-    (transaction) => Number(transaction.event.timestamp) * 1000
+    (transaction) => Number(transaction.event.timestamp) * 1000,
   );
 }
 
 export function groupMarketPricesByTimeWindow(
   marketPrices: MarketPrice[],
-  window: TimeWindow
+  window: TimeWindow,
 ): MarketPriceGroup[] {
   const dataFormater = (marketPrice: MarketPrice) => {
     marketPrice.value = formatUnits(BigInt(marketPrice.value), TOKEN_PRECISION);
@@ -123,7 +123,7 @@ export function groupMarketPricesByTimeWindow(
     marketPrices,
     window,
     (marketPrice) => Number(marketPrice.timestamp) * 1000,
-    dataFormater
+    dataFormater,
   );
 }
 
@@ -196,13 +196,13 @@ const logIntervals = (result: EntityGroup<any>[]) => {
     "First interval:",
     new Date(result[0].startTimestamp),
     "to",
-    new Date(result[0].endTimestamp)
+    new Date(result[0].endTimestamp),
   );
   console.log(
     "Last interval:",
     new Date(result[result.length - 1].startTimestamp),
     "to",
-    new Date(result[result.length - 1].endTimestamp)
+    new Date(result[result.length - 1].endTimestamp),
   );
 };
 
@@ -210,7 +210,7 @@ function groupEntitiesByTimeWindow<T>(
   entities: T[],
   window: TimeWindow,
   getTimestamp: (entity: T) => number,
-  dataFormatter?: (entity: T) => void
+  dataFormatter?: (entity: T) => void,
 ): EntityGroup<T>[] {
   // shared logic for grouping entities by time window
   const now = Date.now();
@@ -232,7 +232,7 @@ function groupEntitiesByTimeWindow<T>(
     if (timestamp >= startTime && timestamp <= now) {
       const intervalIndex = Math.min(
         Math.floor((timestamp - startTime) / intervalMs),
-        totalIntervals - 1
+        totalIntervals - 1,
       );
       if (dataFormatter) {
         dataFormatter(entity);
@@ -245,11 +245,11 @@ function groupEntitiesByTimeWindow<T>(
 
 export function groupIndexPricesByTimeWindow(
   indexPrices: IndexPrice[],
-  window: TimeWindow
+  window: TimeWindow,
 ): EntityGroup<IndexPrice>[] {
   return groupEntitiesByTimeWindow(
     indexPrices,
     window,
-    (indexPrice) => Number(indexPrice.timestamp) * 1000
+    (indexPrice) => Number(indexPrice.timestamp) * 1000,
   );
 }

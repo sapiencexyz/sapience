@@ -1,22 +1,22 @@
-'use client';
+"use client";
 
-import { ArrowUpDown } from 'lucide-react';
-import { useContext, useState } from 'react';
-import type { Control, Path, FieldValues } from 'react-hook-form';
-import { Controller, useWatch } from 'react-hook-form';
+import { ArrowUpDown } from "lucide-react";
+import { useContext, useState } from "react";
+import type { Control, Path, FieldValues } from "react-hook-form";
+import { Controller, useWatch } from "react-hook-form";
 
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
 import {
   FormControl,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { MarketContext } from '~/lib/context/MarketProvider';
-import { removeLeadingZeros } from '~/lib/util/util';
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { MarketContext } from "~/lib/context/MarketProvider";
+import { removeLeadingZeros } from "~/lib/util/util";
 
 interface Props<T extends FieldValues> {
   label: string;
@@ -45,17 +45,17 @@ const LiquidityPriceInput = <T extends FieldValues>({
 
   const handleToggleUnit = (
     value: string,
-    onChange: (value: string) => void
+    onChange: (value: string) => void,
   ) => {
     const newInputValue = isGgasWstEth
-      ? (parseFloat(value) * ggasWstEthToGasGwei).toString()
-      : (parseFloat(value) / ggasWstEthToGasGwei).toString();
+      ? (Number.parseFloat(value) * ggasWstEthToGasGwei).toString()
+      : (Number.parseFloat(value) / ggasWstEthToGasGwei).toString();
     onChange(newInputValue);
     setIsGgasWstEth(!isGgasWstEth);
   };
 
   const getCurrentUnit = () => {
-    return isGgasWstEth ? `Ggas/${collateralAssetTicker}` : 'gas/gwei';
+    return isGgasWstEth ? `Ggas/${collateralAssetTicker}` : "gas/gwei";
   };
 
   const convertToCurrentUnit = (value: number) => {
@@ -63,22 +63,22 @@ const LiquidityPriceInput = <T extends FieldValues>({
   };
 
   const getErrorMessage = (value: string) => {
-    if (!value) return 'Price is required';
+    if (!value) return "Price is required";
     const adjustedMinValue = convertToCurrentUnit(minAllowedPrice);
     const adjustMaxValue = convertToCurrentUnit(maxAllowedPrice);
     const outOfRangeMinError = currValue < adjustedMinValue;
     const outOfRangeMaxError = currValue > adjustMaxValue;
     if (outOfRangeMinError) {
       return `Price cannot be less than ${adjustedMinValue.toFixed(
-        2
+        2,
       )} ${getCurrentUnit()}`;
     }
     if (outOfRangeMaxError) {
       return `Price cannot exceed ${adjustMaxValue.toFixed(
-        2
+        2,
       )} ${getCurrentUnit()}`;
     }
-    return '';
+    return "";
   };
 
   return (
@@ -87,7 +87,7 @@ const LiquidityPriceInput = <T extends FieldValues>({
         name={name}
         control={control}
         rules={{
-          required: 'Price is required',
+          required: "Price is required",
           validate: (value) => {
             const errorMessage = getErrorMessage(value);
             return errorMessage || true;
@@ -101,11 +101,11 @@ const LiquidityPriceInput = <T extends FieldValues>({
             <FormLabel>{label}</FormLabel>
             <div className="relative flex">
               <Input
-                value={value?.toString() || ''}
+                value={value?.toString() || ""}
                 onChange={(e) => onChange(removeLeadingZeros(e.target.value))}
                 onBlur={() => {
-                  if (value === '') {
-                    onChange('0');
+                  if (value === "") {
+                    onChange("0");
                   }
                   onBlur();
                 }}

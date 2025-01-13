@@ -7,17 +7,16 @@ const ADMIN_AUTHENTICATE_MSG =
   "Please sign this message to authenticate yourself as an admin.";
 
 // Load environment variables
-dotenv.config({ path: path.resolve(
-  new URL('.', import.meta.url).pathname,
-  "../.env"
-) });
+dotenv.config({
+  path: path.resolve(new URL(".", import.meta.url).pathname, "../.env"),
+});
 const ALLOWED_ADDRESSES =
   process.env.ALLOWED_ADDRESSES?.split(",").map((a) => a.toLowerCase()) || [];
 const MESSAGE_EXPIRY = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 export async function isValidWalletSignature(
   signature: `0x${string}` | undefined,
-  timestamp: number | undefined
+  timestamp: number | undefined,
 ): Promise<boolean> {
   if (!signature || !timestamp) {
     return false;
@@ -37,7 +36,7 @@ export async function isValidWalletSignature(
 
     // Check if recovered address is allowed
     const isAllowed = ALLOWED_ADDRESSES.includes(
-      recoveredAddress.toLowerCase()
+      recoveredAddress.toLowerCase(),
     );
 
     return isAllowed;

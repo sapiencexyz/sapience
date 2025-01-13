@@ -1,36 +1,36 @@
-'use client';
+"use client";
 
 /* eslint-disable sonarjs/no-duplicate-string */
 
-import { gql } from '@apollo/client';
-import { useQuery } from '@tanstack/react-query';
-import { print } from 'graphql';
-import { Loader2 } from 'lucide-react';
-import { useEffect, useRef, useState, useContext } from 'react';
-import { useMediaQuery } from 'usehooks-ts';
-import { formatUnits } from 'viem';
-import { useAccount } from 'wagmi';
+import { gql } from "@apollo/client";
+import { useQuery } from "@tanstack/react-query";
+import { print } from "graphql";
+import { Loader2 } from "lucide-react";
+import { useEffect, useRef, useState, useContext } from "react";
+import { useMediaQuery } from "usehooks-ts";
+import { formatUnits } from "viem";
+import { useAccount } from "wagmi";
 
-import { Button } from '~/components/ui/button';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '~/components/ui/tabs';
-import { useToast } from '~/hooks/use-toast';
-import Chart from '~/lib/components/chart';
-import ChartSelector from '~/lib/components/ChartSelector';
-import DepthChart from '~/lib/components/DepthChart';
-import EpochHeader from '~/lib/components/foil/epochHeader';
-import LiquidityPositionsTable from '~/lib/components/foil/liquidityPositionsTable';
-import MarketSidebar from '~/lib/components/foil/marketSidebar';
-import MarketUnitsToggle from '~/lib/components/foil/marketUnitsToggle';
-import Stats from '~/lib/components/foil/stats';
-import TraderPositionsTable from '~/lib/components/foil/traderPositionsTable';
-import TransactionTable from '~/lib/components/foil/transactionTable';
-import VolumeChart from '~/lib/components/VolumeChart';
-import VolumeWindowSelector from '~/lib/components/VolumeWindowButtons';
-import { API_BASE_URL } from '~/lib/constants/constants';
-import { AddEditPositionProvider } from '~/lib/context/AddEditPositionContext';
-import { MarketProvider } from '~/lib/context/MarketProvider';
-import { useResources } from '~/lib/hooks/useResources';
-import { ChartType, TimeWindow } from '~/lib/interfaces/interfaces';
+import { Button } from "~/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "~/components/ui/tabs";
+import { useToast } from "~/hooks/use-toast";
+import Chart from "~/lib/components/chart";
+import ChartSelector from "~/lib/components/ChartSelector";
+import DepthChart from "~/lib/components/DepthChart";
+import EpochHeader from "~/lib/components/foil/epochHeader";
+import LiquidityPositionsTable from "~/lib/components/foil/liquidityPositionsTable";
+import MarketSidebar from "~/lib/components/foil/marketSidebar";
+import MarketUnitsToggle from "~/lib/components/foil/marketUnitsToggle";
+import Stats from "~/lib/components/foil/stats";
+import TraderPositionsTable from "~/lib/components/foil/traderPositionsTable";
+import TransactionTable from "~/lib/components/foil/transactionTable";
+import VolumeChart from "~/lib/components/VolumeChart";
+import VolumeWindowSelector from "~/lib/components/VolumeWindowButtons";
+import { API_BASE_URL } from "~/lib/constants/constants";
+import { AddEditPositionProvider } from "~/lib/context/AddEditPositionContext";
+import { MarketProvider } from "~/lib/context/MarketProvider";
+import { useResources } from "~/lib/hooks/useResources";
+import { ChartType, TimeWindow } from "~/lib/interfaces/interfaces";
 
 interface ResourcePrice {
   timestamp: string;
@@ -72,11 +72,11 @@ const useAccountData = () => {
   const { address, isConnected } = useAccount();
 
   return useQuery({
-    queryKey: ['accountData', address],
+    queryKey: ["accountData", address],
     queryFn: async () => {
       const response = await fetch(`${API_BASE_URL}/accounts/${address}`);
       if (!response.ok) {
-        throw new Error('Network response was not ok');
+        throw new Error("Network response was not ok");
       }
       return response.json();
     },
@@ -93,12 +93,12 @@ const Market = ({
   isTrade: boolean;
 }) => {
   const [selectedWindow, setSelectedWindow] = useState<TimeWindow>(
-    TimeWindow.W
+    TimeWindow.W,
   );
   const [tableFlexHeight, setTableFlexHeight] = useState(172);
   const resizeRef = useRef<HTMLDivElement>(null);
   const [chartType, setChartType] = useState<ChartType>(
-    isTrade ? ChartType.PRICE : ChartType.LIQUIDITY
+    isTrade ? ChartType.PRICE : ChartType.LIQUIDITY,
   );
   const [isRefetchingIndexPrices, setIsRefetchingIndexPrices] = useState(false);
   const [seriesVisibility, setSeriesVisibility] = useState<{
@@ -110,11 +110,11 @@ const Market = ({
     index: true,
     resource: false,
   });
-  const [chainId, marketAddress] = params.id.split('%3A');
+  const [chainId, marketAddress] = params.id.split("%3A");
   const { epoch } = params;
   const contractId = `${chainId}:${marketAddress}`;
   const { toast } = useToast();
-  const isLargeScreen = useMediaQuery('(min-width: 1024px)');
+  const isLargeScreen = useMediaQuery("(min-width: 1024px)");
   const { data: resources } = useResources();
 
   // useEffect to handle table resize
@@ -131,37 +131,37 @@ const Market = ({
     };
 
     const onMouseUp = () => {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
     };
 
     const onMouseDown = (e: MouseEvent) => {
       startY = e.clientY;
       startHeight = tableFlexHeight;
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
     };
 
     if (resizeElement) {
-      resizeElement.addEventListener('mousedown', onMouseDown);
+      resizeElement.addEventListener("mousedown", onMouseDown);
     }
 
     return () => {
       if (resizeElement) {
-        resizeElement.removeEventListener('mousedown', onMouseDown);
+        resizeElement.removeEventListener("mousedown", onMouseDown);
       }
     };
   }, [tableFlexHeight, resizeRef.current]);
 
   const useVolume = () => {
     return useQuery({
-      queryKey: ['volume', contractId, epoch],
+      queryKey: ["volume", contractId, epoch],
       queryFn: async () => {
         const response = await fetch(
-          `${API_BASE_URL}/volume?contractId=${contractId}&epochId=${epoch}&timeWindow=${selectedWindow}`
+          `${API_BASE_URL}/volume?contractId=${contractId}&epochId=${epoch}&timeWindow=${selectedWindow}`,
         );
         if (!response.ok) {
-          throw new Error('Network response was not ok');
+          throw new Error("Network response was not ok");
         }
         return response.json();
       },
@@ -177,19 +177,19 @@ const Market = ({
 
   useEffect(() => {
     if (useVolumeError) {
-      console.error('useVolumeError =', useVolumeError);
+      console.error("useVolumeError =", useVolumeError);
     }
   }, [volume, useVolumeError]);
 
   const useMarketPrices = () => {
     return useQuery({
-      queryKey: ['market-prices', `${chainId}:${marketAddress}`],
+      queryKey: ["market-prices", `${chainId}:${marketAddress}`],
       queryFn: async () => {
         const response = await fetch(
-          `${API_BASE_URL}/prices/chart-data?contractId=${chainId}:${marketAddress}&epochId=${epoch}&timeWindow=${selectedWindow}`
+          `${API_BASE_URL}/prices/chart-data?contractId=${chainId}:${marketAddress}&epochId=${epoch}&timeWindow=${selectedWindow}`,
         );
         if (!response.ok) {
-          throw new Error('Network response was not ok');
+          throw new Error("Network response was not ok");
         }
         return response.json();
       },
@@ -199,13 +199,13 @@ const Market = ({
 
   const useIndexPrices = () => {
     return useQuery({
-      queryKey: ['index-prices', `${chainId}:${marketAddress}`],
+      queryKey: ["index-prices", `${chainId}:${marketAddress}`],
       queryFn: async () => {
         const response = await fetch(
-          `${API_BASE_URL}/prices/index?contractId=${chainId}:${marketAddress}&epochId=${epoch}&timeWindow=${selectedWindow}`
+          `${API_BASE_URL}/prices/index?contractId=${chainId}:${marketAddress}&epochId=${epoch}&timeWindow=${selectedWindow}`,
         );
         if (!response.ok) {
-          throw new Error('Network response was not ok');
+          throw new Error("Network response was not ok");
         }
         return response.json();
       },
@@ -216,8 +216,8 @@ const Market = ({
   const useResourcePrices = () => {
     const resource = resources?.find((r) =>
       r.markets.some(
-        (m) => m.chainId === Number(chainId) && m.address === marketAddress
-      )
+        (m) => m.chainId === Number(chainId) && m.address === marketAddress,
+      ),
     );
     const epochData = resource?.markets
       .find((m) => m.chainId === Number(chainId) && m.address === marketAddress)
@@ -225,7 +225,7 @@ const Market = ({
 
     return useQuery<ResourcePricePoint[]>({
       queryKey: [
-        'resourcePrices',
+        "resourcePrices",
         resource?.slug,
         epochData?.startTimestamp,
         epochData?.endTimestamp,
@@ -235,10 +235,10 @@ const Market = ({
           return [];
         }
         const response = await fetch(
-          `${API_BASE_URL}/resources/${resource.slug}/prices?startTime=${epochData.startTimestamp}&endTime=${epochData.endTimestamp}`
+          `${API_BASE_URL}/resources/${resource.slug}/prices?startTime=${epochData.startTimestamp}&endTime=${epochData.endTimestamp}`,
         );
         if (!response.ok) {
-          throw new Error('Failed to fetch resource prices');
+          throw new Error("Failed to fetch resource prices");
         }
         const data: ResourcePrice[] = await response.json();
         return data.map((price) => ({
@@ -286,7 +286,7 @@ const Market = ({
   const idxLoading =
     isLoadingIndexPrices || isRefetchingIndexPrices || isLoadingResourcePrices;
 
-  const toggleSeries = (series: 'candles' | 'index' | 'resource') => {
+  const toggleSeries = (series: "candles" | "index" | "resource") => {
     setSeriesVisibility((prev) => ({ ...prev, [series]: !prev[series] }));
   };
 
@@ -320,16 +320,16 @@ const Market = ({
       return (
         <div className="flex ml-2 gap-2 items-center">
           <Button
-            variant={seriesVisibility.candles ? 'default' : 'secondary'}
+            variant={seriesVisibility.candles ? "default" : "secondary"}
             size="sm"
-            onClick={() => toggleSeries('candles')}
+            onClick={() => toggleSeries("candles")}
           >
             Market Price
           </Button>
           <Button
-            variant={seriesVisibility.index ? 'default' : 'secondary'}
+            variant={seriesVisibility.index ? "default" : "secondary"}
             size="sm"
-            onClick={() => toggleSeries('index')}
+            onClick={() => toggleSeries("index")}
             disabled={idxLoading}
           >
             {idxLoading ? (
@@ -338,14 +338,14 @@ const Market = ({
                 <span>Index Price</span>
               </div>
             ) : (
-              'Index Price'
+              "Index Price"
             )}
           </Button>
           {(resourcePrices?.length ?? 0) > 0 && (
             <Button
-              variant={seriesVisibility.resource ? 'default' : 'secondary'}
+              variant={seriesVisibility.resource ? "default" : "secondary"}
               size="sm"
-              onClick={() => toggleSeries('resource')}
+              onClick={() => toggleSeries("resource")}
               disabled={idxLoading}
             >
               {idxLoading ? (
@@ -354,7 +354,7 @@ const Market = ({
                   <span>Resource Price</span>
                 </div>
               ) : (
-                'Resource Price'
+                "Resource Price"
               )}
             </Button>
           )}
@@ -379,7 +379,7 @@ const Market = ({
   useEffect(() => {
     if (accountDataError) {
       toast({
-        title: 'Error loading account data',
+        title: "Error loading account data",
         description: accountDataError.message,
         duration: 5000,
       });
@@ -389,7 +389,7 @@ const Market = ({
   useEffect(() => {
     if (useResourcePricesError) {
       toast({
-        title: 'Error loading resource prices',
+        title: "Error loading resource prices",
         description: useResourcePricesError.message,
         duration: 5000,
       });
@@ -440,7 +440,7 @@ const Market = ({
               <div
                 className="flex id-table-flex border-t border-border position-relative justify-center items-center relative lg:h-[172px]"
                 style={{
-                  height: isLargeScreen ? `${tableFlexHeight}px` : 'auto',
+                  height: isLargeScreen ? `${tableFlexHeight}px` : "auto",
                 }}
               >
                 <div

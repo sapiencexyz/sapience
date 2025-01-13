@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { Loader2 } from 'lucide-react';
-import type { ReactNode } from 'react';
-import { Suspense } from 'react';
+import { Loader2 } from "lucide-react";
+import type { ReactNode } from "react";
+import { Suspense } from "react";
 
 interface MarketLayoutProps {
   nav: ReactNode;

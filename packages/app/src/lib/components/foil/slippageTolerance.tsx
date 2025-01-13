@@ -1,15 +1,15 @@
-import { useFormContext } from 'react-hook-form';
+import { useFormContext } from "react-hook-form";
 
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const SlippageTolerance: React.FC = () => {
   const { setValue, watch } = useFormContext();
-  const currentSlippage = watch('slippage');
+  const currentSlippage = watch("slippage");
 
   const handleSlippageChange = (value: number) => {
-    setValue('slippage', value.toString(), {
+    setValue("slippage", value.toString(), {
       shouldValidate: false,
     });
   };
@@ -21,7 +21,7 @@ const SlippageTolerance: React.FC = () => {
         <Button
           type="button"
           onClick={() => handleSlippageChange(0.1)}
-          variant={Number(currentSlippage) === 0.1 ? 'default' : 'outline'}
+          variant={Number(currentSlippage) === 0.1 ? "default" : "outline"}
           size="sm"
         >
           0.1%
@@ -29,7 +29,7 @@ const SlippageTolerance: React.FC = () => {
         <Button
           type="button"
           onClick={() => handleSlippageChange(0.5)}
-          variant={Number(currentSlippage) === 0.5 ? 'default' : 'outline'}
+          variant={Number(currentSlippage) === 0.5 ? "default" : "outline"}
           size="sm"
         >
           0.5%
@@ -37,7 +37,7 @@ const SlippageTolerance: React.FC = () => {
         <Button
           type="button"
           onClick={() => handleSlippageChange(1.0)}
-          variant={Number(currentSlippage) === 1.0 ? 'default' : 'outline'}
+          variant={Number(currentSlippage) === 1.0 ? "default" : "outline"}
           size="sm"
         >
           1.0%

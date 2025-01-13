@@ -1,29 +1,29 @@
-import { useState } from 'react';
+import { useState } from "react";
 
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '~/components/ui/tooltip';
-import { shortenAddress } from '~/lib/util/util';
-import { cn } from '~/lib/utils';
+} from "~/components/ui/tooltip";
+import { shortenAddress } from "~/lib/util/util";
+import { cn } from "~/lib/utils";
 
 interface Props {
   address: string;
   showFull?: boolean;
 }
-const COPY_TO_CLIPBOARD = 'copy to clipboard';
+const COPY_TO_CLIPBOARD = "copy to clipboard";
 
 const MarketAddress = ({ address, showFull }: Props) => {
-  const [tooltipText, setTooltipText] = useState('');
+  const [tooltipText, setTooltipText] = useState("");
 
   const handleCopy = (e?: React.MouseEvent | React.KeyboardEvent) => {
     e?.stopPropagation();
     navigator.clipboard.writeText(address);
-    setTooltipText('copied!');
+    setTooltipText("copied!");
     setTimeout(() => {
-      setTooltipText('');
+      setTooltipText("");
     }, 2000);
   };
 
@@ -35,14 +35,14 @@ const MarketAddress = ({ address, showFull }: Props) => {
             type="button"
             onClick={handleCopy}
             className={cn(
-              'inline-block cursor-pointer',
-              'text-sm text-foreground'
+              "inline-block cursor-pointer",
+              "text-sm text-foreground",
             )}
             onMouseOverCapture={() => setTooltipText(COPY_TO_CLIPBOARD)}
             onMouseEnter={() => setTooltipText(COPY_TO_CLIPBOARD)}
             onMouseLeave={() => {
               if (tooltipText === COPY_TO_CLIPBOARD) {
-                setTooltipText('');
+                setTooltipText("");
               }
             }}
           >

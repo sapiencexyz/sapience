@@ -1,13 +1,13 @@
-import { useSearchParams } from 'next/navigation';
-import { useContext, useEffect } from 'react';
+import { useSearchParams } from "next/navigation";
+import { useContext, useEffect } from "react";
 
-import { ScrollArea } from '~/components/ui/scroll-area';
-import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { ScrollArea } from "~/components/ui/scroll-area";
+import { useAddEditPosition } from "~/lib/context/AddEditPositionContext";
+import { MarketContext } from "~/lib/context/MarketProvider";
 
-import AddEditTrade from './addEditTrade';
-import AddEditLiquidity from './Liquidity/AddEditLiquidity';
-import Settle from './settle';
+import AddEditTrade from "./addEditTrade";
+import AddEditLiquidity from "./Liquidity/AddEditLiquidity";
+import Settle from "./settle";
 
 export default function MarketSidebar({ isTrade }: { isTrade: boolean }) {
   const { endTime } = useContext(MarketContext);
@@ -16,7 +16,7 @@ export default function MarketSidebar({ isTrade }: { isTrade: boolean }) {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const positionId = searchParams.get('positionId');
+    const positionId = searchParams.get("positionId");
     if (positionId) {
       setNftId(Number(positionId));
     }

@@ -6,21 +6,21 @@ import {
   positionRepository,
   collateralTransferRepository,
 } from "../db";
-import { Event } from "../models/Event";
-import { MarketParams } from "../models/MarketParams";
+import type { Event } from "../models/Event";
+import type { MarketParams } from "../models/MarketParams";
 import { Market } from "../models/Market";
 import { Epoch } from "../models/Epoch";
 import { Position } from "../models/Position";
-import { Transaction, TransactionType } from "../models/Transaction";
+import { type Transaction, TransactionType } from "../models/Transaction";
 import { CollateralTransfer } from "../models/CollateralTransfer";
-import { PublicClient } from "viem";
+import type { PublicClient } from "viem";
 import {
-  Deployment,
-  EpochCreatedEventLog,
-  MarketCreatedUpdatedEventLog,
-  TradePositionEventLog,
-  MarketInfo,
-  EpochData,
+  type Deployment,
+  type EpochCreatedEventLog,
+  type MarketCreatedUpdatedEventLog,
+  type TradePositionEventLog,
+  type MarketInfo,
+  type EpochData,
   EventType,
 } from "../interfaces";
 import { MarketPrice } from "../models/MarketPrice";
@@ -33,7 +33,7 @@ import { getBlockByTimestamp, getProviderForChain } from "../helpers";
 export const handleTransferEvent = async (event: Event) => {
   const { from, to, tokenId } = event.logData.args;
 
-  let existingPosition = await positionRepository.findOne({
+  const existingPosition = await positionRepository.findOne({
     where: {
       positionId: Number(tokenId),
       epoch: {
@@ -63,7 +63,7 @@ export const handleTransferEvent = async (event: Event) => {
 export const handlePositionSettledEvent = async (event: Event) => {
   const { positionId } = event.logData.args;
 
-  let existingPosition = await positionRepository.findOne({
+  const existingPosition = await positionRepository.findOne({
     where: {
       positionId: Number(positionId),
     },
@@ -86,7 +86,7 @@ export const handlePositionSettledEvent = async (event: Event) => {
  * @param transaction the Transaction to use for creating/modifying the position
  */
 export const createOrModifyPositionFromTransaction = async (
-  transaction: Transaction
+  transaction: Transaction,
 ) => {
   const eventArgs = transaction.event.logData.args;
   const epochId = eventArgs.epochId;
@@ -102,7 +102,7 @@ export const createOrModifyPositionFromTransaction = async (
       "Epoch not found: ",
       epochId,
       "market:",
-      transaction.event.market.address
+      transaction.event.market.address,
     );
     return;
   }
@@ -166,7 +166,7 @@ export const createOrModifyPositionFromTransaction = async (
 
 const updateTransactionStateFromEvent = (
   transaction: Transaction,
-  event: Event
+  event: Event,
 ) => {
   const eventArgs = event.logData.args;
   // Latest position state
@@ -192,7 +192,7 @@ export const insertCollateralTransfer = async (transaction: Transaction) => {
   if (!eventArgs.deltaCollateral || eventArgs.deltaCollateral == "0") {
     console.log(
       "Delta collateral not found in eventArgs",
-      eventArgs.deltaCollateral
+      eventArgs.deltaCollateral,
     );
     return;
   }
@@ -244,7 +244,7 @@ export const createOrUpdateMarketFromContract = async (
   client: PublicClient,
   contractDeployment: Deployment,
   chainId: number,
-  initialMarket?: Market
+  initialMarket?: Market,
 ) => {
   const address = contractDeployment.address.toLowerCase();
   // get market and epoch from contract
@@ -258,7 +258,7 @@ export const createOrUpdateMarketFromContract = async (
   let updatedMarket = initialMarket;
   if (!updatedMarket) {
     // check if market already exists in db
-    let existingMarket = await marketRepository.findOne({
+    const existingMarket = await marketRepository.findOne({
       where: { address, chainId },
       relations: ["epochs"],
     });
@@ -268,7 +268,7 @@ export const createOrUpdateMarketFromContract = async (
   // update market params appropriately
   updatedMarket.address = address;
   updatedMarket.deployTxnBlockNumber = Number(
-    contractDeployment.deployTxnBlockNumber
+    contractDeployment.deployTxnBlockNumber,
   );
   updatedMarket.deployTimestamp = Number(contractDeployment.deployTimestamp);
   updatedMarket.chainId = chainId;
@@ -288,7 +288,7 @@ export const createOrUpdateMarketFromContract = async (
 export const createOrUpdateEpochFromContract = async (
   marketInfo: MarketInfo,
   market: Market,
-  epochId?: number
+  epochId?: number,
 ) => {
   const functionName = epochId ? "getEpoch" : "getLatestEpoch";
   const args = epochId ? [epochId] : [];
@@ -306,7 +306,7 @@ export const createOrUpdateEpochFromContract = async (
   const _epochId = epochId || Number(epochData.epochId);
 
   // check if epoch already exists in db
-  let existingEpoch = await epochRepository.findOne({
+  const existingEpoch = await epochRepository.findOne({
     where: {
       market: { address: marketInfo.deployment.address },
       epochId: _epochId,
@@ -348,9 +348,9 @@ export const createOrUpdateMarketFromEvent = async (
   eventArgs: MarketCreatedUpdatedEventLog,
   chainId: number,
   address: string,
-  originalMarket?: Market | null
+  originalMarket?: Market | null,
 ) => {
-  let market = originalMarket || new Market();
+  const market = originalMarket || new Market();
   market.chainId = chainId;
   market.address = address;
   if (eventArgs.collateralAsset) {
@@ -383,7 +383,7 @@ export const getTradeTypeFromEvent = (eventArgs: TradePositionEventLog) => {
  */
 export const updateTransactionFromAddLiquidityEvent = (
   newTransaction: Transaction,
-  event: Event
+  event: Event,
 ) => {
   newTransaction.type = TransactionType.ADD_LIQUIDITY;
 
@@ -401,7 +401,7 @@ export const updateTransactionFromAddLiquidityEvent = (
  */
 export const updateTransactionFromLiquidityClosedEvent = async (
   newTransaction: Transaction,
-  event: Event
+  event: Event,
 ) => {
   newTransaction.type = TransactionType.REMOVE_LIQUIDITY;
 
@@ -420,7 +420,7 @@ export const updateTransactionFromLiquidityClosedEvent = async (
 export const updateTransactionFromLiquidityModifiedEvent = async (
   newTransaction: Transaction,
   event: Event,
-  isDecrease?: boolean
+  isDecrease?: boolean,
 ) => {
   const epochId = event.logData.args.epochId;
   newTransaction.type = isDecrease
@@ -448,10 +448,10 @@ export const updateTransactionFromLiquidityModifiedEvent = async (
  */
 export const updateTransactionFromTradeModifiedEvent = async (
   newTransaction: Transaction,
-  event: Event
+  event: Event,
 ) => {
   newTransaction.type = getTradeTypeFromEvent(
-    event.logData.args as TradePositionEventLog
+    event.logData.args as TradePositionEventLog,
   );
 
   updateTransactionStateFromEvent(newTransaction, event);
@@ -459,7 +459,7 @@ export const updateTransactionFromTradeModifiedEvent = async (
 
 export const updateTransactionFromPositionSettledEvent = async (
   newTransaction: Transaction,
-  event: Event
+  event: Event,
 ) => {
   const epochId = event.logData.args.epochId;
   newTransaction.type = TransactionType.SETTLE_POSITION;
@@ -487,7 +487,7 @@ export const updateTransactionFromPositionSettledEvent = async (
  */
 export const createEpochFromEvent = async (
   eventArgs: EpochCreatedEventLog,
-  market: Market
+  market: Market,
 ) => {
   // first check if there's an existing epoch in the database before creating a new one
   const existingEpoch = await epochRepository.findOne({
@@ -512,7 +512,7 @@ export const createEpochFromEvent = async (
 export const getMarketStartEndBlock = async (
   market: Market,
   epochId: string,
-  overrideClient?: PublicClient
+  overrideClient?: PublicClient,
 ) => {
   const epoch = await epochRepository.findOne({
     where: { market: { id: market.id }, epochId: Number(epochId) },

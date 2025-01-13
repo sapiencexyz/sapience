@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   ArrowUpDown,
@@ -7,12 +7,12 @@ import {
   ChevronLeft,
   HelpCircle,
   Loader2,
-} from 'lucide-react';
-import { type FC, useState, useContext, useMemo } from 'react';
-import React from 'react';
-import { useForm } from 'react-hook-form';
+} from "lucide-react";
+import { type FC, useState, useContext, useMemo } from "react";
+import React from "react";
+import { useForm } from "react-hook-form";
 
-import { Button } from '~/components/ui/button';
+import { Button } from "~/components/ui/button";
 import {
   Form,
   FormControl,
@@ -20,20 +20,20 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '~/components/ui/form';
-import { Input } from '~/components/ui/input';
-import { Separator } from '~/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
+} from "~/components/ui/form";
+import { Input } from "~/components/ui/input";
+import { Separator } from "~/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '~/components/ui/tooltip';
-import { useToast } from '~/hooks/use-toast';
-import { MarketContext } from '~/lib/context/MarketProvider';
+} from "~/components/ui/tooltip";
+import { useToast } from "~/hooks/use-toast";
+import { MarketContext } from "~/lib/context/MarketProvider";
 
-import VaultChart from './vaultChart';
+import VaultChart from "./vaultChart";
 
 interface FormValues {
   collateralAmount: string;
@@ -42,18 +42,18 @@ interface FormValues {
 
 const Earn: FC = () => {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>('deposit');
+  const [activeTab, setActiveTab] = useState<"deposit" | "withdraw">("deposit");
   const { collateralAssetTicker } = useContext(MarketContext);
 
   const form = useForm<FormValues>({
     defaultValues: {
-      collateralAmount: '0',
-      vaultShares: '0',
+      collateralAmount: "0",
+      vaultShares: "0",
     },
   });
 
-  const collateralAmount = form.watch('collateralAmount');
-  const vaultShares = form.watch('vaultShares');
+  const collateralAmount = form.watch("collateralAmount");
+  const vaultShares = form.watch("vaultShares");
 
   const hasCollateralChanged = useMemo(() => {
     return Number(collateralAmount) !== 0;
@@ -65,27 +65,27 @@ const Earn: FC = () => {
 
   const onSubmit = async (values: FormValues) => {
     try {
-      if (activeTab === 'deposit') {
+      if (activeTab === "deposit") {
         // Handle deposit logic
-        console.log('Depositing:', values.collateralAmount);
+        console.log("Depositing:", values.collateralAmount);
       } else {
         // Handle withdraw logic
-        console.log('Withdrawing:', values.vaultShares);
+        console.log("Withdrawing:", values.vaultShares);
       }
     } catch (error) {
       toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Transaction failed. Please try again.',
+        variant: "destructive",
+        title: "Error",
+        description: "Transaction failed. Please try again.",
       });
     }
   };
 
-  const renderWarningMessage = (type: 'collateral' | 'shares') => {
+  const renderWarningMessage = (type: "collateral" | "shares") => {
     const hasCollateral = Number(collateralAmount) > 0;
     const hasShares = Number(vaultShares) > 0;
 
-    if (type === 'collateral' && hasShares) {
+    if (type === "collateral" && hasShares) {
       return (
         <div className="mt-2 rounded-md bg-destructive/15 p-3 text-sm text-destructive">
           You cannot deposit collateral unless you remove your vault shares.
@@ -93,7 +93,7 @@ const Earn: FC = () => {
       );
     }
 
-    if (type === 'shares' && hasCollateral) {
+    if (type === "shares" && hasCollateral) {
       return (
         <div className="mt-2 rounded-md bg-destructive/15 p-3 text-sm text-destructive">
           You cannot deposit vault shares unless you remove your deposited
@@ -165,7 +165,7 @@ const Earn: FC = () => {
                     defaultValue="deposit"
                     className="space-y-4"
                     onValueChange={(value) =>
-                      setActiveTab(value as 'deposit' | 'withdraw')
+                      setActiveTab(value as "deposit" | "withdraw")
                     }
                   >
                     <TabsList className="grid w-full grid-cols-2">
@@ -220,7 +220,7 @@ const Earn: FC = () => {
                         )}
                       />
 
-                      {renderWarningMessage('collateral')}
+                      {renderWarningMessage("collateral")}
 
                       <Button
                         type="submit"
@@ -288,7 +288,7 @@ const Earn: FC = () => {
                         )}
                       />
 
-                      {renderWarningMessage('shares')}
+                      {renderWarningMessage("shares")}
 
                       <Button
                         type="submit"

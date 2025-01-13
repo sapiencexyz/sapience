@@ -16,8 +16,8 @@ const batchMarkets = async (ids: readonly number[]) => {
     relations: ["epochs", "resource"],
   });
 
-  const marketMap = new Map(markets.map(market => [market.id, market]));
-  return ids.map(id => marketMap.get(id));
+  const marketMap = new Map(markets.map((market) => [market.id, market]));
+  return ids.map((id) => marketMap.get(id));
 };
 
 // Batch function to load resources by IDs
@@ -27,8 +27,10 @@ const batchResources = async (ids: readonly number[]) => {
     relations: ["markets", "resourcePrices"],
   });
 
-  const resourceMap = new Map(resources.map(resource => [resource.id, resource]));
-  return ids.map(id => resourceMap.get(id));
+  const resourceMap = new Map(
+    resources.map((resource) => [resource.id, resource]),
+  );
+  return ids.map((id) => resourceMap.get(id));
 };
 
 // Batch function to load positions by IDs
@@ -38,8 +40,10 @@ const batchPositions = async (ids: readonly number[]) => {
     relations: ["epoch", "epoch.market", "transactions"],
   });
 
-  const positionMap = new Map(positions.map(position => [position.id, position]));
-  return ids.map(id => positionMap.get(id));
+  const positionMap = new Map(
+    positions.map((position) => [position.id, position]),
+  );
+  return ids.map((id) => positionMap.get(id));
 };
 
 // Batch function to load epochs by IDs
@@ -49,8 +53,8 @@ const batchEpochs = async (ids: readonly number[]) => {
     relations: ["market", "positions", "indexPrices"],
   });
 
-  const epochMap = new Map(epochs.map(epoch => [epoch.id, epoch]));
-  return ids.map(id => epochMap.get(id));
+  const epochMap = new Map(epochs.map((epoch) => [epoch.id, epoch]));
+  return ids.map((id) => epochMap.get(id));
 };
 
 // Batch function to load transactions by position IDs
@@ -61,7 +65,7 @@ const batchTransactionsByPosition = async (positionIds: readonly number[]) => {
   });
 
   const transactionMap = new Map<number, Transaction[]>();
-  transactions.forEach(transaction => {
+  transactions.forEach((transaction) => {
     const positionId = transaction.position.id;
     if (!transactionMap.has(positionId)) {
       transactionMap.set(positionId, []);
@@ -69,7 +73,7 @@ const batchTransactionsByPosition = async (positionIds: readonly number[]) => {
     transactionMap.get(positionId)!.push(transaction);
   });
 
-  return positionIds.map(id => transactionMap.get(id) || []);
+  return positionIds.map((id) => transactionMap.get(id) || []);
 };
 
 // Create DataLoader instances
@@ -79,4 +83,4 @@ export const createLoaders = () => ({
   positionLoader: new DataLoader(batchPositions),
   epochLoader: new DataLoader(batchEpochs),
   transactionsByPositionLoader: new DataLoader(batchTransactionsByPosition),
-}); 
+});

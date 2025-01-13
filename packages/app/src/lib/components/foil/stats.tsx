@@ -1,18 +1,18 @@
 /* eslint-disable sonarjs/no-duplicate-string */
-import { format, formatDistanceToNow } from 'date-fns';
-import { InfoIcon } from 'lucide-react';
-import React, { useContext } from 'react';
+import { format, formatDistanceToNow } from "date-fns";
+import { InfoIcon } from "lucide-react";
+import React, { useContext } from "react";
 
 import {
   TooltipProvider,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '~/components/ui/tooltip';
-import { MarketContext } from '~/lib/context/MarketProvider';
-import { convertGgasPerWstEthToGwei } from '~/lib/util/util';
+} from "~/components/ui/tooltip";
+import { MarketContext } from "~/lib/context/MarketProvider";
+import { convertGgasPerWstEthToGwei } from "~/lib/util/util";
 
-import NumberDisplay from './numberDisplay';
+import NumberDisplay from "./numberDisplay";
 
 const Stats = () => {
   const {
@@ -25,22 +25,22 @@ const Stats = () => {
     stEthPerToken,
   } = useContext(MarketContext);
 
-  let relativeTime = '';
-  let formattedTime = '';
-  let endTimeString = '';
-  let startTimeString = '';
+  let relativeTime = "";
+  let formattedTime = "";
+  let endTimeString = "";
+  let startTimeString = "";
   if (startTime) {
     const dateMilliseconds = Number(startTime) * 1000;
     const date = new Date(dateMilliseconds);
-    startTimeString = format(date, 'PPpp');
+    startTimeString = format(date, "PPpp");
   }
   if (endTime) {
     const dateMilliseconds = Number(endTime) * 1000;
     const date = new Date(dateMilliseconds);
     const now = new Date();
-    relativeTime = date < now ? 'Expired' : formatDistanceToNow(date);
-    formattedTime = format(date, 'PPpp');
-    endTimeString = format(date, 'PPpp');
+    relativeTime = date < now ? "Expired" : formatDistanceToNow(date);
+    formattedTime = format(date, "PPpp");
+    endTimeString = format(date, "PPpp");
   }
 
   return (
@@ -67,9 +67,9 @@ const Stats = () => {
                     ? averagePrice
                     : convertGgasPerWstEthToGwei(averagePrice, stEthPerToken)
                 }
-              />{' '}
+              />{" "}
               <span className="text-sm">
-                {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
+                {useMarketUnits ? "Ggas/wstETH" : "gwei"}
               </span>
             </div>
           </div>
@@ -93,12 +93,12 @@ const Stats = () => {
                     ? pool?.token0Price.toSignificant(18) || 0
                     : convertGgasPerWstEthToGwei(
                         Number(pool?.token0Price.toSignificant(18) || 0),
-                        stEthPerToken
+                        stEthPerToken,
                       )
                 }
-              />{' '}
+              />{" "}
               <span className="text-sm">
-                {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
+                {useMarketUnits ? "Ggas/wstETH" : "gwei"}
               </span>
             </div>
           </div>
@@ -109,7 +109,7 @@ const Stats = () => {
               <InfoIcon className="ml-1.5 -translate-y-0.5 hidden h-4 text-gray-600" />
             </div>
             <div className="mt-1 text-2xl font-bold">
-              <NumberDisplay value={liquidity} />{' '}
+              <NumberDisplay value={liquidity} />{" "}
               <span className="text-sm">Ggas</span>
             </div>
           </div>

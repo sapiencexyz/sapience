@@ -1,5 +1,5 @@
 /* eslint-disable sonarjs/cognitive-complexity */
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from "next/navigation";
 import React, {
   createContext,
   useContext,
@@ -7,13 +7,13 @@ import React, {
   useMemo,
   useEffect,
   useRef,
-} from 'react';
-import { useAccount, useReadContracts } from 'wagmi';
+} from "react";
+import { useAccount, useReadContracts } from "wagmi";
 
-import { MarketContext } from '~/lib/context/MarketProvider';
-import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';
-import type { FoilPosition } from '~/lib/interfaces/interfaces';
-import { PositionKind } from '~/lib/interfaces/interfaces';
+import { MarketContext } from "~/lib/context/MarketProvider";
+import { useTokenIdsOfOwner } from "~/lib/hooks/useTokenIdsOfOwner";
+import type { FoilPosition } from "~/lib/interfaces/interfaces";
+import { PositionKind } from "~/lib/interfaces/interfaces";
 
 interface Positions {
   liquidityPositions: FoilPosition[];
@@ -38,7 +38,7 @@ export const AddEditPositionProvider: React.FC<{
   const router = useRouter();
   const searchParams = useSearchParams();
   const hasSetInitialPosition = useRef(false);
-  const positionId = searchParams.get('positionId');
+  const positionId = searchParams.get("positionId");
   const nftId = positionId ? Number(positionId) : 0;
 
   const { address } = useAccount();
@@ -64,7 +64,7 @@ export const AddEditPositionProvider: React.FC<{
     contracts: tokenIds.map((i) => ({
       abi: foilData.abi,
       address: marketAddress as `0x${string}`,
-      functionName: 'getPosition',
+      functionName: "getPosition",
       chainId,
       args: [i],
     })),
@@ -102,11 +102,11 @@ export const AddEditPositionProvider: React.FC<{
       let lastPositionId: number | undefined;
       const currentPath = window.location.pathname.toLowerCase();
 
-      if (currentPath.includes('trade')) {
+      if (currentPath.includes("trade")) {
         lastPositionId = lastTradePosition?.id
           ? Number(lastTradePosition.id)
           : undefined;
-      } else if (currentPath.includes('pool')) {
+      } else if (currentPath.includes("pool")) {
         lastPositionId = lastLiquidityPosition?.id
           ? Number(lastLiquidityPosition.id)
           : undefined;
@@ -118,8 +118,8 @@ export const AddEditPositionProvider: React.FC<{
           ? Number(lastTradePosition.id)
           : undefined;
         lastPositionId = Math.max(
-          liquidityId ?? -Infinity,
-          tradeId ?? -Infinity
+          liquidityId ?? Number.NEGATIVE_INFINITY,
+          tradeId ?? Number.NEGATIVE_INFINITY,
         );
       }
 
@@ -139,7 +139,7 @@ export const AddEditPositionProvider: React.FC<{
         router.push(`${window.location.pathname}?positionId=${id}`);
       }
     },
-    [router]
+    [router],
   );
 
   const refreshPositions = useCallback(async () => {
@@ -182,7 +182,7 @@ export const useAddEditPosition = () => {
   const context = useContext(AddEditPositionContext);
   if (context === undefined) {
     throw new Error(
-      'useAddEditPosition must be used within a AddEditPositionProvider'
+      "useAddEditPosition must be used within a AddEditPositionProvider",
     );
   }
   return context;

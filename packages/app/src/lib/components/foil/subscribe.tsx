@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
 /* eslint-disable sonarjs/cognitive-complexity */
 
-import { formatDuration, intervalToDuration, format } from 'date-fns';
-import { motion, AnimatePresence } from 'framer-motion';
-import { HelpCircle, Loader2, Info, BookTextIcon } from 'lucide-react';
-import { type FC, useState, useEffect, useContext, useMemo } from 'react';
-import React from 'react';
-import CountUp from 'react-countup';
-import { useForm } from 'react-hook-form';
-import type { AbiFunction } from 'viem';
+import { formatDuration, intervalToDuration, format } from "date-fns";
+import { motion, AnimatePresence } from "framer-motion";
+import { HelpCircle, Loader2, Info, BookTextIcon } from "lucide-react";
+import { type FC, useState, useEffect, useContext, useMemo } from "react";
+import React from "react";
+import CountUp from "react-countup";
+import { useForm } from "react-hook-form";
+import type { AbiFunction } from "viem";
 import {
   decodeEventLog,
   formatUnits,
@@ -17,8 +17,8 @@ import {
   isAddress,
   createPublicClient,
   http,
-} from 'viem';
-import { mainnet } from 'viem/chains';
+} from "viem";
+import { mainnet } from "viem/chains";
 import {
   useWaitForTransactionReceipt,
   useWriteContract,
@@ -28,36 +28,36 @@ import {
   useChainId,
   useSwitchChain,
   useConnect,
-} from 'wagmi';
+} from "wagmi";
 
-import erc20ABI from '../../erc20abi.json';
-import { Alert, AlertTitle, AlertDescription } from '~/components/ui/alert';
-import { Button } from '~/components/ui/button';
+import erc20ABI from "../../erc20abi.json";
+import { Alert, AlertTitle, AlertDescription } from "~/components/ui/alert";
+import { Button } from "~/components/ui/button";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
-} from '~/components/ui/form';
-import { Input } from '~/components/ui/input';
+} from "~/components/ui/form";
+import { Input } from "~/components/ui/input";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '~/components/ui/tooltip';
-import { useToast } from '~/hooks/use-toast';
-import { useMarketList } from '~/lib/context/MarketListProvider';
-import { MarketContext } from '~/lib/context/MarketProvider';
+} from "~/components/ui/tooltip";
+import { useToast } from "~/hooks/use-toast";
+import { useMarketList } from "~/lib/context/MarketListProvider";
+import { MarketContext } from "~/lib/context/MarketProvider";
 
-import NumberDisplay from './numberDisplay';
-import SimpleBarChart from './SimpleBarChart';
-import SizeInput from './sizeInput';
+import NumberDisplay from "./numberDisplay";
+import SimpleBarChart from "./SimpleBarChart";
+import SizeInput from "./sizeInput";
 
 const TOAST_DURATION = 3000;
 const LONG_TOAST_DURATION = 5000;
-const WAITING_MESSAGE = 'Waiting for confirmation...';
+const WAITING_MESSAGE = "Waiting for confirmation...";
 
 interface PositionData {
   vGasAmount: bigint;
@@ -77,9 +77,9 @@ const publicClient = createPublicClient({
   chain: mainnet,
   transport: process.env.NEXT_PUBLIC_INFURA_API_KEY
     ? http(
-        `https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
+        `https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`,
       )
-    : http('https://ethereum-rpc.publicnode.com'),
+    : http("https://ethereum-rpc.publicnode.com"),
 });
 
 const Subscribe: FC<SubscribeProps> = ({
@@ -119,7 +119,7 @@ const Subscribe: FC<SubscribeProps> = ({
   const [isMarketSelectorOpen, setIsMarketSelectorOpen] = useState(false);
   const [isEstimating, setIsEstimating] = useState(false);
   const [withdrawableCollateral, setWithdrawableCollateral] = useState<bigint>(
-    BigInt(0)
+    BigInt(0),
   );
   const [estimationResults, setEstimationResults] = useState<{
     totalGasUsed: number;
@@ -132,12 +132,12 @@ const Subscribe: FC<SubscribeProps> = ({
   // Form setup
   const form = useForm({
     defaultValues: {
-      sizeInput: '0',
-      walletAddress: '',
-      slippage: '0.5',
+      sizeInput: "0",
+      walletAddress: "",
+      slippage: "0.5",
     },
-    mode: 'onChange',
-    reValidateMode: 'onChange',
+    mode: "onChange",
+    reValidateMode: "onChange",
   });
 
   // Destructure form methods after initialization
@@ -164,14 +164,14 @@ const Subscribe: FC<SubscribeProps> = ({
   // Format start and end times
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp * 1000);
-    return format(date, 'MMMM do');
+    return format(date, "MMMM do");
   };
 
   // Allowance check
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
     abi: erc20ABI,
     address: collateralAsset as `0x${string}`,
-    functionName: 'allowance',
+    functionName: "allowance",
     args: [address, finalMarketAddress],
     chainId: finalChainId,
   });
@@ -183,7 +183,7 @@ const Subscribe: FC<SubscribeProps> = ({
   const quoteCreatePositionResult = useSimulateContract({
     abi: foilData.abi,
     address: finalMarketAddress as `0x${string}`,
-    functionName: 'quoteCreateTraderPosition',
+    functionName: "quoteCreateTraderPosition",
     args: [finalEpoch || 0, sizeInGigagas],
     chainId: finalChainId,
     account: address || zeroAddress,
@@ -194,7 +194,7 @@ const Subscribe: FC<SubscribeProps> = ({
   const { data: positionData } = useReadContract({
     abi: foilData.abi,
     address: finalMarketAddress as `0x${string}`,
-    functionName: 'getPosition',
+    functionName: "getPosition",
     args: positionId !== undefined ? [positionId] : undefined,
     chainId: finalChainId,
     query: {
@@ -206,7 +206,7 @@ const Subscribe: FC<SubscribeProps> = ({
   const quoteModifyPositionResult = useSimulateContract({
     abi: foilData.abi,
     address: finalMarketAddress as `0x${string}`,
-    functionName: 'quoteModifyTraderPosition',
+    functionName: "quoteModifyTraderPosition",
     args: positionId !== undefined ? [positionId, BigInt(0)] : undefined,
     chainId: finalChainId,
     account: address || zeroAddress,
@@ -244,8 +244,8 @@ const Subscribe: FC<SubscribeProps> = ({
       const errorMessage = quoteCreatePositionResult.error.message;
       // Clean up common error messages
       const cleanedMessage = errorMessage
-        .replace('execution reverted: ', '')
-        .replace('Error: ', '');
+        .replace("execution reverted: ", "")
+        .replace("Error: ", "");
       setQuoteError(cleanedMessage);
     } else {
       setQuoteError(null);
@@ -266,15 +266,15 @@ const Subscribe: FC<SubscribeProps> = ({
     mutation: {
       onError: (error) => {
         toast({
-          variant: 'destructive',
-          title: 'Transaction Failed',
+          variant: "destructive",
+          title: "Transaction Failed",
           description: `There was an issue creating/updating your position: ${(error as Error).message}`,
         });
         resetAfterError();
       },
       onSuccess: () => {
         toast({
-          title: 'Transaction Submitted',
+          title: "Transaction Submitted",
           description: WAITING_MESSAGE,
         });
       },
@@ -285,15 +285,15 @@ const Subscribe: FC<SubscribeProps> = ({
     mutation: {
       onError: (error) => {
         toast({
-          variant: 'destructive',
-          title: 'Approval Failed',
+          variant: "destructive",
+          title: "Approval Failed",
           description: `Failed to approve: ${(error as Error).message}`,
         });
         resetAfterError();
       },
       onSuccess: () => {
         toast({
-          title: 'Approval Submitted',
+          title: "Approval Submitted",
           description: WAITING_MESSAGE,
         });
       },
@@ -310,11 +310,11 @@ const Subscribe: FC<SubscribeProps> = ({
     if (isConfirmed && txnStep === 2) {
       if (positionId) {
         toast({
-          title: 'Success',
+          title: "Success",
           description:
             endTime && Date.now() / 1000 > Number(endTime)
-              ? 'Position settled successfully!'
-              : 'Position closed successfully!',
+              ? "Position settled successfully!"
+              : "Position closed successfully!",
         });
         onClose?.();
       } else {
@@ -326,10 +326,10 @@ const Subscribe: FC<SubscribeProps> = ({
               topics: log.topics,
             });
 
-            if ((event as any).eventName === 'TraderPositionCreated') {
+            if ((event as any).eventName === "TraderPositionCreated") {
               const nftId = (event as any).args.positionId.toString();
               toast({
-                title: 'Subscription Created',
+                title: "Subscription Created",
                 description: `Your subscription has been created as position ${nftId}`,
               });
               resetAfterSuccess();
@@ -341,7 +341,7 @@ const Subscribe: FC<SubscribeProps> = ({
           }
         }
         toast({
-          title: 'Success',
+          title: "Success",
           description: "We've created your subscription for you.",
         });
         resetAfterSuccess();
@@ -377,9 +377,9 @@ const Subscribe: FC<SubscribeProps> = ({
 
     if (sizeValue === BigInt(0)) {
       toast({
-        title: 'Invalid size',
-        description: 'Please enter a positive gas amount.',
-        variant: 'destructive',
+        title: "Invalid size",
+        description: "Please enter a positive gas amount.",
+        variant: "destructive",
       });
       return;
     }
@@ -389,7 +389,7 @@ const Subscribe: FC<SubscribeProps> = ({
       approveWrite({
         abi: erc20ABI as AbiFunction[],
         address: collateralAsset as `0x${string}`,
-        functionName: 'approve',
+        functionName: "approve",
         args: [finalMarketAddress, collateralDeltaLimit],
       });
       setTxnStep(1);
@@ -409,7 +409,7 @@ const Subscribe: FC<SubscribeProps> = ({
     writeContract({
       abi: foilData.abi,
       address: finalMarketAddress as `0x${string}`,
-      functionName: 'createTraderPosition',
+      functionName: "createTraderPosition",
       args: [finalEpoch || 0, sizeInTokens, absCollateralDeltaLimit, deadline],
     });
     setTxnStep(2);
@@ -422,9 +422,9 @@ const Subscribe: FC<SubscribeProps> = ({
 
   const resetAfterSuccess = () => {
     reset({
-      sizeInput: '0',
-      walletAddress: '',
-      slippage: '0.5',
+      sizeInput: "0",
+      walletAddress: "",
+      slippage: "0.5",
     });
     refetchAllowance();
     setSizeValue(BigInt(0));
@@ -479,7 +479,7 @@ const Subscribe: FC<SubscribeProps> = ({
         >
           {requireApproval
             ? `Approve ${collateralAssetTicker} Transfer`
-            : 'Create Subscription'}
+            : "Create Subscription"}
         </Button>
       </div>
     );
@@ -487,14 +487,14 @@ const Subscribe: FC<SubscribeProps> = ({
 
   const marketName =
     markets.find((m) => m.address === finalMarketAddress)?.name ||
-    'Choose Market';
+    "Choose Market";
 
   const handleEstimateUsage = async () => {
-    const formWalletAddress = form.getValues('walletAddress');
+    const formWalletAddress = form.getValues("walletAddress");
     if (!formWalletAddress) {
       toast({
-        title: 'Invalid Address',
-        description: 'Please enter a wallet address or ENS name.',
+        title: "Invalid Address",
+        description: "Please enter a wallet address or ENS name.",
         duration: TOAST_DURATION,
       });
       return;
@@ -509,13 +509,13 @@ const Subscribe: FC<SubscribeProps> = ({
             name: formWalletAddress,
           });
           if (!ensAddress) {
-            throw new Error('Could not resolve ENS name');
+            throw new Error("Could not resolve ENS name");
           }
           resolvedAddress = ensAddress;
         } catch (error) {
           toast({
-            title: 'Invalid Address',
-            description: 'Please enter a valid wallet address or ENS name.',
+            title: "Invalid Address",
+            description: "Please enter a valid wallet address or ENS name.",
             duration: TOAST_DURATION,
           });
           setIsEstimating(false);
@@ -526,9 +526,9 @@ const Subscribe: FC<SubscribeProps> = ({
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_FOIL_API_URL}/estimate`,
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             walletAddress: resolvedAddress,
@@ -536,11 +536,11 @@ const Subscribe: FC<SubscribeProps> = ({
             marketAddress: finalMarketAddress,
             epochId: finalEpoch,
           }),
-        }
+        },
       );
 
       if (!response.ok) {
-        throw new Error('Failed to fetch estimate');
+        throw new Error("Failed to fetch estimate");
       }
 
       const data = await response.json();
@@ -548,7 +548,7 @@ const Subscribe: FC<SubscribeProps> = ({
       // Add check for no gas usage
       if (!data.totalGasUsed || data.totalGasUsed === 0) {
         toast({
-          title: 'Recent Data Unavailable',
+          title: "Recent Data Unavailable",
           description: `This address hasn't used gas in the last ${formattedDuration}.`,
           duration: LONG_TOAST_DURATION,
         });
@@ -565,8 +565,8 @@ const Subscribe: FC<SubscribeProps> = ({
       });
     } catch (error) {
       toast({
-        title: 'Estimation Failed',
-        description: 'Unable to estimate gas usage. Please try again.',
+        title: "Estimation Failed",
+        description: "Unable to estimate gas usage. Please try again.",
         duration: LONG_TOAST_DURATION,
       });
     } finally {
@@ -574,19 +574,19 @@ const Subscribe: FC<SubscribeProps> = ({
     }
   };
 
-  const formattedStartTime = startTime ? formatDate(Number(startTime)) : '';
-  const formattedEndTime = endTime ? formatDate(Number(endTime)) : '';
+  const formattedStartTime = startTime ? formatDate(Number(startTime)) : "";
+  const formattedEndTime = endTime ? formatDate(Number(endTime)) : "";
 
   // Add this new formatted duration calculation
   const formattedDuration = useMemo(() => {
-    if (!startTime || !endTime) return '';
+    if (!startTime || !endTime) return "";
 
     const duration = intervalToDuration({
       start: new Date(Number(startTime) * 1000),
       end: new Date(Number(endTime) * 1000),
     });
 
-    return formatDuration(duration, { format: ['months', 'days'] });
+    return formatDuration(duration, { format: ["months", "days"] });
   }, [startTime, endTime]);
 
   // Now we can define collateralDeltaLimit after allowance is initialized
@@ -610,7 +610,7 @@ const Subscribe: FC<SubscribeProps> = ({
   useEffect(() => {
     if (initialSize) {
       setSizeValue(initialSize);
-      form.setValue('sizeInput', initialSize.toString());
+      form.setValue("sizeInput", initialSize.toString());
     }
   }, [initialSize]);
 
@@ -625,7 +625,7 @@ const Subscribe: FC<SubscribeProps> = ({
         writeContract({
           abi: foilData.abi,
           address: finalMarketAddress as `0x${string}`,
-          functionName: 'settlePosition',
+          functionName: "settlePosition",
           chainId: finalChainId,
           args: [BigInt(positionId)],
         });
@@ -647,9 +647,9 @@ const Subscribe: FC<SubscribeProps> = ({
 
         if (deltaSize === BigInt(0)) {
           toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Position is already closed',
+            variant: "destructive",
+            title: "Error",
+            description: "Position is already closed",
           });
           setPendingTxn(false);
           return;
@@ -665,19 +665,19 @@ const Subscribe: FC<SubscribeProps> = ({
         writeContract({
           abi: foilData.abi,
           address: finalMarketAddress as `0x${string}`,
-          functionName: 'modifyTraderPosition',
+          functionName: "modifyTraderPosition",
           args: [positionId, BigInt(0), collateralDeltaWithBuffer, deadline],
         });
       }
       setTxnStep(2);
       toast({
-        title: 'Transaction Submitted',
+        title: "Transaction Submitted",
         description: WAITING_MESSAGE,
       });
     } catch (error) {
       toast({
-        variant: 'destructive',
-        title: 'Error',
+        variant: "destructive",
+        title: "Error",
         description: `Failed to close position: ${(error as Error).message}`,
       });
       setPendingTxn(false);
@@ -688,7 +688,7 @@ const Subscribe: FC<SubscribeProps> = ({
   useEffect(() => {
     if (positionData) {
       setWithdrawableCollateral(
-        BigInt((positionData as any).depositedCollateralAmount)
+        BigInt((positionData as any).depositedCollateralAmount),
       );
     }
   }, [positionData]);
@@ -715,7 +715,7 @@ const Subscribe: FC<SubscribeProps> = ({
                 exit={{ opacity: 0 }}
                 transition={{
                   duration: 0.2,
-                  ease: 'easeInOut',
+                  ease: "easeInOut",
                 }}
               >
                 <FormField
@@ -731,7 +731,7 @@ const Subscribe: FC<SubscribeProps> = ({
                           autoComplete="off"
                           spellCheck={false}
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
+                            if (e.key === "Enter") {
                               e.preventDefault();
                               handleEstimateUsage();
                             }
@@ -753,7 +753,7 @@ const Subscribe: FC<SubscribeProps> = ({
                       Generating
                     </>
                   ) : (
-                    'Generate Analytics'
+                    "Generate Analytics"
                   )}
                 </Button>
               </motion.div>
@@ -761,17 +761,17 @@ const Subscribe: FC<SubscribeProps> = ({
               <motion.div
                 key="results"
                 initial={{ opacity: 0, height: 140 }}
-                animate={{ opacity: 1, height: 'auto' }}
+                animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 140 }}
                 transition={{
                   duration: 0.2,
                   height: {
                     duration: 0.5,
-                    ease: 'easeOut',
+                    ease: "easeOut",
                   },
                   opacity: {
                     duration: 0.2,
-                    ease: 'easeOut',
+                    ease: "easeOut",
                   },
                 }}
               >
@@ -779,32 +779,32 @@ const Subscribe: FC<SubscribeProps> = ({
                   <SimpleBarChart data={estimationResults.chartData} />
                 </div>
                 <p className="text-lg mb-2">
-                  {form.getValues('walletAddress').endsWith('.eth')
-                    ? form.getValues('walletAddress')
-                    : `${form.getValues('walletAddress').slice(0, 6)}...${form.getValues('walletAddress').slice(-4)}`}{' '}
-                  used{' '}
+                  {form.getValues("walletAddress").endsWith(".eth")
+                    ? form.getValues("walletAddress")
+                    : `${form.getValues("walletAddress").slice(0, 6)}...${form.getValues("walletAddress").slice(-4)}`}{" "}
+                  used{" "}
                   <CountUp
                     end={estimationResults.totalGasUsed}
                     separator=","
                     duration={1.5}
-                  />{' '}
-                  gas (costing{' '}
+                  />{" "}
+                  gas (costing{" "}
                   <NumberDisplay value={estimationResults.ethPaid} /> ETH) over
                   the last {formattedDuration}.
                 </p>
                 <div className="flex flex-col gap-0.5 mb-6">
                   <p className="text-sm text-muted-foreground">
-                    The average cost per transaction was{' '}
+                    The average cost per transaction was{" "}
                     {estimationResults.avgGasPerTx.toLocaleString()} gas.
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    The average gas price paid was{' '}
+                    The average gas price paid was{" "}
                     {estimationResults.avgGasPrice.toLocaleString()} gwei.
                   </p>
                 </div>
                 <div className="border border-border p-6 rounded-lg shadow-sm bg-primary/5">
                   <p className="mb-4">
-                    Generate a quote for a subscription of this much gas over{' '}
+                    Generate a quote for a subscription of this much gas over{" "}
                     {formattedDuration}, starting on {formattedStartTime}.
                   </p>
                   <Button
@@ -840,26 +840,26 @@ const Subscribe: FC<SubscribeProps> = ({
             <p className="text-lg">
               {endTime && Date.now() / 1000 > Number(endTime) ? (
                 <>
-                  Close your position and receive{' '}
+                  Close your position and receive{" "}
                   <NumberDisplay
                     value={formatUnits(
                       withdrawableCollateral,
-                      collateralAssetDecimals
+                      collateralAssetDecimals,
                     )}
-                  />{' '}
+                  />{" "}
                   wstETH
                 </>
               ) : (
                 <>
-                  Close your subscription early and receive approximately{' '}
+                  Close your subscription early and receive approximately{" "}
                   <NumberDisplay
                     value={formatUnits(
                       collateralDelta < BigInt(0)
                         ? -collateralDelta
                         : collateralDelta,
-                      collateralAssetDecimals
+                      collateralAssetDecimals,
                     )}
-                  />{' '}
+                  />{" "}
                   {collateralAssetTicker}
                 </>
               )}
@@ -897,7 +897,7 @@ const Subscribe: FC<SubscribeProps> = ({
         </div>
 
         <p className="mb-3 text-lg">
-          Enter the amount of gas you expect to use between {formattedStartTime}{' '}
+          Enter the amount of gas you expect to use between {formattedStartTime}{" "}
           and {formattedEndTime}.
         </p>
 
@@ -949,7 +949,7 @@ const Subscribe: FC<SubscribeProps> = ({
                   <p className="text-red-500 text-sm font-medium flex items-center pt-1">
                     <span className="mr-1">
                       Foil was unable to generate a quote.
-                    </span>{' '}
+                    </span>{" "}
                     <HelpCircle className="h-4 w-4" />
                   </p>
                 </TooltipTrigger>
@@ -983,13 +983,13 @@ const Subscribe: FC<SubscribeProps> = ({
                         <NumberDisplay
                           value={formatUnits(
                             collateralDelta,
-                            collateralAssetDecimals
+                            collateralAssetDecimals,
                           )}
-                        />{' '}
+                        />{" "}
                         {collateralAssetTicker}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        <NumberDisplay value={formatUnits(fillPriceInEth, 9)} />{' '}
+                        <NumberDisplay value={formatUnits(fillPriceInEth, 9)} />{" "}
                         gwei
                       </p>
                     </div>

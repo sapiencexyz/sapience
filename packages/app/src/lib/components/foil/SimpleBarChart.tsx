@@ -1,15 +1,15 @@
-import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useRef } from 'react';
-import CountUp from 'react-countup';
-import { BarChart, ResponsiveContainer, XAxis, Bar } from 'recharts';
+import { motion, AnimatePresence } from "framer-motion";
+import { useState, useRef } from "react";
+import CountUp from "react-countup";
+import { BarChart, ResponsiveContainer, XAxis, Bar } from "recharts";
 
-const barColor = 'rgba(0, 0, 0, 0.5)';
-const axisColor = 'rgba(0, 0, 0, 0.2)';
+const barColor = "rgba(0, 0, 0, 0.5)";
+const axisColor = "rgba(0, 0, 0, 0.2)";
 
 const SimpleBarChart = ({ data }: { data: any[] }) => {
-  const [value, setValue] = useState<string>('');
+  const [value, setValue] = useState<string>("");
   const [prevValue, setPrevValue] = useState<number>(0);
-  const [label, setLabel] = useState<string>('');
+  const [label, setLabel] = useState<string>("");
   const lastTooltipIndex = useRef<number | null>(null);
 
   return (
@@ -26,16 +26,16 @@ const SimpleBarChart = ({ data }: { data: any[] }) => {
               <CountUp
                 delay={0}
                 start={prevValue}
-                end={parseInt(value, 10)}
+                end={Number.parseInt(value, 10)}
                 duration={0.3}
                 separator=","
               />
-              {' gas'}
+              {" gas"}
             </span>
             <AnimatePresence>
               <motion.span
                 key={label}
-                initial={{ opacity: 0, position: 'absolute', right: 0, top: 5 }}
+                initial={{ opacity: 0, position: "absolute", right: 0, top: 5 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3 }}
@@ -60,27 +60,27 @@ const SimpleBarChart = ({ data }: { data: any[] }) => {
                   newValue !== value ||
                   state.activeTooltipIndex !== lastTooltipIndex.current
                 ) {
-                  setPrevValue(parseInt(value, 10) || 0);
+                  setPrevValue(Number.parseInt(value, 10) || 0);
                   setValue(newValue);
                   setLabel(
                     `${new Date(
-                      state.activePayload[0].payload.timestamp
+                      state.activePayload[0].payload.timestamp,
                     ).toLocaleString(undefined, {
-                      year: '2-digit',
-                      month: 'numeric',
-                      day: 'numeric',
-                      hour: 'numeric',
-                      minute: 'numeric',
+                      year: "2-digit",
+                      month: "numeric",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "numeric",
                     })} → ${new Date(
                       data[(state.activeTooltipIndex || 0) + 1]?.timestamp ??
-                        state.activePayload[0].payload.timestamp
+                        state.activePayload[0].payload.timestamp,
                     ).toLocaleString(undefined, {
-                      year: '2-digit',
-                      month: 'numeric',
-                      day: 'numeric',
-                      hour: 'numeric',
-                      minute: 'numeric',
-                    })}`
+                      year: "2-digit",
+                      month: "numeric",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "numeric",
+                    })}`,
                   );
                   lastTooltipIndex.current = state.activeTooltipIndex ?? null;
                 }

@@ -18,7 +18,10 @@ export class CollateralTransfer {
   @CreateDateColumn()
   createdAt: Date;
 
-  @OneToOne(() => Transaction, (transaction) => transaction.collateralTransfer)
+  @OneToOne(
+    () => Transaction,
+    (transaction) => transaction.collateralTransfer,
+  )
   transaction: Transaction;
 
   @Column({ type: "varchar" })

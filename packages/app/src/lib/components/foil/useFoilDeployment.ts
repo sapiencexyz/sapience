@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 const useFoilDeployment = (chainId?: number) => {
   const [foilData, setFoilData] = useState<any>({});

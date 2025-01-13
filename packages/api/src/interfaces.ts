@@ -1,5 +1,5 @@
-import { Abi } from "viem";
-import { IResourcePriceIndexer } from "./resourcePriceFunctions/IResourcePriceIndexer";
+import type { Abi } from "viem";
+import type { IResourcePriceIndexer } from "./resourcePriceFunctions/iResourcePriceIndexer";
 
 export enum EventType {
   LiquidityPositionCreated = "LiquidityPositionCreated",
@@ -61,9 +61,9 @@ export interface PositionSettledEventLog {
 }
 
 export enum PositionKind {
-  Unknown,
-  Liquidity,
-  Trade,
+  Unknown = 0,
+  Liquidity = 1,
+  Trade = 2,
 }
 
 export interface MarketParams {
@@ -134,16 +134,16 @@ export interface MarketInfo {
 }
 
 export enum EventTransactionType {
-  Undefined,
-  CreateLiquidityPosition,
-  IncreaseLiquidityPosition,
-  DecreaseLiquidityPosition,
-  CloseLiquidityPosition,
-  TransitionLiquidityToTrade,
-  DepositCollateral,
-  CreateTradePosition,
-  ModifyTradePosition,
-  CloseTradePosition,
+  Undefined = 0,
+  CreateLiquidityPosition = 1,
+  IncreaseLiquidityPosition = 2,
+  DecreaseLiquidityPosition = 3,
+  CloseLiquidityPosition = 4,
+  TransitionLiquidityToTrade = 5,
+  DepositCollateral = 6,
+  CreateTradePosition = 7,
+  ModifyTradePosition = 8,
+  CloseTradePosition = 9,
 }
 
 export interface PositionUpdatedEventLog {

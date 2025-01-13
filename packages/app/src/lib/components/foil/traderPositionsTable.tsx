@@ -5,21 +5,21 @@ import {
   getSortedRowModel,
   type ColumnDef,
   type SortingState,
-} from '@tanstack/react-table';
+} from "@tanstack/react-table";
 import {
   Check,
   HelpCircle,
   ChevronDown,
   ChevronUp,
   ArrowUpDown,
-} from 'lucide-react';
-import Link from 'next/link';
-import type React from 'react';
-import { useContext, useState, useMemo } from 'react';
-import { formatUnits } from 'viem';
-import { useReadContract } from 'wagmi';
+} from "lucide-react";
+import Link from "next/link";
+import type React from "react";
+import { useContext, useState, useMemo } from "react";
+import { formatUnits } from "viem";
+import { useReadContract } from "wagmi";
 
-import { MarketContext } from '../../context/MarketProvider';
+import { MarketContext } from "../../context/MarketProvider";
 import {
   Table,
   TableBody,
@@ -27,17 +27,17 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from "@/components/ui/table";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { calculatePnL } from '~/lib/util/positionUtil';
-import { convertWstEthToGwei } from '~/lib/util/util';
+} from "@/components/ui/tooltip";
+import { calculatePnL } from "~/lib/util/positionUtil";
+import { convertWstEthToGwei } from "~/lib/util/util";
 
-import NumberDisplay from './numberDisplay';
+import NumberDisplay from "./numberDisplay";
 
 interface Props {
   positions: any[];
@@ -52,7 +52,7 @@ const PositionCell = ({ row }: { row: any }) => {
       href={`/positions/${row.original.epoch?.market?.chainId}:${row.original.epoch?.market?.address}/${row.original.positionId}`}
     >
       #{row.original.positionId.toString()}
-      {isClosed ? ' (Closed)' : ''}
+      {isClosed ? " (Closed)" : ""}
     </Link>
   );
 };
@@ -77,7 +77,7 @@ const EntryPriceCell = ({ cell }: { cell: any }) => (
 
 const PnLHeaderCell = () => (
   <span className="flex items-center gap-1">
-    Profit/Loss{' '}
+    Profit/Loss{" "}
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger>
@@ -103,14 +103,14 @@ const PnLCell = ({ cell }: { cell: any }) => {
     address,
     abi: [
       {
-        type: 'function',
-        name: 'getPositionPnl',
-        inputs: [{ type: 'uint256' }],
-        outputs: [{ type: 'int256' }],
-        stateMutability: 'view',
+        type: "function",
+        name: "getPositionPnl",
+        inputs: [{ type: "uint256" }],
+        outputs: [{ type: "int256" }],
+        stateMutability: "view",
       },
     ],
-    functionName: 'getPositionPnl',
+    functionName: "getPositionPnl",
     args: [positionID],
   });
 
@@ -170,37 +170,37 @@ const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
   const columns = useMemo<ColumnDef<any>[]>(
     () => [
       {
-        id: 'market',
-        header: 'Market',
+        id: "market",
+        header: "Market",
         accessorFn: (row: any) =>
           `${row.epoch.market.resource.name} (Epoch ${row.epoch.epochId})`,
       },
       {
-        id: 'position',
-        header: 'Position',
+        id: "position",
+        header: "Position",
         accessorFn: (row) => row.positionId,
         cell: PositionCell,
       },
       {
-        id: 'collateral',
-        header: 'Collateral',
-        accessorKey: 'collateral',
+        id: "collateral",
+        header: "Collateral",
+        accessorKey: "collateral",
         cell: CollateralCell,
       },
       {
-        id: 'size',
-        header: 'Size',
+        id: "size",
+        header: "Size",
         accessorFn: (row) => row.baseToken - row.borrowedBaseToken,
         cell: SizeCell,
       },
       {
-        id: 'entryPrice',
-        header: 'Entry Price',
+        id: "entryPrice",
+        header: "Entry Price",
         accessorFn: (row) => calculateEntryPrice(row),
         cell: EntryPriceCell,
       },
       {
-        id: 'pnl',
+        id: "pnl",
         header: PnLHeaderCell,
         accessorFn: (row) => ({ row, pool, address, chainId: chain?.id }),
         cell: PnLCell,
@@ -208,15 +208,15 @@ const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
       ...(expired
         ? [
             {
-              id: 'settled',
-              header: 'Settled',
-              accessorKey: 'isSettled',
+              id: "settled",
+              header: "Settled",
+              accessorKey: "isSettled",
               cell: SettledCell,
             },
           ]
         : []),
     ],
-    [address, calculateEntryPrice, chain, pool]
+    [address, calculateEntryPrice, chain, pool],
   );
 
   const table = useReactTable({
@@ -247,12 +247,12 @@ const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
                 <span className="flex items-center">
                   {flexRender(
                     header.column.columnDef.header,
-                    header.getContext()
+                    header.getContext(),
                   )}
                   <span className="ml-2 inline-block">
                     {(() => {
                       const sortDirection = header.column.getIsSorted();
-                      if (sortDirection === 'desc') {
+                      if (sortDirection === "desc") {
                         return (
                           <ChevronDown
                             className="h-3 w-3"
@@ -260,7 +260,7 @@ const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
                           />
                         );
                       }
-                      if (sortDirection === 'asc') {
+                      if (sortDirection === "asc") {
                         return (
                           <ChevronUp
                             className="h-3 w-3"

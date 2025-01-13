@@ -1,23 +1,23 @@
-import { RuleConfigSeverity, type UserConfig } from '@commitlint/types';
+import { RuleConfigSeverity, type UserConfig } from "@commitlint/types";
 
 const commitlintConfiguration: UserConfig = {
-  extends: ['@commitlint/config-conventional'],
+  extends: ["@commitlint/config-conventional"],
   rules: {
-    'scope-case': [RuleConfigSeverity.Error, 'always', 'kebab-case'],
-    'scope-enum': [
+    "scope-case": [RuleConfigSeverity.Error, "always", "kebab-case"],
+    "scope-enum": [
       RuleConfigSeverity.Error,
-      'always',
+      "always",
       [
         // general
-        'components',
-        'constants',
-        'hooks',
-        'layout',
-        'models',
-        'services',
-        'pages',
-        'styles',
-        'utils',
+        "components",
+        "constants",
+        "hooks",
+        "layout",
+        "models",
+        "services",
+        "pages",
+        "styles",
+        "utils",
       ],
     ],
   },

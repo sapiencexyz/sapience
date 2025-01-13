@@ -7,11 +7,15 @@ import { IndexPrice } from "./models/IndexPrice";
 import { Position } from "./models/Position";
 import { cannon } from "viem/chains";
 import { Market } from "./models/Market";
-import express, { Request, Response, NextFunction } from "express";
+import express, {
+  type Request,
+  type Response,
+  type NextFunction,
+} from "express";
 import {
   Between,
   In,
-  Repository,
+  type Repository,
   LessThanOrEqual,
   MoreThanOrEqual,
 } from "typeorm";
@@ -68,7 +72,7 @@ dotenv.config({ path: path.resolve(__dirname, "../.env") });
 const corsOptions: cors.CorsOptions = {
   origin: (
     origin: string | undefined,
-    callback: (error: Error | null, allow?: boolean) => void
+    callback: (error: Error | null, allow?: boolean) => void,
   ) => {
     if (process.env.NODE_ENV !== "production") {
       callback(null, true);
@@ -169,7 +173,7 @@ const startServer = async () => {
       context: async ({ req }) => ({
         loaders: createLoaders(),
       }),
-    })
+    }),
   );
 
   const positionRepository = dataSource.getRepository(Position);
@@ -197,7 +201,7 @@ const startServer = async () => {
 
   // Helper function to parse and validate contractId
   const parseContractId = (
-    contractId: string
+    contractId: string,
   ): { chainId: string; address: string } => {
     const [chainId, address] = contractId.toLowerCase().split(":");
     if (!chainId || !address) {
@@ -212,14 +216,14 @@ const startServer = async () => {
     epochRepository: Repository<Epoch>,
     chainId: string,
     address: string,
-    epochId: string
+    epochId: string,
   ): Promise<{ market: Market; epoch: Epoch }> => {
     const market = await marketRepository.findOne({
       where: { chainId: Number(chainId), address: address },
     });
     if (!market) {
       throw new Error(
-        `Market not found for chainId ${chainId} and address ${address}`
+        `Market not found for chainId ${chainId} and address ${address}`,
       );
     }
     const epoch = await epochRepository.findOne({
@@ -227,7 +231,7 @@ const startServer = async () => {
     });
     if (!epoch) {
       throw new Error(
-        `Epoch not found for chainId ${chainId} and address ${address} and epochId ${epochId}`
+        `Epoch not found for chainId ${chainId} and address ${address} and epochId ${epochId}`,
       );
     }
     return { market, epoch };
@@ -264,7 +268,7 @@ const startServer = async () => {
       }));
 
       res.json(formattedMarkets);
-    })
+    }),
   );
 
   // route /prices/chart-data: Get market price data for rendering charts
@@ -288,12 +292,12 @@ const startServer = async () => {
         endTimestamp,
         chainId,
         address,
-        epochId
+        epochId,
       );
 
       const groupedPrices = groupMarketPricesByTimeWindow(
         marketPrices,
-        timeWindow
+        timeWindow,
       );
 
       const chartData = groupedPrices.reduce((acc: any[], group) => {
@@ -334,7 +338,7 @@ const startServer = async () => {
       }, []);
 
       res.json(chartData);
-    })
+    }),
   );
 
   // route /prices/index: Get index prices for a specified epoch and time window
@@ -361,16 +365,16 @@ const startServer = async () => {
         epochRepository,
         chainId,
         address,
-        epochId
+        epochId,
       );
 
       const endTimestamp = Math.min(
         Number(epoch.endTimestamp),
-        Math.floor(Date.now() / 1000)
+        Math.floor(Date.now() / 1000),
       );
       const startTimestamp = Math.max(
         Number(epoch.startTimestamp),
-        getStartTimestampFromTimeWindow(timeWindow as TimeWindow)
+        getStartTimestampFromTimeWindow(timeWindow as TimeWindow),
       );
 
       const indexPrices = await getIndexPricesInTimeRange(
@@ -378,7 +382,7 @@ const startServer = async () => {
         endTimestamp,
         chainId,
         address,
-        epochId
+        epochId,
       );
 
       if (indexPrices.length === 0) {
@@ -390,7 +394,7 @@ const startServer = async () => {
 
       const groupedPrices = groupIndexPricesByTimeWindow(
         indexPrices,
-        timeWindow as TimeWindow
+        timeWindow as TimeWindow,
       );
 
       const chartData = groupedPrices.map((group) => {
@@ -403,7 +407,7 @@ const startServer = async () => {
       });
 
       res.json(chartData);
-    })
+    }),
   );
 
   // route /positions: Get positions
@@ -444,14 +448,14 @@ const startServer = async () => {
         position.quoteToken = formatDbBigInt(position.quoteToken);
         position.borrowedBaseToken = formatDbBigInt(position.borrowedBaseToken);
         position.borrowedQuoteToken = formatDbBigInt(
-          position.borrowedQuoteToken
+          position.borrowedQuoteToken,
         );
         position.collateral = formatDbBigInt(position.collateral);
         position.lpBaseToken = formatDbBigInt(position.lpBaseToken);
         position.lpQuoteToken = formatDbBigInt(position.lpQuoteToken);
       }
       res.json(positions);
-    })
+    }),
   );
 
   // route /positions/:positionId: Get a single position by positionId
@@ -496,7 +500,7 @@ const startServer = async () => {
       position.lpQuoteToken = formatDbBigInt(position.lpQuoteToken);
 
       res.json(position);
-    })
+    }),
   );
 
   // route /transactions: Get transactions
@@ -538,7 +542,7 @@ const startServer = async () => {
       const hydratedPositions = hydrateTransactions(transactions);
 
       res.json(hydratedPositions);
-    })
+    }),
   );
 
   // route /volume: Get volume
@@ -560,12 +564,12 @@ const startServer = async () => {
         startTimestamp,
         endTimestamp,
         chainId,
-        address
+        address,
       );
 
       const groupedTransactions = groupTransactionsByTimeWindow(
         transactions,
-        timeWindow
+        timeWindow,
       );
 
       const volume = groupedTransactions.map((group) => {
@@ -575,9 +579,9 @@ const startServer = async () => {
           volume: group.entities.reduce((sum, transaction) => {
             // Convert baseTokenDelta to BigNumber and get its absolute value
             const absBaseTokenDelta = Math.abs(
-              parseFloat(
-                formatUnits(BigInt(transaction.baseToken), TOKEN_PRECISION)
-              )
+              Number.parseFloat(
+                formatUnits(BigInt(transaction.baseToken), TOKEN_PRECISION),
+              ),
             );
 
             // Add to the sum
@@ -586,13 +590,13 @@ const startServer = async () => {
         };
       });
       res.json(volume);
-    })
+    }),
   );
 
   const getMissingBlocks = async (
     chainId: string,
     address: string,
-    epochId: string
+    epochId: string,
   ): Promise<{ missingBlockNumbers: number[] | null; error?: string }> => {
     // Find the market
     const market = await marketRepository.findOne({
@@ -607,7 +611,7 @@ const startServer = async () => {
     const marketInfo = MARKETS.find(
       (m) =>
         m.marketChainId === market.chainId &&
-        m.deployment.address.toLowerCase() === market.address.toLowerCase()
+        m.deployment.address.toLowerCase() === market.address.toLowerCase(),
     );
     if (!marketInfo) {
       return {
@@ -621,7 +625,7 @@ const startServer = async () => {
       await getMarketStartEndBlock(
         market,
         epochId,
-        marketInfo.resource.priceIndexer.client
+        marketInfo.resource.priceIndexer.client,
       );
 
     if (error || !startBlockNumber || !endBlockNumber) {
@@ -638,7 +642,7 @@ const startServer = async () => {
     });
 
     const existingBlockNumbersSet = new Set(
-      resourcePrices.map((ip) => Number(ip.blockNumber))
+      resourcePrices.map((ip) => Number(ip.blockNumber)),
     );
 
     // Find missing block numbers within the range
@@ -670,7 +674,7 @@ const startServer = async () => {
       const { missingBlockNumbers, error } = await getMissingBlocks(
         chainId,
         address,
-        epochId
+        epochId,
       );
 
       if (error) {
@@ -679,7 +683,7 @@ const startServer = async () => {
       }
 
       res.json({ missingBlockNumbers });
-    })
+    }),
   );
 
   // route /reindex
@@ -696,7 +700,7 @@ const startServer = async () => {
 
       const isAuthenticated = await isValidWalletSignature(
         signature as `0x${string}`,
-        Number(timestamp)
+        Number(timestamp),
       );
       if (!isAuthenticated) {
         res.status(401).json({ error: "Unauthorized" });
@@ -747,7 +751,7 @@ const startServer = async () => {
         return await response.json();
       }
 
-      let id: string = "";
+      let id = "";
       const renderServices: any[] = await fetchRenderServices();
       for (const item of renderServices) {
         if (
@@ -773,7 +777,7 @@ const startServer = async () => {
       jobDb.serviceId = job.serviceId;
       await renderJobRepository.save(jobDb);
       res.json({ success: true, job });
-    })
+    }),
   );
 
   // route /reindexStatus
@@ -805,7 +809,7 @@ const startServer = async () => {
 
       const job = await response.json();
       res.json({ success: true, job });
-    })
+    }),
   );
 
   // route /prices/index/latest
@@ -825,7 +829,7 @@ const startServer = async () => {
         epochRepository,
         chainId,
         address,
-        epochId
+        epochId,
       );
 
       const latestPrice = await indexPriceRepository.findOne({
@@ -833,7 +837,7 @@ const startServer = async () => {
           epoch: { id: Number(epoch.id) },
           timestamp: Between(
             Number(epoch.startTimestamp),
-            Number(epoch.endTimestamp)
+            Number(epoch.endTimestamp),
           ),
         },
         order: { timestamp: "DESC" },
@@ -850,7 +854,7 @@ const startServer = async () => {
         timestamp: Number(latestPrice.timestamp),
         price: Number(latestPrice.value),
       });
-    })
+    }),
   );
 
   // route /updateMarketPrivacy
@@ -861,7 +865,7 @@ const startServer = async () => {
 
       const isAuthenticated = await isValidWalletSignature(
         signature as `0x${string}`,
-        Number(timestamp)
+        Number(timestamp),
       );
       if (!isAuthenticated) {
         res.status(401).json({ error: "Unauthorized" });
@@ -884,7 +888,7 @@ const startServer = async () => {
       await marketRepository.save(market);
 
       res.json({ success: true });
-    })
+    }),
   );
 
   // route /getStEthPerTokenAtTimestamp
@@ -942,7 +946,7 @@ const startServer = async () => {
       res.json({
         stEthPerToken: stEthPerTokenResult.toString(),
       });
-    })
+    }),
   );
 
   // route /accounts/:address: Get account data (positions and transactions)
@@ -958,7 +962,12 @@ const startServer = async () => {
 
       const positions = await positionRepository.find({
         where: { owner: address },
-        relations: ["epoch", "epoch.market", "epoch.market.resource", "transactions"],
+        relations: [
+          "epoch",
+          "epoch.market",
+          "epoch.market.resource",
+          "transactions",
+        ],
       });
 
       const transactions = await transactionRepository.find({
@@ -977,7 +986,7 @@ const startServer = async () => {
         position.quoteToken = formatDbBigInt(position.quoteToken);
         position.borrowedBaseToken = formatDbBigInt(position.borrowedBaseToken);
         position.borrowedQuoteToken = formatDbBigInt(
-          position.borrowedQuoteToken
+          position.borrowedQuoteToken,
         );
         position.collateral = formatDbBigInt(position.collateral);
         position.lpBaseToken = formatDbBigInt(position.lpBaseToken);
@@ -989,7 +998,7 @@ const startServer = async () => {
       const hydratedPositions = hydrateTransactions(transactions);
 
       res.json({ positions, transactions: hydratedPositions });
-    })
+    }),
   );
 
   // route /estimate
@@ -1003,7 +1012,7 @@ const startServer = async () => {
         epochRepository,
         chainId,
         marketAddress.toLowerCase(),
-        epochId
+        epochId,
       );
 
       const duration =
@@ -1016,7 +1025,7 @@ const startServer = async () => {
         throw new Error("ETHERSCAN_API_KEY not configured");
       }
 
-      let transactions = [];
+      const transactions = [];
       let page = 1;
       const offset = 1000;
 
@@ -1029,7 +1038,7 @@ const startServer = async () => {
             `&page=${page}` +
             `&offset=${offset}` +
             `&sort=desc` +
-            `&apikey=${ETHERSCAN_API_KEY}`
+            `&apikey=${ETHERSCAN_API_KEY}`,
         );
 
         const data = await response.json();
@@ -1037,7 +1046,7 @@ const startServer = async () => {
 
         // Filter transactions within time range
         const relevantTxs = data.result.filter(
-          (tx: any) => Number(tx.timeStamp) >= startTime
+          (tx: any) => Number(tx.timeStamp) >= startTime,
         );
         transactions.push(...relevantTxs);
 
@@ -1053,17 +1062,17 @@ const startServer = async () => {
       // Calculate metrics
       const totalGasUsed = transactions.reduce(
         (sum, tx) => sum + Number(tx.gasUsed),
-        0
+        0,
       );
       const totalEthPaid = transactions.reduce(
         (sum, tx) => sum + (Number(tx.gasUsed) * Number(tx.gasPrice)) / 1e18,
-        0
+        0,
       );
       const avgGasPerTx = Math.round(totalGasUsed / transactions.length);
       const avgGasPrice = Math.round(
         transactions.reduce((sum, tx) => sum + Number(tx.gasPrice), 0) /
           transactions.length /
-          1e9
+          1e9,
       );
 
       // Generate chart data with 50 buckets
@@ -1078,7 +1087,7 @@ const startServer = async () => {
             .filter(
               (tx) =>
                 Number(tx.timeStamp) >= bucketStart &&
-                Number(tx.timeStamp) < bucketEnd
+                Number(tx.timeStamp) < bucketEnd,
             )
             .reduce((sum, tx) => sum + Number(tx.gasUsed), 0);
 
@@ -1095,7 +1104,7 @@ const startServer = async () => {
         avgGasPrice,
         chartData,
       });
-    })
+    }),
   );
 
   // route /leaderboard: Get the leaderboard data for a given market
@@ -1205,7 +1214,7 @@ const startServer = async () => {
 
       for (const owner in groupedByOwner) {
         const { collateralFlow, maxCollateral } = await calculateCollateralFlow(
-          groupedByOwner[owner].positions
+          groupedByOwner[owner].positions,
         );
         groupedByOwner[owner].totalPnL -= collateralFlow;
         groupedByOwner[owner].totalCollateralFlow = -collateralFlow;
@@ -1214,11 +1223,11 @@ const startServer = async () => {
 
       // Convert to array and sort by total PnL
       const sortedPositions = Object.values(groupedByOwner).sort(
-        (a, b) => b.totalPnL - a.totalPnL
+        (a, b) => b.totalPnL - a.totalPnL,
       );
 
       res.json(sortedPositions);
-    })
+    }),
   );
 
   // route /reindexMissingBlocks: Update the reindexMissingBlocks endpoint
@@ -1231,7 +1240,7 @@ const startServer = async () => {
       // Authenticate the user
       const isAuthenticated = await isValidWalletSignature(
         signature as `0x${string}`,
-        Number(timestamp)
+        Number(timestamp),
       );
       if (!isAuthenticated) {
         res.status(401).json({ error: "Unauthorized" });
@@ -1278,7 +1287,7 @@ const startServer = async () => {
         return await response.json();
       }
 
-      let id: string = "";
+      let id = "";
       const renderServices: any[] = await fetchRenderServices();
       for (const item of renderServices) {
         if (item?.service?.name === "background-worker" && item?.service?.id) {
@@ -1313,7 +1322,7 @@ const startServer = async () => {
       await renderJobRepository.save(jobDb);
 
       res.json({ success: true, job });
-    })
+    }),
   );
 
   // route /resources: Get resources with their public market epochs
@@ -1350,7 +1359,7 @@ const startServer = async () => {
       }));
 
       res.json(formattedResources);
-    })
+    }),
   );
 
   // route /resources/:slug/prices/latest
@@ -1380,7 +1389,7 @@ const startServer = async () => {
       }
 
       res.json(latestPrice);
-    })
+    }),
   );
 
   // route /resources/:slug/prices
@@ -1419,7 +1428,7 @@ const startServer = async () => {
       }
 
       res.json(prices);
-    })
+    }),
   );
 
   // Only set up Sentry error handling in production
@@ -1452,9 +1461,9 @@ const startServer = async () => {
             ...transaction.position?.epoch,
             market: {
               ...transaction.position?.epoch?.market,
-              resource: transaction.position?.epoch?.market?.resource
-            }
-          }
+              resource: transaction.position?.epoch?.market?.resource,
+            },
+          },
         },
         collateralDelta: "0",
         baseTokenDelta: "0",
@@ -1484,13 +1493,13 @@ const startServer = async () => {
         BigInt(transaction.collateral) - lastCollateral;
 
       hydratedTransaction.baseTokenDelta = formatDbBigInt(
-        currentBaseTokenBalance.toString()
+        currentBaseTokenBalance.toString(),
       );
       hydratedTransaction.quoteTokenDelta = formatDbBigInt(
-        currentQuoteTokenBalance.toString()
+        currentQuoteTokenBalance.toString(),
       );
       hydratedTransaction.collateralDelta = formatDbBigInt(
-        currentCollateralBalance.toString()
+        currentCollateralBalance.toString(),
       );
 
       hydratedPositions.push(hydratedTransaction);

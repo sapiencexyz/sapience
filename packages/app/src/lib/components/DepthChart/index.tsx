@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
-import type { Pool } from '@uniswap/v3-sdk';
-import type React from 'react';
-import type { Dispatch, SetStateAction } from 'react';
-import { useContext, useEffect, useMemo, useState } from 'react';
-import type { TooltipProps } from 'recharts';
+import IUniswapV3PoolABI from "@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json";
+import type { Pool } from "@uniswap/v3-sdk";
+import type React from "react";
+import type { Dispatch, SetStateAction } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
+import type { TooltipProps } from "recharts";
 import {
   BarChart,
   ResponsiveContainer,
@@ -13,29 +13,29 @@ import {
   Tooltip,
   Bar,
   YAxis,
-} from 'recharts';
-import { type AbiFunction } from 'viem';
-import { useReadContracts } from 'wagmi';
+} from "recharts";
+import type { AbiFunction } from "viem";
+import { useReadContracts } from "wagmi";
 
-import { TICK_SPACING_DEFAULT } from '~/lib/constants/constants';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { TICK_SPACING_DEFAULT } from "~/lib/constants/constants";
+import { MarketContext } from "~/lib/context/MarketProvider";
 import type {
   BarChartTick,
   GraphTick,
   PoolData,
-} from '~/lib/util/liquidityUtil';
-import { getFullPool } from '~/lib/util/liquidityUtil';
+} from "~/lib/util/liquidityUtil";
+import { getFullPool } from "~/lib/util/liquidityUtil";
 
-const gray400 = 'hsl(var(--chart-3))';
-const paleGreen = 'hsl(var(--chart-3))';
-const purple = 'hsl(var(--chart-5))';
-const turquoise = 'hsl(var(--chart-4))';
-const peach = 'hsl(var(--chart-2))';
+const gray400 = "hsl(var(--chart-3))";
+const paleGreen = "hsl(var(--chart-3))";
+const purple = "hsl(var(--chart-5))";
+const turquoise = "hsl(var(--chart-4))";
+const peach = "hsl(var(--chart-2))";
 
 const checkIsClosestTick = (
   tick: number,
   activeTickValue: number,
-  tickSpacing: number
+  tickSpacing: number,
 ) => {
   return tick <= activeTickValue && tick + tickSpacing >= activeTickValue;
 };
@@ -84,7 +84,7 @@ const CustomBar: React.FC<CustomBarProps> = ({
   const isClosestTick = checkIsClosestTick(
     tickIdx,
     activeTickValue,
-    tickSpacing
+    tickSpacing,
   );
   if (index === hoveredBar) {
     fill = paleGreen; // Hover color
@@ -130,7 +130,7 @@ const CustomXAxisTick: React.FC<CustomXAxisTickProps> = ({
   const isClosestTick = checkIsClosestTick(
     payload.value,
     activeTickValue,
-    tickSpacing
+    tickSpacing,
   );
 
   if (!isClosestTick) return null;
@@ -174,20 +174,20 @@ const CustomTooltip: React.FC<
   return (
     <div
       style={{
-        padding: '8px',
-        border: '1px solid #ccc',
+        padding: "8px",
+        border: "1px solid #ccc",
       }}
       className="bg-background"
     >
       {(tick.tickIdx <= pool.tickCurrent || tick.isCurrent) && (
         <p>
-          {pool.token1.symbol} Liquidity:{' '}
+          {pool.token1.symbol} Liquidity:{" "}
           {(tick.liquidityLockedToken1 / tick.price0).toFixed(3)}
         </p>
       )}
       {(tick.tickIdx >= pool.tickCurrent || tick.isCurrent) && (
         <p>
-          {pool.token0.symbol} Liquidity:{' '}
+          {pool.token0.symbol} Liquidity:{" "}
           {(tick.liquidityLockedToken0 / tick.price0).toFixed(3)}
         </p>
       )}
@@ -201,7 +201,7 @@ const DepthChart: React.FC = () => {
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
   const [price0, setPrice0] = useState<number>(0);
   const [price1, setPrice1] = useState<number>(0);
-  const [label, setLabel] = useState<string>('');
+  const [label, setLabel] = useState<string>("");
   const {
     pool,
     chainId,
@@ -230,12 +230,12 @@ const DepthChart: React.FC = () => {
   }, [tickSpacing, baseAssetMaxPriceTick, baseAssetMinPriceTick]);
 
   const contracts = useMemo(() => {
-    if (poolAddress === '0x' || !chainId) return [];
+    if (poolAddress === "0x" || !chainId) return [];
     return ticks.map((tick) => {
       return {
         abi: IUniswapV3PoolABI.abi as AbiFunction[],
         address: poolAddress as `0x${string}`,
-        functionName: 'ticks',
+        functionName: "ticks",
         args: [tick],
         chainId,
       };
@@ -260,7 +260,7 @@ const DepthChart: React.FC = () => {
   useEffect(() => {
     if (pool) {
       getFullPool(pool, graphTicks, tickSpacing).then((fullPoolData) =>
-        setPool(fullPoolData)
+        setPool(fullPoolData),
       );
     }
   }, [pool, graphTicks, tickSpacing]);
@@ -318,7 +318,7 @@ const DepthChart: React.FC = () => {
             </p>
           </div>
         )}
-        <p className="text-sm text-gray-500">{label ? `${label}` : ''}</p>
+        <p className="text-sm text-gray-500">{label ? `${label}` : ""}</p>
       </div>
       {!poolData && <div className="italic">Loading Liquidity Data...</div>}
       {poolData && (

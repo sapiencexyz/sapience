@@ -1,15 +1,15 @@
-import type React from 'react';
-import { useContext } from 'react';
-import { BsArrowLeftRight } from 'react-icons/bs';
+import type React from "react";
+import { useContext } from "react";
+import { BsArrowLeftRight } from "react-icons/bs";
 
-import { MarketContext } from '../../context/MarketProvider';
-import { Button } from '@/components/ui/button';
+import { MarketContext } from "../../context/MarketProvider";
+import { Button } from "@/components/ui/button";
 import {
   TooltipProvider,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from "@/components/ui/tooltip";
 
 const MarketUnitsToggle: React.FC = () => {
   const { useMarketUnits, setUseMarketUnits } = useContext(MarketContext);

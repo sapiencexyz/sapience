@@ -17,7 +17,7 @@ import { Between } from "typeorm";
 import * as Sentry from "@sentry/node";
 import { Resource } from "./models/Resource";
 
-const MAX_RETRIES = Infinity;
+const MAX_RETRIES = Number.POSITIVE_INFINITY;
 const RETRY_DELAY = 5000; // 5 seconds
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -25,7 +25,7 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 async function withRetry<T>(
   operation: () => Promise<T>,
   name: string,
-  maxRetries: number = MAX_RETRIES
+  maxRetries: number = MAX_RETRIES,
 ): Promise<T> {
   let lastError: Error | undefined;
 
@@ -36,7 +36,7 @@ async function withRetry<T>(
       lastError = error as Error;
       console.error(
         `Attempt ${attempt}/${maxRetries} failed for ${name}:`,
-        error
+        error,
       );
 
       // Report error to Sentry with context
@@ -55,7 +55,7 @@ async function withRetry<T>(
   }
 
   const finalError = new Error(
-    `All ${maxRetries} attempts failed for ${name}. Last error: ${lastError?.message}`
+    `All ${maxRetries} attempts failed for ${name}. Last error: ${lastError?.message}`,
   );
   Sentry.captureException(finalError);
   throw finalError;
@@ -63,7 +63,7 @@ async function withRetry<T>(
 
 function createResilientProcess<T>(
   process: () => Promise<T>,
-  name: string
+  name: string,
 ): () => Promise<T | void> {
   return async () => {
     while (true) {
@@ -72,7 +72,7 @@ function createResilientProcess<T>(
       } catch (error) {
         console.error(
           `Process ${name} failed after all retries. Restarting...`,
-          error
+          error,
         );
         await delay(RETRY_DELAY);
       }
@@ -124,7 +124,7 @@ async function main() {
       "initialized market",
       market.address,
       "on chain",
-      market.chainId
+      market.chainId,
     );
 
     // Set the resource for the market
@@ -136,8 +136,8 @@ async function main() {
     jobs.push(
       createResilientProcess(
         () => indexMarketEvents(market, marketInfo.deployment.abi),
-        `indexMarketEvents-${market.address}`
-      )()
+        `indexMarketEvents-${market.address}`,
+      )(),
     );
   }
 
@@ -155,8 +155,8 @@ async function main() {
       jobs.push(
         createResilientProcess(
           () => resourceInfo.priceIndexer.watchBlocksForResource(resource),
-          `watchBlocksForResource-${resourceInfo.name}`
-        )()
+          `watchBlocksForResource-${resourceInfo.name}`,
+        )(),
       );
     }
   }
@@ -167,7 +167,7 @@ async function main() {
 export async function reindexMarket(
   chainId: number,
   address: string,
-  epochId: string
+  epochId: string,
 ) {
   try {
     console.log(
@@ -176,18 +176,18 @@ export async function reindexMarket(
       "on chain",
       chainId,
       "epoch",
-      epochId
+      epochId,
     );
 
     await initializeDataSource();
     const marketInfo = MARKETS.find(
       (m) =>
         m.marketChainId === chainId &&
-        m.deployment.address.toLowerCase() === address.toLowerCase()
+        m.deployment.address.toLowerCase() === address.toLowerCase(),
     );
     if (!marketInfo) {
       throw new Error(
-        `Market not found for chainId ${chainId} and address ${address}`
+        `Market not found for chainId ${chainId} and address ${address}`,
       );
     }
     const market = await initializeMarket(marketInfo);
@@ -212,22 +212,22 @@ export async function reindexMarket(
 export async function reindexMissingBlocks(
   chainId: number,
   address: string,
-  epochId: string
+  epochId: string,
 ) {
   try {
     console.log(
-      `Starting reindex of missing resource blocks for market ${chainId}:${address}, epoch ${epochId}`
+      `Starting reindex of missing resource blocks for market ${chainId}:${address}, epoch ${epochId}`,
     );
 
     await initializeDataSource();
     const marketInfo = MARKETS.find(
       (m) =>
         m.marketChainId === chainId &&
-        m.deployment.address.toLowerCase() === address.toLowerCase()
+        m.deployment.address.toLowerCase() === address.toLowerCase(),
     );
     if (!marketInfo) {
       throw new Error(
-        `Market not found for chainId ${chainId} and address ${address}`
+        `Market not found for chainId ${chainId} and address ${address}`,
       );
     }
     const market = await initializeMarket(marketInfo);
@@ -236,7 +236,7 @@ export async function reindexMissingBlocks(
       await getMarketStartEndBlock(
         market,
         epochId,
-        marketInfo.resource.priceIndexer.client
+        marketInfo.resource.priceIndexer.client,
       );
 
     if (error || !startBlockNumber || !endBlockNumber) {
@@ -252,7 +252,7 @@ export async function reindexMissingBlocks(
     });
 
     const existingBlockNumbersSet = new Set(
-      resourcePrices.map((ip) => Number(ip.blockNumber))
+      resourcePrices.map((ip) => Number(ip.blockNumber)),
     );
 
     const missingBlockNumbers = [];
@@ -268,11 +268,11 @@ export async function reindexMissingBlocks(
 
     await marketInfo.resource.priceIndexer.indexBlocks(
       market.resource,
-      missingBlockNumbers
+      missingBlockNumbers,
     );
 
     console.log(
-      `Finished reindexing resource blocks for market ${address} on chain ${chainId}`
+      `Finished reindexing resource blocks for market ${address} on chain ${chainId}`,
     );
   } catch (error) {
     console.error(`Error in reindexMissingBlocks:`, error);
@@ -288,13 +288,13 @@ export async function reindexMissingBlocks(
 
 if (process.argv[2] === "reindexMarket") {
   const callReindex = async () => {
-    const chainId = parseInt(process.argv[3], 10);
+    const chainId = Number.parseInt(process.argv[3], 10);
     const address = process.argv[4];
     const epochId = process.argv[5];
 
     if (isNaN(chainId) || !address) {
       console.error(
-        "Invalid arguments. Usage: tsx src/worker.ts reindexMarket <chainId> <address> <epochId>"
+        "Invalid arguments. Usage: tsx src/worker.ts reindexMarket <chainId> <address> <epochId>",
       );
       process.exit(1);
     }
@@ -305,13 +305,13 @@ if (process.argv[2] === "reindexMarket") {
   callReindex();
 } else if (process.argv[2] === "reindexMissing") {
   const callReindexMissing = async () => {
-    const chainId = parseInt(process.argv[3], 10);
+    const chainId = Number.parseInt(process.argv[3], 10);
     const address = process.argv[4];
     const epochId = process.argv[5];
 
     if (isNaN(chainId) || !address || !epochId) {
       console.error(
-        "Invalid arguments. Usage: tsx src/worker.ts reindexMissing <chainId> <address> <epochId>"
+        "Invalid arguments. Usage: tsx src/worker.ts reindexMissing <chainId> <address> <epochId>",
       );
       process.exit(1);
     }

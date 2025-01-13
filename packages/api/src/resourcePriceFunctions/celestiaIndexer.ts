@@ -1,8 +1,8 @@
-import { IResourcePriceIndexer } from "./IResourcePriceIndexer";
+import type { IResourcePriceIndexer } from "./IResourcePriceIndexer";
 import { resourcePriceRepository } from "../db";
 import { ResourcePrice } from "../models/ResourcePrice";
 import { CELENIUM_API_KEY } from "../helpers";
-import { Resource } from "src/models/Resource";
+import type { Resource } from "src/models/Resource";
 // import Sentry from "../sentry";
 
 const headers: HeadersInit = {};
@@ -22,14 +22,14 @@ type Block = {
 
 class CelestiaIndexer implements IResourcePriceIndexer {
   public client: undefined; // required by the interface
-  private isWatching: boolean = false;
-  private fromTimestamp: number = 0;
+  private isWatching = false;
+  private fromTimestamp = 0;
   private celeniumEndpoint: string;
   private pollInterval: number;
 
   private pollTimeout?: NodeJS.Timeout;
 
-  constructor(celeniumEndpoint: string, pollInterval: number = 3000) {
+  constructor(celeniumEndpoint: string, pollInterval = 3000) {
     this.celeniumEndpoint = celeniumEndpoint;
     this.pollInterval = pollInterval;
     if (!CELENIUM_API_KEY) {
@@ -53,7 +53,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
 
     const response = await fetch(
       `${this.celeniumEndpoint}/${celeniumApiVersionUrl}/tx?${params.toString()}`,
-      { headers }
+      { headers },
     );
 
     if (!response.ok) {
@@ -125,7 +125,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
     console.log("starting Celestia indexer");
     this.pollTimeout = setInterval(
       this.pollCelestia.bind(this, resource),
-      this.pollInterval
+      this.pollInterval,
     );
 
     await this.pollCelestia(resource);
@@ -153,7 +153,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
     const value = fee / used;
     if (!value || !block.height) {
       console.error(
-        `No resource price for block ${block?.height} on resource ${resource.slug}`
+        `No resource price for block ${block?.height} on resource ${resource.slug}`,
       );
       return;
     }
@@ -180,7 +180,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
   private async getBlockFromCelenium(blockNumber: number) {
     const response = await fetch(
       `${this.celeniumEndpoint}/${celeniumApiVersionUrl}/block/${blockNumber}?stats=true`,
-      { headers }
+      { headers },
     );
     if (!response.ok) {
       throw new Error(`Failed to fetch block ${blockNumber}`);
@@ -196,7 +196,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
   private async getBlockByTimestamp(timestamp: number): Promise<number> {
     // Get the latest block first
     const latestBlock = await this.getBlockFromCelenium(
-      await this.getLatestBlockNumber()
+      await this.getLatestBlockNumber(),
     );
 
     let low = 1;
@@ -230,7 +230,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
   private async getLatestBlockNumber(): Promise<number> {
     const response = await fetch(
       `${this.celeniumEndpoint}/${celeniumApiVersionUrl}/block/count`,
-      { headers }
+      { headers },
     );
     if (!response.ok) {
       throw new Error("Failed to fetch latest block number");
@@ -248,7 +248,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
    */
   public async indexBlockPriceFromTimestamp(
     resource: Resource,
-    timestamp: number
+    timestamp: number,
   ): Promise<boolean> {
     const initialBlockNumber = await this.getBlockByTimestamp(timestamp);
     if (!initialBlockNumber) {
@@ -283,13 +283,13 @@ class CelestiaIndexer implements IResourcePriceIndexer {
    */
   public async indexBlocks(
     resource: Resource,
-    blocks: number[]
+    blocks: number[],
   ): Promise<boolean> {
     for (const blockNumber of blocks) {
       try {
         console.log(
           "Indexing resource price (TIA) from block (cherrypicked)",
-          blockNumber
+          blockNumber,
         );
 
         const block = await this.getBlockFromCelenium(blockNumber);

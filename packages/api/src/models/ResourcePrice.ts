@@ -21,7 +21,10 @@ export class ResourcePrice {
   @CreateDateColumn()
   createdAt: Date;
 
-  @ManyToOne(() => Resource, (resource) => resource.resourcePrices)
+  @ManyToOne(
+    () => Resource,
+    (resource) => resource.resourcePrices,
+  )
   resource: Resource;
 
   @Column({ type: "integer" })
@@ -42,7 +45,7 @@ export class ResourcePrice {
   @AfterInsert()
   async afterInsert() {
     console.log(
-      `Resource price inserted for block: ${this.blockNumber} @ ${this.resource.name}`
+      `Resource price inserted for block: ${this.blockNumber} @ ${this.resource.name}`,
     );
     await upsertIndexPriceFromResourcePrice(this);
   }

@@ -1,12 +1,12 @@
 import type {
   QueryObserverResult,
   RefetchOptions,
-} from '@tanstack/react-query';
-import { useQuery } from '@tanstack/react-query';
-import type React from 'react';
-import { createContext, useContext } from 'react';
+} from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import type React from "react";
+import { createContext, useContext } from "react";
 
-import { API_BASE_URL } from '../constants/constants';
+import { API_BASE_URL } from "../constants/constants";
 
 export interface Market {
   id: number;
@@ -45,12 +45,12 @@ interface MarketListContextType {
   isLoading: boolean;
   error: Error | null;
   refetchMarkets: (
-    options?: RefetchOptions
+    options?: RefetchOptions,
   ) => Promise<QueryObserverResult<Market[], Error>>;
 }
 
 const MarketListContext = createContext<MarketListContextType | undefined>(
-  undefined
+  undefined,
 );
 
 export const MarketListProvider: React.FC<{ children: React.ReactNode }> = ({
@@ -62,11 +62,11 @@ export const MarketListProvider: React.FC<{ children: React.ReactNode }> = ({
     error,
     refetch: refetchMarkets,
   } = useQuery<Market[], Error>({
-    queryKey: ['markets'],
+    queryKey: ["markets"],
     queryFn: async () => {
       const response = await fetch(`${API_BASE_URL}/markets`);
       if (!response.ok) {
-        throw new Error('Network response was not ok');
+        throw new Error("Network response was not ok");
       }
       const fetchedMarkets: Market[] = await response.json();
 
@@ -74,21 +74,21 @@ export const MarketListProvider: React.FC<{ children: React.ReactNode }> = ({
 
       return fetchedMarkets.map((market) => {
         const sortedEpochs = [...market.epochs].sort(
-          (a, b) => a.startTimestamp - b.startTimestamp
+          (a, b) => a.startTimestamp - b.startTimestamp,
         );
 
         const currentEpoch =
           sortedEpochs.find(
             (epoch) =>
               epoch.startTimestamp <= currentTimestamp &&
-              epoch.endTimestamp > currentTimestamp
+              epoch.endTimestamp > currentTimestamp,
           ) ||
           sortedEpochs[sortedEpochs.length - 1] ||
           null;
 
         const nextEpoch =
           sortedEpochs.find(
-            (epoch) => epoch.startTimestamp > currentTimestamp
+            (epoch) => epoch.startTimestamp > currentTimestamp,
           ) ||
           sortedEpochs[sortedEpochs.length - 1] ||
           null;
@@ -116,7 +116,7 @@ export const MarketListProvider: React.FC<{ children: React.ReactNode }> = ({
 export const useMarketList = () => {
   const context = useContext(MarketListContext);
   if (context === undefined) {
-    throw new Error('useMarketList must be used within a MarketListProvider');
+    throw new Error("useMarketList must be used within a MarketListProvider");
   }
   return context;
 };

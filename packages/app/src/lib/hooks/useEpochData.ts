@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
-import { useReadContract } from 'wagmi';
+import { useQuery } from "@tanstack/react-query";
+import { useReadContract } from "wagmi";
 
-import useFoilDeployment from '../components/foil/useFoilDeployment';
+import useFoilDeployment from "../components/foil/useFoilDeployment";
 
 export interface EpochData {
   minPriceD18: bigint;
@@ -14,7 +14,7 @@ export interface EpochData {
 export const useEpochData = (
   chainId: number,
   marketAddress: string,
-  epochId: number
+  epochId: number,
 ) => {
   const {
     foilData,
@@ -29,7 +29,7 @@ export const useEpochData = (
   } = useReadContract({
     address: marketAddress as `0x${string}`,
     abi: foilData?.abi,
-    functionName: 'getEpoch',
+    functionName: "getEpoch",
     args: [BigInt(epochId)],
     chainId,
     query: {

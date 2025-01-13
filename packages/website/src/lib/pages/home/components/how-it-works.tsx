@@ -1,28 +1,28 @@
-'use client';
+"use client";
 
-import Spline from '@splinetool/react-spline';
-import { MoveLeftIcon, MoveRightIcon } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { useState, useRef, useEffect } from 'react';
-import Image from 'next/image';
-import { useMediaQuery } from 'usehooks-ts';
+import Spline from "@splinetool/react-spline";
+import { MoveLeftIcon, MoveRightIcon } from "lucide-react";
+import { motion } from "framer-motion";
+import { useState, useRef, useEffect } from "react";
+import Image from "next/image";
+import { useMediaQuery } from "usehooks-ts";
 
 const slides = [
   {
-    title: 'Liquidity providers can earn yield on their liquid staking tokens',
-    scene: 'https://prod.spline.design/5aaP9EfPgQReptDE/scene.splinecode',
-    image: '/assets/howitworks1.png',
+    title: "Liquidity providers can earn yield on their liquid staking tokens",
+    scene: "https://prod.spline.design/5aaP9EfPgQReptDE/scene.splinecode",
+    image: "/assets/howitworks1.png",
   },
   {
     title:
-      'Buyers purchase subscriptions and profit when average costs increase',
-    scene: 'https://prod.spline.design/rFtuFMkIkTJ7Cs5A/scene.splinecode',
-    image: '/assets/howitworks2.png',
+      "Buyers purchase subscriptions and profit when average costs increase",
+    scene: "https://prod.spline.design/rFtuFMkIkTJ7Cs5A/scene.splinecode",
+    image: "/assets/howitworks2.png",
   },
   {
-    title: 'Paymasters and roll-ups can offer fixed costs to users',
-    scene: 'https://prod.spline.design/BBIcMw9OjhboBEjl/scene.splinecode',
-    image: '/assets/howitworks3.png',
+    title: "Paymasters and roll-ups can offer fixed costs to users",
+    scene: "https://prod.spline.design/BBIcMw9OjhboBEjl/scene.splinecode",
+    image: "/assets/howitworks3.png",
   },
 ];
 
@@ -50,7 +50,7 @@ export const HowItWorks = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const isInView = useIsInViewport(containerRef);
-  const isDesktop = useMediaQuery('(min-width: 768px)');
+  const isDesktop = useMediaQuery("(min-width: 768px)");
 
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % slides.length);
@@ -83,7 +83,7 @@ export const HowItWorks = () => {
           exit={{ opacity: 0 }}
           transition={{
             duration: 0.8,
-            ease: 'easeInOut',
+            ease: "easeInOut",
           }}
           className="relative w-full max-w-[1700px] px-8 py-5 text-center text-2xl font-bold text-white drop-shadow-[1px_1px_3px_rgba(0,0,0,0.75)] md:mt-8 md:px-20 md:text-6xl md:leading-loose md:tracking-wide"
         >
@@ -99,13 +99,13 @@ export const HowItWorks = () => {
             animate={{ opacity: isInView && index === currentSlide ? 1 : 0 }}
             transition={{
               duration: 0.8,
-              ease: 'easeInOut',
+              ease: "easeInOut",
             }}
             style={{
-              position: 'absolute',
+              position: "absolute",
               inset: 0,
-              display: 'block',
-              height: '100%',
+              display: "block",
+              height: "100%",
             }}
           >
             <motion.div
@@ -113,10 +113,10 @@ export const HowItWorks = () => {
               animate={{ scale: isInView ? 1 : 1.1 }}
               transition={{
                 duration: 1,
-                ease: 'easeOut',
+                ease: "easeOut",
               }}
               style={{
-                height: '100%',
+                height: "100%",
               }}
             >
               {!isDesktop ? (

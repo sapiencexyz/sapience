@@ -1,16 +1,16 @@
 /* eslint-disable sonarjs/cognitive-complexity */
 
-'use client';
+"use client";
 
 // eslint-disable-next-line import/no-extraneous-dependencies
-import { useConnectModal } from '@rainbow-me/rainbowkit';
-import { TickMath } from '@uniswap/v3-sdk';
-import JSBI from 'jsbi';
-import { Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useContext, useEffect, useMemo, useState } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
-import { decodeEventLog, formatUnits, parseUnits } from 'viem';
+import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { TickMath } from "@uniswap/v3-sdk";
+import JSBI from "jsbi";
+import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useContext, useEffect, useMemo, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
+import { decodeEventLog, formatUnits, parseUnits } from "viem";
 import {
   useWriteContract,
   useWaitForTransactionReceipt,
@@ -18,27 +18,27 @@ import {
   useReadContract,
   useChainId,
   useSwitchChain,
-} from 'wagmi';
+} from "wagmi";
 
-import erc20ABI from '../../../../erc20abi.json';
-import INONFUNGIBLE_POSITION_MANAGER from '../../../../interfaces/Uniswap.NonfungiblePositionManager.json';
-import NumberDisplay from '../../numberDisplay';
-import PositionSelector from '../../positionSelector';
-import SlippageTolerance from '../../slippageTolerance';
-import LiquidityAmountInput from '../LiquidityAmountInput';
-import LiquidityPriceInput from '../LiquidityPriceInput';
-import { Button } from '@/components/ui/button';
-import { Form } from '@/components/ui/form';
-import { useToast } from '~/hooks/use-toast';
+import erc20ABI from "../../../../erc20abi.json";
+import INONFUNGIBLE_POSITION_MANAGER from "../../../../interfaces/Uniswap.NonfungiblePositionManager.json";
+import NumberDisplay from "../../numberDisplay";
+import PositionSelector from "../../positionSelector";
+import SlippageTolerance from "../../slippageTolerance";
+import LiquidityAmountInput from "../LiquidityAmountInput";
+import LiquidityPriceInput from "../LiquidityPriceInput";
+import { Button } from "@/components/ui/button";
+import { Form } from "@/components/ui/form";
+import { useToast } from "~/hooks/use-toast";
 import {
   CREATE_LIQUIDITY_REDUCTION,
   TICK_SPACING_DEFAULT,
   TOKEN_DECIMALS,
-} from '~/lib/constants/constants';
-import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
-import { MarketContext } from '~/lib/context/MarketProvider';
-import type { FoilPosition } from '~/lib/interfaces/interfaces';
-import { JSBIAbs } from '~/lib/util/util';
+} from "~/lib/constants/constants";
+import { useAddEditPosition } from "~/lib/context/AddEditPositionContext";
+import { MarketContext } from "~/lib/context/MarketProvider";
+import type { FoilPosition } from "~/lib/interfaces/interfaces";
+import { JSBIAbs } from "~/lib/util/util";
 
 // TODO 1% - Hardcoded for now, should be retrieved with pool.tickSpacing()
 // Also move this a to helper?
@@ -66,7 +66,7 @@ const AddEditLiquidity: React.FC = () => {
   } = useContext(MarketContext);
 
   if (!epoch) {
-    throw new Error('Epoch is not defined');
+    throw new Error("Epoch is not defined");
   }
 
   const { toast } = useToast();
@@ -75,18 +75,18 @@ const AddEditLiquidity: React.FC = () => {
 
   const form = useForm({
     defaultValues: {
-      depositAmount: '0',
-      modifyLiquidity: '0',
+      depositAmount: "0",
+      modifyLiquidity: "0",
       lowPrice: baseAssetMinPriceTick
         ? tickToPrice(baseAssetMinPriceTick).toString()
-        : '0',
+        : "0",
       highPrice: baseAssetMaxPriceTick
         ? tickToPrice(baseAssetMaxPriceTick).toString()
-        : '0',
-      slippage: '0.5',
+        : "0",
+      slippage: "0.5",
     },
-    mode: 'onChange',
-    reValidateMode: 'onChange',
+    mode: "onChange",
+    reValidateMode: "onChange",
   });
 
   const {
@@ -99,35 +99,35 @@ const AddEditLiquidity: React.FC = () => {
 
   const modifyLiquidity = useWatch({
     control,
-    name: 'modifyLiquidity',
+    name: "modifyLiquidity",
   });
 
   const depositAmount = useWatch({
     control,
-    name: 'depositAmount',
+    name: "depositAmount",
   });
 
   const lowPrice = useWatch({
     control,
-    name: 'lowPrice',
+    name: "lowPrice",
   });
 
   const highPrice = useWatch({
     control,
-    name: 'highPrice',
+    name: "highPrice",
   });
 
   const slippageStr = useWatch({
     control,
-    name: 'slippage',
+    name: "slippage",
   });
   const slippage = Number(slippageStr);
 
   const [txnStep, setTxnStep] = useState<number>(0);
   const [pendingTxn, setPendingTxn] = useState(false);
-  const [txnSuccessMsg, setTxnSuccessMsg] = useState('');
-  const [liquidityAction, setLiquidityAction] = useState<'add' | 'remove'>(
-    'add'
+  const [txnSuccessMsg, setTxnSuccessMsg] = useState("");
+  const [liquidityAction, setLiquidityAction] = useState<"add" | "remove">(
+    "add",
   );
 
   const tickSpacing = pool ? pool?.tickSpacing : TICK_SPACING_DEFAULT;
@@ -136,7 +136,7 @@ const AddEditLiquidity: React.FC = () => {
   const isEdit = !!nftId;
 
   const [collateralAmountDelta, setCollateralAmountDelta] = useState<bigint>(
-    BigInt(0)
+    BigInt(0),
   );
 
   const currentChainId = useChainId();
@@ -145,14 +145,14 @@ const AddEditLiquidity: React.FC = () => {
   const router = useRouter();
 
   const isDecrease =
-    liquidityAction === 'remove' && Number(modifyLiquidity) > 0;
+    liquidityAction === "remove" && Number(modifyLiquidity) > 0;
   const isAmountUnchanged = Number(modifyLiquidity) === 0;
 
   /// //// READ CONTRACT HOOKS ///////
   const { data: positionData, refetch: refetchPosition } = useReadContract({
     abi: foilData.abi,
     address: marketAddress as `0x${string}`,
-    functionName: 'getPosition',
+    functionName: "getPosition",
     args: [nftId],
     query: {
       enabled: isEdit,
@@ -167,13 +167,13 @@ const AddEditLiquidity: React.FC = () => {
   } = useReadContract({
     abi: INONFUNGIBLE_POSITION_MANAGER.abi,
     address: marketParams.uniswapPositionManager,
-    functionName: 'positions',
-    args: [positionData?.uniswapPositionId || BigInt('0')],
+    functionName: "positions",
+    args: [positionData?.uniswapPositionId || BigInt("0")],
     query: {
       enabled: Boolean(
-        marketParams.uniswapPositionManager !== '0x' &&
+        marketParams.uniswapPositionManager !== "0x" &&
           positionData?.uniswapPositionId &&
-          isEdit
+          isEdit,
       ),
     },
     chainId,
@@ -183,7 +183,7 @@ const AddEditLiquidity: React.FC = () => {
     useReadContract({
       abi: erc20ABI,
       address: collateralAsset as `0x${string}`,
-      functionName: 'balanceOf',
+      functionName: "balanceOf",
       args: [account.address],
       chainId,
     });
@@ -191,7 +191,7 @@ const AddEditLiquidity: React.FC = () => {
   const { data: allowanceData, refetch: refetchAllowance } = useReadContract({
     abi: erc20ABI,
     address: collateralAsset as `0x${string}`,
-    functionName: 'allowance',
+    functionName: "allowance",
     args: [account.address, marketAddress],
     query: {
       enabled: Boolean(isConnected && marketAddress),
@@ -206,13 +206,13 @@ const AddEditLiquidity: React.FC = () => {
   } = useReadContract({
     address: foilData.address,
     abi: foilData.abi,
-    functionName: 'quoteLiquidityPositionTokens',
+    functionName: "quoteLiquidityPositionTokens",
     args: [
       epoch.toString(),
       parseUnits(depositAmount.toString(), collateralAssetDecimals),
-      pool ? pool.sqrtRatioX96.toString() : '0',
-      tickLower > 0 ? TickMath.getSqrtRatioAtTick(tickLower).toString() : '0',
-      tickUpper > 0 ? TickMath.getSqrtRatioAtTick(tickUpper).toString() : '0',
+      pool ? pool.sqrtRatioX96.toString() : "0",
+      tickLower > 0 ? TickMath.getSqrtRatioAtTick(tickLower).toString() : "0",
+      tickUpper > 0 ? TickMath.getSqrtRatioAtTick(tickUpper).toString() : "0",
     ],
     chainId,
     query: {
@@ -226,15 +226,15 @@ const AddEditLiquidity: React.FC = () => {
       onError: (error) => {
         resetAfterError();
         toast({
-          variant: 'destructive',
-          title: 'Failed to approve',
+          variant: "destructive",
+          title: "Failed to approve",
           description: (error as Error).message,
         });
       },
       onSuccess: () => {
         toast({
-          title: 'Approval Submitted',
-          description: 'Waiting for confirmation...',
+          title: "Approval Submitted",
+          description: "Waiting for confirmation...",
         });
       },
     },
@@ -244,11 +244,11 @@ const AddEditLiquidity: React.FC = () => {
     useWriteContract({
       mutation: {
         onError: (error) => {
-          console.error('Failed to add liquidity', error);
+          console.error("Failed to add liquidity", error);
           resetAfterError();
           toast({
-            variant: 'destructive',
-            title: 'Failed to add liquidity',
+            variant: "destructive",
+            title: "Failed to add liquidity",
             description: (error as Error).message,
           });
         },
@@ -259,11 +259,11 @@ const AddEditLiquidity: React.FC = () => {
     useWriteContract({
       mutation: {
         onError: (error) => {
-          console.error('Failed to increase liquidity', error);
+          console.error("Failed to increase liquidity", error);
           resetAfterError();
           toast({
-            variant: 'destructive',
-            title: 'Failed to increase liquidity',
+            variant: "destructive",
+            title: "Failed to increase liquidity",
             description: (error as Error).message,
           });
         },
@@ -274,11 +274,11 @@ const AddEditLiquidity: React.FC = () => {
     useWriteContract({
       mutation: {
         onError: (error) => {
-          console.error('Failed to decrease liquidity', error);
+          console.error("Failed to decrease liquidity", error);
           resetAfterError();
           toast({
-            variant: 'destructive',
-            title: 'Failed to decrease liquidity',
+            variant: "destructive",
+            title: "Failed to decrease liquidity",
             description: (error as Error).message,
           });
         },
@@ -314,8 +314,8 @@ const AddEditLiquidity: React.FC = () => {
     return Number(
       formatUnits(
         positionData.depositedCollateralAmount,
-        collateralAssetDecimals
-      )
+        collateralAssetDecimals,
+      ),
     );
   }, [positionData, collateralAssetDecimals]);
 
@@ -323,18 +323,18 @@ const AddEditLiquidity: React.FC = () => {
     if (!liquidity) return BigInt(0);
 
     // Handle empty or invalid input
-    const inputValue = modifyLiquidity === '' ? '0' : modifyLiquidity;
-    const percentage = parseFloat(inputValue) / 100;
+    const inputValue = modifyLiquidity === "" ? "0" : modifyLiquidity;
+    const percentage = Number.parseFloat(inputValue) / 100;
 
     // Return original liquidity if percentage is invalid
     if (isNaN(percentage)) return BigInt(liquidity.toString());
 
-    if (liquidityAction === 'add') {
+    if (liquidityAction === "add") {
       // For add, increase by the percentage (100% = double)
       const multiplier = 1 + percentage;
       const jsbiNewLiq = JSBI.multiply(
         JSBI.BigInt(liquidity.toString()),
-        JSBI.BigInt(Math.floor(multiplier * 100))
+        JSBI.BigInt(Math.floor(multiplier * 100)),
       );
       return BigInt(JSBI.divide(jsbiNewLiq, JSBI.BigInt(100)).toString());
     }
@@ -342,27 +342,27 @@ const AddEditLiquidity: React.FC = () => {
     const multiplier = 1 - percentage;
     const jsbiNewLiq = JSBI.multiply(
       JSBI.BigInt(liquidity.toString()),
-      JSBI.BigInt(Math.floor(multiplier * 100))
+      JSBI.BigInt(Math.floor(multiplier * 100)),
     );
     return BigInt(JSBI.divide(jsbiNewLiq, JSBI.BigInt(100)).toString());
   }, [modifyLiquidity, liquidity, liquidityAction]);
 
   const deltaLiquidity = JSBIAbs(
     JSBI.subtract(
-      JSBI.BigInt(liquidity?.toString() || '0'),
-      JSBI.BigInt(newLiquidity.toString())
-    )
+      JSBI.BigInt(liquidity?.toString() || "0"),
+      JSBI.BigInt(newLiquidity.toString()),
+    ),
   );
 
   const { data: deltaTokenAmounts } = useReadContract({
     address: foilData.address,
     abi: foilData.abi,
-    functionName: 'getTokensFromLiquidity',
+    functionName: "getTokensFromLiquidity",
     args: [
       deltaLiquidity.toString(),
-      pool ? pool.sqrtRatioX96.toString() : '0',
-      tickLower > 0 ? TickMath.getSqrtRatioAtTick(tickLower).toString() : '0',
-      tickUpper > 0 ? TickMath.getSqrtRatioAtTick(tickUpper).toString() : '0',
+      pool ? pool.sqrtRatioX96.toString() : "0",
+      tickLower > 0 ? TickMath.getSqrtRatioAtTick(tickLower).toString() : "0",
+      tickUpper > 0 ? TickMath.getSqrtRatioAtTick(tickUpper).toString() : "0",
     ],
     chainId,
     query: {
@@ -374,7 +374,7 @@ const AddEditLiquidity: React.FC = () => {
     useReadContract({
       abi: foilData.abi,
       address: marketAddress as `0x${string}`,
-      functionName: 'quoteRequiredCollateral',
+      functionName: "quoteRequiredCollateral",
       args: [nftId, newLiquidity],
       query: {
         enabled: Boolean(isEdit),
@@ -387,7 +387,7 @@ const AddEditLiquidity: React.FC = () => {
     const tokenAmountsAny = tokenAmounts as any[]; // there's some abitype project, i think
     if (!tokenAmountsAny) return 0;
     const amount0 = tokenAmountsAny[0];
-    return parseFloat(formatUnits(amount0, TOKEN_DECIMALS));
+    return Number.parseFloat(formatUnits(amount0, TOKEN_DECIMALS));
   }, [tokenAmounts]);
 
   // same as token1/tokenB/ethToken
@@ -395,7 +395,7 @@ const AddEditLiquidity: React.FC = () => {
     const tokenAmountsAny = tokenAmounts as any[]; // there's some abitype project, i think
     if (!tokenAmountsAny) return 0;
     const amount1 = tokenAmountsAny[1];
-    return parseFloat(formatUnits(amount1, TOKEN_DECIMALS));
+    return Number.parseFloat(formatUnits(amount1, TOKEN_DECIMALS));
   }, [tokenAmounts]);
 
   // same as min token0/baseToken/gasToken
@@ -410,12 +410,12 @@ const AddEditLiquidity: React.FC = () => {
 
   const deltaGasToken: number = useMemo(() => {
     if (!deltaTokenAmounts) return 0;
-    return parseFloat(formatUnits(deltaTokenAmounts[0], TOKEN_DECIMALS));
+    return Number.parseFloat(formatUnits(deltaTokenAmounts[0], TOKEN_DECIMALS));
   }, [deltaTokenAmounts]);
 
   const deltaEthToken: number = useMemo(() => {
     if (!deltaTokenAmounts) return 0;
-    return parseFloat(formatUnits(deltaTokenAmounts[1], TOKEN_DECIMALS));
+    return Number.parseFloat(formatUnits(deltaTokenAmounts[1], TOKEN_DECIMALS));
   }, [deltaTokenAmounts]);
 
   const minAmountDeltaGasToken: number = useMemo(() => {
@@ -427,49 +427,49 @@ const AddEditLiquidity: React.FC = () => {
   }, [deltaEthToken, slippage]);
 
   const walletBalance = useMemo(() => {
-    if (!collateralAmountData || !isConnected) return '0';
+    if (!collateralAmountData || !isConnected) return "0";
     return formatUnits(
       BigInt(collateralAmountData.toString()),
-      collateralAssetDecimals
+      collateralAssetDecimals,
     );
   }, [collateralAmountData, collateralAssetDecimals, isConnected]);
 
   const walletBalanceAfter = useMemo(() => {
     if (!walletBalance) return null;
-    const delta = parseFloat(
-      formatUnits(collateralAmountDelta, collateralAssetDecimals)
+    const delta = Number.parseFloat(
+      formatUnits(collateralAmountDelta, collateralAssetDecimals),
     );
-    return (parseFloat(walletBalance) - delta).toPrecision(3);
+    return (Number.parseFloat(walletBalance) - delta).toPrecision(3);
   }, [walletBalance, collateralAmountDelta, collateralAssetDecimals]);
 
   const allowance = useMemo(() => {
     if (!allowanceData) return null;
     return formatUnits(
       BigInt(allowanceData.toString()),
-      collateralAssetDecimals
+      collateralAssetDecimals,
     );
   }, [allowanceData, collateralAssetDecimals]);
 
   const positionCollateralAfter: number = useMemo(() => {
-    if (!isEdit) return parseFloat(depositAmount || '0');
+    if (!isEdit) return Number.parseFloat(depositAmount || "0");
 
     return Number(
       formatUnits(
         (requiredCollateral as bigint | undefined) || BigInt(0),
-        collateralAssetDecimals
-      )
+        collateralAssetDecimals,
+      ),
     );
   }, [isEdit, depositAmount, requiredCollateral, collateralAssetDecimals]);
 
   const finalDelta: bigint = useMemo(() => {
     const currentDepositAmountBigInt = BigInt(
-      positionData?.depositedCollateralAmount || 0
+      positionData?.depositedCollateralAmount || 0,
     );
-    let newDepositAmountBigInt = parseUnits('0', collateralAssetDecimals);
-    if (!isEdit && depositAmount !== '') {
+    let newDepositAmountBigInt = parseUnits("0", collateralAssetDecimals);
+    if (!isEdit && depositAmount !== "") {
       newDepositAmountBigInt = parseUnits(
         depositAmount,
-        collateralAssetDecimals
+        collateralAssetDecimals,
       );
     } else if (isEdit && requiredCollateral) {
       newDepositAmountBigInt = requiredCollateral as bigint;
@@ -494,13 +494,14 @@ const AddEditLiquidity: React.FC = () => {
   const requireApproval: boolean = useMemo(() => {
     const collateralAmountDeltaFormatted = formatUnits(
       finalDelta,
-      collateralAssetDecimals
+      collateralAssetDecimals,
     );
     if (isEdit && isDecrease) return false;
     if (finalDelta <= 0) return false;
     return (
       !allowance ||
-      parseFloat(allowance) < parseFloat(collateralAmountDeltaFormatted)
+      Number.parseFloat(allowance) <
+        Number.parseFloat(collateralAmountDeltaFormatted)
     );
   }, [allowance, finalDelta, collateralAssetDecimals, isEdit, isDecrease]);
 
@@ -521,15 +522,15 @@ const AddEditLiquidity: React.FC = () => {
         return (requiredCollateral as bigint | undefined) || BigInt(0);
       }
       return parseUnits(
-        depositAmount !== '' ? depositAmount : '0',
-        collateralAssetDecimals
+        depositAmount !== "" ? depositAmount : "0",
+        collateralAssetDecimals,
       );
     };
 
     const calculateDelta = () => {
       const newDepositAmountBigInt = getNewDepositAmount();
       const currentDepositAmountBigInt = BigInt(
-        positionData?.depositedCollateralAmount || 0
+        positionData?.depositedCollateralAmount || 0,
       );
       return newDepositAmountBigInt - currentDepositAmountBigInt;
     };
@@ -549,16 +550,16 @@ const AddEditLiquidity: React.FC = () => {
       const currentCollateral = Number(
         formatUnits(
           positionData.depositedCollateralAmount,
-          collateralAssetDecimals
-        )
+          collateralAssetDecimals,
+        ),
       );
-      setValue('depositAmount', currentCollateral.toString(), {
+      setValue("depositAmount", currentCollateral.toString(), {
         shouldValidate: false, // trigger any form validations
         shouldDirty: false, // mark the field as "dirty" (changed)
         shouldTouch: false,
       });
     } else {
-      setValue('depositAmount', '0', {
+      setValue("depositAmount", "0", {
         shouldValidate: false,
         shouldDirty: false, // don't mark as dirty since this is initial/reset value
         shouldTouch: false,
@@ -577,13 +578,13 @@ const AddEditLiquidity: React.FC = () => {
   // handle successful add/increase liquidity
   useEffect(() => {
     if (increaseLiquiditySuccess) {
-      setTxnSuccessMsg('Successfully increased liquidity');
+      setTxnSuccessMsg("Successfully increased liquidity");
     }
   }, [increaseLiquiditySuccess]);
 
   useEffect(() => {
     if (decreaseLiquiditySuccess) {
-      setTxnSuccessMsg('Successfully decreased liquidity');
+      setTxnSuccessMsg("Successfully decreased liquidity");
     }
   }, [decreaseLiquiditySuccess]);
 
@@ -597,10 +598,10 @@ const AddEditLiquidity: React.FC = () => {
             topics: log.topics,
           });
 
-          if ((event as any).eventName === 'LiquidityPositionCreated') {
+          if ((event as any).eventName === "LiquidityPositionCreated") {
             const nftId = (event as any).args.positionId.toString();
             setTxnSuccessMsg(
-              `Your liquidity position has been created as position ${nftId}`
+              `Your liquidity position has been created as position ${nftId}`,
             );
             setNftId(nftId);
             return;
@@ -615,15 +616,15 @@ const AddEditLiquidity: React.FC = () => {
 
   useEffect(() => {
     // trader position so switch to trader tab
-    console.log('positionData', positionData);
+    console.log("positionData", positionData);
     if (positionData && positionData.kind === 2) {
       toast({
         title:
-          'Your liquidity position has been closed and converted to a trader position with your accumulated position',
+          "Your liquidity position has been closed and converted to a trader position with your accumulated position",
         duration: 5000,
       });
       router.push(
-        `/trade/${chainId}%3A${marketAddress}/epochs/${epoch}?nftId=${nftId}`
+        `/trade/${chainId}%3A${marketAddress}/epochs/${epoch}?nftId=${nftId}`,
       );
     }
   }, [positionData, toast]);
@@ -631,9 +632,9 @@ const AddEditLiquidity: React.FC = () => {
   // handle token amounts error
   useEffect(() => {
     if (tokenAmountsError) {
-      console.error('tokenAmountsError:', tokenAmountsError);
+      console.error("tokenAmountsError:", tokenAmountsError);
       toast({
-        title: 'Failed to fetch token amounts',
+        title: "Failed to fetch token amounts",
         description: tokenAmountsError?.message,
         duration: 5000,
       });
@@ -643,9 +644,9 @@ const AddEditLiquidity: React.FC = () => {
   // hanlde uniswap error
   useEffect(() => {
     if (uniswapPositionError) {
-      console.error('uniswapPositionError: ', uniswapPositionError);
+      console.error("uniswapPositionError: ", uniswapPositionError);
       toast({
-        title: 'Failed to get position from uniswap',
+        title: "Failed to get position from uniswap",
         description: uniswapPositionError?.message,
         duration: 5000,
       });
@@ -654,8 +655,8 @@ const AddEditLiquidity: React.FC = () => {
 
   useEffect(() => {
     if (isEdit) return;
-    setValue('lowPrice', tickToPrice(baseAssetMinPriceTick).toString());
-    setValue('highPrice', tickToPrice(baseAssetMaxPriceTick).toString());
+    setValue("lowPrice", tickToPrice(baseAssetMinPriceTick).toString());
+    setValue("highPrice", tickToPrice(baseAssetMaxPriceTick).toString());
   }, [baseAssetMinPriceTick, baseAssetMaxPriceTick, isEdit, setValue]);
 
   useEffect(() => {
@@ -664,14 +665,14 @@ const AddEditLiquidity: React.FC = () => {
     const lowerTick = uniswapData[5];
     const upperTick = uniswapData[6];
     if (lowerTick) {
-      setValue('lowPrice', tickToPrice(lowerTick).toString(), {
+      setValue("lowPrice", tickToPrice(lowerTick).toString(), {
         shouldValidate: false,
         shouldDirty: false,
         shouldTouch: false,
       });
     }
     if (upperTick) {
-      setValue('highPrice', tickToPrice(upperTick).toString(), {
+      setValue("highPrice", tickToPrice(upperTick).toString(), {
         shouldValidate: false,
         shouldDirty: false,
         shouldTouch: false,
@@ -723,33 +724,33 @@ const AddEditLiquidity: React.FC = () => {
     const deadline = getCurrentDeadline();
     if (isEdit) {
       if (!liquidity || !requiredCollateral) {
-        console.log('noliquidity found');
+        console.log("noliquidity found");
         resetAfterError();
         return;
       }
       increaseLiquidity({
         address: foilData.address as `0x${string}`,
         abi: foilData.abi,
-        functionName: 'increaseLiquidityPosition',
+        functionName: "increaseLiquidityPosition",
         args: [
           {
             positionId: nftId,
             collateralAmount: finalDelta,
             gasTokenAmount: parseUnits(
               deltaGasToken.toString(),
-              TOKEN_DECIMALS
+              TOKEN_DECIMALS,
             ),
             ethTokenAmount: parseUnits(
               deltaEthToken.toString(),
-              TOKEN_DECIMALS
+              TOKEN_DECIMALS,
             ),
             minGasAmount: parseUnits(
               minAmountDeltaGasToken.toString(),
-              TOKEN_DECIMALS
+              TOKEN_DECIMALS,
             ),
             minEthAmount: parseUnits(
               minAmountDeltaEthToken.toString(),
-              TOKEN_DECIMALS
+              TOKEN_DECIMALS,
             ),
             deadline,
           },
@@ -760,31 +761,31 @@ const AddEditLiquidity: React.FC = () => {
       addLiquidityWrite({
         address: foilData.address as `0x${string}`,
         abi: foilData.abi,
-        functionName: 'createLiquidityPosition',
+        functionName: "createLiquidityPosition",
         args: [
           {
             epochId: epoch,
             amountTokenA: parseUnits(
               adjustedBaseToken.toString(),
-              TOKEN_DECIMALS
+              TOKEN_DECIMALS,
             ),
             amountTokenB: parseUnits(
               adjustedQuoteToken.toString(),
-              TOKEN_DECIMALS
+              TOKEN_DECIMALS,
             ),
             collateralAmount: parseUnits(
-              depositAmount !== '' ? depositAmount : '0',
-              collateralAssetDecimals
+              depositAmount !== "" ? depositAmount : "0",
+              collateralAssetDecimals,
             ),
             lowerTick: tickLower,
             upperTick: tickUpper,
             minAmountTokenA: parseUnits(
               minAmountTokenA.toString(),
-              TOKEN_DECIMALS
+              TOKEN_DECIMALS,
             ),
             minAmountTokenB: parseUnits(
               minAmountTokenB.toString(),
-              TOKEN_DECIMALS
+              TOKEN_DECIMALS,
             ),
             deadline,
           },
@@ -802,7 +803,7 @@ const AddEditLiquidity: React.FC = () => {
 
   const resetAfterSuccess = () => {
     resetForm();
-    setTxnSuccessMsg('');
+    setTxnSuccessMsg("");
     setTxnStep(0);
     setPendingTxn(false);
 
@@ -819,9 +820,9 @@ const AddEditLiquidity: React.FC = () => {
    * handle decreasing liquidity position
    */
   const handleDecreaseLiquidity = () => {
-    console.log('decreasing liquidity');
+    console.log("decreasing liquidity");
     if (!liquidity) {
-      console.log('noliquidity found');
+      console.log("noliquidity found");
       resetAfterError();
       return;
     }
@@ -830,18 +831,18 @@ const AddEditLiquidity: React.FC = () => {
     decreaseLiquidity({
       address: foilData.address as `0x${string}`,
       abi: foilData.abi,
-      functionName: 'decreaseLiquidityPosition',
+      functionName: "decreaseLiquidityPosition",
       args: [
         {
           positionId: nftId,
           liquidity: deltaLiquidity.toString(),
           minGasAmount: parseUnits(
             minAmountDeltaGasToken.toString(),
-            TOKEN_DECIMALS
+            TOKEN_DECIMALS,
           ),
           minEthAmount: parseUnits(
             minAmountDeltaEthToken.toString(),
-            TOKEN_DECIMALS
+            TOKEN_DECIMALS,
           ),
           deadline,
         },
@@ -865,7 +866,7 @@ const AddEditLiquidity: React.FC = () => {
       approveWrite({
         abi: erc20ABI,
         address: collateralAsset as `0x${string}`,
-        functionName: 'approve',
+        functionName: "approve",
         args: [foilData.address, finalDelta],
         chainId,
       });
@@ -876,15 +877,15 @@ const AddEditLiquidity: React.FC = () => {
   };
 
   const getButtonText = () => {
-    let txt = '';
+    let txt = "";
     if (isEdit) {
-      if (depositAmount === '' || parseFloat(depositAmount) === 0) {
-        txt = 'Close Liquidity Position';
+      if (depositAmount === "" || Number.parseFloat(depositAmount) === 0) {
+        txt = "Close Liquidity Position";
       } else {
-        txt = liquidityAction === 'add' ? 'Add Liquidity' : 'Remove Liquidity';
+        txt = liquidityAction === "add" ? "Add Liquidity" : "Remove Liquidity";
       }
     } else {
-      txt = 'Add Liquidity';
+      txt = "Add Liquidity";
     }
 
     if (requireApproval) {
@@ -928,13 +929,13 @@ const AddEditLiquidity: React.FC = () => {
   // Set initial values when position loads
   useEffect(() => {
     if (isEdit) {
-      setValue('modifyLiquidity', '0', {
+      setValue("modifyLiquidity", "0", {
         shouldValidate: false,
         shouldDirty: false,
         shouldTouch: false,
       });
     } else {
-      setValue('depositAmount', '0', {
+      setValue("depositAmount", "0", {
         shouldValidate: false,
         shouldDirty: false,
         shouldTouch: false,
@@ -983,7 +984,7 @@ const AddEditLiquidity: React.FC = () => {
           <div>
             <p className="text-sm font-semibold mb-0.5">Base Token</p>
             <p className="text-sm mb-0.5">
-              <NumberDisplay value={baseToken} /> vGGas (Min.{' '}
+              <NumberDisplay value={baseToken} /> vGGas (Min.{" "}
               <NumberDisplay value={minAmountTokenA} />)
             </p>
           </div>
@@ -991,7 +992,7 @@ const AddEditLiquidity: React.FC = () => {
           <div>
             <p className="text-sm font-semibold mb-0.5">Quote Token</p>
             <p className="text-sm mb-0.5">
-              <NumberDisplay value={quoteToken} /> vWstETH (Min.{' '}
+              <NumberDisplay value={quoteToken} /> vWstETH (Min.{" "}
               <NumberDisplay value={minAmountTokenB} />)
             </p>
           </div>
@@ -1002,19 +1003,19 @@ const AddEditLiquidity: React.FC = () => {
                 <NumberDisplay
                   value={formatUnits(
                     liquidity || BigInt(0),
-                    collateralAssetDecimals
+                    collateralAssetDecimals,
                   )}
-                />{' '}
+                />{" "}
                 {!isAmountUnchanged && (
                   <>
-                    {' '}
-                    →{' '}
+                    {" "}
+                    →{" "}
                     <NumberDisplay
                       value={formatUnits(
                         newLiquidity || BigInt(0),
-                        collateralAssetDecimals
+                        collateralAssetDecimals,
                       )}
-                    />{' '}
+                    />{" "}
                   </>
                 )}
               </p>
@@ -1027,12 +1028,12 @@ const AddEditLiquidity: React.FC = () => {
                 Position Collateral
               </p>
               <p className="text-sm mb-0.5">
-                <NumberDisplay value={positionCollateralAmount} />{' '}
+                <NumberDisplay value={positionCollateralAmount} />{" "}
                 {collateralAssetTicker}
                 {!isAmountUnchanged && (
                   <>
-                    {' '}
-                    → <NumberDisplay value={positionCollateralAfter} />{' '}
+                    {" "}
+                    → <NumberDisplay value={positionCollateralAfter} />{" "}
                     {collateralAssetTicker}
                   </>
                 )}
@@ -1047,8 +1048,8 @@ const AddEditLiquidity: React.FC = () => {
                 <NumberDisplay value={walletBalance} /> {collateralAssetTicker}
                 {!isAmountUnchanged && walletBalanceAfter && (
                   <>
-                    {' '}
-                    → <NumberDisplay value={walletBalanceAfter} />{' '}
+                    {" "}
+                    → <NumberDisplay value={walletBalanceAfter} />{" "}
                     {collateralAssetTicker}
                   </>
                 )}

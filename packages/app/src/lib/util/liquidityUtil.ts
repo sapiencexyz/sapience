@@ -1,10 +1,10 @@
 // code taken from https://github.com/Uniswap/examples/blob/main/v3-sdk/pool-data/src/libs/active-liquidity.ts#L45
 // see also: https://docs.uniswap.org/sdk/v3/guides/advanced/active-liquidity
-import type { Token } from '@uniswap/sdk-core';
-import { CurrencyAmount } from '@uniswap/sdk-core';
-import type { FeeAmount } from '@uniswap/v3-sdk';
-import { Pool, TickMath, tickToPrice } from '@uniswap/v3-sdk';
-import JSBI from 'jsbi';
+import type { Token } from "@uniswap/sdk-core";
+import { CurrencyAmount } from "@uniswap/sdk-core";
+import type { FeeAmount } from "@uniswap/v3-sdk";
+import { Pool, TickMath, tickToPrice } from "@uniswap/v3-sdk";
+import JSBI from "jsbi";
 
 export interface GraphTick {
   tickIdx: string;
@@ -41,13 +41,13 @@ export interface PoolData {
 
 const MAX_INT128 = JSBI.subtract(
   JSBI.exponentiate(JSBI.BigInt(2), JSBI.BigInt(128)),
-  JSBI.BigInt(1)
+  JSBI.BigInt(1),
 );
 
 export async function getFullPool(
   fullPool: Pool,
   graphTicks: GraphTick[],
-  tickSpacing: number
+  tickSpacing: number,
 ): Promise<{
   pool: Pool;
   ticks: BarChartTick[];
@@ -60,7 +60,7 @@ export async function getFullPool(
     fullPool.token1,
     graphTicks.length,
     fullPool.fee,
-    graphTicks
+    graphTicks,
   );
 
   return {
@@ -77,7 +77,7 @@ async function createBarChartTicks(
   token1: Token,
   numSurroundingTicks: number,
   feeTier: FeeAmount,
-  graphTicks: GraphTick[]
+  graphTicks: GraphTick[],
 ): Promise<BarChartTick[]> {
   const processedTicks = processTicks(
     tickCurrent,
@@ -86,7 +86,7 @@ async function createBarChartTicks(
     token0,
     token1,
     numSurroundingTicks,
-    graphTicks
+    graphTicks,
   );
 
   const barTicks = await Promise.all(
@@ -96,9 +96,9 @@ async function createBarChartTicks(
         token0,
         token1,
         tickSpacing,
-        feeTier
+        feeTier,
       );
-    })
+    }),
   );
   barTicks.forEach((entry, i) => {
     if (i > 0) {
@@ -116,10 +116,10 @@ function processTicks(
   token0: Token,
   token1: Token,
   numSurroundingTicks: number,
-  graphTicks: GraphTick[]
+  graphTicks: GraphTick[],
 ): TickProcessed[] {
   const tickIdxToTickDictionary: Record<string, GraphTick> = Object.fromEntries(
-    graphTicks.map((graphTick) => [graphTick.tickIdx, graphTick])
+    graphTicks.map((graphTick) => [graphTick.tickIdx, graphTick]),
   );
   const minTick = Number(graphTicks[0]?.tickIdx);
   const maxTick = Number(graphTicks[graphTicks.length - 1]?.tickIdx);
@@ -136,11 +136,11 @@ function processTicks(
     tickIdx: activeTickIdx,
     liquidityActive: liquidity,
     liquidityNet: JSBI.BigInt(0),
-    price0: parseFloat(
-      tickToPrice(token0, token1, activeTickIdx).toSignificant(18)
+    price0: Number.parseFloat(
+      tickToPrice(token0, token1, activeTickIdx).toSignificant(18),
     ),
-    price1: parseFloat(
-      tickToPrice(token1, token0, activeTickIdx).toSignificant(18)
+    price1: Number.parseFloat(
+      tickToPrice(token1, token0, activeTickIdx).toSignificant(18),
     ),
     isCurrent: true,
   };
@@ -159,7 +159,7 @@ function processTicks(
     token1,
     tickIdxToTickDictionary,
     minTick,
-    maxTick
+    maxTick,
   );
 
   const previousTicks: TickProcessed[] = computeInitializedTicks(
@@ -171,15 +171,15 @@ function processTicks(
     token1,
     tickIdxToTickDictionary,
     minTick,
-    maxTick
+    maxTick,
   );
 
   return previousTicks.concat(activeTickProcessed).concat(subsequentTicks);
 }
 
 enum Direction {
-  ASC,
-  DESC,
+  ASC = 0,
+  DESC = 1,
 }
 
 function computeInitializedTicks(
@@ -191,7 +191,7 @@ function computeInitializedTicks(
   token1: Token,
   tickIdxToTickDictionary: Record<string, GraphTick>,
   minTick: number,
-  maxTick: number
+  maxTick: number,
 ): TickProcessed[] {
   let previousTickProcessed: TickProcessed = {
     ...activeTickProcessed,
@@ -212,11 +212,11 @@ function computeInitializedTicks(
       tickIdx: currentTickIdx,
       liquidityActive: previousTickProcessed.liquidityActive,
       liquidityNet: JSBI.BigInt(0),
-      price0: parseFloat(
-        tickToPrice(token0, token1, currentTickIdx).toSignificant(18)
+      price0: Number.parseFloat(
+        tickToPrice(token0, token1, currentTickIdx).toSignificant(18),
       ),
-      price1: parseFloat(
-        tickToPrice(token1, token0, currentTickIdx).toSignificant(18)
+      price1: Number.parseFloat(
+        tickToPrice(token1, token0, currentTickIdx).toSignificant(18),
       ),
       isCurrent: false,
     };
@@ -225,14 +225,14 @@ function computeInitializedTicks(
       tickIdxToTickDictionary[currentTickIdx.toString()];
     if (currentInitializedTick) {
       currentTickProcessed.liquidityNet = JSBI.BigInt(
-        currentInitializedTick.liquidityNet
+        currentInitializedTick.liquidityNet,
       );
     }
 
     if (direction === Direction.ASC && currentInitializedTick) {
       currentTickProcessed.liquidityActive = JSBI.add(
         previousTickProcessed.liquidityActive,
-        JSBI.BigInt(currentInitializedTick.liquidityNet)
+        JSBI.BigInt(currentInitializedTick.liquidityNet),
       );
     } else if (
       direction === Direction.DESC &&
@@ -241,7 +241,7 @@ function computeInitializedTicks(
       // We are iterating descending, so look at the previous tick and apply any net liquidity.
       currentTickProcessed.liquidityActive = JSBI.subtract(
         previousTickProcessed.liquidityActive,
-        previousTickProcessed.liquidityNet
+        previousTickProcessed.liquidityNet,
       );
     }
 
@@ -261,17 +261,17 @@ async function calculateLockedLiqudity(
   token0: Token,
   token1: Token,
   tickSpacing: number,
-  feeTier: FeeAmount
+  feeTier: FeeAmount,
 ): Promise<BarChartTick> {
   const sqrtPriceX96 = TickMath.getSqrtRatioAtTick(tick.tickIdx);
   const liqGross = JSBI.greaterThan(tick.liquidityNet, JSBI.BigInt(0))
     ? tick.liquidityNet
-    : JSBI.multiply(tick.liquidityNet, JSBI.BigInt('-1'));
+    : JSBI.multiply(tick.liquidityNet, JSBI.BigInt("-1"));
   const mockTicks = [
     {
       index: tick.tickIdx - tickSpacing,
       liquidityGross: liqGross,
-      liquidityNet: JSBI.multiply(tick.liquidityNet, JSBI.BigInt('-1')),
+      liquidityNet: JSBI.multiply(tick.liquidityNet, JSBI.BigInt("-1")),
     },
     {
       index: tick.tickIdx,
@@ -288,7 +288,7 @@ async function calculateLockedLiqudity(
           sqrtPriceX96,
           tick.liquidityActive,
           tick.tickIdx,
-          mockTicks
+          mockTicks,
         )
       : undefined;
   const prevSqrtX96 = TickMath.getSqrtRatioAtTick(tick.tickIdx - tickSpacing);
@@ -303,13 +303,13 @@ async function calculateLockedLiqudity(
   const token1Amount = outputRes0?.[0] as CurrencyAmount<Token> | undefined;
 
   const amount0 = token1Amount
-    ? parseFloat(token1Amount.toExact()) * tick.price1
+    ? Number.parseFloat(token1Amount.toExact()) * tick.price1
     : 0;
-  const amount1 = token1Amount ? parseFloat(token1Amount.toExact()) : 0;
+  const amount1 = token1Amount ? Number.parseFloat(token1Amount.toExact()) : 0;
 
   return {
     tickIdx: tick.tickIdx,
-    liquidityActive: parseFloat(tick.liquidityActive.toString()),
+    liquidityActive: Number.parseFloat(tick.liquidityActive.toString()),
     liquidityLockedToken0: amount0,
     liquidityLockedToken1: amount1,
     price0: tick.price0,

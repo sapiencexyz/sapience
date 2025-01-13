@@ -1,7 +1,7 @@
 export enum PositionKind {
-  Unknown,
-  Liquidity,
-  Trade,
+  Unknown = 0,
+  Liquidity = 1,
+  Trade = 2,
 }
 export interface FoilPosition {
   id: bigint; // nft id
@@ -20,10 +20,10 @@ export interface FoilPosition {
 }
 
 export enum TransactionType {
-  ADD_LIQUIDITY = 'addLiquidity',
-  REMOVE_LIQUIDITY = 'removeLiquidity',
-  LONG = 'long',
-  SHORT = 'short',
+  ADD_LIQUIDITY = "addLiquidity",
+  REMOVE_LIQUIDITY = "removeLiquidity",
+  LONG = "long",
+  SHORT = "short",
 }
 
 // TODO: Share this interface with data package in monorepo
@@ -54,17 +54,17 @@ export interface EpochData {
 }
 
 export enum TimeWindow {
-  H = '1H',
-  D = '1D',
-  W = '1W',
-  M = '1M',
-  Y = '1Y',
+  H = "1H",
+  D = "1D",
+  W = "1W",
+  M = "1M",
+  Y = "1Y",
 }
 
 export enum ChartType {
-  PRICE = 'Price',
-  VOLUME = 'Volume',
-  LIQUIDITY = 'Liquidity',
+  PRICE = "Price",
+  VOLUME = "Volume",
+  LIQUIDITY = "Liquidity",
 }
 
 export interface VolumeChartData {

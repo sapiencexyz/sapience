@@ -2,7 +2,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@import './fonts/Foil.css';
+@import "./fonts/Foil.css";
 
 @layer base {
   :root {

@@ -1,17 +1,17 @@
 import { resourcePriceRepository } from "../db";
 import { ResourcePrice } from "../models/ResourcePrice";
 import { getBlockByTimestamp, getProviderForChain } from "../helpers";
-import { Block, type PublicClient } from "viem";
+import type { Block, PublicClient } from "viem";
 import Sentry from "../sentry";
-import { IResourcePriceIndexer } from "./IResourcePriceIndexer";
-import { Resource } from "src/models/Resource";
+import type { IResourcePriceIndexer } from "./IResourcePriceIndexer";
+import type { Resource } from "src/models/Resource";
 
 class EvmIndexer implements IResourcePriceIndexer {
   public client: PublicClient;
-  private isWatching: boolean = false;
-  private reconnectAttempts: number = 0;
-  private maxReconnectAttempts: number = 5;
-  private reconnectDelay: number = 5000; // 5 seconds
+  private isWatching = false;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+  private reconnectDelay = 5000; // 5 seconds
 
   constructor(chainId: number) {
     this.client = getProviderForChain(chainId);
@@ -22,7 +22,7 @@ class EvmIndexer implements IResourcePriceIndexer {
     const used = block?.gasUsed;
     if (!value || !block.number) {
       console.warn(
-        `No baseFeePerGas for block ${block?.number} on resource ${resource.slug}. Skipping block.`
+        `No baseFeePerGas for block ${block?.number} on resource ${resource.slug}. Skipping block.`,
       );
       return;
     }
@@ -43,7 +43,7 @@ class EvmIndexer implements IResourcePriceIndexer {
 
   async indexBlockPriceFromTimestamp(
     resource: Resource,
-    timestamp: number
+    timestamp: number,
   ): Promise<boolean> {
     const initalBlock = await getBlockByTimestamp(this.client, timestamp);
     if (!initalBlock.number) {
@@ -104,7 +104,7 @@ class EvmIndexer implements IResourcePriceIndexer {
     // suggested using a watch some re-connectiong logic if the watcher crashes. and attempts to reconnect.
     const startWatching = () => {
       console.log(
-        `Watching base fee per gas on chain ID ${this.client.chain?.id} for resource ${resource.slug}`
+        `Watching base fee per gas on chain ID ${this.client.chain?.id} for resource ${resource.slug}`,
       );
 
       this.isWatching = true;
@@ -132,7 +132,7 @@ class EvmIndexer implements IResourcePriceIndexer {
           if (this.reconnectAttempts < this.maxReconnectAttempts) {
             this.reconnectAttempts++;
             console.log(
-              `Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`
+              `Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`,
             );
             setTimeout(() => {
               startWatching();
@@ -140,7 +140,7 @@ class EvmIndexer implements IResourcePriceIndexer {
           } else {
             console.error("Max reconnection attempts reached. Stopping watch.");
             Sentry.captureMessage(
-              "Max reconnection attempts reached for block watcher"
+              "Max reconnection attempts reached for block watcher",
             );
           }
         },

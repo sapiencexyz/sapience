@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { Suspense, useEffect } from 'react';
+import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Suspense, useEffect } from "react";
 
-import { useMarketList } from '~/lib/context/MarketListProvider';
+import { useMarketList } from "~/lib/context/MarketListProvider";
 
 const EarnContent = () => {
   const router = useRouter();

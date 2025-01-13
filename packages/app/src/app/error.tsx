@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
+import { useEffect } from "react";
 
 interface ErrorProps {
   error: Error & { digest?: string; status?: number };
@@ -9,7 +9,7 @@ interface ErrorProps {
 
 export default function Error({ error, reset }: ErrorProps) {
   useEffect(() => {
-    console.error('Error:', error);
+    console.error("Error:", error);
   }, [error]);
 
   if (error.status === 403) {

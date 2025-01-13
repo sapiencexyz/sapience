@@ -1,7 +1,7 @@
 import { mainnet, sepolia, cannon } from "viem/chains";
 import evmIndexer from "./resourcePriceFunctions/evmIndexer";
 import celestiaIndexer from "./resourcePriceFunctions/celestiaIndexer";
-import { Deployment, MarketInfo } from "./interfaces";
+import type { Deployment, MarketInfo } from "./interfaces";
 
 const safeRequire = async (path: string): Promise<Deployment | null> => {
   try {
@@ -40,7 +40,7 @@ const initializeMarkets = async () => {
     */
     {
       deployment: await safeRequire(
-        "@/protocol/deployments/11155111/FoilYin.json"
+        "@/protocol/deployments/11155111/FoilYin.json",
       ),
       marketChainId: sepolia.id,
       public: true,
@@ -48,7 +48,7 @@ const initializeMarkets = async () => {
     },
     {
       deployment: await safeRequire(
-        "@/protocol/deployments/11155111/FoilYang.json"
+        "@/protocol/deployments/11155111/FoilYang.json",
       ),
       marketChainId: sepolia.id,
       public: true,
@@ -57,7 +57,7 @@ const initializeMarkets = async () => {
   ];
 
   return FULL_MARKET_LIST.filter(
-    (market) => market.deployment !== null
+    (market) => market.deployment !== null,
   ) as MarketInfo[];
 };
 

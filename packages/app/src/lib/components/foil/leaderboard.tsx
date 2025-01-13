@@ -1,18 +1,18 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery } from "@tanstack/react-query";
 import {
   useReactTable,
   flexRender,
   getCoreRowModel,
   type ColumnDef,
-} from '@tanstack/react-table';
-import { Loader2, Copy } from 'lucide-react';
-import Link from 'next/link';
-import { useContext, useState, useMemo, useEffect } from 'react';
-import { getEnsName } from 'viem/ens';
-import { usePublicClient } from 'wagmi';
+} from "@tanstack/react-table";
+import { Loader2, Copy } from "lucide-react";
+import Link from "next/link";
+import { useContext, useState, useMemo, useEffect } from "react";
+import { getEnsName } from "viem/ens";
+import { usePublicClient } from "wagmi";
 
-import { badgeVariants } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { badgeVariants } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -20,17 +20,17 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from "@/components/ui/table";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { API_BASE_URL } from '~/lib/constants/constants';
-import { MarketContext } from '~/lib/context/MarketProvider';
+} from "@/components/ui/tooltip";
+import { API_BASE_URL } from "~/lib/constants/constants";
+import { MarketContext } from "~/lib/context/MarketProvider";
 
-import NumberDisplay from './numberDisplay';
+import NumberDisplay from "./numberDisplay";
 
 interface Props {
   params: {
@@ -65,14 +65,14 @@ interface GroupedPosition {
 
 const useLeaderboard = (marketId: string, epochId: string) => {
   return useQuery({
-    queryKey: ['epochLeaderboard', marketId, epochId],
+    queryKey: ["epochLeaderboard", marketId, epochId],
     queryFn: async () => {
       // Get leaderboard and positions
       const leaderboardResponse = await fetch(
-        `${API_BASE_URL}/leaderboard?contractId=${marketId}`
+        `${API_BASE_URL}/leaderboard?contractId=${marketId}`,
       );
       if (!leaderboardResponse.ok) {
-        throw new Error('Failed to fetch leaderboard positions');
+        throw new Error("Failed to fetch leaderboard positions");
       }
 
       const [leaderboard] = await Promise.all([leaderboardResponse.json()]);
@@ -88,7 +88,7 @@ const PositionCell = ({ row }: { row: { original: GroupedPosition } }) => (
       <Link
         key={position.positionId}
         href={`/positions/${position?.epoch?.market?.chainId}:${position.epoch?.market?.address}/${position.positionId}`}
-        className={`${badgeVariants({ variant: 'outline' })} hover:bg-muted transition-background`}
+        className={`${badgeVariants({ variant: "outline" })} hover:bg-muted transition-background`}
       >
         #{position.positionId?.toString()}
       </Link>
@@ -98,7 +98,7 @@ const PositionCell = ({ row }: { row: { original: GroupedPosition } }) => (
 
 const PnLCell = ({ cell }: { cell: { getValue: () => unknown } }) => {
   const value = cell.getValue() as number;
-  const prefix = value > 0 ? '+' : '';
+  const prefix = value > 0 ? "+" : "";
   return (
     <span className="md:text-xl whitespace-nowrap">
       {prefix}
@@ -108,7 +108,7 @@ const PnLCell = ({ cell }: { cell: { getValue: () => unknown } }) => {
 };
 
 const formatAddress = (address: string): string => {
-  if (!address) return '';
+  if (!address) return "";
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 };
 
@@ -126,7 +126,7 @@ const AddressDisplay = ({ address }: { address: string }) => {
         });
         if (ens) setEnsName(ens);
       } catch (error) {
-        console.error('Error resolving ENS:', error);
+        console.error("Error resolving ENS:", error);
       }
     };
     resolveEns();
@@ -175,7 +175,7 @@ const RankCell = ({ row }: { row: { index: number } }) => (
 
 const RoiCell = ({ cell }: { cell: { getValue: () => unknown } }) => {
   const value = cell.getValue() as number;
-  const prefix = value > 0 ? '+' : '';
+  const prefix = value > 0 ? "+" : "";
   return (
     <span className="md:text-xl whitespace-nowrap">
       {prefix}
@@ -188,46 +188,46 @@ const Leaderboard = ({ params }: Props) => {
   const { pool } = useContext(MarketContext);
   const { data: leaderboardPositions, isLoading } = useLeaderboard(
     params.id,
-    params.epoch
+    params.epoch,
   );
 
   const columns = useMemo<ColumnDef<GroupedPosition>[]>(
     () => [
       {
-        id: 'rank',
-        header: 'Rank',
+        id: "rank",
+        header: "Rank",
         cell: RankCell,
       },
       {
-        id: 'owner',
-        header: 'Wallet Address',
-        accessorKey: 'owner',
+        id: "owner",
+        header: "Wallet Address",
+        accessorKey: "owner",
         cell: OwnerCell,
       },
       {
-        id: 'roi',
-        header: 'ROI',
+        id: "roi",
+        header: "ROI",
         accessorFn: (row) => row.totalPnL / row.ownerMaxCollateral,
         cell: RoiCell,
       },
       {
-        id: 'pnl',
-        header: 'Profit/Loss',
-        accessorKey: 'totalPnL',
+        id: "pnl",
+        header: "Profit/Loss",
+        accessorKey: "totalPnL",
         cell: PnLCell,
       },
       {
-        id: 'positions',
-        header: 'Positions',
+        id: "positions",
+        header: "Positions",
         cell: PositionCell,
       },
     ],
-    []
+    [],
   );
 
   const groupedPositions = useMemo(() => {
     if (!leaderboardPositions) return [] as GroupedPosition[];
-    console.log('leaderboardPositions', leaderboardPositions);
+    console.log("leaderboardPositions", leaderboardPositions);
 
     // Group leaderboardPositions by owner
     const groupedByOwner = leaderboardPositions.reduce<
@@ -252,7 +252,7 @@ const Leaderboard = ({ params }: Props) => {
     // Convert to array and sort by total PnL
     return Object.values(groupedByOwner).sort(
       (a, b) =>
-        b.totalPnL / b.ownerMaxCollateral - a.totalPnL / a.ownerMaxCollateral
+        b.totalPnL / b.ownerMaxCollateral - a.totalPnL / a.ownerMaxCollateral,
     );
   }, [leaderboardPositions]);
 
@@ -285,7 +285,7 @@ const Leaderboard = ({ params }: Props) => {
                   <TableHead key={header.id}>
                     {flexRender(
                       header.column.columnDef.header,
-                      header.getContext()
+                      header.getContext(),
                     )}
                   </TableHead>
                 ))}

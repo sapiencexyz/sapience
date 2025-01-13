@@ -1,22 +1,22 @@
-import { NextResponse, type NextRequest } from 'next/server';
+import { NextResponse, type NextRequest } from "next/server";
 
-import html403 from './lib/403.html?raw';
+import html403 from "./lib/403.html?raw";
 
 const GEOFENCED_COUNTRIES = [
-  'US',
-  'BY',
-  'CU',
-  'IR',
-  'KP',
-  'RU',
-  'SY',
-  'UA',
-  'MM',
+  "US",
+  "BY",
+  "CU",
+  "IR",
+  "KP",
+  "RU",
+  "SY",
+  "UA",
+  "MM",
 ];
 
 function isDebug(req: NextRequest) {
-  const hasDebugCookie = req.cookies.get('debug')?.value === 'true';
-  const hasDebugParam = req.nextUrl.searchParams.has('debug');
+  const hasDebugCookie = req.cookies.get("debug")?.value === "true";
+  const hasDebugParam = req.nextUrl.searchParams.has("debug");
   return hasDebugCookie || hasDebugParam;
 }
 
@@ -44,8 +44,8 @@ async function isGeofenced(req: NextRequest) {
 
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
-  if (request.nextUrl.searchParams.has('debug')) {
-    response.cookies.set('debug', 'true');
+  if (request.nextUrl.searchParams.has("debug")) {
+    response.cookies.set("debug", "true");
   }
 
   // DISABLED FOR TESTNET COMPETITION
@@ -64,5 +64,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: '/:path*',
+  matcher: "/:path*",
 };

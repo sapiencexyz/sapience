@@ -6,7 +6,7 @@ import { Position } from "../../models/Position";
 import { Transaction } from "../../models/Transaction";
 import { Epoch } from "../../models/Epoch";
 import { ResourcePrice } from "../../models/ResourcePrice";
-import { IndexPrice } from "../../models/IndexPrice";
+import type { IndexPrice } from "../../models/IndexPrice";
 import {
   MarketType,
   ResourceType,
@@ -14,7 +14,7 @@ import {
   TransactionType,
   EpochType,
   ResourcePriceType,
-  IndexPriceType,
+  type IndexPriceType,
 } from "../types";
 
 const mapMarketToType = (market: Market): MarketType => ({
@@ -112,7 +112,7 @@ export class MarketResolver {
   @Query(() => MarketType, { nullable: true })
   async market(
     @Arg("chainId", () => Int) chainId: number,
-    @Arg("address", () => String) address: string
+    @Arg("address", () => String) address: string,
   ): Promise<MarketType | null> {
     try {
       const market = await dataSource.getRepository(Market).findOne({
@@ -158,7 +158,7 @@ export class ResourceResolver {
 
   @Query(() => ResourceType, { nullable: true })
   async resource(
-    @Arg("slug", () => String) slug: string
+    @Arg("slug", () => String) slug: string,
   ): Promise<ResourceType | null> {
     try {
       const resource = await dataSource.getRepository(Resource).findOne({
@@ -179,7 +179,7 @@ export class ResourceResolver {
   async resourcePrices(
     @Arg("slug", () => String) slug: string,
     @Arg("startTime", () => Int, { nullable: true }) startTime?: number,
-    @Arg("endTime", () => Int, { nullable: true }) endTime?: number
+    @Arg("endTime", () => Int, { nullable: true }) endTime?: number,
   ): Promise<ResourcePriceType[]> {
     try {
       const resource = await dataSource.getRepository(Resource).findOne({
@@ -218,7 +218,7 @@ export class PositionResolver {
   @Query(() => [PositionType])
   async positions(
     @Arg("owner", () => String, { nullable: true }) owner?: string,
-    @Arg("marketId", () => Int, { nullable: true }) marketId?: number
+    @Arg("marketId", () => Int, { nullable: true }) marketId?: number,
   ): Promise<PositionType[]> {
     try {
       const where: any = {};
@@ -246,7 +246,7 @@ export class PositionResolver {
 export class TransactionResolver {
   @Query(() => [TransactionType])
   async transactions(
-    @Arg("positionId", () => Int, { nullable: true }) positionId?: number
+    @Arg("positionId", () => Int, { nullable: true }) positionId?: number,
   ): Promise<TransactionType[]> {
     try {
       const where: any = {};
@@ -270,7 +270,7 @@ export class TransactionResolver {
 export class EpochResolver {
   @Query(() => [EpochType])
   async epochs(
-    @Arg("marketId", () => Int, { nullable: true }) marketId?: number
+    @Arg("marketId", () => Int, { nullable: true }) marketId?: number,
   ): Promise<EpochType[]> {
     try {
       const where: any = {};

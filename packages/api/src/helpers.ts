@@ -1,6 +1,6 @@
 import {
-  Block,
-  PublicClient,
+  type Block,
+  type PublicClient,
   createPublicClient,
   formatUnits,
   http,
@@ -10,11 +10,11 @@ import {
 import { mainnet, sepolia, cannon } from "viem/chains";
 import { TOKEN_PRECISION } from "./constants";
 import { epochRepository } from "./db";
-import { Deployment } from "./interfaces";
+import type { Deployment } from "./interfaces";
 import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
-import { dirname } from "path";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { dirname } from "node:path";
 
 // Replace __dirname reference with this
 const __filename = fileURLToPath(import.meta.url);
@@ -43,7 +43,7 @@ const createInfuraWebSocketTransport = (network: string): Transport => {
       retryCount: 5,
       timeout: 30000,
       keepAlive: true,
-    }
+    },
   );
 };
 
@@ -124,7 +124,7 @@ export const getTimestampsForReindex = async (
   client: PublicClient,
   contractDeployment: Deployment,
   chainId: number,
-  epochId?: number
+  epochId?: number,
 ) => {
   const now = Math.round(new Date().getTime() / 1000);
 
@@ -175,12 +175,12 @@ export const getTimestampsForReindex = async (
 export async function getBlockRanges(
   startTimestamp: number,
   endTimestamp: number,
-  publicClient: PublicClient
+  publicClient: PublicClient,
 ) {
   console.log("Getting gas start...");
   const gasStart = await getBlockByTimestamp(
     mainnetPublicClient,
-    startTimestamp
+    startTimestamp,
   );
   console.log(`Got gas start: ${gasStart.number}. Getting gas end...`);
 
@@ -191,14 +191,14 @@ export async function getBlockRanges(
 
   const marketStart = await getBlockByTimestamp(publicClient, startTimestamp);
   console.log(
-    `Got market start: ${marketStart.number}. Getting market end....`
+    `Got market start: ${marketStart.number}. Getting market end....`,
   );
 
   const marketEnd =
     (await getBlockByTimestamp(publicClient, endTimestamp)) ||
     (await publicClient.getBlock());
   console.log(
-    `Got market end: ${marketEnd.number}. Finished getting block ranges.`
+    `Got market end: ${marketEnd.number}. Finished getting block ranges.`,
   );
 
   return {
@@ -211,7 +211,7 @@ export async function getBlockRanges(
 
 export async function getBlockByTimestamp(
   client: PublicClient,
-  timestamp: number
+  timestamp: number,
 ): Promise<Block> {
   // Get the latest block number
   const latestBlockNumber = await client.getBlockNumber();
@@ -253,7 +253,7 @@ export async function getBlockByTimestamp(
 
 export async function getBlockBeforeTimestamp(
   client: PublicClient,
-  timestamp: number
+  timestamp: number,
 ): Promise<Block> {
   const latestBlockNumber = await client.getBlockNumber();
   const latestBlock = await client.getBlock({ blockNumber: latestBlockNumber });
@@ -292,7 +292,7 @@ export async function getBlockBeforeTimestamp(
  * @returns bigint price with 18 decimals
  */
 export function sqrtPriceX96ToSettlementPriceD18(
-  settlementSqrtPriceX96: bigint
+  settlementSqrtPriceX96: bigint,
 ): bigint {
   // First divide by 2^96 to get sqrt price
   const sqrtPrice = settlementSqrtPriceX96 / BigInt(2 ** 96);
@@ -309,9 +309,9 @@ export const convertGasToGgas = (value: string) => {
   // decimal part = prefix of zeros if gas is < 10^9, then the useful decimals
   if (BigInt(value) % BigInt(1e9) !== BigInt(0)) {
     const decimalPart: string =
-      '0'.repeat(
-        Math.max(9 - (BigInt(value) % BigInt(1e9)).toString().length, 0)
-      ) + (BigInt(value) % BigInt(1e9)).toString().replace(/0+$/, '');
+      "0".repeat(
+        Math.max(9 - (BigInt(value) % BigInt(1e9)).toString().length, 0),
+      ) + (BigInt(value) % BigInt(1e9)).toString().replace(/0+$/, "");
     return `${integerPart}.${decimalPart}`;
   }
   return integerPart;
@@ -319,8 +319,8 @@ export const convertGasToGgas = (value: string) => {
 
 export const convertGgasToGas = (value: string) => {
   // case when we have decimals
-  if (value.indexOf('.') > -1) {
-    const [integerPart, decimalPart]: string[] = value.split('.');
+  if (value.indexOf(".") > -1) {
+    const [integerPart, decimalPart]: string[] = value.split(".");
     // console.log(`Integer part: ${integerPart}, decimal part: ${decimalPart}`);
     return (
       BigInt(integerPart) * BigInt(1e9) +

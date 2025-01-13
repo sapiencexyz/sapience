@@ -22,9 +22,15 @@ export class Resource {
   @Column({ type: "varchar", unique: true })
   slug: string;
 
-  @OneToMany(() => Market, (market) => market.resource)
+  @OneToMany(
+    () => Market,
+    (market) => market.resource,
+  )
   markets: Market[];
 
-  @OneToMany(() => ResourcePrice, (resourcePrice) => resourcePrice.resource)
+  @OneToMany(
+    () => ResourcePrice,
+    (resourcePrice) => resourcePrice.resource,
+  )
   resourcePrices: ResourcePrice[];
-} 
+}
