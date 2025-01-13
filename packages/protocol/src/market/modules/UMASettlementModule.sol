@@ -45,6 +45,10 @@ contract UMASettlementModule is
             epoch.marketParams.bondAmount
         );
 
+        uint256 decimalPrice = DecimalPrice.sqrtRatioX96ToPrice(
+            settlementSqrtPriceX96
+        );
+
         bytes memory claim = abi.encodePacked(
             string(epoch.marketParams.claimStatement),
             " between timestamps ",
@@ -52,7 +56,7 @@ contract UMASettlementModule is
             " and ",
             Strings.toString(epoch.endTime),
             " (inclusive) is ",
-            Strings.toString(settlementSqrtPriceX96),
+            Strings.toString(decimalPrice),
             "."
         );
 
