@@ -58,7 +58,7 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
 
         int256 deltaCollateral = -int256(withdrawnCollateral);
 
-        // update position collateral
+        // update position collateral. If there is more than zero deposited collateral, after this update, it means there wasn't any collateral left in the contract.
         position.depositedCollateralAmount -= withdrawnCollateral;
 
         emit IFoilPositionEvents.PositionSettled(
