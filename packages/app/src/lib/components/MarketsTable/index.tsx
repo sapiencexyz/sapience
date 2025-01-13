@@ -34,6 +34,8 @@ import {
   useWriteContract,
 } from 'wagmi';
 
+import { BigNumber } from 'ethers';
+
 import erc20ABI from '../../erc20abi.json';
 import useFoilDeployment from '../foil/useFoilDeployment';
 import MarketAddress from '../MarketAddress';
@@ -64,6 +66,7 @@ import { useMarketList, type Market } from '~/lib/context/MarketListProvider';
 import type { EpochData, MarketParams } from '~/lib/interfaces/interfaces';
 import { formatAmount } from '~/lib/util/numberUtil';
 import { gweiToEther } from '~/lib/util/util';
+import { encodePriceSqrt } from '~/lib/util/decimalUtil';
 
 // Update interface to only include resourcePrice
 interface MissingBlocks {
@@ -681,14 +684,13 @@ const EpochItem: React.FC<{
   const priceAdjusted = latestPrice / (stEthPerToken || 1);
 
   const handleSettleWithPrice = () => {
+    const sqrtPriceX96 = encodePriceSqrt(BigNumber.from(priceAdjusted));
+    console.log('sqrtPriceX96', sqrtPriceX96);
     settleWithPrice({
       address: foilVaultData.address as `0x${string}`,
       abi: foilVaultData.abi,
       functionName: 'submitMarketSettlementPrice',
-      args: [
-        epoch.epochId,
-        parseUnits(priceAdjusted.toString(), TOKEN_DECIMALS),
-      ],
+      args: [epoch.epochId, sqrtPriceX96],
     });
     setTxnStep(2);
   };

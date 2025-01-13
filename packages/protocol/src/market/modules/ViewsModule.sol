@@ -167,4 +167,10 @@ contract ViewsModule is IViewsModule {
     function getMarketTickSpacing() external view override returns (int24) {
         return Epoch.getTickSpacingForFee(Market.load().marketParams.feeRate);
     }
+
+    function getDecimalPriceFromSqrtPriceX96(
+        uint160 sqrtPriceX96
+    ) external pure override returns (uint256) {
+        return DecimalPrice.sqrtRatioX96ToPrice(sqrtPriceX96);
+    }
 }
