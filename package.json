@@ -16,6 +16,7 @@
   },
   "keywords": [],
   "devDependencies": {
+    "@biomejs/biome": "1.9.4",
     "concurrently": "^8.2.2"
   },
   "engines": {
