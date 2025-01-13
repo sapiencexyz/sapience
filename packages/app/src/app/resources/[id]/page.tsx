@@ -174,7 +174,11 @@ const renderPriceDisplay = (
 
   return (
     <span className="text-2xl font-bold">
-      <NumberDisplay value={formatUnits(BigInt(price.value), 9)} /> {unit}
+      <NumberDisplay
+        value={formatUnits(BigInt(price.value), 9)}
+        precision={resourceId === 'celestia-blobspace' ? 6 : 4}
+      />{' '}
+      {unit}
     </span>
   );
 };

@@ -10,9 +10,13 @@ import {
 
 type NumberDisplayProps = {
   value: number | string | bigint;
+  precision?: number;
 };
 
-const NumberDisplay: React.FC<NumberDisplayProps> = ({ value }) => {
+const NumberDisplay: React.FC<NumberDisplayProps> = ({
+  value,
+  precision = 4,
+}) => {
   const formatNumber = (val: bigint | number | string): string => {
     let numValue: number;
     let stringValue: string;
@@ -34,30 +38,35 @@ const NumberDisplay: React.FC<NumberDisplayProps> = ({ value }) => {
       return 'Invalid number';
     }
 
-    if (Math.abs(numValue) < 0.0001 && numValue !== 0) {
-      return '<0.0001';
+    if (Math.abs(numValue) < 1 / 10 ** precision && numValue !== 0) {
+      return `<${1 / 10 ** precision}`;
     }
 
-    const roundedValue = Number(numValue.toFixed(4));
+    const roundedValue = Number(numValue.toFixed(precision));
 
     return roundedValue.toString();
   };
 
   const displayValue = formatNumber(value || 0);
+  const originalValue = value.toString();
 
-  return displayValue.length ? (
+  if (!displayValue.length) {
+    return <Minus className="opacity-20" />;
+  }
+
+  if (displayValue === originalValue) {
+    return <span className="cursor-default">{displayValue}</span>;
+  }
+
+  return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger type="button" className="cursor-default">
           {displayValue}
         </TooltipTrigger>
-        <TooltipContent className="font-normal">
-          {value.toString()}
-        </TooltipContent>
+        <TooltipContent className="font-normal">{originalValue}</TooltipContent>
       </Tooltip>
     </TooltipProvider>
-  ) : (
-    <Minus className="opacity-20" />
   );
 };
 
