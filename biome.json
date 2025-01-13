@@ -7,11 +7,26 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"ignore": []
+		"ignore": [
+			"**/.github",
+			"**/.husky",
+			"**/.next",
+			"**/.vscode",
+			"**/.turbo",
+			"**/.yarn",
+			"**/cache",
+			"**/coverage",
+			"**/deployments",
+			"**/out",
+			"**/node_modules",
+			"**/package-lock.json",
+			"**/pnpm-lock.yaml",
+			"**/yarn.lock"
+		]
 	},
 	"formatter": {
 		"enabled": true,
-		"indentStyle": "tab"
+		"indentStyle": "space"
 	},
 	"organizeImports": {
 		"enabled": true
@@ -24,7 +39,10 @@
 	},
 	"javascript": {
 		"formatter": {
-			"quoteStyle": "double"
+			"quoteStyle": "single"
+		},
+		"parser": {
+			"unsafeParameterDecoratorsEnabled": true
 		}
 	}
 }
