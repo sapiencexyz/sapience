@@ -251,7 +251,7 @@ const startServer = async () => {
     "/markets",
     handleAsyncErrors(async (req, res, next) => {
       const markets = await marketRepository.find({
-        relations: ["epochs"],
+        relations: ["epochs", "resource"],
       });
 
       const formattedMarkets = markets.map((market) => ({
@@ -434,7 +434,7 @@ const startServer = async () => {
 
       const positions = await positionRepository.find({
         where,
-        relations: ["epoch", "epoch.market"],
+        relations: ["epoch", "epoch.market", "epoch.market.resource"],
         order: { positionId: "ASC" },
       });
 
@@ -478,7 +478,7 @@ const startServer = async () => {
           positionId: Number(positionId),
           epoch: { market: { id: market.id } },
         },
-        relations: ["epoch", "epoch.market"],
+        relations: ["epoch", "epoch.market", "epoch.market.resource"],
       });
 
       if (!position) {
@@ -517,7 +517,8 @@ const startServer = async () => {
         .innerJoinAndSelect("transaction.position", "position")
         .innerJoinAndSelect("position.epoch", "epoch")
         .innerJoinAndSelect("epoch.market", "market")
-        .innerJoinAndSelect("transaction.event", "event") // Join Event data
+        .innerJoinAndSelect("market.resource", "resource")
+        .innerJoinAndSelect("transaction.event", "event")
         .where("market.chainId = :chainId", { chainId })
         .andWhere("market.address = :address", { address })
         .orderBy("position.positionId", "ASC")
@@ -957,7 +958,7 @@ const startServer = async () => {
 
       const positions = await positionRepository.find({
         where: { owner: address },
-        relations: ["epoch", "epoch.market", "transactions"],
+        relations: ["epoch", "epoch.market", "epoch.market.resource", "transactions"],
       });
 
       const transactions = await transactionRepository.find({
@@ -966,6 +967,7 @@ const startServer = async () => {
           "position",
           "position.epoch",
           "position.epoch.market",
+          "position.epoch.market.resource",
           "event",
         ],
       });
@@ -1444,6 +1446,16 @@ const startServer = async () => {
 
       const hydratedTransaction = {
         ...transaction,
+        position: {
+          ...transaction.position,
+          epoch: {
+            ...transaction.position?.epoch,
+            market: {
+              ...transaction.position?.epoch?.market,
+              resource: transaction.position?.epoch?.market?.resource
+            }
+          }
+        },
         collateralDelta: "0",
         baseTokenDelta: "0",
         quoteTokenDelta: "0",
@@ -1484,9 +1496,9 @@ const startServer = async () => {
       hydratedPositions.push(hydratedTransaction);
 
       // set up for next transaction
-      lastBaseToken = BigInt(currentBaseTokenBalance);
-      lastQuoteToken = BigInt(currentQuoteTokenBalance);
-      lastCollateral = BigInt(currentCollateralBalance);
+      lastBaseToken = BigInt(transaction.baseToken);
+      lastQuoteToken = BigInt(transaction.quoteToken);
+      lastCollateral = BigInt(transaction.collateral);
     }
     return hydratedPositions;
   };

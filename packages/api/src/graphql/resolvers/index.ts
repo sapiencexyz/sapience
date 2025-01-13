@@ -1,5 +1,4 @@
 import { Resolver, Query, Arg, Int, FieldResolver, Root } from "type-graphql";
-import { Between, In } from "typeorm";
 import dataSource from "../../db";
 import { Market } from "../../models/Market";
 import { Resource } from "../../models/Resource";
@@ -65,6 +64,7 @@ const mapPositionToType = (position: Position): PositionType => ({
   borrowedQuoteToken: position.borrowedQuoteToken,
   lpBaseToken: position.lpBaseToken,
   lpQuoteToken: position.lpQuoteToken,
+  isSettled: position.isSettled,
 });
 
 const mapTransactionToType = (transaction: Transaction): TransactionType => ({

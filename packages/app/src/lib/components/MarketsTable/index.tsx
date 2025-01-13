@@ -136,19 +136,27 @@ const MarketsTable: React.FC = () => {
   const { signMessageAsync } = useSignMessage();
   const [missingBlocks, setMissingBlocks] = useState<MissingBlocks>({});
 
-  const data = useMemo(
-    () =>
-      markets.flatMap((market) =>
-        market.epochs.map((epoch) => ({
+  const data = useMemo(() => {
+    const flattenedData = markets.flatMap((market) =>
+      market.epochs.map((epoch) => {
+        console.log(
+          'Processing epoch:',
+          epoch.epochId,
+          'for market:',
+          market.address
+        );
+        return {
           ...epoch,
           market,
           marketAddress: market.address,
           chainId: market.chainId,
           isPublic: market.public,
-        }))
-      ),
-    [markets]
-  );
+        };
+      })
+    );
+    console.log('Flattened market data:', flattenedData);
+    return flattenedData;
+  }, [markets]);
 
   // Simplify fetchMissingBlocks to only fetch resource price blocks
   const fetchMissingBlocks = async (market: Market, epochId: number) => {
@@ -647,8 +655,18 @@ const EpochItem: React.FC<{
   }, [isSettlementSuccess]);
 
   const { data: latestPrice, isLoading: isLatestPriceLoading } = useQuery({
-    queryKey: ['latestPrice', `${market?.chainId}:${market?.address}`],
+    queryKey: [
+      'latestPrice',
+      `${market?.chainId}:${market?.address}`,
+      epoch.epochId,
+    ],
     queryFn: async () => {
+      console.log(
+        'Fetching price for epoch:',
+        epoch.epochId,
+        'market:',
+        market.address
+      );
       const response = await fetch(
         `${API_BASE_URL}/prices/index/latest?contractId=${market.chainId}:${market.address}&epochId=${epoch.epochId}`
       );
@@ -816,7 +834,11 @@ const SettlementPriceTableCell: React.FC<{
   }, [stEthPerTokenResult.data]);
 
   const { data: latestPrice, isLoading: isLatestPriceLoading } = useQuery({
-    queryKey: ['latestPrice', `${market?.chainId}:${market?.address}`],
+    queryKey: [
+      'latestPrice',
+      `${market?.chainId}:${market?.address}`,
+      epoch.epochId,
+    ],
     queryFn: async () => {
       const response = await fetch(
         `${API_BASE_URL}/prices/index/latest?contractId=${market.chainId}:${market.address}&epochId=${epoch.epochId}`

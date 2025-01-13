@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { type ColumnDef } from '@tanstack/react-table';
 import { format } from 'date-fns';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import React from 'react';
 import { formatUnits } from 'viem';
@@ -159,7 +159,8 @@ const generatePlaceholderIndexPrices = () => {
 
 const renderPriceDisplay = (
   isLoading: boolean,
-  price: ResourcePrice | undefined
+  price: ResourcePrice | undefined,
+  resourceId: string
 ) => {
   if (isLoading) {
     return <span className="text-2xl font-bold">Loading...</span>;
@@ -169,15 +170,17 @@ const renderPriceDisplay = (
     return <span className="text-2xl font-bold">No price data</span>;
   }
 
+  const unit = resourceId === 'celestia-blobspace' ? 'μTIA' : 'gwei';
+
   return (
     <span className="text-2xl font-bold">
-      <NumberDisplay value={formatUnits(BigInt(price.value), 9)} /> gwei
+      <NumberDisplay value={formatUnits(BigInt(price.value), 9)} /> {unit}
     </span>
   );
 };
 
 const MarketContent = ({ params }: { params: { id: string } }) => {
-  const { data: resources } = useResources();
+  const { data: resources, isLoading: isLoadingResources } = useResources();
   const category = MARKET_CATEGORIES.find((c) => c.id === params.id);
   const { data: latestPrice, isLoading: isPriceLoading } =
     useLatestResourcePrice(params.id);
@@ -222,6 +225,14 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
     );
   }
 
+  if (isLoadingResources) {
+    return (
+      <div className="flex justify-center items-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   // Get the current resource and its markets
   const resource = resources?.find((r) => r.slug === params.id);
   const epochs =
@@ -253,7 +264,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
                     Current Price
                   </span>
                   <div className="flex items-baseline gap-2">
-                    {renderPriceDisplay(isPriceLoading, latestPrice)}
+                    {renderPriceDisplay(isPriceLoading, latestPrice, params.id)}
                   </div>
                 </div>
               </CardContent>

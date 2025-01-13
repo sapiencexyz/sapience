@@ -76,18 +76,28 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
   const { data: latestPrice } = useQuery({
     queryKey: ['latestPrice', `${state.chainId}:${state.address}`],
     queryFn: async () => {
-      const response = await fetch(
-        `${API_BASE_URL}/prices/index/latest?contractId=${state.chainId}:${state.address}&epochId=${state.epoch}`
-      );
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/prices/index/latest?contractId=${state.chainId}:${state.address}&epochId=${state.epoch}`
+        );
+        if (!response.ok) {
+          // Return null instead of throwing for 404s
+          if (response.status === 404) {
+            console.warn('Price data not available yet');
+            return null;
+          }
+          throw new Error('Network response was not ok');
+        }
+        const data = await response.json();
+        return data.price;
+      } catch (error) {
+        console.error('Error fetching latest price:', error);
+        return null;
       }
-      const data = await response.json();
-      return data.price;
     },
     enabled: state.chainId !== 0 && state.epoch !== 0,
     refetchInterval: () => {
-      const currentTime = Math.floor(Date.now() / 1000); // Convert to Unix timestamp
+      const currentTime = Math.floor(Date.now() / 1000);
       if (state.averagePrice && currentTime > state.endTime) {
         return false;
       }
@@ -214,7 +224,11 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
 
   useEffect(() => {
     console.log('latestPrice =', latestPrice);
-    if (latestPrice !== undefined && stEthPerTokenResult.data) {
+    if (
+      latestPrice !== undefined &&
+      latestPrice !== null &&
+      stEthPerTokenResult.data
+    ) {
       const stEthPerToken = Number(
         gweiToEther(stEthPerTokenResult.data as bigint)
       );
@@ -225,6 +239,15 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
         ...currentState,
         averagePrice: averageResourcePriceinWstEth,
         stEthPerToken,
+      }));
+    } else if (latestPrice === null) {
+      // When price data is not available, set averagePrice to null/0
+      setState((currentState) => ({
+        ...currentState,
+        averagePrice: 0,
+        stEthPerToken: stEthPerTokenResult.data
+          ? Number(gweiToEther(stEthPerTokenResult.data as bigint))
+          : undefined,
       }));
     }
   }, [latestPrice, stEthPerTokenResult.data]);

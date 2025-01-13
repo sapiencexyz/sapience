@@ -40,14 +40,14 @@ const MarketsTable = () => {
         .filter((market: any) => {
           if (!selectedResource) return true;
           const resource = resources?.find((r) => r.slug === selectedResource);
-          return resource && market.name === resource.name;
+          return resource && market.resource.name === resource.name;
         })
         .flatMap((market: any) =>
           market.epochs.map((epoch: any) => {
             const startDate = new Date(epoch.startTimestamp * 1000);
             const endDate = new Date(epoch.endTimestamp * 1000);
             return {
-              marketName: market.name,
+              marketName: market.resource.name,
               epochId: epoch.epochId,
               period: `${format(startDate, 'PPpp')} - ${format(
                 endDate,

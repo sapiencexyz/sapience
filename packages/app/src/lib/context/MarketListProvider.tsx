@@ -14,6 +14,11 @@ export interface Market {
   chainId: number;
   address: string;
   collateralAsset: string;
+  resource: {
+    id: number;
+    name: string;
+    slug: string;
+  };
   epochs: Array<{
     id: number;
     epochId: number;

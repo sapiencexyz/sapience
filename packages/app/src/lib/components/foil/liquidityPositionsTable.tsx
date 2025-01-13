@@ -145,7 +145,7 @@ const createColumns = (
     id: 'market',
     header: 'Market',
     accessorFn: (row: any) =>
-      `${row.epoch.market.name} (Epoch ${row.epoch.epochId})`,
+      `${row.epoch.market.resource.name} (Epoch ${row.epoch.epochId})`,
   },
   {
     id: 'position',
