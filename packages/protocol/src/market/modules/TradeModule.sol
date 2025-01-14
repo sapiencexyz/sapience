@@ -45,10 +45,6 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
         Epoch.Data storage epoch = Epoch.load(epochId);
 
-        if (block.timestamp < epoch.startTime) {
-            revert Errors.EpochNotStarted(epochId, epoch.startTime);
-        }
-
         // check if epoch is not settled
         epoch.validateNotSettled();
 
