@@ -10,6 +10,7 @@ import { formatUnits } from 'viem';
 
 import { Card, CardContent } from '@/components/ui/card';
 import CandlestickChart from '~/lib/components/chart';
+import { EpochTiming } from '~/lib/components/foil/EpochTiming';
 import NumberDisplay from '~/lib/components/foil/numberDisplay';
 import { MarketLayout } from '~/lib/components/market/MarketLayout';
 import { ResourceNav } from '~/lib/components/market/ResourceNav';
@@ -82,16 +83,10 @@ const EpochsTable = ({ data }: { data: Epoch[] }) => {
               className={`flex items-center justify-between cursor-pointer px-4 py-1.5 ${hoveredIndex === index ? 'bg-secondary' : 'hover:bg-secondary/50'}`}
             >
               <div className="flex items-baseline">
-                <span>
-                  Ends {format(new Date(epoch.endTimestamp * 1000), 'M/d')}
-                </span>
-                <span className="text-xs text-muted-foreground ml-2">
-                  {Math.round(
-                    (epoch.endTimestamp - epoch.startTimestamp) /
-                      (7 * 24 * 3600)
-                  )}{' '}
-                  week period
-                </span>
+                <EpochTiming
+                  startTimestamp={epoch.startTimestamp}
+                  endTimestamp={epoch.endTimestamp}
+                />
               </div>
               <ChevronRight className="h-6 w-6 text-muted-foreground" />
             </div>
@@ -240,15 +235,17 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
   // Get the current resource and its markets
   const resource = resources?.find((r) => r.slug === params.id);
   const epochs =
-    resource?.markets.flatMap((market) =>
-      (market.epochs || []).map((epoch) => ({
-        ...epoch,
-        market: {
-          address: market.address,
-          chainId: market.chainId,
-        },
-      }))
-    ) || [];
+    resource?.markets
+      .flatMap((market) =>
+        (market.epochs || []).map((epoch) => ({
+          ...epoch,
+          market: {
+            address: market.address,
+            chainId: market.chainId,
+          },
+        }))
+      )
+      .sort((a, b) => b.startTimestamp - a.startTimestamp) || [];
 
   const formattedResourcePrices: ResourcePricePoint[] =
     resourcePrices?.map((price) => ({
