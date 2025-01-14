@@ -146,7 +146,9 @@ const AddEditLiquidity: React.FC = () => {
 
   const isDecrease =
     liquidityAction === 'remove' && Number(modifyLiquidity) > 0;
-  const isAmountUnchanged = Number(modifyLiquidity) === 0;
+  const isAmountUnchanged = isEdit
+    ? Number(modifyLiquidity) === 0
+    : Number(depositAmount) === 0;
 
   /// //// READ CONTRACT HOOKS ///////
   const { data: positionData, refetch: refetchPosition } = useReadContract({
@@ -640,9 +642,9 @@ const AddEditLiquidity: React.FC = () => {
     }
   }, [tokenAmountsError, toast]);
 
-  // hanlde uniswap error
+  // handle uniswap error
   useEffect(() => {
-    if (uniswapPositionError) {
+    if (uniswapPositionError && isEdit) {
       console.error('uniswapPositionError: ', uniswapPositionError);
       toast({
         title: 'Failed to get position from uniswap',
@@ -650,7 +652,7 @@ const AddEditLiquidity: React.FC = () => {
         duration: 5000,
       });
     }
-  }, [uniswapPositionError, toast]);
+  }, [uniswapPositionError, isEdit, toast]);
 
   useEffect(() => {
     if (isEdit) return;
@@ -920,6 +922,7 @@ const AddEditLiquidity: React.FC = () => {
 
     return (
       <Button className="w-full" size="lg" type="submit" disabled={isDisabled}>
+        {pendingTxn && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         {getButtonText()}
       </Button>
     );
