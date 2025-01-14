@@ -619,7 +619,7 @@ export default function AddEditTrade() {
     let buttonTxt = 'Close Position';
 
     if (requireApproval) {
-      buttonTxt = `Approve ${collateralAssetTicker} Transfer`;
+      buttonTxt = `Approve ${collateralAssetTicker} transfer and close position`;
     }
 
     if (isFetchingQuote && !formError) return null;
