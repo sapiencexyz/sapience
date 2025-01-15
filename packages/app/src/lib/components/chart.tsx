@@ -90,6 +90,7 @@ const CandlestickChart: React.FC<Props> = ({
         borderColor: theme === 'dark' ? '#363537' : '#cccccc',
         timeVisible: true,
         secondsVisible: false,
+        minBarSpacing: 0.001,
       },
     });
 

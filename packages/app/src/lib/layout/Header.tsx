@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import React, { useState, useEffect } from 'react';
 
 import ConnectButton from '../components/ConnectButton';
+import { EpochTiming } from '../components/foil/EpochTiming';
 import { ModeToggle } from '../components/ModeToggle';
 import {
   Accordion,
@@ -50,16 +51,7 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
   }, [hoveredResource, resources]);
 
   const formatDuration = (start: number, end: number) => {
-    const endDate = new Date(end * 1000);
-    const weeks = Math.round((end - start) / (7 * 24 * 3600));
-    return (
-      <>
-        Ends {format(endDate, 'M/d')}
-        <span className="text-xs text-muted-foreground ml-2">
-          {weeks} week period
-        </span>
-      </>
-    );
+    return <EpochTiming startTimestamp={start} endTimestamp={end} />;
   };
 
   const handleLinkClick = () => {
@@ -205,17 +197,7 @@ const NavLinks = ({
   };
 
   const formatDuration = (start: number, end: number) => {
-    const startDate = new Date(start * 1000);
-    const endDate = new Date(end * 1000);
-    const weeks = Math.round((end - start) / (7 * 24 * 3600));
-    return (
-      <>
-        {format(endDate, 'M/d')}
-        <span className="text-sm text-muted-foreground ml-2">
-          {weeks} week period
-        </span>
-      </>
-    );
+    return <EpochTiming startTimestamp={start} endTimestamp={end} />;
   };
 
   const renderMobileMarketLinks = (path: string) => {
