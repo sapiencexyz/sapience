@@ -242,10 +242,18 @@ const Subscribe: FC<SubscribeProps> = ({
       setQuoteError(quoteModifyPositionResult.error.message);
     } else if (quoteCreatePositionResult.error && !positionId) {
       const errorMessage = quoteCreatePositionResult.error.message;
-      // Clean up common error messages
-      const cleanedMessage = errorMessage
-        .replace('execution reverted: ', '')
-        .replace('Error: ', '');
+			let cleanedMessage: string;
+
+						if (errorMessage.includes("reason: Unexpected error")) {
+							// Replace "reason: Unexpected error" that is returned by Quoter when the Uniswap trade cannot be done (liquidity) "The protocol cannot generate a quote for this order at this moment. Not enough liquidity to perform this trade."
+							cleanedMessage =
+								"Not enough liquidity to perform this subscription at this moment.";
+						}
+
+			// Clean up common error messages
+			cleanedMessage = errorMessage
+				.replace("execution reverted: ", "")
+				.replace("Error: ", "");
       setQuoteError(cleanedMessage);
     } else {
       setQuoteError(null);
