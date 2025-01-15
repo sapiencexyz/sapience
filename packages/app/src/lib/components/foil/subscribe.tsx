@@ -249,10 +249,10 @@ const Subscribe: FC<SubscribeProps> = ({
           "Not enough liquidity to perform this subscription at this moment.";
       }
 
-			// Clean up common error messages
-			const cleanedMessage = errorMessage
-				.replace("execution reverted: ", "")
-				.replace("Error: ", "");
+      // Clean up common error messages
+      const cleanedMessage = errorMessage
+        .replace('execution reverted: ', '')
+        .replace('Error: ', '');
       setQuoteError(cleanedMessage);
     } else {
       setQuoteError(null);
