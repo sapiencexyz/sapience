@@ -36,6 +36,25 @@ interface ResourcePricePoint {
   price: number;
 }
 
+const findClosestResourcePrice = (targetTimestamp: number, resourcePrices: ResourcePricePoint[]) => {
+  if (!resourcePrices?.length) return 0;
+
+
+  const targetInSeconds = Math.floor(targetTimestamp / 1000);
+
+  const closest = resourcePrices.reduce((prev, curr) => {
+    const prevDiff = Math.abs((prev.timestamp / 1000) - targetInSeconds);
+    const currDiff = Math.abs((curr.timestamp / 1000) - targetInSeconds);
+    return currDiff < prevDiff ? curr : prev;
+  });
+
+  const timeDiff = Math.abs((closest.timestamp / 1000) - targetInSeconds);
+  // 6 seconds for between new block production
+  const isWithinTolerance = timeDiff <= 6;
+
+  return isWithinTolerance ? closest.price : 0;
+};
+
 const CandlestickChart: React.FC<Props> = ({
   data,
   activeWindow,
@@ -71,16 +90,10 @@ const CandlestickChart: React.FC<Props> = ({
       },
       grid: {
         vertLines: {
-          color:
-            theme === 'dark'
-              ? 'rgba(197, 203, 206, 0.2)'
-              : 'rgba(197, 203, 206, 0.5)',
+          color: theme === 'dark' ? 'rgba(197, 203, 206, 0.2)' : 'rgba(197, 203, 206, 0.5)',
         },
         horzLines: {
-          color:
-            theme === 'dark'
-              ? 'rgba(197, 203, 206, 0.2)'
-              : 'rgba(197, 203, 206, 0.5)',
+          color: theme === 'dark' ? 'rgba(197, 203, 206, 0.2)' : 'rgba(197, 203, 206, 0.5)',
         },
       },
       crosshair: {
@@ -90,7 +103,10 @@ const CandlestickChart: React.FC<Props> = ({
         borderColor: theme === 'dark' ? '#363537' : '#cccccc',
         timeVisible: true,
         secondsVisible: false,
-        minBarSpacing: 0.001,
+        minBarSpacing: 2,
+        rightOffset: 5,
+        fixLeftEdge: true,
+        fixRightEdge: true,
       },
     });
 
@@ -150,10 +166,24 @@ const CandlestickChart: React.FC<Props> = ({
   useEffect(() => {
     if (!chartRef.current || !candlestickSeriesRef.current) return;
 
+    // // Debug logs for timestamps
+    // console.log('Market Prices timestamps:', data.marketPrices.map(mp => mp.endTimestamp));
+    // console.log('Index Prices timestamps:', data.indexPrices.map(ip => ip.timestamp));
+    // console.log('Resource Prices timestamps:', data.resourcePrices?.map(rp => rp.timestamp / 1000));
+
+    // // Debug log for a sample comparison
+    // if (data.marketPrices[0] && data.resourcePrices?.[0]) {
+    //   console.log('Sample comparison:');
+    //   console.log('Market timestamp:', data.marketPrices[0].endTimestamp);
+    //   console.log('Resource timestamp:', data.resourcePrices[0].timestamp / 1000);
+    //   console.log('Difference:', Math.abs(data.marketPrices[0].endTimestamp - data.resourcePrices[0].timestamp / 1000));
+    // }
+
     const combinedData = data.marketPrices
       .map((mp, i) => {
         const timestamp = (mp.endTimestamp / 1000) as UTCTimestamp;
         const indexPrice = data.indexPrices[i]?.price || 0;
+        const resourcePrice = findClosestResourcePrice(mp.endTimestamp, data.resourcePrices || []);
         const adjustedPrice = isLoading ? 0 : indexPrice / (stEthPerToken || 1);
 
         if (!mp.open || !mp.high || !mp.low || !mp.close) {
@@ -179,30 +209,30 @@ const CandlestickChart: React.FC<Props> = ({
             ? Number(mp.close)
             : Number(convertGgasPerWstEthToGwei(mp.close, stEthPerToken)),
         };
-
         const lineData: LineData = {
           time: timestamp,
           value: displayPriceValue || 0,
         };
 
-        return { candleData, lineData };
+        const resourceData: LineData = {
+          time: timestamp,
+          value: resourcePrice,
+        };
+
+        return { candleData, lineData, resourceData };
       })
       .filter((item): item is NonNullable<typeof item> => item !== null);
 
     const candleSeriesData = combinedData.map((d) => d.candleData);
     const lineSeriesData = combinedData.map((d) => d.lineData);
+    const resourceSeriesData = combinedData.map((d) => d.resourceData);
 
     candlestickSeriesRef.current.setData(candleSeriesData);
 
     if (!isLoading && indexPriceSeriesRef.current) {
       indexPriceSeriesRef.current.setData(lineSeriesData);
-
-      if (data.resourcePrices?.length && resourcePriceSeriesRef.current) {
-        const resourceLineData = data.resourcePrices.map((p) => ({
-          time: (p.timestamp / 1000) as UTCTimestamp,
-          value: p.price,
-        }));
-        resourcePriceSeriesRef.current.setData(resourceLineData);
+      if (resourcePriceSeriesRef.current) {
+        resourcePriceSeriesRef.current.setData(resourceSeriesData);
       }
     }
 
@@ -221,6 +251,18 @@ const CandlestickChart: React.FC<Props> = ({
       resourcePriceSeriesRef.current.applyOptions({
         visible: seriesVisibility.resource,
       });
+    }
+
+    if (chartRef.current) {
+      chartRef.current.timeScale().fitContent();
+
+      const visibleLogicalRange = chartRef.current.timeScale().getVisibleLogicalRange();
+      if (visibleLogicalRange !== null) {
+        chartRef.current.timeScale().setVisibleLogicalRange({
+          from: visibleLogicalRange.from,
+          to: visibleLogicalRange.to + 5,
+        });
+      }
     }
   }, [data, isLoading, stEthPerToken, useMarketUnits, seriesVisibility]);
 
