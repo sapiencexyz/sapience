@@ -8,7 +8,9 @@
     "docgen": "forge doc",
     "test": "forge build --ast && cannon test cannonfile.test.toml --forge.vv",
     "deploy:sepolia": "cannon build cannonfile.sepolia.toml --chain-id 11155111 --write-deployments ./deployments/11155111",
-    "simulate-deploy:sepolia": "cannon build cannonfile.sepolia.toml --chain-id 11155111 --dry-run"
+    "simulate-deploy:sepolia": "cannon build cannonfile.sepolia.toml --chain-id 11155111 --dry-run",
+    "deploy:base": "cannon build cannonfile.base-beta.toml --chain-id 8453 --write-deployments ./deployments/8453",
+    "simulate-deploy:base": "cannon build cannonfile.base-beta.toml --chain-id 8453 --dry-run"
   },
   "devDependencies": {
     "@types/chai": "^4.3.19",
