@@ -365,6 +365,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             ? collateralReceived.mulDiv(1e18, totalShares)
             : 1e18;
 
+        if (sharePrice == 0) {
+            revert("Share price cannot be 0");
+        }
+
         // Store the share price for the current epoch
         epochSharePrices[currentEpochId] = sharePrice;
 
