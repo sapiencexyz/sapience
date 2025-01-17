@@ -181,6 +181,9 @@ const CandlestickChart: React.FC<Props> = ({
         resourcePriceSeriesRef.current.applyOptions({
           visible: seriesVisibility.resource,
         });
+        
+       
+        chartRef.current.timeScale().fitContent();
       }
       return;
     }
@@ -262,17 +265,10 @@ const CandlestickChart: React.FC<Props> = ({
     }
 
     if (chartRef.current) {
+      chartRef.current.timeScale().resetTimeScale();
       chartRef.current.timeScale().fitContent();
-
-      const visibleLogicalRange = chartRef.current.timeScale().getVisibleLogicalRange();
-      if (visibleLogicalRange !== null) {
-        chartRef.current.timeScale().setVisibleLogicalRange({
-          from: visibleLogicalRange.from,
-          to: visibleLogicalRange.to + 5,
-        });
-      }
     }
-  }, [data, isLoading, stEthPerToken, useMarketUnits, seriesVisibility, filterResourcePrices, resourceOnly]);
+  }, [data, isLoading, stEthPerToken, useMarketUnits, seriesVisibility, filterResourcePrices, resourceOnly, activeWindow]);
 
   return (
     <div className="flex flex-col flex-1">
