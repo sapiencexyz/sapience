@@ -14,7 +14,7 @@ minTradeSize = "10000"
 # Integration addresses
 optimisticOracleV3 = "0x2aBf1Bd76655de80eDB3086114315Eec75AF500c" # UMA Optimistic Oracle V3 
 uniswapPositionManager = "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1" # Uniswap V3 NonfungiblePositionManager 
-uniswapSwapRouter = "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45" # Uniswap V3 SwapRouter 
+uniswapSwapRouter = "0xAf5ead464aFFB12dD4CDFB98c9D2C490194FE5d0" # Using our deployed SwapRouter // "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45" # Uniswap V3 SwapRouter 
 uniswapQuoter = "0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a" # Uniswap V3 QuoterV2 
 # Vaults Settings
 vault1Name="Foil Vault Yin"
