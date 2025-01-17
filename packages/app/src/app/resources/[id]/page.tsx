@@ -279,8 +279,14 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
               }}
               activeWindow={TimeWindow.D}
               isLoading={isResourcePricesLoading}
-              seriesVisibility={seriesVisibility}
+              seriesVisibility={{
+                candles: false,
+                index: false,
+                resource: true,
+              }}
               toggleSeries={toggleSeries}
+              filterResourcePrices={false}
+              resourceOnly={true}
             />
           </div>
         </div>

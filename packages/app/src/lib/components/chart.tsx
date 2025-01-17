@@ -24,6 +24,8 @@ interface Props {
     resource: boolean;
   };
   toggleSeries: (series: 'candles' | 'index' | 'resource') => void;
+  filterResourcePrices?: boolean;
+  resourceOnly?: boolean;
 }
 
 interface IndexPrice {
@@ -36,12 +38,15 @@ interface ResourcePricePoint {
   price: number;
 }
 
-const findClosestResourcePrice = (targetTimestamp: number, resourcePrices: ResourcePricePoint[]) => {
+const findClosestResourcePrice = (
+  targetTimestamp: number, 
+  resourcePrices: ResourcePricePoint[], 
+  shouldFilter: boolean
+) => {
   if (!resourcePrices?.length) return 0;
-
+  if (!shouldFilter) return resourcePrices.find(p => p.timestamp === targetTimestamp)?.price || 0;
 
   const targetInSeconds = Math.floor(targetTimestamp / 1000);
-
   const closest = resourcePrices.reduce((prev, curr) => {
     const prevDiff = Math.abs((prev.timestamp / 1000) - targetInSeconds);
     const currDiff = Math.abs((curr.timestamp / 1000) - targetInSeconds);
@@ -49,10 +54,7 @@ const findClosestResourcePrice = (targetTimestamp: number, resourcePrices: Resou
   });
 
   const timeDiff = Math.abs((closest.timestamp / 1000) - targetInSeconds);
-  // 6 seconds for between new block production
-  const isWithinTolerance = timeDiff <= 6;
-
-  return isWithinTolerance ? closest.price : 0;
+  return timeDiff <= 6 ? closest.price : 0;
 };
 
 const CandlestickChart: React.FC<Props> = ({
@@ -61,6 +63,8 @@ const CandlestickChart: React.FC<Props> = ({
   isLoading,
   seriesVisibility,
   toggleSeries,
+  filterResourcePrices = true,
+  resourceOnly = false,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
@@ -112,22 +116,23 @@ const CandlestickChart: React.FC<Props> = ({
 
     chartRef.current = chart;
 
-    candlestickSeriesRef.current = chart.addCandlestickSeries({
-      upColor: '#26a69a',
-      downColor: '#ef5350',
-      borderVisible: false,
-      wickUpColor: '#26a69a',
-      wickDownColor: '#ef5350',
-    });
+    if (!resourceOnly) {
+      candlestickSeriesRef.current = chart.addCandlestickSeries({
+        upColor: '#26a69a',
+        downColor: '#ef5350',
+        borderVisible: false,
+        wickUpColor: '#26a69a',
+        wickDownColor: '#ef5350',
+      });
 
-    indexPriceSeriesRef.current = chart.addAreaSeries({
-      lineColor: 'blue',
-      topColor: 'rgba(128, 128, 128, 0.4)',
-      bottomColor: 'rgba(128, 128, 128, 0.0)',
-      lineStyle: 2,
-    });
+      indexPriceSeriesRef.current = chart.addAreaSeries({
+        lineColor: 'blue',
+        topColor: 'rgba(128, 128, 128, 0.4)',
+        bottomColor: 'rgba(128, 128, 128, 0.0)',
+        lineStyle: 2,
+      });
+    }
 
-    // Create resource price series regardless of initial data
     resourcePriceSeriesRef.current = chart.addLineSeries({
       color: '#4CAF50',
       lineWidth: 2,
@@ -160,30 +165,33 @@ const CandlestickChart: React.FC<Props> = ({
         chartRef.current = null;
       }
     };
-  }, [theme]); // Only recreate chart when theme changes
+  }, [theme, resourceOnly]);
 
   // Separate effect for updating data
   useEffect(() => {
-    if (!chartRef.current || !candlestickSeriesRef.current) return;
+    if (!chartRef.current) return;
 
-    // // Debug logs for timestamps
-    // console.log('Market Prices timestamps:', data.marketPrices.map(mp => mp.endTimestamp));
-    // console.log('Index Prices timestamps:', data.indexPrices.map(ip => ip.timestamp));
-    // console.log('Resource Prices timestamps:', data.resourcePrices?.map(rp => rp.timestamp / 1000));
-
-    // // Debug log for a sample comparison
-    // if (data.marketPrices[0] && data.resourcePrices?.[0]) {
-    //   console.log('Sample comparison:');
-    //   console.log('Market timestamp:', data.marketPrices[0].endTimestamp);
-    //   console.log('Resource timestamp:', data.resourcePrices[0].timestamp / 1000);
-    //   console.log('Difference:', Math.abs(data.marketPrices[0].endTimestamp - data.resourcePrices[0].timestamp / 1000));
-    // }
+    if (resourceOnly) {
+      if (data.resourcePrices?.length && resourcePriceSeriesRef.current) {
+        const resourceLineData = data.resourcePrices.map((p) => ({
+          time: (p.timestamp / 1000) as UTCTimestamp,
+          value: p.price,
+        }));
+        resourcePriceSeriesRef.current.setData(resourceLineData);
+        resourcePriceSeriesRef.current.applyOptions({
+          visible: seriesVisibility.resource,
+        });
+      }
+      return;
+    }
 
     const combinedData = data.marketPrices
       .map((mp, i) => {
         const timestamp = (mp.endTimestamp / 1000) as UTCTimestamp;
         const indexPrice = data.indexPrices[i]?.price || 0;
-        const resourcePrice = findClosestResourcePrice(mp.endTimestamp, data.resourcePrices || []);
+        const resourcePrice = filterResourcePrices 
+          ? findClosestResourcePrice(mp.endTimestamp, data.resourcePrices || [], true)
+          : data.resourcePrices?.find(p => p.timestamp === mp.endTimestamp)?.price || 0;
         const adjustedPrice = isLoading ? 0 : indexPrice / (stEthPerToken || 1);
 
         if (!mp.open || !mp.high || !mp.low || !mp.close) {
@@ -264,7 +272,7 @@ const CandlestickChart: React.FC<Props> = ({
         });
       }
     }
-  }, [data, isLoading, stEthPerToken, useMarketUnits, seriesVisibility]);
+  }, [data, isLoading, stEthPerToken, useMarketUnits, seriesVisibility, filterResourcePrices, resourceOnly]);
 
   return (
     <div className="flex flex-col flex-1">
