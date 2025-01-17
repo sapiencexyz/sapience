@@ -139,7 +139,7 @@ const TransactionTable: React.FC<Props> = ({ transactions }) => {
       );
     }
 
-    if (['Collateral', 'Ggas', 'wstETH', 'Price'].includes(cell.column.id)) {
+    if (['collateral', 'ggas', 'wsteth', 'price'].includes(cell.column.id)) {
       return <NumberDisplay value={value as number} />;
     }
 
