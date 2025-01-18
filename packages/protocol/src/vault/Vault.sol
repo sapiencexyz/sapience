@@ -88,6 +88,11 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
     bool __VAULT_HALTED;
 
+    /**
+     * only address that has permission to submit market settlement prices
+     */
+    address public settlementPriceSubmitter;
+
     constructor(
         string memory _name,
         string memory _symbol,
@@ -97,7 +102,8 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 _upperBoundMultiplier,
         uint256 _duration,
         uint256 _vaultIndex,
-        uint256 _totalVaults
+        uint256 _totalVaults,
+        address _settlementPriceSubmitter
     ) ERC20(_name, _symbol) {
         market = IFoil(_marketAddress);
         collateralAsset = IERC20(_collateralAssetAddress);
@@ -108,6 +114,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         lowerBoundMultiplier = _lowerBoundMultiplier;
         upperBoundMultiplier = _upperBoundMultiplier;
         vaultInitializer = msg.sender;
+        settlementPriceSubmitter = _settlementPriceSubmitter;
     }
 
     /// @notice initializes the first epoch
@@ -142,6 +149,8 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 epochId,
         uint160 price
     ) external returns (bytes32 assertionId) {
+        require(msg.sender == settlementPriceSubmitter, "Not authorized");
+
         (, , , , IFoilStructs.MarketParams memory marketParams) = market
             .getMarket();
         IERC20 bondCurrency = IERC20(marketParams.bondCurrency);
