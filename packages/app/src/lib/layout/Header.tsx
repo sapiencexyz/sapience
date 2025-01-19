@@ -1,4 +1,3 @@
-import { format } from 'date-fns';
 import { Menu, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -25,9 +24,15 @@ import { useMarketList } from '~/lib/context/MarketListProvider';
 import {
   useResources,
   type Resource,
-  type Market,
   type Epoch,
+  type Market,
 } from '~/lib/hooks/useResources';
+
+// Extend the Epoch type with market properties
+type ExtendedEpoch = Epoch & {
+  marketChainId: string;
+  marketAddress: string;
+};
 
 const getMarketHref = (path: string, market: any, withEpochs: boolean) => {
   if (path === 'earn') {
@@ -112,10 +117,28 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
                   const hoveredResourceData = resources?.find(
                     (r: Resource) => r.id === hoveredResource
                   );
-                  const market = hoveredResourceData?.markets?.[0];
-                  const epochs = market?.epochs ?? [];
 
-                  if (!market || epochs.length === 0) {
+                  // Combine all epochs from all markets and sort them
+                  const allEpochs =
+                    hoveredResourceData?.markets
+                      ?.reduce<ExtendedEpoch[]>((acc, market) => {
+                        const marketEpochs =
+                          market.epochs?.map((epoch: Epoch) => ({
+                            ...epoch,
+                            marketChainId: market.chainId.toString(),
+                            marketAddress: market.address,
+                          })) || [];
+                        return [...acc, ...marketEpochs];
+                      }, [])
+                      ?.sort(
+                        (a: ExtendedEpoch, b: ExtendedEpoch) =>
+                          b.endTimestamp - a.endTimestamp
+                      ) || [];
+
+                  if (
+                    !hoveredResourceData?.markets?.length ||
+                    allEpochs.length === 0
+                  ) {
                     return (
                       <div className="text-sm text-muted-foreground flex items-center justify-center min-h-[60px]">
                         No active periods
@@ -124,8 +147,8 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
                   }
 
                   const currentTime = Math.floor(Date.now() / 1000);
-                  const activeEpochs = epochs.filter(
-                    (epoch: Epoch) => epoch.endTimestamp > currentTime
+                  const activeEpochs = allEpochs.filter(
+                    (epoch) => epoch.endTimestamp > currentTime
                   );
 
                   return (
@@ -135,11 +158,11 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
                           No active periods
                         </div>
                       ) : (
-                        activeEpochs.map((epoch: Epoch) => (
+                        activeEpochs.map((epoch) => (
                           <Link
-                            key={epoch.epochId}
+                            key={`${epoch.marketChainId}:${epoch.marketAddress}:${epoch.epochId}`}
                             className="text-sm w-full block rounded-md px-3 py-1.5 hover:bg-secondary"
-                            href={`/${path}/${market.chainId}:${market.address}/epochs/${epoch.epochId}`}
+                            href={`/${path}/${epoch.marketChainId}:${epoch.marketAddress}/epochs/${epoch.epochId}`}
                             onClick={handleLinkClick}
                           >
                             {formatDuration(
@@ -240,10 +263,24 @@ const NavLinks = ({
             <AccordionContent>
               <div className="flex flex-col space-y-2">
                 {(() => {
-                  const market = resource.markets[0];
-                  const epochs = market?.epochs ?? [];
+                  // Combine all epochs from all markets and sort them
+                  const allEpochs =
+                    resource.markets
+                      ?.reduce<ExtendedEpoch[]>((acc, market) => {
+                        const marketEpochs =
+                          market.epochs?.map((epoch: Epoch) => ({
+                            ...epoch,
+                            marketChainId: market.chainId.toString(),
+                            marketAddress: market.address,
+                          })) || [];
+                        return [...acc, ...marketEpochs];
+                      }, [])
+                      ?.sort(
+                        (a: ExtendedEpoch, b: ExtendedEpoch) =>
+                          b.endTimestamp - a.endTimestamp
+                      ) || [];
 
-                  if (!market || epochs.length === 0) {
+                  if (!resource.markets?.length || allEpochs.length === 0) {
                     return (
                       <div className="text-sm text-muted-foreground flex items-center justify-center min-h-[60px]">
                         No active periods
@@ -252,7 +289,7 @@ const NavLinks = ({
                   }
 
                   const currentTime = Math.floor(Date.now() / 1000);
-                  const activeEpochs = epochs.filter(
+                  const activeEpochs = allEpochs.filter(
                     (epoch) => epoch.endTimestamp > currentTime
                   );
 
@@ -265,9 +302,9 @@ const NavLinks = ({
                       ) : (
                         activeEpochs.map((epoch) => (
                           <Link
-                            key={epoch.epochId}
+                            key={`${epoch.marketChainId}:${epoch.marketAddress}:${epoch.epochId}`}
                             className="text-sm w-full block rounded-md px-3 py-1.5 hover:bg-gray-50"
-                            href={`/${path}/${market.chainId}:${market.address}/epochs/${epoch.epochId}`}
+                            href={`/${path}/${epoch.marketChainId}:${epoch.marketAddress}/epochs/${epoch.epochId}`}
                             onClick={() => onClose?.()}
                           >
                             {formatDuration(
@@ -378,7 +415,7 @@ const Header = () => {
 
   return (
     <header className="w-full py-3 z-[3] border-b border-border bg-background/80 backdrop-blur-md">
-      <div className="mx-auto px-6 flex items-center justify-between">
+      <div className="mx-auto px-3 flex items-center justify-between">
         <Link href="/" className="inline-block">
           <div className="flex items-center gap-2">
             <Image
@@ -388,7 +425,7 @@ const Header = () => {
               height={28}
               className="dark:invert"
             />
-            <span className="text-xs font-medium ml-1 px-1.5 py-0.5 rounded bg-primary/5 text-primary/60 border border-primary/10 tracking-widest">
+            <span className="text-xs font-medium ml-1 px-1.5 py-0.5 rounded bg-primary/5 text-primary/40 border border-primary/10 tracking-widest">
               BETA
             </span>
           </div>

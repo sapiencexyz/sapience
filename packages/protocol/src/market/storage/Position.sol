@@ -238,7 +238,8 @@ library Position {
 
         rebalanceEthTokens(self);
         rebalanceCollateral(self);
-
+        // after rebalancing the Eth Tokens and Collateral, all virtual tokens are zeroed and only the deposited collateral is left with the net balance.
+        
         return self.depositedCollateralAmount;
     }
 

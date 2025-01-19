@@ -101,57 +101,6 @@ const EpochsTable = ({ data }: { data: Epoch[] }) => {
   );
 };
 
-// Add placeholder data generation
-const generatePlaceholderPrices = () => {
-  const now = Date.now();
-  const dayInMs = 24 * 60 * 60 * 1000;
-  const prices = [];
-  let basePrice = 1750;
-
-  for (let i = 30; i >= 0; i--) {
-    const startTimestamp = now - i * dayInMs;
-    const endTimestamp = startTimestamp + dayInMs;
-    const volatility = 50;
-    const open = basePrice + (Math.random() - 0.5) * volatility;
-    const close = basePrice + (Math.random() - 0.5) * volatility;
-    const high = Math.max(open, close) + (Math.random() * volatility) / 2;
-    const low = Math.min(open, close) - (Math.random() * volatility) / 2;
-
-    prices.push({
-      startTimestamp,
-      endTimestamp,
-      open,
-      close,
-      high,
-      low,
-    });
-
-    basePrice = close;
-  }
-
-  return prices;
-};
-
-const generatePlaceholderIndexPrices = () => {
-  const now = Date.now();
-  const dayInMs = 24 * 60 * 60 * 1000;
-  const prices = [];
-  let basePrice = 1750;
-
-  for (let i = 30; i >= 0; i--) {
-    const timestamp = now - i * dayInMs;
-    const volatility = 30;
-    basePrice += (Math.random() - 0.5) * volatility;
-
-    prices.push({
-      timestamp: Math.floor(timestamp / 1000),
-      price: basePrice,
-    });
-  }
-
-  return prices;
-};
-
 const renderPriceDisplay = (
   isLoading: boolean,
   price: ResourcePrice | undefined,
@@ -258,11 +207,11 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
       <div className={`flex-1 min-w-0 ${!epochs.length ? 'w-full' : ''}`}>
         <div className="flex flex-col h-full">
           <div className="flex-1 grid relative">
-            <Card className="absolute top-8 left-8 z-10">
+            <Card className="absolute top-4 left-4 md:top-8 md:left-8 z-10">
               <CardContent className="py-3 px-4">
                 <div className="flex flex-col">
                   <span className="text-sm text-muted-foreground">
-                    Current Price
+                    Latest Price
                   </span>
                   <div className="flex items-baseline gap-2">
                     {renderPriceDisplay(isPriceLoading, latestPrice, params.id)}
@@ -271,23 +220,29 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
               </CardContent>
             </Card>
 
-            <CandlestickChart
-              data={{
-                marketPrices: [],
-                indexPrices: [],
-                resourcePrices: formattedResourcePrices,
-              }}
-              activeWindow={TimeWindow.D}
-              isLoading={isResourcePricesLoading}
-              seriesVisibility={seriesVisibility}
-              toggleSeries={toggleSeries}
-            />
+            <div className="flex flex-col flex-1">
+              <div className="flex flex-1 h-full p-2">
+                <div className="border border-border flex w-full h-full rounded-md overflow-hidden pr-2 pb-2">
+                  <CandlestickChart
+                    data={{
+                      marketPrices: [],
+                      indexPrices: [],
+                      resourcePrices: formattedResourcePrices,
+                    }}
+                    activeWindow={TimeWindow.D}
+                    isLoading={isResourcePricesLoading}
+                    seriesVisibility={seriesVisibility}
+                    toggleSeries={toggleSeries}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       {epochs.length > 0 && (
-        <div className="w-full md:w-[240px] border-t md:border-t-0 md:border-l border-border pt-4 md:pt-0">
+        <div className="w-full md:w-[240px] md:border-l border-border pt-4 md:pt-0">
           <h2 className="text-base font-medium text-muted-foreground px-4 py-2">
             Periods
           </h2>
