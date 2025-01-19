@@ -106,7 +106,7 @@ export default function AddEditTrade() {
       (!liquidity ||
         (isLong &&
           parseFloat(formatUnits(sizeChangeInContractUnit, TOKEN_DECIMALS)) >
-          Number(liquidity)))
+            Number(liquidity)))
     ) {
       return 'Not enough liquidity to perform this trade.';
     }
