@@ -15,8 +15,19 @@ export const Header = () => {
           >
             Docs
           </a>
-          <Button asChild className="rounded-2xl p-6 font-semibold">
-            <a href="https://app.foil.xyz">Go to App</a>
+          <Button
+            asChild
+            className="flex items-center rounded-2xl p-6 font-semibold"
+          >
+            <a href="https://app.foil.xyz" className="hidden md:inline-flex">
+              Go to App
+            </a>
+          </Button>
+          <Button
+            asChild
+            className="flex items-center rounded-2xl p-6 font-semibold md:hidden"
+          >
+            <a href="https://app.foil.xyz">Install App</a>
           </Button>
         </div>
       </section>

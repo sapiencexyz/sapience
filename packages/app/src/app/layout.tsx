@@ -4,6 +4,7 @@ import Providers from '~/app/providers';
 import '@rainbow-me/rainbowkit/styles.css';
 import '../lib/styles/globals.css';
 import { LoadingSpinner } from '~/lib/components/foil/loadingSpinner';
+import { InstallDialog } from '~/lib/components/InstallDialog';
 import { LoadingProvider } from '~/lib/context/LoadingContext';
 import { Toaster } from '@/components/ui/toaster';
 import Layout from '~/lib/layout';
@@ -13,11 +14,14 @@ type RootLayoutProps = {
 };
 
 const APP_NAME = 'Foil';
+const APP_DESCRIPTION =
+  'The fully decentralized marketplace for onchain resources';
 
 export const metadata: Metadata = {
   title: { default: APP_NAME, template: '%s | Foil' },
-  description: 'Foil App',
+  description: APP_DESCRIPTION,
   applicationName: APP_NAME,
+  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     title: APP_NAME,
@@ -27,24 +31,27 @@ export const metadata: Metadata = {
     telephone: false,
   },
   openGraph: {
+    type: 'website',
     url: 'https://foil.xyz',
-    title: 'Foil',
-    description: '',
-    images: {
-      url: '',
-      alt: 'foil og-image',
-    },
+    title: APP_NAME,
+    description: APP_DESCRIPTION,
+    siteName: APP_NAME,
   },
   twitter: {
     creator: '@foilxyz',
     card: 'summary_large_image',
+    title: APP_NAME,
+    description: APP_DESCRIPTION,
   },
 };
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
   themeColor: '#FFFFFF',
+  viewportFit: 'cover',
 };
 
 const RootLayout = ({ children }: RootLayoutProps) => {
@@ -55,6 +62,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
           <LoadingProvider>
             <LoadingSpinner />
             <Layout>{children}</Layout>
+            <InstallDialog />
             <Toaster />
           </LoadingProvider>
         </Providers>
