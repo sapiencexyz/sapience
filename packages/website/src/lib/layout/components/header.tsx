@@ -2,15 +2,6 @@
 
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import {
-  Drawer,
-  DrawerContent,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from '@/components/ui/drawer';
-import { Share, PlusSquare } from 'lucide-react';
 
 export const Header = () => {
   return (
@@ -24,66 +15,20 @@ export const Header = () => {
           >
             Docs
           </a>
-          {/* Desktop button */}
           <Button
             asChild
-            className="hidden rounded-2xl p-6 font-semibold md:flex"
+            className="flex items-center rounded-2xl p-6 font-semibold"
           >
-            <a href="https://app.foil.xyz">Go to App</a>
+            <a href="https://app.foil.xyz" className="hidden md:inline-flex">
+              Go to App
+            </a>
           </Button>
-          {/* Mobile install button with drawer */}
-          <div className="md:hidden">
-            <Drawer>
-              <DrawerTrigger asChild>
-                <Button className="rounded-2xl p-6 font-semibold">
-                  Install App
-                </Button>
-              </DrawerTrigger>
-              <DrawerContent>
-                <div className="mx-auto w-full max-w-sm">
-                  <DrawerHeader>
-                    <div className="my-4 flex justify-center">
-                      <Image
-                        src="/icons/icon-192x192.png"
-                        alt="Foil App Icon"
-                        width={72}
-                        height={72}
-                        className="rounded-2xl border border-border shadow-lg"
-                      />
-                    </div>
-                    <DrawerTitle className="text-center text-2xl">
-                      Install Foil
-                    </DrawerTitle>
-                    <p className="text-center text-muted-foreground">
-                      Add the app to your home screen
-                    </p>
-                  </DrawerHeader>
-                  <DrawerFooter>
-                    <div className="space-y-4 rounded-lg bg-muted px-4 py-8 text-center">
-                      <div className="space-y-2">
-                        <p className="text-lg">
-                          Tap the{' '}
-                          <span className="mx-0.5 inline-flex translate-y-[3px] items-center">
-                            <Share className="h-5 w-5" />
-                          </span>{' '}
-                          share icon in your browser
-                        </p>
-                      </div>
-                      <div className="space-y-2">
-                        <p className="text-lg">
-                          Select{' '}
-                          <span className="mx-0.5 inline-flex translate-y-[3px] items-center">
-                            <PlusSquare className="h-5 w-5" />
-                          </span>{' '}
-                          Add to Home Screen
-                        </p>
-                      </div>
-                    </div>
-                  </DrawerFooter>
-                </div>
-              </DrawerContent>
-            </Drawer>
-          </div>
+          <Button
+            asChild
+            className="flex items-center rounded-2xl p-6 font-semibold md:hidden"
+          >
+            <a href="https://app.foil.xyz">Install App</a>
+          </Button>
         </div>
       </section>
     </header>
