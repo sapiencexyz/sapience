@@ -92,8 +92,9 @@ export default function AddEditTrade() {
   const isLong = option === 'Long';
 
   const sizeChangeInContractUnit = useMemo(() => {
-    return sizeChange * BigInt(1e9);
-  }, [sizeChange]);
+    const baseSize = sizeChange * BigInt(1e9);
+    return isLong ? baseSize : -baseSize;
+  }, [sizeChange, isLong]);
   const isNonZeroSizeChange = sizeChangeInContractUnit !== BigInt(0);
 
   const formError = useMemo(() => {
@@ -105,7 +106,7 @@ export default function AddEditTrade() {
       (!liquidity ||
         (isLong &&
           parseFloat(formatUnits(sizeChangeInContractUnit, TOKEN_DECIMALS)) >
-            Number(liquidity)))
+          Number(liquidity)))
     ) {
       return 'Not enough liquidity to perform this trade.';
     }
@@ -157,15 +158,20 @@ export default function AddEditTrade() {
   }, [positionData, isEdit]);
 
   const desiredSizeInContractUnit = useMemo(() => {
-    if (!isEdit) return sizeChangeInContractUnit;
+    if (!isEdit) {
+      return isLong ? sizeChangeInContractUnit : -sizeChangeInContractUnit;
+    }
 
     const originalPositionIsLong = positionData?.vGasAmount > BigInt(0);
     const currentSize = originalPositionIsLong
       ? positionData?.vGasAmount || BigInt(0)
       : -(positionData?.borrowedVGas || BigInt(0));
 
-    return currentSize + sizeChangeInContractUnit;
-  }, [isEdit, positionData, sizeChangeInContractUnit]);
+    return (
+      currentSize +
+      (isLong ? sizeChangeInContractUnit : -sizeChangeInContractUnit)
+    );
+  }, [isEdit, positionData, sizeChangeInContractUnit, isLong]);
 
   // Collateral balance for current address/account
   const { data: collateralBalance } = useReadContract({
@@ -580,10 +586,10 @@ export default function AddEditTrade() {
       buttonTxt = `Approve ${collateralAssetTicker} Transfer`;
     }
     if (isFetchingQuote && !formError) {
-      buttonTxt = 'Fetching Collateral Change...';
+      buttonTxt = 'Generating Quote...';
     }
     if (fetchingSizeFromCollateralInput) {
-      buttonTxt = 'Fetching Size Change....';
+      buttonTxt = 'Generating Quote....';
     }
     return (
       <div className="mb-4">
