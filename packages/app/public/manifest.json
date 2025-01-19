@@ -2,8 +2,6 @@
   "name": "Foil",
   "short_name": "Foil",
   "description": "The fully decentralized marketplace for onchain resources",
-  "start_url": "https://app.foil.xyz",
-  "scope": "https://app.foil.xyz/",
   "display": "standalone",
   "background_color": "#FFFFFF",
   "theme_color": "#2C2C2E",

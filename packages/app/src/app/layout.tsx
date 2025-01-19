@@ -4,6 +4,7 @@ import Providers from '~/app/providers';
 import '@rainbow-me/rainbowkit/styles.css';
 import '../lib/styles/globals.css';
 import { LoadingSpinner } from '~/lib/components/foil/loadingSpinner';
+import { InstallDialog } from '~/lib/components/InstallDialog';
 import { LoadingProvider } from '~/lib/context/LoadingContext';
 import { Toaster } from '@/components/ui/toaster';
 import Layout from '~/lib/layout';
@@ -61,6 +62,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
           <LoadingProvider>
             <LoadingSpinner />
             <Layout>{children}</Layout>
+            <InstallDialog />
             <Toaster />
           </LoadingProvider>
         </Providers>
