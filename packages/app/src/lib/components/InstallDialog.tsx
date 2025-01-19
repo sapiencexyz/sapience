@@ -29,7 +29,10 @@ export const InstallDialog = () => {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent>
+      <DialogContent
+        className="max-w-[90%] sm:max-w-[425px] mx-auto"
+        autoFocus={false}
+      >
         <div className="mx-auto w-full max-w-sm">
           <DialogHeader className="mb-6">
             <div className="my-4 flex justify-center">
@@ -48,18 +51,18 @@ export const InstallDialog = () => {
               Add the app to your home screen
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 rounded-lg bg-muted px-4 py-8 text-center">
+          <div className="space-y-4 rounded-lg bg-muted px-4 py-6 text-center">
             <div className="space-y-2">
-              <p className="text-lg">
+              <p>
                 Tap the{' '}
                 <span className="mx-0.5 inline-flex translate-y-[3px] items-center">
                   <Share className="h-5 w-5" />
                 </span>{' '}
-                share icon in your browser
+                icon in your browser
               </p>
             </div>
             <div className="space-y-2">
-              <p className="text-lg">
+              <p>
                 Select{' '}
                 <span className="mx-0.5 inline-flex translate-y-[3px] items-center">
                   <PlusSquare className="h-5 w-5" />
