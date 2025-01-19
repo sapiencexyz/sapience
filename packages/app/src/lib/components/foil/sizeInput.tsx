@@ -152,30 +152,32 @@ const SizeInput: React.FC<Props> = ({
       sizeInGas = BigInt(convertGgasToGas(value));
     else sizeInGas = BigInt(value); // if (inputType === InputFormType.Gas)
 
-    // For gas and Ggas, we need to invert the sign logic
-    const sign = (inputType === InputFormType.Collateral)
-      ? (isLong ? BigInt(1) : BigInt(-1))
-      : (isLong ? BigInt(-1) : BigInt(1));
+    let sign: bigint;
+    if (inputType === InputFormType.Collateral) {
+      sign = isLong ? BigInt(1) : BigInt(-1);
+    } else {
+      sign = isLong ? BigInt(-1) : BigInt(1);
+    }
 
     setSize(sign * sizeInGas);
   };
 
   const handleSizeChange = (newVal: string) => {
     const isUserInputValid: Record<InputFormType, (value: string) => boolean> =
-    {
-      gas: (value: string) => {
-        const numberPatternGas = /^(0|[1-9]\d*)$/; // gas can never be a float
-        return numberPatternGas.test(value);
-      },
-      Ggas: (value: string) => {
-        const numberPatternGGas = /^(0|[1-9]\d*)?((\.|,)(\d{0,9}))?$/; // giga = 10^9
-        return numberPatternGGas.test(value);
-      },
-      collateral: (value: string) => {
-        const numberPatternCollateral = /^(0|[1-9]\d*)?((\.|,)(\d{0,18}))?$/; // assuming collateral has 18 decimals
-        return numberPatternCollateral.test(value);
-      },
-    };
+      {
+        gas: (value: string) => {
+          const numberPatternGas = /^(0|[1-9]\d*)$/; // gas can never be a float
+          return numberPatternGas.test(value);
+        },
+        Ggas: (value: string) => {
+          const numberPatternGGas = /^(0|[1-9]\d*)?((\.|,)(\d{0,9}))?$/; // giga = 10^9
+          return numberPatternGGas.test(value);
+        },
+        collateral: (value: string) => {
+          const numberPatternCollateral = /^(0|[1-9]\d*)?((\.|,)(\d{0,18}))?$/; // assuming collateral has 18 decimals
+          return numberPatternCollateral.test(value);
+        },
+      };
 
     let processedVal = newVal;
     if (processedVal[0] === '.') {
