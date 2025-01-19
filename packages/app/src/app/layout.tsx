@@ -16,16 +16,29 @@ type RootLayoutProps = {
 const APP_NAME = 'Foil';
 const APP_DESCRIPTION =
   'The fully decentralized marketplace for onchain resources';
+const LARGE_ICON_PATH = '/icons/icon-512x512.png';
 
 export const metadata: Metadata = {
   title: { default: APP_NAME, template: '%s | Foil' },
   description: APP_DESCRIPTION,
   applicationName: APP_NAME,
   manifest: '/manifest.json',
+  icons: {
+    icon: LARGE_ICON_PATH,
+    apple: [
+      {
+        url: LARGE_ICON_PATH,
+        sizes: '512x512',
+        type: 'image/png',
+      },
+    ],
+    shortcut: LARGE_ICON_PATH,
+  },
   appleWebApp: {
     capable: true,
     title: APP_NAME,
     statusBarStyle: 'default',
+    startupImage: [LARGE_ICON_PATH],
   },
   formatDetection: {
     telephone: false,
@@ -50,7 +63,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: '#FFFFFF',
+  themeColor: '#2C2C2E',
   viewportFit: 'cover',
 };
 
