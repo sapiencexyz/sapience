@@ -171,6 +171,8 @@ const CustomTooltip: React.FC<
   if (!payload || !payload[0] || !pool) return null;
   const tick: BarChartTick = payload[0].payload;
 
+  console.log(pool.tickCurrent, tick.tickIdx, tick.isCurrent);
+
   return (
     <div
       style={{
@@ -179,19 +181,40 @@ const CustomTooltip: React.FC<
       }}
       className="bg-background"
     >
-      {(tick.tickIdx <= pool.tickCurrent || tick.isCurrent) && (
-        <p>
-          {pool.token1.symbol} Liquidity:{' '}
-          {(tick.liquidityLockedToken1 / tick.price0).toFixed(3)}
-        </p>
+      {tick.tickIdx < pool.tickCurrent && !tick.isCurrent && (
+        <>
+          <p>
+            {pool.token1.symbol} Liquidity:{' '}
+            {tick.liquidityLockedToken1.toFixed(3)}
+          </p>
+          <p>
+            {pool.token0.symbol} Liquidity:{' 0'}
+          </p>
+        </>
       )}
-      {(tick.tickIdx >= pool.tickCurrent || tick.isCurrent) && (
-        <p>
-          {pool.token0.symbol} Liquidity:{' '}
-          {(tick.liquidityLockedToken0 / tick.price0).toFixed(3)}
-        </p>
+      {tick.tickIdx > pool.tickCurrent && !tick.isCurrent && (
+        <>
+          <p>
+            {pool.token1.symbol} Liquidity:{' 0'}
+          </p>
+          <p>
+            {pool.token0.symbol} Liquidity:{' '}
+            {tick.liquidityLockedToken0.toFixed(3)}
+          </p>
+        </>
       )}
-      <p>Tick {tick.tickIdx}</p>
+      {tick.isCurrent && (
+        <>
+          <p>
+            {pool.token1.symbol} Liquidity:{' '}
+            {tick.liquidityLockedToken1.toFixed(3)}
+          </p>
+          <p>
+            {pool.token0.symbol} Liquidity:{' '}
+            {tick.liquidityLockedToken0.toFixed(3)}
+          </p>
+        </>
+      )}
     </div>
   );
 };
@@ -245,6 +268,8 @@ const DepthChart: React.FC = () => {
   const { data: tickData } = useReadContracts({
     contracts,
   }) as { data: TickData[]; isLoading: boolean };
+
+  console.log('tickData', tickData);
 
   const graphTicks: GraphTick[] = useMemo(() => {
     if (!tickData) return [];
