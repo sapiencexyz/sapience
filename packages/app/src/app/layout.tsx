@@ -13,7 +13,8 @@ type RootLayoutProps = {
 };
 
 const APP_NAME = 'Foil';
-const APP_DESCRIPTION = 'The fully decentralized marketplace for onchain resources';
+const APP_DESCRIPTION =
+  'The fully decentralized marketplace for onchain resources';
 
 export const metadata: Metadata = {
   title: { default: APP_NAME, template: '%s | Foil' },
@@ -23,7 +24,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: APP_NAME,
-    statusBarStyle: 'default'
+    statusBarStyle: 'default',
   },
   formatDetection: {
     telephone: false,
@@ -33,14 +34,14 @@ export const metadata: Metadata = {
     url: 'https://foil.xyz',
     title: APP_NAME,
     description: APP_DESCRIPTION,
-    siteName: APP_NAME
+    siteName: APP_NAME,
   },
   twitter: {
     creator: '@foilxyz',
     card: 'summary_large_image',
     title: APP_NAME,
     description: APP_DESCRIPTION,
-  }
+  },
 };
 
 export const viewport: Viewport = {
@@ -49,7 +50,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   themeColor: '#FFFFFF',
-  viewportFit: 'cover'
+  viewportFit: 'cover',
 };
 
 const RootLayout = ({ children }: RootLayoutProps) => {
