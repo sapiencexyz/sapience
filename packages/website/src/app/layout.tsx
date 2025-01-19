@@ -9,12 +9,13 @@ import '@/lib/styles/globals.css';
 
 const APP_NAME = 'Foil';
 const APP_DESCRIPTION =
-  'Lock in your onchain costs regardless of network congestion';
+  'The fully decentralized marketplace for onchain resources';
 
 export const metadata: Metadata = {
   title: APP_NAME,
   description: APP_DESCRIPTION,
   applicationName: APP_NAME,
+  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     title: APP_NAME,
