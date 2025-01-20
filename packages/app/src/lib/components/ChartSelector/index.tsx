@@ -52,12 +52,12 @@ const ChartSelector: React.FC<CustomDropdownProps> = ({
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="rounded-full" size="sm">
+        <Button variant="outline" className="rounded-full">
           {chartType}
           {isOpen ? (
-            <ChevronUp className="ml-2 h-4 w-4" />
+            <ChevronUp className="ml-1 h-4 w-4" />
           ) : (
-            <ChevronDown className="ml-2 h-4 w-4" />
+            <ChevronDown className="ml-1 h-4 w-4" />
           )}
         </Button>
       </DropdownMenuTrigger>
