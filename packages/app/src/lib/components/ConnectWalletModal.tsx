@@ -1,3 +1,5 @@
+'use client';
+
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
@@ -27,18 +29,26 @@ export default function ConnectWalletModal({
   const { openConnectModal } = useConnectModal();
   const { isConnected } = useAccount();
   const [permitted, setPermitted] = useState<boolean | null>(null);
+  const [hasPermittedCookie, setHasPermittedCookie] = useState(false);
+
   const { signMessage } = useSignMessage({
     mutation: {
       onSuccess: () => {
-        document.cookie = 'permitted=true; path=/; max-age=31536000'; // 1 year expiry
+        if (typeof document !== 'undefined') {
+          document.cookie = 'permitted=true; path=/; max-age=31536000'; // 1 year expiry
+        }
         onOpenChange(false);
       },
     },
   });
 
-  const hasPermittedCookie = document.cookie
-    .split(';')
-    .some((item) => item.trim().startsWith('permitted=true'));
+  useEffect(() => {
+    // Check for cookie only on client side
+    const cookieCheck = document.cookie
+      .split(';')
+      .some((item) => item.trim().startsWith('permitted=true'));
+    setHasPermittedCookie(cookieCheck);
+  }, []);
 
   useEffect(() => {
     if (open) {
