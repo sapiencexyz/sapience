@@ -74,10 +74,10 @@ contract VaultDurationTest is TestVault {
 
         vm.startPrank(vaultOwner);
         vm.warp(block.timestamp);
-        initialStartTime = block.timestamp;
-        vault1.initializeFirstEpoch(initialSqrtPriceX96, block.timestamp);
-        vault2.initializeFirstEpoch(initialSqrtPriceX96, block.timestamp);
-        vault3.initializeFirstEpoch(initialSqrtPriceX96, block.timestamp);
+        initialStartTime = block.timestamp + 1 days;
+        vault1.initializeFirstEpoch(initialSqrtPriceX96, initialStartTime);
+        vault2.initializeFirstEpoch(initialSqrtPriceX96, initialStartTime);
+        vault3.initializeFirstEpoch(initialSqrtPriceX96, initialStartTime);
         vm.stopPrank();
     }
 
