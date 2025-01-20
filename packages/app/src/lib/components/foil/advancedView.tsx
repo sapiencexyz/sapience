@@ -13,6 +13,7 @@ import { useAccount } from 'wagmi';
 
 import { Button } from '~/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '~/components/ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from '~/components/ui/toggle-group';
 import { useToast } from '~/hooks/use-toast';
 import Chart from '~/lib/components/chart';
 import ChartSelector from '~/lib/components/ChartSelector';
@@ -315,19 +316,25 @@ const Market = ({
     return null;
   };
 
-  const renderLoadng = () => {
+  const renderPriceToggles = () => {
     if (chartType === ChartType.PRICE) {
       return (
-        <div className="flex ml-2 gap-2 items-center">
-          <Button
-            variant={seriesVisibility.candles ? 'default' : 'secondary'}
+        <ToggleGroup
+          type="multiple"
+          className="flex gap-3 items-start md:items-center self-start md:self-auto"
+          variant="outline"
+        >
+          <ToggleGroupItem
+            value="candles"
+            variant={seriesVisibility.candles ? 'default' : 'outline'}
             size="sm"
             onClick={() => toggleSeries('candles')}
           >
             Market Price
-          </Button>
-          <Button
-            variant={seriesVisibility.index ? 'default' : 'secondary'}
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            value="index"
+            variant={seriesVisibility.index ? 'default' : 'outline'}
             size="sm"
             onClick={() => toggleSeries('index')}
             disabled={idxLoading}
@@ -340,10 +347,11 @@ const Market = ({
             ) : (
               'Index Price'
             )}
-          </Button>
+          </ToggleGroupItem>
           {(resourcePrices?.length ?? 0) > 0 && (
-            <Button
-              variant={seriesVisibility.resource ? 'default' : 'secondary'}
+            <ToggleGroupItem
+              value="resource"
+              variant={seriesVisibility.resource ? 'default' : 'outline'}
               size="sm"
               onClick={() => toggleSeries('resource')}
               disabled={idxLoading}
@@ -356,9 +364,9 @@ const Market = ({
               ) : (
                 'Resource Price'
               )}
-            </Button>
+            </ToggleGroupItem>
           )}
-        </div>
+        </ToggleGroup>
       );
     }
     return null;
@@ -406,33 +414,35 @@ const Market = ({
         <div className="flex flex-col w-full h-[calc(100vh-64px)] overflow-y-auto lg:overflow-hidden">
           <EpochHeader />
           <div className="flex flex-col flex-1 lg:overflow-y-auto md:overflow-visible">
-            <div className="flex flex-col flex-1 px-4 md:px-6 gap-4 md:gap-8 md:flex-row min-h-0">
-              <div className="w-full order-2 md:order-2 md:max-w-[360px] pb-3">
+            <div className="flex flex-col flex-1 px-4 md:px-6 gap-5 md:flex-row min-h-0">
+              <div className="w-full order-2 md:order-2 md:max-w-[360px] pb-4">
                 <MarketSidebar isTrade={isTrade} />
               </div>
               <div className="flex flex-col w-full order-1 md:order-1">
                 <Stats />
 
                 <div className="flex flex-1 id-chart-flex min-h-[400px] md:min-h-0 overflow-visible lg:overflow-hidden">
-                  {renderChart()}
+                  <div className="flex w-full h-full border border-border overflow-hidden rounded-lg pr-3 pb-2 shadow-sm">
+                    {renderChart()}
+                  </div>
                 </div>
-                <div className="flex justify-between w-full items-center mt-1 mb-3 flex-shrink-0">
-                  <div className="flex flex-row">
-                    <MarketUnitsToggle />
+                <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center my-4 flex-shrink-0 gap-4">
+                  <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+                    <ChartSelector
+                      chartType={chartType}
+                      setChartType={setChartType}
+                    />
                     {chartType !== ChartType.LIQUIDITY && (
-                      <div className="flex flex-row">
+                      <div className="flex flex-col md:flex-row gap-3">
                         <VolumeWindowSelector
                           selectedWindow={selectedWindow}
                           setSelectedWindow={setSelectedWindow}
                         />
-                        {renderLoadng()}
+                        {renderPriceToggles()}
                       </div>
                     )}
                   </div>
-                  <ChartSelector
-                    chartType={chartType}
-                    setChartType={setChartType}
-                  />
+                  <MarketUnitsToggle />
                 </div>
               </div>
             </div>

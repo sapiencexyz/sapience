@@ -329,8 +329,8 @@ const DepthChart: React.FC = () => {
   );
 
   return (
-    <div className="flex flex-1 relative">
-      <div className="min-h-[50px] w-fit absolute top-0 left-0 z-[2] bg-background">
+    <div className="flex flex-1 relative pt-3 pl-3">
+      <div className="min-h-[50px] w-fit absolute top-3 left-3 z-[2] bg-background">
         {pool && price0 && (
           <div>
             <p className="text-base">
