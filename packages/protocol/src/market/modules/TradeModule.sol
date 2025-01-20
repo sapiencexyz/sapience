@@ -37,9 +37,9 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             revert Errors.TransactionExpired(deadline, block.timestamp);
         }
 
-        if (size == 0) {
-            revert Errors.DeltaTradeIsZero();
-        }
+        // if (size == 0) {
+        //     revert Errors.DeltaTradeIsZero();
+        // }
 
         _checkTradeSize(size);
 
