@@ -753,7 +753,7 @@ export default function AddEditTrade() {
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <h2 className="text-lg font-semibold mb-3">Trade</h2>
+        <h2 className="text-2xl font-semibold mb-3">Trade</h2>
 
         <Tabs
           defaultValue="Long"
