@@ -244,9 +244,9 @@ const Subscribe: FC<SubscribeProps> = ({
       let errorMessage = quoteCreatePositionResult.error.message;
 
       // Replace "reason: Unexpected error" that is returned by Quoter when the Uniswap trade cannot be done (liquidity) "The protocol cannot generate a quote for this order at this moment. Not enough liquidity to perform this trade."
-      if (errorMessage.includes("Unexpected error")) {
+      if (errorMessage.includes('Unexpected error')) {
         errorMessage =
-          "Not enough liquidity to create a subscription of this size.";
+          'Not enough liquidity to create a subscription of this size.';
       }
 
       // Clean up common error messages
