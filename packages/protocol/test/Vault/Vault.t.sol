@@ -64,7 +64,7 @@ contract VaultTest is TestVault {
     }
 
     function test_revertsWhenInitializeFirstEpochAgain() public {
-        initializeFirstEpoch(initialSqrtPriceX96, block.timestamp);
+        initializeFirstEpoch(initialSqrtPriceX96);
 
         vm.startPrank(vaultOwner);
 
@@ -75,7 +75,7 @@ contract VaultTest is TestVault {
     }
 
     function test_revertsWhenResolutionCallbackNonMarket() public {
-        initializeFirstEpoch(initialSqrtPriceX96, block.timestamp);
+        initializeFirstEpoch(initialSqrtPriceX96);
 
         vm.expectRevert("Only market can call this function");
         vault.resolutionCallback(initialSqrtPriceX96);
@@ -88,7 +88,7 @@ contract VaultTest is TestVault {
         );
         foil.getLatestEpoch();
 
-        initializeFirstEpoch(initialSqrtPriceX96, block.timestamp);
+        initializeFirstEpoch(initialSqrtPriceX96);
 
         // New epoch created
         (epochData, ) = foil.getLatestEpoch();
@@ -100,7 +100,7 @@ contract VaultTest is TestVault {
     }
 
     function test_resolutionCallbackFails() public {
-        initializeFirstEpoch(initialSqrtPriceX96, block.timestamp);
+        initializeFirstEpoch(initialSqrtPriceX96);
 
         (epochData, ) = foil.getLatestEpoch();
 
