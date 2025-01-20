@@ -281,7 +281,8 @@ export default function AddEditTrade() {
       if (isEdit) {
         toast({
           title: 'Success',
-          description: "We've updated your position for you.",
+          description:
+            "We've updated your position for you. Your transaction will be displayed in the app as soon as possible.",
         });
         resetAfterSuccess();
       } else {
@@ -309,7 +310,8 @@ export default function AddEditTrade() {
         }
         toast({
           title: 'Success',
-          description: "We've created your position for you.",
+          description:
+            "We've created your position for you. Your transaction will be displayed in the app as soon as possible.",
         });
         resetAfterSuccess();
       }
