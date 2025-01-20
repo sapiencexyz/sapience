@@ -2,8 +2,8 @@ name="foil"
 version="<%= package.version %>"
 
 [var.settings]
-owner="0xE006B58cA5aB7ba53863012dc3067A14b965C1da"
-settlementPriceSubmitter="0xE006B58cA5aB7ba53863012dc3067A14b965C1da"
+deployer="0xdb5af497a73620d881561edb508012a5f84e9ba2"
+settlementPriceSubmitter="0x66aB20e98fcACfadB298C0741dFddA92568B5826"
 baseAssetMinPriceTick = "16000" # 5
 baseAssetMaxPriceTick = "39000" # 50
 feeRate = "10000" # 1%
@@ -33,7 +33,7 @@ depends = []
 
 [deploy.ConfigurationModule]
 artifact="ConfigurationModule"
-args=["<%= settings.owner %>"]
+args=["<%= settings.deployer %>"]
 
 [deploy.LiquidityModule]
 artifact="LiquidityModule"
@@ -86,14 +86,14 @@ highlight=true
 [deploy.VaultYin]
 highlight=true
 artifact="Vault"
-from="<%= settings.owner %>"
+from="<%= settings.deployer %>"
 args=[ "<%= settings.vault1Name %>", "<%= settings.vault1Symbol %>", "<%= FoilYin.address %>", "<%= settings.wstETH %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "0", "<%= settings.totalVaults %>", "<%= settings.settlementPriceSubmitter %>"  ]
 depends = ['router.FoilYin', 'var.settings']
 
 [invoke.initializeMarketForVaultYin]
 target="FoilYin"
 func="initializeMarket"
-from="<%= settings.owner %>"
+from="<%= settings.deployer %>"
 args=[
   "<%= VaultYin.address %>",
   "<%= settings.wstETH %>",
@@ -108,14 +108,14 @@ depends=["deploy.VaultYin"]
 [deploy.VaultYang]
 highlight=true
 artifact="Vault"
-from="<%= settings.owner %>"
+from="<%= settings.deployer %>"
 args=[ "<%= settings.vault2Name %>", "<%= settings.vault2Symbol %>", "<%= FoilYang.address %>", "<%= settings.wstETH %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "1", "<%= settings.totalVaults %>", "<%= settings.settlementPriceSubmitter %>"  ]
 depends = ['router.FoilYang',  'var.settings']
 
 [invoke.initializeMarketForVaultYang]
 target="FoilYang"
 func="initializeMarket"
-from="<%= settings.owner %>"
+from="<%= settings.deployer %>"
 args=[
   "<%= VaultYang.address %>",
   "<%= settings.wstETH %>",
@@ -130,7 +130,7 @@ depends=["deploy.VaultYang"]
 # START EPOCHS
 [invoke.initializeFirstEpochForVaultYin]
 target="VaultYin"
-from = "<%= settings.owner %>"
+from = "<%= settings.deployer %>"
 func="initializeFirstEpoch"
 args=[
   "<%= settings.startingSqrtPriceX96 %>"
@@ -139,7 +139,7 @@ depends=["invoke.initializeMarketForVaultYin"]
 
 [invoke.initializeFirstEpochForVaultYang]
 target="VaultYang"
-from = "<%= settings.owner %>"
+from = "<%= settings.deployer %>"
 func="initializeFirstEpoch"
 args=[
   "<%= settings.startingSqrtPriceX96 %>"
