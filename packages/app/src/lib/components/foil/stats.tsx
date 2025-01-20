@@ -45,7 +45,7 @@ const Stats = () => {
 
   return (
     <TooltipProvider>
-      <div className="flex w-full flex-col items-center pb-6">
+      <div className="flex w-full flex-col items-center pb-5">
         <div className="grid w-full grid-cols-2 gap-4 lg:grid-cols-4">
           <div className="rounded-lg border border-border p-4 shadow-sm">
             <div className="text-md">

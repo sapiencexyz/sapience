@@ -948,7 +948,7 @@ const AddEditLiquidity: React.FC = () => {
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit(handleFormSubmit)}>
-        <h2 className="text-xl font-semibold mb-3">Pool Liquidity</h2>
+        <h2 className="text-2xl font-semibold mb-3">Pool Liquidity</h2>
         <div className="mb-3">
           <LiquidityAmountInput
             isEdit={isEdit}
