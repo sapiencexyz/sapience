@@ -248,8 +248,12 @@ interface IVault is
     /**
      * @notice Initialize the first epoch of the vault
      * @param initialSqrtPriceX96 The initial sqrt price
+     * @param initialStartTime The initial start time of the epoch
      */
-    function initializeFirstEpoch(uint160 initialSqrtPriceX96) external;
+    function initializeFirstEpoch(
+        uint160 initialSqrtPriceX96,
+        uint256 initialStartTime
+    ) external;
 
     /**
      * @notice Submit the market settlement price for an epoch
