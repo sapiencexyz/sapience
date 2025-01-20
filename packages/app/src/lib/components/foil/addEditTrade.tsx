@@ -17,6 +17,7 @@ import {
   usePublicClient,
 } from 'wagmi';
 
+import { useConnectWallet } from '../../context/ConnectWalletProvider';
 import erc20ABI from '../../erc20abi.json';
 import { Button } from '~/components/ui/button';
 import { Form } from '~/components/ui/form';
@@ -538,7 +539,7 @@ export default function AddEditTrade() {
   const currentChainId = useChainId();
   const { switchChain } = useSwitchChain();
 
-  const { openConnectModal } = useConnectModal();
+  const { setIsOpen } = useConnectWallet();
 
   const handleTabChange = (value: string) => {
     setOption(value as 'Long' | 'Short');
@@ -547,12 +548,7 @@ export default function AddEditTrade() {
   const renderActionButton = () => {
     if (!isConnected) {
       return (
-        <Button
-          className="w-full mb-4"
-          variant="default"
-          size="lg"
-          onClick={openConnectModal}
-        >
+        <Button className="w-full" size="lg" onClick={() => setIsOpen(true)}>
           Connect Wallet
         </Button>
       );

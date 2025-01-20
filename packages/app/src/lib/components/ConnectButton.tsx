@@ -1,8 +1,11 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 
+import { useConnectWallet } from '../context/ConnectWalletProvider';
 import { Button } from '@/components/ui/button';
 
 export default function CustomConnectButton() {
+  const { setIsOpen } = useConnectWallet();
+
   return (
     <ConnectButton.Custom>
       {({
@@ -10,7 +13,6 @@ export default function CustomConnectButton() {
         chain,
         openAccountModal,
         openChainModal,
-        openConnectModal,
         authenticationStatus,
         mounted,
       }) => {
@@ -37,7 +39,7 @@ export default function CustomConnectButton() {
               if (!connected) {
                 return (
                   <Button
-                    onClick={openConnectModal}
+                    onClick={() => setIsOpen(true)}
                     className="bg-primary hover:bg-primary/90"
                   >
                     Connect Wallet

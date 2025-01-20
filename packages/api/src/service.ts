@@ -121,6 +121,38 @@ const executeLocalReindex = async (startCommand: string): Promise<any> => {
   });
 };
 
+const GEOFENCED_COUNTRIES = [
+  'US',
+  'BY',
+  'CU',
+  'IR',
+  'KP',
+  'RU',
+  'SY',
+  'UA',
+  'MM',
+];
+
+async function getIpInfo(ip: string) {
+  const token = process.env.IPINFO_TOKEN;
+  if (!token) return null;
+
+  const response = await fetch(`https://ipinfo.io/${ip}?token=${token}`);
+  if (!response.ok) return null;
+
+  return response.json();
+}
+
+async function isGeofenced(ip: string | null) {
+  if (!process.env.IPINFO_TOKEN) return false;
+  if (!ip) return true;
+
+  const ipInfo = await getIpInfo(ip);
+  if (!ipInfo) return true;
+
+  return GEOFENCED_COUNTRIES.includes(ipInfo.country) || ipInfo.privacy?.vpn;
+}
+
 const startServer = async () => {
   await initializeDataSource();
 
@@ -1419,6 +1451,16 @@ const startServer = async () => {
       }
 
       res.json(prices);
+    })
+  );
+
+  // route /permit: Check if an IP is permitted based on geofencing rules
+  app.get(
+    "/permit",
+    handleAsyncErrors(async (req, res, next) => {
+      const ip = req.ip ?? null;
+      const isBlocked = await isGeofenced(ip);
+      res.json({ permitted: !isBlocked });
     })
   );
 
