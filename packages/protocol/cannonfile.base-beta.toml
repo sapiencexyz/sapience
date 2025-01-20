@@ -133,7 +133,8 @@ target="VaultYin"
 from = "<%= settings.deployer %>"
 func="initializeFirstEpoch"
 args=[
-  "<%= settings.startingSqrtPriceX96 %>"
+  "<%= settings.startingSqrtPriceX96 %>",
+  "<%= block.timestamp %>" # TODO: change this
 ]
 depends=["invoke.initializeMarketForVaultYin"]
 
@@ -142,6 +143,7 @@ target="VaultYang"
 from = "<%= settings.deployer %>"
 func="initializeFirstEpoch"
 args=[
-  "<%= settings.startingSqrtPriceX96 %>"
+  "<%= settings.startingSqrtPriceX96 %>",
+  "<%= block.timestamp %>" # TODO: change this
 ]
 depends=["invoke.initializeMarketForVaultYang"]
