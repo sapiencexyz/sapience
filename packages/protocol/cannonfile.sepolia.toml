@@ -135,7 +135,7 @@ from = "<%= settings.owner %>"
 func="initializeFirstEpoch"
 args=[
   "<%= settings.startingSqrtPriceX96 %>",
-  "<%= block.timestamp %>"
+  "0"
 ]
 depends=["invoke.initializeMarketForVaultYin"]
 
@@ -145,6 +145,6 @@ from = "<%= settings.owner %>"
 func="initializeFirstEpoch"
 args=[
   "<%= settings.startingSqrtPriceX96 %>",
-  "<%= block.timestamp %>"
+  "0"
 ]
 depends=["invoke.initializeMarketForVaultYang"]

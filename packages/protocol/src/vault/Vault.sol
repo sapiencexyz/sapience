@@ -128,7 +128,9 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         require(!initialized, "Already Initialized");
         require(address(market) != address(0), "Market address not set");
 
-        uint256 epochStartTime = initialStartTime + (vaultIndex * duration);
+        uint256 epochStartTime = initialStartTime == 0
+            ? block.timestamp
+            : initialStartTime + (vaultIndex * duration);
         // set tick spacing in storage once to reuse
         // for future epoch creations
         tickSpacing = market.getMarketTickSpacing();

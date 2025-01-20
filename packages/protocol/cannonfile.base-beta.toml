@@ -134,7 +134,7 @@ from = "<%= settings.deployer %>"
 func="initializeFirstEpoch"
 args=[
   "<%= settings.startingSqrtPriceX96 %>",
-  "<%= block.timestamp %>" # TODO: change this
+  "0" # TODO: change this
 ]
 depends=["invoke.initializeMarketForVaultYin"]
 
@@ -144,6 +144,6 @@ from = "<%= settings.deployer %>"
 func="initializeFirstEpoch"
 args=[
   "<%= settings.startingSqrtPriceX96 %>",
-  "<%= block.timestamp %>" # TODO: change this
+  "0" # TODO: change this
 ]
 depends=["invoke.initializeMarketForVaultYang"]
