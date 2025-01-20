@@ -681,14 +681,16 @@ const EpochItem: React.FC<{
   const priceAdjusted = latestPrice / (stEthPerToken || 1);
 
   const handleSettleWithPrice = () => {
+    const Q96 = BigInt('0x1000000000000000000000000');
+    const sqrtPriceX96 = BigInt(
+      Math.floor(Math.sqrt(priceAdjusted) * Number(Q96))
+    );
+
     settleWithPrice({
       address: foilVaultData.address as `0x${string}`,
       abi: foilVaultData.abi,
       functionName: 'submitMarketSettlementPrice',
-      args: [
-        epoch.epochId,
-        parseUnits(priceAdjusted.toString(), TOKEN_DECIMALS),
-      ],
+      args: [epoch.epochId, sqrtPriceX96],
     });
     setTxnStep(2);
   };
@@ -859,72 +861,6 @@ const SettlementPriceTableCell: React.FC<{
   }
 
   return <span>{formatAmount(priceAdjusted)}</span>;
-};
-
-// Define SettlementPriceCell component
-const SettlementPriceCell: React.FC<{
-  market: Market;
-  epoch: any;
-}> = ({ market, epoch }) => {
-  const [settlementPrice, setSettlementPrice] = useState<number | null>(null);
-  const [loadingSettlementPrice, setLoadingSettlementPrice] =
-    useState<boolean>(true);
-  const [error, setError] = useState<boolean>(false);
-
-  const {
-    foilData,
-    loading: loadingFoilData,
-    error: foilDataError,
-  } = useFoilDeployment(market.chainId);
-
-  const {
-    data: getEpochData,
-    isLoading: isLoadingEpochData,
-    error: getEpochDataError,
-  } = useReadContract({
-    address: market.address as `0x${string}`,
-    abi: foilData?.abi,
-    functionName: 'getEpoch',
-    args: [BigInt(epoch.epochId)],
-    chainId: market.chainId,
-    query: {
-      enabled: !loadingFoilData && !foilDataError && !!foilData,
-    },
-  }) as any;
-
-  useEffect(() => {
-    if (getEpochData) {
-      const epochData: EpochData | undefined = getEpochData[0];
-      if (epochData && epochData.settled) {
-        const { settlementPriceD18 } = epochData;
-        // Adjust the settlement price as per your decimals (assuming 18 decimals)
-        const price = Number(settlementPriceD18) / 1e18;
-        setSettlementPrice(price);
-      } else {
-        setSettlementPrice(null);
-      }
-      setLoadingSettlementPrice(false);
-    } else if (!isLoadingEpochData && (getEpochDataError || foilDataError)) {
-      console.error(
-        'Error fetching epoch data:',
-        getEpochDataError || foilDataError
-      );
-      setError(true);
-      setLoadingSettlementPrice(false);
-    }
-  }, [getEpochData, isLoadingEpochData, getEpochDataError, foilDataError]);
-  if (loadingSettlementPrice || loadingFoilData || isLoadingEpochData) {
-    return <span>Loading...</span>;
-  }
-
-  if (error) {
-    return <span>Error</span>;
-  }
-
-  if (settlementPrice !== null) {
-    return <span>{formatAmount(settlementPrice)}</span>;
-  }
-  return <span>Not Settled</span>;
 };
 
 export default MarketsTable;
