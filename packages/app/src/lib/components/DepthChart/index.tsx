@@ -171,6 +171,8 @@ const CustomTooltip: React.FC<
   if (!payload || !payload[0] || !pool) return null;
   const tick: BarChartTick = payload[0].payload;
 
+  console.log(pool.tickCurrent, tick.tickIdx, tick.isCurrent);
+
   return (
     <div
       style={{
@@ -179,19 +181,40 @@ const CustomTooltip: React.FC<
       }}
       className="bg-background"
     >
-      {(tick.tickIdx <= pool.tickCurrent || tick.isCurrent) && (
-        <p>
-          {pool.token1.symbol} Liquidity:{' '}
-          {(tick.liquidityLockedToken1 / tick.price0).toFixed(3)}
-        </p>
+      {tick.tickIdx < pool.tickCurrent && !tick.isCurrent && (
+        <>
+          <p>
+            {pool.token1.symbol} Liquidity:{' '}
+            {tick.liquidityLockedToken1.toFixed(3)}
+          </p>
+          <p>
+            {pool.token0.symbol} Liquidity:{' 0'}
+          </p>
+        </>
       )}
-      {(tick.tickIdx >= pool.tickCurrent || tick.isCurrent) && (
-        <p>
-          {pool.token0.symbol} Liquidity:{' '}
-          {(tick.liquidityLockedToken0 / tick.price0).toFixed(3)}
-        </p>
+      {tick.tickIdx > pool.tickCurrent && !tick.isCurrent && (
+        <>
+          <p>
+            {pool.token1.symbol} Liquidity:{' 0'}
+          </p>
+          <p>
+            {pool.token0.symbol} Liquidity:{' '}
+            {tick.liquidityLockedToken0.toFixed(3)}
+          </p>
+        </>
       )}
-      <p>Tick {tick.tickIdx}</p>
+      {tick.isCurrent && (
+        <>
+          <p>
+            {pool.token1.symbol} Liquidity:{' '}
+            {tick.liquidityLockedToken1.toFixed(3)}
+          </p>
+          <p>
+            {pool.token0.symbol} Liquidity:{' '}
+            {tick.liquidityLockedToken0.toFixed(3)}
+          </p>
+        </>
+      )}
     </div>
   );
 };
@@ -245,6 +268,8 @@ const DepthChart: React.FC = () => {
   const { data: tickData } = useReadContracts({
     contracts,
   }) as { data: TickData[]; isLoading: boolean };
+
+  console.log('tickData', tickData);
 
   const graphTicks: GraphTick[] = useMemo(() => {
     if (!tickData) return [];
@@ -304,8 +329,8 @@ const DepthChart: React.FC = () => {
   );
 
   return (
-    <div className="flex flex-1 relative">
-      <div className="min-h-[50px] w-fit absolute top-0 left-0 z-[2] bg-background">
+    <div className="flex flex-1 relative pt-3 pl-3">
+      <div className="min-h-[50px] w-fit absolute top-3 left-3 z-[2] bg-background">
         {pool && price0 && (
           <div>
             <p className="text-base">

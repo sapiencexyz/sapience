@@ -579,13 +579,17 @@ const AddEditLiquidity: React.FC = () => {
   // handle successful add/increase liquidity
   useEffect(() => {
     if (increaseLiquiditySuccess) {
-      setTxnSuccessMsg('Successfully increased liquidity');
+      setTxnSuccessMsg(
+        'Successfully increased liquidity. Your transaction will be displayed in the app as soon as possible.'
+      );
     }
   }, [increaseLiquiditySuccess]);
 
   useEffect(() => {
     if (decreaseLiquiditySuccess) {
-      setTxnSuccessMsg('Successfully decreased liquidity');
+      setTxnSuccessMsg(
+        'Successfully decreased liquidity. Your transaction will be displayed in the app as soon as possible.'
+      );
     }
   }, [decreaseLiquiditySuccess]);
 
@@ -602,7 +606,7 @@ const AddEditLiquidity: React.FC = () => {
           if ((event as any).eventName === 'LiquidityPositionCreated') {
             const nftId = (event as any).args.positionId.toString();
             setTxnSuccessMsg(
-              `Your liquidity position has been created as position ${nftId}`
+              `Your liquidity position has been created as position ${nftId}. Your transaction will be displayed in the app as soon as possible.`
             );
             setNftId(nftId);
             return;
@@ -611,7 +615,9 @@ const AddEditLiquidity: React.FC = () => {
           // This log was not for the LiquidityPositionCreated event, continue to next log
         }
       }
-      setTxnSuccessMsg(`We've created your liquidity position for you.`);
+      setTxnSuccessMsg(
+        `We've created your liquidity position for you. Your transaction will be displayed in the app as soon as possible.`
+      );
     }
   }, [addLiquiditySuccess, addLiquidityReceipt]);
 
@@ -621,7 +627,7 @@ const AddEditLiquidity: React.FC = () => {
     if (positionData && positionData.kind === 2) {
       toast({
         title:
-          'Your liquidity position has been closed and converted to a trader position with your accumulated position',
+          'Your liquidity position has been closed and converted to a trader position with your accumulated position. Your transaction will be displayed in the app as soon as possible.',
         duration: 5000,
       });
       router.push(
@@ -948,7 +954,7 @@ const AddEditLiquidity: React.FC = () => {
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit(handleFormSubmit)}>
-        <h2 className="text-xl font-semibold mb-3">Pool Liquidity</h2>
+        <h2 className="text-2xl font-semibold mb-3">Pool Liquidity</h2>
         <div className="mb-3">
           <LiquidityAmountInput
             isEdit={isEdit}

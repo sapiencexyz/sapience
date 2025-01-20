@@ -48,7 +48,8 @@ contract VaultDurationTest is TestVault {
                 1732050807568877200, //sqrt(3)
                 duration,
                 vaultIndex,
-                totalVaults
+                totalVaults,
+                vaultOwner
             )
         );
         vm.stopPrank();

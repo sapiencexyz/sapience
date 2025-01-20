@@ -92,8 +92,9 @@ export default function AddEditTrade() {
   const isLong = option === 'Long';
 
   const sizeChangeInContractUnit = useMemo(() => {
-    return sizeChange * BigInt(1e9);
-  }, [sizeChange]);
+    const baseSize = sizeChange * BigInt(1e9);
+    return isLong ? baseSize : -baseSize;
+  }, [sizeChange, isLong]);
   const isNonZeroSizeChange = sizeChangeInContractUnit !== BigInt(0);
 
   const formError = useMemo(() => {
@@ -157,15 +158,20 @@ export default function AddEditTrade() {
   }, [positionData, isEdit]);
 
   const desiredSizeInContractUnit = useMemo(() => {
-    if (!isEdit) return sizeChangeInContractUnit;
+    if (!isEdit) {
+      return isLong ? sizeChangeInContractUnit : -sizeChangeInContractUnit;
+    }
 
     const originalPositionIsLong = positionData?.vGasAmount > BigInt(0);
     const currentSize = originalPositionIsLong
       ? positionData?.vGasAmount || BigInt(0)
       : -(positionData?.borrowedVGas || BigInt(0));
 
-    return currentSize + sizeChangeInContractUnit;
-  }, [isEdit, positionData, sizeChangeInContractUnit]);
+    return (
+      currentSize +
+      (isLong ? sizeChangeInContractUnit : -sizeChangeInContractUnit)
+    );
+  }, [isEdit, positionData, sizeChangeInContractUnit, isLong]);
 
   // Collateral balance for current address/account
   const { data: collateralBalance } = useReadContract({
@@ -275,7 +281,8 @@ export default function AddEditTrade() {
       if (isEdit) {
         toast({
           title: 'Success',
-          description: "We've updated your position for you.",
+          description:
+            "We've updated your position for you. Your transaction will be displayed in the app as soon as possible.",
         });
         resetAfterSuccess();
       } else {
@@ -303,7 +310,8 @@ export default function AddEditTrade() {
         }
         toast({
           title: 'Success',
-          description: "We've created your position for you.",
+          description:
+            "We've created your position for you. Your transaction will be displayed in the app as soon as possible.",
         });
         resetAfterSuccess();
       }
@@ -580,10 +588,10 @@ export default function AddEditTrade() {
       buttonTxt = `Approve ${collateralAssetTicker} Transfer`;
     }
     if (isFetchingQuote && !formError) {
-      buttonTxt = 'Fetching Collateral Change...';
+      buttonTxt = 'Generating Quote...';
     }
     if (fetchingSizeFromCollateralInput) {
-      buttonTxt = 'Fetching Size Change....';
+      buttonTxt = 'Generating Quote....';
     }
     return (
       <div className="mb-4">
@@ -747,7 +755,7 @@ export default function AddEditTrade() {
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <h2 className="text-lg font-semibold mb-3">Trade</h2>
+        <h2 className="text-2xl font-semibold mb-3">Trade</h2>
 
         <Tabs
           defaultValue="Long"
