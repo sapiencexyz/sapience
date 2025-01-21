@@ -122,8 +122,7 @@ export const formatDbBigInt = (value: string) => {
     return "0";
   }
   const formatted = formatUnits(BigInt(value), TOKEN_PRECISION);
-  const number = Number(formatted);
-  return number.toFixed(4);
+  return Number(formatted);
 };
 
 export const bigintReplacer = (key: string, value: any) => {
