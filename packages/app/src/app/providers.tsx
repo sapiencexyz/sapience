@@ -42,14 +42,12 @@ const transports: Record<number, HttpTransport> = {
   ),
 };
 
-const chains: any = [mainnet];
+const chains: any = [mainnet, base];
 
 if (process.env.NODE_ENV !== 'production') {
   transports[cannon.id] = http('http://localhost:8545');
   chains.push(cannon);
   chains.push(sepolia);
-} else {
-  chains.push(base);
 }
 
 // Create the configuration
