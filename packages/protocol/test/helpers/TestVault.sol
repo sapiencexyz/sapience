@@ -79,7 +79,8 @@ contract TestVault is TestTrade {
 
         // Initialize Epoch (by owner, kicks the ball with the first epoch)
         IVault(vm.getAddress("Vault")).initializeFirstEpoch(
-            _initialSqrtPriceX96
+            _initialSqrtPriceX96,
+            0
         );
 
         vm.stopPrank();

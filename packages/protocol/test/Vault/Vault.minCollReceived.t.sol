@@ -46,7 +46,7 @@ contract VaultMinimumCollateralReceived is TestVault {
 
         epochStartTime = block.timestamp + 60;
         vm.prank(vaultOwner);
-        vault.initializeFirstEpoch(initialSqrtPriceX96);
+        vault.initializeFirstEpoch(initialSqrtPriceX96, block.timestamp);
 
         vault.deposit(0, lp1);
 
