@@ -360,8 +360,8 @@ importers:
         specifier: ^1.4.4
         version: 1.4.4
       '@usecannon/cli':
-        specifier: 2.20.3
-        version: 2.20.3(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.6.2)(utf-8-validate@5.0.10)
+        specifier: 2.21.0
+        version: 2.21.0(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.6.2)(utf-8-validate@5.0.10)
     devDependencies:
       '@types/chai':
         specifier: ^4.3.19
@@ -1924,6 +1924,9 @@ packages:
 
   '@emotion/weak-memoize@0.4.0':
     resolution: {integrity: sha512-snKqtPW01tN0ui7yu9rGv69aJXr/a/Ywvl11sUjNtEcRc+ng/mQriFL0wLXMef74iHa/EkftbDzU9F8iFbH+zg==}
+
+  '@endo/env-options@1.1.8':
+    resolution: {integrity: sha512-Xtxw9n33I4guo8q0sDyZiRuxlfaopM454AKiELgU7l3tqsylCut6IBZ0fPy4ltSHsBib7M3yF7OEMoIuLwzWVg==}
 
   '@ensdomains/address-encoder@0.1.9':
     resolution: {integrity: sha512-E2d2gP4uxJQnDu2Kfg1tHNspefzbLT8Tyjrm5sEuim32UkU2sm5xL4VXtgc2X33fmPEw9+jUMpGs4veMbf+PYg==}
@@ -5463,12 +5466,12 @@ packages:
     engines: {node: '>=10'}
     deprecated: Please upgrade to 1.0.1
 
-  '@usecannon/builder@2.20.3':
-    resolution: {integrity: sha512-x2Nnxtj5gOF91mANSfRyAGbNj5dxfy0IyuAfIW620CDhJ1m7AWuzOMYyIbTSez9pODGSvFqohK4lLd5GQb5eaQ==}
+  '@usecannon/builder@2.21.0':
+    resolution: {integrity: sha512-UqpKKB06bO+PcFcqMYkwWuL/KQCVuuS4kDECr2PK+W6Kb4QSKcYLQNVmoe8jbF23+IUa1Lpo2x+e8QixlCrgyQ==}
     engines: {node: '>=16.0.0'}
 
-  '@usecannon/cli@2.20.3':
-    resolution: {integrity: sha512-dXB2c5rooT5UyH18/6Uc/z7GSQj73A1WFiwFFKTYo9Ku7jTbaloJ7KExApUuoon/WEIJ1Z5yv4gC18h2JbPsKg==}
+  '@usecannon/cli@2.21.0':
+    resolution: {integrity: sha512-47q3NjNfdE8+oiPe4Rnc8ndbGUgOuUHz9xv7+Xr1bbLNZJVJmnD57Y18BiFA4NtKAofS9MUqOCbMKA5GZX566g==}
     hasBin: true
 
   '@usecannon/router@4.1.3':
@@ -7410,6 +7413,9 @@ packages:
   deep-extend@0.6.0:
     resolution: {integrity: sha512-LOHxIOaPYdHlJRtCQfDIVZtfw/ufM8+rVj649RIHzcm/vGwQRXFt6OPqIFWsm2XEMrNIEtWR64sY1LEKD2vAOA==}
     engines: {node: '>=4.0.0'}
+
+  deep-freeze@0.0.1:
+    resolution: {integrity: sha512-Z+z8HiAvsGwmjqlphnHW5oz6yWlOwu6EQfFTjmeTWlDeda3FS2yv3jhq35TX/ewmsnqB+RX2IdsIOyjJCQN5tg==}
 
   deep-is@0.1.4:
     resolution: {integrity: sha512-oIPzksmTg4/MriiaYGO+okXDT7ztn/w3Eptv/+gSIdMdKsJo0u4CfYNFJPy+4SKMuCqGw2wxnA+URMg3t8a/bQ==}
@@ -13106,6 +13112,9 @@ packages:
     resolution: {integrity: sha512-/xE6GvsKKqyo1BAY+KxOWXcLpPsUUyji7Qg3bVD7hh1eRze5bR1uYiuDA/k3Gof1s9BTzQZEJK8sNcNGFIzeWw==}
     engines: {node: '>=6'}
 
+  ses@1.10.0:
+    resolution: {integrity: sha512-HXmJbNEgY/4hsQfaz5dna39vVKNyvlElRmJYk+bjTqSXSElT0Hr6NKwWVg4j0TxP6IuHp/PNMoWJKIRXzmLbAQ==}
+
   set-blocking@2.0.0:
     resolution: {integrity: sha512-KiKBS8AnWGEyLzofFfmvKwpdPzqiy16LvQfK3yv/fVH7Bj13/wl3JSR1J+rfgRE9q7xUJK4qvgS8raSOeLUehw==}
 
@@ -14649,9 +14658,6 @@ packages:
 
   web-encoding@1.1.5:
     resolution: {integrity: sha512-HYLeVCdJ0+lBYV2FvNZmv3HJ2Nt0QYXqZojk3d9FJOLkwnuhzM9tmamh8d7HPM8QqjKH8DeHkFTx+CFlWpZZDA==}
-
-  web-solc@0.5.1:
-    resolution: {integrity: sha512-Z/hBplZq1+4i4bYeIeD9N3vP1BLUBXpSDa4h0Ipm2Z2cHv7x7DtZ2zFb0E1L1VZo4BF+OJGVtGlT+nTUXGgncQ==}
 
   web3-bzz@1.10.0:
     resolution: {integrity: sha512-o9IR59io3pDUsXTsps5pO5hW1D5zBmg46iNc2t4j2DkaYHNdDLwk2IP9ukoM2wg47QILfPEJYzhTfkS/CcX0KA==}
@@ -17369,6 +17375,8 @@ snapshots:
   '@emotion/utils@1.4.0': {}
 
   '@emotion/weak-memoize@0.4.0': {}
+
+  '@endo/env-options@1.1.8': {}
 
   '@ensdomains/address-encoder@0.1.9':
     dependencies:
@@ -22074,20 +22082,24 @@ snapshots:
       '@uniswap/v3-core': 1.0.0
       '@uniswap/v3-periphery': 1.4.4
 
-  '@usecannon/builder@2.20.3(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.6.2)(utf-8-validate@5.0.10)':
+  '@usecannon/builder@2.21.0(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.6.2)(utf-8-validate@5.0.10)':
     dependencies:
       '@usecannon/router': 4.1.3
       '@usecannon/web-solc': 0.5.1
+      acorn: 8.14.0
       axios: 1.7.7(debug@4.4.0)
-      axios-retry: 4.5.0(axios@1.7.7)
+      axios-retry: 4.5.0(axios@1.7.7(debug@4.4.0))
       buffer: 6.0.3
       chalk: 4.1.2
       debug: 4.4.0(supports-color@8.1.1)
+      deep-freeze: 0.0.1
       form-data: 4.0.1
       fuse.js: 7.0.0
       lodash: 4.17.21
       pako: 2.1.0
       promise-events: 0.2.4
+      rfdc: 1.4.1
+      ses: 1.10.0
       typestub-ipfs-only-hash: 4.0.0(encoding@0.1.13)
       viem: 2.21.49(bufferutil@4.0.8)(typescript@5.6.2)(utf-8-validate@5.0.10)(zod@3.23.8)
       zod: 3.23.8
@@ -22098,10 +22110,10 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@usecannon/cli@2.20.3(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.6.2)(utf-8-validate@5.0.10)':
+  '@usecannon/cli@2.21.0(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.6.2)(utf-8-validate@5.0.10)':
     dependencies:
       '@iarna/toml': 3.0.0
-      '@usecannon/builder': 2.20.3(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.6.2)(utf-8-validate@5.0.10)
+      '@usecannon/builder': 2.21.0(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.6.2)(utf-8-validate@5.0.10)
       abitype: 1.0.6(typescript@5.6.2)(zod@3.23.8)
       chalk: 4.1.2
       commander: 12.1.0
@@ -22134,9 +22146,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@usecannon/web-solc@0.5.1':
-    dependencies:
-      web-solc: 0.5.1
+  '@usecannon/web-solc@0.5.1': {}
 
   '@vanilla-extract/babel-plugin-debug-ids@1.0.6':
     dependencies:
@@ -23107,7 +23117,7 @@ snapshots:
 
   axe-core@4.10.0: {}
 
-  axios-retry@4.5.0(axios@1.7.7):
+  axios-retry@4.5.0(axios@1.7.7(debug@4.4.0)):
     dependencies:
       axios: 1.7.7(debug@4.4.0)
       is-retry-allowed: 2.2.0
@@ -24758,6 +24768,8 @@ snapshots:
       which-typed-array: 1.1.15
 
   deep-extend@0.6.0: {}
+
+  deep-freeze@0.0.1: {}
 
   deep-is@0.1.4: {}
 
@@ -31379,7 +31391,7 @@ snapshots:
 
   proto3-json-serializer@1.1.1:
     dependencies:
-      protobufjs: 7.2.4
+      protobufjs: 7.4.0
 
   protobufjs-cli@1.1.1(protobufjs@7.2.4):
     dependencies:
@@ -32508,6 +32520,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  ses@1.10.0:
+    dependencies:
+      '@endo/env-options': 1.1.8
+
   set-blocking@2.0.0: {}
 
   set-function-length@1.2.2:
@@ -33396,7 +33412,7 @@ snapshots:
   terser@5.33.0:
     dependencies:
       '@jridgewell/source-map': 0.3.6
-      acorn: 8.12.1
+      acorn: 8.14.0
       commander: 2.20.3
       source-map-support: 0.5.21
 
@@ -34451,10 +34467,6 @@ snapshots:
       util: 0.12.5
     optionalDependencies:
       '@zxing/text-encoding': 0.9.0
-
-  web-solc@0.5.1:
-    dependencies:
-      semver: 7.6.3
 
   web3-bzz@1.10.0(bufferutil@4.0.8)(utf-8-validate@5.0.10):
     dependencies:
