@@ -7,7 +7,7 @@ import {
   webSocket,
   type Transport,
 } from "viem";
-import { mainnet, sepolia, cannon } from "viem/chains";
+import { mainnet, sepolia, cannon, base } from "viem/chains";
 import { TOKEN_PRECISION } from "./constants";
 import { epochRepository } from "./db";
 import { Deployment } from "./interfaces";
@@ -58,6 +58,16 @@ export const mainnetPublicClient = createPublicClient({
   },
 });
 
+export const basePublicClient = createPublicClient({
+  chain: base,
+  transport: process.env.INFURA_API_KEY
+    ? createInfuraWebSocketTransport("base-mainnet")
+    : http(),
+  batch: {
+    multicall: true,
+  },
+});
+
 export const sepoliaPublicClient = createPublicClient({
   chain: sepolia,
   transport: process.env.INFURA_API_KEY
@@ -89,6 +99,9 @@ export function getProviderForChain(chainId: number): PublicClient {
       break;
     case 13370:
       newClient = cannonPublicClient;
+      break;
+    case 8453:
+      newClient = basePublicClient;
       break;
     default:
       throw new Error(`Unsupported chain ID: ${chainId}`);
