@@ -132,7 +132,7 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
                       }, [])
                       ?.sort(
                         (a: ExtendedEpoch, b: ExtendedEpoch) =>
-                          b.endTimestamp - a.endTimestamp
+                          a.endTimestamp - b.endTimestamp
                       ) || [];
 
                   if (
@@ -277,7 +277,7 @@ const NavLinks = ({
                       }, [])
                       ?.sort(
                         (a: ExtendedEpoch, b: ExtendedEpoch) =>
-                          b.endTimestamp - a.endTimestamp
+                          a.endTimestamp - b.endTimestamp
                       ) || [];
 
                   if (!resource.markets?.length || allEpochs.length === 0) {
