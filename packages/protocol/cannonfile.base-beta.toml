@@ -26,6 +26,7 @@ lowerBoundMultiplier = "0.5773502691896257" # sqrt(1/3)
 upperBoundMultiplier = "1.7320508075688772" # sqrt(3)
 duration = "2419200" # 28 day in seconds
 totalVaults = "2"
+startTime = "0"
 # tokens
 wstETH = "0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452"
 USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
@@ -134,7 +135,7 @@ from = "<%= settings.deployer %>"
 func="initializeFirstEpoch"
 args=[
   "<%= settings.startingSqrtPriceX96 %>",
-  "0" # TODO: change this
+  "<%= settings.startTime %>"
 ]
 depends=["invoke.initializeMarketForVaultYin"]
 
@@ -144,6 +145,6 @@ from = "<%= settings.deployer %>"
 func="initializeFirstEpoch"
 args=[
   "<%= settings.startingSqrtPriceX96 %>",
-  "0" # TODO: change this
+  "<%= settings.startTime %>"
 ]
 depends=["invoke.initializeMarketForVaultYang"]
