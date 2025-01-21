@@ -4,7 +4,7 @@ import { RainbowKitProvider, lightTheme } from '@rainbow-me/rainbowkit';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import type { HttpTransport } from 'viem';
 import { defineChain } from 'viem';
-import { sepolia, base } from 'viem/chains';
+import { sepolia, base, mainnet } from 'viem/chains';
 import { createConfig, http, WagmiProvider } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 
@@ -25,6 +25,11 @@ export const cannon = defineChain({
 });
 
 const transports: Record<number, HttpTransport> = {
+  [mainnet.id]: http(
+    process.env.NEXT_PUBLIC_INFURA_API_KEY
+      ? `https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
+      : 'https://ethereum-rpc.publicnode.com'
+  ),
   [sepolia.id]: http(
     process.env.NEXT_PUBLIC_INFURA_API_KEY
       ? `https://sepolia.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
@@ -37,7 +42,7 @@ const transports: Record<number, HttpTransport> = {
   ),
 };
 
-const chains: any = [];
+const chains: any = [mainnet];
 
 if (process.env.NODE_ENV !== 'production') {
   transports[cannon.id] = http('http://localhost:8545');
