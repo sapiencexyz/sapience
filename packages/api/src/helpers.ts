@@ -93,7 +93,7 @@ export function getProviderForChain(chainId: number): PublicClient {
   switch (chainId) {
     case 1:
       newClient = mainnetPublicClient;
-      break;
+      break; 
     case 11155111:
       newClient = sepoliaPublicClient;
       break;
