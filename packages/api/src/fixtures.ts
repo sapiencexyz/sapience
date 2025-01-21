@@ -1,4 +1,4 @@
-import { mainnet, sepolia, cannon } from "viem/chains";
+import { mainnet, sepolia, base, cannon } from "viem/chains";
 import evmIndexer from "./resourcePriceFunctions/evmIndexer";
 import celestiaIndexer from "./resourcePriceFunctions/celestiaIndexer";
 import { Deployment, MarketInfo } from "./interfaces";
@@ -25,40 +25,48 @@ export const RESOURCES = [
   },
 ];
 
-const initializeMarkets = async () => {
-  const FULL_MARKET_LIST = [
-    /*
-    {
-      name: "Development Gas",
-      deployment: await safeRequire(
-        "@/protocol/deployments/13370/FoilYin.json"
-      ),
-      marketChainId: cannon.id,
-      public: true,
-      resource: RESOURCES[0], // Ethereum Gas
-    },
-    */
-    {
-      deployment: await safeRequire(
-        "@/protocol/deployments/11155111/FoilYin.json"
-      ),
-      marketChainId: sepolia.id,
-      public: true,
-      resource: RESOURCES[0], // Ethereum Gas
-    },
-    {
-      deployment: await safeRequire(
-        "@/protocol/deployments/11155111/FoilYang.json"
-      ),
-      marketChainId: sepolia.id,
-      public: true,
-      resource: RESOURCES[0], // Ethereum Gas
-    },
-  ];
+const addMarketYinYang = async (
+  markets: MarketInfo[],
+  chainId: number
+) => {
+  const yin = await safeRequire(`@/protocol/deployments/${chainId}/FoilYin.json`);
+  const yang = await safeRequire(`@/protocol/deployments/${chainId}/FoilYang.json`);
+  
+  if (yin && yang) {
+    markets.push(
+      {
+        deployment: yin,
+        marketChainId: chainId,
+        public: true,
+        resource: RESOURCES[0], // Ethereum Gas
+      },
+      {
+        deployment: yang,
+        marketChainId: chainId,
+        public: true,
+        resource: RESOURCES[0], // Ethereum Gas
+      }
+    );
+  }
+};
 
-  return FULL_MARKET_LIST.filter(
-    (market) => market.deployment !== null
-  ) as MarketInfo[];
+const initializeMarkets = async () => {
+  const FULL_MARKET_LIST: MarketInfo[] = [];
+
+  // Mainnet Deployments
+  await addMarketYinYang(FULL_MARKET_LIST, base.id);
+
+  // Development Deployments
+  if (process.env.NODE_ENV === "development") {
+    await addMarketYinYang(FULL_MARKET_LIST, cannon.id);
+  }
+  
+  // Testnet Deployments
+  if (process.env.NODE_ENV === "staging" || process.env.NODE_ENV === "development") {
+    await addMarketYinYang(FULL_MARKET_LIST, sepolia.id);
+  }
+
+  return FULL_MARKET_LIST;
 };
 
 export const MARKETS = await initializeMarkets();
