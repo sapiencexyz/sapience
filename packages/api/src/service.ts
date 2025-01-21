@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import "./instrument";
+import initSentry from "./instrument";
 import dataSource, { initializeDataSource, renderJobRepository } from "./db"; /// !IMPORTANT: Keep as top import to prevent issues with db initialization
 import cors from "cors";
 import { ResourcePrice } from "./models/ResourcePrice";
@@ -12,8 +12,6 @@ import {
   Between,
   In,
   Repository,
-  LessThanOrEqual,
-  MoreThanOrEqual,
 } from "typeorm";
 import { Transaction } from "./models/Transaction";
 import { Epoch } from "./models/Epoch";
@@ -64,6 +62,8 @@ const PORT = 3001;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
+
+initSentry();
 
 const corsOptions: cors.CorsOptions = {
   origin: (

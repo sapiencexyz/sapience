@@ -34,6 +34,7 @@
     "reflect-metadata": "^0.2.2",
     "sqlite3": "^5.1.7",
     "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.19.2",
     "type-graphql": "2.0.0-rc.2",
     "typeorm": "^0.3.20",
     "typescript": "^5.7.2",
@@ -45,8 +46,7 @@
     "@types/node": "^20.17.6",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
-    "eslint": "^9.15.0",
-    "tsx": "^4.19.2"
+    "eslint": "^9.15.0"
   },
   "engines": {
     "node": ">=20.14.x",

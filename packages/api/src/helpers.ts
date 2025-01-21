@@ -101,7 +101,7 @@ export function getProviderForChain(chainId: number): PublicClient {
       newClient = cannonPublicClient;
       break;
     case 8453:
-      newClient = basePublicClient;
+      newClient = basePublicClient as PublicClient;
       break;
     default:
       throw new Error(`Unsupported chain ID: ${chainId}`);
@@ -122,7 +122,7 @@ export const formatDbBigInt = (value: string) => {
     return "0";
   }
   const formatted = formatUnits(BigInt(value), TOKEN_PRECISION);
-  return Number(formatted);
+  return formatted;
 };
 
 export const bigintReplacer = (key: string, value: any) => {

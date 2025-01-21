@@ -7,8 +7,8 @@ services:
     type: web
     env: node
     plan: standard
-    buildCommand: pnpm --prefix packages/api install
-    startCommand: pnpm --prefix packages/api start:service
+    buildCommand: pnpm --filter @foil/api install
+    startCommand: pnpm --filter @foil/api start:service
     autoDeploy: true
     envVars:
       - key: DATABASE_URL
@@ -22,8 +22,8 @@ services:
     type: worker
     env: node
     plan: standard
-    buildCommand: pnpm --prefix packages/api install
-    startCommand: pnpm --prefix packages/api start:worker
+    buildCommand: pnpm --filter @foil/api install
+    startCommand: pnpm --filter @foil/api start:worker
     autoDeploy: true
     envVars:
       - key: DATABASE_URL
