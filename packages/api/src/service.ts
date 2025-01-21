@@ -1413,11 +1413,6 @@ const startServer = async () => {
 
       const prices = await query.getMany();
 
-      if (!prices.length) {
-        res.status(404).json({ error: "No price data found" });
-        return;
-      }
-
       res.json(prices);
     })
   );
