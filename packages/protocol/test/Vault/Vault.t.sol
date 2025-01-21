@@ -60,7 +60,7 @@ contract VaultTest is TestVault {
 
     function test_revertsWhenInitializeNonOwner() public {
         vm.expectRevert("Only vaultInitializer can call this function");
-        vault.initializeFirstEpoch(initialSqrtPriceX96);
+        vault.initializeFirstEpoch(initialSqrtPriceX96, block.timestamp);
     }
 
     function test_revertsWhenInitializeFirstEpochAgain() public {
@@ -69,7 +69,7 @@ contract VaultTest is TestVault {
         vm.startPrank(vaultOwner);
 
         vm.expectRevert("Already Initialized");
-        vault.initializeFirstEpoch(initialSqrtPriceX96);
+        vault.initializeFirstEpoch(initialSqrtPriceX96, block.timestamp);
 
         vm.stopPrank();
     }

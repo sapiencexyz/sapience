@@ -122,12 +122,17 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     /// @dev price is set to 1e18
     /// @dev any pending deposits prior to the first epoch are used to create the initial liquidity position
     function initializeFirstEpoch(
-        uint160 initialSqrtPriceX96
+        uint160 initialSqrtPriceX96,
+        uint256 initialStartTime
     ) external onlyInitializer {
         require(!initialized, "Already Initialized");
         require(address(market) != address(0), "Market address not set");
 
-        uint256 initialStartTime = block.timestamp + (vaultIndex * duration);
+        uint256 startTime = initialStartTime == 0
+            ? block.timestamp
+            : initialStartTime;
+
+        uint256 epochStartTime = startTime + (vaultIndex * duration);
         // set tick spacing in storage once to reuse
         // for future epoch creations
         tickSpacing = market.getMarketTickSpacing();
@@ -136,7 +141,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         epochSharePrices[0] = startingSharePrice;
 
         _createEpochAndPosition(
-            initialStartTime,
+            epochStartTime,
             initialSqrtPriceX96,
             0 // collateral received, should be 0 for first epoch
         );
