@@ -9,6 +9,7 @@ import { createConfig, http, WagmiProvider } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 
 import ThemeProvider from '~/components/ThemeProvider';
+import { ConnectWalletProvider } from '~/lib/context/ConnectWalletProvider';
 import { MarketListProvider } from '~/lib/context/MarketListProvider';
 
 const queryClient = new QueryClient();
@@ -69,7 +70,9 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
       <WagmiProvider config={config}>
         <QueryClientProvider client={queryClient}>
           <RainbowKitProvider theme={lightTheme()}>
-            <MarketListProvider>{children}</MarketListProvider>
+            <ConnectWalletProvider>
+              <MarketListProvider>{children}</MarketListProvider>
+            </ConnectWalletProvider>
           </RainbowKitProvider>
         </QueryClientProvider>
       </WagmiProvider>

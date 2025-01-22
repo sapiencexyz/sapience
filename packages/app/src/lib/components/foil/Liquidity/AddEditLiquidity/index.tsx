@@ -3,7 +3,6 @@
 'use client';
 
 // eslint-disable-next-line import/no-extraneous-dependencies
-import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { TickMath } from '@uniswap/v3-sdk';
 import JSBI from 'jsbi';
 import { Loader2 } from 'lucide-react';
@@ -20,6 +19,7 @@ import {
   useSwitchChain,
 } from 'wagmi';
 
+import { useConnectWallet } from '../../../../context/ConnectWalletProvider';
 import erc20ABI from '../../../../erc20abi.json';
 import INONFUNGIBLE_POSITION_MANAGER from '../../../../interfaces/Uniswap.NonfungiblePositionManager.json';
 import NumberDisplay from '../../numberDisplay';
@@ -141,7 +141,7 @@ const AddEditLiquidity: React.FC = () => {
 
   const currentChainId = useChainId();
   const { switchChain } = useSwitchChain();
-  const { openConnectModal } = useConnectModal();
+  const { setIsOpen } = useConnectWallet();
   const router = useRouter();
 
   const isDecrease =
@@ -905,7 +905,7 @@ const AddEditLiquidity: React.FC = () => {
   const renderActionButton = () => {
     if (!isConnected) {
       return (
-        <Button className="w-full" size="lg" onClick={openConnectModal}>
+        <Button className="w-full" size="lg" onClick={() => setIsOpen(true)}>
           Connect Wallet
         </Button>
       );
