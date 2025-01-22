@@ -1,7 +1,6 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import { formatDistanceToNow } from 'date-fns';
 import { Download } from 'lucide-react';
-import React from 'react';
 
 import { Button } from '@/components/ui/button';
 import {

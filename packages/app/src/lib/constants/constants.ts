@@ -1,8 +1,8 @@
 import type { MarketContextType } from '../context/MarketProvider';
 
 export const TOKEN_DECIMALS = 18; // should be retrieved from the contract?
+
 export const LOCAL_MARKET_CHAIN_ID = 13370;
-export const DECIMAL_PRECISION_DISPLAY = 4;
 
 export const CREATE_LIQUIDITY_REDUCTION = 0.0001;
 

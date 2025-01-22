@@ -28,7 +28,7 @@ import { useResources } from '~/lib/hooks/useResources';
 
 const MarketsTable = () => {
   const { markets } = useMarketList();
-  const { data: resources, isLoading: isLoadingResources } = useResources();
+  const { data: resources } = useResources();
   const searchParams = useSearchParams();
   const router = useRouter();
   const selectedResource = searchParams.get('resource');
@@ -74,10 +74,6 @@ const MarketsTable = () => {
         header: 'Period',
         accessorKey: 'period',
         sortingFn: 'basic',
-      },
-      {
-        header: 'Settled',
-        accessorKey: 'settled',
       },
     ],
     []
@@ -184,13 +180,7 @@ const MarketsTable = () => {
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}
-                <TableCell>
-                  <Link
-                    href={`/subscribe/${row.original.chainId}:${row.original.marketAddress}/epochs/${row.original.epochId}`}
-                    className="mr-2"
-                  >
-                    <Button size="sm">Subscribe</Button>
-                  </Link>
+                <TableCell className="text-right">
                   <Link
                     href={`/trade/${row.original.chainId}:${row.original.marketAddress}/epochs/${row.original.epochId}`}
                     className="mr-2"

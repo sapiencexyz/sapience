@@ -1,7 +1,7 @@
 /* eslint-disable sonarjs/no-duplicate-string */
-import { format, formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { InfoIcon } from 'lucide-react';
-import React, { useContext } from 'react';
+import { useContext } from 'react';
 
 import {
   TooltipProvider,
@@ -16,7 +16,6 @@ import NumberDisplay from './numberDisplay';
 
 const Stats = () => {
   const {
-    startTime,
     endTime,
     averagePrice,
     pool,
@@ -26,21 +25,11 @@ const Stats = () => {
   } = useContext(MarketContext);
 
   let relativeTime = '';
-  let formattedTime = '';
-  let endTimeString = '';
-  let startTimeString = '';
-  if (startTime) {
-    const dateMilliseconds = Number(startTime) * 1000;
-    const date = new Date(dateMilliseconds);
-    startTimeString = format(date, 'PPpp');
-  }
   if (endTime) {
     const dateMilliseconds = Number(endTime) * 1000;
     const date = new Date(dateMilliseconds);
     const now = new Date();
     relativeTime = date < now ? 'Expired' : formatDistanceToNow(date);
-    formattedTime = format(date, 'PPpp');
-    endTimeString = format(date, 'PPpp');
   }
 
   return (

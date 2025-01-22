@@ -4,10 +4,9 @@ import { useEffect } from 'react';
 
 interface ErrorProps {
   error: Error & { digest?: string; status?: number };
-  reset: () => void;
 }
 
-export default function Error({ error, reset }: ErrorProps) {
+export default function Error({ error }: ErrorProps) {
   useEffect(() => {
     console.error('Error:', error);
   }, [error]);

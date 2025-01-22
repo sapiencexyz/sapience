@@ -1,6 +1,6 @@
 /* eslint-disable sonarjs/no-duplicate-string */
-import { format, formatDistanceToNow } from 'date-fns';
-import React, { useContext } from 'react';
+import { format } from 'date-fns';
+import { useContext } from 'react';
 import { FaRegChartBar, FaCubes, FaRegCalendar } from 'react-icons/fa';
 import { IoDocumentTextOutline } from 'react-icons/io5';
 
@@ -24,8 +24,6 @@ const EpochHeader = () => {
     (market) => market.address.toLowerCase() === address.toLowerCase()
   );
 
-  let relativeTime = '';
-  let formattedTime = '';
   let endTimeString = '';
   let startTimeString = '';
   if (startTime) {
@@ -36,8 +34,6 @@ const EpochHeader = () => {
   if (endTime) {
     const dateMilliseconds = Number(endTime) * 1000;
     const date = new Date(dateMilliseconds);
-    relativeTime = formatDistanceToNow(date);
-    formattedTime = format(date, 'M/d/yy h:mm a');
     endTimeString = format(date, 'M/d/yy h:mm a');
   }
 

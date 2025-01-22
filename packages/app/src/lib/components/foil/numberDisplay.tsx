@@ -19,17 +19,13 @@ const NumberDisplay: React.FC<NumberDisplayProps> = ({
 }) => {
   const formatNumber = (val: bigint | number | string): string => {
     let numValue: number;
-    let stringValue: string;
 
     if (typeof val === 'bigint') {
       numValue = Number(val) / 10 ** 18;
-      stringValue = val.toString();
     } else if (typeof val === 'number') {
       numValue = val;
-      stringValue = val.toString();
     } else if (typeof val === 'string') {
       numValue = parseFloat(val);
-      stringValue = val;
     } else {
       return 'Invalid input';
     }

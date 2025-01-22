@@ -1,15 +1,7 @@
 'use client';
 
-import {
-  ArrowUpDown,
-  BookTextIcon,
-  ChartNoAxesColumn,
-  ChevronLeft,
-  HelpCircle,
-  Loader2,
-} from 'lucide-react';
+import { BookTextIcon, HelpCircle } from 'lucide-react';
 import { type FC, useState, useContext, useMemo } from 'react';
-import React from 'react';
 import { useForm } from 'react-hook-form';
 
 import { Button } from '~/components/ui/button';
