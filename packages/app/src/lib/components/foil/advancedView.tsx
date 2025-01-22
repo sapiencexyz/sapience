@@ -2,16 +2,13 @@
 
 /* eslint-disable sonarjs/no-duplicate-string */
 
-import { gql } from '@apollo/client';
 import { useQuery } from '@tanstack/react-query';
-import { print } from 'graphql';
 import { Loader2 } from 'lucide-react';
-import { useEffect, useRef, useState, useContext } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMediaQuery } from 'usehooks-ts';
 import { formatUnits } from 'viem';
 import { useAccount } from 'wagmi';
 
-import { Button } from '~/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '~/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '~/components/ui/toggle-group';
 import { useToast } from '~/hooks/use-toast';
@@ -43,31 +40,7 @@ interface ResourcePricePoint {
   price: number;
 }
 
-const getTimeWindowSeconds = (window: TimeWindow): number => {
-  switch (window) {
-    case TimeWindow.H:
-      return 60 * 60;
-    case TimeWindow.D:
-      return 24 * 60 * 60;
-    case TimeWindow.W:
-      return 7 * 24 * 60 * 60;
-    case TimeWindow.M:
-      return 30 * 24 * 60 * 60;
-    default:
-      return 7 * 24 * 60 * 60;
-  }
-};
-
 const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
-
-const RESOURCE_PRICES_QUERY = gql`
-  query GetResourcePrices($slug: String!, $startTime: Int, $endTime: Int) {
-    resourcePrices(slug: $slug, startTime: $startTime, endTime: $endTime) {
-      timestamp
-      value
-    }
-  }
-`;
 
 const useAccountData = () => {
   const { address, isConnected } = useAccount();
@@ -172,7 +145,6 @@ const Market = ({
   const {
     data: volume,
     error: useVolumeError,
-    isLoading: isLoadingVolume,
     refetch: refetchVolume,
   } = useVolume();
 
@@ -252,17 +224,10 @@ const Market = ({
     });
   };
 
-  const {
-    data: marketPrices,
-    error: usePricesError,
-    isLoading: isLoadingPrices,
-    refetch: refetchPrices,
-    isRefetching: isRefetchingPrices,
-  } = useMarketPrices();
+  const { data: marketPrices, refetch: refetchPrices } = useMarketPrices();
 
   const {
     data: indexPrices,
-    error: useIndexPricesError,
     isLoading: isLoadingIndexPrices,
     refetch: refetchIndexPrices,
   } = useIndexPrices();

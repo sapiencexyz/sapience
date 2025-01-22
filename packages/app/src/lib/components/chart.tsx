@@ -2,12 +2,11 @@
 import type { UTCTimestamp, BarData, LineData } from 'lightweight-charts';
 import { createChart, CrosshairMode } from 'lightweight-charts';
 import { useTheme } from 'next-themes';
-import { useEffect, useRef, useContext, useState } from 'react';
+import { useEffect, useRef, useContext } from 'react';
 import type React from 'react';
 
-import type { PriceChartData, TimeWindow } from '../interfaces/interfaces';
+import type { PriceChartData } from '../interfaces/interfaces';
 import { convertGgasPerWstEthToGwei } from '../util/util';
-import { Button } from '~/components/ui/button';
 import { MarketContext } from '~/lib/context/MarketProvider';
 
 interface Props {
@@ -16,14 +15,12 @@ interface Props {
     indexPrices: IndexPrice[];
     resourcePrices?: ResourcePricePoint[];
   };
-  activeWindow: TimeWindow;
   isLoading: boolean;
   seriesVisibility: {
     candles: boolean;
     index: boolean;
     resource: boolean;
   };
-  toggleSeries: (series: 'candles' | 'index' | 'resource') => void;
 }
 
 interface IndexPrice {
@@ -38,10 +35,8 @@ interface ResourcePricePoint {
 
 const CandlestickChart: React.FC<Props> = ({
   data,
-  activeWindow,
   isLoading,
   seriesVisibility,
-  toggleSeries,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
@@ -49,7 +44,7 @@ const CandlestickChart: React.FC<Props> = ({
   const candlestickSeriesRef = useRef<any>(null);
   const indexPriceSeriesRef = useRef<any>(null);
   const resourcePriceSeriesRef = useRef<any>(null);
-  const { pool, stEthPerToken, useMarketUnits } = useContext(MarketContext);
+  const { stEthPerToken, useMarketUnits } = useContext(MarketContext);
   const { theme } = useTheme();
 
   // Split the chart creation and data updates into separate effects

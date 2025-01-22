@@ -1,7 +1,5 @@
 'use client';
 
-import React from 'react';
-
 import Earn from '~/lib/components/foil/earn';
 import { MarketProvider } from '~/lib/context/MarketProvider';
 

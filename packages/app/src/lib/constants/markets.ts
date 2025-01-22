@@ -1,10 +1,3 @@
-import Image from 'next/image';
-import type { FC } from 'react';
-
-type IconProps = {
-  className?: string;
-};
-
 export const MARKET_CATEGORIES = [
   {
     id: 'ethereum-gas',
@@ -16,4 +9,4 @@ export const MARKET_CATEGORIES = [
     name: 'Celestia Blobspace',
     iconPath: '/tia.svg',
   },
-] as const;
+];

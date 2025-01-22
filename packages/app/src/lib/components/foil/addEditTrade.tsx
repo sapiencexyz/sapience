@@ -3,8 +3,8 @@ import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { debounce } from 'lodash';
 import { HelpCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import { useState, useEffect, useContext, useMemo } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
-import type { AbiFunction, WriteContractErrorType } from 'viem';
+import { useForm } from 'react-hook-form';
+import type { AbiFunction } from 'viem';
 import { decodeEventLog, formatUnits, parseUnits, zeroAddress } from 'viem';
 import {
   useWaitForTransactionReceipt,
@@ -359,7 +359,7 @@ export default function AddEditTrade() {
     }
 
     if (isEdit) {
-      const [expectedCollateralDelta, closePnL, fillPrice] = result;
+      const [expectedCollateralDelta, , fillPrice] = result;
       return [expectedCollateralDelta, fillPrice];
     }
     const [requiredCollateral, fillPrice] = result;

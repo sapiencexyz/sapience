@@ -1,9 +1,5 @@
 import JSBI from 'jsbi';
-import {
-  formatEther,
-  type ReadContractErrorType,
-  type WriteContractErrorType,
-} from 'viem';
+import { formatEther } from 'viem';
 import * as chains from 'viem/chains';
 import type { Chain } from 'viem/chains';
 
