@@ -32,7 +32,7 @@ import {
   getChainById,
   mainnetPublicClient,
   sepoliaPublicClient,
-} from './helpers';
+} from './utils';
 import { getProviderForChain } from './helpers';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -66,26 +66,26 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 initSentry();
 
-const corsOptions: cors.CorsOptions = {
-  origin: (
-    origin: string | undefined,
-    callback: (error: Error | null, allow?: boolean) => void
-  ) => {
-    if (process.env.NODE_ENV !== 'production') {
-      callback(null, true);
-    } else if (
-      !origin || // Allow same-origin requests
-      /^https?:\/\/([a-zA-Z0-9-]+\.)*foil\.xyz$/.test(origin) ||
-      /^https?:\/\/localhost(:\d+)?$/.test(origin) || // local testing
-      /^https?:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/.test(origin) //staging sites
-    ) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  optionsSuccessStatus: 200,
-};
+// const corsOptions: cors.CorsOptions = {
+//   origin: (
+//     origin: string | undefined,
+//     callback: (error: Error | null, allow?: boolean) => void
+//   ) => {
+//     if (process.env.NODE_ENV !== 'production') {
+//       callback(null, true);
+//     } else if (
+//       !origin || // Allow same-origin requests
+//       /^https?:\/\/([a-zA-Z0-9-]+\.)*foil\.xyz$/.test(origin) ||
+//       /^https?:\/\/localhost(:\d+)?$/.test(origin) || // local testing
+//       /^https?:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/.test(origin) //staging sites
+//     ) {
+//       callback(null, true);
+//     } else {
+//       callback(new Error('Not allowed by CORS'));
+//     }
+//   },
+//   optionsSuccessStatus: 200,
+// };
 
 const executeLocalReindex = async (
   startCommand: string
@@ -165,7 +165,8 @@ const startServer = async () => {
   app.use(express.json());
   app.use(cors(corsOptions));
 
-  // Add GraphQL endpoint
+  // Add GraphQL endpoint ✓
+  // ✓
   app.use(
     '/graphql',
     expressMiddleware(apolloServer, {
@@ -199,491 +200,491 @@ const startServer = async () => {
     };
 
   // Helper function to parse and validate contractId
-  const parseContractId = (
-    contractId: string
-  ): { chainId: string; address: string } => {
-    const [chainId, address] = contractId.toLowerCase().split(':');
-    if (!chainId || !address) {
-      throw new Error('Invalid contractId format');
-    }
-    return { chainId, address };
-  };
+  // const parseContractId = (
+  //   contractId: string
+  // ): { chainId: string; address: string } => {
+  //   const [chainId, address] = contractId.toLowerCase().split(':');
+  //   if (!chainId || !address) {
+  //     throw new Error('Invalid contractId format');
+  //   }
+  //   return { chainId, address };
+  // };
 
   // Helper function to get market and epoch
-  const getMarketAndEpoch = async (
-    marketRepository: Repository<Market>,
-    epochRepository: Repository<Epoch>,
-    chainId: string,
-    address: string,
-    epochId: string
-  ): Promise<{ market: Market; epoch: Epoch }> => {
-    const market = await marketRepository.findOne({
-      where: { chainId: Number(chainId), address: address },
-    });
-    if (!market) {
-      throw new Error(
-        `Market not found for chainId ${chainId} and address ${address}`
-      );
-    }
-    const epoch = await epochRepository.findOne({
-      where: { market: { id: market.id }, epochId: Number(epochId) },
-    });
-    if (!epoch) {
-      throw new Error(
-        `Epoch not found for chainId ${chainId} and address ${address} and epochId ${epochId}`
-      );
-    }
-    return { market, epoch };
-  };
+  // const getMarketAndEpoch = async (
+  //   marketRepository: Repository<Market>,
+  //   epochRepository: Repository<Epoch>,
+  //   chainId: string,
+  //   address: string,
+  //   epochId: string
+  // ): Promise<{ market: Market; epoch: Epoch }> => {
+  //   const market = await marketRepository.findOne({
+  //     where: { chainId: Number(chainId), address: address },
+  //   });
+  //   if (!market) {
+  //     throw new Error(
+  //       `Market not found for chainId ${chainId} and address ${address}`
+  //     );
+  //   }
+  //   const epoch = await epochRepository.findOne({
+  //     where: { market: { id: market.id }, epochId: Number(epochId) },
+  //   });
+  //   if (!epoch) {
+  //     throw new Error(
+  //       `Epoch not found for chainId ${chainId} and address ${address} and epochId ${epochId}`
+  //     );
+  //   }
+  //   return { market, epoch };
+  // };
 
   // Middleware to validate request parameters
-  const validateRequestParams =
-    (params: string[]) => (req: Request, res: Response, next: NextFunction) => {
-      for (const param of params) {
-        if (typeof req.query[param] !== 'string') {
-          return res.status(400).json({ error: `Invalid parameter: ${param}` });
-        }
-      }
-      next();
-    };
+  // const validateRequestParams =
+  //   (params: string[]) => (req: Request, res: Response, next: NextFunction) => {
+  //     for (const param of params) {
+  //       if (typeof req.query[param] !== 'string') {
+  //         return res.status(400).json({ error: `Invalid parameter: ${param}` });
+  //       }
+  //     }
+  //     next();
+  //   };
 
   // Routes
 
   // route /markets: Get markets
-  app.get(
-    '/markets',
-    handleAsyncErrors(async (req, res) => {
-      const markets = await marketRepository.find({
-        relations: ['epochs', 'resource'],
-      });
+  // app.get(
+  //   '/markets',
+  //   handleAsyncErrors(async (req, res) => {
+  //     const markets = await marketRepository.find({
+  //       relations: ['epochs', 'resource'],
+  //     });
 
-      const formattedMarkets = markets.map((market) => ({
-        ...market,
-        epochs: market.epochs.map((epoch) => ({
-          ...epoch,
-          startTimestamp: Number(epoch.startTimestamp),
-          endTimestamp: Number(epoch.endTimestamp),
-        })),
-      }));
+  //     const formattedMarkets = markets.map((market) => ({
+  //       ...market,
+  //       epochs: market.epochs.map((epoch) => ({
+  //         ...epoch,
+  //         startTimestamp: Number(epoch.startTimestamp),
+  //         endTimestamp: Number(epoch.endTimestamp),
+  //       })),
+  //     }));
 
-      res.json(formattedMarkets);
-    })
-  );
+  //     res.json(formattedMarkets);
+  //   })
+  // );
 
   // route /prices/chart-data: Get market price data for rendering charts
-  app.get(
-    '/prices/chart-data',
-    validateRequestParams(['contractId', 'epochId', 'timeWindow']),
-    handleAsyncErrors(async (req, res) => {
-      const { contractId, epochId, timeWindow } = req.query as {
-        contractId: string;
-        epochId: string;
-        timeWindow: TimeWindow;
-      };
+  // app.get(
+  //   '/prices/chart-data',
+  //   validateRequestParams(['contractId', 'epochId', 'timeWindow']),
+  //   handleAsyncErrors(async (req, res) => {
+  //     const { contractId, epochId, timeWindow } = req.query as {
+  //       contractId: string;
+  //       epochId: string;
+  //       timeWindow: TimeWindow;
+  //     };
 
-      const { chainId, address } = parseContractId(contractId);
+  //     const { chainId, address } = parseContractId(contractId);
 
-      const endTimestamp = Math.floor(Date.now() / 1000);
-      const startTimestamp = getStartTimestampFromTimeWindow(timeWindow);
+  //     const endTimestamp = Math.floor(Date.now() / 1000);
+  //     const startTimestamp = getStartTimestampFromTimeWindow(timeWindow);
 
-      const marketPrices = await getMarketPricesInTimeRange(
-        startTimestamp,
-        endTimestamp,
-        chainId,
-        address,
-        epochId
-      );
+  //     const marketPrices = await getMarketPricesInTimeRange(
+  //       startTimestamp,
+  //       endTimestamp,
+  //       chainId,
+  //       address,
+  //       epochId
+  //     );
 
-      const groupedPrices = groupMarketPricesByTimeWindow(
-        marketPrices,
-        timeWindow
-      );
+  //     const groupedPrices = groupMarketPricesByTimeWindow(
+  //       marketPrices,
+  //       timeWindow
+  //     );
 
-      const chartData = groupedPrices.reduce((acc, group) => {
-        const prices = group.entities;
+  //     const chartData = groupedPrices.reduce((acc, group) => {
+  //       const prices = group.entities;
 
-        // updated the logic for handling empty groups. If there is not price in the group, use the last known price values
-        if (prices.length === 0) {
-          const lastCandle = acc[acc.length - 1];
-          if (lastCandle) {
-            acc.push({
-              startTimestamp: group.startTimestamp,
-              endTimestamp: group.endTimestamp,
-              open: lastCandle.close,
-              close: lastCandle.close,
-              high: lastCandle.close,
-              low: lastCandle.close,
-            });
-          }
-          return acc;
-        }
+  //       // updated the logic for handling empty groups. If there is not price in the group, use the last known price values
+  //       if (prices.length === 0) {
+  //         const lastCandle = acc[acc.length - 1];
+  //         if (lastCandle) {
+  //           acc.push({
+  //             startTimestamp: group.startTimestamp,
+  //             endTimestamp: group.endTimestamp,
+  //             open: lastCandle.close,
+  //             close: lastCandle.close,
+  //             high: lastCandle.close,
+  //             low: lastCandle.close,
+  //           });
+  //         }
+  //         return acc;
+  //       }
 
-        // if we have prices, calculate HLOC normally
-        const open = prices[0]?.value || 0;
-        const close = prices[prices.length - 1]?.value || 0;
-        const high = Math.max(...prices.map((p) => Number(p.value)));
-        const low = Math.min(...prices.map((p) => Number(p.value)));
+  //       // if we have prices, calculate HLOC normally
+  //       const open = prices[0]?.value || 0;
+  //       const close = prices[prices.length - 1]?.value || 0;
+  //       const high = Math.max(...prices.map((p) => Number(p.value)));
+  //       const low = Math.min(...prices.map((p) => Number(p.value)));
 
-        acc.push({
-          startTimestamp: group.startTimestamp,
-          endTimestamp: group.endTimestamp,
-          open,
-          close,
-          high,
-          low,
-        });
+  //       acc.push({
+  //         startTimestamp: group.startTimestamp,
+  //         endTimestamp: group.endTimestamp,
+  //         open,
+  //         close,
+  //         high,
+  //         low,
+  //       });
 
-        return acc;
-      }, []);
+  //       return acc;
+  //     }, []);
 
-      res.json(chartData);
-    })
-  );
+  //     res.json(chartData);
+  //   })
+  // );
 
   // route /prices/index: Get index prices for a specified epoch and time window
-  app.get(
-    '/prices/index',
-    validateRequestParams(['contractId', 'epochId']),
+  // app.get(
+  //   '/prices/index',
+  //   validateRequestParams(['contractId', 'epochId']),
 
-    handleAsyncErrors(async (req, res) => {
-      let { timeWindow } = req.query;
-      const { contractId, epochId } = req.query as {
-        contractId: string;
-        epochId: string;
-        timeWindow: TimeWindow;
-      };
+  //   handleAsyncErrors(async (req, res) => {
+  //     let { timeWindow } = req.query;
+  //     const { contractId, epochId } = req.query as {
+  //       contractId: string;
+  //       epochId: string;
+  //       timeWindow: TimeWindow;
+  //     };
 
-      if (!timeWindow) {
-        timeWindow = TimeWindow.W;
-      }
+  //     if (!timeWindow) {
+  //       timeWindow = TimeWindow.W;
+  //     }
 
-      const { chainId, address } = parseContractId(contractId);
+  //     const { chainId, address } = parseContractId(contractId);
 
-      const { epoch } = await getMarketAndEpoch(
-        marketRepository,
-        epochRepository,
-        chainId,
-        address,
-        epochId
-      );
+  //     const { epoch } = await getMarketAndEpoch(
+  //       marketRepository,
+  //       epochRepository,
+  //       chainId,
+  //       address,
+  //       epochId
+  //     );
 
-      const endTimestamp = Math.min(
-        Number(epoch.endTimestamp),
-        Math.floor(Date.now() / 1000)
-      );
-      const startTimestamp = Math.max(
-        Number(epoch.startTimestamp),
-        getStartTimestampFromTimeWindow(timeWindow as TimeWindow)
-      );
+  //     const endTimestamp = Math.min(
+  //       Number(epoch.endTimestamp),
+  //       Math.floor(Date.now() / 1000)
+  //     );
+  //     const startTimestamp = Math.max(
+  //       Number(epoch.startTimestamp),
+  //       getStartTimestampFromTimeWindow(timeWindow as TimeWindow)
+  //     );
 
-      const indexPrices = await getIndexPricesInTimeRange(
-        startTimestamp,
-        endTimestamp,
-        chainId,
-        address,
-        epochId
-      );
+  //     const indexPrices = await getIndexPricesInTimeRange(
+  //       startTimestamp,
+  //       endTimestamp,
+  //       chainId,
+  //       address,
+  //       epochId
+  //     );
 
-      if (indexPrices.length === 0) {
-        res.status(404).json({
-          error: 'No price data found for the specified epoch and time window',
-        });
-        return;
-      }
+  //     if (indexPrices.length === 0) {
+  //       res.status(404).json({
+  //         error: 'No price data found for the specified epoch and time window',
+  //       });
+  //       return;
+  //     }
 
-      const groupedPrices = groupIndexPricesByTimeWindow(
-        indexPrices,
-        timeWindow as TimeWindow
-      );
+  //     const groupedPrices = groupIndexPricesByTimeWindow(
+  //       indexPrices,
+  //       timeWindow as TimeWindow
+  //     );
 
-      const chartData = groupedPrices.map((group) => {
-        const lastIdx = group.entities.length - 1;
-        const price = lastIdx >= 0 ? Number(group.entities[lastIdx].value) : 0;
-        return {
-          timestamp: group.startTimestamp,
-          price,
-        };
-      });
+  //     const chartData = groupedPrices.map((group) => {
+  //       const lastIdx = group.entities.length - 1;
+  //       const price = lastIdx >= 0 ? Number(group.entities[lastIdx].value) : 0;
+  //       return {
+  //         timestamp: group.startTimestamp,
+  //         price,
+  //       };
+  //     });
 
-      res.json(chartData);
-    })
-  );
+  //     res.json(chartData);
+  //   })
+  // );
 
   // route /positions: Get positions
-  app.get(
-    '/positions',
-    validateRequestParams(['contractId']),
-    handleAsyncErrors(async (req, res) => {
-      const { isLP, contractId } = req.query as {
-        isLP: string;
-        contractId: string;
-      };
+  // app.get(
+  //   '/positions',
+  //   validateRequestParams(['contractId']),
+  //   handleAsyncErrors(async (req, res) => {
+  //     const { isLP, contractId } = req.query as {
+  //       isLP: string;
+  //       contractId: string;
+  //     };
 
-      const { chainId, address } = parseContractId(contractId);
+  //     const { chainId, address } = parseContractId(contractId);
 
-      const market = await marketRepository.findOne({
-        where: { chainId: Number(chainId), address: String(address) },
-      });
+  //     const market = await marketRepository.findOne({
+  //       where: { chainId: Number(chainId), address: String(address) },
+  //     });
 
-      if (!market) {
-        res.status(404).json({ error: 'Market not found' });
-        return;
-      }
+  //     if (!market) {
+  //       res.status(404).json({ error: 'Market not found' });
+  //       return;
+  //     }
 
-      // Query for positions related to any epoch of this market
-      const where = { epoch: { market: { id: market.id } } };
+  //     // Query for positions related to any epoch of this market
+  //     const where = { epoch: { market: { id: market.id } } };
 
-      where.isLP = isLP === 'true';
+  //     where.isLP = isLP === 'true';
 
-      const positions = await positionRepository.find({
-        where,
-        relations: ['epoch', 'epoch.market', 'epoch.market.resource'],
-        order: { positionId: 'ASC' },
-      });
+  //     const positions = await positionRepository.find({
+  //       where,
+  //       relations: ['epoch', 'epoch.market', 'epoch.market.resource'],
+  //       order: { positionId: 'ASC' },
+  //     });
 
-      // Format the data
-      for (const position of positions) {
-        position.baseToken = formatDbBigInt(position.baseToken);
-        position.quoteToken = formatDbBigInt(position.quoteToken);
-        position.borrowedBaseToken = formatDbBigInt(position.borrowedBaseToken);
-        position.borrowedQuoteToken = formatDbBigInt(
-          position.borrowedQuoteToken
-        );
-        position.collateral = formatDbBigInt(position.collateral);
-        position.lpBaseToken = formatDbBigInt(position.lpBaseToken);
-        position.lpQuoteToken = formatDbBigInt(position.lpQuoteToken);
-      }
-      res.json(positions);
-    })
-  );
+  //     // Format the data
+  //     for (const position of positions) {
+  //       position.baseToken = formatDbBigInt(position.baseToken);
+  //       position.quoteToken = formatDbBigInt(position.quoteToken);
+  //       position.borrowedBaseToken = formatDbBigInt(position.borrowedBaseToken);
+  //       position.borrowedQuoteToken = formatDbBigInt(
+  //         position.borrowedQuoteToken
+  //       );
+  //       position.collateral = formatDbBigInt(position.collateral);
+  //       position.lpBaseToken = formatDbBigInt(position.lpBaseToken);
+  //       position.lpQuoteToken = formatDbBigInt(position.lpQuoteToken);
+  //     }
+  //     res.json(positions);
+  //   })
+  // );
 
   // route /positions/:positionId: Get a single position by positionId
-  app.get(
-    '/positions/:positionId',
-    validateRequestParams(['contractId']),
-    handleAsyncErrors(async (req, res) => {
-      const { positionId } = req.params;
-      const { contractId } = req.query as { contractId: string };
+  // app.get(
+  //   '/positions/:positionId',
+  //   validateRequestParams(['contractId']),
+  //   handleAsyncErrors(async (req, res) => {
+  //     const { positionId } = req.params;
+  //     const { contractId } = req.query as { contractId: string };
 
-      const { chainId, address } = parseContractId(contractId);
+  //     const { chainId, address } = parseContractId(contractId);
 
-      const market = await marketRepository.findOne({
-        where: { chainId: Number(chainId), address: String(address) },
-      });
+  //     const market = await marketRepository.findOne({
+  //       where: { chainId: Number(chainId), address: String(address) },
+  //     });
 
-      if (!market) {
-        res.status(404).json({ error: 'Market not found' });
-        return;
-      }
+  //     if (!market) {
+  //       res.status(404).json({ error: 'Market not found' });
+  //       return;
+  //     }
 
-      const position = await positionRepository.findOne({
-        where: {
-          positionId: Number(positionId),
-          epoch: { market: { id: market.id } },
-        },
-        relations: ['epoch', 'epoch.market', 'epoch.market.resource'],
-      });
+  //     const position = await positionRepository.findOne({
+  //       where: {
+  //         positionId: Number(positionId),
+  //         epoch: { market: { id: market.id } },
+  //       },
+  //       relations: ['epoch', 'epoch.market', 'epoch.market.resource'],
+  //     });
 
-      if (!position) {
-        res.status(404).json({ error: 'Position not found' });
-        return;
-      }
+  //     if (!position) {
+  //       res.status(404).json({ error: 'Position not found' });
+  //       return;
+  //     }
 
-      // Format the data
-      position.baseToken = formatDbBigInt(position.baseToken);
-      position.quoteToken = formatDbBigInt(position.quoteToken);
-      position.borrowedBaseToken = formatDbBigInt(position.borrowedBaseToken);
-      position.borrowedQuoteToken = formatDbBigInt(position.borrowedQuoteToken);
-      position.collateral = formatDbBigInt(position.collateral);
-      position.lpBaseToken = formatDbBigInt(position.lpBaseToken);
-      position.lpQuoteToken = formatDbBigInt(position.lpQuoteToken);
+  //     // Format the data
+  //     position.baseToken = formatDbBigInt(position.baseToken);
+  //     position.quoteToken = formatDbBigInt(position.quoteToken);
+  //     position.borrowedBaseToken = formatDbBigInt(position.borrowedBaseToken);
+  //     position.borrowedQuoteToken = formatDbBigInt(position.borrowedQuoteToken);
+  //     position.collateral = formatDbBigInt(position.collateral);
+  //     position.lpBaseToken = formatDbBigInt(position.lpBaseToken);
+  //     position.lpQuoteToken = formatDbBigInt(position.lpQuoteToken);
 
-      res.json(position);
-    })
-  );
+  //     res.json(position);
+  //   })
+  // );
 
   // route /transactions: Get transactions
-  app.get(
-    '/transactions',
-    validateRequestParams(['contractId']),
-    handleAsyncErrors(async (req, res) => {
-      const { contractId, epochId, positionId } = req.query as {
-        contractId: string;
-        epochId?: string;
-        positionId?: string;
-      };
+  // app.get(
+  //   '/transactions',
+  //   validateRequestParams(['contractId']),
+  //   handleAsyncErrors(async (req, res) => {
+  //     const { contractId, epochId, positionId } = req.query as {
+  //       contractId: string;
+  //       epochId?: string;
+  //       positionId?: string;
+  //     };
 
-      const { chainId, address } = parseContractId(contractId);
+  //     const { chainId, address } = parseContractId(contractId);
 
-      const queryBuilder = transactionRepository
-        .createQueryBuilder('transaction')
-        .innerJoinAndSelect('transaction.position', 'position')
-        .innerJoinAndSelect('position.epoch', 'epoch')
-        .innerJoinAndSelect('epoch.market', 'market')
-        .innerJoinAndSelect('market.resource', 'resource')
-        .innerJoinAndSelect('transaction.event', 'event')
-        .where('market.chainId = :chainId', { chainId })
-        .andWhere('market.address = :address', { address })
-        .orderBy('position.positionId', 'ASC')
-        .addOrderBy('event.blockNumber', 'ASC');
+  //     const queryBuilder = transactionRepository
+  //       .createQueryBuilder('transaction')
+  //       .innerJoinAndSelect('transaction.position', 'position')
+  //       .innerJoinAndSelect('position.epoch', 'epoch')
+  //       .innerJoinAndSelect('epoch.market', 'market')
+  //       .innerJoinAndSelect('market.resource', 'resource')
+  //       .innerJoinAndSelect('transaction.event', 'event')
+  //       .where('market.chainId = :chainId', { chainId })
+  //       .andWhere('market.address = :address', { address })
+  //       .orderBy('position.positionId', 'ASC')
+  //       .addOrderBy('event.blockNumber', 'ASC');
 
-      if (epochId) {
-        queryBuilder.andWhere('epoch.epochId = :epochId', { epochId });
-      }
+  //     if (epochId) {
+  //       queryBuilder.andWhere('epoch.epochId = :epochId', { epochId });
+  //     }
 
-      if (positionId) {
-        queryBuilder.andWhere('position.positionId = :positionId', {
-          positionId,
-        });
-      }
+  //     if (positionId) {
+  //       queryBuilder.andWhere('position.positionId = :positionId', {
+  //         positionId,
+  //       });
+  //     }
 
-      const transactions = await queryBuilder.getMany();
-      const hydratedPositions = hydrateTransactions(transactions);
+  //     const transactions = await queryBuilder.getMany();
+  //     const hydratedPositions = hydrateTransactions(transactions);
 
-      res.json(hydratedPositions);
-    })
-  );
+  //     res.json(hydratedPositions);
+  //   })
+  // );
 
   // route /volume: Get volume
-  app.get(
-    '/volume',
-    validateRequestParams(['contractId', 'timeWindow']),
-    handleAsyncErrors(async (req, res) => {
-      const { timeWindow, contractId } = req.query as {
-        timeWindow: TimeWindow;
-        contractId: string;
-      };
+  // app.get(
+  //   '/volume',
+  //   validateRequestParams(['contractId', 'timeWindow']),
+  //   handleAsyncErrors(async (req, res) => {
+  //     const { timeWindow, contractId } = req.query as {
+  //       timeWindow: TimeWindow;
+  //       contractId: string;
+  //     };
 
-      const { chainId, address } = parseContractId(contractId);
+  //     const { chainId, address } = parseContractId(contractId);
 
-      const endTimestamp = Math.floor(Date.now() / 1000);
-      const startTimestamp = getStartTimestampFromTimeWindow(timeWindow);
+  //     const endTimestamp = Math.floor(Date.now() / 1000);
+  //     const startTimestamp = getStartTimestampFromTimeWindow(timeWindow);
 
-      const transactions = await getTransactionsInTimeRange(
-        startTimestamp,
-        endTimestamp,
-        chainId,
-        address
-      );
+  //     const transactions = await getTransactionsInTimeRange(
+  //       startTimestamp,
+  //       endTimestamp,
+  //       chainId,
+  //       address
+  //     );
 
-      const groupedTransactions = groupTransactionsByTimeWindow(
-        transactions,
-        timeWindow
-      );
+  //     const groupedTransactions = groupTransactionsByTimeWindow(
+  //       transactions,
+  //       timeWindow
+  //     );
 
-      const volume = groupedTransactions.map((group) => {
-        return {
-          startTimestamp: group.startTimestamp,
-          endTimestamp: group.endTimestamp,
-          volume: group.entities.reduce((sum, transaction) => {
-            // Convert baseTokenDelta to BigNumber and get its absolute value
-            const absBaseTokenDelta = Math.abs(
-              parseFloat(
-                formatUnits(BigInt(transaction.baseToken), TOKEN_PRECISION)
-              )
-            );
+  //     const volume = groupedTransactions.map((group) => {
+  //       return {
+  //         startTimestamp: group.startTimestamp,
+  //         endTimestamp: group.endTimestamp,
+  //         volume: group.entities.reduce((sum, transaction) => {
+  //           // Convert baseTokenDelta to BigNumber and get its absolute value
+  //           const absBaseTokenDelta = Math.abs(
+  //             parseFloat(
+  //               formatUnits(BigInt(transaction.baseToken), TOKEN_PRECISION)
+  //             )
+  //           );
 
-            // Add to the sum
-            return sum + absBaseTokenDelta;
-          }, 0),
-        };
-      });
-      res.json(volume);
-    })
-  );
+  //           // Add to the sum
+  //           return sum + absBaseTokenDelta;
+  //         }, 0),
+  //       };
+  //     });
+  //     res.json(volume);
+  //   })
+  // );
 
-  const getMissingBlocks = async (
-    chainId: string,
-    address: string,
-    epochId: string
-  ): Promise<{ missingBlockNumbers: number[] | null; error?: string }> => {
-    // Find the market
-    const market = await marketRepository.findOne({
-      where: { chainId: Number(chainId), address },
-      relations: ['resource'],
-    });
-    if (!market) {
-      return { missingBlockNumbers: null, error: 'Market not found' };
-    }
+  // const getMissingBlocks = async (
+  //   chainId: string,
+  //   address: string,
+  //   epochId: string
+  // ): Promise<{ missingBlockNumbers: number[] | null; error?: string }> => {
+  //   // Find the market
+  //   const market = await marketRepository.findOne({
+  //     where: { chainId: Number(chainId), address },
+  //     relations: ['resource'],
+  //   });
+  //   if (!market) {
+  //     return { missingBlockNumbers: null, error: 'Market not found' };
+  //   }
 
-    // Find the market info to get the correct chain for price indexing
-    const marketInfo = MARKETS.find(
-      (m) =>
-        m.marketChainId === market.chainId &&
-        m.deployment.address.toLowerCase() === market.address.toLowerCase()
-    );
-    if (!marketInfo) {
-      return {
-        missingBlockNumbers: null,
-        error: 'Market configuration not found',
-      };
-    }
+  //   // Find the market info to get the correct chain for price indexing
+  //   const marketInfo = MARKETS.find(
+  //     (m) =>
+  //       m.marketChainId === market.chainId &&
+  //       m.deployment.address.toLowerCase() === market.address.toLowerCase()
+  //   );
+  //   if (!marketInfo) {
+  //     return {
+  //       missingBlockNumbers: null,
+  //       error: 'Market configuration not found',
+  //     };
+  //   }
 
-    // Get block numbers using the price indexer client
-    const { startBlockNumber, endBlockNumber, error } =
-      await getMarketStartEndBlock(
-        market,
-        epochId,
-        marketInfo.resource.priceIndexer.client
-      );
+  //   // Get block numbers using the price indexer client
+  //   const { startBlockNumber, endBlockNumber, error } =
+  //     await getMarketStartEndBlock(
+  //       market,
+  //       epochId,
+  //       marketInfo.resource.priceIndexer.client
+  //     );
 
-    if (error || !startBlockNumber || !endBlockNumber) {
-      return { missingBlockNumbers: null, error };
-    }
+  //   if (error || !startBlockNumber || !endBlockNumber) {
+  //     return { missingBlockNumbers: null, error };
+  //   }
 
-    // Get existing block numbers for ResourcePrice
-    const resourcePrices = await resourcePriceRepository.find({
-      where: {
-        resource: { id: market.resource.id },
-        blockNumber: Between(startBlockNumber, endBlockNumber),
-      },
-      select: ['blockNumber'],
-    });
+  //   // Get existing block numbers for ResourcePrice
+  //   const resourcePrices = await resourcePriceRepository.find({
+  //     where: {
+  //       resource: { id: market.resource.id },
+  //       blockNumber: Between(startBlockNumber, endBlockNumber),
+  //     },
+  //     select: ['blockNumber'],
+  //   });
 
-    const existingBlockNumbersSet = new Set(
-      resourcePrices.map((ip) => Number(ip.blockNumber))
-    );
+  //   const existingBlockNumbersSet = new Set(
+  //     resourcePrices.map((ip) => Number(ip.blockNumber))
+  //   );
 
-    // Find missing block numbers within the range
-    const missingBlockNumbers = [];
-    for (
-      let blockNumber = startBlockNumber;
-      blockNumber <= endBlockNumber;
-      blockNumber++
-    ) {
-      if (!existingBlockNumbersSet.has(blockNumber)) {
-        missingBlockNumbers.push(blockNumber);
-      }
-    }
+  //   // Find missing block numbers within the range
+  //   const missingBlockNumbers = [];
+  //   for (
+  //     let blockNumber = startBlockNumber;
+  //     blockNumber <= endBlockNumber;
+  //     blockNumber++
+  //   ) {
+  //     if (!existingBlockNumbersSet.has(blockNumber)) {
+  //       missingBlockNumbers.push(blockNumber);
+  //     }
+  //   }
 
-    return { missingBlockNumbers };
-  };
+  //   return { missingBlockNumbers };
+  // };
 
   // route /missing-blocks: Update the missing-blocks endpoint
-  app.get(
-    '/missing-blocks',
-    validateRequestParams(['chainId', 'address', 'epochId']),
-    handleAsyncErrors(async (req, res) => {
-      const { chainId, address, epochId } = req.query as {
-        chainId: string;
-        address: string;
-        epochId: string;
-      };
+  // app.get(
+  //   '/missing-blocks',
+  //   validateRequestParams(['chainId', 'address', 'epochId']),
+  //   handleAsyncErrors(async (req, res) => {
+  //     const { chainId, address, epochId } = req.query as {
+  //       chainId: string;
+  //       address: string;
+  //       epochId: string;
+  //     };
 
-      const { missingBlockNumbers, error } = await getMissingBlocks(
-        chainId,
-        address,
-        epochId
-      );
+  //     const { missingBlockNumbers, error } = await getMissingBlocks(
+  //       chainId,
+  //       address,
+  //       epochId
+  //     );
 
-      if (error) {
-        res.status(500).json({ error });
-        return;
-      }
+  //     if (error) {
+  //       res.status(500).json({ error });
+  //       return;
+  //     }
 
-      res.json({ missingBlockNumbers });
-    })
-  );
+  //     res.json({ missingBlockNumbers });
+  //   })
+  // );
 
   // route /reindexStatus
   app.get(
