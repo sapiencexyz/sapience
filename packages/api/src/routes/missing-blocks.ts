@@ -81,7 +81,7 @@ const getMissingBlocks = async (
 };
 
 router.get(
-  '/missing-blocks',
+  '/',
   validateRequestParams(['chainId', 'address', 'epochId']),
   handleAsyncErrors(async (req: Request, res: Response) => {
     const { chainId, address, epochId } = req.query as {
@@ -105,4 +105,4 @@ router.get(
   })
 );
 
-export default router;
+export { router };

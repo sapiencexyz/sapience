@@ -12,17 +12,18 @@ import {
 } from 'src/serviceUtil';
 import { MarketPrice } from 'src/models/MarketPrice';
 import { getMarketAndEpoch } from 'src/helpers';
-import dataSource from 'src/db';
+import dataSource, { indexPriceRepository } from 'src/db';
 import { Market } from 'src/models/Market';
 import { Epoch } from 'src/models/Epoch';
+import { Between } from 'typeorm';
 
 interface ChartDataPoint {
   startTimestamp: number;
   endTimestamp: number;
   open: string | number;
   close: string | number;
-  high: number;
-  low: number;
+  high: string | number;
+  low: string | number;
 }
 
 const marketRepository = dataSource.getRepository(Market);
@@ -165,4 +166,49 @@ router.get(
   })
 );
 
-export default router;
+router.get(
+  '/index/latest',
+  validateRequestParams(['contractId', 'epochId']),
+  handleAsyncErrors(async (req, res) => {
+    const { contractId, epochId } = req.query as {
+      contractId: string;
+      epochId: string;
+    };
+
+    const { chainId, address } = parseContractId(contractId);
+
+    const { epoch } = await getMarketAndEpoch(
+      marketRepository,
+      epochRepository,
+      chainId,
+      address,
+      epochId
+    );
+
+    const latestPrice = await indexPriceRepository.findOne({
+      where: {
+        epoch: { id: Number(epoch.id) },
+        timestamp: Between(
+          Number(epoch.startTimestamp),
+          Number(epoch.endTimestamp)
+        ),
+      },
+      order: { timestamp: 'DESC' },
+    });
+
+    if (!latestPrice) {
+      res.status(404).json({
+        error: 'No price data found for the specified epoch',
+      });
+      return;
+    }
+
+    res.json({
+      timestamp: Number(latestPrice.timestamp),
+      price: Number(latestPrice.value),
+    });
+  })
+);
+
+
+export { router };
