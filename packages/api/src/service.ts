@@ -33,7 +33,6 @@ import {
   mainnetPublicClient,
   sepoliaPublicClient,
 } from './utils';
-import { getProviderForChain } from './helpers';
 import dotenv from 'dotenv';
 import path from 'path';
 import { RenderJob } from './models/RenderJob';
@@ -56,6 +55,7 @@ import {
   EpochResolver,
 } from './graphql/resolvers';
 import { createLoaders } from './graphql/loaders';
+import { app } from './app';
 
 const PORT = 3001;
 
@@ -215,11 +215,12 @@ const startServer = async () => {
   // Start Apollo Server
   await apolloServer.start();
 
-  const app = express();
 
-  // Middleware
-  app.use(express.json());
-  app.use(cors(corsOptions));
+  // const app = express();
+
+  // // Middleware
+  // app.use(express.json());
+  // app.use(cors(corsOptions));
 
   // Add GraphQL endpoint ✓
   // ✓
@@ -232,16 +233,16 @@ const startServer = async () => {
     })
   );
 
-  const positionRepository = dataSource.getRepository(Position);
-  const epochRepository = dataSource.getRepository(Epoch);
-  const resourcePriceRepository = dataSource.getRepository(ResourcePrice);
-  const indexPriceRepository = dataSource.getRepository(IndexPrice);
-  const marketRepository = dataSource.getRepository(Market);
-  const transactionRepository = dataSource.getRepository(Transaction);
+  // const positionRepository = dataSource.getRepository(Position);
+  // const epochRepository = dataSource.getRepository(Epoch);
+  // const resourcePriceRepository = dataSource.getRepository(ResourcePrice);
+  // const indexPriceRepository = dataSource.getRepository(IndexPrice);
+  // const marketRepository = dataSource.getRepository(Market);
+  // const transactionRepository = dataSource.getRepository(Transaction);
 
-  app.get('/debug-sentry', function mainHandler() {
-    throw new Error('My first Sentry error!');
-  });
+  // app.get('/debug-sentry', function mainHandler() {
+  //   throw new Error('My first Sentry error!');
+  // });
 
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
@@ -249,11 +250,11 @@ const startServer = async () => {
   });
 
   // Helper middleware to handle async errors
-  const handleAsyncErrors =
-    (fn: (req: Request, res: Response, next: NextFunction) => Promise<void>) =>
-    (req: Request, res: Response, next: NextFunction) => {
-      Promise.resolve(fn(req, res, next)).catch(next);
-    };
+  // const handleAsyncErrors =
+  //   (fn: (req: Request, res: Response, next: NextFunction) => Promise<void>) =>
+  //   (req: Request, res: Response, next: NextFunction) => {
+  //     Promise.resolve(fn(req, res, next)).catch(next);
+  //   };
 
   // Helper function to parse and validate contractId
   // const parseContractId = (
@@ -1411,75 +1412,75 @@ const startServer = async () => {
     res.status(500).json({ error: 'Internal server error' });
   });
 
-  const hydrateTransactions = (transactions: Transaction[]) => {
-    const hydratedPositions = [];
+  // const hydrateTransactions = (transactions: Transaction[]) => {
+  //   const hydratedPositions = [];
 
-    // Format data
-    let lastPositionId = 0;
-    let lastBaseToken = BigInt(0);
-    let lastQuoteToken = BigInt(0);
-    let lastCollateral = BigInt(0);
-    for (const transaction of transactions) {
-      transaction.tradeRatioD18 = formatDbBigInt(transaction.tradeRatioD18);
+  //   // Format data
+  //   let lastPositionId = 0;
+  //   let lastBaseToken = BigInt(0);
+  //   let lastQuoteToken = BigInt(0);
+  //   let lastCollateral = BigInt(0);
+  //   for (const transaction of transactions) {
+  //     transaction.tradeRatioD18 = formatDbBigInt(transaction.tradeRatioD18);
 
-      const hydratedTransaction = {
-        ...transaction,
-        position: {
-          ...transaction.position,
-          epoch: {
-            ...transaction.position?.epoch,
-            market: {
-              ...transaction.position?.epoch?.market,
-              resource: transaction.position?.epoch?.market?.resource,
-            },
-          },
-        },
-        collateralDelta: '0',
-        baseTokenDelta: '0',
-        quoteTokenDelta: '0',
-      };
+  //     const hydratedTransaction = {
+  //       ...transaction,
+  //       position: {
+  //         ...transaction.position,
+  //         epoch: {
+  //           ...transaction.position?.epoch,
+  //           market: {
+  //             ...transaction.position?.epoch?.market,
+  //             resource: transaction.position?.epoch?.market?.resource,
+  //           },
+  //         },
+  //       },
+  //       collateralDelta: '0',
+  //       baseTokenDelta: '0',
+  //       quoteTokenDelta: '0',
+  //     };
 
-      // if transactions come from the position.transactions it doesn't have a .position, but all the transactions correspond to the same position
-      if (
-        transaction.position &&
-        transaction.position.positionId !== lastPositionId
-      ) {
-        lastBaseToken = BigInt(0);
-        lastQuoteToken = BigInt(0);
-        lastCollateral = BigInt(0);
-        lastPositionId = transaction.position.positionId;
-      }
+  //     // if transactions come from the position.transactions it doesn't have a .position, but all the transactions correspond to the same position
+  //     if (
+  //       transaction.position &&
+  //       transaction.position.positionId !== lastPositionId
+  //     ) {
+  //       lastBaseToken = BigInt(0);
+  //       lastQuoteToken = BigInt(0);
+  //       lastCollateral = BigInt(0);
+  //       lastPositionId = transaction.position.positionId;
+  //     }
 
-      // If the transaction is from a liquidity position, use the lpDeltaToken values
-      // Otherwise, use the baseToken and quoteToken values from the previous transaction (trade with history)
-      const currentBaseTokenBalance =
-        transaction.lpBaseDeltaToken ||
-        BigInt(transaction.baseToken) - lastBaseToken;
-      const currentQuoteTokenBalance =
-        transaction.lpQuoteDeltaToken ||
-        BigInt(transaction.quoteToken) - lastQuoteToken;
-      const currentCollateralBalance =
-        BigInt(transaction.collateral) - lastCollateral;
+  //     // If the transaction is from a liquidity position, use the lpDeltaToken values
+  //     // Otherwise, use the baseToken and quoteToken values from the previous transaction (trade with history)
+  //     const currentBaseTokenBalance =
+  //       transaction.lpBaseDeltaToken ||
+  //       BigInt(transaction.baseToken) - lastBaseToken;
+  //     const currentQuoteTokenBalance =
+  //       transaction.lpQuoteDeltaToken ||
+  //       BigInt(transaction.quoteToken) - lastQuoteToken;
+  //     const currentCollateralBalance =
+  //       BigInt(transaction.collateral) - lastCollateral;
 
-      hydratedTransaction.baseTokenDelta = formatDbBigInt(
-        currentBaseTokenBalance.toString()
-      );
-      hydratedTransaction.quoteTokenDelta = formatDbBigInt(
-        currentQuoteTokenBalance.toString()
-      );
-      hydratedTransaction.collateralDelta = formatDbBigInt(
-        currentCollateralBalance.toString()
-      );
+  //     hydratedTransaction.baseTokenDelta = formatDbBigInt(
+  //       currentBaseTokenBalance.toString()
+  //     );
+  //     hydratedTransaction.quoteTokenDelta = formatDbBigInt(
+  //       currentQuoteTokenBalance.toString()
+  //     );
+  //     hydratedTransaction.collateralDelta = formatDbBigInt(
+  //       currentCollateralBalance.toString()
+  //     );
 
-      hydratedPositions.push(hydratedTransaction);
+  //     hydratedPositions.push(hydratedTransaction);
 
-      // set up for next transaction
-      lastBaseToken = BigInt(transaction.baseToken);
-      lastQuoteToken = BigInt(transaction.quoteToken);
-      lastCollateral = BigInt(transaction.collateral);
-    }
-    return hydratedPositions;
-  };
+  //     // set up for next transaction
+  //     lastBaseToken = BigInt(transaction.baseToken);
+  //     lastQuoteToken = BigInt(transaction.quoteToken);
+  //     lastCollateral = BigInt(transaction.collateral);
+  //   }
+  //   return hydratedPositions;
+  // };
 };
 
 startServer().catch((e) => console.error('Unable to start server: ', e));
