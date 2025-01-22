@@ -2,10 +2,12 @@
 
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { Loader2 } from 'lucide-react';
+import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useAccount, useSignMessage } from 'wagmi';
 
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -13,7 +15,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { cn } from '~/lib/utils';
 
@@ -30,6 +31,8 @@ export default function ConnectWalletModal({
   const { isConnected } = useAccount();
   const [permitted, setPermitted] = useState<boolean | null>(null);
   const [hasPermittedCookie, setHasPermittedCookie] = useState(false);
+  const [tosAccepted, setTosAccepted] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
 
   const { signMessage } = useSignMessage({
     mutation: {
@@ -75,7 +78,10 @@ export default function ConnectWalletModal({
     if (!isConnected && openConnectModal) {
       openConnectModal();
     } else {
-      signMessage({ message: "I agree to Foil's Terms of Service" });
+      signMessage({
+        message:
+          "I acknowledge that I have received and read Oxide Services Corp's Terms of Service and Privacy Policy.",
+      });
     }
   };
 
@@ -100,7 +106,7 @@ export default function ConnectWalletModal({
           <div className="flex flex-col items-center justify-center py-8 space-y-4">
             <Loader2 className="h-8 w-8 animate-spin" />
             <DialogDescription className="text-center max-w-[220px]">
-              Checking whether you’re permitted to connect to the app...
+              Checking whether you&apos;re permitted to connect to the app...
             </DialogDescription>
           </div>
         )}
@@ -108,32 +114,66 @@ export default function ConnectWalletModal({
         {permitted === true && (
           <div className="space-y-6">
             <DialogHeader>
-              <DialogTitle>Review the Terms of Service</DialogTitle>
+              <DialogTitle>Connect Your Wallet</DialogTitle>
             </DialogHeader>
-            <ScrollArea className="h-[300px] rounded-md border">
-              <div className="space-y-4 p-4">
-                <p className="text-sm text-muted-foreground">
-                  By connecting your wallet, you agree to our Terms of Service
-                  and Privacy Policy. You acknowledge that you have read and
-                  understood these terms, and that you accept all risks
-                  associated with using the Foil protocol.
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  1. You understand that using the Foil protocol involves risks,
-                  including but not limited to: - Smart contract risks - Market
-                  volatility risks - Technical risks - Regulatory risks
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  2. You confirm that you are not a resident of or located in
-                  any restricted jurisdiction.
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  3. You acknowledge that you are solely responsible for your
-                  trading decisions and the security of your wallet.
-                </p>
+
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center space-x-3">
+                <Checkbox
+                  id="tos"
+                  checked={tosAccepted}
+                  onCheckedChange={(checked) =>
+                    setTosAccepted(checked as boolean)
+                  }
+                />
+                <label
+                  htmlFor="tos"
+                  className="text-sm font-medium leading-wide peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  By clicking this checkbox, I hereby agree to Oxide Services
+                  Corp&apos;s{' '}
+                  <Link
+                    href="https://docs.foil.xyz/terms-of-service"
+                    target="_blank"
+                    className="font-bold underline"
+                  >
+                    TERMS OF SERVICE
+                  </Link>{' '}
+                  and agree to be bound by them.
+                </label>
               </div>
-            </ScrollArea>
-            <Button onClick={handleConnectAndSign} className="w-full">
+
+              <div className="flex items-center space-x-3">
+                <Checkbox
+                  id="privacy"
+                  checked={privacyAccepted}
+                  onCheckedChange={(checked) =>
+                    setPrivacyAccepted(checked as boolean)
+                  }
+                />
+                <label
+                  htmlFor="privacy"
+                  className="text-sm font-medium leading-wide peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  By clicking this checkbox, I acknowledge that I have received
+                  and read Oxide Services Corp&apos;s{' '}
+                  <Link
+                    href="https://docs.foil.xyz/privacy-policy"
+                    target="_blank"
+                    className="font-bold underline"
+                  >
+                    PRIVACY POLICY
+                  </Link>
+                  .
+                </label>
+              </div>
+            </div>
+
+            <Button
+              onClick={handleConnectAndSign}
+              className="w-full"
+              disabled={!tosAccepted || !privacyAccepted}
+            >
               {isConnected ? 'Sign Terms of Service' : 'Connect to Sign'}
             </Button>
           </div>

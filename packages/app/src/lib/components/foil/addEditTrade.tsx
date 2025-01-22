@@ -1,5 +1,4 @@
 /* eslint-disable sonarjs/cognitive-complexity */
-import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { debounce } from 'lodash';
 import { HelpCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import { useState, useEffect, useContext, useMemo } from 'react';

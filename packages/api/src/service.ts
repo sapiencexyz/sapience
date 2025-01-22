@@ -1365,8 +1365,8 @@ const startServer = async () => {
 
   // route /permit: Check if an IP is permitted based on geofencing rules
   app.get(
-    "/permit",
-    handleAsyncErrors(async (req, res, next) => {
+    '/permit',
+    handleAsyncErrors(async (req, res) => {
       const ip = req.ip ?? null;
       const isBlocked = await isGeofenced(ip);
       res.json({ permitted: !isBlocked });
