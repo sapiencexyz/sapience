@@ -9,7 +9,7 @@ interface MarketLayoutProps {
   content: ReactNode;
 }
 
-export const MarketLayout = ({ nav, content }: MarketLayoutProps) => {
+const MarketLayout = ({ nav, content }: MarketLayoutProps) => {
   return (
     <div className="flex flex-col min-h-[calc(100vh-64px)] w-full">
       <Suspense
@@ -25,3 +25,5 @@ export const MarketLayout = ({ nav, content }: MarketLayoutProps) => {
     </div>
   );
 };
+
+export default MarketLayout;

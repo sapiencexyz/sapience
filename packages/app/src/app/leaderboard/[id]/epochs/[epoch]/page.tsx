@@ -1,6 +1,6 @@
 'use client';
 
-import Leaderboard from '~/lib/components/foil/leaderboard';
+import Leaderboard from '~/components/leaderboard';
 
 const LeaderboardPage = ({
   params,

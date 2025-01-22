@@ -6,7 +6,7 @@ interface EpochTimingProps {
   showDuration?: boolean;
 }
 
-export const EpochTiming = ({
+const EpochTiming = ({
   startTimestamp,
   endTimestamp,
   showDuration = true,
@@ -29,3 +29,5 @@ export const EpochTiming = ({
     </>
   );
 };
+
+export default EpochTiming;

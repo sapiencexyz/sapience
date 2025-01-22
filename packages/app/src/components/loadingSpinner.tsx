@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-react';
 
 import { useLoading } from '~/lib/context/LoadingContext';
 
-export const LoadingSpinner: React.FC = () => {
+const LoadingSpinner: React.FC = () => {
   const { isLoading } = useLoading();
 
   if (!isLoading) return null;
@@ -15,3 +15,5 @@ export const LoadingSpinner: React.FC = () => {
     </div>
   );
 };
+
+export default LoadingSpinner;

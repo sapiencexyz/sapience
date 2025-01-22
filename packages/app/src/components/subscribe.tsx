@@ -29,7 +29,7 @@ import {
   useConnect,
 } from 'wagmi';
 
-import erc20ABI from '../../erc20abi.json';
+import erc20ABI from '../lib/erc20abi.json';
 import { Alert, AlertTitle, AlertDescription } from '~/components/ui/alert';
 import { Button } from '~/components/ui/button';
 import {

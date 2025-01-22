@@ -18,7 +18,7 @@ import type React from 'react';
 import { useContext, useState, useMemo } from 'react';
 import { useReadContract } from 'wagmi';
 
-import { MarketContext } from '../../context/MarketProvider';
+import { MarketContext } from '../lib/context/MarketProvider';
 import {
   Table,
   TableBody,
@@ -123,7 +123,16 @@ const SettledCell = ({ cell }: { cell: any }) =>
 const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
   const { address, chain, endTime, pool, useMarketUnits, stEthPerToken } =
     useContext(MarketContext);
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>([
+    {
+      id: 'status',
+      desc: false,
+    },
+    {
+      id: 'position',
+      desc: true,
+    },
+  ]);
   const dateMilliseconds = Number(endTime) * 1000;
   const expired = new Date(dateMilliseconds) < new Date();
 

@@ -26,7 +26,7 @@ import {
 import { useMarketList } from '~/lib/context/MarketListProvider';
 import type { Market } from '~/lib/context/MarketListProvider';
 
-import { getColumns } from './columns';
+import getColumns from './columns';
 import type { MissingBlocks } from './types';
 
 const renderSortIcon = (isSorted: string | false) => {

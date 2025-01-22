@@ -1,7 +1,7 @@
 import type React from 'react';
 import { createContext, useContext, useState } from 'react';
 
-import ConnectWalletModal from '../components/ConnectWalletModal';
+import ConnectWalletModal from '../../components/ConnectWalletModal';
 
 interface ConnectWalletContextType {
   isOpen: boolean;

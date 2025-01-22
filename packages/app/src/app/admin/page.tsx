@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import AdminTable from '~/lib/components/admin/AdminTable';
+import AdminTable from '~/components/admin/AdminTable';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import type { RenderJob } from '~/lib/interfaces/interfaces';
 

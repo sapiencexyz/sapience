@@ -4,11 +4,11 @@ import type React from 'react';
 import Providers from '~/app/providers';
 import '@rainbow-me/rainbowkit/styles.css';
 import '../lib/styles/globals.css';
-import { LoadingSpinner } from '~/lib/components/foil/loadingSpinner';
-import { InstallDialog } from '~/lib/components/InstallDialog';
+import InstallDialog from '~/components/InstallDialog';
+import Layout from '~/components/layout';
+import LoadingSpinner from '~/components/loadingSpinner';
 import { LoadingProvider } from '~/lib/context/LoadingContext';
 import { Toaster } from '@/components/ui/toaster';
-import Layout from '~/lib/layout';
 
 type RootLayoutProps = {
   children: React.ReactNode;

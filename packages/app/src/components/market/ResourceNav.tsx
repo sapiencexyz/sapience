@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '~/components/ui/button';
 import { useResources } from '~/lib/hooks/useResources';
 
-export const ResourceNav = () => {
+const ResourceNav = () => {
   const { data: resources, isLoading: isLoadingResources } = useResources();
   const pathname = usePathname();
   const router = useRouter();
@@ -56,3 +56,5 @@ export const ResourceNav = () => {
     </div>
   );
 };
+
+export default ResourceNav;

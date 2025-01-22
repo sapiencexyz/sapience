@@ -9,21 +9,21 @@ import { useMediaQuery } from 'usehooks-ts';
 import { formatUnits } from 'viem';
 import { useAccount } from 'wagmi';
 
+import Chart from '~/components/chart';
+import ChartSelector from '~/components/ChartSelector';
+import DepthChart from '~/components/DepthChart';
+import EpochHeader from '~/components/epochHeader';
+import LiquidityPositionsTable from '~/components/liquidityPositionsTable';
+import MarketSidebar from '~/components/marketSidebar';
+import MarketUnitsToggle from '~/components/marketUnitsToggle';
+import Stats from '~/components/stats';
+import TraderPositionsTable from '~/components/traderPositionsTable';
+import TransactionTable from '~/components/transactionTable';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '~/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '~/components/ui/toggle-group';
+import VolumeChart from '~/components/VolumeChart';
+import VolumeWindowSelector from '~/components/VolumeWindowButtons';
 import { useToast } from '~/hooks/use-toast';
-import Chart from '~/lib/components/chart';
-import ChartSelector from '~/lib/components/ChartSelector';
-import DepthChart from '~/lib/components/DepthChart';
-import EpochHeader from '~/lib/components/foil/epochHeader';
-import LiquidityPositionsTable from '~/lib/components/foil/liquidityPositionsTable';
-import MarketSidebar from '~/lib/components/foil/marketSidebar';
-import MarketUnitsToggle from '~/lib/components/foil/marketUnitsToggle';
-import Stats from '~/lib/components/foil/stats';
-import TraderPositionsTable from '~/lib/components/foil/traderPositionsTable';
-import TransactionTable from '~/lib/components/foil/transactionTable';
-import VolumeChart from '~/lib/components/VolumeChart';
-import VolumeWindowSelector from '~/lib/components/VolumeWindowButtons';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { AddEditPositionProvider } from '~/lib/context/AddEditPositionContext';
 import { MarketProvider } from '~/lib/context/MarketProvider';
@@ -260,7 +260,6 @@ const Market = ({
     if (chartType === ChartType.PRICE) {
       return (
         <Chart
-          activeWindow={selectedWindow}
           data={{
             marketPrices: marketPrices || [],
             indexPrices: indexPrices || [],
@@ -268,7 +267,6 @@ const Market = ({
           }}
           isLoading={idxLoading}
           seriesVisibility={seriesVisibility}
-          toggleSeries={toggleSeries}
         />
       );
     }

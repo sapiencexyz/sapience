@@ -11,14 +11,14 @@ import {
 } from '@/components/ui/tooltip';
 import type { Market } from '~/lib/context/MarketListProvider';
 
-import { AddressCell } from './AddressCell';
-import { BondCell } from './BondCell';
-import { PublicCell } from './PublicCell';
-import { SettleCell } from './SettleCell';
-import { SettlementPriceCell } from './SettlementPriceCell';
+import AddressCell from './AddressCell';
+import BondCell from './BondCell';
+import PublicCell from './PublicCell';
+import SettleCell from './SettleCell';
+import SettlementPriceCell from './SettlementPriceCell';
 import type { MissingBlocks } from './types';
 
-export const getColumns = (
+const getColumns = (
   loadingAction: { [key: string]: boolean },
   updateMarketPrivacy: (market: Market) => void,
   handleReindex: (
@@ -182,3 +182,5 @@ export const getColumns = (
     ),
   },
 ];
+
+export default getColumns;

@@ -19,9 +19,9 @@ import {
   useSwitchChain,
 } from 'wagmi';
 
-import { useConnectWallet } from '../../../../context/ConnectWalletProvider';
-import erc20ABI from '../../../../erc20abi.json';
-import INONFUNGIBLE_POSITION_MANAGER from '../../../../interfaces/Uniswap.NonfungiblePositionManager.json';
+import { useConnectWallet } from '../../../lib/context/ConnectWalletProvider';
+import erc20ABI from '../../../lib/erc20abi.json';
+import INONFUNGIBLE_POSITION_MANAGER from '../../../lib/interfaces/Uniswap.NonfungiblePositionManager.json';
 import NumberDisplay from '../../numberDisplay';
 import PositionSelector from '../../positionSelector';
 import SlippageTolerance from '../../slippageTolerance';

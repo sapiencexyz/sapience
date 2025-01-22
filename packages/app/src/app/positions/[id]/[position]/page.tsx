@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 
-import NumberDisplay from '~/lib/components/foil/numberDisplay';
+import NumberDisplay from '~/components/numberDisplay';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { MarketProvider } from '~/lib/context/MarketProvider';
 import { tickToPrice } from '~/lib/util/util';
