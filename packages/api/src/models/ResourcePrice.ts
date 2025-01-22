@@ -1,4 +1,4 @@
-import { NUMERIC_PRECISION } from "../constants";
+import { NUMERIC_PRECISION } from '../constants';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -8,12 +8,12 @@ import {
   ManyToOne,
   AfterInsert,
   AfterUpdate,
-} from "typeorm";
-import { Resource } from "./Resource";
-import { upsertIndexPriceFromResourcePrice } from "src/controllers/price";
+} from 'typeorm';
+import { Resource } from './Resource';
+import { upsertIndexPriceFromResourcePrice } from 'src/controllers/price';
 
 @Entity()
-@Unique(["resource", "timestamp"])
+@Unique(['resource', 'timestamp'])
 export class ResourcePrice {
   @PrimaryGeneratedColumn()
   id: number;
@@ -24,19 +24,19 @@ export class ResourcePrice {
   @ManyToOne(() => Resource, (resource) => resource.resourcePrices)
   resource: Resource;
 
-  @Column({ type: "integer" })
+  @Column({ type: 'integer' })
   blockNumber: number;
 
-  @Column({ type: "integer" })
+  @Column({ type: 'integer' })
   timestamp: number;
 
-  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
+  @Column({ type: 'numeric', precision: NUMERIC_PRECISION, scale: 0 })
   value: string;
 
-  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
+  @Column({ type: 'numeric', precision: NUMERIC_PRECISION, scale: 0 })
   used: string;
 
-  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
+  @Column({ type: 'numeric', precision: NUMERIC_PRECISION, scale: 0 })
   feePaid: string;
 
   @AfterInsert()

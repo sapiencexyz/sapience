@@ -4,9 +4,9 @@ import {
   Column,
   CreateDateColumn,
   OneToOne,
-} from "typeorm";
-import { Transaction } from "./Transaction";
-import { NUMERIC_PRECISION } from "../constants";
+} from 'typeorm';
+import { Transaction } from './Transaction';
+import { NUMERIC_PRECISION } from '../constants';
 
 @Entity()
 export class MarketPrice {
@@ -19,9 +19,9 @@ export class MarketPrice {
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column({ type: "bigint" })
+  @Column({ type: 'bigint' })
   timestamp: string;
 
-  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
+  @Column({ type: 'numeric', precision: NUMERIC_PRECISION, scale: 0 })
   value: string;
 }

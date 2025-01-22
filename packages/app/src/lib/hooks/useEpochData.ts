@@ -1,7 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
 import { useReadContract } from 'wagmi';
 
-import useFoilDeployment from '../components/foil/useFoilDeployment';
+import useFoilDeployment from '../../components/useFoilDeployment';
 
 export interface EpochData {
   minPriceD18: bigint;

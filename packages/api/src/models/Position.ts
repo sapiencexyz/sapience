@@ -6,13 +6,13 @@ import {
   OneToMany,
   ManyToOne,
   Unique,
-} from "typeorm";
-import { Transaction } from "./Transaction";
-import { NUMERIC_PRECISION } from "../constants";
-import { Epoch } from "./Epoch";
+} from 'typeorm';
+import { Transaction } from './Transaction';
+import { NUMERIC_PRECISION } from '../constants';
+import { Epoch } from './Epoch';
 
 @Entity()
-@Unique(["positionId", "epoch"])
+@Unique(['positionId', 'epoch'])
 export class Position {
   @OneToMany(() => Transaction, (transaction) => transaction.position)
   transactions: Transaction[];
@@ -26,18 +26,18 @@ export class Position {
   @ManyToOne(() => Epoch, (epoch) => epoch.positions)
   epoch: Epoch;
 
-  @Column({ type: "integer" })
+  @Column({ type: 'integer' })
   positionId: number;
 
-  @Column({ type: "varchar", nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   owner: string;
 
   // Position params
-  @Column({ type: "boolean" })
+  @Column({ type: 'boolean' })
   isLP: boolean; // true for event name
 
   @Column({
-    type: "numeric",
+    type: 'numeric',
     precision: NUMERIC_PRECISION,
     scale: 0,
     nullable: true,
@@ -45,7 +45,7 @@ export class Position {
   highPriceTick: string;
 
   @Column({
-    type: "numeric",
+    type: 'numeric',
     precision: NUMERIC_PRECISION,
     scale: 0,
     nullable: true,
@@ -53,14 +53,14 @@ export class Position {
   lowPriceTick: string;
 
   @Column({
-    type: "boolean",
+    type: 'boolean',
     nullable: true,
   })
   isSettled: boolean | null;
 
   // LP Delta Token Amounts
   @Column({
-    type: "numeric",
+    type: 'numeric',
     precision: NUMERIC_PRECISION,
     scale: 0,
     nullable: true,
@@ -68,7 +68,7 @@ export class Position {
   lpBaseToken: string; // vGas tokenamount 0
 
   @Column({
-    type: "numeric",
+    type: 'numeric',
     precision: NUMERIC_PRECISION,
     scale: 0,
     nullable: true,
@@ -77,7 +77,7 @@ export class Position {
 
   // Latest Position State
   @Column({
-    type: "numeric",
+    type: 'numeric',
     precision: NUMERIC_PRECISION,
     scale: 0,
     nullable: true,
@@ -85,7 +85,7 @@ export class Position {
   baseToken: string; // vGas tokenamount 0
 
   @Column({
-    type: "numeric",
+    type: 'numeric',
     precision: NUMERIC_PRECISION,
     scale: 0,
     nullable: true,
@@ -93,7 +93,7 @@ export class Position {
   quoteToken: string; // vETH tokenamount 1
 
   @Column({
-    type: "numeric",
+    type: 'numeric',
     precision: NUMERIC_PRECISION,
     scale: 0,
     nullable: true,
@@ -101,13 +101,13 @@ export class Position {
   borrowedBaseToken: string;
 
   @Column({
-    type: "numeric",
+    type: 'numeric',
     precision: NUMERIC_PRECISION,
     scale: 0,
     nullable: true,
   })
   borrowedQuoteToken: string;
 
-  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
+  @Column({ type: 'numeric', precision: NUMERIC_PRECISION, scale: 0 })
   collateral: string; // ETH
 }

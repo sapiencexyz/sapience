@@ -2,11 +2,10 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
-import { useContext } from 'react';
 
-import NumberDisplay from '~/lib/components/foil/numberDisplay';
+import NumberDisplay from '~/components/numberDisplay';
 import { API_BASE_URL } from '~/lib/constants/constants';
-import { MarketContext, MarketProvider } from '~/lib/context/MarketProvider';
+import { MarketProvider } from '~/lib/context/MarketProvider';
 import { tickToPrice } from '~/lib/util/util';
 
 const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
@@ -27,22 +26,6 @@ const usePosition = (contractId: string, positionId: string) => {
   });
 };
 
-const useTransactions = (contractId: string, positionId: string) => {
-  return useQuery({
-    queryKey: ['transactions', contractId, positionId],
-    queryFn: async () => {
-      const response = await fetch(
-        `${API_BASE_URL}/transactions?contractId=${contractId}&positionId=${positionId}`
-      );
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      return response.json();
-    },
-    refetchInterval: POLLING_INTERVAL,
-  });
-};
-
 const PositionPage = ({
   params,
 }: {
@@ -53,8 +36,6 @@ const PositionPage = ({
   const positionId = position;
 
   const contractId = `${chainId}:${marketAddress}`;
-
-  const { pool } = useContext(MarketContext);
 
   const {
     data: positionData,

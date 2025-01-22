@@ -1,6 +1,6 @@
-import { Resource } from "../models/Resource";
+import { Resource } from '../models/Resource';
 
-import { PublicClient } from "viem";
+import { PublicClient } from 'viem';
 
 export interface IResourcePriceIndexer {
   client: PublicClient | undefined;

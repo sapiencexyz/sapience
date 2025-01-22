@@ -1,20 +1,20 @@
-import { Abi } from "viem";
-import { IResourcePriceIndexer } from "./resourcePriceFunctions/IResourcePriceIndexer";
+import { Abi } from 'viem';
+import { IResourcePriceIndexer } from './resourcePriceFunctions/IResourcePriceIndexer';
 
 export enum EventType {
-  LiquidityPositionCreated = "LiquidityPositionCreated",
-  LiquidityPositionIncreased = "LiquidityPositionIncreased",
-  LiquidityPositionDecreased = "LiquidityPositionDecreased",
-  LiquidityPositionClosed = "LiquidityPositionClosed",
-  TraderPositionCreated = "TraderPositionCreated",
-  TraderPositionModified = "TraderPositionModified",
-  Transfer = "Transfer",
-  MarketInitialized = "MarketInitialized",
-  MarketUpdated = "MarketUpdated",
-  EpochCreated = "EpochCreated",
-  EpochSettled = "EpochSettled",
-  PositionSettled = "PositionSettled",
-  PositionUpdated = "PositionUpdated",
+  LiquidityPositionCreated = 'LiquidityPositionCreated',
+  LiquidityPositionIncreased = 'LiquidityPositionIncreased',
+  LiquidityPositionDecreased = 'LiquidityPositionDecreased',
+  LiquidityPositionClosed = 'LiquidityPositionClosed',
+  TraderPositionCreated = 'TraderPositionCreated',
+  TraderPositionModified = 'TraderPositionModified',
+  Transfer = 'Transfer',
+  MarketInitialized = 'MarketInitialized',
+  MarketUpdated = 'MarketUpdated',
+  EpochCreated = 'EpochCreated',
+  EpochSettled = 'EpochSettled',
+  PositionSettled = 'PositionSettled',
+  PositionUpdated = 'PositionUpdated',
 }
 
 export interface TradePositionEventLog {
@@ -116,11 +116,11 @@ export interface Deployment {
   deployTxnBlockNumber: string;
 }
 export enum TimeWindow {
-  H = "1H",
-  D = "1D",
-  W = "1W",
-  M = "1M",
-  Y = "1Y",
+  H = '1H',
+  D = '1D',
+  W = '1W',
+  M = '1M',
+  Y = '1Y',
 }
 
 export interface MarketInfo {

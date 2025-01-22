@@ -1,7 +1,7 @@
-import { mainnet, sepolia, cannon } from "viem/chains";
-import evmIndexer from "./resourcePriceFunctions/evmIndexer";
-import celestiaIndexer from "./resourcePriceFunctions/celestiaIndexer";
-import { Deployment, MarketInfo } from "./interfaces";
+import { mainnet, sepolia, base, cannon } from 'viem/chains';
+import evmIndexer from './resourcePriceFunctions/evmIndexer';
+import celestiaIndexer from './resourcePriceFunctions/celestiaIndexer';
+import { Deployment, MarketInfo } from './interfaces';
 
 const safeRequire = async (path: string): Promise<Deployment | null> => {
   try {
@@ -14,51 +14,63 @@ const safeRequire = async (path: string): Promise<Deployment | null> => {
 
 export const RESOURCES = [
   {
-    name: "Ethereum Gas",
-    slug: "ethereum-gas",
+    name: 'Ethereum Gas',
+    slug: 'ethereum-gas',
     priceIndexer: new evmIndexer(mainnet.id),
   },
   {
-    name: "Celestia Blobspace",
-    slug: "celestia-blobspace",
-    priceIndexer: new celestiaIndexer("https://api-mainnet.celenium.io"),
+    name: 'Celestia Blobspace',
+    slug: 'celestia-blobspace',
+    priceIndexer: new celestiaIndexer('https://api-mainnet.celenium.io'),
   },
 ];
 
-const initializeMarkets = async () => {
-  const FULL_MARKET_LIST = [
-    /*
-    {
-      name: "Development Gas",
-      deployment: await safeRequire(
-        "@/protocol/deployments/13370/FoilYin.json"
-      ),
-      marketChainId: cannon.id,
-      public: true,
-      resource: RESOURCES[0], // Ethereum Gas
-    },
-    */
-    {
-      deployment: await safeRequire(
-        "@/protocol/deployments/11155111/FoilYin.json"
-      ),
-      marketChainId: sepolia.id,
-      public: true,
-      resource: RESOURCES[0], // Ethereum Gas
-    },
-    {
-      deployment: await safeRequire(
-        "@/protocol/deployments/11155111/FoilYang.json"
-      ),
-      marketChainId: sepolia.id,
-      public: true,
-      resource: RESOURCES[0], // Ethereum Gas
-    },
-  ];
+const addMarketYinYang = async (markets: MarketInfo[], chainId: number) => {
+  const yin = await safeRequire(
+    `@/protocol/deployments/${chainId}/FoilYin.json`
+  );
+  const yang = await safeRequire(
+    `@/protocol/deployments/${chainId}/FoilYang.json`
+  );
 
-  return FULL_MARKET_LIST.filter(
-    (market) => market.deployment !== null
-  ) as MarketInfo[];
+  if (yin && yang) {
+    markets.push(
+      {
+        deployment: yin,
+        marketChainId: chainId,
+        public: true,
+        resource: RESOURCES[0], // Ethereum Gas
+      },
+      {
+        deployment: yang,
+        marketChainId: chainId,
+        public: true,
+        resource: RESOURCES[0], // Ethereum Gas
+      }
+    );
+  }
+};
+
+const initializeMarkets = async () => {
+  const FULL_MARKET_LIST: MarketInfo[] = [];
+
+  // Mainnet Deployments
+  await addMarketYinYang(FULL_MARKET_LIST, base.id);
+
+  // Development Deployments
+  if (process.env.NODE_ENV === 'development') {
+    await addMarketYinYang(FULL_MARKET_LIST, cannon.id);
+  }
+
+  // Testnet Deployments
+  if (
+    process.env.NODE_ENV === 'staging' ||
+    process.env.NODE_ENV === 'development'
+  ) {
+    await addMarketYinYang(FULL_MARKET_LIST, sepolia.id);
+  }
+
+  return FULL_MARKET_LIST;
 };
 
 export const MARKETS = await initializeMarkets();

@@ -1,23 +1,20 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { type ColumnDef } from '@tanstack/react-table';
-import { format } from 'date-fns';
 import { ChevronRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import React from 'react';
 import { formatUnits } from 'viem';
 
 import { Card, CardContent } from '@/components/ui/card';
-import CandlestickChart from '~/lib/components/chart';
-import { EpochTiming } from '~/lib/components/foil/EpochTiming';
-import NumberDisplay from '~/lib/components/foil/numberDisplay';
-import { MarketLayout } from '~/lib/components/market/MarketLayout';
-import { ResourceNav } from '~/lib/components/market/ResourceNav';
+import CandlestickChart from '~/components/chart';
+import EpochTiming from '~/components/EpochTiming';
+import MarketLayout from '~/components/market/MarketLayout';
+import ResourceNav from '~/components/market/ResourceNav';
+import NumberDisplay from '~/components/numberDisplay';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { MARKET_CATEGORIES } from '~/lib/constants/markets';
 import { useLatestResourcePrice, useResources } from '~/lib/hooks/useResources';
-import { TimeWindow } from '~/lib/interfaces/interfaces';
 
 interface ResourcePrice {
   timestamp: string;
@@ -40,43 +37,17 @@ interface Epoch {
   };
 }
 
-const columns: ColumnDef<Epoch>[] = [
-  {
-    id: 'period',
-    cell: ({ row }) => {
-      const epoch = row.original;
-      const endDate = new Date(epoch.endTimestamp * 1000);
-      const weeks = Math.round(
-        (epoch.endTimestamp - epoch.startTimestamp) / (7 * 24 * 3600)
-      );
-
-      return (
-        <div className="flex items-center">
-          <span>{format(endDate, 'M/d')}</span>
-          <span className="text-xs text-muted-foreground ml-2">
-            {weeks} week period
-          </span>
-        </div>
-      );
-    },
-  },
-  {
-    id: 'actions',
-    cell: () => <ChevronRight className="h-6 w-6 text-muted-foreground" />,
-  },
-];
-
 const EpochsTable = ({ data }: { data: Epoch[] }) => {
   const [hoveredIndex, setHoveredIndex] = React.useState(0);
 
   return (
-    <div className="border-y border-border">
+    <div className="border-t border-border">
       {data.length ? (
         data.map((epoch, index) => (
           <Link
             key={epoch.id}
             href={`/trade/${epoch.market.chainId}:${epoch.market.address}/epochs/${epoch.epochId}`}
-            className="block hover:no-underline"
+            className="block hover:no-underline border-b border-border"
             onMouseEnter={() => setHoveredIndex(index)}
           >
             <div
@@ -99,57 +70,6 @@ const EpochsTable = ({ data }: { data: Epoch[] }) => {
       )}
     </div>
   );
-};
-
-// Add placeholder data generation
-const generatePlaceholderPrices = () => {
-  const now = Date.now();
-  const dayInMs = 24 * 60 * 60 * 1000;
-  const prices = [];
-  let basePrice = 1750;
-
-  for (let i = 30; i >= 0; i--) {
-    const startTimestamp = now - i * dayInMs;
-    const endTimestamp = startTimestamp + dayInMs;
-    const volatility = 50;
-    const open = basePrice + (Math.random() - 0.5) * volatility;
-    const close = basePrice + (Math.random() - 0.5) * volatility;
-    const high = Math.max(open, close) + (Math.random() * volatility) / 2;
-    const low = Math.min(open, close) - (Math.random() * volatility) / 2;
-
-    prices.push({
-      startTimestamp,
-      endTimestamp,
-      open,
-      close,
-      high,
-      low,
-    });
-
-    basePrice = close;
-  }
-
-  return prices;
-};
-
-const generatePlaceholderIndexPrices = () => {
-  const now = Date.now();
-  const dayInMs = 24 * 60 * 60 * 1000;
-  const prices = [];
-  let basePrice = 1750;
-
-  for (let i = 30; i >= 0; i--) {
-    const timestamp = now - i * dayInMs;
-    const volatility = 30;
-    basePrice += (Math.random() - 0.5) * volatility;
-
-    prices.push({
-      timestamp: Math.floor(timestamp / 1000),
-      price: basePrice,
-    });
-  }
-
-  return prices;
 };
 
 const renderPriceDisplay = (
@@ -184,21 +104,11 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
   const { data: latestPrice, isLoading: isPriceLoading } =
     useLatestResourcePrice(params.id);
 
-  const [seriesVisibility, setSeriesVisibility] = React.useState({
+  const [seriesVisibility] = React.useState({
     candles: false,
     index: false,
     resource: true,
   });
-
-  const toggleSeries = React.useCallback(
-    (series: 'candles' | 'index' | 'resource') => {
-      setSeriesVisibility((prev) => ({
-        ...prev,
-        [series]: !prev[series],
-      }));
-    },
-    []
-  );
 
   const { data: resourcePrices, isLoading: isResourcePricesLoading } = useQuery<
     ResourcePrice[]
@@ -254,15 +164,15 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
     })) || [];
 
   return (
-    <div className="flex flex-col md:flex-row h-full">
+    <div className="flex flex-col md:flex-row h-full bg-secondary">
       <div className={`flex-1 min-w-0 ${!epochs.length ? 'w-full' : ''}`}>
         <div className="flex flex-col h-full">
           <div className="flex-1 grid relative">
-            <Card className="absolute top-8 left-8 z-10">
+            <Card className="absolute top-4 left-4 md:top-8 md:left-8 z-10">
               <CardContent className="py-3 px-4">
                 <div className="flex flex-col">
                   <span className="text-sm text-muted-foreground">
-                    Current Price
+                    Latest Price
                   </span>
                   <div className="flex items-baseline gap-2">
                     {renderPriceDisplay(isPriceLoading, latestPrice, params.id)}
@@ -271,23 +181,27 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
               </CardContent>
             </Card>
 
-            <CandlestickChart
-              data={{
-                marketPrices: [],
-                indexPrices: [],
-                resourcePrices: formattedResourcePrices,
-              }}
-              activeWindow={TimeWindow.D}
-              isLoading={isResourcePricesLoading}
-              seriesVisibility={seriesVisibility}
-              toggleSeries={toggleSeries}
-            />
+            <div className="flex flex-col flex-1">
+              <div className="flex flex-1 h-full p-2">
+                <div className="border border-border flex w-full h-full rounded-md overflow-hidden pr-2 pb-2 bg-white dark:bg-black">
+                  <CandlestickChart
+                    data={{
+                      marketPrices: [],
+                      indexPrices: [],
+                      resourcePrices: formattedResourcePrices,
+                    }}
+                    isLoading={isResourcePricesLoading}
+                    seriesVisibility={seriesVisibility}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       {epochs.length > 0 && (
-        <div className="w-full md:w-[240px] border-t md:border-t-0 md:border-l border-border pt-4 md:pt-0">
+        <div className="w-full md:w-[240px] md:border-l border-border pt-4 md:pt-0  bg-white dark:bg-black">
           <h2 className="text-base font-medium text-muted-foreground px-4 py-2">
             Periods
           </h2>

@@ -100,7 +100,7 @@ highlight=true
 highlight=true
 artifact="Vault"
 from="<%= settings.owner %>"
-args=[ "<%= settings.vault1Name %>", "<%= settings.vault1Symbol %>", "<%= FoilYin.address %>", "<%= CollateralAsset.Token.address %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "0", "<%= settings.totalVaults %>" ]
+args=[ "<%= settings.vault1Name %>", "<%= settings.vault1Symbol %>", "<%= FoilYin.address %>", "<%= CollateralAsset.Token.address %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "0", "<%= settings.totalVaults %>", "<%= settings.owner %>" ]
 depends = ['router.FoilYin', 'clone.CollateralAsset', 'var.settings']
 
 [invoke.initializeMarketForVault1]
@@ -122,7 +122,7 @@ depends=["deploy.VaultYin", "clone.BondCurrency"]
 highlight=true
 artifact="Vault"
 from="<%= settings.owner %>"
-args=[ "<%= settings.vault2Name %>", "<%= settings.vault2Symbol %>", "<%= FoilYang.address %>", "<%= CollateralAsset.Token.address %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "1", "<%= settings.totalVaults %>" ]
+args=[ "<%= settings.vault2Name %>", "<%= settings.vault2Symbol %>", "<%= FoilYang.address %>", "<%= CollateralAsset.Token.address %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "1", "<%= settings.totalVaults %>", "<%= settings.owner %>" ]
 depends = ['router.FoilYang', 'clone.CollateralAsset', 'var.settings']
 
 [invoke.initializeMarketForVault2]
@@ -145,7 +145,8 @@ target="VaultYin"
 from = "<%= settings.owner %>"
 func="initializeFirstEpoch"
 args=[
-  "<%= settings.startingSqrtPriceX96 %>"
+  "<%= settings.startingSqrtPriceX96 %>",
+  "0"
 ]
 depends=["invoke.initializeMarketForVault1"]
 
@@ -154,7 +155,8 @@ target="VaultYang"
 from = "<%= settings.owner %>"
 func="initializeFirstEpoch"
 args=[
-  "<%= settings.startingSqrtPriceX96 %>"
+  "<%= settings.startingSqrtPriceX96 %>",
+  "0"
 ]
 depends=["invoke.initializeMarketForVault2"]
 

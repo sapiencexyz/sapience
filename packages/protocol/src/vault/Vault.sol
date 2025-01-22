@@ -88,6 +88,11 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
 
     bool __VAULT_HALTED;
 
+    /**
+     * only address that has permission to submit market settlement prices
+     */
+    address public settlementPriceSubmitter;
+
     constructor(
         string memory _name,
         string memory _symbol,
@@ -97,7 +102,8 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 _upperBoundMultiplier,
         uint256 _duration,
         uint256 _vaultIndex,
-        uint256 _totalVaults
+        uint256 _totalVaults,
+        address _settlementPriceSubmitter
     ) ERC20(_name, _symbol) {
         market = IFoil(_marketAddress);
         collateralAsset = IERC20(_collateralAssetAddress);
@@ -108,6 +114,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         lowerBoundMultiplier = _lowerBoundMultiplier;
         upperBoundMultiplier = _upperBoundMultiplier;
         vaultInitializer = msg.sender;
+        settlementPriceSubmitter = _settlementPriceSubmitter;
     }
 
     /// @notice initializes the first epoch
@@ -115,12 +122,17 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     /// @dev price is set to 1e18
     /// @dev any pending deposits prior to the first epoch are used to create the initial liquidity position
     function initializeFirstEpoch(
-        uint160 initialSqrtPriceX96
+        uint160 initialSqrtPriceX96,
+        uint256 initialStartTime
     ) external onlyInitializer {
         require(!initialized, "Already Initialized");
         require(address(market) != address(0), "Market address not set");
 
-        uint256 initialStartTime = block.timestamp + (vaultIndex * duration);
+        uint256 startTime = initialStartTime == 0
+            ? block.timestamp
+            : initialStartTime;
+
+        uint256 epochStartTime = startTime + (vaultIndex * duration);
         // set tick spacing in storage once to reuse
         // for future epoch creations
         tickSpacing = market.getMarketTickSpacing();
@@ -129,7 +141,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         epochSharePrices[0] = startingSharePrice;
 
         _createEpochAndPosition(
-            initialStartTime,
+            epochStartTime,
             initialSqrtPriceX96,
             0 // collateral received, should be 0 for first epoch
         );
@@ -142,6 +154,8 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 epochId,
         uint160 price
     ) external returns (bytes32 assertionId) {
+        require(msg.sender == settlementPriceSubmitter, "Not authorized");
+
         (, , , , IFoilStructs.MarketParams memory marketParams) = market
             .getMarket();
         IERC20 bondCurrency = IERC20(marketParams.bondCurrency);
@@ -355,6 +369,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         sharePrice = totalShares > 0 && collateralReceived > 0
             ? collateralReceived.mulDiv(1e18, totalShares)
             : 1e18;
+
+        if (sharePrice == 0) {
+            revert("Share price cannot be 0");
+        }
 
         // Store the share price for the current epoch
         epochSharePrices[currentEpochId] = sharePrice;
