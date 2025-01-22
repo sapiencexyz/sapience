@@ -146,7 +146,7 @@ const AdminTable: React.FC = () => {
           ...epoch,
           market,
           marketAddress: market.address,
-          vaultAddress: null, // market.vaultAddress,
+          vaultAddress: market.owner,
           chainId: market.chainId,
           isPublic: market.public,
         };
@@ -264,15 +264,10 @@ const AdminTable: React.FC = () => {
         id: 'vaultAddress',
         header: 'Vault Address',
         cell: ({ row }) => (
-          <div>
-            t.c.
-            {/*
           <AddressCell
             address={row.original.vaultAddress}
             chainId={row.original.chainId}
           />
-           */}
-          </div>
         ),
       },
       {
@@ -389,7 +384,15 @@ const AdminTable: React.FC = () => {
       {
         id: 'bondStatus',
         header: 'Bond',
-        cell: ({ row }) => <>t.c.</>,
+        cell: ({ row }) => (
+          <BondCell
+            market={row.original.market}
+            epoch={row.original}
+            bondAmount={row.original.market.marketParams?.bondAmount}
+            bondCurrency={row.original.market.marketParams?.bondCurrency}
+            vaultAddress={row.original.vaultAddress}
+          />
+        ),
       },
       {
         id: 'settlement',
@@ -475,7 +478,7 @@ const AdminTable: React.FC = () => {
           {table.getRowModel().rows.map((row) => (
             <TableRow key={row.id}>
               {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id} className="text-lg">
+                <TableCell key={cell.id}>
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </TableCell>
               ))}
@@ -487,7 +490,6 @@ const AdminTable: React.FC = () => {
   );
 };
 
-// Move EpochItem component definition here, outside of MarketsTable
 const EpochItem: React.FC<{
   epoch: Market['epochs'][0];
   market: Market;
@@ -503,7 +505,6 @@ const EpochItem: React.FC<{
   );
   const { chainId, collateralAsset } = market;
   const { endTimestamp } = epoch;
-  const [txnStep, setTxnStep] = useState(0);
   const [loadingAction, setLoadingAction] = useState<{
     [actionName: string]: boolean;
   }>({});
@@ -627,49 +628,6 @@ const EpochItem: React.FC<{
       },
     });
 
-  const { isSuccess: isSettlementSuccess } = useWaitForTransactionReceipt({
-    hash: settlementHash,
-  });
-
-  const { data: approveHash, writeContract: approveWrite } = useWriteContract({
-    mutation: {
-      onError: (error) => {
-        console.error('Failed to approve: ', error);
-        resetAfterError();
-        toast({
-          variant: 'destructive',
-          title: 'Failed to approve',
-          description: (error as Error).message,
-        });
-      },
-    },
-  });
-
-  const { isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({
-    hash: approveHash,
-  });
-
-  useEffect(() => {
-    if (isApproveSuccess && txnStep === 1) {
-      refetchAllowance();
-      handleSettleWithPrice();
-    }
-  }, [isApproveSuccess, txnStep]);
-
-  // handle successful txn
-  useEffect(() => {
-    if (isSettlementSuccess && txnStep === 2) {
-      toast({
-        title: 'Successfully settled',
-        description:
-          'Note that it may take a few minutes while in the dispute period on UMA.',
-      });
-      refetchEpochData();
-      setTxnStep(0);
-      setLoadingAction((prev) => ({ ...prev, settle: false }));
-    }
-  }, [isSettlementSuccess]);
-
   const { data: latestPrice, isLoading: isLatestPriceLoading } = useQuery({
     queryKey: [
       'latestPrice',
@@ -700,34 +658,43 @@ const EpochItem: React.FC<{
     const sqrtPriceX96 = convertToSqrtPriceX96(priceAdjusted);
 
     settleWithPrice({
-      address: foilVaultData.address as `0x${string}`,
-      abi: foilVaultData.abi,
+      address: market.owner as `0x${string}`,
+      abi: [
+        {
+          type: 'function',
+          name: 'submitMarketSettlementPrice',
+          inputs: [
+            {
+              name: 'epochId',
+              type: 'uint256',
+              internalType: 'uint256',
+            },
+            {
+              name: 'price',
+              type: 'uint160',
+              internalType: 'uint160',
+            },
+          ],
+          outputs: [
+            {
+              name: 'assertionId',
+              type: 'bytes32',
+              internalType: 'bytes32',
+            },
+          ],
+          stateMutability: 'nonpayable',
+        },
+      ],
       functionName: 'submitMarketSettlementPrice',
-      args: [epoch.epochId, sqrtPriceX96],
+      args: [BigInt(epoch.epochId), sqrtPriceX96],
     });
-    setTxnStep(2);
-  };
-  const handleApproveSettle = async () => {
-    setLoadingAction((prev) => ({ ...prev, settle: true }));
-    approveWrite({
-      abi: erc20ABI,
-      address: bondCurrency as `0x${string}`,
-      functionName: 'approve',
-      args: [foilVaultData.address, bondAmount],
-      chainId,
-    });
-    setTxnStep(1);
   };
 
   const resetAfterError = () => {
-    setTxnStep(0);
     setLoadingAction((prev) => ({ ...prev, settle: false }));
   };
 
-  const buttonIsLoading =
-    loadingAction.settle ||
-    loadingStEthPerToken ||
-    stEthPerTokenResult.isLoading;
+  const buttonIsLoading = loadingAction.settle || loadingStEthPerToken;
 
   const renderSettledCell = () => {
     const currentTime = Math.floor(Date.now() / 1000);
@@ -740,6 +707,10 @@ const EpochItem: React.FC<{
     const areMissingBlocksLoading = missingBlocksCount === null;
     const hasMissingBlocks = missingBlocksCount && missingBlocksCount > 0;
 
+    // Check if bond amount is approved
+    const requiresApproval =
+      !allowance || (bondAmount && bondAmount > (allowance as bigint));
+
     const getButtonText = () => {
       if (!isEpochEnded) {
         return 'Epoch Active';
@@ -750,8 +721,8 @@ const EpochItem: React.FC<{
       if (hasMissingBlocks) {
         return 'Missing Blocks';
       }
-      if (requireApproval) {
-        return `Approve ${collateralTickerFunctionResult.data} Transfer`;
+      if (requiresApproval) {
+        return 'Bond Not Approved';
       }
       return 'Settle with Price';
     };
@@ -778,11 +749,10 @@ const EpochItem: React.FC<{
               buttonIsLoading ||
               !isEpochEnded ||
               areMissingBlocksLoading ||
-              Boolean(hasMissingBlocks)
+              Boolean(hasMissingBlocks) ||
+              requiresApproval
             }
-            onClick={
-              requireApproval ? handleApproveSettle : handleSettleWithPrice
-            }
+            onClick={handleSettleWithPrice}
           >
             {buttonIsLoading && <Loader2 className="animate-spin" />}
             {getButtonText()}
@@ -804,49 +774,118 @@ const EpochItem: React.FC<{
     );
   };
 
-  const requireApproval =
-    !allowance || (bondAmount && bondAmount > (allowance as bigint));
-
   return renderSettledCell();
 };
 
-// Add new SettlementPriceTableCell component
+const BondCell: React.FC<{
+  market: Market;
+  epoch: any;
+  bondAmount?: bigint;
+  bondCurrency?: string;
+  vaultAddress?: string;
+}> = ({ market, epoch, bondAmount, bondCurrency, vaultAddress }) => {
+  const { address } = useAccount();
+  const { toast } = useToast();
+  const [isApproving, setIsApproving] = useState(false);
+
+  const { data: allowance, refetch: refetchAllowance } = useReadContract({
+    abi: erc20ABI as AbiFunction[],
+    address: bondCurrency as `0x${string}`,
+    functionName: 'allowance',
+    args: [address, vaultAddress],
+    account: address || zeroAddress,
+    chainId: market.chainId,
+    query: {
+      enabled: !!address && !!bondAmount && !!vaultAddress && !!bondCurrency,
+    },
+  });
+
+  const { writeContract: approveWrite } = useWriteContract({
+    mutation: {
+      onError: (error) => {
+        console.error('Failed to approve: ', error);
+        setIsApproving(false);
+        toast({
+          variant: 'destructive',
+          title: 'Failed to approve',
+          description: (error as Error).message,
+        });
+      },
+      onSuccess: () => {
+        toast({
+          title: 'Approval successful',
+          description: 'Bond amount has been approved',
+        });
+        setIsApproving(false);
+        refetchAllowance();
+      },
+    },
+  });
+
+  const handleApprove = () => {
+    if (!bondAmount || !bondCurrency) return;
+    setIsApproving(true);
+    approveWrite({
+      abi: erc20ABI,
+      address: bondCurrency as `0x${string}`,
+      functionName: 'approve',
+      args: [vaultAddress, bondAmount],
+      chainId: market.chainId,
+    });
+  };
+
+  if (!bondAmount || !bondCurrency || !vaultAddress) {
+    return <span>Loading...</span>;
+  }
+
+  const requiresApproval = !allowance || bondAmount > (allowance as bigint);
+
+  return (
+    <div className="flex flex-col">
+      <div className="text-xs">
+        Currency:{' '}
+        <AddressCell address={bondCurrency} chainId={market.chainId} />
+      </div>
+      <div className="text-xs ">Required: {bondAmount}</div>
+      <div className="text-xs ">Approved: {allowance || 0}</div>
+      {requiresApproval && (
+        <Button size="sm" onClick={handleApprove} disabled={isApproving}>
+          {isApproving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Approve Bond
+        </Button>
+      )}
+    </div>
+  );
+};
+
 const SettlementPriceTableCell: React.FC<{
   market: Market;
   epoch: any;
 }> = ({ market, epoch }) => {
   const [stEthPerToken, setStEthPerToken] = useState(0);
-
-  const stEthPerTokenResult = useReadContract({
-    chainId:
-      market.chainId === Chains.cannon.id ? Chains.sepolia.id : market.chainId,
-    abi: [
-      {
-        inputs: [],
-        name: 'stEthPerToken',
-        outputs: [
-          {
-            internalType: 'uint256',
-            name: '',
-            type: 'uint256',
-          },
-        ],
-        stateMutability: 'view',
-        type: 'function',
-      },
-    ],
-    address:
-      market.chainId === Chains.cannon.id
-        ? DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS
-        : (market.collateralAsset as `0x${string}`),
-    functionName: 'stEthPerToken',
-  });
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (stEthPerTokenResult.data) {
-      setStEthPerToken(Number(gweiToEther(stEthPerTokenResult.data)));
-    }
-  }, [stEthPerTokenResult.data]);
+    const fetchStEthPerToken = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/getStEthPerTokenAtTimestamp?chainId=${market.chainId}&endTime=${epoch.endTimestamp}`
+        );
+        if (!response.ok) {
+          throw new Error('Failed to fetch stEthPerToken');
+        }
+        const data = await response.json();
+        setStEthPerToken(Number(gweiToEther(BigInt(data.stEthPerToken))));
+      } catch (error) {
+        console.error('Error fetching stEthPerToken:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStEthPerToken();
+  }, [market.chainId, epoch.endTimestamp]);
 
   const { data: latestPrice, isLoading: isLatestPriceLoading } = useQuery({
     queryKey: [
@@ -873,24 +912,16 @@ const SettlementPriceTableCell: React.FC<{
     priceAdjusted = 0;
   }
 
-  if (isLatestPriceLoading || stEthPerTokenResult.isLoading) {
+  if (isLatestPriceLoading || isLoading) {
     return <span>Loading...</span>;
   }
 
-  console.log(
-    'priceAdjusted',
-    priceAdjusted,
-    convertToSqrtPriceX96(priceAdjusted)
-  );
-
   return (
     <>
-      <div className="text-muted-foreground text-xs">Original Price: t.c.</div>
-      <div className="text-muted-foreground text-xs">wstETH Ratio: t.c.</div>
-      <div className="text-muted-foreground text-xs">
-        Adjusted Price: {priceAdjusted}
-      </div>
-      <div className="text-muted-foreground text-xs">
+      <div className=" text-xs">Latest Price: {latestPrice}</div>
+      <div className=" text-xs">wstETH Ratio: {stEthPerToken}</div>
+      <div className=" text-xs">Adjusted Price: {priceAdjusted}</div>
+      <div className=" text-xs">
         SqrtPriceX96: {convertToSqrtPriceX96(priceAdjusted).toString()}
       </div>
     </>
