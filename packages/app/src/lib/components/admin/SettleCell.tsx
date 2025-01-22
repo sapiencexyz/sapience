@@ -31,7 +31,7 @@ export const SettleCell: React.FC<EpochItemProps> = ({
     epoch
   );
 
-  const { data: getEpochData, refetch: refetchEpochData } = useReadContract({
+  const { data: getEpochData } = useReadContract({
     address: market.address as `0x${string}`,
     abi: foilData?.abi,
     functionName: 'getEpoch',

@@ -6,7 +6,6 @@ import { formatDuration, intervalToDuration, format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HelpCircle, Loader2, Info, BookTextIcon } from 'lucide-react';
 import { type FC, useState, useEffect, useContext, useMemo } from 'react';
-import React from 'react';
 import CountUp from 'react-countup';
 import { useForm } from 'react-hook-form';
 import type { AbiFunction } from 'viem';
@@ -116,7 +115,6 @@ const Subscribe: FC<SubscribeProps> = ({
   const [fillPrice, setFillPrice] = useState<bigint>(BigInt(0));
   const [fillPriceInEth, setFillPriceInEth] = useState<bigint>(BigInt(0));
   const [txnStep, setTxnStep] = useState(0);
-  const [isMarketSelectorOpen, setIsMarketSelectorOpen] = useState(false);
   const [isEstimating, setIsEstimating] = useState(false);
   const [withdrawableCollateral, setWithdrawableCollateral] = useState<bigint>(
     BigInt(0)
@@ -141,15 +139,7 @@ const Subscribe: FC<SubscribeProps> = ({
   });
 
   // Destructure form methods after initialization
-  const {
-    register,
-    control,
-    handleSubmit,
-    formState: { errors },
-    setValue,
-    reset,
-    watch,
-  } = form;
+  const { control, handleSubmit, reset } = form;
 
   // Rest of your hooks and effects
   const { toast } = useToast();
@@ -217,7 +207,7 @@ const Subscribe: FC<SubscribeProps> = ({
   useEffect(() => {
     if (positionId) {
       if (quoteModifyPositionResult.data?.result !== undefined) {
-        const [expectedCollateralDelta, closePnLValue, fillPriceData] =
+        const [expectedCollateralDelta, , fillPriceData] =
           quoteModifyPositionResult.data.result;
         setFillPrice(fillPriceData as bigint);
         setCollateralDelta(expectedCollateralDelta as bigint);
@@ -376,12 +366,7 @@ const Subscribe: FC<SubscribeProps> = ({
   }, [fillPrice, collateralAssetDecimals, stEthPerToken]);
 
   // Update onSubmit to check for dialog interactions
-  const onSubmit = async (values: any) => {
-    // Return early if we're just opening/closing dialogs or not connected
-    if (isMarketSelectorOpen || !isConnected) {
-      return;
-    }
-
+  const onSubmit = async () => {
     if (sizeValue === BigInt(0)) {
       toast({
         title: 'Invalid size',

@@ -858,7 +858,7 @@ const AddEditLiquidity: React.FC = () => {
     });
     setTxnStep(2);
   };
-  const handleFormSubmit = (e: any) => {
+  const handleFormSubmit = () => {
     if (!isConnected) {
       return;
     }

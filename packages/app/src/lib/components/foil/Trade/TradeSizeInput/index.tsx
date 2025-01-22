@@ -6,7 +6,7 @@ import { debounce } from 'lodash';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useCallback, useContext, useEffect, useMemo } from 'react';
 import { useController, useFormContext, useWatch } from 'react-hook-form';
-import { formatUnits, zeroAddress } from 'viem';
+import { zeroAddress } from 'viem';
 import { useAccount, usePublicClient } from 'wagmi';
 
 import { Button } from '~/components/ui/button';

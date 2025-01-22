@@ -6,14 +6,7 @@ import type React from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import type { TooltipProps } from 'recharts';
-import {
-  BarChart,
-  ResponsiveContainer,
-  XAxis,
-  Tooltip,
-  Bar,
-  YAxis,
-} from 'recharts';
+import { BarChart, ResponsiveContainer, XAxis, Tooltip, Bar } from 'recharts';
 import { type AbiFunction } from 'viem';
 import { useReadContracts } from 'wagmi';
 

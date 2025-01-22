@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query';
 import { useReadContract } from 'wagmi';
 
 import useFoilDeployment from '../components/foil/useFoilDeployment';

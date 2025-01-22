@@ -2,7 +2,7 @@ import { Menu, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
 import ConnectButton from '../components/ConnectButton';
 import { EpochTiming } from '../components/foil/EpochTiming';
@@ -25,7 +25,6 @@ import {
   useResources,
   type Resource,
   type Epoch,
-  type Market,
 } from '~/lib/hooks/useResources';
 
 // Extend the Epoch type with market properties

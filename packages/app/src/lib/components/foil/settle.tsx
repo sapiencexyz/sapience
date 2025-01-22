@@ -27,8 +27,6 @@ export default function Settle() {
     epochSettled,
     settlementPrice,
     collateralAssetTicker,
-    useMarketUnits,
-    stEthPerToken,
   } = useContext(MarketContext);
   const { nftId, setNftId, positions } = useAddEditPosition();
   const [withdrawableCollateral, setWithdrawableCollateral] = useState<bigint>(
