@@ -16,7 +16,7 @@ const router = Router();
 const TOKEN_PRECISION = 18;
 
 router.get(
-  '/volume',
+  '/',
   validateRequestParams(['contractId', 'timeWindow']),
   handleAsyncErrors(async (req: Request, res: Response) => {
     const { timeWindow, contractId } = req.query as {
@@ -62,4 +62,4 @@ router.get(
   })
 );
 
-export default router;
+export { router };
