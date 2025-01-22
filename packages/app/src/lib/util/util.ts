@@ -111,3 +111,15 @@ export function JSBIAbs(value: JSBI): JSBI {
     ? JSBI.multiply(value, JSBI.BigInt(-1))
     : value;
 }
+
+export const convertToSqrtPriceX96 = (priceD18: number) => {
+  const Q96 = BigInt('0x1000000000000000000000000');
+  return BigInt(Math.floor(Math.sqrt(priceD18) * Number(Q96)));
+};
+
+export const getExplorerUrl = (chainId: number, address: string) => {
+  const chain = Object.values(chains).find((c) => c.id === chainId);
+  return chain?.blockExplorers?.default?.url
+    ? `${chain.blockExplorers.default.url}/address/${address}`
+    : `https://etherscan.io/address/${address}`;
+};
