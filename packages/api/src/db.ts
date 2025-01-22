@@ -1,26 +1,26 @@
-import { DataSource } from "typeorm";
-import { Position } from "./models/Position";
-import { ResourcePrice } from "./models/ResourcePrice";
-import { Transaction } from "./models/Transaction";
-import { Event } from "./models/Event";
-import { Market } from "./models/Market";
-import { Epoch } from "./models/Epoch";
-import { MarketPrice } from "./models/MarketPrice";
-import { RenderJob } from "./models/RenderJob";
-import { IndexPrice } from "./models/IndexPrice";
-import { CollateralTransfer } from "./models/CollateralTransfer";
-import { Resource } from "./models/Resource";
+import { DataSource } from 'typeorm';
+import { Position } from './models/Position';
+import { ResourcePrice } from './models/ResourcePrice';
+import { Transaction } from './models/Transaction';
+import { Event } from './models/Event';
+import { Market } from './models/Market';
+import { Epoch } from './models/Epoch';
+import { MarketPrice } from './models/MarketPrice';
+import { RenderJob } from './models/RenderJob';
+import { IndexPrice } from './models/IndexPrice';
+import { CollateralTransfer } from './models/CollateralTransfer';
+import { Resource } from './models/Resource';
 
 const isLive =
-  process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging";
+  process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging';
 const devDatabase = process.env.POSTGRES_DB;
 const devUsername = process.env.POSTGRES_USER;
 
 const devDataSource: DataSource = new DataSource({
-  type: "postgres",
+  type: 'postgres',
   url: `postgresql://${devUsername}@localhost:5432/${devDatabase}`,
   synchronize: true,
-  logging: ["warn", "error", "log", "info"],
+  logging: ['warn', 'error', 'log', 'info'],
   entities: [
     ResourcePrice,
     Position,
@@ -37,10 +37,10 @@ const devDataSource: DataSource = new DataSource({
 });
 
 const postgresDataSource: DataSource = new DataSource({
-  type: "postgres",
+  type: 'postgres',
   url: process.env.DATABASE_URL,
   synchronize: true,
-  logging: ["warn", "error", "log", "info"],
+  logging: ['warn', 'error', 'log', 'info'],
   entities: [
     ResourcePrice,
     Position,
@@ -64,10 +64,10 @@ export const initializeDataSource = async () => {
     await dataSource
       .initialize()
       .then(() => {
-        console.log("Data Source has been initialized!");
+        console.log('Data Source has been initialized!');
       })
       .catch((err) => {
-        console.error("Error during Data Source initialization", err);
+        console.error('Error during Data Source initialization', err);
       });
   }
 };

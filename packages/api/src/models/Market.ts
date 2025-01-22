@@ -6,14 +6,14 @@ import {
   Unique,
   OneToMany,
   ManyToOne,
-} from "typeorm";
-import { Epoch } from "./Epoch";
-import { MarketParams } from "./MarketParams";
-import { Event } from "./Event";
-import { Resource } from "./Resource";
+} from 'typeorm';
+import { Epoch } from './Epoch';
+import { MarketParams } from './MarketParams';
+import { Event } from './Event';
+import { Resource } from './Resource';
 
 @Entity()
-@Unique(["address", "chainId"])
+@Unique(['address', 'chainId'])
 export class Market {
   @OneToMany(() => Epoch, (epoch) => epoch.market, {
     cascade: true,
@@ -32,27 +32,27 @@ export class Market {
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column({ type: "varchar" })
+  @Column({ type: 'varchar' })
   address: string;
 
-  @Column({ type: "integer" })
+  @Column({ type: 'integer' })
   chainId: number;
 
-  @Column({ type: "integer", nullable: true })
+  @Column({ type: 'integer', nullable: true })
   deployTimestamp: number | null;
 
-  @Column({ type: "integer", nullable: true })
+  @Column({ type: 'integer', nullable: true })
   deployTxnBlockNumber: number | null;
 
-  @Column({ type: "varchar", nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   owner: string | null;
 
-  @Column({ type: "varchar", nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   collateralAsset: string | null;
 
   @Column(() => MarketParams)
   marketParams: MarketParams;
 
-  @Column({ type: "boolean", default: false })
+  @Column({ type: 'boolean', default: false })
   public: boolean;
 }

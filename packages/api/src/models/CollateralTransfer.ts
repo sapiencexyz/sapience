@@ -1,4 +1,4 @@
-import { NUMERIC_PRECISION } from "../constants";
+import { NUMERIC_PRECISION } from '../constants';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -6,11 +6,11 @@ import {
   CreateDateColumn,
   Unique,
   OneToOne,
-} from "typeorm";
-import { Transaction } from "./Transaction";
+} from 'typeorm';
+import { Transaction } from './Transaction';
 
 @Entity()
-@Unique(["transactionHash"])
+@Unique(['transactionHash'])
 export class CollateralTransfer {
   @PrimaryGeneratedColumn()
   id: number;
@@ -21,15 +21,15 @@ export class CollateralTransfer {
   @OneToOne(() => Transaction, (transaction) => transaction.collateralTransfer)
   transaction: Transaction;
 
-  @Column({ type: "varchar" })
+  @Column({ type: 'varchar' })
   transactionHash: string;
 
-  @Column({ type: "integer" })
+  @Column({ type: 'integer' })
   timestamp: number;
 
-  @Column({ type: "varchar" })
+  @Column({ type: 'varchar' })
   owner: string;
 
-  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
+  @Column({ type: 'numeric', precision: NUMERIC_PRECISION, scale: 0 })
   collateral: string; // i.e. wstETH
 }

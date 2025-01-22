@@ -1,8 +1,8 @@
-import { IResourcePriceIndexer } from "./IResourcePriceIndexer";
-import { resourcePriceRepository } from "../db";
-import { ResourcePrice } from "../models/ResourcePrice";
-import { CELENIUM_API_KEY } from "../helpers";
-import { Resource } from "src/models/Resource";
+import { IResourcePriceIndexer } from './IResourcePriceIndexer';
+import { resourcePriceRepository } from '../db';
+import { ResourcePrice } from '../models/ResourcePrice';
+import { CELENIUM_API_KEY } from '../helpers';
+import { Resource } from 'src/models/Resource';
 // import Sentry from "../sentry";
 
 const headers: HeadersInit = {};
@@ -10,7 +10,7 @@ if (CELENIUM_API_KEY) {
   headers.apiKey = CELENIUM_API_KEY;
 }
 
-const celeniumApiVersionUrl = "v1";
+const celeniumApiVersionUrl = 'v1';
 type Block = {
   height: number;
   time: number;
@@ -33,7 +33,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
     this.celeniumEndpoint = celeniumEndpoint;
     this.pollInterval = pollInterval;
     if (!CELENIUM_API_KEY) {
-      throw new Error("CELENIUM_API_KEY environment variable not set");
+      throw new Error('CELENIUM_API_KEY environment variable not set');
     }
   }
 
@@ -41,14 +41,14 @@ class CelestiaIndexer implements IResourcePriceIndexer {
     const from = await this.getfromTimestamp();
 
     const params = new URLSearchParams({
-      limit: "100",
-      offset: "0",
-      sort: "asc",
-      status: "success",
-      msg_type: "MsgPayForBlobs",
-      excluded_msg_type: "MsgUnknown",
+      limit: '100',
+      offset: '0',
+      sort: 'asc',
+      status: 'success',
+      msg_type: 'MsgPayForBlobs',
+      excluded_msg_type: 'MsgUnknown',
       from: from.toString(),
-      messages: "false",
+      messages: 'false',
     });
 
     const response = await fetch(
@@ -65,7 +65,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
 
     if (data.length > 0) {
       // Regenerate (calculate) blocks from the tx data
-      const blocks = data.reduce((acc: Map<number, Block>, tx: any) => {
+      const blocks = data.reduce((acc: Map<number, Block>, tx) => {
         if (!acc.has(tx.height)) {
           acc.set(tx.height, {
             height: tx.height,
@@ -105,7 +105,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
     // If we don't have a next timestamp, find the latest resource price and use it as the initial timestamp
     const latestResourcePrice = await resourcePriceRepository.find({
       order: {
-        timestamp: "DESC",
+        timestamp: 'DESC',
       },
       take: 1,
     });
@@ -122,7 +122,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
   }
 
   public async start(resource: Resource) {
-    console.log("starting Celestia indexer");
+    console.log('starting Celestia indexer');
     this.pollTimeout = setInterval(
       this.pollCelestia.bind(this, resource),
       this.pollInterval
@@ -130,16 +130,16 @@ class CelestiaIndexer implements IResourcePriceIndexer {
 
     await this.pollCelestia(resource);
 
-    console.log("Celestia indexer started");
+    console.log('Celestia indexer started');
   }
 
   public async stop() {
     clearInterval(this.pollTimeout);
-    console.log("Celestia indexer stopped");
+    console.log('Celestia indexer stopped');
   }
 
   public pollStatus() {
-    console.log("Celestia indexer status: ", this.pollTimeout);
+    console.log('Celestia indexer status: ', this.pollTimeout);
   }
 
   /**
@@ -147,7 +147,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
    * @param block
    * @param resource
    */
-  private async storeBlockPrice(block: any, resource: Resource) {
+  private async storeBlockPrice(block, resource: Resource) {
     const used = block?.stats?.blobs_size;
     const fee = block?.stats?.fee * 10 ** 9; // Increase the fee to 9 digits to be compatible with the EVM indexer and UI (we use 9 decimals for the gwei)
     const value = fee / used;
@@ -166,9 +166,9 @@ class CelestiaIndexer implements IResourcePriceIndexer {
       price.used = used.toString();
       price.feePaid = fee.toString();
       price.blockNumber = Number(block.height);
-      await resourcePriceRepository.upsert(price, ["resource", "timestamp"]);
+      await resourcePriceRepository.upsert(price, ['resource', 'timestamp']);
     } catch (error) {
-      console.error("Error storing block price:", error);
+      console.error('Error storing block price:', error);
     }
   }
 
@@ -201,7 +201,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
 
     let low = 1;
     let high = latestBlock.height;
-    let closestBlock: any = null;
+    let closestBlock = null;
 
     // Binary search for the block with the closest timestamp
     while (low <= high) {
@@ -217,7 +217,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
     }
 
     if (!closestBlock) {
-      throw new Error("No block found at timestamp");
+      throw new Error('No block found at timestamp');
     }
 
     return closestBlock.height;
@@ -233,7 +233,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
       { headers }
     );
     if (!response.ok) {
-      throw new Error("Failed to fetch latest block number");
+      throw new Error('Failed to fetch latest block number');
     }
     const data = await response.json();
     return data.count;
@@ -252,7 +252,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
   ): Promise<boolean> {
     const initialBlockNumber = await this.getBlockByTimestamp(timestamp);
     if (!initialBlockNumber) {
-      throw new Error("No block found at timestamp");
+      throw new Error('No block found at timestamp');
     }
     const currentBlock = await this.getBlockFromCelenium(initialBlockNumber);
 
@@ -262,7 +262,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
       blockNumber++
     ) {
       try {
-        console.log("Indexing resource price (TIA) from block ", blockNumber);
+        console.log('Indexing resource price (TIA) from block ', blockNumber);
 
         const block = await this.getBlockFromCelenium(blockNumber);
         // TODO: Check if we need to pause or slow down the request rate to meet the Celenium API rate limit
@@ -288,7 +288,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
     for (const blockNumber of blocks) {
       try {
         console.log(
-          "Indexing resource price (TIA) from block (cherrypicked)",
+          'Indexing resource price (TIA) from block (cherrypicked)',
           blockNumber
         );
 
@@ -304,7 +304,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
 
   public async watchBlocksForResource(resource: Resource): Promise<void> {
     if (this.isWatching) {
-      console.log("Already watching blocks for this resource");
+      console.log('Already watching blocks for this resource');
       return;
     }
 

@@ -1,21 +1,21 @@
-import "reflect-metadata";
+import 'reflect-metadata';
 import {
   initializeDataSource,
   resourcePriceRepository,
   resourceRepository,
   marketRepository,
-} from "./db";
+} from './db';
 import {
   indexMarketEvents,
   initializeMarket,
   reindexMarketEvents,
-} from "./controllers/market";
-import { MARKETS, RESOURCES } from "./fixtures";
-import { createOrUpdateEpochFromContract } from "./controllers/marketHelpers";
-import { getMarketStartEndBlock } from "./controllers/marketHelpers";
-import { Between } from "typeorm";
-import * as Sentry from "@sentry/node";
-import { Resource } from "./models/Resource";
+} from './controllers/market';
+import { MARKETS, RESOURCES } from './fixtures';
+import { createOrUpdateEpochFromContract } from './controllers/marketHelpers';
+import { getMarketStartEndBlock } from './controllers/marketHelpers';
+import { Between } from 'typeorm';
+import * as Sentry from '@sentry/node';
+import { Resource } from './models/Resource';
 
 const MAX_RETRIES = Infinity;
 const RETRY_DELAY = 5000; // 5 seconds
@@ -41,9 +41,9 @@ async function withRetry<T>(
 
       // Report error to Sentry with context
       Sentry.withScope((scope) => {
-        scope.setExtra("attempt", attempt);
-        scope.setExtra("maxRetries", maxRetries);
-        scope.setExtra("operationName", name);
+        scope.setExtra('attempt', attempt);
+        scope.setExtra('maxRetries', maxRetries);
+        scope.setExtra('operationName', name);
         Sentry.captureException(error);
       });
 
@@ -81,7 +81,7 @@ function createResilientProcess<T>(
 }
 
 async function initializeResources() {
-  console.log("initializing resources");
+  console.log('initializing resources');
   for (const resourceInfo of RESOURCES) {
     let resource = await resourceRepository.findOne({
       where: { name: resourceInfo.name },
@@ -92,12 +92,12 @@ async function initializeResources() {
       resource.name = resourceInfo.name;
       resource.slug = resourceInfo.slug;
       await resourceRepository.save(resource);
-      console.log("created resource:", resourceInfo.name);
+      console.log('created resource:', resourceInfo.name);
     } else if (!resource.slug) {
       // Update existing resources with slug if missing
       resource.slug = resourceInfo.slug;
       await resourceRepository.save(resource);
-      console.log("updated resource with slug:", resourceInfo.name);
+      console.log('updated resource with slug:', resourceInfo.name);
     }
   }
 }
@@ -105,7 +105,7 @@ async function initializeResources() {
 async function main() {
   await initializeDataSource();
   const jobs: Promise<void>[] = [];
-  console.log("starting worker");
+  console.log('starting worker');
 
   // Initialize resources first
   await initializeResources();
@@ -121,9 +121,9 @@ async function main() {
 
     const market = await initializeMarket(marketInfo);
     console.log(
-      "initialized market",
+      'initialized market',
       market.address,
-      "on chain",
+      'on chain',
       market.chainId
     );
 
@@ -171,11 +171,11 @@ export async function reindexMarket(
 ) {
   try {
     console.log(
-      "reindexing market",
+      'reindexing market',
       address,
-      "on chain",
+      'on chain',
       chainId,
-      "epoch",
+      'epoch',
       epochId
     );
 
@@ -196,13 +196,13 @@ export async function reindexMarket(
       reindexMarketEvents(market, marketInfo.deployment.abi, Number(epochId)),
     ]);
 
-    console.log("finished reindexing market", address, "on chain", chainId);
+    console.log('finished reindexing market', address, 'on chain', chainId);
   } catch (error) {
-    console.error("Error in reindexMarket:", error);
+    console.error('Error in reindexMarket:', error);
     Sentry.withScope((scope) => {
-      scope.setExtra("chainId", chainId);
-      scope.setExtra("address", address);
-      scope.setExtra("epochId", epochId);
+      scope.setExtra('chainId', chainId);
+      scope.setExtra('address', address);
+      scope.setExtra('epochId', epochId);
       Sentry.captureException(error);
     });
     throw error;
@@ -248,7 +248,7 @@ export async function reindexMissingBlocks(
         resource: { id: market.resource.id },
         blockNumber: Between(startBlockNumber, endBlockNumber),
       },
-      select: ["blockNumber"],
+      select: ['blockNumber'],
     });
 
     const existingBlockNumbersSet = new Set(
@@ -277,16 +277,16 @@ export async function reindexMissingBlocks(
   } catch (error) {
     console.error(`Error in reindexMissingBlocks:`, error);
     Sentry.withScope((scope) => {
-      scope.setExtra("chainId", chainId);
-      scope.setExtra("address", address);
-      scope.setExtra("epochId", epochId);
+      scope.setExtra('chainId', chainId);
+      scope.setExtra('address', address);
+      scope.setExtra('epochId', epochId);
       Sentry.captureException(error);
     });
     throw error;
   }
 }
 
-if (process.argv[2] === "reindexMarket") {
+if (process.argv[2] === 'reindexMarket') {
   const callReindex = async () => {
     const chainId = parseInt(process.argv[3], 10);
     const address = process.argv[4];
@@ -294,16 +294,16 @@ if (process.argv[2] === "reindexMarket") {
 
     if (isNaN(chainId) || !address) {
       console.error(
-        "Invalid arguments. Usage: tsx src/worker.ts reindexMarket <chainId> <address> <epochId>"
+        'Invalid arguments. Usage: tsx src/worker.ts reindexMarket <chainId> <address> <epochId>'
       );
       process.exit(1);
     }
     await reindexMarket(chainId, address, epochId);
-    console.log("DONE");
+    console.log('DONE');
     process.exit(0);
   };
   callReindex();
-} else if (process.argv[2] === "reindexMissing") {
+} else if (process.argv[2] === 'reindexMissing') {
   const callReindexMissing = async () => {
     const chainId = parseInt(process.argv[3], 10);
     const address = process.argv[4];
@@ -311,12 +311,12 @@ if (process.argv[2] === "reindexMarket") {
 
     if (isNaN(chainId) || !address || !epochId) {
       console.error(
-        "Invalid arguments. Usage: tsx src/worker.ts reindexMissing <chainId> <address> <epochId>"
+        'Invalid arguments. Usage: tsx src/worker.ts reindexMissing <chainId> <address> <epochId>'
       );
       process.exit(1);
     }
     await reindexMissingBlocks(chainId, address, epochId);
-    console.log("DONE");
+    console.log('DONE');
     process.exit(0);
   };
   callReindexMissing();

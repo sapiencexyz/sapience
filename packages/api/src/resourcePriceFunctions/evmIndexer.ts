@@ -1,10 +1,10 @@
-import { resourcePriceRepository } from "../db";
-import { ResourcePrice } from "../models/ResourcePrice";
-import { getBlockByTimestamp, getProviderForChain } from "../helpers";
-import { Block, type PublicClient } from "viem";
-import Sentry from "../sentry";
-import { IResourcePriceIndexer } from "./IResourcePriceIndexer";
-import { Resource } from "src/models/Resource";
+import { resourcePriceRepository } from '../db';
+import { ResourcePrice } from '../models/ResourcePrice';
+import { getBlockByTimestamp, getProviderForChain } from '../helpers';
+import { Block, type PublicClient } from 'viem';
+import Sentry from '../sentry';
+import { IResourcePriceIndexer } from './IResourcePriceIndexer';
+import { Resource } from 'src/models/Resource';
 
 class EvmIndexer implements IResourcePriceIndexer {
   public client: PublicClient;
@@ -35,9 +35,9 @@ class EvmIndexer implements IResourcePriceIndexer {
       price.used = used.toString();
       price.feePaid = feePaid.toString();
       price.blockNumber = Number(block.number);
-      await resourcePriceRepository.upsert(price, ["resource", "timestamp"]);
+      await resourcePriceRepository.upsert(price, ['resource', 'timestamp']);
     } catch (error) {
-      console.error("Error storing block price:", error);
+      console.error('Error storing block price:', error);
     }
   }
 
@@ -47,7 +47,7 @@ class EvmIndexer implements IResourcePriceIndexer {
   ): Promise<boolean> {
     const initalBlock = await getBlockByTimestamp(this.client, timestamp);
     if (!initalBlock.number) {
-      throw new Error("No block found at timestamp");
+      throw new Error('No block found at timestamp');
     }
     const currentBlock = await this.client.getBlock();
 
@@ -57,7 +57,7 @@ class EvmIndexer implements IResourcePriceIndexer {
       blockNumber++
     ) {
       try {
-        console.log("Indexing gas from block ", blockNumber);
+        console.log('Indexing gas from block ', blockNumber);
 
         const block = await this.client.getBlock({
           blockNumber: BigInt(blockNumber),
@@ -65,9 +65,9 @@ class EvmIndexer implements IResourcePriceIndexer {
         await this.storeBlockPrice(block, resource);
       } catch (error) {
         Sentry.withScope((scope) => {
-          scope.setExtra("blockNumber", blockNumber);
-          scope.setExtra("resource", resource.slug);
-          scope.setExtra("timestamp", timestamp);
+          scope.setExtra('blockNumber', blockNumber);
+          scope.setExtra('resource', resource.slug);
+          scope.setExtra('timestamp', timestamp);
           Sentry.captureException(error);
         });
         console.error(`Error processing block ${blockNumber}:`, error);
@@ -79,15 +79,15 @@ class EvmIndexer implements IResourcePriceIndexer {
   async indexBlocks(resource: Resource, blocks: number[]): Promise<boolean> {
     for (const blockNumber of blocks) {
       try {
-        console.log("Indexing gas from block", blockNumber);
+        console.log('Indexing gas from block', blockNumber);
         const block = await this.client.getBlock({
           blockNumber: BigInt(blockNumber),
         });
         await this.storeBlockPrice(block, resource);
       } catch (error) {
         Sentry.withScope((scope) => {
-          scope.setExtra("blockNumber", blockNumber);
-          scope.setExtra("resource", resource.slug);
+          scope.setExtra('blockNumber', blockNumber);
+          scope.setExtra('resource', resource.slug);
           Sentry.captureException(error);
         });
         console.error(`Error processing block ${blockNumber}:`, error);
@@ -98,7 +98,7 @@ class EvmIndexer implements IResourcePriceIndexer {
 
   async watchBlocksForResource(resource: Resource) {
     if (this.isWatching) {
-      console.log("Already watching blocks for this resource");
+      console.log('Already watching blocks for this resource');
       return;
     }
     // suggested using a watch some re-connectiong logic if the watcher crashes. and attempts to reconnect.
@@ -115,16 +115,16 @@ class EvmIndexer implements IResourcePriceIndexer {
             await this.storeBlockPrice(block, resource);
             this.reconnectAttempts = 0;
           } catch (error) {
-            console.error("Error processing block:", error);
+            console.error('Error processing block:', error);
           }
         },
         onError: (error) => {
           Sentry.withScope((scope) => {
-            scope.setExtra("resource", resource.slug);
-            scope.setExtra("chainId", this.client.chain?.id);
+            scope.setExtra('resource', resource.slug);
+            scope.setExtra('chainId', this.client.chain?.id);
             Sentry.captureException(error);
           });
-          console.error("Watch error:", error);
+          console.error('Watch error:', error);
 
           this.isWatching = false;
           unwatch?.();
@@ -138,9 +138,9 @@ class EvmIndexer implements IResourcePriceIndexer {
               startWatching();
             }, this.reconnectDelay);
           } else {
-            console.error("Max reconnection attempts reached. Stopping watch.");
+            console.error('Max reconnection attempts reached. Stopping watch.');
             Sentry.captureMessage(
-              "Max reconnection attempts reached for block watcher"
+              'Max reconnection attempts reached for block watcher'
             );
           }
         },
