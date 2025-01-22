@@ -24,7 +24,7 @@ import {
 import type React from 'react';
 import { useEffect, useState, useMemo } from 'react';
 import type { AbiFunction } from 'viem';
-import { parseUnits, zeroAddress } from 'viem';
+import { zeroAddress } from 'viem';
 import * as Chains from 'viem/chains';
 import {
   useAccount,
@@ -34,9 +34,7 @@ import {
   useWriteContract,
 } from 'wagmi';
 
-import erc20ABI from '../../erc20abi.json';
-import useFoilDeployment from '../foil/useFoilDeployment';
-import MarketAddress from '../MarketAddress';
+import erc20ABI from '../erc20abi.json';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -58,12 +56,17 @@ import {
   ADMIN_AUTHENTICATE_MSG,
   API_BASE_URL,
   DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS,
-  TOKEN_DECIMALS,
 } from '~/lib/constants/constants';
 import { useMarketList, type Market } from '~/lib/context/MarketListProvider';
 import type { EpochData, MarketParams } from '~/lib/interfaces/interfaces';
-import { formatAmount } from '~/lib/util/numberUtil';
 import { gweiToEther } from '~/lib/util/util';
+
+import useFoilDeployment from './foil/useFoilDeployment';
+
+function convertToSqrtPriceX96(priceD18: number) {
+  const Q96 = BigInt('0x1000000000000000000000000');
+  return BigInt(Math.floor(Math.sqrt(priceD18) * Number(Q96)));
+}
 
 // Update interface to only include resourcePrice
 interface MissingBlocks {
@@ -124,7 +127,7 @@ const PublicCell: React.FC<{
   </div>
 );
 
-const MarketsTable: React.FC = () => {
+const AdminTable: React.FC = () => {
   const { markets, isLoading, error, refetchMarkets } = useMarketList();
   const [loadingAction, setLoadingAction] = useState<{
     [actionName: string]: boolean;
@@ -137,25 +140,18 @@ const MarketsTable: React.FC = () => {
   const [missingBlocks, setMissingBlocks] = useState<MissingBlocks>({});
 
   const data = useMemo(() => {
-    const flattenedData = markets.flatMap((market) =>
+    return markets.flatMap((market) =>
       market.epochs.map((epoch) => {
-        console.log(
-          'Processing epoch:',
-          epoch.epochId,
-          'for market:',
-          market.address
-        );
         return {
           ...epoch,
           market,
           marketAddress: market.address,
+          vaultAddress: null, // market.vaultAddress,
           chainId: market.chainId,
           isPublic: market.public,
         };
       })
     );
-    console.log('Flattened market data:', flattenedData);
-    return flattenedData;
   }, [markets]);
 
   // Simplify fetchMissingBlocks to only fetch resource price blocks
@@ -265,8 +261,23 @@ const MarketsTable: React.FC = () => {
         ),
       },
       {
+        id: 'vaultAddress',
+        header: 'Vault Address',
+        cell: ({ row }) => (
+          <div>
+            t.c.
+            {/*
+          <AddressCell
+            address={row.original.vaultAddress}
+            chainId={row.original.chainId}
+          />
+           */}
+          </div>
+        ),
+      },
+      {
         id: 'marketAddress',
-        header: 'Address',
+        header: 'Market Address',
         cell: ({ row }) => (
           <AddressCell
             address={row.original.marketAddress}
@@ -374,6 +385,11 @@ const MarketsTable: React.FC = () => {
             epoch={row.original}
           />
         ),
+      },
+      {
+        id: 'bondStatus',
+        header: 'Bond',
+        cell: ({ row }) => <>t.c.</>,
       },
       {
         id: 'settlement',
@@ -681,10 +697,7 @@ const EpochItem: React.FC<{
   const priceAdjusted = latestPrice / (stEthPerToken || 1);
 
   const handleSettleWithPrice = () => {
-    const Q96 = BigInt('0x1000000000000000000000000');
-    const sqrtPriceX96 = BigInt(
-      Math.floor(Math.sqrt(priceAdjusted) * Number(Q96))
-    );
+    const sqrtPriceX96 = convertToSqrtPriceX96(priceAdjusted);
 
     settleWithPrice({
       address: foilVaultData.address as `0x${string}`,
@@ -854,13 +867,34 @@ const SettlementPriceTableCell: React.FC<{
     enabled: epoch.epochId !== 0 || market !== undefined,
   });
 
-  const priceAdjusted = latestPrice / (stEthPerToken || 1);
+  let priceAdjusted = latestPrice / (stEthPerToken || 1);
+
+  if (isNaN(priceAdjusted)) {
+    priceAdjusted = 0;
+  }
 
   if (isLatestPriceLoading || stEthPerTokenResult.isLoading) {
     return <span>Loading...</span>;
   }
 
-  return <span>{formatAmount(priceAdjusted)}</span>;
+  console.log(
+    'priceAdjusted',
+    priceAdjusted,
+    convertToSqrtPriceX96(priceAdjusted)
+  );
+
+  return (
+    <>
+      <div className="text-muted-foreground text-xs">Original Price: t.c.</div>
+      <div className="text-muted-foreground text-xs">wstETH Ratio: t.c.</div>
+      <div className="text-muted-foreground text-xs">
+        Adjusted Price: {priceAdjusted}
+      </div>
+      <div className="text-muted-foreground text-xs">
+        SqrtPriceX96: {convertToSqrtPriceX96(priceAdjusted).toString()}
+      </div>
+    </>
+  );
 };
 
-export default MarketsTable;
+export default AdminTable;

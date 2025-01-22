@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import MarketsTable from '~/lib/components/MarketsTable';
+import AdminTable from '~/lib/components/AdminTable';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import type { RenderJob } from '~/lib/interfaces/interfaces';
 
@@ -45,7 +45,7 @@ const Admin = () => {
 
   return (
     <div className="w-full">
-      <MarketsTable />
+      <AdminTable />
 
       <div className="flex gap-4 my-4 ml-4">
         <Button onClick={() => setStatusOpen(true)}>Check Job Status</Button>
