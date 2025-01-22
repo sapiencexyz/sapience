@@ -260,7 +260,6 @@ const Market = ({
     if (chartType === ChartType.PRICE) {
       return (
         <Chart
-          activeWindow={selectedWindow}
           data={{
             marketPrices: marketPrices || [],
             indexPrices: indexPrices || [],
@@ -268,7 +267,6 @@ const Market = ({
           }}
           isLoading={idxLoading}
           seriesVisibility={seriesVisibility}
-          toggleSeries={toggleSeries}
         />
       );
     }

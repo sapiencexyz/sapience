@@ -15,7 +15,6 @@ import { ResourceNav } from '~/lib/components/market/ResourceNav';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { MARKET_CATEGORIES } from '~/lib/constants/markets';
 import { useLatestResourcePrice, useResources } from '~/lib/hooks/useResources';
-import { TimeWindow } from '~/lib/interfaces/interfaces';
 
 interface ResourcePrice {
   timestamp: string;
@@ -105,21 +104,11 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
   const { data: latestPrice, isLoading: isPriceLoading } =
     useLatestResourcePrice(params.id);
 
-  const [seriesVisibility, setSeriesVisibility] = React.useState({
+  const [seriesVisibility] = React.useState({
     candles: false,
     index: false,
     resource: true,
   });
-
-  const toggleSeries = React.useCallback(
-    (series: 'candles' | 'index' | 'resource') => {
-      setSeriesVisibility((prev) => ({
-        ...prev,
-        [series]: !prev[series],
-      }));
-    },
-    []
-  );
 
   const { data: resourcePrices, isLoading: isResourcePricesLoading } = useQuery<
     ResourcePrice[]
@@ -201,10 +190,8 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
                       indexPrices: [],
                       resourcePrices: formattedResourcePrices,
                     }}
-                    activeWindow={TimeWindow.D}
                     isLoading={isResourcePricesLoading}
                     seriesVisibility={seriesVisibility}
-                    toggleSeries={toggleSeries}
                   />
                 </div>
               </div>
