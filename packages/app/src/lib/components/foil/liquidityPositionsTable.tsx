@@ -206,13 +206,13 @@ const LiquidityPositionsTable: React.FC<Props> = ({ positions }) => {
   const { pool, endTime, chain, address } = useContext(MarketContext);
   const [sorting, setSorting] = useState<SortingState>([
     {
-      id: 'settled',    
-      desc: false       
+      id: 'settled',
+      desc: false,
     },
     {
-      id: 'position',  
-      desc: true        
-    }
+      id: 'position',
+      desc: true,
+    },
   ]);
   const dateMilliseconds = Number(endTime) * 1000;
   const expired = new Date(dateMilliseconds) < new Date();
