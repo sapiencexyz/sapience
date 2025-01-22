@@ -1,19 +1,19 @@
-import "tsconfig-paths/register";
+import 'tsconfig-paths/register';
 import {
   epochRepository,
   marketPriceRepository,
   marketRepository,
   positionRepository,
   collateralTransferRepository,
-} from "../db";
-import { Event } from "../models/Event";
-import { MarketParams } from "../models/MarketParams";
-import { Market } from "../models/Market";
-import { Epoch } from "../models/Epoch";
-import { Position } from "../models/Position";
-import { Transaction, TransactionType } from "../models/Transaction";
-import { CollateralTransfer } from "../models/CollateralTransfer";
-import { PublicClient } from "viem";
+} from '../db';
+import { Event } from '../models/Event';
+import { MarketParams } from '../models/MarketParams';
+import { Market } from '../models/Market';
+import { Epoch } from '../models/Epoch';
+import { Position } from '../models/Position';
+import { Transaction, TransactionType } from '../models/Transaction';
+import { CollateralTransfer } from '../models/CollateralTransfer';
+import { PublicClient } from 'viem';
 import {
   Deployment,
   EpochCreatedEventLog,
@@ -22,18 +22,18 @@ import {
   MarketInfo,
   EpochData,
   EventType,
-} from "../interfaces";
-import { MarketPrice } from "../models/MarketPrice";
-import { getBlockByTimestamp, getProviderForChain } from "../helpers";
+} from '../interfaces';
+import { MarketPrice } from '../models/MarketPrice';
+import { getBlockByTimestamp, getProviderForChain } from '../helpers';
 
 /**
  * Handles a Transfer event by updating the owner of the corresponding Position.
  * @param event The Transfer event
  */
 export const handleTransferEvent = async (event: Event) => {
-  const { from, to, tokenId } = event.logData.args;
+  const { to, tokenId } = event.logData.args;
 
-  let existingPosition = await positionRepository.findOne({
+  const existingPosition = await positionRepository.findOne({
     where: {
       positionId: Number(tokenId),
       epoch: {
@@ -47,7 +47,7 @@ export const handleTransferEvent = async (event: Event) => {
 
   if (!existingPosition) {
     // Ignore the transfer event until the position is created from another event
-    console.log("Position not found for transfer event: ", event);
+    console.log('Position not found for transfer event: ', event);
     return;
   }
 
@@ -63,7 +63,7 @@ export const handleTransferEvent = async (event: Event) => {
 export const handlePositionSettledEvent = async (event: Event) => {
   const { positionId } = event.logData.args;
 
-  let existingPosition = await positionRepository.findOne({
+  const existingPosition = await positionRepository.findOne({
     where: {
       positionId: Number(positionId),
     },
@@ -71,7 +71,7 @@ export const handlePositionSettledEvent = async (event: Event) => {
 
   if (!existingPosition) {
     // Ignore the settled event until the position is created from another event
-    console.log("Position not found for settled event: ", event);
+    console.log('Position not found for settled event: ', event);
     return;
   }
 
@@ -99,9 +99,9 @@ export const createOrModifyPositionFromTransaction = async (
   });
   if (!epoch) {
     console.error(
-      "Epoch not found: ",
+      'Epoch not found: ',
       epochId,
-      "market:",
+      'market:',
       transaction.event.market.address
     );
     return;
@@ -116,19 +116,19 @@ export const createOrModifyPositionFromTransaction = async (
       positionId: transaction.event.logData.args.positionId,
     },
     relations: [
-      "transactions",
-      "epoch",
-      "epoch.market",
-      "transactions.event",
-      "transactions.marketPrice",
-      "transactions.collateralTransfer",
+      'transactions',
+      'epoch',
+      'epoch.market',
+      'transactions.event',
+      'transactions.marketPrice',
+      'transactions.collateralTransfer',
     ],
   });
 
   const position = existingPosition || new Position();
 
   if (existingPosition) {
-    console.log("existing position: ", existingPosition);
+    console.log('existing position: ', existingPosition);
   }
 
   position.positionId = Number(eventArgs.positionId);
@@ -146,9 +146,9 @@ export const createOrModifyPositionFromTransaction = async (
   position.collateral = eventArgs.positionCollateralAmount;
 
   // LP Position state
-  position.lpBaseToken = eventArgs.loanAmount0 || eventArgs.addedAmount0 || "0";
+  position.lpBaseToken = eventArgs.loanAmount0 || eventArgs.addedAmount0 || '0';
   position.lpQuoteToken =
-    eventArgs.loanAmount1 || eventArgs.addedAmount1 || "0";
+    eventArgs.loanAmount1 || eventArgs.addedAmount1 || '0';
 
   // LP Position configuration
   if (eventArgs.upperTick && eventArgs.lowerTick) {
@@ -160,7 +160,7 @@ export const createOrModifyPositionFromTransaction = async (
   // position.owner = ;
   // position.settled = ;
 
-  console.log("Saving position: ", position);
+  console.log('Saving position: ', position);
   await positionRepository.save(position);
 };
 
@@ -189,15 +189,15 @@ const updateTransactionStateFromEvent = (
 export const insertCollateralTransfer = async (transaction: Transaction) => {
   const eventArgs = transaction.event.logData.args;
 
-  if (!eventArgs.deltaCollateral || eventArgs.deltaCollateral == "0") {
+  if (!eventArgs.deltaCollateral || eventArgs.deltaCollateral == '0') {
     console.log(
-      "Delta collateral not found in eventArgs",
+      'Delta collateral not found in eventArgs',
       eventArgs.deltaCollateral
     );
     return;
   }
 
-  console.log("Upserting delta colalteral for transaction: ", transaction);
+  console.log('Upserting delta colalteral for transaction: ', transaction);
   // upsert market price
   const newCollateralTransfer = new CollateralTransfer();
 
@@ -211,7 +211,7 @@ export const insertCollateralTransfer = async (transaction: Transaction) => {
   // Ensure the transaction has a collateralTransfer reference
   transaction.collateralTransfer = newCollateralTransfer;
 
-  console.log("upserting collateral transfer: ", newCollateralTransfer);
+  console.log('upserting collateral transfer: ', newCollateralTransfer);
   await collateralTransferRepository.save(newCollateralTransfer);
 };
 
@@ -224,7 +224,7 @@ export const insertMarketPrice = async (transaction: Transaction) => {
     transaction.type === TransactionType.LONG ||
     transaction.type === TransactionType.SHORT
   ) {
-    console.log("Upserting market price for transaction: ", transaction);
+    console.log('Upserting market price for transaction: ', transaction);
     // upsert market price
     const newMp = new MarketPrice(); // might already get saved when upserting txn
     const finalPrice = transaction.event.logData.args.finalPrice;
@@ -235,7 +235,7 @@ export const insertMarketPrice = async (transaction: Transaction) => {
     // Ensure the transaction has a marketPrice reference
     transaction.marketPrice = newMp;
 
-    console.log("upserting market price: ", newMp);
+    console.log('upserting market price: ', newMp);
     await marketPriceRepository.save(newMp);
   }
 };
@@ -248,19 +248,19 @@ export const createOrUpdateMarketFromContract = async (
 ) => {
   const address = contractDeployment.address.toLowerCase();
   // get market and epoch from contract
-  const marketReadResult: any = await client.readContract({
+  const marketReadResult = await client.readContract({
     address: address as `0x${string}`,
     abi: contractDeployment.abi,
-    functionName: "getMarket",
+    functionName: 'getMarket',
   });
-  console.log("marketReadResult", marketReadResult);
+  console.log('marketReadResult', marketReadResult);
 
   let updatedMarket = initialMarket;
   if (!updatedMarket) {
     // check if market already exists in db
-    let existingMarket = await marketRepository.findOne({
+    const existingMarket = await marketRepository.findOne({
       where: { address, chainId },
-      relations: ["epochs"],
+      relations: ['epochs'],
     });
     updatedMarket = existingMarket || new Market();
   }
@@ -290,23 +290,23 @@ export const createOrUpdateEpochFromContract = async (
   market: Market,
   epochId?: number
 ) => {
-  const functionName = epochId ? "getEpoch" : "getLatestEpoch";
+  const functionName = epochId ? 'getEpoch' : 'getLatestEpoch';
   const args = epochId ? [epochId] : [];
 
   const client = getProviderForChain(marketInfo.marketChainId);
   // get epoch from contract
-  const epochReadResult: any = await client.readContract({
+  const epochReadResult = await client.readContract({
     address: marketInfo.deployment.address as `0x${string}`,
     abi: marketInfo.deployment.abi,
     functionName,
     args,
   });
   const epochData: EpochData = epochReadResult[0];
-  console.log("epochReadResult", epochReadResult);
+  console.log('epochReadResult', epochReadResult);
   const _epochId = epochId || Number(epochData.epochId);
 
   // check if epoch already exists in db
-  let existingEpoch = await epochRepository.findOne({
+  const existingEpoch = await epochRepository.findOne({
     where: {
       market: { address: marketInfo.deployment.address },
       epochId: _epochId,
@@ -332,7 +332,7 @@ export const createOrUpdateEpochFromContract = async (
   updatedEpoch.market = market;
   updatedEpoch.marketParams = marketParams;
   await epochRepository.save(updatedEpoch);
-  console.log("saved epoch:", updatedEpoch);
+  console.log('saved epoch:', updatedEpoch);
 };
 
 /**
@@ -350,7 +350,7 @@ export const createOrUpdateMarketFromEvent = async (
   address: string,
   originalMarket?: Market | null
 ) => {
-  let market = originalMarket || new Market();
+  const market = originalMarket || new Market();
   market.chainId = chainId;
   market.address = address;
   if (eventArgs.collateralAsset) {
@@ -422,7 +422,6 @@ export const updateTransactionFromLiquidityModifiedEvent = async (
   event: Event,
   isDecrease?: boolean
 ) => {
-  const epochId = event.logData.args.epochId;
   newTransaction.type = isDecrease
     ? TransactionType.REMOVE_LIQUIDITY
     : TransactionType.ADD_LIQUIDITY;
@@ -431,12 +430,12 @@ export const updateTransactionFromLiquidityModifiedEvent = async (
 
   newTransaction.lpBaseDeltaToken = isDecrease
     ? (
-        BigInt(event.logData.args.decreasedAmount0 ?? "0") * BigInt(-1)
+        BigInt(event.logData.args.decreasedAmount0 ?? '0') * BigInt(-1)
       ).toString()
     : event.logData.args.increasedAmount0;
   newTransaction.lpQuoteDeltaToken = isDecrease
     ? (
-        BigInt(event.logData.args.decreasedAmount1 ?? "0") * BigInt(-1)
+        BigInt(event.logData.args.decreasedAmount1 ?? '0') * BigInt(-1)
       ).toString()
     : event.logData.args.increasedAmount1;
 };
@@ -476,7 +475,7 @@ export const updateTransactionFromPositionSettledEvent = async (
   }
 
   updateTransactionStateFromEvent(newTransaction, event);
-  newTransaction.tradeRatioD18 = epoch?.settlementPriceD18 || "0";
+  newTransaction.tradeRatioD18 = epoch?.settlementPriceD18 || '0';
 };
 
 /**
@@ -519,7 +518,7 @@ export const getMarketStartEndBlock = async (
   });
 
   if (!epoch) {
-    return { error: "Epoch not found" };
+    return { error: 'Epoch not found' };
   }
 
   const now = Math.floor(Date.now() / 1000);
@@ -538,7 +537,7 @@ export const getMarketStartEndBlock = async (
 
   if (!startBlock?.number || !endBlock?.number) {
     return {
-      error: "Unable to retrieve block numbers for start or end timestamps",
+      error: 'Unable to retrieve block numbers for start or end timestamps',
     };
   }
 
@@ -555,7 +554,7 @@ const isLpPosition = (transaction: Transaction) => {
     const eventName = transaction.event.logData.eventName;
     if (
       eventName === EventType.LiquidityPositionClosed &&
-      `${transaction.event.logData.args.kind}` === "2"
+      `${transaction.event.logData.args.kind}` === '2'
     ) {
       return false;
     }

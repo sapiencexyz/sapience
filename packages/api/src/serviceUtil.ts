@@ -1,15 +1,15 @@
-import { MarketPrice } from "./models/MarketPrice";
+import { MarketPrice } from './models/MarketPrice';
 import {
   ONE_DAY_MS,
   ONE_HOUR_MS,
   ONE_MINUTE_MS,
   TOKEN_PRECISION,
-} from "./constants";
-import dataSource from "./db";
-import { Transaction } from "./models/Transaction";
-import { TimeWindow } from "./interfaces";
-import { formatUnits } from "viem";
-import { IndexPrice } from "./models/IndexPrice";
+} from './constants';
+import dataSource from './db';
+import { Transaction } from './models/Transaction';
+import { TimeWindow } from './interfaces';
+import { formatUnits } from 'viem';
+import { IndexPrice } from './models/IndexPrice';
 
 class EntityGroup<T> {
   startTimestamp: number;
@@ -20,8 +20,6 @@ class EntityGroup<T> {
     this.entities = entities;
   }
 }
-export interface TransactionGroup extends EntityGroup<Transaction> {}
-export interface MarketPriceGroup extends EntityGroup<MarketPrice> {}
 
 export async function getTransactionsInTimeRange(
   startTimestamp: number,
@@ -31,21 +29,21 @@ export async function getTransactionsInTimeRange(
 ): Promise<Transaction[]> {
   const transactionRepository = dataSource.getRepository(Transaction);
   return await transactionRepository
-    .createQueryBuilder("transaction")
-    .innerJoinAndSelect("transaction.event", "event")
-    .innerJoinAndSelect("event.market", "market")
-    .leftJoinAndSelect("transaction.marketPrice", "marketPrice")
-    .leftJoinAndSelect("transaction.position", "position")
+    .createQueryBuilder('transaction')
+    .innerJoinAndSelect('transaction.event', 'event')
+    .innerJoinAndSelect('event.market', 'market')
+    .leftJoinAndSelect('transaction.marketPrice', 'marketPrice')
+    .leftJoinAndSelect('transaction.position', 'position')
     .where(
-      "CAST(event.timestamp AS BIGINT) BETWEEN :startTimestamp AND :endTimestamp",
+      'CAST(event.timestamp AS BIGINT) BETWEEN :startTimestamp AND :endTimestamp',
       {
         startTimestamp,
         endTimestamp,
       }
     )
-    .andWhere("market.chainId = :chainId", { chainId })
-    .andWhere("market.address = :marketAddress", { marketAddress })
-    .orderBy("CAST(event.timestamp AS BIGINT)", "ASC")
+    .andWhere('market.chainId = :chainId', { chainId })
+    .andWhere('market.address = :marketAddress', { marketAddress })
+    .orderBy('CAST(event.timestamp AS BIGINT)', 'ASC')
     .getMany();
 }
 
@@ -58,21 +56,21 @@ export async function getMarketPricesInTimeRange(
 ) {
   const marketPriceRepository = dataSource.getRepository(MarketPrice);
   return await marketPriceRepository
-    .createQueryBuilder("marketPrice")
-    .innerJoinAndSelect("marketPrice.transaction", "transaction")
-    .innerJoinAndSelect("transaction.event", "event")
-    .innerJoinAndSelect("event.market", "market")
-    .innerJoinAndSelect("market.epochs", "epoch", "epoch.epochId = :epochId")
-    .where("market.chainId = :chainId", { chainId })
-    .andWhere("market.address = :address", { address })
-    .andWhere("epoch.epochId = :epochId", { epochId })
-    .andWhere("CAST(marketPrice.timestamp AS bigint) >= :startTimestamp", {
+    .createQueryBuilder('marketPrice')
+    .innerJoinAndSelect('marketPrice.transaction', 'transaction')
+    .innerJoinAndSelect('transaction.event', 'event')
+    .innerJoinAndSelect('event.market', 'market')
+    .innerJoinAndSelect('market.epochs', 'epoch', 'epoch.epochId = :epochId')
+    .where('market.chainId = :chainId', { chainId })
+    .andWhere('market.address = :address', { address })
+    .andWhere('epoch.epochId = :epochId', { epochId })
+    .andWhere('CAST(marketPrice.timestamp AS bigint) >= :startTimestamp', {
       startTimestamp,
     })
-    .andWhere("CAST(marketPrice.timestamp AS bigint) <= :endTimestamp", {
+    .andWhere('CAST(marketPrice.timestamp AS bigint) <= :endTimestamp', {
       endTimestamp,
     })
-    .orderBy("marketPrice.timestamp", "ASC")
+    .orderBy('marketPrice.timestamp', 'ASC')
     .getMany();
 }
 
@@ -85,26 +83,26 @@ export async function getIndexPricesInTimeRange(
 ) {
   const indexPriceRepository = dataSource.getRepository(IndexPrice);
   return await indexPriceRepository
-    .createQueryBuilder("indexPrice")
-    .innerJoinAndSelect("indexPrice.epoch", "epoch")
-    .innerJoinAndSelect("epoch.market", "market")
-    .where("market.chainId = :chainId", { chainId })
-    .andWhere("market.address = :address", { address })
-    .andWhere("epoch.epochId = :epochId", { epochId })
-    .andWhere("CAST(indexPrice.timestamp AS bigint) >= :startTimestamp", {
+    .createQueryBuilder('indexPrice')
+    .innerJoinAndSelect('indexPrice.epoch', 'epoch')
+    .innerJoinAndSelect('epoch.market', 'market')
+    .where('market.chainId = :chainId', { chainId })
+    .andWhere('market.address = :address', { address })
+    .andWhere('epoch.epochId = :epochId', { epochId })
+    .andWhere('CAST(indexPrice.timestamp AS bigint) >= :startTimestamp', {
       startTimestamp,
     })
-    .andWhere("CAST(indexPrice.timestamp AS bigint) <= :endTimestamp", {
+    .andWhere('CAST(indexPrice.timestamp AS bigint) <= :endTimestamp', {
       endTimestamp,
     })
-    .orderBy("indexPrice.timestamp", "ASC")
+    .orderBy('indexPrice.timestamp', 'ASC')
     .getMany();
 }
 
 export function groupTransactionsByTimeWindow(
   transactions: Transaction[],
   window: TimeWindow
-): TransactionGroup[] {
+): EntityGroup<Transaction>[] {
   return groupEntitiesByTimeWindow(
     transactions,
     window,
@@ -115,7 +113,7 @@ export function groupTransactionsByTimeWindow(
 export function groupMarketPricesByTimeWindow(
   marketPrices: MarketPrice[],
   window: TimeWindow
-): MarketPriceGroup[] {
+): EntityGroup<MarketPrice>[] {
   const dataFormater = (marketPrice: MarketPrice) => {
     marketPrice.value = formatUnits(BigInt(marketPrice.value), TOKEN_PRECISION);
   };
@@ -182,7 +180,7 @@ export function getTimeParamsFromWindow(window: TimeWindow) {
       startTime = now - ONE_HOUR_MS;
       break;
     default:
-      throw new Error("Invalid volume window");
+      throw new Error('Invalid volume window');
   }
   return {
     intervalMs,
@@ -190,21 +188,6 @@ export function getTimeParamsFromWindow(window: TimeWindow) {
     startTime,
   };
 }
-
-const logIntervals = (result: EntityGroup<any>[]) => {
-  console.log(
-    "First interval:",
-    new Date(result[0].startTimestamp),
-    "to",
-    new Date(result[0].endTimestamp)
-  );
-  console.log(
-    "Last interval:",
-    new Date(result[result.length - 1].startTimestamp),
-    "to",
-    new Date(result[result.length - 1].endTimestamp)
-  );
-};
 
 function groupEntitiesByTimeWindow<T>(
   entities: T[],

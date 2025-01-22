@@ -152,14 +152,7 @@ const SizeInput: React.FC<Props> = ({
       sizeInGas = BigInt(convertGgasToGas(value));
     else sizeInGas = BigInt(value); // if (inputType === InputFormType.Gas)
 
-    let sign: bigint;
-    if (inputType === InputFormType.Collateral) {
-      sign = isLong ? BigInt(1) : BigInt(-1);
-    } else {
-      sign = isLong ? BigInt(-1) : BigInt(1);
-    }
-
-    setSize(sign * sizeInGas);
+    setSize(sizeInGas);
   };
 
   const handleSizeChange = (newVal: string) => {

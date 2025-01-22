@@ -7,13 +7,13 @@ import {
   OneToOne,
   Unique,
   ManyToOne,
-} from "typeorm";
-import { upsertEntitiesFromEvent } from "../controllers/market";
-import { Transaction } from "./Transaction";
-import { Market } from "./Market";
+} from 'typeorm';
+import { upsertEntitiesFromEvent } from '../controllers/market';
+import { Transaction } from './Transaction';
+import { Market } from './Market';
 
 @Entity()
-@Unique(["transactionHash", "market", "blockNumber", "logIndex"])
+@Unique(['transactionHash', 'market', 'blockNumber', 'logIndex'])
 export class Event {
   @OneToOne(() => Transaction, (transaction) => transaction.event)
   transaction: Transaction;
@@ -27,22 +27,22 @@ export class Event {
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column({ type: "integer" })
+  @Column({ type: 'integer' })
   blockNumber: number;
 
-  @Column({ type: "varchar" })
+  @Column({ type: 'varchar' })
   transactionHash: string;
 
-  @Column({ type: "bigint" })
+  @Column({ type: 'bigint' })
   timestamp: string; // In seconds
 
-  @Column({ type: "integer" })
+  @Column({ type: 'integer' })
   logIndex: number;
 
-  @Column({ type: "json" })
+  @Column({ type: 'json' })
   logData!: {
     eventName: string;
-    args: Record<string, any>;
+    args: Record<string, unknown>;
     transactionHash: string;
     blockHash: string;
     blockNumber: string;
@@ -55,11 +55,11 @@ export class Event {
 
   @AfterInsert()
   async afterInsert() {
-    console.log("Event inserted: " + this.id);
+    console.log('Event inserted: ' + this.id);
     try {
       await upsertEntitiesFromEvent(this);
     } catch (e) {
-      console.error("Error upserting entities from event:", e);
+      console.error('Error upserting entities from event:', e);
     }
   }
 }

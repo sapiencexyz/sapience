@@ -1,12 +1,12 @@
-import { Resolver, Query, Arg, Int, FieldResolver, Root } from "type-graphql";
-import dataSource from "../../db";
-import { Market } from "../../models/Market";
-import { Resource } from "../../models/Resource";
-import { Position } from "../../models/Position";
-import { Transaction } from "../../models/Transaction";
-import { Epoch } from "../../models/Epoch";
-import { ResourcePrice } from "../../models/ResourcePrice";
-import { IndexPrice } from "../../models/IndexPrice";
+import { Resolver, Query, Arg, Int, FieldResolver, Root } from 'type-graphql';
+import dataSource from '../../db';
+import { Market } from '../../models/Market';
+import { Resource } from '../../models/Resource';
+import { Position } from '../../models/Position';
+import { Transaction } from '../../models/Transaction';
+import { Epoch } from '../../models/Epoch';
+import { ResourcePrice } from '../../models/ResourcePrice';
+import { IndexPrice } from '../../models/IndexPrice';
 import {
   MarketType,
   ResourceType,
@@ -15,7 +15,7 @@ import {
   EpochType,
   ResourcePriceType,
   IndexPriceType,
-} from "../types";
+} from '../types';
 
 const mapMarketToType = (market: Market): MarketType => ({
   id: market.id,
@@ -104,15 +104,15 @@ export class MarketResolver {
       const markets = await dataSource.getRepository(Market).find();
       return markets.map(mapMarketToType);
     } catch (error) {
-      console.error("Error fetching markets:", error);
-      throw new Error("Failed to fetch markets");
+      console.error('Error fetching markets:', error);
+      throw new Error('Failed to fetch markets');
     }
   }
 
   @Query(() => MarketType, { nullable: true })
   async market(
-    @Arg("chainId", () => Int) chainId: number,
-    @Arg("address", () => String) address: string
+    @Arg('chainId', () => Int) chainId: number,
+    @Arg('address', () => String) address: string
   ): Promise<MarketType | null> {
     try {
       const market = await dataSource.getRepository(Market).findOne({
@@ -123,8 +123,8 @@ export class MarketResolver {
 
       return mapMarketToType(market);
     } catch (error) {
-      console.error("Error fetching market:", error);
-      throw new Error("Failed to fetch market");
+      console.error('Error fetching market:', error);
+      throw new Error('Failed to fetch market');
     }
   }
 
@@ -137,8 +137,8 @@ export class MarketResolver {
 
       return epochs.map(mapEpochToType);
     } catch (error) {
-      console.error("Error fetching epochs:", error);
-      throw new Error("Failed to fetch epochs");
+      console.error('Error fetching epochs:', error);
+      throw new Error('Failed to fetch epochs');
     }
   }
 }
@@ -151,35 +151,35 @@ export class ResourceResolver {
       const resources = await dataSource.getRepository(Resource).find();
       return resources.map(mapResourceToType);
     } catch (error) {
-      console.error("Error fetching resources:", error);
-      throw new Error("Failed to fetch resources");
+      console.error('Error fetching resources:', error);
+      throw new Error('Failed to fetch resources');
     }
   }
 
   @Query(() => ResourceType, { nullable: true })
   async resource(
-    @Arg("slug", () => String) slug: string
+    @Arg('slug', () => String) slug: string
   ): Promise<ResourceType | null> {
     try {
       const resource = await dataSource.getRepository(Resource).findOne({
         where: { slug },
-        relations: ["markets", "resourcePrices"],
+        relations: ['markets', 'resourcePrices'],
       });
 
       if (!resource) return null;
 
       return mapResourceToType(resource);
     } catch (error) {
-      console.error("Error fetching resource:", error);
-      throw new Error("Failed to fetch resource");
+      console.error('Error fetching resource:', error);
+      throw new Error('Failed to fetch resource');
     }
   }
 
   @Query(() => [ResourcePriceType])
   async resourcePrices(
-    @Arg("slug", () => String) slug: string,
-    @Arg("startTime", () => Int, { nullable: true }) startTime?: number,
-    @Arg("endTime", () => Int, { nullable: true }) endTime?: number
+    @Arg('slug', () => String) slug: string,
+    @Arg('startTime', () => Int, { nullable: true }) startTime?: number,
+    @Arg('endTime', () => Int, { nullable: true }) endTime?: number
   ): Promise<ResourcePriceType[]> {
     try {
       const resource = await dataSource.getRepository(Resource).findOne({
@@ -192,23 +192,23 @@ export class ResourceResolver {
 
       const query = dataSource
         .getRepository(ResourcePrice)
-        .createQueryBuilder("price")
-        .leftJoinAndSelect("price.resource", "resource")
-        .where("price.resourceId = :resourceId", { resourceId: resource.id })
-        .orderBy("price.timestamp", "ASC");
+        .createQueryBuilder('price')
+        .leftJoinAndSelect('price.resource', 'resource')
+        .where('price.resourceId = :resourceId', { resourceId: resource.id })
+        .orderBy('price.timestamp', 'ASC');
 
       if (startTime) {
-        query.andWhere("price.timestamp >= :startTime", { startTime });
+        query.andWhere('price.timestamp >= :startTime', { startTime });
       }
       if (endTime) {
-        query.andWhere("price.timestamp <= :endTime", { endTime });
+        query.andWhere('price.timestamp <= :endTime', { endTime });
       }
 
       const prices = await query.getMany();
       return prices.map((price) => mapResourcePriceToType(price));
     } catch (error) {
-      console.error("Error fetching resource prices:", error);
-      throw new Error("Failed to fetch resource prices");
+      console.error('Error fetching resource prices:', error);
+      throw new Error('Failed to fetch resource prices');
     }
   }
 }
@@ -217,11 +217,11 @@ export class ResourceResolver {
 export class PositionResolver {
   @Query(() => [PositionType])
   async positions(
-    @Arg("owner", () => String, { nullable: true }) owner?: string,
-    @Arg("marketId", () => Int, { nullable: true }) marketId?: number
+    @Arg('owner', () => String, { nullable: true }) owner?: string,
+    @Arg('marketId', () => Int, { nullable: true }) marketId?: number
   ): Promise<PositionType[]> {
     try {
-      const where: any = {};
+      const where = {};
       if (owner) {
         where.owner = owner;
       }
@@ -231,13 +231,13 @@ export class PositionResolver {
 
       const positions = await dataSource.getRepository(Position).find({
         where,
-        relations: ["epoch", "epoch.market", "transactions"],
+        relations: ['epoch', 'epoch.market', 'transactions'],
       });
 
       return positions.map(mapPositionToType);
     } catch (error) {
-      console.error("Error fetching positions:", error);
-      throw new Error("Failed to fetch positions");
+      console.error('Error fetching positions:', error);
+      throw new Error('Failed to fetch positions');
     }
   }
 }
@@ -246,10 +246,10 @@ export class PositionResolver {
 export class TransactionResolver {
   @Query(() => [TransactionType])
   async transactions(
-    @Arg("positionId", () => Int, { nullable: true }) positionId?: number
+    @Arg('positionId', () => Int, { nullable: true }) positionId?: number
   ): Promise<TransactionType[]> {
     try {
-      const where: any = {};
+      const where = {};
       if (positionId) {
         where.position = { id: positionId };
       }
@@ -260,8 +260,8 @@ export class TransactionResolver {
 
       return transactions.map(mapTransactionToType);
     } catch (error) {
-      console.error("Error fetching transactions:", error);
-      throw new Error("Failed to fetch transactions");
+      console.error('Error fetching transactions:', error);
+      throw new Error('Failed to fetch transactions');
     }
   }
 }
@@ -270,10 +270,10 @@ export class TransactionResolver {
 export class EpochResolver {
   @Query(() => [EpochType])
   async epochs(
-    @Arg("marketId", () => Int, { nullable: true }) marketId?: number
+    @Arg('marketId', () => Int, { nullable: true }) marketId?: number
   ): Promise<EpochType[]> {
     try {
-      const where: any = {};
+      const where = {};
       if (marketId) {
         where.market = { id: marketId };
       }
@@ -284,8 +284,8 @@ export class EpochResolver {
 
       return epochs.map(mapEpochToType);
     } catch (error) {
-      console.error("Error fetching epochs:", error);
-      throw new Error("Failed to fetch epochs");
+      console.error('Error fetching epochs:', error);
+      throw new Error('Failed to fetch epochs');
     }
   }
 }

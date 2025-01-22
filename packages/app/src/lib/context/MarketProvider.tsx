@@ -164,9 +164,22 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     }));
   }, [chainId, address, epoch, useMarketUnits, setUseMarketUnits]);
 
-  // This will need to be abstracted
+  const getChainIdForWstEthRatio = () => {
+    if (chainId === Chains.cannon.id) return Chains.sepolia.id;
+    if (chainId === Chains.base.id) return Chains.mainnet.id;
+    return chainId;
+  };
+
+  const getContractAddressForWstEthRatio = () => {
+    if (chainId === Chains.cannon.id)
+      return DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS;
+    if (chainId === Chains.base.id)
+      return '0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0';
+    return state.collateralAsset as `0x${string}`;
+  };
+
   const stEthPerTokenResult = useReadContract({
-    chainId: chainId === Chains.cannon.id ? Chains.sepolia.id : chainId,
+    chainId: getChainIdForWstEthRatio(),
     abi: [
       {
         inputs: [],
@@ -182,10 +195,7 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
         type: 'function',
       },
     ],
-    address:
-      chainId === Chains.cannon.id
-        ? DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS
-        : (state.collateralAsset as `0x${string}`),
+    address: getContractAddressForWstEthRatio(),
     functionName: 'stEthPerToken',
   });
 

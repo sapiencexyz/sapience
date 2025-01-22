@@ -1,12 +1,12 @@
-import { Between, LessThanOrEqual, MoreThanOrEqual } from "typeorm";
-import { ResourcePrice } from "../models/ResourcePrice";
-import { IndexPrice } from "../models/IndexPrice";
+import { Between, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
+import { ResourcePrice } from '../models/ResourcePrice';
+import { IndexPrice } from '../models/IndexPrice';
 import {
   epochRepository,
   indexPriceRepository,
   marketRepository,
   resourcePriceRepository,
-} from "src/db";
+} from 'src/db';
 
 export const upsertIndexPriceFromResourcePrice = async (
   resourcePrice: ResourcePrice
@@ -36,7 +36,7 @@ export const upsertIndexPriceFromResourcePrice = async (
           resource: { id: resourcePrice.resource.id },
           timestamp: Between(epoch.startTimestamp!, resourcePrice.timestamp!),
         },
-        order: { timestamp: "ASC" },
+        order: { timestamp: 'ASC' },
       });
 
       const totalGasUsed: bigint = resourcePrices.reduce(

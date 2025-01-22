@@ -160,7 +160,7 @@ export default function AddEditTrade() {
 
   const desiredSizeInContractUnit = useMemo(() => {
     if (!isEdit) {
-      return isLong ? sizeChangeInContractUnit : -sizeChangeInContractUnit;
+      return sizeChangeInContractUnit;
     }
 
     const originalPositionIsLong = positionData?.vGasAmount > BigInt(0);
@@ -168,11 +168,8 @@ export default function AddEditTrade() {
       ? positionData?.vGasAmount || BigInt(0)
       : -(positionData?.borrowedVGas || BigInt(0));
 
-    return (
-      currentSize +
-      (isLong ? sizeChangeInContractUnit : -sizeChangeInContractUnit)
-    );
-  }, [isEdit, positionData, sizeChangeInContractUnit, isLong]);
+    return currentSize + sizeChangeInContractUnit;
+  }, [isEdit, positionData, sizeChangeInContractUnit]);
 
   // Collateral balance for current address/account
   const { data: collateralBalance } = useReadContract({

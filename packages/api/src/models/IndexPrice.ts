@@ -1,4 +1,4 @@
-import { NUMERIC_PRECISION } from "../constants";
+import { NUMERIC_PRECISION } from '../constants';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -6,11 +6,11 @@ import {
   CreateDateColumn,
   Unique,
   ManyToOne,
-} from "typeorm";
-import { Epoch } from "./Epoch";
+} from 'typeorm';
+import { Epoch } from './Epoch';
 
 @Entity()
-@Unique(["epoch", "timestamp"])
+@Unique(['epoch', 'timestamp'])
 export class IndexPrice {
   @PrimaryGeneratedColumn()
   id: number;
@@ -21,9 +21,9 @@ export class IndexPrice {
   @ManyToOne(() => Epoch, (epoch) => epoch.indexPrices)
   epoch: Epoch;
 
-  @Column({ type: "integer" })
+  @Column({ type: 'integer' })
   timestamp: number;
 
-  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
+  @Column({ type: 'numeric', precision: NUMERIC_PRECISION, scale: 0 })
   value: string;
 }

@@ -1,18 +1,17 @@
-import dotenv from "dotenv";
-import path from "path";
-import { recoverMessageAddress } from "viem";
+import dotenv from 'dotenv';
+import path from 'path';
+import { recoverMessageAddress } from 'viem';
 
 // TODO: Update monorepo structure so that we can import this from packages/app/src/lib/constants/constants.ts
 const ADMIN_AUTHENTICATE_MSG =
-  "Please sign this message to authenticate yourself as an admin.";
+  'Please sign this message to authenticate yourself as an admin.';
 
 // Load environment variables
-dotenv.config({ path: path.resolve(
-  new URL('.', import.meta.url).pathname,
-  "../.env"
-) });
+dotenv.config({
+  path: path.resolve(new URL('.', import.meta.url).pathname, '../.env'),
+});
 const ALLOWED_ADDRESSES =
-  process.env.ALLOWED_ADDRESSES?.split(",").map((a) => a.toLowerCase()) || [];
+  process.env.ALLOWED_ADDRESSES?.split(',').map((a) => a.toLowerCase()) || [];
 const MESSAGE_EXPIRY = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 export async function isValidWalletSignature(

@@ -6,22 +6,35 @@ import {
   http,
   webSocket,
   type Transport,
-} from "viem";
-import { mainnet, sepolia, cannon } from "viem/chains";
-import { TOKEN_PRECISION } from "./constants";
-import { epochRepository } from "./db";
-import { Deployment } from "./interfaces";
-import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
-import { dirname } from "path";
+} from 'viem';
+import { mainnet, sepolia, cannon, base } from 'viem/chains';
+import { TOKEN_PRECISION } from './constants';
+import { epochRepository } from './db';
+import { Deployment } from './interfaces';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import * as viem from 'viem';
+import * as viemChains from 'viem/chains';
+
+export const chains: viem.Chain[] = [...Object.values(viemChains)];
+
+export function getChainById(id: number): viem.Chain | undefined {
+  const chain = viem.extractChain({
+    chains,
+    id,
+  });
+
+  if (chain) return chain;
+}
 
 // Replace __dirname reference with this
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Load environment variables
-dotenv.config({ path: path.resolve(__dirname, "../.env") });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 const clientMap = new Map<number, PublicClient>();
 
 // added reconnection configurations from viem.
@@ -51,7 +64,17 @@ const createInfuraWebSocketTransport = (network: string): Transport => {
 export const mainnetPublicClient = createPublicClient({
   chain: mainnet,
   transport: process.env.INFURA_API_KEY
-    ? createInfuraWebSocketTransport("mainnet")
+    ? createInfuraWebSocketTransport('mainnet')
+    : http(),
+  batch: {
+    multicall: true,
+  },
+});
+
+export const basePublicClient = createPublicClient({
+  chain: base,
+  transport: process.env.INFURA_API_KEY
+    ? createInfuraWebSocketTransport('base-mainnet')
     : http(),
   batch: {
     multicall: true,
@@ -61,7 +84,7 @@ export const mainnetPublicClient = createPublicClient({
 export const sepoliaPublicClient = createPublicClient({
   chain: sepolia,
   transport: process.env.INFURA_API_KEY
-    ? createInfuraWebSocketTransport("sepolia")
+    ? createInfuraWebSocketTransport('sepolia')
     : http(),
   batch: {
     multicall: true,
@@ -70,7 +93,7 @@ export const sepoliaPublicClient = createPublicClient({
 
 export const cannonPublicClient = createPublicClient({
   chain: cannon,
-  transport: http("http://localhost:8545"),
+  transport: http('http://localhost:8545'),
 });
 
 export function getProviderForChain(chainId: number): PublicClient {
@@ -90,6 +113,9 @@ export function getProviderForChain(chainId: number): PublicClient {
     case 13370:
       newClient = cannonPublicClient;
       break;
+    case 8453:
+      newClient = basePublicClient as PublicClient;
+      break;
     default:
       throw new Error(`Unsupported chain ID: ${chainId}`);
   }
@@ -106,15 +132,14 @@ export function getProviderForChain(chainId: number): PublicClient {
  */
 export const formatDbBigInt = (value: string) => {
   if (Number(value) === 0) {
-    return "0";
+    return '0';
   }
   const formatted = formatUnits(BigInt(value), TOKEN_PRECISION);
-  const number = Number(formatted);
-  return number.toFixed(4);
+  return formatted;
 };
 
-export const bigintReplacer = (key: string, value: any) => {
-  if (typeof value === "bigint") {
+export const bigintReplacer = (key: string, value: unknown) => {
+  if (typeof value === 'bigint') {
     return value.toString(); // Convert BigInt to string
   }
   return value;
@@ -130,10 +155,10 @@ export const getTimestampsForReindex = async (
 
   // if no epoch is provided, get the latest one from the contract
   if (!epochId) {
-    const latestEpoch: any = await client.readContract({
+    const latestEpoch = await client.readContract({
       address: contractDeployment.address as `0x${string}`,
       abi: contractDeployment.abi,
-      functionName: "getLatestEpoch",
+      functionName: 'getLatestEpoch',
     });
     epochId = Number(latestEpoch[0]);
     return {
@@ -148,16 +173,16 @@ export const getTimestampsForReindex = async (
       epochId,
       market: { address: contractDeployment.address, chainId },
     },
-    relations: ["market"],
+    relations: ['market'],
   });
 
   if (!epoch || !epoch.startTimestamp || !epoch.endTimestamp) {
     // get info from contract
-    console.log("fetching epoch from contract to get timestamps...");
-    const epochContract: any = await client.readContract({
+    console.log('fetching epoch from contract to get timestamps...');
+    const epochContract = await client.readContract({
       address: contractDeployment.address as `0x${string}`,
       abi: contractDeployment.abi,
-      functionName: "getEpoch",
+      functionName: 'getEpoch',
       args: [`${epochId}`],
     });
     return {
@@ -177,7 +202,7 @@ export async function getBlockRanges(
   endTimestamp: number,
   publicClient: PublicClient
 ) {
-  console.log("Getting gas start...");
+  console.log('Getting gas start...');
   const gasStart = await getBlockByTimestamp(
     mainnetPublicClient,
     startTimestamp
@@ -280,7 +305,7 @@ export async function getBlockBeforeTimestamp(
   }
 
   if (!closestBlock) {
-    throw new Error("No block found before timestamp");
+    throw new Error('No block found before timestamp');
   }
 
   return closestBlock;

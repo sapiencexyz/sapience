@@ -132,7 +132,7 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
                       }, [])
                       ?.sort(
                         (a: ExtendedEpoch, b: ExtendedEpoch) =>
-                          b.endTimestamp - a.endTimestamp
+                          a.endTimestamp - b.endTimestamp
                       ) || [];
 
                   if (
@@ -277,7 +277,7 @@ const NavLinks = ({
                       }, [])
                       ?.sort(
                         (a: ExtendedEpoch, b: ExtendedEpoch) =>
-                          b.endTimestamp - a.endTimestamp
+                          a.endTimestamp - b.endTimestamp
                       ) || [];
 
                   if (!resource.markets?.length || allEpochs.length === 0) {
@@ -347,10 +347,12 @@ const NavLinks = ({
           <div className="font-bold mb-1">Subscribe</div>
           {renderMobileMarketLinks('subscribe')}
         </div>
+        {/*
         <div>
           <div className="font-bold mb-1">Earn</div>
           {renderMobileMarketLinks('earn')}
         </div>
+        */}
         <div>
           <div className="font-bold mb-1">Trade</div>
           {renderMobileMarketLinks('trade')}
@@ -384,11 +386,13 @@ const NavLinks = ({
         </Button>
       </Link>
 
+      {/*
       <Link href="/earn" className="hover:no-underline mx-0.5">
         <Button variant="ghost" className={getButtonClasses('/earn')}>
           Earn
         </Button>
       </Link>
+      */}
 
       <ResourcePopover label="Trade" path="trade" />
       <ResourcePopover label="Pool" path="pool" />

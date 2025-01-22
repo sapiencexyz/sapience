@@ -1,27 +1,27 @@
-import "tsconfig-paths/register";
+import 'tsconfig-paths/register';
 import {
   epochRepository,
   eventRepository,
   initializeDataSource,
   marketRepository,
   transactionRepository,
-} from "../db";
-import { MarketParams } from "../models/MarketParams";
-import { Event } from "../models/Event";
-import { Market } from "../models/Market";
-import { Transaction } from "../models/Transaction";
-import { Abi, decodeEventLog, Log } from "viem";
+} from '../db';
+import { MarketParams } from '../models/MarketParams';
+import { Event } from '../models/Event';
+import { Market } from '../models/Market';
+import { Transaction } from '../models/Transaction';
+import { Abi, decodeEventLog, Log } from 'viem';
 import {
   EpochCreatedEventLog,
   EventType,
   MarketCreatedUpdatedEventLog,
   MarketInfo,
-} from "../interfaces";
+} from '../interfaces';
 import {
   getProviderForChain,
   bigintReplacer,
   sqrtPriceX96ToSettlementPriceD18,
-} from "../helpers";
+} from '../helpers';
 import {
   createEpochFromEvent,
   createOrUpdateMarketFromEvent,
@@ -37,11 +37,11 @@ import {
   getMarketStartEndBlock,
   insertCollateralTransfer,
   createOrUpdateEpochFromContract,
-} from "./marketHelpers";
-import { Client, TextChannel, EmbedBuilder } from "discord.js";
-import * as Chains from "viem/chains";
-import { convertGasToGgas } from "../helpers";
-import { MARKETS } from "../fixtures";
+} from './marketHelpers';
+import { Client, TextChannel, EmbedBuilder } from 'discord.js';
+import * as Chains from 'viem/chains';
+import { convertGasToGgas } from '../helpers';
+import { MARKETS } from '../fixtures';
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const DISCORD_PRIVATE_CHANNEL_ID = process.env.DISCORD_PRIVATE_CHANNEL_ID;
@@ -50,37 +50,37 @@ const discordClient = new Client({ intents: [] });
 
 if (DISCORD_TOKEN) {
   discordClient.login(DISCORD_TOKEN).catch((error) => {
-    console.error("Failed to login to Discord:", error);
+    console.error('Failed to login to Discord:', error);
   });
 }
 
 // Called when the process starts, upserts markets in the database to match those in the constants.ts file
 export const initializeMarket = async (marketInfo: MarketInfo) => {
-  let existingMarket = await marketRepository.findOne({
+  const existingMarket = await marketRepository.findOne({
     where: {
       address: marketInfo.deployment.address,
       chainId: marketInfo.marketChainId,
     },
-    relations: ["resource"],
+    relations: ['resource'],
   });
   const market = existingMarket || new Market();
 
   const client = getProviderForChain(marketInfo.marketChainId);
 
-  const marketReadResult: any = await client.readContract({
+  const marketReadResult = await client.readContract({
     address: marketInfo.deployment.address as `0x${string}`,
     abi: marketInfo.deployment.abi,
-    functionName: "getMarket",
+    functionName: 'getMarket',
   });
 
   let updatedMarket = market;
   if (!updatedMarket) {
-    let existingMarket = await marketRepository.findOne({
+    const existingMarket = await marketRepository.findOne({
       where: {
         address: marketInfo.deployment.address,
         chainId: marketInfo.marketChainId,
       },
-      relations: ["epochs", "resource"],
+      relations: ['epochs', 'resource'],
     });
     updatedMarket = existingMarket || new Market();
   }
@@ -182,7 +182,7 @@ export const reindexMarketEvents = async (
   const endBlock = await client.getBlockNumber();
 
   for (let blockNumber = startBlock; blockNumber <= endBlock; blockNumber++) {
-    console.log("Indexing market events from block ", blockNumber);
+    console.log('Indexing market events from block ', blockNumber);
     try {
       const logs = await client.getLogs({
         address: market.address as `0x${string}`,
@@ -204,14 +204,14 @@ export const reindexMarketEvents = async (
         const logIndex = log.logIndex || 0;
         const logData = {
           ...JSON.parse(serializedLog),
-          transactionHash: log.transactionHash || "",
-          blockHash: log.blockHash || "",
-          blockNumber: log.blockNumber?.toString() || "",
+          transactionHash: log.transactionHash || '',
+          blockHash: log.blockHash || '',
+          blockNumber: log.blockNumber?.toString() || '',
           logIndex: log.logIndex || 0,
           transactionIndex: log.transactionIndex || 0,
           removed: log.removed || false,
           topics: log.topics || [],
-          data: log.data || "",
+          data: log.data || '',
         };
 
         // Extract epochId from logData (adjust this based on your event structure)
@@ -236,20 +236,20 @@ export const reindexMarketEvents = async (
 const alertEvent = async (
   chainId: number,
   address: string,
-  epochId: any,
+  epochId,
   blockNumber: bigint,
   timestamp: bigint,
-  logData: any
+  logData
 ) => {
   try {
     if (!DISCORD_TOKEN) {
-      console.warn("Discord credentials not configured, skipping alert");
+      console.warn('Discord credentials not configured, skipping alert');
       return;
     }
 
     // Add check for client readiness
     if (!discordClient.isReady()) {
-      console.warn("Discord client not ready, skipping alert");
+      console.warn('Discord client not ready, skipping alert');
       return;
     }
 
@@ -258,44 +258,45 @@ const alertEvent = async (
         DISCORD_PUBLIC_CHANNEL_ID
       )) as TextChannel;
 
-      let title = "";
+      let title = '';
 
       // Format based on event type
       switch (logData.eventName) {
         case EventType.TraderPositionCreated:
-        case EventType.TraderPositionModified:
+        case EventType.TraderPositionModified: {
           const tradeDirection =
             BigInt(logData.args.finalPrice) > BigInt(logData.args.initialPrice)
-              ? "Long"
-              : "Short";
+              ? 'Long'
+              : 'Short';
           const gasAmount = convertGasToGgas(
             logData.args.vGasAmount || logData.args.borrowedVGas
           );
           const rawPriceGwei = Number(logData.args.tradeRatio) / 1e18;
-          const priceGwei = rawPriceGwei.toLocaleString("en-US", {
+          const priceGwei = rawPriceGwei.toLocaleString('en-US', {
             minimumFractionDigits: 0,
             maximumFractionDigits: 2,
           });
 
-          title = `${tradeDirection === "Long" ? "<:pepegas:1313887905508364288>" : "<:peepoangry:1313887206687117313>"} **Trade Executed:** ${tradeDirection} ${gasAmount} Ggas @ ${priceGwei} wstGwei`;
+          title = `${tradeDirection === 'Long' ? '<:pepegas:1313887905508364288>' : '<:peepoangry:1313887206687117313>'} **Trade Executed:** ${tradeDirection} ${gasAmount} Ggas @ ${priceGwei} wstGwei`;
           break;
+        }
 
         case EventType.LiquidityPositionCreated:
         case EventType.LiquidityPositionIncreased:
         case EventType.LiquidityPositionDecreased:
-        case EventType.LiquidityPositionClosed:
+        case EventType.LiquidityPositionClosed: {
           const action =
             logData.eventName === EventType.LiquidityPositionDecreased ||
             logData.eventName === EventType.LiquidityPositionClosed
-              ? "Removed"
-              : "Added";
+              ? 'Removed'
+              : 'Added';
           const liquidityGas = convertGasToGgas(
             logData.args.addedAmount0 ||
               logData.args.increasedAmount0 ||
               logData.args.amount0
           );
 
-          let priceRangeText = "";
+          let priceRangeText = '';
           if (
             logData.args.lowerTick !== undefined &&
             logData.args.upperTick !== undefined
@@ -303,11 +304,11 @@ const alertEvent = async (
             const rawLowerPrice = 1.0001 ** logData.args.lowerTick;
             const rawUpperPrice = 1.0001 ** logData.args.upperTick;
 
-            const lowerPrice = rawLowerPrice.toLocaleString("en-US", {
+            const lowerPrice = rawLowerPrice.toLocaleString('en-US', {
               minimumFractionDigits: 0,
               maximumFractionDigits: 2,
             });
-            const upperPrice = rawUpperPrice.toLocaleString("en-US", {
+            const upperPrice = rawUpperPrice.toLocaleString('en-US', {
               minimumFractionDigits: 0,
               maximumFractionDigits: 2,
             });
@@ -317,6 +318,7 @@ const alertEvent = async (
 
           title = `<:pepeliquid:1313887190056439859> **Liquidity Modified:** ${action} ${liquidityGas} Ggas${priceRangeText}`;
           break;
+        }
         default:
           return; // Skip other events
       }
@@ -332,24 +334,24 @@ const alertEvent = async (
       // Get market name from MARKETS
       const marketName =
         MARKETS.find((m) => m.deployment.address === address)?.resource.name ||
-        "Foil Market";
+        'Foil Market';
 
       const embed = new EmbedBuilder()
-        .setColor("#2b2b2e")
+        .setColor('#2b2b2e')
         .addFields(
           {
-            name: "Market",
+            name: 'Market',
             value: `${marketName} (Epoch ${epochId.toString()})`,
             inline: true,
           },
           {
-            name: "Position",
+            name: 'Position',
             value: logData.args.positionId.toString(),
             inline: true,
           },
-          { name: "Account", value: logData.args.sender },
+          { name: 'Account', value: logData.args.sender },
           {
-            name: "Transaction",
+            name: 'Transaction',
             value: getBlockExplorerUrl(chainId, logData.transactionHash),
           }
         )
@@ -365,14 +367,14 @@ const alertEvent = async (
 
       const embed = new EmbedBuilder()
         .setTitle(`New Market Event: ${logData.eventName}`)
-        .setColor("#2b2b2e")
+        .setColor('#2b2b2e')
         .addFields(
-          { name: "Chain ID", value: chainId.toString(), inline: true },
-          { name: "Market Address", value: address, inline: true },
-          { name: "Epoch ID", value: epochId.toString(), inline: true },
-          { name: "Block Number", value: blockNumber.toString(), inline: true },
+          { name: 'Chain ID', value: chainId.toString(), inline: true },
+          { name: 'Market Address', value: address, inline: true },
+          { name: 'Epoch ID', value: epochId.toString(), inline: true },
+          { name: 'Block Number', value: blockNumber.toString(), inline: true },
           {
-            name: "Timestamp",
+            name: 'Timestamp',
             value: new Date(Number(timestamp) * 1000).toISOString(),
             inline: true,
           }
@@ -383,9 +385,9 @@ const alertEvent = async (
       if (logData.args) {
         const argsField = Object.entries(logData.args)
           .map(([key, value]) => `${key}: ${value}`)
-          .join("\n");
+          .join('\n');
         embed.addFields({
-          name: "Event Arguments",
+          name: 'Event Arguments',
           value: `\`\`\`${argsField}\`\`\``,
         });
       }
@@ -393,7 +395,7 @@ const alertEvent = async (
       await privateChannel.send({ embeds: [embed] });
     }
   } catch (error) {
-    console.error("Failed to send Discord alert:", error);
+    console.error('Failed to send Discord alert:', error);
   }
 };
 
@@ -405,9 +407,9 @@ const upsertEvent = async (
   blockNumber: bigint,
   timeStamp: bigint,
   logIndex: number,
-  logData: any
+  logData
 ) => {
-  console.log("handling event upsert:", {
+  console.log('handling event upsert:', {
     chainId,
     address,
     epochId,
@@ -418,7 +420,7 @@ const upsertEvent = async (
   });
 
   // Find market and/or epoch associated with the event
-  let market = await marketRepository.findOne({
+  const market = await marketRepository.findOne({
     where: { chainId, address },
   });
 
@@ -429,7 +431,7 @@ const upsertEvent = async (
     );
   }
 
-  console.log("inserting new event..");
+  console.log('inserting new event..');
   // Create a new Event entity
   const newEvent = new Event();
   newEvent.market = market;
@@ -441,10 +443,10 @@ const upsertEvent = async (
 
   // insert the event
   await eventRepository.upsert(newEvent, [
-    "transactionHash",
-    "market",
-    "blockNumber",
-    "logIndex",
+    'transactionHash',
+    'market',
+    'blockNumber',
+    'logIndex',
   ]);
 };
 
@@ -465,8 +467,8 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
 
   switch (event.logData.eventName) {
     // Market events
-    case EventType.MarketInitialized:
-      console.log("initializing market. event: ", event);
+    case EventType.MarketInitialized: {
+      console.log('initializing market. event: ', event);
       const marketCreatedArgs = event.logData
         .args as MarketCreatedUpdatedEventLog;
       await createOrUpdateMarketFromEvent(
@@ -477,8 +479,9 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       );
       skipTransaction = true;
       break;
-    case EventType.MarketUpdated:
-      console.log("updating market. event: ", event);
+    }
+    case EventType.MarketUpdated: {
+      console.log('updating market. event: ', event);
       const marketUpdatedArgs = event.logData
         .args as MarketCreatedUpdatedEventLog;
       await createOrUpdateMarketFromEvent(
@@ -489,10 +492,11 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       );
       skipTransaction = true;
       break;
+    }
 
     // Epoch events
-    case EventType.EpochCreated:
-      console.log("creating epoch. event: ", event);
+    case EventType.EpochCreated: {
+      console.log('creating epoch. event: ', event);
       const epochCreatedArgs = event.logData.args as EpochCreatedEventLog;
       await createEpochFromEvent(epochCreatedArgs, market);
 
@@ -510,14 +514,15 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       }
       skipTransaction = true;
       break;
-    case EventType.EpochSettled:
-      console.log("Market settled event. event: ", event);
+    }
+    case EventType.EpochSettled: {
+      console.log('Market settled event. event: ', event);
       const epoch = await epochRepository.findOne({
         where: {
           market: { address, chainId },
           epochId: event.logData.args.epochId,
         },
-        relations: ["market"],
+        relations: ['market'],
       });
       if (epoch) {
         epoch.settled = true;
@@ -530,19 +535,20 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
         epoch.settlementPriceD18 = settlementPriceD18.toString();
         await epochRepository.save(epoch);
       } else {
-        console.error("Epoch not found for market: ", market);
+        console.error('Epoch not found for market: ', market);
       }
       skipTransaction = true;
       break;
+    }
 
     // Position events
     case EventType.Transfer:
-      console.log("Handling Transfer event: ", event);
+      console.log('Handling Transfer event: ', event);
       await handleTransferEvent(event);
       skipTransaction = true;
       break;
     case EventType.PositionSettled:
-      console.log("Handling Position Settled from event: ", event);
+      console.log('Handling Position Settled from event: ', event);
       await Promise.all([
         handlePositionSettledEvent(event),
         updateTransactionFromPositionSettledEvent(newTransaction, event),
@@ -551,15 +557,15 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
 
     // Liquidity events
     case EventType.LiquidityPositionCreated:
-      console.log("Creating liquidity position from event: ", event);
+      console.log('Creating liquidity position from event: ', event);
       updateTransactionFromAddLiquidityEvent(newTransaction, event);
       break;
     case EventType.LiquidityPositionClosed:
-      console.log("Closing liquidity position from event: ", event);
+      console.log('Closing liquidity position from event: ', event);
       await updateTransactionFromLiquidityClosedEvent(newTransaction, event);
       break;
     case EventType.LiquidityPositionDecreased:
-      console.log("Decreasing liquidity position from event: ", event);
+      console.log('Decreasing liquidity position from event: ', event);
       await updateTransactionFromLiquidityModifiedEvent(
         newTransaction,
         event,
@@ -567,17 +573,17 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       );
       break;
     case EventType.LiquidityPositionIncreased:
-      console.log("Increasing liquidity position from event: ", event);
+      console.log('Increasing liquidity position from event: ', event);
       await updateTransactionFromLiquidityModifiedEvent(newTransaction, event);
       break;
 
     // Trader events
     case EventType.TraderPositionCreated:
-      console.log("Creating trader position from event: ", event);
+      console.log('Creating trader position from event: ', event);
       await updateTransactionFromTradeModifiedEvent(newTransaction, event);
       break;
     case EventType.TraderPositionModified:
-      console.log("Modifying trader position from event: ", event);
+      console.log('Modifying trader position from event: ', event);
       await updateTransactionFromTradeModifiedEvent(newTransaction, event);
       break;
 
@@ -591,7 +597,7 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
     await insertCollateralTransfer(newTransaction);
     // Fill transaction with market price
     await insertMarketPrice(newTransaction);
-    console.log("Saving new transaction: ", newTransaction);
+    console.log('Saving new transaction: ', newTransaction);
     await transactionRepository.save(newTransaction);
     await createOrModifyPositionFromTransaction(newTransaction);
   }

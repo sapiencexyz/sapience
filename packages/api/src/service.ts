@@ -1,24 +1,21 @@
-import "reflect-metadata";
-import "./instrument";
-import dataSource, { initializeDataSource, renderJobRepository } from "./db"; /// !IMPORTANT: Keep as top import to prevent issues with db initialization
-import cors from "cors";
-import { ResourcePrice } from "./models/ResourcePrice";
-import { IndexPrice } from "./models/IndexPrice";
-import { Position } from "./models/Position";
-import { cannon } from "viem/chains";
-import { Market } from "./models/Market";
-import express, { Request, Response, NextFunction } from "express";
+import 'reflect-metadata';
+import initSentry from './instrument';
+import dataSource, { initializeDataSource, renderJobRepository } from './db'; /// !IMPORTANT: Keep as top import to prevent issues with db initialization
+import cors from 'cors';
+import { ResourcePrice } from './models/ResourcePrice';
+import { IndexPrice } from './models/IndexPrice';
+import { Position } from './models/Position';
+import { Market } from './models/Market';
+import express, { Request, Response, NextFunction } from 'express';
+import { Between, In, Repository } from 'typeorm';
+import { Transaction } from './models/Transaction';
+import { Epoch } from './models/Epoch';
+import { formatUnits } from 'viem';
 import {
-  Between,
-  In,
-  Repository,
-  LessThanOrEqual,
-  MoreThanOrEqual,
-} from "typeorm";
-import { Transaction } from "./models/Transaction";
-import { Epoch } from "./models/Epoch";
-import { formatUnits } from "viem";
-import { TOKEN_PRECISION } from "./constants";
+  TOKEN_PRECISION,
+  WSTETH_ADDRESS_SEPOLIA,
+  WSTETH_ADDRESS_MAINNET,
+} from './constants';
 import {
   getMarketPricesInTimeRange,
   getIndexPricesInTimeRange,
@@ -27,50 +24,54 @@ import {
   groupMarketPricesByTimeWindow,
   groupTransactionsByTimeWindow,
   groupIndexPricesByTimeWindow,
-} from "./serviceUtil";
-import { TimeWindow } from "./interfaces";
+} from './serviceUtil';
+import { TimeWindow } from './interfaces';
 import {
   formatDbBigInt,
   getBlockBeforeTimestamp,
+  getChainById,
+  mainnetPublicClient,
   sepoliaPublicClient,
-} from "./helpers";
-import { getProviderForChain } from "./helpers";
-import dotenv from "dotenv";
-import path from "path";
-import { RenderJob } from "./models/RenderJob";
-import { getMarketStartEndBlock } from "./controllers/marketHelpers";
-import { isValidWalletSignature } from "./middleware";
-import * as Sentry from "@sentry/node";
-import { fileURLToPath } from "url";
-import { dirname } from "path";
-import { MARKETS } from "./fixtures";
-import { Resource } from "./models/Resource";
-import { buildSchema } from "type-graphql";
-import { ApolloServer } from "@apollo/server";
-import { expressMiddleware } from "@apollo/server/express4";
-import { ApolloServerPluginLandingPageLocalDefault } from "@apollo/server/plugin/landingPage/default";
+} from './helpers';
+import { getProviderForChain } from './helpers';
+import dotenv from 'dotenv';
+import path from 'path';
+import { RenderJob } from './models/RenderJob';
+import { getMarketStartEndBlock } from './controllers/marketHelpers';
+import { isValidWalletSignature } from './middleware';
+import * as Sentry from '@sentry/node';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import { MARKETS } from './fixtures';
+import { Resource } from './models/Resource';
+import { buildSchema } from 'type-graphql';
+import { ApolloServer } from '@apollo/server';
+import { expressMiddleware } from '@apollo/server/express4';
+import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
 import {
   MarketResolver,
   ResourceResolver,
   PositionResolver,
   TransactionResolver,
   EpochResolver,
-} from "./graphql/resolvers";
-import { createLoaders } from "./graphql/loaders";
+} from './graphql/resolvers';
+import { createLoaders } from './graphql/loaders';
 
 const PORT = 3001;
 
 // Load environment variables
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-dotenv.config({ path: path.resolve(__dirname, "../.env") });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+initSentry();
 
 const corsOptions: cors.CorsOptions = {
   origin: (
     origin: string | undefined,
     callback: (error: Error | null, allow?: boolean) => void
   ) => {
-    if (process.env.NODE_ENV !== "production") {
+    if (process.env.NODE_ENV !== 'production') {
       callback(null, true);
     } else if (
       !origin || // Allow same-origin requests
@@ -80,43 +81,45 @@ const corsOptions: cors.CorsOptions = {
     ) {
       callback(null, true);
     } else {
-      callback(new Error("Not allowed by CORS"));
+      callback(new Error('Not allowed by CORS'));
     }
   },
   optionsSuccessStatus: 200,
 };
 
-const executeLocalReindex = async (startCommand: string): Promise<any> => {
+const executeLocalReindex = async (
+  startCommand: string
+): Promise<{ id: string; status: string; output: string }> => {
   return new Promise((resolve, reject) => {
     // Use dynamic import for child_process
-    import("child_process")
+    import('child_process')
       .then(({ spawn }) => {
-        const [command, ...args] = startCommand.split(" ");
+        const [command, ...args] = startCommand.split(' ');
 
         const process = spawn(command, args, {
-          stdio: ["ignore", "pipe", "pipe"],
+          stdio: ['ignore', 'pipe', 'pipe'],
         });
 
-        let output = "";
+        let output = '';
 
-        process.stdout.on("data", (data: Buffer) => {
+        process.stdout.on('data', (data: Buffer) => {
           output += data;
         });
 
-        process.stderr.on("data", (data: Buffer) => {
+        process.stderr.on('data', (data: Buffer) => {
           console.error(`Error: ${data}`);
         });
 
-        process.on("close", (code: number) => {
+        process.on('close', (code: number) => {
           if (code === 0) {
-            resolve({ id: "local", status: "completed", output });
+            resolve({ id: 'local', status: 'completed', output });
           } else {
             reject(new Error(`Process exited with code ${code}`));
           }
         });
       })
-      .catch((error) => {
-        reject(new Error("Failed to load child_process module"));
+      .catch(() => {
+        reject(new Error('Failed to load child_process module'));
       });
   });
 };
@@ -173,7 +176,7 @@ const startServer = async () => {
   const apolloServer = new ApolloServer({
     schema,
     formatError: (error) => {
-      console.error("GraphQL Error:", error);
+      console.error('GraphQL Error:', error);
       return error;
     },
     introspection: true,
@@ -196,9 +199,9 @@ const startServer = async () => {
 
   // Add GraphQL endpoint
   app.use(
-    "/graphql",
+    '/graphql',
     expressMiddleware(apolloServer, {
-      context: async ({ req }) => ({
+      context: async () => ({
         loaders: createLoaders(),
       }),
     })
@@ -211,8 +214,8 @@ const startServer = async () => {
   const marketRepository = dataSource.getRepository(Market);
   const transactionRepository = dataSource.getRepository(Transaction);
 
-  app.get("/debug-sentry", function mainHandler(req, res) {
-    throw new Error("My first Sentry error!");
+  app.get('/debug-sentry', function mainHandler() {
+    throw new Error('My first Sentry error!');
   });
 
   app.listen(PORT, () => {
@@ -231,9 +234,9 @@ const startServer = async () => {
   const parseContractId = (
     contractId: string
   ): { chainId: string; address: string } => {
-    const [chainId, address] = contractId.toLowerCase().split(":");
+    const [chainId, address] = contractId.toLowerCase().split(':');
     if (!chainId || !address) {
-      throw new Error("Invalid contractId format");
+      throw new Error('Invalid contractId format');
     }
     return { chainId, address };
   };
@@ -269,7 +272,7 @@ const startServer = async () => {
   const validateRequestParams =
     (params: string[]) => (req: Request, res: Response, next: NextFunction) => {
       for (const param of params) {
-        if (typeof req.query[param] !== "string") {
+        if (typeof req.query[param] !== 'string') {
           return res.status(400).json({ error: `Invalid parameter: ${param}` });
         }
       }
@@ -280,10 +283,10 @@ const startServer = async () => {
 
   // route /markets: Get markets
   app.get(
-    "/markets",
-    handleAsyncErrors(async (req, res, next) => {
+    '/markets',
+    handleAsyncErrors(async (req, res) => {
       const markets = await marketRepository.find({
-        relations: ["epochs", "resource"],
+        relations: ['epochs', 'resource'],
       });
 
       const formattedMarkets = markets.map((market) => ({
@@ -301,9 +304,9 @@ const startServer = async () => {
 
   // route /prices/chart-data: Get market price data for rendering charts
   app.get(
-    "/prices/chart-data",
-    validateRequestParams(["contractId", "epochId", "timeWindow"]),
-    handleAsyncErrors(async (req, res, next) => {
+    '/prices/chart-data',
+    validateRequestParams(['contractId', 'epochId', 'timeWindow']),
+    handleAsyncErrors(async (req, res) => {
       const { contractId, epochId, timeWindow } = req.query as {
         contractId: string;
         epochId: string;
@@ -328,7 +331,7 @@ const startServer = async () => {
         timeWindow
       );
 
-      const chartData = groupedPrices.reduce((acc: any[], group) => {
+      const chartData = groupedPrices.reduce((acc, group) => {
         const prices = group.entities;
 
         // updated the logic for handling empty groups. If there is not price in the group, use the last known price values
@@ -371,10 +374,10 @@ const startServer = async () => {
 
   // route /prices/index: Get index prices for a specified epoch and time window
   app.get(
-    "/prices/index",
-    validateRequestParams(["contractId", "epochId"]),
+    '/prices/index',
+    validateRequestParams(['contractId', 'epochId']),
 
-    handleAsyncErrors(async (req, res, next) => {
+    handleAsyncErrors(async (req, res) => {
       let { timeWindow } = req.query;
       const { contractId, epochId } = req.query as {
         contractId: string;
@@ -415,7 +418,7 @@ const startServer = async () => {
 
       if (indexPrices.length === 0) {
         res.status(404).json({
-          error: "No price data found for the specified epoch and time window",
+          error: 'No price data found for the specified epoch and time window',
         });
         return;
       }
@@ -440,9 +443,9 @@ const startServer = async () => {
 
   // route /positions: Get positions
   app.get(
-    "/positions",
-    validateRequestParams(["contractId"]),
-    handleAsyncErrors(async (req, res, next) => {
+    '/positions',
+    validateRequestParams(['contractId']),
+    handleAsyncErrors(async (req, res) => {
       const { isLP, contractId } = req.query as {
         isLP: string;
         contractId: string;
@@ -455,19 +458,19 @@ const startServer = async () => {
       });
 
       if (!market) {
-        res.status(404).json({ error: "Market not found" });
+        res.status(404).json({ error: 'Market not found' });
         return;
       }
 
       // Query for positions related to any epoch of this market
-      const where: any = { epoch: { market: { id: market.id } } };
+      const where = { epoch: { market: { id: market.id } } };
 
-      where.isLP = isLP === "true";
+      where.isLP = isLP === 'true';
 
       const positions = await positionRepository.find({
         where,
-        relations: ["epoch", "epoch.market", "epoch.market.resource"],
-        order: { positionId: "ASC" },
+        relations: ['epoch', 'epoch.market', 'epoch.market.resource'],
+        order: { positionId: 'ASC' },
       });
 
       // Format the data
@@ -488,9 +491,9 @@ const startServer = async () => {
 
   // route /positions/:positionId: Get a single position by positionId
   app.get(
-    "/positions/:positionId",
-    validateRequestParams(["contractId"]),
-    handleAsyncErrors(async (req, res, next) => {
+    '/positions/:positionId',
+    validateRequestParams(['contractId']),
+    handleAsyncErrors(async (req, res) => {
       const { positionId } = req.params;
       const { contractId } = req.query as { contractId: string };
 
@@ -501,7 +504,7 @@ const startServer = async () => {
       });
 
       if (!market) {
-        res.status(404).json({ error: "Market not found" });
+        res.status(404).json({ error: 'Market not found' });
         return;
       }
 
@@ -510,11 +513,11 @@ const startServer = async () => {
           positionId: Number(positionId),
           epoch: { market: { id: market.id } },
         },
-        relations: ["epoch", "epoch.market", "epoch.market.resource"],
+        relations: ['epoch', 'epoch.market', 'epoch.market.resource'],
       });
 
       if (!position) {
-        res.status(404).json({ error: "Position not found" });
+        res.status(404).json({ error: 'Position not found' });
         return;
       }
 
@@ -533,9 +536,9 @@ const startServer = async () => {
 
   // route /transactions: Get transactions
   app.get(
-    "/transactions",
-    validateRequestParams(["contractId"]),
-    handleAsyncErrors(async (req, res, next) => {
+    '/transactions',
+    validateRequestParams(['contractId']),
+    handleAsyncErrors(async (req, res) => {
       const { contractId, epochId, positionId } = req.query as {
         contractId: string;
         epochId?: string;
@@ -545,23 +548,23 @@ const startServer = async () => {
       const { chainId, address } = parseContractId(contractId);
 
       const queryBuilder = transactionRepository
-        .createQueryBuilder("transaction")
-        .innerJoinAndSelect("transaction.position", "position")
-        .innerJoinAndSelect("position.epoch", "epoch")
-        .innerJoinAndSelect("epoch.market", "market")
-        .innerJoinAndSelect("market.resource", "resource")
-        .innerJoinAndSelect("transaction.event", "event")
-        .where("market.chainId = :chainId", { chainId })
-        .andWhere("market.address = :address", { address })
-        .orderBy("position.positionId", "ASC")
-        .addOrderBy("event.blockNumber", "ASC");
+        .createQueryBuilder('transaction')
+        .innerJoinAndSelect('transaction.position', 'position')
+        .innerJoinAndSelect('position.epoch', 'epoch')
+        .innerJoinAndSelect('epoch.market', 'market')
+        .innerJoinAndSelect('market.resource', 'resource')
+        .innerJoinAndSelect('transaction.event', 'event')
+        .where('market.chainId = :chainId', { chainId })
+        .andWhere('market.address = :address', { address })
+        .orderBy('position.positionId', 'ASC')
+        .addOrderBy('event.blockNumber', 'ASC');
 
       if (epochId) {
-        queryBuilder.andWhere("epoch.epochId = :epochId", { epochId });
+        queryBuilder.andWhere('epoch.epochId = :epochId', { epochId });
       }
 
       if (positionId) {
-        queryBuilder.andWhere("position.positionId = :positionId", {
+        queryBuilder.andWhere('position.positionId = :positionId', {
           positionId,
         });
       }
@@ -575,9 +578,9 @@ const startServer = async () => {
 
   // route /volume: Get volume
   app.get(
-    "/volume",
-    validateRequestParams(["contractId", "timeWindow"]),
-    handleAsyncErrors(async (req, res, next) => {
+    '/volume',
+    validateRequestParams(['contractId', 'timeWindow']),
+    handleAsyncErrors(async (req, res) => {
       const { timeWindow, contractId } = req.query as {
         timeWindow: TimeWindow;
         contractId: string;
@@ -629,10 +632,10 @@ const startServer = async () => {
     // Find the market
     const market = await marketRepository.findOne({
       where: { chainId: Number(chainId), address },
-      relations: ["resource"],
+      relations: ['resource'],
     });
     if (!market) {
-      return { missingBlockNumbers: null, error: "Market not found" };
+      return { missingBlockNumbers: null, error: 'Market not found' };
     }
 
     // Find the market info to get the correct chain for price indexing
@@ -644,7 +647,7 @@ const startServer = async () => {
     if (!marketInfo) {
       return {
         missingBlockNumbers: null,
-        error: "Market configuration not found",
+        error: 'Market configuration not found',
       };
     }
 
@@ -666,7 +669,7 @@ const startServer = async () => {
         resource: { id: market.resource.id },
         blockNumber: Between(startBlockNumber, endBlockNumber),
       },
-      select: ["blockNumber"],
+      select: ['blockNumber'],
     });
 
     const existingBlockNumbersSet = new Set(
@@ -690,9 +693,9 @@ const startServer = async () => {
 
   // route /missing-blocks: Update the missing-blocks endpoint
   app.get(
-    "/missing-blocks",
-    validateRequestParams(["chainId", "address", "epochId"]),
-    handleAsyncErrors(async (req, res, next) => {
+    '/missing-blocks',
+    validateRequestParams(['chainId', 'address', 'epochId']),
+    handleAsyncErrors(async (req, res) => {
       const { chainId, address, epochId } = req.query as {
         chainId: string;
         address: string;
@@ -716,9 +719,9 @@ const startServer = async () => {
 
   // route /reindex
   app.post(
-    "/reindex",
-    validateRequestParams(["address", "chainId", "signature", "timestamp"]),
-    handleAsyncErrors(async (req, res, next) => {
+    '/reindex',
+    validateRequestParams(['address', 'chainId', 'signature', 'timestamp']),
+    handleAsyncErrors(async (req, res) => {
       const { address, chainId, signature, timestamp } = req.query as {
         address: string;
         chainId: string;
@@ -731,22 +734,22 @@ const startServer = async () => {
         Number(timestamp)
       );
       if (!isAuthenticated) {
-        res.status(401).json({ error: "Unauthorized" });
+        res.status(401).json({ error: 'Unauthorized' });
         return;
       }
 
       const RENDER_API_KEY = process.env.RENDER_API_KEY;
       if (!RENDER_API_KEY) {
-        throw new Error("RENDER_API_KEY not set");
+        throw new Error('RENDER_API_KEY not set');
       }
 
       async function fetchRenderServices() {
-        const url = "https://api.render.com/v1/services?limit=100";
+        const url = 'https://api.render.com/v1/services?limit=100';
 
         const response = await fetch(url, {
-          method: "GET",
+          method: 'GET',
           headers: {
-            accept: "application/json",
+            accept: 'application/json',
             authorization: `Bearer ${RENDER_API_KEY}`,
           },
         });
@@ -762,10 +765,10 @@ const startServer = async () => {
         const url = `https://api.render.com/v1/services/${serviceId}/jobs`;
 
         const response = await fetch(url, {
-          method: "POST",
+          method: 'POST',
           headers: {
             Authorization: `Bearer ${RENDER_API_KEY}`,
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
           body: JSON.stringify({
             startCommand: startCommand,
@@ -779,22 +782,22 @@ const startServer = async () => {
         return await response.json();
       }
 
-      let id: string = "";
-      const renderServices: any[] = await fetchRenderServices();
+      let id: string = '';
+      const renderServices = await fetchRenderServices();
       for (const item of renderServices) {
         if (
-          item?.service?.type === "background_worker" &&
+          item?.service?.type === 'background_worker' &&
           item?.service?.id &&
-          (process.env.NODE_ENV === "staging"
-            ? item?.service?.branch === "staging"
-            : item?.service?.branch === "main")
+          (process.env.NODE_ENV === 'staging'
+            ? item?.service?.branch === 'staging'
+            : item?.service?.branch === 'main')
         ) {
           id = item?.service.id;
           break;
         }
       }
       if (!id) {
-        throw new Error("Background worker not found");
+        throw new Error('Background worker not found');
       }
 
       const startCommand = `pnpm run start:reindex ${chainId} ${address}`;
@@ -810,9 +813,9 @@ const startServer = async () => {
 
   // route /reindexStatus
   app.get(
-    "/reindexStatus",
-    validateRequestParams(["jobId", "serviceId"]),
-    handleAsyncErrors(async (req, res, next) => {
+    '/reindexStatus',
+    validateRequestParams(['jobId', 'serviceId']),
+    handleAsyncErrors(async (req, res) => {
       const { jobId, serviceId } = req.query as {
         jobId: string;
         serviceId: string;
@@ -820,14 +823,14 @@ const startServer = async () => {
 
       const RENDER_API_KEY = process.env.RENDER_API_KEY;
       if (!RENDER_API_KEY) {
-        throw new Error("RENDER_API_KEY not set");
+        throw new Error('RENDER_API_KEY not set');
       }
 
       const url = `https://api.render.com/v1/services/${serviceId}/jobs/${jobId}`;
       const response = await fetch(url, {
-        method: "GET",
+        method: 'GET',
         headers: {
-          accept: "application/json",
+          accept: 'application/json',
           authorization: `Bearer ${RENDER_API_KEY}`,
         },
       });
@@ -842,9 +845,9 @@ const startServer = async () => {
 
   // route /prices/index/latest
   app.get(
-    "/prices/index/latest",
-    validateRequestParams(["contractId", "epochId"]),
-    handleAsyncErrors(async (req, res, next) => {
+    '/prices/index/latest',
+    validateRequestParams(['contractId', 'epochId']),
+    handleAsyncErrors(async (req, res) => {
       const { contractId, epochId } = req.query as {
         contractId: string;
         epochId: string;
@@ -868,12 +871,12 @@ const startServer = async () => {
             Number(epoch.endTimestamp)
           ),
         },
-        order: { timestamp: "DESC" },
+        order: { timestamp: 'DESC' },
       });
 
       if (!latestPrice) {
         res.status(404).json({
-          error: "No price data found for the specified epoch",
+          error: 'No price data found for the specified epoch',
         });
         return;
       }
@@ -887,8 +890,8 @@ const startServer = async () => {
 
   // route /updateMarketPrivacy
   app.post(
-    "/updateMarketPrivacy",
-    handleAsyncErrors(async (req, res, next) => {
+    '/updateMarketPrivacy',
+    handleAsyncErrors(async (req, res) => {
       const { address, chainId, signature, timestamp } = req.body;
 
       const isAuthenticated = await isValidWalletSignature(
@@ -896,7 +899,7 @@ const startServer = async () => {
         Number(timestamp)
       );
       if (!isAuthenticated) {
-        res.status(401).json({ error: "Unauthorized" });
+        res.status(401).json({ error: 'Unauthorized' });
         return;
       }
       const market = await marketRepository.findOne({
@@ -907,7 +910,7 @@ const startServer = async () => {
       });
 
       if (!market) {
-        res.status(404).json({ error: "Market not found" });
+        res.status(404).json({ error: 'Market not found' });
         return;
       }
 
@@ -921,54 +924,49 @@ const startServer = async () => {
 
   // route /getStEthPerTokenAtTimestamp
   app.get(
-    "/getStEthPerTokenAtTimestamp",
-    validateRequestParams(["chainId", "collateralAssetAddress"]),
-    handleAsyncErrors(async (req, res, next) => {
-      const { chainId, collateralAssetAddress, endTime } = req.query as {
+    '/getStEthPerTokenAtTimestamp',
+    validateRequestParams(['chainId']),
+    handleAsyncErrors(async (req, res) => {
+      const { chainId, endTime } = req.query as {
         chainId: string;
-        collateralAssetAddress: string;
         endTime?: string;
       };
 
-      const client =
-        Number(chainId) === cannon.id
-          ? sepoliaPublicClient
-          : getProviderForChain(Number(chainId));
+      const chain = getChainById(Number(chainId));
 
-      // Get last block
-      const block = await getBlockBeforeTimestamp(client, Number(endTime));
-      if (!block.number) {
-        res.status(404).json({ error: "Block not found" });
-        return;
+      if (!chain) {
+        throw new Error('Chain not found');
       }
 
-      // For testing on local dev node
-      const DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS =
-        "0xB82381A3fBD3FaFA77B3a7bE693342618240067b";
-      const address =
-        Number(chainId) === cannon.id
-          ? DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS
-          : collateralAssetAddress;
+      const address = chain.testnet
+        ? WSTETH_ADDRESS_SEPOLIA
+        : WSTETH_ADDRESS_MAINNET;
+
+      const client = chain.testnet ? sepoliaPublicClient : mainnetPublicClient;
+
+      const block = endTime
+        ? await getBlockBeforeTimestamp(client, Number(endTime))
+        : null;
 
       const stEthPerTokenResult = await client.readContract({
         address: address as `0x${string}`,
         abi: [
           {
             inputs: [],
-            name: "stEthPerToken",
+            name: 'stEthPerToken',
             outputs: [
               {
-                internalType: "uint256",
-                name: "",
-                type: "uint256",
+                internalType: 'uint256',
+                name: '',
+                type: 'uint256',
               },
             ],
-            stateMutability: "view",
-            type: "function",
+            stateMutability: 'view',
+            type: 'function',
           },
         ],
-        functionName: "stEthPerToken",
-        blockNumber: block.number,
+        functionName: 'stEthPerToken',
+        blockNumber: block?.number ?? undefined,
       });
 
       res.json({
@@ -979,28 +977,33 @@ const startServer = async () => {
 
   // route /accounts/:address: Get account data (positions and transactions)
   app.get(
-    "/accounts/:address",
-    handleAsyncErrors(async (req, res, next) => {
+    '/accounts/:address',
+    handleAsyncErrors(async (req, res) => {
       const { address } = req.params;
 
       if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
-        res.status(400).json({ error: "Invalid address format" });
+        res.status(400).json({ error: 'Invalid address format' });
         return;
       }
 
       const positions = await positionRepository.find({
         where: { owner: address },
-        relations: ["epoch", "epoch.market", "epoch.market.resource", "transactions"],
+        relations: [
+          'epoch',
+          'epoch.market',
+          'epoch.market.resource',
+          'transactions',
+        ],
       });
 
       const transactions = await transactionRepository.find({
         where: { position: { owner: address } },
         relations: [
-          "position",
-          "position.epoch",
-          "position.epoch.market",
-          "position.epoch.market.resource",
-          "event",
+          'position',
+          'position.epoch',
+          'position.epoch.market',
+          'position.epoch.market.resource',
+          'event',
         ],
       });
 
@@ -1026,8 +1029,8 @@ const startServer = async () => {
 
   // route /estimate
   app.post(
-    "/estimate",
-    handleAsyncErrors(async (req, res, next) => {
+    '/estimate',
+    handleAsyncErrors(async (req, res) => {
       const { walletAddress, chainId, marketAddress, epochId } = req.body;
 
       const { epoch } = await getMarketAndEpoch(
@@ -1045,10 +1048,10 @@ const startServer = async () => {
       // Fetch transactions from Etherscan
       const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY;
       if (!ETHERSCAN_API_KEY) {
-        throw new Error("ETHERSCAN_API_KEY not configured");
+        throw new Error('ETHERSCAN_API_KEY not configured');
       }
 
-      let transactions = [];
+      const transactions = [];
       let page = 1;
       const offset = 1000;
 
@@ -1065,11 +1068,11 @@ const startServer = async () => {
         );
 
         const data = await response.json();
-        if (data.status !== "1" || !data.result.length) break;
+        if (data.status !== '1' || !data.result.length) break;
 
         // Filter transactions within time range
         const relevantTxs = data.result.filter(
-          (tx: any) => Number(tx.timeStamp) >= startTime
+          (tx) => Number(tx.timeStamp) >= startTime
         );
         transactions.push(...relevantTxs);
 
@@ -1132,9 +1135,9 @@ const startServer = async () => {
 
   // route /leaderboard: Get the leaderboard data for a given market
   app.get(
-    "/leaderboard",
-    validateRequestParams(["contractId"]),
-    handleAsyncErrors(async (req, res, next) => {
+    '/leaderboard',
+    validateRequestParams(['contractId']),
+    handleAsyncErrors(async (req, res) => {
       const { contractId } = req.query as { contractId: string };
 
       const { chainId, address } = parseContractId(contractId);
@@ -1144,16 +1147,15 @@ const startServer = async () => {
       });
 
       if (!market) {
-        res.status(404).json({ error: "Market not found" });
+        res.status(404).json({ error: 'Market not found' });
         return;
       }
 
-      const where: any = { epoch: { market: { id: market.id } } };
-      const marketId = market.id;
+      const where = { epoch: { market: { id: market.id } } };
 
       const positions = await positionRepository.find({
         where,
-        order: { positionId: "ASC" },
+        order: { positionId: 'ASC' },
       });
 
       const marketAddress = address;
@@ -1164,26 +1166,26 @@ const startServer = async () => {
           address: marketAddress as `0x${string}`,
           abi: [
             {
-              type: "function",
-              name: "getPositionCollateralValue",
+              type: 'function',
+              name: 'getPositionCollateralValue',
               inputs: [
                 {
-                  name: "positionId",
-                  type: "uint256",
-                  internalType: "uint256",
+                  name: 'positionId',
+                  type: 'uint256',
+                  internalType: 'uint256',
                 },
               ],
               outputs: [
                 {
-                  name: "collateralValue",
-                  type: "uint256",
-                  internalType: "uint256",
+                  name: 'collateralValue',
+                  type: 'uint256',
+                  internalType: 'uint256',
                 },
               ],
-              stateMutability: "view",
+              stateMutability: 'view',
             },
           ],
-          functionName: "getPositionCollateralValue",
+          functionName: 'getPositionCollateralValue',
           args: [BigInt(position.positionId)],
         });
 
@@ -1195,7 +1197,7 @@ const startServer = async () => {
           where: {
             position: { positionId: In(positions.map((p) => p.positionId)) },
           },
-          relations: ["position", "collateralTransfer"],
+          relations: ['position', 'collateralTransfer'],
         });
 
         let collateralFlow = 0;
@@ -1255,8 +1257,8 @@ const startServer = async () => {
 
   // route /reindexMissingBlocks: Update the reindexMissingBlocks endpoint
   app.post(
-    "/reindexMissingBlocks",
-    handleAsyncErrors(async (req, res, next) => {
+    '/reindexMissingBlocks',
+    handleAsyncErrors(async (req, res) => {
       const { chainId, address, epochId, signature, timestamp, model } =
         req.body;
 
@@ -1266,21 +1268,21 @@ const startServer = async () => {
         Number(timestamp)
       );
       if (!isAuthenticated) {
-        res.status(401).json({ error: "Unauthorized" });
+        res.status(401).json({ error: 'Unauthorized' });
         return;
       }
 
       const RENDER_API_KEY = process.env.RENDER_API_KEY;
       if (!RENDER_API_KEY) {
-        throw new Error("RENDER_API_KEY not set");
+        throw new Error('RENDER_API_KEY not set');
       }
 
       async function fetchRenderServices() {
-        const url = "https://api.render.com/v1/services?limit=100";
+        const url = 'https://api.render.com/v1/services?limit=100';
         const response = await fetch(url, {
-          method: "GET",
+          method: 'GET',
           headers: {
-            accept: "application/json",
+            accept: 'application/json',
             authorization: `Bearer ${RENDER_API_KEY}`,
           },
         });
@@ -1294,10 +1296,10 @@ const startServer = async () => {
       async function createRenderJob(serviceId: string, startCommand: string) {
         const url = `https://api.render.com/v1/services/${serviceId}/jobs`;
         const response = await fetch(url, {
-          method: "POST",
+          method: 'POST',
           headers: {
             Authorization: `Bearer ${RENDER_API_KEY}`,
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
           body: JSON.stringify({
             startCommand: startCommand,
@@ -1310,28 +1312,34 @@ const startServer = async () => {
         return await response.json();
       }
 
-      let id: string = "";
-      const renderServices: any[] = await fetchRenderServices();
+      let id: string = '';
+      const renderServices = await fetchRenderServices();
       for (const item of renderServices) {
-        if (item?.service?.name === "background-worker" && item?.service?.id) {
+        if (
+          item?.service?.type === 'background_worker' &&
+          item?.service?.id &&
+          (process.env.NODE_ENV === 'staging'
+            ? item?.service?.branch === 'staging'
+            : item?.service?.branch === 'main')
+        ) {
           id = item?.service.id;
           break;
         }
       }
       if (!id) {
-        throw new Error("Background worker not found");
+        throw new Error('Background worker not found');
       }
 
       const startCommand =
-        model === "ResourcePrice"
+        model === 'ResourcePrice'
           ? `pnpm run start:reindex-missing ${chainId} ${address} ${epochId}`
           : `pnpm run start:reindex-market ${chainId} ${address} ${epochId}`;
 
-      if (process.env.NODE_ENV !== "production") {
+      if (process.env.NODE_ENV !== 'production') {
         try {
           const result = await executeLocalReindex(startCommand);
           res.json({ success: true, job: result });
-        } catch (error: any) {
+        } catch (error) {
           res.status(500).json({ error: error.message });
         }
         return;
@@ -1350,13 +1358,13 @@ const startServer = async () => {
 
   // route /resources: Get resources with their public market epochs
   app.get(
-    "/resources",
-    handleAsyncErrors(async (req, res, next) => {
+    '/resources',
+    handleAsyncErrors(async (req, res) => {
       const resources = await dataSource
         .getRepository(Resource)
-        .createQueryBuilder("resource")
-        .leftJoinAndSelect("resource.markets", "market")
-        .leftJoinAndSelect("market.epochs", "epoch")
+        .createQueryBuilder('resource')
+        .leftJoinAndSelect('resource.markets', 'market')
+        .leftJoinAndSelect('market.epochs', 'epoch')
         .getMany();
 
       // Format the response to include only necessary data
@@ -1387,27 +1395,27 @@ const startServer = async () => {
 
   // route /resources/:slug/prices/latest
   app.get(
-    "/resources/:slug/prices/latest",
-    handleAsyncErrors(async (req, res, next) => {
+    '/resources/:slug/prices/latest',
+    handleAsyncErrors(async (req, res) => {
       const { slug } = req.params;
 
       const resourceRepository = dataSource.getRepository(Resource);
       const resource = await resourceRepository.findOne({ where: { slug } });
 
       if (!resource) {
-        res.status(404).json({ error: "Resource not found" });
+        res.status(404).json({ error: 'Resource not found' });
         return;
       }
 
       const resourcePriceRepository = dataSource.getRepository(ResourcePrice);
       const latestPrice = await resourcePriceRepository.findOne({
         where: { resource: { id: resource.id } },
-        order: { timestamp: "DESC" },
-        relations: ["resource"],
+        order: { timestamp: 'DESC' },
+        relations: ['resource'],
       });
 
       if (!latestPrice) {
-        res.status(404).json({ error: "No price data found" });
+        res.status(404).json({ error: 'No price data found' });
         return;
       }
 
@@ -1417,8 +1425,8 @@ const startServer = async () => {
 
   // route /resources/:slug/prices
   app.get(
-    "/resources/:slug/prices",
-    handleAsyncErrors(async (req, res, next) => {
+    '/resources/:slug/prices',
+    handleAsyncErrors(async (req, res) => {
       const { slug } = req.params;
       const { startTime, endTime } = req.query;
 
@@ -1426,29 +1434,24 @@ const startServer = async () => {
       const resource = await resourceRepository.findOne({ where: { slug } });
 
       if (!resource) {
-        res.status(404).json({ error: "Resource not found" });
+        res.status(404).json({ error: 'Resource not found' });
         return;
       }
 
       const resourcePriceRepository = dataSource.getRepository(ResourcePrice);
       const query = resourcePriceRepository
-        .createQueryBuilder("price")
-        .where("price.resourceId = :resourceId", { resourceId: resource.id })
-        .orderBy("price.timestamp", "ASC");
+        .createQueryBuilder('price')
+        .where('price.resourceId = :resourceId', { resourceId: resource.id })
+        .orderBy('price.timestamp', 'ASC');
 
       if (startTime) {
-        query.andWhere("price.timestamp >= :startTime", { startTime });
+        query.andWhere('price.timestamp >= :startTime', { startTime });
       }
       if (endTime) {
-        query.andWhere("price.timestamp <= :endTime", { endTime });
+        query.andWhere('price.timestamp <= :endTime', { endTime });
       }
 
       const prices = await query.getMany();
-
-      if (!prices.length) {
-        res.status(404).json({ error: "No price data found" });
-        return;
-      }
 
       res.json(prices);
     })
@@ -1465,14 +1468,14 @@ const startServer = async () => {
   );
 
   // Only set up Sentry error handling in production
-  if (process.env.NODE_ENV === "production") {
+  if (process.env.NODE_ENV === 'production') {
     Sentry.setupExpressErrorHandler(app);
   }
 
   // Global error handler
-  app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-    console.error("An error occurred:", err.message);
-    res.status(500).json({ error: "Internal server error" });
+  app.use((err: Error, req: Request, res: Response) => {
+    console.error('An error occurred:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
   });
 
   const hydrateTransactions = (transactions: Transaction[]) => {
@@ -1494,13 +1497,13 @@ const startServer = async () => {
             ...transaction.position?.epoch,
             market: {
               ...transaction.position?.epoch?.market,
-              resource: transaction.position?.epoch?.market?.resource
-            }
-          }
+              resource: transaction.position?.epoch?.market?.resource,
+            },
+          },
         },
-        collateralDelta: "0",
-        baseTokenDelta: "0",
-        quoteTokenDelta: "0",
+        collateralDelta: '0',
+        baseTokenDelta: '0',
+        quoteTokenDelta: '0',
       };
 
       // if transactions come from the position.transactions it doesn't have a .position, but all the transactions correspond to the same position
@@ -1546,4 +1549,4 @@ const startServer = async () => {
   };
 };
 
-startServer().catch((e) => console.error("Unable to start server: ", e));
+startServer().catch((e) => console.error('Unable to start server: ', e));
