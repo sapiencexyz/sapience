@@ -20,24 +20,13 @@ import * as viemChains from 'viem/chains';
 
 export const chains: viem.Chain[] = [...Object.values(viemChains)];
 
-export function getChainById(id: number): viem.Chain {
+export function getChainById(id: number): viem.Chain | undefined {
   const chain = viem.extractChain({
     chains,
     id,
   });
 
   if (chain) return chain;
-
-  return {
-    id,
-    name: 'Unknown Network',
-    nativeCurrency: {
-      name: 'Ether',
-      symbol: 'ETH',
-      decimals: 18,
-    },
-    rpcUrls: { default: { http: [] } },
-  };
 }
 
 // Replace __dirname reference with this

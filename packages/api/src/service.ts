@@ -901,6 +901,10 @@ const startServer = async () => {
 
       const chain = getChainById(Number(chainId));
 
+      if (!chain) {
+        throw new Error("Chain not found");
+      }
+
       const address = chain.testnet
           ? WSTETH_ADDRESS_SEPOLIA
           : WSTETH_ADDRESS_MAINNET;
