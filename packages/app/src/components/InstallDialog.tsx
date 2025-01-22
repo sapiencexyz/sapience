@@ -47,8 +47,9 @@ const InstallDialog = () => {
             <DialogTitle className="text-center text-2xl">
               Install Foil
             </DialogTitle>
-            <DialogDescription>
-              Add the app to your home screen
+            <DialogDescription className="max-w-[260px] mx-auto">
+              Add the app to your home screen for{' '}
+              <strong>one tap to gas price charts & analytics</strong>.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 rounded-lg bg-muted px-4 py-6 text-center">
