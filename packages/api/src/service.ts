@@ -16,7 +16,7 @@ import {
 import { Transaction } from "./models/Transaction";
 import { Epoch } from "./models/Epoch";
 import { formatUnits } from "viem";
-import { TOKEN_PRECISION } from "./constants";
+import { TOKEN_PRECISION, WSTETH_ADDRESS_SEPOLIA, WSTETH_ADDRESS_MAINNET } from "./constants";
 import {
   getMarketPricesInTimeRange,
   getIndexPricesInTimeRange,
@@ -30,6 +30,8 @@ import { TimeWindow } from "./interfaces";
 import {
   formatDbBigInt,
   getBlockBeforeTimestamp,
+  getChainById,
+  mainnetPublicClient,
   sepoliaPublicClient,
 } from "./helpers";
 import { getProviderForChain } from "./helpers";
@@ -890,33 +892,24 @@ const startServer = async () => {
   // route /getStEthPerTokenAtTimestamp
   app.get(
     "/getStEthPerTokenAtTimestamp",
-    validateRequestParams(["chainId", "collateralAssetAddress"]),
+    validateRequestParams(["chainId"]),
     handleAsyncErrors(async (req, res, next) => {
-      const { chainId, collateralAssetAddress, endTime } = req.query as {
+      const { chainId, endTime } = req.query as {
         chainId: string;
-        collateralAssetAddress: string;
         endTime?: string;
       };
 
-      const client =
-        Number(chainId) === cannon.id
+      const chain = getChainById(Number(chainId));
+
+      const address = chain.testnet
+          ? WSTETH_ADDRESS_SEPOLIA
+          : WSTETH_ADDRESS_MAINNET;
+
+      const client = chain.testnet
           ? sepoliaPublicClient
-          : getProviderForChain(Number(chainId));
+          : mainnetPublicClient;
 
-      // Get last block
-      const block = await getBlockBeforeTimestamp(client, Number(endTime));
-      if (!block.number) {
-        res.status(404).json({ error: "Block not found" });
-        return;
-      }
-
-      // For testing on local dev node
-      const DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS =
-        "0xB82381A3fBD3FaFA77B3a7bE693342618240067b";
-      const address =
-        Number(chainId) === cannon.id
-          ? DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS
-          : collateralAssetAddress;
+      const block = endTime ? await getBlockBeforeTimestamp(client, Number(endTime)) : null;
 
       const stEthPerTokenResult = await client.readContract({
         address: address as `0x${string}`,
@@ -936,7 +929,7 @@ const startServer = async () => {
           },
         ],
         functionName: "stEthPerToken",
-        blockNumber: block.number,
+        blockNumber: block?.number ?? undefined,
       });
 
       res.json({
