@@ -5,7 +5,7 @@ import { Switch } from '@/components/ui/switch';
 
 import type { PublicCellProps } from './types';
 
-export const PublicCell: React.FC<PublicCellProps> = ({
+const PublicCell: React.FC<PublicCellProps> = ({
   isPublic,
   market,
   loading,
@@ -21,3 +21,5 @@ export const PublicCell: React.FC<PublicCellProps> = ({
     {loading && <Loader2 className="h-4 w-4 animate-spin" />}
   </div>
 );
+
+export default PublicCell;

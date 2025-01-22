@@ -8,10 +8,10 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '~/hooks/use-toast';
 import erc20ABI from '~/lib/erc20abi.json';
 
-import { AddressCell } from './AddressCell';
+import AddressCell from './AddressCell';
 import type { BondCellProps } from './types';
 
-export const BondCell: React.FC<BondCellProps> = ({
+const BondCell: React.FC<BondCellProps> = ({
   market,
   bondAmount,
   bondCurrency,
@@ -90,3 +90,5 @@ export const BondCell: React.FC<BondCellProps> = ({
     </div>
   );
 };
+
+export default BondCell;

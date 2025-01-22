@@ -8,7 +8,7 @@ import * as Chains from 'viem/chains';
 import type { Chain } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 
-import useFoilDeployment from '../components/foil/useFoilDeployment';
+import useFoilDeployment from '../../components/useFoilDeployment';
 import {
   API_BASE_URL,
   BLANK_MARKET,

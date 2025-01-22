@@ -5,8 +5,8 @@ import { useTheme } from 'next-themes';
 import { useEffect, useRef, useContext } from 'react';
 import type React from 'react';
 
-import type { PriceChartData } from '../interfaces/interfaces';
-import { convertGgasPerWstEthToGwei } from '../util/util';
+import type { PriceChartData } from '../lib/interfaces/interfaces';
+import { convertGgasPerWstEthToGwei } from '../lib/util/util';
 import { MarketContext } from '~/lib/context/MarketProvider';
 
 interface Props {

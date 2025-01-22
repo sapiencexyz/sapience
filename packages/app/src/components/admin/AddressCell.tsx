@@ -4,10 +4,7 @@ import { shortenAddress, getExplorerUrl } from '~/lib/util/util';
 
 import type { AddressCellProps } from './types';
 
-export const AddressCell: React.FC<AddressCellProps> = ({
-  address,
-  chainId,
-}) => {
+const AddressCell: React.FC<AddressCellProps> = ({ address, chainId }) => {
   return (
     <div className="flex space-x-2">
       <a
@@ -21,3 +18,5 @@ export const AddressCell: React.FC<AddressCellProps> = ({
     </div>
   );
 };
+
+export default AddressCell;

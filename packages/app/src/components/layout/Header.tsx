@@ -4,9 +4,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 
-import ConnectButton from '../components/ConnectButton';
-import { EpochTiming } from '../components/foil/EpochTiming';
-import { ModeToggle } from '../components/ModeToggle';
+import ConnectButton from '../ConnectButton';
+import EpochTiming from '../EpochTiming';
+import ModeToggle from '../ModeToggle';
 import {
   Accordion,
   AccordionContent,

@@ -7,11 +7,11 @@ import React from 'react';
 import { formatUnits } from 'viem';
 
 import { Card, CardContent } from '@/components/ui/card';
-import CandlestickChart from '~/lib/components/chart';
-import { EpochTiming } from '~/lib/components/foil/EpochTiming';
-import NumberDisplay from '~/lib/components/foil/numberDisplay';
-import { MarketLayout } from '~/lib/components/market/MarketLayout';
-import { ResourceNav } from '~/lib/components/market/ResourceNav';
+import CandlestickChart from '~/components/chart';
+import EpochTiming from '~/components/EpochTiming';
+import MarketLayout from '~/components/market/MarketLayout';
+import ResourceNav from '~/components/market/ResourceNav';
+import NumberDisplay from '~/components/numberDisplay';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { MARKET_CATEGORIES } from '~/lib/constants/markets';
 import { useLatestResourcePrice, useResources } from '~/lib/hooks/useResources';

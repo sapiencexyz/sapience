@@ -16,8 +16,8 @@ import {
   usePublicClient,
 } from 'wagmi';
 
-import { useConnectWallet } from '../../context/ConnectWalletProvider';
-import erc20ABI from '../../erc20abi.json';
+import { useConnectWallet } from '../lib/context/ConnectWalletProvider';
+import erc20ABI from '../lib/erc20abi.json';
 import { Button } from '~/components/ui/button';
 import { Form } from '~/components/ui/form';
 import { Tabs, TabsList, TabsTrigger } from '~/components/ui/tabs';

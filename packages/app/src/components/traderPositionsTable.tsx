@@ -18,7 +18,7 @@ import type React from 'react';
 import { useContext, useState, useMemo } from 'react';
 import { useReadContract } from 'wagmi';
 
-import { MarketContext } from '../../context/MarketProvider';
+import { MarketContext } from '../lib/context/MarketProvider';
 import {
   Table,
   TableBody,

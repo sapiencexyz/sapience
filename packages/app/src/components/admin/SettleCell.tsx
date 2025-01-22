@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { zeroAddress } from 'viem';
 import { useAccount, useReadContract, useWriteContract } from 'wagmi';
 
-import useFoilDeployment from '../foil/useFoilDeployment';
+import useFoilDeployment from '../useFoilDeployment';
 import { Button } from '@/components/ui/button';
 import { useToast } from '~/hooks/use-toast';
 import erc20ABI from '~/lib/erc20abi.json';
@@ -11,7 +11,7 @@ import { useSettlementPrice } from '~/lib/hooks/useSettlementPrice';
 
 import type { EpochItemProps } from './types';
 
-export const SettleCell: React.FC<EpochItemProps> = ({
+const SettleCell: React.FC<EpochItemProps> = ({
   market,
   epoch,
   missingBlocks,
@@ -179,3 +179,5 @@ export const SettleCell: React.FC<EpochItemProps> = ({
     </div>
   );
 };
+
+export default SettleCell;

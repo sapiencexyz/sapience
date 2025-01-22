@@ -4,7 +4,7 @@ import { useSettlementPrice } from '~/lib/hooks/useSettlementPrice';
 
 import type { SettlementPriceCellProps } from './types';
 
-export const SettlementPriceCell: React.FC<SettlementPriceCellProps> = ({
+const SettlementPriceCell: React.FC<SettlementPriceCellProps> = ({
   market,
   epoch,
 }) => {
@@ -24,3 +24,5 @@ export const SettlementPriceCell: React.FC<SettlementPriceCellProps> = ({
     </>
   );
 };
+
+export default SettlementPriceCell;

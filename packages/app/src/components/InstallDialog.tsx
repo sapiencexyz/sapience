@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
-export const InstallDialog = () => {
+const InstallDialog = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
@@ -76,3 +76,5 @@ export const InstallDialog = () => {
     </Dialog>
   );
 };
+
+export default InstallDialog;
