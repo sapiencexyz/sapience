@@ -13,7 +13,6 @@ import type { BondCellProps } from './types';
 
 export const BondCell: React.FC<BondCellProps> = ({
   market,
-  epoch,
   bondAmount,
   bondCurrency,
   vaultAddress,

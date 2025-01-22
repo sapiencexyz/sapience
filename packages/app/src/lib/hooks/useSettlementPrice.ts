@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
+import { formatEther } from 'viem';
 
 import { API_BASE_URL } from '~/lib/constants/constants';
 import type { Market, Epoch } from '~/lib/types';
@@ -20,7 +21,7 @@ export function useSettlementPrice(market: Market, epoch: Epoch) {
           throw new Error('Failed to fetch stEthPerToken');
         }
         const data = await response.json();
-        setStEthPerToken(Number(gweiToEther(BigInt(data.stEthPerToken))));
+        setStEthPerToken(Number(formatEther(BigInt(data.stEthPerToken))));
       } catch (error) {
         console.error('Error fetching stEthPerToken:', error);
       } finally {
@@ -45,15 +46,12 @@ export function useSettlementPrice(market: Market, epoch: Epoch) {
         throw new Error('Network response was not ok');
       }
       const data = await response.json();
-      return data.price;
+      return Number(gweiToEther(BigInt(data.price)));
     },
     enabled: epoch.epochId !== 0 || market !== undefined,
   });
 
-  let priceAdjusted = latestPrice / (stEthPerToken || 1);
-  if (isNaN(priceAdjusted)) {
-    priceAdjusted = 0;
-  }
+  const priceAdjusted = (latestPrice ?? 0) / (stEthPerToken || 1);
 
   const sqrtPriceX96 = convertToSqrtPriceX96(priceAdjusted);
 
