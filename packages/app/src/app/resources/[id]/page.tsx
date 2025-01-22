@@ -1,8 +1,6 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { type ColumnDef } from '@tanstack/react-table';
-import { format } from 'date-fns';
 import { ChevronRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import React from 'react';
@@ -40,43 +38,17 @@ interface Epoch {
   };
 }
 
-const columns: ColumnDef<Epoch>[] = [
-  {
-    id: 'period',
-    cell: ({ row }) => {
-      const epoch = row.original;
-      const endDate = new Date(epoch.endTimestamp * 1000);
-      const weeks = Math.round(
-        (epoch.endTimestamp - epoch.startTimestamp) / (7 * 24 * 3600)
-      );
-
-      return (
-        <div className="flex items-center">
-          <span>{format(endDate, 'M/d')}</span>
-          <span className="text-xs text-muted-foreground ml-2">
-            {weeks} week period
-          </span>
-        </div>
-      );
-    },
-  },
-  {
-    id: 'actions',
-    cell: () => <ChevronRight className="h-6 w-6 text-muted-foreground" />,
-  },
-];
-
 const EpochsTable = ({ data }: { data: Epoch[] }) => {
   const [hoveredIndex, setHoveredIndex] = React.useState(0);
 
   return (
-    <div className="border-y border-border">
+    <div className="border-t border-border">
       {data.length ? (
         data.map((epoch, index) => (
           <Link
             key={epoch.id}
             href={`/trade/${epoch.market.chainId}:${epoch.market.address}/epochs/${epoch.epochId}`}
-            className="block hover:no-underline"
+            className="block hover:no-underline border-b border-border"
             onMouseEnter={() => setHoveredIndex(index)}
           >
             <div
@@ -203,7 +175,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
     })) || [];
 
   return (
-    <div className="flex flex-col md:flex-row h-full">
+    <div className="flex flex-col md:flex-row h-full bg-secondary">
       <div className={`flex-1 min-w-0 ${!epochs.length ? 'w-full' : ''}`}>
         <div className="flex flex-col h-full">
           <div className="flex-1 grid relative">
@@ -222,7 +194,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
 
             <div className="flex flex-col flex-1">
               <div className="flex flex-1 h-full p-2">
-                <div className="border border-border flex w-full h-full rounded-md overflow-hidden pr-2 pb-2">
+                <div className="border border-border flex w-full h-full rounded-md overflow-hidden pr-2 pb-2 bg-white dark:bg-black">
                   <CandlestickChart
                     data={{
                       marketPrices: [],
@@ -242,7 +214,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
       </div>
 
       {epochs.length > 0 && (
-        <div className="w-full md:w-[240px] md:border-l border-border pt-4 md:pt-0">
+        <div className="w-full md:w-[240px] md:border-l border-border pt-4 md:pt-0  bg-white dark:bg-black">
           <h2 className="text-base font-medium text-muted-foreground px-4 py-2">
             Periods
           </h2>

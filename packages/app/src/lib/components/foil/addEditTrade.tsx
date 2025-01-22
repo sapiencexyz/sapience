@@ -1,10 +1,9 @@
 /* eslint-disable sonarjs/cognitive-complexity */
-import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { debounce } from 'lodash';
 import { HelpCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import { useState, useEffect, useContext, useMemo } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
-import type { AbiFunction, WriteContractErrorType } from 'viem';
+import { useForm } from 'react-hook-form';
+import type { AbiFunction } from 'viem';
 import { decodeEventLog, formatUnits, parseUnits, zeroAddress } from 'viem';
 import {
   useWaitForTransactionReceipt,
@@ -17,6 +16,7 @@ import {
   usePublicClient,
 } from 'wagmi';
 
+import { useConnectWallet } from '../../context/ConnectWalletProvider';
 import erc20ABI from '../../erc20abi.json';
 import { Button } from '~/components/ui/button';
 import { Form } from '~/components/ui/form';
@@ -360,7 +360,7 @@ export default function AddEditTrade() {
     }
 
     if (isEdit) {
-      const [expectedCollateralDelta, closePnL, fillPrice] = result;
+      const [expectedCollateralDelta, , fillPrice] = result;
       return [expectedCollateralDelta, fillPrice];
     }
     const [requiredCollateral, fillPrice] = result;
@@ -536,7 +536,7 @@ export default function AddEditTrade() {
   const currentChainId = useChainId();
   const { switchChain } = useSwitchChain();
 
-  const { openConnectModal } = useConnectModal();
+  const { setIsOpen } = useConnectWallet();
 
   const handleTabChange = (value: string) => {
     setOption(value as 'Long' | 'Short');
@@ -545,12 +545,7 @@ export default function AddEditTrade() {
   const renderActionButton = () => {
     if (!isConnected) {
       return (
-        <Button
-          className="w-full mb-4"
-          variant="default"
-          size="lg"
-          onClick={openConnectModal}
-        >
+        <Button className="w-full" size="lg" onClick={() => setIsOpen(true)}>
           Connect Wallet
         </Button>
       );

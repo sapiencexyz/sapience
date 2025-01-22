@@ -3,7 +3,7 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-} from "typeorm";
+} from 'typeorm';
 
 @Entity()
 export class RenderJob {
@@ -13,9 +13,9 @@ export class RenderJob {
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column({ type: "varchar" })
+  @Column({ type: 'varchar' })
   jobId: string;
 
-  @Column({ type: "varchar" })
+  @Column({ type: 'varchar' })
   serviceId: string;
 }

@@ -4,9 +4,9 @@ import {
   Column,
   CreateDateColumn,
   OneToMany,
-} from "typeorm";
-import { Market } from "./Market";
-import { ResourcePrice } from "./ResourcePrice";
+} from 'typeorm';
+import { Market } from './Market';
+import { ResourcePrice } from './ResourcePrice';
 
 @Entity()
 export class Resource {
@@ -16,10 +16,10 @@ export class Resource {
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column({ type: "varchar", unique: true })
+  @Column({ type: 'varchar', unique: true })
   name: string;
 
-  @Column({ type: "varchar", unique: true })
+  @Column({ type: 'varchar', unique: true })
   slug: string;
 
   @OneToMany(() => Market, (market) => market.resource)
@@ -27,4 +27,4 @@ export class Resource {
 
   @OneToMany(() => ResourcePrice, (resourcePrice) => resourcePrice.resource)
   resourcePrices: ResourcePrice[];
-} 
+}

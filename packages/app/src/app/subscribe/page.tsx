@@ -1,7 +1,6 @@
 'use client';
 
 import { gql } from '@apollo/client';
-import { useConnectModal } from '@rainbow-me/rainbowkit';
 import Spline from '@splinetool/react-spline';
 import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';

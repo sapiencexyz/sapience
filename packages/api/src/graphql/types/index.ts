@@ -1,4 +1,4 @@
-import { Field, ObjectType, ID, Int } from "type-graphql";
+import { Field, ObjectType, ID, Int } from 'type-graphql';
 
 @ObjectType()
 export class MarketType {

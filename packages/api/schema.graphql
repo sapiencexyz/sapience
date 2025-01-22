@@ -43,6 +43,7 @@ type PositionType {
   epoch: EpochType!
   id: ID!
   isLP: Boolean!
+  isSettled: Boolean
   lpBaseToken: String
   lpQuoteToken: String
   owner: String!

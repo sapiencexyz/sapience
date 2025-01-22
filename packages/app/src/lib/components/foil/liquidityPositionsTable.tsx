@@ -32,7 +32,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { MarketContext } from '~/lib/context/MarketProvider';
-import { calculatePnL } from '~/lib/util/positionUtil';
 import { tickToPrice } from '~/lib/util/util';
 
 import NumberDisplay from './numberDisplay';

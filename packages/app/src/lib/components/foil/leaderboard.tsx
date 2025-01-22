@@ -7,7 +7,7 @@ import {
 } from '@tanstack/react-table';
 import { Loader2, Copy } from 'lucide-react';
 import Link from 'next/link';
-import { useContext, useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { getEnsName } from 'viem/ens';
 import { usePublicClient } from 'wagmi';
 
@@ -28,7 +28,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { API_BASE_URL } from '~/lib/constants/constants';
-import { MarketContext } from '~/lib/context/MarketProvider';
 
 import NumberDisplay from './numberDisplay';
 
@@ -84,7 +83,7 @@ const useLeaderboard = (marketId: string, epochId: string) => {
 
 const PositionCell = ({ row }: { row: { original: GroupedPosition } }) => (
   <div className="flex flex-wrap gap-1.5">
-    {row.original.positions.map((position, index) => (
+    {row.original.positions.map((position) => (
       <Link
         key={position.positionId}
         href={`/positions/${position?.epoch?.market?.chainId}:${position.epoch?.market?.address}/${position.positionId}`}
@@ -185,7 +184,6 @@ const RoiCell = ({ cell }: { cell: { getValue: () => unknown } }) => {
 };
 
 const Leaderboard = ({ params }: Props) => {
-  const { pool } = useContext(MarketContext);
   const { data: leaderboardPositions, isLoading } = useLeaderboard(
     params.id,
     params.epoch

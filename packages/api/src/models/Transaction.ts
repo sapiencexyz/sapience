@@ -6,19 +6,19 @@ import {
   ManyToOne,
   OneToOne,
   JoinColumn,
-} from "typeorm";
-import { Event } from "./Event";
-import { Position } from "./Position";
-import { MarketPrice } from "./MarketPrice";
-import { NUMERIC_PRECISION } from "../constants";
-import { CollateralTransfer } from "./CollateralTransfer";
+} from 'typeorm';
+import { Event } from './Event';
+import { Position } from './Position';
+import { MarketPrice } from './MarketPrice';
+import { NUMERIC_PRECISION } from '../constants';
+import { CollateralTransfer } from './CollateralTransfer';
 
 export enum TransactionType {
-  ADD_LIQUIDITY = "addLiquidity",
-  REMOVE_LIQUIDITY = "removeLiquidity",
-  LONG = "long",
-  SHORT = "short",
-  SETTLE_POSITION = "settledPosition",
+  ADD_LIQUIDITY = 'addLiquidity',
+  REMOVE_LIQUIDITY = 'removeLiquidity',
+  LONG = 'long',
+  SHORT = 'short',
+  SETTLE_POSITION = 'settledPosition',
 }
 
 @Entity()
@@ -45,7 +45,7 @@ export class Transaction {
   collateralTransfer: CollateralTransfer;
 
   @Column({
-    type: "numeric",
+    type: 'numeric',
     precision: NUMERIC_PRECISION,
     scale: 0,
     nullable: true,
@@ -53,14 +53,14 @@ export class Transaction {
   tradeRatioD18: string;
 
   @Column({
-    type: "simple-enum",
+    type: 'simple-enum',
     enum: TransactionType,
   })
   type: TransactionType;
 
   // Position State at the time of the transaction
   @Column({
-    type: "numeric",
+    type: 'numeric',
     precision: NUMERIC_PRECISION,
     scale: 0,
     nullable: true,
@@ -68,7 +68,7 @@ export class Transaction {
   baseToken: string; // vGas tokenamount 0
 
   @Column({
-    type: "numeric",
+    type: 'numeric',
     precision: NUMERIC_PRECISION,
     scale: 0,
     nullable: true,
@@ -76,7 +76,7 @@ export class Transaction {
   quoteToken: string; // vETH tokenamount 1
 
   @Column({
-    type: "numeric",
+    type: 'numeric',
     precision: NUMERIC_PRECISION,
     scale: 0,
     nullable: true,
@@ -84,19 +84,19 @@ export class Transaction {
   borrowedBaseToken: string;
 
   @Column({
-    type: "numeric",
+    type: 'numeric',
     precision: NUMERIC_PRECISION,
     scale: 0,
     nullable: true,
   })
   borrowedQuoteToken: string;
 
-  @Column({ type: "numeric", precision: NUMERIC_PRECISION, scale: 0 })
+  @Column({ type: 'numeric', precision: NUMERIC_PRECISION, scale: 0 })
   collateral: string; // ETH
 
   // LP Delta Token Amounts
   @Column({
-    type: "numeric",
+    type: 'numeric',
     precision: NUMERIC_PRECISION,
     scale: 0,
     nullable: true,
@@ -104,7 +104,7 @@ export class Transaction {
   lpBaseDeltaToken: string; // vGas tokenamount 0
 
   @Column({
-    type: "numeric",
+    type: 'numeric',
     precision: NUMERIC_PRECISION,
     scale: 0,
     nullable: true,
