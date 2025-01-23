@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import { router } from './routes';
 
 const corsOptions: cors.CorsOptions = {
   origin: (
@@ -27,5 +28,7 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(cors(corsOptions));
+
+app.use('/', router);
 
 export { app };
