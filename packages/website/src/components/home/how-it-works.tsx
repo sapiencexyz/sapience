@@ -142,14 +142,14 @@ export const HowItWorks = () => {
 
       <div className="absolute bottom-[40px] z-10 flex items-center rounded-3xl border border-[rgba(218,216,209,0.2)] bg-white md:bottom-[120px] md:gap-2">
         <button
-          className="flex h-full items-center px-4 py-2.5 md:px-8 md:py-5"
+          className="flex h-full items-center px-4 py-2.5 transition-all hover:opacity-50 md:px-8 md:py-5"
           onClick={prevSlide}
         >
           <MoveLeftIcon className="h-3 w-3 md:h-6 md:w-6" />
         </button>
         <div className="h-[18px] w-[1px] bg-[#DAD8D1]" />
         <button
-          className="flex h-full items-center px-4 py-2.5 md:px-8 md:py-5"
+          className="flex h-full items-center px-4 py-2.5 transition-all hover:opacity-50 md:px-8 md:py-5"
           onClick={nextSlide}
         >
           <MoveRightIcon className="h-3 w-3 md:h-6 md:w-6" />

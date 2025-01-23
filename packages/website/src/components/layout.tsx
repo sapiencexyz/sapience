@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
 
-import { ThemeProvider } from '@/lib/components/theme-provider';
+import { ThemeProvider } from '@/components/theme-provider';
 
-import { Footer } from './components/footer';
-import { Header } from './components/header';
+import { Footer } from './footer';
+import { Header } from './header';
 
 type LayoutProps = {
   children: ReactNode;
