@@ -1,5 +1,5 @@
 {
-  "address": "0x5f79A0eC541ec25E87070A91f556899244c4347e",
+  "address": "0xE9B4eEe661ABe88705250fcE76ab4519B9825Dc4",
   "abi": [
     {
       "type": "constructor",
@@ -1692,7 +1692,7 @@
   "constructorArgs": [
     "Foil stETH Vault Yin",
     "fstethYIN",
-    "0xb81fb2cb901bde9966fef98ef62f9d1b4b9f5dd8",
+    "0x20ba5e24ad8a5b9502d4882607f0c8526a1f3205",
     "0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452",
     "577350269189625700",
     "1732050807568877200",
@@ -1702,13 +1702,13 @@
     "0x66aB20e98fcACfadB298C0741dFddA92568B5826"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x55f4633eef10c3c4d52ba8fd16436038aafe6347cc24c4653cb15fe16f7acbc7",
-  "deployTxnBlockNumber": "25434783",
-  "deployTimestamp": "1737658913",
+  "deployTxnHash": "0xc53f9702aca64fcb25337db11dde27ac87be0fe041b89110599c225f94be583d",
+  "deployTxnBlockNumber": "25436420",
+  "deployTimestamp": "1737662187",
   "sourceName": "src/vault/Vault.sol",
   "contractName": "Vault",
   "deployedOn": "deploy.VaultYin",
   "highlight": true,
   "gasUsed": 4160791,
-  "gasCost": "10023460"
+  "gasCost": "11531246"
 }
