@@ -245,7 +245,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         require(
             (__VAULT_HALTED && msg.sender == settlementPriceSubmitter) ||
                 msg.sender == address(this),
-            "Action not allowed"
+            "Not authorized"
         );
 
         uint256 sharePrice = epochSharePrices[currentEpochId];

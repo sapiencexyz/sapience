@@ -135,6 +135,11 @@ contract VaultIntegrationTest is TestVault {
         );
         settleEpoch(epochData.epochId, sqrtPriceX96, address(vault));
 
+        vm.startPrank(lp1);
+        vm.expectRevert("Not authorized");
+        vault.forceSettlePosition();
+        vm.stopPrank();
+
         /* RECOVER VAULT */
         vm.startPrank(vaultOwner);
         (, uint256 collateralReceived) = vault.forceSettlePosition();
