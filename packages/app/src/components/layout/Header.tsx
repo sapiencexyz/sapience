@@ -335,17 +335,12 @@ const NavLinks = ({
   if (isMobile) {
     return (
       <div className="flex flex-col space-y-4">
-        <Link
-          href="/"
-          onClick={() => onClose?.()}
-          className="hover:no-underline"
-        >
+        <Link href="/" onClick={() => onClose?.()}>
           Explore
         </Link>
-        <div>
-          <div className="font-bold mb-1">Subscribe</div>
-          {renderMobileMarketLinks('subscribe')}
-        </div>
+        <Link href="/subscribe" onClick={() => onClose?.()}>
+          Subscribe
+        </Link>
         {/*
         <div>
           <div className="font-bold mb-1">Earn</div>
@@ -353,18 +348,14 @@ const NavLinks = ({
         </div>
         */}
         <div>
-          <div className="font-bold mb-1">Trade</div>
+          <div className="font-semibold mb-1">Trade</div>
           {renderMobileMarketLinks('trade')}
         </div>
         <div>
-          <div className="font-bold mb-1">Pool</div>
+          <div className="font-semibold mb-1">Pool</div>
           {renderMobileMarketLinks('pool')}
         </div>
-        <Link
-          href="https://docs.foil.xyz"
-          onClick={() => onClose?.()}
-          className="hover:no-underline"
-        >
+        <Link href="https://docs.foil.xyz" onClick={() => onClose?.()}>
           Docs
         </Link>
       </div>
