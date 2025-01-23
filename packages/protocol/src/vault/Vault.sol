@@ -173,9 +173,10 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     function forceSettlePosition()
         external
         override
-        onlyInitializer
         returns (uint256 sharePrice, uint256 collateralReceived)
     {
+        require(msg.sender == settlementPriceSubmitter, "Not authorized");
+
         collateralReceived = market.settlePosition(positionId);
         _updateSharePrice(collateralReceived);
 
@@ -242,7 +243,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 previousEpochCollateralReceived
     ) public override {
         require(
-            (__VAULT_HALTED && msg.sender == vaultInitializer) ||
+            (__VAULT_HALTED && msg.sender == settlementPriceSubmitter) ||
                 msg.sender == address(this),
             "Action not allowed"
         );
