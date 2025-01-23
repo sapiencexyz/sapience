@@ -24,7 +24,7 @@ import {
   EventType,
 } from '../interfaces';
 import { MarketPrice } from '../models/MarketPrice';
-import { getBlockByTimestamp, getProviderForChain } from '../helpers';
+import { getBlockByTimestamp, getProviderForChain } from '../utils';
 
 /**
  * Handles a Transfer event by updating the owner of the corresponding Position.
