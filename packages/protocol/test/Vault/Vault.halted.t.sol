@@ -116,7 +116,7 @@ contract VaultFailureTest is TestVault {
         vm.clearMockedCalls();
 
         vm.prank(lp1);
-        vm.expectRevert("Action not allowed");
+        vm.expectRevert("Not authorized");
         vault.createNewEpochAndPosition(
             block.timestamp,
             initialSqrtPriceX96,
@@ -164,6 +164,18 @@ contract VaultFailureTest is TestVault {
             int256(amount)
         );
         vm.stopPrank();
+    }
+
+    function test_reverts_when_not_settlement_price_submitter() public {
+        vm.clearMockedCalls();
+
+        vm.prank(lp1);
+        vm.expectRevert("Not authorized");
+        vault.createNewEpochAndPosition(
+            block.timestamp,
+            initialSqrtPriceX96,
+            9 ether
+        );
     }
 
     function test_vaultResumed_futureEpochsWorkProperly() public {
