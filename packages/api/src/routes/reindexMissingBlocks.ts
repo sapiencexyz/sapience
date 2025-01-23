@@ -122,7 +122,7 @@ router.post(
         ? `pnpm run start:reindex-missing ${chainId} ${address} ${epochId}`
         : `pnpm run start:reindex-market ${chainId} ${address} ${epochId}`;
 
-    if (process.env.NODE_ENV !== 'production') {
+    if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'staging') {
       try {
         const result = await executeLocalReindex(startCommand);
         res.json({ success: true, job: result });
