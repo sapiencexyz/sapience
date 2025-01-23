@@ -1,21 +1,14 @@
 import { initializeDataSource } from './db';
-import { buildSchema } from 'type-graphql';
-import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@apollo/server/express4';
-import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
-import {
-  MarketResolver,
-  ResourceResolver,
-  PositionResolver,
-  TransactionResolver,
-  EpochResolver,
-} from './graphql/resolvers';
 import { createLoaders } from './graphql/loaders';
 import { app } from './app';
 import dotenv from 'dotenv';
 import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
 import initSentry from './instrument';
+import { initializeApolloServer } from './graphql/startApolloServer';
+import Sentry from './sentry';
+import { Request, Response } from 'express';
 
 const PORT = 3001;
 
@@ -29,37 +22,7 @@ initSentry();
 const startServer = async () => {
   await initializeDataSource();
 
-  // Create GraphQL schema
-  const schema = await buildSchema({
-    resolvers: [
-      MarketResolver,
-      ResourceResolver,
-      PositionResolver,
-      TransactionResolver,
-      EpochResolver,
-    ],
-    emitSchemaFile: true,
-    validate: false,
-  });
-
-  // Create Apollo Server
-  const apolloServer = new ApolloServer({
-    schema,
-    formatError: (error) => {
-      console.error('GraphQL Error:', error);
-      return error;
-    },
-    introspection: true,
-    plugins: [
-      ApolloServerPluginLandingPageLocalDefault({
-        embed: true,
-        includeCookies: true,
-      }),
-    ],
-  });
-
-  // Start Apollo Server
-  await apolloServer.start();
+  const apolloServer = await initializeApolloServer();
 
   // Add GraphQL endpoint
   app.use(
@@ -74,6 +37,17 @@ const startServer = async () => {
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
     console.log(`GraphQL endpoint available at /graphql`);
+  });
+
+  // Only set up Sentry error handling in production
+  if (process.env.NODE_ENV === 'production') {
+    Sentry.setupExpressErrorHandler(app);
+  }
+
+  // Global error handler
+  app.use((err: Error, req: Request, res: Response) => {
+    console.error('An error occurred:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
   });
 };
 
