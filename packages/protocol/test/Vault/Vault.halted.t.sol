@@ -116,7 +116,7 @@ contract VaultFailureTest is TestVault {
         vm.clearMockedCalls();
 
         vm.prank(lp1);
-        vm.expectRevert("Action not allowed");
+        vm.expectRevert("Not authorized");
         vault.createNewEpochAndPosition(
             block.timestamp,
             initialSqrtPriceX96,
