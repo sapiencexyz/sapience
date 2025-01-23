@@ -16,7 +16,7 @@ export const Features = () => {
     <div className="z-10 w-full px-4 pt-6 text-center md:px-14 md:pt-0">
       <div className="grid grid-cols-1 gap-6 md:-mt-40 md:gap-6 md:pt-12 lg:grid-cols-3">
         <div
-          className="relative overflow-hidden rounded-4xl border border-border bg-white p-14 transition-colors hover:bg-[#363538] hover:text-white"
+          className="relative overflow-hidden rounded-4xl border border-border bg-white p-14 transition-all hover:bg-[#363538] hover:text-white"
           onMouseEnter={() => setIsHovered1(true)}
           onMouseLeave={() => setIsHovered1(false)}
         >
@@ -63,7 +63,7 @@ export const Features = () => {
           )}
         </div>
         <div
-          className="relative overflow-hidden rounded-4xl border border-border bg-white p-14 transition-colors hover:bg-[#EFDED2]"
+          className="relative overflow-hidden rounded-4xl border border-border bg-white p-14 transition-all hover:bg-[#EFDED2]"
           onMouseEnter={() => setIsHovered2(true)}
           onMouseLeave={() => setIsHovered2(false)}
         >
@@ -110,7 +110,7 @@ export const Features = () => {
           )}
         </div>
         <div
-          className="relative overflow-hidden rounded-4xl border border-border bg-white p-14 transition-colors hover:bg-[#8D895E] hover:text-white"
+          className="relative overflow-hidden rounded-4xl border border-border bg-white p-14 transition-all hover:bg-[#8D895E] hover:text-white"
           onMouseEnter={() => setIsHovered3(true)}
           onMouseLeave={() => setIsHovered3(false)}
         >

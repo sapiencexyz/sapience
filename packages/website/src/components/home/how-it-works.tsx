@@ -1,27 +1,28 @@
 'use client';
 
-import Spline from '@splinetool/react-spline';
 import { MoveLeftIcon, MoveRightIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useState, useRef, useEffect } from 'react';
-import Image from 'next/image';
 import { useMediaQuery } from 'usehooks-ts';
 
 const slides = [
   {
     title: 'Liquidity providers can earn yield on their liquid staking tokens',
-    scene: 'https://prod.spline.design/5aaP9EfPgQReptDE/scene.splinecode',
+    videoLg: '/videos/How-It-Works/How-It-Works-1/Foil-How-It-Works-1-LG.mp4',
+    videoSm: '/videos/How-It-Works/How-It-Works-1/Foil-How-It-Works-1-SM.mp4',
     image: '/assets/howitworks1.png',
   },
   {
     title:
       'Buyers purchase subscriptions and profit when average costs increase',
-    scene: 'https://prod.spline.design/rFtuFMkIkTJ7Cs5A/scene.splinecode',
+    videoLg: '/videos/How-It-Works/How-It-Works-2/Foil-How-It-Works-2-LG.mp4',
+    videoSm: '/videos/How-It-Works/How-It-Works-2/Foil-How-It-Works-2-SM.mp4',
     image: '/assets/howitworks2.png',
   },
   {
     title: 'Paymasters and roll-ups can offer fixed costs to users',
-    scene: 'https://prod.spline.design/BBIcMw9OjhboBEjl/scene.splinecode',
+    videoLg: '/videos/How-It-Works/How-It-Works-3/Foil-How-It-Works-3-LG.mp4',
+    videoSm: '/videos/How-It-Works/How-It-Works-3/Foil-How-It-Works-3-SM.mp4',
     image: '/assets/howitworks3.png',
   },
 ];
@@ -51,6 +52,7 @@ export const HowItWorks = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const isInView = useIsInViewport(containerRef);
   const isDesktop = useMediaQuery('(min-width: 768px)');
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
 
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % slides.length);
@@ -59,6 +61,18 @@ export const HowItWorks = () => {
   const prevSlide = () => {
     setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
   };
+
+  useEffect(() => {
+    // Reset and play the current video when slide changes
+    videoRefs.current.forEach((video, index) => {
+      if (video) {
+        if (index === currentSlide) {
+          video.currentTime = 0;
+          video.play();
+        }
+      }
+    });
+  }, [currentSlide]);
 
   return (
     <div
@@ -120,18 +134,29 @@ export const HowItWorks = () => {
               }}
             >
               {!isDesktop ? (
-                <Image
-                  src={slide.image}
-                  alt={slide.title}
-                  fill
-                  className="object-cover"
-                  priority
+                <video
+                  ref={(el) => {
+                    videoRefs.current[index] = el;
+                  }}
+                  autoPlay={index === currentSlide}
+                  muted
+                  loop
+                  playsInline
+                  className="h-full w-full object-cover"
+                  src={slide.videoSm}
                 />
               ) : (
                 isInView && (
-                  <Spline
-                    className="!block h-full w-full object-cover"
-                    scene={slide.scene}
+                  <video
+                    ref={(el) => {
+                      videoRefs.current[index] = el;
+                    }}
+                    autoPlay={index === currentSlide}
+                    muted
+                    loop
+                    playsInline
+                    className="h-full w-full object-cover"
+                    src={slide.videoLg}
                   />
                 )
               )}
