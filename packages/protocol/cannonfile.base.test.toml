@@ -1,5 +1,6 @@
 name="foil"
 version="<%= package.version %>"
+preset="test"
 
 [var.settings]
 deployer="0xdb5af497a73620d881561edb508012a5f84e9ba2"
@@ -24,9 +25,9 @@ vault2Name="Foil Vault Yang"
 vault2Symbol = "fYANG"
 lowerBoundMultiplier = "0.5773502691896257" # sqrt(1/3) 
 upperBoundMultiplier = "1.7320508075688772" # sqrt(3)
-duration = "2419200" # 28 day in seconds
+duration = "18000" # 5 hours
 totalVaults = "2"
-startTime = "1738386000" # 2/1/2025
+startTime = "1737482400" #	Tue Jan 21 2025 13:00:00 GMT-0500 (Eastern Standard Time)
 # tokens
 wstETH = "0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452"
 USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
