@@ -1,7 +1,7 @@
 import { Loader2 } from 'lucide-react';
 import { Suspense } from 'react';
 
-import MarketsTable from '~/lib/components/foil/marketsTable';
+import MarketsTable from '~/components/marketsTable';
 
 const Market = () => {
   return (

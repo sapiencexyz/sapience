@@ -18,6 +18,8 @@ import {
 import { formatUnits } from 'viem';
 import { useAccount } from 'wagmi';
 
+import NumberDisplay from '~/components/numberDisplay';
+import Subscribe from '~/components/subscribe';
 import { Button } from '~/components/ui/button';
 import {
   Dialog,
@@ -25,8 +27,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '~/components/ui/dialog';
-import NumberDisplay from '~/lib/components/foil/numberDisplay';
-import Subscribe from '~/lib/components/foil/subscribe';
 import { useMarketList } from '~/lib/context/MarketListProvider';
 import { MarketContext, MarketProvider } from '~/lib/context/MarketProvider';
 import { useResources } from '~/lib/hooks/useResources';

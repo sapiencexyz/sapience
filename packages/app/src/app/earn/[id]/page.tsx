@@ -1,6 +1,6 @@
 'use client';
 
-import Earn from '~/lib/components/foil/earn';
+import Earn from '~/components/earn';
 import { MarketProvider } from '~/lib/context/MarketProvider';
 
 const EarnPage = ({ params }: { params: { id: string; epoch: string } }) => {

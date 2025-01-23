@@ -7,15 +7,14 @@ import React from 'react';
 import { formatUnits } from 'viem';
 
 import { Card, CardContent } from '@/components/ui/card';
-import CandlestickChart from '~/lib/components/chart';
-import { EpochTiming } from '~/lib/components/foil/EpochTiming';
-import NumberDisplay from '~/lib/components/foil/numberDisplay';
-import { MarketLayout } from '~/lib/components/market/MarketLayout';
-import { ResourceNav } from '~/lib/components/market/ResourceNav';
+import CandlestickChart from '~/components/chart';
+import EpochTiming from '~/components/EpochTiming';
+import MarketLayout from '~/components/market/MarketLayout';
+import ResourceNav from '~/components/market/ResourceNav';
+import NumberDisplay from '~/components/numberDisplay';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { MARKET_CATEGORIES } from '~/lib/constants/markets';
 import { useLatestResourcePrice, useResources } from '~/lib/hooks/useResources';
-import { TimeWindow } from '~/lib/interfaces/interfaces';
 
 interface ResourcePrice {
   timestamp: string;
@@ -105,21 +104,11 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
   const { data: latestPrice, isLoading: isPriceLoading } =
     useLatestResourcePrice(params.id);
 
-  const [seriesVisibility, setSeriesVisibility] = React.useState({
+  const [seriesVisibility] = React.useState({
     candles: false,
     index: false,
     resource: true,
   });
-
-  const toggleSeries = React.useCallback(
-    (series: 'candles' | 'index' | 'resource') => {
-      setSeriesVisibility((prev) => ({
-        ...prev,
-        [series]: !prev[series],
-      }));
-    },
-    []
-  );
 
   const { data: resourcePrices, isLoading: isResourcePricesLoading } = useQuery<
     ResourcePrice[]
@@ -201,10 +190,8 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
                       indexPrices: [],
                       resourcePrices: formattedResourcePrices,
                     }}
-                    activeWindow={TimeWindow.D}
                     isLoading={isResourcePricesLoading}
                     seriesVisibility={seriesVisibility}
-                    toggleSeries={toggleSeries}
                   />
                 </div>
               </div>
