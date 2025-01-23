@@ -4,18 +4,18 @@ import {
   resourcePriceRepository,
   resourceRepository,
   marketRepository,
-} from './db';
+} from '../db';
 import {
   indexMarketEvents,
   initializeMarket,
   reindexMarketEvents,
-} from './controllers/market';
-import { MARKETS, RESOURCES } from './fixtures';
-import { createOrUpdateEpochFromContract } from './controllers/marketHelpers';
-import { getMarketStartEndBlock } from './controllers/marketHelpers';
+} from '../controllers/market';
+import { MARKETS, RESOURCES } from '../fixtures';
+import { createOrUpdateEpochFromContract } from '../controllers/marketHelpers';
+import { getMarketStartEndBlock } from '../controllers/marketHelpers';
 import { Between } from 'typeorm';
 import * as Sentry from '@sentry/node';
-import { Resource } from './models/Resource';
+import { Resource } from '../models/Resource';
 
 const MAX_RETRIES = Infinity;
 const RETRY_DELAY = 5000; // 5 seconds

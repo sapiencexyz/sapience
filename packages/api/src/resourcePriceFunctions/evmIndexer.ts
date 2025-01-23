@@ -1,6 +1,6 @@
 import { resourcePriceRepository } from '../db';
 import { ResourcePrice } from '../models/ResourcePrice';
-import { getBlockByTimestamp, getProviderForChain } from '../helpers';
+import { getBlockByTimestamp, getProviderForChain } from '../utils';
 import { Block, type PublicClient } from 'viem';
 import Sentry from '../sentry';
 import { IResourcePriceIndexer } from './IResourcePriceIndexer';
