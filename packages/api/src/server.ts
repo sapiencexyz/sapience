@@ -12,8 +12,19 @@ import {
 } from './graphql/resolvers';
 import { createLoaders } from './graphql/loaders';
 import { app } from './app';
+import dotenv from 'dotenv';
+import path, { dirname } from 'path';
+import { fileURLToPath } from 'url';
+import initSentry from './instrument';
 
 const PORT = 3001;
+
+// Load environment variables
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+initSentry();
 
 const startServer = async () => {
   await initializeDataSource();
