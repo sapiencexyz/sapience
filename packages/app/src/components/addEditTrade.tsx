@@ -614,6 +614,12 @@ export default function AddEditTrade() {
   const renderCloseButton = () => {
     if (!isEdit || !isConnected || currentChainId !== chainId) return null;
 
+    const positionHasBalance = positionData && (
+      positionData.vGasAmount > BigInt(0) || 
+      positionData.borrowedVGas > BigInt(0)
+    );
+    if (!positionHasBalance) return null;
+    
     const isFetchingQuote = quoteModifyPositionResult.isFetching;
     const isLoading =
       pendingTxn ||
