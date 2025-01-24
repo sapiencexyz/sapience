@@ -29,10 +29,7 @@ const InstallDialog = () => {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent
-        className="max-w-[90%] sm:max-w-[425px] mx-auto"
-        autoFocus={false}
-      >
+      <DialogContent className="sm:max-w-[425px] mx-auto" autoFocus={false}>
         <div className="mx-auto w-full max-w-sm">
           <DialogHeader className="mb-6">
             <div className="my-4 flex justify-center">

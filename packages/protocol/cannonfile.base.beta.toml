@@ -5,10 +5,8 @@ preset="eth-gas"
 [var.settings]
 deployer="0xdb5af497a73620d881561edb508012a5f84e9ba2"
 settlementPriceSubmitter="0x66aB20e98fcACfadB298C0741dFddA92568B5826"
-baseAssetMinPriceTick = "16000" # 5
-baseAssetMaxPriceTick = "39000" # 50
 feeRate = "10000" # 1%
-startingSqrtPriceX96 = "345347553882095649185803010048" # 19
+startingSqrtPriceX96 = "316912650057057350374175801344" # 16
 assertionLiveness = "21600"
 bondAmount = "5000000000"
 claimStatement = "<%= stringToHex('The sum of gas used divided by the sum of base fees paid on Ethereum Mainnet across all blocks, divided by the wstETH/ETH ratio at the end of the period, represented with 18 decimal places') %>"

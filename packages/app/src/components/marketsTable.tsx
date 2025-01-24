@@ -182,13 +182,13 @@ const MarketsTable = () => {
                 ))}
                 <TableCell className="text-right">
                   <Link
-                    href={`/trade/${row.original.chainId}:${row.original.marketAddress}/epochs/${row.original.epochId}`}
+                    href={`/trade/${row.original.chainId}:${row.original.marketAddress}/periods/${row.original.epochId}`}
                     className="mr-2"
                   >
                     <Button size="sm">Trade</Button>
                   </Link>
                   <Link
-                    href={`/pool/${row.original.chainId}:${row.original.marketAddress}/epochs/${row.original.epochId}`}
+                    href={`/pool/${row.original.chainId}:${row.original.marketAddress}/periods/${row.original.epochId}`}
                   >
                     <Button size="sm">Pool</Button>
                   </Link>

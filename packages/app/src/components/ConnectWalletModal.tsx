@@ -4,7 +4,7 @@ import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { useAccount, useSignMessage } from 'wagmi';
+import { useAccount, useSignMessage, useDisconnect } from 'wagmi';
 
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -29,7 +29,8 @@ export default function ConnectWalletModal({
 }: ConnectWalletModalProps) {
   const { openConnectModal } = useConnectModal();
   const { isConnected } = useAccount();
-  const [permitted, setPermitted] = useState<boolean | null>(null);
+  const { disconnect } = useDisconnect();
+  const [permittedByApi, setPermittedByApi] = useState<boolean | null>(null);
   const [hasPermittedCookie, setHasPermittedCookie] = useState(false);
   const [tosAccepted, setTosAccepted] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
@@ -63,7 +64,7 @@ export default function ConnectWalletModal({
 
       fetch(`${API_BASE_URL}/permit`)
         .then((res) => res.json())
-        .then((data) => setPermitted(data.permitted))
+        .then((data) => setPermittedByApi(data.permitted))
         .catch((err) => console.error('Error fetching permit status:', err));
     }
   }, [open, openConnectModal, onOpenChange, hasPermittedCookie]);
@@ -87,12 +88,13 @@ export default function ConnectWalletModal({
 
   const handleOpenChange = (newOpen: boolean) => {
     // Only allow closing if not in the signing state (connected but no cookie)
-    if (!(isConnected && permitted && !hasPermittedCookie)) {
+    if (!(isConnected && permittedByApi && !hasPermittedCookie)) {
       onOpenChange(newOpen);
     }
   };
 
-  const shouldHideCloseButton = isConnected && permitted && !hasPermittedCookie;
+  const shouldHideCloseButton =
+    isConnected && permittedByApi && !hasPermittedCookie;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -102,7 +104,7 @@ export default function ConnectWalletModal({
           shouldHideCloseButton && '[&>button]:hidden'
         )}
       >
-        {permitted === null && (
+        {permittedByApi === null && (
           <div className="flex flex-col items-center justify-center py-8 space-y-4">
             <Loader2 className="h-8 w-8 animate-spin" />
             <DialogDescription className="text-center max-w-[220px]">
@@ -111,13 +113,13 @@ export default function ConnectWalletModal({
           </div>
         )}
 
-        {permitted === true && (
-          <div className="space-y-6">
+        {permittedByApi === true && (
+          <div>
             <DialogHeader>
               <DialogTitle>Connect Your Wallet</DialogTitle>
             </DialogHeader>
 
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 my-6">
               <div className="flex items-center space-x-3">
                 <Checkbox
                   id="tos"
@@ -174,12 +176,24 @@ export default function ConnectWalletModal({
               className="w-full"
               disabled={!tosAccepted || !privacyAccepted}
             >
-              {isConnected ? 'Sign Terms of Service' : 'Connect to Sign'}
+              {isConnected ? 'Sign' : 'Connect to Sign'}
             </Button>
+            {isConnected && (
+              <button
+                type="button"
+                onClick={() => {
+                  disconnect();
+                  onOpenChange(false);
+                }}
+                className="w-full text-sm text-gray-500 hover:text-gray-700 text-center mt-2"
+              >
+                Disconnect wallet
+              </button>
+            )}
           </div>
         )}
 
-        {permitted === false && (
+        {permittedByApi === false && (
           <div className="py-4 space-y-6">
             <DialogDescription className="text-center text-lg max-w-[260px] mx-auto">
               Using the Foil app is prohibited in your region and via VPN.
