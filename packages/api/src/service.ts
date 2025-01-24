@@ -150,8 +150,10 @@ async function isGeofenced(ip: string | null) {
   if (!process.env.IPINFO_TOKEN) return false;
   if (!ip) return true;
 
+  console.log('Checking ', ip);
   const ipInfo = await getIpInfo(ip);
   if (!ipInfo) return true;
+  console.log('IP Info:', JSON.stringify(ipInfo, null, 2));
 
   return GEOFENCED_COUNTRIES.includes(ipInfo.country) || ipInfo.privacy?.vpn;
 }
@@ -1378,8 +1380,10 @@ const startServer = async () => {
     Sentry.setupExpressErrorHandler(app);
   }
 
-  // Global error handler
-  app.use((err: Error, req: Request, res: Response) => {
+  // Global error handle
+  // Needs the unused _next parameter to be passed in: https://expressjs.com/en/guide/error-handling.html
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     console.error('An error occurred:', err.message);
     res.status(500).json({ error: 'Internal server error' });
   });
