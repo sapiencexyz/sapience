@@ -3,8 +3,7 @@
 import { RainbowKitProvider, lightTheme } from '@rainbow-me/rainbowkit';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import type { Chain, HttpTransport } from 'viem';
-import { defineChain } from 'viem';
-import { sepolia, base, mainnet } from 'viem/chains';
+import { sepolia, base, mainnet, cannon } from 'viem/chains';
 import { createConfig, http, WagmiProvider } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 
@@ -14,16 +13,13 @@ import { MarketListProvider } from '~/lib/context/MarketListProvider';
 
 const queryClient = new QueryClient();
 
-export const cannon = defineChain({
-  id: 13370,
-  name: 'Cannon',
-  nativeCurrency: {
-    name: 'Ether',
-    symbol: 'ETH',
-    decimals: 18,
+const cannonAtLocalhost = {
+  ...cannon,
+  rpcUrls: {
+    ...cannon.rpcUrls,
+    default: { http: ['http://localhost:8545'] },
   },
-  rpcUrls: { default: { http: ['http://localhost:8545'] } },
-});
+};
 
 const transports: Record<number, HttpTransport> = {
   [mainnet.id]: http(
@@ -46,8 +42,8 @@ const transports: Record<number, HttpTransport> = {
 const chains: any = [mainnet, base];
 
 if (process.env.NODE_ENV !== 'production') {
-  transports[cannon.id] = http('http://localhost:8545');
-  chains.push(cannon);
+  transports[cannonAtLocalhost.id] = http('http://localhost:8545');
+  chains.push(cannonAtLocalhost);
   chains.push(sepolia);
 }
 
