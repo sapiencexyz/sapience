@@ -57,7 +57,7 @@ const getClientIp = (req: Request): string | null => {
   return req.socket.remoteAddress || null;
 };
 
-router.get('/permit', async (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
     const ip = getClientIp(req);
     const isBlocked = await isGeofenced(ip);
@@ -69,4 +69,4 @@ router.get('/permit', async (req: Request, res: Response) => {
   }
 });
 
-export default router;
+export { router };
