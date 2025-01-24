@@ -214,6 +214,20 @@ export default function AddEditTrade() {
     query: { enabled: isEdit && isNonZeroSizeChange },
   });
 
+  // Add this new quote simulation specifically for closing
+  const quoteClosePositionResult = useSimulateContract({
+    abi: foilData.abi,
+    address: marketAddress as `0x${string}`,
+    functionName: 'quoteModifyTraderPosition',
+    args: [nftId, BigInt(0)], 
+    chainId,
+    account: address || zeroAddress,
+    query: { 
+      enabled: isEdit && !!positionData,
+      refetchOnMount: true, 
+    },
+  });
+
   useEffect(() => {
     if (quoteModifyPositionResult?.error && isEdit && isNonZeroSizeChange) {
       setQuoteError(quoteModifyPositionResult.error.message);
@@ -380,6 +394,23 @@ export default function AddEditTrade() {
     return 0;
   }, [quotedFillPrice, pool]);
   const showPriceImpactWarning = priceImpact > HIGH_PRICE_IMPACT;
+
+  const closePositionPriceImpact: number = useMemo(() => {
+    if (!pool?.token0Price || !positionData) return 0;
+    
+  
+    if(positionData.vGasAmount == BigInt(0) && positionData.borrowedVGas == BigInt(0)) {
+      return 0;
+    }
+    const closeQuote = quoteClosePositionResult.data?.result;
+    if (!closeQuote) return 0;
+    
+    const [, , fillPrice] = closeQuote;
+    const referencePrice = parseFloat(pool.token0Price.toSignificant(18));
+    return Math.abs((Number(fillPrice) / 1e18 / referencePrice - 1) * 100);
+  }, [pool, positionData, quoteClosePositionResult.data]);
+  const showClosePositionPriceImpactWarning = closePositionPriceImpact > HIGH_PRICE_IMPACT;
+
 
   const form = useForm({
     defaultValues: {
@@ -606,7 +637,7 @@ export default function AddEditTrade() {
           ) : null}
           {buttonTxt}
         </Button>
-        {renderPriceImpactWarning()}
+        {renderPriceImpactWarningForTrade()}
       </div>
     );
   };
@@ -630,7 +661,7 @@ export default function AddEditTrade() {
     let buttonTxt = 'Close Position';
 
     if (requireApproval) {
-      buttonTxt = `Approve ${collateralAssetTicker} Transfer`;
+      buttonTxt = `Approve ${collateralAssetTicker} Transfer To`;
     }
 
     if (isFetchingQuote && !formError) return null;
@@ -646,7 +677,7 @@ export default function AddEditTrade() {
         >
           {buttonTxt}
         </button>
-        {renderPriceImpactWarning()}
+        {renderPriceImpactWarningForClose()}
       </div>
     );
   };
@@ -741,12 +772,22 @@ export default function AddEditTrade() {
 
   const publicClient = usePublicClient();
 
-  const renderPriceImpactWarning = () => {
+  const renderPriceImpactWarningForTrade = () => {
     if (!showPriceImpactWarning) return null;
     return (
       <p className="text-red-500 text-sm text-center mt-1 font-medium">
         <AlertTriangle className="inline-block w-4 h-4 mr-1" />
         Very high price impact ({Number(priceImpact.toFixed(2)).toString()}%)
+      </p>
+    );
+  };
+
+  const renderPriceImpactWarningForClose = () => {
+    if (!showClosePositionPriceImpactWarning) return null;
+    return (
+      <p className={`${closePositionPriceImpact > HIGH_PRICE_IMPACT ? "text-red-500" : "text-yellow-500"} text-sm text-center mt-1 font-medium`}>
+        <AlertTriangle className="inline-block w-4 h-4 mr-1" />
+        Closing this position will have a {Number(closePositionPriceImpact.toFixed(2))}% price impact
       </p>
     );
   };
