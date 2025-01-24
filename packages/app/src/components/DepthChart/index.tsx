@@ -338,12 +338,16 @@ const DepthChart: React.FC = () => {
         )}
         <p className="text-sm text-gray-500">{label ? `${label}` : ''}</p>
       </div>
-      {!poolData && <div className="italic">Loading Liquidity Data...</div>}
+      {!poolData && (
+        <div className="flex items-center justify-center h-full w-full">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary opacity-20" />
+        </div>
+      )}
       {poolData && (
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={poolData.ticks}
-            margin={{ top: 70, bottom: -40 }}
+            margin={{ top: 70, bottom: -30 }}
             onMouseLeave={() => {
               setLabel(`Active Tick Value: ${activeTickValue}`);
               setPrice0(currPrice0);
