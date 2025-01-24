@@ -4,6 +4,7 @@ import {
   TwitterLogoIcon,
 } from '@radix-ui/react-icons';
 import { Button } from '@/components/ui/button';
+import { BookIcon } from 'lucide-react';
 
 export const Footer = () => {
   return (
@@ -13,7 +14,7 @@ export const Footer = () => {
         <Button
           size="icon"
           asChild
-          className="border border-white/50 bg-white/5 hover:text-primary"
+          className="border border-white/50 bg-black hover:text-primary"
         >
           <a
             href="https://discord.gg/foil"
@@ -28,7 +29,7 @@ export const Footer = () => {
         <Button
           size="icon"
           asChild
-          className="border border-white/50 bg-white/5 hover:text-primary"
+          className="border border-white/50 bg-black hover:text-primary"
         >
           <a
             href="https://twitter.com/foilxyz"
@@ -43,7 +44,7 @@ export const Footer = () => {
         <Button
           size="icon"
           asChild
-          className="border border-white/50 bg-white/5 hover:text-primary"
+          className="border border-white/50 bg-black hover:text-primary"
         >
           <a
             href="https://github.com/foilxyz"
@@ -52,6 +53,21 @@ export const Footer = () => {
             aria-label="GitHub"
           >
             <GitHubLogoIcon className="h-5 w-5 text-white opacity-70" />
+          </a>
+        </Button>
+
+        <Button
+          size="icon"
+          asChild
+          className="border border-white/50 bg-black hover:text-primary"
+        >
+          <a
+            href="https://docs.foil.xyz"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Docs"
+          >
+            <BookIcon className="h-5 w-5 text-white opacity-70" />
           </a>
         </Button>
       </div>
