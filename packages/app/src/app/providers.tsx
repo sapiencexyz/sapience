@@ -2,7 +2,7 @@
 
 import { RainbowKitProvider, lightTheme } from '@rainbow-me/rainbowkit';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
-import type { HttpTransport } from 'viem';
+import type { Chain, HttpTransport } from 'viem';
 import { defineChain } from 'viem';
 import { sepolia, base, mainnet } from 'viem/chains';
 import { createConfig, http, WagmiProvider } from 'wagmi';
@@ -43,13 +43,12 @@ const transports: Record<number, HttpTransport> = {
   ),
 };
 
-const chains: any = [base];
+const chains: any = [mainnet, base];
 
 if (process.env.NODE_ENV !== 'production') {
   transports[cannon.id] = http('http://localhost:8545');
   chains.push(cannon);
   chains.push(sepolia);
-  chains.push(mainnet);
 }
 
 // Create the configuration
@@ -70,7 +69,12 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
     >
       <WagmiProvider config={config}>
         <QueryClientProvider client={queryClient}>
-          <RainbowKitProvider theme={lightTheme()}>
+          <RainbowKitProvider
+            theme={lightTheme()}
+            initialChain={chains.reduce((a: Chain, b: Chain) =>
+              a.id > b.id ? a : b
+            )}
+          >
             <ConnectWalletProvider>
               <MarketListProvider>{children}</MarketListProvider>
             </ConnectWalletProvider>
