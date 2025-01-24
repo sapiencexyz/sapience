@@ -46,7 +46,7 @@ const EpochsTable = ({ data }: { data: Epoch[] }) => {
         data.map((epoch, index) => (
           <Link
             key={epoch.id}
-            href={`/trade/${epoch.market.chainId}:${epoch.market.address}/epochs/${epoch.epochId}`}
+            href={`/trade/${epoch.market.chainId}:${epoch.market.address}/periods/${epoch.epochId}`}
             className="block hover:no-underline border-b border-border"
             onMouseEnter={() => setHoveredIndex(index)}
           >
