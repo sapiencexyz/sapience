@@ -1022,8 +1022,6 @@ const AddEditLiquidity: React.FC = () => {
           name="lowPrice"
           control={control}
           isDisabled={isEdit}
-          minAllowedPrice={tickToPrice(baseAssetMinPriceTick)}
-          maxAllowedPrice={Number(highPrice)}
         />
 
         <LiquidityPriceInput
@@ -1031,8 +1029,6 @@ const AddEditLiquidity: React.FC = () => {
           name="highPrice"
           control={control}
           isDisabled={isEdit}
-          minAllowedPrice={Number(lowPrice)}
-          maxAllowedPrice={tickToPrice(baseAssetMaxPriceTick)}
         />
         <SlippageTolerance />
 
