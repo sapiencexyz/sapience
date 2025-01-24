@@ -631,7 +631,7 @@ const AddEditLiquidity: React.FC = () => {
         duration: 5000,
       });
       router.push(
-        `/trade/${chainId}%3A${marketAddress}/epochs/${epoch}?nftId=${nftId}`
+        `/trade/${chainId}%3A${marketAddress}/periods/${epoch}?nftId=${nftId}`
       );
     }
   }, [positionData, toast]);

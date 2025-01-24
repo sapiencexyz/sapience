@@ -40,7 +40,7 @@ const getMarketHref = (path: string, market: any, withEpochs: boolean) => {
   if (withEpochs) {
     return `/markets/?contractId=${market.chainId}:${market.address}`;
   }
-  return `/${path}/${market.chainId}:${market.address}/epochs/${market.currentEpoch?.epochId}`;
+  return `/${path}/${market.chainId}:${market.address}/periods/${market.currentEpoch?.epochId}`;
 };
 
 const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
@@ -161,7 +161,7 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
                           <Link
                             key={`${epoch.marketChainId}:${epoch.marketAddress}:${epoch.epochId}`}
                             className="text-sm w-full block rounded-md px-3 py-1.5 hover:bg-secondary"
-                            href={`/${path}/${epoch.marketChainId}:${epoch.marketAddress}/epochs/${epoch.epochId}`}
+                            href={`/${path}/${epoch.marketChainId}:${epoch.marketAddress}/periods/${epoch.epochId}`}
                             onClick={handleLinkClick}
                           >
                             {formatDuration(
@@ -303,7 +303,7 @@ const NavLinks = ({
                           <Link
                             key={`${epoch.marketChainId}:${epoch.marketAddress}:${epoch.epochId}`}
                             className="text-sm w-full block rounded-md px-3 py-1.5 hover:bg-gray-50"
-                            href={`/${path}/${epoch.marketChainId}:${epoch.marketAddress}/epochs/${epoch.epochId}`}
+                            href={`/${path}/${epoch.marketChainId}:${epoch.marketAddress}/periods/${epoch.epochId}`}
                             onClick={() => onClose?.()}
                           >
                             {formatDuration(
@@ -435,7 +435,10 @@ const Header = () => {
             <SheetContent>
               <div className="flex flex-col space-y-4 mt-4">
                 <NavLinks isMobile onClose={() => setIsOpen(false)} />
-                <ConnectButton />
+                <div className="flex items-center gap-2">
+                  <ConnectButton />
+                  <ModeToggle />
+                </div>
               </div>
             </SheetContent>
           </Sheet>
