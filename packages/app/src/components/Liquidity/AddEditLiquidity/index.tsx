@@ -87,6 +87,58 @@ const AddEditLiquidity: React.FC = () => {
     },
     mode: 'onChange',
     reValidateMode: 'onChange',
+    resolver: (values) => {
+      const errors: Record<string, { type: string; message: string }> = {};
+
+      const lowPriceNum = Number(values.lowPrice);
+      const minPrice = tickToPrice(baseAssetMinPriceTick);
+      const maxLowPrice = Number(values.highPrice);
+      const lowPriceTick = priceToTick(lowPriceNum, tickSpacing);
+
+      if (lowPriceNum < minPrice) {
+        errors.lowPrice = {
+          type: 'minPrice',
+          message: `Low price must be at least ${minPrice}`,
+        };
+      } else if (lowPriceNum >= maxLowPrice) {
+        errors.lowPrice = {
+          type: 'maxPrice',
+          message: `Low price must be less than ${maxLowPrice}`,
+        };
+      } else if (lowPriceTick % tickSpacing !== 0) {
+        errors.lowPrice = {
+          type: 'tickSpacing',
+          message: `Low price must align with tick spacing of ${tickSpacing}`,
+        };
+      }
+
+      const highPriceNum = Number(values.highPrice);
+      const minHighPrice = Number(values.lowPrice);
+      const maxPrice = tickToPrice(baseAssetMaxPriceTick);
+      const highPriceTick = priceToTick(highPriceNum, tickSpacing);
+
+      if (highPriceNum <= minHighPrice) {
+        errors.highPrice = {
+          type: 'minPrice',
+          message: `Max price must be greater than ${minHighPrice}`,
+        };
+      } else if (highPriceNum > maxPrice) {
+        errors.highPrice = {
+          type: 'maxPrice',
+          message: `Max price must be at most ${maxPrice}`,
+        };
+      } else if (highPriceTick % tickSpacing !== 0) {
+        errors.highPrice = {
+          type: 'tickSpacing',
+          message: `Max price must align with tick spacing of ${tickSpacing}`,
+        };
+      }
+
+      return {
+        values,
+        errors: Object.keys(errors).length > 0 ? errors : {},
+      };
+    },
   });
 
   const {
