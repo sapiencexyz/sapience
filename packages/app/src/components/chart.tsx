@@ -1,13 +1,20 @@
 /* eslint-disable sonarjs/cognitive-complexity */
 import type { UTCTimestamp, BarData, LineData } from 'lightweight-charts';
-import { createChart, CrosshairMode } from 'lightweight-charts';
+import { createChart, CrosshairMode, PriceScaleMode } from 'lightweight-charts';
 import { useTheme } from 'next-themes';
-import { useEffect, useRef, useContext } from 'react';
+import { useEffect, useRef, useContext, useState } from 'react';
 import type React from 'react';
 
 import type { PriceChartData } from '../lib/interfaces/interfaces';
 import { convertGgasPerWstEthToGwei } from '../lib/util/util';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '~/components/ui/tooltip';
 import { MarketContext } from '~/lib/context/MarketProvider';
+import { cn } from '~/lib/utils';
 
 interface Props {
   data: {
@@ -46,6 +53,7 @@ const CandlestickChart: React.FC<Props> = ({
   const resourcePriceSeriesRef = useRef<any>(null);
   const { stEthPerToken, useMarketUnits } = useContext(MarketContext);
   const { theme } = useTheme();
+  const [isLogarithmic, setIsLogarithmic] = useState(false);
 
   // Split the chart creation and data updates into separate effects
 
@@ -219,11 +227,57 @@ const CandlestickChart: React.FC<Props> = ({
     }
   }, [data, isLoading, stEthPerToken, useMarketUnits, seriesVisibility]);
 
+  useEffect(() => {
+    if (!chartRef.current) return;
+
+    chartRef.current.priceScale('right').applyOptions({
+      mode: isLogarithmic ? PriceScaleMode.Logarithmic : PriceScaleMode.Normal,
+    });
+
+    const series = [
+      candlestickSeriesRef.current,
+      indexPriceSeriesRef.current,
+      resourcePriceSeriesRef.current,
+    ];
+
+    series.forEach((s) => {
+      if (s) {
+        s.applyOptions({
+          priceScale: {
+            mode: isLogarithmic
+              ? PriceScaleMode.Logarithmic
+              : PriceScaleMode.Normal,
+          },
+        });
+      }
+    });
+  }, [isLogarithmic]);
+
   return (
-    <div className="flex flex-col flex-1">
+    <div className="flex flex-col flex-1 relative group">
       <div className="flex flex-1 h-full">
         <div ref={chartContainerRef} className="w-full h-full" />
       </div>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => setIsLogarithmic(!isLogarithmic)}
+              className={cn(
+                'absolute bottom-0 right-3 w-6 h-6 rounded-sm bg-background border border-border text-foreground flex items-center justify-center hover:bg-accent hover:border-accent transition-all duration-100 opacity-0 group-hover:opacity-100 z-50 text-xs',
+                isLogarithmic &&
+                  'bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:border-primary/90'
+              )}
+            >
+              L
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Toggle logarithmic scale</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </div>
   );
 };
