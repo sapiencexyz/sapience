@@ -68,7 +68,18 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
 }) => {
   const { toast } = useToast();
   const [state, setState] = useState<MarketContextType>(BLANK_MARKET);
-  const [useMarketUnits, setUseMarketUnits] = useState(false);
+  const [useMarketUnits, setUseMarketUnits] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('useMarketUnits');
+      return saved ? JSON.parse(saved) : false;
+    }
+    return false;
+  });
+
+  // Save useMarketUnits changes to localStorage
+  useEffect(() => {
+    localStorage.setItem('useMarketUnits', JSON.stringify(useMarketUnits));
+  }, [useMarketUnits]);
 
   const { foilData } = useFoilDeployment(chainId);
 
