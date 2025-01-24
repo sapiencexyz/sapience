@@ -580,7 +580,7 @@ export default function AddEditTrade() {
   const renderActionButton = () => {
     if (!isConnected) {
       return (
-        <Button className="w-full" size="lg" onClick={() => setIsOpen(true)}>
+        <Button className="w-full mb-4" size="lg" onClick={() => setIsOpen(true)}>
           Connect Wallet
         </Button>
       );
