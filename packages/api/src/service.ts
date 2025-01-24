@@ -158,6 +158,28 @@ async function isGeofenced(ip: string | null) {
   return GEOFENCED_COUNTRIES.includes(ipInfo.country) || ipInfo.privacy?.vpn;
 }
 
+// Add this helper function before the startServer function
+const getClientIp = (req: Request): string | null => {
+  // Check X-Forwarded-For header first (common for proxies)
+  const forwardedFor = req.headers['x-forwarded-for'];
+  if (forwardedFor) {
+    // Get the first IP if it's a comma-separated list
+    const ips = Array.isArray(forwardedFor)
+      ? forwardedFor[0]
+      : forwardedFor.split(',')[0];
+    return ips.trim();
+  }
+
+  // Check other common headers
+  const realIp = req.headers['x-real-ip'];
+  if (realIp) {
+    return Array.isArray(realIp) ? realIp[0] : realIp;
+  }
+
+  // Fall back to connection remote address
+  return req.socket.remoteAddress || null;
+};
+
 const startServer = async () => {
   await initializeDataSource();
 
@@ -1243,7 +1265,10 @@ const startServer = async () => {
           ? `pnpm run start:reindex-missing ${chainId} ${address} ${epochId}`
           : `pnpm run start:reindex-market ${chainId} ${address} ${epochId}`;
 
-      if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'staging') {
+      if (
+        process.env.NODE_ENV !== 'production' &&
+        process.env.NODE_ENV !== 'staging'
+      ) {
         try {
           const result = await executeLocalReindex(startCommand);
           res.json({ success: true, job: result });
@@ -1369,7 +1394,7 @@ const startServer = async () => {
   app.get(
     '/permit',
     handleAsyncErrors(async (req, res) => {
-      const ip = req.ip ?? null;
+      const ip = getClientIp(req);
       const isBlocked = await isGeofenced(ip);
       res.json({ permitted: !isBlocked });
     })
