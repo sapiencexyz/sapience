@@ -189,6 +189,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
                       marketPrices: [],
                       indexPrices: [],
                       resourcePrices: formattedResourcePrices,
+                      movingAverage: true,
                     }}
                     isLoading={isResourcePricesLoading}
                     seriesVisibility={seriesVisibility}

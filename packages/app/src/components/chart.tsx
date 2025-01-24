@@ -2,7 +2,7 @@
 import type { UTCTimestamp, BarData, LineData } from 'lightweight-charts';
 import { createChart, CrosshairMode } from 'lightweight-charts';
 import { useTheme } from 'next-themes';
-import { useEffect, useRef, useContext } from 'react';
+import { useEffect, useRef, useContext, useCallback, useMemo } from 'react';
 import type React from 'react';
 
 import type { PriceChartData } from '../lib/interfaces/interfaces';
@@ -14,6 +14,7 @@ interface Props {
     marketPrices: PriceChartData[];
     indexPrices: IndexPrice[];
     resourcePrices?: ResourcePricePoint[];
+    movingAverage?: boolean;
   };
   isLoading: boolean;
   seriesVisibility: {
@@ -44,10 +45,60 @@ const CandlestickChart: React.FC<Props> = ({
   const candlestickSeriesRef = useRef<any>(null);
   const indexPriceSeriesRef = useRef<any>(null);
   const resourcePriceSeriesRef = useRef<any>(null);
+  const movingAverageSeriesRef = useRef<any>(null);
   const { stEthPerToken, useMarketUnits } = useContext(MarketContext);
   const { theme } = useTheme();
 
-  // Split the chart creation and data updates into separate effects
+  const calculateMovingAverage = useCallback(
+    (data: ResourcePricePoint[], period: number) => {
+      if (!data.length) return [];
+
+      const MS_IN_DAY = 86400000; // milliseconds in a day
+      const WINDOW = period * MS_IN_DAY;
+
+      // Pre-calculate sums using a sliding window
+      const result: { time: UTCTimestamp; value?: number }[] = [];
+      let sum = 0;
+      let count = 0;
+      let start = 0;
+
+      for (let i = 0; i < data.length; i++) {
+        const currentTime = data[i].timestamp;
+        const windowStartTime = currentTime - WINDOW;
+
+        // Remove points that are now outside the window
+        while (start < i && data[start].timestamp <= windowStartTime) {
+          sum -= data[start].price;
+          count--;
+          start++;
+        }
+
+        // Add current point
+        sum += data[i].price;
+        count++;
+
+        result.push({
+          time: (currentTime / 1000) as UTCTimestamp,
+          value: count > 0 ? sum / count : undefined,
+        });
+      }
+
+      return result;
+    },
+    []
+  );
+
+  // Memoize the moving average calculation with sorted data
+  const movingAverageData = useMemo(() => {
+    if (!data.movingAverage || !data.resourcePrices?.length) {
+      return [];
+    }
+    // Sort once before calculation
+    const sortedData = [...data.resourcePrices].sort(
+      (a, b) => a.timestamp - b.timestamp
+    );
+    return calculateMovingAverage(sortedData, 28);
+  }, [data.movingAverage, data.resourcePrices, calculateMovingAverage]);
 
   // Effect for chart creation/cleanup
   useEffect(() => {
@@ -110,6 +161,17 @@ const CandlestickChart: React.FC<Props> = ({
     resourcePriceSeriesRef.current = chart.addLineSeries({
       color: '#4CAF50',
       lineWidth: 2,
+    });
+
+    // Add moving average series
+    movingAverageSeriesRef.current = chart.addLineSeries({
+      color: '#2962FF',
+      lineWidth: 1,
+      priceFormat: {
+        type: 'price',
+        precision: 6,
+        minMove: 0.000001,
+      },
     });
 
     const handleResize = () => {
@@ -198,6 +260,14 @@ const CandlestickChart: React.FC<Props> = ({
           value: p.price,
         }));
         resourcePriceSeriesRef.current.setData(resourceLineData);
+
+        // Use memoized moving average data
+        if (data.movingAverage && movingAverageSeriesRef.current) {
+          movingAverageSeriesRef.current.setData(movingAverageData);
+          movingAverageSeriesRef.current.applyOptions({ visible: true });
+        } else if (movingAverageSeriesRef.current) {
+          movingAverageSeriesRef.current.applyOptions({ visible: false });
+        }
       }
     }
 
@@ -217,7 +287,14 @@ const CandlestickChart: React.FC<Props> = ({
         visible: seriesVisibility.resource,
       });
     }
-  }, [data, isLoading, stEthPerToken, useMarketUnits, seriesVisibility]);
+  }, [
+    data,
+    isLoading,
+    stEthPerToken,
+    useMarketUnits,
+    seriesVisibility,
+    movingAverageData,
+  ]);
 
   return (
     <div className="flex flex-col flex-1">
