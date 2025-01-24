@@ -214,7 +214,7 @@ export default function AddEditTrade() {
     query: { enabled: isEdit && isNonZeroSizeChange },
   });
 
-  // Add this new quote simulation specifically for closing
+
   const quoteClosePositionResult = useSimulateContract({
     abi: foilData.abi,
     address: marketAddress as `0x${string}`,
@@ -399,7 +399,7 @@ export default function AddEditTrade() {
     if (!pool?.token0Price || !positionData) return 0;
     
   
-    if(positionData.vGasAmount == BigInt(0) && positionData.borrowedVGas == BigInt(0)) {
+    if(positionData.vGasAmount === BigInt(0) || positionData.borrowedVGas === BigInt(0)) {
       return 0;
     }
     const closeQuote = quoteClosePositionResult.data?.result;
