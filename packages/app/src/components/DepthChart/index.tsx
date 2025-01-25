@@ -19,12 +19,6 @@ import type {
 } from '~/lib/util/liquidityUtil';
 import { getFullPool } from '~/lib/util/liquidityUtil';
 
-const gray400 = 'hsl(var(--chart-3))';
-const paleGreen = 'hsl(var(--chart-3))';
-const purple = 'hsl(var(--chart-5))';
-const turquoise = 'hsl(var(--chart-4))';
-const peach = 'hsl(var(--chart-2))';
-
 const checkIsClosestTick = (
   tick: number,
   activeTickValue: number,
@@ -59,7 +53,6 @@ interface CustomBarProps {
     index: number;
   };
   activeTickValue: number;
-  hoveredBar: number | null;
   setHoveredBar: React.Dispatch<React.SetStateAction<number | null>>;
   tickSpacing: number;
 }
@@ -67,31 +60,34 @@ interface CustomBarProps {
 const CustomBar: React.FC<CustomBarProps> = ({
   props,
   activeTickValue,
-  hoveredBar,
   setHoveredBar,
   tickSpacing,
 }) => {
   const { x, y, width, height, tickIdx, index } = props;
-  let fill = purple; // Default color
 
   const isClosestTick = checkIsClosestTick(
     tickIdx,
     activeTickValue,
     tickSpacing
   );
-  if (index === hoveredBar) {
-    fill = paleGreen; // Hover color
-  } else if (isClosestTick) {
-    fill = turquoise; // Active bar color
+
+  let fill = '#58585A';
+  if (isClosestTick) {
+    fill = '#8D895E';
   } else if (tickIdx < activeTickValue) {
-    fill = peach;
+    fill = '#58585A';
   }
   return (
-    <rect
-      x={x}
-      y={y}
-      width={width}
-      height={height}
+    <path
+      d={`
+        M ${x},${y + height}
+        L ${x},${y + 2}
+        Q ${x},${y} ${x + 2},${y}
+        L ${x + width - 2},${y}
+        Q ${x + width},${y} ${x + width},${y + 2}
+        L ${x + width},${y + height}
+        Z
+      `}
       fill={fill}
       onMouseEnter={() => setHoveredBar(index)}
       onMouseLeave={() => setHoveredBar(null)}
@@ -130,14 +126,7 @@ const CustomXAxisTick: React.FC<CustomXAxisTickProps> = ({
 
   return (
     <g transform={`translate(${x},${y})`} id="activeTicks">
-      <text
-        x={0}
-        y={0}
-        dy={10}
-        textAnchor="middle"
-        fill={gray400}
-        fontSize={12}
-      >
+      <text x={0} y={0} dy={10} textAnchor="middle" fontSize={12} opacity={0.5}>
         Active tick range
       </text>
     </g>
@@ -167,13 +156,7 @@ const CustomTooltip: React.FC<
   console.log(pool.tickCurrent, tick.tickIdx, tick.isCurrent);
 
   return (
-    <div
-      style={{
-        padding: '8px',
-        border: '1px solid #ccc',
-      }}
-      className="bg-background"
-    >
+    <div className="bg-background p-3 border border-border rounded-sm shadow-sm">
       {tick.tickIdx < pool.tickCurrent && !tick.isCurrent && (
         <>
           <p>
@@ -362,6 +345,7 @@ const DepthChart: React.FC = () => {
               tickLine={false}
             />
             <Tooltip
+              cursor={{ fill: '#F1EBDD' }}
               content={
                 <CustomTooltip
                   pool={pool}

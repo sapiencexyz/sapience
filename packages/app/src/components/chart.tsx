@@ -51,9 +51,13 @@ const CandlestickChart: React.FC<Props> = ({
   const candlestickSeriesRef = useRef<any>(null);
   const indexPriceSeriesRef = useRef<any>(null);
   const resourcePriceSeriesRef = useRef<any>(null);
-  const { stEthPerToken, useMarketUnits } = useContext(MarketContext);
+  const { stEthPerToken, useMarketUnits, startTime } =
+    useContext(MarketContext);
   const { theme } = useTheme();
   const [isLogarithmic, setIsLogarithmic] = useState(false);
+
+  const now = Math.floor(Date.now() / 1000);
+  const isBeforeStart = startTime > now;
 
   // Split the chart creation and data updates into separate effects
 
@@ -197,7 +201,7 @@ const CandlestickChart: React.FC<Props> = ({
 
     candlestickSeriesRef.current.setData(candleSeriesData);
 
-    if (!isLoading && indexPriceSeriesRef.current) {
+    if (!isLoading && indexPriceSeriesRef.current && !isBeforeStart) {
       indexPriceSeriesRef.current.setData(lineSeriesData);
 
       if (data.resourcePrices?.length && resourcePriceSeriesRef.current) {
@@ -217,7 +221,7 @@ const CandlestickChart: React.FC<Props> = ({
     }
     if (indexPriceSeriesRef.current) {
       indexPriceSeriesRef.current.applyOptions({
-        visible: seriesVisibility.index,
+        visible: !isBeforeStart && seriesVisibility.index,
       });
     }
     if (resourcePriceSeriesRef.current) {

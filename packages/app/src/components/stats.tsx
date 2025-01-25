@@ -90,11 +90,11 @@ const Stats = () => {
             <div className="text-md">
               Market Price
               <Tooltip>
-                <TooltipTrigger>
+                <TooltipTrigger className="cursor-default">
                   <InfoIcon className="ml-1 -translate-y-0.5 inline-block h-4" />
                 </TooltipTrigger>
                 <TooltipContent>
-                  The current price in the liquidity pool for this period
+                  The current price available from the liquidity pool
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -119,12 +119,11 @@ const Stats = () => {
             <div className="text-md">
               Liquidity
               <Tooltip>
-                <TooltipTrigger>
+                <TooltipTrigger className="cursor-default">
                   <InfoIcon className="ml-1 -translate-y-0.5 inline-block h-4" />
                 </TooltipTrigger>
                 <TooltipContent>
-                  The largest long position that could be opened on this market
-                  right now
+                  The largest long position that can be opened currently
                 </TooltipContent>
               </Tooltip>
             </div>
