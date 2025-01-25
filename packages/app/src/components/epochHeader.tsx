@@ -42,7 +42,7 @@ const EpochHeader = () => {
       <div className="w-full items-center flex flex-col lg:flex-row px-6 py-4">
         <div className="w-full lg:w-auto flex justify-between lg:justify-start items-center">
           <h1 className="text-3xl font-semibold mb-0">
-            {currentMarket?.resource?.name || 'Name Not Found'}
+            {currentMarket?.resource?.name}
           </h1>
         </div>
 
