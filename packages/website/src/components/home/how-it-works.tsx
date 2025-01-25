@@ -49,6 +49,9 @@ function useIsInViewport(ref: React.RefObject<HTMLElement>) {
 
 export const HowItWorks = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [activeButton, setActiveButton] = useState<'left' | 'right' | null>(
+    null
+  );
   const containerRef = useRef<HTMLDivElement>(null);
   const isInView = useIsInViewport(containerRef);
   const isDesktop = useMediaQuery('(min-width: 768px)');
@@ -165,20 +168,47 @@ export const HowItWorks = () => {
         ))}
       </div>
 
-      <div className="absolute bottom-[40px] z-10 flex items-center rounded-3xl border border-[rgba(218,216,209,0.2)] bg-white md:bottom-[120px] md:gap-2">
-        <button
-          className="flex h-full items-center px-4 py-2.5 transition-all hover:opacity-50 md:px-8 md:py-5"
-          onClick={prevSlide}
+      <div
+        className="absolute bottom-[40px] z-10 md:bottom-[120px]"
+        style={{ perspective: '1000px' }}
+      >
+        <motion.div
+          className="flex items-center rounded-3xl border border-[rgba(218,216,209,0.2)] bg-white md:gap-2"
+          style={{
+            transformOrigin: '50% 50%',
+            boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
+          }}
+          animate={{
+            rotateY:
+              activeButton === 'left' ? -10 : activeButton === 'right' ? 10 : 0,
+            boxShadow: activeButton
+              ? '0px 8px 16px rgba(0,0,0,0.15)'
+              : '0px 2px 4px rgba(0,0,0,0.1)',
+            y: activeButton ? 1 : 0,
+            scale: activeButton ? 0.985 : 1,
+          }}
+          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
         >
-          <MoveLeftIcon className="h-3 w-3 md:h-6 md:w-6" />
-        </button>
-        <div className="h-[18px] w-[1px] bg-[#DAD8D1]" />
-        <button
-          className="flex h-full items-center px-4 py-2.5 transition-all hover:opacity-50 md:px-8 md:py-5"
-          onClick={nextSlide}
-        >
-          <MoveRightIcon className="h-3 w-3 md:h-6 md:w-6" />
-        </button>
+          <button
+            className="flex h-full items-center px-4 py-2.5 transition-all hover:opacity-50 md:px-8 md:py-5"
+            onClick={prevSlide}
+            onMouseDown={() => setActiveButton('left')}
+            onMouseUp={() => setActiveButton(null)}
+            onMouseLeave={() => setActiveButton(null)}
+          >
+            <MoveLeftIcon className="h-3 w-3 md:h-6 md:w-6" />
+          </button>
+          <div className="h-[18px] w-[1px] bg-[#DAD8D1]" />
+          <button
+            className="flex h-full items-center px-4 py-2.5 transition-all hover:opacity-50 md:px-8 md:py-5"
+            onClick={nextSlide}
+            onMouseDown={() => setActiveButton('right')}
+            onMouseUp={() => setActiveButton(null)}
+            onMouseLeave={() => setActiveButton(null)}
+          >
+            <MoveRightIcon className="h-3 w-3 md:h-6 md:w-6" />
+          </button>
+        </motion.div>
       </div>
     </div>
   );
