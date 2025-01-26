@@ -53,17 +53,15 @@ interface CustomBarProps {
     index: number;
   };
   activeTickValue: number;
-  setHoveredBar: React.Dispatch<React.SetStateAction<number | null>>;
   tickSpacing: number;
 }
 
 const CustomBar: React.FC<CustomBarProps> = ({
   props,
   activeTickValue,
-  setHoveredBar,
   tickSpacing,
 }) => {
-  const { x, y, width, height, tickIdx, index } = props;
+  const { x, y, width, height, tickIdx } = props;
 
   const isClosestTick = checkIsClosestTick(
     tickIdx,
@@ -89,8 +87,6 @@ const CustomBar: React.FC<CustomBarProps> = ({
         Z
       `}
       fill={fill}
-      onMouseEnter={() => setHoveredBar(index)}
-      onMouseLeave={() => setHoveredBar(null)}
     />
   );
 };
@@ -197,7 +193,6 @@ const CustomTooltip: React.FC<
 
 const DepthChart: React.FC = () => {
   const [poolData, setPool] = useState<PoolData | undefined>();
-  const [hoveredBar, setHoveredBar] = useState<number | null>(null);
   const [price0, setPrice0] = useState<number>(0);
   const [price1, setPrice1] = useState<number>(0);
   const [label, setLabel] = useState<string>('');
@@ -282,8 +277,6 @@ const DepthChart: React.FC = () => {
   const renderBar = (props: any) => (
     <CustomBar
       props={props}
-      hoveredBar={hoveredBar}
-      setHoveredBar={setHoveredBar}
       activeTickValue={activeTickValue}
       tickSpacing={tickSpacing}
     />
