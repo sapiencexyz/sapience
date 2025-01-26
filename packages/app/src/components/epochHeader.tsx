@@ -68,7 +68,7 @@ const EpochHeader = () => {
 
   return (
     <div className="flex items-center flex-col w-full">
-      <div className="w-full items-center flex flex-col lg:flex-row p-6 lg:pt-7">
+      <div className="w-full items-center flex flex-col lg:flex-row px-3 py-6 lg:pt-7">
         <div className="w-full lg:w-auto flex justify-between lg:justify-start items-center">
           <h1 className="text-3xl font-semibold mb-0 flex items-center gap-2">
             {resource?.iconPath && (
@@ -84,7 +84,7 @@ const EpochHeader = () => {
         </div>
 
         <div className="flex flex-col lg:flex-row items-start lg:items-center mt-4 lg:mt-0 mb-0 lg:ml-auto lg:flex-1 w-full">
-          <div className="flex flex-wrap gap-y-2 gap-x-4 lg:gap-x-7 lg:justify-end w-full">
+          <div className="flex flex-wrap gap-y-2 gap-x-4 lg:gap-x-6 lg:justify-end w-full">
             <a
               className="hover:no-underline inline-flex items-center"
               target="_blank"

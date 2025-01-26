@@ -62,12 +62,14 @@ interface CustomBarProps {
   };
   activeTickValue: number;
   tickSpacing: number;
+  isHovering: boolean;
 }
 
 const CustomBar: React.FC<CustomBarProps> = ({
   props,
   activeTickValue,
   tickSpacing,
+  isHovering,
 }) => {
   const { x, y, width, height, tickIdx } = props;
 
@@ -84,19 +86,30 @@ const CustomBar: React.FC<CustomBarProps> = ({
     fill = '#58585A';
   }
   return (
-    <path
-      d={`
-        M ${x},${y + height}
-        L ${x},${y + 2}
-        Q ${x},${y} ${x + 2},${y}
-        L ${x + width - 2},${y}
-        Q ${x + width},${y} ${x + width},${y + 2}
-        L ${x + width},${y + height}
-        Z
-      `}
-      fill={fill}
-      height="100%"
-    />
+    <>
+      {isClosestTick && !isHovering && (
+        <rect
+          x={x - 1}
+          y={0}
+          width={width + 2}
+          height="100%"
+          fill="#F1EBDD"
+        />
+      )}
+      <path
+        d={`
+          M ${x},${y + height}
+          L ${x},${y + 2}
+          Q ${x},${y} ${x + 2},${y}
+          L ${x + width - 2},${y}
+          Q ${x + width},${y} ${x + width},${y + 2}
+          L ${x + width},${y + height}
+          Z
+        `}
+        fill={fill}
+        height="100%"
+      />
+    </>
   );
 };
 
@@ -198,6 +211,7 @@ const DepthChart: React.FC = () => {
   const [poolData, setPool] = useState<PoolData | undefined>();
   const [price0, setPrice0] = useState<number>(0);
   const [label, setLabel] = useState<string>('');
+  const [isHovering, setIsHovering] = useState(false);
   const {
     pool,
     chainId,
@@ -303,6 +317,7 @@ const DepthChart: React.FC = () => {
       props={props}
       activeTickValue={activeTickValue}
       tickSpacing={tickSpacing}
+      isHovering={isHovering}
     />
   );
 
@@ -325,7 +340,7 @@ const DepthChart: React.FC = () => {
     <div className="flex flex-1 flex-col p-4">
       {!poolData && (
         <div className="flex items-center justify-center h-full w-full">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-4 border-primary opacity-10" />
+          <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent opacity-20" />
         </div>
       )}
       <div className="w-fit pl-2 border-l-4 border-l-[#F1EBDD] mb-1">
@@ -356,6 +371,10 @@ const DepthChart: React.FC = () => {
             margin={{ bottom: -25, left: 0, right: 0 }}
             onMouseLeave={() => {
               setTickInfo(activeTickValue, currPrice0);
+              setIsHovering(false);
+            }}
+            onMouseEnter={() => {
+              setIsHovering(true);
             }}
           >
             <XAxis

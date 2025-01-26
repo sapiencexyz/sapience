@@ -379,15 +379,15 @@ const Market = ({
         <div className="flex flex-col w-full h-[calc(100vh-64px)] overflow-y-auto lg:overflow-hidden">
           <EpochHeader />
           <div className="flex flex-col flex-1 lg:overflow-y-auto md:overflow-visible">
-            <div className="flex flex-col flex-1 px-4 md:px-6 gap-5 md:flex-row min-h-0">
+            <div className="flex flex-col flex-1 px-4 md:px-3 gap-5 md:flex-row min-h-0">
               <div className="w-full order-2 md:order-2 md:max-w-[360px] pb-4">
                 <MarketSidebar isTrade={isTrade} />
               </div>
               <div className="flex flex-col w-full order-1 md:order-1">
                 <Stats />
 
-                <div className="flex flex-1 id-chart-flex min-h-[400px] md:min-h-0 overflow-visible lg:overflow-hidden">
-                  <div className="flex w-full h-full border border-border overflow-hidden rounded-lg shadow-sm">
+                <div className="flex flex-1 min-h-[400px] md:min-h-0">
+                  <div className="flex w-full h-full border border-border rounded-lg shadow-sm">
                     {renderChart()}
                   </div>
                 </div>
