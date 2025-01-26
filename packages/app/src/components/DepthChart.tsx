@@ -25,7 +25,7 @@ import type {
   PoolData,
 } from '~/lib/util/liquidityUtil';
 import { getFullPool } from '~/lib/util/liquidityUtil';
-import { convertWstEthToGwei } from '~/lib/util/util';
+import { convertGgasPerWstEthToGwei } from '~/lib/util/util';
 
 const checkIsClosestTick = (
   tick: number,
@@ -92,7 +92,7 @@ const CustomBar: React.FC<CustomBarProps> = ({
           x={x - 1}
           y={0}
           width={width + 2}
-          height="100%"
+          height="calc(100% - 35px)"
           fill="#F1EBDD"
         />
       )}
@@ -222,16 +222,10 @@ const DepthChart: React.FC = () => {
     stEthPerToken,
   } = useContext(MarketContext);
 
-  const setTickInfo = useCallback(
-    (tickIdx: number, rawPrice0: number) => {
-      const convertedPrice0 = useMarketUnits
-        ? rawPrice0
-        : convertWstEthToGwei(rawPrice0, stEthPerToken);
-      setPrice0(convertedPrice0);
-      setLabel(`Tick ${tickIdx}`);
-    },
-    [useMarketUnits, stEthPerToken]
-  );
+  const setTickInfo = useCallback((tickIdx: number, rawPrice0: number) => {
+    setPrice0(rawPrice0);
+    setLabel(`Tick ${tickIdx}`);
+  }, []);
 
   const activeTickValue = pool?.tickCurrent || 0;
   const tickSpacing = pool ? pool?.tickSpacing : TICK_SPACING_DEFAULT;
@@ -292,16 +286,10 @@ const DepthChart: React.FC = () => {
     return [0, 0];
   }, [poolData]);
 
-  const isCurrentPrice = useMemo(() => {
+  const isActiveTick = useMemo(() => {
     if (!price0 || !currPrice0) return false;
-    const displayPrice = useMarketUnits
-      ? price0
-      : convertWstEthToGwei(price0, stEthPerToken);
-    const displayCurrPrice = useMarketUnits
-      ? currPrice0
-      : convertWstEthToGwei(currPrice0, stEthPerToken);
-    return displayPrice === displayCurrPrice;
-  }, [price0, currPrice0, useMarketUnits, stEthPerToken]);
+    return Math.abs(price0 - currPrice0) < 0.000001;
+  }, [price0, currPrice0]);
 
   useEffect(() => {
     if (currPrice0 && currPrice1) {
@@ -346,15 +334,15 @@ const DepthChart: React.FC = () => {
       <div className="w-fit pl-2 border-l-4 border-l-[#F1EBDD] mb-1">
         <p className="text-xs font-medium text-gray-500 mb-0.5">
           {label ? `${label}` : ''}
+          {isActiveTick && <> (Active)</>}
         </p>
         {pool && price0 && (
           <div className="flex items-center">
-            {isCurrentPrice && <span className="mr-1">Current Price: </span>}
             <NumberDisplay
               value={
                 useMarketUnits
                   ? price0
-                  : convertWstEthToGwei(price0, stEthPerToken)
+                  : convertGgasPerWstEthToGwei(price0, stEthPerToken)
               }
               precision={4}
             />
