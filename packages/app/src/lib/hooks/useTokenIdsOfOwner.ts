@@ -3,10 +3,10 @@ import { useContext, useMemo } from 'react';
 import type { AbiFunction } from 'viem';
 import { useReadContract, useReadContracts } from 'wagmi';
 
-import { MarketContext } from '../context/MarketProvider';
+import { PeriodContext } from '../context/PeriodProvider';
 
 export const useTokenIdsOfOwner = (ownerAddress: `0x${string}`) => {
-  const { foilData } = useContext(MarketContext);
+  const { foilData } = useContext(PeriodContext);
 
   const {
     data: balanceData,

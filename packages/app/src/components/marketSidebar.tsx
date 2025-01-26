@@ -3,14 +3,14 @@ import { useContext, useEffect } from 'react';
 
 import { ScrollArea } from '~/components/ui/scroll-area';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 
 import AddEditTrade from './addEditTrade';
 import AddEditLiquidity from './Liquidity/AddEditLiquidity';
 import Settle from './settle';
 
 export default function MarketSidebar({ isTrade }: { isTrade: boolean }) {
-  const { endTime } = useContext(MarketContext);
+  const { endTime } = useContext(PeriodContext);
   const expired = endTime < Math.floor(Date.now() / 1000);
   const { setNftId } = useAddEditPosition();
   const searchParams = useSearchParams();

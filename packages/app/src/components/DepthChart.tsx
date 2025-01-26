@@ -19,7 +19,7 @@ import { useReadContracts } from 'wagmi';
 
 import NumberDisplay from '~/components/numberDisplay';
 import { TICK_SPACING_DEFAULT } from '~/lib/constants/constants';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 import type {
   BarChartTick,
   GraphTick,
@@ -63,14 +63,12 @@ interface CustomBarProps {
   };
   activeTickValue: number;
   tickSpacing: number;
-  isHovering: boolean;
 }
 
 const CustomBar: React.FC<CustomBarProps> = ({
   props,
   activeTickValue,
   tickSpacing,
-  isHovering,
 }) => {
   const { x, y, width, height, tickIdx } = props;
 
@@ -87,18 +85,8 @@ const CustomBar: React.FC<CustomBarProps> = ({
     fill = '#58585A';
   }
   return (
-    <>
-      {isClosestTick && !isHovering && (
-        <rect
-          x={x - 1}
-          y={0}
-          width={width + 2}
-          height="calc(100% - 35px)"
-          fill="#F1EBDD"
-        />
-      )}
-      <path
-        d={`
+    <path
+      d={`
           M ${x},${y + height}
           L ${x},${y + 2}
           Q ${x},${y} ${x + 2},${y}
@@ -107,10 +95,9 @@ const CustomBar: React.FC<CustomBarProps> = ({
           L ${x + width},${y + height}
           Z
         `}
-        fill={fill}
-        height="100%"
-      />
-    </>
+      fill={fill}
+      height="100%"
+    />
   );
 };
 
@@ -219,7 +206,6 @@ const DepthChart: React.FC = () => {
   const [poolData, setPool] = useState<PoolData | undefined>();
   const [price0, setPrice0] = useState<number>(0);
   const [label, setLabel] = useState<string>('');
-  const [isHovering, setIsHovering] = useState(false);
   const {
     pool,
     chainId,
@@ -228,7 +214,7 @@ const DepthChart: React.FC = () => {
     baseAssetMaxPriceTick,
     useMarketUnits,
     stEthPerToken,
-  } = useContext(MarketContext);
+  } = useContext(PeriodContext);
 
   const setTickInfo = useCallback((tickIdx: number, rawPrice0: number) => {
     setPrice0(rawPrice0);
@@ -313,7 +299,6 @@ const DepthChart: React.FC = () => {
       props={props}
       activeTickValue={activeTickValue}
       tickSpacing={tickSpacing}
-      isHovering={isHovering}
     />
   );
 
@@ -375,10 +360,6 @@ const DepthChart: React.FC = () => {
             margin={{ bottom: -25, left: 0, right: 0 }}
             onMouseLeave={() => {
               setTickInfo(activeTickValue, currPrice0);
-              setIsHovering(false);
-            }}
-            onMouseEnter={() => {
-              setIsHovering(true);
             }}
           >
             <XAxis

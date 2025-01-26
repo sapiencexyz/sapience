@@ -11,7 +11,6 @@ import { useAccount } from 'wagmi';
 
 import Chart from '~/components/chart';
 import ChartSelector from '~/components/ChartSelector';
-import DepthChart from '~/components/DepthChart';
 import EpochHeader from '~/components/epochHeader';
 import LiquidityPositionsTable from '~/components/liquidityPositionsTable';
 import MarketSidebar from '~/components/marketSidebar';
@@ -26,9 +25,11 @@ import VolumeWindowSelector from '~/components/VolumeWindowButtons';
 import { useToast } from '~/hooks/use-toast';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { AddEditPositionProvider } from '~/lib/context/AddEditPositionContext';
-import { MarketProvider } from '~/lib/context/MarketProvider';
+import { PeriodProvider } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
 import { ChartType, TimeWindow } from '~/lib/interfaces/interfaces';
+
+import DepthChart from './DepthChart';
 
 interface ResourcePrice {
   timestamp: string;
@@ -370,7 +371,7 @@ const Market = ({
   }, [useResourcePricesError, toast]);
 
   return (
-    <MarketProvider
+    <PeriodProvider
       chainId={Number(chainId)}
       address={marketAddress}
       epoch={Number(epoch)}
@@ -396,6 +397,7 @@ const Market = ({
                     <ChartSelector
                       chartType={chartType}
                       setChartType={setChartType}
+                      isTrade={isTrade}
                     />
                     {chartType !== ChartType.LIQUIDITY && (
                       <div className="flex flex-col md:flex-row gap-3">
@@ -463,7 +465,7 @@ const Market = ({
           </div>
         </div>
       </AddEditPositionProvider>
-    </MarketProvider>
+    </PeriodProvider>
   );
 };
 

@@ -10,7 +10,7 @@ import React, {
 } from 'react';
 import { useAccount, useReadContracts } from 'wagmi';
 
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
 import { PositionKind } from '~/lib/interfaces/interfaces';
@@ -53,7 +53,7 @@ export const AddEditPositionProvider: React.FC<{
     foilData,
     address: marketAddress,
     chainId,
-  } = useContext(MarketContext);
+  } = useContext(PeriodContext);
 
   const {
     data: positionsData,

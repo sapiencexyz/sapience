@@ -49,16 +49,16 @@ export default defineConfig({
           text: 'Market Settlement',
           link: '/market-settlement', 
         },
-        { 
-          text: 'Price Glossary',
-          link: '/price-glossary', 
-        },
       ], 
     } ,
     { 
       text: 'Technical Documentation', 
       collapsed: false, 
       items: [
+        { 
+          text: 'Price Glossary',
+          link: '/price-glossary', 
+        },
         { 
           text: 'Deployments', 
           link: 'https://usecannon.com/packages/foil',

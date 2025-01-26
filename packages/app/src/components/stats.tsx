@@ -9,7 +9,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '~/components/ui/tooltip';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { convertGgasPerWstEthToGwei } from '~/lib/util/util';
 
 import NumberDisplay from './numberDisplay';
@@ -23,7 +23,7 @@ const Stats = () => {
     liquidity,
     useMarketUnits,
     stEthPerToken,
-  } = useContext(MarketContext);
+  } = useContext(PeriodContext);
 
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = startTime > now;

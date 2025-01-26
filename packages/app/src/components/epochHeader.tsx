@@ -12,7 +12,7 @@ import {
   TooltipTrigger,
 } from '~/components/ui/tooltip';
 import { useMarketList } from '~/lib/context/MarketListProvider';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
 import { tickToPrice, convertWstEthToGwei } from '~/lib/util/util';
 
@@ -29,7 +29,7 @@ const EpochHeader = () => {
     baseAssetMaxPriceTick,
     useMarketUnits,
     stEthPerToken,
-  } = useContext(MarketContext);
+  } = useContext(PeriodContext);
   const { markets } = useMarketList();
   const { data: resources } = useResources();
 

@@ -6,7 +6,7 @@ import { Controller } from 'react-hook-form';
 
 import { FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { removeLeadingZeros } from '~/lib/util/util';
 
 interface Props<T extends FieldValues> {
@@ -22,7 +22,7 @@ const LiquidityPriceInput = <T extends FieldValues>({
   control,
   isDisabled = false,
 }: Props<T>) => {
-  const { collateralAssetTicker, useMarketUnits } = useContext(MarketContext);
+  const { collateralAssetTicker, useMarketUnits } = useContext(PeriodContext);
 
   const getCurrentUnit = () => {
     return useMarketUnits ? `Ggas/${collateralAssetTicker}` : 'gwei';

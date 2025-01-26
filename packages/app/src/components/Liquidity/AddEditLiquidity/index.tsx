@@ -36,7 +36,7 @@ import {
   TOKEN_DECIMALS,
 } from '~/lib/constants/constants';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
 import { JSBIAbs } from '~/lib/util/util';
 
@@ -63,7 +63,7 @@ const AddEditLiquidity: React.FC = () => {
     refetchUniswapData,
     address: marketAddress,
     marketParams,
-  } = useContext(MarketContext);
+  } = useContext(PeriodContext);
 
   if (!epoch) {
     throw new Error('Epoch is not defined');

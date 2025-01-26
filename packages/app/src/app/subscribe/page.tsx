@@ -28,7 +28,7 @@ import {
   DialogTitle,
 } from '~/components/ui/dialog';
 import { useMarketList } from '~/lib/context/MarketListProvider';
-import { MarketContext, MarketProvider } from '~/lib/context/MarketProvider';
+import { PeriodContext, PeriodProvider } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
 import { convertWstEthToGwei } from '~/lib/util/util';
 
@@ -92,7 +92,7 @@ interface Subscription {
 }
 
 const useSubscriptions = (address?: string) => {
-  const { useMarketUnits, stEthPerToken } = useContext(MarketContext);
+  const { useMarketUnits, stEthPerToken } = useContext(PeriodContext);
 
   const calculateEntryPrice = (position: any, transactions: any[]) => {
     let entryPrice = 0;
@@ -376,7 +376,7 @@ const SubscriptionsList = () => {
             </DialogTitle>
           </DialogHeader>
           {selectedPosition && (
-            <MarketProvider
+            <PeriodProvider
               chainId={selectedPosition.epoch.market.chainId}
               address={selectedPosition.epoch.market.address as `0x${string}`}
               epoch={selectedPosition.epoch.id}
@@ -385,7 +385,7 @@ const SubscriptionsList = () => {
                 positionId={selectedPosition.positionId}
                 onClose={() => setSellDialogOpen(false)}
               />
-            </MarketProvider>
+            </PeriodProvider>
           )}
         </DialogContent>
       </Dialog>
@@ -489,7 +489,7 @@ const SubscribeContent = () => {
   }
 
   return (
-    <MarketProvider
+    <PeriodProvider
       chainId={targetEpoch.market.chainId}
       address={targetEpoch.market.address}
       epoch={targetEpoch.epochId}
@@ -542,7 +542,7 @@ const SubscribeContent = () => {
           </DialogContent>
         </Dialog>
       </div>
-    </MarketProvider>
+    </PeriodProvider>
   );
 };
 

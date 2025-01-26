@@ -34,7 +34,7 @@ import {
   TOKEN_DECIMALS,
 } from '~/lib/constants/constants';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
 import { removeLeadingZeros } from '~/lib/util/util';
 
@@ -81,7 +81,7 @@ export default function AddEditTrade() {
     pool,
     liquidity,
     refetchUniswapData,
-  } = useContext(MarketContext);
+  } = useContext(PeriodContext);
 
   if (!epoch) {
     throw new Error('Epoch is not defined');

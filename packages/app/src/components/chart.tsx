@@ -13,7 +13,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '~/components/ui/tooltip';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { cn } from '~/lib/utils';
 
 interface Props {
@@ -52,7 +52,7 @@ const CandlestickChart: React.FC<Props> = ({
   const indexPriceSeriesRef = useRef<any>(null);
   const resourcePriceSeriesRef = useRef<any>(null);
   const { stEthPerToken, useMarketUnits, startTime } =
-    useContext(MarketContext);
+    useContext(PeriodContext);
   const { theme } = useTheme();
   const [isLogarithmic, setIsLogarithmic] = useState(false);
 
