@@ -3,13 +3,20 @@
 import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import type { Pool } from '@uniswap/v3-sdk';
 import type React from 'react';
-import type { Dispatch, SetStateAction } from 'react';
 import { useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import type { TooltipProps } from 'recharts';
-import { BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Bar } from 'recharts';
+import {
+  BarChart,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Bar,
+} from 'recharts';
 import { type AbiFunction } from 'viem';
 import { useReadContracts } from 'wagmi';
 
+import NumberDisplay from '~/components/numberDisplay';
 import { TICK_SPACING_DEFAULT } from '~/lib/constants/constants';
 import { MarketContext } from '~/lib/context/MarketProvider';
 import type {
@@ -19,7 +26,6 @@ import type {
 } from '~/lib/util/liquidityUtil';
 import { getFullPool } from '~/lib/util/liquidityUtil';
 import { convertWstEthToGwei } from '~/lib/util/util';
-import NumberDisplay from '~/components/numberDisplay';
 
 const checkIsClosestTick = (
   tick: number,
@@ -138,12 +144,9 @@ interface CustomTooltipProps {
   useMarketUnits: boolean;
 }
 
-const CustomTooltip: React.FC<TooltipProps<number, string> & CustomTooltipProps> = ({ 
-  payload, 
-  pool,
-  onTickInfo,
-  useMarketUnits
-}) => {
+const CustomTooltip: React.FC<
+  TooltipProps<number, string> & CustomTooltipProps
+> = ({ payload, pool, onTickInfo, useMarketUnits }) => {
   useEffect(() => {
     if (payload && payload[0]) {
       const tick: BarChartTick = payload[0].payload;
@@ -160,30 +163,30 @@ const CustomTooltip: React.FC<TooltipProps<number, string> & CustomTooltipProps>
       {tick.tickIdx < pool.tickCurrent && !tick.isCurrent && (
         <>
           <p>
-            {tick.liquidityLockedToken1.toFixed(4)}{' '}{useMarketUnits ? 'Ggas' : 'gas'}
+            {tick.liquidityLockedToken1.toFixed(4)}{' '}
+            {useMarketUnits ? 'Ggas' : 'gas'}
           </p>
-          <p>
-             0 {useMarketUnits ? 'wstETH' : 'gwei'}
-          </p>
+          <p>0 {useMarketUnits ? 'wstETH' : 'gwei'}</p>
         </>
       )}
       {tick.tickIdx > pool.tickCurrent && !tick.isCurrent && (
         <>
+          <p>0 {useMarketUnits ? 'Ggas' : 'gas'}</p>
           <p>
-            0 {useMarketUnits ? 'Ggas' : 'gas'}
-          </p>
-          <p>
-            {tick.liquidityLockedToken0.toFixed(4)} {useMarketUnits ? 'wstETH' : 'gwei'}{' '}
+            {tick.liquidityLockedToken0.toFixed(4)}{' '}
+            {useMarketUnits ? 'wstETH' : 'gwei'}{' '}
           </p>
         </>
       )}
       {tick.isCurrent && (
         <>
           <p>
-            {tick.liquidityLockedToken1.toFixed(4)} {useMarketUnits ? 'Ggas' : 'gas'}
+            {tick.liquidityLockedToken1.toFixed(4)}{' '}
+            {useMarketUnits ? 'Ggas' : 'gas'}
           </p>
           <p>
-            {tick.liquidityLockedToken0.toFixed(4)} {useMarketUnits ? 'wstETH' : 'gwei'}
+            {tick.liquidityLockedToken0.toFixed(4)}{' '}
+            {useMarketUnits ? 'wstETH' : 'gwei'}
           </p>
         </>
       )}
@@ -194,7 +197,6 @@ const CustomTooltip: React.FC<TooltipProps<number, string> & CustomTooltipProps>
 const DepthChart: React.FC = () => {
   const [poolData, setPool] = useState<PoolData | undefined>();
   const [price0, setPrice0] = useState<number>(0);
-  const [price1, setPrice1] = useState<number>(0);
   const [label, setLabel] = useState<string>('');
   const {
     pool,
@@ -203,16 +205,19 @@ const DepthChart: React.FC = () => {
     baseAssetMinPriceTick,
     baseAssetMaxPriceTick,
     useMarketUnits,
-    stEthPerToken
+    stEthPerToken,
   } = useContext(MarketContext);
 
-  const setTickInfo = useCallback((tickIdx: number, rawPrice0: number, rawPrice1: number) => {
-    const convertedPrice0 = useMarketUnits ? rawPrice0 : convertWstEthToGwei(rawPrice0, stEthPerToken);
-    const convertedPrice1 = useMarketUnits ? rawPrice1 : convertWstEthToGwei(rawPrice1, stEthPerToken);
-    setPrice0(convertedPrice0);
-    setPrice1(convertedPrice1);
-    setLabel(`Tick ${tickIdx}`);
-  }, [useMarketUnits, stEthPerToken]);
+  const setTickInfo = useCallback(
+    (tickIdx: number, rawPrice0: number) => {
+      const convertedPrice0 = useMarketUnits
+        ? rawPrice0
+        : convertWstEthToGwei(rawPrice0, stEthPerToken);
+      setPrice0(convertedPrice0);
+      setLabel(`Tick ${tickIdx}`);
+    },
+    [useMarketUnits, stEthPerToken]
+  );
 
   const activeTickValue = pool?.tickCurrent || 0;
   const tickSpacing = pool ? pool?.tickSpacing : TICK_SPACING_DEFAULT;
@@ -246,8 +251,6 @@ const DepthChart: React.FC = () => {
     contracts,
   }) as { data: TickData[]; isLoading: boolean };
 
-  console.log('tickData', tickData);
-
   const graphTicks: GraphTick[] = useMemo(() => {
     if (!tickData) return [];
     return tickData.map((tick, idx) => {
@@ -277,17 +280,20 @@ const DepthChart: React.FC = () => {
 
   const isCurrentPrice = useMemo(() => {
     if (!price0 || !currPrice0) return false;
-    const displayPrice = useMarketUnits ? price0 : convertWstEthToGwei(price0, stEthPerToken);
-    const displayCurrPrice = useMarketUnits ? currPrice0 : convertWstEthToGwei(currPrice0, stEthPerToken);
+    const displayPrice = useMarketUnits
+      ? price0
+      : convertWstEthToGwei(price0, stEthPerToken);
+    const displayCurrPrice = useMarketUnits
+      ? currPrice0
+      : convertWstEthToGwei(currPrice0, stEthPerToken);
     return displayPrice === displayCurrPrice;
   }, [price0, currPrice0, useMarketUnits, stEthPerToken]);
 
   useEffect(() => {
     if (currPrice0 && currPrice1) {
       setPrice0(currPrice0);
-      setPrice1(currPrice1);
       if (activeTickValue) {
-        setTickInfo(activeTickValue, currPrice0, currPrice1);
+        setTickInfo(activeTickValue, currPrice0);
       }
     }
   }, [currPrice0, currPrice1, activeTickValue, setTickInfo]);
@@ -317,18 +323,29 @@ const DepthChart: React.FC = () => {
 
   return (
     <div className="flex flex-1 flex-col p-4">
-    {!poolData && (
-      <div className="flex items-center justify-center h-full w-full">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-4 border-primary opacity-10" />
-      </div>
-    )}
-      <div className="w-fit">
-        <p className="text-xs font-medium text-gray-500 mb-0.5">{label ? `${label}` : ''}</p>
+      {!poolData && (
+        <div className="flex items-center justify-center h-full w-full">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-4 border-primary opacity-10" />
+        </div>
+      )}
+      <div className="w-fit pl-2 border-l-4 border-l-[#F1EBDD] mb-1">
+        <p className="text-xs font-medium text-gray-500 mb-0.5">
+          {label ? `${label}` : ''}
+        </p>
         {pool && price0 && (
           <div className="flex items-center">
             {isCurrentPrice && <span className="mr-1">Current Price: </span>}
-            <NumberDisplay value={useMarketUnits ? price0 : convertWstEthToGwei(price0, stEthPerToken)} precision={4} />
-            <span className="ml-1">{useMarketUnits ? 'Ggas/wstETH' : 'gwei'}</span>
+            <NumberDisplay
+              value={
+                useMarketUnits
+                  ? price0
+                  : convertWstEthToGwei(price0, stEthPerToken)
+              }
+              precision={4}
+            />
+            <span className="ml-1">
+              {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
+            </span>
           </div>
         )}
       </div>
@@ -337,9 +354,8 @@ const DepthChart: React.FC = () => {
           <BarChart
             data={poolData.ticks}
             margin={{ bottom: -25, left: 0, right: 0 }}
-
             onMouseLeave={() => {
-              setTickInfo(activeTickValue, currPrice0, currPrice1);
+              setTickInfo(activeTickValue, currPrice0);
             }}
           >
             <XAxis

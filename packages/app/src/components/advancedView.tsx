@@ -260,15 +260,15 @@ const Market = ({
     if (chartType === ChartType.PRICE) {
       return (
         <div className=" pr-3 pb-2">
-        <Chart
-          data={{
-            marketPrices: marketPrices || [],
-            indexPrices: indexPrices || [],
-            resourcePrices: resourcePrices || [],
-          }}
-          isLoading={idxLoading}
-          seriesVisibility={seriesVisibility}
-        />
+          <Chart
+            data={{
+              marketPrices: marketPrices || [],
+              indexPrices: indexPrices || [],
+              resourcePrices: resourcePrices || [],
+            }}
+            isLoading={idxLoading}
+            seriesVisibility={seriesVisibility}
+          />
         </div>
       );
     }

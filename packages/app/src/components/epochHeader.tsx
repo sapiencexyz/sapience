@@ -68,7 +68,7 @@ const EpochHeader = () => {
 
   return (
     <div className="flex items-center flex-col w-full">
-      <div className="w-full items-center flex flex-col lg:flex-row p-6 lg:pb-5 lg:pt-7">
+      <div className="w-full items-center flex flex-col lg:flex-row p-6 lg:pt-7">
         <div className="w-full lg:w-auto flex justify-between lg:justify-start items-center">
           <h1 className="text-3xl font-semibold mb-0 flex items-center gap-2">
             {resource?.iconPath && (

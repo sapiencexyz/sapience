@@ -170,7 +170,7 @@ export const HowItWorks = () => {
 
       <div
         className="absolute bottom-[40px] z-10 md:bottom-[120px]"
-        style={{ perspective: '1000px' }}
+        style={{ perspective: '800px' }}
       >
         <motion.div
           className="flex items-center rounded-3xl border border-[rgba(218,216,209,0.2)] bg-white md:gap-2"
@@ -180,7 +180,7 @@ export const HowItWorks = () => {
           }}
           animate={{
             rotateY:
-              activeButton === 'left' ? -10 : activeButton === 'right' ? 10 : 0,
+              activeButton === 'left' ? -7 : activeButton === 'right' ? 7 : 0,
             boxShadow: activeButton
               ? '0px 8px 16px rgba(0,0,0,0.15)'
               : '0px 2px 4px rgba(0,0,0,0.1)',
