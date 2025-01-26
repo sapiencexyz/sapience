@@ -20,6 +20,7 @@ import { useReadContracts } from 'wagmi';
 import NumberDisplay from '~/components/numberDisplay';
 import { TICK_SPACING_DEFAULT } from '~/lib/constants/constants';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
+import { useTradePool } from '~/lib/context/TradePoolContext';
 import type {
   BarChartTick,
   GraphTick,
@@ -113,12 +114,14 @@ interface CustomXAxisTickProps {
   };
   activeTickValue: number;
   tickSpacing: number;
+  tradeDirection: 'Long' | 'Short' | null;
 }
 
 const CustomXAxisTick: React.FC<CustomXAxisTickProps> = ({
   props,
   activeTickValue,
   tickSpacing,
+  tradeDirection,
 }) => {
   const { payload, x, y } = props;
 
@@ -130,9 +133,12 @@ const CustomXAxisTick: React.FC<CustomXAxisTickProps> = ({
 
   if (!isClosestTick) return null;
 
+  // For Short direction, position label at x=0
+  const labelX = tradeDirection === 'Short' ? 0 : x;
+
   return (
-    <g transform={`translate(${x},${y})`} id="activeTicks">
-      <text x={0} y={0} dy={12} textAnchor="middle" fontSize={12} opacity={0.5}>
+    <g transform={`translate(${labelX},${y})`} id="activeTicks">
+      <text x={0} y={0} dy={12} textAnchor="start" fontSize={12} opacity={0.5}>
         Active tick range
       </text>
     </g>
@@ -215,6 +221,7 @@ const DepthChart: React.FC = () => {
     useMarketUnits,
     stEthPerToken,
   } = useContext(PeriodContext);
+  const { tradeDirection, setLowPrice, setHighPrice } = useTradePool();
 
   const setTickInfo = useCallback((tickIdx: number, rawPrice0: number) => {
     setPrice0(rawPrice0);
@@ -266,11 +273,25 @@ const DepthChart: React.FC = () => {
 
   useEffect(() => {
     if (pool) {
-      getFullPool(pool, graphTicks, tickSpacing).then((fullPoolData) =>
-        setPool(fullPoolData)
-      );
+      getFullPool(pool, graphTicks, tickSpacing).then((fullPoolData) => {
+        if (tradeDirection === 'Long') {
+          const filteredTicks = fullPoolData.ticks.filter(
+            (tick) => tick.isCurrent || tick.tickIdx >= pool.tickCurrent
+          );
+          setPool({ ...fullPoolData, ticks: filteredTicks });
+        } else if (tradeDirection === 'Short') {
+          const filteredTicks = fullPoolData.ticks
+            .filter(
+              (tick) => tick.isCurrent || tick.tickIdx <= pool.tickCurrent
+            )
+            .sort((a, b) => b.tickIdx - a.tickIdx);
+          setPool({ ...fullPoolData, ticks: filteredTicks });
+        } else {
+          setPool(fullPoolData);
+        }
+      });
     }
-  }, [pool, graphTicks, tickSpacing]);
+  }, [pool, graphTicks, tickSpacing, tradeDirection]);
 
   const [currPrice0, currPrice1] = useMemo(() => {
     const currTick = poolData?.ticks.filter((t) => t.isCurrent);
@@ -314,6 +335,7 @@ const DepthChart: React.FC = () => {
       props={props}
       activeTickValue={activeTickValue}
       tickSpacing={tickSpacing}
+      tradeDirection={tradeDirection}
     />
   );
 
@@ -333,10 +355,12 @@ const DepthChart: React.FC = () => {
         }}
         transition={{ duration: 0.2 }}
       >
-        <p className="text-xs font-medium text-gray-500 mb-0.5">
-          {label ? `${label}` : ''}
-          {isActiveTick && <> (Active)</>}
-        </p>
+        <div className="flex flex-col gap-0.5">
+          <p className="text-xs font-medium text-gray-500">
+            {label ? `${label}` : ''}
+            {isActiveTick && <> (Active)</>}
+          </p>
+        </div>
         {pool && price0 && (
           <div className="flex items-center">
             <NumberDisplay
