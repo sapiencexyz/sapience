@@ -4,9 +4,9 @@ import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/I
 import type { Pool } from '@uniswap/v3-sdk';
 import type React from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-import { useContext, useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import type { TooltipProps } from 'recharts';
-import { BarChart, ResponsiveContainer, XAxis, Tooltip, Bar } from 'recharts';
+import { BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Bar } from 'recharts';
 import { type AbiFunction } from 'viem';
 import { useReadContracts } from 'wagmi';
 
@@ -18,6 +18,8 @@ import type {
   PoolData,
 } from '~/lib/util/liquidityUtil';
 import { getFullPool } from '~/lib/util/liquidityUtil';
+import { convertWstEthToGwei } from '~/lib/util/util';
+import NumberDisplay from '~/components/numberDisplay';
 
 const checkIsClosestTick = (
   tick: number,
@@ -87,6 +89,7 @@ const CustomBar: React.FC<CustomBarProps> = ({
         Z
       `}
       fill={fill}
+      height="100%"
     />
   );
 };
@@ -122,68 +125,65 @@ const CustomXAxisTick: React.FC<CustomXAxisTickProps> = ({
 
   return (
     <g transform={`translate(${x},${y})`} id="activeTicks">
-      <text x={0} y={0} dy={10} textAnchor="middle" fontSize={12} opacity={0.5}>
+      <text x={0} y={0} dy={12} textAnchor="middle" fontSize={12} opacity={0.5}>
         Active tick range
       </text>
     </g>
   );
 };
+
 interface CustomTooltipProps {
   pool: Pool | null;
-  setPrice1: Dispatch<SetStateAction<number>>; // used for price1 value on hover
-  setPrice0: Dispatch<SetStateAction<number>>; // used for price0 value on hover
-  setLabel: Dispatch<SetStateAction<string>>; // used for label of value
+  onTickInfo: (tickIdx: number, price0: number, price1: number) => void;
+  useMarketUnits: boolean;
 }
-const CustomTooltip: React.FC<
-  TooltipProps<number, string> & CustomTooltipProps
-> = ({ payload, pool, setPrice0, setLabel, setPrice1 }) => {
+
+const CustomTooltip: React.FC<TooltipProps<number, string> & CustomTooltipProps> = ({ 
+  payload, 
+  pool,
+  onTickInfo,
+  useMarketUnits
+}) => {
   useEffect(() => {
     if (payload && payload[0]) {
       const tick: BarChartTick = payload[0].payload;
-      setPrice0(tick.price0);
-      setPrice1(tick.price1);
-      setLabel(`Tick ${tick.tickIdx}`);
+      onTickInfo(tick.tickIdx, tick.price0, tick.price1);
     }
-  }, [payload, setLabel, setPrice0, setPrice1]);
+  }, [payload, onTickInfo]);
 
   if (!payload || !payload[0] || !pool) return null;
   const tick: BarChartTick = payload[0].payload;
 
-  console.log(pool.tickCurrent, tick.tickIdx, tick.isCurrent);
-
   return (
     <div className="bg-background p-3 border border-border rounded-sm shadow-sm">
+      <p className="text-xs font-medium text-gray-500 mb-0.5">Liquidity</p>
       {tick.tickIdx < pool.tickCurrent && !tick.isCurrent && (
         <>
           <p>
-            {pool.token1.symbol} Liquidity:{' '}
-            {tick.liquidityLockedToken1.toFixed(3)}
+            {tick.liquidityLockedToken1.toFixed(4)}{' '}{useMarketUnits ? 'Ggas' : 'gas'}
           </p>
           <p>
-            {pool.token0.symbol} Liquidity:{' 0'}
+             0 {useMarketUnits ? 'wstETH' : 'gwei'}
           </p>
         </>
       )}
       {tick.tickIdx > pool.tickCurrent && !tick.isCurrent && (
         <>
           <p>
-            {pool.token1.symbol} Liquidity:{' 0'}
+            0 {useMarketUnits ? 'Ggas' : 'gas'}
           </p>
           <p>
-            {pool.token0.symbol} Liquidity:{' '}
-            {tick.liquidityLockedToken0.toFixed(3)}
+            {tick.liquidityLockedToken0.toFixed(4)} {useMarketUnits ? 'wstETH' : 'gwei'}{' '}
           </p>
         </>
       )}
       {tick.isCurrent && (
         <>
           <p>
-            {pool.token1.symbol} Liquidity:{' '}
-            {tick.liquidityLockedToken1.toFixed(3)}
+            {tick.liquidityLockedToken1.toFixed(4)} {useMarketUnits ? 'Ggas' : 'gas'}
           </p>
           <p>
-            {pool.token0.symbol} Liquidity:{' '}
-            {tick.liquidityLockedToken0.toFixed(3)}
+            {tick.liquidityLockedToken0.toFixed(4)} {useMarketUnits ? 'wstETH' : 'gwei'}
           </p>
         </>
       )}
@@ -202,14 +202,20 @@ const DepthChart: React.FC = () => {
     poolAddress,
     baseAssetMinPriceTick,
     baseAssetMaxPriceTick,
+    useMarketUnits,
+    stEthPerToken
   } = useContext(MarketContext);
+
+  const setTickInfo = useCallback((tickIdx: number, rawPrice0: number, rawPrice1: number) => {
+    const convertedPrice0 = useMarketUnits ? rawPrice0 : convertWstEthToGwei(rawPrice0, stEthPerToken);
+    const convertedPrice1 = useMarketUnits ? rawPrice1 : convertWstEthToGwei(rawPrice1, stEthPerToken);
+    setPrice0(convertedPrice0);
+    setPrice1(convertedPrice1);
+    setLabel(`Tick ${tickIdx}`);
+  }, [useMarketUnits, stEthPerToken]);
+
   const activeTickValue = pool?.tickCurrent || 0;
   const tickSpacing = pool ? pool?.tickSpacing : TICK_SPACING_DEFAULT;
-  useEffect(() => {
-    if (activeTickValue) {
-      setLabel(`Active Tick Value: ${activeTickValue}`);
-    }
-  }, [activeTickValue]);
 
   const ticks = useMemo(() => {
     const tickRange: number[] = [];
@@ -269,10 +275,22 @@ const DepthChart: React.FC = () => {
     return [0, 0];
   }, [poolData]);
 
+  const isCurrentPrice = useMemo(() => {
+    if (!price0 || !currPrice0) return false;
+    const displayPrice = useMarketUnits ? price0 : convertWstEthToGwei(price0, stEthPerToken);
+    const displayCurrPrice = useMarketUnits ? currPrice0 : convertWstEthToGwei(currPrice0, stEthPerToken);
+    return displayPrice === displayCurrPrice;
+  }, [price0, currPrice0, useMarketUnits, stEthPerToken]);
+
   useEffect(() => {
-    setPrice0(currPrice0);
-    setPrice1(currPrice1);
-  }, [currPrice0, currPrice1]);
+    if (currPrice0 && currPrice1) {
+      setPrice0(currPrice0);
+      setPrice1(currPrice1);
+      if (activeTickValue) {
+        setTickInfo(activeTickValue, currPrice0, currPrice1);
+      }
+    }
+  }, [currPrice0, currPrice1, activeTickValue, setTickInfo]);
 
   const renderBar = (props: any) => (
     <CustomBar
@@ -298,36 +316,30 @@ const DepthChart: React.FC = () => {
   );
 
   return (
-    <div className="flex flex-1 relative pt-3 pl-3">
-      <div className="min-h-[50px] w-fit absolute top-3 left-3 z-[2] bg-background">
+    <div className="flex flex-1 flex-col p-4">
+    {!poolData && (
+      <div className="flex items-center justify-center h-full w-full">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-4 border-primary opacity-10" />
+      </div>
+    )}
+      <div className="w-fit">
+        <p className="text-xs font-medium text-gray-500 mb-0.5">{label ? `${label}` : ''}</p>
         {pool && price0 && (
-          <div>
-            <p className="text-base">
-              {` 1${pool.token0.symbol} = ${price0.toFixed(4)}
-        ${pool.token1.symbol}`}
-            </p>
-            <p className="text-base">
-              {` 1${pool.token1.symbol} = ${price1.toFixed(4)}
-        ${pool.token0.symbol}`}
-            </p>
+          <div className="flex items-center">
+            {isCurrentPrice && <span className="mr-1">Current Price: </span>}
+            <NumberDisplay value={useMarketUnits ? price0 : convertWstEthToGwei(price0, stEthPerToken)} precision={4} />
+            <span className="ml-1">{useMarketUnits ? 'Ggas/wstETH' : 'gwei'}</span>
           </div>
         )}
-        <p className="text-sm text-gray-500">{label ? `${label}` : ''}</p>
       </div>
-      {!poolData && (
-        <div className="flex items-center justify-center h-full w-full">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary opacity-20" />
-        </div>
-      )}
       {poolData && (
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={poolData.ticks}
-            margin={{ top: 70, bottom: -30 }}
+            margin={{ bottom: -25, left: 0, right: 0 }}
+
             onMouseLeave={() => {
-              setLabel(`Active Tick Value: ${activeTickValue}`);
-              setPrice0(currPrice0);
-              setPrice1(currPrice1);
+              setTickInfo(activeTickValue, currPrice0, currPrice1);
             }}
           >
             <XAxis
@@ -337,14 +349,14 @@ const DepthChart: React.FC = () => {
               interval={0}
               tickLine={false}
             />
+            <YAxis hide domain={[0, 'auto']} />
             <Tooltip
               cursor={{ fill: '#F1EBDD' }}
               content={
                 <CustomTooltip
                   pool={pool}
-                  setLabel={setLabel}
-                  setPrice0={setPrice0}
-                  setPrice1={setPrice1}
+                  onTickInfo={setTickInfo}
+                  useMarketUnits={useMarketUnits}
                 />
               }
             />

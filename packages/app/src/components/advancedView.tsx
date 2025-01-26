@@ -259,6 +259,7 @@ const Market = ({
   const renderChart = () => {
     if (chartType === ChartType.PRICE) {
       return (
+        <div className=" pr-3 pb-2">
         <Chart
           data={{
             marketPrices: marketPrices || [],
@@ -268,6 +269,7 @@ const Market = ({
           isLoading={idxLoading}
           seriesVisibility={seriesVisibility}
         />
+        </div>
       );
     }
     if (chartType === ChartType.VOLUME) {
@@ -385,7 +387,7 @@ const Market = ({
                 <Stats />
 
                 <div className="flex flex-1 id-chart-flex min-h-[400px] md:min-h-0 overflow-visible lg:overflow-hidden">
-                  <div className="flex w-full h-full border border-border overflow-hidden rounded-lg pr-3 pb-2 shadow-sm">
+                  <div className="flex w-full h-full border border-border overflow-hidden rounded-lg shadow-sm">
                     {renderChart()}
                   </div>
                 </div>
