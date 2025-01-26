@@ -2,6 +2,7 @@
 
 import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import type { Pool } from '@uniswap/v3-sdk';
+import { motion, AnimatePresence } from 'framer-motion';
 import type React from 'react';
 import { useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import type { TooltipProps } from 'recharts';
@@ -171,39 +172,46 @@ const CustomTooltip: React.FC<
   const tick: BarChartTick = payload[0].payload;
 
   return (
-    <div className="bg-background p-3 border border-border rounded-sm shadow-sm">
-      <p className="text-xs font-medium text-gray-500 mb-0.5">Liquidity</p>
-      {tick.tickIdx < pool.tickCurrent && !tick.isCurrent && (
-        <>
-          <p>
-            {tick.liquidityLockedToken1.toFixed(4)}{' '}
-            {useMarketUnits ? 'Ggas' : 'gas'}
-          </p>
-          <p>0 {useMarketUnits ? 'wstETH' : 'gwei'}</p>
-        </>
-      )}
-      {tick.tickIdx > pool.tickCurrent && !tick.isCurrent && (
-        <>
-          <p>0 {useMarketUnits ? 'Ggas' : 'gas'}</p>
-          <p>
-            {tick.liquidityLockedToken0.toFixed(4)}{' '}
-            {useMarketUnits ? 'wstETH' : 'gwei'}{' '}
-          </p>
-        </>
-      )}
-      {tick.isCurrent && (
-        <>
-          <p>
-            {tick.liquidityLockedToken1.toFixed(4)}{' '}
-            {useMarketUnits ? 'Ggas' : 'gas'}
-          </p>
-          <p>
-            {tick.liquidityLockedToken0.toFixed(4)}{' '}
-            {useMarketUnits ? 'wstETH' : 'gwei'}
-          </p>
-        </>
-      )}
-    </div>
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="bg-background p-3 border border-border rounded-sm shadow-sm"
+      >
+        <p className="text-xs font-medium text-gray-500 mb-0.5">Liquidity</p>
+        {tick.tickIdx < pool.tickCurrent && !tick.isCurrent && (
+          <>
+            <p>
+              {tick.liquidityLockedToken1.toFixed(4)}{' '}
+              {useMarketUnits ? 'Ggas' : 'gas'}
+            </p>
+            <p>0 {useMarketUnits ? 'wstETH' : 'gwei'}</p>
+          </>
+        )}
+        {tick.tickIdx > pool.tickCurrent && !tick.isCurrent && (
+          <>
+            <p>0 {useMarketUnits ? 'Ggas' : 'gas'}</p>
+            <p>
+              {tick.liquidityLockedToken0.toFixed(4)}{' '}
+              {useMarketUnits ? 'wstETH' : 'gwei'}{' '}
+            </p>
+          </>
+        )}
+        {tick.isCurrent && (
+          <>
+            <p>
+              {tick.liquidityLockedToken1.toFixed(4)}{' '}
+              {useMarketUnits ? 'Ggas' : 'gas'}
+            </p>
+            <p>
+              {tick.liquidityLockedToken0.toFixed(4)}{' '}
+              {useMarketUnits ? 'wstETH' : 'gwei'}
+            </p>
+          </>
+        )}
+      </motion.div>
+    </AnimatePresence>
   );
 };
 
@@ -331,7 +339,15 @@ const DepthChart: React.FC = () => {
           <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent opacity-20" />
         </div>
       )}
-      <div className="w-fit pl-2 border-l-4 border-l-[#F1EBDD] mb-1">
+      <motion.div
+        className="w-fit pl-2 mb-1"
+        initial={false}
+        animate={{
+          borderLeftWidth: '4px',
+          borderLeftColor: isActiveTick ? '#8D895E' : '#F1EBDD',
+        }}
+        transition={{ duration: 0.2 }}
+      >
         <p className="text-xs font-medium text-gray-500 mb-0.5">
           {label ? `${label}` : ''}
           {isActiveTick && <> (Active)</>}
@@ -351,7 +367,7 @@ const DepthChart: React.FC = () => {
             </span>
           </div>
         )}
-      </div>
+      </motion.div>
       {poolData && (
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
