@@ -133,12 +133,21 @@ const CustomXAxisTick: React.FC<CustomXAxisTickProps> = ({
 
   if (!isClosestTick) return null;
 
-  // For Short direction, position label at x=0
-  const labelX = tradeDirection === 'Short' ? 0 : x;
+  // Use x=0 when we have a direction, original x position otherwise
+  const labelX = tradeDirection ? 0 : x;
+  // Use start alignment when we have a direction, centered otherwise
+  const textAnchor = tradeDirection ? 'start' : 'middle';
 
   return (
     <g transform={`translate(${labelX},${y})`} id="activeTicks">
-      <text x={0} y={0} dy={12} textAnchor="start" fontSize={12} opacity={0.5}>
+      <text
+        x={0}
+        y={0}
+        dy={12}
+        textAnchor={textAnchor}
+        fontSize={12}
+        opacity={0.5}
+      >
         Active tick range
       </text>
     </g>
