@@ -308,7 +308,7 @@ const DepthChart: React.FC = () => {
     useMarketUnits,
     stEthPerToken,
   } = useContext(PeriodContext);
-  const { tradeDirection, setLowPrice, setHighPrice } = useTradePool();
+  const { tradeDirection, setLowPriceTick, setHighPriceTick } = useTradePool();
   const [lowPriceX, setLowPriceX] = useState<number | null>(null);
   const [highPriceX, setHighPriceX] = useState<number | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
@@ -430,14 +430,14 @@ const DepthChart: React.FC = () => {
 
     if (lowTickIndex !== -1) {
       setLowPriceX(lowTickIndex * xScale);
-      setLowPrice(poolData.ticks[lowTickIndex].price0);
+      setLowPriceTick(poolData.ticks[lowTickIndex].tickIdx);
     }
 
     if (highTickIndex !== -1) {
       setHighPriceX(highTickIndex * xScale);
-      setHighPrice(poolData.ticks[highTickIndex].price0);
+      setHighPriceTick(poolData.ticks[highTickIndex].tickIdx);
     }
-  }, [poolData, pool, setLowPrice, setHighPrice]);
+  }, [poolData, pool, setLowPriceTick, setHighPriceTick]);
 
   const handleLowPriceDrag = useCallback(
     (newX: number) => {
@@ -503,9 +503,9 @@ const DepthChart: React.FC = () => {
       // Snap X position to the nearest tick
       const snappedX = tickIndex * xScale;
       setLowPriceX(snappedX);
-      setLowPrice(tick.price0);
+      setLowPriceTick(tick.tickIdx);
     }
-  }, [poolData, lowPriceX, setLowPrice]);
+  }, [poolData, lowPriceX, setLowPriceTick]);
 
   const handleHighPriceDragEnd = useCallback(() => {
     if (!poolData || !chartRef.current || highPriceX === null) return;
@@ -523,9 +523,9 @@ const DepthChart: React.FC = () => {
       // Snap X position to the nearest tick
       const snappedX = tickIndex * xScale;
       setHighPriceX(snappedX);
-      setHighPrice(tick.price0);
+      setHighPriceTick(tick.tickIdx);
     }
-  }, [poolData, highPriceX, setHighPrice]);
+  }, [poolData, highPriceX, setHighPriceTick]);
 
   const renderBar = (props: any) => (
     <CustomBar
@@ -631,6 +631,24 @@ const DepthChart: React.FC = () => {
             <Bar dataKey="liquidityActive" shape={renderBar} />
             {tradeDirection === null && (
               <g>
+                {/* Left overlay rectangle */}
+                <rect
+                  x={0}
+                  y={0}
+                  width={lowPriceX || 50}
+                  height="calc(100% - 35px)"
+                  className="fill-background"
+                  opacity={0.75}
+                />
+                {/* Right overlay rectangle */}
+                <rect
+                  x={highPriceX || 350}
+                  y={0}
+                  width="100%"
+                  height="calc(100% - 35px)"
+                  className="fill-background"
+                  opacity={0.75}
+                />
                 <DraggableHandle
                   x={lowPriceX || 50}
                   y={0}

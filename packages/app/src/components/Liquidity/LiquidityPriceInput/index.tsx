@@ -14,6 +14,7 @@ interface Props<T extends FieldValues> {
   name: Path<T>;
   control: Control<T>;
   isDisabled?: boolean;
+  onBlur?: (event: React.FocusEvent<HTMLInputElement>) => void;
 }
 
 const LiquidityPriceInput = <T extends FieldValues>({
@@ -21,6 +22,7 @@ const LiquidityPriceInput = <T extends FieldValues>({
   name,
   control,
   isDisabled = false,
+  onBlur: externalOnBlur,
 }: Props<T>) => {
   const { collateralAssetTicker, useMarketUnits } = useContext(PeriodContext);
 
@@ -43,11 +45,14 @@ const LiquidityPriceInput = <T extends FieldValues>({
               <Input
                 value={value?.toString() || ''}
                 onChange={(e) => onChange(removeLeadingZeros(e.target.value))}
-                onBlur={() => {
+                onBlur={(e) => {
                   if (value === '') {
                     onChange('0');
                   }
                   onBlur();
+                  if (externalOnBlur) {
+                    externalOnBlur(e);
+                  }
                 }}
                 type="number"
                 inputMode="decimal"

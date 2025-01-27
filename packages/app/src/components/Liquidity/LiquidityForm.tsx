@@ -37,7 +37,11 @@ import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useTradePool } from '~/lib/context/TradePoolContext';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
-import { JSBIAbs } from '~/lib/util/util';
+import {
+  JSBIAbs,
+  convertWstEthToGwei,
+  convertGgasPerWstEthToGwei,
+} from '~/lib/util/util';
 
 import LiquidityAmountInput from './LiquidityAmountInput';
 import LiquidityPriceInput from './LiquidityPriceInput';
@@ -65,6 +69,8 @@ const LiquidityForm: React.FC = () => {
     refetchUniswapData,
     address: marketAddress,
     marketParams,
+    useMarketUnits,
+    stEthPerToken,
   } = useContext(PeriodContext);
 
   if (!epoch) {
@@ -93,9 +99,19 @@ const LiquidityForm: React.FC = () => {
       const errors: Record<string, { type: string; message: string }> = {};
 
       const lowPriceNum = Number(values.lowPrice);
-      const minPrice = tickToPrice(baseAssetMinPriceTick);
+      const minPrice = useMarketUnits
+        ? tickToPrice(baseAssetMinPriceTick)
+        : convertWstEthToGwei(
+            tickToPrice(baseAssetMinPriceTick),
+            stEthPerToken
+          );
       const maxLowPrice = Number(values.highPrice);
-      const lowPriceTick = priceToTick(lowPriceNum, tickSpacing);
+      const lowPriceTick = priceToTick(
+        useMarketUnits
+          ? lowPriceNum
+          : lowPriceNum / convertGgasPerWstEthToGwei(1, stEthPerToken),
+        tickSpacing
+      );
 
       if (lowPriceNum < minPrice) {
         errors.lowPrice = {
@@ -116,8 +132,18 @@ const LiquidityForm: React.FC = () => {
 
       const highPriceNum = Number(values.highPrice);
       const minHighPrice = Number(values.lowPrice);
-      const maxPrice = tickToPrice(baseAssetMaxPriceTick);
-      const highPriceTick = priceToTick(highPriceNum, tickSpacing);
+      const maxPrice = useMarketUnits
+        ? tickToPrice(baseAssetMaxPriceTick)
+        : convertWstEthToGwei(
+            tickToPrice(baseAssetMaxPriceTick),
+            stEthPerToken
+          );
+      const highPriceTick = priceToTick(
+        useMarketUnits
+          ? highPriceNum
+          : highPriceNum / convertGgasPerWstEthToGwei(1, stEthPerToken),
+        tickSpacing
+      );
 
       if (highPriceNum <= minHighPrice) {
         errors.highPrice = {
@@ -1006,35 +1032,126 @@ const LiquidityForm: React.FC = () => {
   }, [nftId, positionData, isEdit, setValue]);
 
   const {
-    setLowPrice,
-    setHighPrice,
-    lowPrice: contextLowPrice,
-    highPrice: contextHighPrice,
+    setLowPriceTick,
+    setHighPriceTick,
+    lowPriceTick: contextLowPriceTick,
+    highPriceTick: contextHighPriceTick,
+    snapPriceToTick,
   } = useTradePool();
 
-  // Update TradePool context when form values change
-  useEffect(() => {
-    if (!isEdit) {
-      setLowPrice(Number(lowPrice));
-      setHighPrice(Number(highPrice));
+  // Convert price from display units to market units
+  const convertDisplayToMarketPrice = (displayPrice: number): number => {
+    if (useMarketUnits) {
+      return displayPrice;
     }
-  }, [lowPrice, highPrice, isEdit, setLowPrice, setHighPrice]);
+    // Convert from gwei to Ggas/wstETH
+    return displayPrice / convertGgasPerWstEthToGwei(1, stEthPerToken);
+  };
 
-  // Update form values when TradePool context values change
-  useEffect(() => {
-    if (!isEdit && contextLowPrice && contextHighPrice) {
-      setValue('lowPrice', contextLowPrice.toString(), {
-        shouldValidate: false,
-        shouldDirty: false,
-        shouldTouch: false,
-      });
-      setValue('highPrice', contextHighPrice.toString(), {
-        shouldValidate: false,
-        shouldDirty: false,
-        shouldTouch: false,
-      });
+  // Convert price from market units to display units
+  const convertMarketToDisplayPrice = (marketPrice: number): number => {
+    if (useMarketUnits) {
+      return marketPrice;
     }
-  }, [contextLowPrice, contextHighPrice, isEdit, setValue]);
+    // Convert from Ggas/wstETH to gwei
+    return convertWstEthToGwei(marketPrice, stEthPerToken);
+  };
+
+  // Update form values when market units change
+  useEffect(() => {
+    // Use context ticks if available and non-zero, otherwise use market min/max ticks
+    const lowTick =
+      contextLowPriceTick !== undefined && contextLowPriceTick !== 0
+        ? contextLowPriceTick
+        : baseAssetMinPriceTick;
+    const highTick =
+      contextHighPriceTick !== undefined && contextHighPriceTick !== 0
+        ? contextHighPriceTick
+        : baseAssetMaxPriceTick;
+
+    console.log('Ticks:', {
+      lowTick,
+      highTick,
+      contextLowPriceTick,
+      contextHighPriceTick,
+      baseAssetMinPriceTick,
+      baseAssetMaxPriceTick,
+    });
+
+    if (lowTick === undefined || highTick === undefined) {
+      console.log('Ticks are undefined');
+      return;
+    }
+
+    // Convert from ticks to market price
+    const lowMarketPrice = tickToPrice(lowTick);
+    const highMarketPrice = tickToPrice(highTick);
+
+    console.log('Market Prices:', { lowMarketPrice, highMarketPrice });
+
+    // Convert to display units based on current useMarketUnits setting
+    const lowDisplayPrice = useMarketUnits
+      ? lowMarketPrice
+      : convertWstEthToGwei(lowMarketPrice, stEthPerToken);
+    const highDisplayPrice = useMarketUnits
+      ? highMarketPrice
+      : convertWstEthToGwei(highMarketPrice, stEthPerToken);
+
+    console.log('Display Prices:', {
+      lowDisplayPrice,
+      highDisplayPrice,
+      useMarketUnits,
+      stEthPerToken,
+    });
+
+    setValue('lowPrice', lowDisplayPrice.toString(), {
+      shouldValidate: false,
+      shouldDirty: false,
+      shouldTouch: false,
+    });
+    setValue('highPrice', highDisplayPrice.toString(), {
+      shouldValidate: false,
+      shouldDirty: false,
+      shouldTouch: false,
+    });
+  }, [
+    useMarketUnits,
+    stEthPerToken,
+    contextLowPriceTick,
+    contextHighPriceTick,
+    baseAssetMinPriceTick,
+    baseAssetMaxPriceTick,
+    setValue,
+  ]);
+
+  const handlePriceBlur = (price: string, isLow: boolean) => {
+    if (!isEdit) {
+      const displayPrice = Number(price);
+      const marketPrice = convertDisplayToMarketPrice(displayPrice);
+      const { tick, price: snappedMarketPrice } = snapPriceToTick(
+        marketPrice,
+        tickSpacing
+      );
+      const snappedDisplayPrice =
+        convertMarketToDisplayPrice(snappedMarketPrice);
+
+      if (isLow) {
+        setLowPriceTick(tick);
+        setValue('lowPrice', snappedDisplayPrice.toString(), {
+          shouldValidate: true,
+          shouldDirty: true,
+          shouldTouch: true,
+        });
+      } else {
+        setHighPriceTick(tick);
+        setValue('highPrice', snappedDisplayPrice.toString(), {
+          shouldValidate: true,
+          shouldDirty: true,
+          shouldTouch: true,
+        });
+      }
+    }
+  };
 
   return (
     <Form {...form}>
@@ -1055,6 +1172,7 @@ const LiquidityForm: React.FC = () => {
           name="lowPrice"
           control={control}
           isDisabled={isEdit}
+          onBlur={(e) => handlePriceBlur(e.target.value, true)}
         />
 
         <LiquidityPriceInput
@@ -1062,6 +1180,7 @@ const LiquidityForm: React.FC = () => {
           name="highPrice"
           control={control}
           isDisabled={isEdit}
+          onBlur={(e) => handlePriceBlur(e.target.value, false)}
         />
         <SlippageTolerance />
 
