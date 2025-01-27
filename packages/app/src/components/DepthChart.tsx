@@ -172,54 +172,6 @@ const CustomTooltip: React.FC<
 
   if (!payload || !payload[0] || !pool) return null;
   const tick: BarChartTick = payload[0].payload;
-  const isLeftOfActive = tick.tickIdx < pool.tickCurrent;
-
-  const getLiquidityDisplay = () => {
-    if (tick.isCurrent || isTrade) {
-      if (isTrade) {
-        let unit;
-        if (isLeftOfActive) {
-          unit = useMarketUnits ? 'Ggas' : 'gas';
-        } else {
-          unit = useMarketUnits ? 'wstETH' : 'gwei';
-        }
-        return (
-          <p>
-            {tick.liquidityActive.toFixed(4)} {unit}
-          </p>
-        );
-      }
-      return (
-        <div>
-          <p>
-            {tick.liquidityLockedToken1.toFixed(4)}{' '}
-            {useMarketUnits ? 'Ggas' : 'gas'}
-          </p>
-          <p>
-            {tick.liquidityLockedToken0.toFixed(4)}{' '}
-            {useMarketUnits ? 'wstETH' : 'gwei'}
-          </p>
-        </div>
-      );
-    }
-    if (tick.tickIdx < pool.tickCurrent) {
-      return (
-        <p>
-          {tick.liquidityLockedToken1.toFixed(4)}{' '}
-          {useMarketUnits ? 'Ggas' : 'gas'}
-        </p>
-      );
-    }
-    if (tick.tickIdx > pool.tickCurrent) {
-      return (
-        <p>
-          {tick.liquidityLockedToken0.toFixed(4)}{' '}
-          {useMarketUnits ? 'wstETH' : 'gwei'}{' '}
-        </p>
-      );
-    }
-    return null;
-  };
 
   return (
     <AnimatePresence>
@@ -232,7 +184,45 @@ const CustomTooltip: React.FC<
         <p className="text-xs font-medium text-gray-500 mb-0.5">
           {isTrade ? 'Cumulative Liquidity' : 'Liquidity'}
         </p>
-        {getLiquidityDisplay()}
+        {isTrade && tick.tickIdx < pool.tickCurrent && (
+          <p>
+            {tick.liquidityActive.toFixed(4)}{' '}
+            {useMarketUnits ? 'wstETH' : 'gwei'}
+          </p>
+        )}
+        {isTrade && tick.tickIdx >= pool.tickCurrent && (
+          <p>
+            {tick.liquidityActive.toFixed(4)} {useMarketUnits ? 'Ggas' : 'gas'}
+          </p>
+        )}
+        {!isTrade && (
+          <>
+            {tick.tickIdx < pool.tickCurrent && !tick.isCurrent && (
+              <p>
+                {tick.liquidityLockedToken1.toFixed(4)}{' '}
+                {useMarketUnits ? 'wstETH' : 'gwei'}
+              </p>
+            )}
+            {tick.tickIdx > pool.tickCurrent && !tick.isCurrent && (
+              <p>
+                {tick.liquidityLockedToken0.toFixed(4)}{' '}
+                {useMarketUnits ? 'Ggas' : 'gas'}
+              </p>
+            )}
+            {tick.isCurrent && (
+              <>
+                <p>
+                  {tick.liquidityLockedToken1.toFixed(4)}{' '}
+                  {useMarketUnits ? 'Ggas' : 'gas'}
+                </p>
+                <p>
+                  {tick.liquidityLockedToken0.toFixed(4)}{' '}
+                  {useMarketUnits ? 'wstETH' : 'gwei'}
+                </p>
+              </>
+            )}
+          </>
+        )}
       </motion.div>
     </AnimatePresence>
   );
@@ -427,22 +417,22 @@ const DepthChart: React.FC<{ isTrade?: boolean }> = ({ isTrade = false }) => {
           // Calculate right side (increasing from current tick)
           let runningSumRight = 0;
           const rightSide = allTicks.slice(currentTickIndex).map((tick) => {
-            runningSumRight += tick.liquidityLockedToken0;
+            runningSumRight += tick.liquidityLockedToken1; // Ggas
             return { ...tick, liquidityActive: runningSumRight };
           });
 
-          // Calculate left side (decreasing towards current tick)
+          // Calculate left side (decreasing from current tick)
           let runningSumLeft = 0;
           const leftSide = allTicks
             .slice(0, currentTickIndex)
-            .reverse()
             .map((tick) => {
-              runningSumLeft += tick.liquidityLockedToken1;
+              runningSumLeft += tick.liquidityLockedToken0; // wstETH
               return { ...tick, liquidityActive: runningSumLeft };
-            });
+            })
+            .reverse();
 
-          // Combine both sides (reversing left side back to original order)
-          const accumulatedTicks = [...leftSide.reverse(), ...rightSide];
+          // Combine both sides
+          const accumulatedTicks = [...leftSide, ...rightSide];
           setPool({ ...fullPoolData, ticks: accumulatedTicks });
         } else {
           setPool(fullPoolData);
@@ -675,9 +665,7 @@ const DepthChart: React.FC<{ isTrade?: boolean }> = ({ isTrade = false }) => {
           <BarChart
             data={poolData.ticks}
             margin={
-              isTrade === null
-                ? { bottom: -25, left: 16, right: 16 }
-                : { bottom: -25 }
+              isTrade ? { bottom: -25 } : { bottom: -25, left: 16, right: 16 }
             }
             onMouseLeave={() => {
               setTickInfo(activeTickValue, currPrice0);
