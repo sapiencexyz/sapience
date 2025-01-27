@@ -1045,7 +1045,7 @@ const LiquidityForm: React.FC = () => {
       return displayPrice;
     }
     // Convert from gwei to Ggas/wstETH
-    return displayPrice / convertGgasPerWstEthToGwei(1, stEthPerToken);
+    return displayPrice / convertWstEthToGwei(1, stEthPerToken);
   };
 
   // Convert price from market units to display units
