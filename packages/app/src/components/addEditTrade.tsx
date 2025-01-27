@@ -35,7 +35,6 @@ import {
 } from '~/lib/constants/constants';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
-import { useTradePool } from '~/lib/context/TradePoolContext';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
 import { removeLeadingZeros } from '~/lib/util/util';
 
@@ -46,10 +45,12 @@ import SlippageTolerance from './slippageTolerance';
 
 export default function AddEditTrade() {
   const { nftId, refreshPositions, setNftId } = useAddEditPosition();
-  const { tradeDirection, setTradeDirection } = useTradePool();
 
   // form states
   const [sizeChange, setSizeChange] = useState<bigint>(BigInt(0));
+  const [tradeDirection, setTradeDirection] = useState<'Long' | 'Short'>(
+    'Long'
+  );
 
   // component states
   const [pendingTxn, setPendingTxn] = useState(false);

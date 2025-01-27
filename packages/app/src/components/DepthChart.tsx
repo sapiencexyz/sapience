@@ -613,7 +613,6 @@ const DepthChart: React.FC<{ isTrade?: boolean }> = ({ isTrade = false }) => {
       props={props}
       activeTickValue={activeTickValue}
       tickSpacing={tickSpacing}
-      isTrade={isTrade}
     />
   );
 
