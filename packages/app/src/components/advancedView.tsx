@@ -390,7 +390,7 @@ const Market = ({
                   <Stats />
 
                   <div className="flex flex-1 min-h-[400px] md:min-h-0">
-                    <div className="flex w-full h-full border border-border rounded-lg shadow-sm">
+                    <div className="flex w-full h-full border border-border rounded-sm shadow-sm">
                       {renderChart()}
                     </div>
                   </div>

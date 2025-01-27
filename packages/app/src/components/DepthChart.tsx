@@ -3,8 +3,16 @@
 import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import type { Pool } from '@uniswap/v3-sdk';
 import { motion, AnimatePresence } from 'framer-motion';
+import { MoveHorizontal } from 'lucide-react';
 import type React from 'react';
-import { useContext, useEffect, useMemo, useState, useCallback } from 'react';
+import {
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+  useRef,
+} from 'react';
 import type { TooltipProps } from 'recharts';
 import {
   BarChart,
@@ -65,6 +73,8 @@ interface CustomBarProps {
   activeTickValue: number;
   tickSpacing: number;
 }
+
+const RECHARTS_WRAPPER_SELECTOR = '.recharts-wrapper';
 
 const CustomBar: React.FC<CustomBarProps> = ({
   props,
@@ -183,22 +193,16 @@ const CustomTooltip: React.FC<
       >
         <p className="text-xs font-medium text-gray-500 mb-0.5">Liquidity</p>
         {tick.tickIdx < pool.tickCurrent && !tick.isCurrent && (
-          <>
-            <p>
-              {tick.liquidityLockedToken1.toFixed(4)}{' '}
-              {useMarketUnits ? 'Ggas' : 'gas'}
-            </p>
-            <p>0 {useMarketUnits ? 'wstETH' : 'gwei'}</p>
-          </>
+          <p>
+            {tick.liquidityLockedToken1.toFixed(4)}{' '}
+            {useMarketUnits ? 'Ggas' : 'gas'}
+          </p>
         )}
         {tick.tickIdx > pool.tickCurrent && !tick.isCurrent && (
-          <>
-            <p>0 {useMarketUnits ? 'Ggas' : 'gas'}</p>
-            <p>
-              {tick.liquidityLockedToken0.toFixed(4)}{' '}
-              {useMarketUnits ? 'wstETH' : 'gwei'}{' '}
-            </p>
-          </>
+          <p>
+            {tick.liquidityLockedToken0.toFixed(4)}{' '}
+            {useMarketUnits ? 'wstETH' : 'gwei'}{' '}
+          </p>
         )}
         {tick.isCurrent && (
           <>
@@ -217,6 +221,68 @@ const CustomTooltip: React.FC<
   );
 };
 
+interface DraggableHandleProps {
+  x: number;
+  y: number;
+  onDrag: (x: number) => void;
+  onDragEnd: () => void;
+  color?: string;
+}
+
+const DraggableHandle: React.FC<DraggableHandleProps> = ({
+  x,
+  y,
+  onDrag,
+  onDragEnd,
+  color = '#8D895E',
+}) => {
+  return (
+    <motion.g
+      drag="x"
+      dragMomentum={false}
+      dragElastic={0}
+      onDrag={(event: MouseEvent | TouchEvent | PointerEvent, info) => {
+        onDrag(x + info.delta.x / 2);
+      }}
+      onDragEnd={onDragEnd}
+      style={{ cursor: 'ew-resize' }}
+    >
+      {/* Handle bar */}
+      <rect x={x} y={y} width={2} height="calc(100% - 35px)" fill={color} />
+      {/* Handle icon at top */}
+      <rect x={x - 6} y={y} width={14} height={16} fill={color} rx={2} />
+      {/* Handle lines */}
+      <line
+        x1={x - 2}
+        y1={y + 4}
+        x2={x - 2}
+        y2={y + 12}
+        stroke="white"
+        strokeWidth={1}
+        opacity={0.5}
+      />
+      <line
+        x1={x + 1}
+        y1={y + 4}
+        x2={x + 1}
+        y2={y + 12}
+        stroke="white"
+        strokeWidth={1}
+        opacity={0.5}
+      />
+      <line
+        x1={x + 4}
+        y1={y + 4}
+        x2={x + 4}
+        y2={y + 12}
+        stroke="white"
+        strokeWidth={1}
+        opacity={0.5}
+      />
+    </motion.g>
+  );
+};
+
 const DepthChart: React.FC = () => {
   const [poolData, setPool] = useState<PoolData | undefined>();
   const [price0, setPrice0] = useState<number>(0);
@@ -231,11 +297,33 @@ const DepthChart: React.FC = () => {
     stEthPerToken,
   } = useContext(PeriodContext);
   const { tradeDirection, setLowPrice, setHighPrice } = useTradePool();
+  const [lowPriceX, setLowPriceX] = useState<number | null>(null);
+  const [highPriceX, setHighPriceX] = useState<number | null>(null);
+  const chartRef = useRef<HTMLDivElement>(null);
+  const [hoveredNextBar, setHoveredNextBar] = useState<BarChartTick | null>(
+    null
+  );
+  const [hoveredTickIdx, setHoveredTickIdx] = useState<number | null>(null);
 
   const setTickInfo = useCallback((tickIdx: number, rawPrice0: number) => {
     setPrice0(rawPrice0);
     setLabel(`Tick ${tickIdx}`);
+    setHoveredTickIdx(tickIdx);
   }, []);
+
+  // Update hoveredNextBar whenever hoveredTickIdx or poolData changes
+  useEffect(() => {
+    if (poolData?.ticks && hoveredTickIdx !== null) {
+      const tickIndex = poolData.ticks.findIndex(
+        (t: BarChartTick) => Number(t.tickIdx) === hoveredTickIdx
+      );
+      if (tickIndex >= 0 && tickIndex < poolData.ticks.length - 1) {
+        setHoveredNextBar(poolData.ticks[tickIndex + 1]);
+      } else {
+        setHoveredNextBar(null);
+      }
+    }
+  }, [hoveredTickIdx, poolData]);
 
   const activeTickValue = pool?.tickCurrent || 0;
   const tickSpacing = pool ? pool?.tickSpacing : TICK_SPACING_DEFAULT;
@@ -324,6 +412,123 @@ const DepthChart: React.FC = () => {
     }
   }, [currPrice0, currPrice1, activeTickValue, setTickInfo]);
 
+  // Initialize handle positions from context
+  useEffect(() => {
+    if (!poolData || !chartRef.current) return;
+
+    const chartWidth =
+      chartRef.current.querySelector(RECHARTS_WRAPPER_SELECTOR)?.clientWidth ||
+      0;
+    if (chartWidth === 0) return;
+
+    const xScale = chartWidth / poolData.ticks.length;
+    const currentPrice = Number(pool?.token0Price || 0);
+    const lowTickIndex = poolData.ticks.findIndex(
+      (tick) => tick.price0 >= currentPrice * 0.8
+    );
+    const highTickIndex = poolData.ticks.findIndex(
+      (tick) => tick.price0 >= currentPrice * 1.2
+    );
+
+    if (lowTickIndex !== -1) {
+      setLowPriceX(lowTickIndex * xScale);
+      setLowPrice(poolData.ticks[lowTickIndex].price0);
+    }
+
+    if (highTickIndex !== -1) {
+      setHighPriceX(highTickIndex * xScale);
+      setHighPrice(poolData.ticks[highTickIndex].price0);
+    }
+  }, [poolData, pool, setLowPrice, setHighPrice]);
+
+  const handleLowPriceDrag = useCallback(
+    (newX: number) => {
+      if (!poolData || !chartRef.current) return;
+      const chartElement = chartRef.current.querySelector(
+        RECHARTS_WRAPPER_SELECTOR
+      );
+      if (!chartElement) return;
+
+      const chartRect = chartElement.getBoundingClientRect();
+      const xScale = chartRect.width / poolData.ticks.length;
+      const tickIndex = Math.max(
+        0,
+        Math.min(Math.round(newX / xScale), poolData.ticks.length - 1)
+      );
+      const tick = poolData.ticks[tickIndex];
+
+      if (tick && (!highPriceX || newX < highPriceX)) {
+        setLowPriceX(newX);
+        // Don't update the price during drag, just store the X position
+      }
+    },
+    [poolData, highPriceX]
+  );
+
+  const handleHighPriceDrag = useCallback(
+    (newX: number) => {
+      if (!poolData || !chartRef.current) return;
+      const chartElement = chartRef.current.querySelector(
+        RECHARTS_WRAPPER_SELECTOR
+      );
+      if (!chartElement) return;
+
+      const chartRect = chartElement.getBoundingClientRect();
+      const xScale = chartRect.width / poolData.ticks.length;
+      const tickIndex = Math.max(
+        0,
+        Math.min(Math.round(newX / xScale), poolData.ticks.length - 1)
+      );
+      const tick = poolData.ticks[tickIndex];
+
+      if (tick && (!lowPriceX || newX > lowPriceX)) {
+        setHighPriceX(newX);
+        // Don't update the price during drag, just store the X position
+      }
+    },
+    [poolData, lowPriceX]
+  );
+
+  const handleLowPriceDragEnd = useCallback(() => {
+    if (!poolData || !chartRef.current || lowPriceX === null) return;
+    const chartElement = chartRef.current.querySelector(
+      RECHARTS_WRAPPER_SELECTOR
+    );
+    if (!chartElement) return;
+
+    const chartRect = chartElement.getBoundingClientRect();
+    const xScale = chartRect.width / poolData.ticks.length;
+    const tickIndex = Math.round(lowPriceX / xScale);
+    const tick = poolData.ticks[tickIndex];
+
+    if (tick) {
+      // Snap X position to the nearest tick
+      const snappedX = tickIndex * xScale;
+      setLowPriceX(snappedX);
+      setLowPrice(tick.price0);
+    }
+  }, [poolData, lowPriceX, setLowPrice]);
+
+  const handleHighPriceDragEnd = useCallback(() => {
+    if (!poolData || !chartRef.current || highPriceX === null) return;
+    const chartElement = chartRef.current.querySelector(
+      RECHARTS_WRAPPER_SELECTOR
+    );
+    if (!chartElement) return;
+
+    const chartRect = chartElement.getBoundingClientRect();
+    const xScale = chartRect.width / poolData.ticks.length;
+    const tickIndex = Math.round(highPriceX / xScale);
+    const tick = poolData.ticks[tickIndex];
+
+    if (tick) {
+      // Snap X position to the nearest tick
+      const snappedX = tickIndex * xScale;
+      setHighPriceX(snappedX);
+      setHighPrice(tick.price0);
+    }
+  }, [poolData, highPriceX, setHighPrice]);
+
   const renderBar = (props: any) => (
     <CustomBar
       props={props}
@@ -349,14 +554,14 @@ const DepthChart: React.FC = () => {
   );
 
   return (
-    <div className="flex flex-1 flex-col p-4">
+    <div className="flex flex-1 flex-col p-6" ref={chartRef}>
       {!poolData && (
         <div className="flex items-center justify-center h-full w-full">
           <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent opacity-20" />
         </div>
       )}
       <motion.div
-        className="w-fit pl-2 mb-1"
+        className="w-fit pl-2 mb-6"
         initial={false}
         animate={{
           borderLeftWidth: '4px',
@@ -382,6 +587,22 @@ const DepthChart: React.FC = () => {
             />
             <span className="ml-1">
               {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
+            </span>
+            <MoveHorizontal className="w-3 h-3 mx-1" />
+            <NumberDisplay
+              value={(() => {
+                if (!hoveredNextBar) return 0;
+                return useMarketUnits
+                  ? hoveredNextBar.price0
+                  : convertGgasPerWstEthToGwei(
+                      hoveredNextBar.price0,
+                      stEthPerToken
+                    );
+              })()}
+              precision={4}
+            />
+            <span className="ml-1">
+              {useMarketUnits ? 'wstETH/Ggas' : 'gwei'}
             </span>
           </div>
         )}
@@ -414,6 +635,22 @@ const DepthChart: React.FC = () => {
               }
             />
             <Bar dataKey="liquidityActive" shape={renderBar} />
+            {tradeDirection === null && (
+              <g>
+                <DraggableHandle
+                  x={lowPriceX || 50}
+                  y={0}
+                  onDrag={handleLowPriceDrag}
+                  onDragEnd={handleLowPriceDragEnd}
+                />
+                <DraggableHandle
+                  x={highPriceX || 350}
+                  y={0}
+                  onDrag={handleHighPriceDrag}
+                  onDragEnd={handleHighPriceDragEnd}
+                />
+              </g>
+            )}
           </BarChart>
         </ResponsiveContainer>
       )}

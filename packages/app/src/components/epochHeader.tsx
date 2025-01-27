@@ -70,13 +70,14 @@ const EpochHeader = () => {
     <div className="flex items-center flex-col w-full">
       <div className="w-full items-center flex flex-col lg:flex-row px-3 py-6">
         <div className="w-full lg:w-auto flex justify-between lg:justify-start items-center">
-          <h1 className="text-3xl font-semibold mb-0 flex items-center gap-2">
+          <h1 className="text-2xl lg:text-3xl font-semibold mb-0 flex items-center gap-2">
             {resource?.iconPath && (
               <Image
                 src={resource.iconPath}
                 alt={resource?.name || ''}
                 width={32}
                 height={32}
+                className="w-6 h-6 lg:w-8 lg:h-8"
               />
             )}
             {resource?.name} Market

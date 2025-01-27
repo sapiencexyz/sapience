@@ -19,14 +19,12 @@ import {
   useSwitchChain,
 } from 'wagmi';
 
-import { useConnectWallet } from '../../../lib/context/ConnectWalletProvider';
-import erc20ABI from '../../../lib/erc20abi.json';
-import INONFUNGIBLE_POSITION_MANAGER from '../../../lib/interfaces/Uniswap.NonfungiblePositionManager.json';
-import NumberDisplay from '../../numberDisplay';
-import PositionSelector from '../../positionSelector';
-import SlippageTolerance from '../../slippageTolerance';
-import LiquidityAmountInput from '../LiquidityAmountInput';
-import LiquidityPriceInput from '../LiquidityPriceInput';
+import { useConnectWallet } from '../../lib/context/ConnectWalletProvider';
+import erc20ABI from '../../lib/erc20abi.json';
+import INONFUNGIBLE_POSITION_MANAGER from '../../lib/interfaces/Uniswap.NonfungiblePositionManager.json';
+import NumberDisplay from '../numberDisplay';
+import PositionSelector from '../positionSelector';
+import SlippageTolerance from '../slippageTolerance';
 import { Button } from '@/components/ui/button';
 import { Form } from '@/components/ui/form';
 import { useToast } from '~/hooks/use-toast';
@@ -37,8 +35,12 @@ import {
 } from '~/lib/constants/constants';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
+import { useTradePool } from '~/lib/context/TradePoolContext';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
 import { JSBIAbs } from '~/lib/util/util';
+
+import LiquidityAmountInput from './LiquidityAmountInput';
+import LiquidityPriceInput from './LiquidityPriceInput';
 
 // TODO 1% - Hardcoded for now, should be retrieved with pool.tickSpacing()
 // Also move this a to helper?
@@ -48,7 +50,7 @@ const priceToTick = (price: number, tickSpacing: number): number => {
   return Math.round(tick / tickSpacing) * tickSpacing;
 };
 
-const AddEditLiquidity: React.FC = () => {
+const LiquidityForm: React.FC = () => {
   const { nftId, refreshPositions, setNftId } = useAddEditPosition();
   const {
     epoch,
@@ -1003,6 +1005,37 @@ const AddEditLiquidity: React.FC = () => {
     }
   }, [nftId, positionData, isEdit, setValue]);
 
+  const {
+    setLowPrice,
+    setHighPrice,
+    lowPrice: contextLowPrice,
+    highPrice: contextHighPrice,
+  } = useTradePool();
+
+  // Update TradePool context when form values change
+  useEffect(() => {
+    if (!isEdit) {
+      setLowPrice(Number(lowPrice));
+      setHighPrice(Number(highPrice));
+    }
+  }, [lowPrice, highPrice, isEdit, setLowPrice, setHighPrice]);
+
+  // Update form values when TradePool context values change
+  useEffect(() => {
+    if (!isEdit && contextLowPrice && contextHighPrice) {
+      setValue('lowPrice', contextLowPrice.toString(), {
+        shouldValidate: false,
+        shouldDirty: false,
+        shouldTouch: false,
+      });
+      setValue('highPrice', contextHighPrice.toString(), {
+        shouldValidate: false,
+        shouldDirty: false,
+        shouldTouch: false,
+      });
+    }
+  }, [contextLowPrice, contextHighPrice, isEdit, setValue]);
+
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit(handleFormSubmit)}>
@@ -1118,4 +1151,4 @@ const AddEditLiquidity: React.FC = () => {
   );
 };
 
-export default AddEditLiquidity;
+export default LiquidityForm;

@@ -63,7 +63,7 @@ const ChartSelector: React.FC<CustomDropdownProps> = ({
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="rounded-full">
+        <Button variant="outline" className="rounded-sm">
           {isTrade && chartType === ChartType.LIQUIDITY
             ? 'Depth Chart'
             : chartType}
