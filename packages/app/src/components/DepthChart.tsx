@@ -27,6 +27,7 @@ import { useReadContracts } from 'wagmi';
 
 import NumberDisplay from '~/components/numberDisplay';
 import { TICK_SPACING_DEFAULT } from '~/lib/constants/constants';
+import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useTradePool } from '~/lib/context/TradePoolContext';
 import type {
@@ -228,6 +229,7 @@ interface DraggableHandleProps {
   onDragEnd: () => void;
   color?: string;
   isHighPrice?: boolean;
+  chartRef: React.RefObject<HTMLDivElement>;
 }
 
 const DraggableHandle: React.FC<DraggableHandleProps> = ({
@@ -237,6 +239,7 @@ const DraggableHandle: React.FC<DraggableHandleProps> = ({
   onDragEnd,
   color = '#8D895E',
   isHighPrice = false,
+  chartRef,
 }) => {
   // Offset the handle by 7 pixels left or right based on type
   const handleOffset = isHighPrice ? 7 : -7;
@@ -247,7 +250,14 @@ const DraggableHandle: React.FC<DraggableHandleProps> = ({
       dragMomentum={false}
       dragElastic={0}
       onDrag={(event: MouseEvent | TouchEvent | PointerEvent, info) => {
-        onDrag(x + info.delta.x / 2);
+        if (!chartRef.current) return;
+        const chartElement = chartRef.current.querySelector(
+          RECHARTS_WRAPPER_SELECTOR
+        );
+        if (!chartElement) return;
+        const chartRect = chartElement.getBoundingClientRect();
+        const relativeX = info.point.x - chartRect.left;
+        onDrag(relativeX);
       }}
       onDragEnd={onDragEnd}
       style={{ cursor: 'ew-resize' }}
@@ -299,6 +309,7 @@ const DepthChart: React.FC = () => {
   const [poolData, setPool] = useState<PoolData | undefined>();
   const [price0, setPrice0] = useState<number>(0);
   const [label, setLabel] = useState<string>('');
+  const { nftId } = useAddEditPosition();
   const {
     pool,
     chainId,
@@ -456,8 +467,8 @@ const DepthChart: React.FC = () => {
       const tick = poolData.ticks[tickIndex];
 
       if (tick && (!highPriceX || newX < highPriceX)) {
-        setLowPriceX(newX);
-        // Don't update the price during drag, just store the X position
+        const snappedX = tickIndex * xScale;
+        setLowPriceX(snappedX);
       }
     },
     [poolData, highPriceX]
@@ -480,8 +491,9 @@ const DepthChart: React.FC = () => {
       const tick = poolData.ticks[tickIndex];
 
       if (tick && (!lowPriceX || newX > lowPriceX)) {
-        setHighPriceX(newX);
-        // Don't update the price during drag, just store the X position
+        // Snap the X position during drag as well
+        const snappedX = tickIndex * xScale;
+        setHighPriceX(snappedX);
       }
     },
     [poolData, lowPriceX]
@@ -503,7 +515,8 @@ const DepthChart: React.FC = () => {
       // Snap X position to the nearest tick
       const snappedX = tickIndex * xScale;
       setLowPriceX(snappedX);
-      setLowPriceTick(tick.tickIdx);
+      // Update the context with the nearest tick
+      setLowPriceTick(Number(tick.tickIdx));
     }
   }, [poolData, lowPriceX, setLowPriceTick]);
 
@@ -523,7 +536,8 @@ const DepthChart: React.FC = () => {
       // Snap X position to the nearest tick
       const snappedX = tickIndex * xScale;
       setHighPriceX(snappedX);
-      setHighPriceTick(tick.tickIdx);
+      // Update the context with the nearest tick
+      setHighPriceTick(Number(tick.tickIdx));
     }
   }, [poolData, highPriceX, setHighPriceTick]);
 
@@ -605,7 +619,11 @@ const DepthChart: React.FC = () => {
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={poolData.ticks}
-            margin={{ bottom: -25, left: 0, right: 0 }}
+            margin={
+              tradeDirection === null
+                ? { bottom: -25, left: 16, right: 16 }
+                : { bottom: -25 }
+            }
             onMouseLeave={() => {
               setTickInfo(activeTickValue, currPrice0);
             }}
@@ -629,7 +647,7 @@ const DepthChart: React.FC = () => {
               }
             />
             <Bar dataKey="liquidityActive" shape={renderBar} />
-            {tradeDirection === null && (
+            {!nftId && (
               <g>
                 {/* Left overlay rectangle */}
                 <rect
@@ -649,20 +667,26 @@ const DepthChart: React.FC = () => {
                   className="fill-background"
                   opacity={0.75}
                 />
-                <DraggableHandle
-                  x={lowPriceX || 50}
-                  y={0}
-                  onDrag={handleLowPriceDrag}
-                  onDragEnd={handleLowPriceDragEnd}
-                  isHighPrice={false}
-                />
-                <DraggableHandle
-                  x={highPriceX || 350}
-                  y={0}
-                  onDrag={handleHighPriceDrag}
-                  onDragEnd={handleHighPriceDragEnd}
-                  isHighPrice
-                />
+                {chartRef.current && (
+                  <>
+                    <DraggableHandle
+                      x={lowPriceX || 50}
+                      y={0}
+                      onDrag={handleLowPriceDrag}
+                      onDragEnd={handleLowPriceDragEnd}
+                      isHighPrice={false}
+                      chartRef={chartRef}
+                    />
+                    <DraggableHandle
+                      x={highPriceX || 350}
+                      y={0}
+                      onDrag={handleHighPriceDrag}
+                      onDragEnd={handleHighPriceDragEnd}
+                      isHighPrice
+                      chartRef={chartRef}
+                    />
+                  </>
+                )}
               </g>
             )}
           </BarChart>
