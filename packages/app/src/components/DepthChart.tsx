@@ -300,27 +300,19 @@ const DepthChart: React.FC = () => {
   const [lowPriceX, setLowPriceX] = useState<number | null>(null);
   const [highPriceX, setHighPriceX] = useState<number | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
-  const [hoveredTickIdx, setHoveredTickIdx] = useState<number | null>(null);
-
-  const hoveredNextBar = useMemo(() => {
-    if (!poolData?.ticks || hoveredTickIdx === null) return null;
-    const tickIndex = poolData.ticks.findIndex(
-      (t: BarChartTick) => Number(t.tickIdx) === hoveredTickIdx
-    );
-    if (tickIndex >= 0 && tickIndex < poolData.ticks.length - 1) {
-      return poolData.ticks[tickIndex + 1];
-    }
-    return null;
-  }, [hoveredTickIdx, poolData]);
 
   const setTickInfo = useCallback((tickIdx: number, rawPrice0: number) => {
     setPrice0(rawPrice0);
     setLabel(`Tick ${tickIdx}`);
-    setHoveredTickIdx(tickIdx);
   }, []);
 
   const activeTickValue = pool?.tickCurrent || 0;
   const tickSpacing = pool ? pool?.tickSpacing : TICK_SPACING_DEFAULT;
+
+  const nextPrice = useMemo(() => {
+    if (!price0 || !tickSpacing) return 0;
+    return price0 * 1.0001 ** tickSpacing;
+  }, [price0, tickSpacing]);
 
   const ticks = useMemo(() => {
     const tickRange: number[] = [];
@@ -584,15 +576,11 @@ const DepthChart: React.FC = () => {
             </span>
             <MoveHorizontal className="w-3 h-3 mx-1" />
             <NumberDisplay
-              value={(() => {
-                if (!hoveredNextBar) return 0;
-                return useMarketUnits
-                  ? hoveredNextBar.price0
-                  : convertGgasPerWstEthToGwei(
-                      hoveredNextBar.price0,
-                      stEthPerToken
-                    );
-              })()}
+              value={
+                useMarketUnits
+                  ? nextPrice
+                  : convertGgasPerWstEthToGwei(nextPrice, stEthPerToken)
+              }
               precision={4}
             />
             <span className="ml-1">

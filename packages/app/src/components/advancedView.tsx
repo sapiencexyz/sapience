@@ -261,7 +261,7 @@ const Market = ({
   const renderChart = () => {
     if (chartType === ChartType.PRICE) {
       return (
-        <div className=" pr-3 pb-2">
+        <div className="pr-2 pb-2 w-full">
           <Chart
             data={{
               marketPrices: marketPrices || [],
