@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { MoveHorizontal } from 'lucide-react';
 import type React from 'react';
-import { useContext, useRef } from 'react';
+import { useContext, useRef, useEffect } from 'react';
 import {
   BarChart,
   ResponsiveContainer,
@@ -16,6 +16,7 @@ import {
 import NumberDisplay from '~/components/numberDisplay';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
+import { useTradePool } from '~/lib/context/TradePoolContext';
 import { convertGgasPerWstEthToGwei } from '~/lib/util/util';
 
 import { CustomBar } from './CustomBar';
@@ -51,6 +52,22 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
     useMarketUnits,
     stEthPerToken,
   } = useContext(PeriodContext);
+
+  const { setLowPriceTick, setHighPriceTick } = useTradePool();
+
+  // Set initial ticks when component loads
+  useEffect(() => {
+    if (!nftId && baseAssetMinPriceTick && baseAssetMaxPriceTick) {
+      setLowPriceTick(baseAssetMinPriceTick);
+      setHighPriceTick(baseAssetMaxPriceTick);
+    }
+  }, [
+    nftId,
+    baseAssetMinPriceTick,
+    baseAssetMaxPriceTick,
+    setLowPriceTick,
+    setHighPriceTick,
+  ]);
 
   const chartRef = useRef<HTMLDivElement>(null);
 

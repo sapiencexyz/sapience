@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 
 import { useTradePool } from '~/lib/context/TradePoolContext';
 import type { PoolData } from '~/lib/util/liquidityUtil';
@@ -8,7 +8,42 @@ const RECHARTS_WRAPPER_SELECTOR = '.recharts-wrapper';
 export function usePriceRange(poolData: PoolData | undefined) {
   const [lowPriceX, setLowPriceX] = useState<number | null>(null);
   const [highPriceX, setHighPriceX] = useState<number | null>(null);
-  const { setLowPriceTick, setHighPriceTick } = useTradePool();
+  const { setLowPriceTick, setHighPriceTick, lowPriceTick, highPriceTick } =
+    useTradePool();
+
+  // Update handle positions when ticks change
+  useEffect(() => {
+    if (!poolData || !poolData.ticks.length) return;
+
+    const lowTickIndex = poolData.ticks.findIndex(
+      (tick) => Number(tick.tickIdx) === lowPriceTick
+    );
+    const highTickIndex = poolData.ticks.findIndex(
+      (tick) => Number(tick.tickIdx) === highPriceTick
+    );
+
+    if (lowTickIndex !== -1) {
+      const xScale =
+        document
+          .querySelector(RECHARTS_WRAPPER_SELECTOR)
+          ?.getBoundingClientRect().width ?? 0;
+      if (xScale > 0) {
+        const tickWidth = xScale / poolData.ticks.length;
+        setLowPriceX(lowTickIndex * tickWidth);
+      }
+    }
+
+    if (highTickIndex !== -1) {
+      const xScale =
+        document
+          .querySelector(RECHARTS_WRAPPER_SELECTOR)
+          ?.getBoundingClientRect().width ?? 0;
+      if (xScale > 0) {
+        const tickWidth = xScale / poolData.ticks.length;
+        setHighPriceX(highTickIndex * tickWidth);
+      }
+    }
+  }, [poolData, lowPriceTick, highPriceTick]);
 
   const handleLowPriceDrag = useCallback(
     (newX: number, chartRef: React.RefObject<HTMLDivElement>) => {
