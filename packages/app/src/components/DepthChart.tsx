@@ -300,30 +300,24 @@ const DepthChart: React.FC = () => {
   const [lowPriceX, setLowPriceX] = useState<number | null>(null);
   const [highPriceX, setHighPriceX] = useState<number | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
-  const [hoveredNextBar, setHoveredNextBar] = useState<BarChartTick | null>(
-    null
-  );
   const [hoveredTickIdx, setHoveredTickIdx] = useState<number | null>(null);
+
+  const hoveredNextBar = useMemo(() => {
+    if (!poolData?.ticks || hoveredTickIdx === null) return null;
+    const tickIndex = poolData.ticks.findIndex(
+      (t: BarChartTick) => Number(t.tickIdx) === hoveredTickIdx
+    );
+    if (tickIndex >= 0 && tickIndex < poolData.ticks.length - 1) {
+      return poolData.ticks[tickIndex + 1];
+    }
+    return null;
+  }, [hoveredTickIdx, poolData]);
 
   const setTickInfo = useCallback((tickIdx: number, rawPrice0: number) => {
     setPrice0(rawPrice0);
     setLabel(`Tick ${tickIdx}`);
     setHoveredTickIdx(tickIdx);
   }, []);
-
-  // Update hoveredNextBar whenever hoveredTickIdx or poolData changes
-  useEffect(() => {
-    if (poolData?.ticks && hoveredTickIdx !== null) {
-      const tickIndex = poolData.ticks.findIndex(
-        (t: BarChartTick) => Number(t.tickIdx) === hoveredTickIdx
-      );
-      if (tickIndex >= 0 && tickIndex < poolData.ticks.length - 1) {
-        setHoveredNextBar(poolData.ticks[tickIndex + 1]);
-      } else {
-        setHoveredNextBar(null);
-      }
-    }
-  }, [hoveredTickIdx, poolData]);
 
   const activeTickValue = pool?.tickCurrent || 0;
   const tickSpacing = pool ? pool?.tickSpacing : TICK_SPACING_DEFAULT;

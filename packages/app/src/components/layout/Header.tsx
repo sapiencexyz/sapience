@@ -363,7 +363,7 @@ const NavLinks = ({
   }
 
   return (
-    <div className="flex justify-between items-center w-[50dvw] max-w-[800px]">
+    <div className="flex justify-between items-center w-[50dvw] max-w-[800px] mx-auto">
       <Link href="/" className="hover:no-underline">
         <Button variant="ghost" className={getButtonClasses('/')}>
           Explore
@@ -412,8 +412,8 @@ const Header = () => {
                 <Image
                   src="/logomark.svg"
                   alt="Foil"
-                  width={28}
-                  height={28}
+                  width={24}
+                  height={24}
                   className="dark:invert"
                 />
               </div>
@@ -432,10 +432,11 @@ const Header = () => {
             </div>
           </Link>
 
+          <div className="hidden lg:block">
+            <NavLinks />
+          </div>
+
           <div className="flex items-center gap-2">
-            <div className="hidden lg:flex gap-6 items-center font-semibold">
-              <NavLinks />
-            </div>
             <ConnectButton />
             <div className="hidden lg:block">
               <ModeToggle />
@@ -444,7 +445,7 @@ const Header = () => {
         </div>
       </header>
       <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-md border-t border-border py-2 text-center z-[3] lg:hidden">
-        <div className="flex justify-between items-center px-4">
+        <div className="flex justify-between items-center px-4 max-w-[400px] mx-auto">
           <Link href="/" className="hover:no-underline">
             <Button
               variant="ghost"
