@@ -152,7 +152,10 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
               isTrade ? { bottom: -25 } : { bottom: -25, left: 16, right: 16 }
             }
             onMouseLeave={() => {
-              setTickInfo(pool?.tickCurrent || 0, price0);
+              const currentTick = poolData?.ticks.find((t) => t.isCurrent);
+              if (currentTick) {
+                setTickInfo(pool?.tickCurrent || 0, currentTick.price0);
+              }
             }}
           >
             <XAxis
