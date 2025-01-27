@@ -1,3 +1,5 @@
+/* eslint-disable sonarjs/cognitive-complexity */
+
 'use client';
 
 import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
@@ -125,14 +127,12 @@ interface CustomXAxisTickProps {
   };
   activeTickValue: number;
   tickSpacing: number;
-  tradeDirection: 'Long' | 'Short' | null;
 }
 
 const CustomXAxisTick: React.FC<CustomXAxisTickProps> = ({
   props,
   activeTickValue,
   tickSpacing,
-  tradeDirection,
 }) => {
   const { payload, x, y } = props;
 
@@ -144,21 +144,9 @@ const CustomXAxisTick: React.FC<CustomXAxisTickProps> = ({
 
   if (!isClosestTick) return null;
 
-  // Use x=0 when we have a direction, original x position otherwise
-  const labelX = tradeDirection ? 0 : x;
-  // Use start alignment when we have a direction, centered otherwise
-  const textAnchor = tradeDirection ? 'start' : 'middle';
-
   return (
-    <g transform={`translate(${labelX},${y})`} id="activeTicks">
-      <text
-        x={0}
-        y={0}
-        dy={12}
-        textAnchor={textAnchor}
-        fontSize={12}
-        opacity={0.5}
-      >
+    <g transform={`translate(${x},${y})`} id="activeTicks">
+      <text x={0} y={0} dy={12} textAnchor="middle" fontSize={12} opacity={0.5}>
         Active tick range
       </text>
     </g>
@@ -169,11 +157,12 @@ interface CustomTooltipProps {
   pool: Pool | null;
   onTickInfo: (tickIdx: number, price0: number, price1: number) => void;
   useMarketUnits: boolean;
+  isTrade: boolean;
 }
 
 const CustomTooltip: React.FC<
   TooltipProps<number, string> & CustomTooltipProps
-> = ({ payload, pool, onTickInfo, useMarketUnits }) => {
+> = ({ payload, pool, onTickInfo, useMarketUnits, isTrade }) => {
   useEffect(() => {
     if (payload && payload[0]) {
       const tick: BarChartTick = payload[0].payload;
@@ -183,6 +172,54 @@ const CustomTooltip: React.FC<
 
   if (!payload || !payload[0] || !pool) return null;
   const tick: BarChartTick = payload[0].payload;
+  const isLeftOfActive = tick.tickIdx < pool.tickCurrent;
+
+  const getLiquidityDisplay = () => {
+    if (tick.isCurrent || isTrade) {
+      if (isTrade) {
+        let unit;
+        if (isLeftOfActive) {
+          unit = useMarketUnits ? 'Ggas' : 'gas';
+        } else {
+          unit = useMarketUnits ? 'wstETH' : 'gwei';
+        }
+        return (
+          <p>
+            {tick.liquidityActive.toFixed(4)} {unit}
+          </p>
+        );
+      }
+      return (
+        <div>
+          <p>
+            {tick.liquidityLockedToken1.toFixed(4)}{' '}
+            {useMarketUnits ? 'Ggas' : 'gas'}
+          </p>
+          <p>
+            {tick.liquidityLockedToken0.toFixed(4)}{' '}
+            {useMarketUnits ? 'wstETH' : 'gwei'}
+          </p>
+        </div>
+      );
+    }
+    if (tick.tickIdx < pool.tickCurrent) {
+      return (
+        <p>
+          {tick.liquidityLockedToken1.toFixed(4)}{' '}
+          {useMarketUnits ? 'Ggas' : 'gas'}
+        </p>
+      );
+    }
+    if (tick.tickIdx > pool.tickCurrent) {
+      return (
+        <p>
+          {tick.liquidityLockedToken0.toFixed(4)}{' '}
+          {useMarketUnits ? 'wstETH' : 'gwei'}{' '}
+        </p>
+      );
+    }
+    return null;
+  };
 
   return (
     <AnimatePresence>
@@ -192,31 +229,10 @@ const CustomTooltip: React.FC<
         exit={{ opacity: 0 }}
         className="bg-background p-3 border border-border rounded-sm shadow-sm"
       >
-        <p className="text-xs font-medium text-gray-500 mb-0.5">Liquidity</p>
-        {tick.tickIdx < pool.tickCurrent && !tick.isCurrent && (
-          <p>
-            {tick.liquidityLockedToken1.toFixed(4)}{' '}
-            {useMarketUnits ? 'Ggas' : 'gas'}
-          </p>
-        )}
-        {tick.tickIdx > pool.tickCurrent && !tick.isCurrent && (
-          <p>
-            {tick.liquidityLockedToken0.toFixed(4)}{' '}
-            {useMarketUnits ? 'wstETH' : 'gwei'}{' '}
-          </p>
-        )}
-        {tick.isCurrent && (
-          <>
-            <p>
-              {tick.liquidityLockedToken1.toFixed(4)}{' '}
-              {useMarketUnits ? 'Ggas' : 'gas'}
-            </p>
-            <p>
-              {tick.liquidityLockedToken0.toFixed(4)}{' '}
-              {useMarketUnits ? 'wstETH' : 'gwei'}
-            </p>
-          </>
-        )}
+        <p className="text-xs font-medium text-gray-500 mb-0.5">
+          {isTrade ? 'Cumulative Liquidity' : 'Liquidity'}
+        </p>
+        {getLiquidityDisplay()}
       </motion.div>
     </AnimatePresence>
   );
@@ -329,7 +345,7 @@ function DraggableHandle({
   );
 }
 
-const DepthChart: React.FC = () => {
+const DepthChart: React.FC<{ isTrade?: boolean }> = ({ isTrade = false }) => {
   const [poolData, setPool] = useState<PoolData | undefined>();
   const [price0, setPrice0] = useState<number>(0);
   const [label, setLabel] = useState<string>('');
@@ -343,7 +359,7 @@ const DepthChart: React.FC = () => {
     useMarketUnits,
     stEthPerToken,
   } = useContext(PeriodContext);
-  const { tradeDirection, setLowPriceTick, setHighPriceTick } = useTradePool();
+  const { setLowPriceTick, setHighPriceTick } = useTradePool();
   const [lowPriceX, setLowPriceX] = useState<number | null>(null);
   const [highPriceX, setHighPriceX] = useState<number | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
@@ -404,24 +420,36 @@ const DepthChart: React.FC = () => {
   useEffect(() => {
     if (pool) {
       getFullPool(pool, graphTicks, tickSpacing).then((fullPoolData) => {
-        if (tradeDirection === 'Long') {
-          const filteredTicks = fullPoolData.ticks.filter(
-            (tick) => tick.isCurrent || tick.tickIdx >= pool.tickCurrent
-          );
-          setPool({ ...fullPoolData, ticks: filteredTicks });
-        } else if (tradeDirection === 'Short') {
-          const filteredTicks = fullPoolData.ticks
-            .filter(
-              (tick) => tick.isCurrent || tick.tickIdx <= pool.tickCurrent
-            )
-            .sort((a, b) => b.tickIdx - a.tickIdx);
-          setPool({ ...fullPoolData, ticks: filteredTicks });
+        if (isTrade) {
+          const allTicks = fullPoolData.ticks;
+          const currentTickIndex = allTicks.findIndex((tick) => tick.isCurrent);
+
+          // Calculate right side (increasing from current tick)
+          let runningSumRight = 0;
+          const rightSide = allTicks.slice(currentTickIndex).map((tick) => {
+            runningSumRight += tick.liquidityLockedToken0;
+            return { ...tick, liquidityActive: runningSumRight };
+          });
+
+          // Calculate left side (decreasing towards current tick)
+          let runningSumLeft = 0;
+          const leftSide = allTicks
+            .slice(0, currentTickIndex)
+            .reverse()
+            .map((tick) => {
+              runningSumLeft += tick.liquidityLockedToken1;
+              return { ...tick, liquidityActive: runningSumLeft };
+            });
+
+          // Combine both sides (reversing left side back to original order)
+          const accumulatedTicks = [...leftSide.reverse(), ...rightSide];
+          setPool({ ...fullPoolData, ticks: accumulatedTicks });
         } else {
           setPool(fullPoolData);
         }
       });
     }
-  }, [pool, graphTicks, tickSpacing, tradeDirection]);
+  }, [pool, graphTicks, tickSpacing, isTrade]);
 
   const [currPrice0, currPrice1] = useMemo(() => {
     const currTick = poolData?.ticks.filter((t) => t.isCurrent);
@@ -585,7 +613,7 @@ const DepthChart: React.FC = () => {
       props={props}
       activeTickValue={activeTickValue}
       tickSpacing={tickSpacing}
-      tradeDirection={tradeDirection}
+      isTrade={isTrade}
     />
   );
 
@@ -613,29 +641,33 @@ const DepthChart: React.FC = () => {
         </div>
         {pool && price0 && (
           <div className="flex items-center">
-            <NumberDisplay
-              value={
-                useMarketUnits
-                  ? price0
-                  : convertGgasPerWstEthToGwei(price0, stEthPerToken)
-              }
-              precision={4}
-            />
-            <span className="ml-1">
-              {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
-            </span>
-            <MoveHorizontal className="w-3 h-3 mx-1" />
-            <NumberDisplay
-              value={
-                useMarketUnits
-                  ? nextPrice
-                  : convertGgasPerWstEthToGwei(nextPrice, stEthPerToken)
-              }
-              precision={4}
-            />
-            <span className="ml-1">
-              {useMarketUnits ? 'wstETH/Ggas' : 'gwei'}
-            </span>
+            {pool && price0 && (
+              <>
+                <NumberDisplay
+                  value={
+                    useMarketUnits
+                      ? price0
+                      : convertGgasPerWstEthToGwei(price0, stEthPerToken)
+                  }
+                  precision={4}
+                />
+                <span className="ml-1">
+                  {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
+                </span>
+                <MoveHorizontal className="w-3 h-3 mx-1" />
+                <NumberDisplay
+                  value={
+                    useMarketUnits
+                      ? nextPrice
+                      : convertGgasPerWstEthToGwei(nextPrice, stEthPerToken)
+                  }
+                  precision={4}
+                />
+                <span className="ml-1">
+                  {useMarketUnits ? 'wstETH/Ggas' : 'gwei'}
+                </span>
+              </>
+            )}
           </div>
         )}
       </motion.div>
@@ -644,7 +676,7 @@ const DepthChart: React.FC = () => {
           <BarChart
             data={poolData.ticks}
             margin={
-              tradeDirection === null
+              isTrade === null
                 ? { bottom: -25, left: 16, right: 16 }
                 : { bottom: -25 }
             }
@@ -667,11 +699,12 @@ const DepthChart: React.FC = () => {
                   pool={pool}
                   onTickInfo={setTickInfo}
                   useMarketUnits={useMarketUnits}
+                  isTrade={isTrade}
                 />
               }
             />
             <Bar dataKey="liquidityActive" shape={renderBar} />
-            {!nftId && (
+            {!nftId && !isTrade && (
               <g>
                 {/* Left overlay rectangle */}
                 <rect

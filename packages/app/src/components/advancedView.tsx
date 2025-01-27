@@ -278,7 +278,7 @@ const Market = ({
       return <VolumeChart data={volume || []} activeWindow={selectedWindow} />;
     }
     if (chartType === ChartType.LIQUIDITY) {
-      return <DepthChart />;
+      return <DepthChart isTrade={isTrade} />;
     }
     return null;
   };
@@ -378,7 +378,7 @@ const Market = ({
       epoch={Number(epoch)}
     >
       <AddEditPositionProvider>
-        <TradePoolProvider isTrade={isTrade}>
+        <TradePoolProvider>
           <div className="flex flex-col w-full h-[calc(100vh-64px)] overflow-y-auto lg:overflow-hidden">
             <EpochHeader />
             <div className="flex flex-col flex-1 lg:overflow-y-auto md:overflow-visible">

@@ -9,8 +9,6 @@ const priceToTick = (price: number, tickSpacing: number): number => {
 };
 
 interface TradePoolContextType {
-  tradeDirection: 'Long' | 'Short' | null;
-  setTradeDirection: (direction: 'Long' | 'Short' | null) => void;
   lowPriceTick: number;
   setLowPriceTick: (tick: number) => void;
   highPriceTick: number;
@@ -27,16 +25,11 @@ const TradePoolContext = createContext<TradePoolContextType | undefined>(
 
 interface TradePoolProviderProps {
   children: React.ReactNode;
-  isTrade?: boolean;
 }
 
 export const TradePoolProvider: React.FC<TradePoolProviderProps> = ({
   children,
-  isTrade = false,
 }) => {
-  const [tradeDirection, setTradeDirection] = useState<'Long' | 'Short' | null>(
-    isTrade ? 'Long' : null
-  );
   const [lowPriceTick, setLowPriceTick] = useState<number>(0);
   const [highPriceTick, setHighPriceTick] = useState<number>(0);
 
@@ -49,8 +42,6 @@ export const TradePoolProvider: React.FC<TradePoolProviderProps> = ({
   return (
     <TradePoolContext.Provider
       value={{
-        tradeDirection,
-        setTradeDirection,
         lowPriceTick,
         setLowPriceTick,
         highPriceTick,
