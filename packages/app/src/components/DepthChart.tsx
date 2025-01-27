@@ -184,13 +184,25 @@ const CustomTooltip: React.FC<
         <p className="text-xs font-medium text-gray-500 mb-0.5">
           {isTrade ? 'Cumulative Liquidity' : 'Liquidity'}
         </p>
-        {isTrade && tick.tickIdx < pool.tickCurrent && (
+        {isTrade && tick.isCurrent && (
+          <>
+            <p>
+              {tick.liquidityLockedToken0.toFixed(4)}{' '}
+              {useMarketUnits ? 'Ggas' : 'gas'}
+            </p>
+            <p>
+              {tick.liquidityLockedToken1.toFixed(4)}{' '}
+              {useMarketUnits ? 'wstETH' : 'gwei'}
+            </p>
+          </>
+        )}
+        {isTrade && !tick.isCurrent && tick.tickIdx < pool.tickCurrent && (
           <p>
             {tick.liquidityActive.toFixed(4)}{' '}
             {useMarketUnits ? 'wstETH' : 'gwei'}
           </p>
         )}
-        {isTrade && tick.tickIdx >= pool.tickCurrent && (
+        {isTrade && !tick.isCurrent && tick.tickIdx >= pool.tickCurrent && (
           <p>
             {tick.liquidityActive.toFixed(4)} {useMarketUnits ? 'Ggas' : 'gas'}
           </p>
@@ -213,11 +225,11 @@ const CustomTooltip: React.FC<
               <>
                 <p>
                   {tick.liquidityLockedToken1.toFixed(4)}{' '}
-                  {useMarketUnits ? 'Ggas' : 'gas'}
+                  {useMarketUnits ? 'wstETH' : 'gwei'}
                 </p>
                 <p>
                   {tick.liquidityLockedToken0.toFixed(4)}{' '}
-                  {useMarketUnits ? 'wstETH' : 'gwei'}
+                  {useMarketUnits ? 'Ggas' : 'gas'}
                 </p>
               </>
             )}
@@ -417,9 +429,9 @@ const DepthChart: React.FC<{ isTrade?: boolean }> = ({ isTrade = false }) => {
           // Calculate right side (increasing from current tick)
           let runningSumRight =
             allTicks[currentTickIndex]?.liquidityLockedToken0 || 0;
-          const rightSide = allTicks.slice(currentTickIndex).map((tick) => {
+          const rightSide = allTicks.slice(currentTickIndex + 1).map((tick) => {
+            runningSumRight += tick.liquidityLockedToken0; // Accumulate Ggas first
             const liquidityActive = runningSumRight;
-            runningSumRight += tick.liquidityLockedToken0; // Accumulate Ggas
             return { ...tick, liquidityActive };
           });
 
@@ -430,14 +442,24 @@ const DepthChart: React.FC<{ isTrade?: boolean }> = ({ isTrade = false }) => {
             .slice(0, currentTickIndex)
             .reverse()
             .map((tick) => {
+              runningSumLeft += tick.liquidityLockedToken1; // Accumulate wstETH first
               const liquidityActive = runningSumLeft;
-              runningSumLeft += tick.liquidityLockedToken1; // Accumulate wstETH
               return { ...tick, liquidityActive };
             })
             .reverse();
 
-          // Combine both sides
-          const accumulatedTicks = [...leftSide, ...rightSide];
+          // Add current tick to the accumulated ticks with its total liquidity
+          const currentTick = allTicks[currentTickIndex];
+          const accumulatedTicks = [
+            ...leftSide,
+            {
+              ...currentTick,
+              liquidityActive:
+                currentTick.liquidityLockedToken0 +
+                currentTick.liquidityLockedToken1,
+            },
+            ...rightSide,
+          ];
           setPool({ ...fullPoolData, ticks: accumulatedTicks });
         } else {
           setPool(fullPoolData);
