@@ -55,19 +55,25 @@ export function DraggableHandle({
     onDragEnd();
   };
 
+  const transitionStyle = { transition: 'transform 0.08s ease-out' };
+
   return (
     <g
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
-      style={{ cursor: 'ew-resize' }}
+      style={{
+        cursor: 'ew-resize',
+        transform: `translateX(${x}px)`,
+        ...transitionStyle,
+      }}
     >
       {/* Vertical bar */}
-      <rect x={x} y={y} width={2} height="calc(100% - 35px)" fill={color} />
+      <rect x={0} y={y} width={2} height="calc(100% - 35px)" fill={color} />
 
       {/* Handle icon at top */}
       <rect
-        x={x - 6 + handleOffset}
+        x={-6 + handleOffset}
         y={y}
         width={14}
         height={16}
@@ -77,27 +83,27 @@ export function DraggableHandle({
 
       {/* Little vertical lines inside the handle */}
       <line
-        x1={x - 2 + handleOffset}
+        x1={-2 + handleOffset}
         y1={y + 4}
-        x2={x - 2 + handleOffset}
+        x2={-2 + handleOffset}
         y2={y + 12}
         stroke="white"
         strokeWidth={1}
         opacity={0.5}
       />
       <line
-        x1={x + 1 + handleOffset}
+        x1={1 + handleOffset}
         y1={y + 4}
-        x2={x + 1 + handleOffset}
+        x2={1 + handleOffset}
         y2={y + 12}
         stroke="white"
         strokeWidth={1}
         opacity={0.5}
       />
       <line
-        x1={x + 4 + handleOffset}
+        x1={4 + handleOffset}
         y1={y + 4}
-        x2={x + 4 + handleOffset}
+        x2={4 + handleOffset}
         y2={y + 12}
         stroke="white"
         strokeWidth={1}
