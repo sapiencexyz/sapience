@@ -232,7 +232,7 @@ interface DraggableHandleProps {
   chartRef: React.RefObject<HTMLDivElement>;
 }
 
-const DraggableHandle: React.FC<DraggableHandleProps> = ({
+function DraggableHandle({
   x,
   y,
   onDrag,
@@ -240,30 +240,53 @@ const DraggableHandle: React.FC<DraggableHandleProps> = ({
   color = '#8D895E',
   isHighPrice = false,
   chartRef,
-}) => {
+}: DraggableHandleProps) {
   // Offset the handle by 7 pixels left or right based on type
   const handleOffset = isHighPrice ? 7 : -7;
 
+  // When PointerDown is fired, we capture the pointer so we can
+  // reliably read pointer coordinates on subsequent moves.
+  const handlePointerDown = (e: React.PointerEvent<SVGGElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  // On pointer move, calculate the "relativeX" based on chart bounds
+  // and pass it to your parent. The parent sets the new x in its state,
+  // then rerenders DraggableHandle with the new x prop.
+  const handlePointerMove = (e: React.PointerEvent<SVGGElement>) => {
+    // Only move when the left mouse button is pressed
+    if (e.buttons !== 1) return;
+    if (!chartRef.current) return;
+
+    const chartElement = chartRef.current.querySelector(
+      RECHARTS_WRAPPER_SELECTOR
+    ) as HTMLElement;
+    if (!chartElement) return;
+
+    const chartRect = chartElement.getBoundingClientRect();
+    const relativeX = e.clientX - chartRect.left;
+
+    onDrag(relativeX);
+  };
+
+  // On pointer up, we release the pointer capture and call onDragEnd
+  const handlePointerUp = (e: React.PointerEvent<SVGGElement>) => {
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    onDragEnd();
+  };
+
   return (
-    <motion.g
-      drag="x"
-      dragMomentum={false}
-      dragElastic={0}
-      onDrag={(event: MouseEvent | TouchEvent | PointerEvent, info) => {
-        if (!chartRef.current) return;
-        const chartElement = chartRef.current.querySelector(
-          RECHARTS_WRAPPER_SELECTOR
-        );
-        if (!chartElement) return;
-        const chartRect = chartElement.getBoundingClientRect();
-        const relativeX = info.point.x - chartRect.left;
-        onDrag(relativeX);
-      }}
-      onDragEnd={onDragEnd}
+    // Use a plain <g> (no drag="x") so that we aren't mixing
+    // motion's transforms with your own pointer logic.
+    <g
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
       style={{ cursor: 'ew-resize' }}
     >
-      {/* Handle bar */}
+      {/* Vertical bar */}
       <rect x={x} y={y} width={2} height="calc(100% - 35px)" fill={color} />
+
       {/* Handle icon at top */}
       <rect
         x={x - 6 + handleOffset}
@@ -273,7 +296,8 @@ const DraggableHandle: React.FC<DraggableHandleProps> = ({
         fill={color}
         rx={2}
       />
-      {/* Handle lines */}
+
+      {/* Little vertical lines inside the handle */}
       <line
         x1={x - 2 + handleOffset}
         y1={y + 4}
@@ -301,9 +325,9 @@ const DraggableHandle: React.FC<DraggableHandleProps> = ({
         strokeWidth={1}
         opacity={0.5}
       />
-    </motion.g>
+    </g>
   );
-};
+}
 
 const DepthChart: React.FC = () => {
   const [poolData, setPool] = useState<PoolData | undefined>();
