@@ -189,7 +189,6 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
                 <CustomTooltip
                   pool={pool}
                   onTickInfo={setTickInfo}
-                  useMarketUnits={useMarketUnits}
                   isTrade={isTrade}
                 />
               }
