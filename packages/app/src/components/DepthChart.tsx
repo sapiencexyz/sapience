@@ -227,6 +227,7 @@ interface DraggableHandleProps {
   onDrag: (x: number) => void;
   onDragEnd: () => void;
   color?: string;
+  isHighPrice?: boolean;
 }
 
 const DraggableHandle: React.FC<DraggableHandleProps> = ({
@@ -235,7 +236,11 @@ const DraggableHandle: React.FC<DraggableHandleProps> = ({
   onDrag,
   onDragEnd,
   color = '#8D895E',
+  isHighPrice = false,
 }) => {
+  // Offset the handle by 7 pixels left or right based on type
+  const handleOffset = isHighPrice ? 7 : -7;
+
   return (
     <motion.g
       drag="x"
@@ -250,30 +255,37 @@ const DraggableHandle: React.FC<DraggableHandleProps> = ({
       {/* Handle bar */}
       <rect x={x} y={y} width={2} height="calc(100% - 35px)" fill={color} />
       {/* Handle icon at top */}
-      <rect x={x - 6} y={y} width={14} height={16} fill={color} rx={2} />
+      <rect
+        x={x - 6 + handleOffset}
+        y={y}
+        width={14}
+        height={16}
+        fill={color}
+        rx={2}
+      />
       {/* Handle lines */}
       <line
-        x1={x - 2}
+        x1={x - 2 + handleOffset}
         y1={y + 4}
-        x2={x - 2}
+        x2={x - 2 + handleOffset}
         y2={y + 12}
         stroke="white"
         strokeWidth={1}
         opacity={0.5}
       />
       <line
-        x1={x + 1}
+        x1={x + 1 + handleOffset}
         y1={y + 4}
-        x2={x + 1}
+        x2={x + 1 + handleOffset}
         y2={y + 12}
         stroke="white"
         strokeWidth={1}
         opacity={0.5}
       />
       <line
-        x1={x + 4}
+        x1={x + 4 + handleOffset}
         y1={y + 4}
-        x2={x + 4}
+        x2={x + 4 + handleOffset}
         y2={y + 12}
         stroke="white"
         strokeWidth={1}
@@ -318,7 +330,7 @@ const DepthChart: React.FC = () => {
     const tickRange: number[] = [];
     for (
       let i = baseAssetMinPriceTick;
-      i < baseAssetMaxPriceTick + tickSpacing;
+      i < baseAssetMaxPriceTick;
       i += tickSpacing
     ) {
       tickRange.push(i);
@@ -624,12 +636,14 @@ const DepthChart: React.FC = () => {
                   y={0}
                   onDrag={handleLowPriceDrag}
                   onDragEnd={handleLowPriceDragEnd}
+                  isHighPrice={false}
                 />
                 <DraggableHandle
                   x={highPriceX || 350}
                   y={0}
                   onDrag={handleHighPriceDrag}
                   onDragEnd={handleHighPriceDragEnd}
+                  isHighPrice
                 />
               </g>
             )}
