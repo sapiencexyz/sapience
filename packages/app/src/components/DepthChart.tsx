@@ -415,19 +415,24 @@ const DepthChart: React.FC<{ isTrade?: boolean }> = ({ isTrade = false }) => {
           const currentTickIndex = allTicks.findIndex((tick) => tick.isCurrent);
 
           // Calculate right side (increasing from current tick)
-          let runningSumRight = 0;
+          let runningSumRight =
+            allTicks[currentTickIndex]?.liquidityLockedToken0 || 0;
           const rightSide = allTicks.slice(currentTickIndex).map((tick) => {
-            runningSumRight += tick.liquidityLockedToken1; // Ggas
-            return { ...tick, liquidityActive: runningSumRight };
+            const liquidityActive = runningSumRight;
+            runningSumRight += tick.liquidityLockedToken0; // Accumulate Ggas
+            return { ...tick, liquidityActive };
           });
 
           // Calculate left side (decreasing from current tick)
-          let runningSumLeft = 0;
+          let runningSumLeft =
+            allTicks[currentTickIndex]?.liquidityLockedToken1 || 0;
           const leftSide = allTicks
             .slice(0, currentTickIndex)
+            .reverse()
             .map((tick) => {
-              runningSumLeft += tick.liquidityLockedToken0; // wstETH
-              return { ...tick, liquidityActive: runningSumLeft };
+              const liquidityActive = runningSumLeft;
+              runningSumLeft += tick.liquidityLockedToken1; // Accumulate wstETH
+              return { ...tick, liquidityActive };
             })
             .reverse();
 
