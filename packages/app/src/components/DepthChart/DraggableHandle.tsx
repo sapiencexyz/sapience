@@ -10,6 +10,7 @@ interface DraggableHandleProps {
   color?: string;
   isHighPrice?: boolean;
   chartRef: React.RefObject<HTMLDivElement>;
+  disableDrag?: boolean;
 }
 
 export function DraggableHandle({
@@ -20,6 +21,7 @@ export function DraggableHandle({
   color = '#8D895E',
   isHighPrice = false,
   chartRef,
+  disableDrag = false,
 }: DraggableHandleProps) {
   // Offset the handle by 7 pixels left or right based on type
   const handleOffset = isHighPrice ? 7 : -7;
@@ -27,6 +29,7 @@ export function DraggableHandle({
   // When PointerDown is fired, we capture the pointer so we can
   // reliably read pointer coordinates on subsequent moves.
   const handlePointerDown = (e: React.PointerEvent<SVGGElement>) => {
+    if (disableDrag) return;
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
@@ -34,6 +37,7 @@ export function DraggableHandle({
   // and pass it to your parent. The parent sets the new x in its state,
   // then rerenders DraggableHandle with the new x prop.
   const handlePointerMove = (e: React.PointerEvent<SVGGElement>) => {
+    if (disableDrag) return;
     // Only move when the left mouse button is pressed
     if (e.buttons !== 1) return;
     if (!chartRef.current) return;
@@ -51,6 +55,7 @@ export function DraggableHandle({
 
   // On pointer up, we release the pointer capture and call onDragEnd
   const handlePointerUp = (e: React.PointerEvent<SVGGElement>) => {
+    if (disableDrag) return;
     e.currentTarget.releasePointerCapture(e.pointerId);
     onDragEnd();
   };
@@ -63,7 +68,7 @@ export function DraggableHandle({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       style={{
-        cursor: 'ew-resize',
+        ...(disableDrag ? {} : { cursor: 'ew-resize' }),
         transform: `translateX(${x}px)`,
         ...transitionStyle,
       }}
@@ -79,6 +84,7 @@ export function DraggableHandle({
         height={16}
         fill={color}
         rx={2}
+        visibility={disableDrag ? 'hidden' : 'visible'}
       />
 
       {/* Little vertical lines inside the handle - adjusted for centering */}
@@ -90,6 +96,7 @@ export function DraggableHandle({
         stroke="white"
         strokeWidth={1}
         opacity={0.5}
+        visibility={disableDrag ? 'hidden' : 'visible'}
       />
       <line
         x1={0 + handleOffset}
@@ -99,6 +106,7 @@ export function DraggableHandle({
         stroke="white"
         strokeWidth={1}
         opacity={0.5}
+        visibility={disableDrag ? 'hidden' : 'visible'}
       />
       <line
         x1={3 + handleOffset}
@@ -108,6 +116,7 @@ export function DraggableHandle({
         stroke="white"
         strokeWidth={1}
         opacity={0.5}
+        visibility={disableDrag ? 'hidden' : 'visible'}
       />
     </g>
   );

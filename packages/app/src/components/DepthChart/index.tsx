@@ -195,7 +195,7 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
               }
             />
             <Bar dataKey="liquidityActive" shape={renderBar} />
-            {!nftId && !isTrade && (
+            {!isTrade && (
               <g>
                 {/* Left overlay rectangle */}
                 <rect
@@ -225,6 +225,7 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
                         onDragEnd={() => handleLowPriceDragEnd(chartRef)}
                         isHighPrice={false}
                         chartRef={chartRef}
+                        disableDrag={!!nftId}
                       />
                     )}
                     {highPriceX !== null && (
@@ -235,6 +236,7 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
                         onDragEnd={() => handleHighPriceDragEnd(chartRef)}
                         isHighPrice
                         chartRef={chartRef}
+                        disableDrag={!!nftId}
                       />
                     )}
                   </>
