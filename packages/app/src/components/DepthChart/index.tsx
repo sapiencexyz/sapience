@@ -200,14 +200,14 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
                 <rect
                   x={0}
                   y={0}
-                  width={lowPriceX || 50}
+                  width={lowPriceX || 0}
                   height="calc(100% - 35px)"
                   className="fill-background"
                   opacity={0.75}
                 />
                 {/* Right overlay rectangle */}
                 <rect
-                  x={highPriceX || 350}
+                  x={highPriceX || 0}
                   y={0}
                   width="100%"
                   height="calc(100% - 35px)"
@@ -216,22 +216,26 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
                 />
                 {chartRef.current && (
                   <>
-                    <DraggableHandle
-                      x={lowPriceX || 50}
-                      y={0}
-                      onDrag={(x) => handleLowPriceDrag(x, chartRef)}
-                      onDragEnd={() => handleLowPriceDragEnd(chartRef)}
-                      isHighPrice={false}
-                      chartRef={chartRef}
-                    />
-                    <DraggableHandle
-                      x={highPriceX || 350}
-                      y={0}
-                      onDrag={(x) => handleHighPriceDrag(x, chartRef)}
-                      onDragEnd={() => handleHighPriceDragEnd(chartRef)}
-                      isHighPrice
-                      chartRef={chartRef}
-                    />
+                    {lowPriceX !== null && (
+                      <DraggableHandle
+                        x={lowPriceX}
+                        y={0}
+                        onDrag={(x) => handleLowPriceDrag(x, chartRef)}
+                        onDragEnd={() => handleLowPriceDragEnd(chartRef)}
+                        isHighPrice={false}
+                        chartRef={chartRef}
+                      />
+                    )}
+                    {highPriceX !== null && (
+                      <DraggableHandle
+                        x={highPriceX}
+                        y={0}
+                        onDrag={(x) => handleHighPriceDrag(x, chartRef)}
+                        onDragEnd={() => handleHighPriceDragEnd(chartRef)}
+                        isHighPrice
+                        chartRef={chartRef}
+                      />
+                    )}
                   </>
                 )}
               </g>

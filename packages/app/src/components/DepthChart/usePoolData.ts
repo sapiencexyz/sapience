@@ -79,13 +79,7 @@ export function usePoolData(
 
   useEffect(() => {
     if (pool) {
-      getFullPool(
-        pool,
-        graphTicks,
-        tickSpacing,
-        useMarketUnits,
-        stEthPerToken
-      ).then((fullPoolData) => {
+      getFullPool(pool, graphTicks, tickSpacing).then((fullPoolData) => {
         if (isTrade) {
           const allTicks = fullPoolData.ticks;
           const currentTickIndex = allTicks.findIndex((tick) => tick.isCurrent);
