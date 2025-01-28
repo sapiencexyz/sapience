@@ -234,6 +234,14 @@ const LiquidityPositionsTable: React.FC<Props> = ({ positions }) => {
     },
   });
 
+  if (!positions?.length) {
+    return (
+      <div className="w-full py-8 text-center text-muted-foreground">
+        No relevant liquidity position data
+      </div>
+    );
+  }
+
   return (
     <div className="w-full">
       <Table>

@@ -146,8 +146,16 @@ const TransactionTable: React.FC<Props> = ({ transactions }) => {
     return flexRender(cell.column.columnDef.cell, cell.getContext());
   };
 
+  if (!transactions?.length) {
+    return (
+      <div className="w-full py-8 text-center text-muted-foreground">
+        No relevant transaction data
+      </div>
+    );
+  }
+
   return (
-    <div className="mb-4 w-full overflow-auto">
+    <div className="w-full overflow-auto">
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (

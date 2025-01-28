@@ -41,7 +41,6 @@ interface Props {
   positions: any[];
 }
 
-// First, define cell components outside the main component
 const PositionCell = ({ row }: { row: any }) => {
   const isClosed =
     row.original.baseToken - row.original.borrowedBaseToken === 0;
@@ -239,6 +238,14 @@ const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
       useMarketUnits,
     },
   });
+
+  if (!positions?.length) {
+    return (
+      <div className="w-full py-8 text-center text-muted-foreground">
+        No relevant trader position data
+      </div>
+    );
+  }
 
   return (
     <Table>
