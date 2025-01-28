@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { MoveHorizontal } from 'lucide-react';
 import type React from 'react';
-import { useContext, useRef, useEffect } from 'react';
+import { useContext, useRef } from 'react';
 import {
   BarChart,
   ResponsiveContainer,
@@ -53,21 +53,8 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
     stEthPerToken,
   } = useContext(PeriodContext);
 
-  const { setLowPriceTick, setHighPriceTick } = useTradePool();
-
-  // Set initial ticks when component loads
-  useEffect(() => {
-    if (!nftId && baseAssetMinPriceTick && baseAssetMaxPriceTick) {
-      setLowPriceTick(baseAssetMinPriceTick);
-      setHighPriceTick(baseAssetMaxPriceTick);
-    }
-  }, [
-    nftId,
-    baseAssetMinPriceTick,
-    baseAssetMaxPriceTick,
-    setLowPriceTick,
-    setHighPriceTick,
-  ]);
+  const { setLowPriceTick, setHighPriceTick, lowPriceTick, highPriceTick } =
+    useTradePool();
 
   const chartRef = useRef<HTMLDivElement>(null);
 
@@ -95,6 +82,12 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
     handleLowPriceDragEnd,
     handleHighPriceDragEnd,
   } = usePriceRange(poolData);
+
+  // Initialize ticks and place draggable handles
+  const handleResize = () => {
+    setLowPriceTick(lowPriceTick || baseAssetMinPriceTick);
+    setHighPriceTick(highPriceTick || baseAssetMaxPriceTick);
+  };
 
   const renderBar = (props: any) => (
     <CustomBar
@@ -163,7 +156,7 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
         )}
       </motion.div>
       {poolData && (
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" onResize={handleResize}>
           <BarChart
             data={poolData.ticks}
             margin={

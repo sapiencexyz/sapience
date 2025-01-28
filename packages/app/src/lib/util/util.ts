@@ -122,3 +122,8 @@ export const getExplorerUrl = (chainId: number, address: string) => {
     ? `${chain.blockExplorers.default.url}/address/${address}`
     : `https://etherscan.io/address/${address}`;
 };
+
+export const priceToTick = (price: number, tickSpacing: number): number => {
+  const tick = Math.log(price) / Math.log(1.0001);
+  return Math.round(tick / tickSpacing) * tickSpacing;
+};
