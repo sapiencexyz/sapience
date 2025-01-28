@@ -41,7 +41,7 @@ export function usePoolData(
     const tickRange: number[] = [];
     for (
       let i = baseAssetMinPriceTick;
-      i < baseAssetMaxPriceTick;
+      i <= baseAssetMaxPriceTick;
       i += tickSpacing
     ) {
       tickRange.push(i);
