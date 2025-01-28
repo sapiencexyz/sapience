@@ -158,7 +158,12 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
       {poolData && (
         <ResponsiveContainer width="100%" height="100%" onResize={handleResize}>
           <BarChart
-            data={poolData.ticks}
+            data={
+              poolData.ticks.slice(
+                0,
+                -1
+              ) /* Don't render last tick because it's unusable */
+            }
             margin={
               isTrade ? { bottom: -25 } : { bottom: -25, left: 16, right: 16 }
             }

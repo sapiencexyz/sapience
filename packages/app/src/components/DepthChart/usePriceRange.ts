@@ -34,12 +34,12 @@ export function usePriceRange(poolData: PoolData | undefined) {
     const xScale = chartWidth - CHART_X_MARGIN;
 
     if (lowTickIndex !== -1 && xScale > 0) {
-      const tickWidth = xScale / poolData.ticks.length;
+      const tickWidth = xScale / (poolData.ticks.length - 1);
       setLowPriceX(CHART_LEFT_MARGIN + lowTickIndex * tickWidth);
     }
 
     if (highTickIndex !== -1 && xScale > 0) {
-      const tickWidth = xScale / poolData.ticks.length;
+      const tickWidth = xScale / (poolData.ticks.length - 1);
       setHighPriceX(CHART_LEFT_MARGIN + highTickIndex * tickWidth);
     }
   }, [poolData, lowPriceTick, highPriceTick]);
@@ -54,7 +54,8 @@ export function usePriceRange(poolData: PoolData | undefined) {
       if (!chartElement) return;
 
       const chartRect = chartElement.getBoundingClientRect();
-      const xScale = (chartRect.width - CHART_X_MARGIN) / poolData.ticks.length;
+      const xScale =
+        (chartRect.width - CHART_X_MARGIN) / (poolData.ticks.length - 1);
       const adjustedX = Math.max(
         CHART_LEFT_MARGIN,
         Math.min(newX, chartRect.width - CHART_RIGHT_MARGIN)
@@ -86,7 +87,8 @@ export function usePriceRange(poolData: PoolData | undefined) {
       if (!chartElement) return;
 
       const chartRect = chartElement.getBoundingClientRect();
-      const xScale = (chartRect.width - CHART_X_MARGIN) / poolData.ticks.length;
+      const xScale =
+        (chartRect.width - CHART_X_MARGIN) / (poolData.ticks.length - 1);
       const adjustedX = Math.max(
         CHART_LEFT_MARGIN,
         Math.min(newX, chartRect.width - CHART_RIGHT_MARGIN)
@@ -118,7 +120,8 @@ export function usePriceRange(poolData: PoolData | undefined) {
       if (!chartElement) return;
 
       const chartRect = chartElement.getBoundingClientRect();
-      const xScale = (chartRect.width - CHART_X_MARGIN) / poolData.ticks.length;
+      const xScale =
+        (chartRect.width - CHART_X_MARGIN) / (poolData.ticks.length - 1);
       const tickIndex = Math.round((lowPriceX - CHART_LEFT_MARGIN) / xScale);
       const tick = poolData.ticks[tickIndex];
 
@@ -143,7 +146,8 @@ export function usePriceRange(poolData: PoolData | undefined) {
       if (!chartElement) return;
 
       const chartRect = chartElement.getBoundingClientRect();
-      const xScale = (chartRect.width - CHART_X_MARGIN) / poolData.ticks.length;
+      const xScale =
+        (chartRect.width - CHART_X_MARGIN) / (poolData.ticks.length - 1);
       const tickIndex = Math.round((highPriceX - CHART_LEFT_MARGIN) / xScale);
       const tick = poolData.ticks[tickIndex];
 
