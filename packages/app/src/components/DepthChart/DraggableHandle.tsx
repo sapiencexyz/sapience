@@ -44,14 +44,9 @@ export function DraggableHandle({
     if (!chartElement) return;
 
     const chartRect = chartElement.getBoundingClientRect();
-    const relativeX = e.clientX - chartRect.left;
+    const relativeX = e.clientX - chartRect.left - handleOffset;
 
-    const leftBound = 0;
-    const rightBound = chartRect.width;
-    const constrainedX = Math.max(leftBound, Math.min(rightBound, relativeX));
-
-    // Subtract the left margin from the x position since it will be added back in the render
-    onDrag(constrainedX - 0);
+    onDrag(relativeX);
   };
 
   // On pointer up, we release the pointer capture and call onDragEnd
@@ -73,12 +68,12 @@ export function DraggableHandle({
         ...transitionStyle,
       }}
     >
-      {/* Vertical bar */}
-      <rect x={0} y={y} width={2} height="calc(100% - 35px)" fill={color} />
+      {/* Vertical bar - centered at x */}
+      <rect x={-1} y={y} width={2} height="calc(100% - 35px)" fill={color} />
 
       {/* Handle icon at top */}
       <rect
-        x={-6 + handleOffset}
+        x={-7 + handleOffset}
         y={y}
         width={14}
         height={16}
@@ -86,29 +81,29 @@ export function DraggableHandle({
         rx={2}
       />
 
-      {/* Little vertical lines inside the handle */}
+      {/* Little vertical lines inside the handle - adjusted for centering */}
       <line
-        x1={-2 + handleOffset}
+        x1={-3 + handleOffset}
         y1={y + 4}
-        x2={-2 + handleOffset}
+        x2={-3 + handleOffset}
         y2={y + 12}
         stroke="white"
         strokeWidth={1}
         opacity={0.5}
       />
       <line
-        x1={1 + handleOffset}
+        x1={0 + handleOffset}
         y1={y + 4}
-        x2={1 + handleOffset}
+        x2={0 + handleOffset}
         y2={y + 12}
         stroke="white"
         strokeWidth={1}
         opacity={0.5}
       />
       <line
-        x1={4 + handleOffset}
+        x1={3 + handleOffset}
         y1={y + 4}
-        x2={4 + handleOffset}
+        x2={3 + handleOffset}
         y2={y + 12}
         stroke="white"
         strokeWidth={1}

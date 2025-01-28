@@ -25,7 +25,7 @@ import { CustomXAxisTick } from './CustomXAxisTick';
 import { DraggableHandle } from './DraggableHandle';
 import { usePoolData } from './usePoolData';
 import { usePriceInfo } from './usePriceInfo';
-import { usePriceRange } from './usePriceRange';
+import { CHART_LEFT_MARGIN, usePriceRange } from './usePriceRange';
 
 interface DepthChartProps {
   isTrade?: boolean;
@@ -195,7 +195,7 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
                 <rect
                   x={16}
                   y={0}
-                  width={lowPriceX || 0}
+                  width={(lowPriceX || 0) - CHART_LEFT_MARGIN}
                   height="calc(100% - 35px)"
                   className="fill-background"
                   opacity={0.75}
@@ -213,7 +213,7 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
                   <>
                     {lowPriceX !== null && (
                       <DraggableHandle
-                        x={lowPriceX + 16}
+                        x={lowPriceX}
                         y={0}
                         onDrag={(x) => handleLowPriceDrag(x, chartRef)}
                         onDragEnd={() => handleLowPriceDragEnd(chartRef)}
