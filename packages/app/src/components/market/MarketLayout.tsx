@@ -14,7 +14,7 @@ const MarketLayout = ({ nav, content }: MarketLayoutProps) => {
     <div className="flex flex-col min-h-[calc(100vh-64px)] w-full">
       <Suspense
         fallback={
-          <div className="flex justify-center items-center w-full m-10">
+          <div className="flex justify-center items-center w-full h-full min-h-[calc(100vh-64px)]">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         }
