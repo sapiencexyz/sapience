@@ -59,7 +59,10 @@ const Stats = () => {
             </div>
             <div className="mt-0.5 text-2xl font-bold">
               {isBeforeStart ? (
-                <>available in {startTimeRelative}</>
+                <>
+                  <span className="text-sm">available in</span>{' '}
+                  {startTimeRelative}
+                </>
               ) : (
                 <>
                   <NumberDisplay
