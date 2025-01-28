@@ -11,7 +11,6 @@ import { useAccount } from 'wagmi';
 
 import Chart from '~/components/chart';
 import ChartSelector from '~/components/ChartSelector';
-import DepthChart from '~/components/DepthChart';
 import EpochHeader from '~/components/epochHeader';
 import LiquidityPositionsTable from '~/components/liquidityPositionsTable';
 import MarketSidebar from '~/components/marketSidebar';
@@ -26,9 +25,12 @@ import VolumeWindowSelector from '~/components/VolumeWindowButtons';
 import { useToast } from '~/hooks/use-toast';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { AddEditPositionProvider } from '~/lib/context/AddEditPositionContext';
-import { MarketProvider } from '~/lib/context/MarketProvider';
+import { PeriodProvider } from '~/lib/context/PeriodProvider';
+import { TradePoolProvider } from '~/lib/context/TradePoolContext';
 import { useResources } from '~/lib/hooks/useResources';
 import { ChartType, TimeWindow } from '~/lib/interfaces/interfaces';
+
+import DepthChart from './DepthChart';
 
 interface ResourcePrice {
   timestamp: string;
@@ -259,22 +261,24 @@ const Market = ({
   const renderChart = () => {
     if (chartType === ChartType.PRICE) {
       return (
-        <Chart
-          data={{
-            marketPrices: marketPrices || [],
-            indexPrices: indexPrices || [],
-            resourcePrices: resourcePrices || [],
-          }}
-          isLoading={idxLoading}
-          seriesVisibility={seriesVisibility}
-        />
+        <div className="pr-2 pb-2 w-full">
+          <Chart
+            data={{
+              marketPrices: marketPrices || [],
+              indexPrices: indexPrices || [],
+              resourcePrices: resourcePrices || [],
+            }}
+            isLoading={idxLoading}
+            seriesVisibility={seriesVisibility}
+          />
+        </div>
       );
     }
     if (chartType === ChartType.VOLUME) {
       return <VolumeChart data={volume || []} activeWindow={selectedWindow} />;
     }
     if (chartType === ChartType.LIQUIDITY) {
-      return <DepthChart />;
+      return <DepthChart isTrade={isTrade} />;
     }
     return null;
   };
@@ -368,100 +372,103 @@ const Market = ({
   }, [useResourcePricesError, toast]);
 
   return (
-    <MarketProvider
+    <PeriodProvider
       chainId={Number(chainId)}
       address={marketAddress}
       epoch={Number(epoch)}
     >
       <AddEditPositionProvider>
-        <div className="flex flex-col w-full h-[calc(100vh-64px)] overflow-y-auto lg:overflow-hidden">
-          <EpochHeader />
-          <div className="flex flex-col flex-1 lg:overflow-y-auto md:overflow-visible">
-            <div className="flex flex-col flex-1 px-4 md:px-6 gap-5 md:flex-row min-h-0">
-              <div className="w-full order-2 md:order-2 md:max-w-[360px] pb-4">
-                <MarketSidebar isTrade={isTrade} />
-              </div>
-              <div className="flex flex-col w-full order-1 md:order-1">
-                <Stats />
+        <TradePoolProvider>
+          <div className="flex flex-col w-full h-[calc(100vh-64px)] overflow-y-auto lg:overflow-hidden">
+            <EpochHeader />
+            <div className="flex flex-col flex-1 lg:overflow-y-auto md:overflow-visible">
+              <div className="flex flex-col flex-1 px-4 md:px-3 gap-5 md:flex-row min-h-0">
+                <div className="w-full order-2 md:order-2 md:max-w-[360px] pb-4">
+                  <MarketSidebar isTrade={isTrade} />
+                </div>
+                <div className="flex flex-col w-full order-1 md:order-1">
+                  <Stats />
 
-                <div className="flex flex-1 id-chart-flex min-h-[400px] md:min-h-0 overflow-visible lg:overflow-hidden">
-                  <div className="flex w-full h-full border border-border overflow-hidden rounded-lg pr-3 pb-2 shadow-sm">
-                    {renderChart()}
-                  </div>
-                </div>
-                <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center my-4 flex-shrink-0 gap-4">
-                  <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
-                    <ChartSelector
-                      chartType={chartType}
-                      setChartType={setChartType}
-                    />
-                    {chartType !== ChartType.LIQUIDITY && (
-                      <div className="flex flex-col md:flex-row gap-3">
-                        <VolumeWindowSelector
-                          selectedWindow={selectedWindow}
-                          setSelectedWindow={setSelectedWindow}
-                        />
-                        {renderPriceToggles()}
-                      </div>
-                    )}
-                  </div>
-                  <MarketUnitsToggle />
-                </div>
-              </div>
-            </div>
-            {transactions.length > 0 && (
-              <div
-                className="flex id-table-flex border-t border-border position-relative justify-center items-center relative lg:h-[172px]"
-                style={{
-                  height: isLargeScreen ? `${tableFlexHeight}px` : 'auto',
-                }}
-              >
-                <div
-                  ref={resizeRef}
-                  className="absolute top-0 left-0 right-0 h-1 cursor-ns-resize hover:bg-gray-30 hidden lg:block"
-                />
-                {isLoadingAccountData ? (
-                  <div className="flex justify-center items-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-                  </div>
-                ) : (
-                  <Tabs
-                    defaultValue="transactions"
-                    className="flex flex-col w-full h-full"
-                  >
-                    <TabsList>
-                      <TabsTrigger value="transactions">
-                        <span className="hidden lg:inline">Your&nbsp;</span>
-                        Transactions
-                      </TabsTrigger>
-                      <TabsTrigger value="trader-positions">
-                        <span className="hidden lg:inline">Your&nbsp;</span>
-                        Trader Positions
-                      </TabsTrigger>
-                      <TabsTrigger value="lp-positions">
-                        <span className="hidden lg:inline">Your&nbsp;</span>
-                        LP Positions
-                      </TabsTrigger>
-                    </TabsList>
-                    <div className="flex-grow overflow-y-auto">
-                      <TabsContent value="transactions" className="mt-0">
-                        <TransactionTable transactions={transactions} />
-                      </TabsContent>
-                      <TabsContent value="trader-positions" className="mt-0">
-                        <TraderPositionsTable positions={traderPositions} />
-                      </TabsContent>
-                      <TabsContent value="lp-positions" className="mt-0">
-                        <LiquidityPositionsTable positions={lpPositions} />
-                      </TabsContent>
+                  <div className="flex flex-1 min-h-[400px] md:min-h-0">
+                    <div className="flex w-full h-full border border-border rounded-sm shadow-sm">
+                      {renderChart()}
                     </div>
-                  </Tabs>
-                )}
+                  </div>
+                  <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center my-4 flex-shrink-0 gap-4">
+                    <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+                      <ChartSelector
+                        chartType={chartType}
+                        setChartType={setChartType}
+                        isTrade={isTrade}
+                      />
+                      {chartType !== ChartType.LIQUIDITY && (
+                        <div className="flex flex-col md:flex-row gap-3">
+                          <VolumeWindowSelector
+                            selectedWindow={selectedWindow}
+                            setSelectedWindow={setSelectedWindow}
+                          />
+                          {renderPriceToggles()}
+                        </div>
+                      )}
+                    </div>
+                    <MarketUnitsToggle />
+                  </div>
+                </div>
               </div>
-            )}
+              {transactions.length > 0 && (
+                <div
+                  className="flex id-table-flex border-t border-border position-relative justify-center items-center relative lg:h-[172px]"
+                  style={{
+                    height: isLargeScreen ? `${tableFlexHeight}px` : 'auto',
+                  }}
+                >
+                  <div
+                    ref={resizeRef}
+                    className="absolute top-0 left-0 right-0 h-1 cursor-ns-resize hover:bg-gray-30 hidden lg:block"
+                  />
+                  {isLoadingAccountData ? (
+                    <div className="flex justify-center items-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+                    </div>
+                  ) : (
+                    <Tabs
+                      defaultValue="transactions"
+                      className="flex flex-col w-full h-full"
+                    >
+                      <TabsList>
+                        <TabsTrigger value="transactions">
+                          <span className="hidden lg:inline">Your&nbsp;</span>
+                          Transactions
+                        </TabsTrigger>
+                        <TabsTrigger value="trader-positions">
+                          <span className="hidden lg:inline">Your&nbsp;</span>
+                          Trader Positions
+                        </TabsTrigger>
+                        <TabsTrigger value="lp-positions">
+                          <span className="hidden lg:inline">Your&nbsp;</span>
+                          LP Positions
+                        </TabsTrigger>
+                      </TabsList>
+                      <div className="flex-grow overflow-y-auto">
+                        <TabsContent value="transactions" className="mt-0">
+                          <TransactionTable transactions={transactions} />
+                        </TabsContent>
+                        <TabsContent value="trader-positions" className="mt-0">
+                          <TraderPositionsTable positions={traderPositions} />
+                        </TabsContent>
+                        <TabsContent value="lp-positions" className="mt-0">
+                          <LiquidityPositionsTable positions={lpPositions} />
+                        </TabsContent>
+                      </div>
+                    </Tabs>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        </TradePoolProvider>
       </AddEditPositionProvider>
-    </MarketProvider>
+    </PeriodProvider>
   );
 };
 

@@ -11,7 +11,7 @@ import {
 import { Button } from '~/components/ui/button';
 import { useToast } from '~/hooks/use-toast';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';
 
 import NumberDisplay from './numberDisplay';
@@ -27,7 +27,7 @@ export default function Settle() {
     epochSettled,
     settlementPrice,
     collateralAssetTicker,
-  } = useContext(MarketContext);
+  } = useContext(PeriodContext);
   const { nftId, setNftId, positions } = useAddEditPosition();
   const [withdrawableCollateral, setWithdrawableCollateral] = useState<bigint>(
     BigInt(0)

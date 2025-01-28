@@ -20,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 
 import NumberDisplay from './numberDisplay';
 
@@ -44,7 +44,7 @@ const getTypeDisplay = (type: string) => {
 };
 
 const TransactionTable: React.FC<Props> = ({ transactions }) => {
-  const { address, chain } = useContext(MarketContext);
+  const { address, chain } = useContext(PeriodContext);
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'time', desc: true },
   ]);

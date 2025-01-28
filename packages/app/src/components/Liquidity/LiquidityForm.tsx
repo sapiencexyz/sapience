@@ -19,14 +19,12 @@ import {
   useSwitchChain,
 } from 'wagmi';
 
-import { useConnectWallet } from '../../../lib/context/ConnectWalletProvider';
-import erc20ABI from '../../../lib/erc20abi.json';
-import INONFUNGIBLE_POSITION_MANAGER from '../../../lib/interfaces/Uniswap.NonfungiblePositionManager.json';
-import NumberDisplay from '../../numberDisplay';
-import PositionSelector from '../../positionSelector';
-import SlippageTolerance from '../../slippageTolerance';
-import LiquidityAmountInput from '../LiquidityAmountInput';
-import LiquidityPriceInput from '../LiquidityPriceInput';
+import { useConnectWallet } from '../../lib/context/ConnectWalletProvider';
+import erc20ABI from '../../lib/erc20abi.json';
+import INONFUNGIBLE_POSITION_MANAGER from '../../lib/interfaces/Uniswap.NonfungiblePositionManager.json';
+import NumberDisplay from '../numberDisplay';
+import PositionSelector from '../positionSelector';
+import SlippageTolerance from '../slippageTolerance';
 import { Button } from '@/components/ui/button';
 import { Form } from '@/components/ui/form';
 import { useToast } from '~/hooks/use-toast';
@@ -36,9 +34,17 @@ import {
   TOKEN_DECIMALS,
 } from '~/lib/constants/constants';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
+import { useTradePool } from '~/lib/context/TradePoolContext';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
-import { JSBIAbs } from '~/lib/util/util';
+import {
+  JSBIAbs,
+  convertWstEthToGwei,
+  convertGgasPerWstEthToGwei,
+} from '~/lib/util/util';
+
+import LiquidityAmountInput from './LiquidityAmountInput';
+import LiquidityPriceInput from './LiquidityPriceInput';
 
 // TODO 1% - Hardcoded for now, should be retrieved with pool.tickSpacing()
 // Also move this a to helper?
@@ -48,7 +54,7 @@ const priceToTick = (price: number, tickSpacing: number): number => {
   return Math.round(tick / tickSpacing) * tickSpacing;
 };
 
-const AddEditLiquidity: React.FC = () => {
+const LiquidityForm: React.FC = () => {
   const { nftId, refreshPositions, setNftId } = useAddEditPosition();
   const {
     epoch,
@@ -63,7 +69,9 @@ const AddEditLiquidity: React.FC = () => {
     refetchUniswapData,
     address: marketAddress,
     marketParams,
-  } = useContext(MarketContext);
+    useMarketUnits,
+    stEthPerToken,
+  } = useContext(PeriodContext);
 
   if (!epoch) {
     throw new Error('Epoch is not defined');
@@ -72,6 +80,17 @@ const AddEditLiquidity: React.FC = () => {
   const { toast } = useToast();
   const account = useAccount();
   const { isConnected } = account;
+
+  const {
+    setLowPriceTick,
+    setHighPriceTick,
+    lowPriceTick: contextLowPriceTick,
+    highPriceTick: contextHighPriceTick,
+    snapPriceToTick,
+  } = useTradePool();
+
+  const tickSpacing = pool ? pool?.tickSpacing : TICK_SPACING_DEFAULT;
+  const isEdit = !!nftId;
 
   const form = useForm({
     defaultValues: {
@@ -91,9 +110,19 @@ const AddEditLiquidity: React.FC = () => {
       const errors: Record<string, { type: string; message: string }> = {};
 
       const lowPriceNum = Number(values.lowPrice);
-      const minPrice = tickToPrice(baseAssetMinPriceTick);
+      const minPrice = useMarketUnits
+        ? tickToPrice(baseAssetMinPriceTick)
+        : convertWstEthToGwei(
+            tickToPrice(baseAssetMinPriceTick),
+            stEthPerToken
+          );
       const maxLowPrice = Number(values.highPrice);
-      const lowPriceTick = priceToTick(lowPriceNum, tickSpacing);
+      const lowPriceTick = priceToTick(
+        useMarketUnits
+          ? lowPriceNum
+          : lowPriceNum / convertGgasPerWstEthToGwei(1, stEthPerToken),
+        tickSpacing
+      );
 
       if (lowPriceNum < minPrice) {
         errors.lowPrice = {
@@ -114,8 +143,18 @@ const AddEditLiquidity: React.FC = () => {
 
       const highPriceNum = Number(values.highPrice);
       const minHighPrice = Number(values.lowPrice);
-      const maxPrice = tickToPrice(baseAssetMaxPriceTick);
-      const highPriceTick = priceToTick(highPriceNum, tickSpacing);
+      const maxPrice = useMarketUnits
+        ? tickToPrice(baseAssetMaxPriceTick)
+        : convertWstEthToGwei(
+            tickToPrice(baseAssetMaxPriceTick),
+            stEthPerToken
+          );
+      const highPriceTick = priceToTick(
+        useMarketUnits
+          ? highPriceNum
+          : highPriceNum / convertGgasPerWstEthToGwei(1, stEthPerToken),
+        tickSpacing
+      );
 
       if (highPriceNum <= minHighPrice) {
         errors.highPrice = {
@@ -159,16 +198,6 @@ const AddEditLiquidity: React.FC = () => {
     name: 'depositAmount',
   });
 
-  const lowPrice = useWatch({
-    control,
-    name: 'lowPrice',
-  });
-
-  const highPrice = useWatch({
-    control,
-    name: 'highPrice',
-  });
-
   const slippageStr = useWatch({
     control,
     name: 'slippage',
@@ -182,14 +211,22 @@ const AddEditLiquidity: React.FC = () => {
     'add'
   );
 
-  const tickSpacing = pool ? pool?.tickSpacing : TICK_SPACING_DEFAULT;
-  const tickLower = priceToTick(Number(lowPrice), tickSpacing);
-  const tickUpper = priceToTick(Number(highPrice), tickSpacing);
-  const isEdit = !!nftId;
-
   const [collateralAmountDelta, setCollateralAmountDelta] = useState<bigint>(
     BigInt(0)
   );
+
+  // Calculate ticks using useMemo after all variables are declared
+  const { tickLower, tickUpper } = useMemo(() => {
+    return {
+      tickLower: contextLowPriceTick ?? baseAssetMinPriceTick,
+      tickUpper: contextHighPriceTick ?? baseAssetMaxPriceTick,
+    };
+  }, [
+    contextLowPriceTick,
+    contextHighPriceTick,
+    baseAssetMinPriceTick,
+    baseAssetMaxPriceTick,
+  ]);
 
   const currentChainId = useChainId();
   const { switchChain } = useSwitchChain();
@@ -1001,7 +1038,121 @@ const AddEditLiquidity: React.FC = () => {
         shouldTouch: false,
       });
     }
-  }, [nftId, positionData, isEdit, setValue]);
+  }, [nftId, positionData, isEdit, collateralAssetDecimals, setValue]);
+
+  // Convert price from display units to market units
+  const convertDisplayToMarketPrice = (displayPrice: number): number => {
+    if (useMarketUnits) {
+      return displayPrice;
+    }
+    // Convert from gwei to Ggas/wstETH
+    return displayPrice / convertWstEthToGwei(1, stEthPerToken);
+  };
+
+  // Convert price from market units to display units
+  const convertMarketToDisplayPrice = (marketPrice: number): number => {
+    if (useMarketUnits) {
+      return marketPrice;
+    }
+    // Convert from Ggas/wstETH to gwei
+    return convertWstEthToGwei(marketPrice, stEthPerToken);
+  };
+
+  // Update form values when market units change
+  useEffect(() => {
+    // Use context ticks if available and non-zero, otherwise use market min/max ticks
+    const lowTick =
+      contextLowPriceTick !== undefined && contextLowPriceTick !== 0
+        ? contextLowPriceTick
+        : baseAssetMinPriceTick;
+    const highTick =
+      contextHighPriceTick !== undefined && contextHighPriceTick !== 0
+        ? contextHighPriceTick
+        : baseAssetMaxPriceTick;
+
+    console.log('Ticks:', {
+      lowTick,
+      highTick,
+      contextLowPriceTick,
+      contextHighPriceTick,
+      baseAssetMinPriceTick,
+      baseAssetMaxPriceTick,
+    });
+
+    if (lowTick === undefined || highTick === undefined) {
+      console.log('Ticks are undefined');
+      return;
+    }
+
+    // Convert from ticks to market price
+    const lowMarketPrice = tickToPrice(lowTick);
+    const highMarketPrice = tickToPrice(highTick);
+
+    console.log('Market Prices:', { lowMarketPrice, highMarketPrice });
+
+    // Convert to display units based on current useMarketUnits setting
+    const lowDisplayPrice = useMarketUnits
+      ? lowMarketPrice
+      : convertWstEthToGwei(lowMarketPrice, stEthPerToken);
+    const highDisplayPrice = useMarketUnits
+      ? highMarketPrice
+      : convertWstEthToGwei(highMarketPrice, stEthPerToken);
+
+    console.log('Display Prices:', {
+      lowDisplayPrice,
+      highDisplayPrice,
+      useMarketUnits,
+      stEthPerToken,
+    });
+
+    setValue('lowPrice', lowDisplayPrice.toString(), {
+      shouldValidate: false,
+      shouldDirty: false,
+      shouldTouch: false,
+    });
+    setValue('highPrice', highDisplayPrice.toString(), {
+      shouldValidate: false,
+      shouldDirty: false,
+      shouldTouch: false,
+    });
+  }, [
+    useMarketUnits,
+    stEthPerToken,
+    contextLowPriceTick,
+    contextHighPriceTick,
+    baseAssetMinPriceTick,
+    baseAssetMaxPriceTick,
+    setValue,
+  ]);
+
+  const handlePriceBlur = (price: string, isLow: boolean) => {
+    if (!isEdit) {
+      const displayPrice = Number(price);
+      const marketPrice = convertDisplayToMarketPrice(displayPrice);
+      const { tick, price: snappedMarketPrice } = snapPriceToTick(
+        marketPrice,
+        tickSpacing
+      );
+      const snappedDisplayPrice =
+        convertMarketToDisplayPrice(snappedMarketPrice);
+
+      if (isLow) {
+        setLowPriceTick(tick);
+        setValue('lowPrice', snappedDisplayPrice.toString(), {
+          shouldValidate: true,
+          shouldDirty: true,
+          shouldTouch: true,
+        });
+      } else {
+        setHighPriceTick(tick);
+        setValue('highPrice', snappedDisplayPrice.toString(), {
+          shouldValidate: true,
+          shouldDirty: true,
+          shouldTouch: true,
+        });
+      }
+    }
+  };
 
   return (
     <Form {...form}>
@@ -1022,6 +1173,7 @@ const AddEditLiquidity: React.FC = () => {
           name="lowPrice"
           control={control}
           isDisabled={isEdit}
+          onBlur={(e) => handlePriceBlur(e.target.value, true)}
         />
 
         <LiquidityPriceInput
@@ -1029,6 +1181,7 @@ const AddEditLiquidity: React.FC = () => {
           name="highPrice"
           control={control}
           isDisabled={isEdit}
+          onBlur={(e) => handlePriceBlur(e.target.value, false)}
         />
         <SlippageTolerance />
 
@@ -1118,4 +1271,4 @@ const AddEditLiquidity: React.FC = () => {
   );
 };
 
-export default AddEditLiquidity;
+export default LiquidityForm;

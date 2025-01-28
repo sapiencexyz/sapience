@@ -34,7 +34,7 @@ import {
   TOKEN_DECIMALS,
 } from '~/lib/constants/constants';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
 import { removeLeadingZeros } from '~/lib/util/util';
 
@@ -48,7 +48,9 @@ export default function AddEditTrade() {
 
   // form states
   const [sizeChange, setSizeChange] = useState<bigint>(BigInt(0));
-  const [option, setOption] = useState<'Long' | 'Short'>('Long');
+  const [tradeDirection, setTradeDirection] = useState<'Long' | 'Short'>(
+    'Long'
+  );
 
   // component states
   const [pendingTxn, setPendingTxn] = useState(false);
@@ -81,7 +83,7 @@ export default function AddEditTrade() {
     pool,
     liquidity,
     refetchUniswapData,
-  } = useContext(MarketContext);
+  } = useContext(PeriodContext);
 
   if (!epoch) {
     throw new Error('Epoch is not defined');
@@ -89,7 +91,7 @@ export default function AddEditTrade() {
 
   const { toast } = useToast();
 
-  const isLong = option === 'Long';
+  const isLong = tradeDirection === 'Long';
 
   const sizeChangeInContractUnit = useMemo(() => {
     const baseSize = sizeChange * BigInt(1e9);
@@ -136,7 +138,7 @@ export default function AddEditTrade() {
 
   useEffect(() => {
     if (positionData && isEdit) {
-      setOption(positionData.vGasAmount > BigInt(0) ? 'Long' : 'Short');
+      setTradeDirection(positionData.vGasAmount > BigInt(0) ? 'Long' : 'Short');
       setSizeChange(BigInt(0));
     }
   }, [positionData, isEdit]);
@@ -379,7 +381,7 @@ export default function AddEditTrade() {
   const form = useForm({
     defaultValues: {
       size: '0',
-      option: 'Long',
+      tradeDirection: 'Long',
       slippage: '0.5',
       fetchingSizeFromCollateralInput: false,
       isClosePosition: false,
@@ -480,7 +482,7 @@ export default function AddEditTrade() {
   const resetAfterSuccess = async () => {
     reset({
       size: '0',
-      option: 'Long',
+      tradeDirection: 'Long',
       slippage: '0.5',
       fetchingSizeFromCollateralInput: false,
       isClosePosition: false,
@@ -538,7 +540,7 @@ export default function AddEditTrade() {
   const { setIsOpen } = useConnectWallet();
 
   const handleTabChange = (value: string) => {
-    setOption(value as 'Long' | 'Short');
+    setTradeDirection(value as 'Long' | 'Short');
   };
 
   const renderActionButton = () => {
@@ -755,7 +757,7 @@ export default function AddEditTrade() {
 
         <Tabs
           defaultValue="Long"
-          value={option}
+          value={tradeDirection || 'Long'}
           onValueChange={handleTabChange}
           className="mb-4"
         >

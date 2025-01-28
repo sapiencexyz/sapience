@@ -12,7 +12,7 @@ import {
   TooltipTrigger,
 } from '~/components/ui/tooltip';
 import { useMarketList } from '~/lib/context/MarketListProvider';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
 import { tickToPrice, convertWstEthToGwei } from '~/lib/util/util';
 
@@ -29,7 +29,7 @@ const EpochHeader = () => {
     baseAssetMaxPriceTick,
     useMarketUnits,
     stEthPerToken,
-  } = useContext(MarketContext);
+  } = useContext(PeriodContext);
   const { markets } = useMarketList();
   const { data: resources } = useResources();
 
@@ -68,15 +68,16 @@ const EpochHeader = () => {
 
   return (
     <div className="flex items-center flex-col w-full">
-      <div className="w-full items-center flex flex-col lg:flex-row p-6 lg:pb-5 lg:pt-7">
+      <div className="w-full items-center flex flex-col lg:flex-row px-3 py-6">
         <div className="w-full lg:w-auto flex justify-between lg:justify-start items-center">
-          <h1 className="text-3xl font-semibold mb-0 flex items-center gap-2">
+          <h1 className="text-2xl lg:text-3xl font-semibold mb-0 flex items-center gap-2">
             {resource?.iconPath && (
               <Image
                 src={resource.iconPath}
                 alt={resource?.name || ''}
                 width={32}
                 height={32}
+                className="w-6 h-6 lg:w-8 lg:h-8"
               />
             )}
             {resource?.name} Market
@@ -84,7 +85,7 @@ const EpochHeader = () => {
         </div>
 
         <div className="flex flex-col lg:flex-row items-start lg:items-center mt-4 lg:mt-0 mb-0 lg:ml-auto lg:flex-1 w-full">
-          <div className="flex flex-wrap gap-y-2 gap-x-4 lg:gap-x-7 lg:justify-end w-full">
+          <div className="flex flex-wrap gap-y-2 gap-x-4 lg:gap-x-6 lg:justify-end w-full lg:pr-2">
             <a
               className="hover:no-underline inline-flex items-center"
               target="_blank"

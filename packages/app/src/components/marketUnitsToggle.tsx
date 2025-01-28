@@ -1,11 +1,11 @@
 import type React from 'react';
 import { useContext } from 'react';
 
-import { MarketContext } from '../lib/context/MarketProvider';
+import { PeriodContext } from '../lib/context/PeriodProvider';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const MarketUnitsToggle: React.FC = () => {
-  const { useMarketUnits, setUseMarketUnits } = useContext(MarketContext);
+  const { useMarketUnits, setUseMarketUnits } = useContext(PeriodContext);
 
   return (
     <Tabs

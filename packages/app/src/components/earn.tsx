@@ -23,7 +23,7 @@ import {
   TooltipTrigger,
 } from '~/components/ui/tooltip';
 import { useToast } from '~/hooks/use-toast';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 
 import VaultChart from './vaultChart';
 
@@ -35,7 +35,7 @@ interface FormValues {
 const Earn: FC = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>('deposit');
-  const { collateralAssetTicker } = useContext(MarketContext);
+  const { collateralAssetTicker } = useContext(PeriodContext);
 
   const form = useForm<FormValues>({
     defaultValues: {

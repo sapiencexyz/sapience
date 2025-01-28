@@ -1,15 +1,15 @@
 'use client';
 
 import Earn from '~/components/earn';
-import { MarketProvider } from '~/lib/context/MarketProvider';
+import { PeriodProvider } from '~/lib/context/PeriodProvider';
 
 const EarnPage = ({ params }: { params: { id: string; epoch: string } }) => {
   const [chainId, marketAddress] = params.id.split('%3A');
 
   return (
-    <MarketProvider chainId={Number(chainId)} address={marketAddress}>
+    <PeriodProvider chainId={Number(chainId)} address={marketAddress}>
       <Earn />
-    </MarketProvider>
+    </PeriodProvider>
   );
 };
 

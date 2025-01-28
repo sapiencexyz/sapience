@@ -11,12 +11,12 @@ import {
   DialogTitle,
 } from '~/components/ui/dialog';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 
 const PositionSelector: React.FC = () => {
   const { nftId, positions, setNftId } = useAddEditPosition();
   const [isOpen, setIsOpen] = useState(false);
-  const { chainId, address: marketAddress, epoch } = useContext(MarketContext);
+  const { chainId, address: marketAddress, epoch } = useContext(PeriodContext);
 
   const allPositions = [
     ...(positions?.liquidityPositions?.map((pos) => ({

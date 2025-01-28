@@ -9,7 +9,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '~/components/ui/tooltip';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { convertGgasPerWstEthToGwei } from '~/lib/util/util';
 
 import NumberDisplay from './numberDisplay';
@@ -23,7 +23,7 @@ const Stats = () => {
     liquidity,
     useMarketUnits,
     stEthPerToken,
-  } = useContext(MarketContext);
+  } = useContext(PeriodContext);
 
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = startTime > now;
@@ -43,29 +43,23 @@ const Stats = () => {
   return (
     <TooltipProvider>
       <div className="flex w-full flex-col items-center pb-5">
-        <div className="grid w-full grid-cols-2 gap-4 lg:grid-cols-4">
-          <div className="rounded-lg border border-border p-4 shadow-sm">
-            <div className="text-md">
-              {isBeforeStart ? (
-                <>Starts in</>
-              ) : (
-                <>
-                  Index Price
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <InfoIcon className="ml-1 -translate-y-0.5 inline-block h-4" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      The expected settlement price based on the average
-                      underlying price for this period
-                    </TooltipContent>
-                  </Tooltip>
-                </>
-              )}
+        <div className="grid w-full md:grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className="rounded-sm border border-border py-4 px-6 shadow-sm">
+            <div>
+              Index Price
+              <Tooltip>
+                <TooltipTrigger>
+                  <InfoIcon className="ml-1 -translate-y-0.5 inline-block h-4" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  The expected settlement price based on the average underlying
+                  price for this period
+                </TooltipContent>
+              </Tooltip>
             </div>
-            <div className="mt-1 text-2xl font-bold">
+            <div className="mt-0.5 text-2xl font-bold">
               {isBeforeStart ? (
-                startTimeRelative
+                <>available in {startTimeRelative}</>
               ) : (
                 <>
                   <NumberDisplay
@@ -86,8 +80,8 @@ const Stats = () => {
             </div>
           </div>
 
-          <div className="rounded-lg border border-border p-4 shadow-sm">
-            <div className="text-md">
+          <div className="rounded-sm border border-border py-4 px-6 shadow-sm">
+            <div>
               Market Price
               <Tooltip>
                 <TooltipTrigger className="cursor-default">
@@ -98,7 +92,7 @@ const Stats = () => {
                 </TooltipContent>
               </Tooltip>
             </div>
-            <div className="mt-1 text-2xl font-bold">
+            <div className="mt-0.5 text-2xl font-bold">
               <NumberDisplay
                 value={
                   useMarketUnits
@@ -115,8 +109,8 @@ const Stats = () => {
             </div>
           </div>
 
-          <div className="rounded-lg border border-border p-4 shadow-sm">
-            <div className="text-md">
+          <div className="rounded-sm border border-border py-4 px-6 shadow-sm">
+            <div>
               Liquidity
               <Tooltip>
                 <TooltipTrigger className="cursor-default">
@@ -127,15 +121,15 @@ const Stats = () => {
                 </TooltipContent>
               </Tooltip>
             </div>
-            <div className="mt-1 text-2xl font-bold">
+            <div className="mt-0.5 text-2xl font-bold">
               <NumberDisplay value={liquidity} />{' '}
               <span className="text-sm">Ggas</span>
             </div>
           </div>
 
-          <div className="rounded-lg border border-border p-4 shadow-sm">
-            <div className="text-md">Ends in</div>
-            <div className="mt-1 text-2xl font-bold">{relativeTime}</div>
+          <div className="rounded-sm border border-border py-4 px-6 shadow-sm">
+            <div>Ends in</div>
+            <div className="mt-0.5 text-2xl font-bold">{relativeTime}</div>
           </div>
         </div>
       </div>

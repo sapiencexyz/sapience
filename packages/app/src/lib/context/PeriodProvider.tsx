@@ -21,7 +21,7 @@ import { gweiToEther } from '../util/util';
 import { useToast } from '~/hooks/use-toast';
 
 // Types and Interfaces
-export interface MarketContextType {
+export interface PeriodContextType {
   chain?: Chain;
   address: string;
   collateralAsset: string;
@@ -49,7 +49,7 @@ export interface MarketContextType {
   setUseMarketUnits: (useMarketUnits: boolean) => void;
 }
 
-interface MarketProviderProps {
+interface PeriodProviderProps {
   chainId: number;
   address: string;
   epoch?: number;
@@ -57,17 +57,17 @@ interface MarketProviderProps {
 }
 
 // Context creation
-export const MarketContext = createContext<MarketContextType>(BLANK_MARKET);
+export const PeriodContext = createContext<PeriodContextType>(BLANK_MARKET);
 
 // Main component
-export const MarketProvider: React.FC<MarketProviderProps> = ({
+export const PeriodProvider: React.FC<PeriodProviderProps> = ({
   chainId,
   address,
   children,
   epoch,
 }) => {
   const { toast } = useToast();
-  const [state, setState] = useState<MarketContextType>(BLANK_MARKET);
+  const [state, setState] = useState<PeriodContextType>(BLANK_MARKET);
   const [useMarketUnits, setUseMarketUnits] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('useMarketUnits');
@@ -366,8 +366,8 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
   }, [collateralDecimalsFunctionResult.data]);
 
   return (
-    <MarketContext.Provider value={{ ...state, refetchUniswapData }}>
+    <PeriodContext.Provider value={{ ...state, refetchUniswapData }}>
       {children}
-    </MarketContext.Provider>
+    </PeriodContext.Provider>
   );
 };
