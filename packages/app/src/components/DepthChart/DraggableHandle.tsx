@@ -46,7 +46,12 @@ export function DraggableHandle({
     const chartRect = chartElement.getBoundingClientRect();
     const relativeX = e.clientX - chartRect.left;
 
-    onDrag(relativeX);
+    const leftBound = 0;
+    const rightBound = chartRect.width;
+    const constrainedX = Math.max(leftBound, Math.min(rightBound, relativeX));
+
+    // Subtract the left margin from the x position since it will be added back in the render
+    onDrag(constrainedX - 0);
   };
 
   // On pointer up, we release the pointer capture and call onDragEnd

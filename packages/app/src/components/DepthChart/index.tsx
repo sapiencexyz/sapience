@@ -198,7 +198,7 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
               <g>
                 {/* Left overlay rectangle */}
                 <rect
-                  x={0}
+                  x={16}
                   y={0}
                   width={lowPriceX || 0}
                   height="calc(100% - 35px)"
@@ -218,7 +218,7 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
                   <>
                     {lowPriceX !== null && (
                       <DraggableHandle
-                        x={lowPriceX}
+                        x={lowPriceX + 16}
                         y={0}
                         onDrag={(x) => handleLowPriceDrag(x, chartRef)}
                         onDragEnd={() => handleLowPriceDragEnd(chartRef)}
@@ -228,7 +228,7 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
                     )}
                     {highPriceX !== null && (
                       <DraggableHandle
-                        x={highPriceX}
+                        x={highPriceX + 16}
                         y={0}
                         onDrag={(x) => handleHighPriceDrag(x, chartRef)}
                         onDragEnd={() => handleHighPriceDragEnd(chartRef)}
