@@ -81,6 +81,17 @@ const LiquidityForm: React.FC = () => {
   const account = useAccount();
   const { isConnected } = account;
 
+  const {
+    setLowPriceTick,
+    setHighPriceTick,
+    lowPriceTick: contextLowPriceTick,
+    highPriceTick: contextHighPriceTick,
+    snapPriceToTick,
+  } = useTradePool();
+
+  const tickSpacing = pool ? pool?.tickSpacing : TICK_SPACING_DEFAULT;
+  const isEdit = !!nftId;
+
   const form = useForm({
     defaultValues: {
       depositAmount: '0',
@@ -187,16 +198,6 @@ const LiquidityForm: React.FC = () => {
     name: 'depositAmount',
   });
 
-  const lowPrice = useWatch({
-    control,
-    name: 'lowPrice',
-  });
-
-  const highPrice = useWatch({
-    control,
-    name: 'highPrice',
-  });
-
   const slippageStr = useWatch({
     control,
     name: 'slippage',
@@ -210,14 +211,22 @@ const LiquidityForm: React.FC = () => {
     'add'
   );
 
-  const tickSpacing = pool ? pool?.tickSpacing : TICK_SPACING_DEFAULT;
-  const tickLower = priceToTick(Number(lowPrice), tickSpacing);
-  const tickUpper = priceToTick(Number(highPrice), tickSpacing);
-  const isEdit = !!nftId;
-
   const [collateralAmountDelta, setCollateralAmountDelta] = useState<bigint>(
     BigInt(0)
   );
+
+  // Calculate ticks using useMemo after all variables are declared
+  const { tickLower, tickUpper } = useMemo(() => {
+    return {
+      tickLower: contextLowPriceTick ?? baseAssetMinPriceTick,
+      tickUpper: contextHighPriceTick ?? baseAssetMaxPriceTick,
+    };
+  }, [
+    contextLowPriceTick,
+    contextHighPriceTick,
+    baseAssetMinPriceTick,
+    baseAssetMaxPriceTick,
+  ]);
 
   const currentChainId = useChainId();
   const { switchChain } = useSwitchChain();
@@ -1029,15 +1038,7 @@ const LiquidityForm: React.FC = () => {
         shouldTouch: false,
       });
     }
-  }, [nftId, positionData, isEdit, setValue]);
-
-  const {
-    setLowPriceTick,
-    setHighPriceTick,
-    lowPriceTick: contextLowPriceTick,
-    highPriceTick: contextHighPriceTick,
-    snapPriceToTick,
-  } = useTradePool();
+  }, [nftId, positionData, isEdit, collateralAssetDecimals, setValue]);
 
   // Convert price from display units to market units
   const convertDisplayToMarketPrice = (displayPrice: number): number => {
