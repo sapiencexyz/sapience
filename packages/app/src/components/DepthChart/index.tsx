@@ -89,6 +89,7 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
   const {
     lowPriceX,
     highPriceX,
+    isDragging,
     handleLowPriceDrag,
     handleHighPriceDrag,
     handleLowPriceDragEnd,
@@ -190,6 +191,7 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
                   pool={pool}
                   onTickInfo={setTickInfo}
                   isTrade={isTrade}
+                  isDragging={isDragging}
                 />
               }
             />
@@ -228,7 +230,7 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
                     )}
                     {highPriceX !== null && (
                       <DraggableHandle
-                        x={highPriceX + 16}
+                        x={highPriceX}
                         y={0}
                         onDrag={(x) => handleHighPriceDrag(x, chartRef)}
                         onDragEnd={() => handleHighPriceDragEnd(chartRef)}

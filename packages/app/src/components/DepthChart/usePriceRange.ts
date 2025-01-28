@@ -9,6 +9,7 @@ const CHART_X_MARGIN = 33; // left + right margin + 1px for x-axis padding
 export function usePriceRange(poolData: PoolData | undefined) {
   const [lowPriceX, setLowPriceX] = useState<number | null>(null);
   const [highPriceX, setHighPriceX] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const { setLowPriceTick, setHighPriceTick, lowPriceTick, highPriceTick } =
     useTradePool();
 
@@ -41,6 +42,7 @@ export function usePriceRange(poolData: PoolData | undefined) {
 
   const handleLowPriceDrag = useCallback(
     (newX: number, chartRef: React.RefObject<HTMLDivElement>) => {
+      setIsDragging(true);
       if (!poolData || !chartRef.current) return;
       const chartElement = chartRef.current.querySelector(
         RECHARTS_WRAPPER_SELECTOR
@@ -65,6 +67,7 @@ export function usePriceRange(poolData: PoolData | undefined) {
 
   const handleHighPriceDrag = useCallback(
     (newX: number, chartRef: React.RefObject<HTMLDivElement>) => {
+      setIsDragging(true);
       if (!poolData || !chartRef.current) return;
       const chartElement = chartRef.current.querySelector(
         RECHARTS_WRAPPER_SELECTOR
@@ -89,6 +92,7 @@ export function usePriceRange(poolData: PoolData | undefined) {
 
   const handleLowPriceDragEnd = useCallback(
     (chartRef: React.RefObject<HTMLDivElement>) => {
+      setIsDragging(false);
       if (!poolData || !chartRef.current || lowPriceX === null) return;
       const chartElement = chartRef.current.querySelector(
         RECHARTS_WRAPPER_SELECTOR
@@ -113,6 +117,7 @@ export function usePriceRange(poolData: PoolData | undefined) {
 
   const handleHighPriceDragEnd = useCallback(
     (chartRef: React.RefObject<HTMLDivElement>) => {
+      setIsDragging(false);
       if (!poolData || !chartRef.current || highPriceX === null) return;
       const chartElement = chartRef.current.querySelector(
         RECHARTS_WRAPPER_SELECTOR
@@ -138,6 +143,7 @@ export function usePriceRange(poolData: PoolData | undefined) {
   return {
     lowPriceX,
     highPriceX,
+    isDragging,
     setLowPriceX,
     setHighPriceX,
     handleLowPriceDrag,

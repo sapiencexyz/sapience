@@ -12,11 +12,12 @@ interface CustomTooltipProps {
   pool: Pool | null;
   onTickInfo: (tickIdx: number, price0: number, price1: number) => void;
   isTrade: boolean;
+  isDragging?: boolean;
 }
 
 export const CustomTooltip: React.FC<
   TooltipProps<number, string> & CustomTooltipProps
-> = ({ payload, pool, onTickInfo, isTrade }) => {
+> = ({ payload, pool, onTickInfo, isTrade, isDragging }) => {
   const { useMarketUnits, stEthPerToken } = useContext(PeriodContext);
 
   useEffect(() => {
@@ -26,7 +27,7 @@ export const CustomTooltip: React.FC<
     }
   }, [payload, onTickInfo]);
 
-  if (!payload || !payload[0] || !pool) return null;
+  if (!payload || !payload[0] || !pool || isDragging) return null;
   const tick: BarChartTick = payload[0].payload;
 
   const displayValue = (value: number) => {
