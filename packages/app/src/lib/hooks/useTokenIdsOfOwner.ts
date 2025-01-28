@@ -34,7 +34,7 @@ export const useTokenIdsOfOwner = (ownerAddress: `0x${string}`) => {
         args: [ownerAddress, i],
       };
     });
-  }, [tokenBalance]);
+  }, [tokenBalance, foilData.abi, foilData.address, ownerAddress]);
 
   const { data, isLoading: isLoadingContracts } = useReadContracts({
     contracts,

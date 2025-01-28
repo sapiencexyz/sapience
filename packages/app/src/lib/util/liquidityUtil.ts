@@ -160,7 +160,7 @@ function processTicks(
       : convertGgasPerWstEthToGwei(price0, stEthPerToken),
     price1: useMarketUnits
       ? price1
-      : convertGgasPerWstEthToGwei(price1, stEthPerToken),
+      : 1 / convertGgasPerWstEthToGwei(1 / price1, stEthPerToken),
     isCurrent: true,
   };
 
@@ -231,7 +231,7 @@ function processTickDirection(
       : convertGgasPerWstEthToGwei(price0, stEthPerToken),
     price1: useMarketUnits
       ? price1
-      : convertGgasPerWstEthToGwei(price1, stEthPerToken),
+      : 1 / convertGgasPerWstEthToGwei(1 / price1, stEthPerToken),
     isCurrent: false,
   };
 

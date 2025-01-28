@@ -35,7 +35,7 @@ export function usePoolData(
   isTrade: boolean = false
 ) {
   const [poolData, setPoolData] = useState<PoolData>();
-  const { stEthPerToken } = useContext(PeriodContext);
+  const { stEthPerToken, useMarketUnits } = useContext(PeriodContext);
 
   const ticks = useMemo(() => {
     const tickRange: number[] = [];
@@ -79,60 +79,59 @@ export function usePoolData(
 
   useEffect(() => {
     if (pool) {
-      // Always use market units for data processing to keep liquidity values consistent
-      getFullPool(pool, graphTicks, tickSpacing, true, stEthPerToken).then(
-        (fullPoolData) => {
-          if (isTrade) {
-            const allTicks = fullPoolData.ticks;
-            const currentTickIndex = allTicks.findIndex(
-              (tick) => tick.isCurrent
-            );
+      getFullPool(
+        pool,
+        graphTicks,
+        tickSpacing,
+        useMarketUnits,
+        stEthPerToken
+      ).then((fullPoolData) => {
+        if (isTrade) {
+          const allTicks = fullPoolData.ticks;
+          const currentTickIndex = allTicks.findIndex((tick) => tick.isCurrent);
 
-            // Calculate right side (increasing from current tick)
-            let runningSumRight =
-              allTicks[currentTickIndex]?.liquidityLockedToken0 || 0;
-            const rightSide = allTicks
-              .slice(currentTickIndex + 1)
-              .map((tick) => {
-                runningSumRight += tick.liquidityLockedToken0; // Accumulate Ggas first
-                const liquidityActive = runningSumRight;
-                return { ...tick, liquidityActive };
-              });
+          // Calculate right side (increasing from current tick)
+          let runningSumRight =
+            allTicks[currentTickIndex]?.liquidityLockedToken0 || 0;
+          const rightSide = allTicks.slice(currentTickIndex + 1).map((tick) => {
+            runningSumRight += tick.liquidityLockedToken0; // Accumulate Ggas first
+            const liquidityActive = runningSumRight;
+            return { ...tick, liquidityActive };
+          });
 
-            // Calculate left side (decreasing from current tick)
-            let runningSumLeft =
-              allTicks[currentTickIndex]?.liquidityLockedToken1 || 0;
-            const leftSide = allTicks
-              .slice(0, currentTickIndex)
-              .reverse()
-              .map((tick) => {
-                runningSumLeft += tick.liquidityLockedToken1; // Accumulate wstETH first
-                const liquidityActive = runningSumLeft;
-                return { ...tick, liquidityActive };
-              })
-              .reverse();
+          // Calculate left side (decreasing from current tick)
+          let runningSumLeft =
+            allTicks[currentTickIndex]?.liquidityLockedToken1 || 0;
+          const leftSide = allTicks
+            .slice(0, currentTickIndex)
+            .reverse()
+            .map((tick) => {
+              runningSumLeft += tick.liquidityLockedToken1; // Accumulate wstETH first
+              const liquidityActive = runningSumLeft;
+              return { ...tick, liquidityActive };
+            })
+            .reverse();
 
-            // Add current tick to the accumulated ticks with its total liquidity
-            const currentTick = allTicks[currentTickIndex];
-            const accumulatedTicks = [
-              ...leftSide,
-              {
-                ...currentTick,
-                liquidityActive:
-                  currentTick.liquidityLockedToken0 +
-                  currentTick.liquidityLockedToken1,
-              },
-              ...rightSide,
-            ];
+          // Add current tick to the accumulated ticks with its total liquidity
+          const currentTick = allTicks[currentTickIndex];
+          const accumulatedTicks = [
+            ...leftSide,
+            {
+              ...currentTick,
+              liquidityActive:
+                currentTick.liquidityLockedToken0 +
+                currentTick.liquidityLockedToken1,
+            },
+            ...rightSide,
+          ];
 
-            setPoolData({ ...fullPoolData, ticks: accumulatedTicks });
-          } else {
-            setPoolData(fullPoolData);
-          }
+          setPoolData({ ...fullPoolData, ticks: accumulatedTicks });
+        } else {
+          setPoolData(fullPoolData);
         }
-      );
+      });
     }
-  }, [pool, graphTicks, tickSpacing, stEthPerToken, isTrade]);
+  }, [pool, graphTicks, tickSpacing, stEthPerToken, isTrade, useMarketUnits]);
 
   return poolData;
 }

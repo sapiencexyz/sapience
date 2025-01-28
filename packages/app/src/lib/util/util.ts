@@ -56,7 +56,10 @@ export const convertGgasPerWstEthToGwei = (
   value: number,
   stEthPerToken: number | undefined
 ) => {
-  return (value * (stEthPerToken || 1)) / 1e9;
+  // For Ggas/wstETH to gwei:
+  // 1. Convert Ggas/wstETH to Ggas/stETH by dividing by stEthPerToken
+  // 2. Convert Ggas/stETH to gwei by multiplying by 1e9
+  return (value * 1e9) / (stEthPerToken || 1);
 };
 
 export const gweiToEther = (gweiValue: bigint): string => {
