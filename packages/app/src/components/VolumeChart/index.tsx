@@ -24,7 +24,7 @@ import type { VolumeChartData, TimeWindow } from '~/lib/interfaces/interfaces';
 import { formatXAxisTick, getXTicksToShow } from '~/lib/util/chartUtil';
 import { getDisplayTextForVolumeWindow } from '~/lib/util/util';
 
-const barColor = 'hsl(var(--chart-3))';
+const barColor = '#58585A';
 
 dayjs.extend(utc);
 

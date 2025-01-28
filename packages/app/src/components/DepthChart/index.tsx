@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { MoveHorizontal } from 'lucide-react';
 import type React from 'react';
-import { useContext, useRef } from 'react';
+import { useContext, useRef, useState } from 'react';
 import {
   BarChart,
   ResponsiveContainer,
@@ -57,6 +57,7 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
     useTradePool();
 
   const chartRef = useRef<HTMLDivElement>(null);
+  const [chartReady, setChartReady] = useState(false);
 
   const poolData = usePoolData(
     pool,
@@ -81,10 +82,11 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
     handleHighPriceDrag,
     handleLowPriceDragEnd,
     handleHighPriceDragEnd,
-  } = usePriceRange(poolData);
+  } = usePriceRange(poolData, chartReady);
 
   // Initialize ticks and place draggable handles
   const handleResize = () => {
+    setChartReady(true);
     setLowPriceTick(lowPriceTick || baseAssetMinPriceTick);
     setHighPriceTick(highPriceTick || baseAssetMaxPriceTick);
   };

@@ -10,7 +10,10 @@ const CHART_X_AXIS_PADDING = 1;
 const CHART_X_MARGIN =
   CHART_LEFT_MARGIN + CHART_RIGHT_MARGIN + CHART_X_AXIS_PADDING;
 
-export function usePriceRange(poolData: PoolData | undefined) {
+export function usePriceRange(
+  poolData: PoolData | undefined,
+  chartReady?: boolean
+) {
   const [lowPriceX, setLowPriceX] = useState<number | null>(null);
   const [highPriceX, setHighPriceX] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -19,7 +22,7 @@ export function usePriceRange(poolData: PoolData | undefined) {
 
   // Update handle positions when ticks change
   useEffect(() => {
-    if (!poolData || !poolData.ticks.length) return;
+    if (!poolData || !poolData.ticks.length || !chartReady) return;
 
     const lowTickIndex = poolData.ticks.findIndex(
       (tick) => Number(tick.tickIdx) === lowPriceTick
@@ -42,7 +45,7 @@ export function usePriceRange(poolData: PoolData | undefined) {
       const tickWidth = xScale / (poolData.ticks.length - 1);
       setHighPriceX(CHART_LEFT_MARGIN + highTickIndex * tickWidth);
     }
-  }, [poolData, lowPriceTick, highPriceTick]);
+  }, [poolData, lowPriceTick, highPriceTick, chartReady]);
 
   const handleLowPriceDrag = useCallback(
     (newX: number, chartRef: React.RefObject<HTMLDivElement>) => {
