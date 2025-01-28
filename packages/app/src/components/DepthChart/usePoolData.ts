@@ -83,10 +83,11 @@ export function usePoolData(
         if (isTrade) {
           const allTicks = fullPoolData.ticks;
           const currentTickIndex = allTicks.findIndex((tick) => tick.isCurrent);
+          const currentTick = allTicks[currentTickIndex];
 
           // Calculate right side (increasing from current tick)
-          let runningSumRight =
-            allTicks[currentTickIndex]?.liquidityLockedToken0 || 0;
+          let runningSumRight = currentTick.liquidityLockedToken0 || 0;
+          console.log('runningSumRight', runningSumRight);
           const rightSide = allTicks.slice(currentTickIndex + 1).map((tick) => {
             runningSumRight += tick.liquidityLockedToken0; // Accumulate Ggas first
             const liquidityActive = runningSumRight;
@@ -94,8 +95,7 @@ export function usePoolData(
           });
 
           // Calculate left side (decreasing from current tick)
-          let runningSumLeft =
-            allTicks[currentTickIndex]?.liquidityLockedToken1 || 0;
+          let runningSumLeft = currentTick.liquidityLockedToken1 || 0;
           const leftSide = allTicks
             .slice(0, currentTickIndex)
             .reverse()
@@ -107,7 +107,6 @@ export function usePoolData(
             .reverse();
 
           // Add current tick to the accumulated ticks with its total liquidity
-          const currentTick = allTicks[currentTickIndex];
           const accumulatedTicks = [
             ...leftSide,
             {

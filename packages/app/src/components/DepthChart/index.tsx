@@ -94,6 +94,7 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
       props={props}
       activeTickValue={pool?.tickCurrent || 0}
       tickSpacing={pool?.tickSpacing || 0}
+      isTrade={isTrade}
     />
   );
 

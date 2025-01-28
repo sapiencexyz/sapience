@@ -19,17 +19,19 @@ interface CustomBarProps {
   };
   activeTickValue: number;
   tickSpacing: number;
+  isTrade?: boolean;
 }
 
 export const CustomBar: React.FC<CustomBarProps> = ({
   props,
   activeTickValue,
   tickSpacing,
+  isTrade = false,
 }) => {
-  const { x, y, width, height, tickIdx } = props;
+  const { x, y, width, height } = props;
 
   const isClosestTick = checkIsClosestTick(
-    tickIdx,
+    props.tickIdx,
     activeTickValue,
     tickSpacing
   );
@@ -37,12 +39,14 @@ export const CustomBar: React.FC<CustomBarProps> = ({
   let fill = '#58585A';
   if (isClosestTick) {
     fill = '#8D895E';
-  } else if (tickIdx < activeTickValue) {
+  } else if (props.tickIdx < activeTickValue) {
     fill = '#58585A';
   }
+
   return (
-    <path
-      d={`
+    !(isTrade && isClosestTick) && (
+      <path
+        d={`
           M ${x},${y + height}
           L ${x},${y + 2}
           Q ${x},${y} ${x + 2},${y}
@@ -51,9 +55,10 @@ export const CustomBar: React.FC<CustomBarProps> = ({
           L ${x + width},${y + height}
           Z
         `}
-      fill={fill}
-      height="100%"
-    />
+        fill={fill}
+        height="100%"
+      />
+    )
   );
 };
 

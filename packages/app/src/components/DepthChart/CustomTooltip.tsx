@@ -44,66 +44,43 @@ export const CustomTooltip: React.FC<
         exit={{ opacity: 0 }}
         className="bg-background p-3 border border-border rounded-sm shadow-sm"
       >
-        {(!isTrade || !tick.isCurrent) && (
-          <p className="text-xs font-medium text-gray-500 mb-0.5">
-            {isTrade ? 'Cumulative Liquidity' : 'Liquidity'}
-          </p>
-        )}
+        <p className="text-xs font-medium text-gray-500 mb-0.5">
+          {(() => {
+            if (isTrade && tick.isCurrent) return 'Active Tick Liquidity';
+            if (isTrade) return 'Cumulative Liquidity';
+            return 'Liquidity';
+          })()}
+        </p>
+
         {isTrade && tick.isCurrent && (
           <>
-            <p className="text-xs font-medium text-gray-500 mb-0.5">
-              Active Tick Liquidity
-            </p>
-            <p>
-              {displayValue(tick.liquidityLockedToken0).toFixed(4)}{' '}
-              {useMarketUnits ? 'Ggas' : 'gwei'}
-            </p>
-            <p>
-              {displayValue(tick.liquidityLockedToken1).toFixed(4)}{' '}
-              {useMarketUnits ? 'wstETH' : 'gwei'}
-            </p>
+            <p>{displayValue(tick.liquidityLockedToken0).toFixed(4)} Ggas</p>
+            <p>{displayValue(tick.liquidityLockedToken1).toFixed(4)} wstETH</p>
           </>
         )}
-        {isTrade && !tick.isCurrent && tick.tickIdx < pool.tickCurrent && (
+
+        {isTrade && !tick.isCurrent && (
           <p>
             {displayValue(tick.liquidityActive).toFixed(4)}{' '}
-            {useMarketUnits ? 'wstETH' : 'gwei'}
+            {tick.tickIdx < pool.tickCurrent ? 'wstETH' : 'Ggas'}
           </p>
         )}
-        {isTrade && !tick.isCurrent && tick.tickIdx >= pool.tickCurrent && (
-          <p>
-            {displayValue(tick.liquidityActive).toFixed(4)}{' '}
-            {useMarketUnits ? 'Ggas' : 'gwei'}
-          </p>
-        )}
-        {!isTrade && (
-          <>
-            {tick.tickIdx < pool.tickCurrent && !tick.isCurrent && (
+
+        {!isTrade &&
+          (tick.isCurrent ? (
+            <>
               <p>
-                {displayValue(tick.liquidityLockedToken1).toFixed(4)}{' '}
-                {useMarketUnits ? 'wstETH' : 'gwei'}
+                {displayValue(tick.liquidityLockedToken1).toFixed(4)} wstETH
               </p>
-            )}
-            {tick.tickIdx > pool.tickCurrent && !tick.isCurrent && (
-              <p>
-                {displayValue(tick.liquidityLockedToken0).toFixed(4)}{' '}
-                {useMarketUnits ? 'Ggas' : 'gwei'}
-              </p>
-            )}
-            {tick.isCurrent && (
-              <>
-                <p>
-                  {displayValue(tick.liquidityLockedToken1).toFixed(4)}{' '}
-                  {useMarketUnits ? 'wstETH' : 'gwei'}
-                </p>
-                <p>
-                  {displayValue(tick.liquidityLockedToken0).toFixed(4)}{' '}
-                  {useMarketUnits ? 'Ggas' : 'gwei'}
-                </p>
-              </>
-            )}
-          </>
-        )}
+              <p>{displayValue(tick.liquidityLockedToken0).toFixed(4)} Ggas</p>
+            </>
+          ) : (
+            <p>
+              {tick.tickIdx < pool.tickCurrent
+                ? `${displayValue(tick.liquidityLockedToken1).toFixed(4)} wstETH`
+                : `${displayValue(tick.liquidityLockedToken0).toFixed(4)} Ggas`}
+            </p>
+          ))}
       </motion.div>
     </AnimatePresence>
   );
