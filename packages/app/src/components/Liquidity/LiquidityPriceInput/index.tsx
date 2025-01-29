@@ -6,7 +6,7 @@ import { Controller } from 'react-hook-form';
 
 import { FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { removeLeadingZeros } from '~/lib/util/util';
 
 interface Props<T extends FieldValues> {
@@ -14,19 +14,47 @@ interface Props<T extends FieldValues> {
   name: Path<T>;
   control: Control<T>;
   isDisabled?: boolean;
+  onBlur?: (event: React.FocusEvent<HTMLInputElement>) => void;
 }
+
+const getTickSpacingForFee = (fee: number): number => {
+  if (fee === 100) {
+    return 1;
+  }
+  if (fee === 500) {
+    return 10;
+  }
+  if (fee === 3000) {
+    return 60;
+  }
+  if (fee === 10000) {
+    return 200;
+  }
+  return 0;
+};
 
 const LiquidityPriceInput = <T extends FieldValues>({
   label,
   name,
   control,
   isDisabled = false,
+  onBlur: externalOnBlur,
 }: Props<T>) => {
-  const { collateralAssetTicker, useMarketUnits } = useContext(MarketContext);
+  const { collateralAssetTicker, useMarketUnits, marketParams, stEthPerToken } =
+    useContext(PeriodContext);
 
   const getCurrentUnit = () => {
     return useMarketUnits ? `Ggas/${collateralAssetTicker}` : 'gwei';
   };
+
+  // TODO: I don't think this is right
+  const tickSpacing = getTickSpacingForFee(marketParams.feeRate);
+  // Calculate the price ratio for one tick spacing
+  const priceRatio = 1.0001 ** tickSpacing;
+  // The step should be the minimum price change
+  const step = useMarketUnits
+    ? priceRatio - 1 // For market units, use the raw price ratio change
+    : ((priceRatio - 1) * (stEthPerToken || 0)) / 1e9; // For gwei, convert the price ratio change
 
   return (
     <div className="mb-4">
@@ -43,17 +71,21 @@ const LiquidityPriceInput = <T extends FieldValues>({
               <Input
                 value={value?.toString() || ''}
                 onChange={(e) => onChange(removeLeadingZeros(e.target.value))}
-                onBlur={() => {
+                onBlur={(e) => {
                   if (value === '') {
                     onChange('0');
                   }
                   onBlur();
+                  if (externalOnBlur) {
+                    externalOnBlur(e);
+                  }
                 }}
                 type="number"
                 inputMode="decimal"
                 disabled={isDisabled}
                 onWheel={(e) => e.currentTarget.blur()}
                 className="pr-[120px]"
+                step={step}
               />
               <div className="absolute inset-y-0 right-0 flex items-center px-3 border border-input bg-muted rounded-r-md">
                 {getCurrentUnit()}

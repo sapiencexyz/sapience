@@ -31,7 +31,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { tickToPrice } from '~/lib/util/util';
 
 import NumberDisplay from './numberDisplay';
@@ -203,7 +203,7 @@ const createColumns = (
 ];
 
 const LiquidityPositionsTable: React.FC<Props> = ({ positions }) => {
-  const { pool, endTime, chain, address } = useContext(MarketContext);
+  const { pool, endTime, chain, address } = useContext(PeriodContext);
   const [sorting, setSorting] = useState<SortingState>([
     {
       id: 'settled',

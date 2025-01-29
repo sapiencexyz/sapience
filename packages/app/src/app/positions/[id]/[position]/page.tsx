@@ -5,7 +5,7 @@ import { Loader2 } from 'lucide-react';
 
 import NumberDisplay from '~/components/numberDisplay';
 import { API_BASE_URL } from '~/lib/constants/constants';
-import { MarketProvider } from '~/lib/context/MarketProvider';
+import { PeriodProvider } from '~/lib/context/PeriodProvider';
 import { tickToPrice } from '~/lib/util/util';
 
 const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
@@ -127,7 +127,7 @@ const PositionPage = ({
   };
 
   return (
-    <MarketProvider
+    <PeriodProvider
       chainId={Number(chainId)}
       address={marketAddress}
       epoch={Number(positionData?.epoch?.id)}
@@ -137,7 +137,7 @@ const PositionPage = ({
           {renderPositionData()}
         </div>
       </div>
-    </MarketProvider>
+    </PeriodProvider>
   );
 };
 

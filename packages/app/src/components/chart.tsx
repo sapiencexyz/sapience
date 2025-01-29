@@ -13,7 +13,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '~/components/ui/tooltip';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { cn } from '~/lib/utils';
 
 interface Props {
@@ -51,9 +51,13 @@ const CandlestickChart: React.FC<Props> = ({
   const candlestickSeriesRef = useRef<any>(null);
   const indexPriceSeriesRef = useRef<any>(null);
   const resourcePriceSeriesRef = useRef<any>(null);
-  const { stEthPerToken, useMarketUnits } = useContext(MarketContext);
+  const { stEthPerToken, useMarketUnits, startTime } =
+    useContext(PeriodContext);
   const { theme } = useTheme();
   const [isLogarithmic, setIsLogarithmic] = useState(false);
+
+  const now = Math.floor(Date.now() / 1000);
+  const isBeforeStart = startTime > now;
 
   // Split the chart creation and data updates into separate effects
 
@@ -197,7 +201,7 @@ const CandlestickChart: React.FC<Props> = ({
 
     candlestickSeriesRef.current.setData(candleSeriesData);
 
-    if (!isLoading && indexPriceSeriesRef.current) {
+    if (!isLoading && indexPriceSeriesRef.current && !isBeforeStart) {
       indexPriceSeriesRef.current.setData(lineSeriesData);
 
       if (data.resourcePrices?.length && resourcePriceSeriesRef.current) {
@@ -217,7 +221,7 @@ const CandlestickChart: React.FC<Props> = ({
     }
     if (indexPriceSeriesRef.current) {
       indexPriceSeriesRef.current.applyOptions({
-        visible: seriesVisibility.index,
+        visible: !isBeforeStart && seriesVisibility.index,
       });
     }
     if (resourcePriceSeriesRef.current) {
@@ -254,7 +258,7 @@ const CandlestickChart: React.FC<Props> = ({
   }, [isLogarithmic]);
 
   return (
-    <div className="flex flex-col flex-1 relative group">
+    <div className="flex flex-col flex-1 relative group w-full h-full">
       <div className="flex flex-1 h-full">
         <div ref={chartContainerRef} className="w-full h-full" />
       </div>
@@ -265,7 +269,7 @@ const CandlestickChart: React.FC<Props> = ({
               type="button"
               onClick={() => setIsLogarithmic(!isLogarithmic)}
               className={cn(
-                'absolute bottom-0 right-3 w-6 h-6 rounded-sm bg-background border border-border text-foreground flex items-center justify-center hover:bg-accent hover:border-accent transition-all duration-100 opacity-0 group-hover:opacity-100 z-50 text-xs',
+                'absolute bottom-0 right-2 w-6 h-6 rounded-sm bg-background border border-border text-foreground flex items-center justify-center hover:bg-accent hover:border-accent transition-all duration-100 opacity-0 group-hover:opacity-100 z-50 text-xs',
                 isLogarithmic &&
                   'bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:border-primary/90'
               )}

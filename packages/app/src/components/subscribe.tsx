@@ -48,7 +48,7 @@ import {
 } from '~/components/ui/tooltip';
 import { useToast } from '~/hooks/use-toast';
 import { useMarketList } from '~/lib/context/MarketListProvider';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 
 import NumberDisplay from './numberDisplay';
 import SimpleBarChart from './SimpleBarChart';
@@ -100,7 +100,7 @@ const Subscribe: FC<SubscribeProps> = ({
     refetchUniswapData,
     startTime,
     endTime,
-  } = useContext(MarketContext);
+  } = useContext(PeriodContext);
 
   // Use prop values if provided, otherwise use context values
   const finalMarketAddress = contextMarketAddress;

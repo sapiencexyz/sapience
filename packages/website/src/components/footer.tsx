@@ -4,7 +4,7 @@ import {
   TwitterLogoIcon,
 } from '@radix-ui/react-icons';
 import { Button } from '@/components/ui/button';
-import { BookIcon } from 'lucide-react';
+import { BookTextIcon } from 'lucide-react';
 
 export const Footer = () => {
   return (
@@ -67,7 +67,7 @@ export const Footer = () => {
             rel="noopener noreferrer"
             aria-label="Docs"
           >
-            <BookIcon className="h-5 w-5 text-white opacity-70" />
+            <BookTextIcon className="h-5 w-5 text-white opacity-70" />
           </a>
         </Button>
       </div>

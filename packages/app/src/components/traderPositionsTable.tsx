@@ -18,7 +18,7 @@ import type React from 'react';
 import { useContext, useState, useMemo } from 'react';
 import { useReadContract } from 'wagmi';
 
-import { MarketContext } from '../lib/context/MarketProvider';
+import { PeriodContext } from '../lib/context/PeriodProvider';
 import {
   Table,
   TableBody,
@@ -122,7 +122,7 @@ const SettledCell = ({ cell }: { cell: any }) =>
 
 const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
   const { address, chain, endTime, pool, useMarketUnits, stEthPerToken } =
-    useContext(MarketContext);
+    useContext(PeriodContext);
   const [sorting, setSorting] = useState<SortingState>([
     {
       id: 'status',

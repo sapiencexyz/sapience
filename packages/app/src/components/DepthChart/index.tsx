@@ -1,357 +1,180 @@
 'use client';
 
-import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
-import type { Pool } from '@uniswap/v3-sdk';
+import { motion } from 'framer-motion';
+import { MoveHorizontal } from 'lucide-react';
 import type React from 'react';
-import type { Dispatch, SetStateAction } from 'react';
-import { useContext, useEffect, useMemo, useState } from 'react';
-import type { TooltipProps } from 'recharts';
-import { BarChart, ResponsiveContainer, XAxis, Tooltip, Bar } from 'recharts';
-import { type AbiFunction } from 'viem';
-import { useReadContracts } from 'wagmi';
+import { useContext, useRef, useState } from 'react';
+import {
+  BarChart,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Bar,
+} from 'recharts';
 
-import { TICK_SPACING_DEFAULT } from '~/lib/constants/constants';
-import { MarketContext } from '~/lib/context/MarketProvider';
-import type {
-  BarChartTick,
-  GraphTick,
-  PoolData,
-} from '~/lib/util/liquidityUtil';
-import { getFullPool } from '~/lib/util/liquidityUtil';
+import NumberDisplay from '~/components/numberDisplay';
+import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
+import { useTradePool } from '~/lib/context/TradePoolContext';
+import { convertGgasPerWstEthToGwei } from '~/lib/util/util';
 
-const gray400 = 'hsl(var(--chart-3))';
-const paleGreen = 'hsl(var(--chart-3))';
-const purple = 'hsl(var(--chart-5))';
-const turquoise = 'hsl(var(--chart-4))';
-const peach = 'hsl(var(--chart-2))';
+import { CustomBar } from './CustomBar';
+import { CustomTooltip } from './CustomTooltip';
+import { CustomXAxisTick } from './CustomXAxisTick';
+import { DraggableHandle } from './DraggableHandle';
+import { usePoolData } from './usePoolData';
+import { usePriceInfo } from './usePriceInfo';
+import { CHART_LEFT_MARGIN, usePriceRange } from './usePriceRange';
 
-const checkIsClosestTick = (
-  tick: number,
-  activeTickValue: number,
-  tickSpacing: number
-) => {
-  return tick <= activeTickValue && tick + tickSpacing >= activeTickValue;
-};
-
-type TickDataTuple = [
-  bigint, // liquidityGross
-  bigint, // liquidityNet
-  bigint, // feeGrowthOutside0X128
-  bigint, // feeGrowthOutside1X128
-  bigint, // tickCumulativeOutside
-  bigint, // secondsPerLiquidityOutsideX128
-  number, // secondsOutside
-  boolean, // initialized
-];
-
-interface TickData {
-  status: string;
-  result: TickDataTuple;
+interface DepthChartProps {
+  isTrade?: boolean;
 }
 
-interface CustomBarProps {
-  props: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    tickIdx: number;
-    index: number;
-  };
-  activeTickValue: number;
-  hoveredBar: number | null;
-  setHoveredBar: React.Dispatch<React.SetStateAction<number | null>>;
-  tickSpacing: number;
+interface XAxisTickProps {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  tick: number;
+  index: number;
+  payload: { value: number };
 }
 
-const CustomBar: React.FC<CustomBarProps> = ({
-  props,
-  activeTickValue,
-  hoveredBar,
-  setHoveredBar,
-  tickSpacing,
-}) => {
-  const { x, y, width, height, tickIdx, index } = props;
-  let fill = purple; // Default color
-
-  const isClosestTick = checkIsClosestTick(
-    tickIdx,
-    activeTickValue,
-    tickSpacing
-  );
-  if (index === hoveredBar) {
-    fill = paleGreen; // Hover color
-  } else if (isClosestTick) {
-    fill = turquoise; // Active bar color
-  } else if (tickIdx < activeTickValue) {
-    fill = peach;
-  }
-  return (
-    <rect
-      x={x}
-      y={y}
-      width={width}
-      height={height}
-      fill={fill}
-      onMouseEnter={() => setHoveredBar(index)}
-      onMouseLeave={() => setHoveredBar(null)}
-    />
-  );
-};
-
-interface CustomXAxisTickProps {
-  props: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    tick: number;
-    index: number;
-    payload: any;
-  };
-  activeTickValue: number;
-  tickSpacing: number;
-}
-
-const CustomXAxisTick: React.FC<CustomXAxisTickProps> = ({
-  props,
-  activeTickValue,
-  tickSpacing,
-}) => {
-  const { payload, x, y } = props;
-
-  const isClosestTick = checkIsClosestTick(
-    payload.value,
-    activeTickValue,
-    tickSpacing
-  );
-
-  if (!isClosestTick) return null;
-
-  return (
-    <g transform={`translate(${x},${y})`} id="activeTicks">
-      <text
-        x={0}
-        y={0}
-        dy={10}
-        textAnchor="middle"
-        fill={gray400}
-        fontSize={12}
-      >
-        Active tick range
-      </text>
-    </g>
-  );
-};
-interface CustomTooltipProps {
-  pool: Pool | null;
-  setPrice1: Dispatch<SetStateAction<number>>; // used for price1 value on hover
-  setPrice0: Dispatch<SetStateAction<number>>; // used for price0 value on hover
-  setLabel: Dispatch<SetStateAction<string>>; // used for label of value
-}
-const CustomTooltip: React.FC<
-  TooltipProps<number, string> & CustomTooltipProps
-> = ({ payload, pool, setPrice0, setLabel, setPrice1 }) => {
-  useEffect(() => {
-    if (payload && payload[0]) {
-      const tick: BarChartTick = payload[0].payload;
-      setPrice0(tick.price0);
-      setPrice1(tick.price1);
-      setLabel(`Tick ${tick.tickIdx}`);
-    }
-  }, [payload, setLabel, setPrice0, setPrice1]);
-
-  if (!payload || !payload[0] || !pool) return null;
-  const tick: BarChartTick = payload[0].payload;
-
-  console.log(pool.tickCurrent, tick.tickIdx, tick.isCurrent);
-
-  return (
-    <div
-      style={{
-        padding: '8px',
-        border: '1px solid #ccc',
-      }}
-      className="bg-background"
-    >
-      {tick.tickIdx < pool.tickCurrent && !tick.isCurrent && (
-        <>
-          <p>
-            {pool.token1.symbol} Liquidity:{' '}
-            {tick.liquidityLockedToken1.toFixed(3)}
-          </p>
-          <p>
-            {pool.token0.symbol} Liquidity:{' 0'}
-          </p>
-        </>
-      )}
-      {tick.tickIdx > pool.tickCurrent && !tick.isCurrent && (
-        <>
-          <p>
-            {pool.token1.symbol} Liquidity:{' 0'}
-          </p>
-          <p>
-            {pool.token0.symbol} Liquidity:{' '}
-            {tick.liquidityLockedToken0.toFixed(3)}
-          </p>
-        </>
-      )}
-      {tick.isCurrent && (
-        <>
-          <p>
-            {pool.token1.symbol} Liquidity:{' '}
-            {tick.liquidityLockedToken1.toFixed(3)}
-          </p>
-          <p>
-            {pool.token0.symbol} Liquidity:{' '}
-            {tick.liquidityLockedToken0.toFixed(3)}
-          </p>
-        </>
-      )}
-    </div>
-  );
-};
-
-const DepthChart: React.FC = () => {
-  const [poolData, setPool] = useState<PoolData | undefined>();
-  const [hoveredBar, setHoveredBar] = useState<number | null>(null);
-  const [price0, setPrice0] = useState<number>(0);
-  const [price1, setPrice1] = useState<number>(0);
-  const [label, setLabel] = useState<string>('');
+const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
+  const { nftId } = useAddEditPosition();
   const {
     pool,
     chainId,
     poolAddress,
     baseAssetMinPriceTick,
     baseAssetMaxPriceTick,
-  } = useContext(MarketContext);
-  const activeTickValue = pool?.tickCurrent || 0;
-  const tickSpacing = pool ? pool?.tickSpacing : TICK_SPACING_DEFAULT;
-  useEffect(() => {
-    if (activeTickValue) {
-      setLabel(`Active Tick Value: ${activeTickValue}`);
-    }
-  }, [activeTickValue]);
+    useMarketUnits,
+    stEthPerToken,
+  } = useContext(PeriodContext);
 
-  const ticks = useMemo(() => {
-    const tickRange: number[] = [];
-    for (
-      let i = baseAssetMinPriceTick;
-      i < baseAssetMaxPriceTick + tickSpacing;
-      i += tickSpacing
-    ) {
-      tickRange.push(i);
-    }
-    return tickRange;
-  }, [tickSpacing, baseAssetMaxPriceTick, baseAssetMinPriceTick]);
+  const { setLowPriceTick, setHighPriceTick, lowPriceTick, highPriceTick } =
+    useTradePool();
 
-  const contracts = useMemo(() => {
-    if (poolAddress === '0x' || !chainId) return [];
-    return ticks.map((tick) => {
-      return {
-        abi: IUniswapV3PoolABI.abi as AbiFunction[],
-        address: poolAddress as `0x${string}`,
-        functionName: 'ticks',
-        args: [tick],
-        chainId,
-      };
-    });
-  }, [ticks, poolAddress, chainId]);
+  const chartRef = useRef<HTMLDivElement>(null);
+  const [chartReady, setChartReady] = useState(false);
 
-  const { data: tickData } = useReadContracts({
-    contracts,
-  }) as { data: TickData[]; isLoading: boolean };
+  const poolData = usePoolData(
+    pool,
+    chainId,
+    poolAddress,
+    baseAssetMinPriceTick,
+    baseAssetMaxPriceTick,
+    pool?.tickSpacing,
+    isTrade
+  );
 
-  console.log('tickData', tickData);
+  const { price0, label, isActiveTick, nextPrice, setTickInfo } = usePriceInfo(
+    pool,
+    poolData
+  );
 
-  const graphTicks: GraphTick[] = useMemo(() => {
-    if (!tickData) return [];
-    return tickData.map((tick, idx) => {
-      return {
-        tickIdx: ticks[idx].toString(),
-        liquidityGross: tick.result[0].toString(),
-        liquidityNet: tick.result[1].toString(),
-      };
-    });
-  }, [tickData, ticks]);
+  const {
+    lowPriceX,
+    highPriceX,
+    isDragging,
+    handleLowPriceDrag,
+    handleHighPriceDrag,
+    handleLowPriceDragEnd,
+    handleHighPriceDragEnd,
+  } = usePriceRange(poolData, chartReady);
 
-  useEffect(() => {
-    if (pool) {
-      getFullPool(pool, graphTicks, tickSpacing).then((fullPoolData) =>
-        setPool(fullPoolData)
-      );
-    }
-  }, [pool, graphTicks, tickSpacing]);
-
-  const [currPrice0, currPrice1] = useMemo(() => {
-    const currTick = poolData?.ticks.filter((t) => t.isCurrent);
-    if (currTick) {
-      return [currTick[0].price0, currTick[0].price1];
-    }
-    return [0, 0];
-  }, [poolData]);
-
-  useEffect(() => {
-    setPrice0(currPrice0);
-    setPrice1(currPrice1);
-  }, [currPrice0, currPrice1]);
+  // Initialize ticks and place draggable handles
+  const handleResize = () => {
+    setChartReady(true);
+    setLowPriceTick(lowPriceTick || baseAssetMinPriceTick);
+    setHighPriceTick(highPriceTick || baseAssetMaxPriceTick);
+  };
 
   const renderBar = (props: any) => (
     <CustomBar
       props={props}
-      hoveredBar={hoveredBar}
-      setHoveredBar={setHoveredBar}
-      activeTickValue={activeTickValue}
-      tickSpacing={tickSpacing}
+      activeTickValue={pool?.tickCurrent || 0}
+      tickSpacing={pool?.tickSpacing || 0}
+      isTrade={isTrade}
     />
   );
 
-  /**
-   * Custom XAxis tick renderer that colors ticks based on whether they are
-   * below or above the current tick value.
-   *
-   * @param props - props passed by recharts
-   * @returns a rendered tick SVG element
-   */
-  const renderXAxis = (props: any) => (
+  const renderXAxis = (props: XAxisTickProps) => (
     <CustomXAxisTick
       props={props}
-      activeTickValue={activeTickValue}
-      tickSpacing={tickSpacing}
+      activeTickValue={pool?.tickCurrent || 0}
+      tickSpacing={pool?.tickSpacing || 0}
     />
   );
 
   return (
-    <div className="flex flex-1 relative pt-3 pl-3">
-      <div className="min-h-[50px] w-fit absolute top-3 left-3 z-[2] bg-background">
-        {pool && price0 && (
-          <div>
-            <p className="text-base">
-              {` 1${pool.token0.symbol} = ${price0.toFixed(4)}
-        ${pool.token1.symbol}`}
-            </p>
-            <p className="text-base">
-              {` 1${pool.token1.symbol} = ${price1.toFixed(4)}
-        ${pool.token0.symbol}`}
-            </p>
-          </div>
-        )}
-        <p className="text-sm text-gray-500">{label ? `${label}` : ''}</p>
-      </div>
+    <div className="flex flex-1 flex-col p-6" ref={chartRef}>
       {!poolData && (
         <div className="flex items-center justify-center h-full w-full">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary opacity-20" />
+          <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent opacity-20" />
         </div>
       )}
+      <motion.div
+        className="w-fit pl-2 mb-6"
+        initial={false}
+        animate={{
+          borderLeftWidth: '4px',
+          borderLeftColor: isActiveTick ? '#8D895E' : '#F1EBDD',
+        }}
+        transition={{ duration: 0.2 }}
+      >
+        <div className="flex flex-col gap-0.5">
+          <p className="text-xs font-medium text-gray-500">
+            {label ? `${label}` : ''}
+            {isActiveTick && <> (Active)</>}
+          </p>
+        </div>
+        {pool && price0 && (
+          <div className="flex items-center">
+            <NumberDisplay
+              value={
+                useMarketUnits
+                  ? price0
+                  : convertGgasPerWstEthToGwei(price0, stEthPerToken)
+              }
+              precision={4}
+            />
+            <span className="ml-1">
+              {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
+            </span>
+            <MoveHorizontal className="w-3 h-3 mx-1" />
+            <NumberDisplay
+              value={
+                useMarketUnits
+                  ? nextPrice
+                  : convertGgasPerWstEthToGwei(nextPrice, stEthPerToken)
+              }
+              precision={4}
+            />
+            <span className="ml-1">
+              {useMarketUnits ? 'wstETH/Ggas' : 'gwei'}
+            </span>
+          </div>
+        )}
+      </motion.div>
       {poolData && (
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" onResize={handleResize}>
           <BarChart
-            data={poolData.ticks}
-            margin={{ top: 70, bottom: -30 }}
+            data={
+              poolData.ticks.slice(
+                0,
+                -1
+              ) /* Don't render last tick because it's unusable */
+            }
+            margin={
+              isTrade ? { bottom: -25 } : { bottom: -25, left: 16, right: 16 }
+            }
             onMouseLeave={() => {
-              setLabel(`Active Tick Value: ${activeTickValue}`);
-              setPrice0(currPrice0);
-              setPrice1(currPrice1);
+              const currentTick = poolData?.ticks.find((t) => t.isCurrent);
+              if (currentTick) {
+                setTickInfo(pool?.tickCurrent || 0, currentTick.price0);
+              }
             }}
           >
             <XAxis
@@ -361,17 +184,67 @@ const DepthChart: React.FC = () => {
               interval={0}
               tickLine={false}
             />
+            <YAxis hide domain={[0, 'auto']} />
             <Tooltip
+              cursor={{ fill: '#F1EBDD' }}
               content={
                 <CustomTooltip
                   pool={pool}
-                  setLabel={setLabel}
-                  setPrice0={setPrice0}
-                  setPrice1={setPrice1}
+                  onTickInfo={setTickInfo}
+                  isTrade={isTrade}
+                  isDragging={isDragging}
                 />
               }
             />
             <Bar dataKey="liquidityActive" shape={renderBar} />
+            {!isTrade && (
+              <g>
+                {/* Left overlay rectangle */}
+                <rect
+                  x={16}
+                  y={0}
+                  width={(lowPriceX || 0) - CHART_LEFT_MARGIN}
+                  height="calc(100% - 35px)"
+                  className="fill-background"
+                  opacity={0.75}
+                />
+                {/* Right overlay rectangle */}
+                <rect
+                  x={highPriceX || 0}
+                  y={0}
+                  width="100%"
+                  height="calc(100% - 35px)"
+                  className="fill-background"
+                  opacity={0.75}
+                />
+                {chartRef.current && (
+                  <>
+                    {lowPriceX !== null && (
+                      <DraggableHandle
+                        x={lowPriceX}
+                        y={0}
+                        onDrag={(x) => handleLowPriceDrag(x, chartRef)}
+                        onDragEnd={() => handleLowPriceDragEnd(chartRef)}
+                        isHighPrice={false}
+                        chartRef={chartRef}
+                        disableDrag={!!nftId}
+                      />
+                    )}
+                    {highPriceX !== null && (
+                      <DraggableHandle
+                        x={highPriceX}
+                        y={0}
+                        onDrag={(x) => handleHighPriceDrag(x, chartRef)}
+                        onDragEnd={() => handleHighPriceDragEnd(chartRef)}
+                        isHighPrice
+                        chartRef={chartRef}
+                        disableDrag={!!nftId}
+                      />
+                    )}
+                  </>
+                )}
+              </g>
+            )}
           </BarChart>
         </ResponsiveContainer>
       )}

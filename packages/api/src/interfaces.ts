@@ -1,5 +1,4 @@
 import { Abi } from 'viem';
-import { IResourcePriceIndexer } from './resourcePriceFunctions/IResourcePriceIndexer';
 
 export enum EventType {
   LiquidityPositionCreated = 'LiquidityPositionCreated',
