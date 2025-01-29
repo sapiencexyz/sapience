@@ -3,10 +3,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, ExternalLink } from 'lucide-react';
 
+import EpochTiming from '~/components/EpochTiming';
 import NumberDisplay from '~/components/numberDisplay';
 import { badgeVariants } from '~/components/ui/badge';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { PeriodProvider } from '~/lib/context/PeriodProvider';
+import { useResources } from '~/lib/hooks/useResources';
 import { tickToPrice } from '~/lib/util/util';
 import { cn } from '~/lib/utils';
 
@@ -56,6 +58,16 @@ const PositionPage = ({
     isLoading: isLoadingPosition,
   } = usePosition(contractId, positionId);
 
+  const { data: resources } = useResources();
+
+  const resource = resources?.find((r) =>
+    r.markets.some(
+      (m) =>
+        m.chainId === Number(chainId) &&
+        m.address.toLowerCase() === marketAddress.toLowerCase()
+    )
+  );
+
   const renderPositionData = () => {
     if (isLoadingPosition) {
       return (
@@ -87,9 +99,57 @@ const PositionPage = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {resource && (
+              <div className="md:col-span-2 space-y-1">
+                <p className="text-sm text-muted-foreground">Market</p>
+                <div>{resource.name}</div>
+              </div>
+            )}
+
+            <div className="md:col-span-2 space-y-1">
+              <p className="text-sm text-muted-foreground">Smart Contract</p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-medium font-mono">
+                  {chainId}:{marketAddress}
+                </p>
+                <a
+                  href={getBlockExplorerUrl(chainId, marketAddress)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block text-blue-500 hover:text-blue-600 -translate-y-0.5"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              </div>
+            </div>
+
+            <div className="md:col-span-2 space-y-1">
+              <p className="text-sm text-muted-foreground">Owner</p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-medium font-mono">
+                  {positionData.owner}
+                </p>
+                <a
+                  href={getBlockExplorerUrl(chainId, positionData.owner)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block text-blue-500 hover:text-blue-600 -translate-y-0.5"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              </div>
+            </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Period</p>
-              <p className="font-medium">{positionData.epoch.epochId}</p>
+              <div>
+                <EpochTiming
+                  startTimestamp={positionData.epoch.startTimestamp}
+                  endTimestamp={positionData.epoch.endTimestamp}
+                />
+                <span className="text-xs text-muted-foreground ml-1">
+                  (ID: {positionData.epoch.epochId})
+                </span>
+              </div>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Collateral</p>
@@ -175,23 +235,6 @@ const PositionPage = ({
                 </div>
               </div>
             )}
-
-            <div className="md:col-span-2 space-y-1">
-              <p className="text-sm text-muted-foreground">Smart Contract</p>
-              <div className="flex items-center gap-1.5">
-                <p className="text-sm font-medium font-mono">
-                  {chainId}:{marketAddress}
-                </p>
-                <a
-                  href={getBlockExplorerUrl(chainId, marketAddress)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block text-blue-500 hover:text-blue-600 -translate-y-0.5"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </a>
-              </div>
-            </div>
           </div>
         </div>
       );
@@ -206,7 +249,7 @@ const PositionPage = ({
       epoch={Number(positionData?.epoch?.id)}
     >
       <div className="flex-1 flex items-center justify-center min-h-[calc(100vh-64px)] p-4">
-        <div className="w-full max-w-[460px]">
+        <div className="w-full max-w-[480px]">
           <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
             {renderPositionData()}
           </div>

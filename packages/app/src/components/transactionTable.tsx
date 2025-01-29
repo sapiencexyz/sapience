@@ -32,6 +32,7 @@ import {
 import { API_BASE_URL } from '~/lib/constants/constants';
 import type { PeriodContextType } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
+import { convertWstEthToGwei } from '~/lib/util/util';
 
 import EpochTiming from './EpochTiming';
 import NumberDisplay from './numberDisplay';
@@ -79,6 +80,7 @@ const TRANSACTIONS_QUERY = `
         baseTokenDelta
         quoteTokenDelta
         collateralDelta
+        tradeRatioD18
       }
     }
   }
@@ -168,7 +170,12 @@ const TransactionTable: React.FC<Props> = ({
     isLoading,
   } = useTransactions(walletAddress, periodContext);
 
-  const { collateralAssetTicker, collateralAssetDecimals } = periodContext;
+  const {
+    collateralAssetTicker,
+    collateralAssetDecimals,
+    useMarketUnits,
+    stEthPerToken,
+  } = periodContext;
 
   const columns = useMemo<ColumnDef<any>[]>(
     () => [
@@ -195,7 +202,7 @@ const TransactionTable: React.FC<Props> = ({
       },
       {
         id: 'ggas',
-        header: 'Virtual GGas Change',
+        header: 'Virtual Ggas Change',
         accessorFn: (row) => {
           if (['addLiquidity', 'removeLiquidity'].includes(row.type)) {
             return row.lpBaseDeltaToken;
@@ -217,9 +224,12 @@ const TransactionTable: React.FC<Props> = ({
         id: 'price',
         header: 'Price',
         accessorFn: (row) => {
-          const baseToken = parseFloat(row.baseToken || '0');
-          const quoteToken = parseFloat(row.quoteToken || '0');
-          return baseToken !== 0 ? quoteToken / baseToken : 0;
+          const tradeRatio = row.tradeRatioD18
+            ? parseFloat(row.tradeRatioD18) / 10 ** 18
+            : 0;
+          return useMarketUnits
+            ? tradeRatio
+            : convertWstEthToGwei(tradeRatio, stEthPerToken);
         },
       },
       {
@@ -228,7 +238,7 @@ const TransactionTable: React.FC<Props> = ({
         accessorFn: (row) => row.timestamp,
       },
     ],
-    []
+    [useMarketUnits, stEthPerToken]
   );
 
   const table = useReactTable({
@@ -252,123 +262,129 @@ const TransactionTable: React.FC<Props> = ({
     return <ArrowUpDown className="h-3 w-3" aria-label="sortable" />;
   };
 
+  const renderMarketCell = (row: any) => {
+    const marketName =
+      row.original.position?.epoch?.market?.resource?.name || 'Unknown Market';
+    const resourceSlug = row.original.position?.epoch?.market?.resource?.slug;
+    const startTimestamp = row.original.position?.epoch?.startTimestamp;
+    const endTimestamp = row.original.position?.epoch?.endTimestamp;
+    const resource = resources?.find((r) => r.slug === resourceSlug);
+
+    return (
+      <div className="flex gap-4">
+        {resource?.iconPath && (
+          <Image
+            src={resource.iconPath}
+            alt={marketName}
+            width={20}
+            height={20}
+          />
+        )}
+        <div className="flex flex-col gap-0.5">
+          <div className="font-medium">{marketName}</div>
+          {startTimestamp && endTimestamp && (
+            <EpochTiming
+              startTimestamp={startTimestamp}
+              endTimestamp={endTimestamp}
+            />
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderPositionCell = (row: any) => (
+    <div className="flex items-center gap-1">
+      #{row.original.position.positionId}
+      <Link
+        href={`/positions/${row.original.position.epoch.market.chainId}:${row.original.position.epoch.market.address}/${row.original.position.positionId}`}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <ExternalLinkIcon className="h-3.5 w-3.5 text-blue-500 hover:text-blue-600" />
+      </Link>
+    </div>
+  );
+
+  const renderTimeCell = (value: any) => {
+    const timestamp = value as number;
+    const date = new Date(timestamp * 1000);
+    return <span>{formatDistanceToNow(date, { addSuffix: true })}</span>;
+  };
+
+  const renderCollateralCell = (value: any) => (
+    <div className="flex items-center gap-1">
+      <NumberDisplay
+        value={parseFloat(value) / 10 ** collateralAssetDecimals}
+      />
+      <span className="text-muted-foreground text-sm">
+        {collateralAssetTicker}
+      </span>
+    </div>
+  );
+
+  const renderLiquidityTokenCell = (row: any, tokenType: 'base' | 'quote') => {
+    const multiplier = row.original.type === 'addLiquidity' ? 1 : -1;
+    const value =
+      tokenType === 'base'
+        ? row.original.lpBaseDeltaToken
+        : row.original.lpQuoteDeltaToken;
+    const label = tokenType === 'base' ? 'vGGas' : 'vWstETH';
+
+    return (
+      <div className="flex items-center gap-1">
+        <NumberDisplay
+          value={(parseFloat(value || '0') / 10 ** 18) * multiplier}
+        />
+        <span className="text-muted-foreground text-sm">{label}</span>
+      </div>
+    );
+  };
+
+  const renderTokenCell = (value: any, label: string) => (
+    <div className="flex items-center gap-1">
+      <NumberDisplay value={parseFloat(value || '0') / 10 ** 18} />
+      <span className="text-muted-foreground text-sm">{label}</span>
+    </div>
+  );
+
+  const renderPriceCell = (value: any) => (
+    <div className="flex items-center gap-1">
+      <NumberDisplay value={value} />
+      <span className="text-muted-foreground text-sm">
+        {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
+      </span>
+    </div>
+  );
+
   const renderCellContent = (cell: any, row: any) => {
     const value = cell.getValue();
     const columnId = cell.column.id;
 
-    if (columnId === 'market') {
-      const marketName =
-        row.original.position?.epoch?.market?.resource?.name ||
-        'Unknown Market';
-      const resourceSlug = row.original.position?.epoch?.market?.resource?.slug;
-      const startTimestamp = row.original.position?.epoch?.startTimestamp;
-      const endTimestamp = row.original.position?.epoch?.endTimestamp;
-      const resource = resources?.find((r) => r.slug === resourceSlug);
-
-      return (
-        <div className="flex gap-4">
-          {resource?.iconPath && (
-            <Image
-              src={resource.iconPath}
-              alt={marketName}
-              width={20}
-              height={20}
-            />
-          )}
-          <div className="flex flex-col gap-0.5">
-            <div className="font-medium">{marketName}</div>
-            {startTimestamp && endTimestamp && (
-              <EpochTiming
-                startTimestamp={startTimestamp}
-                endTimestamp={endTimestamp}
-              />
-            )}
-          </div>
-        </div>
-      );
+    switch (columnId) {
+      case 'market':
+        return renderMarketCell(row);
+      case 'position':
+        return renderPositionCell(row);
+      case 'time':
+        return renderTimeCell(value);
+      case 'collateral':
+        return renderCollateralCell(value);
+      case 'ggas':
+        if (['addLiquidity', 'removeLiquidity'].includes(row.original.type)) {
+          return renderLiquidityTokenCell(row, 'base');
+        }
+        return renderTokenCell(value, 'vGGas');
+      case 'wsteth':
+        if (['addLiquidity', 'removeLiquidity'].includes(row.original.type)) {
+          return renderLiquidityTokenCell(row, 'quote');
+        }
+        return renderTokenCell(value, 'vWstETH');
+      case 'price':
+        return renderPriceCell(value);
+      default:
+        return flexRender(cell.column.columnDef.cell, cell.getContext());
     }
-
-    if (columnId === 'position') {
-      return (
-        <div className="flex items-center gap-1">
-          #{row.original.position.positionId}
-          <Link
-            href={`/positions/${row.original.position.epoch.market.chainId}:${row.original.position.epoch.market.address}/${row.original.position.positionId}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <ExternalLinkIcon className="h-3.5 w-3.5 text-blue-500 hover:text-blue-600" />
-          </Link>
-        </div>
-      );
-    }
-
-    if (columnId === 'time') {
-      const timestamp = value as number;
-      const date = new Date(timestamp * 1000);
-      return <span>{formatDistanceToNow(date, { addSuffix: true })}</span>;
-    }
-
-    if (columnId === 'collateral') {
-      return (
-        <div className="flex items-center gap-1">
-          <NumberDisplay
-            value={parseFloat(value) / 10 ** collateralAssetDecimals}
-          />
-          <span className="text-muted-foreground text-sm">
-            {collateralAssetTicker}
-          </span>
-        </div>
-      );
-    }
-
-    if (columnId === 'ggas') {
-      if (['addLiquidity', 'removeLiquidity'].includes(row.original.type)) {
-        return (
-          <div className="flex items-center gap-1">
-            <NumberDisplay
-              value={
-                parseFloat(row.original.lpBaseDeltaToken || '0') / 10 ** 18
-              }
-            />
-            <span className="text-muted-foreground text-sm">vGGas</span>
-          </div>
-        );
-      }
-      return (
-        <div className="flex items-center gap-1">
-          <NumberDisplay value={parseFloat(value || '0') / 10 ** 18} />
-          <span className="text-muted-foreground text-sm">vGGas</span>
-        </div>
-      );
-    }
-
-    if (columnId === 'wsteth') {
-      if (['addLiquidity', 'removeLiquidity'].includes(row.original.type)) {
-        return (
-          <div className="flex items-center gap-1">
-            <NumberDisplay
-              value={
-                parseFloat(row.original.lpQuoteDeltaToken || '0') / 10 ** 18
-              }
-            />
-            <span className="text-muted-foreground text-sm">vWstETH</span>
-          </div>
-        );
-      }
-      return (
-        <div className="flex items-center gap-1">
-          <NumberDisplay value={parseFloat(value || '0') / 10 ** 18} />
-          <span className="text-muted-foreground text-sm">vWstETH</span>
-        </div>
-      );
-    }
-
-    if (['price'].includes(columnId)) {
-      return <NumberDisplay value={value as number} />;
-    }
-
-    return flexRender(cell.column.columnDef.cell, cell.getContext());
   };
 
   if (error) {
@@ -409,7 +425,7 @@ const TransactionTable: React.FC<Props> = ({
                   onClick={header.column.getToggleSortingHandler()}
                   className="cursor-pointer"
                 >
-                  <span className="flex items-center">
+                  <span className="flex items-center whitespace-nowrap">
                     {flexRender(
                       header.column.columnDef.header,
                       header.getContext()

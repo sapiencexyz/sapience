@@ -22,7 +22,7 @@ const EpochTiming = ({
     <span className="whitespace-nowrap">
       {prefix} {format(new Date(date * 1000), 'M/d')}
       {showDuration && (
-        <span className="text-xs text-muted-foreground ml-2">
+        <span className="text-xs text-muted-foreground ml-1.5">
           {weeks} week period
         </span>
       )}

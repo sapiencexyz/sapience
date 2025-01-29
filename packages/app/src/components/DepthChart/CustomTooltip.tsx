@@ -54,15 +54,22 @@ export const CustomTooltip: React.FC<
 
         {isTrade && tick.isCurrent && (
           <>
-            <p>{displayValue(tick.liquidityLockedToken0).toFixed(4)} Ggas</p>
-            <p>{displayValue(tick.liquidityLockedToken1).toFixed(4)} wstETH</p>
+            <p>
+              {displayValue(tick.liquidityLockedToken0).toFixed(4)} Virtual Ggas
+            </p>
+            <p>
+              {displayValue(tick.liquidityLockedToken1).toFixed(4)} Virtual
+              wstETH
+            </p>
           </>
         )}
 
         {isTrade && !tick.isCurrent && (
           <p>
             {displayValue(tick.liquidityActive).toFixed(4)}{' '}
-            {tick.tickIdx < pool.tickCurrent ? 'wstETH' : 'Ggas'}
+            {tick.tickIdx < pool.tickCurrent
+              ? 'Virtual wstETH'
+              : 'Virtual Ggas'}
           </p>
         )}
 
@@ -70,15 +77,19 @@ export const CustomTooltip: React.FC<
           (tick.isCurrent ? (
             <>
               <p>
-                {displayValue(tick.liquidityLockedToken1).toFixed(4)} wstETH
+                {displayValue(tick.liquidityLockedToken1).toFixed(4)} Virtual
+                wstETH
               </p>
-              <p>{displayValue(tick.liquidityLockedToken0).toFixed(4)} Ggas</p>
+              <p>
+                {displayValue(tick.liquidityLockedToken0).toFixed(4)} Virtual
+                Ggas
+              </p>
             </>
           ) : (
             <p>
               {tick.tickIdx < pool.tickCurrent
-                ? `${displayValue(tick.liquidityLockedToken1).toFixed(4)} wstETH`
-                : `${displayValue(tick.liquidityLockedToken0).toFixed(4)} Ggas`}
+                ? `${displayValue(tick.liquidityLockedToken1).toFixed(4)} Virtual wstETH`
+                : `${displayValue(tick.liquidityLockedToken0).toFixed(4)} Virtual Ggas`}
             </p>
           ))}
       </motion.div>

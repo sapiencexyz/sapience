@@ -85,6 +85,7 @@ const mapTransactionToType = (transaction: Transaction): TransactionType => ({
   baseTokenDelta: transaction.baseToken || null,
   quoteTokenDelta: transaction.quoteToken || null,
   collateralDelta: transaction.collateral || null,
+  tradeRatioD18: transaction.tradeRatioD18 || null,
 });
 
 const mapResourcePriceToType = (price: ResourcePrice): ResourcePriceType => ({

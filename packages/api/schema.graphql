@@ -91,6 +91,7 @@ type TransactionType {
   quoteToken: String
   quoteTokenDelta: String
   timestamp: Int!
+  tradeRatioD18: String
   transactionHash: String
   type: String!
 }
