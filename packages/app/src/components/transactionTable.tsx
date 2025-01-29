@@ -7,7 +7,7 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import { formatDistanceToNow } from 'date-fns';
-import { ChevronDown, ChevronUp, ArrowUpDown } from 'lucide-react';
+import { ChevronDown, ChevronUp, ArrowUpDown, FrownIcon } from 'lucide-react';
 import Link from 'next/link';
 import type React from 'react';
 import { useMemo, useContext, useState } from 'react';
@@ -149,6 +149,7 @@ const TransactionTable: React.FC<Props> = ({ transactions }) => {
   if (!transactions?.length) {
     return (
       <div className="w-full py-8 text-center text-muted-foreground">
+        <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
         No relevant transaction data
       </div>
     );

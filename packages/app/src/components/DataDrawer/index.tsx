@@ -1,9 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { ChartColumnIncreasingIcon, Loader2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Loader2 } from 'lucide-react';
+import { useContext, useEffect, useState } from 'react';
 import { useAccount } from 'wagmi';
 
-import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
 import LiquidityPositionsTable from '~/components/liquidityPositionsTable';
 import TraderPositionsTable from '~/components/traderPositionsTable';
 import TransactionTable from '~/components/transactionTable';
@@ -11,13 +10,24 @@ import { Drawer, DrawerContent, DrawerTrigger } from '~/components/ui/drawer';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '~/components/ui/tabs';
 import { toast } from '~/hooks/use-toast';
 import { API_BASE_URL } from '~/lib/constants/constants';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 
-import WalletAddressPopover from './WalletAddressPopover';
+import DataDrawerFilter from './DataDrawerFilter';
 
 const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
 
 const useAccountData = () => {
   const { address, isConnected } = useAccount();
+  const { chainId, address: marketAddress, epoch } = useContext(PeriodContext);
+
+  // Log market details
+  useEffect(() => {
+    console.log({
+      chainId,
+      marketAddress,
+      epochId: epoch,
+    });
+  }, [chainId, marketAddress, epoch]);
 
   return useQuery({
     queryKey: ['accountData', address],
@@ -35,23 +45,10 @@ const useAccountData = () => {
 
 const DataDrawer = () => {
   const { address } = useAccount();
-  const [selectedWalletView, setSelectedWalletView] = useState<
-    'market' | 'wallet'
-  >('market');
-  const [isWalletPopoverOpen, setIsWalletPopoverOpen] = useState(false);
-  const [walletAddress, setWalletAddress] = useState<string>(address || '');
+  const [walletAddress, setWalletAddress] = useState<string | null>(
+    address || null
+  );
   const [showTable, setShowTable] = useState(false);
-
-  useEffect(() => {
-    if (walletAddress) {
-      setSelectedWalletView('wallet');
-    }
-  }, [walletAddress]);
-
-  const handleWalletSelect = (address: string) => {
-    setWalletAddress(address);
-    setSelectedWalletView('wallet');
-  };
 
   const {
     data: accountData,
@@ -73,7 +70,7 @@ const DataDrawer = () => {
         duration: 5000,
       });
     }
-  }, [accountDataError, toast]);
+  }, [accountDataError]);
 
   return (
     <Drawer open={showTable} onOpenChange={setShowTable}>
@@ -110,39 +107,17 @@ const DataDrawer = () => {
             <Tabs defaultValue="transactions" className="w-full">
               <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center mb-3 flex-shrink-0 gap-3">
                 <TabsList>
+                  <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
                   <TabsTrigger value="transactions">Transactions</TabsTrigger>
                   <TabsTrigger value="trader-positions">
                     Trader Positions
                   </TabsTrigger>
                   <TabsTrigger value="lp-positions">LP Positions</TabsTrigger>
                 </TabsList>
-                <ToggleGroup
-                  type="single"
-                  value={selectedWalletView}
-                  onValueChange={(value) => {
-                    if (value === 'market') {
-                      setSelectedWalletView('market');
-                      setWalletAddress('');
-                    } else if (value === 'wallet' && walletAddress) {
-                      setSelectedWalletView('wallet');
-                    } else {
-                      setIsWalletPopoverOpen(true);
-                    }
-                  }}
-                  variant="outline"
-                  className="gap-3"
-                >
-                  <ToggleGroupItem value="market">
-                    <ChartColumnIncreasingIcon className="w-4 h-4" /> Market
-                    Period Data
-                  </ToggleGroupItem>
-                  <WalletAddressPopover
-                    isOpen={isWalletPopoverOpen}
-                    onOpenChange={setIsWalletPopoverOpen}
-                    onWalletSelect={handleWalletSelect}
-                    selectedAddress={walletAddress}
-                  />
-                </ToggleGroup>
+                <DataDrawerFilter
+                  address={walletAddress}
+                  onAddressChange={setWalletAddress}
+                />
               </div>
               <TabsContent value="transactions">
                 <TransactionTable transactions={transactions} />

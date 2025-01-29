@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ChevronUp,
   ArrowUpDown,
+  FrownIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import type React from 'react';
@@ -237,6 +238,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({ positions }) => {
   if (!positions?.length) {
     return (
       <div className="w-full py-8 text-center text-muted-foreground">
+        <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
         No relevant liquidity position data
       </div>
     );

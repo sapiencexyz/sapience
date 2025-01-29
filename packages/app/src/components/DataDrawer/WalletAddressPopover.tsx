@@ -1,5 +1,5 @@
 import { Loader2, WalletIcon, ArrowRightIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { isAddress } from 'viem';
 import { useAccount } from 'wagmi';
 
@@ -11,30 +11,28 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '~/components/ui/popover';
-import { ToggleGroupItem } from '~/components/ui/toggle-group';
+import { shortenAddress } from '~/lib/util/util';
 
 interface WalletAddressPopoverProps {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  onWalletSelect: (address: string) => void;
+  onWalletSelect: (address: string | null) => void;
   selectedAddress: string;
 }
 
 const WalletAddressPopover = ({
-  isOpen,
-  onOpenChange,
   onWalletSelect,
   selectedAddress,
 }: WalletAddressPopoverProps) => {
   const { address } = useAccount();
+  const [isOpen, setIsOpen] = useState(false);
   const [inputAddress, setInputAddress] = useState<string>(address || '');
   const [addressError, setAddressError] = useState<string>('');
   const [isResolvingEns, setIsResolvingEns] = useState(false);
 
-  const truncateAddress = (address: string) => {
-    if (!address) return '';
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
-  };
+  useEffect(() => {
+    if (address) {
+      setInputAddress(address);
+    }
+  }, [address]);
 
   const handleWalletSubmit = async () => {
     if (!inputAddress) {
@@ -72,7 +70,7 @@ const WalletAddressPopover = ({
     }
 
     setAddressError('');
-    onOpenChange(false);
+    setIsOpen(false);
     onWalletSelect(resolvedAddress);
   };
 
@@ -82,12 +80,15 @@ const WalletAddressPopover = ({
   };
 
   return (
-    <Popover open={isOpen} onOpenChange={onOpenChange}>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <ToggleGroupItem value="wallet">
+        <Button
+          variant="outline"
+          className={`flex items-center gap-2 ${selectedAddress ? 'bg-secondary' : ''}`}
+        >
           <WalletIcon className="w-4 h-4" />
-          {selectedAddress ? truncateAddress(selectedAddress) : 'Select Wallet'}
-        </ToggleGroupItem>
+          {selectedAddress ? shortenAddress(selectedAddress) : 'Select Wallet'}
+        </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80" side="top" align="end" sideOffset={4}>
         <form

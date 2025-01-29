@@ -1,6 +1,6 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import { formatDistanceToNow } from 'date-fns';
-import { InfoIcon } from 'lucide-react';
+import { BookTextIcon, InfoIcon } from 'lucide-react';
 import { useContext } from 'react';
 
 import {
@@ -49,11 +49,19 @@ const Stats = () => {
               Index Price
               <Tooltip>
                 <TooltipTrigger>
-                  <InfoIcon className="ml-1 -translate-y-0.5 inline-block h-4" />
+                  <InfoIcon className="ml-1 -translate-y-0.5 inline-block h-4 opacity-60 hover:opacity-80" />
                 </TooltipTrigger>
-                <TooltipContent>
-                  The expected settlement price based on the average underlying
-                  price for this period
+                <TooltipContent className="max-w-[225px] text-center p-3">
+                  The estimated settlement price based on the average resource
+                  price for this period{' '}
+                  <a
+                    href="https://docs.foil.xyz/price-glossary"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block text-blue-500 hover:text-blue-600 ml-0.5 -translate-y-0.5"
+                  >
+                    <BookTextIcon className="h-3.5 w-3.5 inline-block" />
+                  </a>
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -88,10 +96,18 @@ const Stats = () => {
               Market Price
               <Tooltip>
                 <TooltipTrigger className="cursor-default">
-                  <InfoIcon className="ml-1 -translate-y-0.5 inline-block h-4" />
+                  <InfoIcon className="ml-1 -translate-y-0.5 inline-block h-4 opacity-60 hover:opacity-80" />
                 </TooltipTrigger>
-                <TooltipContent>
-                  The current price available from the liquidity pool
+                <TooltipContent className="max-w-[225px] text-center p-3">
+                  The current price available from the liquidity pool{' '}
+                  <a
+                    href="https://docs.foil.xyz/price-glossary"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block text-blue-500 hover:text-blue-600 ml-0.5 -translate-y-0.5"
+                  >
+                    <BookTextIcon className="h-3.5 w-3.5 inline-block" />
+                  </a>
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -117,9 +133,9 @@ const Stats = () => {
               Liquidity
               <Tooltip>
                 <TooltipTrigger className="cursor-default">
-                  <InfoIcon className="ml-1 -translate-y-0.5 inline-block h-4" />
+                  <InfoIcon className="ml-1 -translate-y-0.5 inline-block h-4 opacity-60 hover:opacity-80" />
                 </TooltipTrigger>
-                <TooltipContent>
+                <TooltipContent className="max-w-[225px] text-center p-3">
                   The largest long position that can be opened currently
                 </TooltipContent>
               </Tooltip>
