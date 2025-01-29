@@ -8,20 +8,19 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import {
-  Check,
   Info,
   ChevronDown,
   ChevronUp,
   ArrowUpDown,
   FrownIcon,
   Loader2,
-  ExternalLinkIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import type React from 'react';
 import { useState, useMemo } from 'react';
 import { useReadContract } from 'wagmi';
 
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -199,7 +198,7 @@ const PnLCell = ({
 
 const PnLHeaderCell = () => (
   <span className="flex items-center gap-1">
-    Profit/Loss{' '}
+    Unrealized Profit/Loss{' '}
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger>
@@ -220,7 +219,7 @@ const TraderPositionsTable: React.FC<Props> = ({
   walletAddress,
   periodContext,
 }) => {
-  const { endTime, useMarketUnits, stEthPerToken } = periodContext;
+  const { useMarketUnits, stEthPerToken } = periodContext;
   const [sorting, setSorting] = useState<SortingState>([
     {
       id: 'status',
@@ -238,9 +237,6 @@ const TraderPositionsTable: React.FC<Props> = ({
     isLoading,
   } = usePositions(walletAddress, periodContext);
   const { data: resources } = useResources();
-
-  const dateMilliseconds = Number(endTime) * 1000;
-  const expired = new Date(dateMilliseconds) < new Date();
 
   const calculateEntryPrice = (position: any) => {
     let entryPrice = 0;
@@ -280,81 +276,129 @@ const TraderPositionsTable: React.FC<Props> = ({
     return isNaN(unitsAdjustedEntryPrice) ? 0 : unitsAdjustedEntryPrice;
   };
 
+  const renderMarketCell = (row: any) => (
+    <MarketCell
+      marketName={row.epoch?.market?.resource?.name || 'Unknown Market'}
+      resourceSlug={row.epoch?.market?.resource?.slug}
+      startTimestamp={row.epoch?.startTimestamp}
+      endTimestamp={row.epoch?.endTimestamp}
+      resources={resources}
+    />
+  );
+
+  const renderPositionCell = (row: any) => (
+    <div className="flex items-center gap-1">#{row.positionId.toString()}</div>
+  );
+
+  const renderCollateralCell = (value: any, row: any) => {
+    const isClosed = row.baseToken - row.borrowedBaseToken === 0;
+    if (isClosed) {
+      return row.isSettled ? (
+        <span className="text-medium">Settled</span>
+      ) : (
+        <span className="text-medium">Closed</span>
+      );
+    }
+    return (
+      <div className="flex items-center gap-1">
+        <NumberDisplay
+          value={
+            parseFloat(value) / 10 ** periodContext.collateralAssetDecimals
+          }
+        />
+        <span className="text-muted-foreground text-sm">
+          {periodContext.collateralAssetTicker}
+        </span>
+      </div>
+    );
+  };
+
+  const renderSizeCell = (value: any, row: any) => {
+    const isClosed = row.baseToken - row.borrowedBaseToken === 0;
+    if (isClosed) {
+      return row.isSettled ? (
+        <span className="text-medium">Settled</span>
+      ) : (
+        <span className="text-medium">Closed</span>
+      );
+    }
+    return (
+      <div className="flex items-center gap-1">
+        <NumberDisplay value={parseFloat(value) / 10 ** 18} />
+        <span className="text-muted-foreground text-sm">vGGas</span>
+      </div>
+    );
+  };
+
+  const renderEntryPriceCell = (value: any, row: any) => {
+    const isClosed = row.baseToken - row.borrowedBaseToken === 0;
+    if (isClosed) {
+      return row.isSettled ? (
+        <span className="text-medium">Settled</span>
+      ) : (
+        <span className="text-medium">Closed</span>
+      );
+    }
+    return (
+      <div className="flex items-center gap-1">
+        <NumberDisplay value={value} />
+        <span className="text-muted-foreground text-sm">
+          {periodContext.useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
+        </span>
+      </div>
+    );
+  };
+
+  const renderPnLCell = (row: any) => {
+    const isClosed = row.baseToken - row.borrowedBaseToken === 0;
+    if (isClosed) {
+      return row.isSettled ? (
+        <span className="text-medium">Settled</span>
+      ) : (
+        <span className="text-medium">Closed</span>
+      );
+    }
+    return (
+      <PnLCell
+        positionId={row.positionId}
+        chainId={periodContext.chainId}
+        address={periodContext.address}
+        collateralAssetDecimals={periodContext.collateralAssetDecimals}
+        collateralAssetTicker={periodContext.collateralAssetTicker}
+      />
+    );
+  };
+
+  const renderMoreCell = (row: any) => {
+    const positionUrl = `/positions/${row.epoch?.market?.chainId}:${row.epoch?.market?.address}/${row.positionId}`;
+    return (
+      <Link href={positionUrl} target="_blank" rel="noopener noreferrer">
+        <Button size="sm" className="float-right">
+          More Info
+        </Button>
+      </Link>
+    );
+  };
+
   const renderCellContent = (cell: any, row: any) => {
     const value = cell.getValue();
     const columnId = cell.column.id;
 
     switch (columnId) {
       case 'market':
-        return (
-          <MarketCell
-            marketName={
-              row.original.epoch?.market?.resource?.name || 'Unknown Market'
-            }
-            resourceSlug={row.original.epoch?.market?.resource?.slug}
-            startTimestamp={row.original.epoch?.startTimestamp}
-            endTimestamp={row.original.epoch?.endTimestamp}
-            resources={resources}
-          />
-        );
-      case 'position': {
-        const isClosed =
-          row.original.baseToken - row.original.borrowedBaseToken === 0;
-        const positionUrl = `/positions/${row.original.epoch?.market?.chainId}:${row.original.epoch?.market?.address}/${row.original.positionId}`;
-        return (
-          <div className="flex items-center gap-1">
-            #{row.original.positionId.toString()}
-            <Link href={positionUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLinkIcon className="h-3.5 w-3.5 text-blue-500 hover:text-blue-600" />
-            </Link>
-            {isClosed && (
-              <span className="text-muted-foreground text-sm ml-1">Closed</span>
-            )}
-          </div>
-        );
-      }
-      case 'collateral': {
-        return (
-          <div className="flex items-center gap-1">
-            <NumberDisplay
-              value={
-                parseFloat(value) / 10 ** periodContext.collateralAssetDecimals
-              }
-            />
-            <span className="text-muted-foreground text-sm">
-              {periodContext.collateralAssetTicker}
-            </span>
-          </div>
-        );
-      }
+        return renderMarketCell(row.original);
+      case 'position':
+        return renderPositionCell(row.original);
+      case 'collateral':
+        return renderCollateralCell(value, row.original);
       case 'size':
-        return (
-          <div className="flex items-center gap-1">
-            <NumberDisplay value={parseFloat(value) / 10 ** 18} />
-            <span className="text-muted-foreground text-sm">vGGas</span>
-          </div>
-        );
+        return renderSizeCell(value, row.original);
       case 'entryPrice':
-        return (
-          <div className="flex items-center gap-1">
-            <NumberDisplay value={value} />
-            <span className="text-muted-foreground text-sm">
-              {periodContext.useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
-            </span>
-          </div>
-        );
+        return renderEntryPriceCell(value, row.original);
       case 'pnl':
-        return (
-          <PnLCell
-            positionId={row.original.positionId}
-            chainId={periodContext.chainId}
-            address={periodContext.address}
-            collateralAssetDecimals={periodContext.collateralAssetDecimals}
-            collateralAssetTicker={periodContext.collateralAssetTicker}
-          />
-        );
-      case 'settled':
-        return value ? <Check className="h-4 w-4 text-green-500 mr-2" /> : null;
+        return renderPnLCell(row.original);
+      case 'more':
+        return renderMoreCell(row.original);
       default:
         return value;
     }
@@ -385,7 +429,7 @@ const TraderPositionsTable: React.FC<Props> = ({
       },
       {
         id: 'entryPrice',
-        header: 'Entry Price',
+        header: 'Effective Entry Price',
         accessorFn: (row) => calculateEntryPrice(row),
       },
       {
@@ -393,17 +437,14 @@ const TraderPositionsTable: React.FC<Props> = ({
         header: PnLHeaderCell,
         accessorFn: (row) => row.positionId,
       },
-      ...(expired
-        ? [
-            {
-              id: 'settled',
-              header: 'Settled',
-              accessorKey: 'isSettled',
-            },
-          ]
-        : []),
+      {
+        id: 'more',
+        header: '',
+        accessorFn: (row) => row.positionId,
+        enableSorting: false,
+      },
     ],
-    [periodContext, calculateEntryPrice, expired]
+    [periodContext, calculateEntryPrice]
   );
 
   const table = useReactTable({
@@ -463,16 +504,20 @@ const TraderPositionsTable: React.FC<Props> = ({
                 <TableHead
                   key={header.id}
                   onClick={header.column.getToggleSortingHandler()}
-                  className="cursor-pointer"
+                  className={
+                    header.column.id === 'more' ? '' : 'cursor-pointer'
+                  }
                 >
                   <span className="flex items-center whitespace-nowrap">
                     {flexRender(
                       header.column.columnDef.header,
                       header.getContext()
                     )}
-                    <span className="ml-2 inline-block">
-                      {renderSortIcon(header.column.getIsSorted())}
-                    </span>
+                    {header.column.id !== 'more' && (
+                      <span className="ml-2 inline-block">
+                        {renderSortIcon(header.column.getIsSorted())}
+                      </span>
+                    )}
                   </span>
                 </TableHead>
               ))}

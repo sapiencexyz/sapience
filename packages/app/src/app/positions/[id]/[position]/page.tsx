@@ -192,7 +192,7 @@ const PositionPage = ({
               <>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Low Price</p>
-                  <p className="font-medium">
+                  <p>
                     <NumberDisplay
                       value={tickToPrice(positionData.lowPriceTick)}
                     />{' '}
@@ -201,7 +201,7 @@ const PositionPage = ({
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">High Price</p>
-                  <p className="font-medium">
+                  <p>
                     <NumberDisplay
                       value={tickToPrice(positionData.highPriceTick)}
                     />{' '}

@@ -197,7 +197,7 @@ const TransactionTable: React.FC<Props> = ({
       },
       {
         id: 'collateral',
-        header: 'Collateral',
+        header: 'Collateral Change',
         accessorKey: 'collateral',
       },
       {
@@ -293,7 +293,6 @@ const TransactionTable: React.FC<Props> = ({
   );
 
   const renderLiquidityTokenCell = (row: any, tokenType: 'base' | 'quote') => {
-    const multiplier = row.original.type === 'addLiquidity' ? 1 : -1;
     const value =
       tokenType === 'base'
         ? row.original.lpBaseDeltaToken
@@ -302,9 +301,7 @@ const TransactionTable: React.FC<Props> = ({
 
     return (
       <div className="flex items-center gap-1">
-        <NumberDisplay
-          value={(parseFloat(value || '0') / 10 ** 18) * multiplier}
-        />
+        <NumberDisplay value={parseFloat(value || '0') / 10 ** 18} />
         <span className="text-muted-foreground text-sm">{label}</span>
       </div>
     );
@@ -317,14 +314,19 @@ const TransactionTable: React.FC<Props> = ({
     </div>
   );
 
-  const renderPriceCell = (value: any) => (
-    <div className="flex items-center gap-1">
-      <NumberDisplay value={value} />
-      <span className="text-muted-foreground text-sm">
-        {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
-      </span>
-    </div>
-  );
+  const renderPriceCell = (value: any, row: any) => {
+    if (['addLiquidity', 'removeLiquidity'].includes(row.original.type)) {
+      return <span className="text-muted-foreground text-sm">N/A</span>;
+    }
+    return (
+      <div className="flex items-center gap-1">
+        <NumberDisplay value={value} />
+        <span className="text-muted-foreground text-sm">
+          {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
+        </span>
+      </div>
+    );
+  };
 
   const renderCellContent = (cell: any, row: any) => {
     const value = cell.getValue();
@@ -361,7 +363,7 @@ const TransactionTable: React.FC<Props> = ({
         }
         return renderTokenCell(value, 'vWstETH');
       case 'price':
-        return renderPriceCell(value);
+        return renderPriceCell(value, row);
       case 'type':
         return getTypeDisplay(value);
       default:
