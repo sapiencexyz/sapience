@@ -1,6 +1,5 @@
 import { router as marketRoutes } from './markets';
 import { router as resourceRoutes } from './resources';
-import { router as accountRoutes } from './accounts';
 import { router as estimateRoutes } from './estimate';
 import { router as getStEthPerTokenAtTimestampsRoutes } from './getStEthPerTokenAtTimestamp';
 import { router as leaderboardRoutes } from './leaderboard';
@@ -17,7 +16,6 @@ import { Router } from 'express';
 
 const router = Router();
 
-router.use('/accounts', accountRoutes);
 router.use('/estimate', estimateRoutes);
 router.use('/getStEthPerTokenAtTimestamps', getStEthPerTokenAtTimestampsRoutes);
 router.use('/leaderboard', leaderboardRoutes);

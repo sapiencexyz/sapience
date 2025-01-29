@@ -218,20 +218,26 @@ export class PositionResolver {
   @Query(() => [PositionType])
   async positions(
     @Arg('owner', () => String, { nullable: true }) owner?: string,
-    @Arg('marketId', () => Int, { nullable: true }) marketId?: number
+    @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
+    @Arg('marketAddress', () => String, { nullable: true }) marketAddress?: string
   ): Promise<PositionType[]> {
     try {
-      const where = {};
+      const where: any = {};
       if (owner) {
         where.owner = owner;
       }
-      if (marketId) {
-        where.epoch = { market: { id: marketId } };
+      if (chainId && marketAddress) {
+        where.epoch = {
+          market: {
+            chainId,
+            address: marketAddress,
+          },
+        };
       }
 
       const positions = await dataSource.getRepository(Position).find({
         where,
-        relations: ['epoch', 'epoch.market', 'transactions'],
+        relations: ['epoch', 'epoch.market', 'epoch.market.resource', 'transactions'],
       });
 
       return positions.map(mapPositionToType);
