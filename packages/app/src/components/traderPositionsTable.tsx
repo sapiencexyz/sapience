@@ -39,7 +39,7 @@ import { toast } from '~/hooks/use-toast';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import type { PeriodContextType } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
-import { convertWstEthToGwei } from '~/lib/util/util';
+// import { convertWstEthToGwei } from '~/lib/util/util';
 
 import MarketCell from './MarketCell';
 import NumberDisplay from './numberDisplay';
@@ -219,7 +219,7 @@ const TraderPositionsTable: React.FC<Props> = ({
   walletAddress,
   periodContext,
 }) => {
-  const { useMarketUnits, stEthPerToken } = periodContext;
+  // const { useMarketUnits, stEthPerToken } = periodContext;
   const [sorting, setSorting] = useState<SortingState>([
     {
       id: 'status',
@@ -238,43 +238,43 @@ const TraderPositionsTable: React.FC<Props> = ({
   } = usePositions(walletAddress, periodContext);
   const { data: resources } = useResources();
 
+  /*
+  TODO: I think this is wrong?
+
   const calculateEntryPrice = (position: any) => {
     let entryPrice = 0;
     if (!position.isLP) {
-      const isLong = Number(position.baseToken) > 0;
+      const isLong = Number(position.baseToken) - Number(position.borrowedBaseToken) > 0;
+      
       if (isLong) {
         let baseTokenDeltaTotal = 0;
         entryPrice = position.transactions
-          .filter((t: any) => Number(t.baseTokenDelta) > 0)
+          .filter((t: any) => t.baseTokenDelta && Number(t.baseTokenDelta) > 0)
           .reduce((acc: number, transaction: any) => {
-            baseTokenDeltaTotal += Number(transaction.baseTokenDelta);
-            return (
-              acc +
-              Number(transaction.tradeRatioD18) *
-                Number(transaction.baseTokenDelta)
-            );
+            const delta = Number(transaction.baseTokenDelta);
+            baseTokenDeltaTotal += delta;
+            return acc + (Number(transaction.tradeRatioD18) * delta);
           }, 0);
-        entryPrice /= baseTokenDeltaTotal;
+        entryPrice = baseTokenDeltaTotal > 0 ? entryPrice / baseTokenDeltaTotal / 1e18 : 0;
       } else {
         let quoteTokenDeltaTotal = 0;
         entryPrice = position.transactions
-          .filter((t: any) => Number(t.quoteTokenDelta) > 0)
+          .filter((t: any) => t.quoteTokenDelta && Number(t.quoteTokenDelta) > 0)
           .reduce((acc: number, transaction: any) => {
-            quoteTokenDeltaTotal += Number(transaction.quoteTokenDelta);
-            return (
-              acc +
-              Number(transaction.tradeRatioD18) *
-                Number(transaction.quoteTokenDelta)
-            );
+            const delta = Number(transaction.quoteTokenDelta);
+            quoteTokenDeltaTotal += delta;
+            return acc + (Number(transaction.tradeRatioD18) * delta);
           }, 0);
-        entryPrice /= quoteTokenDeltaTotal;
+        entryPrice = quoteTokenDeltaTotal > 0 ? entryPrice / quoteTokenDeltaTotal / 1e18 : 0;
       }
     }
+    
     const unitsAdjustedEntryPrice = useMarketUnits
       ? entryPrice
       : convertWstEthToGwei(entryPrice, stEthPerToken);
     return isNaN(unitsAdjustedEntryPrice) ? 0 : unitsAdjustedEntryPrice;
   };
+  */
 
   const renderMarketCell = (row: any) => (
     <MarketCell
@@ -294,9 +294,9 @@ const TraderPositionsTable: React.FC<Props> = ({
     const isClosed = row.baseToken - row.borrowedBaseToken === 0;
     if (isClosed) {
       return row.isSettled ? (
-        <span className="text-medium">Position Settled</span>
+        <span className="font-medium">Position Settled</span>
       ) : (
-        <span className="text-medium text-muted-foreground">
+        <span className="font-medium text-muted-foreground">
           Position Closed
         </span>
       );
@@ -319,9 +319,9 @@ const TraderPositionsTable: React.FC<Props> = ({
     const isClosed = row.baseToken - row.borrowedBaseToken === 0;
     if (isClosed) {
       return row.isSettled ? (
-        <span className="text-medium">Position Settled</span>
+        <span className="font-medium">Position Settled</span>
       ) : (
-        <span className="text-medium text-muted-foreground">
+        <span className="font-medium text-muted-foreground">
           Position Closed
         </span>
       );
@@ -338,9 +338,9 @@ const TraderPositionsTable: React.FC<Props> = ({
     const isClosed = row.baseToken - row.borrowedBaseToken === 0;
     if (isClosed) {
       return row.isSettled ? (
-        <span className="text-medium">Position Settled</span>
+        <span className="font-medium">Position Settled</span>
       ) : (
-        <span className="text-medium text-muted-foreground">
+        <span className="font-medium text-muted-foreground">
           Position Closed
         </span>
       );
@@ -359,9 +359,9 @@ const TraderPositionsTable: React.FC<Props> = ({
     const isClosed = row.baseToken - row.borrowedBaseToken === 0;
     if (isClosed) {
       return row.isSettled ? (
-        <span className="text-medium">Position Settled</span>
+        <span className="font-medium">Position Settled</span>
       ) : (
-        <span className="text-medium text-muted-foreground">
+        <span className="font-medium text-muted-foreground">
           Position Closed
         </span>
       );
@@ -435,11 +435,13 @@ const TraderPositionsTable: React.FC<Props> = ({
         header: 'Size',
         accessorFn: (row) => row.baseToken - row.borrowedBaseToken,
       },
+      /*
       {
         id: 'entryPrice',
         header: 'Effective Entry Price',
         accessorFn: (row) => calculateEntryPrice(row),
       },
+      */
       {
         id: 'pnl',
         header: PnLHeaderCell,
@@ -452,7 +454,7 @@ const TraderPositionsTable: React.FC<Props> = ({
         enableSorting: false,
       },
     ],
-    [periodContext, calculateEntryPrice]
+    [periodContext /* , calculateEntryPrice */]
   );
 
   const table = useReactTable({
@@ -533,15 +535,46 @@ const TraderPositionsTable: React.FC<Props> = ({
           ))}
         </TableHeader>
         <TableBody>
-          {table.getRowModel().rows.map((row) => (
-            <TableRow key={row.id}>
-              {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id}>
-                  {renderCellContent(cell, row)}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
+          {table.getRowModel().rows.map((row) => {
+            const isClosed =
+              row.original.baseToken - row.original.borrowedBaseToken === 0;
+
+            if (isClosed) {
+              const valueColumns = ['collateral', 'size', 'pnl'];
+              const statusCell = row.original.isSettled ? (
+                <span className="font-medium">Position Settled</span>
+              ) : (
+                <span className="font-medium text-muted-foreground">
+                  Position Closed
+                </span>
+              );
+
+              return (
+                <TableRow key={row.id}>
+                  {/* Market cell */}
+                  <TableCell>{renderMarketCell(row.original)}</TableCell>
+                  {/* Position ID cell */}
+                  <TableCell>{renderPositionCell(row.original)}</TableCell>
+                  {/* Status cell with colspan */}
+                  <TableCell colSpan={valueColumns.length}>
+                    <div className="text-center">{statusCell}</div>
+                  </TableCell>
+                  {/* More Info cell */}
+                  <TableCell>{renderMoreCell(row.original)}</TableCell>
+                </TableRow>
+              );
+            }
+
+            return (
+              <TableRow key={row.id}>
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell key={cell.id}>
+                    {renderCellContent(cell, row)}
+                  </TableCell>
+                ))}
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>

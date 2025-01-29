@@ -65,6 +65,8 @@ const mapPositionToType = (position: Position): PositionType => ({
   lpBaseToken: position.lpBaseToken,
   lpQuoteToken: position.lpQuoteToken,
   isSettled: position.isSettled,
+  lowPriceTick: position.lowPriceTick,
+  highPriceTick: position.highPriceTick,
 });
 
 const mapTransactionToType = (transaction: Transaction): TransactionType => ({
@@ -82,9 +84,9 @@ const mapTransactionToType = (transaction: Transaction): TransactionType => ({
   collateral: transaction.collateral,
   lpBaseDeltaToken: transaction.lpBaseDeltaToken,
   lpQuoteDeltaToken: transaction.lpQuoteDeltaToken,
-  baseTokenDelta: transaction.baseToken || null,
-  quoteTokenDelta: transaction.quoteToken || null,
-  collateralDelta: transaction.collateral || null,
+  baseTokenDelta: transaction.baseToken || '0',
+  quoteTokenDelta: transaction.quoteToken || '0',
+  collateralDelta: transaction.collateral || '0',
   tradeRatioD18: transaction.tradeRatioD18 || null,
 });
 

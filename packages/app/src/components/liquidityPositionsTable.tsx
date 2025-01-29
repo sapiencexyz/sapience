@@ -15,13 +15,13 @@ import {
   ArrowUpDown,
   FrownIcon,
   Loader2,
-  ExternalLinkIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import type React from 'react';
 import { useState, useMemo } from 'react';
 import { useReadContract } from 'wagmi';
 
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -205,7 +205,7 @@ const PnLCell = ({
 
 const PnLHeaderCell = () => (
   <span className="flex items-center gap-1">
-    Profit/Loss{' '}
+    Unrealized Profit/Loss{' '}
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger>
@@ -252,6 +252,31 @@ const LiquidityPositionsTable: React.FC<Props> = ({
     const value = cell.getValue();
     const columnId = cell.column.id;
 
+    // Check if position is closed (no LP tokens)
+    const isClosed =
+      row.original.lpBaseToken === '0' && row.original.lpQuoteToken === '0';
+
+    // For numeric value cells, show settled/closed status instead of values when position is closed
+    if (
+      isClosed &&
+      [
+        'collateral',
+        'baseToken',
+        'quoteToken',
+        'lowPrice',
+        'highPrice',
+        'pnl',
+      ].includes(columnId)
+    ) {
+      return row.original.isSettled ? (
+        <span className="font-medium">Position Settled</span>
+      ) : (
+        <span className="font-medium text-muted-foreground">
+          Position Closed
+        </span>
+      );
+    }
+
     switch (columnId) {
       case 'market':
         return (
@@ -265,17 +290,12 @@ const LiquidityPositionsTable: React.FC<Props> = ({
             resources={resources}
           />
         );
-      case 'position': {
-        const positionUrl = `/positions/${row.original.epoch?.market?.chainId}:${row.original.epoch?.market?.address}/${row.original.positionId}`;
+      case 'position':
         return (
           <div className="flex items-center gap-1">
             #{row.original.positionId.toString()}
-            <Link href={positionUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLinkIcon className="h-3.5 w-3.5 text-blue-500 hover:text-blue-600" />
-            </Link>
           </div>
         );
-      }
       case 'collateral':
         return (
           <div className="flex items-center gap-1">
@@ -293,7 +313,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({
         return (
           <div className="flex items-center gap-1">
             <NumberDisplay value={parseFloat(value) / 10 ** 18} />
-            <span className="text-muted-foreground text-sm">vGGas</span>
+            <span className="text-muted-foreground text-sm">vGgas</span>
           </div>
         );
       case 'quoteToken':
@@ -323,6 +343,16 @@ const LiquidityPositionsTable: React.FC<Props> = ({
             collateralAssetTicker={periodContext.collateralAssetTicker}
           />
         );
+      case 'more': {
+        const positionUrl = `/positions/${row.original.epoch?.market?.chainId}:${row.original.epoch?.market?.address}/${row.original.positionId}`;
+        return (
+          <Link href={positionUrl} target="_blank" rel="noopener noreferrer">
+            <Button size="sm" className="float-right">
+              More Info
+            </Button>
+          </Link>
+        );
+      }
       case 'settled':
         return value ? <Check className="h-4 w-4 text-green-500 mr-2" /> : null;
       default:
@@ -382,6 +412,12 @@ const LiquidityPositionsTable: React.FC<Props> = ({
             },
           ]
         : []),
+      {
+        id: 'more',
+        header: '',
+        accessorFn: (row) => row.positionId,
+        enableSorting: false,
+      },
     ],
     [periodContext, expired, resources]
   );
@@ -443,16 +479,20 @@ const LiquidityPositionsTable: React.FC<Props> = ({
                 <TableHead
                   key={header.id}
                   onClick={header.column.getToggleSortingHandler()}
-                  className="cursor-pointer"
+                  className={
+                    header.column.id === 'more' ? '' : 'cursor-pointer'
+                  }
                 >
                   <span className="flex items-center">
                     {flexRender(
                       header.column.columnDef.header,
                       header.getContext()
                     )}
-                    <span className="ml-2 inline-block">
-                      {renderSortIcon(header.column.getIsSorted())}
-                    </span>
+                    {header.column.id !== 'more' && (
+                      <span className="ml-2 inline-block">
+                        {renderSortIcon(header.column.getIsSorted())}
+                      </span>
+                    )}
                   </span>
                 </TableHead>
               ))}
@@ -460,15 +500,75 @@ const LiquidityPositionsTable: React.FC<Props> = ({
           ))}
         </TableHeader>
         <TableBody>
-          {table.getRowModel().rows.map((row) => (
-            <TableRow key={row.id}>
-              {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id}>
-                  {renderCellContent(cell, row)}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
+          {table.getRowModel().rows.map((row) => {
+            const isClosed =
+              row.original.lpBaseToken === '0' &&
+              row.original.lpQuoteToken === '0';
+
+            if (isClosed) {
+              const valueColumns = [
+                'collateral',
+                'baseToken',
+                'quoteToken',
+                'lowPrice',
+                'highPrice',
+                'pnl',
+              ];
+              const statusCell = row.original.isSettled ? (
+                <span className="font-medium">Position Settled</span>
+              ) : (
+                <span className="font-medium text-muted-foreground">
+                  Position Closed
+                </span>
+              );
+
+              return (
+                <TableRow key={row.id}>
+                  {/* Market cell */}
+                  <TableCell>
+                    {renderCellContent(
+                      row
+                        .getVisibleCells()
+                        .find((cell) => cell.column.id === 'market'),
+                      row
+                    )}
+                  </TableCell>
+                  {/* Position ID cell */}
+                  <TableCell>
+                    {renderCellContent(
+                      row
+                        .getVisibleCells()
+                        .find((cell) => cell.column.id === 'position'),
+                      row
+                    )}
+                  </TableCell>
+                  {/* Status cell with colspan */}
+                  <TableCell colSpan={valueColumns.length}>
+                    <div className="text-center">{statusCell}</div>
+                  </TableCell>
+                  {/* More Info cell */}
+                  <TableCell>
+                    {renderCellContent(
+                      row
+                        .getVisibleCells()
+                        .find((cell) => cell.column.id === 'more'),
+                      row
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            }
+
+            return (
+              <TableRow key={row.id}>
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell key={cell.id}>
+                    {renderCellContent(cell, row)}
+                  </TableCell>
+                ))}
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>
