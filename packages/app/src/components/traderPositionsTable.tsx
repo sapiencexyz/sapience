@@ -353,6 +353,16 @@ const TraderPositionsTable: React.FC<Props> = ({
     },
   });
 
+  const renderSortIcon = (isSorted: string | false) => {
+    if (isSorted === 'desc') {
+      return <ChevronDown className="h-3 w-3" aria-label="sorted descending" />;
+    }
+    if (isSorted === 'asc') {
+      return <ChevronUp className="h-3 w-3" aria-label="sorted ascending" />;
+    }
+    return <ArrowUpDown className="h-3 w-3" aria-label="sortable" />;
+  };
+
   if (error) {
     toast({
       title: 'Error loading trader positions',
@@ -365,7 +375,7 @@ const TraderPositionsTable: React.FC<Props> = ({
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground opacity-20" />
       </div>
     );
   }
@@ -380,7 +390,7 @@ const TraderPositionsTable: React.FC<Props> = ({
   }
 
   return (
-    <div className="w-full overflow-auto">
+    <div className="w-full max-h-[66dvh] overflow-y-auto">
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -397,16 +407,7 @@ const TraderPositionsTable: React.FC<Props> = ({
                       header.getContext()
                     )}
                     <span className="ml-2 inline-block">
-                      {(() => {
-                        const sortDirection = header.column.getIsSorted();
-                        if (sortDirection === 'desc') {
-                          return <ChevronDown className="h-3 w-3" />;
-                        }
-                        if (sortDirection === 'asc') {
-                          return <ChevronUp className="h-3 w-3" />;
-                        }
-                        return <ArrowUpDown className="h-3 w-3" />;
-                      })()}
+                      {renderSortIcon(header.column.getIsSorted())}
                     </span>
                   </span>
                 </TableHead>

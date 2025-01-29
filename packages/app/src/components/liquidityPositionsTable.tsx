@@ -218,16 +218,6 @@ const PnLHeaderCell = () => (
 const SettledCell = ({ cell }: { cell: any }) =>
   cell.getValue() ? <Check className="text-green-500 mr-2 h-4 w-4" /> : null;
 
-const renderSortIcon = (isSorted: string | false) => {
-  if (isSorted === 'desc') {
-    return <ChevronDown className="h-3 w-3" aria-label="sorted descending" />;
-  }
-  if (isSorted === 'asc') {
-    return <ChevronUp className="h-3 w-3" aria-label="sorted ascending" />;
-  }
-  return <ArrowUpDown className="h-3 w-3" aria-label="sortable" />;
-};
-
 // Move the column definition outside the component
 const createColumns = (
   chain: any,
@@ -322,7 +312,6 @@ const LiquidityPositionsTable: React.FC<Props> = ({
   const dateMilliseconds = Number(endTime) * 1000;
   const expired = new Date(dateMilliseconds) < new Date();
 
-  // Use the createColumns function instead of defining columns directly
   const columns = useMemo(
     () =>
       createColumns(periodContext.chain, periodContext.address, pool, expired),
@@ -340,6 +329,16 @@ const LiquidityPositionsTable: React.FC<Props> = ({
     },
   });
 
+  const renderSortIcon = (isSorted: string | false) => {
+    if (isSorted === 'desc') {
+      return <ChevronDown className="h-3 w-3" aria-label="sorted descending" />;
+    }
+    if (isSorted === 'asc') {
+      return <ChevronUp className="h-3 w-3" aria-label="sorted ascending" />;
+    }
+    return <ArrowUpDown className="h-3 w-3" aria-label="sortable" />;
+  };
+
   if (error) {
     toast({
       title: 'Error loading liquidity positions',
@@ -352,7 +351,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground opacity-20" />
       </div>
     );
   }
@@ -367,7 +366,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full max-h-[66dvh] overflow-y-auto">
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (

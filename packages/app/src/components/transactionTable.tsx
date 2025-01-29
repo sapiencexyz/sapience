@@ -15,6 +15,7 @@ import {
   FrownIcon,
   Loader2,
 } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import type React from 'react';
 import { useMemo, useState } from 'react';
@@ -30,7 +31,9 @@ import {
 import { toast } from '~/hooks/use-toast';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import type { PeriodContextType } from '~/lib/context/PeriodProvider';
+import { useResources } from '~/lib/hooks/useResources';
 
+import EpochTiming from './EpochTiming';
 import NumberDisplay from './numberDisplay';
 
 const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
@@ -51,12 +54,15 @@ const TRANSACTIONS_QUERY = `
       epoch {
         id
         epochId
+        startTimestamp
+        endTimestamp
         market {
           id
           address
           chainId
           resource {
             name
+            slug
           }
         }
       }
@@ -80,13 +86,13 @@ interface Props {
 const getTypeDisplay = (type: string) => {
   switch (type) {
     case 'long':
-      return 'Long';
+      return 'Long Trade';
     case 'short':
-      return 'Short';
+      return 'Short Trade';
     case 'addLiquidity':
-      return 'Add Liquidity';
+      return 'Liquidity Added';
     case 'removeLiquidity':
-      return 'Remove Liquidity';
+      return 'Liquidity Removed';
     default:
       return type;
   }
@@ -135,7 +141,8 @@ function useTransactions(
       );
     },
     // Only enable if we have a walletAddress or if we have chainId & marketAddress
-    enabled: Boolean(walletAddress) || (Boolean(chainId) && Boolean(marketAddress)),
+    enabled:
+      Boolean(walletAddress) || (Boolean(chainId) && Boolean(marketAddress)),
     refetchInterval: POLLING_INTERVAL,
   });
 }
@@ -148,6 +155,7 @@ const TransactionTable: React.FC<Props> = ({
     { id: 'time', desc: true },
   ]);
 
+  const { data: resources } = useResources();
   const {
     data: transactions,
     error,
@@ -157,24 +165,10 @@ const TransactionTable: React.FC<Props> = ({
   const columns = useMemo<ColumnDef<any>[]>(
     () => [
       {
-        id: 'time',
-        header: 'Time',
-        accessorFn: (row) => row.timestamp,
-        cell: ({ row }) =>
-          formatDistanceToNow(
-            new Date((row.getValue('time') as number) * 1000),
-            { addSuffix: true }
-          ),
-      },
-      {
         id: 'market',
         header: 'Market',
-        accessorFn: (row) => {
-          const marketName =
-            row.position?.epoch?.market?.resource?.name || 'Unknown Market';
-          const epochId = row.position?.epoch?.epochId || '';
-          return `${marketName} (Epoch ${epochId})`;
-        },
+        accessorFn: (row) =>
+          row.position?.epoch?.market?.resource?.name || 'Unknown Market',
       },
       {
         id: 'position',
@@ -183,7 +177,7 @@ const TransactionTable: React.FC<Props> = ({
       },
       {
         id: 'type',
-        header: 'Type',
+        header: 'Activity',
         accessorFn: (row) => getTypeDisplay(row.type),
       },
       {
@@ -209,6 +203,11 @@ const TransactionTable: React.FC<Props> = ({
           const quoteToken = parseFloat(row.quoteToken || '0');
           return baseToken !== 0 ? quoteToken / baseToken : 0;
         },
+      },
+      {
+        id: 'time',
+        header: 'Executed',
+        accessorFn: (row) => row.timestamp,
       },
     ],
     []
@@ -237,8 +236,41 @@ const TransactionTable: React.FC<Props> = ({
 
   const renderCellContent = (cell: any, row: any) => {
     const value = cell.getValue();
+    const columnId = cell.column.id;
 
-    if (cell.column.id === 'Position') {
+    if (columnId === 'market') {
+      const marketName =
+        row.original.position?.epoch?.market?.resource?.name ||
+        'Unknown Market';
+      const resourceSlug = row.original.position?.epoch?.market?.resource?.slug;
+      const startTimestamp = row.original.position?.epoch?.startTimestamp;
+      const endTimestamp = row.original.position?.epoch?.endTimestamp;
+      const resource = resources?.find((r) => r.slug === resourceSlug);
+
+      return (
+        <div className="flex gap-4">
+          {resource?.iconPath && (
+            <Image
+              src={resource.iconPath}
+              alt={marketName}
+              width={20}
+              height={20}
+            />
+          )}
+          <div className="flex flex-col gap-0.5">
+            <div className="font-medium">{marketName}</div>
+            {startTimestamp && endTimestamp && (
+              <EpochTiming
+                startTimestamp={startTimestamp}
+                endTimestamp={endTimestamp}
+              />
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (columnId === 'position') {
       return (
         <Link
           href={`/positions/${row.original.position.epoch.market.chainId}:${row.original.position.epoch.market.address}/${row.original.position.positionId}`}
@@ -248,7 +280,13 @@ const TransactionTable: React.FC<Props> = ({
       );
     }
 
-    if (['collateral', 'ggas', 'wsteth', 'price'].includes(cell.column.id)) {
+    if (columnId === 'time') {
+      const timestamp = value as number;
+      const date = new Date(timestamp * 1000);
+      return <span>{formatDistanceToNow(date, { addSuffix: true })}</span>;
+    }
+
+    if (['collateral', 'ggas', 'wsteth', 'price'].includes(columnId)) {
       return <NumberDisplay value={value as number} />;
     }
 
@@ -267,7 +305,7 @@ const TransactionTable: React.FC<Props> = ({
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground opacity-20" />
       </div>
     );
   }
@@ -282,7 +320,7 @@ const TransactionTable: React.FC<Props> = ({
   }
 
   return (
-    <div className="w-full overflow-auto">
+    <div className="w-full max-h-[66dvh] overflow-y-auto">
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (

@@ -1,3 +1,4 @@
+import { TrophyIcon } from 'lucide-react';
 import { useContext, useState } from 'react';
 import { useAccount } from 'wagmi';
 
@@ -60,6 +61,12 @@ const DataDrawer = () => {
                 onAddressChange={setWalletAddress}
               />
             </div>
+            <TabsContent value="leaderboard">
+              <div className="w-full py-8 text-center text-muted-foreground">
+                <TrophyIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
+                Coming soon
+              </div>
+            </TabsContent>
             <TabsContent value="transactions">
               <TransactionTable
                 walletAddress={walletAddress}

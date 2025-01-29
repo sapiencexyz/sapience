@@ -71,7 +71,7 @@ const mapTransactionToType = (transaction: Transaction): TransactionType => ({
   id: transaction.id,
   type: transaction.type,
   timestamp: transaction.event?.timestamp
-    ? Number(transaction.event.timestamp)
+    ? Number(BigInt(transaction.event.timestamp))
     : 0,
   position: transaction.position
     ? mapPositionToType(transaction.position)
@@ -237,7 +237,13 @@ export class PositionResolver {
 
       const positions = await dataSource.getRepository(Position).find({
         where,
-        relations: ['epoch', 'epoch.market', 'epoch.market.resource', 'transactions'],
+        relations: [
+          'epoch',
+          'epoch.market',
+          'epoch.market.resource',
+          'transactions',
+          'transactions.event'
+        ],
       });
 
       return positions.map(mapPositionToType);
@@ -255,13 +261,14 @@ export class TransactionResolver {
     @Arg('positionId', () => Int, { nullable: true }) positionId?: number
   ): Promise<TransactionType[]> {
     try {
-      const where = {};
+      const where: any = {};
       if (positionId) {
         where.position = { id: positionId };
       }
 
       const transactions = await dataSource.getRepository(Transaction).find({
         where,
+        relations: ['event', 'position'],
       });
 
       return transactions.map(mapTransactionToType);
