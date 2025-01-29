@@ -1,20 +1,21 @@
-import { gql } from '@apollo/client';
 import { useQuery } from '@tanstack/react-query';
 import {
   useReactTable,
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
+  type ColumnDef,
   type SortingState,
 } from '@tanstack/react-table';
 import {
   Check,
-  HelpCircle,
+  Info,
   ChevronDown,
   ChevronUp,
   ArrowUpDown,
   FrownIcon,
   Loader2,
+  ExternalLinkIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import type React from 'react';
@@ -38,24 +39,24 @@ import {
 import { toast } from '~/hooks/use-toast';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import type { PeriodContextType } from '~/lib/context/PeriodProvider';
+import { useResources } from '~/lib/hooks/useResources';
 import { tickToPrice } from '~/lib/util/util';
 
+import MarketCell from './MarketCell';
 import NumberDisplay from './numberDisplay';
 
 const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
 
-const LP_POSITIONS_QUERY = gql`
+const LP_POSITIONS_QUERY = `
   query GetLPPositions(
     $owner: String
     $chainId: Int
     $marketAddress: String
-    $epochId: Int
   ) {
     positions(
       owner: $owner
       chainId: $chainId
       marketAddress: $marketAddress
-      epochId: $epochId
     ) {
       id
       positionId
@@ -73,14 +74,29 @@ const LP_POSITIONS_QUERY = gql`
       epoch {
         id
         epochId
+        startTimestamp
+        endTimestamp
         market {
           id
           chainId
           address
           resource {
             name
+            slug
           }
         }
+      }
+      transactions {
+        id
+        type
+        timestamp
+        transactionHash
+        baseToken
+        quoteToken
+        collateral
+        lpBaseDeltaToken
+        lpQuoteDeltaToken
+        tradeRatioD18
       }
     }
   }
@@ -95,10 +111,10 @@ const useLPPositions = (
   walletAddress: string | null,
   periodContext: PeriodContextType
 ) => {
-  const { chainId, address: marketAddress, epoch } = periodContext;
+  const { chainId, address: marketAddress } = periodContext;
 
   return useQuery({
-    queryKey: ['lpPositions', walletAddress, chainId, marketAddress, epoch],
+    queryKey: ['lpPositions', walletAddress, chainId, marketAddress],
     queryFn: async () => {
       const response = await fetch(`${API_BASE_URL}/graphql`, {
         method: 'POST',
@@ -108,10 +124,9 @@ const useLPPositions = (
         body: JSON.stringify({
           query: LP_POSITIONS_QUERY,
           variables: {
-            owner: walletAddress,
+            owner: walletAddress || undefined,
             chainId: walletAddress ? undefined : Number(chainId),
             marketAddress: walletAddress ? undefined : marketAddress,
-            epochId: walletAddress ? undefined : Number(epoch),
           },
         }),
       });
@@ -129,55 +144,19 @@ const useLPPositions = (
       return data.positions.filter((position: any) => position.isLP);
     },
     enabled:
-      Boolean(walletAddress) ||
-      (Boolean(chainId) && Boolean(marketAddress) && Boolean(epoch)),
+      Boolean(walletAddress) || (Boolean(chainId) && Boolean(marketAddress)),
     refetchInterval: POLLING_INTERVAL,
   });
 };
 
-// Define cell components outside the main component
-const PositionCell = ({
-  row,
-  chain,
-  address,
-}: {
-  row: any;
-  chain: any;
-  address: string;
-}) => (
-  <Link
-    href={`/positions/${chain?.id}:${address}/${row.original.positionId}`}
-    className="text-primary underline"
-  >
-    #{row.original.positionId.toString()}
-  </Link>
-);
-
-const CollateralCell = ({ cell }: { cell: any }) => (
-  <>
-    <NumberDisplay value={cell.getValue()} /> wstETH
-  </>
-);
-
-const BaseTokenCell = ({ cell }: { cell: any }) => (
-  <>
-    <NumberDisplay value={cell.getValue()} /> Ggas
-  </>
-);
-
-const PriceCell = ({ cell }: { cell: any }) => (
-  <>
-    <NumberDisplay value={cell.getValue()} /> Ggas/wstETH
-  </>
-);
-
-const PnLCell = ({ cell }: { cell: any }) => {
-  const { chainId, address } = cell.getValue();
-  const positionID = cell.row.original.positionId;
-
-  const res = useReadContract({
+const usePositionPnL = (
+  positionId: number,
+  chainId: number,
+  address: string
+) => {
+  return useReadContract({
     chainId,
-    address,
+    address: address as `0x${string}`,
     abi: [
       {
         type: 'function',
@@ -188,24 +167,52 @@ const PnLCell = ({ cell }: { cell: any }) => {
       },
     ],
     functionName: 'getPositionPnl',
-    args: [positionID],
+    args: [BigInt(positionId)],
   });
+};
 
-  return res.isLoading || chainId === undefined ? null : (
-    <NumberDisplay value={res.data || 0} />
+const PnLCell = ({
+  positionId,
+  chainId,
+  address,
+  collateralAssetDecimals,
+  collateralAssetTicker,
+}: {
+  positionId: number;
+  chainId: number;
+  address: string;
+  collateralAssetDecimals: number;
+  collateralAssetTicker: string;
+}) => {
+  const res = usePositionPnL(positionId, chainId, address);
+
+  if (res.isLoading) return null;
+
+  return (
+    <div className="flex items-center gap-1">
+      <NumberDisplay
+        value={
+          parseFloat(res.data?.toString() || '0') /
+          10 ** collateralAssetDecimals
+        }
+      />
+      <span className="text-muted-foreground text-sm">
+        {collateralAssetTicker}
+      </span>
+    </div>
   );
 };
 
 const PnLHeaderCell = () => (
-  <span className="flex items-center">
+  <span className="flex items-center gap-1">
     Profit/Loss{' '}
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger>
-          <HelpCircle className="ml-1 h-4 w-4" />
+          <Info className="h-4 w-4 text-muted-foreground" />
         </TooltipTrigger>
         <TooltipContent>
-          <p>
+          <p className="font-normal">
             This is an estimate that does not take into account slippage or
             fees.
           </p>
@@ -215,83 +222,11 @@ const PnLHeaderCell = () => (
   </span>
 );
 
-const SettledCell = ({ cell }: { cell: any }) =>
-  cell.getValue() ? <Check className="text-green-500 mr-2 h-4 w-4" /> : null;
-
-// Move the column definition outside the component
-const createColumns = (
-  chain: any,
-  address: string,
-  pool: any,
-  expired: boolean
-) => [
-  {
-    id: 'market',
-    header: 'Market',
-    accessorFn: (row: any) =>
-      `${row.epoch.market.resource.name} (Epoch ${row.epoch.epochId})`,
-  },
-  {
-    id: 'position',
-    header: 'Position',
-    accessorFn: (row: any) => row.positionId,
-    cell: (props: any) => (
-      <PositionCell row={props.row} chain={chain} address={address} />
-    ),
-  },
-  {
-    id: 'collateral',
-    header: 'Collateral',
-    accessorKey: 'collateral',
-    cell: CollateralCell,
-  },
-  {
-    id: 'baseToken',
-    header: 'Base Token',
-    accessorKey: 'lpBaseToken',
-    cell: BaseTokenCell,
-  },
-  {
-    id: 'quoteToken',
-    header: 'Quote Token',
-    accessorKey: 'lpQuoteToken',
-    cell: CollateralCell,
-  },
-  {
-    id: 'lowPrice',
-    header: 'Low Price',
-    accessorFn: (row: any) => tickToPrice(row.lowPriceTick),
-    cell: PriceCell,
-  },
-  {
-    id: 'highPrice',
-    header: 'High Price',
-    accessorFn: (row: any) => tickToPrice(row.highPriceTick),
-    cell: PriceCell,
-  },
-  {
-    id: 'pnl',
-    header: PnLHeaderCell,
-    accessorFn: (row: any) => ({ row, pool, address, chainId: chain.id }),
-    cell: PnLCell,
-  },
-  ...(expired
-    ? [
-        {
-          id: 'settled',
-          header: 'Settled',
-          accessorKey: 'isSettled',
-          cell: SettledCell,
-        },
-      ]
-    : []),
-];
-
 const LiquidityPositionsTable: React.FC<Props> = ({
   walletAddress,
   periodContext,
 }) => {
-  const { pool, endTime } = periodContext;
+  const { endTime } = periodContext;
   const [sorting, setSorting] = useState<SortingState>([
     {
       id: 'settled',
@@ -308,14 +243,147 @@ const LiquidityPositionsTable: React.FC<Props> = ({
     error,
     isLoading,
   } = useLPPositions(walletAddress, periodContext);
+  const { data: resources } = useResources();
 
   const dateMilliseconds = Number(endTime) * 1000;
   const expired = new Date(dateMilliseconds) < new Date();
 
-  const columns = useMemo(
-    () =>
-      createColumns(periodContext.chain, periodContext.address, pool, expired),
-    [periodContext.chain, periodContext.address, pool, expired]
+  const renderCellContent = (cell: any, row: any) => {
+    const value = cell.getValue();
+    const columnId = cell.column.id;
+
+    switch (columnId) {
+      case 'market':
+        return (
+          <MarketCell
+            marketName={
+              row.original.epoch?.market?.resource?.name || 'Unknown Market'
+            }
+            resourceSlug={row.original.epoch?.market?.resource?.slug}
+            startTimestamp={row.original.epoch?.startTimestamp}
+            endTimestamp={row.original.epoch?.endTimestamp}
+            resources={resources}
+          />
+        );
+      case 'position': {
+        const positionUrl = `/positions/${row.original.epoch?.market?.chainId}:${row.original.epoch?.market?.address}/${row.original.positionId}`;
+        return (
+          <div className="flex items-center gap-1">
+            #{row.original.positionId.toString()}
+            <Link href={positionUrl} target="_blank" rel="noopener noreferrer">
+              <ExternalLinkIcon className="h-3.5 w-3.5 text-blue-500 hover:text-blue-600" />
+            </Link>
+          </div>
+        );
+      }
+      case 'collateral':
+        return (
+          <div className="flex items-center gap-1">
+            <NumberDisplay
+              value={
+                parseFloat(value) / 10 ** periodContext.collateralAssetDecimals
+              }
+            />
+            <span className="text-muted-foreground text-sm">
+              {periodContext.collateralAssetTicker}
+            </span>
+          </div>
+        );
+      case 'baseToken':
+        return (
+          <div className="flex items-center gap-1">
+            <NumberDisplay value={parseFloat(value) / 10 ** 18} />
+            <span className="text-muted-foreground text-sm">vGGas</span>
+          </div>
+        );
+      case 'quoteToken':
+        return (
+          <div className="flex items-center gap-1">
+            <NumberDisplay value={parseFloat(value) / 10 ** 18} />
+            <span className="text-muted-foreground text-sm">vWstETH</span>
+          </div>
+        );
+      case 'lowPrice':
+      case 'highPrice':
+        return (
+          <div className="flex items-center gap-1">
+            <NumberDisplay value={tickToPrice(Number(value))} />
+            <span className="text-muted-foreground text-sm">
+              {periodContext.useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
+            </span>
+          </div>
+        );
+      case 'pnl':
+        return (
+          <PnLCell
+            positionId={row.original.positionId}
+            chainId={periodContext.chainId}
+            address={periodContext.address}
+            collateralAssetDecimals={periodContext.collateralAssetDecimals}
+            collateralAssetTicker={periodContext.collateralAssetTicker}
+          />
+        );
+      case 'settled':
+        return value ? <Check className="h-4 w-4 text-green-500 mr-2" /> : null;
+      default:
+        return value;
+    }
+  };
+
+  const columns = useMemo<ColumnDef<any>[]>(
+    () => [
+      {
+        id: 'market',
+        header: 'Market',
+        accessorFn: (row) =>
+          row.epoch?.market?.resource?.name || 'Unknown Market',
+      },
+      {
+        id: 'position',
+        header: 'Position',
+        accessorFn: (row) => row.positionId,
+      },
+      {
+        id: 'collateral',
+        header: 'Collateral',
+        accessorKey: 'collateral',
+      },
+      {
+        id: 'baseToken',
+        header: 'Virtual Ggas',
+        accessorKey: 'lpBaseToken',
+      },
+      {
+        id: 'quoteToken',
+        header: 'Virtual wstETH',
+        accessorKey: 'lpQuoteToken',
+      },
+      {
+        id: 'lowPrice',
+        header: 'Low Price',
+        accessorKey: 'lowPriceTick',
+      },
+      {
+        id: 'highPrice',
+        header: 'High Price',
+        accessorKey: 'highPriceTick',
+      },
+      {
+        id: 'pnl',
+        header: PnLHeaderCell,
+        accessorFn: (row) => row.positionId,
+      },
+      ...(expired
+        ? [
+            {
+              id: 'settled',
+              header: 'Settled',
+              accessorKey: 'isSettled',
+            },
+          ]
+        : []),
+    ],
+    [periodContext, expired, resources]
   );
 
   const table = useReactTable({
@@ -377,7 +445,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({
                   onClick={header.column.getToggleSortingHandler()}
                   className="cursor-pointer"
                 >
-                  <span className="flex items-center">
+                  <span className="flex items-center whitespace-nowrap">
                     {flexRender(
                       header.column.columnDef.header,
                       header.getContext()
@@ -396,7 +464,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({
             <TableRow key={row.id}>
               {row.getVisibleCells().map((cell) => (
                 <TableCell key={cell.id}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  {renderCellContent(cell, row)}
                 </TableCell>
               ))}
             </TableRow>

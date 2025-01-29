@@ -94,6 +94,12 @@ export class PositionType {
 
   @Field(() => Boolean, { nullable: true })
   isSettled: boolean | null;
+
+  @Field(() => String, { nullable: true })
+  lowPriceTick: string | null;
+
+  @Field(() => String, { nullable: true })
+  highPriceTick: string | null;
 }
 
 @ObjectType()

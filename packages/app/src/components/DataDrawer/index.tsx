@@ -54,7 +54,9 @@ const DataDrawer = () => {
                 <TabsTrigger value="trader-positions">
                   Trader Positions
                 </TabsTrigger>
-                <TabsTrigger value="lp-positions">LP Positions</TabsTrigger>
+                <TabsTrigger value="lp-positions">
+                  Liquidity Positions
+                </TabsTrigger>
               </TabsList>
               <DataDrawerFilter
                 address={walletAddress}

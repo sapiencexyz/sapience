@@ -41,9 +41,11 @@ type PositionType {
   borrowedQuoteToken: String
   collateral: String!
   epoch: EpochType!
+  highPriceTick: String
   id: ID!
   isLP: Boolean!
   isSettled: Boolean
+  lowPriceTick: String
   lpBaseToken: String
   lpQuoteToken: String
   owner: String!

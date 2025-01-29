@@ -16,7 +16,6 @@ import {
   Loader2,
   ExternalLinkIcon,
 } from 'lucide-react';
-import Image from 'next/image';
 import Link from 'next/link';
 import type React from 'react';
 import { useMemo, useState } from 'react';
@@ -34,7 +33,7 @@ import type { PeriodContextType } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
 import { convertWstEthToGwei } from '~/lib/util/util';
 
-import EpochTiming from './EpochTiming';
+import MarketCell from './MarketCell';
 import NumberDisplay from './numberDisplay';
 
 const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
@@ -263,37 +262,6 @@ const TransactionTable: React.FC<Props> = ({
     return <ArrowUpDown className="h-3 w-3" aria-label="sortable" />;
   };
 
-  const renderMarketCell = (row: any) => {
-    const marketName =
-      row.original.position?.epoch?.market?.resource?.name || 'Unknown Market';
-    const resourceSlug = row.original.position?.epoch?.market?.resource?.slug;
-    const startTimestamp = row.original.position?.epoch?.startTimestamp;
-    const endTimestamp = row.original.position?.epoch?.endTimestamp;
-    const resource = resources?.find((r) => r.slug === resourceSlug);
-
-    return (
-      <div className="flex gap-4">
-        {resource?.iconPath && (
-          <Image
-            src={resource.iconPath}
-            alt={marketName}
-            width={20}
-            height={20}
-          />
-        )}
-        <div className="flex flex-col gap-0.5">
-          <div className="font-medium">{marketName}</div>
-          {startTimestamp && endTimestamp && (
-            <EpochTiming
-              startTimestamp={startTimestamp}
-              endTimestamp={endTimestamp}
-            />
-          )}
-        </div>
-      </div>
-    );
-  };
-
   const renderPositionCell = (row: any) => (
     <div className="flex items-center gap-1">
       #{row.original.position.positionId}
@@ -364,7 +332,18 @@ const TransactionTable: React.FC<Props> = ({
 
     switch (columnId) {
       case 'market':
-        return renderMarketCell(row);
+        return (
+          <MarketCell
+            marketName={
+              row.original.position?.epoch?.market?.resource?.name ||
+              'Unknown Market'
+            }
+            resourceSlug={row.original.position?.epoch?.market?.resource?.slug}
+            startTimestamp={row.original.position?.epoch?.startTimestamp}
+            endTimestamp={row.original.position?.epoch?.endTimestamp}
+            resources={resources}
+          />
+        );
       case 'position':
         return renderPositionCell(row);
       case 'time':
@@ -383,8 +362,10 @@ const TransactionTable: React.FC<Props> = ({
         return renderTokenCell(value, 'vWstETH');
       case 'price':
         return renderPriceCell(value);
+      case 'type':
+        return getTypeDisplay(value);
       default:
-        return flexRender(cell.column.columnDef.cell, cell.getContext());
+        return value;
     }
   };
 

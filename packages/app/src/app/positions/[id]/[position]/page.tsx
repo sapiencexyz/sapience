@@ -153,20 +153,20 @@ const PositionPage = ({
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Collateral</p>
-              <p className="font-medium">
+              <p>
                 <NumberDisplay value={positionData.collateral} /> wstETH
               </p>
             </div>
 
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Base Token</p>
-              <p className="font-medium">
+              <p>
                 <NumberDisplay value={positionData.baseToken} /> Ggas
               </p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Quote Token</p>
-              <p className="font-medium">
+              <p>
                 <NumberDisplay value={positionData.quoteToken} /> wstETH
               </p>
             </div>
@@ -175,7 +175,7 @@ const PositionPage = ({
               <p className="text-sm text-muted-foreground">
                 Borrowed Base Token
               </p>
-              <p className="font-medium">
+              <p>
                 <NumberDisplay value={positionData.borrowedBaseToken} /> Ggas
               </p>
             </div>
@@ -183,7 +183,7 @@ const PositionPage = ({
               <p className="text-sm text-muted-foreground">
                 Borrowed Quote Token
               </p>
-              <p className="font-medium">
+              <p>
                 <NumberDisplay value={positionData.borrowedQuoteToken} /> wstETH
               </p>
             </div>

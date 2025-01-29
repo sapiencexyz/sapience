@@ -1193,13 +1193,13 @@ const LiquidityForm: React.FC = () => {
           <div>
             <p className="text-sm font-semibold mb-0.5">Virtual Ggas</p>
             <p className="text-sm mb-0.5">
-              <NumberDisplay value={baseToken} /> vGGas (Min.{' '}
+              <NumberDisplay value={baseToken} /> vGgas (Min.{' '}
               <NumberDisplay value={minAmountTokenA} />)
             </p>
           </div>
 
           <div>
-            <p className="text-sm font-semibold mb-0.5">Virtual vWstETH</p>
+            <p className="text-sm font-semibold mb-0.5">Virtual wstETH</p>
             <p className="text-sm mb-0.5">
               <NumberDisplay value={quoteToken} /> vWstETH (Min.{' '}
               <NumberDisplay value={minAmountTokenB} />)
