@@ -1,3 +1,5 @@
+import { gql } from '@apollo/client';
+import { useQuery } from '@tanstack/react-query';
 import {
   useReactTable,
   flexRender,
@@ -12,10 +14,11 @@ import {
   ChevronUp,
   ArrowUpDown,
   FrownIcon,
+  Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
 import type React from 'react';
-import { useContext, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useReadContract } from 'wagmi';
 
 import {
@@ -32,14 +35,105 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { PeriodContext } from '~/lib/context/PeriodProvider';
+import { toast } from '~/hooks/use-toast';
+import { API_BASE_URL } from '~/lib/constants/constants';
+import type { PeriodContextType } from '~/lib/context/PeriodProvider';
 import { tickToPrice } from '~/lib/util/util';
 
 import NumberDisplay from './numberDisplay';
 
+const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
+
+const LP_POSITIONS_QUERY = gql`
+  query GetLPPositions(
+    $owner: String
+    $chainId: Int
+    $marketAddress: String
+    $epochId: Int
+  ) {
+    positions(
+      owner: $owner
+      chainId: $chainId
+      marketAddress: $marketAddress
+      epochId: $epochId
+    ) {
+      id
+      positionId
+      isLP
+      baseToken
+      quoteToken
+      borrowedBaseToken
+      borrowedQuoteToken
+      collateral
+      isSettled
+      lpBaseToken
+      lpQuoteToken
+      lowPriceTick
+      highPriceTick
+      epoch {
+        id
+        epochId
+        market {
+          id
+          chainId
+          address
+          resource {
+            name
+          }
+        }
+      }
+    }
+  }
+`;
+
 interface Props {
-  positions: any[];
+  walletAddress: string | null;
+  periodContext: PeriodContextType;
 }
+
+const useLPPositions = (
+  walletAddress: string | null,
+  periodContext: PeriodContextType
+) => {
+  const { chainId, address: marketAddress, epoch } = periodContext;
+
+  return useQuery({
+    queryKey: ['lpPositions', walletAddress, chainId, marketAddress, epoch],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/graphql`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: LP_POSITIONS_QUERY,
+          variables: {
+            owner: walletAddress,
+            chainId: walletAddress ? undefined : Number(chainId),
+            marketAddress: walletAddress ? undefined : marketAddress,
+            epochId: walletAddress ? undefined : Number(epoch),
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const { data, errors } = await response.json();
+      if (errors) {
+        throw new Error(errors[0].message);
+      }
+
+      // Filter for LP positions only
+      return data.positions.filter((position: any) => position.isLP);
+    },
+    enabled:
+      Boolean(walletAddress) ||
+      (Boolean(chainId) && Boolean(marketAddress) && Boolean(epoch)),
+    refetchInterval: POLLING_INTERVAL,
+  });
+};
 
 // Define cell components outside the main component
 const PositionCell = ({
@@ -203,8 +297,11 @@ const createColumns = (
     : []),
 ];
 
-const LiquidityPositionsTable: React.FC<Props> = ({ positions }) => {
-  const { pool, endTime, chain, address } = useContext(PeriodContext);
+const LiquidityPositionsTable: React.FC<Props> = ({
+  walletAddress,
+  periodContext,
+}) => {
+  const { pool, endTime } = periodContext;
   const [sorting, setSorting] = useState<SortingState>([
     {
       id: 'settled',
@@ -215,17 +312,25 @@ const LiquidityPositionsTable: React.FC<Props> = ({ positions }) => {
       desc: true,
     },
   ]);
+
+  const {
+    data: positions,
+    error,
+    isLoading,
+  } = useLPPositions(walletAddress, periodContext);
+
   const dateMilliseconds = Number(endTime) * 1000;
   const expired = new Date(dateMilliseconds) < new Date();
 
   // Use the createColumns function instead of defining columns directly
   const columns = useMemo(
-    () => createColumns(chain, address, pool, expired),
-    [chain, address, pool, expired]
+    () =>
+      createColumns(periodContext.chain, periodContext.address, pool, expired),
+    [periodContext.chain, periodContext.address, pool, expired]
   );
 
   const table = useReactTable({
-    data: positions,
+    data: positions || [],
     columns,
     getCoreRowModel: getCoreRowModel(),
     onSortingChange: setSorting,
@@ -234,6 +339,23 @@ const LiquidityPositionsTable: React.FC<Props> = ({ positions }) => {
       sorting,
     },
   });
+
+  if (error) {
+    toast({
+      title: 'Error loading liquidity positions',
+      description: error.message,
+      duration: 5000,
+    });
+    return null;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+      </div>
+    );
+  }
 
   if (!positions?.length) {
     return (

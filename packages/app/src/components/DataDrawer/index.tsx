@@ -1,6 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useState } from 'react';
 import { useAccount } from 'wagmi';
 
 import LiquidityPositionsTable from '~/components/liquidityPositionsTable';
@@ -8,40 +6,9 @@ import TraderPositionsTable from '~/components/traderPositionsTable';
 import TransactionTable from '~/components/transactionTable';
 import { Drawer, DrawerContent, DrawerTrigger } from '~/components/ui/drawer';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '~/components/ui/tabs';
-import { toast } from '~/hooks/use-toast';
-import { API_BASE_URL } from '~/lib/constants/constants';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 
 import DataDrawerFilter from './DataDrawerFilter';
-
-const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
-
-const useAccountData = () => {
-  const { address, isConnected } = useAccount();
-  const { chainId, address: marketAddress, epoch } = useContext(PeriodContext);
-
-  // Log market details
-  useEffect(() => {
-    console.log({
-      chainId,
-      marketAddress,
-      epochId: epoch,
-    });
-  }, [chainId, marketAddress, epoch]);
-
-  return useQuery({
-    queryKey: ['accountData', address],
-    queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/accounts/${address}`);
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      return response.json();
-    },
-    enabled: isConnected,
-    refetchInterval: POLLING_INTERVAL,
-  });
-};
 
 const DataDrawer = () => {
   const { address } = useAccount();
@@ -49,28 +16,7 @@ const DataDrawer = () => {
     address || null
   );
   const [showTable, setShowTable] = useState(false);
-
-  const {
-    data: accountData,
-    error: accountDataError,
-    isLoading: isLoadingAccountData,
-  } = useAccountData();
-
-  const traderPositions =
-    accountData?.positions.filter((position: any) => !position.isLP) || [];
-  const lpPositions =
-    accountData?.positions.filter((position: any) => position.isLP) || [];
-  const transactions = accountData?.transactions || [];
-
-  useEffect(() => {
-    if (accountDataError) {
-      toast({
-        title: 'Error loading account data',
-        description: accountDataError.message,
-        duration: 5000,
-      });
-    }
-  }, [accountDataError]);
+  const periodContext = useContext(PeriodContext);
 
   return (
     <Drawer open={showTable} onOpenChange={setShowTable}>
@@ -99,37 +45,40 @@ const DataDrawer = () => {
       </DrawerTrigger>
       <DrawerContent className="mx-3">
         <div className="px-4 pb-4">
-          {isLoadingAccountData ? (
-            <div className="flex justify-center items-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+          <Tabs defaultValue="transactions" className="w-full">
+            <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center mb-3 flex-shrink-0 gap-3">
+              <TabsList>
+                <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
+                <TabsTrigger value="transactions">Transactions</TabsTrigger>
+                <TabsTrigger value="trader-positions">
+                  Trader Positions
+                </TabsTrigger>
+                <TabsTrigger value="lp-positions">LP Positions</TabsTrigger>
+              </TabsList>
+              <DataDrawerFilter
+                address={walletAddress}
+                onAddressChange={setWalletAddress}
+              />
             </div>
-          ) : (
-            <Tabs defaultValue="transactions" className="w-full">
-              <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center mb-3 flex-shrink-0 gap-3">
-                <TabsList>
-                  <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
-                  <TabsTrigger value="transactions">Transactions</TabsTrigger>
-                  <TabsTrigger value="trader-positions">
-                    Trader Positions
-                  </TabsTrigger>
-                  <TabsTrigger value="lp-positions">LP Positions</TabsTrigger>
-                </TabsList>
-                <DataDrawerFilter
-                  address={walletAddress}
-                  onAddressChange={setWalletAddress}
-                />
-              </div>
-              <TabsContent value="transactions">
-                <TransactionTable transactions={transactions} />
-              </TabsContent>
-              <TabsContent value="trader-positions">
-                <TraderPositionsTable positions={traderPositions} />
-              </TabsContent>
-              <TabsContent value="lp-positions">
-                <LiquidityPositionsTable positions={lpPositions} />
-              </TabsContent>
-            </Tabs>
-          )}
+            <TabsContent value="transactions">
+              <TransactionTable
+                walletAddress={walletAddress}
+                periodContext={periodContext}
+              />
+            </TabsContent>
+            <TabsContent value="trader-positions">
+              <TraderPositionsTable
+                walletAddress={walletAddress}
+                periodContext={periodContext}
+              />
+            </TabsContent>
+            <TabsContent value="lp-positions">
+              <LiquidityPositionsTable
+                walletAddress={walletAddress}
+                periodContext={periodContext}
+              />
+            </TabsContent>
+          </Tabs>
         </div>
       </DrawerContent>
     </Drawer>

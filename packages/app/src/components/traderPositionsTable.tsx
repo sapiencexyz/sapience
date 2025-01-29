@@ -1,3 +1,5 @@
+import { gql } from '@apollo/client';
+import { useQuery } from '@tanstack/react-query';
 import {
   useReactTable,
   flexRender,
@@ -13,13 +15,13 @@ import {
   ChevronUp,
   ArrowUpDown,
   FrownIcon,
+  Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
 import type React from 'react';
-import { useContext, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useReadContract } from 'wagmi';
 
-import { PeriodContext } from '../lib/context/PeriodProvider';
 import {
   Table,
   TableBody,
@@ -34,13 +36,110 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { toast } from '~/hooks/use-toast';
+import { API_BASE_URL } from '~/lib/constants/constants';
+import type { PeriodContextType } from '~/lib/context/PeriodProvider';
 import { convertWstEthToGwei } from '~/lib/util/util';
 
 import NumberDisplay from './numberDisplay';
 
+const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
+
+const TRADER_POSITIONS_QUERY = gql`
+  query GetTraderPositions(
+    $owner: String
+    $chainId: Int
+    $marketAddress: String
+    $epochId: Int
+  ) {
+    positions(
+      owner: $owner
+      chainId: $chainId
+      marketAddress: $marketAddress
+      epochId: $epochId
+    ) {
+      id
+      positionId
+      isLP
+      baseToken
+      quoteToken
+      borrowedBaseToken
+      borrowedQuoteToken
+      collateral
+      isSettled
+      epoch {
+        id
+        epochId
+        market {
+          id
+          chainId
+          address
+          resource {
+            name
+          }
+        }
+      }
+      transactions {
+        id
+        type
+        timestamp
+        baseToken
+        quoteToken
+        collateral
+        tradeRatioD18
+      }
+    }
+  }
+`;
+
 interface Props {
-  positions: any[];
+  walletAddress: string | null;
+  periodContext: PeriodContextType;
 }
+
+const useTraderPositions = (
+  walletAddress: string | null,
+  periodContext: PeriodContextType
+) => {
+  const { chainId, address: marketAddress, epoch } = periodContext;
+
+  return useQuery({
+    queryKey: ['traderPositions', walletAddress, chainId, marketAddress, epoch],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/graphql`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: TRADER_POSITIONS_QUERY,
+          variables: {
+            owner: walletAddress,
+            chainId: walletAddress ? undefined : Number(chainId),
+            marketAddress: walletAddress ? undefined : marketAddress,
+            epochId: walletAddress ? undefined : Number(epoch),
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const { data, errors } = await response.json();
+      if (errors) {
+        throw new Error(errors[0].message);
+      }
+
+      // Filter for non-LP positions only
+      return data.positions.filter((position: any) => !position.isLP);
+    },
+    enabled:
+      Boolean(walletAddress) ||
+      (Boolean(chainId) && Boolean(marketAddress) && Boolean(epoch)),
+    refetchInterval: POLLING_INTERVAL,
+  });
+};
 
 const PositionCell = ({ row }: { row: any }) => {
   const isClosed =
@@ -120,9 +219,11 @@ const PnLCell = ({ cell }: { cell: any }) => {
 const SettledCell = ({ cell }: { cell: any }) =>
   cell.getValue() ? <Check className="h-4 w-4 text-green-500 mr-2" /> : null;
 
-const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
-  const { address, chain, endTime, pool, useMarketUnits, stEthPerToken } =
-    useContext(PeriodContext);
+const TraderPositionsTable: React.FC<Props> = ({
+  walletAddress,
+  periodContext,
+}) => {
+  const { endTime, pool, useMarketUnits, stEthPerToken } = periodContext;
   const [sorting, setSorting] = useState<SortingState>([
     {
       id: 'status',
@@ -133,6 +234,13 @@ const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
       desc: true,
     },
   ]);
+
+  const {
+    data: positions,
+    error,
+    isLoading,
+  } = useTraderPositions(walletAddress, periodContext);
+
   const dateMilliseconds = Number(endTime) * 1000;
   const expired = new Date(dateMilliseconds) < new Date();
 
@@ -209,7 +317,12 @@ const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
       {
         id: 'pnl',
         header: PnLHeaderCell,
-        accessorFn: (row) => ({ row, pool, address, chainId: chain?.id }),
+        accessorFn: (row) => ({
+          row,
+          pool,
+          address: periodContext.address,
+          chainId: periodContext.chainId,
+        }),
         cell: PnLCell,
       },
       ...(expired
@@ -223,11 +336,11 @@ const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
           ]
         : []),
     ],
-    [address, calculateEntryPrice, chain, pool]
+    [periodContext.address, calculateEntryPrice, periodContext.chainId, pool]
   );
 
   const table = useReactTable({
-    data: positions,
+    data: positions || [],
     columns,
     getCoreRowModel: getCoreRowModel(),
     onSortingChange: setSorting,
@@ -240,6 +353,23 @@ const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
     },
   });
 
+  if (error) {
+    toast({
+      title: 'Error loading trader positions',
+      description: error.message,
+      duration: 5000,
+    });
+    return null;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+      </div>
+    );
+  }
+
   if (!positions?.length) {
     return (
       <div className="w-full py-8 text-center text-muted-foreground">
@@ -250,66 +380,53 @@ const TraderPositionsTable: React.FC<Props> = ({ positions }) => {
   }
 
   return (
-    <Table>
-      <TableHeader>
-        {table.getHeaderGroups().map((headerGroup) => (
-          <TableRow key={headerGroup.id}>
-            {headerGroup.headers.map((header) => (
-              <TableHead
-                key={header.id}
-                onClick={header.column.getToggleSortingHandler()}
-                className="cursor-pointer"
-              >
-                <span className="flex items-center">
-                  {flexRender(
-                    header.column.columnDef.header,
-                    header.getContext()
-                  )}
-                  <span className="ml-2 inline-block">
-                    {(() => {
-                      const sortDirection = header.column.getIsSorted();
-                      if (sortDirection === 'desc') {
-                        return (
-                          <ChevronDown
-                            className="h-3 w-3"
-                            aria-label="sorted descending"
-                          />
-                        );
-                      }
-                      if (sortDirection === 'asc') {
-                        return (
-                          <ChevronUp
-                            className="h-3 w-3"
-                            aria-label="sorted ascending"
-                          />
-                        );
-                      }
-                      return (
-                        <ArrowUpDown
-                          className="h-3 w-3"
-                          aria-label="sortable"
-                        />
-                      );
-                    })()}
+    <div className="w-full overflow-auto">
+      <Table>
+        <TableHeader>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <TableRow key={headerGroup.id}>
+              {headerGroup.headers.map((header) => (
+                <TableHead
+                  key={header.id}
+                  onClick={header.column.getToggleSortingHandler()}
+                  className="cursor-pointer"
+                >
+                  <span className="flex items-center">
+                    {flexRender(
+                      header.column.columnDef.header,
+                      header.getContext()
+                    )}
+                    <span className="ml-2 inline-block">
+                      {(() => {
+                        const sortDirection = header.column.getIsSorted();
+                        if (sortDirection === 'desc') {
+                          return <ChevronDown className="h-3 w-3" />;
+                        }
+                        if (sortDirection === 'asc') {
+                          return <ChevronUp className="h-3 w-3" />;
+                        }
+                        return <ArrowUpDown className="h-3 w-3" />;
+                      })()}
+                    </span>
                   </span>
-                </span>
-              </TableHead>
-            ))}
-          </TableRow>
-        ))}
-      </TableHeader>
-      <TableBody>
-        {table.getRowModel().rows.map((row) => (
-          <TableRow key={row.id}>
-            {row.getVisibleCells().map((cell) => (
-              <TableCell key={cell.id}>
-                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-              </TableCell>
-            ))}
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+                </TableHead>
+              ))}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {table.getRowModel().rows.map((row) => (
+            <TableRow key={row.id}>
+              {row.getVisibleCells().map((cell) => (
+                <TableCell key={cell.id}>
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 };
 

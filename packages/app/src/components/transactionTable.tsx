@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query';
 import {
   useReactTable,
   flexRender,
@@ -7,10 +8,16 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import { formatDistanceToNow } from 'date-fns';
-import { ChevronDown, ChevronUp, ArrowUpDown, FrownIcon } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  ArrowUpDown,
+  FrownIcon,
+  Loader2,
+} from 'lucide-react';
 import Link from 'next/link';
 import type React from 'react';
-import { useMemo, useContext, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import {
   Table,
@@ -20,12 +27,54 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { PeriodContext } from '~/lib/context/PeriodProvider';
+import { toast } from '~/hooks/use-toast';
+import { API_BASE_URL } from '~/lib/constants/constants';
+import type { PeriodContextType } from '~/lib/context/PeriodProvider';
 
 import NumberDisplay from './numberDisplay';
 
+const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
+
+const TRANSACTIONS_QUERY = `
+  query GetTransactions(
+    $owner: String
+    $chainId: Int
+    $marketAddress: String
+  ) {
+    positions(
+      owner: $owner
+      chainId: $chainId
+      marketAddress: $marketAddress
+    ) {
+      id
+      positionId
+      epoch {
+        id
+        epochId
+        market {
+          id
+          address
+          chainId
+          resource {
+            name
+          }
+        }
+      }
+      transactions {
+        id
+        type
+        timestamp
+        baseToken
+        quoteToken
+        collateral
+      }
+    }
+  }
+`;
+
 interface Props {
-  transactions: any[];
+  walletAddress: string | null;
+  periodContext: PeriodContextType;
 }
 
 const getTypeDisplay = (type: string) => {
@@ -43,18 +92,74 @@ const getTypeDisplay = (type: string) => {
   }
 };
 
-const TransactionTable: React.FC<Props> = ({ transactions }) => {
-  const { address, chain } = useContext(PeriodContext);
+function useTransactions(
+  walletAddress: string | null,
+  periodContext: PeriodContextType
+) {
+  const { chainId, address: marketAddress } = periodContext;
+
+  return useQuery({
+    queryKey: ['transactions', walletAddress, chainId, marketAddress],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/graphql`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: TRANSACTIONS_QUERY,
+          variables: {
+            // If we have a walletAddress, use the chainId + marketAddress
+            owner: walletAddress ? undefined : walletAddress,
+            chainId: walletAddress ? Number(chainId) : undefined,
+            marketAddress: walletAddress ? marketAddress : undefined,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const { data, errors } = await response.json();
+      if (errors) {
+        throw new Error(errors[0].message);
+      }
+
+      // Flatten all transactions from all positions
+      return data.positions.flatMap((position: any) =>
+        position.transactions.map((tx: any) => ({
+          ...tx,
+          position,
+        }))
+      );
+    },
+    // Only enable if we have a walletAddress or if we have chainId & marketAddress
+    enabled: Boolean(walletAddress) || (Boolean(chainId) && Boolean(marketAddress)),
+    refetchInterval: POLLING_INTERVAL,
+  });
+}
+
+const TransactionTable: React.FC<Props> = ({
+  walletAddress,
+  periodContext,
+}) => {
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'time', desc: true },
   ]);
+
+  const {
+    data: transactions,
+    error,
+    isLoading,
+  } = useTransactions(walletAddress, periodContext);
 
   const columns = useMemo<ColumnDef<any>[]>(
     () => [
       {
         id: 'time',
         header: 'Time',
-        accessorFn: (row) => row.event.timestamp,
+        accessorFn: (row) => row.timestamp,
         cell: ({ row }) =>
           formatDistanceToNow(
             new Date((row.getValue('time') as number) * 1000),
@@ -84,22 +189,26 @@ const TransactionTable: React.FC<Props> = ({ transactions }) => {
       {
         id: 'collateral',
         header: 'Collateral',
-        accessorKey: 'collateralDelta',
+        accessorKey: 'collateral',
       },
       {
         id: 'ggas',
         header: 'Ggas',
-        accessorKey: 'baseTokenDelta',
+        accessorKey: 'baseToken',
       },
       {
         id: 'wsteth',
         header: 'wstETH',
-        accessorKey: 'quoteTokenDelta',
+        accessorKey: 'quoteToken',
       },
       {
         id: 'price',
         header: 'Price',
-        accessorFn: (row) => row.tradeRatioD18 || 0,
+        accessorFn: (row) => {
+          const baseToken = parseFloat(row.baseToken || '0');
+          const quoteToken = parseFloat(row.quoteToken || '0');
+          return baseToken !== 0 ? quoteToken / baseToken : 0;
+        },
       },
     ],
     []
@@ -132,7 +241,7 @@ const TransactionTable: React.FC<Props> = ({ transactions }) => {
     if (cell.column.id === 'Position') {
       return (
         <Link
-          href={`/positions/${chain?.id}:${address}/${row.original.position.positionId}`}
+          href={`/positions/${row.original.position.epoch.market.chainId}:${row.original.position.epoch.market.address}/${row.original.position.positionId}`}
         >
           #{row.original.position.positionId}
         </Link>
@@ -145,6 +254,23 @@ const TransactionTable: React.FC<Props> = ({ transactions }) => {
 
     return flexRender(cell.column.columnDef.cell, cell.getContext());
   };
+
+  if (error) {
+    toast({
+      title: 'Error loading transactions',
+      description: error.message,
+      duration: 5000,
+    });
+    return null;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+      </div>
+    );
+  }
 
   if (!transactions?.length) {
     return (
@@ -194,7 +320,7 @@ const TransactionTable: React.FC<Props> = ({ transactions }) => {
                 <a
                   target="_blank"
                   rel="noreferrer"
-                  href={`${chain?.blockExplorers?.default.url}/tx/${row.original.event.logData.transactionHash}`}
+                  href={`${periodContext.chain?.blockExplorers?.default.url}/tx/${row.original.position.epoch.market.chainId}`}
                 >
                   <img
                     src="/etherscan.svg"
