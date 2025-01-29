@@ -22,7 +22,15 @@ const DataDrawer = () => {
     address || null
   );
   const [showTable, setShowTable] = useState(false);
+  const [selectedTab, setSelectedTab] = useState('transactions');
   const periodContext = useContext(PeriodContext);
+
+  const tabTitles: { [key: string]: string } = {
+    leaderboard: 'Leaderboard',
+    transactions: 'Transactions',
+    'trader-positions': 'Trader Positions',
+    'lp-positions': 'Liquidity Positions',
+  };
 
   return (
     <Drawer open={showTable} onOpenChange={setShowTable}>
@@ -51,7 +59,11 @@ const DataDrawer = () => {
       </DrawerTrigger>
       <DrawerContent className="mx-3">
         <div className="px-4 py-4">
-          <Tabs defaultValue="transactions" className="w-full">
+          <Tabs
+            defaultValue="transactions"
+            className="w-full"
+            onValueChange={setSelectedTab}
+          >
             <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center mb-3 flex-shrink-0 gap-3">
               <TabsList>
                 <TabsTrigger value="leaderboard">
@@ -76,6 +88,9 @@ const DataDrawer = () => {
                 onAddressChange={setWalletAddress}
               />
             </div>
+            <h2 className="text-2xl font-semibold mt-6 md:hidden">
+              {tabTitles[selectedTab]}
+            </h2>
             <TabsContent value="leaderboard">
               <div className="w-full py-8 text-center text-muted-foreground">
                 <TrophyIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
