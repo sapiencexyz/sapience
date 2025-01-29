@@ -1,4 +1,9 @@
-import { TrophyIcon } from 'lucide-react';
+import {
+  TrophyIcon,
+  ListIcon,
+  ArrowLeftRightIcon,
+  DropletsIcon,
+} from 'lucide-react';
 import { useContext, useState } from 'react';
 import { useAccount } from 'wagmi';
 
@@ -45,17 +50,25 @@ const DataDrawer = () => {
         </button>
       </DrawerTrigger>
       <DrawerContent className="mx-3">
-        <div className="px-4 pb-4">
+        <div className="px-4 py-4">
           <Tabs defaultValue="transactions" className="w-full">
             <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center mb-3 flex-shrink-0 gap-3">
               <TabsList>
-                <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
-                <TabsTrigger value="transactions">Transactions</TabsTrigger>
+                <TabsTrigger value="leaderboard">
+                  <TrophyIcon className="h-4 w-4 md:hidden" />
+                  <span className="hidden md:inline">Leaderboard</span>
+                </TabsTrigger>
+                <TabsTrigger value="transactions">
+                  <ListIcon className="h-4 w-4 md:hidden" />
+                  <span className="hidden md:inline">Transactions</span>
+                </TabsTrigger>
                 <TabsTrigger value="trader-positions">
-                  Trader Positions
+                  <ArrowLeftRightIcon className="h-4 w-4 md:hidden" />
+                  <span className="hidden md:inline">Trader Positions</span>
                 </TabsTrigger>
                 <TabsTrigger value="lp-positions">
-                  Liquidity Positions
+                  <DropletsIcon className="h-4 w-4 md:hidden" />
+                  <span className="hidden md:inline">Liquidity Positions</span>
                 </TabsTrigger>
               </TabsList>
               <DataDrawerFilter

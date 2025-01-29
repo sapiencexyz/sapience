@@ -434,7 +434,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({
   }
 
   return (
-    <div className="w-full max-h-[66dvh] overflow-y-auto">
+    <div className="w-full max-h-[66dvh] overflow-y-auto whitespace-nowrap">
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -445,7 +445,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({
                   onClick={header.column.getToggleSortingHandler()}
                   className="cursor-pointer"
                 >
-                  <span className="flex items-center whitespace-nowrap">
+                  <span className="flex items-center">
                     {flexRender(
                       header.column.columnDef.header,
                       header.getContext()

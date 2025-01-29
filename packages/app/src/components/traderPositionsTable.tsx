@@ -294,9 +294,11 @@ const TraderPositionsTable: React.FC<Props> = ({
     const isClosed = row.baseToken - row.borrowedBaseToken === 0;
     if (isClosed) {
       return row.isSettled ? (
-        <span className="text-medium">Settled</span>
+        <span className="text-medium">Position Settled</span>
       ) : (
-        <span className="text-medium">Closed</span>
+        <span className="text-medium text-muted-foreground">
+          Position Closed
+        </span>
       );
     }
     return (
@@ -317,9 +319,11 @@ const TraderPositionsTable: React.FC<Props> = ({
     const isClosed = row.baseToken - row.borrowedBaseToken === 0;
     if (isClosed) {
       return row.isSettled ? (
-        <span className="text-medium">Settled</span>
+        <span className="text-medium">Position Settled</span>
       ) : (
-        <span className="text-medium">Closed</span>
+        <span className="text-medium text-muted-foreground">
+          Position Closed
+        </span>
       );
     }
     return (
@@ -334,9 +338,11 @@ const TraderPositionsTable: React.FC<Props> = ({
     const isClosed = row.baseToken - row.borrowedBaseToken === 0;
     if (isClosed) {
       return row.isSettled ? (
-        <span className="text-medium">Settled</span>
+        <span className="text-medium">Position Settled</span>
       ) : (
-        <span className="text-medium">Closed</span>
+        <span className="text-medium text-muted-foreground">
+          Position Closed
+        </span>
       );
     }
     return (
@@ -353,9 +359,11 @@ const TraderPositionsTable: React.FC<Props> = ({
     const isClosed = row.baseToken - row.borrowedBaseToken === 0;
     if (isClosed) {
       return row.isSettled ? (
-        <span className="text-medium">Settled</span>
+        <span className="text-medium">Position Settled</span>
       ) : (
-        <span className="text-medium">Closed</span>
+        <span className="text-medium text-muted-foreground">
+          Position Closed
+        </span>
       );
     }
     return (
@@ -495,7 +503,7 @@ const TraderPositionsTable: React.FC<Props> = ({
   }
 
   return (
-    <div className="w-full max-h-[66dvh] overflow-y-auto">
+    <div className="w-full max-h-[66dvh] overflow-y-auto  whitespace-nowrap">
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -508,7 +516,7 @@ const TraderPositionsTable: React.FC<Props> = ({
                     header.column.id === 'more' ? '' : 'cursor-pointer'
                   }
                 >
-                  <span className="flex items-center whitespace-nowrap">
+                  <span className="flex items-center">
                     {flexRender(
                       header.column.columnDef.header,
                       header.getContext()

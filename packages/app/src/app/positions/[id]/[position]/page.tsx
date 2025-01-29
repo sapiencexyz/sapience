@@ -212,7 +212,7 @@ const PositionPage = ({
             ) : (
               <div className="space-y-1 md:col-span-2">
                 <p className="text-sm text-muted-foreground">Size</p>
-                <p className="font-medium">
+                <p>
                   <NumberDisplay
                     value={
                       positionData.baseToken - positionData.borrowedBaseToken
