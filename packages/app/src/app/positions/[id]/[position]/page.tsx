@@ -1,14 +1,27 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ExternalLink } from 'lucide-react';
 
 import NumberDisplay from '~/components/numberDisplay';
+import { badgeVariants } from '~/components/ui/badge';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { PeriodProvider } from '~/lib/context/PeriodProvider';
 import { tickToPrice } from '~/lib/util/util';
+import { cn } from '~/lib/utils';
 
 const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
+
+const getBlockExplorerUrl = (chainId: string, address: string) => {
+  switch (chainId) {
+    case '11155111':
+      return `https://sepolia.etherscan.io/address/${address}`;
+    case '8453':
+      return `https://basescan.org/address/${address}`;
+    default:
+      return `https://etherscan.io/address/${address}`;
+  }
+};
 
 const usePosition = (contractId: string, positionId: string) => {
   return useQuery({
@@ -53,73 +66,133 @@ const PositionPage = ({
     }
     if (positionError) {
       return (
-        <div className="w-full text-center p-4">
+        <div className="w-full text-center p-4 text-destructive">
           Error: {(positionError as Error).message}
         </div>
       );
     }
     if (positionData) {
       return (
-        <div>
-          <h1 className="text-2xl font-bold mb-4">Position #{positionId}</h1>
-          <ul className="space-y-2 list-disc pl-4">
-            <li>Epoch: {positionData.epoch.epochId}</li>
-            <li>{positionData.isLP ? 'Liquidity Provider' : 'Trader'}</li>
-            <li>
-              Collateral: <NumberDisplay value={positionData.collateral} />{' '}
-              wstETH
-            </li>
-            <li>
-              Base Token: <NumberDisplay value={positionData.baseToken} /> Ggas
-            </li>
-            <li>
-              Quote Token: <NumberDisplay value={positionData.quoteToken} />{' '}
-              wstETH
-            </li>
-            <li>
-              Borrowed Base Token:{' '}
-              <NumberDisplay value={positionData.borrowedBaseToken} /> Ggas
-            </li>
-            <li>
-              Borrowed Quote Token:{' '}
-              <NumberDisplay value={positionData.borrowedQuoteToken} /> wstETH
-            </li>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold">Position #{positionId}</h1>
+            <div
+              className={cn(
+                badgeVariants({ variant: 'default' }),
+                'text-sm font-medium'
+              )}
+            >
+              {positionData.isLP ? 'Liquidity Provider' : 'Trader'}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Period</p>
+              <p className="font-medium">{positionData.epoch.epochId}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Collateral</p>
+              <p className="font-medium">
+                <NumberDisplay value={positionData.collateral} /> wstETH
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Base Token</p>
+              <p className="font-medium">
+                <NumberDisplay value={positionData.baseToken} /> Ggas
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Quote Token</p>
+              <p className="font-medium">
+                <NumberDisplay value={positionData.quoteToken} /> wstETH
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">
+                Borrowed Base Token
+              </p>
+              <p className="font-medium">
+                <NumberDisplay value={positionData.borrowedBaseToken} /> Ggas
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">
+                Borrowed Quote Token
+              </p>
+              <p className="font-medium">
+                <NumberDisplay value={positionData.borrowedQuoteToken} /> wstETH
+              </p>
+            </div>
+
             {positionData.isLP ? (
               <>
-                <li>
-                  Low Price:{' '}
-                  <NumberDisplay
-                    value={tickToPrice(positionData.lowPriceTick)}
-                  />{' '}
-                  Ggas/wstETH
-                </li>
-                <li>
-                  High Price:{' '}
-                  <NumberDisplay
-                    value={tickToPrice(positionData.highPriceTick)}
-                  />{' '}
-                  Ggas/wstETH
-                </li>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Low Price</p>
+                  <p className="font-medium">
+                    <NumberDisplay
+                      value={tickToPrice(positionData.lowPriceTick)}
+                    />{' '}
+                    Ggas/wstETH
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">High Price</p>
+                  <p className="font-medium">
+                    <NumberDisplay
+                      value={tickToPrice(positionData.highPriceTick)}
+                    />{' '}
+                    Ggas/wstETH
+                  </p>
+                </div>
               </>
             ) : (
-              <li>
-                Size:{' '}
-                <NumberDisplay
-                  value={
-                    positionData.baseToken - positionData.borrowedBaseToken
-                  }
-                />{' '}
-                Ggas
-              </li>
+              <div className="space-y-1 md:col-span-2">
+                <p className="text-sm text-muted-foreground">Size</p>
+                <p className="font-medium">
+                  <NumberDisplay
+                    value={
+                      positionData.baseToken - positionData.borrowedBaseToken
+                    }
+                  />{' '}
+                  Ggas
+                </p>
+              </div>
             )}
-            {/* <li>
-              Profit/Loss: <NumberDisplay value={pnl} /> wstETH{' '}
-              <Tooltip label="This is an estimate that does not take into account slippage or fees.">
-                <QuestionOutlineIcon transform="translateY(-2px)" />
-              </Tooltip>
-            </li> */}
-            {positionData.isSettled ? <li>Settled</li> : null}
-          </ul>
+
+            {positionData.isSettled && (
+              <div className="md:col-span-2 pt-2">
+                <div
+                  className={cn(
+                    badgeVariants({ variant: 'secondary' }),
+                    'text-sm font-medium'
+                  )}
+                >
+                  Settled
+                </div>
+              </div>
+            )}
+
+            <div className="md:col-span-2 space-y-1">
+              <p className="text-sm text-muted-foreground">Smart Contract</p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-medium font-mono">
+                  {chainId}:{marketAddress}
+                </p>
+                <a
+                  href={getBlockExplorerUrl(chainId, marketAddress)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block text-blue-500 hover:text-blue-600 -translate-y-0.5"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       );
     }
@@ -132,9 +205,11 @@ const PositionPage = ({
       address={marketAddress}
       epoch={Number(positionData?.epoch?.id)}
     >
-      <div className="flex-1 flex">
-        <div className="m-auto border border-border rounded-md p-6 max-w-[460px]">
-          {renderPositionData()}
+      <div className="flex-1 flex items-center justify-center min-h-[calc(100vh-64px)] p-4">
+        <div className="w-full max-w-[460px]">
+          <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
+            {renderPositionData()}
+          </div>
         </div>
       </div>
     </PeriodProvider>

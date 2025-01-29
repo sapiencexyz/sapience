@@ -14,6 +14,7 @@ import {
   ArrowUpDown,
   FrownIcon,
   Loader2,
+  ExternalLinkIcon,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -28,7 +29,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { toast } from '~/hooks/use-toast';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import type { PeriodContextType } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
@@ -70,9 +70,15 @@ const TRANSACTIONS_QUERY = `
         id
         type
         timestamp
+        transactionHash
         baseToken
         quoteToken
         collateral
+        lpBaseDeltaToken
+        lpQuoteDeltaToken
+        baseTokenDelta
+        quoteTokenDelta
+        collateralDelta
       }
     }
   }
@@ -162,6 +168,8 @@ const TransactionTable: React.FC<Props> = ({
     isLoading,
   } = useTransactions(walletAddress, periodContext);
 
+  const { collateralAssetTicker, collateralAssetDecimals } = periodContext;
+
   const columns = useMemo<ColumnDef<any>[]>(
     () => [
       {
@@ -187,13 +195,23 @@ const TransactionTable: React.FC<Props> = ({
       },
       {
         id: 'ggas',
-        header: 'Ggas',
-        accessorKey: 'baseToken',
+        header: 'Virtual GGas Change',
+        accessorFn: (row) => {
+          if (['addLiquidity', 'removeLiquidity'].includes(row.type)) {
+            return row.lpBaseDeltaToken;
+          }
+          return row.baseTokenDelta;
+        },
       },
       {
         id: 'wsteth',
-        header: 'wstETH',
-        accessorKey: 'quoteToken',
+        header: 'Virtual wstETH Change',
+        accessorFn: (row) => {
+          if (['addLiquidity', 'removeLiquidity'].includes(row.type)) {
+            return row.lpQuoteDeltaToken;
+          }
+          return row.quoteToken;
+        },
       },
       {
         id: 'price',
@@ -272,11 +290,16 @@ const TransactionTable: React.FC<Props> = ({
 
     if (columnId === 'position') {
       return (
-        <Link
-          href={`/positions/${row.original.position.epoch.market.chainId}:${row.original.position.epoch.market.address}/${row.original.position.positionId}`}
-        >
+        <div className="flex items-center gap-1">
           #{row.original.position.positionId}
-        </Link>
+          <Link
+            href={`/positions/${row.original.position.epoch.market.chainId}:${row.original.position.epoch.market.address}/${row.original.position.positionId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <ExternalLinkIcon className="h-3.5 w-3.5 text-blue-500 hover:text-blue-600" />
+          </Link>
+        </div>
       );
     }
 
@@ -286,7 +309,62 @@ const TransactionTable: React.FC<Props> = ({
       return <span>{formatDistanceToNow(date, { addSuffix: true })}</span>;
     }
 
-    if (['collateral', 'ggas', 'wsteth', 'price'].includes(columnId)) {
+    if (columnId === 'collateral') {
+      return (
+        <div className="flex items-center gap-1">
+          <NumberDisplay
+            value={parseFloat(value) / 10 ** collateralAssetDecimals}
+          />
+          <span className="text-muted-foreground text-sm">
+            {collateralAssetTicker}
+          </span>
+        </div>
+      );
+    }
+
+    if (columnId === 'ggas') {
+      if (['addLiquidity', 'removeLiquidity'].includes(row.original.type)) {
+        return (
+          <div className="flex items-center gap-1">
+            <NumberDisplay
+              value={
+                parseFloat(row.original.lpBaseDeltaToken || '0') / 10 ** 18
+              }
+            />
+            <span className="text-muted-foreground text-sm">vGGas</span>
+          </div>
+        );
+      }
+      return (
+        <div className="flex items-center gap-1">
+          <NumberDisplay value={parseFloat(value || '0') / 10 ** 18} />
+          <span className="text-muted-foreground text-sm">vGGas</span>
+        </div>
+      );
+    }
+
+    if (columnId === 'wsteth') {
+      if (['addLiquidity', 'removeLiquidity'].includes(row.original.type)) {
+        return (
+          <div className="flex items-center gap-1">
+            <NumberDisplay
+              value={
+                parseFloat(row.original.lpQuoteDeltaToken || '0') / 10 ** 18
+              }
+            />
+            <span className="text-muted-foreground text-sm">vWstETH</span>
+          </div>
+        );
+      }
+      return (
+        <div className="flex items-center gap-1">
+          <NumberDisplay value={parseFloat(value || '0') / 10 ** 18} />
+          <span className="text-muted-foreground text-sm">vWstETH</span>
+        </div>
+      );
+    }
+
+    if (['price'].includes(columnId)) {
       return <NumberDisplay value={value as number} />;
     }
 
@@ -294,12 +372,12 @@ const TransactionTable: React.FC<Props> = ({
   };
 
   if (error) {
-    toast({
-      title: 'Error loading transactions',
-      description: error.message,
-      duration: 5000,
-    });
-    return null;
+    return (
+      <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+        <FrownIcon className="h-8 w-8 mb-2 opacity-20" />
+        <div>Error loading transactions: {error.message}</div>
+      </div>
+    );
   }
 
   if (isLoading) {
@@ -358,7 +436,7 @@ const TransactionTable: React.FC<Props> = ({
                 <a
                   target="_blank"
                   rel="noreferrer"
-                  href={`${periodContext.chain?.blockExplorers?.default.url}/tx/${row.original.position.epoch.market.chainId}`}
+                  href={`${periodContext.chain?.blockExplorers?.default.url}/tx/${row.original.transactionHash}`}
                 >
                   <img
                     src="/etherscan.svg"

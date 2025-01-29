@@ -73,12 +73,18 @@ const mapTransactionToType = (transaction: Transaction): TransactionType => ({
   timestamp: transaction.event?.timestamp
     ? Number(BigInt(transaction.event.timestamp))
     : 0,
+  transactionHash: transaction.event?.transactionHash || null,
   position: transaction.position
     ? mapPositionToType(transaction.position)
     : null,
   baseToken: transaction.baseToken,
   quoteToken: transaction.quoteToken,
   collateral: transaction.collateral,
+  lpBaseDeltaToken: transaction.lpBaseDeltaToken,
+  lpQuoteDeltaToken: transaction.lpQuoteDeltaToken,
+  baseTokenDelta: transaction.baseToken || null,
+  quoteTokenDelta: transaction.quoteToken || null,
+  collateralDelta: transaction.collateral || null,
 });
 
 const mapResourcePriceToType = (price: ResourcePrice): ResourcePriceType => ({
@@ -286,7 +292,7 @@ export class EpochResolver {
     @Arg('marketId', () => Int, { nullable: true }) marketId?: number
   ): Promise<EpochType[]> {
     try {
-      const where = {};
+      const where: { market?: { id: number } } = {};
       if (marketId) {
         where.market = { id: marketId };
       }

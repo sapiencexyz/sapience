@@ -81,10 +81,16 @@ type ResourceType {
 
 type TransactionType {
   baseToken: String
+  baseTokenDelta: String
   collateral: String
+  collateralDelta: String
   id: ID!
+  lpBaseDeltaToken: String
+  lpQuoteDeltaToken: String
   position: PositionType
   quoteToken: String
+  quoteTokenDelta: String
   timestamp: Int!
+  transactionHash: String
   type: String!
 }
