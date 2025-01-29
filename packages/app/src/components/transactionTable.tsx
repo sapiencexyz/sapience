@@ -123,10 +123,11 @@ function useTransactions(
         body: JSON.stringify({
           query: TRANSACTIONS_QUERY,
           variables: {
-            // If we have a walletAddress, use the chainId + marketAddress
-            owner: walletAddress ? undefined : walletAddress,
-            chainId: walletAddress ? Number(chainId) : undefined,
-            marketAddress: walletAddress ? marketAddress : undefined,
+            // If we have a walletAddress, query all positions for that owner
+            // If no walletAddress, query the specific market/chain for all owners
+            owner: walletAddress || undefined,
+            chainId: walletAddress ? undefined : Number(chainId),
+            marketAddress: walletAddress ? undefined : marketAddress,
           },
         }),
       });
