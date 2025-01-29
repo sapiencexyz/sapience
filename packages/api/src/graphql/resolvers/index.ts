@@ -65,20 +65,29 @@ const mapPositionToType = (position: Position): PositionType => ({
   lpBaseToken: position.lpBaseToken,
   lpQuoteToken: position.lpQuoteToken,
   isSettled: position.isSettled,
+  lowPriceTick: position.lowPriceTick,
+  highPriceTick: position.highPriceTick,
 });
 
 const mapTransactionToType = (transaction: Transaction): TransactionType => ({
   id: transaction.id,
   type: transaction.type,
   timestamp: transaction.event?.timestamp
-    ? Number(transaction.event.timestamp)
+    ? Number(BigInt(transaction.event.timestamp))
     : 0,
+  transactionHash: transaction.event?.transactionHash || null,
   position: transaction.position
     ? mapPositionToType(transaction.position)
     : null,
   baseToken: transaction.baseToken,
   quoteToken: transaction.quoteToken,
   collateral: transaction.collateral,
+  lpBaseDeltaToken: transaction.lpBaseDeltaToken,
+  lpQuoteDeltaToken: transaction.lpQuoteDeltaToken,
+  baseTokenDelta: transaction.baseToken || '0',
+  quoteTokenDelta: transaction.quoteToken || '0',
+  collateralDelta: transaction.collateral || '0',
+  tradeRatioD18: transaction.tradeRatioD18 || null,
 });
 
 const mapResourcePriceToType = (price: ResourcePrice): ResourcePriceType => ({
@@ -218,20 +227,32 @@ export class PositionResolver {
   @Query(() => [PositionType])
   async positions(
     @Arg('owner', () => String, { nullable: true }) owner?: string,
-    @Arg('marketId', () => Int, { nullable: true }) marketId?: number
+    @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
+    @Arg('marketAddress', () => String, { nullable: true }) marketAddress?: string
   ): Promise<PositionType[]> {
     try {
-      const where = {};
+      const where: any = {};
       if (owner) {
         where.owner = owner;
       }
-      if (marketId) {
-        where.epoch = { market: { id: marketId } };
+      if (chainId && marketAddress) {
+        where.epoch = {
+          market: {
+            chainId,
+            address: marketAddress,
+          },
+        };
       }
 
       const positions = await dataSource.getRepository(Position).find({
         where,
-        relations: ['epoch', 'epoch.market', 'transactions'],
+        relations: [
+          'epoch',
+          'epoch.market',
+          'epoch.market.resource',
+          'transactions',
+          'transactions.event'
+        ],
       });
 
       return positions.map(mapPositionToType);
@@ -249,13 +270,14 @@ export class TransactionResolver {
     @Arg('positionId', () => Int, { nullable: true }) positionId?: number
   ): Promise<TransactionType[]> {
     try {
-      const where = {};
+      const where: any = {};
       if (positionId) {
         where.position = { id: positionId };
       }
 
       const transactions = await dataSource.getRepository(Transaction).find({
         where,
+        relations: ['event', 'position'],
       });
 
       return transactions.map(mapTransactionToType);
@@ -273,7 +295,7 @@ export class EpochResolver {
     @Arg('marketId', () => Int, { nullable: true }) marketId?: number
   ): Promise<EpochType[]> {
     try {
-      const where = {};
+      const where: { market?: { id: number } } = {};
       if (marketId) {
         where.market = { id: marketId };
       }

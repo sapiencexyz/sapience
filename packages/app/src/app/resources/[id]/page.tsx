@@ -136,8 +136,8 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
 
   if (isLoadingResources) {
     return (
-      <div className="flex justify-center items-center py-8">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="flex items-center justify-center h-[80vh]">
+        <Loader2 className="h-8 w-8 opacity-20 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -155,7 +155,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
           },
         }))
       )
-      .sort((a, b) => b.startTimestamp - a.startTimestamp) || [];
+      .sort((a, b) => a.startTimestamp - b.startTimestamp) || [];
 
   const formattedResourcePrices: ResourcePricePoint[] =
     resourcePrices?.map((price) => ({
@@ -182,7 +182,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
             </Card>
 
             <div className="flex flex-col flex-1">
-              <div className="flex flex-1 h-full p-2">
+              <div className="flex flex-1 h-full p-3">
                 <div className="border border-border flex w-full h-full rounded-md overflow-hidden pr-2 pb-2 bg-white dark:bg-black">
                   <CandlestickChart
                     data={{
@@ -201,7 +201,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
       </div>
 
       {epochs.length > 0 && (
-        <div className="w-full md:w-[240px] md:border-l border-border pt-4 md:pt-0  bg-white dark:bg-black">
+        <div className="w-full md:w-[240px] md:border-l border-border dark:border-gray-900 pt-4 md:pt-0 bg-white dark:bg-black">
           <h2 className="text-base font-medium text-muted-foreground px-4 py-2">
             Periods
           </h2>

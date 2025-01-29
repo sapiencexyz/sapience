@@ -1,6 +1,6 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import { formatDistanceToNow } from 'date-fns';
-import { InfoIcon } from 'lucide-react';
+import { BookTextIcon, InfoIcon } from 'lucide-react';
 import { useContext } from 'react';
 
 import {
@@ -13,6 +13,42 @@ import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { convertGgasPerWstEthToGwei } from '~/lib/util/util';
 
 import NumberDisplay from './numberDisplay';
+
+interface StatBoxProps {
+  title: string;
+  tooltipContent?: React.ReactNode;
+  value: React.ReactNode;
+  docsLink?: boolean;
+}
+
+const StatBox = ({ title, tooltipContent, value, docsLink }: StatBoxProps) => (
+  <div className="rounded-sm border border-border py-4 px-6 shadow-sm text-xs md:text-md">
+    <div>
+      {title}
+      {tooltipContent && (
+        <Tooltip>
+          <TooltipTrigger className="cursor-default">
+            <InfoIcon className="md:ml-1 -translate-y-0.5 inline-block h-3 md:h-4 opacity-60 hover:opacity-80" />
+          </TooltipTrigger>
+          <TooltipContent className="max-w-[225px] text-center p-3">
+            {tooltipContent}
+            {docsLink && (
+              <a
+                href="https://docs.foil.xyz/price-glossary"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block text-blue-500 hover:text-blue-600 ml-0.5 -translate-y-0.5"
+              >
+                <BookTextIcon className="h-3.5 w-3.5 inline-block" />
+              </a>
+            )}
+          </TooltipContent>
+        </Tooltip>
+      )}
+    </div>
+    <div className="mt-0.5 text-sm md:text-2xl font-bold">{value}</div>
+  </div>
+);
 
 const Stats = () => {
   const {
@@ -43,22 +79,13 @@ const Stats = () => {
   return (
     <TooltipProvider>
       <div className="flex w-full flex-col items-center pb-5">
-        <div className="grid w-full md:grid-cols-2 gap-4 lg:grid-cols-4">
-          <div className="rounded-sm border border-border py-4 px-6 shadow-sm">
-            <div>
-              Index Price
-              <Tooltip>
-                <TooltipTrigger>
-                  <InfoIcon className="ml-1 -translate-y-0.5 inline-block h-4" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  The expected settlement price based on the average underlying
-                  price for this period
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            <div className="mt-0.5 text-2xl font-bold">
-              {isBeforeStart ? (
+        <div className="grid w-full grid-cols-2 gap-4 lg:grid-cols-4">
+          <StatBox
+            title="Index Price"
+            tooltipContent="The estimated settlement price based on the average resource price for this period"
+            docsLink
+            value={
+              isBeforeStart ? (
                 <>
                   <span className="text-sm">available in</span>{' '}
                   {startTimeRelative}
@@ -79,61 +106,45 @@ const Stats = () => {
                     {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
                   </span>
                 </>
-              )}
-            </div>
-          </div>
+              )
+            }
+          />
 
-          <div className="rounded-sm border border-border py-4 px-6 shadow-sm">
-            <div>
-              Market Price
-              <Tooltip>
-                <TooltipTrigger className="cursor-default">
-                  <InfoIcon className="ml-1 -translate-y-0.5 inline-block h-4" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  The current price available from the liquidity pool
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            <div className="mt-0.5 text-2xl font-bold">
-              <NumberDisplay
-                value={
-                  useMarketUnits
-                    ? pool?.token0Price.toSignificant(18) || 0
-                    : convertGgasPerWstEthToGwei(
-                        Number(pool?.token0Price.toSignificant(18) || 0),
-                        stEthPerToken
-                      )
-                }
-              />{' '}
-              <span className="text-sm">
-                {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
-              </span>
-            </div>
-          </div>
+          <StatBox
+            title="Market Price"
+            tooltipContent="The current price available from the liquidity pool"
+            docsLink
+            value={
+              <>
+                <NumberDisplay
+                  value={
+                    useMarketUnits
+                      ? pool?.token0Price.toSignificant(18) || 0
+                      : convertGgasPerWstEthToGwei(
+                          Number(pool?.token0Price.toSignificant(18) || 0),
+                          stEthPerToken
+                        )
+                  }
+                />{' '}
+                <span className="text-sm">
+                  {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
+                </span>
+              </>
+            }
+          />
 
-          <div className="rounded-sm border border-border py-4 px-6 shadow-sm">
-            <div>
-              Liquidity
-              <Tooltip>
-                <TooltipTrigger className="cursor-default">
-                  <InfoIcon className="ml-1 -translate-y-0.5 inline-block h-4" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  The largest long position that can be opened currently
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            <div className="mt-0.5 text-2xl font-bold">
-              <NumberDisplay value={liquidity} />{' '}
-              <span className="text-sm">Ggas</span>
-            </div>
-          </div>
+          <StatBox
+            title="Liquidity"
+            tooltipContent="The largest long position that can be opened currently"
+            value={
+              <>
+                <NumberDisplay value={liquidity} />{' '}
+                <span className="text-sm">Ggas</span>
+              </>
+            }
+          />
 
-          <div className="rounded-sm border border-border py-4 px-6 shadow-sm">
-            <div>Ends in</div>
-            <div className="mt-0.5 text-2xl font-bold">{relativeTime}</div>
-          </div>
+          <StatBox title="Ends in" value={relativeTime} />
         </div>
       </div>
     </TooltipProvider>

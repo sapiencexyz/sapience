@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query';
 import {
   useReactTable,
   flexRender,
@@ -7,10 +8,17 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import { formatDistanceToNow } from 'date-fns';
-import { ChevronDown, ChevronUp, ArrowUpDown } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  ArrowUpDown,
+  FrownIcon,
+  Loader2,
+  ExternalLinkIcon,
+} from 'lucide-react';
 import Link from 'next/link';
 import type React from 'react';
-import { useMemo, useContext, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import {
   Table,
@@ -20,56 +28,162 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { PeriodContext } from '~/lib/context/PeriodProvider';
+import { API_BASE_URL } from '~/lib/constants/constants';
+import type { PeriodContextType } from '~/lib/context/PeriodProvider';
+import { useResources } from '~/lib/hooks/useResources';
+import { convertWstEthToGwei } from '~/lib/util/util';
 
+import MarketCell from './MarketCell';
 import NumberDisplay from './numberDisplay';
 
+const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
+
+const TRANSACTIONS_QUERY = `
+  query GetTransactions(
+    $owner: String
+    $chainId: Int
+    $marketAddress: String
+  ) {
+    positions(
+      owner: $owner
+      chainId: $chainId
+      marketAddress: $marketAddress
+    ) {
+      id
+      positionId
+      epoch {
+        id
+        epochId
+        startTimestamp
+        endTimestamp
+        market {
+          id
+          address
+          chainId
+          resource {
+            name
+            slug
+          }
+        }
+      }
+      transactions {
+        id
+        type
+        timestamp
+        transactionHash
+        baseToken
+        quoteToken
+        collateral
+        lpBaseDeltaToken
+        lpQuoteDeltaToken
+        baseTokenDelta
+        quoteTokenDelta
+        collateralDelta
+        tradeRatioD18
+      }
+    }
+  }
+`;
+
 interface Props {
-  transactions: any[];
+  walletAddress: string | null;
+  periodContext: PeriodContextType;
 }
 
 const getTypeDisplay = (type: string) => {
   switch (type) {
     case 'long':
-      return 'Long';
+      return 'Long Trade';
     case 'short':
-      return 'Short';
+      return 'Short Trade';
     case 'addLiquidity':
-      return 'Add Liquidity';
+      return 'Liquidity Added';
     case 'removeLiquidity':
-      return 'Remove Liquidity';
+      return 'Liquidity Removed';
     default:
       return type;
   }
 };
 
-const TransactionTable: React.FC<Props> = ({ transactions }) => {
-  const { address, chain } = useContext(PeriodContext);
+function useTransactions(
+  walletAddress: string | null,
+  periodContext: PeriodContextType
+) {
+  const { chainId, address: marketAddress } = periodContext;
+
+  return useQuery({
+    queryKey: ['transactions', walletAddress, chainId, marketAddress],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/graphql`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: TRANSACTIONS_QUERY,
+          variables: {
+            // If we have a walletAddress, query all positions for that owner
+            // If no walletAddress, query the specific market/chain for all owners
+            owner: walletAddress || undefined,
+            chainId: walletAddress ? undefined : Number(chainId),
+            marketAddress: walletAddress ? undefined : marketAddress,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const { data, errors } = await response.json();
+      if (errors) {
+        throw new Error(errors[0].message);
+      }
+
+      // Flatten all transactions from all positions
+      return data.positions.flatMap((position: any) =>
+        position.transactions.map((tx: any) => ({
+          ...tx,
+          position,
+        }))
+      );
+    },
+    // Only enable if we have a walletAddress or if we have chainId & marketAddress
+    enabled:
+      Boolean(walletAddress) || (Boolean(chainId) && Boolean(marketAddress)),
+    refetchInterval: POLLING_INTERVAL,
+  });
+}
+
+const TransactionTable: React.FC<Props> = ({
+  walletAddress,
+  periodContext,
+}) => {
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'time', desc: true },
   ]);
 
+  const { data: resources } = useResources();
+  const {
+    data: transactions,
+    error,
+    isLoading,
+  } = useTransactions(walletAddress, periodContext);
+
+  const {
+    collateralAssetTicker,
+    collateralAssetDecimals,
+    useMarketUnits,
+    stEthPerToken,
+  } = periodContext;
+
   const columns = useMemo<ColumnDef<any>[]>(
     () => [
       {
-        id: 'time',
-        header: 'Time',
-        accessorFn: (row) => row.event.timestamp,
-        cell: ({ row }) =>
-          formatDistanceToNow(
-            new Date((row.getValue('time') as number) * 1000),
-            { addSuffix: true }
-          ),
-      },
-      {
         id: 'market',
         header: 'Market',
-        accessorFn: (row) => {
-          const marketName =
-            row.position?.epoch?.market?.resource?.name || 'Unknown Market';
-          const epochId = row.position?.epoch?.epochId || '';
-          return `${marketName} (Epoch ${epochId})`;
-        },
+        accessorFn: (row) =>
+          row.position?.epoch?.market?.resource?.name || 'Unknown Market',
       },
       {
         id: 'position',
@@ -78,31 +192,53 @@ const TransactionTable: React.FC<Props> = ({ transactions }) => {
       },
       {
         id: 'type',
-        header: 'Type',
+        header: 'Activity',
         accessorFn: (row) => getTypeDisplay(row.type),
       },
       {
         id: 'collateral',
-        header: 'Collateral',
-        accessorKey: 'collateralDelta',
+        header: 'Collateral Change',
+        accessorKey: 'collateral',
       },
       {
         id: 'ggas',
-        header: 'Ggas',
-        accessorKey: 'baseTokenDelta',
+        header: 'Virtual Ggas Change',
+        accessorFn: (row) => {
+          if (['addLiquidity', 'removeLiquidity'].includes(row.type)) {
+            return row.lpBaseDeltaToken;
+          }
+          return row.baseTokenDelta;
+        },
       },
       {
         id: 'wsteth',
-        header: 'wstETH',
-        accessorKey: 'quoteTokenDelta',
+        header: 'Virtual wstETH Change',
+        accessorFn: (row) => {
+          if (['addLiquidity', 'removeLiquidity'].includes(row.type)) {
+            return row.lpQuoteDeltaToken;
+          }
+          return row.quoteToken;
+        },
       },
       {
         id: 'price',
         header: 'Price',
-        accessorFn: (row) => row.tradeRatioD18 || 0,
+        accessorFn: (row) => {
+          const tradeRatio = row.tradeRatioD18
+            ? parseFloat(row.tradeRatioD18) / 10 ** 18
+            : 0;
+          return useMarketUnits
+            ? tradeRatio
+            : convertWstEthToGwei(tradeRatio, stEthPerToken);
+        },
+      },
+      {
+        id: 'time',
+        header: 'Executed',
+        accessorFn: (row) => row.timestamp,
       },
     ],
-    []
+    [useMarketUnits, stEthPerToken]
   );
 
   const table = useReactTable({
@@ -126,28 +262,143 @@ const TransactionTable: React.FC<Props> = ({ transactions }) => {
     return <ArrowUpDown className="h-3 w-3" aria-label="sortable" />;
   };
 
-  const renderCellContent = (cell: any, row: any) => {
-    const value = cell.getValue();
+  const renderPositionCell = (row: any) => (
+    <div className="flex items-center gap-1">
+      #{row.original.position.positionId}
+      <Link
+        href={`/positions/${row.original.position.epoch.market.chainId}:${row.original.position.epoch.market.address}/${row.original.position.positionId}`}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <ExternalLinkIcon className="h-3.5 w-3.5 text-blue-500 hover:text-blue-600" />
+      </Link>
+    </div>
+  );
 
-    if (cell.column.id === 'Position') {
-      return (
-        <Link
-          href={`/positions/${chain?.id}:${address}/${row.original.position.positionId}`}
-        >
-          #{row.original.position.positionId}
-        </Link>
-      );
-    }
-
-    if (['collateral', 'ggas', 'wsteth', 'price'].includes(cell.column.id)) {
-      return <NumberDisplay value={value as number} />;
-    }
-
-    return flexRender(cell.column.columnDef.cell, cell.getContext());
+  const renderTimeCell = (value: any) => {
+    const timestamp = value as number;
+    const date = new Date(timestamp * 1000);
+    return <span>{formatDistanceToNow(date, { addSuffix: true })}</span>;
   };
 
+  const renderCollateralCell = (value: any) => (
+    <div className="flex items-center gap-1">
+      <NumberDisplay
+        value={parseFloat(value) / 10 ** collateralAssetDecimals}
+      />
+      <span className="text-muted-foreground text-sm">
+        {collateralAssetTicker}
+      </span>
+    </div>
+  );
+
+  const renderLiquidityTokenCell = (row: any, tokenType: 'base' | 'quote') => {
+    const value =
+      tokenType === 'base'
+        ? row.original.lpBaseDeltaToken
+        : row.original.lpQuoteDeltaToken;
+    const label = tokenType === 'base' ? 'vGGas' : 'vWstETH';
+
+    return (
+      <div className="flex items-center gap-1">
+        <NumberDisplay value={parseFloat(value || '0') / 10 ** 18} />
+        <span className="text-muted-foreground text-sm">{label}</span>
+      </div>
+    );
+  };
+
+  const renderTokenCell = (value: any, label: string) => (
+    <div className="flex items-center gap-1">
+      <NumberDisplay value={parseFloat(value || '0') / 10 ** 18} />
+      <span className="text-muted-foreground text-sm">{label}</span>
+    </div>
+  );
+
+  const renderPriceCell = (value: any, row: any) => {
+    if (['addLiquidity', 'removeLiquidity'].includes(row.original.type)) {
+      return <span className="text-muted-foreground text-sm">N/A</span>;
+    }
+    return (
+      <div className="flex items-center gap-1">
+        <NumberDisplay value={value} />
+        <span className="text-muted-foreground text-sm">
+          {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
+        </span>
+      </div>
+    );
+  };
+
+  const renderCellContent = (cell: any, row: any) => {
+    const value = cell.getValue();
+    const columnId = cell.column.id;
+
+    switch (columnId) {
+      case 'market':
+        return (
+          <MarketCell
+            marketName={
+              row.original.position?.epoch?.market?.resource?.name ||
+              'Unknown Market'
+            }
+            resourceSlug={row.original.position?.epoch?.market?.resource?.slug}
+            startTimestamp={row.original.position?.epoch?.startTimestamp}
+            endTimestamp={row.original.position?.epoch?.endTimestamp}
+            resources={resources}
+          />
+        );
+      case 'position':
+        return renderPositionCell(row);
+      case 'time':
+        return renderTimeCell(value);
+      case 'collateral':
+        return renderCollateralCell(value);
+      case 'ggas':
+        if (['addLiquidity', 'removeLiquidity'].includes(row.original.type)) {
+          return renderLiquidityTokenCell(row, 'base');
+        }
+        return renderTokenCell(value, 'vGGas');
+      case 'wsteth':
+        if (['addLiquidity', 'removeLiquidity'].includes(row.original.type)) {
+          return renderLiquidityTokenCell(row, 'quote');
+        }
+        return renderTokenCell(value, 'vWstETH');
+      case 'price':
+        return renderPriceCell(value, row);
+      case 'type':
+        return getTypeDisplay(value);
+      default:
+        return value;
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+        <FrownIcon className="h-8 w-8 mb-2 opacity-20" />
+        <div>Error loading transactions: {error.message}</div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground opacity-20" />
+      </div>
+    );
+  }
+
+  if (!transactions?.length) {
+    return (
+      <div className="w-full py-8 text-center text-muted-foreground">
+        <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
+        No relevant transaction data
+      </div>
+    );
+  }
+
   return (
-    <div className="mb-4 w-full overflow-auto">
+    <div className="w-full max-h-[66dvh] overflow-y-auto whitespace-nowrap">
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -185,7 +436,7 @@ const TransactionTable: React.FC<Props> = ({ transactions }) => {
                 <a
                   target="_blank"
                   rel="noreferrer"
-                  href={`${chain?.blockExplorers?.default.url}/tx/${row.original.event.logData.transactionHash}`}
+                  href={`${periodContext.chain?.blockExplorers?.default.url}/tx/${row.original.transactionHash}`}
                 >
                   <img
                     src="/etherscan.svg"

@@ -5,20 +5,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { useMediaQuery } from 'usehooks-ts';
 import { formatUnits } from 'viem';
-import { useAccount } from 'wagmi';
 
 import Chart from '~/components/chart';
 import ChartSelector from '~/components/ChartSelector';
 import EpochHeader from '~/components/epochHeader';
-import LiquidityPositionsTable from '~/components/liquidityPositionsTable';
 import MarketSidebar from '~/components/marketSidebar';
 import MarketUnitsToggle from '~/components/marketUnitsToggle';
 import Stats from '~/components/stats';
-import TraderPositionsTable from '~/components/traderPositionsTable';
-import TransactionTable from '~/components/transactionTable';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '~/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '~/components/ui/toggle-group';
 import VolumeChart from '~/components/VolumeChart';
 import VolumeWindowSelector from '~/components/VolumeWindowButtons';
@@ -30,6 +24,7 @@ import { TradePoolProvider } from '~/lib/context/TradePoolContext';
 import { useResources } from '~/lib/hooks/useResources';
 import { ChartType, TimeWindow } from '~/lib/interfaces/interfaces';
 
+import DataDrawer from './DataDrawer';
 import DepthChart from './DepthChart';
 
 interface ResourcePrice {
@@ -41,25 +36,6 @@ interface ResourcePricePoint {
   timestamp: number;
   price: number;
 }
-
-const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
-
-const useAccountData = () => {
-  const { address, isConnected } = useAccount();
-
-  return useQuery({
-    queryKey: ['accountData', address],
-    queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/accounts/${address}`);
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      return response.json();
-    },
-    enabled: isConnected,
-    refetchInterval: POLLING_INTERVAL,
-  });
-};
 
 const Market = ({
   params,
@@ -90,7 +66,6 @@ const Market = ({
   const { epoch } = params;
   const contractId = `${chainId}:${marketAddress}`;
   const { toast } = useToast();
-  const isLargeScreen = useMediaQuery('(min-width: 1024px)');
   const { data: resources } = useResources();
 
   // useEffect to handle table resize
@@ -294,7 +269,6 @@ const Market = ({
           <ToggleGroupItem
             value="candles"
             variant={seriesVisibility.candles ? 'default' : 'outline'}
-            size="sm"
             onClick={() => toggleSeries('candles')}
           >
             Market Price
@@ -302,7 +276,6 @@ const Market = ({
           <ToggleGroupItem
             value="index"
             variant={seriesVisibility.index ? 'default' : 'outline'}
-            size="sm"
             onClick={() => toggleSeries('index')}
             disabled={idxLoading}
           >
@@ -319,7 +292,6 @@ const Market = ({
             <ToggleGroupItem
               value="resource"
               variant={seriesVisibility.resource ? 'default' : 'outline'}
-              size="sm"
               onClick={() => toggleSeries('resource')}
               disabled={idxLoading}
             >
@@ -338,28 +310,6 @@ const Market = ({
     }
     return null;
   };
-
-  const {
-    data: accountData,
-    error: accountDataError,
-    isLoading: isLoadingAccountData,
-  } = useAccountData();
-
-  const traderPositions =
-    accountData?.positions.filter((position: any) => !position.isLP) || [];
-  const lpPositions =
-    accountData?.positions.filter((position: any) => position.isLP) || [];
-  const transactions = accountData?.transactions || [];
-
-  useEffect(() => {
-    if (accountDataError) {
-      toast({
-        title: 'Error loading account data',
-        description: accountDataError.message,
-        duration: 5000,
-      });
-    }
-  }, [accountDataError, toast]);
 
   useEffect(() => {
     if (useResourcePricesError) {
@@ -411,59 +361,12 @@ const Market = ({
                         </div>
                       )}
                     </div>
+
                     <MarketUnitsToggle />
                   </div>
                 </div>
               </div>
-              {transactions.length > 0 && (
-                <div
-                  className="flex id-table-flex border-t border-border position-relative justify-center items-center relative lg:h-[172px]"
-                  style={{
-                    height: isLargeScreen ? `${tableFlexHeight}px` : 'auto',
-                  }}
-                >
-                  <div
-                    ref={resizeRef}
-                    className="absolute top-0 left-0 right-0 h-1 cursor-ns-resize hover:bg-gray-30 hidden lg:block"
-                  />
-                  {isLoadingAccountData ? (
-                    <div className="flex justify-center items-center">
-                      <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-                    </div>
-                  ) : (
-                    <Tabs
-                      defaultValue="transactions"
-                      className="flex flex-col w-full h-full"
-                    >
-                      <TabsList>
-                        <TabsTrigger value="transactions">
-                          <span className="hidden lg:inline">Your&nbsp;</span>
-                          Transactions
-                        </TabsTrigger>
-                        <TabsTrigger value="trader-positions">
-                          <span className="hidden lg:inline">Your&nbsp;</span>
-                          Trader Positions
-                        </TabsTrigger>
-                        <TabsTrigger value="lp-positions">
-                          <span className="hidden lg:inline">Your&nbsp;</span>
-                          LP Positions
-                        </TabsTrigger>
-                      </TabsList>
-                      <div className="flex-grow overflow-y-auto">
-                        <TabsContent value="transactions" className="mt-0">
-                          <TransactionTable transactions={transactions} />
-                        </TabsContent>
-                        <TabsContent value="trader-positions" className="mt-0">
-                          <TraderPositionsTable positions={traderPositions} />
-                        </TabsContent>
-                        <TabsContent value="lp-positions" className="mt-0">
-                          <LiquidityPositionsTable positions={lpPositions} />
-                        </TabsContent>
-                      </div>
-                    </Tabs>
-                  )}
-                </div>
-              )}
+              <DataDrawer />
             </div>
           </div>
         </TradePoolProvider>
