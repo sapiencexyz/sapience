@@ -3,17 +3,17 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 
 import { useQuery } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
+import { CircleHelp, DatabaseIcon } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { formatUnits } from 'viem';
 
 import Chart from '~/components/chart';
 import ChartSelector from '~/components/ChartSelector';
-import EpochHeader from '~/components/epochHeader';
 import MarketSidebar from '~/components/marketSidebar';
-import MarketUnitsToggle from '~/components/marketUnitsToggle';
+import PeriodHeader from '~/components/PeriodHeader';
+import PriceToggles from '~/components/PriceToggles';
 import Stats from '~/components/stats';
-import { ToggleGroup, ToggleGroupItem } from '~/components/ui/toggle-group';
 import VolumeChart from '~/components/VolumeChart';
 import VolumeWindowSelector from '~/components/VolumeWindowButtons';
 import { useToast } from '~/hooks/use-toast';
@@ -26,6 +26,7 @@ import { ChartType, TimeWindow } from '~/lib/interfaces/interfaces';
 
 import DataDrawer from './DataDrawer';
 import DepthChart from './DepthChart';
+import { Button } from './ui/button';
 
 interface ResourcePrice {
   timestamp: string;
@@ -57,10 +58,12 @@ const Market = ({
     candles: boolean;
     index: boolean;
     resource: boolean;
+    trailing: boolean;
   }>({
     candles: true,
     index: true,
     resource: false,
+    trailing: false,
   });
   const [chainId, marketAddress] = params.id.split('%3A');
   const { epoch } = params;
@@ -229,8 +232,18 @@ const Market = ({
   const idxLoading =
     isLoadingIndexPrices || isRefetchingIndexPrices || isLoadingResourcePrices;
 
-  const toggleSeries = (series: 'candles' | 'index' | 'resource') => {
+  const toggleSeries = (
+    series: 'candles' | 'index' | 'resource' | 'trailing'
+  ) => {
     setSeriesVisibility((prev) => ({ ...prev, [series]: !prev[series] }));
+  };
+
+  // TODO: implement
+  const loadingSeries = {
+    candles: false,
+    index: false,
+    resource: false,
+    trailing: false,
   };
 
   const renderChart = () => {
@@ -258,59 +271,6 @@ const Market = ({
     return null;
   };
 
-  const renderPriceToggles = () => {
-    if (chartType === ChartType.PRICE) {
-      return (
-        <ToggleGroup
-          type="multiple"
-          className="flex gap-3 items-start md:items-center self-start md:self-auto"
-          variant="outline"
-        >
-          <ToggleGroupItem
-            value="candles"
-            variant={seriesVisibility.candles ? 'default' : 'outline'}
-            onClick={() => toggleSeries('candles')}
-          >
-            Market Price
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="index"
-            variant={seriesVisibility.index ? 'default' : 'outline'}
-            onClick={() => toggleSeries('index')}
-            disabled={idxLoading}
-          >
-            {idxLoading ? (
-              <div className="flex items-center gap-2">
-                <Loader2 className="w-3 h-3 animate-spin" />
-                <span>Index Price</span>
-              </div>
-            ) : (
-              'Index Price'
-            )}
-          </ToggleGroupItem>
-          {(resourcePrices?.length ?? 0) > 0 && (
-            <ToggleGroupItem
-              value="resource"
-              variant={seriesVisibility.resource ? 'default' : 'outline'}
-              onClick={() => toggleSeries('resource')}
-              disabled={idxLoading}
-            >
-              {idxLoading ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  <span>Resource Price</span>
-                </div>
-              ) : (
-                'Resource Price'
-              )}
-            </ToggleGroupItem>
-          )}
-        </ToggleGroup>
-      );
-    }
-    return null;
-  };
-
   useEffect(() => {
     if (useResourcePricesError) {
       toast({
@@ -330,7 +290,7 @@ const Market = ({
       <AddEditPositionProvider>
         <TradePoolProvider>
           <div className="flex flex-col w-full h-[calc(100vh-64px)] overflow-y-auto lg:overflow-hidden">
-            <EpochHeader />
+            <PeriodHeader />
             <div className="flex flex-col flex-1 lg:overflow-y-auto md:overflow-visible">
               <div className="flex flex-col flex-1 px-4 md:px-3 gap-5 md:flex-row min-h-0">
                 <div className="w-full order-2 md:order-2 md:max-w-[360px] pb-4">
@@ -344,25 +304,44 @@ const Market = ({
                       {renderChart()}
                     </div>
                   </div>
-                  <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center my-4 flex-shrink-0 gap-4">
-                    <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+                  <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center my-4 gap-4">
+                    <div className="flex flex-col md:flex-row gap-3 w-full">
                       <ChartSelector
                         chartType={chartType}
                         setChartType={setChartType}
                         isTrade={isTrade}
                       />
                       {chartType !== ChartType.LIQUIDITY && (
-                        <div className="flex flex-col md:flex-row gap-3">
-                          <VolumeWindowSelector
-                            selectedWindow={selectedWindow}
-                            setSelectedWindow={setSelectedWindow}
+                        <VolumeWindowSelector
+                          selectedWindow={selectedWindow}
+                          setSelectedWindow={setSelectedWindow}
+                        />
+                      )}
+                      <DataDrawer
+                        trigger={
+                          <Button>
+                            <DatabaseIcon className="w-4 h-4 mr-0.5" />
+                            Data
+                          </Button>
+                        }
+                      />
+                      {chartType === ChartType.PRICE && (
+                        <div className="ml-auto flex items-center">
+                          <PriceToggles
+                            seriesVisibility={seriesVisibility}
+                            toggleSeries={toggleSeries}
+                            seriesLoading={loadingSeries}
                           />
-                          {renderPriceToggles()}
+                          <Link
+                            className="ml-3"
+                            href="https://docs.foil.xyz/price-glossary"
+                            target="_blank"
+                          >
+                            <CircleHelp className="w-4 h-4 text-blue-500 hover:text-blue-600" />
+                          </Link>
                         </div>
                       )}
                     </div>
-
-                    <MarketUnitsToggle />
                   </div>
                 </div>
               </div>

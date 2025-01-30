@@ -28,6 +28,7 @@ interface Props {
     candles: boolean;
     index: boolean;
     resource: boolean;
+    trailing: boolean;
   };
 }
 
@@ -41,6 +42,12 @@ interface ResourcePricePoint {
   price: number;
 }
 
+export const GREEN_PRIMARY = '#50C878';
+export const RED = '#D85B4E';
+export const GREEN = '#38A667';
+export const BLUE = '#2E6FA8';
+export const NEUTRAL = '#58585A';
+
 const CandlestickChart: React.FC<Props> = ({
   data,
   isLoading,
@@ -52,6 +59,7 @@ const CandlestickChart: React.FC<Props> = ({
   const candlestickSeriesRef = useRef<any>(null);
   const indexPriceSeriesRef = useRef<any>(null);
   const resourcePriceSeriesRef = useRef<any>(null);
+  const trailingPriceSeriesRef = useRef<any>(null);
   const { stEthPerToken, useMarketUnits, startTime } =
     useContext(PeriodContext);
   const { theme } = useTheme();
@@ -105,15 +113,15 @@ const CandlestickChart: React.FC<Props> = ({
     chartRef.current = chart;
 
     candlestickSeriesRef.current = chart.addCandlestickSeries({
-      upColor: '#26a69a',
-      downColor: '#ef5350',
+      upColor: GREEN,
+      downColor: RED,
       borderVisible: false,
-      wickUpColor: '#26a69a',
-      wickDownColor: '#ef5350',
+      wickUpColor: GREEN,
+      wickDownColor: RED,
     });
 
     indexPriceSeriesRef.current = chart.addAreaSeries({
-      lineColor: 'blue',
+      lineColor: BLUE,
       topColor: 'rgba(128, 128, 128, 0.4)',
       bottomColor: 'rgba(128, 128, 128, 0.0)',
       lineStyle: 2,
@@ -121,8 +129,15 @@ const CandlestickChart: React.FC<Props> = ({
 
     // Create resource price series regardless of initial data
     resourcePriceSeriesRef.current = chart.addLineSeries({
-      color: '#4CAF50',
+      color: GREEN_PRIMARY,
       lineWidth: 2,
+    });
+
+    // Create trailing price series
+    trailingPriceSeriesRef.current = chart.addLineSeries({
+      color: '#FFA726',
+      lineWidth: 2,
+      lineStyle: 2,
     });
 
     const handleResize = () => {
@@ -230,6 +245,11 @@ const CandlestickChart: React.FC<Props> = ({
         visible: seriesVisibility.resource,
       });
     }
+    if (trailingPriceSeriesRef.current) {
+      trailingPriceSeriesRef.current.applyOptions({
+        visible: seriesVisibility.trailing,
+      });
+    }
   }, [data, isLoading, stEthPerToken, useMarketUnits, seriesVisibility]);
 
   useEffect(() => {
@@ -243,6 +263,7 @@ const CandlestickChart: React.FC<Props> = ({
       candlestickSeriesRef.current,
       indexPriceSeriesRef.current,
       resourcePriceSeriesRef.current,
+      trailingPriceSeriesRef.current,
     ];
 
     series.forEach((s) => {
