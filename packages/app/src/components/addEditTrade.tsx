@@ -36,6 +36,7 @@ import NumberDisplay from './numberDisplay';
 import PositionSelector from './positionSelector';
 import SizeInput from './sizeInput';
 import SlippageTolerance from './slippageTolerance';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
 
 export default function AddEditTrade() {
   const { nftId, refreshPositions, setNftId } = useAddEditPosition();
