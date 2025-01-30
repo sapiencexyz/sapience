@@ -29,6 +29,10 @@ import { useResources } from '~/lib/hooks/useResources';
 
 import { Label } from './ui/label';
 // import VaultChart from './vaultChart';
+import VaultChart from './vaultChart';
+import Image from 'next/image';
+import { useWriteContract } from 'wagmi';
+import { useUserVaultData } from '~/lib/hooks/useUserVaultData';
 
 interface FormValues {
   collateralAmount: string;
@@ -46,6 +50,9 @@ const Earn: FC<Props> = ({ slug }) => {
   const { theme, setTheme } = useTheme();
   const { data: resources } = useResources();
   const resource = resources?.find((r) => r.slug === slug);
+
+  const { collateralBalance, marketBalance, claimableDeposit, pendingRequest } =
+    useUserVaultData();
 
   const form = useForm<FormValues>({
     defaultValues: {
@@ -72,6 +79,7 @@ const Earn: FC<Props> = ({ slug }) => {
   const onSubmit = async (values: FormValues) => {
     try {
       if (activeTab === 'deposit') {
+        console.log('values', values);
         // Handle deposit logic
         console.log('Depositing:', values.collateralAmount);
       } else {
