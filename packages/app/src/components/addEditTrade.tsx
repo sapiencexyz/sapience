@@ -21,6 +21,12 @@ import erc20ABI from '../lib/erc20abi.json';
 import { Button } from '~/components/ui/button';
 import { Form } from '~/components/ui/form';
 import { Tabs, TabsList, TabsTrigger } from '~/components/ui/tabs';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '~/components/ui/tooltip';
 import { useToast } from '~/hooks/use-toast';
 import {
   HIGH_PRICE_IMPACT,
@@ -36,7 +42,6 @@ import NumberDisplay from './numberDisplay';
 import PositionSelector from './positionSelector';
 import SizeInput from './sizeInput';
 import SlippageTolerance from './slippageTolerance';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
 
 export default function AddEditTrade() {
   const { nftId, refreshPositions, setNftId } = useAddEditPosition();
@@ -95,7 +100,10 @@ export default function AddEditTrade() {
   const isNonZeroSizeChange = sizeChangeInContractUnit !== BigInt(0);
 
   const formError = useMemo(() => {
-    if (Number(quotedResultingWalletBalance) < 0 || Number(walletBalance) <= 0) {
+    if (
+      Number(quotedResultingWalletBalance) < 0 ||
+      Number(walletBalance) <= 0
+    ) {
       return 'Insufficient wallet balance to perform this trade.';
     }
     if (
@@ -208,18 +216,17 @@ export default function AddEditTrade() {
   });
 
   const quoteClosePositionResult = useSimulateContract({
-        abi: foilData.abi,
-        address: marketAddress as `0x${string}`,
-        functionName: 'quoteModifyTraderPosition',
-        args: [nftId, BigInt(0)], 
-        chainId,
-        account: address || zeroAddress,
-        query: { 
-          enabled: isEdit && !!positionData,
-          refetchOnMount: true, 
-        },
-      });
-
+    abi: foilData.abi,
+    address: marketAddress as `0x${string}`,
+    functionName: 'quoteModifyTraderPosition',
+    args: [nftId, BigInt(0)],
+    chainId,
+    account: address || zeroAddress,
+    query: {
+      enabled: isEdit && !!positionData,
+      refetchOnMount: true,
+    },
+  });
 
   useEffect(() => {
     if (quoteModifyPositionResult?.error && isEdit && isNonZeroSizeChange) {
@@ -334,8 +341,12 @@ export default function AddEditTrade() {
 
       if (isEdit) {
         const isClosing = form.getValues('isClosePosition');
-        const callSizeInContractUnit = isClosing ? BigInt(0) : desiredSizeInContractUnit;
-        const callCollateralDeltaLimit = isClosing ? BigInt(0) : collateralDeltaLimit;
+        const callSizeInContractUnit = isClosing
+          ? BigInt(0)
+          : desiredSizeInContractUnit;
+        const callCollateralDeltaLimit = isClosing
+          ? BigInt(0)
+          : collateralDeltaLimit;
 
         writeContract({
           abi: foilData.abi,
@@ -392,23 +403,22 @@ export default function AddEditTrade() {
   }, [quotedFillPrice, pool]);
   const showPriceImpactWarning = priceImpact > HIGH_PRICE_IMPACT;
 
-    const closePositionPriceImpact: number = useMemo(() => {
+  const closePositionPriceImpact: number = useMemo(() => {
     if (!pool?.token0Price || !positionData) return 0;
-    
-    if(positionData.vGasAmount === BigInt(0) && positionData.borrowedVGas === BigInt(0)) {
+
+    if (
+      positionData.vGasAmount === BigInt(0) &&
+      positionData.borrowedVGas === BigInt(0)
+    ) {
       return 0;
     }
     const closeQuote = quoteClosePositionResult.data?.result;
     if (!closeQuote) return 0;
-    
+
     const [, , fillPrice] = closeQuote;
     const referencePrice = parseFloat(pool.token0Price.toSignificant(18));
-    const impact = Math.abs((Number(fillPrice) / 1e18 / referencePrice - 1) * 100);
-    return impact;
+    return Math.abs((Number(fillPrice) / 1e18 / referencePrice - 1) * 100);
   }, [pool, positionData, quoteClosePositionResult.data]);
-
-
-
 
   const form = useForm({
     defaultValues: {
@@ -647,12 +657,12 @@ export default function AddEditTrade() {
   const renderCloseButton = () => {
     if (!isEdit || !isConnected || currentChainId !== chainId) return null;
 
-    const positionHasBalance = positionData && (
-      positionData.vGasAmount > BigInt(0) || 
-      positionData.borrowedVGas > BigInt(0)
-    );
+    const positionHasBalance =
+      positionData &&
+      (positionData.vGasAmount > BigInt(0) ||
+        positionData.borrowedVGas > BigInt(0));
     if (!positionHasBalance) return null;
-    
+
     const isFetchingQuote = quoteModifyPositionResult.isFetching;
     const isLoading =
       pendingTxn ||
@@ -680,7 +690,8 @@ export default function AddEditTrade() {
                 </TooltipTrigger>
                 <TooltipContent>
                   <p className="text-sm font-medium">
-                    Closing this position will have a {Number(closePositionPriceImpact.toFixed(2))}% price impact
+                    Closing this position will have a{' '}
+                    {Number(closePositionPriceImpact.toFixed(2))}% price impact
                   </p>
                 </TooltipContent>
               </Tooltip>
