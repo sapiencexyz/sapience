@@ -1,6 +1,6 @@
 /* eslint-disable sonarjs/cognitive-complexity */
 import { debounce } from 'lodash';
-import { HelpCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import { useState, useEffect, useContext, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import type { AbiFunction } from 'viem';
@@ -21,12 +21,6 @@ import erc20ABI from '../lib/erc20abi.json';
 import { Button } from '~/components/ui/button';
 import { Form } from '~/components/ui/form';
 import { Tabs, TabsList, TabsTrigger } from '~/components/ui/tabs';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '~/components/ui/tooltip';
 import { useToast } from '~/hooks/use-toast';
 import {
   HIGH_PRICE_IMPACT,
@@ -895,25 +889,7 @@ export default function AddEditTrade() {
           )}
           {!isLoadingCollateralChange && isConnected && (
             <div>
-              <p className="text-sm  font-semibold mb-0.5 flex items-center">
-                Wallet Balance
-                {sizeChange !== BigInt(0) && (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <HelpCircle className="w-4 h-4 ml-1" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        Your slippage tolerance sets a maximum limit on how much
-                        additional collateral Foil can use or the minimum amount
-                        of collateral you will receive back, protecting you from
-                        unexpected market changes between submitting and
-                        processing your transaction.
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
-              </p>
+              <p className="text-sm font-semibold mb-0.5">Wallet Balance</p>
               <p className="text-sm ">
                 <NumberDisplay value={walletBalance} /> {collateralAssetTicker}
                 {sizeChange !== BigInt(0) && !quoteError && (
@@ -935,42 +911,43 @@ export default function AddEditTrade() {
               </p>
             </div>
           )}
-          {!isLoadingCollateralChange && (
-            <div>
-              <p className="text-sm  font-semibold mb-0.5">
-                Position Collateral
-              </p>
-              <p className="text-sm  mb-0.5">
-                <NumberDisplay
-                  value={formatUnits(
-                    positionData?.depositedCollateralAmount || BigInt(0),
-                    collateralAssetDecimals
+          {!isLoadingCollateralChange &&
+            (isEdit || sizeChange !== BigInt(0)) && (
+              <div>
+                <p className="text-sm  font-semibold mb-0.5">
+                  Position Collateral
+                </p>
+                <p className="text-sm  mb-0.5">
+                  <NumberDisplay
+                    value={formatUnits(
+                      positionData?.depositedCollateralAmount || BigInt(0),
+                      collateralAssetDecimals
+                    )}
+                  />{' '}
+                  {collateralAssetTicker}
+                  {sizeChange !== BigInt(0) && !quoteError && (
+                    <>
+                      {' '}
+                      →{' '}
+                      <NumberDisplay
+                        value={formatUnits(
+                          resultingPositionCollateral,
+                          collateralAssetDecimals
+                        )}
+                      />{' '}
+                      {collateralAssetTicker} (Max.{' '}
+                      <NumberDisplay
+                        value={formatUnits(
+                          positionCollateralLimit,
+                          collateralAssetDecimals
+                        )}
+                      />{' '}
+                      {collateralAssetTicker})
+                    </>
                   )}
-                />{' '}
-                {collateralAssetTicker}
-                {sizeChange !== BigInt(0) && !quoteError && (
-                  <>
-                    {' '}
-                    →{' '}
-                    <NumberDisplay
-                      value={formatUnits(
-                        resultingPositionCollateral,
-                        collateralAssetDecimals
-                      )}
-                    />{' '}
-                    {collateralAssetTicker} (Max.{' '}
-                    <NumberDisplay
-                      value={formatUnits(
-                        positionCollateralLimit,
-                        collateralAssetDecimals
-                      )}
-                    />{' '}
-                    {collateralAssetTicker})
-                  </>
-                )}
-              </p>
-            </div>
-          )}
+                </p>
+              </div>
+            )}
           {quotedFillPrice && (
             <div>
               <p className="text-sm  font-semibold mb-0.5">
