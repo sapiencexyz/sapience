@@ -192,7 +192,7 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
 
   if (isLoading) {
     return (
-      <Button variant="ghost" className="text-md">
+      <Button variant="ghost" className="text-base">
         {label}
       </Button>
     );
@@ -201,7 +201,7 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" className="text-md">
+        <Button variant="ghost" className="text-base">
           <span>{label}</span>
           <ChevronDown className="text-muted-foreground" />
         </Button>
@@ -346,12 +346,12 @@ const NavLinks = ({
   const pathname = usePathname();
 
   const getButtonClasses = (path: string) => {
-    return `text-md ${isActive(path, pathname) ? 'bg-secondary' : ''}`;
+    return `text-base ${isActive(path, pathname) ? 'bg-secondary' : ''}`;
   };
 
   if (isMobile) {
     return (
-      <div className="flex flex-col space-y-4 font-semibold">
+      <div className="flex flex-col space-y-4 font-medium py-4">
         <Link href="/subscribe" onClick={() => onClose?.()}>
           Subscribe
         </Link>
@@ -388,7 +388,7 @@ const NavLinks = ({
       <ResourcePopover label="Pool" path="pool" />
 
       <Link href="https://docs.foil.xyz" className="hover:no-underline">
-        <Button variant="ghost" className="text-md">
+        <Button variant="ghost" className="text-base">
           Docs
         </Button>
       </Link>
@@ -444,12 +444,12 @@ const Header = () => {
           </div>
         </div>
       </header>
-      <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-md border-t border-border py-2 text-center z-[3] lg:hidden">
-        <div className="flex justify-between items-center px-4 max-w-[400px] mx-auto">
+      <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-md border-t border-border py-3 text-center z-[3] lg:hidden">
+        <div className="flex justify-between items-center max-w-[400px] mx-auto">
           <Link href="/" className="hover:no-underline">
             <Button
               variant="ghost"
-              size="sm"
+              size="lg"
               className={isActive('/', pathname) ? 'bg-secondary' : ''}
             >
               Explore
@@ -460,7 +460,7 @@ const Header = () => {
             <DrawerTrigger asChild>
               <Button
                 variant="ghost"
-                size="sm"
+                size="lg"
                 className={isActive('/trade', pathname) ? 'bg-secondary' : ''}
               >
                 Trade
@@ -479,7 +479,7 @@ const Header = () => {
             <DrawerTrigger asChild>
               <Button
                 variant="ghost"
-                size="sm"
+                size="lg"
                 className={isActive('/pool', pathname) ? 'bg-secondary' : ''}
               >
                 Pool
@@ -503,7 +503,7 @@ const Header = () => {
             <DrawerContent>
               <div className="flex flex-col space-y-4 p-4 position-relative">
                 <NavLinks isMobile onClose={() => setIsOpen(false)} />
-                <div className="absolute top-4 right-3">
+                <div className="absolute top-2 right-5">
                   <ModeToggle />
                 </div>
               </div>

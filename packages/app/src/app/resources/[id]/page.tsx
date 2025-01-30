@@ -168,7 +168,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
       <div className={`flex-1 min-w-0 ${!epochs.length ? 'w-full' : ''}`}>
         <div className="flex flex-col h-full">
           <div className="flex-1 grid relative">
-            <Card className="absolute top-4 left-4 md:top-8 md:left-8 z-10">
+            <Card className="absolute top-4 left-4 md:top-8 md:left-8 z-20">
               <CardContent className="py-3 px-4">
                 <div className="flex flex-col">
                   <span className="text-sm text-muted-foreground">

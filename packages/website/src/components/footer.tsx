@@ -9,7 +9,7 @@ import { BookTextIcon } from 'lucide-react';
 export const Footer = () => {
   return (
     <footer className="relative m-4 mt-12 rounded-4xl bg-primary py-16 text-center md:m-14">
-      <div className="absolute inset-0 bg-[url('../../../public/assets/dotgrid.svg')] bg-[length:45px_45px] bg-repeat opacity-[0.33]" />
+      <div className="absolute inset-0 bg-[url('../../../public/assets/dotgrid.svg')] bg-[length:45px_45px] bg-center bg-repeat opacity-[0.33]" />
       <div className="relative flex justify-center gap-8">
         <Button
           size="icon"

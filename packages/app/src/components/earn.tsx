@@ -135,7 +135,7 @@ const Earn: FC = () => {
 
           <div className="w-full max-w-sm">
             <div className="border border-border rounded-lg shadow-sm p-6 mt-6">
-              <p className="mb-1 text-md">
+              <p className="mb-1 text-base">
                 Deposit collateral to have the vault smart contract provide
                 liquidity to the market and roll between epochs automatically.
               </p>

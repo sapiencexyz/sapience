@@ -38,7 +38,7 @@ const DataDrawer = () => {
         <button
           type="button"
           aria-label="Open data drawer"
-          className="fixed left-1/2 -translate-x-1/2 translate-y-0.5 hover:translate-y-0 bottom-[57px] lg:bottom-0 px-4 pb-2 pt-2 bg-background border border-border rounded-t-xl shadow-lg hover:shadow-[0_-5px_10px_-5px_rgba(0,0,0,0.1)] transition-all"
+          className="fixed left-1/2 -translate-x-1/2 translate-y-0.5 hover:translate-y-0 bottom-[69px] lg:bottom-0 px-4 pb-2 pt-2 bg-background border border-border rounded-t-xl shadow-lg hover:shadow-[0_-5px_10px_-5px_rgba(0,0,0,0.1)] transition-all"
         >
           <svg
             width="140"

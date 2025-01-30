@@ -22,7 +22,7 @@ interface StatBoxProps {
 }
 
 const StatBox = ({ title, tooltipContent, value, docsLink }: StatBoxProps) => (
-  <div className="rounded-sm border border-border py-4 px-6 shadow-sm text-xs md:text-md">
+  <div className="rounded-sm border border-border py-4 px-6 shadow-sm text-sm md:text-base">
     <div>
       {title}
       {tooltipContent && (
@@ -37,7 +37,7 @@ const StatBox = ({ title, tooltipContent, value, docsLink }: StatBoxProps) => (
                 href="https://docs.foil.xyz/price-glossary"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-block text-blue-500 hover:text-blue-600 ml-0.5 -translate-y-0.5"
+                className="inline-block text-blue-500 hover:text-blue-600 ml-1 -translate-y-0.5"
               >
                 <BookTextIcon className="h-3.5 w-3.5 inline-block" />
               </a>
@@ -135,7 +135,7 @@ const Stats = () => {
 
           <StatBox
             title="Liquidity"
-            tooltipContent="The largest long position that can be opened currently"
+            tooltipContent="The largest long position that can be opened right now"
             value={
               <>
                 <NumberDisplay value={liquidity} />{' '}

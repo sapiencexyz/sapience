@@ -1,6 +1,7 @@
 /* eslint-disable sonarjs/cognitive-complexity */
 import type { UTCTimestamp, BarData, LineData } from 'lightweight-charts';
 import { createChart, CrosshairMode, PriceScaleMode } from 'lightweight-charts';
+import { Loader2 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useEffect, useRef, useContext, useState } from 'react';
 import type React from 'react';
@@ -259,6 +260,14 @@ const CandlestickChart: React.FC<Props> = ({
 
   return (
     <div className="flex flex-col flex-1 relative group w-full h-full">
+      {isLoading &&
+      !data.marketPrices?.length &&
+      !data.indexPrices?.length &&
+      (!data.resourcePrices || !data.resourcePrices.length) ? (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground opacity-20" />
+        </div>
+      ) : null}
       <div className="flex flex-1 h-full">
         <div ref={chartContainerRef} className="w-full h-full" />
       </div>
