@@ -1,7 +1,9 @@
 'use client';
 
 import { BookTextIcon, HelpCircle } from 'lucide-react';
-import { type FC, useState, useContext, useMemo } from 'react';
+import Image from 'next/image';
+import { useTheme } from 'next-themes';
+import { type FC, useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { Button } from '~/components/ui/button';
@@ -23,19 +25,27 @@ import {
   TooltipTrigger,
 } from '~/components/ui/tooltip';
 import { useToast } from '~/hooks/use-toast';
-import { PeriodContext } from '~/lib/context/PeriodProvider';
+import { useResources } from '~/lib/hooks/useResources';
 
-import VaultChart from './vaultChart';
+import { Label } from './ui/label';
+// import VaultChart from './vaultChart';
 
 interface FormValues {
   collateralAmount: string;
   vaultShares: string;
 }
 
-const Earn: FC = () => {
+interface Props {
+  slug: string;
+}
+
+const Earn: FC<Props> = ({ slug }) => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>('deposit');
-  const { collateralAssetTicker } = useContext(PeriodContext);
+  const [selectedVault, setSelectedVault] = useState<'yin' | 'yang'>('yin');
+  const { theme, setTheme } = useTheme();
+  const { data: resources } = useResources();
+  const resource = resources?.find((r) => r.slug === slug);
 
   const form = useForm<FormValues>({
     defaultValues: {
@@ -54,6 +64,10 @@ const Earn: FC = () => {
   const hasSharesChanged = useMemo(() => {
     return Number(vaultShares) !== 0;
   }, [vaultShares]);
+
+  useEffect(() => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  }, [selectedVault]);
 
   const onSubmit = async (values: FormValues) => {
     try {
@@ -97,215 +111,229 @@ const Earn: FC = () => {
     return null;
   };
 
+  const collateralTicker = 'wstETH';
+  const vaultSharesTicker = `fstethYIN`;
+
   return (
     <div className="container mx-auto px-4 py-16">
       <div className="max-w-7xl mx-auto">
-        <div className="border border-border rounded-full p-1.5 mx-auto h-14 w-14 overflow-hidden mb-4">
-          <img src="/eth.svg" alt="Ethereum" width="100%" height="100%" />
+        <div className=" mx-auto h-16 w-16 mb-4">
+          <Image
+            src={resource?.iconPath || '/eth.svg'}
+            alt={resource?.name || 'Resource'}
+            width={56}
+            height={56}
+          />
         </div>
-        <h2 className="text-4xl font-bold text-center mb-2">
-          Foil {collateralAssetTicker} Vault
+        <h2 className="text-4xl font-bold text-center mb-3">
+          {resource?.name} Vault
         </h2>
-        <div className="hidden text-center font-light text-muted-foreground">
-          <span className="font-medium tracking-wider">TVL</span> 420 wstETH
-          <span className="ml-8 mr-1">
-            12% <span className="ml-1 font-medium tracking-wider">APY</span>
-          </span>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>
-                <HelpCircle className="inline -mt-1 h-3.5 w-3.5" />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>This is based on annualized fees over the last 30 days.</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
 
-        <div className="grid grid-cols-1 place-items-center">
-          <div className="lg:col-span-2 h-full flex flex-col hidden">
-            <h2 className="text-2xl font-light tracking-tight text-muted-foreground mb-4">
-              Vault Performance
-            </h2>
-            <div className="h-full">
-              <VaultChart />
-            </div>
+        <div className="w-full max-w-sm mx-auto ">
+          <p className="mb-9 text-center">
+            The vault smart contracts provide liquidity to markets and roll
+            across periods automatically.
+            <a
+              href="https://docs.foil.xyz/token-vault"
+              target="_blank"
+              className="inline-block text-blue-500 hover:text-blue-600 ml-1 -translate-y-0.5"
+              rel="noopener noreferrer"
+            >
+              <BookTextIcon className="h-3.5 w-3.5 inline-block" />
+            </a>
+          </p>
+
+          <div className="border border-border rounded-lg shadow-sm p-6 mb-9">
+            <Label>Select Vault</Label>
+            <Tabs
+              defaultValue="yin"
+              className="mt-1.5"
+              onValueChange={(value) =>
+                setSelectedVault(value as 'yin' | 'yang')
+              }
+            >
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="yin">Yin Vault</TabsTrigger>
+                <TabsTrigger value="yang">Yang Vault</TabsTrigger>
+              </TabsList>
+              <TabsContent value="yin">
+                <div className="pt-3">
+                  <p className="text-sm text-muted-foreground">
+                    The Yin vault provides liquidity to the current period and
+                    the one starting in X days.
+                  </p>
+                </div>
+              </TabsContent>
+              <TabsContent value="yang">
+                <div className="pt-3">
+                  <p className="text-sm text-muted-foreground">
+                    The Yang vault provides liquidity to the one starting in X
+                    days.
+                  </p>
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
-
-          <div className="w-full max-w-sm">
-            <div className="border border-border rounded-lg shadow-sm p-6 mt-6">
-              <p className="mb-1 text-base">
-                Deposit collateral to have the vault smart contract provide
-                liquidity to the market and roll between epochs automatically.
-              </p>
-              <div className=" mb-4">
-                <a
-                  href="https://docs.foil.xyz/token-vault"
-                  target="_blank"
-                  className="underline text-xs text-muted-foreground"
-                  rel="noreferrer"
+          <div className="border border-border rounded-lg shadow-sm p-6">
+            <h3 className="text-2xl font-bold mb-3">
+              {selectedVault === 'yin' ? 'Yin' : 'Yang'} Vault
+            </h3>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)}>
+                <Tabs
+                  defaultValue="deposit"
+                  className="space-y-4"
+                  onValueChange={(value) =>
+                    setActiveTab(value as 'deposit' | 'withdraw')
+                  }
                 >
-                  <BookTextIcon className="inline -mt-0.5 mr-1 h-3.5 w-3.5" />
-                  Read the docs
-                </a>
-              </div>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="deposit">
+                      Deposit {collateralTicker}
+                    </TabsTrigger>
+                    <TabsTrigger value="withdraw">
+                      Withdraw {collateralTicker}
+                    </TabsTrigger>
+                  </TabsList>
 
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)}>
-                  <Tabs
-                    defaultValue="deposit"
-                    className="space-y-4"
-                    onValueChange={(value) =>
-                      setActiveTab(value as 'deposit' | 'withdraw')
-                    }
-                  >
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="deposit">Deposit wstETH</TabsTrigger>
-                      <TabsTrigger value="withdraw">
-                        Withdraw wstETH
-                      </TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="deposit">
-                      <FormField
-                        control={form.control}
-                        name="collateralAmount"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="flex items-center gap-1">
-                              Collateral Pending Conversion
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger>
-                                    <HelpCircle className="h-4 w-4" />
-                                  </TooltipTrigger>
-                                  <TooltipContent className="max-w-xs">
-                                    <p>
-                                      At the start of the next epoch, this
-                                      collateral will be converted to vault
-                                      shares (fstETH) for redemption.
-                                    </p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            </FormLabel>
-                            <FormControl>
-                              <div className="flex ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 rounded-md">
-                                <Input
-                                  placeholder="Enter amount"
-                                  type="number"
-                                  step="any"
-                                  className="rounded-r-none border-r-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                                  {...field}
-                                />
-                                <div className="inline-flex items-center justify-center rounded-r-md border border-l-0 border-input bg-secondary px-3 text-sm text-secondary-foreground h-10">
-                                  wstETH
-                                </div>
+                  <TabsContent value="deposit">
+                    <FormField
+                      control={form.control}
+                      name="collateralAmount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-1">
+                            Collateral Pending Conversion
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <HelpCircle className="h-4 w-4" />
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs">
+                                  <p>
+                                    At the start of the next epoch, this
+                                    collateral will be converted to vault shares
+                                    ({vaultSharesTicker}) for redemption.
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </FormLabel>
+                          <FormControl>
+                            <div className="flex ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 rounded-md">
+                              <Input
+                                placeholder="Enter amount"
+                                type="number"
+                                step="any"
+                                className="rounded-r-none border-r-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                                {...field}
+                              />
+                              <div className="inline-flex items-center justify-center rounded-r-md border border-l-0 border-input bg-secondary px-3 text-sm text-secondary-foreground h-10">
+                                {collateralTicker}
                               </div>
-                            </FormControl>
-                            <p className="text-sm text-muted-foreground">
-                              Wallet Balance: 2.1337 wstETH
-                            </p>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                            </div>
+                          </FormControl>
+                          <p className="text-sm text-muted-foreground">
+                            Wallet Balance: 2.1337 {collateralTicker}
+                          </p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                      {renderWarningMessage('collateral')}
+                    {renderWarningMessage('collateral')}
 
-                      <Button
-                        type="submit"
-                        className="w-full mt-4"
-                        disabled={
-                          Number(vaultShares) > 0 || !hasCollateralChanged
-                        }
-                      >
-                        Deposit
-                      </Button>
+                    <Button
+                      type="submit"
+                      className="w-full mt-4"
+                      disabled={
+                        Number(vaultShares) > 0 || !hasCollateralChanged
+                      }
+                    >
+                      Deposit
+                    </Button>
 
-                      <Separator className="mt-6 mb-4" />
+                    <Separator className="mt-6 mb-4" />
 
-                      <p className="text-center text-sm font-medium">
-                        The current epoch ends in approximately 4 days.
-                      </p>
+                    <p className="text-center text-sm font-medium">
+                      The current epoch ends in approximately 4 days.
+                    </p>
 
-                      <Button type="submit" className="w-full mt-3" disabled>
-                        Redeem fstETH
-                      </Button>
-                    </TabsContent>
+                    <Button type="submit" className="w-full mt-3" disabled>
+                      Redeem {vaultSharesTicker}
+                    </Button>
+                  </TabsContent>
 
-                    <TabsContent value="withdraw">
-                      <FormField
-                        control={form.control}
-                        name="vaultShares"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="flex items-center gap-1">
-                              Vault Shares Pending Conversion
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger>
-                                    <HelpCircle className="h-4 w-4" />
-                                  </TooltipTrigger>
-                                  <TooltipContent className="max-w-xs">
-                                    <p>
-                                      At the start of the next epoch, these
-                                      vault shares will be converted to
-                                      collateral (wstETH) for redemption.
-                                    </p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            </FormLabel>
-                            <FormControl>
-                              <div className="flex">
-                                <Input
-                                  placeholder="Enter amount"
-                                  type="number"
-                                  step="any"
-                                  className="rounded-r-none border-r-0"
-                                  {...field}
-                                />
-                                <div className="inline-flex items-center justify-center rounded-r-md border border-l-0 border-input bg-secondary px-3 text-sm text-secondary-foreground h-10">
-                                  wstETH
-                                </div>
+                  <TabsContent value="withdraw">
+                    <FormField
+                      control={form.control}
+                      name="vaultShares"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-1">
+                            Vault Shares Pending Conversion
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <HelpCircle className="h-4 w-4" />
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs">
+                                  <p>
+                                    At the start of the next epoch, these vault
+                                    shares will be converted to collateral (
+                                    {collateralTicker}) for redemption.
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </FormLabel>
+                          <FormControl>
+                            <div className="flex">
+                              <Input
+                                placeholder="Enter amount"
+                                type="number"
+                                step="any"
+                                className="rounded-r-none border-r-0"
+                                {...field}
+                              />
+                              <div className="inline-flex items-center justify-center rounded-r-md border border-l-0 border-input bg-secondary px-3 text-sm text-secondary-foreground h-10">
+                                {collateralTicker}
                               </div>
-                            </FormControl>
-                            <p className="text-sm text-muted-foreground">
-                              Wallet Balance: 0 fstETH
-                            </p>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                            </div>
+                          </FormControl>
+                          <p className="text-sm text-muted-foreground">
+                            Wallet Balance: 0 {vaultSharesTicker}
+                          </p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                      {renderWarningMessage('shares')}
+                    {renderWarningMessage('shares')}
 
-                      <Button
-                        type="submit"
-                        className="w-full mt-4"
-                        disabled={
-                          Number(collateralAmount) > 0 || !hasSharesChanged
-                        }
-                      >
-                        Deposit
-                      </Button>
+                    <Button
+                      type="submit"
+                      className="w-full mt-4"
+                      disabled={
+                        Number(collateralAmount) > 0 || !hasSharesChanged
+                      }
+                    >
+                      Deposit
+                    </Button>
 
-                      <Separator className="mt-6 mb-4" />
+                    <Separator className="mt-6 mb-4" />
 
-                      <p className="text-center text-sm font-medium">
-                        The current epoch ends in approximately 4 days.
-                      </p>
+                    <p className="text-center text-sm font-medium">
+                      The current epoch ends in approximately 4 days.
+                    </p>
 
-                      <Button type="submit" className="w-full mt-3" disabled>
-                        Redeem wstETH
-                      </Button>
-                    </TabsContent>
-                  </Tabs>
-                </form>
-              </Form>
-            </div>
+                    <Button type="submit" className="w-full mt-3" disabled>
+                      Redeem {collateralTicker}
+                    </Button>
+                  </TabsContent>
+                </Tabs>
+              </form>
+            </Form>
           </div>
         </div>
       </div>
