@@ -100,7 +100,7 @@ export default function AddEditTrade() {
   const isNonZeroSizeChange = sizeChangeInContractUnit !== BigInt(0);
 
   const formError = useMemo(() => {
-    if (Number(quotedResultingWalletBalance) < 0) {
+    if (Number(quotedResultingWalletBalance) < 0 || Number(walletBalance) <= 0) {
       return 'Insufficient wallet balance to perform this trade.';
     }
     if (
@@ -123,6 +123,7 @@ export default function AddEditTrade() {
     sizeChangeInContractUnit,
     isLong,
     quotedResultingWalletBalance,
+    walletBalance,
   ]);
 
   // Position data
@@ -210,6 +211,20 @@ export default function AddEditTrade() {
     account: address || zeroAddress,
     query: { enabled: isEdit && isNonZeroSizeChange },
   });
+
+  const quoteClosePositionResult = useSimulateContract({
+        abi: foilData.abi,
+        address: marketAddress as `0x${string}`,
+        functionName: 'quoteModifyTraderPosition',
+        args: [nftId, BigInt(0)], 
+        chainId,
+        account: address || zeroAddress,
+        query: { 
+          enabled: isEdit && !!positionData,
+          refetchOnMount: true, 
+        },
+      });
+
 
   useEffect(() => {
     if (quoteModifyPositionResult?.error && isEdit && isNonZeroSizeChange) {
@@ -323,14 +338,18 @@ export default function AddEditTrade() {
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
 
       if (isEdit) {
+        const isClosing = form.getValues('isClosePosition');
+        const callSizeInContractUnit = isClosing ? BigInt(0) : desiredSizeInContractUnit;
+        const callCollateralDeltaLimit = isClosing ? BigInt(0) : collateralDeltaLimit;
+
         writeContract({
           abi: foilData.abi,
           address: marketAddress as `0x${string}`,
           functionName: 'modifyTraderPosition',
           args: [
             nftId,
-            desiredSizeInContractUnit,
-            collateralDeltaLimit,
+            callSizeInContractUnit,
+            callCollateralDeltaLimit,
             deadline,
           ],
         });
@@ -377,6 +396,24 @@ export default function AddEditTrade() {
     return 0;
   }, [quotedFillPrice, pool]);
   const showPriceImpactWarning = priceImpact > HIGH_PRICE_IMPACT;
+
+    const closePositionPriceImpact: number = useMemo(() => {
+    if (!pool?.token0Price || !positionData) return 0;
+    
+    if(positionData.vGasAmount === BigInt(0) && positionData.borrowedVGas === BigInt(0)) {
+      return 0;
+    }
+    const closeQuote = quoteClosePositionResult.data?.result;
+    if (!closeQuote) return 0;
+    
+    const [, , fillPrice] = closeQuote;
+    const referencePrice = parseFloat(pool.token0Price.toSignificant(18));
+    const impact = Math.abs((Number(fillPrice) / 1e18 / referencePrice - 1) * 100);
+    return impact;
+  }, [pool, positionData, quoteClosePositionResult.data]);
+
+
+
 
   const form = useForm({
     defaultValues: {
@@ -615,6 +652,12 @@ export default function AddEditTrade() {
   const renderCloseButton = () => {
     if (!isEdit || !isConnected || currentChainId !== chainId) return null;
 
+    const positionHasBalance = positionData && (
+      positionData.vGasAmount > BigInt(0) || 
+      positionData.borrowedVGas > BigInt(0)
+    );
+    if (!positionHasBalance) return null;
+    
     const isFetchingQuote = quoteModifyPositionResult.isFetching;
     const isLoading =
       pendingTxn ||
@@ -625,7 +668,7 @@ export default function AddEditTrade() {
     let buttonTxt = 'Close Position';
 
     if (requireApproval) {
-      buttonTxt = `Approve ${collateralAssetTicker} Transfer`;
+      buttonTxt = `Approve ${collateralAssetTicker} Transfer To Close Position`;
     }
 
     if (isFetchingQuote && !formError) return null;
@@ -633,15 +676,30 @@ export default function AddEditTrade() {
 
     return (
       <div className="mb-4 text-center -mt-2">
-        <button
-          onClick={() => setValue('isClosePosition', true)}
-          className="text-sm underline hover:opacity-80 disabled:opacity-50"
-          type="submit"
-          disabled={!!formError || isLoading}
-        >
-          {buttonTxt}
-        </button>
-        {renderPriceImpactWarning()}
+        <div className="flex items-center justify-center gap-1">
+          {closePositionPriceImpact > 0 && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <AlertTriangle className="w-6 h-6 text-red-500" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-sm font-medium">
+                    Closing this position will have a {Number(closePositionPriceImpact.toFixed(2))}% price impact
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          <button
+            onClick={() => setValue('isClosePosition', true)}
+            className="text-sm underline hover:opacity-80 disabled:opacity-50"
+            type="submit"
+            disabled={!!formError || isLoading}
+          >
+            {buttonTxt}
+          </button>
+        </div>
       </div>
     );
   };
