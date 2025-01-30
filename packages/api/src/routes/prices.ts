@@ -77,7 +77,8 @@ router.get(
         return acc;
       }
 
-      // if we have prices, calculate HLOC normally
+      // if we have prices, calculate HLOC normally but make sure its from the last candle that was added
+      const lastCandle = acc[acc.length - 1];
       const open = prices[0]?.value || 0;
       const close = prices[prices.length - 1]?.value || 0;
       const high = Math.max(...prices.map((p: MarketPrice) => Number(p.value)));
