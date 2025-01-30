@@ -1,6 +1,6 @@
 'use client';
 
-import { BookTextIcon, HelpCircle } from 'lucide-react';
+import { BookTextIcon, HelpCircle, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
 import { useTheme } from 'next-themes';
 import { type FC, useState, useMemo, useEffect } from 'react';
@@ -173,6 +173,15 @@ const Earn: FC<Props> = ({ slug }) => {
                 </div>
               </TabsContent>
             </Tabs>
+          </div>
+
+          <div className="border border-border rounded-lg shadow-sm p-6 mb-9">
+            <div className="flex items-start gap-1.5">
+              <span className="w-4 mt-0.5">
+              <AlertTriangle className="h-4 w-4" />
+              </span>
+              <p className='text-sm'><strong className='font-medium'>Foil is currenty in Beta.</strong> An upgraded version of the protocol will be deployed. You will need to withdraw your collateral and deposit again to continue providing liquidity in the future.</p>
+            </div>
           </div>
           <div className="border border-border rounded-lg shadow-sm p-6">
             <h3 className="text-2xl font-bold mb-3">
