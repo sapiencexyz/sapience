@@ -51,7 +51,12 @@ const AdvancedView = ({
   const [chartType, setChartType] = useState<ChartType>(
     isTrade ? ChartType.PRICE : ChartType.LIQUIDITY
   );
-  const [isRefetchingIndexPrices, setIsRefetchingIndexPrices] = useState(false);
+  const [, setIsRefetchingIndexPrices] = useState(false);
+
+  const { startTime } = useContext(PeriodContext);
+  const now = Math.floor(Date.now() / 1000);
+  const isBeforeStart = now < startTime;
+
   const [seriesVisibility, setSeriesVisibility] = useState<{
     candles: boolean;
     index: boolean;
@@ -61,16 +66,13 @@ const AdvancedView = ({
     candles: true,
     index: true,
     resource: false,
-    trailing: false,
+    trailing: isBeforeStart,
   });
   const [chainId, marketAddress] = params.id.split('%3A');
   const { epoch } = params;
   const contractId = `${chainId}:${marketAddress}`;
   const { toast } = useToast();
   const { data: resources } = useResources();
-  const { startTime } = useContext(PeriodContext);
-  const now = Math.floor(Date.now() / 1000);
-  const isBeforeStart = now < startTime;
 
   const useVolume = () => {
     return useQuery({
@@ -171,16 +173,11 @@ const AdvancedView = ({
 
   const { data: marketPrices, refetch: refetchPrices } = useMarketPrices();
 
-  const {
-    data: indexPrices,
-    isLoading: isLoadingIndexPrices,
-    refetch: refetchIndexPrices,
-  } = useIndexPrices();
+  const { data: indexPrices, refetch: refetchIndexPrices } = useIndexPrices();
 
   const {
     data: resourcePrices,
     error: useResourcePricesError,
-    isLoading: isLoadingResourcePrices,
     refetch: refetchResourcePrices,
   } = useResourcePrices();
 
@@ -193,9 +190,6 @@ const AdvancedView = ({
       setIsRefetchingIndexPrices(false);
     });
   }, [selectedWindow]);
-
-  const idxLoading =
-    isLoadingIndexPrices || isRefetchingIndexPrices || isLoadingResourcePrices;
 
   const toggleSeries = (
     series: 'candles' | 'index' | 'resource' | 'trailing'
@@ -228,7 +222,6 @@ const AdvancedView = ({
               indexPrices: indexPrices || [],
               resourcePrices: resourcePrices || [],
             }}
-            isLoading={idxLoading}
             seriesVisibility={seriesVisibility}
           />
         </div>

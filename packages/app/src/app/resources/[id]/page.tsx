@@ -108,11 +108,10 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
     candles: false,
     index: false,
     resource: true,
+    trailing: false,
   });
 
-  const { data: resourcePrices, isLoading: isResourcePricesLoading } = useQuery<
-    ResourcePrice[]
-  >({
+  const { data: resourcePrices } = useQuery<ResourcePrice[]>({
     queryKey: ['resourcePrices', params.id],
     queryFn: async () => {
       const response = await fetch(
@@ -190,7 +189,6 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
                       indexPrices: [],
                       resourcePrices: formattedResourcePrices,
                     }}
-                    isLoading={isResourcePricesLoading}
                     seriesVisibility={seriesVisibility}
                   />
                 </div>

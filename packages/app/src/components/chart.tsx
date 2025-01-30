@@ -23,7 +23,6 @@ interface Props {
     indexPrices: IndexPrice[];
     resourcePrices?: ResourcePricePoint[];
   };
-  isLoading: boolean;
   seriesVisibility: {
     candles: boolean;
     index: boolean;
@@ -48,11 +47,7 @@ export const GREEN = '#38A667';
 export const BLUE = '#2E6FA8';
 export const NEUTRAL = '#58585A';
 
-const CandlestickChart: React.FC<Props> = ({
-  data,
-  isLoading,
-  seriesVisibility,
-}) => {
+const CandlestickChart: React.FC<Props> = ({ data, seriesVisibility }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
   const resizeObserverRef = useRef<ResizeObserver>();
@@ -177,7 +172,7 @@ const CandlestickChart: React.FC<Props> = ({
       .map((mp, i) => {
         const timestamp = (mp.endTimestamp / 1000) as UTCTimestamp;
         const indexPrice = data.indexPrices[i]?.price || 0;
-        const adjustedPrice = isLoading ? 0 : indexPrice / (stEthPerToken || 1);
+        const adjustedPrice = indexPrice / (stEthPerToken || 1);
 
         if (!mp.open || !mp.high || !mp.low || !mp.close) {
           return null;
@@ -217,7 +212,7 @@ const CandlestickChart: React.FC<Props> = ({
 
     candlestickSeriesRef.current.setData(candleSeriesData);
 
-    if (!isLoading && indexPriceSeriesRef.current && !isBeforeStart) {
+    if (indexPriceSeriesRef.current && !isBeforeStart) {
       indexPriceSeriesRef.current.setData(lineSeriesData);
 
       if (data.resourcePrices?.length && resourcePriceSeriesRef.current) {
@@ -250,7 +245,7 @@ const CandlestickChart: React.FC<Props> = ({
         visible: seriesVisibility.trailing,
       });
     }
-  }, [data, isLoading, stEthPerToken, useMarketUnits, seriesVisibility]);
+  }, [data, stEthPerToken, useMarketUnits, seriesVisibility]);
 
   useEffect(() => {
     if (!chartRef.current) return;
@@ -281,8 +276,7 @@ const CandlestickChart: React.FC<Props> = ({
 
   return (
     <div className="flex flex-col flex-1 relative group w-full h-full">
-      {isLoading &&
-      !data.marketPrices?.length &&
+      {!data.marketPrices?.length &&
       !data.indexPrices?.length &&
       (!data.resourcePrices || !data.resourcePrices.length) ? (
         <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
