@@ -158,10 +158,27 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
       .sort((a, b) => a.startTimestamp - b.startTimestamp) || [];
 
   const formattedResourcePrices: ResourcePricePoint[] =
-    resourcePrices?.map((price) => ({
-      timestamp: Number(price.timestamp) * 1000,
-      price: Number(formatUnits(BigInt(price.value), 9)),
-    })) || [];
+    resourcePrices?.map((price) => {
+      function timeToLocal(originalTime: number) {
+        const d = new Date(originalTime * 1000);
+        return (
+          Date.UTC(
+            d.getFullYear(),
+            d.getMonth(),
+            d.getDate(),
+            d.getHours(),
+            d.getMinutes(),
+            d.getSeconds(),
+            d.getMilliseconds()
+          ) / 1000
+        );
+      }
+
+      return {
+        timestamp: timeToLocal(Number(price.timestamp)) * 1000,
+        price: Number(formatUnits(BigInt(price.value), 9)),
+      };
+    }) || [];
 
   return (
     <div className="flex flex-col md:flex-row h-full bg-secondary">
