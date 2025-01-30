@@ -31,7 +31,7 @@ const SlippageTolerance: React.FC = () => {
             <TooltipTrigger className="cursor-default">
               <InfoIcon className="md:ml-1 inline-block h-3 md:h-4 opacity-60 hover:opacity-80" />
             </TooltipTrigger>
-            <TooltipContent className="max-w-[225px] text-center p-3">
+            <TooltipContent className="max-w-md text-center p-3 font-normal">
               Your slippage tolerance sets a maximum limit on how much
               additional collateral Foil can use or the minimum amount of
               collateral you will receive back, protecting you from unexpected

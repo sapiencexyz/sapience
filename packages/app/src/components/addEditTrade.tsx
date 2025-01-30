@@ -36,7 +36,7 @@ import {
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
-import { removeLeadingZeros } from '~/lib/util/util';
+import { removeLeadingZeros, convertWstEthToGwei } from '~/lib/util/util';
 
 import NumberDisplay from './numberDisplay';
 import PositionSelector from './positionSelector';
@@ -83,6 +83,8 @@ export default function AddEditTrade() {
     pool,
     liquidity,
     refetchUniswapData,
+    useMarketUnits,
+    stEthPerToken,
   } = useContext(PeriodContext);
 
   if (!epoch) {
@@ -966,8 +968,22 @@ export default function AddEditTrade() {
                 Estimated Fill Price
               </p>
               <p className="text-sm  mb-0.5">
-                <NumberDisplay value={quotedFillPrice} /> Ggas/
-                {collateralAssetTicker}
+                <NumberDisplay
+                  value={
+                    useMarketUnits
+                      ? formatUnits(
+                          quotedFillPrice || BigInt(0),
+                          TOKEN_DECIMALS
+                        )
+                      : Number(
+                          formatUnits(
+                            quotedFillPrice || BigInt(0),
+                            TOKEN_DECIMALS
+                          )
+                        ) * convertWstEthToGwei(1, stEthPerToken)
+                  }
+                />{' '}
+                {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
               </p>
             </div>
           )}
