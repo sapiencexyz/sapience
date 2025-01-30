@@ -87,9 +87,8 @@ export function usePoolData(
 
           // Calculate right side (increasing from current tick)
           let runningSumRight = currentTick.liquidityLockedToken0 || 0;
-          console.log('runningSumRight', runningSumRight);
           const rightSide = allTicks.slice(currentTickIndex + 1).map((tick) => {
-            runningSumRight += tick.liquidityLockedToken0; // Accumulate Ggas first
+            runningSumRight += tick.liquidityLockedToken0;
             const liquidityActive = runningSumRight;
             return { ...tick, liquidityActive };
           });
@@ -100,22 +99,47 @@ export function usePoolData(
             .slice(0, currentTickIndex)
             .reverse()
             .map((tick) => {
-              runningSumLeft += tick.liquidityLockedToken1; // Accumulate wstETH first
+              runningSumLeft += tick.liquidityLockedToken1;
               const liquidityActive = runningSumLeft;
               return { ...tick, liquidityActive };
             })
             .reverse();
 
-          // Add current tick to the accumulated ticks with its total liquidity
+          // Find maximum values for both sides
+          const maxRightLiquidity = Math.max(
+            ...rightSide.map((t) => t.liquidityActive),
+            currentTick.liquidityLockedToken0
+          );
+          const maxLeftLiquidity = Math.max(
+            ...leftSide.map((t) => t.liquidityActive),
+            currentTick.liquidityLockedToken1
+          );
+          const maxLiquidity = Math.max(maxRightLiquidity, maxLeftLiquidity);
+
+          // Add display liquidity values while preserving original values
+          const normalizedRightSide = rightSide.map((tick) => ({
+            ...tick,
+            displayLiquidity:
+              (tick.liquidityActive / maxRightLiquidity) * maxLiquidity,
+          }));
+
+          const normalizedLeftSide = leftSide.map((tick) => ({
+            ...tick,
+            displayLiquidity:
+              (tick.liquidityActive / maxLeftLiquidity) * maxLiquidity,
+          }));
+
+          // Add current tick to the accumulated ticks with its normalized display liquidity
           const accumulatedTicks = [
-            ...leftSide,
+            ...normalizedLeftSide,
             {
               ...currentTick,
               liquidityActive:
                 currentTick.liquidityLockedToken0 +
                 currentTick.liquidityLockedToken1,
+              displayLiquidity: maxLiquidity,
             },
-            ...rightSide,
+            ...normalizedRightSide,
           ];
 
           setPoolData({ ...fullPoolData, ticks: accumulatedTicks });
