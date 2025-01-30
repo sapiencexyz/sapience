@@ -1,4 +1,4 @@
-import { useContext } from 'react';
+import { useContext, useEffect } from 'react';
 import { useAccount, useReadContract } from 'wagmi';
 import { erc20ABI } from 'viem';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
@@ -17,16 +17,17 @@ export const useUserVaultData = () => {
   } = useContext(PeriodContext);
 
   // Get user's collateral balance
-  const { data: collateralBalance } = useReadContract({
-    abi: erc20ABI,
-    address: collateralAsset as `0x${string}`,
-    functionName: 'balanceOf',
-    args: [address],
-    chainId,
-    // query: {
-    //   enabled: isConnected,
-    // },
-  });
+  const { data: collateralBalance, refetch: collateralBalanceRefetch } =
+    useReadContract({
+      abi: erc20ABI,
+      address: collateralAsset as `0x${string}`,
+      functionName: 'balanceOf',
+      args: [address as `0x${string}`],
+      chainId,
+      query: {
+        enabled: Boolean(isConnected && address && collateralAsset),
+      },
+    });
   console.log('collateralBalance', collateralBalance, collateralAsset, address);
 
   // Get market contract balance
@@ -68,6 +69,12 @@ export const useUserVaultData = () => {
   });
 
   console.log('pendingRequest', pendingRequest);
+
+  useEffect(() => {
+    if (isConnected) {
+      collateralBalanceRefetch();
+    }
+  }, [isConnected, collateralBalanceRefetch]);
 
   return {
     isConnected,

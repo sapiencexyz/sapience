@@ -18,11 +18,13 @@ export const RESOURCES = [
     slug: 'ethereum-gas',
     priceIndexer: new evmIndexer(mainnet.id),
   },
-  {
-    name: 'Celestia Blobspace',
-    slug: 'celestia-blobspace',
-    priceIndexer: new celestiaIndexer('https://api-mainnet.celenium.io'),
-  },
+  process.env.CELENIUM_API_KEY
+    ? {
+        name: 'Celestia Blobspace',
+        slug: 'celestia-blobspace',
+        priceIndexer: new celestiaIndexer('https://api-mainnet.celenium.io'),
+      }
+    : undefined,
 ];
 
 const addMarketYinYang = async (markets: MarketInfo[], chainId: number) => {
