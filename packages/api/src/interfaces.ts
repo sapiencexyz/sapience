@@ -122,15 +122,6 @@ export enum TimeWindow {
   Y = '1Y',
 }
 
-export interface Candle {
-  startTimestamp: number;
-  endTimestamp: number;
-  open: number;
-  close: number;
-  high: number;
-  low: number;
-}
-
 export interface MarketInfo {
   public: boolean;
   deployment: Deployment;
