@@ -74,7 +74,7 @@ const ChartSelector: React.FC<CustomDropdownProps> = ({
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent>
+      <DropdownMenuContent align="start" side="top">
         {getChartOptions().map((option) => renderChartType(option))}
       </DropdownMenuContent>
     </DropdownMenu>
