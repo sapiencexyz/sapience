@@ -69,7 +69,6 @@ const CandlestickChart: React.FC<Props> = ({
     if (chartRef.current) {
       chartRef.current.remove();
     }
-
     const chart = createChart(chartContainerRef.current, {
       width: chartContainerRef.current.clientWidth,
       height: chartContainerRef.current.clientHeight,
@@ -127,7 +126,6 @@ const CandlestickChart: React.FC<Props> = ({
 
     const handleResize = () => {
       if (!chartRef.current || !chartContainerRef.current) return;
-
       const { clientWidth, clientHeight } = chartContainerRef.current;
       chartRef.current.applyOptions({
         width: clientWidth,
@@ -139,7 +137,7 @@ const CandlestickChart: React.FC<Props> = ({
     resizeObserverRef.current = new ResizeObserver(handleResize);
     resizeObserverRef.current.observe(chartContainerRef.current);
 
-    // Initial resize
+    // // Initial resize
     handleResize();
 
     return () => {
@@ -231,6 +229,18 @@ const CandlestickChart: React.FC<Props> = ({
       });
     }
   }, [data, isLoading, stEthPerToken, useMarketUnits, seriesVisibility]);
+
+  // resize once the data comes in
+  useEffect(() => {
+    if (!chartRef.current || !chartContainerRef.current) return;
+    const { clientWidth, clientHeight } = chartContainerRef.current;
+    chartRef.current.applyOptions({
+      width: clientWidth,
+      height: clientHeight,
+    });
+    chartRef.current.timeScale().fitContent();
+  }, [data]);
+
 
   useEffect(() => {
     if (!chartRef.current) return;
