@@ -126,11 +126,6 @@ const CandlestickChart: React.FC<Props> = ({
 
     const handleResize = () => {
       if (!chartRef.current || !chartContainerRef.current) return;
-      const { clientWidth, clientHeight } = chartContainerRef.current;
-      chartRef.current.applyOptions({
-        width: clientWidth,
-        height: clientHeight,
-      });
       chartRef.current.timeScale().fitContent();
     };
 
@@ -240,7 +235,6 @@ const CandlestickChart: React.FC<Props> = ({
     });
     chartRef.current.timeScale().fitContent();
   }, [data]);
-
 
   useEffect(() => {
     if (!chartRef.current) return;
