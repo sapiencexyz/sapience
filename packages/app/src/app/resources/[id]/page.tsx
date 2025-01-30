@@ -59,7 +59,7 @@ const EpochsTable = ({ data }: { data: Epoch[] }) => {
                   endTimestamp={epoch.endTimestamp}
                 />
               </div>
-              <ChevronRight className="h-6 w-6 text-muted-foreground" />
+              <ChevronRight className="h-6 w-6" />
             </div>
           </Link>
         ))
@@ -137,7 +137,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
   if (isLoadingResources) {
     return (
       <div className="flex items-center justify-center h-[80vh]">
-        <Loader2 className="h-8 w-8 opacity-20 animate-spin text-muted-foreground" />
+        <Loader2 className="h-8 w-8 opacity-50 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -164,7 +164,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
     })) || [];
 
   return (
-    <div className="flex flex-col md:flex-row h-full bg-secondary">
+    <div className="flex flex-col md:flex-row h-full p-3 lg:p-6 gap-3 lg:gap-6">
       <div className={`flex-1 min-w-0 ${!epochs.length ? 'w-full' : ''}`}>
         <div className="flex flex-col h-full">
           <div className="flex-1 grid relative">
@@ -182,8 +182,8 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
             </Card>
 
             <div className="flex flex-col flex-1">
-              <div className="flex flex-1 h-full p-3">
-                <div className="border border-border flex w-full h-full rounded-md overflow-hidden pr-2 pb-2 bg-white dark:bg-black">
+              <div className="flex flex-1">
+                <div className="min-h-[50vh] border border-border flex w-full h-full rounded-sm shadow overflow-hidden pr-2 pb-2 bg-background">
                   <CandlestickChart
                     data={{
                       marketPrices: [],
@@ -201,11 +201,11 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
       </div>
 
       {epochs.length > 0 && (
-        <div className="w-full md:w-[240px] md:border-l border-border dark:border-gray-900 pt-4 md:pt-0 bg-white dark:bg-black">
-          <h2 className="text-base font-medium text-muted-foreground px-4 py-2">
-            Periods
-          </h2>
-          <EpochsTable data={epochs} />
+        <div className="w-full h-full md:w-[320px]">
+          <div className="border border-border rounded-sm shadow h-full">
+            <h2 className="text-2xl font-bold py-3 px-4">Periods</h2>
+            <EpochsTable data={epochs} />
+          </div>
         </div>
       )}
     </div>
