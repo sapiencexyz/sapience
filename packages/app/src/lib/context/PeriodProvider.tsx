@@ -8,6 +8,7 @@ import * as Chains from 'viem/chains';
 import type { Chain } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 
+import { mainnetClient } from '../../app/providers';
 import useFoilDeployment from '../../components/useFoilDeployment';
 import {
   API_BASE_URL,
@@ -208,7 +209,10 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
     ],
     address: getContractAddressForWstEthRatio(),
     functionName: 'stEthPerToken',
+    ...(chainId === 1 && { transport: mainnetClient.transport }),
   });
+
+  console.log('stEthPerTokenResult', stEthPerTokenResult);
 
   useEffect(() => {
     if (stEthPerTokenResult.data) {

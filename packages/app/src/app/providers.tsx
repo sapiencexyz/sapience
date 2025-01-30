@@ -14,7 +14,7 @@ import { MarketListProvider } from '~/lib/context/MarketListProvider';
 
 const queryClient = new QueryClient();
 
-// Create a dedicated mainnet client for ENS resolution
+// Mainnet client for ENS resolution and stEthPerToken query
 export const mainnetClient = createPublicClient({
   chain: mainnet,
   transport: process.env.NEXT_PUBLIC_INFURA_API_KEY
@@ -33,11 +33,6 @@ const cannonAtLocalhost = {
 };
 
 const transports: Record<number, HttpTransport> = {
-  [mainnet.id]: http(
-    process.env.NEXT_PUBLIC_INFURA_API_KEY
-      ? `https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
-      : 'https://ethereum-rpc.publicnode.com'
-  ),
   [sepolia.id]: http(
     process.env.NEXT_PUBLIC_INFURA_API_KEY
       ? `https://sepolia.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
