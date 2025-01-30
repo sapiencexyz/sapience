@@ -102,10 +102,7 @@ export default function AddEditTrade() {
   const isNonZeroSizeChange = sizeChangeInContractUnit !== BigInt(0);
 
   const formError = useMemo(() => {
-    if (
-      Number(quotedResultingWalletBalance) < 0 ||
-      Number(walletBalance) <= 0
-    ) {
+    if (Number(quotedResultingWalletBalance) < 0) {
       return 'Insufficient wallet balance to perform this trade.';
     }
     if (
