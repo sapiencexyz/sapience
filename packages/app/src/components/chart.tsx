@@ -141,7 +141,6 @@ const CandlestickChart: React.FC<Props> = ({
 
     resizeObserverRef.current = new ResizeObserver(handleResize);
     resizeObserverRef.current.observe(chartContainerRef.current);
-
     // Initial resize
     handleResize();
 
@@ -160,7 +159,6 @@ const CandlestickChart: React.FC<Props> = ({
   // Separate effect for updating data
   useEffect(() => {
     if (!chartRef.current || !candlestickSeriesRef.current) return;
-
     const combinedData = data.marketPrices
       .map((mp, i) => {
         const timestamp = (mp.endTimestamp / 1000) as UTCTimestamp;

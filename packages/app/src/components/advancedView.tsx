@@ -22,6 +22,7 @@ import { AddEditPositionProvider } from '~/lib/context/AddEditPositionContext';
 import { PeriodProvider } from '~/lib/context/PeriodProvider';
 import { TradePoolProvider } from '~/lib/context/TradePoolContext';
 import { useResources } from '~/lib/hooks/useResources';
+import type { PriceChartData } from '~/lib/interfaces/interfaces';
 import { ChartType, TimeWindow } from '~/lib/interfaces/interfaces';
 
 import DataDrawer from './DataDrawer';
@@ -30,6 +31,11 @@ import DepthChart from './DepthChart';
 interface ResourcePrice {
   timestamp: string;
   value: string;
+}
+
+interface IndexPrice {
+  timestamp: number;
+  price: number;
 }
 
 interface ResourcePricePoint {
@@ -131,8 +137,21 @@ const Market = ({
     }
   }, [volume, useVolumeError]);
 
+  function timeToLocal(originalTime: number) {
+    const d = new Date(originalTime);
+    return Date.UTC(
+      d.getFullYear(),
+      d.getMonth(),
+      d.getDate(),
+      d.getHours(),
+      d.getMinutes(),
+      d.getSeconds(),
+      d.getMilliseconds()
+    );
+  }
+
   const useMarketPrices = () => {
-    return useQuery({
+    return useQuery<PriceChartData[]>({
       queryKey: ['market-prices', `${chainId}:${marketAddress}`],
       queryFn: async () => {
         const response = await fetch(
@@ -141,14 +160,21 @@ const Market = ({
         if (!response.ok) {
           throw new Error('Network response was not ok');
         }
-        return response.json();
+        const data: PriceChartData[] = await response.json();
+        return data.map((datum: PriceChartData) => {
+          return {
+            ...datum,
+            startTimestamp: timeToLocal(datum.startTimestamp),
+            endTimestamp: timeToLocal(datum.endTimestamp),
+          };
+        });
       },
       refetchInterval: 60000,
     });
   };
 
   const useIndexPrices = () => {
-    return useQuery({
+    return useQuery<IndexPrice[]>({
       queryKey: ['index-prices', `${chainId}:${marketAddress}`],
       queryFn: async () => {
         const response = await fetch(
@@ -157,7 +183,13 @@ const Market = ({
         if (!response.ok) {
           throw new Error('Network response was not ok');
         }
-        return response.json();
+        const data: IndexPrice[] = await response.json();
+        return data.map((price) => {
+          return {
+            timestamp: timeToLocal(price.timestamp * 1000),
+            price: price.price,
+          };
+        });
       },
       refetchInterval: 60000,
     });
@@ -191,10 +223,12 @@ const Market = ({
           throw new Error('Failed to fetch resource prices');
         }
         const data: ResourcePrice[] = await response.json();
-        return data.map((price) => ({
-          timestamp: Number(price.timestamp) * 1000,
-          price: Number(formatUnits(BigInt(price.value), 9)),
-        }));
+        return data.map((price) => {
+          return {
+            timestamp: timeToLocal(Number(price.timestamp) * 1000),
+            price: Number(formatUnits(BigInt(price.value), 9)),
+          };
+        });
       },
       refetchInterval: 2000,
       enabled: !!resource?.slug && !!epochData,

@@ -160,22 +160,20 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
   const formattedResourcePrices: ResourcePricePoint[] =
     resourcePrices?.map((price) => {
       function timeToLocal(originalTime: number) {
-        const d = new Date(originalTime * 1000);
-        return (
-          Date.UTC(
-            d.getFullYear(),
-            d.getMonth(),
-            d.getDate(),
-            d.getHours(),
-            d.getMinutes(),
-            d.getSeconds(),
-            d.getMilliseconds()
-          ) / 1000
+        const d = new Date(originalTime);
+        return Date.UTC(
+          d.getFullYear(),
+          d.getMonth(),
+          d.getDate(),
+          d.getHours(),
+          d.getMinutes(),
+          d.getSeconds(),
+          d.getMilliseconds()
         );
       }
 
       return {
-        timestamp: timeToLocal(Number(price.timestamp)) * 1000,
+        timestamp: timeToLocal(Number(price.timestamp) * 1000),
         price: Number(formatUnits(BigInt(price.value), 9)),
       };
     }) || [];
