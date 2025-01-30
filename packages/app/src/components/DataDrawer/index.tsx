@@ -57,7 +57,7 @@ const DataDrawer = () => {
           </svg>
         </button>
       </DrawerTrigger>
-      <DrawerContent className="mx-3">
+      <DrawerContent>
         <div className="px-4 py-4">
           <Tabs
             defaultValue="transactions"

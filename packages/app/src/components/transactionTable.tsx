@@ -73,7 +73,6 @@ const TRANSACTIONS_QUERY = `
         transactionHash
         baseToken
         quoteToken
-        collateral
         lpBaseDeltaToken
         lpQuoteDeltaToken
         baseTokenDelta
@@ -196,9 +195,9 @@ const TransactionTable: React.FC<Props> = ({
         accessorFn: (row) => getTypeDisplay(row.type),
       },
       {
-        id: 'collateral',
+        id: 'collateralDelta',
         header: 'Collateral Change',
-        accessorKey: 'collateral',
+        accessorKey: 'collateralDelta',
       },
       {
         id: 'ggas',
@@ -297,7 +296,7 @@ const TransactionTable: React.FC<Props> = ({
       tokenType === 'base'
         ? row.original.lpBaseDeltaToken
         : row.original.lpQuoteDeltaToken;
-    const label = tokenType === 'base' ? 'vGGas' : 'vWstETH';
+    const label = tokenType === 'base' ? 'vGgas' : 'vWstETH';
 
     return (
       <div className="flex items-center gap-1">
@@ -350,13 +349,13 @@ const TransactionTable: React.FC<Props> = ({
         return renderPositionCell(row);
       case 'time':
         return renderTimeCell(value);
-      case 'collateral':
+      case 'collateralDelta':
         return renderCollateralCell(value);
       case 'ggas':
         if (['addLiquidity', 'removeLiquidity'].includes(row.original.type)) {
           return renderLiquidityTokenCell(row, 'base');
         }
-        return renderTokenCell(value, 'vGGas');
+        return renderTokenCell(value, 'vGgas');
       case 'wsteth':
         if (['addLiquidity', 'removeLiquidity'].includes(row.original.type)) {
           return renderLiquidityTokenCell(row, 'quote');

@@ -329,7 +329,7 @@ const TraderPositionsTable: React.FC<Props> = ({
     return (
       <div className="flex items-center gap-1">
         <NumberDisplay value={parseFloat(value) / 10 ** 18} />
-        <span className="text-muted-foreground text-sm">vGGas</span>
+        <span className="text-muted-foreground text-sm">vGgas</span>
       </div>
     );
   };
