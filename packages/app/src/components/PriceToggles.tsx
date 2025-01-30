@@ -18,12 +18,19 @@ interface PriceTogglesProps {
     resource: boolean;
     trailing: boolean;
   };
+  seriesDisabled: {
+    candles: boolean;
+    index: boolean;
+    resource: boolean;
+    trailing: boolean;
+  };
 }
 
 const PriceToggles = ({
   seriesVisibility,
   toggleSeries,
   seriesLoading,
+  seriesDisabled,
 }: PriceTogglesProps) => {
   return (
     <ToggleGroup
@@ -35,6 +42,7 @@ const PriceToggles = ({
         value="candles"
         variant={seriesVisibility.candles ? 'default' : 'outline'}
         onClick={() => toggleSeries('candles')}
+        disabled={seriesLoading.candles || seriesDisabled.candles}
       >
         {seriesLoading.candles ? (
           <Loader2 className="w-3 h-3 animate-spin" />
@@ -47,7 +55,7 @@ const PriceToggles = ({
         value="index"
         variant={seriesVisibility.index ? 'default' : 'outline'}
         onClick={() => toggleSeries('index')}
-        disabled={seriesLoading.index}
+        disabled={seriesLoading.index || seriesDisabled.index}
       >
         {seriesLoading.index ? (
           <Loader2 className="w-3 h-3 animate-spin" />
@@ -60,7 +68,7 @@ const PriceToggles = ({
         value="resource"
         variant={seriesVisibility.resource ? 'default' : 'outline'}
         onClick={() => toggleSeries('resource')}
-        disabled={seriesLoading.resource}
+        disabled={seriesLoading.resource || seriesDisabled.resource}
       >
         {seriesLoading.resource ? (
           <Loader2 className="w-3 h-3 animate-spin" />
@@ -74,7 +82,7 @@ const PriceToggles = ({
         value="trailing"
         variant={seriesVisibility.trailing ? 'default' : 'outline'}
         onClick={() => toggleSeries('trailing')}
-        disabled={seriesLoading.trailing}
+        disabled={seriesLoading.trailing || seriesDisabled.trailing}
       >
         {seriesLoading.trailing ? (
           <Loader2 className="w-3 h-3 animate-spin" />
