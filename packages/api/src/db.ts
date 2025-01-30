@@ -13,14 +13,15 @@ import { Resource } from './models/Resource';
 
 const isLive =
   process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging';
-const devDatabase = process.env.POSTGRES_DB;
-const devUsername = process.env.POSTGRES_USER;
 
 const devDataSource: DataSource = new DataSource({
   type: 'postgres',
-  url: `postgresql://${devUsername}@localhost:5432/${devDatabase}`,
+  url: process.env.DATABASE_URL,
   synchronize: true,
   logging: ['warn', 'error', 'log', 'info'],
+  ssl: {
+    rejectUnauthorized: false
+  },
   entities: [
     ResourcePrice,
     Position,

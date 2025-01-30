@@ -85,7 +85,7 @@ const EpochHeader = () => {
         </div>
 
         <div className="flex flex-col lg:flex-row items-start lg:items-center mt-4 lg:mt-0 mb-0 lg:ml-auto lg:flex-1 w-full">
-          <div className="flex flex-wrap gap-y-2 gap-x-4 lg:gap-x-6 lg:justify-end w-full lg:pr-2">
+          <div className="flex flex-wrap gap-y-2 gap-x-4 lg:gap-x-6 lg:justify-end w-full lg:pr-2 text-sm md:text-base">
             <a
               className="hover:no-underline inline-flex items-center"
               target="_blank"

@@ -44,7 +44,7 @@ const NumberDisplay: React.FC<NumberDisplayProps> = ({
   };
 
   const displayValue = formatNumber(value || 0);
-  const originalValue = value.toString();
+  const originalValue = value?.toString() || '0';
 
   if (!displayValue.length) {
     return <Minus className="opacity-20" />;

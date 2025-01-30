@@ -196,7 +196,10 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
                 />
               }
             />
-            <Bar dataKey="liquidityActive" shape={renderBar} />
+            <Bar
+              dataKey={isTrade ? 'displayLiquidity' : 'liquidityActive'}
+              shape={renderBar}
+            />
             {!isTrade && (
               <g>
                 {/* Left overlay rectangle */}

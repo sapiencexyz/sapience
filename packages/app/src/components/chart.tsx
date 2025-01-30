@@ -1,6 +1,7 @@
 /* eslint-disable sonarjs/cognitive-complexity */
 import type { UTCTimestamp, BarData, LineData } from 'lightweight-charts';
 import { createChart, CrosshairMode, PriceScaleMode } from 'lightweight-charts';
+import { Loader2 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useEffect, useRef, useContext, useState } from 'react';
 import type React from 'react';
@@ -259,6 +260,14 @@ const CandlestickChart: React.FC<Props> = ({
 
   return (
     <div className="flex flex-col flex-1 relative group w-full h-full">
+      {isLoading &&
+      !data.marketPrices?.length &&
+      !data.indexPrices?.length &&
+      (!data.resourcePrices || !data.resourcePrices.length) ? (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground opacity-20" />
+        </div>
+      ) : null}
       <div className="flex flex-1 h-full">
         <div ref={chartContainerRef} className="w-full h-full" />
       </div>
@@ -269,7 +278,7 @@ const CandlestickChart: React.FC<Props> = ({
               type="button"
               onClick={() => setIsLogarithmic(!isLogarithmic)}
               className={cn(
-                'absolute bottom-0 right-2 w-6 h-6 rounded-sm bg-background border border-border text-foreground flex items-center justify-center hover:bg-accent hover:border-accent transition-all duration-100 opacity-0 group-hover:opacity-100 z-50 text-xs',
+                'absolute bottom-0 right-2 w-6 h-6 rounded-sm bg-background border border-border text-foreground flex items-center justify-center hover:bg-accent hover:border-accent transition-all duration-100 opacity-0 group-hover:opacity-100 z-5 text-xs',
                 isLogarithmic &&
                   'bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:border-primary/90'
               )}

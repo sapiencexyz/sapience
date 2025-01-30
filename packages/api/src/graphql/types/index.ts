@@ -94,6 +94,12 @@ export class PositionType {
 
   @Field(() => Boolean, { nullable: true })
   isSettled: boolean | null;
+
+  @Field(() => String, { nullable: true })
+  lowPriceTick: string | null;
+
+  @Field(() => String, { nullable: true })
+  highPriceTick: string | null;
 }
 
 @ObjectType()
@@ -107,6 +113,9 @@ export class TransactionType {
   @Field(() => Int)
   timestamp: number;
 
+  @Field(() => String, { nullable: true })
+  transactionHash: string | null;
+
   @Field(() => PositionType, { nullable: true })
   position: PositionType | null;
 
@@ -118,6 +127,24 @@ export class TransactionType {
 
   @Field(() => String, { nullable: true })
   collateral: string | null;
+
+  @Field(() => String, { nullable: true })
+  lpBaseDeltaToken: string | null;
+
+  @Field(() => String, { nullable: true })
+  lpQuoteDeltaToken: string | null;
+
+  @Field(() => String, { nullable: true })
+  baseTokenDelta: string | null;
+
+  @Field(() => String, { nullable: true })
+  quoteTokenDelta: string | null;
+
+  @Field(() => String, { nullable: true })
+  collateralDelta: string | null;
+
+  @Field(() => String, { nullable: true })
+  tradeRatioD18: string | null;
 }
 
 @ObjectType()
