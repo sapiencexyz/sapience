@@ -45,7 +45,7 @@ const transports: Record<number, HttpTransport> = {
   ),
 };
 
-const chains: any = [mainnet, base];
+const chains: any = [base];
 
 if (process.env.NODE_ENV !== 'production') {
   transports[cannonAtLocalhost.id] = http('http://localhost:8545');
