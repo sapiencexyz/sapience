@@ -7,7 +7,7 @@ import React from 'react';
 import { formatUnits } from 'viem';
 
 import { Card, CardContent } from '@/components/ui/card';
-import CandlestickChart from '~/components/chart';
+import Chart from '~/components/chart';
 import EpochTiming from '~/components/EpochTiming';
 import MarketLayout from '~/components/market/MarketLayout';
 import ResourceNav from '~/components/market/ResourceNav';
@@ -38,22 +38,28 @@ interface Epoch {
   };
 }
 
-const EpochsTable = ({ data }: { data: Epoch[] }) => {
-  const [hoveredIndex, setHoveredIndex] = React.useState(0);
+interface EpochsTableProps {
+  data: Epoch[];
+  onHover: (market: { epochId: number; chainId: number; address: string } | undefined) => void;
+}
 
+const EpochsTable = ({ data, onHover }: EpochsTableProps) => {
   return (
     <div className="border-t border-border">
       {data.length ? (
-        data.map((epoch, index) => (
+        data.map((epoch) => (
           <Link
             key={epoch.id}
             href={`/trade/${epoch.market.chainId}:${epoch.market.address}/periods/${epoch.epochId}`}
             className="block hover:no-underline border-b border-border"
-            onMouseEnter={() => setHoveredIndex(index)}
+            onMouseEnter={() => onHover({
+              epochId: epoch.epochId,
+              chainId: epoch.market.chainId,
+              address: epoch.market.address,
+            })}
+            onMouseLeave={() => onHover(undefined)}
           >
-            <div
-              className={`flex items-center justify-between cursor-pointer px-4 py-1.5 ${hoveredIndex === index ? 'bg-secondary' : 'hover:bg-secondary/50'}`}
-            >
+            <div className="flex items-center justify-between cursor-pointer px-4 py-1.5 hover:bg-secondary">
               <div className="flex items-baseline">
                 <EpochTiming
                   startTimestamp={epoch.startTimestamp}
@@ -104,6 +110,12 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
   const category = MARKET_CATEGORIES.find((c) => c.id === params.id);
   const { data: latestPrice, isLoading: isPriceLoading } =
     useLatestResourcePrice(params.id);
+
+  const [hoveredMarket, setHoveredMarket] = React.useState<{
+    epochId?: number;
+    chainId?: number;
+    address?: string;
+  }>();
 
   const [seriesVisibility] = React.useState({
     candles: false,
@@ -186,12 +198,9 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
             <div className="flex flex-col flex-1">
               <div className="flex flex-1">
                 <div className="min-h-[50vh] border border-border flex w-full h-full rounded-sm shadow overflow-hidden pr-2 pb-2 bg-background">
-                  <CandlestickChart
-                    data={{
-                      marketPrices: [],
-                      indexPrices: [],
-                      resourcePrices: formattedResourcePrices,
-                    }}
+                  <Chart
+                    resourceSlug={params.id}
+                    market={hoveredMarket}
                     seriesVisibility={seriesVisibility}
                   />
                 </div>
@@ -205,7 +214,10 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
         <div className="w-full h-full md:w-[320px]">
           <div className="border border-border rounded-sm shadow h-full">
             <h2 className="text-2xl font-bold py-3 px-4">Periods</h2>
-            <EpochsTable data={epochs} />
+            <EpochsTable 
+              data={epochs} 
+              onHover={setHoveredMarket}
+            />
           </div>
         </div>
       )}

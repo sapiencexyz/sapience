@@ -26,22 +26,6 @@ import { ChartType, TimeWindow } from '~/lib/interfaces/interfaces';
 import DataDrawer from './DataDrawer';
 import DepthChart from './DepthChart';
 import { Button } from './ui/button';
-import { timeToLocal } from '~/lib/utils';
-
-interface ResourcePrice {
-  timestamp: string;
-  value: string;
-}
-
-interface IndexPrice {
-  timestamp: number;
-  price: number;
-}
-
-interface ResourcePricePoint {
-  timestamp: number;
-  price: number;
-}
 
 const NETWORK_ERROR_STRING = 'Network response was not ok';
 
@@ -61,6 +45,7 @@ const AdvancedView = ({
   const [, setIsRefetchingIndexPrices] = useState(false);
 
   const { startTime } = useContext(PeriodContext);
+  const { data: resources } = useResources();
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = now < startTime;
 
@@ -79,7 +64,6 @@ const AdvancedView = ({
   const { epoch } = params;
   const contractId = `${chainId}:${marketAddress}`;
   const { toast } = useToast();
-  const { data: resources } = useResources();
 
   const useVolume = () => {
     return useQuery({
@@ -108,110 +92,16 @@ const AdvancedView = ({
     }
   }, [volume, useVolumeError]);
 
-  const useMarketPrices = () => {
-    return useQuery<PriceChartData[]>({
-      queryKey: ['market-prices', `${chainId}:${marketAddress}`],
-      queryFn: async () => {
-        const response = await fetch(
-          `${API_BASE_URL}/prices/chart-data?contractId=${chainId}:${marketAddress}&epochId=${epoch}&timeWindow=${selectedWindow}`
-        );
-        if (!response.ok) {
-          throw new Error(NETWORK_ERROR_STRING);
-        }
-        const data: PriceChartData[] = await response.json();
-        return data;
-      },
-      refetchInterval: 60000,
-    });
-  };
-
-  const useIndexPrices = () => {
-    return useQuery<IndexPrice[]>({
-      queryKey: ['index-prices', `${chainId}:${marketAddress}`],
-      queryFn: async () => {
-        const response = await fetch(
-          `${API_BASE_URL}/prices/index?contractId=${chainId}:${marketAddress}&epochId=${epoch}&timeWindow=${selectedWindow}`
-        );
-        if (!response.ok) {
-          throw new Error(NETWORK_ERROR_STRING);
-        }
-        const data: IndexPrice[] = await response.json();
-        return data;
-      },
-      refetchInterval: 60000,
-    });
-  };
-
-  const useResourcePrices = () => {
-    const resource = resources?.find((r) =>
-      r.markets.some(
-        (m) => m.chainId === Number(chainId) && m.address === marketAddress
-      )
-    );
-    const epochData = resource?.markets
-      .find((m) => m.chainId === Number(chainId) && m.address === marketAddress)
-      ?.epochs.find((e) => e.epochId === Number(epoch));
-
-    return useQuery<ResourcePricePoint[]>({
-      queryKey: [
-        'resourcePrices',
-        resource?.slug,
-        epochData?.startTimestamp,
-        epochData?.endTimestamp,
-      ],
-      queryFn: async () => {
-        if (!resource?.slug || !epochData) {
-          return [];
-        }
-        const response = await fetch(
-          `${API_BASE_URL}/resources/${resource.slug}/prices?startTime=${epochData.startTimestamp}&endTime=${epochData.endTimestamp}`
-        );
-        if (!response.ok) {
-          throw new Error('Failed to fetch resource prices');
-        }
-        const data: ResourcePrice[] = await response.json();
-        return data.map((price) => {
-          return {
-            timestamp: Number(price.timestamp),
-            price: Number(formatUnits(BigInt(price.value), 9)),
-          };
-        });
-      },
-      refetchInterval: 2000,
-      enabled: !!resource?.slug && !!epochData,
-    });
-  };
-
-  const { data: marketPrices, refetch: refetchPrices } = useMarketPrices();
-
-  const { data: indexPrices, refetch: refetchIndexPrices } = useIndexPrices();
-
-  const {
-    data: resourcePrices,
-    error: useResourcePricesError,
-    refetch: refetchResourcePrices,
-  } = useResourcePrices();
-
-  useEffect(() => {
-    setIsRefetchingIndexPrices(true);
-    refetchVolume();
-    refetchPrices();
-    refetchResourcePrices();
-    refetchIndexPrices().then(() => {
-      setIsRefetchingIndexPrices(false);
-    });
-  }, [selectedWindow]);
-
   const toggleSeries = (
     series: 'candles' | 'index' | 'resource' | 'trailing'
   ) => {
     setSeriesVisibility((prev) => ({ ...prev, [series]: !prev[series] }));
   };
 
-  // TODO: implement
+  // TODO
   const loadingSeries = {
     candles: false,
-    index: false,
+    index: isBeforeStart,
     resource: false,
     trailing: false,
   };
@@ -225,35 +115,22 @@ const AdvancedView = ({
 
   const renderChart = () => {
     if (chartType === ChartType.PRICE) {
+      const resource = resources?.find((r) =>
+        r.markets.some(
+          (m) =>
+            m.chainId === Number(chainId) &&
+            m.address.toLowerCase() === marketAddress.toLowerCase()
+        )
+      );
+
       return (
         <div className="pr-2 pb-2 w-full">
           <Chart
-            data={{
-              marketPrices: marketPrices
-                ? marketPrices.map((datum: PriceChartData) => {
-                    return {
-                      ...datum,
-                      startTimestamp: timeToLocal(datum.startTimestamp),
-                      endTimestamp: timeToLocal(datum.endTimestamp),
-                    };
-                  })
-                : [],
-              indexPrices: indexPrices
-                ? indexPrices.map((price) => {
-                    return {
-                      timestamp: timeToLocal(price.timestamp * 1000),
-                      price: price.price,
-                    };
-                  })
-                : [],
-              resourcePrices: resourcePrices
-                ? resourcePrices.map((price) => {
-                    return {
-                      timestamp: timeToLocal(Number(price.timestamp) * 1000),
-                      price: price.price,
-                    };
-                  })
-                : [],
+            resourceSlug={resource?.slug}
+            market={{
+              epochId: Number(epoch),
+              chainId: Number(chainId),
+              address: marketAddress,
             }}
             seriesVisibility={seriesVisibility}
           />
@@ -268,16 +145,6 @@ const AdvancedView = ({
     }
     return null;
   };
-
-  useEffect(() => {
-    if (useResourcePricesError) {
-      toast({
-        title: 'Error loading resource prices',
-        description: useResourcePricesError.message,
-        duration: 5000,
-      });
-    }
-  }, [useResourcePricesError, toast]);
 
   return (
     <AddEditPositionProvider>

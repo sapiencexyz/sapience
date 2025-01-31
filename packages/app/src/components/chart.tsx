@@ -11,8 +11,8 @@ import { Loader2 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useEffect, useRef, useContext, useState } from 'react';
 import type React from 'react';
+import { timeToLocal } from '~/lib/utils';
 
-import type { PriceChartData } from '../lib/interfaces/interfaces';
 import { convertGgasPerWstEthToGwei } from '../lib/util/util';
 import {
   Tooltip,
@@ -22,19 +22,29 @@ import {
 } from '~/components/ui/tooltip';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { cn } from '~/lib/utils';
+import { API_BASE_URL } from '~/lib/constants/constants';
+import { useQuery } from '@tanstack/react-query';
+import { PriceChartData } from '~/lib/interfaces/interfaces';
+import { formatUnits } from 'viem';
 
 interface Props {
-  data: {
-    marketPrices: PriceChartData[];
-    indexPrices: IndexPrice[];
-    resourcePrices?: ResourcePricePoint[];
+  resourceSlug?: string;
+  market?: {
+    epochId?: number;
+    chainId?: number;
+    address?: string;
   };
-  seriesVisibility: {
+  seriesVisibility?: {
     candles: boolean;
     index: boolean;
     resource: boolean;
     trailing: boolean;
   };
+}
+
+interface ResourcePrice {
+  timestamp: string;
+  value: string;
 }
 
 interface IndexPrice {
@@ -47,13 +57,13 @@ interface ResourcePricePoint {
   price: number;
 }
 
-export const GREEN_PRIMARY = '#50C878';
+export const GREEN_PRIMARY = '#58585A';
 export const RED = '#D85B4E';
 export const GREEN = '#38A667';
 export const BLUE = '#2E6FA8';
 export const NEUTRAL = '#58585A';
 
-const CandlestickChart: React.FC<Props> = ({ data, seriesVisibility }) => {
+const CandlestickChart: React.FC<Props> = ({ resourceSlug, market, seriesVisibility }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const resizeObserverRef = useRef<ResizeObserver>();
@@ -69,7 +79,99 @@ const CandlestickChart: React.FC<Props> = ({ data, seriesVisibility }) => {
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = startTime > now;
 
-  // Split the chart creation and data updates into separate effects
+  const NETWORK_ERROR_STRING = 'Network response was not ok';
+  
+  const useMarketPrices = () => {
+    return useQuery<PriceChartData[]>({
+      queryKey: ['market-prices', `${market?.chainId}:${market?.address}`],
+      queryFn: async () => {
+        const response = await fetch(
+          `${API_BASE_URL}/prices/chart-data?contractId=${market?.chainId}:${market?.address}&epochId=${market?.epochId}&timeWindow=${selectedWindow}`
+        );
+        if (!response.ok) {
+          throw new Error(NETWORK_ERROR_STRING);
+        }
+        const data: PriceChartData[] = await response.json();
+        return data.map(datum => ({
+          ...datum,
+          startTimestamp: timeToLocal(datum.startTimestamp),
+          endTimestamp: timeToLocal(datum.endTimestamp),
+        }));
+      },
+      refetchInterval: 60000,
+      enabled: !!market,
+    });
+  };
+
+  const useIndexPrices = () => {
+    return useQuery<IndexPrice[]>({
+      queryKey: ['index-prices', `${market?.chainId}:${market?.address}`],
+      queryFn: async () => {
+        const response = await fetch(
+          `${API_BASE_URL}/prices/index?contractId=${market?.chainId}:${market?.address}&epochId=${market?.epochId}&timeWindow=${selectedWindow}`
+        );
+        if (!response.ok) {
+          throw new Error(NETWORK_ERROR_STRING);
+        }
+        const data: IndexPrice[] = await response.json();
+        return data.map(price => ({
+          ...price,
+          timestamp: timeToLocal(price.timestamp * 1000),
+        }));
+      },
+      refetchInterval: 60000,
+    });
+  };
+
+  const useResourcePrices = () => {
+    const resource = resources?.find((r) =>
+      r.markets.some(
+        (m) => m.chainId === Number(market?.chainId) && m.address === market?.address
+      )
+    );
+    const epochData = resource?.markets
+      .find((m) => m.chainId === Number(market?.chainId) && m.address === market?.address)
+      ?.epochs.find((e) => e.epochId === Number(market?.epochId));
+
+    return useQuery<ResourcePricePoint[]>({
+      queryKey: [
+        'resourcePrices',
+        resource?.slug,
+        epochData?.startTimestamp,
+        epochData?.endTimestamp,
+      ],
+      queryFn: async () => {
+        if (!resource?.slug || !epochData) {
+          return [];
+        }
+        const response = await fetch(
+          `${API_BASE_URL}/resources/${resource.slug}/prices?startTime=${epochData.startTimestamp}&endTime=${epochData.endTimestamp}`
+        );
+        if (!response.ok) {
+          throw new Error('Failed to fetch resource prices');
+        }
+        const data: ResourcePrice[] = await response.json();
+        return data.map((price) => {
+          return {
+            timestamp: timeToLocal(Number(price.timestamp) * 1000),
+            price: Number(formatUnits(BigInt(price.value), 9)),
+          };
+        });
+      },
+      refetchInterval: 2000,
+      enabled: !!resource?.slug && !!epochData,
+    });
+  };
+
+  const { data: marketPrices, refetch: refetchPrices } = useMarketPrices();
+
+  const { data: indexPrices, refetch: refetchIndexPrices } = useIndexPrices();
+
+  const {
+    data: resourcePrices,
+    error: useResourcePricesError,
+    refetch: refetchResourcePrices,
+  } = useResourcePrices();
 
   // Effect for chart creation/cleanup
   useEffect(() => {
@@ -169,10 +271,10 @@ const CandlestickChart: React.FC<Props> = ({ data, seriesVisibility }) => {
   // Separate effect for updating data
   useEffect(() => {
     if (!chartRef.current || !candlestickSeriesRef.current) return;
-    const combinedData = data.marketPrices
+    const combinedData = marketPrices
       .map((mp, i) => {
         const timestamp = (mp.endTimestamp / 1000) as UTCTimestamp;
-        const indexPrice = data.indexPrices[i]?.price || 0;
+        const indexPrice = indexPrices[i]?.price || 0;
         const adjustedPrice = indexPrice / (stEthPerToken || 1);
 
         if (!mp.open || !mp.high || !mp.low || !mp.close) {
@@ -216,8 +318,8 @@ const CandlestickChart: React.FC<Props> = ({ data, seriesVisibility }) => {
     if (indexPriceSeriesRef.current && !isBeforeStart) {
       indexPriceSeriesRef.current.setData(lineSeriesData);
 
-      if (data.resourcePrices?.length && resourcePriceSeriesRef.current) {
-        const resourceLineData = data.resourcePrices.map((p) => ({
+      if (resourcePrices?.length && resourcePriceSeriesRef.current) {
+        const resourceLineData = resourcePrices.map((p) => ({
           time: (p.timestamp / 1000) as UTCTimestamp,
           value: p.price,
         }));
@@ -228,35 +330,33 @@ const CandlestickChart: React.FC<Props> = ({ data, seriesVisibility }) => {
     // Update series visibility
     if (candlestickSeriesRef.current) {
       candlestickSeriesRef.current.applyOptions({
-        visible: seriesVisibility.candles,
+        visible: seriesVisibility?.candles,
       });
     }
     if (indexPriceSeriesRef.current) {
       indexPriceSeriesRef.current.applyOptions({
-        visible: !isBeforeStart && seriesVisibility.index,
+        visible: !isBeforeStart && seriesVisibility?.index,
       });
     }
     if (resourcePriceSeriesRef.current) {
       resourcePriceSeriesRef.current.applyOptions({
-        visible: seriesVisibility.resource,
+        visible: seriesVisibility?.resource,
       });
     }
     if (trailingPriceSeriesRef.current) {
       trailingPriceSeriesRef.current.applyOptions({
-        visible: seriesVisibility.trailing,
+        visible: seriesVisibility?.trailing,
       });
     }
-  }, [data, stEthPerToken, useMarketUnits, seriesVisibility]);
+  }, [stEthPerToken, useMarketUnits, seriesVisibility, resourcePrices, indexPrices, marketPrices]);
 
   useEffect(() => {
-    if (!isLoading) {
-      const secondsInAWeek = 7 * 24 * 60 * 60;
-      chartRef.current?.timeScale().setVisibleRange({
-        from: (new Date().getTime() / 1000 - secondsInAWeek) as Time,
-        to: (new Date().getTime() / 1000) as Time,
-      });
-    }
-  }, [isLoading]);
+    const secondsInAWeek = 7 * 24 * 60 * 60;
+    chartRef.current?.timeScale().setVisibleRange({
+      from: (new Date().getTime() / 1000 - secondsInAWeek) as Time,
+      to: (new Date().getTime() / 1000) as Time,
+    });
+  }, []);
 
   useEffect(() => {
     if (!chartRef.current) return;
@@ -287,9 +387,9 @@ const CandlestickChart: React.FC<Props> = ({ data, seriesVisibility }) => {
 
   return (
     <div className="flex flex-col flex-1 relative group w-full h-full">
-      {!data.marketPrices?.length &&
-      !data.indexPrices?.length &&
-      (!data.resourcePrices || !data.resourcePrices.length) ? (
+      {!marketPrices?.length &&
+      !indexPrices?.length &&
+      (!resourcePrices || !resourcePrices.length) ? (
         <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground opacity-20" />
         </div>
