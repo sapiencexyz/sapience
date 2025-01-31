@@ -5,7 +5,7 @@ import { CircleHelp, DatabaseIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState, useContext } from 'react';
 
-import Chart from '~/components/chart';
+import Chart from '~/components/Chart';
 import ChartSelector from '~/components/ChartSelector';
 import MarketSidebar from '~/components/marketSidebar';
 import PeriodHeader from '~/components/PeriodHeader';

@@ -2,7 +2,7 @@ import { CandlestickChart, Circle, CircleDashed, Loader2 } from 'lucide-react';
 
 import { ToggleGroup, ToggleGroupItem } from '~/components/ui/toggle-group';
 
-import { GREEN_PRIMARY, BLUE, NEUTRAL } from './chart';
+import { GREEN_PRIMARY, BLUE, NEUTRAL } from './Chart';
 
 interface PriceTogglesProps {
   seriesVisibility: {
@@ -45,7 +45,7 @@ const PriceToggles = ({
         disabled={seriesLoading.candles || seriesDisabled.candles}
       >
         {seriesLoading.candles ? (
-          <Loader2 className="w-3 h-3 animate-spin" />
+          <Loader2 className="w-3 h-3 animate-spin" strokeWidth={3} />
         ) : (
           <CandlestickChart className="w-3 h-3" color={NEUTRAL} />
         )}
@@ -58,7 +58,7 @@ const PriceToggles = ({
         disabled={seriesLoading.index || seriesDisabled.index}
       >
         {seriesLoading.index ? (
-          <Loader2 className="w-3 h-3 animate-spin" />
+          <Loader2 className="w-3 h-3 animate-spin" strokeWidth={3} />
         ) : (
           <CircleDashed className="w-3 h-3" color={BLUE} strokeWidth={3} />
         )}
@@ -71,7 +71,7 @@ const PriceToggles = ({
         disabled={seriesLoading.resource || seriesDisabled.resource}
       >
         {seriesLoading.resource ? (
-          <Loader2 className="w-3 h-3 animate-spin" />
+          <Loader2 className="w-3 h-3 animate-spin" strokeWidth={3} />
         ) : (
           <Circle className="w-3 h-3" color={GREEN_PRIMARY} strokeWidth={3} />
         )}
@@ -85,7 +85,7 @@ const PriceToggles = ({
         disabled={seriesLoading.trailing || seriesDisabled.trailing}
       >
         {seriesLoading.trailing ? (
-          <Loader2 className="w-3 h-3 animate-spin" />
+          <Loader2 className="w-3 h-3 animate-spin" strokeWidth={3} />
         ) : (
           <Circle className="w-3 h-3" color={BLUE} strokeWidth={3} />
         )}

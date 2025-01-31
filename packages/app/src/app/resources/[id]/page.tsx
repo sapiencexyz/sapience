@@ -7,7 +7,7 @@ import { formatUnits } from 'viem';
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Toggle } from '@/components/ui/toggle';
-import Chart, { BLUE } from '~/components/chart';
+import Chart, { BLUE } from '~/components/Chart';
 import EpochTiming from '~/components/EpochTiming';
 import MarketLayout from '~/components/market/MarketLayout';
 import ResourceNav from '~/components/market/ResourceNav';
