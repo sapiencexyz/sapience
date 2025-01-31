@@ -142,6 +142,13 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
     trailing: false,
   });
 
+  const [loadingStates, setLoadingStates] = React.useState({
+    candles: false,
+    index: false,
+    resource: false,
+    trailing: false,
+  });
+
   if (!category) {
     return (
       <div className="flex justify-center items-center py-8">
@@ -178,7 +185,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
       <div className={`flex-1 min-w-0 ${!epochs.length ? 'w-full' : ''}`}>
         <div className="flex flex-col h-full">
           <div className="flex-1 grid relative">
-            <Card className="absolute top-4 left-4 md:top-8 md:left-8 z-10">
+            <Card className="absolute top-4 left-4 md:top-8 md:left-8 z-20">
               <CardContent className="py-3 px-4">
                 <div className="flex flex-col">
                   <span className="text-sm text-muted-foreground">
@@ -190,6 +197,13 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Loading Overlay */}
+            {loadingStates.resource && (
+              <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            )}
 
             <TooltipProvider>
               <Tooltip>
@@ -209,8 +223,16 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
                       }
                       variant="outline"
                       size="sm"
+                      disabled={loadingStates.trailing}
                     >
-                      <Circle className="h-3 w-3" strokeWidth={3} />
+                      {loadingStates.trailing ? (
+                        <Loader2
+                          className="h-3 w-3 animate-spin"
+                          strokeWidth={3}
+                        />
+                      ) : (
+                        <Circle className="h-3 w-3" strokeWidth={3} />
+                      )}
                       <span className="sr-only">
                         Toggle 28 day trailing average
                       </span>
@@ -231,6 +253,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
                     market={hoveredMarket}
                     seriesVisibility={seriesVisibility}
                     selectedWindow={DEFAULT_SELECTED_WINDOW}
+                    onLoadingStatesChange={setLoadingStates}
                   />
                 </div>
               </div>

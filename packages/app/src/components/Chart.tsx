@@ -1,4 +1,4 @@
-import { useRef, useContext } from 'react';
+import { useRef, useContext, useEffect, useMemo } from 'react';
 import type React from 'react';
 
 import {
@@ -26,6 +26,12 @@ interface Props {
     trailing: boolean;
   };
   selectedWindow: TimeWindow;
+  onLoadingStatesChange?: (loadingStates: {
+    candles: boolean;
+    index: boolean;
+    resource: boolean;
+    trailing: boolean;
+  }) => void;
 }
 
 export const GREEN_PRIMARY = '#22C55E';
@@ -39,11 +45,12 @@ const CandlestickChart: React.FC<Props> = ({
   market,
   seriesVisibility,
   selectedWindow,
+  onLoadingStatesChange,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const { useMarketUnits, startTime } = useContext(PeriodContext);
 
-  const { isLogarithmic, setIsLogarithmic } = useChart({
+  const { isLogarithmic, setIsLogarithmic, loadingStates } = useChart({
     resourceSlug,
     market,
     seriesVisibility,
@@ -52,6 +59,20 @@ const CandlestickChart: React.FC<Props> = ({
     containerRef: chartContainerRef,
     selectedWindow,
   });
+
+  const memoizedLoadingStates = useMemo(
+    () => loadingStates,
+    [
+      loadingStates.candles,
+      loadingStates.index,
+      loadingStates.resource,
+      loadingStates.trailing,
+    ]
+  );
+
+  useEffect(() => {
+    onLoadingStatesChange?.(memoizedLoadingStates);
+  }, [memoizedLoadingStates, onLoadingStatesChange]);
 
   return (
     <div className="flex flex-col flex-1 relative group w-full h-full">
@@ -65,7 +86,7 @@ const CandlestickChart: React.FC<Props> = ({
               type="button"
               onClick={() => setIsLogarithmic(!isLogarithmic)}
               className={cn(
-                'absolute bottom-0 right-2 w-6 h-6 rounded-sm bg-background border border-border text-foreground flex items-center justify-center hover:bg-accent hover:border-accent transition-all duration-100 opacity-0 group-hover:opacity-100 z-5 text-xs',
+                'absolute bottom-2 right-2 w-6 h-6 rounded-sm bg-background border border-border text-foreground flex items-center justify-center hover:bg-accent hover:border-accent transition-all duration-100 opacity-0 group-hover:opacity-100 z-5 text-xs',
                 isLogarithmic &&
                   'bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:border-primary/90'
               )}

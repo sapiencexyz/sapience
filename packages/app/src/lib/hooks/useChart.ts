@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { UTCTimestamp, IChartApi } from 'lightweight-charts';
 import { createChart, CrosshairMode, PriceScaleMode } from 'lightweight-charts';
 import { useTheme } from 'next-themes';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { formatUnits } from 'viem';
 
 import { useFoil } from '../context/FoilProvider';
@@ -104,9 +104,9 @@ export const useChart = ({
     enabled: !!market,
   });
 
-  console.log('marketPrices', marketPrices);
-
-  const { data: indexPrices } = useQuery<IndexPrice[]>({
+  const { data: indexPrices, isLoading: isIndexLoading } = useQuery<
+    IndexPrice[]
+  >({
     queryKey: ['index-prices', `${market?.chainId}:${market?.address}`],
     queryFn: async () => {
       const response = await fetch(
@@ -124,7 +124,9 @@ export const useChart = ({
     refetchInterval: 60000,
   });
 
-  const { data: resourcePrices } = useQuery<ResourcePricePoint[]>({
+  const { data: resourcePrices, isLoading: isResourceLoading } = useQuery<
+    ResourcePricePoint[]
+  >({
     queryKey: ['resourcePrices', resourceSlug],
     queryFn: async () => {
       if (!resourceSlug) {
@@ -493,9 +495,20 @@ export const useChart = ({
     });
   }, [isLogarithmic]);
 
+  const loadingStates = useMemo(
+    () => ({
+      candles: !marketPrices && !!market,
+      index: isIndexLoading && !!market,
+      resource: isResourceLoading && !!resourceSlug,
+      trailing: isResourceLoading && !!resourceSlug,
+    }),
+    [isIndexLoading, isResourceLoading, market, resourceSlug]
+  );
+
   return {
     isLogarithmic,
     setIsLogarithmic,
     resourcePrices,
+    loadingStates,
   };
 };

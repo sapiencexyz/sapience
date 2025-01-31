@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { CircleHelp, DatabaseIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState, useContext } from 'react';
+import { useEffect, useState, useContext, useCallback } from 'react';
 
 import Chart from '~/components/Chart';
 import ChartSelector from '~/components/ChartSelector';
@@ -57,6 +57,18 @@ const AdvancedView = ({
     trailing: isBeforeStart,
   });
 
+  const [loadingStates, setLoadingStates] = useState<{
+    candles: boolean;
+    index: boolean;
+    resource: boolean;
+    trailing: boolean;
+  }>({
+    candles: false,
+    index: false,
+    resource: false,
+    trailing: false,
+  });
+
   useEffect(() => {
     setSeriesVisibility((prev) => ({
       ...prev,
@@ -98,13 +110,17 @@ const AdvancedView = ({
     setSeriesVisibility((prev) => ({ ...prev, [series]: !prev[series] }));
   };
 
-  // TODO
-  const loadingSeries = {
-    candles: false,
-    index: false,
-    resource: false,
-    trailing: false,
-  };
+  const handleLoadingStatesChange = useCallback(
+    (newLoadingStates: {
+      candles: boolean;
+      index: boolean;
+      resource: boolean;
+      trailing: boolean;
+    }) => {
+      setLoadingStates(newLoadingStates);
+    },
+    []
+  );
 
   const disabledSeries = {
     candles: false,
@@ -134,6 +150,7 @@ const AdvancedView = ({
             }}
             seriesVisibility={seriesVisibility}
             selectedWindow={selectedWindow}
+            onLoadingStatesChange={handleLoadingStatesChange}
           />
         </div>
       );
@@ -191,7 +208,7 @@ const AdvancedView = ({
                         <PriceToggles
                           seriesVisibility={seriesVisibility}
                           toggleSeries={toggleSeries}
-                          seriesLoading={loadingSeries}
+                          seriesLoading={loadingStates}
                           seriesDisabled={disabledSeries}
                         />
                         <Link
