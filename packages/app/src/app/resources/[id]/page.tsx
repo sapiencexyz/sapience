@@ -15,6 +15,7 @@ import NumberDisplay from '~/components/numberDisplay';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { MARKET_CATEGORIES } from '~/lib/constants/markets';
 import { useLatestResourcePrice, useResources } from '~/lib/hooks/useResources';
+import { timeToLocal } from '~/lib/utils';
 
 interface ResourcePrice {
   timestamp: string;
@@ -159,19 +160,6 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
 
   const formattedResourcePrices: ResourcePricePoint[] =
     resourcePrices?.map((price) => {
-      function timeToLocal(originalTime: number) {
-        const d = new Date(originalTime);
-        return Date.UTC(
-          d.getFullYear(),
-          d.getMonth(),
-          d.getDate(),
-          d.getHours(),
-          d.getMinutes(),
-          d.getSeconds(),
-          d.getMilliseconds()
-        );
-      }
-
       return {
         timestamp: timeToLocal(Number(price.timestamp) * 1000),
         price: Number(formatUnits(BigInt(price.value), 9)),

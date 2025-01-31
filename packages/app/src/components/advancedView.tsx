@@ -27,6 +27,7 @@ import { ChartType, TimeWindow } from '~/lib/interfaces/interfaces';
 
 import DataDrawer from './DataDrawer';
 import DepthChart from './DepthChart';
+import { timeToLocal } from '~/lib/utils';
 
 interface ResourcePrice {
   timestamp: string;
@@ -137,19 +138,6 @@ const Market = ({
     }
   }, [volume, useVolumeError]);
 
-  function timeToLocal(originalTime: number) {
-    const d = new Date(originalTime);
-    return Date.UTC(
-      d.getFullYear(),
-      d.getMonth(),
-      d.getDate(),
-      d.getHours(),
-      d.getMinutes(),
-      d.getSeconds(),
-      d.getMilliseconds()
-    );
-  }
-
   const useMarketPrices = () => {
     return useQuery<PriceChartData[]>({
       queryKey: ['market-prices', `${chainId}:${marketAddress}`],
@@ -161,13 +149,7 @@ const Market = ({
           throw new Error('Network response was not ok');
         }
         const data: PriceChartData[] = await response.json();
-        return data.map((datum: PriceChartData) => {
-          return {
-            ...datum,
-            startTimestamp: timeToLocal(datum.startTimestamp),
-            endTimestamp: timeToLocal(datum.endTimestamp),
-          };
-        });
+        return data;
       },
       refetchInterval: 60000,
     });
@@ -184,12 +166,7 @@ const Market = ({
           throw new Error('Network response was not ok');
         }
         const data: IndexPrice[] = await response.json();
-        return data.map((price) => {
-          return {
-            timestamp: timeToLocal(price.timestamp * 1000),
-            price: price.price,
-          };
-        });
+        return data;
       },
       refetchInterval: 60000,
     });
@@ -225,7 +202,7 @@ const Market = ({
         const data: ResourcePrice[] = await response.json();
         return data.map((price) => {
           return {
-            timestamp: timeToLocal(Number(price.timestamp) * 1000),
+            timestamp: Number(price.timestamp),
             price: Number(formatUnits(BigInt(price.value), 9)),
           };
         });
@@ -273,9 +250,31 @@ const Market = ({
         <div className="pr-2 pb-2 w-full">
           <Chart
             data={{
-              marketPrices: marketPrices || [],
-              indexPrices: indexPrices || [],
-              resourcePrices: resourcePrices || [],
+              marketPrices: marketPrices
+                ? marketPrices.map((datum: PriceChartData) => {
+                    return {
+                      ...datum,
+                      startTimestamp: timeToLocal(datum.startTimestamp),
+                      endTimestamp: timeToLocal(datum.endTimestamp),
+                    };
+                  })
+                : [],
+              indexPrices: indexPrices
+                ? indexPrices.map((price) => {
+                    return {
+                      timestamp: timeToLocal(price.timestamp * 1000),
+                      price: price.price,
+                    };
+                  })
+                : [],
+              resourcePrices: resourcePrices
+                ? resourcePrices.map((price) => {
+                    return {
+                      timestamp: timeToLocal(Number(price.timestamp) * 1000),
+                      price: price.price,
+                    };
+                  })
+                : [],
             }}
             isLoading={idxLoading}
             seriesVisibility={seriesVisibility}
