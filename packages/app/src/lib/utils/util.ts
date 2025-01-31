@@ -6,6 +6,7 @@ import { mainnet } from 'viem/chains';
 
 import { TimeWindow } from '../interfaces/interfaces';
 
+// Mainnet client for ENS resolution and stEthPerToken query
 export const mainnetClient = createPublicClient({
   chain: mainnet,
   transport: process.env.NEXT_PUBLIC_INFURA_API_KEY
@@ -24,9 +25,6 @@ export function convertHundredthsOfBipToPercent(
 }
 
 export function getDisplayTextForVolumeWindow(volumeWindow: TimeWindow) {
-  if (volumeWindow === TimeWindow.H) {
-    return 'Past Hour';
-  }
   if (volumeWindow === TimeWindow.D) {
     return 'Past Day';
   }
@@ -35,9 +33,6 @@ export function getDisplayTextForVolumeWindow(volumeWindow: TimeWindow) {
   }
   if (volumeWindow === TimeWindow.M) {
     return 'Past Month';
-  }
-  if (volumeWindow === TimeWindow.Y) {
-    return 'Past Year';
   }
   return '';
 }

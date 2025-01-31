@@ -128,9 +128,9 @@ export const useChart = ({
         return [];
       }
       const now = Math.floor(Date.now() / 1000);
-      const twentyEightDaysAgo = now - 28 * 24 * 60 * 60;
+      const twoPeriodsAgo = now - 28 * 24 * 60 * 60 * 2;
       const response = await fetch(
-        `${API_BASE_URL}/resources/${resourceSlug}/prices?startTime=${twentyEightDaysAgo}&endTime=${now}`
+        `${API_BASE_URL}/resources/${resourceSlug}/prices?startTime=${twoPeriodsAgo}&endTime=${now}`
       );
       if (!response.ok) {
         throw new Error('Failed to fetch resource prices');
@@ -206,6 +206,7 @@ export const useChart = ({
       topColor: 'rgba(128, 128, 128, 0.4)',
       bottomColor: 'rgba(128, 128, 128, 0.0)',
       lineStyle: 2,
+      lineWidth: 2,
     });
 
     resourcePriceSeriesRef.current = chart.addLineSeries({
@@ -221,7 +222,6 @@ export const useChart = ({
     trailingPriceSeriesRef.current = chart.addLineSeries({
       color: BLUE,
       lineWidth: 2,
-      lineStyle: 2,
     });
 
     const handleResize = () => {
@@ -307,6 +307,51 @@ export const useChart = ({
     }
   };
 
+  const updateTrailingAverageData = () => {
+    if (resourcePrices?.length && trailingPriceSeriesRef.current) {
+      const windowSize = 28 * 24 * 60 * 60 * 1000; // 28 days in milliseconds
+      const sortedPrices = [...resourcePrices].sort(
+        (a, b) => a.timestamp - b.timestamp
+      );
+
+      // Initialize sliding window sums
+      let windowSum = 0;
+      let windowCount = 0;
+      let startIdx = 0;
+
+      const trailingData = sortedPrices
+        .map((current, i) => {
+          const currentTime = current.timestamp;
+          const windowStart = currentTime - windowSize;
+
+          // Remove points that are now outside the window
+          while (
+            startIdx < i &&
+            sortedPrices[startIdx].timestamp <= windowStart
+          ) {
+            windowSum -= sortedPrices[startIdx].price;
+            windowCount--;
+            startIdx++;
+          }
+
+          // Add current point to the window
+          windowSum += current.price;
+          windowCount++;
+
+          // Only return a point if we have enough data
+          return windowCount > 0
+            ? {
+                time: (currentTime / 1000) as UTCTimestamp,
+                value: windowSum / windowCount,
+              }
+            : null;
+        })
+        .filter((point): point is NonNullable<typeof point> => point !== null);
+
+      trailingPriceSeriesRef.current.setData(trailingData);
+    }
+  };
+
   const updateSeriesVisibility = () => {
     if (candlestickSeriesRef.current) {
       candlestickSeriesRef.current.applyOptions({
@@ -347,6 +392,7 @@ export const useChart = ({
     updateCandlestickData();
     updateIndexPriceData();
     updateResourcePriceData();
+    updateTrailingAverageData();
     updateSeriesVisibility();
     updateTimeScale();
   }, [

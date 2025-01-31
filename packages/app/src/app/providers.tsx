@@ -13,7 +13,6 @@ import { FoilProvider } from '~/lib/context/FoilProvider';
 
 const queryClient = new QueryClient();
 
-// Mainnet client for ENS resolution and stEthPerToken query
 const cannonAtLocalhost = {
   ...cannon,
   rpcUrls: {

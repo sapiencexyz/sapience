@@ -37,6 +37,9 @@ const PriceToggles = ({
       type="multiple"
       className="flex gap-3 items-start md:items-center self-start md:self-auto"
       variant="outline"
+      value={Object.entries(seriesVisibility)
+        .filter(([, isVisible]) => isVisible)
+        .map(([key]) => key)}
     >
       <ToggleGroupItem
         value="candles"

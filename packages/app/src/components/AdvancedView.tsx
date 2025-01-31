@@ -52,10 +52,19 @@ const AdvancedView = ({
     trailing: boolean;
   }>({
     candles: true,
-    index: true,
+    index: !isBeforeStart,
     resource: false,
     trailing: isBeforeStart,
   });
+
+  useEffect(() => {
+    setSeriesVisibility((prev) => ({
+      ...prev,
+      index: !isBeforeStart,
+      trailing: isBeforeStart,
+    }));
+  }, [isBeforeStart]);
+
   const [chainId, marketAddress] = params.id.split('%3A');
   const { epoch } = params;
   const contractId = `${chainId}:${marketAddress}`;
@@ -92,7 +101,7 @@ const AdvancedView = ({
   // TODO
   const loadingSeries = {
     candles: false,
-    index: isBeforeStart,
+    index: false,
     resource: false,
     trailing: false,
   };
