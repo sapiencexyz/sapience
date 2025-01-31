@@ -20,6 +20,7 @@ import {
 } from '~/components/ui/tooltip';
 import { MARKET_CATEGORIES } from '~/lib/constants/markets';
 import { useLatestResourcePrice, useResources } from '~/lib/hooks/useResources';
+import { TimeWindow } from '~/lib/interfaces/interfaces';
 
 interface ResourcePrice {
   timestamp: string;
@@ -132,6 +133,8 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
     address?: string;
   }>();
 
+  const DEFAULT_SELECTED_WINDOW = TimeWindow.W;
+
   const [seriesVisibility, setSeriesVisibility] = React.useState({
     candles: true,
     index: true,
@@ -227,6 +230,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
                     resourceSlug={params.id}
                     market={hoveredMarket}
                     seriesVisibility={seriesVisibility}
+                    selectedWindow={DEFAULT_SELECTED_WINDOW}
                   />
                 </div>
               </div>

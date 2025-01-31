@@ -9,6 +9,7 @@ import {
 } from '~/components/ui/tooltip';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useChart } from '~/lib/hooks/useChart';
+import type { TimeWindow } from '~/lib/interfaces/interfaces';
 import { cn } from '~/lib/utils';
 
 interface Props {
@@ -24,6 +25,7 @@ interface Props {
     resource: boolean;
     trailing: boolean;
   };
+  selectedWindow: TimeWindow;
 }
 
 export const GREEN_PRIMARY = '#22C55E';
@@ -36,6 +38,7 @@ const CandlestickChart: React.FC<Props> = ({
   resourceSlug,
   market,
   seriesVisibility,
+  selectedWindow,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const { useMarketUnits, startTime } = useContext(PeriodContext);
@@ -47,6 +50,7 @@ const CandlestickChart: React.FC<Props> = ({
     useMarketUnits,
     startTime,
     containerRef: chartContainerRef,
+    selectedWindow,
   });
 
   return (

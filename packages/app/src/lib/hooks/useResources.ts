@@ -63,6 +63,6 @@ export const useLatestResourcePrice = (slug: string) => {
       }
       return response.json();
     },
-    refetchInterval: 2000, // Refetch every 2 seconds
+    refetchInterval: 12000, // Refetch every 12 seconds (approx ETH block time)
   });
 };

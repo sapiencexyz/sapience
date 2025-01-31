@@ -4,12 +4,12 @@ import type { Dispatch, SetStateAction } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TimeWindow } from '~/lib/interfaces/interfaces';
 
-interface VolumeWindowSelectorProps {
+interface WindowSelectorProps {
   setSelectedWindow: Dispatch<SetStateAction<TimeWindow>>;
   selectedWindow: TimeWindow;
 }
 
-const VolumeWindowSelector: React.FC<VolumeWindowSelectorProps> = ({
+const WindowSelector: React.FC<WindowSelectorProps> = ({
   setSelectedWindow,
   selectedWindow,
 }) => {
@@ -35,4 +35,4 @@ const VolumeWindowSelector: React.FC<VolumeWindowSelectorProps> = ({
   );
 };
 
-export default VolumeWindowSelector;
+export default WindowSelector;

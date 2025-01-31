@@ -12,7 +12,7 @@ import PeriodHeader from '~/components/PeriodHeader';
 import PriceToggles from '~/components/PriceToggles';
 import Stats from '~/components/stats';
 import VolumeChart from '~/components/VolumeChart';
-import VolumeWindowSelector from '~/components/VolumeWindowButtons';
+import WindowSelector from '~/components/WindowButtons';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { AddEditPositionProvider } from '~/lib/context/AddEditPositionContext';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
@@ -133,6 +133,7 @@ const AdvancedView = ({
               address: marketAddress,
             }}
             seriesVisibility={seriesVisibility}
+            selectedWindow={selectedWindow}
           />
         </div>
       );
@@ -172,7 +173,7 @@ const AdvancedView = ({
                       isTrade={isTrade}
                     />
                     {chartType !== ChartType.LIQUIDITY && (
-                      <VolumeWindowSelector
+                      <WindowSelector
                         selectedWindow={selectedWindow}
                         setSelectedWindow={setSelectedWindow}
                       />
@@ -198,7 +199,7 @@ const AdvancedView = ({
                           href="https://docs.foil.xyz/price-glossary"
                           target="_blank"
                         >
-                          <CircleHelp className="w-4 h-4 text-blue-500 hover:text-blue-600" />
+                          <CircleHelp className="w-5 h-5 text-blue-500 hover:text-blue-600" />
                         </Link>
                       </div>
                     )}

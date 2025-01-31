@@ -9,6 +9,7 @@ import { useFoil } from '../context/FoilProvider';
 import { convertGgasPerWstEthToGwei } from '../utils/util';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import type { PriceChartData } from '~/lib/interfaces/interfaces';
+import { TimeWindow } from '~/lib/interfaces/interfaces';
 import { timeToLocal } from '~/lib/utils';
 
 export const GREEN_PRIMARY = '#22C55E';
@@ -48,6 +49,7 @@ interface UseChartProps {
   useMarketUnits: boolean;
   startTime: number;
   containerRef: React.RefObject<HTMLDivElement>;
+  selectedWindow: TimeWindow;
 }
 
 export const useChart = ({
@@ -57,6 +59,7 @@ export const useChart = ({
   useMarketUnits,
   startTime,
   containerRef,
+  selectedWindow,
 }: UseChartProps) => {
   const chartRef = useRef<IChartApi | null>(null);
   const resizeObserverRef = useRef<ResizeObserver>();
@@ -64,9 +67,9 @@ export const useChart = ({
   const indexPriceSeriesRef = useRef<any>(null);
   const resourcePriceSeriesRef = useRef<any>(null);
   const trailingPriceSeriesRef = useRef<any>(null);
+  const hasSetTimeScale = useRef(false);
   const { theme } = useTheme();
   const [isLogarithmic, setIsLogarithmic] = useState(false);
-  const [selectedWindow] = useState('1W');
   const { stEthPerToken } = useFoil();
 
   const now = Math.floor(Date.now() / 1000);
@@ -154,6 +157,7 @@ export const useChart = ({
     if (chartRef.current) {
       chartRef.current.remove();
     }
+    hasSetTimeScale.current = false;
     const chart = createChart(containerRef.current, {
       width: containerRef.current.clientWidth,
       height: containerRef.current.clientHeight,
@@ -183,6 +187,9 @@ export const useChart = ({
         timeVisible: true,
         secondsVisible: false,
         minBarSpacing: 0.001,
+        fixLeftEdge: true,
+        fixRightEdge: true,
+        rightOffset: 0,
       },
       rightPriceScale: {
         borderColor: theme === 'dark' ? '#363537' : '#cccccc',
@@ -277,7 +284,6 @@ export const useChart = ({
         })
         .filter((item): item is NonNullable<typeof item> => item !== null);
 
-      console.log('Processed candle series data:', candleSeriesData);
       candlestickSeriesRef.current.setData(candleSeriesData);
     }
   };
@@ -304,6 +310,15 @@ export const useChart = ({
         value: p.price,
       }));
       resourcePriceSeriesRef.current.setData(resourceLineData);
+      // Ensure time scale stays fixed after updating resource prices
+      if (chartRef.current && hasSetTimeScale.current) {
+        const secondsInAWeek = 7 * 24 * 60 * 60;
+        const now = new Date().getTime() / 1000;
+        chartRef.current.timeScale().setVisibleRange({
+          from: (now - secondsInAWeek) as UTCTimestamp,
+          to: now as UTCTimestamp,
+        });
+      }
     }
   };
 
@@ -349,6 +364,15 @@ export const useChart = ({
         .filter((point): point is NonNullable<typeof point> => point !== null);
 
       trailingPriceSeriesRef.current.setData(trailingData);
+      // Ensure time scale stays fixed after updating trailing average
+      if (chartRef.current && hasSetTimeScale.current) {
+        const secondsInAWeek = 7 * 24 * 60 * 60;
+        const now = new Date().getTime() / 1000;
+        chartRef.current.timeScale().setVisibleRange({
+          from: (now - secondsInAWeek) as UTCTimestamp,
+          to: now as UTCTimestamp,
+        });
+      }
     }
   };
 
@@ -377,23 +401,56 @@ export const useChart = ({
   };
 
   const updateTimeScale = () => {
-    if (chartRef.current && marketPrices?.length) {
-      const secondsInAWeek = 7 * 24 * 60 * 60;
+    if (
+      !hasSetTimeScale.current &&
+      chartRef.current &&
+      (marketPrices?.length || resourcePrices?.length || indexPrices?.length)
+    ) {
       const now = new Date().getTime() / 1000;
+      let timeRange;
+
+      // Set time range based on selected window
+      switch (selectedWindow) {
+        case TimeWindow.D:
+          timeRange = 24 * 60 * 60; // 1 day in seconds
+          break;
+        case TimeWindow.M:
+          timeRange = 28 * 24 * 60 * 60; // 28 days in seconds
+          break;
+        case TimeWindow.W:
+        default:
+          timeRange = 7 * 24 * 60 * 60; // 1 week in seconds
+          break;
+      }
+
       chartRef.current.timeScale().setVisibleRange({
-        from: (now - secondsInAWeek) as UTCTimestamp,
+        from: (now - timeRange) as UTCTimestamp,
         to: now as UTCTimestamp,
       });
+
+      // Lock the time scale to prevent automatic adjustments
+      chartRef.current.timeScale().applyOptions({
+        rightOffset: 0,
+        fixLeftEdge: true,
+        fixRightEdge: true,
+      });
+      hasSetTimeScale.current = true;
     }
   };
 
   // Effect for updating data
   useEffect(() => {
+    if (!chartRef.current) return;
+
+    // Only update data series if chart exists
     updateCandlestickData();
     updateIndexPriceData();
     updateResourcePriceData();
     updateTrailingAverageData();
     updateSeriesVisibility();
+
+    // Update time scale whenever the window changes
+    hasSetTimeScale.current = false;
     updateTimeScale();
   }, [
     stEthPerToken,
@@ -403,6 +460,7 @@ export const useChart = ({
     indexPrices,
     marketPrices,
     isBeforeStart,
+    selectedWindow,
   ]);
 
   useEffect(() => {
