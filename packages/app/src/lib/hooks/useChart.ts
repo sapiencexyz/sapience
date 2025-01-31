@@ -110,7 +110,7 @@ export const useChart = ({
     queryKey: ['index-prices', `${market?.chainId}:${market?.address}`],
     queryFn: async () => {
       const response = await fetch(
-        `${API_BASE_URL}/prices/index?contractId=${market?.chainId}:${market?.address}&epochId=${market?.epochId}&timeWindow=${selectedWindow}`
+        `${API_BASE_URL}/prices/index?contractId=${market?.chainId}:${market?.address}&epochId=${market?.epochId}`
       );
       if (!response.ok) {
         throw new Error(NETWORK_ERROR_STRING);
@@ -192,6 +192,7 @@ export const useChart = ({
         fixLeftEdge: true,
         fixRightEdge: true,
         rightOffset: 0,
+        uniformDistribution: true,
       },
       rightPriceScale: {
         borderColor: theme === 'dark' ? '#363537' : '#cccccc',
