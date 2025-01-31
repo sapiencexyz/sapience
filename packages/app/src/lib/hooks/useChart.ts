@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { formatUnits } from 'viem';
 
 import { useFoil } from '../context/FoilProvider';
-import { convertGgasPerWstEthToGwei } from '../utils/util';
+import { convertGgasPerWstEthToGwei, convertWstEthToGwei } from '../utils/util';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import type { PriceChartData } from '~/lib/interfaces/interfaces';
 import { TimeWindow } from '~/lib/interfaces/interfaces';
@@ -293,11 +293,8 @@ export const useChart = ({
       const indexLineData = indexPrices.map((ip) => ({
         time: (ip.timestamp / 1000) as UTCTimestamp,
         value: useMarketUnits
-          ? ip.price / (stEthPerToken || 1)
-          : convertGgasPerWstEthToGwei(
-              ip.price / (stEthPerToken || 1),
-              stEthPerToken
-            ),
+          ? ip.price
+          : convertWstEthToGwei(ip.price, stEthPerToken),
       }));
       indexPriceSeriesRef.current.setData(indexLineData);
     }
@@ -309,7 +306,7 @@ export const useChart = ({
         time: (p.timestamp / 1000) as UTCTimestamp,
         value: useMarketUnits
           ? p.price
-          : convertGgasPerWstEthToGwei(p.price, stEthPerToken),
+          : convertWstEthToGwei(p.price, stEthPerToken),
       }));
       resourcePriceSeriesRef.current.setData(resourceLineData);
       // Ensure time scale stays fixed after updating resource prices
@@ -346,30 +343,26 @@ export const useChart = ({
             startIdx < i &&
             sortedPrices[startIdx].timestamp <= windowStart
           ) {
-            windowSum -= useMarketUnits
-              ? sortedPrices[startIdx].price
-              : convertGgasPerWstEthToGwei(
-                  sortedPrices[startIdx].price,
-                  stEthPerToken
-                );
+            windowSum -= sortedPrices[startIdx].price;
             windowCount--;
             startIdx++;
           }
 
           // Add current point to the window
-          const currentPrice = useMarketUnits
-            ? current.price
-            : convertGgasPerWstEthToGwei(current.price, stEthPerToken);
-          windowSum += currentPrice;
+          windowSum += current.price;
           windowCount++;
 
           // Only return a point if we have enough data
-          return windowCount > 0
-            ? {
-                time: (currentTime / 1000) as UTCTimestamp,
-                value: windowSum / windowCount,
-              }
-            : null;
+          if (windowCount > 0) {
+            const avgPrice = windowSum / windowCount;
+            return {
+              time: (currentTime / 1000) as UTCTimestamp,
+              value: useMarketUnits
+                ? avgPrice
+                : convertWstEthToGwei(avgPrice, stEthPerToken),
+            };
+          }
+          return null;
         })
         .filter((point): point is NonNullable<typeof point> => point !== null);
 
