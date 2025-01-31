@@ -15,6 +15,7 @@ import NumberDisplay from '~/components/numberDisplay';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { MARKET_CATEGORIES } from '~/lib/constants/markets';
 import { useLatestResourcePrice, useResources } from '~/lib/hooks/useResources';
+import { timeToLocal } from '~/lib/utils';
 
 interface ResourcePrice {
   timestamp: string;
@@ -158,10 +159,12 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
       .sort((a, b) => a.startTimestamp - b.startTimestamp) || [];
 
   const formattedResourcePrices: ResourcePricePoint[] =
-    resourcePrices?.map((price) => ({
-      timestamp: Number(price.timestamp) * 1000,
-      price: Number(formatUnits(BigInt(price.value), 9)),
-    })) || [];
+    resourcePrices?.map((price) => {
+      return {
+        timestamp: timeToLocal(Number(price.timestamp) * 1000),
+        price: Number(formatUnits(BigInt(price.value), 9)),
+      };
+    }) || [];
 
   return (
     <div className="flex flex-col md:flex-row h-full p-3 lg:p-6 gap-3 lg:gap-6">

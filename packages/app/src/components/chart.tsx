@@ -1,5 +1,11 @@
 /* eslint-disable sonarjs/cognitive-complexity */
-import type { UTCTimestamp, BarData, LineData } from 'lightweight-charts';
+import type {
+  UTCTimestamp,
+  BarData,
+  LineData,
+  IChartApi,
+  Time,
+} from 'lightweight-charts';
 import { createChart, CrosshairMode, PriceScaleMode } from 'lightweight-charts';
 import { Loader2 } from 'lucide-react';
 import { useTheme } from 'next-themes';
@@ -47,7 +53,7 @@ const CandlestickChart: React.FC<Props> = ({
   seriesVisibility,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<any>(null);
+  const chartRef = useRef<IChartApi | null>(null);
   const resizeObserverRef = useRef<ResizeObserver>();
   const candlestickSeriesRef = useRef<any>(null);
   const indexPriceSeriesRef = useRef<any>(null);
@@ -69,7 +75,6 @@ const CandlestickChart: React.FC<Props> = ({
     if (chartRef.current) {
       chartRef.current.remove();
     }
-
     const chart = createChart(chartContainerRef.current, {
       width: chartContainerRef.current.clientWidth,
       height: chartContainerRef.current.clientHeight,
@@ -127,18 +132,15 @@ const CandlestickChart: React.FC<Props> = ({
 
     const handleResize = () => {
       if (!chartRef.current || !chartContainerRef.current) return;
-
       const { clientWidth, clientHeight } = chartContainerRef.current;
       chartRef.current.applyOptions({
         width: clientWidth,
         height: clientHeight,
       });
-      chartRef.current.timeScale().fitContent();
     };
 
     resizeObserverRef.current = new ResizeObserver(handleResize);
     resizeObserverRef.current.observe(chartContainerRef.current);
-
     // Initial resize
     handleResize();
 
@@ -157,7 +159,6 @@ const CandlestickChart: React.FC<Props> = ({
   // Separate effect for updating data
   useEffect(() => {
     if (!chartRef.current || !candlestickSeriesRef.current) return;
-
     const combinedData = data.marketPrices
       .map((mp, i) => {
         const timestamp = (mp.endTimestamp / 1000) as UTCTimestamp;
@@ -231,6 +232,16 @@ const CandlestickChart: React.FC<Props> = ({
       });
     }
   }, [data, isLoading, stEthPerToken, useMarketUnits, seriesVisibility]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      const secondsInAWeek = 7 * 24 * 60 * 60;
+      chartRef.current?.timeScale().setVisibleRange({
+        from: (new Date().getTime() / 1000 - secondsInAWeek) as Time,
+        to: (new Date().getTime() / 1000) as Time,
+      });
+    }
+  }, [isLoading]);
 
   useEffect(() => {
     if (!chartRef.current) return;
