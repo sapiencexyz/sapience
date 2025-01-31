@@ -1,6 +1,6 @@
 'use client';
 
-import { BookTextIcon, HelpCircle } from 'lucide-react';
+import { BookTextIcon, HelpCircle, InfoIcon } from 'lucide-react';
 import Image from 'next/image';
 import { useTheme } from 'next-themes';
 import { type FC, useState, useMemo, useEffect } from 'react';
@@ -133,14 +133,6 @@ const Earn: FC<Props> = ({ slug }) => {
           <p className="mb-9 text-center">
             The vault smart contracts provide liquidity to markets and roll
             across periods automatically.
-            <a
-              href="https://docs.foil.xyz/token-vault"
-              target="_blank"
-              className="inline-block text-blue-500 hover:text-blue-600 ml-1 -translate-y-0.5"
-              rel="noopener noreferrer"
-            >
-              <BookTextIcon className="h-3.5 w-3.5 inline-block" />
-            </a>
           </p>
 
           <div className="border border-border rounded-lg shadow-sm p-6 mb-9">
@@ -173,6 +165,33 @@ const Earn: FC<Props> = ({ slug }) => {
                 </div>
               </TabsContent>
             </Tabs>
+
+            <a
+              href="https://docs.foil.xyz"
+              target="_blank"
+              className="underline text-sm text-muted-foreground mt-3 inline-block"
+              rel="noreferrer"
+            >
+              <BookTextIcon className="inline -mt-0.5 mr-1 h-3.5 w-3.5" />
+              Read the docs
+            </a>
+          </div>
+
+          <div className="border border-border rounded-lg shadow-sm p-6 mb-9">
+            <div className="flex items-start gap-1.5">
+              <span className="w-4 mt-0.5">
+                <InfoIcon className="h-4 w-4" />
+              </span>
+              <p className="text-sm">
+                <strong className="font-medium">
+                  Foil is currenty in Beta.
+                </strong>{' '}
+                The final version of the protocol is under development. The
+                smart contracts cannot be changed, so you will need to swap into
+                the upgraded version to continue providing liquidity in the
+                future.
+              </p>
+            </div>
           </div>
           <div className="border border-border rounded-lg shadow-sm p-6">
             <h3 className="text-2xl font-bold mb-3">
