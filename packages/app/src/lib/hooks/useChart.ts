@@ -307,7 +307,9 @@ export const useChart = ({
     if (resourcePrices?.length && resourcePriceSeriesRef.current) {
       const resourceLineData = resourcePrices.map((p) => ({
         time: (p.timestamp / 1000) as UTCTimestamp,
-        value: p.price,
+        value: useMarketUnits
+          ? p.price
+          : convertGgasPerWstEthToGwei(p.price, stEthPerToken),
       }));
       resourcePriceSeriesRef.current.setData(resourceLineData);
       // Ensure time scale stays fixed after updating resource prices
@@ -344,13 +346,21 @@ export const useChart = ({
             startIdx < i &&
             sortedPrices[startIdx].timestamp <= windowStart
           ) {
-            windowSum -= sortedPrices[startIdx].price;
+            windowSum -= useMarketUnits
+              ? sortedPrices[startIdx].price
+              : convertGgasPerWstEthToGwei(
+                  sortedPrices[startIdx].price,
+                  stEthPerToken
+                );
             windowCount--;
             startIdx++;
           }
 
           // Add current point to the window
-          windowSum += current.price;
+          const currentPrice = useMarketUnits
+            ? current.price
+            : convertGgasPerWstEthToGwei(current.price, stEthPerToken);
+          windowSum += currentPrice;
           windowCount++;
 
           // Only return a point if we have enough data
