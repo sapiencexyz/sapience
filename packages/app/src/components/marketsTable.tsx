@@ -54,8 +54,6 @@ const MarketsTable = () => {
                 'PPpp'
               )}`,
               startTimestamp: epoch.startTimestamp,
-              settled:
-                epoch.settlementPriceD18 > 0 ? epoch.settlementPriceD18 : 'No',
               chainId: market.chainId,
               marketAddress: market.address,
             };

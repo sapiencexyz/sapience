@@ -2,9 +2,9 @@
 
 import { RainbowKitProvider, lightTheme } from '@rainbow-me/rainbowkit';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
-import type { HttpTransport } from 'viem';
-import { defineChain } from 'viem';
-import { sepolia, base, mainnet } from 'viem/chains';
+import { createPublicClient } from 'viem';
+import type { Chain, HttpTransport } from 'viem';
+import { sepolia, base, mainnet, cannon } from 'viem/chains';
 import { createConfig, http, WagmiProvider } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 
@@ -14,23 +14,25 @@ import { MarketListProvider } from '~/lib/context/MarketListProvider';
 
 const queryClient = new QueryClient();
 
-export const cannon = defineChain({
-  id: 13370,
-  name: 'Cannon',
-  nativeCurrency: {
-    name: 'Ether',
-    symbol: 'ETH',
-    decimals: 18,
-  },
-  rpcUrls: { default: { http: ['http://localhost:8545'] } },
+// Mainnet client for ENS resolution and stEthPerToken query
+export const mainnetClient = createPublicClient({
+  chain: mainnet,
+  transport: process.env.NEXT_PUBLIC_INFURA_API_KEY
+    ? http(
+        `https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
+      )
+    : http('https://ethereum-rpc.publicnode.com'),
 });
 
+const cannonAtLocalhost = {
+  ...cannon,
+  rpcUrls: {
+    ...cannon.rpcUrls,
+    default: { http: ['http://localhost:8545'] },
+  },
+};
+
 const transports: Record<number, HttpTransport> = {
-  [mainnet.id]: http(
-    process.env.NEXT_PUBLIC_INFURA_API_KEY
-      ? `https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
-      : 'https://ethereum-rpc.publicnode.com'
-  ),
   [sepolia.id]: http(
     process.env.NEXT_PUBLIC_INFURA_API_KEY
       ? `https://sepolia.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
@@ -46,10 +48,9 @@ const transports: Record<number, HttpTransport> = {
 const chains: any = [base];
 
 if (process.env.NODE_ENV !== 'production') {
-  transports[cannon.id] = http('http://localhost:8545');
-  chains.push(cannon);
+  transports[cannonAtLocalhost.id] = http('http://localhost:8545');
+  chains.push(cannonAtLocalhost);
   chains.push(sepolia);
-  chains.push(mainnet);
 }
 
 // Create the configuration
@@ -70,7 +71,12 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
     >
       <WagmiProvider config={config}>
         <QueryClientProvider client={queryClient}>
-          <RainbowKitProvider theme={lightTheme()}>
+          <RainbowKitProvider
+            theme={lightTheme()}
+            initialChain={chains.reduce((a: Chain, b: Chain) =>
+              a.id > b.id ? a : b
+            )}
+          >
             <ConnectWalletProvider>
               <MarketListProvider>{children}</MarketListProvider>
             </ConnectWalletProvider>

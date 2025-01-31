@@ -56,6 +56,10 @@ export default defineConfig({
       collapsed: false, 
       items: [
         { 
+          text: 'Price Glossary',
+          link: '/price-glossary', 
+        },
+        { 
           text: 'Deployments', 
           link: 'https://usecannon.com/packages/foil',
         },

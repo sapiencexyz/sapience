@@ -41,9 +41,11 @@ type PositionType {
   borrowedQuoteToken: String
   collateral: String!
   epoch: EpochType!
+  highPriceTick: String
   id: ID!
   isLP: Boolean!
   isSettled: Boolean
+  lowPriceTick: String
   lpBaseToken: String
   lpQuoteToken: String
   owner: String!
@@ -56,7 +58,7 @@ type Query {
   epochs(marketId: Int): [EpochType!]!
   market(address: String!, chainId: Int!): MarketType
   markets: [MarketType!]!
-  positions(marketId: Int, owner: String): [PositionType!]!
+  positions(chainId: Int, marketAddress: String, owner: String): [PositionType!]!
   resource(slug: String!): ResourceType
   resourcePrices(endTime: Int, slug: String!, startTime: Int): [ResourcePriceType!]!
   resources: [ResourceType!]!
@@ -81,10 +83,17 @@ type ResourceType {
 
 type TransactionType {
   baseToken: String
+  baseTokenDelta: String
   collateral: String
+  collateralDelta: String
   id: ID!
+  lpBaseDeltaToken: String
+  lpQuoteDeltaToken: String
   position: PositionType
   quoteToken: String
+  quoteTokenDelta: String
   timestamp: Int!
+  tradeRatioD18: String
+  transactionHash: String
   type: String!
 }

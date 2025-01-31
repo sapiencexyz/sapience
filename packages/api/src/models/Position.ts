@@ -6,6 +6,7 @@ import {
   OneToMany,
   ManyToOne,
   Unique,
+  JoinColumn,
 } from 'typeorm';
 import { Transaction } from './Transaction';
 import { NUMERIC_PRECISION } from '../constants';
@@ -24,6 +25,7 @@ export class Position {
   createdAt: Date;
 
   @ManyToOne(() => Epoch, (epoch) => epoch.positions)
+  @JoinColumn()
   epoch: Epoch;
 
   @Column({ type: 'integer' })

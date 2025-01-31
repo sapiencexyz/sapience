@@ -5,59 +5,44 @@
 import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { useMediaQuery } from 'usehooks-ts';
 import { formatUnits } from 'viem';
-import { useAccount } from 'wagmi';
 
 import Chart from '~/components/chart';
 import ChartSelector from '~/components/ChartSelector';
-import DepthChart from '~/components/DepthChart';
 import EpochHeader from '~/components/epochHeader';
-import LiquidityPositionsTable from '~/components/liquidityPositionsTable';
 import MarketSidebar from '~/components/marketSidebar';
 import MarketUnitsToggle from '~/components/marketUnitsToggle';
 import Stats from '~/components/stats';
-import TraderPositionsTable from '~/components/traderPositionsTable';
-import TransactionTable from '~/components/transactionTable';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '~/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '~/components/ui/toggle-group';
 import VolumeChart from '~/components/VolumeChart';
 import VolumeWindowSelector from '~/components/VolumeWindowButtons';
 import { useToast } from '~/hooks/use-toast';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { AddEditPositionProvider } from '~/lib/context/AddEditPositionContext';
-import { MarketProvider } from '~/lib/context/MarketProvider';
+import { PeriodProvider } from '~/lib/context/PeriodProvider';
+import { TradePoolProvider } from '~/lib/context/TradePoolContext';
 import { useResources } from '~/lib/hooks/useResources';
+import type { PriceChartData } from '~/lib/interfaces/interfaces';
 import { ChartType, TimeWindow } from '~/lib/interfaces/interfaces';
+
+import DataDrawer from './DataDrawer';
+import DepthChart from './DepthChart';
+import { timeToLocal } from '~/lib/utils';
 
 interface ResourcePrice {
   timestamp: string;
   value: string;
 }
 
-interface ResourcePricePoint {
+interface IndexPrice {
   timestamp: number;
   price: number;
 }
 
-const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
-
-const useAccountData = () => {
-  const { address, isConnected } = useAccount();
-
-  return useQuery({
-    queryKey: ['accountData', address],
-    queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/accounts/${address}`);
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      return response.json();
-    },
-    enabled: isConnected,
-    refetchInterval: POLLING_INTERVAL,
-  });
-};
+interface ResourcePricePoint {
+  timestamp: number;
+  price: number;
+}
 
 const Market = ({
   params,
@@ -88,7 +73,6 @@ const Market = ({
   const { epoch } = params;
   const contractId = `${chainId}:${marketAddress}`;
   const { toast } = useToast();
-  const isLargeScreen = useMediaQuery('(min-width: 1024px)');
   const { data: resources } = useResources();
 
   // useEffect to handle table resize
@@ -155,7 +139,7 @@ const Market = ({
   }, [volume, useVolumeError]);
 
   const useMarketPrices = () => {
-    return useQuery({
+    return useQuery<PriceChartData[]>({
       queryKey: ['market-prices', `${chainId}:${marketAddress}`],
       queryFn: async () => {
         const response = await fetch(
@@ -164,14 +148,15 @@ const Market = ({
         if (!response.ok) {
           throw new Error('Network response was not ok');
         }
-        return response.json();
+        const data: PriceChartData[] = await response.json();
+        return data;
       },
       refetchInterval: 60000,
     });
   };
 
   const useIndexPrices = () => {
-    return useQuery({
+    return useQuery<IndexPrice[]>({
       queryKey: ['index-prices', `${chainId}:${marketAddress}`],
       queryFn: async () => {
         const response = await fetch(
@@ -180,7 +165,8 @@ const Market = ({
         if (!response.ok) {
           throw new Error('Network response was not ok');
         }
-        return response.json();
+        const data: IndexPrice[] = await response.json();
+        return data;
       },
       refetchInterval: 60000,
     });
@@ -214,10 +200,12 @@ const Market = ({
           throw new Error('Failed to fetch resource prices');
         }
         const data: ResourcePrice[] = await response.json();
-        return data.map((price) => ({
-          timestamp: Number(price.timestamp) * 1000,
-          price: Number(formatUnits(BigInt(price.value), 9)),
-        }));
+        return data.map((price) => {
+          return {
+            timestamp: Number(price.timestamp),
+            price: Number(formatUnits(BigInt(price.value), 9)),
+          };
+        });
       },
       refetchInterval: 2000,
       enabled: !!resource?.slug && !!epochData,
@@ -259,22 +247,46 @@ const Market = ({
   const renderChart = () => {
     if (chartType === ChartType.PRICE) {
       return (
-        <Chart
-          data={{
-            marketPrices: marketPrices || [],
-            indexPrices: indexPrices || [],
-            resourcePrices: resourcePrices || [],
-          }}
-          isLoading={idxLoading}
-          seriesVisibility={seriesVisibility}
-        />
+        <div className="pr-2 pb-2 w-full">
+          <Chart
+            data={{
+              marketPrices: marketPrices
+                ? marketPrices.map((datum: PriceChartData) => {
+                    return {
+                      ...datum,
+                      startTimestamp: timeToLocal(datum.startTimestamp),
+                      endTimestamp: timeToLocal(datum.endTimestamp),
+                    };
+                  })
+                : [],
+              indexPrices: indexPrices
+                ? indexPrices.map((price) => {
+                    return {
+                      timestamp: timeToLocal(price.timestamp * 1000),
+                      price: price.price,
+                    };
+                  })
+                : [],
+              resourcePrices: resourcePrices
+                ? resourcePrices.map((price) => {
+                    return {
+                      timestamp: timeToLocal(Number(price.timestamp) * 1000),
+                      price: price.price,
+                    };
+                  })
+                : [],
+            }}
+            isLoading={idxLoading}
+            seriesVisibility={seriesVisibility}
+          />
+        </div>
       );
     }
     if (chartType === ChartType.VOLUME) {
       return <VolumeChart data={volume || []} activeWindow={selectedWindow} />;
     }
     if (chartType === ChartType.LIQUIDITY) {
-      return <DepthChart />;
+      return <DepthChart isTrade={isTrade} />;
     }
     return null;
   };
@@ -290,7 +302,6 @@ const Market = ({
           <ToggleGroupItem
             value="candles"
             variant={seriesVisibility.candles ? 'default' : 'outline'}
-            size="sm"
             onClick={() => toggleSeries('candles')}
           >
             Market Price
@@ -298,7 +309,6 @@ const Market = ({
           <ToggleGroupItem
             value="index"
             variant={seriesVisibility.index ? 'default' : 'outline'}
-            size="sm"
             onClick={() => toggleSeries('index')}
             disabled={idxLoading}
           >
@@ -315,7 +325,6 @@ const Market = ({
             <ToggleGroupItem
               value="resource"
               variant={seriesVisibility.resource ? 'default' : 'outline'}
-              size="sm"
               onClick={() => toggleSeries('resource')}
               disabled={idxLoading}
             >
@@ -335,28 +344,6 @@ const Market = ({
     return null;
   };
 
-  const {
-    data: accountData,
-    error: accountDataError,
-    isLoading: isLoadingAccountData,
-  } = useAccountData();
-
-  const traderPositions =
-    accountData?.positions.filter((position: any) => !position.isLP) || [];
-  const lpPositions =
-    accountData?.positions.filter((position: any) => position.isLP) || [];
-  const transactions = accountData?.transactions || [];
-
-  useEffect(() => {
-    if (accountDataError) {
-      toast({
-        title: 'Error loading account data',
-        description: accountDataError.message,
-        duration: 5000,
-      });
-    }
-  }, [accountDataError, toast]);
-
   useEffect(() => {
     if (useResourcePricesError) {
       toast({
@@ -368,100 +355,56 @@ const Market = ({
   }, [useResourcePricesError, toast]);
 
   return (
-    <MarketProvider
+    <PeriodProvider
       chainId={Number(chainId)}
       address={marketAddress}
       epoch={Number(epoch)}
     >
       <AddEditPositionProvider>
-        <div className="flex flex-col w-full h-[calc(100vh-64px)] overflow-y-auto lg:overflow-hidden">
-          <EpochHeader />
-          <div className="flex flex-col flex-1 lg:overflow-y-auto md:overflow-visible">
-            <div className="flex flex-col flex-1 px-4 md:px-6 gap-5 md:flex-row min-h-0">
-              <div className="w-full order-2 md:order-2 md:max-w-[360px] pb-4">
-                <MarketSidebar isTrade={isTrade} />
-              </div>
-              <div className="flex flex-col w-full order-1 md:order-1">
-                <Stats />
+        <TradePoolProvider>
+          <div className="flex flex-col w-full h-[calc(100vh-64px)] overflow-y-auto lg:overflow-hidden">
+            <EpochHeader />
+            <div className="flex flex-col flex-1 lg:overflow-y-auto md:overflow-visible">
+              <div className="flex flex-col flex-1 px-4 md:px-3 gap-5 md:flex-row min-h-0">
+                <div className="w-full order-2 md:order-2 md:max-w-[360px] pb-4">
+                  <MarketSidebar isTrade={isTrade} />
+                </div>
+                <div className="flex flex-col w-full order-1 md:order-1">
+                  <Stats />
 
-                <div className="flex flex-1 id-chart-flex min-h-[400px] md:min-h-0 overflow-visible lg:overflow-hidden">
-                  <div className="flex w-full h-full border border-border overflow-hidden rounded-lg pr-3 pb-2 shadow-sm">
-                    {renderChart()}
-                  </div>
-                </div>
-                <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center my-4 flex-shrink-0 gap-4">
-                  <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
-                    <ChartSelector
-                      chartType={chartType}
-                      setChartType={setChartType}
-                    />
-                    {chartType !== ChartType.LIQUIDITY && (
-                      <div className="flex flex-col md:flex-row gap-3">
-                        <VolumeWindowSelector
-                          selectedWindow={selectedWindow}
-                          setSelectedWindow={setSelectedWindow}
-                        />
-                        {renderPriceToggles()}
-                      </div>
-                    )}
-                  </div>
-                  <MarketUnitsToggle />
-                </div>
-              </div>
-            </div>
-            {transactions.length > 0 && (
-              <div
-                className="flex id-table-flex border-t border-border position-relative justify-center items-center relative lg:h-[172px]"
-                style={{
-                  height: isLargeScreen ? `${tableFlexHeight}px` : 'auto',
-                }}
-              >
-                <div
-                  ref={resizeRef}
-                  className="absolute top-0 left-0 right-0 h-1 cursor-ns-resize hover:bg-gray-30 hidden lg:block"
-                />
-                {isLoadingAccountData ? (
-                  <div className="flex justify-center items-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-                  </div>
-                ) : (
-                  <Tabs
-                    defaultValue="transactions"
-                    className="flex flex-col w-full h-full"
-                  >
-                    <TabsList>
-                      <TabsTrigger value="transactions">
-                        <span className="hidden lg:inline">Your&nbsp;</span>
-                        Transactions
-                      </TabsTrigger>
-                      <TabsTrigger value="trader-positions">
-                        <span className="hidden lg:inline">Your&nbsp;</span>
-                        Trader Positions
-                      </TabsTrigger>
-                      <TabsTrigger value="lp-positions">
-                        <span className="hidden lg:inline">Your&nbsp;</span>
-                        LP Positions
-                      </TabsTrigger>
-                    </TabsList>
-                    <div className="flex-grow overflow-y-auto">
-                      <TabsContent value="transactions" className="mt-0">
-                        <TransactionTable transactions={transactions} />
-                      </TabsContent>
-                      <TabsContent value="trader-positions" className="mt-0">
-                        <TraderPositionsTable positions={traderPositions} />
-                      </TabsContent>
-                      <TabsContent value="lp-positions" className="mt-0">
-                        <LiquidityPositionsTable positions={lpPositions} />
-                      </TabsContent>
+                  <div className="flex flex-1 min-h-[400px] md:min-h-0">
+                    <div className="flex w-full h-full border border-border rounded-sm shadow-sm">
+                      {renderChart()}
                     </div>
-                  </Tabs>
-                )}
+                  </div>
+                  <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center my-4 flex-shrink-0 gap-4">
+                    <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+                      <ChartSelector
+                        chartType={chartType}
+                        setChartType={setChartType}
+                        isTrade={isTrade}
+                      />
+                      {chartType !== ChartType.LIQUIDITY && (
+                        <div className="flex flex-col md:flex-row gap-3">
+                          <VolumeWindowSelector
+                            selectedWindow={selectedWindow}
+                            setSelectedWindow={setSelectedWindow}
+                          />
+                          {renderPriceToggles()}
+                        </div>
+                      )}
+                    </div>
+
+                    <MarketUnitsToggle />
+                  </div>
+                </div>
               </div>
-            )}
+              <DataDrawer />
+            </div>
           </div>
-        </div>
+        </TradePoolProvider>
       </AddEditPositionProvider>
-    </MarketProvider>
+    </PeriodProvider>
   );
 };
 

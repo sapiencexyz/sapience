@@ -28,7 +28,7 @@ import {
   DialogTitle,
 } from '~/components/ui/dialog';
 import { useMarketList } from '~/lib/context/MarketListProvider';
-import { MarketContext, MarketProvider } from '~/lib/context/MarketProvider';
+import { PeriodContext, PeriodProvider } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
 import { convertWstEthToGwei } from '~/lib/util/util';
 
@@ -92,7 +92,7 @@ interface Subscription {
 }
 
 const useSubscriptions = (address?: string) => {
-  const { useMarketUnits, stEthPerToken } = useContext(MarketContext);
+  const { useMarketUnits, stEthPerToken } = useContext(PeriodContext);
 
   const calculateEntryPrice = (position: any, transactions: any[]) => {
     let entryPrice = 0;
@@ -245,12 +245,12 @@ const SubscriptionsList = () => {
   if (!address) {
     return (
       <div ref={containerRef} className="flex flex-col items-center">
-        <div className="fixed h-screen w-screen top-[66%] md:top-[55%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[-1]">
+        <div className="fixed h-screen w-screen top-[66%] md:top-[55%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[-1] opacity-50 blur-sm">
           {isInView && (
             <Spline scene="https://prod.spline.design/gyoZ1cjoFk5-20wQ/scene.splinecode" />
           )}
         </div>
-        <div className="fixed z-10 max-w-[280px] md:max-w-[460px] text-white text-xl w-full md:text-4xl font-semibold tracking-wide text-center top-[66%] md:top-[55%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-100 bg-white/10 backdrop-blur-lg p-4 rounded-lg border border-accent/20 shadow-lg">
+        <div className="fixed z-10 max-w-[280px] md:max-w-[460px] text-white text-xl w-full md:text-4xl font-semibold tracking-wide text-center top-[66%] md:top-[55%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-100 bg-black/40 backdrop-blur-lg p-4 rounded-lg border border-accent/20 shadow-lg">
           Connect your wallet to view your subscriptions
         </div>
       </div>
@@ -376,7 +376,7 @@ const SubscriptionsList = () => {
             </DialogTitle>
           </DialogHeader>
           {selectedPosition && (
-            <MarketProvider
+            <PeriodProvider
               chainId={selectedPosition.epoch.market.chainId}
               address={selectedPosition.epoch.market.address as `0x${string}`}
               epoch={selectedPosition.epoch.id}
@@ -385,7 +385,7 @@ const SubscriptionsList = () => {
                 positionId={selectedPosition.positionId}
                 onClose={() => setSellDialogOpen(false)}
               />
-            </MarketProvider>
+            </PeriodProvider>
           )}
         </DialogContent>
       </Dialog>
@@ -489,7 +489,7 @@ const SubscribeContent = () => {
   }
 
   return (
-    <MarketProvider
+    <PeriodProvider
       chainId={targetEpoch.market.chainId}
       address={targetEpoch.market.address}
       epoch={targetEpoch.epochId}
@@ -542,7 +542,7 @@ const SubscribeContent = () => {
           </DialogContent>
         </Dialog>
       </div>
-    </MarketProvider>
+    </PeriodProvider>
   );
 };
 

@@ -9,15 +9,7 @@ import { type FC, useState, useEffect, useContext, useMemo } from 'react';
 import CountUp from 'react-countup';
 import { useForm } from 'react-hook-form';
 import type { AbiFunction } from 'viem';
-import {
-  decodeEventLog,
-  formatUnits,
-  zeroAddress,
-  isAddress,
-  createPublicClient,
-  http,
-} from 'viem';
-import { mainnet } from 'viem/chains';
+import { decodeEventLog, formatUnits, zeroAddress, isAddress } from 'viem';
 import {
   useWaitForTransactionReceipt,
   useWriteContract,
@@ -30,6 +22,7 @@ import {
 } from 'wagmi';
 
 import erc20ABI from '../lib/erc20abi.json';
+import { mainnetClient } from '~/app/providers';
 import { Alert, AlertTitle, AlertDescription } from '~/components/ui/alert';
 import { Button } from '~/components/ui/button';
 import {
@@ -48,7 +41,7 @@ import {
 } from '~/components/ui/tooltip';
 import { useToast } from '~/hooks/use-toast';
 import { useMarketList } from '~/lib/context/MarketListProvider';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 
 import NumberDisplay from './numberDisplay';
 import SimpleBarChart from './SimpleBarChart';
@@ -72,15 +65,6 @@ interface SubscribeProps {
   onClose?: () => void;
 }
 
-const publicClient = createPublicClient({
-  chain: mainnet,
-  transport: process.env.NEXT_PUBLIC_INFURA_API_KEY
-    ? http(
-        `https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
-      )
-    : http('https://ethereum-rpc.publicnode.com'),
-});
-
 const Subscribe: FC<SubscribeProps> = ({
   onAnalyticsClose,
   isAnalyticsMode = false,
@@ -100,7 +84,7 @@ const Subscribe: FC<SubscribeProps> = ({
     refetchUniswapData,
     startTime,
     endTime,
-  } = useContext(MarketContext);
+  } = useContext(PeriodContext);
 
   // Use prop values if provided, otherwise use context values
   const finalMarketAddress = contextMarketAddress;
@@ -497,7 +481,7 @@ const Subscribe: FC<SubscribeProps> = ({
       let resolvedAddress = formWalletAddress;
       if (!isAddress(formWalletAddress)) {
         try {
-          const ensAddress = await publicClient.getEnsAddress({
+          const ensAddress = await mainnetClient.getEnsAddress({
             name: formWalletAddress,
           });
           if (!ensAddress) {

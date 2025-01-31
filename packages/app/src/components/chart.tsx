@@ -1,13 +1,27 @@
 /* eslint-disable sonarjs/cognitive-complexity */
-import type { UTCTimestamp, BarData, LineData } from 'lightweight-charts';
-import { createChart, CrosshairMode } from 'lightweight-charts';
+import type {
+  UTCTimestamp,
+  BarData,
+  LineData,
+  IChartApi,
+  Time,
+} from 'lightweight-charts';
+import { createChart, CrosshairMode, PriceScaleMode } from 'lightweight-charts';
+import { Loader2 } from 'lucide-react';
 import { useTheme } from 'next-themes';
-import { useEffect, useRef, useContext } from 'react';
+import { useEffect, useRef, useContext, useState } from 'react';
 import type React from 'react';
 
 import type { PriceChartData } from '../lib/interfaces/interfaces';
 import { convertGgasPerWstEthToGwei } from '../lib/util/util';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '~/components/ui/tooltip';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
+import { cn } from '~/lib/utils';
 
 interface Props {
   data: {
@@ -39,13 +53,18 @@ const CandlestickChart: React.FC<Props> = ({
   seriesVisibility,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<any>(null);
+  const chartRef = useRef<IChartApi | null>(null);
   const resizeObserverRef = useRef<ResizeObserver>();
   const candlestickSeriesRef = useRef<any>(null);
   const indexPriceSeriesRef = useRef<any>(null);
   const resourcePriceSeriesRef = useRef<any>(null);
-  const { stEthPerToken, useMarketUnits } = useContext(MarketContext);
+  const { stEthPerToken, useMarketUnits, startTime } =
+    useContext(PeriodContext);
   const { theme } = useTheme();
+  const [isLogarithmic, setIsLogarithmic] = useState(false);
+
+  const now = Math.floor(Date.now() / 1000);
+  const isBeforeStart = startTime > now;
 
   // Split the chart creation and data updates into separate effects
 
@@ -56,7 +75,6 @@ const CandlestickChart: React.FC<Props> = ({
     if (chartRef.current) {
       chartRef.current.remove();
     }
-
     const chart = createChart(chartContainerRef.current, {
       width: chartContainerRef.current.clientWidth,
       height: chartContainerRef.current.clientHeight,
@@ -114,18 +132,15 @@ const CandlestickChart: React.FC<Props> = ({
 
     const handleResize = () => {
       if (!chartRef.current || !chartContainerRef.current) return;
-
       const { clientWidth, clientHeight } = chartContainerRef.current;
       chartRef.current.applyOptions({
         width: clientWidth,
         height: clientHeight,
       });
-      chartRef.current.timeScale().fitContent();
     };
 
     resizeObserverRef.current = new ResizeObserver(handleResize);
     resizeObserverRef.current.observe(chartContainerRef.current);
-
     // Initial resize
     handleResize();
 
@@ -144,7 +159,6 @@ const CandlestickChart: React.FC<Props> = ({
   // Separate effect for updating data
   useEffect(() => {
     if (!chartRef.current || !candlestickSeriesRef.current) return;
-
     const combinedData = data.marketPrices
       .map((mp, i) => {
         const timestamp = (mp.endTimestamp / 1000) as UTCTimestamp;
@@ -189,7 +203,7 @@ const CandlestickChart: React.FC<Props> = ({
 
     candlestickSeriesRef.current.setData(candleSeriesData);
 
-    if (!isLoading && indexPriceSeriesRef.current) {
+    if (!isLoading && indexPriceSeriesRef.current && !isBeforeStart) {
       indexPriceSeriesRef.current.setData(lineSeriesData);
 
       if (data.resourcePrices?.length && resourcePriceSeriesRef.current) {
@@ -209,7 +223,7 @@ const CandlestickChart: React.FC<Props> = ({
     }
     if (indexPriceSeriesRef.current) {
       indexPriceSeriesRef.current.applyOptions({
-        visible: seriesVisibility.index,
+        visible: !isBeforeStart && seriesVisibility.index,
       });
     }
     if (resourcePriceSeriesRef.current) {
@@ -219,11 +233,75 @@ const CandlestickChart: React.FC<Props> = ({
     }
   }, [data, isLoading, stEthPerToken, useMarketUnits, seriesVisibility]);
 
+  useEffect(() => {
+    if (!isLoading) {
+      const secondsInAWeek = 7 * 24 * 60 * 60;
+      chartRef.current?.timeScale().setVisibleRange({
+        from: (new Date().getTime() / 1000 - secondsInAWeek) as Time,
+        to: (new Date().getTime() / 1000) as Time,
+      });
+    }
+  }, [isLoading]);
+
+  useEffect(() => {
+    if (!chartRef.current) return;
+
+    chartRef.current.priceScale('right').applyOptions({
+      mode: isLogarithmic ? PriceScaleMode.Logarithmic : PriceScaleMode.Normal,
+    });
+
+    const series = [
+      candlestickSeriesRef.current,
+      indexPriceSeriesRef.current,
+      resourcePriceSeriesRef.current,
+    ];
+
+    series.forEach((s) => {
+      if (s) {
+        s.applyOptions({
+          priceScale: {
+            mode: isLogarithmic
+              ? PriceScaleMode.Logarithmic
+              : PriceScaleMode.Normal,
+          },
+        });
+      }
+    });
+  }, [isLogarithmic]);
+
   return (
-    <div className="flex flex-col flex-1">
+    <div className="flex flex-col flex-1 relative group w-full h-full">
+      {isLoading &&
+      !data.marketPrices?.length &&
+      !data.indexPrices?.length &&
+      (!data.resourcePrices || !data.resourcePrices.length) ? (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground opacity-20" />
+        </div>
+      ) : null}
       <div className="flex flex-1 h-full">
         <div ref={chartContainerRef} className="w-full h-full" />
       </div>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => setIsLogarithmic(!isLogarithmic)}
+              className={cn(
+                'absolute bottom-0 right-2 w-6 h-6 rounded-sm bg-background border border-border text-foreground flex items-center justify-center hover:bg-accent hover:border-accent transition-all duration-100 opacity-0 group-hover:opacity-100 z-5 text-xs',
+                isLogarithmic &&
+                  'bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:border-primary/90'
+              )}
+            >
+              L
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Toggle logarithmic scale</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </div>
   );
 };

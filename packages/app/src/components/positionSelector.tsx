@@ -11,12 +11,12 @@ import {
   DialogTitle,
 } from '~/components/ui/dialog';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 
 const PositionSelector: React.FC = () => {
   const { nftId, positions, setNftId } = useAddEditPosition();
   const [isOpen, setIsOpen] = useState(false);
-  const { chainId, address: marketAddress, epoch } = useContext(MarketContext);
+  const { chainId, address: marketAddress, epoch } = useContext(PeriodContext);
 
   const allPositions = [
     ...(positions?.liquidityPositions?.map((pos) => ({
@@ -48,7 +48,7 @@ const PositionSelector: React.FC = () => {
           type="button"
           variant="link"
           size="sm"
-          className="text-blue-500 ml-1 p-0 h-auto"
+          className="text-blue-500 hover:text-blue-600 ml-1 p-0 h-auto"
           onClick={() => setIsOpen(true)}
         >
           <Edit className="h-4 w-4" />
@@ -85,7 +85,7 @@ const PositionSelector: React.FC = () => {
                 </Button>
               </Link>
             ))}
-            <Button className="mt-6" onClick={() => handlePositionSelect(0)}>
+            <Button className="mt-3" onClick={() => handlePositionSelect(0)}>
               <p>Create New Position</p>
             </Button>
           </div>

@@ -21,7 +21,7 @@ import {
   getProviderForChain,
   bigintReplacer,
   sqrtPriceX96ToSettlementPriceD18,
-} from '../helpers';
+} from '../utils';
 import {
   createEpochFromEvent,
   createOrUpdateMarketFromEvent,
@@ -40,7 +40,7 @@ import {
 } from './marketHelpers';
 import { Client, TextChannel, EmbedBuilder } from 'discord.js';
 import * as Chains from 'viem/chains';
-import { convertGasToGgas } from '../helpers';
+import { convertGasToGgas } from '../utils';
 import { MARKETS } from '../fixtures';
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;

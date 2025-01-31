@@ -23,7 +23,7 @@ import {
   TooltipTrigger,
 } from '~/components/ui/tooltip';
 import { useToast } from '~/hooks/use-toast';
-import { MarketContext } from '~/lib/context/MarketProvider';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 
 import VaultChart from './vaultChart';
 
@@ -35,7 +35,7 @@ interface FormValues {
 const Earn: FC = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>('deposit');
-  const { collateralAssetTicker } = useContext(MarketContext);
+  const { collateralAssetTicker } = useContext(PeriodContext);
 
   const form = useForm<FormValues>({
     defaultValues: {
@@ -135,7 +135,7 @@ const Earn: FC = () => {
 
           <div className="w-full max-w-sm">
             <div className="border border-border rounded-lg shadow-sm p-6 mt-6">
-              <p className="mb-1 text-md">
+              <p className="mb-1 text-base">
                 Deposit collateral to have the vault smart contract provide
                 liquidity to the market and roll between epochs automatically.
               </p>

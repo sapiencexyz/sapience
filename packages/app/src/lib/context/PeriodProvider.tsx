@@ -8,12 +8,9 @@ import * as Chains from 'viem/chains';
 import type { Chain } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 
+import { mainnetClient } from '../../app/providers';
 import useFoilDeployment from '../../components/useFoilDeployment';
-import {
-  API_BASE_URL,
-  BLANK_MARKET,
-  DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS,
-} from '../constants/constants';
+import { API_BASE_URL, BLANK_MARKET } from '../constants/constants';
 import erc20ABI from '../erc20abi.json';
 import { useUniswapPool } from '../hooks/useUniswapPool';
 import type { EpochData, MarketParams } from '../interfaces/interfaces';
@@ -21,7 +18,7 @@ import { gweiToEther } from '../util/util';
 import { useToast } from '~/hooks/use-toast';
 
 // Types and Interfaces
-export interface MarketContextType {
+export interface PeriodContextType {
   chain?: Chain;
   address: string;
   collateralAsset: string;
@@ -49,7 +46,7 @@ export interface MarketContextType {
   setUseMarketUnits: (useMarketUnits: boolean) => void;
 }
 
-interface MarketProviderProps {
+interface PeriodProviderProps {
   chainId: number;
   address: string;
   epoch?: number;
@@ -57,18 +54,29 @@ interface MarketProviderProps {
 }
 
 // Context creation
-export const MarketContext = createContext<MarketContextType>(BLANK_MARKET);
+export const PeriodContext = createContext<PeriodContextType>(BLANK_MARKET);
 
 // Main component
-export const MarketProvider: React.FC<MarketProviderProps> = ({
+export const PeriodProvider: React.FC<PeriodProviderProps> = ({
   chainId,
   address,
   children,
   epoch,
 }) => {
   const { toast } = useToast();
-  const [state, setState] = useState<MarketContextType>(BLANK_MARKET);
-  const [useMarketUnits, setUseMarketUnits] = useState(false);
+  const [state, setState] = useState<PeriodContextType>(BLANK_MARKET);
+  const [useMarketUnits, setUseMarketUnits] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('useMarketUnits');
+      return saved ? JSON.parse(saved) : false;
+    }
+    return false;
+  });
+
+  // Save useMarketUnits changes to localStorage
+  useEffect(() => {
+    localStorage.setItem('useMarketUnits', JSON.stringify(useMarketUnits));
+  }, [useMarketUnits]);
 
   const { foilData } = useFoilDeployment(chainId);
 
@@ -140,7 +148,6 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     state.poolAddress
   );
 
-  // Effect hooks
   useEffect(() => {
     const chain = Object.entries(Chains).find((chainOption) => {
       if (chainId === 13370 && chainOption[0] === 'localhost') {
@@ -164,40 +171,41 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
     }));
   }, [chainId, address, epoch, useMarketUnits, setUseMarketUnits]);
 
-  const getChainIdForWstEthRatio = () => {
-    if (chainId === Chains.cannon.id) return Chains.sepolia.id;
-    if (chainId === Chains.base.id) return Chains.mainnet.id;
-    return chainId;
-  };
+  const [stEthPerTokenResult, setStEthPerTokenResult] = useState<{
+    data?: bigint;
+    error?: Error;
+  }>({});
 
-  const getContractAddressForWstEthRatio = () => {
-    if (chainId === Chains.cannon.id)
-      return DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS;
-    if (chainId === Chains.base.id)
-      return '0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0';
-    return state.collateralAsset as `0x${string}`;
-  };
+  useEffect(() => {
+    const fetchStEthPerToken = async () => {
+      try {
+        const data = await mainnetClient.readContract({
+          address: '0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0',
+          abi: [
+            {
+              inputs: [],
+              name: 'stEthPerToken',
+              outputs: [
+                {
+                  internalType: 'uint256',
+                  name: '',
+                  type: 'uint256',
+                },
+              ],
+              stateMutability: 'view',
+              type: 'function',
+            },
+          ],
+          functionName: 'stEthPerToken',
+        });
+        setStEthPerTokenResult({ data });
+      } catch (error) {
+        setStEthPerTokenResult({ error: error as Error });
+      }
+    };
 
-  const stEthPerTokenResult = useReadContract({
-    chainId: getChainIdForWstEthRatio(),
-    abi: [
-      {
-        inputs: [],
-        name: 'stEthPerToken',
-        outputs: [
-          {
-            internalType: 'uint256',
-            name: '',
-            type: 'uint256',
-          },
-        ],
-        stateMutability: 'view',
-        type: 'function',
-      },
-    ],
-    address: getContractAddressForWstEthRatio(),
-    functionName: 'stEthPerToken',
-  });
+    fetchStEthPerToken();
+  }, []);
 
   useEffect(() => {
     if (stEthPerTokenResult.data) {
@@ -355,8 +363,8 @@ export const MarketProvider: React.FC<MarketProviderProps> = ({
   }, [collateralDecimalsFunctionResult.data]);
 
   return (
-    <MarketContext.Provider value={{ ...state, refetchUniswapData }}>
+    <PeriodContext.Provider value={{ ...state, refetchUniswapData }}>
       {children}
-    </MarketContext.Provider>
+    </PeriodContext.Provider>
   );
 };

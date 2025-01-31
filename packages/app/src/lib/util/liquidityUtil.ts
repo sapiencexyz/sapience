@@ -132,16 +132,19 @@ function processTicks(
     activeTickIdx = TickMath.MAX_TICK;
   }
 
+  const price0 = parseFloat(
+    tickToPrice(token0, token1, activeTickIdx).toSignificant(18)
+  );
+  const price1 = parseFloat(
+    tickToPrice(token1, token0, activeTickIdx).toSignificant(18)
+  );
+
   const activeTickProcessed: TickProcessed = {
     tickIdx: activeTickIdx,
     liquidityActive: liquidity,
     liquidityNet: JSBI.BigInt(0),
-    price0: parseFloat(
-      tickToPrice(token0, token1, activeTickIdx).toSignificant(18)
-    ),
-    price1: parseFloat(
-      tickToPrice(token1, token0, activeTickIdx).toSignificant(18)
-    ),
+    price0,
+    price1,
     isCurrent: true,
   };
 
@@ -182,6 +185,56 @@ enum Direction {
   DESC,
 }
 
+function processTickDirection(
+  currentTickIdx: number,
+  previousTickProcessed: TickProcessed,
+  tickIdxToTickDictionary: Record<string, GraphTick>,
+  direction: Direction,
+  token0: Token,
+  token1: Token
+): TickProcessed {
+  const price0 = parseFloat(
+    tickToPrice(token0, token1, currentTickIdx).toSignificant(18)
+  );
+  const price1 = parseFloat(
+    tickToPrice(token1, token0, currentTickIdx).toSignificant(18)
+  );
+
+  const currentTickProcessed: TickProcessed = {
+    tickIdx: currentTickIdx,
+    liquidityActive: previousTickProcessed.liquidityActive,
+    liquidityNet: JSBI.BigInt(0),
+    price0,
+    price1,
+    isCurrent: false,
+  };
+
+  const currentInitializedTick =
+    tickIdxToTickDictionary[currentTickIdx.toString()];
+  if (currentInitializedTick) {
+    currentTickProcessed.liquidityNet = JSBI.BigInt(
+      currentInitializedTick.liquidityNet
+    );
+  }
+
+  if (direction === Direction.ASC && currentInitializedTick) {
+    currentTickProcessed.liquidityActive = JSBI.add(
+      previousTickProcessed.liquidityActive,
+      JSBI.BigInt(currentInitializedTick.liquidityNet)
+    );
+  } else if (
+    direction === Direction.DESC &&
+    JSBI.notEqual(previousTickProcessed.liquidityNet, JSBI.BigInt(0))
+  ) {
+    currentTickProcessed.liquidityActive = JSBI.subtract(
+      previousTickProcessed.liquidityActive,
+      previousTickProcessed.liquidityNet
+    );
+  }
+
+  return currentTickProcessed;
+}
+
 function computeInitializedTicks(
   activeTickProcessed: TickProcessed,
   numSurroundingTicks: number,
@@ -193,11 +246,9 @@ function computeInitializedTicks(
   minTick: number,
   maxTick: number
 ): TickProcessed[] {
-  let previousTickProcessed: TickProcessed = {
-    ...activeTickProcessed,
-  };
+  let previousTickProcessed: TickProcessed = { ...activeTickProcessed };
+  const ticksProcessed: TickProcessed[] = [];
 
-  let ticksProcessed: TickProcessed[] = [];
   for (let i = 0; i < numSurroundingTicks; i++) {
     const currentTickIdx =
       direction === Direction.ASC
@@ -208,52 +259,22 @@ function computeInitializedTicks(
       break;
     }
 
-    const currentTickProcessed: TickProcessed = {
-      tickIdx: currentTickIdx,
-      liquidityActive: previousTickProcessed.liquidityActive,
-      liquidityNet: JSBI.BigInt(0),
-      price0: parseFloat(
-        tickToPrice(token0, token1, currentTickIdx).toSignificant(18)
-      ),
-      price1: parseFloat(
-        tickToPrice(token1, token0, currentTickIdx).toSignificant(18)
-      ),
-      isCurrent: false,
-    };
-
-    const currentInitializedTick =
-      tickIdxToTickDictionary[currentTickIdx.toString()];
-    if (currentInitializedTick) {
-      currentTickProcessed.liquidityNet = JSBI.BigInt(
-        currentInitializedTick.liquidityNet
-      );
-    }
-
-    if (direction === Direction.ASC && currentInitializedTick) {
-      currentTickProcessed.liquidityActive = JSBI.add(
-        previousTickProcessed.liquidityActive,
-        JSBI.BigInt(currentInitializedTick.liquidityNet)
-      );
-    } else if (
-      direction === Direction.DESC &&
-      JSBI.notEqual(previousTickProcessed.liquidityNet, JSBI.BigInt(0))
-    ) {
-      // We are iterating descending, so look at the previous tick and apply any net liquidity.
-      currentTickProcessed.liquidityActive = JSBI.subtract(
-        previousTickProcessed.liquidityActive,
-        previousTickProcessed.liquidityNet
-      );
-    }
+    const currentTickProcessed = processTickDirection(
+      currentTickIdx,
+      previousTickProcessed,
+      tickIdxToTickDictionary,
+      direction,
+      token0,
+      token1
+    );
 
     ticksProcessed.push(currentTickProcessed);
     previousTickProcessed = currentTickProcessed;
   }
 
-  if (direction === Direction.DESC) {
-    ticksProcessed = ticksProcessed.reverse();
-  }
-
-  return ticksProcessed;
+  return direction === Direction.DESC
+    ? ticksProcessed.reverse()
+    : ticksProcessed;
 }
 
 async function calculateLockedLiqudity(
