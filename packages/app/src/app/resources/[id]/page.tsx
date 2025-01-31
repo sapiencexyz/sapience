@@ -1,16 +1,23 @@
 'use client';
 
-import { ChevronRight, Loader2 } from 'lucide-react';
+import { ChevronRight, Loader2, Circle } from 'lucide-react';
 import Link from 'next/link';
 import React from 'react';
 import { formatUnits } from 'viem';
 
 import { Card, CardContent } from '@/components/ui/card';
-import Chart from '~/components/chart';
+import { Toggle } from '@/components/ui/toggle';
+import Chart, { BLUE } from '~/components/chart';
 import EpochTiming from '~/components/EpochTiming';
 import MarketLayout from '~/components/market/MarketLayout';
 import ResourceNav from '~/components/market/ResourceNav';
 import NumberDisplay from '~/components/numberDisplay';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '~/components/ui/tooltip';
 import { MARKET_CATEGORIES } from '~/lib/constants/markets';
 import { useLatestResourcePrice, useResources } from '~/lib/hooks/useResources';
 
@@ -113,7 +120,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
     address?: string;
   }>();
 
-  const [seriesVisibility] = React.useState({
+  const [seriesVisibility, setSeriesVisibility] = React.useState({
     candles: false,
     index: false,
     resource: true,
@@ -156,7 +163,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
       <div className={`flex-1 min-w-0 ${!epochs.length ? 'w-full' : ''}`}>
         <div className="flex flex-col h-full">
           <div className="flex-1 grid relative">
-            <Card className="absolute top-4 left-4 md:top-8 md:left-8 z-20">
+            <Card className="absolute top-4 left-4 md:top-8 md:left-8 z-10">
               <CardContent className="py-3 px-4">
                 <div className="flex flex-col">
                   <span className="text-sm text-muted-foreground">
@@ -168,6 +175,38 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
                 </div>
               </CardContent>
             </Card>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    className="
+                      bg-background absolute bottom-20 left-2 z-10"
+                    style={{ color: BLUE }}
+                  >
+                    <Toggle
+                      pressed={seriesVisibility.trailing}
+                      onPressedChange={(pressed) =>
+                        setSeriesVisibility((prev) => ({
+                          ...prev,
+                          trailing: pressed,
+                        }))
+                      }
+                      variant="outline"
+                      size="sm"
+                    >
+                      <Circle className="h-3 w-3" strokeWidth={3} />
+                      <span className="sr-only">
+                        Toggle 28 day trailing average
+                      </span>
+                    </Toggle>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p>Toggle 28 day trailing average</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
 
             <div className="flex flex-col flex-1">
               <div className="flex flex-1">

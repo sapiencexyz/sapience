@@ -1,11 +1,9 @@
-/* eslint-disable sonarjs/cognitive-complexity */
 import { useQuery } from '@tanstack/react-query';
 import type {
   UTCTimestamp,
   BarData,
   LineData,
   IChartApi,
-  Time,
 } from 'lightweight-charts';
 import { createChart, CrosshairMode, PriceScaleMode } from 'lightweight-charts';
 import { Loader2 } from 'lucide-react';
@@ -23,7 +21,6 @@ import {
 } from '~/components/ui/tooltip';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
-import { useResources } from '~/lib/hooks/useResources';
 import type { PriceChartData } from '~/lib/interfaces/interfaces';
 import { cn, timeToLocal } from '~/lib/utils';
 
@@ -57,19 +54,6 @@ interface ResourcePricePoint {
   price: number;
 }
 
-interface Resource {
-  slug: string;
-  markets: {
-    chainId: number;
-    address: string;
-    epochs: {
-      epochId: number;
-      startTimestamp: number;
-      endTimestamp: number;
-    }[];
-  }[];
-}
-
 export const GREEN_PRIMARY = '#58585A';
 export const RED = '#D85B4E';
 export const GREEN = '#38A667';
@@ -92,7 +76,6 @@ const CandlestickChart: React.FC<Props> = ({
     useContext(PeriodContext);
   const { theme } = useTheme();
   const [isLogarithmic, setIsLogarithmic] = useState(false);
-  const { data: resources } = useResources();
   const [selectedWindow] = useState('1d'); // Default to 1 day window
 
   const now = Math.floor(Date.now() / 1000);
@@ -143,39 +126,16 @@ const CandlestickChart: React.FC<Props> = ({
   };
 
   const useResourcePrices = () => {
-    const resource =
-      resourceSlug &&
-      (resources as Resource[] | undefined)?.find(
-        (r: Resource) => r.slug === resourceSlug
-      );
-    type EpochData = {
-      epochId: number;
-      startTimestamp: number;
-      endTimestamp: number;
-    };
-    const epochData =
-      resource &&
-      resource.markets
-        .find(
-          (m: { chainId: number; address: string }) =>
-            m.chainId === Number(market?.chainId) &&
-            m.address === market?.address
-        )
-        ?.epochs.find((e: EpochData) => e.epochId === Number(market?.epochId));
-
     return useQuery<ResourcePricePoint[]>({
-      queryKey: [
-        'resourcePrices',
-        resourceSlug,
-        epochData && epochData.startTimestamp,
-        epochData && epochData.endTimestamp,
-      ],
+      queryKey: ['resourcePrices', resourceSlug],
       queryFn: async () => {
-        if (!resourceSlug || !epochData) {
+        if (!resourceSlug) {
           return [];
         }
+        const now = Math.floor(Date.now() / 1000);
+        const twentyEightDaysAgo = now - 28 * 24 * 60 * 60;
         const response = await fetch(
-          `${API_BASE_URL}/resources/${resourceSlug}/prices?startTime=${epochData.startTimestamp}&endTime=${epochData.endTimestamp}`
+          `${API_BASE_URL}/resources/${resourceSlug}/prices?startTime=${twentyEightDaysAgo}&endTime=${now}`
         );
         if (!response.ok) {
           throw new Error('Failed to fetch resource prices');
@@ -189,7 +149,7 @@ const CandlestickChart: React.FC<Props> = ({
         });
       },
       refetchInterval: 2000,
-      enabled: !!resourceSlug && !!epochData,
+      enabled: !!resourceSlug,
     });
   };
 
@@ -363,7 +323,7 @@ const CandlestickChart: React.FC<Props> = ({
     }
     if (indexPriceSeriesRef.current) {
       indexPriceSeriesRef.current.applyOptions({
-        visible: !isBeforeStart && seriesVisibility?.index,
+        visible: seriesVisibility?.index,
       });
     }
     if (resourcePriceSeriesRef.current) {
@@ -376,6 +336,16 @@ const CandlestickChart: React.FC<Props> = ({
         visible: seriesVisibility?.trailing,
       });
     }
+
+    // Set visible range after data is loaded
+    if (chartRef.current && candleSeriesData.length > 0) {
+      const secondsInAWeek = 7 * 24 * 60 * 60;
+      const now = new Date().getTime() / 1000;
+      chartRef.current.timeScale().setVisibleRange({
+        from: (now - secondsInAWeek) as UTCTimestamp,
+        to: now as UTCTimestamp,
+      });
+    }
   }, [
     stEthPerToken,
     useMarketUnits,
@@ -383,15 +353,8 @@ const CandlestickChart: React.FC<Props> = ({
     resourcePrices,
     indexPrices,
     marketPrices,
+    isBeforeStart,
   ]);
-
-  useEffect(() => {
-    const secondsInAWeek = 7 * 24 * 60 * 60;
-    chartRef.current?.timeScale().setVisibleRange({
-      from: (new Date().getTime() / 1000 - secondsInAWeek) as Time,
-      to: (new Date().getTime() / 1000) as Time,
-    });
-  }, []);
 
   useEffect(() => {
     if (!chartRef.current) return;
