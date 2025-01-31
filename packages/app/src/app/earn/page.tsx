@@ -4,11 +4,11 @@ import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Suspense, useEffect } from 'react';
 
-import { useMarketList } from '~/lib/context/MarketListProvider';
+import { useFoil } from '~/lib/context/FoilProvider';
 
 const EarnContent = () => {
   const router = useRouter();
-  const { markets, isLoading } = useMarketList();
+  const { markets, isLoading } = useFoil();
 
   useEffect(() => {
     if (!isLoading && markets.length > 0) {

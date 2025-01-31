@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import type { Pool } from '@uniswap/v3-sdk';
-import axios from 'axios';
 import type { ReactNode } from 'react';
 import type React from 'react';
 import { createContext, useEffect, useState } from 'react';
@@ -8,13 +7,11 @@ import * as Chains from 'viem/chains';
 import type { Chain } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 
-import { mainnetClient } from '../../app/providers';
 import useFoilDeployment from '../../components/useFoilDeployment';
 import { API_BASE_URL, BLANK_MARKET } from '../constants/constants';
 import erc20ABI from '../erc20abi.json';
 import { useUniswapPool } from '../hooks/useUniswapPool';
 import type { EpochData, MarketParams } from '../interfaces/interfaces';
-import { gweiToEther } from '../util/util';
 import { useToast } from '~/hooks/use-toast';
 
 // Types and Interfaces
@@ -41,7 +38,6 @@ export interface PeriodContextType {
   liquidity: number;
   owner: string;
   refetchUniswapData: () => void;
-  stEthPerToken: number | undefined;
   useMarketUnits: boolean;
   setUseMarketUnits: (useMarketUnits: boolean) => void;
 }
@@ -171,104 +167,20 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
     }));
   }, [chainId, address, epoch, useMarketUnits, setUseMarketUnits]);
 
-  const [stEthPerTokenResult, setStEthPerTokenResult] = useState<{
-    data?: bigint;
-    error?: Error;
-  }>({});
-
   useEffect(() => {
-    const fetchStEthPerToken = async () => {
-      try {
-        const data = await mainnetClient.readContract({
-          address: '0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0',
-          abi: [
-            {
-              inputs: [],
-              name: 'stEthPerToken',
-              outputs: [
-                {
-                  internalType: 'uint256',
-                  name: '',
-                  type: 'uint256',
-                },
-              ],
-              stateMutability: 'view',
-              type: 'function',
-            },
-          ],
-          functionName: 'stEthPerToken',
-        });
-        setStEthPerTokenResult({ data });
-      } catch (error) {
-        setStEthPerTokenResult({ error: error as Error });
-      }
-    };
-
-    fetchStEthPerToken();
-  }, []);
-
-  useEffect(() => {
-    if (stEthPerTokenResult.data) {
+    if (latestPrice !== undefined && latestPrice !== null) {
       setState((currentState) => ({
         ...currentState,
-        stEthPerToken: Number(gweiToEther(stEthPerTokenResult.data as bigint)),
-      }));
-    }
-  }, [stEthPerTokenResult.data]);
-
-  useEffect(() => {
-    const updateSettledStEthPerToken = async () => {
-      const response = await axios.get(
-        `${API_BASE_URL}/getStEthPerTokenAtTimestamp?chainId=${state.chainId}&collateralAssetAddress=${state.collateralAsset}&endTime=${state.endTime}`
-      );
-      console.log('updated stEthPerToken', response.data);
-      const stEthPerToken = BigInt(response.data.stEthPerToken);
-      setState((currentState) => ({
-        ...currentState,
-        stEthPerToken: Number(gweiToEther(stEthPerToken)),
-      }));
-    };
-
-    const currentTime = Math.floor(Date.now() / 1000);
-    if (
-      state.endTime &&
-      state.endTime < currentTime &&
-      state.chainId &&
-      state.collateralAsset
-    ) {
-      updateSettledStEthPerToken();
-    }
-  }, [state.endTime, state.chainId, state.collateralAsset]);
-
-  useEffect(() => {
-    console.log('latestPrice =', latestPrice);
-    if (
-      latestPrice !== undefined &&
-      latestPrice !== null &&
-      stEthPerTokenResult.data
-    ) {
-      const stEthPerToken = Number(
-        gweiToEther(stEthPerTokenResult.data as bigint)
-      );
-
-      const averageResourcePriceinWstEth = latestPrice / stEthPerToken;
-
-      setState((currentState) => ({
-        ...currentState,
-        averagePrice: averageResourcePriceinWstEth,
-        stEthPerToken,
+        averagePrice: latestPrice,
       }));
     } else if (latestPrice === null) {
       // When price data is not available, set averagePrice to null/0
       setState((currentState) => ({
         ...currentState,
         averagePrice: 0,
-        stEthPerToken: stEthPerTokenResult.data
-          ? Number(gweiToEther(stEthPerTokenResult.data as bigint))
-          : undefined,
       }));
     }
-  }, [latestPrice, stEthPerTokenResult.data]);
+  }, [latestPrice]);
 
   useEffect(() => {
     setState((currentState) => ({

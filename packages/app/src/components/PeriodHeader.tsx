@@ -12,15 +12,17 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '~/components/ui/tooltip';
-import { useMarketList } from '~/lib/context/MarketListProvider';
+import { useFoil } from '~/lib/context/FoilProvider';
+import type { Market } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
-import { tickToPrice, convertWstEthToGwei } from '~/lib/util/util';
+import { tickToPrice, convertWstEthToGwei } from '~/lib/utils/util';
 
 import NumberDisplay from './numberDisplay';
 import { Label } from './ui/label';
 
 const PeriodHeader = () => {
+  const { stEthPerToken, markets } = useFoil();
   const {
     chain,
     address,
@@ -30,18 +32,14 @@ const PeriodHeader = () => {
     baseAssetMinPriceTick,
     baseAssetMaxPriceTick,
     useMarketUnits,
-    stEthPerToken,
   } = useContext(PeriodContext);
-  const { markets } = useMarketList();
   const { data: resources } = useResources();
 
-  const currentMarket = markets.find(
-    (market) => market.address.toLowerCase() === address.toLowerCase()
+  const market = markets.find(
+    (market: Market) => market.address.toLowerCase() === address.toLowerCase()
   );
 
-  const resource = resources?.find(
-    (r) => r.name === currentMarket?.resource?.name
-  );
+  const resource = resources?.find((r) => r.name === market?.resource?.name);
 
   let endTimeString = '';
   let startTimeString = '';

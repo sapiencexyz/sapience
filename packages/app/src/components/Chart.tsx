@@ -38,14 +38,12 @@ const CandlestickChart: React.FC<Props> = ({
   seriesVisibility,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const { stEthPerToken, useMarketUnits, startTime } =
-    useContext(PeriodContext);
+  const { useMarketUnits, startTime } = useContext(PeriodContext);
 
   const { isLogarithmic, setIsLogarithmic } = useChart({
     resourceSlug,
     market,
     seriesVisibility,
-    stEthPerToken: stEthPerToken ?? 1,
     useMarketUnits,
     startTime,
     containerRef: chartContainerRef,

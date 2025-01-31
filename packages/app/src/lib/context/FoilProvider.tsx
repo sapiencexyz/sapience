@@ -4,9 +4,11 @@ import type {
 } from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 
+import { useToast } from '../../hooks/use-toast';
 import { API_BASE_URL } from '../constants/constants';
+import { gweiToEther, mainnetClient } from '../utils/util';
 
 export interface Market {
   id: number;
@@ -41,22 +43,63 @@ export interface Market {
   public: boolean;
 }
 
-interface MarketListContextType {
+interface FoilContextType {
   markets: Market[];
   isLoading: boolean;
   error: Error | null;
   refetchMarkets: (
     options?: RefetchOptions
   ) => Promise<QueryObserverResult<Market[], Error>>;
+  stEthPerToken: number | undefined;
 }
 
-const MarketListContext = createContext<MarketListContextType | undefined>(
-  undefined
-);
+const FoilContext = createContext<FoilContextType | undefined>(undefined);
 
-export const MarketListProvider: React.FC<{ children: React.ReactNode }> = ({
+export const FoilProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
+  const [stEthPerToken, setStEthPerToken] = useState<number | undefined>();
+  const { toast } = useToast();
+
+  // Fetch stEthPerToken
+  useEffect(() => {
+    const fetchStEthPerToken = async () => {
+      try {
+        const data = await mainnetClient.readContract({
+          address: '0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0',
+          abi: [
+            {
+              inputs: [],
+              name: 'stEthPerToken',
+              outputs: [
+                {
+                  internalType: 'uint256',
+                  name: '',
+                  type: 'uint256',
+                },
+              ],
+              stateMutability: 'view',
+              type: 'function',
+            },
+          ],
+          functionName: 'stEthPerToken',
+        });
+        setStEthPerToken(Number(gweiToEther(data as bigint)));
+      } catch (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Error fetching stETH per token',
+          description:
+            error instanceof Error
+              ? error.message
+              : 'An unknown error occurred',
+        });
+      }
+    };
+
+    fetchStEthPerToken();
+  }, []);
+
   const {
     data: markets,
     isLoading,
@@ -106,18 +149,24 @@ export const MarketListProvider: React.FC<{ children: React.ReactNode }> = ({
   //
 
   return (
-    <MarketListContext.Provider
-      value={{ markets: markets || [], isLoading, error, refetchMarkets }}
+    <FoilContext.Provider
+      value={{
+        markets: markets || [],
+        isLoading,
+        error,
+        refetchMarkets,
+        stEthPerToken,
+      }}
     >
       {children}
-    </MarketListContext.Provider>
+    </FoilContext.Provider>
   );
 };
 
-export const useMarketList = () => {
-  const context = useContext(MarketListContext);
+export const useFoil = () => {
+  const context = useContext(FoilContext);
   if (context === undefined) {
-    throw new Error('useMarketList must be used within a MarketListProvider');
+    throw new Error('useFoil must be used within a FoilProvider');
   }
   return context;
 };

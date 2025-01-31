@@ -42,37 +42,49 @@ interface EpochsTableProps {
   onHover: (
     market: { epochId: number; chainId: number; address: string } | undefined
   ) => void;
+  hoveredMarket?: {
+    epochId?: number;
+    chainId?: number;
+    address?: string;
+  };
 }
 
-const EpochsTable = ({ data, onHover }: EpochsTableProps) => {
+const EpochsTable = ({ data, onHover, hoveredMarket }: EpochsTableProps) => {
   return (
     <div className="border-t border-border">
       {data.length ? (
-        data.map((epoch) => (
-          <Link
-            key={epoch.id}
-            href={`/trade/${epoch.market.chainId}:${epoch.market.address}/periods/${epoch.epochId}`}
-            className="block hover:no-underline border-b border-border"
-            onMouseEnter={() =>
-              onHover({
-                epochId: epoch.epochId,
-                chainId: epoch.market.chainId,
-                address: epoch.market.address,
-              })
-            }
-            onMouseLeave={() => onHover(undefined)}
-          >
-            <div className="flex items-center justify-between cursor-pointer px-4 py-1.5 hover:bg-secondary">
-              <div className="flex items-baseline">
-                <EpochTiming
-                  startTimestamp={epoch.startTimestamp}
-                  endTimestamp={epoch.endTimestamp}
-                />
+        data.map((epoch) => {
+          const isHovered =
+            hoveredMarket?.epochId === epoch.epochId &&
+            hoveredMarket?.chainId === epoch.market.chainId &&
+            hoveredMarket?.address === epoch.market.address;
+          return (
+            <Link
+              key={epoch.id}
+              href={`/trade/${epoch.market.chainId}:${epoch.market.address}/periods/${epoch.epochId}`}
+              className="block hover:no-underline border-b border-border"
+              onMouseEnter={() =>
+                onHover({
+                  epochId: epoch.epochId,
+                  chainId: epoch.market.chainId,
+                  address: epoch.market.address,
+                })
+              }
+            >
+              <div
+                className={`flex items-center justify-between cursor-pointer px-4 py-1.5 hover:bg-secondary ${isHovered ? 'bg-secondary' : ''}`}
+              >
+                <div className="flex items-baseline">
+                  <EpochTiming
+                    startTimestamp={epoch.startTimestamp}
+                    endTimestamp={epoch.endTimestamp}
+                  />
+                </div>
+                <ChevronRight className="h-6 w-6" />
               </div>
-              <ChevronRight className="h-6 w-6" />
-            </div>
-          </Link>
-        ))
+            </Link>
+          );
+        })
       ) : (
         <div className="h-24 flex items-center justify-center text-sm text-muted-foreground">
           No active periods
@@ -121,8 +133,8 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
   }>();
 
   const [seriesVisibility, setSeriesVisibility] = React.useState({
-    candles: false,
-    index: false,
+    candles: true,
+    index: true,
     resource: true,
     trailing: false,
   });
@@ -227,7 +239,11 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
         <div className="w-full h-full md:w-[320px]">
           <div className="border border-border rounded-sm shadow h-full">
             <h2 className="text-2xl font-bold py-3 px-4">Periods</h2>
-            <EpochsTable data={epochs} onHover={setHoveredMarket} />
+            <EpochsTable
+              data={epochs}
+              onHover={setHoveredMarket}
+              hoveredMarket={hoveredMarket}
+            />
           </div>
         </div>
       )}

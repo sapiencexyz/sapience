@@ -23,11 +23,11 @@ import {
   TableHeader,
   TableRow,
 } from '~/components/ui/table';
-import { useMarketList } from '~/lib/context/MarketListProvider';
+import { useFoil } from '~/lib/context/FoilProvider';
 import { useResources } from '~/lib/hooks/useResources';
 
 const MarketsTable = () => {
-  const { markets } = useMarketList();
+  const { markets } = useFoil();
   const { data: resources } = useResources();
   const searchParams = useSearchParams();
   const router = useRouter();

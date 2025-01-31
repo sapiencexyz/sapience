@@ -22,7 +22,6 @@ import {
 } from 'wagmi';
 
 import erc20ABI from '../lib/erc20abi.json';
-import { mainnetClient } from '~/app/providers';
 import { Alert, AlertTitle, AlertDescription } from '~/components/ui/alert';
 import { Button } from '~/components/ui/button';
 import {
@@ -40,8 +39,10 @@ import {
   TooltipTrigger,
 } from '~/components/ui/tooltip';
 import { useToast } from '~/hooks/use-toast';
-import { useMarketList } from '~/lib/context/MarketListProvider';
+import { useFoil } from '~/lib/context/FoilProvider';
+import type { Market } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
+import { mainnetClient } from '~/lib/utils/util';
 
 import NumberDisplay from './numberDisplay';
 import SimpleBarChart from './SimpleBarChart';
@@ -78,13 +79,14 @@ const Subscribe: FC<SubscribeProps> = ({
     epoch: contextEpoch,
     collateralAsset,
     foilData,
-    stEthPerToken,
     collateralAssetDecimals,
     collateralAssetTicker,
     refetchUniswapData,
     startTime,
     endTime,
   } = useContext(PeriodContext);
+
+  const { stEthPerToken, markets } = useFoil();
 
   // Use prop values if provided, otherwise use context values
   const finalMarketAddress = contextMarketAddress;
@@ -127,7 +129,6 @@ const Subscribe: FC<SubscribeProps> = ({
 
   // Rest of your hooks and effects
   const { toast } = useToast();
-  const { markets } = useMarketList();
 
   const account = useAccount();
   const { isConnected, address } = account;
@@ -461,9 +462,12 @@ const Subscribe: FC<SubscribeProps> = ({
     );
   };
 
-  const marketName =
-    markets.find((m) => m.address === finalMarketAddress)?.name ||
-    'Choose Market';
+  const market = address
+    ? markets.find(
+        (m: Market) => m.address.toLowerCase() === address.toLowerCase()
+      )
+    : undefined;
+  const marketName = market?.name || 'Choose Market';
 
   const handleEstimateUsage = async () => {
     const formWalletAddress = form.getValues('walletAddress');

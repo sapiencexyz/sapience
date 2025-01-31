@@ -20,6 +20,7 @@ import {
 } from 'wagmi';
 
 import { useConnectWallet } from '../../lib/context/ConnectWalletProvider';
+import { useFoil } from '../../lib/context/FoilProvider';
 import erc20ABI from '../../lib/erc20abi.json';
 import INONFUNGIBLE_POSITION_MANAGER from '../../lib/interfaces/Uniswap.NonfungiblePositionManager.json';
 import NumberDisplay from '../numberDisplay';
@@ -41,7 +42,7 @@ import {
   JSBIAbs,
   convertWstEthToGwei,
   convertGgasPerWstEthToGwei,
-} from '~/lib/util/util';
+} from '~/lib/utils/util';
 
 import LiquidityAmountInput from './LiquidityAmountInput';
 import LiquidityPriceInput from './LiquidityPriceInput';
@@ -70,8 +71,9 @@ const LiquidityForm: React.FC = () => {
     address: marketAddress,
     marketParams,
     useMarketUnits,
-    stEthPerToken,
   } = useContext(PeriodContext);
+
+  const { stEthPerToken } = useFoil();
 
   if (!epoch) {
     throw new Error('Epoch is not defined');

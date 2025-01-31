@@ -1,9 +1,19 @@
 import JSBI from 'jsbi';
-import { formatEther } from 'viem';
-import * as chains from 'viem/chains';
+import { formatEther, createPublicClient, http } from 'viem';
 import type { Chain } from 'viem/chains';
+import * as chains from 'viem/chains';
+import { mainnet } from 'viem/chains';
 
 import { TimeWindow } from '../interfaces/interfaces';
+
+export const mainnetClient = createPublicClient({
+  chain: mainnet,
+  transport: process.env.NEXT_PUBLIC_INFURA_API_KEY
+    ? http(
+        `https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
+      )
+    : http('https://ethereum-rpc.publicnode.com'),
+});
 
 export function convertHundredthsOfBipToPercent(
   hundredthsOfBip: number

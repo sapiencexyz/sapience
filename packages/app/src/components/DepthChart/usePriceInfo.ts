@@ -1,7 +1,7 @@
 import type { Pool } from '@uniswap/v3-sdk';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import type { PoolData } from '~/lib/util/liquidityUtil';
+import type { PoolData } from '~/lib/utils/liquidityUtil';
 
 export function usePriceInfo(
   pool: Pool | null,

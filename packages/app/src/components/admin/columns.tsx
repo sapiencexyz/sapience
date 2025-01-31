@@ -9,7 +9,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import type { Market } from '~/lib/context/MarketListProvider';
+import type { Market } from '~/lib/context/FoilProvider';
 
 import AddressCell from './AddressCell';
 import BondCell from './BondCell';

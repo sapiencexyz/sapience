@@ -4,10 +4,11 @@ import { useContext } from 'react';
 import type { Control, Path, FieldValues } from 'react-hook-form';
 import { Controller } from 'react-hook-form';
 
+import { useFoil } from '../../../lib/context/FoilProvider';
 import { FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
-import { removeLeadingZeros } from '~/lib/util/util';
+import { removeLeadingZeros } from '~/lib/utils/util';
 
 interface Props<T extends FieldValues> {
   label: string;
@@ -40,7 +41,8 @@ const LiquidityPriceInput = <T extends FieldValues>({
   isDisabled = false,
   onBlur: externalOnBlur,
 }: Props<T>) => {
-  const { collateralAssetTicker, useMarketUnits, marketParams, stEthPerToken } =
+  const { stEthPerToken } = useFoil();
+  const { collateralAssetTicker, useMarketUnits, marketParams } =
     useContext(PeriodContext);
 
   const getCurrentUnit = () => {

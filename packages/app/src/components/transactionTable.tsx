@@ -20,6 +20,7 @@ import Link from 'next/link';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 
+import { useFoil } from '../lib/context/FoilProvider';
 import {
   Table,
   TableBody,
@@ -31,7 +32,7 @@ import {
 import { API_BASE_URL } from '~/lib/constants/constants';
 import type { PeriodContextType } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
-import { convertWstEthToGwei } from '~/lib/util/util';
+import { convertWstEthToGwei } from '~/lib/utils/util';
 
 import MarketCell from './MarketCell';
 import NumberDisplay from './numberDisplay';
@@ -169,12 +170,10 @@ const TransactionTable: React.FC<Props> = ({
     isLoading,
   } = useTransactions(walletAddress, periodContext);
 
-  const {
-    collateralAssetTicker,
-    collateralAssetDecimals,
-    useMarketUnits,
-    stEthPerToken,
-  } = periodContext;
+  const { collateralAssetTicker, collateralAssetDecimals, useMarketUnits } =
+    periodContext;
+
+  const { stEthPerToken } = useFoil();
 
   const columns = useMemo<ColumnDef<any>[]>(
     () => [

@@ -40,7 +40,7 @@ import { toast } from '~/hooks/use-toast';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import type { PeriodContextType } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
-import { tickToPrice } from '~/lib/util/util';
+import { tickToPrice } from '~/lib/utils/util';
 
 import MarketCell from './MarketCell';
 import NumberDisplay from './numberDisplay';

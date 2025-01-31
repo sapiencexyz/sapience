@@ -34,7 +34,6 @@ export const BLANK_MARKET: PeriodContextType = {
   chainId: 0,
   liquidity: 0,
   owner: '',
-  stEthPerToken: 0,
   useMarketUnits: false,
   baseAssetMinPriceTick: 0,
   baseAssetMaxPriceTick: 0,

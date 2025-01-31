@@ -5,7 +5,8 @@ import { useTheme } from 'next-themes';
 import { useEffect, useRef, useState } from 'react';
 import { formatUnits } from 'viem';
 
-import { convertGgasPerWstEthToGwei } from '../util/util';
+import { useFoil } from '../context/FoilProvider';
+import { convertGgasPerWstEthToGwei } from '../utils/util';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import type { PriceChartData } from '~/lib/interfaces/interfaces';
 import { timeToLocal } from '~/lib/utils';
@@ -44,7 +45,6 @@ interface UseChartProps {
     resource: boolean;
     trailing: boolean;
   };
-  stEthPerToken: number;
   useMarketUnits: boolean;
   startTime: number;
   containerRef: React.RefObject<HTMLDivElement>;
@@ -54,7 +54,6 @@ export const useChart = ({
   resourceSlug,
   market,
   seriesVisibility,
-  stEthPerToken,
   useMarketUnits,
   startTime,
   containerRef,
@@ -67,7 +66,8 @@ export const useChart = ({
   const trailingPriceSeriesRef = useRef<any>(null);
   const { theme } = useTheme();
   const [isLogarithmic, setIsLogarithmic] = useState(false);
-  const [selectedWindow] = useState('1d'); // Default to 1 day window
+  const [selectedWindow] = useState('1W');
+  const { stEthPerToken } = useFoil();
 
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = startTime > now;
@@ -77,6 +77,12 @@ export const useChart = ({
   const { data: marketPrices } = useQuery<PriceChartData[]>({
     queryKey: ['market-prices', `${market?.chainId}:${market?.address}`],
     queryFn: async () => {
+      console.log('Fetching market prices with params:', {
+        chainId: market?.chainId,
+        address: market?.address,
+        epochId: market?.epochId,
+        timeWindow: selectedWindow,
+      });
       const response = await fetch(
         `${API_BASE_URL}/prices/chart-data?contractId=${market?.chainId}:${market?.address}&epochId=${market?.epochId}&timeWindow=${selectedWindow}`
       );
@@ -84,6 +90,7 @@ export const useChart = ({
         throw new Error(NETWORK_ERROR_STRING);
       }
       const data: PriceChartData[] = await response.json();
+      console.log('Received market prices:', data);
       return data.map((datum) => ({
         ...datum,
         startTimestamp: timeToLocal(datum.startTimestamp),
@@ -93,6 +100,8 @@ export const useChart = ({
     refetchInterval: 60000,
     enabled: !!market,
   });
+
+  console.log('marketPrices', marketPrices);
 
   const { data: indexPrices } = useQuery<IndexPrice[]>({
     queryKey: ['index-prices', `${market?.chainId}:${market?.address}`],
@@ -244,7 +253,10 @@ export const useChart = ({
     if (marketPrices?.length && candlestickSeriesRef.current) {
       const candleSeriesData = marketPrices
         .map((mp) => {
-          if (!mp.open || !mp.high || !mp.low || !mp.close) return null;
+          if (!mp.open || !mp.high || !mp.low || !mp.close) {
+            console.log('Missing OHLC data for candle:', mp);
+            return null;
+          }
 
           const timestamp = (mp.endTimestamp / 1000) as UTCTimestamp;
           return {
@@ -265,6 +277,7 @@ export const useChart = ({
         })
         .filter((item): item is NonNullable<typeof item> => item !== null);
 
+      console.log('Processed candle series data:', candleSeriesData);
       candlestickSeriesRef.current.setData(candleSeriesData);
     }
   };

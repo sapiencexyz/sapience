@@ -9,8 +9,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '~/components/ui/tooltip';
+import { useFoil } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
-import { convertGgasPerWstEthToGwei } from '~/lib/util/util';
+import { convertGgasPerWstEthToGwei } from '~/lib/utils/util';
 
 import NumberDisplay from './numberDisplay';
 
@@ -51,15 +52,9 @@ const StatBox = ({ title, tooltipContent, value, docsLink }: StatBoxProps) => (
 );
 
 const Stats = () => {
-  const {
-    endTime,
-    startTime,
-    averagePrice,
-    pool,
-    liquidity,
-    useMarketUnits,
-    stEthPerToken,
-  } = useContext(PeriodContext);
+  const { endTime, startTime, averagePrice, pool, liquidity, useMarketUnits } =
+    useContext(PeriodContext);
+  const { stEthPerToken } = useFoil();
 
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = startTime > now;
