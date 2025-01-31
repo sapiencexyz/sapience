@@ -1,6 +1,5 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
 import { ChevronRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import React from 'react';
@@ -12,19 +11,12 @@ import EpochTiming from '~/components/EpochTiming';
 import MarketLayout from '~/components/market/MarketLayout';
 import ResourceNav from '~/components/market/ResourceNav';
 import NumberDisplay from '~/components/numberDisplay';
-import { API_BASE_URL } from '~/lib/constants/constants';
 import { MARKET_CATEGORIES } from '~/lib/constants/markets';
 import { useLatestResourcePrice, useResources } from '~/lib/hooks/useResources';
-import { timeToLocal } from '~/lib/utils';
 
 interface ResourcePrice {
   timestamp: string;
   value: string;
-}
-
-interface ResourcePricePoint {
-  timestamp: number;
-  price: number;
 }
 
 interface Epoch {
@@ -40,7 +32,9 @@ interface Epoch {
 
 interface EpochsTableProps {
   data: Epoch[];
-  onHover: (market: { epochId: number; chainId: number; address: string } | undefined) => void;
+  onHover: (
+    market: { epochId: number; chainId: number; address: string } | undefined
+  ) => void;
 }
 
 const EpochsTable = ({ data, onHover }: EpochsTableProps) => {
@@ -52,11 +46,13 @@ const EpochsTable = ({ data, onHover }: EpochsTableProps) => {
             key={epoch.id}
             href={`/trade/${epoch.market.chainId}:${epoch.market.address}/periods/${epoch.epochId}`}
             className="block hover:no-underline border-b border-border"
-            onMouseEnter={() => onHover({
-              epochId: epoch.epochId,
-              chainId: epoch.market.chainId,
-              address: epoch.market.address,
-            })}
+            onMouseEnter={() =>
+              onHover({
+                epochId: epoch.epochId,
+                chainId: epoch.market.chainId,
+                address: epoch.market.address,
+              })
+            }
             onMouseLeave={() => onHover(undefined)}
           >
             <div className="flex items-center justify-between cursor-pointer px-4 py-1.5 hover:bg-secondary">
@@ -124,20 +120,6 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
     trailing: false,
   });
 
-  const { data: resourcePrices } = useQuery<ResourcePrice[]>({
-    queryKey: ['resourcePrices', params.id],
-    queryFn: async () => {
-      const response = await fetch(
-        `${API_BASE_URL}/resources/${params.id}/prices`
-      );
-      if (!response.ok) {
-        throw new Error('Failed to fetch resource prices');
-      }
-      return response.json();
-    },
-    refetchInterval: 2000,
-  });
-
   if (!category) {
     return (
       <div className="flex justify-center items-center py-8">
@@ -168,14 +150,6 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
         }))
       )
       .sort((a, b) => a.startTimestamp - b.startTimestamp) || [];
-
-  const formattedResourcePrices: ResourcePricePoint[] =
-    resourcePrices?.map((price) => {
-      return {
-        timestamp: timeToLocal(Number(price.timestamp) * 1000),
-        price: Number(formatUnits(BigInt(price.value), 9)),
-      };
-    }) || [];
 
   return (
     <div className="flex flex-col md:flex-row h-full p-3 lg:p-6 gap-3 lg:gap-6">
@@ -214,10 +188,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
         <div className="w-full h-full md:w-[320px]">
           <div className="border border-border rounded-sm shadow h-full">
             <h2 className="text-2xl font-bold py-3 px-4">Periods</h2>
-            <EpochsTable 
-              data={epochs} 
-              onHover={setHoveredMarket}
-            />
+            <EpochsTable data={epochs} onHover={setHoveredMarket} />
           </div>
         </div>
       )}

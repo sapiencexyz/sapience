@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import { CircleHelp, DatabaseIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState, useContext } from 'react';
-import { formatUnits } from 'viem';
 
 import Chart from '~/components/chart';
 import ChartSelector from '~/components/ChartSelector';
@@ -14,13 +13,11 @@ import PriceToggles from '~/components/PriceToggles';
 import Stats from '~/components/stats';
 import VolumeChart from '~/components/VolumeChart';
 import VolumeWindowSelector from '~/components/VolumeWindowButtons';
-import { useToast } from '~/hooks/use-toast';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { AddEditPositionProvider } from '~/lib/context/AddEditPositionContext';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { TradePoolProvider } from '~/lib/context/TradePoolContext';
 import { useResources } from '~/lib/hooks/useResources';
-import type { PriceChartData } from '~/lib/interfaces/interfaces';
 import { ChartType, TimeWindow } from '~/lib/interfaces/interfaces';
 
 import DataDrawer from './DataDrawer';
@@ -42,7 +39,6 @@ const AdvancedView = ({
   const [chartType, setChartType] = useState<ChartType>(
     isTrade ? ChartType.PRICE : ChartType.LIQUIDITY
   );
-  const [, setIsRefetchingIndexPrices] = useState(false);
 
   const { startTime } = useContext(PeriodContext);
   const { data: resources } = useResources();
@@ -63,7 +59,6 @@ const AdvancedView = ({
   const [chainId, marketAddress] = params.id.split('%3A');
   const { epoch } = params;
   const contractId = `${chainId}:${marketAddress}`;
-  const { toast } = useToast();
 
   const useVolume = () => {
     return useQuery({
@@ -80,11 +75,7 @@ const AdvancedView = ({
     });
   };
 
-  const {
-    data: volume,
-    error: useVolumeError,
-    refetch: refetchVolume,
-  } = useVolume();
+  const { data: volume, error: useVolumeError } = useVolume();
 
   useEffect(() => {
     if (useVolumeError) {
