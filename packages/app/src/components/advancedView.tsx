@@ -24,10 +24,10 @@ import { TradePoolProvider } from '~/lib/context/TradePoolContext';
 import { useResources } from '~/lib/hooks/useResources';
 import type { PriceChartData } from '~/lib/interfaces/interfaces';
 import { ChartType, TimeWindow } from '~/lib/interfaces/interfaces';
+import { timeToLocal } from '~/lib/utils';
 
 import DataDrawer from './DataDrawer';
 import DepthChart from './DepthChart';
-import { timeToLocal } from '~/lib/utils';
 
 interface ResourcePrice {
   timestamp: string;
@@ -160,7 +160,7 @@ const Market = ({
       queryKey: ['index-prices', `${chainId}:${marketAddress}`],
       queryFn: async () => {
         const response = await fetch(
-          `${API_BASE_URL}/prices/index?contractId=${chainId}:${marketAddress}&epochId=${epoch}&timeWindow=${selectedWindow}`
+          `${API_BASE_URL}/prices/index?contractId=${chainId}:${marketAddress}&epochId=${epoch}`
         );
         if (!response.ok) {
           throw new Error('Network response was not ok');
