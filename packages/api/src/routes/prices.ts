@@ -104,16 +104,10 @@ router.get(
   '/index',
   validateRequestParams(['contractId', 'epochId']),
   handleAsyncErrors(async (req: Request, res: Response) => {
-    let { timeWindow } = req.query;
     const { contractId, epochId } = req.query as {
       contractId: string;
       epochId: string;
-      timeWindow: TimeWindow;
     };
-
-    if (!timeWindow) {
-      timeWindow = TimeWindow.W;
-    }
 
     const { chainId, address } = parseContractId(contractId);
 
@@ -129,10 +123,7 @@ router.get(
       Number(epoch.endTimestamp),
       Math.floor(Date.now() / 1000)
     );
-    const startTimestamp = Math.max(
-      Number(epoch.startTimestamp),
-      getStartTimestampFromTimeWindow(timeWindow as TimeWindow)
-    );
+    const startTimestamp = Number(epoch.startTimestamp);
 
     const indexPrices = await getIndexPricesInTimeRange(
       startTimestamp,
@@ -144,26 +135,17 @@ router.get(
 
     if (indexPrices.length === 0) {
       res.status(404).json({
-        error: 'No price data found for the specified epoch and time window',
+        error: 'No price data found for the specified epoch',
       });
       return;
     }
 
-    const groupedPrices = groupIndexPricesByTimeWindow(
-      indexPrices,
-      timeWindow as TimeWindow
-    );
+    const priceData = indexPrices.map((price) => ({
+      timestamp: Number(price.timestamp),
+      price: Number(price.value),
+    }));
 
-    const chartData = groupedPrices.map((group) => {
-      const lastIdx = group.entities.length - 1;
-      const price = lastIdx >= 0 ? Number(group.entities[lastIdx].value) : 0;
-      return {
-        timestamp: group.startTimestamp,
-        price,
-      };
-    });
-
-    res.json(chartData);
+    res.json(priceData);
   })
 );
 
