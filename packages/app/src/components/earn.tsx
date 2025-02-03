@@ -75,6 +75,10 @@ const Earn: FC<Props> = ({ slug }) => {
   });
 
   useEffect(() => {
+    refetchAll();
+  }, [selectedVault, refetchAll]);
+
+  useEffect(() => {
     if (pendingRequest?.amount) {
       form.setValue(
         'collateralAmount',
