@@ -71,6 +71,8 @@ export const MarketListProvider: React.FC<{ children: React.ReactNode }> = ({
       }
       const fetchedMarkets: Market[] = await response.json();
 
+      console.log('fetchedMarkets', fetchedMarkets, API_BASE_URL);
+
       const currentTimestamp = Math.floor(Date.now() / 1000);
 
       return fetchedMarkets.map((market) => {

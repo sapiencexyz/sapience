@@ -1,5 +1,5 @@
 {
-  "address": "0xa55249cDf31c7eFa6AF2498db0152Af379f18bbC",
+  "address": "0xac74DFb79Bd1e09F71524D3BdBE2B26f334e4d01",
   "abi": [
     {
       "type": "constructor",
@@ -1669,22 +1669,22 @@
   "constructorArgs": [
     "Foil Vault Yang",
     "fYANG",
-    "0xa162703cd738cca804079cfc2c83193f71858366",
+    "0x58e6ec81a7815b7aeb648b616e882a4ab66d2700",
     "0xb82381a3fbd3fafa77b3a7be693342618240067b",
     "577350269189625700",
     "1732050807568877200",
-    "2419200",
+    "3600",
     "1",
     "2"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0xf61aa0b98370d232919a756f42bab48eb8884c2e4f06cf4d1dd557ae16ab3e36",
-  "deployTxnBlockNumber": "7435134",
-  "deployTimestamp": "1736192436",
+  "deployTxnHash": "0x27862348cda7945c104784fdc48857e71c6c91f8ca186a9045773fcfc63dd61d",
+  "deployTxnBlockNumber": "7447740",
+  "deployTimestamp": "1736353164",
   "sourceName": "src/vault/Vault.sol",
   "contractName": "Vault",
   "deployedOn": "deploy.VaultYang",
   "highlight": true,
-  "gasUsed": 4102267,
-  "gasCost": "8167542408"
+  "gasUsed": 4102255,
+  "gasCost": "18065498618"
 }
