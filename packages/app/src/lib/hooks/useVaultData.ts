@@ -64,8 +64,8 @@ export const useVaultData = ({ vaultData }: Props) => {
       startTime: bigint;
       endTime: bigint;
     },
-    vaultSymbol,
-    collateralSymbol,
+    vaultSymbol: vaultSymbol as string,
+    collateralSymbol: collateralSymbol as string,
     duration,
   };
 };
