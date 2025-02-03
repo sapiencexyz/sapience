@@ -10,7 +10,9 @@ export type HydratedTransaction = Transaction & {
 };
 
 export const hydrateTransactions = (
-  transactions: Transaction[]
+  transactions: Transaction[],
+  shouldFormatUnits: boolean = true
+
 ): HydratedTransaction[] => {
   const hydratedTrasactions: HydratedTransaction[] = [];
 
@@ -61,15 +63,15 @@ export const hydrateTransactions = (
     const currentCollateralBalance =
       BigInt(transaction.collateral) - lastCollateral;
 
-    hydratedTransaction.baseTokenDelta = formatDbBigInt(
-      currentBaseTokenBalance.toString()
-    );
-    hydratedTransaction.quoteTokenDelta = formatDbBigInt(
-      currentQuoteTokenBalance.toString()
-    );
-    hydratedTransaction.collateralDelta = formatDbBigInt(
-      currentCollateralBalance.toString()
-    );
+    hydratedTransaction.baseTokenDelta = shouldFormatUnits
+      ? formatDbBigInt(currentBaseTokenBalance.toString())
+      : currentBaseTokenBalance.toString();
+    hydratedTransaction.quoteTokenDelta = shouldFormatUnits
+      ? formatDbBigInt(currentQuoteTokenBalance.toString())
+      : currentQuoteTokenBalance.toString();
+    hydratedTransaction.collateralDelta = shouldFormatUnits
+      ? formatDbBigInt(currentCollateralBalance.toString())
+      : currentCollateralBalance.toString();
 
     hydratedTrasactions.push(hydratedTransaction);
 

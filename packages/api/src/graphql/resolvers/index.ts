@@ -263,7 +263,7 @@ export class PositionResolver {
       });
 
       const hydratedPositions = positions.map((position) => {
-        const hydratedTransactions = hydrateTransactions(position.transactions);
+        const hydratedTransactions = hydrateTransactions(position.transactions, false);
         return { ...position, transactions: hydratedTransactions };
       });
       
@@ -292,7 +292,7 @@ export class TransactionResolver {
         relations: ['event', 'position'],
       });
 
-      const hydratedTransactions = hydrateTransactions(transactions);
+      const hydratedTransactions = hydrateTransactions(transactions, false);
       console.log(hydratedTransactions);
 
       return hydratedTransactions.map(mapTransactionToType);
