@@ -106,7 +106,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
   const { data: latestPrice, isLoading: isPriceLoading } =
     useLatestResourcePrice(params.id);
 
-  const DEFAULT_SELECTED_WINDOW = TimeWindow.W;
+  const DEFAULT_SELECTED_WINDOW = TimeWindow.H;
 
   const [seriesVisibility, setSeriesVisibility] = React.useState({
     candles: false,

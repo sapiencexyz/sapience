@@ -123,6 +123,7 @@ export const useChart = ({
         timestamp: timeToLocal(price.timestamp * 1000),
       }));
     },
+    enabled: !!market,
   });
 
   const { data: resourcePrices, isLoading: isResourceLoading } = useQuery<

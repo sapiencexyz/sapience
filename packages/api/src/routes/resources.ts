@@ -4,6 +4,8 @@ import { justifyTimeSeries } from '../helpers/timeSeriesHelpers';
 import { Resource } from '../models/Resource';
 import dataSource from '../db';
 import { ResourcePrice } from 'src/models/ResourcePrice';
+import { groupResourcePricesByTimeWindow } from 'src/serviceUtil';
+import { TimeWindow } from 'src/interfaces';
 
 const router = Router();
 
@@ -74,9 +76,9 @@ router.get(
 
 router.get(
   '/:slug/prices',
-  handleAsyncErrors(async (req, res) => {
+  handleAsyncErrors(async (req: any, res: any) => {
     const { slug } = req.params;
-    const { startTime, endTime } = req.query;
+    const { startTime, endTime, timeWindow } = req.query;
 
     const resource = await resourceRepository.findOne({ where: { slug } });
 
@@ -99,16 +101,47 @@ router.get(
 
     const prices = await query.getMany();
 
-    // Convert timestamps to numbers and justify the time series
-    const formattedPrices = prices.map(price => ({
-      ...price,
-      timestamp: Number(price.timestamp),
-      value: price.value
+    // First justify the time series
+    const justifiedPrices = justifyTimeSeries(
+      prices.map(price => ({
+        timestamp: Number(price.timestamp),
+        value: Number(price.value),
+      })),
+      (item) => Number(item.value)
+    );
+
+    // Group the justified prices by time window if timeWindow is provided
+    if (timeWindow) {
+      const groupedPrices = groupResourcePricesByTimeWindow(
+        justifiedPrices.map(price => ({
+          ...prices[0],
+          timestamp: price.timestamp,
+          value: String(price.value),
+        })),
+        timeWindow as TimeWindow
+      );
+
+      const priceData = groupedPrices.map(group => {
+        const prices = group.entities;
+        if (prices.length === 0) return null;
+
+        return {
+          timestamp: Number(prices[prices.length - 1].timestamp),
+          value: String(prices[prices.length - 1].value),
+        };
+      }).filter((item): item is NonNullable<typeof item> => item !== null);
+
+      res.json(priceData);
+      return;
+    }
+
+    // If no timeWindow, return justified prices directly
+    const formattedPrices = justifiedPrices.map(price => ({
+      timestamp: price.timestamp,
+      value: String(price.value)
     }));
 
-    const justifiedPrices = justifyTimeSeries(formattedPrices, (item) => Number(item.value));
-
-    res.json(justifiedPrices);
+    res.json(formattedPrices);
   })
 );
 
