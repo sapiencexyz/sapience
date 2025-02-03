@@ -40,41 +40,20 @@ interface Epoch {
 
 interface EpochsTableProps {
   data: Epoch[];
-  onHover: (
-    market: { epochId: number; chainId: number; address: string } | undefined
-  ) => void;
-  hoveredMarket?: {
-    epochId?: number;
-    chainId?: number;
-    address?: string;
-  };
 }
 
-const EpochsTable = ({ data, onHover, hoveredMarket }: EpochsTableProps) => {
+const EpochsTable = ({ data }: EpochsTableProps) => {
   return (
     <div className="border-t border-border">
       {data.length ? (
         data.map((epoch) => {
-          const isHovered =
-            hoveredMarket?.epochId === epoch.epochId &&
-            hoveredMarket?.chainId === epoch.market.chainId &&
-            hoveredMarket?.address === epoch.market.address;
           return (
             <Link
               key={epoch.id}
               href={`/trade/${epoch.market.chainId}:${epoch.market.address}/periods/${epoch.epochId}`}
               className="block hover:no-underline border-b border-border"
-              onMouseEnter={() =>
-                onHover({
-                  epochId: epoch.epochId,
-                  chainId: epoch.market.chainId,
-                  address: epoch.market.address,
-                })
-              }
             >
-              <div
-                className={`flex items-center justify-between cursor-pointer px-4 py-1.5 hover:bg-secondary ${isHovered ? 'bg-secondary' : ''}`}
-              >
+              <div className="flex items-center justify-between cursor-pointer px-4 py-1.5 hover:bg-secondary">
                 <div className="flex items-baseline">
                   <EpochTiming
                     startTimestamp={epoch.startTimestamp}
@@ -127,16 +106,10 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
   const { data: latestPrice, isLoading: isPriceLoading } =
     useLatestResourcePrice(params.id);
 
-  const [hoveredMarket, setHoveredMarket] = React.useState<{
-    epochId?: number;
-    chainId?: number;
-    address?: string;
-  }>();
-
   const DEFAULT_SELECTED_WINDOW = TimeWindow.W;
 
   const [seriesVisibility, setSeriesVisibility] = React.useState({
-    candles: true,
+    candles: false,
     index: true,
     resource: true,
     trailing: false,
@@ -250,7 +223,6 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
                 <div className="min-h-[50vh] border border-border flex w-full h-full rounded-sm shadow overflow-hidden pr-2 pb-2 bg-background">
                   <Chart
                     resourceSlug={params.id}
-                    market={hoveredMarket}
                     seriesVisibility={seriesVisibility}
                     selectedWindow={DEFAULT_SELECTED_WINDOW}
                     onLoadingStatesChange={setLoadingStates}
@@ -266,11 +238,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
         <div className="w-full h-full md:w-[320px]">
           <div className="border border-border rounded-sm shadow h-full">
             <h2 className="text-2xl font-bold py-3 px-4">Periods</h2>
-            <EpochsTable
-              data={epochs}
-              onHover={setHoveredMarket}
-              hoveredMarket={hoveredMarket}
-            />
+            <EpochsTable data={epochs} />
           </div>
         </div>
       )}

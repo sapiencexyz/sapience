@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import { formatUnits } from 'viem';
 
 import { useFoil } from '../context/FoilProvider';
-import { convertGgasPerWstEthToGwei, convertWstEthToGwei } from '../utils/util';
+import { convertGgasPerWstEthToGwei } from '../utils/util';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import type { PriceChartData } from '~/lib/interfaces/interfaces';
 import { TimeWindow } from '~/lib/interfaces/interfaces';
@@ -52,6 +52,27 @@ interface UseChartProps {
   selectedWindow: TimeWindow;
 }
 
+const justifyData = (data: { time: UTCTimestamp; value?: number }[]) => {
+  const justifiedData: { time: UTCTimestamp; value?: number }[] = [];
+  let lastTime: number | null = null;
+  let lastValue: number | undefined;
+
+  data.forEach((item) => {
+    const { time, value } = item;
+    if (lastTime !== null) {
+      // Fill in each missing second with the last known value
+      for (let t = lastTime + 1; t < time; t++) {
+        justifiedData.push({ time: t as UTCTimestamp, value: lastValue });
+      }
+    }
+    justifiedData.push(item);
+    lastTime = time;
+    lastValue = value;
+  });
+
+  return justifiedData;
+};
+
 export const useChart = ({
   resourceSlug,
   market,
@@ -78,10 +99,24 @@ export const useChart = ({
   const NETWORK_ERROR_STRING = 'Network response was not ok';
 
   const { data: marketPrices } = useQuery<PriceChartData[]>({
-    queryKey: ['market-prices', `${market?.chainId}:${market?.address}`],
+    queryKey: [
+      'market-prices',
+      `${market?.chainId}:${market?.address}`,
+      market?.epochId,
+      selectedWindow,
+    ],
     queryFn: async () => {
+      const windowForCandles = TimeWindow.M;
+      // if (selectedWindow === TimeWindow.M) {
+      //  windowForCandles = TimeWindow.D;
+      // } else if (selectedWindow === TimeWindow.W) {
+      //  windowForCandles = TimeWindow.D;
+      // } else if (selectedWindow === TimeWindow.D) {
+      //  windowForCandles = TimeWindow.H;
+      // }
+
       const response = await fetch(
-        `${API_BASE_URL}/prices/chart-data?contractId=${market?.chainId}:${market?.address}&epochId=${market?.epochId}&timeWindow=${selectedWindow}`
+        `${API_BASE_URL}/prices/chart-data?contractId=${market?.chainId}:${market?.address}&epochId=${market?.epochId}&timeWindow=${windowForCandles}`
       );
       if (!response.ok) {
         throw new Error(NETWORK_ERROR_STRING);
@@ -93,7 +128,6 @@ export const useChart = ({
         endTimestamp: timeToLocal(datum.endTimestamp),
       }));
     },
-    refetchInterval: 60000,
     enabled: !!market,
   });
 
@@ -114,7 +148,6 @@ export const useChart = ({
         timestamp: timeToLocal(price.timestamp * 1000),
       }));
     },
-    refetchInterval: 60000,
   });
 
   const { data: resourcePrices, isLoading: isResourceLoading } = useQuery<
@@ -141,7 +174,6 @@ export const useChart = ({
         };
       });
     },
-    refetchInterval: 2000,
     enabled: !!resourceSlug,
   });
 
@@ -182,7 +214,6 @@ export const useChart = ({
         timeVisible: true,
         secondsVisible: false,
         minBarSpacing: 0.001,
-        fixLeftEdge: true,
         fixRightEdge: true,
         rightOffset: 0,
         uniformDistribution: true,
@@ -292,7 +323,7 @@ export const useChart = ({
           ? Number((stEthPerToken || 1) * (ip.price / 1e9))
           : ip.price,
       }));
-      indexPriceSeriesRef.current.setData(indexLineData);
+      indexPriceSeriesRef.current.setData(justifyData(indexLineData));
     }
   };
 
@@ -304,7 +335,7 @@ export const useChart = ({
           ? Number((stEthPerToken || 1) * (rp.price / 1e9))
           : rp.price,
       }));
-      resourcePriceSeriesRef.current.setData(resourceLineData);
+      resourcePriceSeriesRef.current.setData(justifyData(resourceLineData));
     }
   };
 
@@ -345,8 +376,8 @@ export const useChart = ({
             return {
               time: (currentTime / 1000) as UTCTimestamp,
               value: useMarketUnits
-                ? avgPrice
-                : convertWstEthToGwei(avgPrice, stEthPerToken),
+                ? Number((stEthPerToken || 1) * (avgPrice / 1e9))
+                : avgPrice,
             };
           }
           return null;
@@ -354,15 +385,6 @@ export const useChart = ({
         .filter((point): point is NonNullable<typeof point> => point !== null);
 
       trailingPriceSeriesRef.current.setData(trailingData);
-      // Ensure time scale stays fixed after updating trailing average
-      if (chartRef.current && hasSetTimeScale.current) {
-        const secondsInAWeek = 7 * 24 * 60 * 60;
-        const now = new Date().getTime() / 1000;
-        chartRef.current.timeScale().setVisibleRange({
-          from: (now - secondsInAWeek) as UTCTimestamp,
-          to: now as UTCTimestamp,
-        });
-      }
     }
   };
 
@@ -421,7 +443,6 @@ export const useChart = ({
       // Lock the time scale to prevent automatic adjustments
       chartRef.current.timeScale().applyOptions({
         rightOffset: 0,
-        fixLeftEdge: true,
         fixRightEdge: true,
       });
       hasSetTimeScale.current = true;
