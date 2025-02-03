@@ -90,11 +90,8 @@ const Stats = () => {
                   <NumberDisplay
                     value={
                       useMarketUnits
-                        ? averagePrice
-                        : convertGgasPerWstEthToGwei(
-                            averagePrice,
-                            stEthPerToken
-                          )
+                        ? Number((stEthPerToken || 1) * (averagePrice / 1e9))
+                        : averagePrice
                     }
                   />{' '}
                   <span className="text-sm">

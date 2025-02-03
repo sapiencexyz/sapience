@@ -80,12 +80,6 @@ export const useChart = ({
   const { data: marketPrices } = useQuery<PriceChartData[]>({
     queryKey: ['market-prices', `${market?.chainId}:${market?.address}`],
     queryFn: async () => {
-      console.log('Fetching market prices with params:', {
-        chainId: market?.chainId,
-        address: market?.address,
-        epochId: market?.epochId,
-        timeWindow: selectedWindow,
-      });
       const response = await fetch(
         `${API_BASE_URL}/prices/chart-data?contractId=${market?.chainId}:${market?.address}&epochId=${market?.epochId}&timeWindow=${selectedWindow}`
       );
@@ -93,7 +87,6 @@ export const useChart = ({
         throw new Error(NETWORK_ERROR_STRING);
       }
       const data: PriceChartData[] = await response.json();
-      console.log('Received market prices:', data);
       return data.map((datum) => ({
         ...datum,
         startTimestamp: timeToLocal(datum.startTimestamp),
@@ -117,7 +110,7 @@ export const useChart = ({
       }
       const data: IndexPrice[] = await response.json();
       return data.map((price) => ({
-        ...price,
+        price: Number(formatUnits(BigInt(price.price), 9)),
         timestamp: timeToLocal(price.timestamp * 1000),
       }));
     },
@@ -296,8 +289,8 @@ export const useChart = ({
       const indexLineData = indexPrices.map((ip) => ({
         time: (ip.timestamp / 1000) as UTCTimestamp,
         value: useMarketUnits
-          ? ip.price
-          : convertWstEthToGwei(ip.price, stEthPerToken),
+          ? Number((stEthPerToken || 1) * (ip.price / 1e9))
+          : ip.price,
       }));
       indexPriceSeriesRef.current.setData(indexLineData);
     }
@@ -305,22 +298,13 @@ export const useChart = ({
 
   const updateResourcePriceData = () => {
     if (resourcePrices?.length && resourcePriceSeriesRef.current) {
-      const resourceLineData = resourcePrices.map((p) => ({
-        time: (p.timestamp / 1000) as UTCTimestamp,
+      const resourceLineData = resourcePrices.map((rp) => ({
+        time: (rp.timestamp / 1000) as UTCTimestamp,
         value: useMarketUnits
-          ? p.price
-          : convertWstEthToGwei(p.price, stEthPerToken),
+          ? Number((stEthPerToken || 1) * (rp.price / 1e9))
+          : rp.price,
       }));
       resourcePriceSeriesRef.current.setData(resourceLineData);
-      // Ensure time scale stays fixed after updating resource prices
-      if (chartRef.current && hasSetTimeScale.current) {
-        const secondsInAWeek = 7 * 24 * 60 * 60;
-        const now = new Date().getTime() / 1000;
-        chartRef.current.timeScale().setVisibleRange({
-          from: (now - secondsInAWeek) as UTCTimestamp,
-          to: now as UTCTimestamp,
-        });
-      }
     }
   };
 

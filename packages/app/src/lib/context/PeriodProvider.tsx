@@ -78,7 +78,7 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
 
   // Custom hooks for data fetching
   const { data: latestPrice } = useQuery({
-    queryKey: ['latestPrice', `${state.chainId}:${state.address}`],
+    queryKey: ['latestPrice', `${state.chainId}:${state.address}`, state.epoch],
     queryFn: async () => {
       try {
         const response = await fetch(
@@ -93,7 +93,7 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
           throw new Error('Network response was not ok');
         }
         const data = await response.json();
-        return data.price;
+        return data.price / 1e9;
       } catch (error) {
         console.error('Error fetching latest price:', error);
         return null;
@@ -211,10 +211,6 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
 
   useEffect(() => {
     if (marketViewFunctionResult.data !== undefined) {
-      console.log(
-        'marketViewFunctionResult data: ',
-        marketViewFunctionResult.data
-      );
       const marketParams: MarketParams = marketViewFunctionResult.data[4];
       setState((currentState) => ({
         ...currentState,
@@ -227,10 +223,6 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
 
   useEffect(() => {
     if (epochViewFunctionResult.data !== undefined) {
-      console.log(
-        'epochViewFunctionResult data: ',
-        epochViewFunctionResult.data
-      );
       const epochData: EpochData = epochViewFunctionResult.data[0];
       setState((currentState) => ({
         ...currentState,

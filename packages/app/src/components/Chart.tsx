@@ -40,7 +40,7 @@ export const GREEN = '#38A667';
 export const BLUE = '#2E6FA8';
 export const NEUTRAL = '#58585A';
 
-const CandlestickChart: React.FC<Props> = ({
+const Chart: React.FC<Props> = ({
   resourceSlug,
   market,
   seriesVisibility,
@@ -103,4 +103,4 @@ const CandlestickChart: React.FC<Props> = ({
   );
 };
 
-export default CandlestickChart;
+export default Chart;
