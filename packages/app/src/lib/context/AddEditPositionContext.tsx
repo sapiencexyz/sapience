@@ -14,6 +14,7 @@ import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
 import { PositionKind } from '~/lib/interfaces/interfaces';
+import { positionHasBalance } from '~/lib/util/util';
 
 interface Positions {
   liquidityPositions: FoilPosition[];
@@ -93,11 +94,14 @@ export const AddEditPositionProvider: React.FC<{
       !hasSetInitialPosition.current &&
       (positions.liquidityPositions.length || positions.tradePositions.length)
     ) {
-      // Only set default if nftId is undefined
-      const lastLiquidityPosition =
-        positions.liquidityPositions[positions.liquidityPositions.length - 1];
-      const lastTradePosition =
-        positions.tradePositions[positions.tradePositions.length - 1];
+
+      // filters to find the postion with balance and then takes the last one. 
+      const lastLiquidityPosition = positions.liquidityPositions
+        .filter(pos => positionHasBalance(pos))
+        .slice(-1)[0];
+      const lastTradePosition = positions.tradePositions
+        .filter(pos => positionHasBalance(pos))
+        .slice(-1)[0];
 
       let lastPositionId: number | undefined;
       const currentPath = window.location.pathname.toLowerCase();
@@ -121,6 +125,22 @@ export const AddEditPositionProvider: React.FC<{
           liquidityId ?? -Infinity,
           tradeId ?? -Infinity
         );
+      }
+
+      // if no positions with value found, fall back to most recent position
+      if (lastPositionId === undefined) {
+        const fallbackLiquidityPosition = positions.liquidityPositions.slice(-1)[0];
+        const fallbackTradePosition = positions.tradePositions.slice(-1)[0];
+        
+        if (currentPath.includes('trade')) {
+          lastPositionId = fallbackTradePosition?.id
+            ? Number(fallbackTradePosition.id)
+            : undefined;
+        } else if (currentPath.includes('pool')) {
+          lastPositionId = fallbackLiquidityPosition?.id
+            ? Number(fallbackLiquidityPosition.id)
+            : undefined;
+        }
       }
 
       if (lastPositionId !== undefined) {

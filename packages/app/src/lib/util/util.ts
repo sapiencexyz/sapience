@@ -3,7 +3,7 @@ import { formatEther } from 'viem';
 import * as chains from 'viem/chains';
 import type { Chain } from 'viem/chains';
 
-import { TimeWindow } from '../interfaces/interfaces';
+import { FoilPosition, TimeWindow } from '../interfaces/interfaces';
 
 export function convertHundredthsOfBipToPercent(
   hundredthsOfBip: number
@@ -126,4 +126,9 @@ export const getExplorerUrl = (chainId: number, address: string) => {
 export const priceToTick = (price: number, tickSpacing: number): number => {
   const tick = Math.log(price) / Math.log(1.0001);
   return Math.round(tick / tickSpacing) * tickSpacing;
+};
+
+// checks if an nft position has a balance
+export const positionHasBalance = (position: FoilPosition): boolean => {
+  return Number(position.vEthAmount) > 0 || Number(position.vGasAmount) > 0;
 };
