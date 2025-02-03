@@ -22,7 +22,7 @@ interface StatBoxProps {
 }
 
 const StatBox = ({ title, tooltipContent, value, docsLink }: StatBoxProps) => (
-  <div className="rounded-sm border border-border py-4 px-6 shadow-sm text-sm md:text-base">
+  <div className="rounded-sm border border-border py-3 px-4 md:py-4 md:px-6 shadow-sm text-xs md:text-base">
     <div>
       {title}
       {tooltipContent && (
@@ -95,11 +95,8 @@ const Stats = () => {
                   <NumberDisplay
                     value={
                       useMarketUnits
-                        ? averagePrice
-                        : convertGgasPerWstEthToGwei(
-                            averagePrice,
-                            stEthPerToken
-                          )
+                        ? Number((stEthPerToken || 1) * (averagePrice / 1e9))
+                        : averagePrice
                     }
                   />{' '}
                   <span className="text-sm">

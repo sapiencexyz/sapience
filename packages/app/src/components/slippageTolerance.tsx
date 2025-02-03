@@ -1,8 +1,16 @@
+import { InfoIcon } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from './ui/tooltip';
 
 const SlippageTolerance: React.FC = () => {
   const { setValue, watch } = useFormContext();
@@ -16,7 +24,22 @@ const SlippageTolerance: React.FC = () => {
 
   return (
     <div className="mb-5">
-      <Label>Slippage Tolerance</Label>
+      <Label className="flex items-center">
+        Slippage Tolerance
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger className="cursor-default">
+              <InfoIcon className="md:ml-1 inline-block h-3 md:h-4 opacity-60 hover:opacity-80" />
+            </TooltipTrigger>
+            <TooltipContent className="max-w-md text-center p-3 font-normal">
+              Your slippage tolerance sets a maximum limit on how much
+              additional collateral Foil can use or the minimum amount of
+              collateral you will receive back, protecting you from unexpected
+              market changes between submitting and processing your transaction.
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </Label>
       <div className="flex items-center gap-4 mt-2">
         <Button
           type="button"

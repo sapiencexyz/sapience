@@ -77,11 +77,12 @@ router.get(
         return acc;
       }
 
-      // if we have prices, calculate HLOC normally
-      const open = prices[0]?.value || 0;
-      const close = prices[prices.length - 1]?.value || 0;
-      const high = Math.max(...prices.map((p: MarketPrice) => Number(p.value)));
-      const low = Math.min(...prices.map((p: MarketPrice) => Number(p.value)));
+      // if we have prices, calculate HLOC normally but make sure its from the last candle that was added
+      const lastCandle = acc[acc.length - 1];
+      const open = lastCandle ? Number(lastCandle.close) : Number(prices[0].value);
+      const close = Number(prices[prices.length - 1].value);
+      const high = Math.max(...prices.map((p) => Number(p.value)));
+      const low = Math.min(...prices.map((p) => Number(p.value)));
 
       acc.push({
         startTimestamp: group.startTimestamp,
@@ -103,16 +104,10 @@ router.get(
   '/index',
   validateRequestParams(['contractId', 'epochId']),
   handleAsyncErrors(async (req: Request, res: Response) => {
-    let { timeWindow } = req.query;
     const { contractId, epochId } = req.query as {
       contractId: string;
       epochId: string;
-      timeWindow: TimeWindow;
     };
-
-    if (!timeWindow) {
-      timeWindow = TimeWindow.W;
-    }
 
     const { chainId, address } = parseContractId(contractId);
 
@@ -128,10 +123,7 @@ router.get(
       Number(epoch.endTimestamp),
       Math.floor(Date.now() / 1000)
     );
-    const startTimestamp = Math.max(
-      Number(epoch.startTimestamp),
-      getStartTimestampFromTimeWindow(timeWindow as TimeWindow)
-    );
+    const startTimestamp = Number(epoch.startTimestamp);
 
     const indexPrices = await getIndexPricesInTimeRange(
       startTimestamp,
@@ -143,26 +135,17 @@ router.get(
 
     if (indexPrices.length === 0) {
       res.status(404).json({
-        error: 'No price data found for the specified epoch and time window',
+        error: 'No price data found for the specified epoch',
       });
       return;
     }
 
-    const groupedPrices = groupIndexPricesByTimeWindow(
-      indexPrices,
-      timeWindow as TimeWindow
-    );
+    const priceData = indexPrices.map((price) => ({
+      timestamp: Number(price.timestamp),
+      price: Number(price.value),
+    }));
 
-    const chartData = groupedPrices.map((group) => {
-      const lastIdx = group.entities.length - 1;
-      const price = lastIdx >= 0 ? Number(group.entities[lastIdx].value) : 0;
-      return {
-        timestamp: group.startTimestamp,
-        price,
-      };
-    });
-
-    res.json(chartData);
+    res.json(priceData);
   })
 );
 

@@ -85,7 +85,7 @@ const PositionSelector: React.FC = () => {
                 </Button>
               </Link>
             ))}
-            <Button className="mt-6" onClick={() => handlePositionSelect(0)}>
+            <Button className="mt-3" onClick={() => handlePositionSelect(0)}>
               <p>Create New Position</p>
             </Button>
           </div>

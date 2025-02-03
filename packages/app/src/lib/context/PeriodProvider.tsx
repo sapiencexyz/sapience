@@ -8,12 +8,9 @@ import * as Chains from 'viem/chains';
 import type { Chain } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 
+import { mainnetClient } from '../../app/providers';
 import useFoilDeployment from '../../components/useFoilDeployment';
-import {
-  API_BASE_URL,
-  BLANK_MARKET,
-  DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS,
-} from '../constants/constants';
+import { API_BASE_URL, BLANK_MARKET } from '../constants/constants';
 import erc20ABI from '../erc20abi.json';
 import { useUniswapPool } from '../hooks/useUniswapPool';
 import type { EpochData, MarketParams } from '../interfaces/interfaces';
@@ -85,8 +82,8 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
   const { foilData, foilVaultData } = useFoilDeployment(chainId);
 
   // Custom hooks for data fetching
-  const { data: latestPrice } = useQuery({
-    queryKey: ['latestPrice', `${state.chainId}:${state.address}`],
+  const { data: latestIndexPrice } = useQuery({
+    queryKey: ['latestIndexPrice', `${state.chainId}:${state.address}`],
     queryFn: async () => {
       try {
         const response = await fetch(
@@ -152,7 +149,6 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
     state.poolAddress
   );
 
-  // Effect hooks
   useEffect(() => {
     const chain = Object.entries(Chains).find((chainOption) => {
       if (chainId === 13370 && chainOption[0] === 'localhost') {
@@ -176,40 +172,41 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
     }));
   }, [chainId, address, epoch, useMarketUnits, setUseMarketUnits]);
 
-  const getChainIdForWstEthRatio = () => {
-    if (chainId === Chains.cannon.id) return Chains.sepolia.id;
-    if (chainId === Chains.base.id) return Chains.mainnet.id;
-    return chainId;
-  };
+  const [stEthPerTokenResult, setStEthPerTokenResult] = useState<{
+    data?: bigint;
+    error?: Error;
+  }>({});
 
-  const getContractAddressForWstEthRatio = () => {
-    if (chainId === Chains.cannon.id)
-      return DUMMY_LOCAL_COLLATERAL_ASSET_ADDRESS;
-    if (chainId === Chains.base.id)
-      return '0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0';
-    return state.collateralAsset as `0x${string}`;
-  };
+  useEffect(() => {
+    const fetchStEthPerToken = async () => {
+      try {
+        const data = await mainnetClient.readContract({
+          address: '0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0',
+          abi: [
+            {
+              inputs: [],
+              name: 'stEthPerToken',
+              outputs: [
+                {
+                  internalType: 'uint256',
+                  name: '',
+                  type: 'uint256',
+                },
+              ],
+              stateMutability: 'view',
+              type: 'function',
+            },
+          ],
+          functionName: 'stEthPerToken',
+        });
+        setStEthPerTokenResult({ data });
+      } catch (error) {
+        setStEthPerTokenResult({ error: error as Error });
+      }
+    };
 
-  const stEthPerTokenResult = useReadContract({
-    chainId: getChainIdForWstEthRatio(),
-    abi: [
-      {
-        inputs: [],
-        name: 'stEthPerToken',
-        outputs: [
-          {
-            internalType: 'uint256',
-            name: '',
-            type: 'uint256',
-          },
-        ],
-        stateMutability: 'view',
-        type: 'function',
-      },
-    ],
-    address: getContractAddressForWstEthRatio(),
-    functionName: 'stEthPerToken',
-  });
+    fetchStEthPerToken();
+  }, []);
 
   useEffect(() => {
     if (stEthPerTokenResult.data) {
@@ -245,34 +242,11 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
   }, [state.endTime, state.chainId, state.collateralAsset]);
 
   useEffect(() => {
-    console.log('latestPrice =', latestPrice);
-    if (
-      latestPrice !== undefined &&
-      latestPrice !== null &&
-      stEthPerTokenResult.data
-    ) {
-      const stEthPerToken = Number(
-        gweiToEther(stEthPerTokenResult.data as bigint)
-      );
-
-      const averageResourcePriceinWstEth = latestPrice / stEthPerToken;
-
-      setState((currentState) => ({
-        ...currentState,
-        averagePrice: averageResourcePriceinWstEth,
-        stEthPerToken,
-      }));
-    } else if (latestPrice === null) {
-      // When price data is not available, set averagePrice to null/0
-      setState((currentState) => ({
-        ...currentState,
-        averagePrice: 0,
-        stEthPerToken: stEthPerTokenResult.data
-          ? Number(gweiToEther(stEthPerTokenResult.data as bigint))
-          : undefined,
-      }));
-    }
-  }, [latestPrice, stEthPerTokenResult.data]);
+    setState((currentState) => ({
+      ...currentState,
+      averagePrice: latestIndexPrice / 10 ** 9,
+    }));
+  }, [latestIndexPrice]);
 
   useEffect(() => {
     setState((currentState) => ({
