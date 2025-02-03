@@ -28,17 +28,44 @@ export const useVaultData = ({ vaultData }: Props) => {
       enabled: !!collateralAsset,
     },
   });
-  // const { data: vaultSymbol } = useReadContract({
-  //   abi: vaultData.abi,
-  //   address: vaultData.address,
-  //   functionName: 'symbol()',
-  //   chainId,
-  // });
 
-  // console.log('vaultSymbol', vaultSymbol);
+  const { data: collateralSymbol } = useReadContract({
+    abi: erc20ABI,
+    address: collateralAsset as `0x${string}`,
+    functionName: 'symbol',
+    chainId,
+  });
+
+  const { data: epoch } = useReadContract({
+    abi: vaultData.abi,
+    address: vaultData.address,
+    functionName: 'getCurrentEpoch',
+    chainId,
+  });
+
+  const { data: vaultSymbol } = useReadContract({
+    abi: vaultData.abi,
+    address: vaultData.address,
+    functionName: 'symbol',
+    chainId,
+  });
+
+  const { data: duration } = useReadContract({
+    abi: vaultData.abi,
+    address: vaultData.address,
+    functionName: 'duration',
+    chainId,
+  });
 
   return {
     collateralAsset: collateralAsset as `0x${string}`,
     decimals: Number(decimals || 18),
+    epoch: epoch as {
+      startTime: bigint;
+      endTime: bigint;
+    },
+    vaultSymbol,
+    collateralSymbol,
+    duration,
   };
 };

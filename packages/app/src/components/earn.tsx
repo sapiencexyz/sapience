@@ -5,7 +5,6 @@ import Image from 'next/image';
 import { useTheme } from 'next-themes';
 import { type FC, useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-
 import { Button } from '~/components/ui/button';
 import {
   Form,
@@ -58,13 +57,24 @@ const Earn: FC<Props> = ({ slug }) => {
   const { chainId } = useAccount();
   const { foilVaultData } = useFoilDeployment(chainId);
 
-  const { collateralAsset, decimals: collateralDecimals } = useVaultData({
-    vaultData: foilVaultData[selectedVault],
+  const vaultData = useMemo(() => {
+    return foilVaultData[selectedVault];
+  }, [selectedVault, foilVaultData]);
+
+  const {
+    collateralAsset,
+    decimals: collateralDecimals,
+    epoch,
+    duration,
+    vaultSymbol: vaultSharesTicker,
+    collateralSymbol: collateralTicker,
+  } = useVaultData({
+    vaultData,
   });
   const { collateralBalance, pendingRequest, claimableDeposit, refetchAll } =
     useUserVaultData({
       collateralAsset,
-      vaultData: foilVaultData[selectedVault],
+      vaultData,
     });
 
   const form = useForm<FormValues>({
@@ -79,14 +89,11 @@ const Earn: FC<Props> = ({ slug }) => {
   }, [selectedVault, refetchAll]);
 
   useEffect(() => {
-    if (pendingRequest?.amount) {
-      form.setValue(
-        'collateralAmount',
-        (
-          formatUnits(pendingRequest.amount, collateralDecimals) || BigInt(0)
-        ).toString()
-      );
-    }
+    const val = pendingRequest?.amount
+      ? formatUnits(pendingRequest.amount, collateralDecimals)
+      : BigInt(0);
+
+    form.setValue('collateralAmount', val.toString());
   }, [pendingRequest, form, collateralDecimals]);
 
   const collateralAmount = form.watch('collateralAmount');
@@ -113,7 +120,7 @@ const Earn: FC<Props> = ({ slug }) => {
       ? BigInt(Number(collateralAmountDiff) * 10 ** collateralDecimals)
       : BigInt(0),
     collateralAsset,
-    vaultData: foilVaultData[selectedVault],
+    vaultData,
   });
 
   useEffect(() => {
@@ -142,8 +149,12 @@ const Earn: FC<Props> = ({ slug }) => {
   // }, [collateralAmount, collateralDecimals]);
 
   useEffect(() => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  }, [selectedVault]);
+    if (selectedVault === 'yin' && theme !== 'light') {
+      setTheme('light');
+    } else if (selectedVault === 'yang' && theme !== 'dark') {
+      setTheme('dark');
+    }
+  }, [selectedVault, theme, setTheme]);
 
   const onSubmit = async (values: FormValues) => {
     try {
@@ -203,9 +214,6 @@ const Earn: FC<Props> = ({ slug }) => {
     return null;
   };
 
-  const collateralTicker = 'wstETH';
-  const vaultSharesTicker = `fstethYIN`;
-
   const buttonText = useMemo(() => {
     if (pendingTxn) return 'Pending';
     if (hasAllowance) {
@@ -220,7 +228,7 @@ const Earn: FC<Props> = ({ slug }) => {
   const depositCollateralDifferenceText = useMemo(() => {
     if (!pendingRequest?.amount || collateralAmountDiff === 0) return null;
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-muted-foreground" style={{ marginTop: '0' }}>
         Deposit Amount:{' '}
         <NumberDisplay
           value={formatUnits(pendingRequest.amount, collateralDecimals)}
@@ -235,6 +243,30 @@ const Earn: FC<Props> = ({ slug }) => {
     collateralTicker,
     collateralDecimals,
   ]);
+
+  const nextEpochStartInDays = useMemo(() => {
+    if (!epoch?.startTime || !duration) return 0;
+    const durationInSeconds = Number(duration);
+    const startTimeInSeconds = Number(epoch.startTime);
+    const nextEpochStartTime =
+      BigInt(startTimeInSeconds) + BigInt(2) * BigInt(durationInSeconds);
+
+    const nextEpochStartDate = new Date(Number(nextEpochStartTime) * 1000);
+    const now = new Date();
+    return Math.ceil(
+      (nextEpochStartDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+    );
+  }, [epoch, duration]);
+
+  const currentEpochEndInDays = useMemo(() => {
+    if (!epoch?.endTime) return 0;
+    const endTimeInSeconds = Number(epoch.endTime);
+    const endDate = new Date(endTimeInSeconds * 1000);
+    const now = new Date();
+    return Math.ceil(
+      (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+    );
+  }, [epoch]);
 
   return (
     <div className="container mx-auto px-4 py-16">
@@ -274,7 +306,7 @@ const Earn: FC<Props> = ({ slug }) => {
                 <div className="pt-3">
                   <p className="text-sm text-muted-foreground">
                     The Yin vault provides liquidity to the current period and
-                    the one starting in X days.
+                    the one starting in {nextEpochStartInDays} days.
                   </p>
                 </div>
               </TabsContent>
@@ -308,10 +340,9 @@ const Earn: FC<Props> = ({ slug }) => {
                 <strong className="font-medium">
                   Foil is currenty in Beta.
                 </strong>{' '}
-                The final version of the protocol is under development. The
-                smart contracts cannot be changed, so you will need to swap into
-                the upgraded version to continue providing liquidity in the
-                future.
+                A new version is under development. The smart contracts cannot
+                be changed, so you will need to opt-in and migrate to future
+                vault versions to continue providing liquidity.
               </p>
             </div>
           </div>
@@ -415,7 +446,8 @@ const Earn: FC<Props> = ({ slug }) => {
                     <Separator className="mt-6 mb-4" />
 
                     <p className="text-center text-sm font-medium">
-                      The current epoch ends in approximately 4 days.
+                      The current epoch ends in approximately{' '}
+                      {currentEpochEndInDays} days.
                     </p>
 
                     <p className="mt-2 text-sm text-muted-foreground">
@@ -498,7 +530,8 @@ const Earn: FC<Props> = ({ slug }) => {
                     <Separator className="mt-6 mb-4" />
 
                     <p className="text-center text-sm font-medium">
-                      The current epoch ends in approximately 4 days.
+                      The current epoch ends in approximately{' '}
+                      {currentEpochEndInDays} days.
                     </p>
 
                     <Button type="submit" className="w-full mt-3" disabled>
