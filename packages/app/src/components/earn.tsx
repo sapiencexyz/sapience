@@ -1,10 +1,12 @@
 'use client';
 
-import { BookTextIcon, HelpCircle, InfoIcon } from 'lucide-react';
+import { BookTextIcon, HelpCircle, InfoIcon, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { useTheme } from 'next-themes';
 import { type FC, useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { formatUnits } from 'viem';
+import { useAccount } from 'wagmi';
 
 import { Button } from '~/components/ui/button';
 import {
@@ -26,9 +28,13 @@ import {
 } from '~/components/ui/tooltip';
 import { useToast } from '~/hooks/use-toast';
 import { useResources } from '~/lib/hooks/useResources';
+import { useUserVaultData } from '~/lib/hooks/useUserVaultData';
+import { useVaultData } from '~/lib/hooks/useVaultData';
+import { useVaultDeposit } from '~/lib/hooks/useVaultDeposit';
 
+import NumberDisplay from './numberDisplay';
 import { Label } from './ui/label';
-// import VaultChart from './vaultChart';
+import useFoilDeployment from './useFoilDeployment';
 
 interface FormValues {
   collateralAmount: string;
@@ -47,6 +53,29 @@ const Earn: FC<Props> = ({ slug }) => {
   const { data: resources } = useResources();
   const resource = resources?.find((r) => r.slug === slug);
 
+  const { chainId } = useAccount();
+  const { foilVaultData } = useFoilDeployment(chainId);
+
+  const vaultData = useMemo(() => {
+    return foilVaultData[selectedVault];
+  }, [selectedVault, foilVaultData]);
+
+  const {
+    collateralAsset,
+    decimals: collateralDecimals,
+    epoch,
+    duration,
+    vaultSymbol: vaultSharesTicker,
+    collateralSymbol: collateralTicker,
+  } = useVaultData({
+    vaultData,
+  });
+  const { collateralBalance, pendingRequest, claimableDeposit, refetchAll } =
+    useUserVaultData({
+      collateralAsset,
+      vaultData,
+    });
+
   const form = useForm<FormValues>({
     defaultValues: {
       collateralAmount: '0',
@@ -54,26 +83,89 @@ const Earn: FC<Props> = ({ slug }) => {
     },
   });
 
+  useEffect(() => {
+    refetchAll();
+  }, [selectedVault, refetchAll]);
+
+  useEffect(() => {
+    const val = pendingRequest?.amount
+      ? formatUnits(pendingRequest.amount, collateralDecimals)
+      : BigInt(0);
+
+    form.setValue('collateralAmount', val.toString());
+  }, [pendingRequest, form, collateralDecimals]);
+
   const collateralAmount = form.watch('collateralAmount');
   const vaultShares = form.watch('vaultShares');
 
-  const hasCollateralChanged = useMemo(() => {
-    return Number(collateralAmount) !== 0;
-  }, [collateralAmount]);
+  const collateralAmountDiff = useMemo(() => {
+    const collateralAmountNum = Number(collateralAmount);
+    if (!pendingRequest?.amount) return collateralAmountNum;
+    return (
+      collateralAmountNum -
+      Number(formatUnits(pendingRequest.amount, collateralDecimals))
+    );
+  }, [collateralAmount, pendingRequest, collateralDecimals]);
+
+  const {
+    allowance,
+    requestDeposit,
+    approve,
+    pendingTxn,
+    isDepositConfirmed,
+    isApproveConfirmed,
+  } = useVaultDeposit({
+    amount: collateralAmountDiff
+      ? BigInt(Number(collateralAmountDiff) * 10 ** collateralDecimals)
+      : BigInt(0),
+    collateralAsset,
+    vaultData,
+  });
+
+  useEffect(() => {
+    if (isDepositConfirmed || isApproveConfirmed) {
+      refetchAll();
+    }
+  }, [isDepositConfirmed, isApproveConfirmed, refetchAll]);
+
+  const hasAllowance = useMemo(() => {
+    return (
+      Number(formatUnits(allowance, collateralDecimals)) >=
+      Number(collateralAmountDiff)
+    );
+  }, [allowance, collateralAmountDiff, collateralDecimals]);
+
+  // const hasCollateralChanged = useMemo(() => {
+  //   return Number(collateralAmount) !== 0;
+  // }, [collateralAmount]);
 
   const hasSharesChanged = useMemo(() => {
     return Number(vaultShares) !== 0;
   }, [vaultShares]);
 
+  // const formattedCollateralAmount = useMemo(() => {
+  //   return formatUnits(collateralAmount, collateralDecimals);
+  // }, [collateralAmount, collateralDecimals]);
+
   useEffect(() => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  }, [selectedVault]);
+    if (selectedVault === 'yin' && theme !== 'light') {
+      setTheme('light');
+    } else if (selectedVault === 'yang' && theme !== 'dark') {
+      setTheme('dark');
+    }
+  }, [selectedVault, theme, setTheme]);
 
   const onSubmit = async (values: FormValues) => {
     try {
       if (activeTab === 'deposit') {
+        console.log('values', values);
         // Handle deposit logic
         console.log('Depositing:', values.collateralAmount);
+        if (hasAllowance) {
+          await requestDeposit();
+        } else {
+          await approve();
+        }
       } else {
         // Handle withdraw logic
         console.log('Withdrawing:', values.vaultShares);
@@ -86,6 +178,16 @@ const Earn: FC<Props> = ({ slug }) => {
       });
     }
   };
+
+  const error = useMemo(() => {
+    if (
+      Number(collateralAmount) >
+      Number(formatUnits(collateralBalance, collateralDecimals))
+    ) {
+      return 'Insufficient balance';
+    }
+    return null;
+  }, [collateralAmount, collateralBalance, collateralDecimals]);
 
   const renderWarningMessage = (type: 'collateral' | 'shares') => {
     const hasCollateral = Number(collateralAmount) > 0;
@@ -111,8 +213,59 @@ const Earn: FC<Props> = ({ slug }) => {
     return null;
   };
 
-  const collateralTicker = 'wstETH';
-  const vaultSharesTicker = `fstethYIN`;
+  const buttonText = useMemo(() => {
+    if (pendingTxn) return 'Pending';
+    if (hasAllowance) {
+      if (Number(collateralAmountDiff) < 0) {
+        return 'Reduce Deposit';
+      }
+      return 'Deposit';
+    }
+    return 'Approve';
+  }, [pendingTxn, hasAllowance, collateralAmountDiff]);
+
+  const depositCollateralDifferenceText = useMemo(() => {
+    if (!pendingRequest?.amount || collateralAmountDiff === 0) return null;
+    return (
+      <p className="text-sm text-muted-foreground" style={{ marginTop: '0' }}>
+        Deposit Amount:{' '}
+        <NumberDisplay
+          value={formatUnits(pendingRequest.amount, collateralDecimals)}
+        />{' '}
+        → <NumberDisplay value={collateralAmount} /> {collateralTicker}
+      </p>
+    );
+  }, [
+    pendingRequest?.amount,
+    collateralAmountDiff,
+    collateralAmount,
+    collateralTicker,
+    collateralDecimals,
+  ]);
+
+  const nextEpochStartInDays = useMemo(() => {
+    if (!epoch?.startTime || !duration) return 0;
+    const durationInSeconds = Number(duration);
+    const startTimeInSeconds = Number(epoch.startTime);
+    const nextEpochStartTime =
+      BigInt(startTimeInSeconds) + BigInt(2) * BigInt(durationInSeconds);
+
+    const nextEpochStartDate = new Date(Number(nextEpochStartTime) * 1000);
+    const now = new Date();
+    return Math.ceil(
+      (nextEpochStartDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+    );
+  }, [epoch, duration]);
+
+  const currentEpochEndInDays = useMemo(() => {
+    if (!epoch?.endTime) return 0;
+    const endTimeInSeconds = Number(epoch.endTime);
+    const endDate = new Date(endTimeInSeconds * 1000);
+    const now = new Date();
+    return Math.ceil(
+      (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+    );
+  }, [epoch]);
 
   return (
     <div className="container mx-auto px-4 py-16">
@@ -152,7 +305,7 @@ const Earn: FC<Props> = ({ slug }) => {
                 <div className="pt-3">
                   <p className="text-sm text-muted-foreground">
                     The Yin vault provides liquidity to the current period and
-                    the one starting in X days.
+                    the one starting in {nextEpochStartInDays} days.
                   </p>
                 </div>
               </TabsContent>
@@ -186,10 +339,9 @@ const Earn: FC<Props> = ({ slug }) => {
                 <strong className="font-medium">
                   Foil is currenty in Beta.
                 </strong>{' '}
-                The final version of the protocol is under development. The
-                smart contracts cannot be changed, so you will need to swap into
-                the upgraded version to continue providing liquidity in the
-                future.
+                A new version is under development. The smart contracts cannot
+                be changed, so you will need to opt-in and migrate to future
+                vault versions to continue providing liquidity.
               </p>
             </div>
           </div>
@@ -253,9 +405,22 @@ const Earn: FC<Props> = ({ slug }) => {
                             </div>
                           </FormControl>
                           <p className="text-sm text-muted-foreground">
-                            Wallet Balance: 2.1337 {collateralTicker}
+                            Wallet Balance:{' '}
+                            <NumberDisplay
+                              value={formatUnits(
+                                collateralBalance,
+                                collateralDecimals
+                              )}
+                            />{' '}
+                            {collateralTicker}
                           </p>
+                          {depositCollateralDifferenceText}
                           <FormMessage />
+                          {error && (
+                            <p className="text-sm font-medium text-destructive mt-2">
+                              {error}
+                            </p>
+                          )}
                         </FormItem>
                       )}
                     />
@@ -266,19 +431,40 @@ const Earn: FC<Props> = ({ slug }) => {
                       type="submit"
                       className="w-full mt-4"
                       disabled={
-                        Number(vaultShares) > 0 || !hasCollateralChanged
+                        Number(vaultShares) > 0 ||
+                        collateralAmountDiff === 0 ||
+                        pendingTxn
                       }
                     >
-                      Deposit
+                      {pendingTxn && !error ? (
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                      ) : null}
+                      {buttonText}
                     </Button>
 
                     <Separator className="mt-6 mb-4" />
 
                     <p className="text-center text-sm font-medium">
-                      The current epoch ends in approximately 4 days.
+                      The current epoch ends in approximately{' '}
+                      {currentEpochEndInDays} days.
                     </p>
 
-                    <Button type="submit" className="w-full mt-3" disabled>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Claimable Amount:{' '}
+                      <NumberDisplay
+                        value={formatUnits(
+                          claimableDeposit,
+                          collateralDecimals
+                        )}
+                      />{' '}
+                      {collateralTicker}
+                    </p>
+
+                    <Button
+                      type="submit"
+                      className="w-full mt-3"
+                      disabled={claimableDeposit === BigInt(0)}
+                    >
                       Redeem {vaultSharesTicker}
                     </Button>
                   </TabsContent>
@@ -343,7 +529,8 @@ const Earn: FC<Props> = ({ slug }) => {
                     <Separator className="mt-6 mb-4" />
 
                     <p className="text-center text-sm font-medium">
-                      The current epoch ends in approximately 4 days.
+                      The current epoch ends in approximately{' '}
+                      {currentEpochEndInDays} days.
                     </p>
 
                     <Button type="submit" className="w-full mt-3" disabled>
