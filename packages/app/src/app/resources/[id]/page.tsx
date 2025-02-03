@@ -173,8 +173,8 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
 
             {/* Loading Overlay */}
             {loadingStates.resource && (
-              <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <div className="absolute top-8 right-24 z-10">
+                <Loader2 className="h-12 w-12 animate-spin text-muted-foreground opacity-40" />
               </div>
             )}
 
@@ -196,16 +196,8 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
                       }
                       variant="outline"
                       size="sm"
-                      disabled={loadingStates.trailing}
                     >
-                      {loadingStates.trailing ? (
-                        <Loader2
-                          className="h-3 w-3 animate-spin"
-                          strokeWidth={3}
-                        />
-                      ) : (
-                        <Circle className="h-3 w-3" strokeWidth={3} />
-                      )}
+                      <Circle className="h-3 w-3" strokeWidth={3} />
                       <span className="sr-only">
                         Toggle 28 day trailing average
                       </span>

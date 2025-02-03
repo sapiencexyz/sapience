@@ -1,7 +1,7 @@
 import type React from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
 import { TimeWindow } from '~/lib/interfaces/interfaces';
 
 interface WindowSelectorProps {
@@ -14,24 +14,18 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
   selectedWindow,
 }) => {
   return (
-    <Tabs
-      value={selectedWindow}
-      onValueChange={(value) => setSelectedWindow(value as TimeWindow)}
-      className="w-fit"
-    >
-      <TabsList className="rounded-sm p-1">
-        {Object.values(TimeWindow).map((window) => (
-          <TabsTrigger
-            key={window}
-            value={window}
-            className={`rounded-sm px-3 py-1.5 text-sm transition-all
-              data-[state=active]:font-bold`}
-          >
-            {window}
-          </TabsTrigger>
-        ))}
-      </TabsList>
-    </Tabs>
+    <div className="flex gap-1.5">
+      {Object.values(TimeWindow).map((window) => (
+        <Button
+          key={window}
+          variant={selectedWindow === window ? 'default' : 'outline'}
+          onClick={() => setSelectedWindow(window)}
+          className="px-3 py-1.5 text-sm transition-all"
+        >
+          {window}
+        </Button>
+      ))}
+    </div>
   );
 };
 

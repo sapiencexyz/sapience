@@ -1,4 +1,6 @@
+import { gql } from '@apollo/client';
 import { useQuery } from '@tanstack/react-query';
+import { print } from 'graphql';
 import type { UTCTimestamp, IChartApi } from 'lightweight-charts';
 import { createChart, CrosshairMode, PriceScaleMode } from 'lightweight-charts';
 import { useTheme } from 'next-themes';
@@ -17,11 +19,6 @@ export const RED = '#D85B4E';
 export const GREEN = '#38A667';
 export const BLUE = '#2E6FA8';
 export const NEUTRAL = '#58585A';
-
-interface ResourcePrice {
-  timestamp: string;
-  value: string;
-}
 
 interface IndexPrice {
   timestamp: number;
@@ -52,6 +49,71 @@ interface UseChartProps {
   selectedWindow: TimeWindow;
 }
 
+// GraphQL Queries
+const MARKET_CANDLES_QUERY = gql`
+  query MarketCandles(
+    $address: String!
+    $chainId: Int!
+    $epochId: String!
+    $from: Int!
+    $to: Int!
+    $interval: Int!
+  ) {
+    marketCandles(
+      address: $address
+      chainId: $chainId
+      epochId: $epochId
+      from: $from
+      to: $to
+      interval: $interval
+    ) {
+      timestamp
+      open
+      high
+      low
+      close
+      volume
+    }
+  }
+`;
+
+const INDEX_CANDLES_QUERY = gql`
+  query IndexCandles(
+    $address: String!
+    $chainId: Int!
+    $epochId: String!
+    $from: Int!
+    $to: Int!
+    $interval: Int!
+  ) {
+    indexCandles(
+      address: $address
+      chainId: $chainId
+      epochId: $epochId
+      from: $from
+      to: $to
+      interval: $interval
+    ) {
+      timestamp
+      close
+    }
+  }
+`;
+
+const RESOURCE_CANDLES_QUERY = gql`
+  query ResourceCandles(
+    $slug: String!
+    $from: Int!
+    $to: Int!
+    $interval: Int!
+  ) {
+    resourceCandles(slug: $slug, from: $from, to: $to, interval: $interval) {
+      timestamp
+      close
+    }
+  }
+`;
+
 export const useChart = ({
   resourceSlug,
   market,
@@ -75,27 +137,106 @@ export const useChart = ({
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = startTime > now;
 
-  const NETWORK_ERROR_STRING = 'Network response was not ok';
+  const getIntervalFromVisibleRange = (from: number, to: number): number => {
+    const visibleRangeInSeconds = to - from;
 
+    // Less than 2 days: 5 minute intervals
+    if (visibleRangeInSeconds <= 2 * 24 * 60 * 60) {
+      return 300;
+    }
+    // Less than 7 days: 15 minute intervals
+    if (visibleRangeInSeconds <= 7 * 24 * 60 * 60) {
+      return 900;
+    }
+    // Less than 14 days: 1 hour intervals
+    if (visibleRangeInSeconds <= 14 * 24 * 60 * 60) {
+      return 3600;
+    }
+    // Less than 30 days: 4 hour intervals
+    if (visibleRangeInSeconds <= 30 * 24 * 60 * 60) {
+      return 14400;
+    }
+    // More than 30 days: 1 day intervals
+    return 86400;
+  };
+
+  // Add new state for tracking visible range
+  const [visibleRange, setVisibleRange] = useState<{
+    from: number;
+    to: number;
+  } | null>(null);
+
+  // Effect for setting up time scale subscription
+  useEffect(() => {
+    if (!chartRef.current) return;
+
+    const handleVisibleTimeRangeChange = () => {
+      const newVisibleRange = chartRef.current?.timeScale().getVisibleRange();
+      if (newVisibleRange) {
+        setVisibleRange({
+          from: newVisibleRange.from as number,
+          to: newVisibleRange.to as number,
+        });
+      }
+    };
+
+    chartRef.current
+      .timeScale()
+      .subscribeVisibleTimeRangeChange(handleVisibleTimeRangeChange);
+
+    return () => {
+      chartRef.current
+        ?.timeScale()
+        .unsubscribeVisibleTimeRangeChange(handleVisibleTimeRangeChange);
+    };
+  }, [chartRef.current]); // Re-run when chart is created
+
+  // Modify the query functions to use dynamic intervals
   const { data: marketPrices } = useQuery<PriceChartData[]>({
     queryKey: [
       'market-prices',
       `${market?.chainId}:${market?.address}`,
       market?.epochId,
-      selectedWindow,
+      visibleRange, // Add visible range to query key
     ],
     queryFn: async () => {
-      const response = await fetch(
-        `${API_BASE_URL}/prices/chart-data?contractId=${market?.chainId}:${market?.address}&epochId=${market?.epochId}&timeWindow=${selectedWindow}`
-      );
-      if (!response.ok) {
-        throw new Error(NETWORK_ERROR_STRING);
-      }
-      const data: PriceChartData[] = await response.json();
-      return data.map((datum) => ({
-        ...datum,
-        startTimestamp: timeToLocal(datum.startTimestamp),
-        endTimestamp: timeToLocal(datum.endTimestamp),
+      const now = Math.floor(Date.now() / 1000);
+
+      // Use visible range if available, otherwise use a default range
+      const from = visibleRange ? visibleRange.from : now - 86400; // Default to 1 day if no visible range
+      const to = visibleRange ? visibleRange.to : now;
+
+      const interval = visibleRange
+        ? getIntervalFromVisibleRange(visibleRange.from, visibleRange.to)
+        : 3600; // Default to 1 hour intervals if no visible range
+
+      const response = await fetch(`${API_BASE_URL}/graphql`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: print(MARKET_CANDLES_QUERY),
+          variables: {
+            address: market?.address,
+            chainId: market?.chainId,
+            epochId: market?.epochId?.toString(),
+            from,
+            to,
+            interval,
+          },
+        }),
+      });
+
+      const { data } = await response.json();
+      return data.marketCandles.map((candle: any) => ({
+        startTimestamp: timeToLocal(candle.timestamp * 1000),
+        endTimestamp: timeToLocal((candle.timestamp + interval) * 1000),
+        open: candle.open,
+        high: candle.high,
+        low: candle.low,
+        close: candle.close,
+        volume: candle.volume,
       }));
     },
     enabled: !!market,
@@ -107,20 +248,45 @@ export const useChart = ({
     queryKey: [
       'index-prices',
       `${market?.chainId}:${market?.address}`,
-      selectedWindow,
       market?.epochId,
+      visibleRange, // Add visible range to query key
     ],
     queryFn: async () => {
-      const response = await fetch(
-        `${API_BASE_URL}/prices/index?contractId=${market?.chainId}:${market?.address}&epochId=${market?.epochId}&timeWindow=${selectedWindow}`
-      );
-      if (!response.ok) {
-        throw new Error(NETWORK_ERROR_STRING);
-      }
-      const data: IndexPrice[] = await response.json();
-      return data.map((price) => ({
-        price: Number(formatUnits(BigInt(price.price), 9)),
-        timestamp: timeToLocal(price.timestamp * 1000),
+      const now = Math.floor(Date.now() / 1000);
+      const timeRange =
+        selectedWindow === TimeWindow.D
+          ? 86400
+          : selectedWindow === TimeWindow.W
+            ? 604800
+            : 2419200; // 28 days for monthly
+      const from = now - timeRange;
+
+      const interval = visibleRange
+        ? getIntervalFromVisibleRange(visibleRange.from, visibleRange.to)
+        : 3600;
+
+      const response = await fetch(`${API_BASE_URL}/graphql`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: print(INDEX_CANDLES_QUERY),
+          variables: {
+            address: market?.address,
+            chainId: market?.chainId,
+            epochId: market?.epochId?.toString(),
+            from,
+            to: now,
+            interval,
+          },
+        }),
+      });
+
+      const { data } = await response.json();
+      return data.indexCandles.map((candle: any) => ({
+        price: Number(formatUnits(BigInt(candle.close), 9)),
+        timestamp: timeToLocal(candle.timestamp * 1000),
       }));
     },
     enabled: !!market,
@@ -129,26 +295,44 @@ export const useChart = ({
   const { data: resourcePrices, isLoading: isResourceLoading } = useQuery<
     ResourcePricePoint[]
   >({
-    queryKey: ['resourcePrices', resourceSlug, selectedWindow, market?.epochId],
+    queryKey: [
+      'resourcePrices',
+      resourceSlug,
+      market?.epochId,
+      visibleRange, // Add visible range to query key
+    ],
     queryFn: async () => {
       if (!resourceSlug) {
         return [];
       }
       const now = Math.floor(Date.now() / 1000);
-      const twoPeriodsAgo = now - 28 * 24 * 60 * 60 * 2;
-      const response = await fetch(
-        `${API_BASE_URL}/resources/${resourceSlug}/prices?startTime=${twoPeriodsAgo}&endTime=${now}&timeWindow=${selectedWindow}`
-      );
-      if (!response.ok) {
-        throw new Error('Failed to fetch resource prices');
-      }
-      const data: ResourcePrice[] = await response.json();
-      return data.map((price) => {
-        return {
-          timestamp: timeToLocal(Number(price.timestamp) * 1000),
-          price: Number(formatUnits(BigInt(price.value), 9)),
-        };
+      const from = now - 28 * 24 * 60 * 60 * 2; // Two periods ago
+
+      const interval = visibleRange
+        ? getIntervalFromVisibleRange(visibleRange.from, visibleRange.to)
+        : 3600;
+
+      const response = await fetch(`${API_BASE_URL}/graphql`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: print(RESOURCE_CANDLES_QUERY),
+          variables: {
+            slug: resourceSlug,
+            from,
+            to: now,
+            interval,
+          },
+        }),
       });
+
+      const { data } = await response.json();
+      return data.resourceCandles.map((candle: any) => ({
+        timestamp: timeToLocal(candle.timestamp * 1000),
+        price: Number(formatUnits(BigInt(candle.close), 9)),
+      }));
     },
     enabled: !!resourceSlug,
   });

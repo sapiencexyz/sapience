@@ -183,43 +183,6 @@ export class ResourceResolver {
       throw new Error('Failed to fetch resource');
     }
   }
-
-  @Query(() => [ResourcePriceType])
-  async resourcePrices(
-    @Arg('slug', () => String) slug: string,
-    @Arg('startTime', () => Int, { nullable: true }) startTime?: number,
-    @Arg('endTime', () => Int, { nullable: true }) endTime?: number
-  ): Promise<ResourcePriceType[]> {
-    try {
-      const resource = await dataSource.getRepository(Resource).findOne({
-        where: { slug },
-      });
-
-      if (!resource) {
-        return [];
-      }
-
-      const query = dataSource
-        .getRepository(ResourcePrice)
-        .createQueryBuilder('price')
-        .leftJoinAndSelect('price.resource', 'resource')
-        .where('price.resourceId = :resourceId', { resourceId: resource.id })
-        .orderBy('price.timestamp', 'ASC');
-
-      if (startTime) {
-        query.andWhere('price.timestamp >= :startTime', { startTime });
-      }
-      if (endTime) {
-        query.andWhere('price.timestamp <= :endTime', { endTime });
-      }
-
-      const prices = await query.getMany();
-      return prices.map((price) => mapResourcePriceToType(price));
-    } catch (error) {
-      console.error('Error fetching resource prices:', error);
-      throw new Error('Failed to fetch resource prices');
-    }
-  }
 }
 
 @Resolver(() => PositionType)
@@ -311,3 +274,5 @@ export class EpochResolver {
     }
   }
 }
+
+export { CandleResolver } from './candle';
