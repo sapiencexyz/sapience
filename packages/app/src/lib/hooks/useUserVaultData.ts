@@ -1,7 +1,7 @@
-import { useAccount, useReadContract } from 'wagmi';
-import erc20ABI from '~/lib/erc20abi.json';
-import useFoilDeployment from '~/components/useFoilDeployment';
 import { useCallback } from 'react';
+import { useAccount, useReadContract } from 'wagmi';
+
+import erc20ABI from '~/lib/erc20abi.json';
 
 type Props = {
   collateralAsset: `0x${string}`;

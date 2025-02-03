@@ -1,5 +1,5 @@
 import { useAccount, useReadContract } from 'wagmi';
-import useFoilDeployment from '~/components/useFoilDeployment';
+
 import erc20ABI from '~/lib/erc20abi.json';
 
 type Props = {

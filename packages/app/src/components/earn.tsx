@@ -5,6 +5,9 @@ import Image from 'next/image';
 import { useTheme } from 'next-themes';
 import { type FC, useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { formatUnits } from 'viem';
+import { useAccount } from 'wagmi';
+
 import { Button } from '~/components/ui/button';
 import {
   Form,
@@ -25,16 +28,12 @@ import {
 } from '~/components/ui/tooltip';
 import { useToast } from '~/hooks/use-toast';
 import { useResources } from '~/lib/hooks/useResources';
-
-import { Label } from './ui/label';
-// import VaultChart from './vaultChart';
-import VaultChart from './vaultChart';
-import { useAccount, useWriteContract } from 'wagmi';
 import { useUserVaultData } from '~/lib/hooks/useUserVaultData';
-import NumberDisplay from './numberDisplay';
-import { formatUnits } from 'viem';
-import { useVaultDeposit } from '~/lib/hooks/useVaultDeposit';
 import { useVaultData } from '~/lib/hooks/useVaultData';
+import { useVaultDeposit } from '~/lib/hooks/useVaultDeposit';
+
+import NumberDisplay from './numberDisplay';
+import { Label } from './ui/label';
 import useFoilDeployment from './useFoilDeployment';
 
 interface FormValues {
@@ -136,9 +135,9 @@ const Earn: FC<Props> = ({ slug }) => {
     );
   }, [allowance, collateralAmountDiff, collateralDecimals]);
 
-  const hasCollateralChanged = useMemo(() => {
-    return Number(collateralAmount) !== 0;
-  }, [collateralAmount]);
+  // const hasCollateralChanged = useMemo(() => {
+  //   return Number(collateralAmount) !== 0;
+  // }, [collateralAmount]);
 
   const hasSharesChanged = useMemo(() => {
     return Number(vaultShares) !== 0;

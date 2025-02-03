@@ -1,15 +1,14 @@
-import { useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { zeroAddress } from 'viem';
 import {
   useAccount,
   useReadContract,
   useWaitForTransactionReceipt,
   useWriteContract,
 } from 'wagmi';
-import { zeroAddress } from 'viem';
-import { PeriodContext } from '~/lib/context/PeriodProvider';
+
 import { useToast } from '../../hooks/use-toast';
 import erc20ABI from '~/lib/erc20abi.json';
-import useFoilDeployment from '~/components/useFoilDeployment';
 
 type Props = {
   amount: bigint;
