@@ -1,5 +1,5 @@
 {
-  "address": "0xa162703cd738cca804079cfc2c83193f71858366",
+  "address": "0x58e6ec81a7815b7aeb648b616e882a4ab66d2700",
   "abi": [
     {
       "name": "facets",
@@ -3487,12 +3487,12 @@
     }
   ],
   "deployedOn": "router.FoilYang",
-  "deployTxnHash": "0x49a5a8fdc3cc4c72f9c2f8980f2927937fca92514024d33d31ffaa73542ef389",
-  "deployTxnBlockNumber": "7435132",
-  "deployTimestamp": "1736192412",
+  "deployTxnHash": "0x434724bc566ac7926919462ebea0e0a346455bc98e60e195e9e306435b9f8a24",
+  "deployTxnBlockNumber": "7447738",
+  "deployTimestamp": "1736353140",
   "contractName": "FoilYang",
   "sourceName": "FoilYang.sol",
   "highlight": true,
-  "gasUsed": 2998353,
-  "gasCost": "7989195598"
+  "gasUsed": 2998461,
+  "gasCost": "18007361855"
 }
