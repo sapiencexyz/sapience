@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
+import { justifyTimeSeries } from '../helpers/timeSeriesHelpers';
 import { Resource } from '../models/Resource';
 import dataSource from '../db';
 import { ResourcePrice } from 'src/models/ResourcePrice';
@@ -98,7 +99,16 @@ router.get(
 
     const prices = await query.getMany();
 
-    res.json(prices);
+    // Convert timestamps to numbers and justify the time series
+    const formattedPrices = prices.map(price => ({
+      ...price,
+      timestamp: Number(price.timestamp),
+      value: price.value
+    }));
+
+    const justifiedPrices = justifyTimeSeries(formattedPrices, (item) => Number(item.value));
+
+    res.json(justifiedPrices);
   })
 );
 

@@ -52,27 +52,6 @@ interface UseChartProps {
   selectedWindow: TimeWindow;
 }
 
-const justifyData = (data: { time: UTCTimestamp; value?: number }[]) => {
-  const justifiedData: { time: UTCTimestamp; value?: number }[] = [];
-  let lastTime: number | null = null;
-  let lastValue: number | undefined;
-
-  data.forEach((item) => {
-    const { time, value } = item;
-    if (lastTime !== null) {
-      // Fill in each missing second with the last known value
-      for (let t = lastTime + 1; t < time; t++) {
-        justifiedData.push({ time: t as UTCTimestamp, value: lastValue });
-      }
-    }
-    justifiedData.push(item);
-    lastTime = time;
-    lastValue = value;
-  });
-
-  return justifiedData;
-};
-
 export const useChart = ({
   resourceSlug,
   market,
@@ -106,17 +85,8 @@ export const useChart = ({
       selectedWindow,
     ],
     queryFn: async () => {
-      const windowForCandles = TimeWindow.M;
-      // if (selectedWindow === TimeWindow.M) {
-      //  windowForCandles = TimeWindow.D;
-      // } else if (selectedWindow === TimeWindow.W) {
-      //  windowForCandles = TimeWindow.D;
-      // } else if (selectedWindow === TimeWindow.D) {
-      //  windowForCandles = TimeWindow.H;
-      // }
-
       const response = await fetch(
-        `${API_BASE_URL}/prices/chart-data?contractId=${market?.chainId}:${market?.address}&epochId=${market?.epochId}&timeWindow=${windowForCandles}`
+        `${API_BASE_URL}/prices/chart-data?contractId=${market?.chainId}:${market?.address}&epochId=${market?.epochId}&timeWindow=${selectedWindow}`
       );
       if (!response.ok) {
         throw new Error(NETWORK_ERROR_STRING);
@@ -134,10 +104,15 @@ export const useChart = ({
   const { data: indexPrices, isLoading: isIndexLoading } = useQuery<
     IndexPrice[]
   >({
-    queryKey: ['index-prices', `${market?.chainId}:${market?.address}`],
+    queryKey: [
+      'index-prices',
+      `${market?.chainId}:${market?.address}`,
+      selectedWindow,
+      market?.epochId,
+    ],
     queryFn: async () => {
       const response = await fetch(
-        `${API_BASE_URL}/prices/index?contractId=${market?.chainId}:${market?.address}&epochId=${market?.epochId}`
+        `${API_BASE_URL}/prices/index?contractId=${market?.chainId}:${market?.address}&epochId=${market?.epochId}&timeWindow=${selectedWindow}`
       );
       if (!response.ok) {
         throw new Error(NETWORK_ERROR_STRING);
@@ -153,7 +128,7 @@ export const useChart = ({
   const { data: resourcePrices, isLoading: isResourceLoading } = useQuery<
     ResourcePricePoint[]
   >({
-    queryKey: ['resourcePrices', resourceSlug],
+    queryKey: ['resourcePrices', resourceSlug, selectedWindow, market?.epochId],
     queryFn: async () => {
       if (!resourceSlug) {
         return [];
@@ -161,7 +136,7 @@ export const useChart = ({
       const now = Math.floor(Date.now() / 1000);
       const twoPeriodsAgo = now - 28 * 24 * 60 * 60 * 2;
       const response = await fetch(
-        `${API_BASE_URL}/resources/${resourceSlug}/prices?startTime=${twoPeriodsAgo}&endTime=${now}`
+        `${API_BASE_URL}/resources/${resourceSlug}/prices?startTime=${twoPeriodsAgo}&endTime=${now}&timeWindow=${selectedWindow}`
       );
       if (!response.ok) {
         throw new Error('Failed to fetch resource prices');
@@ -323,7 +298,7 @@ export const useChart = ({
           ? Number((stEthPerToken || 1) * (ip.price / 1e9))
           : ip.price,
       }));
-      indexPriceSeriesRef.current.setData(justifyData(indexLineData));
+      indexPriceSeriesRef.current.setData(indexLineData);
     }
   };
 
@@ -335,7 +310,7 @@ export const useChart = ({
           ? Number((stEthPerToken || 1) * (rp.price / 1e9))
           : rp.price,
       }));
-      resourcePriceSeriesRef.current.setData(justifyData(resourceLineData));
+      resourcePriceSeriesRef.current.setData(resourceLineData);
     }
   };
 

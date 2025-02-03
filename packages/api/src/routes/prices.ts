@@ -3,6 +3,7 @@ import { TimeWindow } from '../interfaces';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import { parseContractId } from '../helpers/parseContractId';
 import { validateRequestParams } from '../helpers/validateRequestParams';
+import { justifyTimeSeries } from '../helpers/timeSeriesHelpers';
 import {
   getIndexPricesInTimeRange,
   getMarketPricesInTimeRange,
@@ -145,7 +146,10 @@ router.get(
       price: Number(price.value),
     }));
 
-    res.json(priceData);
+    // Justify the data to fill in gaps
+    const justifiedPriceData = justifyTimeSeries(priceData, (item) => item.price);
+
+    res.json(justifiedPriceData);
   })
 );
 
