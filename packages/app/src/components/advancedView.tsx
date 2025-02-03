@@ -165,8 +165,14 @@ const Market = ({
         if (!response.ok) {
           throw new Error('Network response was not ok');
         }
+
         const data: IndexPrice[] = await response.json();
-        return data;
+        return data.map((price) => {
+          return {
+            timestamp: Number(price.timestamp),
+            price: Number(formatUnits(BigInt(price.price), 9)),
+          };
+        });
       },
       refetchInterval: 60000,
     });

@@ -81,8 +81,8 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
   const { foilData } = useFoilDeployment(chainId);
 
   // Custom hooks for data fetching
-  const { data: latestPrice } = useQuery({
-    queryKey: ['latestPrice', `${state.chainId}:${state.address}`],
+  const { data: latestIndexPrice } = useQuery({
+    queryKey: ['latestIndexPrice', `${state.chainId}:${state.address}`],
     queryFn: async () => {
       try {
         const response = await fetch(
@@ -241,34 +241,11 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
   }, [state.endTime, state.chainId, state.collateralAsset]);
 
   useEffect(() => {
-    console.log('latestPrice =', latestPrice);
-    if (
-      latestPrice !== undefined &&
-      latestPrice !== null &&
-      stEthPerTokenResult.data
-    ) {
-      const stEthPerToken = Number(
-        gweiToEther(stEthPerTokenResult.data as bigint)
-      );
-
-      const averageResourcePriceinWstEth = latestPrice / stEthPerToken;
-
-      setState((currentState) => ({
-        ...currentState,
-        averagePrice: averageResourcePriceinWstEth,
-        stEthPerToken,
-      }));
-    } else if (latestPrice === null) {
-      // When price data is not available, set averagePrice to null/0
-      setState((currentState) => ({
-        ...currentState,
-        averagePrice: 0,
-        stEthPerToken: stEthPerTokenResult.data
-          ? Number(gweiToEther(stEthPerTokenResult.data as bigint))
-          : undefined,
-      }));
-    }
-  }, [latestPrice, stEthPerTokenResult.data]);
+    setState((currentState) => ({
+      ...currentState,
+      averagePrice: latestIndexPrice / 10 ** 9,
+    }));
+  }, [latestIndexPrice]);
 
   useEffect(() => {
     setState((currentState) => ({

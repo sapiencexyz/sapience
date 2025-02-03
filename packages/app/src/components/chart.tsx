@@ -2,7 +2,6 @@
 import type {
   UTCTimestamp,
   BarData,
-  LineData,
   IChartApi,
   Time,
 } from 'lightweight-charts';
@@ -159,19 +158,12 @@ const CandlestickChart: React.FC<Props> = ({
   // Separate effect for updating data
   useEffect(() => {
     if (!chartRef.current || !candlestickSeriesRef.current) return;
-    const combinedData = data.marketPrices
-      .map((mp, i) => {
+    const marketPricesData = data.marketPrices
+      .map((mp) => {
         const timestamp = (mp.endTimestamp / 1000) as UTCTimestamp;
-        const indexPrice = data.indexPrices[i]?.price || 0;
-        const adjustedPrice = isLoading ? 0 : indexPrice / (stEthPerToken || 1);
-
         if (!mp.open || !mp.high || !mp.low || !mp.close) {
           return null;
         }
-
-        const displayPriceValue = useMarketUnits
-          ? adjustedPrice
-          : convertGgasPerWstEthToGwei(adjustedPrice, stEthPerToken);
 
         const candleData: BarData = {
           time: timestamp,
@@ -189,30 +181,32 @@ const CandlestickChart: React.FC<Props> = ({
             : Number(convertGgasPerWstEthToGwei(mp.close, stEthPerToken)),
         };
 
-        const lineData: LineData = {
-          time: timestamp,
-          value: displayPriceValue || 0,
-        };
-
-        return { candleData, lineData };
+        return candleData;
       })
       .filter((item): item is NonNullable<typeof item> => item !== null);
 
-    const candleSeriesData = combinedData.map((d) => d.candleData);
-    const lineSeriesData = combinedData.map((d) => d.lineData);
+    const candleSeriesData = marketPricesData;
 
     candlestickSeriesRef.current.setData(candleSeriesData);
 
-    if (!isLoading && indexPriceSeriesRef.current && !isBeforeStart) {
-      indexPriceSeriesRef.current.setData(lineSeriesData);
+    if (data.resourcePrices?.length && resourcePriceSeriesRef.current) {
+      const resourceLineData = data.resourcePrices.map((p) => ({
+        time: (p.timestamp / 1000) as UTCTimestamp,
+        value: useMarketUnits
+          ? Number((stEthPerToken || 1) * (p.price / 1e9))
+          : Number(p.price),
+      }));
+      resourcePriceSeriesRef.current.setData(resourceLineData);
+    }
 
-      if (data.resourcePrices?.length && resourcePriceSeriesRef.current) {
-        const resourceLineData = data.resourcePrices.map((p) => ({
-          time: (p.timestamp / 1000) as UTCTimestamp,
-          value: p.price,
-        }));
-        resourcePriceSeriesRef.current.setData(resourceLineData);
-      }
+    if (data.indexPrices?.length && indexPriceSeriesRef.current) {
+      const indexLineData = data.indexPrices.map((p) => ({
+        time: (p.timestamp / 1000) as UTCTimestamp,
+        value: useMarketUnits
+          ? Number((stEthPerToken || 1) * (p.price / 1e9))
+          : Number(p.price),
+      }));
+      indexPriceSeriesRef.current.setData(indexLineData);
     }
 
     // Update series visibility
