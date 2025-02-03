@@ -39,6 +39,7 @@ export interface PeriodContextType {
   epochSettled: boolean;
   settlementPrice?: bigint;
   foilData: any;
+  foilVaultData: any;
   chainId: number;
   error?: string;
   liquidity: number;
@@ -81,7 +82,7 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
     localStorage.setItem('useMarketUnits', JSON.stringify(useMarketUnits));
   }, [useMarketUnits]);
 
-  const { foilData } = useFoilDeployment(chainId);
+  const { foilData, foilVaultData } = useFoilDeployment(chainId);
 
   // Custom hooks for data fetching
   const { data: latestPrice } = useQuery({
@@ -277,8 +278,9 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
     setState((currentState) => ({
       ...currentState,
       foilData: { address, abi: foilData.abi },
+      foilVaultData,
     }));
-  }, [foilData]);
+  }, [foilData, address, foilVaultData]);
 
   useEffect(() => {
     if (marketViewFunctionResult.error) {

@@ -1,38 +1,46 @@
 import { useContext, useEffect, useState } from 'react';
 import {
+  useAccount,
   useReadContract,
   useWaitForTransactionReceipt,
   useWriteContract,
 } from 'wagmi';
-import { erc20ABI } from 'viem';
 import { zeroAddress } from 'viem';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useToast } from '../../hooks/use-toast';
+import erc20ABI from '~/lib/erc20abi.json';
+import useFoilDeployment from '~/components/useFoilDeployment';
 
-export const useVaultDeposit = () => {
+type Props = {
+  amount: bigint;
+  collateralAsset: `0x${string}`;
+  vaultData: {
+    abi: any;
+    address: `0x${string}`;
+  };
+};
+
+export const useVaultDeposit = ({
+  amount,
+  collateralAsset,
+  vaultData,
+}: Props) => {
+  const { address, chainId } = useAccount();
   const { toast } = useToast();
   const [pendingTxn, setPendingTxn] = useState(false);
-  const [txnStep, setTxnStep] = useState(0);
-  const {
-    address: marketAddress,
-    chainId,
-    collateralAsset,
-    address,
-    foilData,
-  } = useContext(PeriodContext);
 
   // Check allowance
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
     abi: erc20ABI,
-    address: collateralAsset as `0x${string}`,
+    address: collateralAsset,
     functionName: 'allowance',
-    args: [address, marketAddress],
-    account: address || zeroAddress,
+    args: [address, vaultData.address],
+    account: (address || zeroAddress) as `0x${string}`,
     chainId,
   });
 
   // Write contract hooks
-  const { data: hash, writeContract } = useWriteContract({
+  const { data: hash, writeContract: depositWrite } = useWriteContract({
     mutation: {
       onError: (error) => {
         toast({
@@ -76,61 +84,81 @@ export const useVaultDeposit = () => {
   });
 
   useEffect(() => {
-    if (isConfirmed && txnStep === 2) {
-      toast({
-        title: 'Success',
-        description: 'Your deposit has been confirmed.',
-      });
+    if (approveSuccess) {
+      refetchAllowance();
       setPendingTxn(false);
-      setTxnStep(0);
     }
-  }, [isConfirmed, txnStep, toast, setPendingTxn, setTxnStep]);
+  }, [approveSuccess, refetchAllowance]);
 
   useEffect(() => {
-    if (approveSuccess && txnStep === 1) {
-      refetchAllowance();
-      writeContract({
-        abi: foilData.abi,
-        address: marketAddress as `0x${string}`,
-        functionName: 'deposit',
-        args: [amount],
+    if (isConfirmed) {
+      toast({
+        title: 'Success',
+        description: 'Your deposit request has been confirmed.',
       });
-      setTxnStep(2);
+      setPendingTxn(false);
     }
-  }, [
-    marketAddress,
-    approveSuccess,
-    txnStep,
-    writeContract,
-    refetchAllowance,
-    foilData.abi,
-  ]);
+  }, [isConfirmed, toast, setPendingTxn]);
 
-  const deposit = async (amount: bigint) => {
+  useEffect(() => {
+    if (isConfirmed) {
+      toast({
+        title: 'Success',
+        description: 'Your deposit request has been confirmed.',
+      });
+      setPendingTxn(false);
+    }
+  }, [isConfirmed, toast, setPendingTxn]);
+
+  const requestDeposit = async () => {
     if (!address) return;
     setPendingTxn(true);
-
-    if (!allowance || allowance < amount) {
-      approveWrite({
-        abi: erc20ABI,
-        address: collateralAsset as `0x${string}`,
-        functionName: 'approve',
-        args: [marketAddress, amount],
-      });
-      setTxnStep(1);
-    } else {
-      writeContract({
-        abi: foilData.abi,
-        address: marketAddress as `0x${string}`,
-        functionName: 'deposit',
+    if (amount > 0) {
+      depositWrite({
+        abi: vaultData.abi,
+        address: vaultData.address,
+        functionName: 'requestDeposit',
         args: [amount],
       });
-      setTxnStep(2);
+    } else {
+      depositWrite({
+        abi: vaultData.abi,
+        address: vaultData.address,
+        functionName: 'withdrawRequestDeposit',
+        args: [BigInt(Math.abs(Number(amount)))],
+      });
     }
   };
 
+  const approve = async () => {
+    if (!address) return;
+    setPendingTxn(true);
+    approveWrite({
+      abi: erc20ABI,
+      address: collateralAsset,
+      functionName: 'approve',
+      args: [vaultData.address, amount],
+    });
+  };
+
+  const deposit = async () => {
+    if (!address) return;
+    setPendingTxn(true);
+    depositWrite({
+      abi: vaultData.abi,
+      address: vaultData.address,
+      functionName: 'deposit',
+      args: [0, address],
+    });
+  };
+
   return {
+    allowance: (allowance || BigInt(0)) as bigint,
+    requestDeposit,
     deposit,
+    approve,
     pendingTxn,
+    isDepositConfirmed: isConfirmed,
+    isApproveConfirmed: approveSuccess,
   };
 };
