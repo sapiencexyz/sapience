@@ -1,8 +1,18 @@
 import { formatDbBigInt } from 'src/utils';
 import { Transaction } from '../models/Transaction';
+import { Position } from 'src/models/Position';
 
-export const hydrateTransactions = (transactions: Transaction[]) => {
-  const hydratedPositions = [];
+export type HydratedTransaction = Transaction & {
+  position: Position;
+  collateralDelta: string;
+  baseTokenDelta: string;
+  quoteTokenDelta: string;
+};
+
+export const hydrateTransactions = (
+  transactions: Transaction[]
+): HydratedTransaction[] => {
+  const hydratedTrasactions: HydratedTransaction[] = [];
 
   // Format data
   let lastPositionId = 0;
@@ -61,12 +71,12 @@ export const hydrateTransactions = (transactions: Transaction[]) => {
       currentCollateralBalance.toString()
     );
 
-    hydratedPositions.push(hydratedTransaction);
+    hydratedTrasactions.push(hydratedTransaction);
 
     // set up for next transaction
     lastBaseToken = BigInt(transaction.baseToken);
     lastQuoteToken = BigInt(transaction.quoteToken);
     lastCollateral = BigInt(transaction.collateral);
   }
-  return hydratedPositions;
+  return hydratedTrasactions;
 };
