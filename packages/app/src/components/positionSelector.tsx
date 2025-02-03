@@ -62,45 +62,52 @@ const PositionSelector: React.FC = () => {
             <DialogTitle>Select Position</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col space-y-2">
-            {[...allPositions].sort((a, b) => {
-              const aHasBalance = positionHasBalance(a);
-              const bHasBalance = positionHasBalance(b);
-              
-              if (aHasBalance && !bHasBalance) return -1;
-              if (!aHasBalance && bHasBalance) return 1;
-              
-              // If both have balance or both don't have balance, sort by ID (descending)
-              return Number(b.id) - Number(a.id);
-            }).map((position) => (
-              <Link
-                key={position.id.toString()}
-                href={getPositionUrl(position)}
-                className="w-full"
-              >
-                <Button
-                  variant="ghost"
-                  className={`flex justify-between items-center py-2 px-4 rounded-md w-full h-auto
+            {[...allPositions]
+              .sort((a, b) => {
+                const aHasBalance = positionHasBalance(a);
+                const bHasBalance = positionHasBalance(b);
+
+                if (aHasBalance && !bHasBalance) return -1;
+                if (!aHasBalance && bHasBalance) return 1;
+
+                // If both have balance or both don't have balance, sort by ID (descending)
+                return Number(b.id) - Number(a.id);
+              })
+              .map((position) => (
+                <Link
+                  key={position.id.toString()}
+                  href={getPositionUrl(position)}
+                  className="w-full"
+                >
+                  <Button
+                    variant="ghost"
+                    className={`flex justify-between items-center py-2 px-4 rounded-md w-full h-auto
                     ${Number(position.id) === nftId ? 'bg-muted' : 'bg-transparent'}
                     hover:bg-muted/50`}
-                  onClick={() => handlePositionSelect(Number(position.id))}
-                >
-                  <div className="flex items-center gap-2 w-full">
-                    <p className="font-bold">#{position.id.toString()}</p>
-                    <span className="text-sm text-muted-foreground">
-                      {position.type === 'lp' ? 'Liquidity Position' : 'Trader Position'}
-                    </span>
-                    <span className="text-sm ml-auto">
-                      {position.type === 'lp' ? (
-                        `Balance: ${(Number(position.depositedCollateralAmount) / 1e18).toFixed(4)} wstETH`
-                      ) : (
-                        `Balance: ${Number(position.vEthAmount) > 0 ? 
-                          (Number(position.vEthAmount) / 1e18).toFixed(4) : '0'} wstETH`
-                      )}
-                    </span>
-                  </div>
-                </Button>
-              </Link>
-            ))}
+                    onClick={() => handlePositionSelect(Number(position.id))}
+                  >
+                    <div className="flex items-center gap-2 w-full">
+                      <p className="font-bold">#{position.id.toString()}</p>
+                      <span className="text-sm text-muted-foreground">
+                        {position.type === 'lp'
+                          ? 'Liquidity Position'
+                          : 'Trader Position'}
+                      </span>
+                      <span className="text-sm ml-auto">
+                        {position.type === 'lp'
+                          ? `Balance: ${(Number(position.depositedCollateralAmount) / 1e18).toFixed(4)} wstETH`
+                          : `Balance: ${
+                              Number(position.vEthAmount) > 0
+                                ? (Number(position.vEthAmount) / 1e18).toFixed(
+                                    4
+                                  )
+                                : '0'
+                            } wstETH`}
+                      </span>
+                    </div>
+                  </Button>
+                </Link>
+              ))}
             <Button className="mt-3" onClick={() => handlePositionSelect(0)}>
               <p>Create New Position</p>
             </Button>

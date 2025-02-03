@@ -3,7 +3,8 @@ import { formatEther } from 'viem';
 import * as chains from 'viem/chains';
 import type { Chain } from 'viem/chains';
 
-import { FoilPosition, TimeWindow } from '../interfaces/interfaces';
+import type { FoilPosition } from '../interfaces/interfaces';
+import { TimeWindow } from '../interfaces/interfaces';
 
 export function convertHundredthsOfBipToPercent(
   hundredthsOfBip: number

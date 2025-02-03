@@ -94,13 +94,12 @@ export const AddEditPositionProvider: React.FC<{
       !hasSetInitialPosition.current &&
       (positions.liquidityPositions.length || positions.tradePositions.length)
     ) {
-
-      // filters to find the postion with balance and then takes the last one. 
+      // filters to find the postion with balance and then takes the last one.
       const lastLiquidityPosition = positions.liquidityPositions
-        .filter(pos => positionHasBalance(pos))
+        .filter((pos) => positionHasBalance(pos))
         .slice(-1)[0];
       const lastTradePosition = positions.tradePositions
-        .filter(pos => positionHasBalance(pos))
+        .filter((pos) => positionHasBalance(pos))
         .slice(-1)[0];
 
       let lastPositionId: number | undefined;
@@ -129,9 +128,10 @@ export const AddEditPositionProvider: React.FC<{
 
       // if no positions with value found, fall back to most recent position
       if (lastPositionId === undefined) {
-        const fallbackLiquidityPosition = positions.liquidityPositions.slice(-1)[0];
+        const fallbackLiquidityPosition =
+          positions.liquidityPositions.slice(-1)[0];
         const fallbackTradePosition = positions.tradePositions.slice(-1)[0];
-        
+
         if (currentPath.includes('trade')) {
           lastPositionId = fallbackTradePosition?.id
             ? Number(fallbackTradePosition.id)
