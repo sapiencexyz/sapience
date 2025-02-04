@@ -5,6 +5,7 @@ import type { UTCTimestamp, IChartApi } from 'lightweight-charts';
 import { createChart, CrosshairMode, PriceScaleMode } from 'lightweight-charts';
 import { debounce } from 'lodash';
 import { useTheme } from 'next-themes';
+import type { Dispatch, SetStateAction } from 'react';
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { formatUnits } from 'viem';
 
@@ -47,7 +48,8 @@ interface UseChartProps {
   useMarketUnits: boolean;
   startTime: number;
   containerRef: React.RefObject<HTMLDivElement>;
-  selectedWindow: TimeWindow;
+  selectedWindow: TimeWindow | null;
+  setSelectedWindow?: Dispatch<SetStateAction<TimeWindow | null>>;
 }
 
 // GraphQL Queries
@@ -122,6 +124,7 @@ export const useChart = ({
   startTime,
   containerRef,
   selectedWindow,
+  setSelectedWindow,
 }: UseChartProps) => {
   const chartRef = useRef<IChartApi | null>(null);
   const resizeObserverRef = useRef<ResizeObserver>();
@@ -178,6 +181,7 @@ export const useChart = ({
             from: newVisibleRange.from as number,
             to: newVisibleRange.to as number,
           });
+          setSelectedWindow?.(null);
         }
       },
       600,
@@ -198,7 +202,7 @@ export const useChart = ({
         ?.timeScale()
         .unsubscribeVisibleTimeRangeChange(handleVisibleTimeRangeChange);
     };
-  }, [chartRef.current]); // Re-run when chart is created
+  }, [chartRef.current, setSelectedWindow]);
 
   // Modify the query functions to use dynamic intervals
   const { data: marketPrices } = useQuery<PriceChartData[]>({
@@ -657,6 +661,34 @@ export const useChart = ({
     isBeforeStart,
     selectedWindow,
   ]);
+
+  // Effect for handling selectedWindow changes
+  useEffect(() => {
+    if (!chartRef.current || !selectedWindow) return;
+
+    const now = Math.floor(Date.now() / 1000);
+    let timeRange: number;
+
+    switch (selectedWindow) {
+      case TimeWindow.D:
+        timeRange = 86400; // 1 day in seconds
+        break;
+      case TimeWindow.W:
+        timeRange = 604800; // 1 week in seconds
+        break;
+      case TimeWindow.M:
+        timeRange = 2419200; // 28 days in seconds
+        break;
+      default:
+        return; // Don't update if window is not recognized
+    }
+
+    const from = now - timeRange;
+    chartRef.current.timeScale().setVisibleRange({
+      from: from as UTCTimestamp,
+      to: now as UTCTimestamp,
+    });
+  }, [selectedWindow]);
 
   useEffect(() => {
     if (!chartRef.current) return;

@@ -33,7 +33,7 @@ const AdvancedView = ({
   params: { id: string; epoch: string };
   isTrade: boolean;
 }) => {
-  const [selectedWindow, setSelectedWindow] = useState<TimeWindow>(
+  const [selectedWindow, setSelectedWindow] = useState<TimeWindow | null>(
     TimeWindow.W
   );
   const [chartType, setChartType] = useState<ChartType>(
@@ -150,13 +150,19 @@ const AdvancedView = ({
             }}
             seriesVisibility={seriesVisibility}
             selectedWindow={selectedWindow}
+            setSelectedWindow={setSelectedWindow}
             onLoadingStatesChange={handleLoadingStatesChange}
           />
         </div>
       );
     }
     if (chartType === ChartType.VOLUME) {
-      return <VolumeChart data={volume || []} activeWindow={selectedWindow} />;
+      return (
+        <VolumeChart
+          data={volume || []}
+          activeWindow={selectedWindow ?? TimeWindow.W}
+        />
+      );
     }
     if (chartType === ChartType.LIQUIDITY) {
       return <DepthChart isTrade={isTrade} />;
@@ -192,7 +198,7 @@ const AdvancedView = ({
                     {chartType !== ChartType.LIQUIDITY && (
                       <WindowSelector
                         selectedWindow={selectedWindow}
-                        setSelectedWindow={setSelectedWindow}
+                        setSelectedWindow={setSelectedWindow ?? TimeWindow.W}
                       />
                     )}
                     <DataDrawer

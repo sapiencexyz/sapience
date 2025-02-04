@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { TimeWindow } from '~/lib/interfaces/interfaces';
 
 interface WindowSelectorProps {
-  setSelectedWindow: Dispatch<SetStateAction<TimeWindow>>;
-  selectedWindow: TimeWindow;
+  setSelectedWindow: Dispatch<SetStateAction<TimeWindow | null>>;
+  selectedWindow: TimeWindow | null;
 }
 
 const WindowSelector: React.FC<WindowSelectorProps> = ({

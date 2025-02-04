@@ -69,6 +69,7 @@ export enum ChartType {
 export interface VolumeChartData {
   startTimestamp: number;
   endTimestamp: number;
+  volume: number;
 }
 
 export interface PriceChartData {

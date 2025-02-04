@@ -1,4 +1,5 @@
 import { useRef, useContext, useEffect, useMemo } from 'react';
+import type { SetStateAction, Dispatch } from 'react';
 import type React from 'react';
 
 import {
@@ -15,17 +16,18 @@ import { cn } from '~/lib/utils';
 interface Props {
   resourceSlug?: string;
   market?: {
-    epochId?: number;
-    chainId?: number;
-    address?: string;
+    epochId: number;
+    chainId: number;
+    address: string;
   };
-  seriesVisibility?: {
+  seriesVisibility: {
     candles: boolean;
     index: boolean;
     resource: boolean;
     trailing: boolean;
   };
-  selectedWindow: TimeWindow;
+  selectedWindow: TimeWindow | null;
+  setSelectedWindow?: Dispatch<SetStateAction<TimeWindow | null>>;
   onLoadingStatesChange?: (loadingStates: {
     candles: boolean;
     index: boolean;
@@ -45,6 +47,7 @@ const Chart: React.FC<Props> = ({
   market,
   seriesVisibility,
   selectedWindow,
+  setSelectedWindow,
   onLoadingStatesChange,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -58,6 +61,7 @@ const Chart: React.FC<Props> = ({
     startTime,
     containerRef: chartContainerRef,
     selectedWindow,
+    setSelectedWindow,
   });
 
   const memoizedLoadingStates = useMemo(
