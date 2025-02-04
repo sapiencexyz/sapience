@@ -12,7 +12,7 @@ import {
 } from '~/components/ui/dialog';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
-import { positionHasBalance } from '~/lib/util/util';
+import { positionHasBalance } from '~/lib/utils/util';
 
 const PositionSelector: React.FC = () => {
   const { nftId, positions, setNftId } = useAddEditPosition();

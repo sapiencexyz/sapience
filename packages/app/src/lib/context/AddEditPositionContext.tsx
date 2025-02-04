@@ -14,7 +14,7 @@ import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
 import { PositionKind } from '~/lib/interfaces/interfaces';
-import { positionHasBalance } from '~/lib/util/util';
+import { positionHasBalance } from '~/lib/utils/util';
 
 interface Positions {
   liquidityPositions: FoilPosition[];
