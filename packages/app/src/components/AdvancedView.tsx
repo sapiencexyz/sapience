@@ -33,9 +33,14 @@ const AdvancedView = ({
   params: { id: string; epoch: string };
   isTrade: boolean;
 }) => {
+  // If on trade page, allow no selection. If not on trade, default to 7 days (W).
+  const defaultWindow = isTrade ? null : TimeWindow.W;
+
+  // Use that as default state:
   const [selectedWindow, setSelectedWindow] = useState<TimeWindow | null>(
-    TimeWindow.W
+    defaultWindow
   );
+
   const [chartType, setChartType] = useState<ChartType>(
     isTrade ? ChartType.PRICE : ChartType.LIQUIDITY
   );
@@ -107,20 +112,13 @@ const AdvancedView = ({
   const toggleSeries = (
     series: 'candles' | 'index' | 'resource' | 'trailing'
   ) => {
+    // IMPORTANT: Toggling series does not reset any visible range or selectedWindow
     setSeriesVisibility((prev) => ({ ...prev, [series]: !prev[series] }));
   };
 
-  const handleLoadingStatesChange = useCallback(
-    (newLoadingStates: {
-      candles: boolean;
-      index: boolean;
-      resource: boolean;
-      trailing: boolean;
-    }) => {
-      setLoadingStates(newLoadingStates);
-    },
-    []
-  );
+  const handleLoadingStatesChange = useCallback((newLoadingStates) => {
+    setLoadingStates(newLoadingStates);
+  }, []);
 
   const disabledSeries = {
     candles: false,
@@ -198,7 +196,8 @@ const AdvancedView = ({
                     {chartType !== ChartType.LIQUIDITY && (
                       <WindowSelector
                         selectedWindow={selectedWindow}
-                        setSelectedWindow={setSelectedWindow ?? TimeWindow.W}
+                        setSelectedWindow={setSelectedWindow}
+                        isTrade={isTrade}
                       />
                     )}
                     <DataDrawer

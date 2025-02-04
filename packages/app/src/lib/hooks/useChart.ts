@@ -140,69 +140,64 @@ export const useChart = ({
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = startTime > now;
 
-  const getIntervalFromVisibleRange = (from: number, to: number): number => {
-    const visibleRangeInSeconds = to - from;
+  // If we're ignoring user selection, default to 7 days:
+  const defaultFrom = Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60;
+  const defaultTo = Math.floor(Date.now() / 1000);
 
-    // Less than 2 days: 5 minute intervals
-    if (visibleRangeInSeconds <= 2 * 24 * 60 * 60) {
-      return 300;
+  // We can define intervals for each TimeWindow:
+  function getIntervalForWindow(w: TimeWindow): number {
+    switch (w) {
+      case TimeWindow.H:
+        return 300; // 5 minute intervals
+      case TimeWindow.D:
+        return 900; // 15 minute intervals
+      case TimeWindow.W:
+        return 3600; // 1 hour intervals
+      case TimeWindow.M:
+        return 14400; // 4 hour intervals, or maybe 1 day
+      default:
+        return 3600;
     }
-    // Less than 7 days: 15 minute intervals
-    if (visibleRangeInSeconds <= 7 * 24 * 60 * 60) {
-      return 900;
-    }
-    // Less than 14 days: 1 hour intervals
-    if (visibleRangeInSeconds <= 14 * 24 * 60 * 60) {
-      return 3600;
-    }
-    // Less than 30 days: 4 hour intervals
-    if (visibleRangeInSeconds <= 30 * 24 * 60 * 60) {
-      return 14400;
-    }
-    // More than 30 days: 1 day intervals
-    return 86400;
-  };
+  }
 
-  // Add new state for tracking visible range
-  const [visibleRange, setVisibleRange] = useState<{
-    from: number;
-    to: number;
-  } | null>(null);
+  // If selectedWindow is null, we revert to default 7 days.
+  const userWindow = selectedWindow ?? TimeWindow.W;
+  const interval = getIntervalForWindow(userWindow);
 
-  // Effect for setting up time scale subscription
-  useEffect(() => {
-    if (!chartRef.current) return;
+  // Rounding down to the nearest multiple of "interval"
+  function roundDownToInterval(ts: number, intervalSec: number) {
+    return Math.floor(ts / intervalSec) * intervalSec;
+  }
+  // Rounding up
+  function roundUpToInterval(ts: number, intervalSec: number) {
+    return Math.ceil(ts / intervalSec) * intervalSec;
+  }
 
-    const handleVisibleTimeRangeChange = debounce(
-      () => {
-        const newVisibleRange = chartRef.current?.timeScale().getVisibleRange();
-        if (newVisibleRange) {
-          setVisibleRange({
-            from: newVisibleRange.from as number,
-            to: newVisibleRange.to as number,
-          });
-          setSelectedWindow?.(null);
-        }
-      },
-      600,
-      {
-        leading: false,
-        trailing: true,
-        maxWait: 600,
+  // For queries: if there's no visibleRange or no user selection, use defaults:
+  const [from, to] = useMemo(() => {
+    const now = Math.floor(Date.now() / 1000);
+    let start = now - 7 * 24 * 60 * 60; // default 7 days
+    let end = now;
+
+    // If we do have a userWindow, adjust start accordingly:
+    if (selectedWindow) {
+      if (selectedWindow === TimeWindow.H) {
+        start = now - 3600; // 1 hour
+      } else if (selectedWindow === TimeWindow.D) {
+        start = now - 86400; // 1 day
+      } else if (selectedWindow === TimeWindow.W) {
+        start = now - 7 * 86400; // 1 week
+      } else if (selectedWindow === TimeWindow.M) {
+        start = now - 28 * 86400; // 28 days
       }
-    );
+      end = now;
+    }
 
-    chartRef.current
-      .timeScale()
-      .subscribeVisibleTimeRangeChange(handleVisibleTimeRangeChange);
-
-    return () => {
-      handleVisibleTimeRangeChange.cancel();
-      chartRef.current
-        ?.timeScale()
-        .unsubscribeVisibleTimeRangeChange(handleVisibleTimeRangeChange);
-    };
-  }, [chartRef.current, setSelectedWindow]);
+    return [
+      roundDownToInterval(start, interval),
+      roundUpToInterval(end, interval),
+    ];
+  }, [interval, selectedWindow]);
 
   // Modify the query functions to use dynamic intervals
   const { data: marketPrices } = useQuery<PriceChartData[]>({
@@ -210,18 +205,11 @@ export const useChart = ({
       'market-prices',
       `${market?.chainId}:${market?.address}`,
       market?.epochId,
-      visibleRange, // Add visible range to query key
+      userWindow,
     ],
     queryFn: async () => {
-      const now = Math.floor(Date.now() / 1000);
-
-      // Use visible range if available, otherwise use a default range
-      const from = visibleRange ? visibleRange.from : now - 86400; // Default to 1 day if no visible range
-      const to = visibleRange ? visibleRange.to : now;
-
-      const interval = visibleRange
-        ? getIntervalFromVisibleRange(visibleRange.from, visibleRange.to)
-        : 3600; // Default to 1 hour intervals if no visible range
+      // If no market, just return empty
+      if (!market) return [];
 
       const response = await fetch(`${API_BASE_URL}/graphql`, {
         method: 'POST',
@@ -231,9 +219,9 @@ export const useChart = ({
         body: JSON.stringify({
           query: print(MARKET_CANDLES_QUERY),
           variables: {
-            address: market?.address,
-            chainId: market?.chainId,
-            epochId: market?.epochId?.toString(),
+            address: market.address,
+            chainId: market.chainId,
+            epochId: market.epochId?.toString(),
             from,
             to,
             interval,
@@ -242,6 +230,8 @@ export const useChart = ({
       });
 
       const { data } = await response.json();
+      // you'll get data.marketCandles in consistent intervals if your server uses groupPricesByInterval.
+      // Return them as needed:
       return data.marketCandles.map((candle: any) => ({
         startTimestamp: timeToLocal(candle.timestamp * 1000),
         endTimestamp: timeToLocal((candle.timestamp + interval) * 1000),
@@ -261,7 +251,7 @@ export const useChart = ({
       'index-prices',
       `${market?.chainId}:${market?.address}`,
       market?.epochId,
-      visibleRange, // Add visible range to query key
+      userWindow,
     ],
     queryFn: async () => {
       const now = Math.floor(Date.now() / 1000);
@@ -281,9 +271,7 @@ export const useChart = ({
       }
       const from = now - timeRange;
 
-      const interval = visibleRange
-        ? getIntervalFromVisibleRange(visibleRange.from, visibleRange.to)
-        : 3600;
+      const interval = getIntervalForWindow(selectedWindow ?? TimeWindow.W);
 
       const response = await fetch(`${API_BASE_URL}/graphql`, {
         method: 'POST',
@@ -315,12 +303,7 @@ export const useChart = ({
   const { data: resourcePrices, isLoading: isResourceLoading } = useQuery<
     ResourcePricePoint[]
   >({
-    queryKey: [
-      'resourcePrices',
-      resourceSlug,
-      market?.epochId,
-      visibleRange, // Add visible range to query key
-    ],
+    queryKey: ['resourcePrices', resourceSlug, market?.epochId, userWindow],
     queryFn: async () => {
       if (!resourceSlug) {
         return [];
@@ -328,9 +311,7 @@ export const useChart = ({
       const now = Math.floor(Date.now() / 1000);
       const from = now - 28 * 24 * 60 * 60 * 2; // Two periods ago
 
-      const interval = visibleRange
-        ? getIntervalFromVisibleRange(visibleRange.from, visibleRange.to)
-        : 3600;
+      const interval = getIntervalForWindow(selectedWindow ?? TimeWindow.W);
 
       const response = await fetch(`${API_BASE_URL}/graphql`, {
         method: 'POST',
@@ -396,13 +377,11 @@ export const useChart = ({
         borderColor: theme === 'dark' ? '#363537' : '#cccccc',
         timeVisible: true,
         secondsVisible: false,
-        minBarSpacing: 0.001,
-        // fixRightEdge: true,
-        // fixLeftEdge: true,
+        fixRightEdge: true,
         rightOffset: 0,
         uniformDistribution: true,
-        rightBarStaysOnScroll: true,
         lockVisibleTimeRangeOnResize: true,
+        minBarSpacing: 0.5,
       },
       rightPriceScale: {
         borderColor: theme === 'dark' ? '#363537' : '#cccccc',
