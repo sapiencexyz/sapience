@@ -14,16 +14,20 @@ interface PricePoint {
   value: string;
 }
 
-const groupPricesByInterval = (prices: PricePoint[], intervalSeconds: number, endTimestamp: number): CandleType[] => {
+const groupPricesByInterval = (prices: PricePoint[], intervalSeconds: number, startTimestamp: number, endTimestamp: number, lastKnownPrice?: string): CandleType[] => {
   const candles: CandleType[] = [];
-  // If we have no prices at all, return empty array since we have no reference price
-  if (prices.length === 0) return [];
   
-  const startTimestamp = Math.floor(prices[0].timestamp / intervalSeconds) * intervalSeconds;
-  let lastClose = prices[0].value;
+  // If we have no prices and no reference price, return empty array
+  if (prices.length === 0 && !lastKnownPrice) return [];
+  
+  // Normalize timestamps to interval boundaries
+  const normalizedStartTimestamp = Math.floor(startTimestamp / intervalSeconds) * intervalSeconds;
   const normalizedEndTimestamp = Math.floor(endTimestamp / intervalSeconds) * intervalSeconds;
+  
+  // Initialize lastClose with lastKnownPrice if available, otherwise use first price
+  let lastClose = lastKnownPrice || prices[0].value;
 
-  for (let timestamp = startTimestamp; timestamp <= normalizedEndTimestamp; timestamp += intervalSeconds) {
+  for (let timestamp = normalizedStartTimestamp; timestamp <= normalizedEndTimestamp; timestamp += intervalSeconds) {
     const pricesInInterval = prices.filter(p => {
       const priceInterval = Math.floor(p.timestamp / intervalSeconds) * intervalSeconds;
       return priceInterval === timestamp;
@@ -92,11 +96,16 @@ export class CandleResolver {
       });
 
       // Combine the results, putting the last price before first if it exists
-      const prices = lastPriceBefore 
-        ? [lastPriceBefore, ...pricesInRange]
-        : pricesInRange;
+      const prices = pricesInRange;
+      const lastKnownPrice = lastPriceBefore?.value;
 
-      return groupPricesByInterval(prices, interval, to);
+      return groupPricesByInterval(
+        prices.map(p => ({ timestamp: Number(p.timestamp), value: p.value })),
+        interval,
+        from,
+        to,
+        lastKnownPrice
+      );
     } catch (error) {
       console.error('Error fetching resource candles:', error);
       throw new Error('Failed to fetch resource candles');
@@ -151,11 +160,16 @@ export class CandleResolver {
       });
 
       // Combine the results, putting the last price before first if it exists
-      const prices = lastPriceBefore 
-        ? [lastPriceBefore, ...pricesInRange]
-        : pricesInRange;
+      const prices = pricesInRange;
+      const lastKnownPrice = lastPriceBefore?.value;
 
-      return groupPricesByInterval(prices, interval, to);
+      return groupPricesByInterval(
+        prices.map(p => ({ timestamp: Number(p.timestamp), value: p.value })),
+        interval,
+        from,
+        to,
+        lastKnownPrice
+      );
     } catch (error) {
       console.error('Error fetching index candles:', error);
       throw new Error('Failed to fetch index candles');
@@ -223,14 +237,15 @@ export class CandleResolver {
         .getMany();
 
       // Combine the results, putting the last price before first if it exists
-      const prices = lastPriceBefore 
-        ? [lastPriceBefore, ...pricesInRange]
-        : pricesInRange;
+      const prices = pricesInRange;
+      const lastKnownPrice = lastPriceBefore?.value;
 
       return groupPricesByInterval(
         prices.map(p => ({ timestamp: Number(p.timestamp), value: p.value })),
         interval,
-        to
+        from,
+        to,
+        lastKnownPrice
       );
     } catch (error) {
       console.error('Error fetching market candles:', error);
