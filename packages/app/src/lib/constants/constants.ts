@@ -50,4 +50,5 @@ export const BLANK_MARKET: PeriodContextType = {
     uniswapSwapRouter: '0x',
   },
   refetchUniswapData: () => {},
+  market: undefined,
 };

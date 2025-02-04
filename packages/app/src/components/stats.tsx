@@ -2,6 +2,7 @@
 import { formatDistanceToNow } from 'date-fns';
 import { BookTextIcon, InfoIcon } from 'lucide-react';
 import { useContext } from 'react';
+import { formatUnits } from 'viem';
 
 import {
   TooltipProvider,
@@ -12,6 +13,7 @@ import {
 import { useFoil } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { convertGgasPerWstEthToGwei } from '~/lib/utils/util';
+import { useLatestIndexPrice } from '~/lib/hooks/useResources';
 
 import NumberDisplay from './numberDisplay';
 
@@ -52,9 +54,20 @@ const StatBox = ({ title, tooltipContent, value, docsLink }: StatBoxProps) => (
 );
 
 const Stats = () => {
-  const { endTime, startTime, averagePrice, pool, liquidity, useMarketUnits } =
+  const { endTime, startTime, pool, liquidity, useMarketUnits, market } =
     useContext(PeriodContext);
   const { stEthPerToken } = useFoil();
+  const { data: latestIndexPrice, isLoading: isLoadingIndexPrice } = useLatestIndexPrice(
+    market ? {
+      address: market.address,
+      chainId: market.chainId,
+      epochId: market.epochId,
+    } : {
+      address: '',
+      chainId: 0,
+      epochId: 0,
+    }
+  );
 
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = startTime > now;
@@ -85,13 +98,15 @@ const Stats = () => {
                   <span className="text-sm">available in</span>{' '}
                   {startTimeRelative}
                 </>
+              ) : isLoadingIndexPrice || !market ? (
+                <span>Loading...</span>
               ) : (
                 <>
                   <NumberDisplay
                     value={
                       useMarketUnits
-                        ? Number((stEthPerToken || 1) * (averagePrice / 1e9))
-                        : averagePrice
+                        ? Number(formatUnits(BigInt(latestIndexPrice?.value || 0), 18)) * (stEthPerToken || 1)
+                        : Number(formatUnits(BigInt(latestIndexPrice?.value || 0), 9))
                     }
                   />{' '}
                   <span className="text-sm">

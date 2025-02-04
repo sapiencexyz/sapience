@@ -6,9 +6,10 @@ import { createChart, CrosshairMode, PriceScaleMode } from 'lightweight-charts';
 import { useTheme } from 'next-themes';
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { formatUnits } from 'viem';
+import { debounce } from 'lodash';
 
 import { useFoil } from '../context/FoilProvider';
-import { convertGgasPerWstEthToGwei } from '../utils/util';
+import { convertGgasPerWstEthToGwei, convertWstEthToGwei } from '../utils/util';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import type { PriceChartData } from '~/lib/interfaces/interfaces';
 import { TimeWindow } from '~/lib/interfaces/interfaces';
@@ -170,7 +171,7 @@ export const useChart = ({
   useEffect(() => {
     if (!chartRef.current) return;
 
-    const handleVisibleTimeRangeChange = () => {
+    const handleVisibleTimeRangeChange = debounce(() => {
       const newVisibleRange = chartRef.current?.timeScale().getVisibleRange();
       if (newVisibleRange) {
         setVisibleRange({
@@ -178,13 +179,18 @@ export const useChart = ({
           to: newVisibleRange.to as number,
         });
       }
-    };
+    }, 600, { 
+      leading: false, 
+      trailing: true,
+      maxWait: 600 
+    });
 
     chartRef.current
       .timeScale()
       .subscribeVisibleTimeRangeChange(handleVisibleTimeRangeChange);
 
     return () => {
+      handleVisibleTimeRangeChange.cancel();
       chartRef.current
         ?.timeScale()
         .unsubscribeVisibleTimeRangeChange(handleVisibleTimeRangeChange);
@@ -377,6 +383,8 @@ export const useChart = ({
         fixRightEdge: true,
         rightOffset: 0,
         uniformDistribution: true,
+        rightBarStaysOnScroll: true,
+        lockVisibleTimeRangeOnResize: true
       },
       rightPriceScale: {
         borderColor: theme === 'dark' ? '#363537' : '#cccccc',
@@ -395,10 +403,8 @@ export const useChart = ({
       wickDownColor: RED,
     });
 
-    indexPriceSeriesRef.current = chart.addAreaSeries({
-      lineColor: BLUE,
-      topColor: 'rgba(128, 128, 128, 0.4)',
-      bottomColor: 'rgba(128, 128, 128, 0.0)',
+    indexPriceSeriesRef.current = chart.addLineSeries({
+      color: BLUE,
       lineStyle: 2,
       lineWidth: 2,
     });
@@ -452,21 +458,21 @@ export const useChart = ({
             return null;
           }
 
-          const timestamp = (mp.endTimestamp / 1000) as UTCTimestamp;
+          const timestamp = (mp.startTimestamp / 1000) as UTCTimestamp;
           return {
             time: timestamp,
             open: useMarketUnits
-              ? Number(mp.open)
-              : Number(convertGgasPerWstEthToGwei(mp.open, stEthPerToken)),
+              ? Number(formatUnits(BigInt(mp.open), 18))
+              : Number(convertWstEthToGwei(mp.open / 1e18, stEthPerToken)),
             high: useMarketUnits
-              ? Number(mp.high)
-              : Number(convertGgasPerWstEthToGwei(mp.high, stEthPerToken)),
+              ? Number(formatUnits(BigInt(mp.high), 18))
+              : Number(convertWstEthToGwei(mp.high / 1e18, stEthPerToken)),
             low: useMarketUnits
-              ? Number(mp.low)
-              : Number(convertGgasPerWstEthToGwei(mp.low, stEthPerToken)),
+              ? Number(formatUnits(BigInt(mp.low), 18))
+              : Number(convertWstEthToGwei(mp.low / 1e18, stEthPerToken)),
             close: useMarketUnits
-              ? Number(mp.close)
-              : Number(convertGgasPerWstEthToGwei(mp.close, stEthPerToken)),
+              ? Number(formatUnits(BigInt(mp.close), 18))
+              : Number(convertWstEthToGwei(mp.close / 1e18, stEthPerToken)),
           };
         })
         .filter((item): item is NonNullable<typeof item> => item !== null);
@@ -595,17 +601,14 @@ export const useChart = ({
           break;
       }
 
-      chartRef.current.timeScale().setVisibleRange({
-        from: (now - timeRange) as UTCTimestamp,
-        to: now as UTCTimestamp,
-      });
-
-      // Lock the time scale to prevent automatic adjustments
-      chartRef.current.timeScale().applyOptions({
-        rightOffset: 0,
-        fixRightEdge: true,
-      });
-      hasSetTimeScale.current = true;
+      // Only set the initial time range once
+      if (!hasSetTimeScale.current) {
+        chartRef.current.timeScale().setVisibleRange({
+          from: (now - timeRange) as UTCTimestamp,
+          to: now as UTCTimestamp,
+        });
+        hasSetTimeScale.current = true;
+      }
     }
   };
 
@@ -613,16 +616,23 @@ export const useChart = ({
   useEffect(() => {
     if (!chartRef.current) return;
 
-    // Only update data series if chart exists
+    // Save current visible range before updating data
+    const currentVisibleRange = chartRef.current.timeScale().getVisibleRange();
+
+    // Update data series
     updateCandlestickData();
     updateIndexPriceData();
     updateResourcePriceData();
     updateTrailingAverageData();
     updateSeriesVisibility();
 
-    // Update time scale whenever the window changes
-    hasSetTimeScale.current = false;
-    updateTimeScale();
+    // Only set initial time scale if it hasn't been set yet
+    if (!hasSetTimeScale.current) {
+      updateTimeScale();
+    } else if (currentVisibleRange) {
+      // Restore the previous visible range after data update
+      chartRef.current.timeScale().setVisibleRange(currentVisibleRange);
+    }
   }, [
     stEthPerToken,
     useMarketUnits,

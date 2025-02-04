@@ -45,10 +45,10 @@ const PriceToggles = ({
         value="candles"
         variant={seriesVisibility.candles ? 'default' : 'outline'}
         onClick={() => toggleSeries('candles')}
-        disabled={seriesLoading.candles || seriesDisabled.candles}
+        disabled={seriesDisabled.candles}
       >
-        {seriesLoading.candles && !seriesDisabled.candles ? (
-          <Loader2 className="w-3 h-3 animate-spin" strokeWidth={3} />
+        {seriesLoading.candles ? (
+          <Loader2 className="w-3 h-3 animate-spin"  color={NEUTRAL} strokeWidth={3} />
         ) : (
           <CandlestickChart className="w-3 h-3" color={NEUTRAL} />
         )}
@@ -58,10 +58,10 @@ const PriceToggles = ({
         value="index"
         variant={seriesVisibility.index ? 'default' : 'outline'}
         onClick={() => toggleSeries('index')}
-        disabled={seriesLoading.index || seriesDisabled.index}
+        disabled={seriesDisabled.index}
       >
-        {seriesLoading.index && !seriesDisabled.index ? (
-          <Loader2 className="w-3 h-3 animate-spin" strokeWidth={3} />
+        {seriesLoading.index ? (
+          <Loader2 className="w-3 h-3 animate-spin" color={BLUE} strokeWidth={3} />
         ) : (
           <CircleDashed className="w-3 h-3" color={BLUE} strokeWidth={3} />
         )}
@@ -71,10 +71,10 @@ const PriceToggles = ({
         value="resource"
         variant={seriesVisibility.resource ? 'default' : 'outline'}
         onClick={() => toggleSeries('resource')}
-        disabled={seriesLoading.resource || seriesDisabled.resource}
+        disabled={seriesDisabled.resource}
       >
-        {seriesLoading.resource && !seriesDisabled.resource ? (
-          <Loader2 className="w-3 h-3 animate-spin" strokeWidth={3} />
+        {seriesLoading.resource ? (
+          <Loader2 className="w-3 h-3 animate-spin" color={GREEN_PRIMARY} strokeWidth={3} />
         ) : (
           <Circle className="w-3 h-3" color={GREEN_PRIMARY} strokeWidth={3} />
         )}
@@ -85,10 +85,10 @@ const PriceToggles = ({
         value="trailing"
         variant={seriesVisibility.trailing ? 'default' : 'outline'}
         onClick={() => toggleSeries('trailing')}
-        disabled={seriesLoading.trailing || seriesDisabled.trailing}
+        disabled={seriesDisabled.trailing}
       >
-        {seriesLoading.trailing && !seriesDisabled.trailing ? (
-          <Loader2 className="w-3 h-3 animate-spin" strokeWidth={3} />
+          {seriesLoading.trailing ? (
+          <Loader2 className="w-3 h-3 animate-spin" color={BLUE} strokeWidth={3} />
         ) : (
           <Circle className="w-3 h-3" color={BLUE} strokeWidth={3} />
         )}

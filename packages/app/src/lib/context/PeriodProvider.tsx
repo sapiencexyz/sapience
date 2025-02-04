@@ -40,6 +40,11 @@ export interface PeriodContextType {
   refetchUniswapData: () => void;
   useMarketUnits: boolean;
   setUseMarketUnits: (useMarketUnits: boolean) => void;
+  market?: {
+    address: string;
+    chainId: number;
+    epochId: number;
+  };
 }
 
 interface PeriodProviderProps {
@@ -164,6 +169,11 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
       chainId,
       useMarketUnits,
       setUseMarketUnits,
+      market: {
+        address,
+        chainId,
+        epochId: epoch || 0,
+      },
     }));
   }, [chainId, address, epoch, useMarketUnits, setUseMarketUnits]);
 
