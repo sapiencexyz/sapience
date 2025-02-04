@@ -107,6 +107,7 @@ export const useChart = ({
   const indexPriceSeriesRef = useRef<any>(null);
   const resourcePriceSeriesRef = useRef<any>(null);
   const trailingPriceSeriesRef = useRef<any>(null);
+  const rangeAnchorSeriesRef = useRef<any>(null);
   const hasSetTimeScale = useRef(false);
   const { theme } = useTheme();
   const [isLogarithmic, setIsLogarithmic] = useState(false);
@@ -144,12 +145,20 @@ export const useChart = ({
     to: number;
   } | null>(null);
 
+  const programmaticUpdateRef = useRef(false);
+
   // Effect for setting up time scale subscription
   useEffect(() => {
     if (!chartRef.current) return;
 
     const handleVisibleTimeRangeChange = debounce(
       () => {
+        // Skip if this change was triggered by our own code
+        if (programmaticUpdateRef.current) {
+          programmaticUpdateRef.current = false;
+          return;
+        }
+
         const newVisibleRange = chartRef.current?.timeScale().getVisibleRange();
         if (newVisibleRange) {
           setVisibleRange({
@@ -334,8 +343,6 @@ export const useChart = ({
         timeVisible: true,
         secondsVisible: false,
         minBarSpacing: 0.001,
-        // fixRightEdge: true,
-        // fixLeftEdge: true,
         rightOffset: 0,
         uniformDistribution: true,
         rightBarStaysOnScroll: true,
@@ -349,6 +356,12 @@ export const useChart = ({
     });
 
     chartRef.current = chart;
+
+    // Create range anchor series first
+    rangeAnchorSeriesRef.current = chart.addLineSeries({
+      visible: false,
+      priceScaleId: '', // This makes it not affect price scale
+    });
 
     candlestickSeriesRef.current = chart.addCandlestickSeries({
       upColor: GREEN,
@@ -537,6 +550,19 @@ export const useChart = ({
   useEffect(() => {
     if (!chartRef.current) return;
 
+    // Get the current visible range before any updates
+    const currentVisibleRange = chartRef.current.timeScale().getVisibleRange();
+
+    // If we have a visible range, update the range anchor first
+    if (currentVisibleRange) {
+      const anchorPoints = [
+        { time: currentVisibleRange.from as UTCTimestamp, value: 1 },
+        { time: currentVisibleRange.to as UTCTimestamp, value: 1 },
+      ];
+      rangeAnchorSeriesRef.current?.setData(anchorPoints);
+    }
+
+    // Now update all the actual data series
     updateCandlestickData();
     updateIndexPriceData();
     updateResourcePriceData();
