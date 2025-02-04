@@ -3,13 +3,13 @@ import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 import type { UTCTimestamp, IChartApi } from 'lightweight-charts';
 import { createChart, CrosshairMode, PriceScaleMode } from 'lightweight-charts';
+import { debounce } from 'lodash';
 import { useTheme } from 'next-themes';
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { formatUnits } from 'viem';
-import { debounce } from 'lodash';
 
 import { useFoil } from '../context/FoilProvider';
-import { convertGgasPerWstEthToGwei, convertWstEthToGwei } from '../utils/util';
+import { convertWstEthToGwei } from '../utils/util';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import type { PriceChartData } from '~/lib/interfaces/interfaces';
 import { TimeWindow } from '~/lib/interfaces/interfaces';
@@ -73,7 +73,6 @@ const MARKET_CANDLES_QUERY = gql`
       high
       low
       close
-      volume
     }
   }
 `;
@@ -171,19 +170,23 @@ export const useChart = ({
   useEffect(() => {
     if (!chartRef.current) return;
 
-    const handleVisibleTimeRangeChange = debounce(() => {
-      const newVisibleRange = chartRef.current?.timeScale().getVisibleRange();
-      if (newVisibleRange) {
-        setVisibleRange({
-          from: newVisibleRange.from as number,
-          to: newVisibleRange.to as number,
-        });
+    const handleVisibleTimeRangeChange = debounce(
+      () => {
+        const newVisibleRange = chartRef.current?.timeScale().getVisibleRange();
+        if (newVisibleRange) {
+          setVisibleRange({
+            from: newVisibleRange.from as number,
+            to: newVisibleRange.to as number,
+          });
+        }
+      },
+      600,
+      {
+        leading: false,
+        trailing: true,
+        maxWait: 600,
       }
-    }, 600, { 
-      leading: false, 
-      trailing: true,
-      maxWait: 600 
-    });
+    );
 
     chartRef.current
       .timeScale()
@@ -242,10 +245,9 @@ export const useChart = ({
         high: candle.high,
         low: candle.low,
         close: candle.close,
-        volume: candle.volume,
       }));
     },
-    enabled: !!market,
+    enabled: !!market && (seriesVisibility?.candles ?? true),
   });
 
   const { data: indexPrices, isLoading: isIndexLoading } = useQuery<
@@ -259,12 +261,20 @@ export const useChart = ({
     ],
     queryFn: async () => {
       const now = Math.floor(Date.now() / 1000);
-      const timeRange =
-        selectedWindow === TimeWindow.D
-          ? 86400
-          : selectedWindow === TimeWindow.W
-            ? 604800
-            : 2419200; // 28 days for monthly
+      let timeRange: number;
+      switch (selectedWindow) {
+        case TimeWindow.D:
+          timeRange = 86400; // 1 day in seconds
+          break;
+        case TimeWindow.W:
+          timeRange = 604800; // 1 week in seconds
+          break;
+        case TimeWindow.M:
+          timeRange = 2419200; // 28 days in seconds
+          break;
+        default:
+          timeRange = 86400; // Default to 1 day
+      }
       const from = now - timeRange;
 
       const interval = visibleRange
@@ -295,7 +305,7 @@ export const useChart = ({
         timestamp: timeToLocal(candle.timestamp * 1000),
       }));
     },
-    enabled: !!market,
+    enabled: !!market && (seriesVisibility?.index ?? true),
   });
 
   const { data: resourcePrices, isLoading: isResourceLoading } = useQuery<
@@ -340,7 +350,10 @@ export const useChart = ({
         price: Number(formatUnits(BigInt(candle.close), 9)),
       }));
     },
-    enabled: !!resourceSlug,
+    enabled:
+      !!resourceSlug &&
+      ((seriesVisibility?.resource ?? true) ||
+        (seriesVisibility?.trailing ?? true)),
   });
 
   // Effect for chart creation/cleanup
@@ -381,10 +394,11 @@ export const useChart = ({
         secondsVisible: false,
         minBarSpacing: 0.001,
         fixRightEdge: true,
+        fixLeftEdge: true,
         rightOffset: 0,
         uniformDistribution: true,
         rightBarStaysOnScroll: true,
-        lockVisibleTimeRangeOnResize: true
+        lockVisibleTimeRangeOnResize: true,
       },
       rightPriceScale: {
         borderColor: theme === 'dark' ? '#363537' : '#cccccc',
@@ -585,27 +599,27 @@ export const useChart = ({
       (marketPrices?.length || resourcePrices?.length || indexPrices?.length)
     ) {
       const now = new Date().getTime() / 1000;
-      let timeRange;
-
-      // Set time range based on selected window
+      let timeRange: number;
       switch (selectedWindow) {
         case TimeWindow.D:
-          timeRange = 24 * 60 * 60; // 1 day in seconds
-          break;
-        case TimeWindow.M:
-          timeRange = 28 * 24 * 60 * 60; // 28 days in seconds
+          timeRange = 86400; // 1 day in seconds
           break;
         case TimeWindow.W:
-        default:
-          timeRange = 7 * 24 * 60 * 60; // 1 week in seconds
+          timeRange = 604800; // 1 week in seconds
           break;
+        case TimeWindow.M:
+          timeRange = 2419200; // 28 days in seconds
+          break;
+        default:
+          timeRange = 86400; // Default to 1 day
       }
+      const from = now - timeRange;
 
       // Only set the initial time range once
       if (!hasSetTimeScale.current) {
         chartRef.current.timeScale().setVisibleRange({
-          from: (now - timeRange) as UTCTimestamp,
-          to: now as UTCTimestamp,
+          from: (from / 1000) as UTCTimestamp,
+          to: (now / 1000) as UTCTimestamp,
         });
         hasSetTimeScale.current = true;
       }

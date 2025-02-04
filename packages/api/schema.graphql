@@ -9,7 +9,6 @@ type CandleType {
   low: String!
   open: String!
   timestamp: Int!
-  volume: String!
 }
 
 type EpochType {

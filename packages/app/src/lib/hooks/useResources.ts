@@ -134,9 +134,17 @@ export const useLatestResourcePrice = (slug: string) => {
   });
 };
 
-export const useLatestIndexPrice = (market: { address: string; chainId: number; epochId: number }) => {
+export const useLatestIndexPrice = (market: {
+  address: string;
+  chainId: number;
+  epochId: number;
+}) => {
   return useQuery({
-    queryKey: ['indexPrice', `${market.chainId}:${market.address}`, market.epochId],
+    queryKey: [
+      'indexPrice',
+      `${market.chainId}:${market.address}`,
+      market.epochId,
+    ],
     queryFn: async () => {
       if (!market.address || !market.chainId || market.epochId === 0) {
         return null;

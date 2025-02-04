@@ -48,7 +48,11 @@ const PriceToggles = ({
         disabled={seriesDisabled.candles}
       >
         {seriesLoading.candles ? (
-          <Loader2 className="w-3 h-3 animate-spin"  color={NEUTRAL} strokeWidth={3} />
+          <Loader2
+            className="w-3 h-3 animate-spin"
+            color={NEUTRAL}
+            strokeWidth={3}
+          />
         ) : (
           <CandlestickChart className="w-3 h-3" color={NEUTRAL} />
         )}
@@ -61,7 +65,11 @@ const PriceToggles = ({
         disabled={seriesDisabled.index}
       >
         {seriesLoading.index ? (
-          <Loader2 className="w-3 h-3 animate-spin" color={BLUE} strokeWidth={3} />
+          <CircleDashed
+            className="w-3 h-3 animate-spin"
+            color={BLUE}
+            strokeWidth={3}
+          />
         ) : (
           <CircleDashed className="w-3 h-3" color={BLUE} strokeWidth={3} />
         )}
@@ -74,7 +82,11 @@ const PriceToggles = ({
         disabled={seriesDisabled.resource}
       >
         {seriesLoading.resource ? (
-          <Loader2 className="w-3 h-3 animate-spin" color={GREEN_PRIMARY} strokeWidth={3} />
+          <Loader2
+            className="w-3 h-3 animate-spin"
+            color={GREEN_PRIMARY}
+            strokeWidth={3}
+          />
         ) : (
           <Circle className="w-3 h-3" color={GREEN_PRIMARY} strokeWidth={3} />
         )}
@@ -87,8 +99,12 @@ const PriceToggles = ({
         onClick={() => toggleSeries('trailing')}
         disabled={seriesDisabled.trailing}
       >
-          {seriesLoading.trailing ? (
-          <Loader2 className="w-3 h-3 animate-spin" color={BLUE} strokeWidth={3} />
+        {seriesLoading.trailing ? (
+          <Loader2
+            className="w-3 h-3 animate-spin"
+            color={BLUE}
+            strokeWidth={3}
+          />
         ) : (
           <Circle className="w-3 h-3" color={BLUE} strokeWidth={3} />
         )}

@@ -14,46 +14,42 @@ interface PricePoint {
   value: string;
 }
 
-const groupPricesByInterval = (prices: PricePoint[], intervalSeconds: number): CandleType[] => {
-  if (prices.length === 0) return [];
-
+const groupPricesByInterval = (prices: PricePoint[], intervalSeconds: number, endTimestamp: number): CandleType[] => {
   const candles: CandleType[] = [];
-  let currentGroup: PricePoint[] = [];
-  let currentIntervalStart = Math.floor(prices[0].timestamp / intervalSeconds) * intervalSeconds;
+  // If we have no prices at all, return empty array since we have no reference price
+  if (prices.length === 0) return [];
+  
+  const startTimestamp = Math.floor(prices[0].timestamp / intervalSeconds) * intervalSeconds;
+  let lastClose = prices[0].value;
+  const normalizedEndTimestamp = Math.floor(endTimestamp / intervalSeconds) * intervalSeconds;
 
-  for (const price of prices) {
-    const priceInterval = Math.floor(price.timestamp / intervalSeconds) * intervalSeconds;
-    
-    if (priceInterval !== currentIntervalStart && currentGroup.length > 0) {
-      // Create candle for current group
-      const values = currentGroup.map(p => BigInt(p.value));
+  for (let timestamp = startTimestamp; timestamp <= normalizedEndTimestamp; timestamp += intervalSeconds) {
+    const pricesInInterval = prices.filter(p => {
+      const priceInterval = Math.floor(p.timestamp / intervalSeconds) * intervalSeconds;
+      return priceInterval === timestamp;
+    });
+
+    if (pricesInInterval.length > 0) {
+      // Create candle with actual price data
+      const values = pricesInInterval.map(p => BigInt(p.value));
+      lastClose = values[values.length - 1].toString();
       candles.push({
-        timestamp: currentIntervalStart,
+        timestamp,
         open: values[0].toString(),
         high: values.reduce((a, b) => a > b ? a : b).toString(),
         low: values.reduce((a, b) => a < b ? a : b).toString(),
-        close: values[values.length - 1].toString(),
-        volume: '0', // We don't track volume in our price feeds
+        close: lastClose,
       });
-
-      currentGroup = [];
-      currentIntervalStart = priceInterval;
+    } else {
+      // Create empty candle with last known closing price
+      candles.push({
+        timestamp,
+        open: lastClose,
+        high: lastClose,
+        low: lastClose,
+        close: lastClose,
+      });
     }
-
-    currentGroup.push(price);
-  }
-
-  // Handle the last group
-  if (currentGroup.length > 0) {
-    const values = currentGroup.map(p => BigInt(p.value));
-    candles.push({
-      timestamp: currentIntervalStart,
-      open: values[0].toString(),
-      high: values.reduce((a, b) => a > b ? a : b).toString(),
-      low: values.reduce((a, b) => a < b ? a : b).toString(),
-      close: values[values.length - 1].toString(),
-      volume: '0',
-    });
   }
 
   return candles;
@@ -77,7 +73,17 @@ export class CandleResolver {
         throw new Error(`Resource not found with slug: ${slug}`);
       }
 
-      const prices = await dataSource.getRepository(ResourcePrice).find({
+      // First get the most recent price before the from timestamp
+      const lastPriceBefore = await dataSource.getRepository(ResourcePrice)
+        .createQueryBuilder('price')
+        .where('price.resourceId = :resourceId', { resourceId: resource.id })
+        .andWhere('price.timestamp < :from', { from })
+        .orderBy('price.timestamp', 'DESC')
+        .take(1)
+        .getOne();
+
+      // Then get all prices within the range
+      const pricesInRange = await dataSource.getRepository(ResourcePrice).find({
         where: {
           resource: { id: resource.id },
           timestamp: Between(from, to),
@@ -85,7 +91,12 @@ export class CandleResolver {
         order: { timestamp: 'ASC' },
       });
 
-      return groupPricesByInterval(prices, interval);
+      // Combine the results, putting the last price before first if it exists
+      const prices = lastPriceBefore 
+        ? [lastPriceBefore, ...pricesInRange]
+        : pricesInRange;
+
+      return groupPricesByInterval(prices, interval, to);
     } catch (error) {
       console.error('Error fetching resource candles:', error);
       throw new Error('Failed to fetch resource candles');
@@ -121,7 +132,17 @@ export class CandleResolver {
         throw new Error(`Epoch not found with id: ${epochId}`);
       }
 
-      const prices = await dataSource.getRepository(IndexPrice).find({
+      // First get the most recent price before the from timestamp
+      const lastPriceBefore = await dataSource.getRepository(IndexPrice)
+        .createQueryBuilder('price')
+        .where('price.epochId = :epochId', { epochId: epoch.id })
+        .andWhere('price.timestamp < :from', { from })
+        .orderBy('price.timestamp', 'DESC')
+        .take(1)
+        .getOne();
+
+      // Then get all prices within the range
+      const pricesInRange = await dataSource.getRepository(IndexPrice).find({
         where: {
           epoch: { id: epoch.id },
           timestamp: Between(from, to),
@@ -129,7 +150,12 @@ export class CandleResolver {
         order: { timestamp: 'ASC' },
       });
 
-      return groupPricesByInterval(prices, interval);
+      // Combine the results, putting the last price before first if it exists
+      const prices = lastPriceBefore 
+        ? [lastPriceBefore, ...pricesInRange]
+        : pricesInRange;
+
+      return groupPricesByInterval(prices, interval, to);
     } catch (error) {
       console.error('Error fetching index candles:', error);
       throw new Error('Failed to fetch index candles');
@@ -165,7 +191,24 @@ export class CandleResolver {
         throw new Error(`Epoch not found with id: ${epochId}`);
       }
 
-      const prices = await dataSource.getRepository(MarketPrice)
+      // First get the most recent price before the from timestamp
+      const lastPriceBefore = await dataSource.getRepository(MarketPrice)
+        .createQueryBuilder('marketPrice')
+        .leftJoinAndSelect('marketPrice.transaction', 'transaction')
+        .leftJoinAndSelect('transaction.event', 'event')
+        .leftJoinAndSelect('event.market', 'market')
+        .leftJoinAndSelect('transaction.position', 'position')
+        .leftJoinAndSelect('position.epoch', 'epoch')
+        .where('market.chainId = :chainId', { chainId })
+        .andWhere('market.address = :address', { address })
+        .andWhere('epoch.epochId = :epochId', { epochId: Number(epochId) })
+        .andWhere('CAST(marketPrice.timestamp AS bigint) < :from', { from: from.toString() })
+        .orderBy('marketPrice.timestamp', 'DESC')
+        .take(1)
+        .getOne();
+
+      // Then get all prices within the range
+      const pricesInRange = await dataSource.getRepository(MarketPrice)
         .createQueryBuilder('marketPrice')
         .leftJoinAndSelect('marketPrice.transaction', 'transaction')
         .leftJoinAndSelect('transaction.event', 'event')
@@ -179,9 +222,15 @@ export class CandleResolver {
         .orderBy('marketPrice.timestamp', 'ASC')
         .getMany();
 
+      // Combine the results, putting the last price before first if it exists
+      const prices = lastPriceBefore 
+        ? [lastPriceBefore, ...pricesInRange]
+        : pricesInRange;
+
       return groupPricesByInterval(
         prices.map(p => ({ timestamp: Number(p.timestamp), value: p.value })),
-        interval
+        interval,
+        to
       );
     } catch (error) {
       console.error('Error fetching market candles:', error);

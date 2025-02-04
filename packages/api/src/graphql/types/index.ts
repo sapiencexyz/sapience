@@ -226,7 +226,4 @@ export class CandleType {
 
   @Field(() => String)
   close: string;
-
-  @Field(() => String)
-  volume: string;
 }
