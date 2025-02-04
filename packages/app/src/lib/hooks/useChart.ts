@@ -12,8 +12,7 @@ import { formatUnits } from 'viem';
 import { useFoil } from '../context/FoilProvider';
 import { convertWstEthToGwei } from '../utils/util';
 import { API_BASE_URL } from '~/lib/constants/constants';
-import type { PriceChartData } from '~/lib/interfaces/interfaces';
-import { TimeWindow } from '~/lib/interfaces/interfaces';
+import type { TimeWindow } from '~/lib/interfaces/interfaces';
 import { timeToLocal } from '~/lib/utils';
 
 export const GREEN_PRIMARY = '#22C55E';
@@ -21,16 +20,6 @@ export const RED = '#D85B4E';
 export const GREEN = '#38A667';
 export const BLUE = '#2E6FA8';
 export const NEUTRAL = '#58585A';
-
-interface IndexPrice {
-  timestamp: number;
-  price: number;
-}
-
-interface ResourcePricePoint {
-  timestamp: number;
-  price: number;
-}
 
 interface UseChartProps {
   resourceSlug?: string;
@@ -53,63 +42,49 @@ interface UseChartProps {
 }
 
 // GraphQL Queries
-const MARKET_CANDLES_QUERY = gql`
-  query MarketCandles(
+const COMBINED_CANDLES_QUERY = gql`
+  query CombinedCandles(
+    $hasMarket: Boolean!
     $address: String!
     $chainId: Int!
     $epochId: String!
+    $hasResource: Boolean!
+    $slug: String!
     $from: Int!
     $to: Int!
     $interval: Int!
   ) {
-    marketCandles(
+    marketCandles: marketCandles(
       address: $address
       chainId: $chainId
       epochId: $epochId
       from: $from
       to: $to
       interval: $interval
-    ) {
+    ) @include(if: $hasMarket) {
       timestamp
       open
       high
       low
       close
     }
-  }
-`;
-
-const INDEX_CANDLES_QUERY = gql`
-  query IndexCandles(
-    $address: String!
-    $chainId: Int!
-    $epochId: String!
-    $from: Int!
-    $to: Int!
-    $interval: Int!
-  ) {
-    indexCandles(
+    indexCandles: indexCandles(
       address: $address
       chainId: $chainId
       epochId: $epochId
       from: $from
       to: $to
       interval: $interval
-    ) {
+    ) @include(if: $hasMarket) {
       timestamp
       close
     }
-  }
-`;
-
-const RESOURCE_CANDLES_QUERY = gql`
-  query ResourceCandles(
-    $slug: String!
-    $from: Int!
-    $to: Int!
-    $interval: Int!
-  ) {
-    resourceCandles(slug: $slug, from: $from, to: $to, interval: $interval) {
+    resourceCandles: resourceCandles(
+      slug: $slug
+      from: $from
+      to: $to
+      interval: $interval
+    ) @include(if: $hasResource) {
       timestamp
       close
     }
@@ -204,24 +179,42 @@ export const useChart = ({
     };
   }, [chartRef.current, setSelectedWindow]);
 
-  // Modify the query functions to use dynamic intervals
-  const { data: marketPrices } = useQuery<PriceChartData[]>({
+  interface CombinedQueryResponse {
+    marketCandles: {
+      timestamp: number;
+      open: string;
+      high: string;
+      low: string;
+      close: string;
+    }[];
+    indexCandles: {
+      timestamp: number;
+      close: string;
+    }[];
+    resourceCandles: {
+      timestamp: number;
+      close: string;
+    }[];
+  }
+
+  const { data: chartData, isLoading } = useQuery<CombinedQueryResponse>({
     queryKey: [
-      'market-prices',
+      'chart-data',
       `${market?.chainId}:${market?.address}`,
       market?.epochId,
-      visibleRange, // Add visible range to query key
+      resourceSlug,
+      visibleRange,
     ],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const now = Math.floor(Date.now() / 1000);
-
-      // Use visible range if available, otherwise use a default range
-      const from = visibleRange ? visibleRange.from : now - 86400; // Default to 1 day if no visible range
+      const minFrom = now - 28 * 24 * 60 * 60; // 28 days ago
+      const from = visibleRange
+        ? Math.min(visibleRange.from, minFrom)
+        : minFrom;
       const to = visibleRange ? visibleRange.to : now;
-
       const interval = visibleRange
         ? getIntervalFromVisibleRange(visibleRange.from, visibleRange.to)
-        : 3600; // Default to 1 hour intervals if no visible range
+        : 3600;
 
       const response = await fetch(`${API_BASE_URL}/graphql`, {
         method: 'POST',
@@ -229,136 +222,80 @@ export const useChart = ({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          query: print(MARKET_CANDLES_QUERY),
+          query: print(COMBINED_CANDLES_QUERY),
           variables: {
-            address: market?.address,
-            chainId: market?.chainId,
-            epochId: market?.epochId?.toString(),
+            hasMarket: !!market?.address,
+            address: market?.address || '',
+            chainId: market?.chainId || 0,
+            epochId: market?.epochId?.toString() || '',
+            hasResource: !!resourceSlug,
+            slug: resourceSlug || '',
             from,
             to,
             interval,
           },
         }),
+        signal,
       });
 
       const { data } = await response.json();
-      return data.marketCandles.map((candle: any) => ({
-        startTimestamp: timeToLocal(candle.timestamp * 1000),
-        endTimestamp: timeToLocal((candle.timestamp + interval) * 1000),
-        open: candle.open,
-        high: candle.high,
-        low: candle.low,
-        close: candle.close,
-      }));
-    },
-    enabled: !!market && (seriesVisibility?.candles ?? true),
-  });
-
-  const { data: indexPrices, isLoading: isIndexLoading } = useQuery<
-    IndexPrice[]
-  >({
-    queryKey: [
-      'index-prices',
-      `${market?.chainId}:${market?.address}`,
-      market?.epochId,
-      visibleRange, // Add visible range to query key
-    ],
-    queryFn: async () => {
-      const now = Math.floor(Date.now() / 1000);
-      let timeRange: number;
-      switch (selectedWindow) {
-        case TimeWindow.D:
-          timeRange = 86400; // 1 day in seconds
-          break;
-        case TimeWindow.W:
-          timeRange = 604800; // 1 week in seconds
-          break;
-        case TimeWindow.M:
-          timeRange = 2419200; // 28 days in seconds
-          break;
-        default:
-          timeRange = 86400; // Default to 1 day
-      }
-      const from = now - timeRange;
-
-      const interval = visibleRange
-        ? getIntervalFromVisibleRange(visibleRange.from, visibleRange.to)
-        : 3600;
-
-      const response = await fetch(`${API_BASE_URL}/graphql`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: print(INDEX_CANDLES_QUERY),
-          variables: {
-            address: market?.address,
-            chainId: market?.chainId,
-            epochId: market?.epochId?.toString(),
-            from,
-            to: now,
-            interval,
-          },
-        }),
-      });
-
-      const { data } = await response.json();
-      return data.indexCandles.map((candle: any) => ({
-        price: Number(formatUnits(BigInt(candle.close), 9)),
-        timestamp: timeToLocal(candle.timestamp * 1000),
-      }));
-    },
-    enabled: !!market && (seriesVisibility?.index ?? true),
-  });
-
-  const { data: resourcePrices, isLoading: isResourceLoading } = useQuery<
-    ResourcePricePoint[]
-  >({
-    queryKey: [
-      'resourcePrices',
-      resourceSlug,
-      market?.epochId,
-      visibleRange, // Add visible range to query key
-    ],
-    queryFn: async () => {
-      if (!resourceSlug) {
-        return [];
-      }
-      const now = Math.floor(Date.now() / 1000);
-      const from = now - 28 * 24 * 60 * 60 * 2; // Two periods ago
-
-      const interval = visibleRange
-        ? getIntervalFromVisibleRange(visibleRange.from, visibleRange.to)
-        : 3600;
-
-      const response = await fetch(`${API_BASE_URL}/graphql`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: print(RESOURCE_CANDLES_QUERY),
-          variables: {
-            slug: resourceSlug,
-            from,
-            to: now,
-            interval,
-          },
-        }),
-      });
-
-      const { data } = await response.json();
-      return data.resourceCandles.map((candle: any) => ({
-        timestamp: timeToLocal(candle.timestamp * 1000),
-        price: Number(formatUnits(BigInt(candle.close), 9)),
-      }));
+      return data;
     },
     enabled:
-      !!resourceSlug &&
-      ((seriesVisibility?.resource ?? true) ||
-        (seriesVisibility?.trailing ?? true)),
+      (!!market && (seriesVisibility?.candles ?? true)) ||
+      (!!market && (seriesVisibility?.index ?? true)) ||
+      (!!resourceSlug &&
+        ((seriesVisibility?.resource ?? true) ||
+          (seriesVisibility?.trailing ?? true))),
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnWindowFocus: false,
+    retry: false,
   });
+
+  const marketPrices = useMemo(() => {
+    if (!chartData?.marketCandles) return [];
+    return chartData.marketCandles.map((candle) => ({
+      startTimestamp: timeToLocal(candle.timestamp * 1000),
+      endTimestamp: timeToLocal(
+        (candle.timestamp +
+          (visibleRange
+            ? getIntervalFromVisibleRange(visibleRange.from, visibleRange.to)
+            : 3600)) *
+          1000
+      ),
+      open: Number(candle.open),
+      high: Number(candle.high),
+      low: Number(candle.low),
+      close: Number(candle.close),
+    }));
+  }, [chartData?.marketCandles, visibleRange]);
+
+  const indexPrices = useMemo(() => {
+    if (!chartData?.indexCandles) return [];
+    return chartData.indexCandles.map((candle) => ({
+      price: Number(formatUnits(BigInt(candle.close), 9)),
+      timestamp: timeToLocal(candle.timestamp * 1000),
+    }));
+  }, [chartData?.indexCandles]);
+
+  const resourcePrices = useMemo(() => {
+    if (!chartData?.resourceCandles) return [];
+    return chartData.resourceCandles.map((candle) => ({
+      timestamp: timeToLocal(candle.timestamp * 1000),
+      price: Number(formatUnits(BigInt(candle.close), 9)),
+    }));
+  }, [chartData?.resourceCandles]);
+
+  const loadingStates = useMemo(
+    () => ({
+      candles: isLoading && !!market,
+      index: isLoading && !!market,
+      resource: isLoading && !!resourceSlug,
+      trailing: isLoading && !!resourceSlug,
+    }),
+    [isLoading, market, resourceSlug]
+  );
 
   // Effect for chart creation/cleanup
   useEffect(() => {
@@ -642,16 +579,6 @@ export const useChart = ({
       }
     });
   }, [isLogarithmic]);
-
-  const loadingStates = useMemo(
-    () => ({
-      candles: !marketPrices && !!market,
-      index: isIndexLoading && !!market,
-      resource: isResourceLoading && !!resourceSlug,
-      trailing: isResourceLoading && !!resourceSlug,
-    }),
-    [isIndexLoading, isResourceLoading, market, resourceSlug]
-  );
 
   return {
     isLogarithmic,
