@@ -1,4 +1,4 @@
-import { CandlestickChart, Circle, CircleDashed, Loader2 } from 'lucide-react';
+import { CandlestickChart, Circle, CircleDashed } from 'lucide-react';
 
 import { ToggleGroup, ToggleGroupItem } from '~/components/ui/toggle-group';
 
@@ -12,12 +12,6 @@ interface PriceTogglesProps {
     trailing: boolean;
   };
   toggleSeries: (series: 'candles' | 'index' | 'resource' | 'trailing') => void;
-  seriesLoading: {
-    candles: boolean;
-    index: boolean;
-    resource: boolean;
-    trailing: boolean;
-  };
   seriesDisabled: {
     candles: boolean;
     index: boolean;
@@ -29,7 +23,6 @@ interface PriceTogglesProps {
 const PriceToggles = ({
   seriesVisibility,
   toggleSeries,
-  seriesLoading,
   seriesDisabled,
 }: PriceTogglesProps) => {
   return (
@@ -47,15 +40,7 @@ const PriceToggles = ({
         onClick={() => toggleSeries('candles')}
         disabled={seriesDisabled.candles}
       >
-        {seriesLoading.candles ? (
-          <Loader2
-            className="w-3 h-3 animate-spin"
-            color={NEUTRAL}
-            strokeWidth={3}
-          />
-        ) : (
-          <CandlestickChart className="w-3 h-3" color={NEUTRAL} />
-        )}
+        <CandlestickChart className="w-3 h-3" color={NEUTRAL} />
         Market Price
       </ToggleGroupItem>
       <ToggleGroupItem
@@ -64,15 +49,7 @@ const PriceToggles = ({
         onClick={() => toggleSeries('index')}
         disabled={seriesDisabled.index}
       >
-        {seriesLoading.index ? (
-          <CircleDashed
-            className="w-3 h-3 animate-spin"
-            color={BLUE}
-            strokeWidth={3}
-          />
-        ) : (
-          <CircleDashed className="w-3 h-3" color={BLUE} strokeWidth={3} />
-        )}
+        <CircleDashed className="w-3 h-3" color={BLUE} strokeWidth={3} />
         Index Price
       </ToggleGroupItem>
       <ToggleGroupItem
@@ -81,15 +58,7 @@ const PriceToggles = ({
         onClick={() => toggleSeries('resource')}
         disabled={seriesDisabled.resource}
       >
-        {seriesLoading.resource ? (
-          <Loader2
-            className="w-3 h-3 animate-spin"
-            color={GREEN_PRIMARY}
-            strokeWidth={3}
-          />
-        ) : (
-          <Circle className="w-3 h-3" color={GREEN_PRIMARY} strokeWidth={3} />
-        )}
+        <Circle className="w-3 h-3" color={GREEN_PRIMARY} strokeWidth={3} />
         Resource Price
       </ToggleGroupItem>
 
@@ -99,15 +68,7 @@ const PriceToggles = ({
         onClick={() => toggleSeries('trailing')}
         disabled={seriesDisabled.trailing}
       >
-        {seriesLoading.trailing ? (
-          <Loader2
-            className="w-3 h-3 animate-spin"
-            color={BLUE}
-            strokeWidth={3}
-          />
-        ) : (
-          <Circle className="w-3 h-3" color={BLUE} strokeWidth={3} />
-        )}
+        <Circle className="w-3 h-3" color={BLUE} strokeWidth={3} />
         Trailing Average Price
       </ToggleGroupItem>
     </ToggleGroup>

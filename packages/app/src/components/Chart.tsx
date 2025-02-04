@@ -1,4 +1,5 @@
-import { useRef, useContext, useEffect, useMemo } from 'react';
+import { Loader2 } from 'lucide-react';
+import { useRef, useContext, useMemo } from 'react';
 import type { SetStateAction, Dispatch } from 'react';
 import type React from 'react';
 
@@ -28,12 +29,6 @@ interface Props {
   };
   selectedWindow: TimeWindow | null;
   setSelectedWindow?: Dispatch<SetStateAction<TimeWindow | null>>;
-  onLoadingStatesChange?: (loadingStates: {
-    candles: boolean;
-    index: boolean;
-    resource: boolean;
-    trailing: boolean;
-  }) => void;
 }
 
 export const GREEN_PRIMARY = '#22C55E';
@@ -48,7 +43,6 @@ const Chart: React.FC<Props> = ({
   seriesVisibility,
   selectedWindow,
   setSelectedWindow,
-  onLoadingStatesChange,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const { useMarketUnits, startTime } = useContext(PeriodContext);
@@ -64,22 +58,29 @@ const Chart: React.FC<Props> = ({
     setSelectedWindow,
   });
 
-  const memoizedLoadingStates = useMemo(
-    () => loadingStates,
-    [
-      loadingStates.candles,
-      loadingStates.index,
-      loadingStates.resource,
-      loadingStates.trailing,
-    ]
-  );
-
-  useEffect(() => {
-    onLoadingStatesChange?.(memoizedLoadingStates);
-  }, [memoizedLoadingStates, onLoadingStatesChange]);
+  const memoizedLoadingStates = useMemo(() => {
+    return {
+      ...loadingStates,
+      any:
+        loadingStates.candles ||
+        loadingStates.index ||
+        loadingStates.resource ||
+        loadingStates.trailing,
+    };
+  }, [
+    loadingStates.candles,
+    loadingStates.index,
+    loadingStates.resource,
+    loadingStates.trailing,
+  ]);
 
   return (
     <div className="flex flex-col flex-1 relative group w-full h-full">
+      {memoizedLoadingStates.any && (
+        <div className="absolute top-4 right-16 md:top-8 md:right-24 z-10">
+          <Loader2 className="h-12 w-12 animate-spin text-muted-foreground opacity-30" />
+        </div>
+      )}
       <div className="flex flex-1 h-full">
         <div ref={chartContainerRef} className="w-full h-full" />
       </div>
