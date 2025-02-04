@@ -4,6 +4,7 @@ import type { Chain } from 'viem/chains';
 import * as chains from 'viem/chains';
 import { mainnet } from 'viem/chains';
 
+import type { FoilPosition } from '../interfaces/interfaces';
 import { TimeWindow } from '../interfaces/interfaces';
 
 // Mainnet client for ENS resolution and stEthPerToken query
@@ -131,4 +132,9 @@ export const getExplorerUrl = (chainId: number, address: string) => {
 export const priceToTick = (price: number, tickSpacing: number): number => {
   const tick = Math.log(price) / Math.log(1.0001);
   return Math.round(tick / tickSpacing) * tickSpacing;
+};
+
+// checks if an nft position has a balance
+export const positionHasBalance = (position: FoilPosition): boolean => {
+  return Number(position.vEthAmount) > 0 || Number(position.vGasAmount) > 0;
 };
