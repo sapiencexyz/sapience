@@ -1,11 +1,8 @@
 import { Router } from 'express';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
-import { justifyTimeSeries } from '../helpers/timeSeriesHelpers';
 import { Resource } from '../models/Resource';
 import dataSource from '../db';
 import { ResourcePrice } from 'src/models/ResourcePrice';
-import { groupResourcePricesByTimeWindow } from 'src/serviceUtil';
-import { TimeWindow } from 'src/interfaces';
 
 const router = Router();
 
