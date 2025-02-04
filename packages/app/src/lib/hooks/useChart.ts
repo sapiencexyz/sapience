@@ -596,61 +596,15 @@ export const useChart = ({
     }
   };
 
-  const updateTimeScale = () => {
-    if (
-      !hasSetTimeScale.current &&
-      chartRef.current &&
-      (marketPrices?.length || resourcePrices?.length || indexPrices?.length)
-    ) {
-      const now = new Date().getTime() / 1000;
-      let timeRange: number;
-      switch (selectedWindow) {
-        case TimeWindow.D:
-          timeRange = 86400; // 1 day in seconds
-          break;
-        case TimeWindow.W:
-          timeRange = 604800; // 1 week in seconds
-          break;
-        case TimeWindow.M:
-          timeRange = 2419200; // 28 days in seconds
-          break;
-        default:
-          timeRange = 86400; // Default to 1 day
-      }
-      const from = now - timeRange;
-
-      // Only set the initial time range once
-      if (!hasSetTimeScale.current) {
-        chartRef.current.timeScale().setVisibleRange({
-          from: (from / 1000) as UTCTimestamp,
-          to: (now / 1000) as UTCTimestamp,
-        });
-        hasSetTimeScale.current = true;
-      }
-    }
-  };
-
   // Effect for updating data
   useEffect(() => {
     if (!chartRef.current) return;
 
-    // Save current visible range before updating data
-    const currentVisibleRange = chartRef.current.timeScale().getVisibleRange();
-
-    // Update data series
     updateCandlestickData();
     updateIndexPriceData();
     updateResourcePriceData();
     updateTrailingAverageData();
     updateSeriesVisibility();
-
-    // Only set initial time scale if it hasn't been set yet
-    if (!hasSetTimeScale.current) {
-      updateTimeScale();
-    } else if (currentVisibleRange) {
-      // Restore the previous visible range after data update
-      chartRef.current.timeScale().setVisibleRange(currentVisibleRange);
-    }
   }, [
     stEthPerToken,
     useMarketUnits,
@@ -661,34 +615,6 @@ export const useChart = ({
     isBeforeStart,
     selectedWindow,
   ]);
-
-  // Effect for handling selectedWindow changes
-  useEffect(() => {
-    if (!chartRef.current || !selectedWindow) return;
-
-    const now = Math.floor(Date.now() / 1000);
-    let timeRange: number;
-
-    switch (selectedWindow) {
-      case TimeWindow.D:
-        timeRange = 86400; // 1 day in seconds
-        break;
-      case TimeWindow.W:
-        timeRange = 604800; // 1 week in seconds
-        break;
-      case TimeWindow.M:
-        timeRange = 2419200; // 28 days in seconds
-        break;
-      default:
-        return; // Don't update if window is not recognized
-    }
-
-    const from = now - timeRange;
-    chartRef.current.timeScale().setVisibleRange({
-      from: from as UTCTimestamp,
-      to: now as UTCTimestamp,
-    });
-  }, [selectedWindow]);
 
   useEffect(() => {
     if (!chartRef.current) return;
