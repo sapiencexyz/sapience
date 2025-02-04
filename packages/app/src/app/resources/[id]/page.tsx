@@ -115,13 +115,6 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
     trailing: false,
   });
 
-  const [loadingStates, setLoadingStates] = React.useState({
-    candles: false,
-    index: false,
-    resource: false,
-    trailing: false,
-  });
-
   if (!category) {
     return (
       <div className="flex justify-center items-center py-8">
@@ -171,13 +164,6 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
               </CardContent>
             </Card>
 
-            {/* Loading Overlay */}
-            {loadingStates.resource && (
-              <div className="absolute top-8 right-24 z-10">
-                <Loader2 className="h-12 w-12 animate-spin text-muted-foreground opacity-40" />
-              </div>
-            )}
-
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -217,7 +203,6 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
                     resourceSlug={params.id}
                     seriesVisibility={seriesVisibility}
                     selectedWindow={DEFAULT_SELECTED_WINDOW}
-                    onLoadingStatesChange={setLoadingStates}
                   />
                 </div>
               </div>
