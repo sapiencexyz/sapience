@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 import type { UTCTimestamp, IChartApi } from 'lightweight-charts';
 import { createChart, CrosshairMode, PriceScaleMode } from 'lightweight-charts';
-import { debounce } from 'lodash';
+// import { debounce } from 'lodash';
 import { useTheme } from 'next-themes';
 import type { Dispatch, SetStateAction } from 'react';
 import { useEffect, useRef, useState, useMemo } from 'react';
@@ -124,7 +124,6 @@ export const useChart = ({
   startTime,
   containerRef,
   selectedWindow,
-  setSelectedWindow,
 }: UseChartProps) => {
   const chartRef = useRef<IChartApi | null>(null);
   const resizeObserverRef = useRef<ResizeObserver>();
@@ -139,10 +138,6 @@ export const useChart = ({
 
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = startTime > now;
-
-  // If we're ignoring user selection, default to 7 days:
-  const defaultFrom = Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60;
-  const defaultTo = Math.floor(Date.now() / 1000);
 
   // We can define intervals for each TimeWindow:
   function getIntervalForWindow(w: TimeWindow): number {

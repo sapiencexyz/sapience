@@ -5,15 +5,13 @@ import { Button } from '@/components/ui/button';
 import { TimeWindow } from '~/lib/interfaces/interfaces';
 
 interface WindowSelectorProps {
+  selectedWindow: TimeWindow;
   setSelectedWindow: Dispatch<SetStateAction<TimeWindow | null>>;
-  selectedWindow: TimeWindow | null;
-  isTrade?: boolean;
 }
 
 const WindowSelector: React.FC<WindowSelectorProps> = ({
-  setSelectedWindow,
   selectedWindow,
-  isTrade,
+  setSelectedWindow,
 }) => {
   const timeWindows = Object.values(TimeWindow);
 
@@ -23,9 +21,7 @@ const WindowSelector: React.FC<WindowSelectorProps> = ({
         <Button
           key={window}
           variant={selectedWindow === window ? 'default' : 'outline'}
-          onClick={() =>
-            setSelectedWindow(selectedWindow === window ? null : window)
-          }
+          onClick={() => setSelectedWindow(window)}
           className="px-3 py-1.5 text-sm transition-all"
         >
           {window}

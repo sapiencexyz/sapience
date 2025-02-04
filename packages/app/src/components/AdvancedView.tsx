@@ -116,9 +116,17 @@ const AdvancedView = ({
     setSeriesVisibility((prev) => ({ ...prev, [series]: !prev[series] }));
   };
 
-  const handleLoadingStatesChange = useCallback((newLoadingStates) => {
-    setLoadingStates(newLoadingStates);
-  }, []);
+  const handleLoadingStatesChange = useCallback(
+    (newLoadingStates: {
+      candles: boolean;
+      index: boolean;
+      resource: boolean;
+      trailing: boolean;
+    }) => {
+      setLoadingStates(newLoadingStates);
+    },
+    []
+  );
 
   const disabledSeries = {
     candles: false,
@@ -195,9 +203,8 @@ const AdvancedView = ({
                     />
                     {chartType !== ChartType.LIQUIDITY && (
                       <WindowSelector
-                        selectedWindow={selectedWindow}
+                        selectedWindow={selectedWindow ?? TimeWindow.W}
                         setSelectedWindow={setSelectedWindow}
-                        isTrade={isTrade}
                       />
                     )}
                     <DataDrawer
