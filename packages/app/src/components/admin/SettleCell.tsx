@@ -52,7 +52,7 @@ const SettleCell: React.FC<EpochItemProps> = ({
     abi: erc20ABI,
     address: bondCurrency as `0x${string}`,
     functionName: 'allowance',
-    args: [address, foilVaultData.address],
+    args: [address, foilVaultData.yin.address],
     account: address || zeroAddress,
     chainId: market.chainId,
     query: {
