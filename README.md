@@ -7,7 +7,7 @@ See the [website](https://foil.xyz), [app](https://app.foil.xyz), and [docs](htt
 ## Develop
 
 - Start the protocol on a local node
-  - `pnpm run dev:protocol` and press `i` to interact with it
+  - `pnpm run dev:protocol` and press `i` to interact with it 
 - Start the app
   - `pnpm run dev:app` and access at http://localhost:3000
   - Connect your wallet application to http://localhost:8545 (Chain ID 13370) **Remember to reset the nonce in the wallet after restarting the node.**
