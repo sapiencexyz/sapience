@@ -1,4 +1,4 @@
-import type { Market } from '~/lib/context/MarketListProvider';
+import type { Market } from '~/lib/context/FoilProvider';
 
 export interface MissingBlocks {
   [key: string]: {

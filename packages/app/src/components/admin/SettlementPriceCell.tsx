@@ -1,14 +1,11 @@
-import type React from 'react';
-
+import { useFoil } from '../../lib/context/FoilProvider';
 import { useSettlementPrice } from '~/lib/hooks/useSettlementPrice';
 
 import type { SettlementPriceCellProps } from './types';
 
-const SettlementPriceCell: React.FC<SettlementPriceCellProps> = ({
-  market,
-  epoch,
-}) => {
-  const { latestPrice, stEthPerToken, priceAdjusted, sqrtPriceX96, isLoading } =
+const SettlementPriceCell = ({ market, epoch }: SettlementPriceCellProps) => {
+  const { stEthPerToken } = useFoil();
+  const { latestPrice, priceAdjusted, sqrtPriceX96, isLoading } =
     useSettlementPrice(market, epoch);
 
   if (isLoading) {

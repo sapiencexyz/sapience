@@ -1,30 +1,30 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { ChevronRight, Loader2 } from 'lucide-react';
+import { ChevronRight, Loader2, Circle } from 'lucide-react';
 import Link from 'next/link';
 import React from 'react';
 import { formatUnits } from 'viem';
 
 import { Card, CardContent } from '@/components/ui/card';
-import CandlestickChart from '~/components/chart';
+import { Toggle } from '@/components/ui/toggle';
+import Chart, { BLUE } from '~/components/Chart';
 import EpochTiming from '~/components/EpochTiming';
 import MarketLayout from '~/components/market/MarketLayout';
 import ResourceNav from '~/components/market/ResourceNav';
 import NumberDisplay from '~/components/numberDisplay';
-import { API_BASE_URL } from '~/lib/constants/constants';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '~/components/ui/tooltip';
 import { MARKET_CATEGORIES } from '~/lib/constants/markets';
 import { useLatestResourcePrice, useResources } from '~/lib/hooks/useResources';
-import { timeToLocal } from '~/lib/utils';
+import { TimeWindow } from '~/lib/interfaces/interfaces';
 
 interface ResourcePrice {
   timestamp: string;
   value: string;
-}
-
-interface ResourcePricePoint {
-  timestamp: number;
-  price: number;
 }
 
 interface Epoch {
@@ -38,32 +38,33 @@ interface Epoch {
   };
 }
 
-const EpochsTable = ({ data }: { data: Epoch[] }) => {
-  const [hoveredIndex, setHoveredIndex] = React.useState(0);
+interface EpochsTableProps {
+  data: Epoch[];
+}
 
+const EpochsTable = ({ data }: EpochsTableProps) => {
   return (
     <div className="border-t border-border">
       {data.length ? (
-        data.map((epoch, index) => (
-          <Link
-            key={epoch.id}
-            href={`/trade/${epoch.market.chainId}:${epoch.market.address}/periods/${epoch.epochId}`}
-            className="block hover:no-underline border-b border-border"
-            onMouseEnter={() => setHoveredIndex(index)}
-          >
-            <div
-              className={`flex items-center justify-between cursor-pointer px-4 py-1.5 ${hoveredIndex === index ? 'bg-secondary' : 'hover:bg-secondary/50'}`}
+        data.map((epoch) => {
+          return (
+            <Link
+              key={epoch.id}
+              href={`/trade/${epoch.market.chainId}:${epoch.market.address}/periods/${epoch.epochId}`}
+              className="block hover:no-underline border-b border-border"
             >
-              <div className="flex items-baseline">
-                <EpochTiming
-                  startTimestamp={epoch.startTimestamp}
-                  endTimestamp={epoch.endTimestamp}
-                />
+              <div className="flex items-center justify-between cursor-pointer px-4 py-1.5 hover:bg-secondary">
+                <div className="flex items-baseline">
+                  <EpochTiming
+                    startTimestamp={epoch.startTimestamp}
+                    endTimestamp={epoch.endTimestamp}
+                  />
+                </div>
+                <ChevronRight className="h-6 w-6" />
               </div>
-              <ChevronRight className="h-6 w-6" />
-            </div>
-          </Link>
-        ))
+            </Link>
+          );
+        })
       ) : (
         <div className="h-24 flex items-center justify-center text-sm text-muted-foreground">
           No active periods
@@ -105,26 +106,20 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
   const { data: latestPrice, isLoading: isPriceLoading } =
     useLatestResourcePrice(params.id);
 
-  const [seriesVisibility] = React.useState({
+  const DEFAULT_SELECTED_WINDOW = TimeWindow.H;
+
+  const [seriesVisibility, setSeriesVisibility] = React.useState({
     candles: false,
-    index: false,
+    index: true,
     resource: true,
+    trailing: false,
   });
 
-  const { data: resourcePrices, isLoading: isResourcePricesLoading } = useQuery<
-    ResourcePrice[]
-  >({
-    queryKey: ['resourcePrices', params.id],
-    queryFn: async () => {
-      const response = await fetch(
-        `${API_BASE_URL}/resources/${params.id}/prices`
-      );
-      if (!response.ok) {
-        throw new Error('Failed to fetch resource prices');
-      }
-      return response.json();
-    },
-    refetchInterval: 2000,
+  const [loadingStates, setLoadingStates] = React.useState({
+    candles: false,
+    index: false,
+    resource: false,
+    trailing: false,
   });
 
   if (!category) {
@@ -158,14 +153,6 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
       )
       .sort((a, b) => a.startTimestamp - b.startTimestamp) || [];
 
-  const formattedResourcePrices: ResourcePricePoint[] =
-    resourcePrices?.map((price) => {
-      return {
-        timestamp: timeToLocal(Number(price.timestamp) * 1000),
-        price: Number(formatUnits(BigInt(price.value), 9)),
-      };
-    }) || [];
-
   return (
     <div className="flex flex-col md:flex-row h-full p-3 lg:p-6 gap-3 lg:gap-6">
       <div className={`flex-1 min-w-0 ${!epochs.length ? 'w-full' : ''}`}>
@@ -184,17 +171,53 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
               </CardContent>
             </Card>
 
+            {/* Loading Overlay */}
+            {loadingStates.resource && (
+              <div className="absolute top-8 right-24 z-10">
+                <Loader2 className="h-12 w-12 animate-spin text-muted-foreground opacity-40" />
+              </div>
+            )}
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    className="
+                      bg-background absolute bottom-20 left-2 z-10"
+                    style={{ color: BLUE }}
+                  >
+                    <Toggle
+                      pressed={seriesVisibility.trailing}
+                      onPressedChange={(pressed) =>
+                        setSeriesVisibility((prev) => ({
+                          ...prev,
+                          trailing: pressed,
+                        }))
+                      }
+                      variant="outline"
+                      size="sm"
+                    >
+                      <Circle className="h-3 w-3" strokeWidth={3} />
+                      <span className="sr-only">
+                        Toggle 28 day trailing average
+                      </span>
+                    </Toggle>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p>Toggle 28 day trailing average</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
             <div className="flex flex-col flex-1">
               <div className="flex flex-1">
                 <div className="min-h-[50vh] border border-border flex w-full h-full rounded-sm shadow overflow-hidden pr-2 pb-2 bg-background">
-                  <CandlestickChart
-                    data={{
-                      marketPrices: [],
-                      indexPrices: [],
-                      resourcePrices: formattedResourcePrices,
-                    }}
-                    isLoading={isResourcePricesLoading}
+                  <Chart
+                    resourceSlug={params.id}
                     seriesVisibility={seriesVisibility}
+                    selectedWindow={DEFAULT_SELECTED_WINDOW}
+                    onLoadingStatesChange={setLoadingStates}
                   />
                 </div>
               </div>

@@ -2,6 +2,7 @@
 import { formatDistanceToNow } from 'date-fns';
 import { BookTextIcon, InfoIcon } from 'lucide-react';
 import { useContext } from 'react';
+import { formatUnits } from 'viem';
 
 import {
   TooltipProvider,
@@ -9,8 +10,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '~/components/ui/tooltip';
+import { useFoil } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
-import { convertGgasPerWstEthToGwei } from '~/lib/util/util';
+import { useLatestIndexPrice } from '~/lib/hooks/useResources';
+import { convertGgasPerWstEthToGwei } from '~/lib/utils/util';
 
 import NumberDisplay from './numberDisplay';
 
@@ -50,27 +53,77 @@ const StatBox = ({ title, tooltipContent, value, docsLink }: StatBoxProps) => (
   </div>
 );
 
-const Stats = () => {
-  const {
-    endTime,
-    startTime,
-    averagePrice,
-    pool,
-    liquidity,
-    useMarketUnits,
-    stEthPerToken,
-  } = useContext(PeriodContext);
-
-  const now = Math.floor(Date.now() / 1000);
-  const isBeforeStart = startTime > now;
-
-  let relativeTime = '';
-  if (endTime) {
-    const dateMilliseconds = Number(endTime) * 1000;
-    const date = new Date(dateMilliseconds);
-    const now = new Date();
-    relativeTime = date < now ? 'Expired' : formatDistanceToNow(date);
+const IndexPriceDisplay = ({
+  isBeforeStart,
+  startTimeRelative,
+  isLoadingIndexPrice,
+  market,
+  latestIndexPrice,
+  useMarketUnits,
+  stEthPerToken,
+}: {
+  isBeforeStart: boolean;
+  startTimeRelative: string;
+  isLoadingIndexPrice: boolean;
+  market: any;
+  latestIndexPrice: any;
+  useMarketUnits: boolean;
+  stEthPerToken: number | undefined;
+}) => {
+  if (isBeforeStart) {
+    return (
+      <>
+        <span className="text-sm">available in</span> {startTimeRelative}
+      </>
+    );
   }
+
+  if (isLoadingIndexPrice || !market) {
+    return <span>Loading...</span>;
+  }
+
+  const value = useMarketUnits
+    ? Number(formatUnits(BigInt(latestIndexPrice?.value || 0), 18)) *
+      (stEthPerToken || 1)
+    : Number(formatUnits(BigInt(latestIndexPrice?.value || 0), 9));
+
+  return (
+    <>
+      <NumberDisplay value={value} />{' '}
+      <span className="text-sm">{useMarketUnits ? 'Ggas/wstETH' : 'gwei'}</span>
+    </>
+  );
+};
+
+const Stats = () => {
+  const { endTime, startTime, pool, liquidity, useMarketUnits, market } =
+    useContext(PeriodContext);
+  const { stEthPerToken } = useFoil();
+  const { data: latestIndexPrice, isLoading: isLoadingIndexPrice } =
+    useLatestIndexPrice(
+      market
+        ? {
+            address: market.address,
+            chainId: market.chainId,
+            epochId: market.epochId,
+          }
+        : {
+            address: '',
+            chainId: 0,
+            epochId: 0,
+          }
+    );
+
+  const currentTime = Math.floor(Date.now() / 1000);
+  const isBeforeStart = startTime > currentTime;
+
+  const getRelativeTime = () => {
+    if (!endTime) return '';
+    const dateMilliseconds = Number(endTime) * 1000;
+    const endDate = new Date(dateMilliseconds);
+    const currentDate = new Date();
+    return endDate < currentDate ? 'Expired' : formatDistanceToNow(endDate);
+  };
 
   const startTimeRelative = isBeforeStart
     ? formatDistanceToNow(new Date(startTime * 1000))
@@ -85,25 +138,15 @@ const Stats = () => {
             tooltipContent="The estimated settlement price based on the average resource price for this period"
             docsLink
             value={
-              isBeforeStart ? (
-                <>
-                  <span className="text-sm">available in</span>{' '}
-                  {startTimeRelative}
-                </>
-              ) : (
-                <>
-                  <NumberDisplay
-                    value={
-                      useMarketUnits
-                        ? Number((stEthPerToken || 1) * (averagePrice / 1e9))
-                        : averagePrice
-                    }
-                  />{' '}
-                  <span className="text-sm">
-                    {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
-                  </span>
-                </>
-              )
+              <IndexPriceDisplay
+                isBeforeStart={isBeforeStart}
+                startTimeRelative={startTimeRelative}
+                isLoadingIndexPrice={isLoadingIndexPrice}
+                market={market}
+                latestIndexPrice={latestIndexPrice}
+                useMarketUnits={useMarketUnits}
+                stEthPerToken={stEthPerToken}
+              />
             }
           />
 
@@ -141,7 +184,7 @@ const Stats = () => {
             }
           />
 
-          <StatBox title="Ends in" value={relativeTime} />
+          <StatBox title="Ends in" value={getRelativeTime()} />
         </div>
       </div>
     </TooltipProvider>

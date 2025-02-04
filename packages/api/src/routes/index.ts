@@ -5,7 +5,6 @@ import { router as getStEthPerTokenAtTimestampsRoutes } from './getStEthPerToken
 import { router as leaderboardRoutes } from './leaderboard';
 import { router as missingBlocksRoutes } from './missing-blocks';
 import { router as positionRoutes } from './positions';
-import { router as priceRoutes } from './prices';
 import { router as reindexMissingBlocksRoutes } from './reindexMissingBlocks';
 import { router as reindexStatusRoutes } from './reindexStatus';
 import { router as updateMarketPrivacyRoutes } from './updateMarketPrivacy';
@@ -22,7 +21,6 @@ router.use('/leaderboard', leaderboardRoutes);
 router.use('/markets', marketRoutes);
 router.use('/missing-blocks', missingBlocksRoutes);
 router.use('/positions', positionRoutes);
-router.use('/prices', priceRoutes);
 router.use('/reindexMissingBlocks', reindexMissingBlocksRoutes);
 router.use('/reindexStatus', reindexStatusRoutes);
 router.use('/resources', resourceRoutes);

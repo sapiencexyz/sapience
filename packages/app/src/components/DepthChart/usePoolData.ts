@@ -4,10 +4,11 @@ import { useEffect, useMemo, useState, useContext } from 'react';
 import { type AbiFunction } from 'viem';
 import { useReadContracts } from 'wagmi';
 
+import { useFoil } from '../../lib/context/FoilProvider';
 import { TICK_SPACING_DEFAULT } from '~/lib/constants/constants';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
-import type { GraphTick, PoolData } from '~/lib/util/liquidityUtil';
-import { getFullPool } from '~/lib/util/liquidityUtil';
+import type { GraphTick, PoolData } from '~/lib/utils/liquidityUtil';
+import { getFullPool } from '~/lib/utils/liquidityUtil';
 
 type TickDataTuple = [
   bigint, // liquidityGross
@@ -35,7 +36,8 @@ export function usePoolData(
   isTrade: boolean = false
 ) {
   const [poolData, setPoolData] = useState<PoolData>();
-  const { stEthPerToken, useMarketUnits } = useContext(PeriodContext);
+  const { stEthPerToken } = useFoil();
+  const { useMarketUnits } = useContext(PeriodContext);
 
   const ticks = useMemo(() => {
     const tickRange: number[] = [];

@@ -38,7 +38,6 @@ export const BLANK_MARKET: PeriodContextType = {
   chainId: 0,
   liquidity: 0,
   owner: '',
-  stEthPerToken: 0,
   useMarketUnits: false,
   baseAssetMinPriceTick: 0,
   baseAssetMaxPriceTick: 0,
@@ -55,4 +54,5 @@ export const BLANK_MARKET: PeriodContextType = {
     uniswapSwapRouter: '0x',
   },
   refetchUniswapData: () => {},
+  market: undefined,
 };

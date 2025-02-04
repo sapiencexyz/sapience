@@ -4,9 +4,10 @@ import type React from 'react';
 import { useEffect, useContext } from 'react';
 import type { TooltipProps } from 'recharts';
 
+import { useFoil } from '../../lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
-import type { BarChartTick } from '~/lib/util/liquidityUtil';
-import { convertGgasPerWstEthToGwei } from '~/lib/util/util';
+import type { BarChartTick } from '~/lib/utils/liquidityUtil';
+import { convertGgasPerWstEthToGwei } from '~/lib/utils/util';
 
 interface CustomTooltipProps {
   pool: Pool | null;
@@ -18,7 +19,8 @@ interface CustomTooltipProps {
 export const CustomTooltip: React.FC<
   TooltipProps<number, string> & CustomTooltipProps
 > = ({ payload, pool, onTickInfo, isTrade, isDragging }) => {
-  const { useMarketUnits, stEthPerToken } = useContext(PeriodContext);
+  const { stEthPerToken } = useFoil();
+  const { useMarketUnits } = useContext(PeriodContext);
 
   useEffect(() => {
     if (payload && payload[0]) {

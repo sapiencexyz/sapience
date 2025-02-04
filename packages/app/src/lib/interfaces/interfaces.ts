@@ -58,7 +58,6 @@ export enum TimeWindow {
   D = '1D',
   W = '1W',
   M = '1M',
-  Y = '1Y',
 }
 
 export enum ChartType {

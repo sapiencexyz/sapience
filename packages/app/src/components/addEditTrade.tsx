@@ -34,9 +34,10 @@ import {
   TOKEN_DECIMALS,
 } from '~/lib/constants/constants';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
+import { useFoil } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
-import { removeLeadingZeros, convertWstEthToGwei } from '~/lib/util/util';
+import { removeLeadingZeros, convertWstEthToGwei } from '~/lib/utils/util';
 
 import NumberDisplay from './numberDisplay';
 import PositionSelector from './positionSelector';
@@ -84,8 +85,8 @@ export default function AddEditTrade() {
     liquidity,
     refetchUniswapData,
     useMarketUnits,
-    stEthPerToken,
   } = useContext(PeriodContext);
+  const { stEthPerToken } = useFoil();
 
   if (!epoch) {
     throw new Error('Epoch is not defined');

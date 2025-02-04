@@ -30,7 +30,7 @@ export const formatXAxisTick = (
   activeWindow: TimeWindow
 ) => {
   const date = dayjs(timestamp);
-  if (activeWindow === TimeWindow.D || activeWindow === TimeWindow.H) {
+  if (activeWindow === TimeWindow.D) {
     // For daily or hourly view, return the time
     return date.format('hh:mm A');
   }

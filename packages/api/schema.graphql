@@ -3,6 +3,14 @@
 # !!!   DO NOT MODIFY THIS FILE BY YOURSELF   !!!
 # -----------------------------------------------
 
+type CandleType {
+  close: String!
+  high: String!
+  low: String!
+  open: String!
+  timestamp: Int!
+}
+
 type EpochType {
   endTimestamp: Int
   epochId: Int!
@@ -56,11 +64,13 @@ type PositionType {
 
 type Query {
   epochs(marketId: Int): [EpochType!]!
+  indexCandles(address: String!, chainId: Int!, epochId: String!, from: Int!, interval: Int!, to: Int!): [CandleType!]!
   market(address: String!, chainId: Int!): MarketType
+  marketCandles(address: String!, chainId: Int!, epochId: String!, from: Int!, interval: Int!, to: Int!): [CandleType!]!
   markets: [MarketType!]!
   positions(chainId: Int, marketAddress: String, owner: String): [PositionType!]!
   resource(slug: String!): ResourceType
-  resourcePrices(endTime: Int, slug: String!, startTime: Int): [ResourcePriceType!]!
+  resourceCandles(from: Int!, interval: Int!, slug: String!, to: Int!): [CandleType!]!
   resources: [ResourceType!]!
   transactions(positionId: Int): [TransactionType!]!
 }

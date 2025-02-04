@@ -1,6 +1,6 @@
 import type React from 'react';
 
-import { shortenAddress, getExplorerUrl } from '~/lib/util/util';
+import { shortenAddress, getExplorerUrl } from '~/lib/utils/util';
 
 import type { AddressCellProps } from './types';
 
