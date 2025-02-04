@@ -25,7 +25,7 @@ jobs:
           node-version: "20"
 
       - name: Install pnpm
-        run: npm install -g pnpm
+        run: npm install -g pnpm@9.15.4
 
       - name: Install dependencies
         run: pnpm install
@@ -76,7 +76,7 @@ jobs:
           node-version: "20"
 
       - name: Install pnpm
-        run: npm install -g pnpm
+        run: npm install -g pnpm@9.15.4
 
       - name: Install dependencies
         run: pnpm install
