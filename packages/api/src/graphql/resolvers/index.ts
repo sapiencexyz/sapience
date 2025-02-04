@@ -8,6 +8,11 @@ import { Epoch } from '../../models/Epoch';
 import { ResourcePrice } from '../../models/ResourcePrice';
 import { IndexPrice } from '../../models/IndexPrice';
 import {
+  hydrateTransactions,
+  HydratedTransaction,
+} from '../../helpers/hydrateTransactions';
+
+import {
   MarketType,
   ResourceType,
   PositionType,
@@ -69,7 +74,9 @@ const mapPositionToType = (position: Position): PositionType => ({
   highPriceTick: position.highPriceTick,
 });
 
-const mapTransactionToType = (transaction: Transaction): TransactionType => ({
+const mapTransactionToType = (
+  transaction: HydratedTransaction | Transaction
+): TransactionType => ({
   id: transaction.id,
   type: transaction.type,
   timestamp: transaction.event?.timestamp
@@ -84,9 +91,9 @@ const mapTransactionToType = (transaction: Transaction): TransactionType => ({
   collateral: transaction.collateral,
   lpBaseDeltaToken: transaction.lpBaseDeltaToken,
   lpQuoteDeltaToken: transaction.lpQuoteDeltaToken,
-  baseTokenDelta: transaction.baseToken || '0',
-  quoteTokenDelta: transaction.quoteToken || '0',
-  collateralDelta: transaction.collateral || '0',
+  baseTokenDelta: (transaction as HydratedTransaction).baseTokenDelta || '0',
+  quoteTokenDelta: (transaction as HydratedTransaction).quoteTokenDelta || '0',
+  collateralDelta: (transaction as HydratedTransaction).collateralDelta || '0',
   tradeRatioD18: transaction.tradeRatioD18 || null,
 });
 
@@ -218,7 +225,12 @@ export class PositionResolver {
         ],
       });
 
-      return positions.map(mapPositionToType);
+      const hydratedPositions = positions.map((position) => {
+        const hydratedTransactions = hydrateTransactions(position.transactions, false);
+        return { ...position, transactions: hydratedTransactions };
+      });
+      
+      return hydratedPositions.map(mapPositionToType);
     } catch (error) {
       console.error('Error fetching positions:', error);
       throw new Error('Failed to fetch positions');
@@ -243,7 +255,10 @@ export class TransactionResolver {
         relations: ['event', 'position'],
       });
 
-      return transactions.map(mapTransactionToType);
+      const hydratedTransactions = hydrateTransactions(transactions, false);
+      console.log(hydratedTransactions);
+
+      return hydratedTransactions.map(mapTransactionToType);
     } catch (error) {
       console.error('Error fetching transactions:', error);
       throw new Error('Failed to fetch transactions');
