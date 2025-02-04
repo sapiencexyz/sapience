@@ -2,27 +2,16 @@
 
 import { RainbowKitProvider, lightTheme } from '@rainbow-me/rainbowkit';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
-import { createPublicClient } from 'viem';
 import type { Chain, HttpTransport } from 'viem';
-import { sepolia, base, mainnet, cannon } from 'viem/chains';
+import { sepolia, base, cannon } from 'viem/chains';
 import { createConfig, http, WagmiProvider } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 
 import ThemeProvider from '~/components/ThemeProvider';
 import { ConnectWalletProvider } from '~/lib/context/ConnectWalletProvider';
-import { MarketListProvider } from '~/lib/context/MarketListProvider';
+import { FoilProvider } from '~/lib/context/FoilProvider';
 
 const queryClient = new QueryClient();
-
-// Mainnet client for ENS resolution and stEthPerToken query
-export const mainnetClient = createPublicClient({
-  chain: mainnet,
-  transport: process.env.NEXT_PUBLIC_INFURA_API_KEY
-    ? http(
-        `https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
-      )
-    : http('https://ethereum-rpc.publicnode.com'),
-});
 
 const cannonAtLocalhost = {
   ...cannon,
@@ -78,7 +67,7 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
             )}
           >
             <ConnectWalletProvider>
-              <MarketListProvider>{children}</MarketListProvider>
+              <FoilProvider>{children}</FoilProvider>
             </ConnectWalletProvider>
           </RainbowKitProvider>
         </QueryClientProvider>

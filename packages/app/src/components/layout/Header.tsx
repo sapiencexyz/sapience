@@ -21,7 +21,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '~/components/ui/popover';
-import { useMarketList } from '~/lib/context/MarketListProvider';
+import { useFoil } from '~/lib/context/FoilProvider';
 import {
   useResources,
   type Resource,
@@ -66,7 +66,7 @@ function MobileMarketLinks({
   path: string;
   onClose?: () => void;
 }) {
-  const { markets } = useMarketList();
+  const { markets } = useFoil();
   const { data: resources, isLoading } = useResources();
   const publicMarkets = markets.filter((m) => m.public);
 

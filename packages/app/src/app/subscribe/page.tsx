@@ -27,10 +27,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '~/components/ui/dialog';
-import { useMarketList } from '~/lib/context/MarketListProvider';
+import { useFoil } from '~/lib/context/FoilProvider';
 import { PeriodContext, PeriodProvider } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
-import { convertWstEthToGwei } from '~/lib/util/util';
+import { convertWstEthToGwei } from '~/lib/utils/util';
 
 const SUBSCRIPTIONS_QUERY = gql`
   query GetSubscriptions($owner: String!) {
@@ -92,7 +92,8 @@ interface Subscription {
 }
 
 const useSubscriptions = (address?: string) => {
-  const { useMarketUnits, stEthPerToken } = useContext(PeriodContext);
+  const { useMarketUnits } = useContext(PeriodContext);
+  const { stEthPerToken } = useFoil();
 
   const calculateEntryPrice = (position: any, transactions: any[]) => {
     let entryPrice = 0;
@@ -409,7 +410,7 @@ const SubscribeContent = () => {
     }
   }, [address, shouldOpenAfterConnect]);
 
-  const { markets } = useMarketList();
+  const { markets } = useFoil();
   const currentTime = Math.floor(Date.now() / 1000);
 
   // Find all gas markets

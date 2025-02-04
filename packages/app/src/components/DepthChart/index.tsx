@@ -13,11 +13,12 @@ import {
   Bar,
 } from 'recharts';
 
+import { useFoil } from '../../lib/context/FoilProvider';
 import NumberDisplay from '~/components/numberDisplay';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useTradePool } from '~/lib/context/TradePoolContext';
-import { convertGgasPerWstEthToGwei } from '~/lib/util/util';
+import { convertGgasPerWstEthToGwei } from '~/lib/utils/util';
 
 import { CustomBar } from './CustomBar';
 import { CustomTooltip } from './CustomTooltip';
@@ -50,11 +51,12 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
     baseAssetMinPriceTick,
     baseAssetMaxPriceTick,
     useMarketUnits,
-    stEthPerToken,
   } = useContext(PeriodContext);
 
   const { setLowPriceTick, setHighPriceTick, lowPriceTick, highPriceTick } =
     useTradePool();
+
+  const { stEthPerToken } = useFoil();
 
   const chartRef = useRef<HTMLDivElement>(null);
   const [chartReady, setChartReady] = useState(false);

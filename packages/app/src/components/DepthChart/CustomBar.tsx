@@ -39,8 +39,6 @@ export const CustomBar: React.FC<CustomBarProps> = ({
   let fill = '#58585A';
   if (isClosestTick) {
     fill = '#8D895E';
-  } else if (props.tickIdx < activeTickValue) {
-    fill = '#58585A';
   }
 
   return (

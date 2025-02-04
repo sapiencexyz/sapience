@@ -1,7 +1,7 @@
 import { useCallback, useState, useEffect } from 'react';
 
 import { useTradePool } from '~/lib/context/TradePoolContext';
-import type { PoolData } from '~/lib/util/liquidityUtil';
+import type { PoolData } from '~/lib/utils/liquidityUtil';
 
 const RECHARTS_WRAPPER_SELECTOR = '.recharts-wrapper';
 export const CHART_LEFT_MARGIN = 16;

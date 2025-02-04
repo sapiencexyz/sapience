@@ -20,6 +20,7 @@ import type React from 'react';
 import { useState, useMemo } from 'react';
 import { useReadContract } from 'wagmi';
 
+// import { useFoil } from '../lib/context/FoilProvider';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -38,6 +39,7 @@ import {
 import { toast } from '~/hooks/use-toast';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import type { PeriodContextType } from '~/lib/context/PeriodProvider';
+// import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
 // import { convertWstEthToGwei } from '~/lib/util/util';
 
@@ -219,7 +221,6 @@ const TraderPositionsTable: React.FC<Props> = ({
   walletAddress,
   periodContext,
 }) => {
-  // const { useMarketUnits, stEthPerToken } = periodContext;
   const [sorting, setSorting] = useState<SortingState>([
     {
       id: 'status',
@@ -240,6 +241,9 @@ const TraderPositionsTable: React.FC<Props> = ({
 
   /*
   TODO: I think this is wrong?
+  
+  const { stEthPerToken } = useFoil();
+  const { useMarketUnits } = useContext(PeriodContext);
 
   const calculateEntryPrice = (position: any) => {
     let entryPrice = 0;

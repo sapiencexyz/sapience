@@ -23,8 +23,8 @@ import {
   ADMIN_AUTHENTICATE_MSG,
   API_BASE_URL,
 } from '~/lib/constants/constants';
-import { useMarketList } from '~/lib/context/MarketListProvider';
-import type { Market } from '~/lib/context/MarketListProvider';
+import { useFoil } from '~/lib/context/FoilProvider';
+import type { Market } from '~/lib/context/FoilProvider';
 
 import getColumns from './columns';
 import type { MissingBlocks } from './types';
@@ -40,7 +40,7 @@ const renderSortIcon = (isSorted: string | false) => {
 };
 
 const AdminTable: React.FC = () => {
-  const { markets, isLoading, refetchMarkets } = useMarketList();
+  const { markets, isLoading, refetchMarkets } = useFoil();
   const [loadingAction, setLoadingAction] = useState<{
     [actionName: string]: boolean;
   }>({});

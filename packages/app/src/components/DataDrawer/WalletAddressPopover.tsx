@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { isAddress } from 'viem';
 import { useAccount } from 'wagmi';
 
-import { mainnetClient } from '~/app/providers';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
 import {
@@ -11,7 +10,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '~/components/ui/popover';
-import { shortenAddress } from '~/lib/util/util';
+import { mainnetClient, shortenAddress } from '~/lib/utils/util';
 
 interface WalletAddressPopoverProps {
   onWalletSelect: (address: string | null) => void;

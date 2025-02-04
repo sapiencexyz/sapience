@@ -4,7 +4,7 @@ import { formatEther } from 'viem';
 
 import { API_BASE_URL } from '~/lib/constants/constants';
 import type { Market, Epoch } from '~/lib/types';
-import { gweiToEther, convertToSqrtPriceX96 } from '~/lib/util/util';
+import { gweiToEther, convertToSqrtPriceX96 } from '~/lib/utils/util';
 
 export function useSettlementPrice(market: Market, epoch: Epoch) {
   const [stEthPerToken, setStEthPerToken] = useState(0);

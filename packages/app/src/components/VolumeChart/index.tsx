@@ -21,8 +21,8 @@ import {
 
 import NumberDisplay from '~/components/numberDisplay';
 import type { VolumeChartData, TimeWindow } from '~/lib/interfaces/interfaces';
-import { formatXAxisTick, getXTicksToShow } from '~/lib/util/chartUtil';
-import { getDisplayTextForVolumeWindow } from '~/lib/util/util';
+import { formatXAxisTick, getXTicksToShow } from '~/lib/utils/chartUtil';
+import { getDisplayTextForVolumeWindow } from '~/lib/utils/util';
 
 const barColor = '#58585A';
 

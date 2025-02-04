@@ -9,8 +9,8 @@ import { badgeVariants } from '~/components/ui/badge';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import { PeriodProvider } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
-import { tickToPrice } from '~/lib/util/util';
 import { cn } from '~/lib/utils';
+import { tickToPrice } from '~/lib/utils/util';
 
 const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
 

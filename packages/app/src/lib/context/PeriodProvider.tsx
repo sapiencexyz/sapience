@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import type { Pool } from '@uniswap/v3-sdk';
-import axios from 'axios';
 import type { ReactNode } from 'react';
 import type React from 'react';
 import { createContext, useEffect, useState } from 'react';
@@ -8,13 +7,11 @@ import * as Chains from 'viem/chains';
 import type { Chain } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 
-import { mainnetClient } from '../../app/providers';
 import useFoilDeployment from '../../components/useFoilDeployment';
 import { API_BASE_URL, BLANK_MARKET } from '../constants/constants';
 import erc20ABI from '../erc20abi.json';
 import { useUniswapPool } from '../hooks/useUniswapPool';
 import type { EpochData, MarketParams } from '../interfaces/interfaces';
-import { gweiToEther } from '../util/util';
 import { useToast } from '~/hooks/use-toast';
 
 // Types and Interfaces
@@ -42,9 +39,13 @@ export interface PeriodContextType {
   liquidity: number;
   owner: string;
   refetchUniswapData: () => void;
-  stEthPerToken: number | undefined;
   useMarketUnits: boolean;
   setUseMarketUnits: (useMarketUnits: boolean) => void;
+  market?: {
+    address: string;
+    chainId: number;
+    epochId: number;
+  };
 }
 
 interface PeriodProviderProps {
@@ -82,8 +83,8 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
   const { foilData, foilVaultData } = useFoilDeployment(chainId);
 
   // Custom hooks for data fetching
-  const { data: latestIndexPrice } = useQuery({
-    queryKey: ['latestIndexPrice', `${state.chainId}:${state.address}`],
+  const { data: latestPrice } = useQuery({
+    queryKey: ['latestPrice', `${state.chainId}:${state.address}`, state.epoch],
     queryFn: async () => {
       try {
         const response = await fetch(
@@ -98,7 +99,7 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
           throw new Error('Network response was not ok');
         }
         const data = await response.json();
-        return data.price;
+        return data.price / 1e9;
       } catch (error) {
         console.error('Error fetching latest price:', error);
         return null;
@@ -169,84 +170,28 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
       chainId,
       useMarketUnits,
       setUseMarketUnits,
+      market: {
+        address,
+        chainId,
+        epochId: epoch || 0,
+      },
     }));
   }, [chainId, address, epoch, useMarketUnits, setUseMarketUnits]);
 
-  const [stEthPerTokenResult, setStEthPerTokenResult] = useState<{
-    data?: bigint;
-    error?: Error;
-  }>({});
-
   useEffect(() => {
-    const fetchStEthPerToken = async () => {
-      try {
-        const data = await mainnetClient.readContract({
-          address: '0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0',
-          abi: [
-            {
-              inputs: [],
-              name: 'stEthPerToken',
-              outputs: [
-                {
-                  internalType: 'uint256',
-                  name: '',
-                  type: 'uint256',
-                },
-              ],
-              stateMutability: 'view',
-              type: 'function',
-            },
-          ],
-          functionName: 'stEthPerToken',
-        });
-        setStEthPerTokenResult({ data });
-      } catch (error) {
-        setStEthPerTokenResult({ error: error as Error });
-      }
-    };
-
-    fetchStEthPerToken();
-  }, []);
-
-  useEffect(() => {
-    if (stEthPerTokenResult.data) {
+    if (latestPrice !== undefined && latestPrice !== null) {
       setState((currentState) => ({
         ...currentState,
-        stEthPerToken: Number(gweiToEther(stEthPerTokenResult.data as bigint)),
+        averagePrice: latestPrice,
       }));
-    }
-  }, [stEthPerTokenResult.data]);
-
-  useEffect(() => {
-    const updateSettledStEthPerToken = async () => {
-      const response = await axios.get(
-        `${API_BASE_URL}/getStEthPerTokenAtTimestamp?chainId=${state.chainId}&collateralAssetAddress=${state.collateralAsset}&endTime=${state.endTime}`
-      );
-      console.log('updated stEthPerToken', response.data);
-      const stEthPerToken = BigInt(response.data.stEthPerToken);
+    } else if (latestPrice === null) {
+      // When price data is not available, set averagePrice to null/0
       setState((currentState) => ({
         ...currentState,
-        stEthPerToken: Number(gweiToEther(stEthPerToken)),
+        averagePrice: 0,
       }));
-    };
-
-    const currentTime = Math.floor(Date.now() / 1000);
-    if (
-      state.endTime &&
-      state.endTime < currentTime &&
-      state.chainId &&
-      state.collateralAsset
-    ) {
-      updateSettledStEthPerToken();
     }
-  }, [state.endTime, state.chainId, state.collateralAsset]);
-
-  useEffect(() => {
-    setState((currentState) => ({
-      ...currentState,
-      averagePrice: latestIndexPrice / 10 ** 9,
-    }));
-  }, [latestIndexPrice]);
+  }, [latestPrice]);
 
   useEffect(() => {
     setState((currentState) => ({
@@ -278,10 +223,6 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
 
   useEffect(() => {
     if (marketViewFunctionResult.data !== undefined) {
-      console.log(
-        'marketViewFunctionResult data: ',
-        marketViewFunctionResult.data
-      );
       const marketParams: MarketParams = marketViewFunctionResult.data[4];
       setState((currentState) => ({
         ...currentState,
@@ -294,10 +235,6 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
 
   useEffect(() => {
     if (epochViewFunctionResult.data !== undefined) {
-      console.log(
-        'epochViewFunctionResult data: ',
-        epochViewFunctionResult.data
-      );
       const epochData: EpochData = epochViewFunctionResult.data[0];
       setState((currentState) => ({
         ...currentState,

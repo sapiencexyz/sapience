@@ -71,35 +71,4 @@ router.get(
   })
 );
 
-router.get(
-  '/:slug/prices',
-  handleAsyncErrors(async (req, res) => {
-    const { slug } = req.params;
-    const { startTime, endTime } = req.query;
-
-    const resource = await resourceRepository.findOne({ where: { slug } });
-
-    if (!resource) {
-      res.status(404).json({ error: 'Resource not found' });
-      return;
-    }
-
-    const query = resourcePriceRepository
-      .createQueryBuilder('price')
-      .where('price.resourceId = :resourceId', { resourceId: resource.id })
-      .orderBy('price.timestamp', 'ASC');
-
-    if (startTime) {
-      query.andWhere('price.timestamp >= :startTime', { startTime });
-    }
-    if (endTime) {
-      query.andWhere('price.timestamp <= :endTime', { endTime });
-    }
-
-    const prices = await query.getMany();
-
-    res.json(prices);
-  })
-);
-
 export { router };
