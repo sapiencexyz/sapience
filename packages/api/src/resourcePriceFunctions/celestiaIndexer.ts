@@ -65,7 +65,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
 
     if (data.length > 0) {
       // Regenerate (calculate) blocks from the tx data
-      const blocks = data.reduce((acc: Map<number, Block>, tx) => {
+      const blocks = data.reduce((acc: Map<number, Block>, tx: { height: number; time: number; gas_used: number; fee: number }) => {
         if (!acc.has(tx.height)) {
           acc.set(tx.height, {
             height: tx.height,
@@ -147,7 +147,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
    * @param block
    * @param resource
    */
-  private async storeBlockPrice(block, resource: Resource) {
+  private async storeBlockPrice(block: Block, resource: Resource) {
     const used = block?.stats?.blobs_size;
     const fee = block?.stats?.fee * 10 ** 9; // Increase the fee to 9 digits to be compatible with the EVM indexer and UI (we use 9 decimals for the gwei)
     const value = fee / used;
@@ -159,13 +159,14 @@ class CelestiaIndexer implements IResourcePriceIndexer {
     }
 
     try {
-      const price = new ResourcePrice();
-      price.resource = resource;
-      price.timestamp = new Date(block.time).getTime();
-      price.value = value.toString();
-      price.used = used.toString();
-      price.feePaid = fee.toString();
-      price.blockNumber = Number(block.height);
+      const price = {
+        resource: { id: resource.id },
+        timestamp: new Date(block.time).getTime(),
+        value: value.toString(),
+        used: used.toString(),
+        feePaid: fee.toString(),
+        blockNumber: Number(block.height),
+      };
       await resourcePriceRepository.upsert(price, ['resource', 'timestamp']);
     } catch (error) {
       console.error('Error storing block price:', error);

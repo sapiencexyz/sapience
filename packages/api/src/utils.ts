@@ -159,7 +159,7 @@ export const getTimestampsForReindex = async (
       address: contractDeployment.address as `0x${string}`,
       abi: contractDeployment.abi,
       functionName: 'getLatestEpoch',
-    });
+    }) as [number, number, number];
     epochId = Number(latestEpoch[0]);
     return {
       startTimestamp: Number(latestEpoch[1]),
@@ -184,7 +184,7 @@ export const getTimestampsForReindex = async (
       abi: contractDeployment.abi,
       functionName: 'getEpoch',
       args: [`${epochId}`],
-    });
+    }) as [number, number, number];
     return {
       startTimestamp: Number(epochContract[0]),
       endTimestamp: Math.min(Number(epochContract[1]), now),

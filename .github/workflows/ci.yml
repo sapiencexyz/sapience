@@ -88,3 +88,29 @@ jobs:
       - name: Smart contract tests
         run: pnpm run test
         working-directory: packages/protocol
+
+  build-api:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+
+      - name: Install pnpm
+        run: npm install -g pnpm@9.15.4
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Lint API
+        run: pnpm run lint
+        working-directory: packages/api
+
+      - name: Build API
+        run: pnpm run build
+        working-directory: packages/api
