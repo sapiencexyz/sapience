@@ -141,20 +141,26 @@ export class CandleResolver {
         throw new Error(`Epoch not found with id: ${epochId}`);
       }
 
-      // First get the most recent price before the from timestamp
-      const lastPriceBefore = await dataSource.getRepository(IndexPrice)
-        .createQueryBuilder('price')
-        .where('price.epochId = :epochId', { epochId: epoch.id })
-        .andWhere('price.timestamp < :from', { from })
-        .orderBy('price.timestamp', 'DESC')
-        .take(1)
-        .getOne();
+      // Ensure we don't query prices before epoch start time
+      const effectiveFromTime = Math.max(from, Number(epoch.startTimestamp));
 
-      // Then get all prices within the range
+      // Only get last price before if it's after epoch start time
+      const lastPriceBefore = effectiveFromTime > Number(epoch.startTimestamp) 
+        ? await dataSource.getRepository(IndexPrice)
+            .createQueryBuilder('price')
+            .where('price.epochId = :epochId', { epochId: epoch.id })
+            .andWhere('price.timestamp < :from', { from: effectiveFromTime })
+            .andWhere('price.timestamp >= :startTime', { startTime: epoch.startTimestamp })
+            .orderBy('price.timestamp', 'DESC')
+            .take(1)
+            .getOne()
+        : null;
+
+      // Then get all prices within the range, but after epoch start time
       const pricesInRange = await dataSource.getRepository(IndexPrice).find({
         where: {
           epoch: { id: epoch.id },
-          timestamp: Between(from, to),
+          timestamp: Between(effectiveFromTime, to),
         },
         order: { timestamp: 'ASC' },
       });
@@ -166,7 +172,7 @@ export class CandleResolver {
       return groupPricesByInterval(
         prices.map(p => ({ timestamp: Number(p.timestamp), value: p.value })),
         interval,
-        from,
+        effectiveFromTime,
         to,
         lastKnownPrice
       );
