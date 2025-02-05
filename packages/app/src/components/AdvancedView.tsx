@@ -6,6 +6,7 @@ import { useEffect, useState, useContext } from 'react';
 
 import Chart from '~/components/Chart';
 import ChartSelector from '~/components/ChartSelector';
+import IntervalSelector from '~/components/IntervalSelector';
 import MarketSidebar from '~/components/marketSidebar';
 import PeriodHeader from '~/components/PeriodHeader';
 import PriceToggles from '~/components/PriceToggles';
@@ -16,7 +17,11 @@ import { AddEditPositionProvider } from '~/lib/context/AddEditPositionContext';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { TradePoolProvider } from '~/lib/context/TradePoolContext';
 import { useResources } from '~/lib/hooks/useResources';
-import { ChartType, TimeWindow } from '~/lib/interfaces/interfaces';
+import {
+  ChartType,
+  TimeWindow,
+  TimeInterval,
+} from '~/lib/interfaces/interfaces';
 
 import DataDrawer from './DataDrawer';
 import DepthChart from './DepthChart';
@@ -30,7 +35,10 @@ const AdvancedView = ({
   isTrade: boolean;
 }) => {
   const [selectedWindow, setSelectedWindow] = useState<TimeWindow | null>(
-    TimeWindow.W
+    TimeWindow.FD
+  );
+  const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
+    TimeInterval.I5M
   );
   const [chartType, setChartType] = useState<ChartType>(
     isTrade ? ChartType.PRICE : ChartType.LIQUIDITY
@@ -38,9 +46,27 @@ const AdvancedView = ({
 
   useEffect(() => {
     if (chartType === ChartType.VOLUME) {
-      setSelectedWindow(TimeWindow.W);
+      setSelectedWindow(TimeWindow.FD);
     }
   }, [chartType]);
+
+  useEffect(() => {
+    if (!selectedWindow) return;
+
+    switch (selectedWindow) {
+      case TimeWindow.D:
+        setSelectedInterval(TimeInterval.I5M);
+        break;
+      case TimeWindow.FD:
+        setSelectedInterval(TimeInterval.I5M);
+        break;
+      case TimeWindow.M:
+        setSelectedInterval(TimeInterval.I30M);
+        break;
+      default:
+        setSelectedInterval(TimeInterval.I5M);
+    }
+  }, [selectedWindow]);
 
   const { startTime } = useContext(PeriodContext);
   const { data: resources } = useResources();
@@ -105,7 +131,7 @@ const AdvancedView = ({
             }}
             seriesVisibility={seriesVisibility}
             selectedWindow={selectedWindow}
-            setSelectedWindow={setSelectedWindow}
+            selectedInterval={selectedInterval}
           />
         </div>
       );
@@ -115,7 +141,7 @@ const AdvancedView = ({
         <VolumeChart
           contractId={contractId}
           epochId={epoch}
-          activeWindow={selectedWindow || TimeWindow.W}
+          activeWindow={selectedWindow || TimeWindow.FD}
         />
       );
     }
@@ -153,7 +179,13 @@ const AdvancedView = ({
                     {chartType !== ChartType.LIQUIDITY && (
                       <WindowSelector
                         selectedWindow={selectedWindow}
-                        setSelectedWindow={setSelectedWindow ?? TimeWindow.W}
+                        setSelectedWindow={setSelectedWindow}
+                      />
+                    )}
+                    {chartType === ChartType.PRICE && (
+                      <IntervalSelector
+                        selectedInterval={selectedInterval}
+                        setSelectedInterval={setSelectedInterval}
                       />
                     )}
                     <DataDrawer

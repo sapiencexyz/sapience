@@ -3,9 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 import type { UTCTimestamp, IChartApi } from 'lightweight-charts';
 import { createChart, CrosshairMode, PriceScaleMode } from 'lightweight-charts';
-import { debounce } from 'lodash';
 import { useTheme } from 'next-themes';
-import type { Dispatch, SetStateAction } from 'react';
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { formatUnits } from 'viem';
 
@@ -13,7 +11,7 @@ import { useFoil } from '../context/FoilProvider';
 import { convertWstEthToGwei } from '../utils/util';
 import { API_BASE_URL } from '~/lib/constants/constants';
 import type { PriceChartData } from '~/lib/interfaces/interfaces';
-import { TimeWindow } from '~/lib/interfaces/interfaces';
+import { TimeWindow, TimeInterval } from '~/lib/interfaces/interfaces';
 import { timeToLocal } from '~/lib/utils';
 
 export const GREEN_PRIMARY = '#22C55E';
@@ -49,8 +47,26 @@ interface UseChartProps {
   startTime: number;
   containerRef: React.RefObject<HTMLDivElement>;
   selectedWindow: TimeWindow | null;
-  setSelectedWindow?: Dispatch<SetStateAction<TimeWindow | null>>;
+  selectedInterval: TimeInterval;
 }
+
+// Helper function to convert TimeInterval to seconds
+const getIntervalSeconds = (interval: TimeInterval): number => {
+  switch (interval) {
+    case TimeInterval.I5M:
+      return 300;
+    case TimeInterval.I15M:
+      return 900;
+    case TimeInterval.I30M:
+      return 1800;
+    case TimeInterval.I4H:
+      return 14400;
+    case TimeInterval.I1D:
+      return 86400;
+    default:
+      return 300;
+  }
+};
 
 // GraphQL Queries
 const MARKET_CANDLES_QUERY = gql`
@@ -124,7 +140,7 @@ export const useChart = ({
   startTime,
   containerRef,
   selectedWindow,
-  setSelectedWindow,
+  selectedInterval,
 }: UseChartProps) => {
   const chartRef = useRef<IChartApi | null>(null);
   const resizeObserverRef = useRef<ResizeObserver>();
@@ -140,88 +156,21 @@ export const useChart = ({
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = startTime > now;
 
-  const getIntervalFromVisibleRange = (from: number, to: number): number => {
-    const visibleRangeInSeconds = to - from;
-
-    // Less than 2 days: 5 minute intervals
-    if (visibleRangeInSeconds <= 2 * 24 * 60 * 60) {
-      return 300;
-    }
-    // Less than 7 days: 15 minute intervals
-    if (visibleRangeInSeconds <= 7 * 24 * 60 * 60) {
-      return 900;
-    }
-    // Less than 14 days: 1 hour intervals
-    if (visibleRangeInSeconds <= 14 * 24 * 60 * 60) {
-      return 3600;
-    }
-    // Less than 30 days: 4 hour intervals
-    if (visibleRangeInSeconds <= 30 * 24 * 60 * 60) {
-      return 14400;
-    }
-    // More than 30 days: 1 day intervals
-    return 86400;
-  };
-
-  // Add new state for tracking visible range
-  const [visibleRange, setVisibleRange] = useState<{
-    from: number;
-    to: number;
-  } | null>(null);
-
-  // Effect for setting up time scale subscription
-  useEffect(() => {
-    if (!chartRef.current) return;
-
-    const handleVisibleTimeRangeChange = debounce(
-      () => {
-        const newVisibleRange = chartRef.current?.timeScale().getVisibleRange();
-        if (newVisibleRange) {
-          setVisibleRange({
-            from: newVisibleRange.from as number,
-            to: newVisibleRange.to as number,
-          });
-          setSelectedWindow?.(null);
-        }
-      },
-      600,
-      {
-        leading: false,
-        trailing: true,
-        maxWait: 600,
-      }
-    );
-
-    chartRef.current
-      .timeScale()
-      .subscribeVisibleTimeRangeChange(handleVisibleTimeRangeChange);
-
-    return () => {
-      handleVisibleTimeRangeChange.cancel();
-      chartRef.current
-        ?.timeScale()
-        .unsubscribeVisibleTimeRangeChange(handleVisibleTimeRangeChange);
-    };
-  }, [chartRef.current, setSelectedWindow]);
-
-  // Modify the query functions to use dynamic intervals
+  // Modify the query functions to use selectedInterval directly
   const { data: marketPrices } = useQuery<PriceChartData[]>({
     queryKey: [
       'market-prices',
       `${market?.chainId}:${market?.address}`,
       market?.epochId,
-      visibleRange, // Add visible range to query key
+      selectedInterval,
     ],
     queryFn: async () => {
       const now = Math.floor(Date.now() / 1000);
-
-      // Use visible range if available, otherwise use a default range
-      const from = visibleRange ? visibleRange.from : now - 86400; // Default to 1 day if no visible range
-      const to = visibleRange ? visibleRange.to : now;
-
-      const interval = visibleRange
-        ? getIntervalFromVisibleRange(visibleRange.from, visibleRange.to)
-        : 3600; // Default to 1 hour intervals if no visible range
+      const timeRange = selectedWindow
+        ? getTimeRangeFromWindow(selectedWindow)
+        : 86400;
+      const from = now - timeRange;
+      const interval = getIntervalSeconds(selectedInterval);
 
       const response = await fetch(`${API_BASE_URL}/graphql`, {
         method: 'POST',
@@ -235,7 +184,7 @@ export const useChart = ({
             chainId: market?.chainId,
             epochId: market?.epochId?.toString(),
             from,
-            to,
+            to: now,
             interval,
           },
         }),
@@ -254,6 +203,20 @@ export const useChart = ({
     enabled: !!market && (seriesVisibility?.candles ?? true),
   });
 
+  // Helper function for getting time range from window
+  const getTimeRangeFromWindow = (window: TimeWindow): number => {
+    switch (window) {
+      case TimeWindow.D:
+        return 86400;
+      case TimeWindow.FD:
+        return 432000; // 5 days in seconds
+      case TimeWindow.M:
+        return 2419200;
+      default:
+        return 86400;
+    }
+  };
+
   const { data: indexPrices, isLoading: isIndexLoading } = useQuery<
     IndexPrice[]
   >({
@@ -261,29 +224,15 @@ export const useChart = ({
       'index-prices',
       `${market?.chainId}:${market?.address}`,
       market?.epochId,
-      visibleRange, // Add visible range to query key
+      selectedInterval,
     ],
     queryFn: async () => {
       const now = Math.floor(Date.now() / 1000);
-      let timeRange: number;
-      switch (selectedWindow) {
-        case TimeWindow.D:
-          timeRange = 86400; // 1 day in seconds
-          break;
-        case TimeWindow.W:
-          timeRange = 604800; // 1 week in seconds
-          break;
-        case TimeWindow.M:
-          timeRange = 2419200; // 28 days in seconds
-          break;
-        default:
-          timeRange = 86400; // Default to 1 day
-      }
+      const timeRange = selectedWindow
+        ? getTimeRangeFromWindow(selectedWindow)
+        : 86400;
       const from = now - timeRange;
-
-      const interval = visibleRange
-        ? getIntervalFromVisibleRange(visibleRange.from, visibleRange.to)
-        : 3600;
+      const interval = getIntervalSeconds(selectedInterval);
 
       const response = await fetch(`${API_BASE_URL}/graphql`, {
         method: 'POST',
@@ -319,7 +268,7 @@ export const useChart = ({
       'resourcePrices',
       resourceSlug,
       market?.epochId,
-      visibleRange, // Add visible range to query key
+      selectedInterval,
     ],
     queryFn: async () => {
       if (!resourceSlug) {
@@ -327,10 +276,7 @@ export const useChart = ({
       }
       const now = Math.floor(Date.now() / 1000);
       const from = now - 28 * 24 * 60 * 60 * 2; // Two periods ago
-
-      const interval = visibleRange
-        ? getIntervalFromVisibleRange(visibleRange.from, visibleRange.to)
-        : 3600;
+      const interval = getIntervalSeconds(selectedInterval);
 
       const response = await fetch(`${API_BASE_URL}/graphql`, {
         method: 'POST',
@@ -605,6 +551,21 @@ export const useChart = ({
     updateResourcePriceData();
     updateTrailingAverageData();
     updateSeriesVisibility();
+
+    // Set initial time range if not already set
+    if (!hasSetTimeScale.current && marketPrices?.length) {
+      const timeRange = selectedWindow
+        ? getTimeRangeFromWindow(selectedWindow)
+        : 86400;
+      const now = Math.floor(Date.now() / 1000);
+      const from = now - timeRange;
+
+      chartRef.current.timeScale().setVisibleRange({
+        from: from as UTCTimestamp,
+        to: now as UTCTimestamp,
+      });
+      hasSetTimeScale.current = true;
+    }
   }, [
     stEthPerToken,
     useMarketUnits,

@@ -29,7 +29,7 @@ export function getDisplayTextForVolumeWindow(volumeWindow: TimeWindow) {
   if (volumeWindow === TimeWindow.D) {
     return 'Past Day';
   }
-  if (volumeWindow === TimeWindow.W) {
+  if (volumeWindow === TimeWindow.FD) {
     return 'Past Week';
   }
   if (volumeWindow === TimeWindow.M) {
