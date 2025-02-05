@@ -1,6 +1,5 @@
 import { IResourcePriceIndexer } from './IResourcePriceIndexer';
 import { resourcePriceRepository } from '../db';
-import { ResourcePrice } from '../models/ResourcePrice';
 import { CELENIUM_API_KEY } from '../utils';
 import { Resource } from 'src/models/Resource';
 // import Sentry from "../sentry";
@@ -65,26 +64,32 @@ class CelestiaIndexer implements IResourcePriceIndexer {
 
     if (data.length > 0) {
       // Regenerate (calculate) blocks from the tx data
-      const blocks = data.reduce((acc: Map<number, Block>, tx: { height: number; time: number; gas_used: number; fee: number }) => {
-        if (!acc.has(tx.height)) {
-          acc.set(tx.height, {
-            height: tx.height,
-            time: Math.floor(new Date(tx.time).getTime() / 1000),
-            stats: {
-              blobs_size: 0,
-              fee: 0,
-            },
-          });
-        }
+      const blocks = data.reduce(
+        (
+          acc: Map<number, Block>,
+          tx: { height: number; time: number; gas_used: number; fee: number }
+        ) => {
+          if (!acc.has(tx.height)) {
+            acc.set(tx.height, {
+              height: tx.height,
+              time: Math.floor(new Date(tx.time).getTime() / 1000),
+              stats: {
+                blobs_size: 0,
+                fee: 0,
+              },
+            });
+          }
 
-        const block = acc.get(tx.height);
-        if (block) {
-          block.stats.blobs_size += Number(tx.gas_used);
-          block.stats.fee += Number(tx.fee);
-        }
+          const block = acc.get(tx.height);
+          if (block) {
+            block.stats.blobs_size += Number(tx.gas_used);
+            block.stats.fee += Number(tx.fee);
+          }
 
-        return acc;
-      }, new Map());
+          return acc;
+        },
+        new Map()
+      );
 
       for (const block of blocks.values()) {
         // move the fromTimestamp to the latest block processed

@@ -3,7 +3,7 @@ import { ResourcePrice } from '../models/ResourcePrice';
 import { getBlockByTimestamp, getProviderForChain } from '../utils';
 import { Block, type PublicClient } from 'viem';
 import Sentry from '../sentry';
-import { IResourcePriceIndexer } from './IResourcePriceIndexer';
+import { IResourcePriceIndexer } from '../interfaces';
 import { Resource } from 'src/models/Resource';
 
 class EvmIndexer implements IResourcePriceIndexer {

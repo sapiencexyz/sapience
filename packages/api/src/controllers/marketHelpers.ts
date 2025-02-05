@@ -51,7 +51,7 @@ export const handleTransferEvent = async (event: Event) => {
     return;
   }
 
-  existingPosition.owner = to;
+  existingPosition.owner = to as string;
   await positionRepository.save(existingPosition);
   console.log(`Updated owner of position ${tokenId} to ${to}`);
 };
@@ -93,7 +93,7 @@ export const createOrModifyPositionFromTransaction = async (
 
   const epoch = await epochRepository.findOne({
     where: {
-      epochId: epochId,
+      epochId: Number(epochId),
       market: { address: transaction.event.market.address },
     },
   });
@@ -110,10 +110,10 @@ export const createOrModifyPositionFromTransaction = async (
   const existingPosition = await positionRepository.findOne({
     where: {
       epoch: {
-        epochId: epochId,
+        epochId: Number(epochId),
         market: { address: transaction.event.market.address },
       },
-      positionId: transaction.event.logData.args.positionId,
+      positionId: Number(transaction.event.logData.args.positionId),
     },
     relations: [
       'transactions',
@@ -133,17 +133,17 @@ export const createOrModifyPositionFromTransaction = async (
 
   position.positionId = Number(eventArgs.positionId);
   position.epoch = epoch;
-  position.owner = eventArgs.sender || position.owner;
+  position.owner = (eventArgs.sender as string) || position.owner;
   position.isLP = isLpPosition(transaction);
   position.transactions = position.transactions || [];
   position.transactions.push(transaction);
 
   // Latest position state
-  position.baseToken = eventArgs.positionVgasAmount;
-  position.quoteToken = eventArgs.positionVethAmount;
-  position.borrowedBaseToken = eventArgs.positionBorrowedVgas;
-  position.borrowedQuoteToken = eventArgs.positionBorrowedVeth;
-  position.collateral = eventArgs.positionCollateralAmount;
+  position.baseToken = eventArgs.positionVgasAmount as string;
+  position.quoteToken = eventArgs.positionVethAmount as string;
+  position.borrowedBaseToken = eventArgs.positionBorrowedVgas as string;
+  position.borrowedQuoteToken = eventArgs.positionBorrowedVeth as string;
+  position.collateral = eventArgs.positionCollateralAmount as string;
 
   // LP Position state
   position.lpBaseToken = eventArgs.loanAmount0 || eventArgs.addedAmount0 || '0';
@@ -228,7 +228,7 @@ export const insertMarketPrice = async (transaction: Transaction) => {
     // upsert market price
     const newMp = new MarketPrice(); // might already get saved when upserting txn
     const finalPrice = transaction.event.logData.args.finalPrice;
-    newMp.value = finalPrice;
+    newMp.value = finalPrice as string;
     newMp.timestamp = transaction.event.timestamp;
     newMp.transaction = transaction;
 
@@ -432,12 +432,12 @@ export const updateTransactionFromLiquidityModifiedEvent = async (
     ? (
         BigInt(event.logData.args.decreasedAmount0 ?? '0') * BigInt(-1)
       ).toString()
-    : event.logData.args.increasedAmount0;
+    : (event.logData.args.increasedAmount0 as string);
   newTransaction.lpQuoteDeltaToken = isDecrease
     ? (
         BigInt(event.logData.args.decreasedAmount1 ?? '0') * BigInt(-1)
       ).toString()
-    : event.logData.args.increasedAmount1;
+    : (event.logData.args.increasedAmount1 as string);
 };
 
 /**
@@ -449,9 +449,7 @@ export const updateTransactionFromTradeModifiedEvent = async (
   newTransaction: Transaction,
   event: Event
 ) => {
-  newTransaction.type = getTradeTypeFromEvent(
-    event.logData.args as TradePositionEventLog
-  );
+  newTransaction.type = getTradeTypeFromEvent(event.logData.args);
 
   updateTransactionStateFromEvent(newTransaction, event);
 };
