@@ -57,7 +57,7 @@ const initializeMarkets = async () => {
   const FULL_MARKET_LIST: MarketInfo[] = [];
 
   // Mainnet Deployments
-  // await addMarketYinYang(FULL_MARKET_LIST, base.id);
+  await addMarketYinYang(FULL_MARKET_LIST, base.id);
 
   // Development Deployments
   if (process.env.NODE_ENV === 'development') {
