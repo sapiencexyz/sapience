@@ -53,20 +53,18 @@ interface UseChartProps {
 // Helper function to convert TimeInterval to seconds
 const getIntervalSeconds = (interval: TimeInterval): number => {
   switch (interval) {
-    case TimeInterval.I1M:
-      return 60;
     case TimeInterval.I5M:
       return 300;
     case TimeInterval.I15M:
       return 900;
-    case TimeInterval.I1H:
-      return 3600;
+    case TimeInterval.I30M:
+      return 1800;
     case TimeInterval.I4H:
       return 14400;
     case TimeInterval.I1D:
       return 86400;
     default:
-      return 3600;
+      return 300;
   }
 };
 
@@ -208,12 +206,10 @@ export const useChart = ({
   // Helper function for getting time range from window
   const getTimeRangeFromWindow = (window: TimeWindow): number => {
     switch (window) {
-      case TimeWindow.H:
-        return 3600;
       case TimeWindow.D:
         return 86400;
-      case TimeWindow.W:
-        return 604800;
+      case TimeWindow.FD:
+        return 432000; // 5 days in seconds
       case TimeWindow.M:
         return 2419200;
       default:

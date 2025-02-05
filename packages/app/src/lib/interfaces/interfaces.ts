@@ -54,17 +54,15 @@ export interface EpochData {
 }
 
 export enum TimeWindow {
-  H = '1H',
   D = '1D',
-  W = '1W',
+  FD = '5D',
   M = '1M',
 }
 
 export enum TimeInterval {
-  I1M = '1m',
   I5M = '5m',
   I15M = '15m',
-  I1H = '1h',
+  I30M = '30m',
   I4H = '4h',
   I1D = '1d',
 }

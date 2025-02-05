@@ -7,7 +7,7 @@ export const getXTicksToShow = (
   data: PriceChartData[] | VolumeChartData[],
   activeWindow: TimeWindow
 ) => {
-  if (activeWindow === TimeWindow.W) {
+  if (activeWindow === TimeWindow.FD) {
     // For weekly view, show only one tick per day
     const uniqueDays = new Set();
     return data

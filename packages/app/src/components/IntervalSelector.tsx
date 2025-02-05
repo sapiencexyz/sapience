@@ -11,10 +11,9 @@ import { TimeInterval } from '~/lib/interfaces/interfaces';
 import { cn } from '~/lib/utils';
 
 const intervals = [
-  { value: TimeInterval.I1M, label: '1m' },
   { value: TimeInterval.I5M, label: '5m' },
   { value: TimeInterval.I15M, label: '15m' },
-  { value: TimeInterval.I1H, label: '1h' },
+  { value: TimeInterval.I30M, label: '30m' },
   { value: TimeInterval.I4H, label: '4h' },
   { value: TimeInterval.I1D, label: '1d' },
 ] as const;

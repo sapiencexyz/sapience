@@ -35,10 +35,10 @@ const AdvancedView = ({
   isTrade: boolean;
 }) => {
   const [selectedWindow, setSelectedWindow] = useState<TimeWindow | null>(
-    TimeWindow.W
+    TimeWindow.FD
   );
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
-    TimeInterval.I1H
+    TimeInterval.I5M
   );
   const [chartType, setChartType] = useState<ChartType>(
     isTrade ? ChartType.PRICE : ChartType.LIQUIDITY
@@ -46,9 +46,27 @@ const AdvancedView = ({
 
   useEffect(() => {
     if (chartType === ChartType.VOLUME) {
-      setSelectedWindow(TimeWindow.W);
+      setSelectedWindow(TimeWindow.FD);
     }
   }, [chartType]);
+
+  useEffect(() => {
+    if (!selectedWindow) return;
+
+    switch (selectedWindow) {
+      case TimeWindow.D:
+        setSelectedInterval(TimeInterval.I5M);
+        break;
+      case TimeWindow.FD:
+        setSelectedInterval(TimeInterval.I5M);
+        break;
+      case TimeWindow.M:
+        setSelectedInterval(TimeInterval.I30M);
+        break;
+      default:
+        setSelectedInterval(TimeInterval.I5M);
+    }
+  }, [selectedWindow]);
 
   const { startTime } = useContext(PeriodContext);
   const { data: resources } = useResources();
@@ -123,7 +141,7 @@ const AdvancedView = ({
         <VolumeChart
           contractId={contractId}
           epochId={epoch}
-          activeWindow={selectedWindow || TimeWindow.W}
+          activeWindow={selectedWindow || TimeWindow.FD}
         />
       );
     }
@@ -161,7 +179,7 @@ const AdvancedView = ({
                     {chartType !== ChartType.LIQUIDITY && (
                       <WindowSelector
                         selectedWindow={selectedWindow}
-                        setSelectedWindow={setSelectedWindow ?? TimeWindow.W}
+                        setSelectedWindow={setSelectedWindow ?? TimeWindow.FD}
                       />
                     )}
                     {chartType === ChartType.PRICE && (
