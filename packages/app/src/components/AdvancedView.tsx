@@ -179,7 +179,7 @@ const AdvancedView = ({
                     {chartType !== ChartType.LIQUIDITY && (
                       <WindowSelector
                         selectedWindow={selectedWindow}
-                        setSelectedWindow={setSelectedWindow ?? TimeWindow.FD}
+                        setSelectedWindow={setSelectedWindow}
                       />
                     )}
                     {chartType === ChartType.PRICE && (

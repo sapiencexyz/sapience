@@ -551,6 +551,21 @@ export const useChart = ({
     updateResourcePriceData();
     updateTrailingAverageData();
     updateSeriesVisibility();
+
+    // Set initial time range if not already set
+    if (!hasSetTimeScale.current && marketPrices?.length) {
+      const timeRange = selectedWindow
+        ? getTimeRangeFromWindow(selectedWindow)
+        : 86400;
+      const now = Math.floor(Date.now() / 1000);
+      const from = now - timeRange;
+
+      chartRef.current.timeScale().setVisibleRange({
+        from: from as UTCTimestamp,
+        to: now as UTCTimestamp,
+      });
+      hasSetTimeScale.current = true;
+    }
   }, [
     stEthPerToken,
     useMarketUnits,
