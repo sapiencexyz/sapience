@@ -111,6 +111,6 @@ jobs:
         run: pnpm run lint
         working-directory: packages/api
 
-      - name: Build API
-        run: pnpm run build
+      - name: Compile API
+        run: pnpm run tsc
         working-directory: packages/api
