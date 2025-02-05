@@ -1,6 +1,5 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
 import { CircleHelp, DatabaseIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState, useContext } from 'react';
@@ -13,7 +12,6 @@ import PriceToggles from '~/components/PriceToggles';
 import Stats from '~/components/stats';
 import VolumeChart from '~/components/VolumeChart';
 import WindowSelector from '~/components/WindowButtons';
-import { API_BASE_URL } from '~/lib/constants/constants';
 import { AddEditPositionProvider } from '~/lib/context/AddEditPositionContext';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { TradePoolProvider } from '~/lib/context/TradePoolContext';
@@ -23,8 +21,6 @@ import { ChartType, TimeWindow } from '~/lib/interfaces/interfaces';
 import DataDrawer from './DataDrawer';
 import DepthChart from './DepthChart';
 import { Button } from './ui/button';
-
-const NETWORK_ERROR_STRING = 'Network response was not ok';
 
 const AdvancedView = ({
   params,
@@ -39,6 +35,12 @@ const AdvancedView = ({
   const [chartType, setChartType] = useState<ChartType>(
     isTrade ? ChartType.PRICE : ChartType.LIQUIDITY
   );
+
+  useEffect(() => {
+    if (chartType === ChartType.VOLUME) {
+      setSelectedWindow(TimeWindow.W);
+    }
+  }, [chartType]);
 
   const { startTime } = useContext(PeriodContext);
   const { data: resources } = useResources();
@@ -68,29 +70,6 @@ const AdvancedView = ({
   const [chainId, marketAddress] = params.id.split('%3A');
   const { epoch } = params;
   const contractId = `${chainId}:${marketAddress}`;
-
-  const useVolume = () => {
-    return useQuery({
-      queryKey: ['volume', contractId, epoch],
-      queryFn: async () => {
-        const response = await fetch(
-          `${API_BASE_URL}/volume?contractId=${contractId}&epochId=${epoch}&timeWindow=${selectedWindow}`
-        );
-        if (!response.ok) {
-          throw new Error(NETWORK_ERROR_STRING);
-        }
-        return response.json();
-      },
-    });
-  };
-
-  const { data: volume, error: useVolumeError } = useVolume();
-
-  useEffect(() => {
-    if (useVolumeError) {
-      console.error('useVolumeError =', useVolumeError);
-    }
-  }, [volume, useVolumeError]);
 
   const toggleSeries = (
     series: 'candles' | 'index' | 'resource' | 'trailing'
@@ -134,8 +113,9 @@ const AdvancedView = ({
     if (chartType === ChartType.VOLUME) {
       return (
         <VolumeChart
-          data={volume || []}
-          activeWindow={selectedWindow ?? TimeWindow.W}
+          contractId={contractId}
+          epochId={epoch}
+          activeWindow={selectedWindow || TimeWindow.W}
         />
       );
     }
