@@ -12,7 +12,6 @@ export type HydratedTransaction = Transaction & {
 export const hydrateTransactions = (
   transactions: Transaction[],
   shouldFormatUnits: boolean = true
-
 ): HydratedTransaction[] => {
   const hydratedTrasactions: HydratedTransaction[] = [];
 

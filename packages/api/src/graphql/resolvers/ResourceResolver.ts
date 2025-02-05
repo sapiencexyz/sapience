@@ -35,4 +35,4 @@ export class ResourceResolver {
       throw new Error('Failed to fetch resource');
     }
   }
-} 
+}

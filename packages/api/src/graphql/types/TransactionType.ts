@@ -44,4 +44,4 @@ export class TransactionType {
 
   @Field(() => String, { nullable: true })
   tradeRatioD18: string | null;
-} 
+}

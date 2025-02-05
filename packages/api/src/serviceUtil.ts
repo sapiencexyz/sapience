@@ -195,7 +195,8 @@ function groupEntitiesByTimeWindow<T>(
   dataFormatter?: (entity: T) => void
 ): EntityGroup<T>[] {
   const now = Date.now();
-  const { intervalMs, totalIntervals, startTime } = getTimeParamsFromWindow(window);
+  const { intervalMs, totalIntervals, startTime } =
+    getTimeParamsFromWindow(window);
 
   // Initialize result array
   const result: EntityGroup<T>[] = Array(totalIntervals)
@@ -227,10 +228,12 @@ export function groupIndexPricesByTimeWindow(
   window: TimeWindow
 ): EntityGroup<IndexPrice>[] {
   // For index prices, we want to use the first timestamp in the data as our start time
-  const firstTimestamp = Math.min(...indexPrices.map(price => Number(price.timestamp) * 1000));
+  const firstTimestamp = Math.min(
+    ...indexPrices.map((price) => Number(price.timestamp) * 1000)
+  );
   const now = Date.now();
   const { intervalMs } = getTimeParamsFromWindow(window);
-  
+
   // Calculate total intervals based on the entire time range from first timestamp
   const totalIntervals = Math.ceil((now - firstTimestamp) / intervalMs);
 
@@ -258,9 +261,9 @@ export function groupIndexPricesByTimeWindow(
 }
 
 export function groupResourcePricesByTimeWindow(
-  resourcePrices: any[],
+  resourcePrices: ResourcePrice[],
   window: TimeWindow
-): EntityGroup<any>[] {
+): EntityGroup<ResourcePrice>[] {
   return groupEntitiesByTimeWindow(
     resourcePrices,
     window,
