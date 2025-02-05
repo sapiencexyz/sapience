@@ -112,5 +112,5 @@ jobs:
         working-directory: packages/api
 
       - name: Compile API
-        run: pnpm run tsc
+        run: pnpm run compile
         working-directory: packages/api
