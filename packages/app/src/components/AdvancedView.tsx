@@ -6,6 +6,7 @@ import { useEffect, useState, useContext } from 'react';
 
 import Chart from '~/components/Chart';
 import ChartSelector from '~/components/ChartSelector';
+import IntervalSelector from '~/components/IntervalSelector';
 import MarketSidebar from '~/components/marketSidebar';
 import PeriodHeader from '~/components/PeriodHeader';
 import PriceToggles from '~/components/PriceToggles';
@@ -16,7 +17,11 @@ import { AddEditPositionProvider } from '~/lib/context/AddEditPositionContext';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { TradePoolProvider } from '~/lib/context/TradePoolContext';
 import { useResources } from '~/lib/hooks/useResources';
-import { ChartType, TimeWindow } from '~/lib/interfaces/interfaces';
+import {
+  ChartType,
+  TimeWindow,
+  TimeInterval,
+} from '~/lib/interfaces/interfaces';
 
 import DataDrawer from './DataDrawer';
 import DepthChart from './DepthChart';
@@ -31,6 +36,9 @@ const AdvancedView = ({
 }) => {
   const [selectedWindow, setSelectedWindow] = useState<TimeWindow | null>(
     TimeWindow.W
+  );
+  const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
+    TimeInterval.I1H
   );
   const [chartType, setChartType] = useState<ChartType>(
     isTrade ? ChartType.PRICE : ChartType.LIQUIDITY
@@ -105,7 +113,7 @@ const AdvancedView = ({
             }}
             seriesVisibility={seriesVisibility}
             selectedWindow={selectedWindow}
-            setSelectedWindow={setSelectedWindow}
+            selectedInterval={selectedInterval}
           />
         </div>
       );
@@ -154,6 +162,12 @@ const AdvancedView = ({
                       <WindowSelector
                         selectedWindow={selectedWindow}
                         setSelectedWindow={setSelectedWindow ?? TimeWindow.W}
+                      />
+                    )}
+                    {chartType === ChartType.PRICE && (
+                      <IntervalSelector
+                        selectedInterval={selectedInterval}
+                        setSelectedInterval={setSelectedInterval}
                       />
                     )}
                     <DataDrawer

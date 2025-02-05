@@ -60,6 +60,15 @@ export enum TimeWindow {
   M = '1M',
 }
 
+export enum TimeInterval {
+  I1M = '1m',
+  I5M = '5m',
+  I15M = '15m',
+  I1H = '1h',
+  I4H = '4h',
+  I1D = '1d',
+}
+
 export enum ChartType {
   PRICE = 'Price',
   VOLUME = 'Volume',

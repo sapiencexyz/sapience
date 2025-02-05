@@ -1,6 +1,5 @@
 import { Loader2 } from 'lucide-react';
 import { useRef, useContext, useMemo } from 'react';
-import type { SetStateAction, Dispatch } from 'react';
 import type React from 'react';
 
 import {
@@ -11,7 +10,7 @@ import {
 } from '~/components/ui/tooltip';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useChart } from '~/lib/hooks/useChart';
-import type { TimeWindow } from '~/lib/interfaces/interfaces';
+import type { TimeWindow, TimeInterval } from '~/lib/interfaces/interfaces';
 import { cn } from '~/lib/utils';
 
 interface Props {
@@ -28,7 +27,7 @@ interface Props {
     trailing: boolean;
   };
   selectedWindow: TimeWindow | null;
-  setSelectedWindow?: Dispatch<SetStateAction<TimeWindow | null>>;
+  selectedInterval: TimeInterval;
 }
 
 export const GREEN_PRIMARY = '#22C55E';
@@ -42,7 +41,7 @@ const Chart: React.FC<Props> = ({
   market,
   seriesVisibility,
   selectedWindow,
-  setSelectedWindow,
+  selectedInterval,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const { useMarketUnits, startTime } = useContext(PeriodContext);
@@ -55,7 +54,7 @@ const Chart: React.FC<Props> = ({
     startTime,
     containerRef: chartContainerRef,
     selectedWindow,
-    setSelectedWindow,
+    selectedInterval,
   });
 
   const memoizedLoadingStates = useMemo(() => {
