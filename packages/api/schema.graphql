@@ -65,6 +65,7 @@ type PositionType {
 type Query {
   epochs(marketId: Int): [EpochType!]!
   indexCandles(address: String!, chainId: Int!, epochId: String!, from: Int!, interval: Int!, to: Int!): [CandleType!]!
+  indexPriceAtTime(address: String!, chainId: Int!, epochId: String!, timestamp: Int!): IndexPriceType
   market(address: String!, chainId: Int!): MarketType
   marketCandles(address: String!, chainId: Int!, epochId: String!, from: Int!, interval: Int!, to: Int!): [CandleType!]!
   markets: [MarketType!]!

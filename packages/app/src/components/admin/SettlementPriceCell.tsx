@@ -12,11 +12,18 @@ const SettlementPriceCell = ({ market, epoch }: SettlementPriceCellProps) => {
     return <span>Loading...</span>;
   }
 
+  const now = Math.floor(Date.now() / 1000);
+  if (now < epoch.endTimestamp) {
+    return <i>Period in progress</i>;
+  }
+
   return (
     <>
-      <div className="text-xs">Latest Price: {latestPrice}</div>
+      <div className="text-xs">Settlement Price (gwei): {latestPrice}</div>
       <div className="text-xs">wstETH Ratio: {stEthPerToken}</div>
-      <div className="text-xs">Adjusted Price: {priceAdjusted}</div>
+      <div className="text-xs">
+        Adjusted Price (wstETH/Ggas): {priceAdjusted}
+      </div>
       <div className="text-xs">SqrtPriceX96: {sqrtPriceX96.toString()}</div>
     </>
   );
