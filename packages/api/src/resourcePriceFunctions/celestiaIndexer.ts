@@ -1,4 +1,4 @@
-import { IResourcePriceIndexer } from './IResourcePriceIndexer';
+import { IResourcePriceIndexer } from '../interfaces';
 import { resourcePriceRepository } from '../db';
 import { CELENIUM_API_KEY } from '../utils';
 import { Resource } from 'src/models/Resource';

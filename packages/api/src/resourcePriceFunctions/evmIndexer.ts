@@ -1,5 +1,4 @@
 import { resourcePriceRepository } from '../db';
-import { ResourcePrice } from '../models/ResourcePrice';
 import { getBlockByTimestamp, getProviderForChain } from '../utils';
 import { Block, type PublicClient } from 'viem';
 import Sentry from '../sentry';
@@ -28,13 +27,14 @@ class EvmIndexer implements IResourcePriceIndexer {
     }
     try {
       const feePaid = BigInt(value) * BigInt(used);
-      const price = new ResourcePrice();
-      price.resource = resource;
-      price.timestamp = Number(block.timestamp);
-      price.value = value.toString();
-      price.used = used.toString();
-      price.feePaid = feePaid.toString();
-      price.blockNumber = Number(block.number);
+      const price = {
+        resource: { id: resource.id },
+        timestamp: Number(block.timestamp),
+        value: value.toString(),
+        used: used.toString(),
+        feePaid: feePaid.toString(),
+        blockNumber: Number(block.number),
+      };
       await resourcePriceRepository.upsert(price, ['resource', 'timestamp']);
     } catch (error) {
       console.error('Error storing block price:', error);
