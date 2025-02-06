@@ -40,6 +40,7 @@ const IntervalSelector = ({
           variant="outline"
           role="combobox"
           aria-expanded={open}
+          size="sm"
           className="justify-between"
         >
           {selectedIntervalLabel}
