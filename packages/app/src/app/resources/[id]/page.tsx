@@ -171,7 +171,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
             <div className="flex flex-col flex-1">
               <div className="flex flex-1">
                 <div className="min-h-[50vh] border border-border flex w-full h-full rounded-sm shadow overflow-hidden pr-2 pb-2 bg-background">
-                  <div className="absolute bottom-20 left-2 z-10 flex flex-col gap-2">
+                  <div className="absolute bottom-10 left-14 z-10 flex gap-3">
                     <IntervalSelector
                       selectedInterval={selectedInterval}
                       setSelectedInterval={setSelectedInterval}
@@ -189,6 +189,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
                                 }))
                               }
                               variant="outline"
+                              className="bg-background"
                               size="sm"
                             >
                               <Circle className="h-3 w-3" strokeWidth={3} />
