@@ -40,7 +40,6 @@ import {
 } from './marketHelpers';
 import { Client, TextChannel, EmbedBuilder } from 'discord.js';
 import * as Chains from 'viem/chains';
-import { convertGasToGgas } from '../utils';
 import { MARKETS } from '../fixtures';
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
@@ -282,9 +281,8 @@ const alertEvent = async (
             BigInt(String(logData.args.initialPrice))
               ? 'Long'
               : 'Short';
-          const gasAmount = convertGasToGgas(
-            String(logData.args.vGasAmount || logData.args.borrowedVGas)
-          );
+          const gasAmount =
+            logData.args.vGasAmount || logData.args.borrowedVGas;
           const rawPriceGwei = Number(logData.args.tradeRatio) / 1e18;
           const priceGwei = rawPriceGwei.toLocaleString('en-US', {
             minimumFractionDigits: 0,
@@ -304,14 +302,10 @@ const alertEvent = async (
             logData.eventName === EventType.LiquidityPositionClosed
               ? 'Removed'
               : 'Added';
-          const liquidityGas = convertGasToGgas(
-            String(
-              logData.args.addedAmount0 ||
-                logData.args.increasedAmount0 ||
-                logData.args.amount0
-            )
-          );
-
+          const liquidityGas =
+            logData.args.addedAmount0 ||
+            logData.args.increasedAmount0 ||
+            logData.args.amount0;
           let priceRangeText = '';
           if (
             logData.args.lowerTick !== undefined &&
