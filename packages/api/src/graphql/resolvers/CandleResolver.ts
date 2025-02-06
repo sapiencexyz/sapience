@@ -78,12 +78,6 @@ const groupPricesByInterval = (
 
   return candles;
 };
-interface ResourcePricePoint {
-  timestamp: number;
-  value: string;
-  used: string;
-  feePaid: string;
-}
 
 const getTrailingAveragePricesByInterval = (
   prices: ResourcePricePoint[],
@@ -226,7 +220,7 @@ export class CandleResolver {
       const lastPriceBefore = await dataSource.getRepository(ResourcePrice)
         .createQueryBuilder('price')
         .where('price.resourceId = :resourceId', { resourceId: resource.id })
-        .andWhere('price.timestamp < :from', { trailingFrom })
+        .andWhere('price.timestamp < :from', { from: trailingFrom })
         .orderBy('price.timestamp', 'DESC')
         .take(1)
         .getOne();
