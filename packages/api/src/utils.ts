@@ -155,11 +155,11 @@ export const getTimestampsForReindex = async (
 
   // if no epoch is provided, get the latest one from the contract
   if (!epochId) {
-    const latestEpoch = await client.readContract({
+    const latestEpoch = (await client.readContract({
       address: contractDeployment.address as `0x${string}`,
       abi: contractDeployment.abi,
       functionName: 'getLatestEpoch',
-    });
+    })) as [number, number, number];
     epochId = Number(latestEpoch[0]);
     return {
       startTimestamp: Number(latestEpoch[1]),
@@ -179,12 +179,12 @@ export const getTimestampsForReindex = async (
   if (!epoch || !epoch.startTimestamp || !epoch.endTimestamp) {
     // get info from contract
     console.log('fetching epoch from contract to get timestamps...');
-    const epochContract = await client.readContract({
+    const epochContract = (await client.readContract({
       address: contractDeployment.address as `0x${string}`,
       abi: contractDeployment.abi,
       functionName: 'getEpoch',
       args: [`${epochId}`],
-    });
+    })) as [number, number, number];
     return {
       startTimestamp: Number(epochContract[0]),
       endTimestamp: Math.min(Number(epochContract[1]), now),

@@ -45,7 +45,7 @@ const executeLocalReindex = async (
 
 router.post(
   '/',
-  handleAsyncErrors(async (req: any, res: any) => {
+  handleAsyncErrors(async (req, res) => {
     const { chainId, address, epochId, signature, timestamp, model } = req.body;
 
     // Authenticate the user

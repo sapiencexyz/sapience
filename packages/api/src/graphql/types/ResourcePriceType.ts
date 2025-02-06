@@ -17,4 +17,4 @@ export class ResourcePriceType {
 
   @Field(() => Int)
   blockNumber: number;
-} 
+}

@@ -31,4 +31,4 @@ export class EpochType {
 
   @Field(() => String, { nullable: true })
   settlementPriceD18: string | null;
-} 
+}
