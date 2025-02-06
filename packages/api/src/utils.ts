@@ -355,4 +355,16 @@ export const convertGgasToGas = (value: string) => {
   return (BigInt(value) * BigInt(1e9)).toString();
 };
 
+export const formatTokenDecimals18 = (value: string) => {
+  const integerPart: string = (BigInt(value) / BigInt(1e18)).toString();
+  if (BigInt(value) % BigInt(1e18) !== BigInt(0)) {
+    const decimalPart: string =
+      '0'.repeat(
+        Math.max(18 - (BigInt(value) % BigInt(1e18)).toString().length, 0)
+      ) + (BigInt(value) % BigInt(1e18)).toString().replace(/0+$/, '');
+    return `${integerPart}.${decimalPart}`;
+  }
+  return integerPart;
+};
+
 export const CELENIUM_API_KEY = process.env.CELENIUM_API_KEY;

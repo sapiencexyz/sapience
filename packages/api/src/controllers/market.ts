@@ -41,7 +41,7 @@ import {
 import { Client, TextChannel, EmbedBuilder } from 'discord.js';
 import * as Chains from 'viem/chains';
 import { MARKETS } from '../fixtures';
-
+import { formatTokenDecimals18 } from '../utils';
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const DISCORD_PRIVATE_CHANNEL_ID = process.env.DISCORD_PRIVATE_CHANNEL_ID;
 const DISCORD_PUBLIC_CHANNEL_ID = process.env.DISCORD_PUBLIC_CHANNEL_ID;
@@ -281,8 +281,9 @@ const alertEvent = async (
             BigInt(String(logData.args.initialPrice))
               ? 'Long'
               : 'Short';
-          const gasAmount =
-            logData.args.vGasAmount || logData.args.borrowedVGas;
+          const gasAmount = formatTokenDecimals18(
+            String(logData.args.vGasAmount || logData.args.borrowedVGas)
+          );
           const rawPriceGwei = Number(logData.args.tradeRatio) / 1e18;
           const priceGwei = rawPriceGwei.toLocaleString('en-US', {
             minimumFractionDigits: 0,
@@ -302,10 +303,13 @@ const alertEvent = async (
             logData.eventName === EventType.LiquidityPositionClosed
               ? 'Removed'
               : 'Added';
-          const liquidityGas =
-            logData.args.addedAmount0 ||
-            logData.args.increasedAmount0 ||
-            logData.args.amount0;
+          const liquidityGas = formatTokenDecimals18(
+            String(
+              logData.args.addedAmount0 ||
+                logData.args.increasedAmount0 ||
+                logData.args.amount0
+            )
+          );
           let priceRangeText = '';
           if (
             logData.args.lowerTick !== undefined &&
