@@ -14,4 +14,4 @@ export class IndexPriceType {
 
   @Field(() => EpochType, { nullable: true })
   epoch: EpochType | null;
-} 
+}

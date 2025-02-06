@@ -11,7 +11,7 @@ const resourcePriceRepository = dataSource.getRepository(ResourcePrice);
 
 router.get(
   '/',
-  handleAsyncErrors(async (req: any, res: any) => {
+  handleAsyncErrors(async (_, res) => {
     const resources = await resourceRepository
       .createQueryBuilder('resource')
       .leftJoinAndSelect('resource.markets', 'market')
@@ -24,13 +24,13 @@ router.get(
       name: resource.name,
       slug: resource.slug,
       markets: (resource.markets || [])
-        .filter((market: any) => market.public)
-        .map((market: any) => ({
+        .filter((market) => market.public)
+        .map((market) => ({
           id: market.id,
           address: market.address,
           chainId: market.chainId,
           name: resource.name,
-          epochs: market.epochs.map((epoch: any) => ({
+          epochs: market.epochs.map((epoch) => ({
             id: epoch.id,
             epochId: epoch.epochId,
             startTimestamp: Number(epoch.startTimestamp),

@@ -1,6 +1,5 @@
-import { IResourcePriceIndexer } from './IResourcePriceIndexer';
+import { IResourcePriceIndexer } from '../interfaces';
 import { resourcePriceRepository } from '../db';
-import { ResourcePrice } from '../models/ResourcePrice';
 import { CELENIUM_API_KEY } from '../utils';
 import { Resource } from 'src/models/Resource';
 // import Sentry from "../sentry";
@@ -65,26 +64,32 @@ class CelestiaIndexer implements IResourcePriceIndexer {
 
     if (data.length > 0) {
       // Regenerate (calculate) blocks from the tx data
-      const blocks = data.reduce((acc: Map<number, Block>, tx) => {
-        if (!acc.has(tx.height)) {
-          acc.set(tx.height, {
-            height: tx.height,
-            time: Math.floor(new Date(tx.time).getTime() / 1000),
-            stats: {
-              blobs_size: 0,
-              fee: 0,
-            },
-          });
-        }
+      const blocks = data.reduce(
+        (
+          acc: Map<number, Block>,
+          tx: { height: number; time: number; gas_used: number; fee: number }
+        ) => {
+          if (!acc.has(tx.height)) {
+            acc.set(tx.height, {
+              height: tx.height,
+              time: Math.floor(new Date(tx.time).getTime() / 1000),
+              stats: {
+                blobs_size: 0,
+                fee: 0,
+              },
+            });
+          }
 
-        const block = acc.get(tx.height);
-        if (block) {
-          block.stats.blobs_size += Number(tx.gas_used);
-          block.stats.fee += Number(tx.fee);
-        }
+          const block = acc.get(tx.height);
+          if (block) {
+            block.stats.blobs_size += Number(tx.gas_used);
+            block.stats.fee += Number(tx.fee);
+          }
 
-        return acc;
-      }, new Map());
+          return acc;
+        },
+        new Map()
+      );
 
       for (const block of blocks.values()) {
         // move the fromTimestamp to the latest block processed
@@ -147,7 +152,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
    * @param block
    * @param resource
    */
-  private async storeBlockPrice(block, resource: Resource) {
+  private async storeBlockPrice(block: Block, resource: Resource) {
     const used = block?.stats?.blobs_size;
     const fee = block?.stats?.fee * 10 ** 9; // Increase the fee to 9 digits to be compatible with the EVM indexer and UI (we use 9 decimals for the gwei)
     const value = fee / used;
@@ -159,13 +164,14 @@ class CelestiaIndexer implements IResourcePriceIndexer {
     }
 
     try {
-      const price = new ResourcePrice();
-      price.resource = resource;
-      price.timestamp = new Date(block.time).getTime();
-      price.value = value.toString();
-      price.used = used.toString();
-      price.feePaid = fee.toString();
-      price.blockNumber = Number(block.height);
+      const price = {
+        resource: { id: resource.id },
+        timestamp: new Date(block.time).getTime(),
+        value: value.toString(),
+        used: used.toString(),
+        feePaid: fee.toString(),
+        blockNumber: Number(block.height),
+      };
       await resourcePriceRepository.upsert(price, ['resource', 'timestamp']);
     } catch (error) {
       console.error('Error storing block price:', error);

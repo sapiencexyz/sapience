@@ -26,4 +26,4 @@ export class EpochResolver {
       throw new Error('Failed to fetch epochs');
     }
   }
-} 
+}

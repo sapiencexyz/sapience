@@ -27,9 +27,7 @@ export const Features = () => {
             </div>
 
             <Button asChild className="rounded-2xl p-6 font-semibold">
-              <a href="https://app.foil.xyz/subscribe/11155111:0x4243f3d11353aaeb404e31e160eec362d066637c/epochs/1">
-                Subscribe
-              </a>
+              <a href="https://app.foil.xyz/subscribe">Subscribe</a>
             </Button>
           </div>
           {isDesktop && (
@@ -74,7 +72,7 @@ export const Features = () => {
             </div>
 
             <Button asChild className="rounded-2xl p-6 font-semibold">
-              <a href="https://app.foil.xyz/trade/11155111:0x4243f3d11353aaeb404e31e160eec362d066637c/epochs/1">
+              <a href="https://app.foil.xyz/trade/8453:0x20ba5e24ad8a5b9502d4882607f0c8526a1f3205/periods/1">
                 Trade
               </a>
             </Button>
@@ -121,9 +119,7 @@ export const Features = () => {
             </div>
 
             <Button asChild className="rounded-2xl p-6 font-semibold">
-              <a href="https://app.foil.xyz/pool/11155111:0x4243f3d11353aaeb404e31e160eec362d066637c/epochs/1">
-                Earn
-              </a>
+              <a href="https://app.foil.xyz/earn/ethereum-gas">Earn</a>
             </Button>
           </div>
           {isDesktop && (

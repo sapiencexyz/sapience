@@ -51,4 +51,4 @@ export class PositionType {
 
   @Field(() => String, { nullable: true })
   highPriceTick: string | null;
-} 
+}

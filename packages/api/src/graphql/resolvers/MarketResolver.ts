@@ -50,4 +50,4 @@ export class MarketResolver {
       throw new Error('Failed to fetch epochs');
     }
   }
-} 
+}

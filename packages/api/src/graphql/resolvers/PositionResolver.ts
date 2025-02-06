@@ -10,10 +10,14 @@ export class PositionResolver {
   async positions(
     @Arg('owner', () => String, { nullable: true }) owner?: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
-    @Arg('marketAddress', () => String, { nullable: true }) marketAddress?: string
+    @Arg('marketAddress', () => String, { nullable: true })
+    marketAddress?: string
   ): Promise<PositionType[]> {
     try {
-      const where: any = {};
+      const where: {
+        owner?: string;
+        epoch?: { market: { chainId: number; address: string } };
+      } = {};
       if (owner) {
         where.owner = owner;
       }
@@ -33,19 +37,22 @@ export class PositionResolver {
           'epoch.market',
           'epoch.market.resource',
           'transactions',
-          'transactions.event'
+          'transactions.event',
         ],
       });
 
       const hydratedPositions = positions.map((position) => {
-        const hydratedTransactions = hydrateTransactions(position.transactions, false);
+        const hydratedTransactions = hydrateTransactions(
+          position.transactions,
+          false
+        );
         return { ...position, transactions: hydratedTransactions };
       });
-      
+
       return hydratedPositions.map(mapPositionToType);
     } catch (error) {
       console.error('Error fetching positions:', error);
       throw new Error('Failed to fetch positions');
     }
   }
-} 
+}

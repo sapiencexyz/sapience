@@ -37,10 +37,14 @@ export function justifyTimeSeries<T extends { timestamp: number }>(
   data.forEach((item) => {
     const { timestamp } = item;
     const value = getValue(item);
-    
+
     if (lastTimestamp !== null && lastItem) {
       // Fill in each interval with the last known value
-      for (let t = lastTimestamp + intervalSeconds; t < timestamp; t += intervalSeconds) {
+      for (
+        let t = lastTimestamp + intervalSeconds;
+        t < timestamp;
+        t += intervalSeconds
+      ) {
         if (lastValue !== undefined) {
           justifiedData.push({
             ...lastItem,
@@ -56,4 +60,4 @@ export function justifyTimeSeries<T extends { timestamp: number }>(
   });
 
   return justifiedData;
-} 
+}

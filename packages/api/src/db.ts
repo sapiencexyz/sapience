@@ -20,7 +20,7 @@ const devDataSource: DataSource = new DataSource({
   synchronize: true,
   logging: ['warn', 'error', 'log', 'info'],
   ssl: {
-    rejectUnauthorized: false
+    rejectUnauthorized: false,
   },
   entities: [
     ResourcePrice,
