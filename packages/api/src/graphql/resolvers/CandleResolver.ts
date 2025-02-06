@@ -59,6 +59,62 @@ const groupPricesByInterval = (prices: PricePoint[], intervalSeconds: number, st
   return candles;
 };
 
+const getTrailingAveragePricesByInterval = (prices: PricePoint[], trailingIntervalSeconds: number, intervalSeconds: number, startTimestamp: number, endTimestamp: number, lastKnownPrice?: string): CandleType[] => {
+  const candles: CandleType[] = [];
+  
+  // If we have no prices and no reference price, return empty array
+  if (prices.length === 0 && !lastKnownPrice) return [];
+  
+  // Normalize timestamps to interval boundaries
+  const normalizedStartTimestamp = Math.floor(startTimestamp / intervalSeconds) * intervalSeconds;
+  const normalizedEndTimestamp = Math.floor(endTimestamp / intervalSeconds) * intervalSeconds;
+  
+  // Initialize lastClose with lastKnownPrice if available, otherwise use first price
+  let lastClose = lastKnownPrice || prices[0].value;
+
+  for (let timestamp = normalizedStartTimestamp; timestamp <= normalizedEndTimestamp; timestamp += intervalSeconds) {
+    const pricesInInterval = prices.filter(p => {
+      return p.timestamp >= timestamp - trailingIntervalSeconds && p.timestamp <= timestamp;
+    });
+
+    if (pricesInInterval.length > 0) {
+      // Create candle with actual price data
+      // get the average of the prices in the interval
+      const totalGasUsed: bigint = pricesInInterval.reduce(
+        (total, price) => total + BigInt(price.used),
+        0n
+      );
+
+      const totalBaseFeesPaid: bigint = pricesInInterval.reduce(
+        (total, price) => total + BigInt(price.feePaid),
+        0n
+      );
+
+      const averagePrice: bigint = totalBaseFeesPaid / totalGasUsed;
+
+      lastClose = averagePrice.toString();
+      candles.push({
+        timestamp,
+        open: lastClose,
+        high: lastClose,
+        low: lastClose,
+        close: lastClose,
+      });
+    } else {
+      // Create empty candle with last known closing price
+      candles.push({
+        timestamp,
+        open: lastClose,
+        high: lastClose,
+        low: lastClose,
+        close: lastClose,
+      });
+    }
+  }
+
+  return candles;
+};
+
 @Resolver()
 export class CandleResolver {
   @Query(() => [CandleType])
@@ -98,6 +154,61 @@ export class CandleResolver {
       // Combine the results, putting the last price before first if it exists
       const prices = pricesInRange;
       const lastKnownPrice = lastPriceBefore?.value;
+
+      return groupPricesByInterval(
+        prices.map(p => ({ timestamp: Number(p.timestamp), value: p.value })),
+        interval,
+        from,
+        to,
+        lastKnownPrice
+      );
+    } catch (error) {
+      console.error('Error fetching resource candles:', error);
+      throw new Error('Failed to fetch resource candles');
+    }
+  }
+
+
+  @Query(() => [CandleType])
+  async resourceTrailingAverageCandles(
+    @Arg('slug', () => String) slug: string,
+    @Arg('from', () => Int) from: number,
+    @Arg('to', () => Int) to: number,
+    @Arg('interval', () => Int) interval: number,
+    @Arg('trailingTime', () => Int) trailingTime: number
+  ): Promise<CandleType[]> {
+    try {
+      const trailingFrom = from - trailingTime; // i.e. 28 days in seconds before the 'from' timestamp
+      const resource = await dataSource.getRepository(Resource).findOne({
+        where: { slug },
+      });
+
+      if (!resource) {
+        throw new Error(`Resource not found with slug: ${slug}`);
+      }
+
+      // First get the most recent price before the trailingFrom timestamp
+      const lastPriceBefore = await dataSource.getRepository(ResourcePrice)
+        .createQueryBuilder('price')
+        .where('price.resourceId = :resourceId', { resourceId: resource.id })
+        .andWhere('price.timestamp < :from', { trailingFrom })
+        .orderBy('price.timestamp', 'DESC')
+        .take(1)
+        .getOne();
+
+      // Then get all prices within the range
+      const pricesInRange = await dataSource.getRepository(ResourcePrice).find({
+        where: {
+          resource: { id: resource.id },
+          timestamp: Between(trailingFrom, to),
+        },
+        order: { timestamp: 'ASC' },
+      });
+
+      // Combine the results, putting the last price before first if it exists
+      const prices = pricesInRange;
+
+      const lastKnownPrice = lastPriceBefore?.feePaid && lastPriceBefore?.used ?  (BigInt(lastPriceBefore?.feePaid) / BigInt(lastPriceBefore?.used)).toString() : lastPriceBefore?.value;
 
       return groupPricesByInterval(
         prices.map(p => ({ timestamp: Number(p.timestamp), value: p.value })),
@@ -258,4 +369,6 @@ export class CandleResolver {
       throw new Error('Failed to fetch market candles');
     }
   }
+
+  
 } 
