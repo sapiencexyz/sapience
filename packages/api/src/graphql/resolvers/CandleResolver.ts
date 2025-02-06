@@ -14,6 +14,13 @@ interface PricePoint {
   value: string;
 }
 
+interface ResourcePricePoint {
+  timestamp: number;
+  value: string;
+  used: string;
+  feePaid: string;
+}
+
 const groupPricesByInterval = (
   prices: PricePoint[],
   intervalSeconds: number,
@@ -71,24 +78,45 @@ const groupPricesByInterval = (
 
   return candles;
 };
+interface ResourcePricePoint {
+  timestamp: number;
+  value: string;
+  used: string;
+  feePaid: string;
+}
 
-const getTrailingAveragePricesByInterval = (prices: PricePoint[], trailingIntervalSeconds: number, intervalSeconds: number, startTimestamp: number, endTimestamp: number, lastKnownPrice?: string): CandleType[] => {
+const getTrailingAveragePricesByInterval = (
+  prices: ResourcePricePoint[],
+  trailingIntervalSeconds: number,
+  intervalSeconds: number,
+  startTimestamp: number,
+  endTimestamp: number,
+  lastKnownPrice?: string
+): CandleType[] => {
   const candles: CandleType[] = [];
-  
+
   // If we have no prices and no reference price, return empty array
   if (prices.length === 0 && !lastKnownPrice) return [];
-  
+
   // Normalize timestamps to interval boundaries
-  const normalizedStartTimestamp = Math.floor(startTimestamp / intervalSeconds) * intervalSeconds;
-  const normalizedEndTimestamp = Math.floor(endTimestamp / intervalSeconds) * intervalSeconds;
-  
+  const normalizedStartTimestamp =
+    Math.floor(startTimestamp / intervalSeconds) * intervalSeconds;
+  const normalizedEndTimestamp =
+    Math.floor(endTimestamp / intervalSeconds) * intervalSeconds;
+
   // Initialize lastClose with lastKnownPrice if available, otherwise use first price
   let lastClose = lastKnownPrice || prices[0].value;
 
-  for (let timestamp = normalizedStartTimestamp; timestamp <= normalizedEndTimestamp; timestamp += intervalSeconds) {
-    const pricesInInterval = prices.filter(p => {
-      return p.timestamp >= timestamp - trailingIntervalSeconds && p.timestamp <= timestamp;
-    });
+  for (
+    let timestamp = normalizedStartTimestamp;
+    timestamp <= normalizedEndTimestamp;
+    timestamp += intervalSeconds
+  ) {
+    const pricesInInterval = prices.filter(
+      (p) =>
+        p.timestamp >= timestamp - trailingIntervalSeconds &&
+        p.timestamp <= timestamp
+    );
 
     if (pricesInInterval.length > 0) {
       // Create candle with actual price data
@@ -106,23 +134,16 @@ const getTrailingAveragePricesByInterval = (prices: PricePoint[], trailingInterv
       const averagePrice: bigint = totalBaseFeesPaid / totalGasUsed;
 
       lastClose = averagePrice.toString();
-      candles.push({
-        timestamp,
-        open: lastClose,
-        high: lastClose,
-        low: lastClose,
-        close: lastClose,
-      });
-    } else {
-      // Create empty candle with last known closing price
-      candles.push({
-        timestamp,
-        open: lastClose,
-        high: lastClose,
-        low: lastClose,
-        close: lastClose,
-      });
     }
+
+    // Create candle with last known closing price (calculated in the loop or previous candle)
+    candles.push({
+      timestamp,
+      open: lastClose,
+      high: lastClose,
+      low: lastClose,
+      close: lastClose,
+    });
   }
 
   return candles;
@@ -224,8 +245,9 @@ export class CandleResolver {
 
       const lastKnownPrice = lastPriceBefore?.feePaid && lastPriceBefore?.used ?  (BigInt(lastPriceBefore?.feePaid) / BigInt(lastPriceBefore?.used)).toString() : lastPriceBefore?.value;
 
-      return groupPricesByInterval(
-        prices.map(p => ({ timestamp: Number(p.timestamp), value: p.value })),
+      return getTrailingAveragePricesByInterval(
+        prices.map(p => ({ timestamp: Number(p.timestamp), value: p.value, used: p.used, feePaid: p.feePaid })),
+        trailingTime,
         interval,
         from,
         to,
