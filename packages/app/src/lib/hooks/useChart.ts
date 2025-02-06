@@ -140,7 +140,13 @@ const TRAILING_RESOURCE_CANDLES_QUERY = gql`
     $interval: Int!
     $trailingTime: Int!
   ) {
-    resourceTrailingAverageCandles(slug: $slug, from: $from, to: $to, interval: $interval, trailingTime: $trailingTime) {
+    resourceTrailingAverageCandles(
+      slug: $slug
+      from: $from
+      to: $to
+      interval: $interval
+      trailingTime: $trailingTime
+    ) {
       timestamp
       close
     }
@@ -321,53 +327,52 @@ export const useChart = ({
         (seriesVisibility?.trailing ?? true)),
   });
 
-  const { data: trailingResourcePrices, isLoading: isTrailingResourceLoading } = useQuery<
-    ResourcePricePoint[]
-  >({
-    queryKey: [
-      'trailingResourcePrices',
-      resourceSlug,
-      market?.epochId,
-      selectedInterval,
-    ],
-    queryFn: async () => {
-      if (!resourceSlug) {
-        return [];
-      }
-      const now = Math.floor(Date.now() / 1000);
-      const from = now - 28 * 24 * 60 * 60; // Two periods ago
-      const interval = getIntervalSeconds(selectedInterval);
+  const { data: trailingResourcePrices, isLoading: isTrailingResourceLoading } =
+    useQuery<ResourcePricePoint[]>({
+      queryKey: [
+        'trailingResourcePrices',
+        resourceSlug,
+        market?.epochId,
+        selectedInterval,
+      ],
+      queryFn: async () => {
+        if (!resourceSlug) {
+          return [];
+        }
+        const now = Math.floor(Date.now() / 1000);
+        const from = now - 28 * 24 * 60 * 60; // Two periods ago
+        const interval = getIntervalSeconds(selectedInterval);
 
-      // TODO Adjust `interval`, or `from` to limit the amount of data fetched to some reasonable amount (i.e. 2000 candles)
+        // TODO Adjust `interval`, or `from` to limit the amount of data fetched to some reasonable amount (i.e. 2000 candles)
 
-      const response = await fetch(`${API_BASE_URL}/graphql`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: print(TRAILING_RESOURCE_CANDLES_QUERY),
-          variables: {
-            slug: resourceSlug,
-            from,
-            to: now,
-            interval,
-            trailingTime: 28 * 24 * 60 * 60 , // 28 days in seconds
+        const response = await fetch(`${API_BASE_URL}/graphql`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
           },
-        }),
-      });
+          body: JSON.stringify({
+            query: print(TRAILING_RESOURCE_CANDLES_QUERY),
+            variables: {
+              slug: resourceSlug,
+              from,
+              to: now,
+              interval,
+              trailingTime: 28 * 24 * 60 * 60, // 28 days in seconds
+            },
+          }),
+        });
 
-      const { data } = await response.json();
-      return data.resourceTrailingAverageCandles.map((candle: any) => ({
-        timestamp: timeToLocal(candle.timestamp * 1000),
-        price: Number(formatUnits(BigInt(candle.close), 9)),
-      }));
-    },
-    enabled:
-      !!resourceSlug &&
-      ((seriesVisibility?.resource ?? true) ||
-        (seriesVisibility?.trailing ?? true)),
-  });
+        const { data } = await response.json();
+        return data.resourceTrailingAverageCandles.map((candle: any) => ({
+          timestamp: timeToLocal(candle.timestamp * 1000),
+          price: Number(formatUnits(BigInt(candle.close), 9)),
+        }));
+      },
+      enabled:
+        !!resourceSlug &&
+        ((seriesVisibility?.resource ?? true) ||
+          (seriesVisibility?.trailing ?? true)),
+    });
 
   // Effect for chart creation/cleanup
   useEffect(() => {
@@ -636,7 +641,7 @@ export const useChart = ({
       candles: !marketPrices && !!market,
       index: isIndexLoading && !!market,
       resource: isResourceLoading && !!resourceSlug,
-      trailing: isResourceLoading && !!resourceSlug,
+      trailing: isTrailingResourceLoading && !!resourceSlug,
     }),
     [isIndexLoading, isResourceLoading, market, resourceSlug]
   );
