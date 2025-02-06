@@ -40,7 +40,6 @@ import {
 } from '~/components/ui/tooltip';
 import { useToast } from '~/hooks/use-toast';
 import { useFoil } from '~/lib/context/FoilProvider';
-import type { Market } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { mainnetClient } from '~/lib/utils/util';
 
@@ -86,7 +85,7 @@ const Subscribe: FC<SubscribeProps> = ({
     endTime,
   } = useContext(PeriodContext);
 
-  const { stEthPerToken, markets } = useFoil();
+  const { stEthPerToken } = useFoil();
 
   // Use prop values if provided, otherwise use context values
   const finalMarketAddress = contextMarketAddress;
@@ -462,13 +461,6 @@ const Subscribe: FC<SubscribeProps> = ({
     );
   };
 
-  const market = address
-    ? markets.find(
-        (m: Market) => m.address.toLowerCase() === address.toLowerCase()
-      )
-    : undefined;
-  const marketName = market?.name || 'Choose Market';
-
   const handleEstimateUsage = async () => {
     const formWalletAddress = form.getValues('walletAddress');
     if (!formWalletAddress) {
@@ -504,7 +496,7 @@ const Subscribe: FC<SubscribeProps> = ({
       }
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_FOIL_API_URL}/estimate`,
+        `${process.env.NEXT_PUBLIC_FOIL_API_URL}/estimate/estimate`,
         {
           method: 'POST',
           headers: {
@@ -709,6 +701,7 @@ const Subscribe: FC<SubscribeProps> = ({
                           {...field}
                           placeholder="vitalik.eth"
                           autoComplete="off"
+                          data-1p-ignore
                           spellCheck={false}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
@@ -873,7 +866,7 @@ const Subscribe: FC<SubscribeProps> = ({
             <img src="/eth.svg" alt="Ethereum" width="100%" height="100%" />
           </div>
 
-          <h2 className="text-2xl font-semibold">{marketName} Subscription</h2>
+          <h2 className="text-2xl font-semibold">Create Subscription</h2>
         </div>
 
         <p className="mb-3 text-lg">
