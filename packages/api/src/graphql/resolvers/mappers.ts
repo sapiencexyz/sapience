@@ -91,7 +91,9 @@ export const mapTransactionToType = (
   tradeRatioD18: transaction.tradeRatioD18 || null,
 });
 
-export const mapResourcePriceToType = (price: ResourcePrice): ResourcePriceType => ({
+export const mapResourcePriceToType = (
+  price: ResourcePrice
+): ResourcePriceType => ({
   id: price.id,
   timestamp: price.timestamp,
   value: price.value,
@@ -104,4 +106,4 @@ export const mapIndexPriceToType = (price: IndexPrice): IndexPriceType => ({
   timestamp: price.timestamp,
   value: price.value,
   epoch: price.epoch ? mapEpochToType(price.epoch) : null,
-}); 
+});

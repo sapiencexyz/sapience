@@ -33,4 +33,4 @@ export class MarketType {
 
   @Field(() => String, { nullable: true })
   collateralAsset: string | null;
-} 
+}

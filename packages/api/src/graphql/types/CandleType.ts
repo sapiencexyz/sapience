@@ -16,4 +16,4 @@ export class CandleType {
 
   @Field(() => String)
   close: string;
-} 
+}

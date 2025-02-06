@@ -2,7 +2,11 @@ import { Router } from 'express';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import { validateRequestParams } from '../helpers/validateRequestParams';
 import { parseContractId } from '../helpers';
-import { marketRepository, positionRepository, transactionRepository } from '../db';
+import {
+  marketRepository,
+  positionRepository,
+  transactionRepository,
+} from '../db';
 import { getProviderForChain } from '../utils';
 import { Position } from '../models/Position';
 import { In } from 'typeorm';

@@ -18,4 +18,4 @@ export class ResourceType {
 
   @Field(() => [ResourcePriceType])
   resourcePrices: ResourcePriceType[];
-} 
+}

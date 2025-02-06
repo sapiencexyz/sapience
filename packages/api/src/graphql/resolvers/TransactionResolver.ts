@@ -11,7 +11,7 @@ export class TransactionResolver {
     @Arg('positionId', () => Int, { nullable: true }) positionId?: number
   ): Promise<TransactionType[]> {
     try {
-      const where: any = {};
+      const where: { position?: { id: number } } = {};
       if (positionId) {
         where.position = { id: positionId };
       }
@@ -28,4 +28,4 @@ export class TransactionResolver {
       throw new Error('Failed to fetch transactions');
     }
   }
-} 
+}
