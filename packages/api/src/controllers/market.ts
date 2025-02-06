@@ -281,9 +281,8 @@ const alertEvent = async (
             BigInt(String(logData.args.initialPrice))
               ? 'Long'
               : 'Short';
-          const gasAmount = 
-            logData.args.vGasAmount || logData.args.borrowedVGas
-          ;
+          const gasAmount =
+            logData.args.vGasAmount || logData.args.borrowedVGas;
           const rawPriceGwei = Number(logData.args.tradeRatio) / 1e18;
           const priceGwei = rawPriceGwei.toLocaleString('en-US', {
             minimumFractionDigits: 0,
@@ -303,12 +302,10 @@ const alertEvent = async (
             logData.eventName === EventType.LiquidityPositionClosed
               ? 'Removed'
               : 'Added';
-          const liquidityGas = 
+          const liquidityGas =
             logData.args.addedAmount0 ||
-              logData.args.increasedAmount0 ||
-              logData.args.amount0
-          ;
-
+            logData.args.increasedAmount0 ||
+            logData.args.amount0;
           let priceRangeText = '';
           if (
             logData.args.lowerTick !== undefined &&
