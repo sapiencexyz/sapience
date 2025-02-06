@@ -57,12 +57,21 @@ export const useVaultData = ({ vaultData }: Props) => {
     chainId,
   });
 
+  const { data: vaultDecimals } = useReadContract({
+    abi: vaultData.abi,
+    address: vaultData.address,
+    functionName: 'decimals',
+    chainId,
+  });
+
   return {
     collateralAsset: collateralAsset as `0x${string}`,
     decimals: Number(decimals || 18),
+    vaultDecimals: Number(vaultDecimals || 18),
     epoch: epoch as {
       startTime: bigint;
       endTime: bigint;
+      epochId: bigint;
     },
     vaultSymbol: vaultSymbol as string,
     collateralSymbol: collateralSymbol as string,
