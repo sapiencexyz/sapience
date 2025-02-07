@@ -116,8 +116,10 @@ const getTrailingAveragePricesByInterval = (
     timestamp += intervalSeconds
   ) {
     // get the indexes for the start and end of the interval
-    startIdx = orderedPrices.findIndex(p => p.timestamp >= timestamp - trailingIntervalSeconds);
-    endIdx = orderedPrices.findIndex(p => p.timestamp <= timestamp);
+    startIdx = orderedPrices.findIndex(
+      (p) => p.timestamp >= timestamp - trailingIntervalSeconds
+    );
+    endIdx = orderedPrices.findIndex((p) => p.timestamp > timestamp); // notice is the next item, we need to correct it later
 
     // Remove from the sliding window trailing average the prices that are no longer in the interval
     if (startIdx != -1) {
@@ -126,14 +128,24 @@ const getTrailingAveragePricesByInterval = (
         totalBaseFeesPaid -= BigInt(orderedPrices[i].feePaid);
       }
     }
+    lastStartIdx = startIdx;
+
+    // if found and not previous endIdx, correct the +1 offset of the endIdx (since we found the next item)
+    if (endIdx != -1 && endIdx > lastEndIdx) {
+      endIdx--;
+    }
+
+    // If not found, use the last index of the orderedPrices array
+    if (endIdx == -1) {
+      endIdx = orderedPrices.length - 1;
+    }
 
     // Add to the sliding window trailing average the prices that are now in the interval
-    if (endIdx != -1) {
-      for (let i = endIdx; i <= lastEndIdx; i++) {
-        totalGasUsed += BigInt(orderedPrices[i].used);
-        totalBaseFeesPaid += BigInt(orderedPrices[i].feePaid);
-      }
+    for (let i = lastEndIdx; i <= endIdx; i++) {
+      totalGasUsed += BigInt(orderedPrices[i].used);
+      totalBaseFeesPaid += BigInt(orderedPrices[i].feePaid);
     }
+    lastEndIdx = endIdx;
 
     // Calculate the average price for the interval
     if (totalGasUsed > 0n) {
@@ -208,7 +220,6 @@ export class CandleResolver {
     }
   }
 
-
   @Query(() => [CandleType])
   async resourceTrailingAverageCandles(
     @Arg('slug', () => String) slug: string,
@@ -218,7 +229,6 @@ export class CandleResolver {
     @Arg('trailingTime', () => Int) trailingTime: number
   ): Promise<CandleType[]> {
     try {
-      const queryStartTime = performance.now();
       const trailingFrom = from - trailingTime;
       const resource = await dataSource.getRepository(Resource).findOne({
         where: { slug },
@@ -229,7 +239,8 @@ export class CandleResolver {
       }
 
       // First get the most recent price before the trailingFrom timestamp
-      const lastPriceBefore = await dataSource.getRepository(ResourcePrice)
+      const lastPriceBefore = await dataSource
+        .getRepository(ResourcePrice)
         .createQueryBuilder('price')
         .where('price.resourceId = :resourceId', { resourceId: resource.id })
         .andWhere('price.timestamp < :from', { from: trailingFrom })
@@ -245,31 +256,30 @@ export class CandleResolver {
         },
         order: { timestamp: 'ASC' },
       });
-      const queryEndTime = performance.now();
 
       // Combine the results, putting the last price before first if it exists
       const prices = pricesInRange;
 
-      const lastKnownPrice = lastPriceBefore?.feePaid && lastPriceBefore?.used ?  (BigInt(lastPriceBefore?.feePaid) / BigInt(lastPriceBefore?.used)).toString() : lastPriceBefore?.value;
+      const lastKnownPrice =
+        lastPriceBefore?.feePaid && lastPriceBefore?.used
+          ? (
+              BigInt(lastPriceBefore?.feePaid) / BigInt(lastPriceBefore?.used)
+            ).toString()
+          : lastPriceBefore?.value;
 
-      const processingStartTime = performance.now();
-      const result = getTrailingAveragePricesByInterval(
-        prices.map(p => ({ timestamp: Number(p.timestamp), value: p.value, used: p.used, feePaid: p.feePaid })),
+      return getTrailingAveragePricesByInterval(
+        prices.map((p) => ({
+          timestamp: Number(p.timestamp),
+          value: p.value,
+          used: p.used,
+          feePaid: p.feePaid,
+        })),
         trailingTime,
         interval,
         from,
         to,
         lastKnownPrice
       );
-      const processingEndTime = performance.now();
-
-      console.log(`Resource trailing average candles performance:
-        Queries took: ${(queryEndTime - queryStartTime).toFixed(2)}ms
-        Processing took: ${(processingEndTime - processingStartTime).toFixed(2)}ms
-        Total time: ${(processingEndTime - queryStartTime).toFixed(2)}ms
-        Number of prices processed: ${prices.length}`);
-
-      return result;
     } catch (error) {
       console.error('Error fetching resource candles:', error);
       throw new Error('Failed to fetch resource candles');
