@@ -1,5 +1,6 @@
 'use client';
 
+import Decimal from 'decimal.js';
 import { BookTextIcon, HelpCircle, InfoIcon, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { useTheme } from 'next-themes';
@@ -7,7 +8,6 @@ import { type FC, useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { formatUnits } from 'viem';
 import { useAccount } from 'wagmi';
-import Decimal from 'decimal.js';
 
 import { Button } from '~/components/ui/button';
 import {
@@ -30,8 +30,8 @@ import {
 import { useToast } from '~/hooks/use-toast';
 import { useResources } from '~/lib/hooks/useResources';
 import { useUserVaultData } from '~/lib/hooks/useUserVaultData';
-import { useVaultData } from '~/lib/hooks/useVaultData';
 import { useVaultActions } from '~/lib/hooks/useVaultActions';
+import { useVaultData } from '~/lib/hooks/useVaultData';
 
 import NumberDisplay from './numberDisplay';
 import { Label } from './ui/label';
@@ -204,6 +204,12 @@ const Earn: FC<Props> = ({ slug }) => {
       setTheme('dark');
     }
   }, [selectedVault, theme, setTheme]);
+
+  useEffect(() => {
+    if (resource?.name) {
+      document.title = `${resource.name} Vault | Foil`;
+    }
+  }, [resource?.name]);
 
   const onSubmit = async () => {
     try {
