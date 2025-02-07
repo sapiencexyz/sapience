@@ -10,7 +10,7 @@ import { MarketParams } from '../models/MarketParams';
 import { Event } from '../models/Event';
 import { Market } from '../models/Market';
 import { Transaction } from '../models/Transaction';
-import { Abi, decodeEventLog, Log } from 'viem';
+import { Abi, decodeEventLog, Log, formatUnits } from 'viem';
 import {
   EpochCreatedEventLog,
   EventType,
@@ -41,7 +41,6 @@ import {
 import { Client, TextChannel, EmbedBuilder } from 'discord.js';
 import * as Chains from 'viem/chains';
 import { MARKETS } from '../fixtures';
-import { formatTokenDecimals18 } from '../utils';
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const DISCORD_PRIVATE_CHANNEL_ID = process.env.DISCORD_PRIVATE_CHANNEL_ID;
 const DISCORD_PUBLIC_CHANNEL_ID = process.env.DISCORD_PUBLIC_CHANNEL_ID;
@@ -281,9 +280,15 @@ const alertEvent = async (
             BigInt(String(logData.args.initialPrice))
               ? 'Long'
               : 'Short';
-          const gasAmount = formatTokenDecimals18(
-            String(logData.args.vGasAmount || logData.args.borrowedVGas)
-          );
+          const gasAmount = formatUnits(
+            BigInt(
+              String(
+                logData.args.positionVgasAmount ||
+                  logData.args.positionBorrowedVgas
+              )
+            ),
+            18
+          ); // returns string
           const rawPriceGwei = Number(logData.args.tradeRatio) / 1e18;
           const priceGwei = rawPriceGwei.toLocaleString('en-US', {
             minimumFractionDigits: 0,
@@ -303,13 +308,16 @@ const alertEvent = async (
             logData.eventName === EventType.LiquidityPositionClosed
               ? 'Removed'
               : 'Added';
-          const liquidityGas = formatTokenDecimals18(
-            String(
-              logData.args.addedAmount0 ||
-                logData.args.increasedAmount0 ||
-                logData.args.amount0
-            )
-          );
+          const liquidityGas = formatUnits(
+            BigInt(
+              String(
+                logData.args.addedAmount0 ||
+                  logData.args.increasedAmount0 ||
+                  logData.args.amount0
+              )
+            ),
+            18
+          ); // returns string
           let priceRangeText = '';
           if (
             logData.args.lowerTick !== undefined &&
