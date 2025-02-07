@@ -51,7 +51,7 @@ const EpochsTable = ({ data }: EpochsTableProps) => {
           return (
             <Link
               key={epoch.id}
-              href={`/trade/${epoch.market.chainId}:${epoch.market.address}/periods/${epoch.epochId}`}
+              href={`/markets/${epoch.market.chainId}:${epoch.market.address}/periods/${epoch.epochId}/trade`}
               className="block hover:no-underline border-b border-border"
             >
               <div className="flex items-center justify-between cursor-pointer px-4 py-1.5 hover:bg-secondary">
@@ -173,6 +173,7 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
                 <div className="min-h-[50vh] border border-border flex w-full h-full rounded-sm shadow overflow-hidden pr-2 pb-2 bg-background">
                   <div className="absolute bottom-10 left-14 z-10 flex gap-3">
                     <IntervalSelector
+                      size="sm"
                       selectedInterval={selectedInterval}
                       setSelectedInterval={setSelectedInterval}
                     />

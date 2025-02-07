@@ -180,13 +180,13 @@ const MarketsTable = () => {
                 ))}
                 <TableCell className="text-right">
                   <Link
-                    href={`/trade/${row.original.chainId}:${row.original.marketAddress}/periods/${row.original.epochId}`}
+                    href={`/markets/${row.original.chainId}:${row.original.marketAddress}/periods/${row.original.epochId}/trade`}
                     className="mr-2"
                   >
                     <Button size="sm">Trade</Button>
                   </Link>
                   <Link
-                    href={`/pool/${row.original.chainId}:${row.original.marketAddress}/periods/${row.original.epochId}`}
+                    href={`/markets/${row.original.chainId}:${row.original.marketAddress}/periods/${row.original.epochId}/pool`}
                   >
                     <Button size="sm">Pool</Button>
                   </Link>
