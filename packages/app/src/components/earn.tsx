@@ -155,6 +155,12 @@ const Earn: FC<Props> = ({ slug }) => {
     }
   }, [selectedVault, theme, setTheme]);
 
+  useEffect(() => {
+    if (resource?.name) {
+      document.title = `${resource.name} Vault | Foil`;
+    }
+  }, [resource?.name]);
+
   const onSubmit = async (values: FormValues) => {
     try {
       if (activeTab === 'deposit') {

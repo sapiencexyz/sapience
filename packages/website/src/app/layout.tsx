@@ -9,12 +9,14 @@ import '@/lib/styles/globals.css';
 
 const APP_NAME = 'Foil';
 const APP_DESCRIPTION =
-  'The fully decentralized marketplace for onchain resources';
+  'Foil is a fully decentralized marketplace connecting producers of onchain computing resources with consumers.';
+const DEFAULT_OG_IMAGE = 'https://foil.xyz/assets/og-image.png';
 
 export const metadata: Metadata = {
-  title: APP_NAME,
+  title: { default: APP_NAME, template: '%s | Foil' },
   description: APP_DESCRIPTION,
   applicationName: APP_NAME,
+  metadataBase: new URL('https://foil.xyz'),
   appleWebApp: {
     capable: true,
     title: APP_NAME,
@@ -24,17 +26,32 @@ export const metadata: Metadata = {
     telephone: false,
   },
   openGraph: {
+    type: 'website',
     url: 'https://foil.xyz',
-    title: APP_NAME,
-    description: APP_DESCRIPTION,
-    images: {
-      url: 'https://foil.xyz/assets/og-image.png',
-      alt: 'foil.xyz og-image',
+    title: {
+      default: APP_NAME,
+      template: '%s | Foil'
     },
+    description: APP_DESCRIPTION,
+    siteName: APP_NAME,
+    locale: 'en_US',
+    images: [{
+      url: DEFAULT_OG_IMAGE,
+      width: 1200,
+      height: 630,
+      alt: 'Foil is a fully decentralized marketplace connecting producers of onchain computing resources with consumers.',
+    }],
   },
   twitter: {
     creator: '@foilxyz',
+    site: '@foilxyz',
     card: 'summary_large_image',
+    title: {
+      default: APP_NAME,
+      template: '%s | Foil'
+    },
+    description: APP_DESCRIPTION,
+    images: [DEFAULT_OG_IMAGE],
   },
   icons: {
     icon: '/assets/favicon.svg',
@@ -43,6 +60,17 @@ export const metadata: Metadata = {
     other: {
       rel: 'mask-icon',
       url: '/assets/favicon.svg',
+    },
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
     },
   },
 };
