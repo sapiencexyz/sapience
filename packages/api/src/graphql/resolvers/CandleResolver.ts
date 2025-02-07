@@ -101,32 +101,43 @@ const getTrailingAveragePricesByInterval = (
   // Initialize lastClose with lastKnownPrice if available, otherwise use first price
   let lastClose = lastKnownPrice || prices[0].value;
 
+  const orderedPrices = prices.sort((a, b) => a.timestamp - b.timestamp);
+  let lastStartIdx = 0;
+  let lastEndIdx = 0;
+  let startIdx = 0;
+  let endIdx = 0;
+
+  let totalGasUsed: bigint = 0n;
+  let totalBaseFeesPaid: bigint = 0n;
+
   for (
     let timestamp = normalizedStartTimestamp;
     timestamp <= normalizedEndTimestamp;
     timestamp += intervalSeconds
   ) {
-    const pricesInInterval = prices.filter(
-      (p) =>
-        p.timestamp >= timestamp - trailingIntervalSeconds &&
-        p.timestamp <= timestamp
-    );
+    // get the indexes for the start and end of the interval
+    startIdx = orderedPrices.findIndex(p => p.timestamp >= timestamp - trailingIntervalSeconds);
+    endIdx = orderedPrices.findIndex(p => p.timestamp <= timestamp);
 
-    if (pricesInInterval.length > 0) {
-      // Create candle with actual price data
-      // get the average of the prices in the interval
-      const totalGasUsed: bigint = pricesInInterval.reduce(
-        (total, price) => total + BigInt(price.used),
-        0n
-      );
+    // Remove from the sliding window trailing average the prices that are no longer in the interval
+    if (startIdx != -1) {
+      for (let i = lastStartIdx; i <= startIdx; i++) {
+        totalGasUsed -= BigInt(orderedPrices[i].used);
+        totalBaseFeesPaid -= BigInt(orderedPrices[i].feePaid);
+      }
+    }
 
-      const totalBaseFeesPaid: bigint = pricesInInterval.reduce(
-        (total, price) => total + BigInt(price.feePaid),
-        0n
-      );
+    // Add to the sliding window trailing average the prices that are now in the interval
+    if (endIdx != -1) {
+      for (let i = endIdx; i <= lastEndIdx; i++) {
+        totalGasUsed += BigInt(orderedPrices[i].used);
+        totalBaseFeesPaid += BigInt(orderedPrices[i].feePaid);
+      }
+    }
 
+    // Calculate the average price for the interval
+    if (totalGasUsed > 0n) {
       const averagePrice: bigint = totalBaseFeesPaid / totalGasUsed;
-
       lastClose = averagePrice.toString();
     }
 
