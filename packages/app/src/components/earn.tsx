@@ -7,6 +7,7 @@ import { type FC, useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { formatUnits } from 'viem';
 import { useAccount } from 'wagmi';
+import Decimal from 'decimal.js';
 
 import { Button } from '~/components/ui/button';
 import {
@@ -114,43 +115,39 @@ const Earn: FC<Props> = ({ slug }) => {
   const vaultShares = form.watch('vaultShares');
 
   const collateralAmountDiff = useMemo(() => {
-    const collateralAmountNum = Number(collateralAmount);
+    const collateralAmountNum = new Decimal(collateralAmount);
     if (!pendingRequest?.amount || pendingRequest.transactionType === 2)
       return collateralAmountNum;
 
-    console.log(
-      'collateralAmountNum',
-      collateralAmountNum,
-      Number(formatUnits(pendingRequest?.amount, collateralDecimals)),
-      collateralAmountNum -
-        Number(formatUnits(pendingRequest.amount, collateralDecimals))
-    );
-    return (
-      collateralAmountNum -
-      Number(formatUnits(pendingRequest.amount, collateralDecimals))
+    return collateralAmountNum.minus(
+      new Decimal(formatUnits(pendingRequest.amount, collateralDecimals))
     );
   }, [collateralAmount, pendingRequest, collateralDecimals]);
 
   const vaultSharesDiff = useMemo(() => {
-    const vaultSharesNum = Number(vaultShares);
+    const vaultSharesNum = new Decimal(vaultShares);
     if (!pendingRequest?.amount || pendingRequest.transactionType === 1)
       return vaultSharesNum;
-    return (
-      vaultSharesNum -
-      Number(formatUnits(pendingRequest.amount, collateralDecimals))
+    return vaultSharesNum.minus(
+      new Decimal(formatUnits(pendingRequest.amount, vaultDecimals))
     );
-  }, [vaultShares, pendingRequest, collateralDecimals]);
+  }, [vaultShares, pendingRequest, vaultDecimals]);
 
   const actionAmount = useMemo(() => {
-    console.log(collateralAmountDiff, vaultSharesDiff);
     if (activeTab === 'deposit') {
-      return collateralAmountDiff
-        ? BigInt(Number(collateralAmountDiff) * 10 ** collateralDecimals)
-        : BigInt(0);
+      return collateralAmountDiff.equals(0)
+        ? BigInt(0)
+        : BigInt(
+            collateralAmountDiff
+              .times(new Decimal(10 ** collateralDecimals))
+              .toNumber()
+          );
     }
-    return vaultSharesDiff
-      ? BigInt(Number(vaultSharesDiff) * 10 ** vaultDecimals)
-      : BigInt(0);
+    return vaultSharesDiff.equals(0)
+      ? BigInt(0)
+      : BigInt(
+          vaultSharesDiff.times(new Decimal(10 ** vaultDecimals)).toNumber()
+        );
   }, [
     activeTab,
     collateralAmountDiff,
@@ -185,12 +182,12 @@ const Earn: FC<Props> = ({ slug }) => {
     if (activeTab === 'deposit') {
       return (
         Number(formatUnits(allowance, collateralDecimals)) >=
-        Number(collateralAmountDiff)
+        collateralAmountDiff.toNumber()
       );
     }
     return (
       Number(formatUnits(allowance, collateralDecimals)) >=
-      Number(vaultSharesDiff)
+      vaultSharesDiff.toNumber()
     );
   }, [
     activeTab,
@@ -249,8 +246,6 @@ const Earn: FC<Props> = ({ slug }) => {
   ]);
 
   const warningMessage = useMemo(() => {
-    console.log('pendingRequest', pendingRequest);
-    console.log('epoch', epoch);
     if (!pendingRequest || !epoch) return null;
 
     const isSameEpoch = pendingRequest.requestInitiatedEpoch === epoch.epochId;
@@ -293,7 +288,7 @@ const Earn: FC<Props> = ({ slug }) => {
   const depositButtonText = useMemo(() => {
     if (pendingTxn) return 'Pending';
     if (hasAllowance) {
-      if (Number(collateralAmountDiff) < 0) {
+      if (collateralAmountDiff.lt(0)) {
         return 'Reduce Deposit';
       }
       return 'Deposit';
@@ -303,21 +298,27 @@ const Earn: FC<Props> = ({ slug }) => {
 
   const redeemButtonText = useMemo(() => {
     if (pendingTxn) return 'Pending';
-    if (vaultSharesDiff < 0) {
+    if (vaultSharesDiff.lt(0)) {
       return 'Reduce Redeem';
     }
     return 'Redeem';
   }, [pendingTxn, vaultSharesDiff]);
 
   const depositCollateralDifferenceText = useMemo(() => {
-    if (!pendingRequest?.amount || collateralAmountDiff === 0) return null;
+    if (!pendingRequest?.amount || collateralAmountDiff.equals(0)) return null;
     return (
       <p className="text-sm text-muted-foreground" style={{ marginTop: '0' }}>
         Deposit Amount:{' '}
         <NumberDisplay
           value={formatUnits(pendingRequest.amount, collateralDecimals)}
+          precision={collateralDecimals}
         />{' '}
-        → <NumberDisplay value={collateralAmount} /> {collateralTicker}
+        →{' '}
+        <NumberDisplay
+          value={collateralAmount}
+          precision={collateralDecimals}
+        />{' '}
+        {collateralTicker}
       </p>
     );
   }, [
@@ -329,15 +330,16 @@ const Earn: FC<Props> = ({ slug }) => {
   ]);
 
   const redeemCollateralDifferenceText = useMemo(() => {
-    console.log('vaultSharesDiff', vaultSharesDiff);
-    if (!pendingRequest?.amount || vaultSharesDiff === 0) return null;
+    if (!pendingRequest?.amount || vaultSharesDiff.equals(0)) return null;
     return (
       <p className="text-sm text-muted-foreground" style={{ marginTop: '0' }}>
         Redeem Amount:{' '}
         <NumberDisplay
           value={formatUnits(pendingRequest.amount, vaultDecimals)}
+          precision={vaultDecimals}
         />{' '}
-        → <NumberDisplay value={vaultShares} /> {vaultSharesTicker}
+        → <NumberDisplay value={vaultShares} precision={vaultDecimals} />{' '}
+        {vaultSharesTicker}
       </p>
     );
   }, [
@@ -536,7 +538,7 @@ const Earn: FC<Props> = ({ slug }) => {
                       type="submit"
                       className="w-full mt-4"
                       disabled={
-                        collateralAmountDiff === 0 ||
+                        collateralAmountDiff.equals(0) ||
                         pendingTxn ||
                         warningMessage !== null
                       }
@@ -607,7 +609,7 @@ const Earn: FC<Props> = ({ slug }) => {
                                 {...field}
                               />
                               <div className="inline-flex items-center justify-center rounded-r-md border border-l-0 border-input bg-secondary px-3 text-sm text-secondary-foreground h-10">
-                                {collateralTicker}
+                                {vaultSharesTicker}
                               </div>
                             </div>
                           </FormControl>
@@ -635,7 +637,7 @@ const Earn: FC<Props> = ({ slug }) => {
                       type="submit"
                       className="w-full mt-4"
                       disabled={
-                        vaultSharesDiff === 0 ||
+                        vaultSharesDiff.equals(0) ||
                         pendingTxn ||
                         warningMessage !== null
                       }

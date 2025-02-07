@@ -128,6 +128,8 @@ export const useVaultActions = ({
     if (!address) return;
     setPendingTxn(true);
 
+    console.log('APPROVEAMT', amount);
+
     if (type === 'deposit') {
       approveWrite({
         abi: erc20ABI,
