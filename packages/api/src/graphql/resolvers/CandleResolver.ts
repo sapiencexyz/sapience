@@ -207,7 +207,8 @@ export class CandleResolver {
     @Arg('trailingTime', () => Int) trailingTime: number
   ): Promise<CandleType[]> {
     try {
-      const trailingFrom = from - trailingTime; // i.e. 28 days in seconds before the 'from' timestamp
+      const queryStartTime = performance.now();
+      const trailingFrom = from - trailingTime;
       const resource = await dataSource.getRepository(Resource).findOne({
         where: { slug },
       });
@@ -233,13 +234,15 @@ export class CandleResolver {
         },
         order: { timestamp: 'ASC' },
       });
+      const queryEndTime = performance.now();
 
       // Combine the results, putting the last price before first if it exists
       const prices = pricesInRange;
 
       const lastKnownPrice = lastPriceBefore?.feePaid && lastPriceBefore?.used ?  (BigInt(lastPriceBefore?.feePaid) / BigInt(lastPriceBefore?.used)).toString() : lastPriceBefore?.value;
 
-      return getTrailingAveragePricesByInterval(
+      const processingStartTime = performance.now();
+      const result = getTrailingAveragePricesByInterval(
         prices.map(p => ({ timestamp: Number(p.timestamp), value: p.value, used: p.used, feePaid: p.feePaid })),
         trailingTime,
         interval,
@@ -247,6 +250,15 @@ export class CandleResolver {
         to,
         lastKnownPrice
       );
+      const processingEndTime = performance.now();
+
+      console.log(`Resource trailing average candles performance:
+        Queries took: ${(queryEndTime - queryStartTime).toFixed(2)}ms
+        Processing took: ${(processingEndTime - processingStartTime).toFixed(2)}ms
+        Total time: ${(processingEndTime - queryStartTime).toFixed(2)}ms
+        Number of prices processed: ${prices.length}`);
+
+      return result;
     } catch (error) {
       console.error('Error fetching resource candles:', error);
       throw new Error('Failed to fetch resource candles');
