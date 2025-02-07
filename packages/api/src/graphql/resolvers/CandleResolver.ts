@@ -101,32 +101,55 @@ const getTrailingAveragePricesByInterval = (
   // Initialize lastClose with lastKnownPrice if available, otherwise use first price
   let lastClose = lastKnownPrice || prices[0].value;
 
+  const orderedPrices = prices.sort((a, b) => a.timestamp - b.timestamp);
+  let lastStartIdx = 0;
+  let lastEndIdx = 0;
+  let startIdx = 0;
+  let endIdx = 0;
+
+  let totalGasUsed: bigint = 0n;
+  let totalBaseFeesPaid: bigint = 0n;
+
   for (
     let timestamp = normalizedStartTimestamp;
     timestamp <= normalizedEndTimestamp;
     timestamp += intervalSeconds
   ) {
-    const pricesInInterval = prices.filter(
-      (p) =>
-        p.timestamp >= timestamp - trailingIntervalSeconds &&
-        p.timestamp <= timestamp
+    // get the indexes for the start and end of the interval
+    startIdx = orderedPrices.findIndex(
+      (p) => p.timestamp >= timestamp - trailingIntervalSeconds
     );
+    endIdx = orderedPrices.findIndex((p) => p.timestamp > timestamp); // notice is the next item, we need to correct it later
 
-    if (pricesInInterval.length > 0) {
-      // Create candle with actual price data
-      // get the average of the prices in the interval
-      const totalGasUsed: bigint = pricesInInterval.reduce(
-        (total, price) => total + BigInt(price.used),
-        0n
-      );
+    // Remove from the sliding window trailing average the prices that are no longer in the interval
+    if (startIdx != -1) {
+      for (let i = lastStartIdx; i <= startIdx; i++) {
+        totalGasUsed -= BigInt(orderedPrices[i].used);
+        totalBaseFeesPaid -= BigInt(orderedPrices[i].feePaid);
+      }
+    }
+    lastStartIdx = startIdx;
 
-      const totalBaseFeesPaid: bigint = pricesInInterval.reduce(
-        (total, price) => total + BigInt(price.feePaid),
-        0n
-      );
+    // if found and not previous endIdx, correct the +1 offset of the endIdx (since we found the next item)
+    if (endIdx != -1 && endIdx > lastEndIdx) {
+      endIdx--;
+    }
 
+    // If not found, use the last index of the orderedPrices array
+    if (endIdx == -1) {
+      endIdx = orderedPrices.length - 1;
+    }
+
+    // Add to the sliding window trailing average the prices that are now in the interval
+    for (let i = lastEndIdx; i <= endIdx; i++) {
+      totalGasUsed += BigInt(orderedPrices[i].used);
+      totalBaseFeesPaid += BigInt(orderedPrices[i].feePaid);
+    }
+    lastEndIdx = endIdx;
+
+    // Calculate the average price for the interval
+    if (totalGasUsed > 0n) {
       const averagePrice: bigint = totalBaseFeesPaid / totalGasUsed;
-
       lastClose = averagePrice.toString();
     }
 
@@ -197,7 +220,6 @@ export class CandleResolver {
     }
   }
 
-
   @Query(() => [CandleType])
   async resourceTrailingAverageCandles(
     @Arg('slug', () => String) slug: string,
@@ -217,7 +239,8 @@ export class CandleResolver {
       }
 
       // First get the most recent price before the trailingFrom timestamp
-      const lastPriceBefore = await dataSource.getRepository(ResourcePrice)
+      const lastPriceBefore = await dataSource
+        .getRepository(ResourcePrice)
         .createQueryBuilder('price')
         .where('price.resourceId = :resourceId', { resourceId: resource.id })
         .andWhere('price.timestamp < :from', { from: trailingFrom })
@@ -237,10 +260,20 @@ export class CandleResolver {
       // Combine the results, putting the last price before first if it exists
       const prices = pricesInRange;
 
-      const lastKnownPrice = lastPriceBefore?.feePaid && lastPriceBefore?.used ?  (BigInt(lastPriceBefore?.feePaid) / BigInt(lastPriceBefore?.used)).toString() : lastPriceBefore?.value;
+      const lastKnownPrice =
+        lastPriceBefore?.feePaid && lastPriceBefore?.used
+          ? (
+              BigInt(lastPriceBefore?.feePaid) / BigInt(lastPriceBefore?.used)
+            ).toString()
+          : lastPriceBefore?.value;
 
       return getTrailingAveragePricesByInterval(
-        prices.map(p => ({ timestamp: Number(p.timestamp), value: p.value, used: p.used, feePaid: p.feePaid })),
+        prices.map((p) => ({
+          timestamp: Number(p.timestamp),
+          value: p.value,
+          used: p.used,
+          feePaid: p.feePaid,
+        })),
         trailingTime,
         interval,
         from,
