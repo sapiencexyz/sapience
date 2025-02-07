@@ -72,7 +72,7 @@ export const Features = () => {
             </div>
 
             <Button asChild className="rounded-2xl p-6 font-semibold">
-              <a href="https://app.foil.xyz/trade/8453:0x20ba5e24ad8a5b9502d4882607f0c8526a1f3205/periods/1">
+              <a href="https://app.foil.xyz/markets/8453:0x20ba5e24ad8a5b9502d4882607f0c8526a1f3205/periods/1/trade">
                 Trade
               </a>
             </Button>

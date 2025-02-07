@@ -21,11 +21,13 @@ const intervals = [
 interface IntervalSelectorProps {
   selectedInterval: TimeInterval;
   setSelectedInterval: (interval: TimeInterval) => void;
+  size?: 'default' | 'sm' | 'lg' | 'icon';
 }
 
 const IntervalSelector = ({
   selectedInterval,
   setSelectedInterval,
+  size,
 }: IntervalSelectorProps) => {
   const [open, setOpen] = useState(false);
 
@@ -40,7 +42,7 @@ const IntervalSelector = ({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          size="sm"
+          size={size ?? 'default'}
           className="justify-between"
         >
           {selectedIntervalLabel}

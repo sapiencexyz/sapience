@@ -69,7 +69,7 @@ const PriceToggles = ({
         disabled={seriesDisabled.trailing}
       >
         <Circle className="w-3 h-3" color={BLUE} strokeWidth={3} />
-        Trailing Average Price
+        Trailing Avg. Price
       </ToggleGroupItem>
     </ToggleGroup>
   );
