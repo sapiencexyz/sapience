@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     title: APP_NAME,
     description: APP_DESCRIPTION,
     images: {
-      url: '',
+      url: 'https://foil.xyz/assets/og-image.png',
       alt: 'foil.xyz og-image',
     },
   },
