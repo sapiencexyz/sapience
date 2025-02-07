@@ -45,7 +45,7 @@ router.get(
       return {
         startTimestamp: group.startTimestamp,
         endTimestamp: group.endTimestamp,
-        volume: group.entities.reduce((sum: number, transaction: any) => {
+        volume: group.entities.reduce((sum: number, transaction) => {
           // Convert baseTokenDelta to BigNumber and get its absolute value
           const absBaseTokenDelta = Math.abs(
             parseFloat(

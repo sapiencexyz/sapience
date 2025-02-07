@@ -24,8 +24,7 @@ router.post(
       epochId
     );
 
-    const duration =
-      Number(epoch.endTimestamp) - Number(epoch.startTimestamp);
+    const duration = Number(epoch.endTimestamp) - Number(epoch.startTimestamp);
     const startTime = Math.floor(Date.now() / 1000) - duration;
 
     // Fetch transactions from Etherscan

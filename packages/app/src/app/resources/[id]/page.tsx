@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Toggle } from '@/components/ui/toggle';
 import Chart, { BLUE } from '~/components/Chart';
 import EpochTiming from '~/components/EpochTiming';
+import IntervalSelector from '~/components/IntervalSelector';
 import MarketLayout from '~/components/market/MarketLayout';
 import ResourceNav from '~/components/market/ResourceNav';
 import NumberDisplay from '~/components/numberDisplay';
@@ -20,7 +21,7 @@ import {
 } from '~/components/ui/tooltip';
 import { MARKET_CATEGORIES } from '~/lib/constants/markets';
 import { useLatestResourcePrice, useResources } from '~/lib/hooks/useResources';
-import { TimeWindow } from '~/lib/interfaces/interfaces';
+import { TimeWindow, TimeInterval } from '~/lib/interfaces/interfaces';
 
 interface ResourcePrice {
   timestamp: string;
@@ -50,7 +51,7 @@ const EpochsTable = ({ data }: EpochsTableProps) => {
           return (
             <Link
               key={epoch.id}
-              href={`/trade/${epoch.market.chainId}:${epoch.market.address}/periods/${epoch.epochId}`}
+              href={`/markets/${epoch.market.chainId}:${epoch.market.address}/periods/${epoch.epochId}/trade`}
               className="block hover:no-underline border-b border-border"
             >
               <div className="flex items-center justify-between cursor-pointer px-4 py-1.5 hover:bg-secondary">
@@ -106,7 +107,10 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
   const { data: latestPrice, isLoading: isPriceLoading } =
     useLatestResourcePrice(params.id);
 
-  const DEFAULT_SELECTED_WINDOW = TimeWindow.H;
+  const DEFAULT_SELECTED_WINDOW = TimeWindow.FD;
+  const [selectedInterval, setSelectedInterval] = React.useState(
+    TimeInterval.I30M
+  );
 
   const [seriesVisibility, setSeriesVisibility] = React.useState({
     candles: false,
@@ -164,45 +168,49 @@ const MarketContent = ({ params }: { params: { id: string } }) => {
               </CardContent>
             </Card>
 
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div
-                    className="
-                      bg-background absolute bottom-20 left-2 z-10"
-                    style={{ color: BLUE }}
-                  >
-                    <Toggle
-                      pressed={seriesVisibility.trailing}
-                      onPressedChange={(pressed) =>
-                        setSeriesVisibility((prev) => ({
-                          ...prev,
-                          trailing: pressed,
-                        }))
-                      }
-                      variant="outline"
-                      size="sm"
-                    >
-                      <Circle className="h-3 w-3" strokeWidth={3} />
-                      <span className="sr-only">
-                        Toggle 28 day trailing average
-                      </span>
-                    </Toggle>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  <p>Toggle 28 day trailing average</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
             <div className="flex flex-col flex-1">
               <div className="flex flex-1">
                 <div className="min-h-[50vh] border border-border flex w-full h-full rounded-sm shadow overflow-hidden pr-2 pb-2 bg-background">
+                  <div className="absolute bottom-10 left-14 z-10 flex gap-3">
+                    <IntervalSelector
+                      size="sm"
+                      selectedInterval={selectedInterval}
+                      setSelectedInterval={setSelectedInterval}
+                    />
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div style={{ color: BLUE }}>
+                            <Toggle
+                              pressed={seriesVisibility.trailing}
+                              onPressedChange={(pressed) =>
+                                setSeriesVisibility((prev) => ({
+                                  ...prev,
+                                  trailing: pressed,
+                                }))
+                              }
+                              variant="outline"
+                              className="bg-background"
+                              size="sm"
+                            >
+                              <Circle className="h-3 w-3" strokeWidth={3} />
+                              <span className="sr-only">
+                                Toggle 28 day trailing average
+                              </span>
+                            </Toggle>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          <p>Toggle 28 day trailing average</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                   <Chart
                     resourceSlug={params.id}
                     seriesVisibility={seriesVisibility}
                     selectedWindow={DEFAULT_SELECTED_WINDOW}
+                    selectedInterval={selectedInterval}
                   />
                 </div>
               </div>

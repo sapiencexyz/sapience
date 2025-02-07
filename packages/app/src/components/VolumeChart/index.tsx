@@ -1,6 +1,8 @@
+import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Loader2 } from 'lucide-react';
 import {
   type Dispatch,
   type SetStateAction,
@@ -20,16 +22,19 @@ import {
 } from 'recharts';
 
 import NumberDisplay from '~/components/numberDisplay';
+import { API_BASE_URL } from '~/lib/constants/constants';
 import type { VolumeChartData, TimeWindow } from '~/lib/interfaces/interfaces';
 import { formatXAxisTick, getXTicksToShow } from '~/lib/utils/chartUtil';
 import { getDisplayTextForVolumeWindow } from '~/lib/utils/util';
 
 const barColor = '#58585A';
+const NETWORK_ERROR_STRING = 'Network response was not ok';
 
 dayjs.extend(utc);
 
 export type ChartProps = {
-  data: VolumeChartData[];
+  contractId: string;
+  epochId: string;
   activeWindow: TimeWindow;
   color?: string | undefined;
   height?: number | undefined;
@@ -99,12 +104,42 @@ const CustomTooltip: React.FC<
   );
 };
 
-const VolumeChart = ({ data, color = barColor, activeWindow }: ChartProps) => {
+const VolumeChart = ({
+  contractId,
+  epochId,
+  color = barColor,
+  activeWindow,
+}: ChartProps) => {
+  const {
+    data: volumeData,
+    error: volumeError,
+    isLoading,
+  } = useQuery({
+    queryKey: ['volume', contractId, epochId, activeWindow],
+    queryFn: async () => {
+      const response = await fetch(
+        `${API_BASE_URL}/volume?contractId=${contractId}&epochId=${epochId}&timeWindow=${activeWindow}`
+      );
+      if (!response.ok) {
+        throw new Error(NETWORK_ERROR_STRING);
+      }
+      return response.json();
+    },
+    enabled: !!contractId && !!epochId && !!activeWindow,
+    retry: 3,
+  });
+
+  useEffect(() => {
+    if (volumeError) {
+      console.error('Volume data fetch error:', volumeError);
+    }
+  }, [volumeError]);
+
   const volumeOverTimeframe = useMemo(() => {
-    return data.reduce((sum, item) => {
-      return sum + item.volume;
+    return (volumeData || []).reduce((sum: number, item: VolumeChartData) => {
+      return sum + (item.volume || 0);
     }, 0);
-  }, [data]);
+  }, [volumeData]);
 
   const timePeriodLabel = useMemo(() => {
     return getDisplayTextForVolumeWindow(activeWindow);
@@ -127,7 +162,12 @@ const VolumeChart = ({ data, color = barColor, activeWindow }: ChartProps) => {
   };
 
   return (
-    <div className="flex flex-1 flex-col p-4">
+    <div className="flex flex-1 flex-col p-4 relative">
+      {isLoading && (
+        <div className="absolute top-4 right-16 md:top-8 md:right-24 z-10">
+          <Loader2 className="h-12 w-12 animate-spin text-muted-foreground opacity-30" />
+        </div>
+      )}
       <motion.div
         className="w-fit pl-2 mb-1"
         initial={false}
@@ -157,7 +197,7 @@ const VolumeChart = ({ data, color = barColor, activeWindow }: ChartProps) => {
         <BarChart
           width={500}
           height={300}
-          data={data}
+          data={volumeData || []}
           onMouseLeave={() => {
             setLabel(timePeriodLabel);
             setValue(volumeOverTimeframe);
@@ -179,7 +219,7 @@ const VolumeChart = ({ data, color = barColor, activeWindow }: ChartProps) => {
             tickFormatter={(timestamp) =>
               formatXAxisTick(timestamp, activeWindow)
             }
-            ticks={getXTicksToShow(data, activeWindow)}
+            ticks={getXTicksToShow(volumeData || [], activeWindow)}
             minTickGap={10}
             height={20}
             tick={{ fontSize: 12, fill: '#000000', opacity: 0.5 }}

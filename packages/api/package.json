@@ -6,6 +6,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
+    "compile": "tsc",
     "build": "tsc && npm run sentry:sourcemaps",
     "dev": "concurrently \"pnpm run dev:service\" \"pnpm run dev:worker\"",
     "dev:service": "tsx watch src/server.ts",

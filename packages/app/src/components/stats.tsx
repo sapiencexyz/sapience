@@ -10,6 +10,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '~/components/ui/tooltip';
+import type { Market } from '~/lib/context/FoilProvider';
 import { useFoil } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useLatestIndexPrice } from '~/lib/hooks/useResources';
@@ -33,7 +34,7 @@ const StatBox = ({ title, tooltipContent, value, docsLink }: StatBoxProps) => (
           <TooltipTrigger className="cursor-default">
             <InfoIcon className="md:ml-1 -translate-y-0.5 inline-block h-3 md:h-4 opacity-60 hover:opacity-80" />
           </TooltipTrigger>
-          <TooltipContent className="max-w-[225px] text-center p-3">
+          <TooltipContent className="max-w-[240px] text-center p-3">
             {tooltipContent}
             {docsLink && (
               <a
@@ -98,7 +99,7 @@ const IndexPriceDisplay = ({
 const Stats = () => {
   const { endTime, startTime, pool, liquidity, useMarketUnits, market } =
     useContext(PeriodContext);
-  const { stEthPerToken } = useFoil();
+  const { stEthPerToken, markets } = useFoil();
   const { data: latestIndexPrice, isLoading: isLoadingIndexPrice } =
     useLatestIndexPrice(
       market
@@ -113,6 +114,13 @@ const Stats = () => {
             epochId: 0,
           }
     );
+
+  const resourceName =
+    markets
+      .find(
+        (m: Market) => m.address.toLowerCase() === market?.address.toLowerCase()
+      )
+      ?.resource?.name?.toLowerCase() || 'resource';
 
   const currentTime = Math.floor(Date.now() / 1000);
   const isBeforeStart = startTime > currentTime;
@@ -135,7 +143,7 @@ const Stats = () => {
         <div className="grid w-full grid-cols-2 gap-4 lg:grid-cols-4">
           <StatBox
             title="Index Price"
-            tooltipContent="The estimated settlement price based on the average resource price for this period"
+            tooltipContent={`The estimated settlement price based on the average ${resourceName} price for this period`}
             docsLink
             value={
               <IndexPriceDisplay

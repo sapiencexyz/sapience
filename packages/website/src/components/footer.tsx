@@ -8,7 +8,7 @@ import { BookTextIcon } from 'lucide-react';
 
 export const Footer = () => {
   return (
-    <footer className="relative m-4 mt-12 rounded-4xl bg-primary py-16 text-center md:m-14">
+    <footer className="relative m-4 mt-12 rounded-4xl bg-primary pt-20 pb-16 text-center md:m-14">
       <div className="absolute inset-0 bg-[url('../../../public/assets/dotgrid.svg')] bg-[length:45px_45px] bg-center bg-repeat opacity-[0.33]" />
       <div className="relative flex justify-center gap-8">
         <Button
@@ -71,6 +71,24 @@ export const Footer = () => {
           </a>
         </Button>
       </div>
+        <div className="mt-8 flex justify-center gap-8 text-xs text-white/70 relative">
+          <a
+            href="https://docs.foil.xyz/terms-of-service"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-underline hover:text-white"
+          >
+            Terms of Service
+          </a>
+          <a
+            href="https://docs.foil.xyz/privacy-policy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-underline hover:text-white"
+          >
+            Privacy Policy
+          </a>
+        </div>
     </footer>
   );
 };

@@ -1,30 +1,31 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
 import { CircleHelp, DatabaseIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState, useContext } from 'react';
 
 import Chart from '~/components/Chart';
 import ChartSelector from '~/components/ChartSelector';
+import IntervalSelector from '~/components/IntervalSelector';
 import MarketSidebar from '~/components/marketSidebar';
 import PeriodHeader from '~/components/PeriodHeader';
 import PriceToggles from '~/components/PriceToggles';
 import Stats from '~/components/stats';
 import VolumeChart from '~/components/VolumeChart';
 import WindowSelector from '~/components/WindowButtons';
-import { API_BASE_URL } from '~/lib/constants/constants';
 import { AddEditPositionProvider } from '~/lib/context/AddEditPositionContext';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { TradePoolProvider } from '~/lib/context/TradePoolContext';
 import { useResources } from '~/lib/hooks/useResources';
-import { ChartType, TimeWindow } from '~/lib/interfaces/interfaces';
+import {
+  ChartType,
+  TimeWindow,
+  TimeInterval,
+} from '~/lib/interfaces/interfaces';
 
 import DataDrawer from './DataDrawer';
 import DepthChart from './DepthChart';
 import { Button } from './ui/button';
-
-const NETWORK_ERROR_STRING = 'Network response was not ok';
 
 const AdvancedView = ({
   params,
@@ -34,11 +35,38 @@ const AdvancedView = ({
   isTrade: boolean;
 }) => {
   const [selectedWindow, setSelectedWindow] = useState<TimeWindow | null>(
-    TimeWindow.W
+    TimeWindow.FD
+  );
+  const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
+    TimeInterval.I5M
   );
   const [chartType, setChartType] = useState<ChartType>(
     isTrade ? ChartType.PRICE : ChartType.LIQUIDITY
   );
+
+  useEffect(() => {
+    if (chartType === ChartType.VOLUME) {
+      setSelectedWindow(TimeWindow.FD);
+    }
+  }, [chartType]);
+
+  useEffect(() => {
+    if (!selectedWindow) return;
+
+    switch (selectedWindow) {
+      case TimeWindow.D:
+        setSelectedInterval(TimeInterval.I5M);
+        break;
+      case TimeWindow.FD:
+        setSelectedInterval(TimeInterval.I5M);
+        break;
+      case TimeWindow.M:
+        setSelectedInterval(TimeInterval.I30M);
+        break;
+      default:
+        setSelectedInterval(TimeInterval.I5M);
+    }
+  }, [selectedWindow]);
 
   const { startTime } = useContext(PeriodContext);
   const { data: resources } = useResources();
@@ -68,29 +96,6 @@ const AdvancedView = ({
   const [chainId, marketAddress] = params.id.split('%3A');
   const { epoch } = params;
   const contractId = `${chainId}:${marketAddress}`;
-
-  const useVolume = () => {
-    return useQuery({
-      queryKey: ['volume', contractId, epoch],
-      queryFn: async () => {
-        const response = await fetch(
-          `${API_BASE_URL}/volume?contractId=${contractId}&epochId=${epoch}&timeWindow=${selectedWindow}`
-        );
-        if (!response.ok) {
-          throw new Error(NETWORK_ERROR_STRING);
-        }
-        return response.json();
-      },
-    });
-  };
-
-  const { data: volume, error: useVolumeError } = useVolume();
-
-  useEffect(() => {
-    if (useVolumeError) {
-      console.error('useVolumeError =', useVolumeError);
-    }
-  }, [volume, useVolumeError]);
 
   const toggleSeries = (
     series: 'candles' | 'index' | 'resource' | 'trailing'
@@ -126,7 +131,7 @@ const AdvancedView = ({
             }}
             seriesVisibility={seriesVisibility}
             selectedWindow={selectedWindow}
-            setSelectedWindow={setSelectedWindow}
+            selectedInterval={selectedInterval}
           />
         </div>
       );
@@ -134,8 +139,9 @@ const AdvancedView = ({
     if (chartType === ChartType.VOLUME) {
       return (
         <VolumeChart
-          data={volume || []}
-          activeWindow={selectedWindow ?? TimeWindow.W}
+          contractId={contractId}
+          epochId={epoch}
+          activeWindow={selectedWindow || TimeWindow.FD}
         />
       );
     }
@@ -173,7 +179,13 @@ const AdvancedView = ({
                     {chartType !== ChartType.LIQUIDITY && (
                       <WindowSelector
                         selectedWindow={selectedWindow}
-                        setSelectedWindow={setSelectedWindow ?? TimeWindow.W}
+                        setSelectedWindow={setSelectedWindow}
+                      />
+                    )}
+                    {chartType === ChartType.PRICE && (
+                      <IntervalSelector
+                        selectedInterval={selectedInterval}
+                        setSelectedInterval={setSelectedInterval}
                       />
                     )}
                     <DataDrawer

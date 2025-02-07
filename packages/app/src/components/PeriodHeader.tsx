@@ -150,9 +150,7 @@ const PeriodHeader = () => {
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <Label className="hidden lg:block whitespace-nowrap">
-            Price Units
-          </Label>
+          <Label className="whitespace-nowrap ml-2 lg:ml-0">Price Units</Label>
           <MarketUnitsToggle />
         </div>
       </div>
