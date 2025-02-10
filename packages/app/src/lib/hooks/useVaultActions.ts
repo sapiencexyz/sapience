@@ -17,12 +17,14 @@ type Props = {
     abi: any;
     address: `0x${string}`;
   };
+  type: 'deposit' | 'withdraw';
 };
 
-export const useVaultDeposit = ({
+export const useVaultActions = ({
   amount,
   collateralAsset,
   vaultData,
+  type,
 }: Props) => {
   const { address, chainId } = useAccount();
   const { toast } = useToast();
@@ -31,7 +33,7 @@ export const useVaultDeposit = ({
   // Check allowance
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
     abi: erc20ABI,
-    address: collateralAsset,
+    address: type === 'deposit' ? collateralAsset : vaultData.address,
     functionName: 'allowance',
     args: [address, vaultData.address],
     account: (address || zeroAddress) as `0x${string}`,
@@ -93,37 +95,30 @@ export const useVaultDeposit = ({
     if (isConfirmed) {
       toast({
         title: 'Success',
-        description: 'Your deposit request has been confirmed.',
+        description: 'Your request has been confirmed.',
       });
       setPendingTxn(false);
     }
   }, [isConfirmed, toast, setPendingTxn]);
 
-  useEffect(() => {
-    if (isConfirmed) {
-      toast({
-        title: 'Success',
-        description: 'Your deposit request has been confirmed.',
-      });
-      setPendingTxn(false);
-    }
-  }, [isConfirmed, toast, setPendingTxn]);
-
-  const requestDeposit = async () => {
+  const createRequest = async () => {
     if (!address) return;
     setPendingTxn(true);
     if (amount > 0) {
       depositWrite({
         abi: vaultData.abi,
         address: vaultData.address,
-        functionName: 'requestDeposit',
+        functionName: type === 'deposit' ? 'requestDeposit' : 'requestRedeem',
         args: [amount],
       });
     } else {
       depositWrite({
         abi: vaultData.abi,
         address: vaultData.address,
-        functionName: 'withdrawRequestDeposit',
+        functionName:
+          type === 'deposit'
+            ? 'withdrawRequestDeposit'
+            : 'withdrawRequestRedeem',
         args: [BigInt(Math.abs(Number(amount)))],
       });
     }
@@ -132,12 +127,24 @@ export const useVaultDeposit = ({
   const approve = async () => {
     if (!address) return;
     setPendingTxn(true);
-    approveWrite({
-      abi: erc20ABI,
-      address: collateralAsset,
-      functionName: 'approve',
-      args: [vaultData.address, amount],
-    });
+
+    console.log('APPROVEAMT', amount);
+
+    if (type === 'deposit') {
+      approveWrite({
+        abi: erc20ABI,
+        address: collateralAsset,
+        functionName: 'approve',
+        args: [vaultData.address, amount],
+      });
+    } else {
+      approveWrite({
+        abi: vaultData.abi,
+        address: vaultData.address,
+        functionName: 'approve',
+        args: [vaultData.address, amount],
+      });
+    }
   };
 
   const deposit = async () => {
@@ -151,10 +158,22 @@ export const useVaultDeposit = ({
     });
   };
 
+  const redeem = async () => {
+    if (!address) return;
+    setPendingTxn(true);
+    depositWrite({
+      abi: vaultData.abi,
+      address: vaultData.address,
+      functionName: 'redeem',
+      args: [address],
+    });
+  };
+
   return {
     allowance: (allowance || BigInt(0)) as bigint,
-    requestDeposit,
+    createRequest,
     deposit,
+    redeem,
     approve,
     pendingTxn,
     isDepositConfirmed: isConfirmed,

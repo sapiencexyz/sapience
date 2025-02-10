@@ -70,10 +70,19 @@ export function usePriceRange(
           poolData.ticks.length - 1
         )
       );
-      const tick = poolData.ticks[tickIndex];
 
-      if (tick && (!highPriceX || adjustedX < highPriceX)) {
-        const snappedX = CHART_LEFT_MARGIN + tickIndex * xScale;
+      // Find the high price tick index
+      const highTickIndex = highPriceX
+        ? Math.round((highPriceX - CHART_LEFT_MARGIN) / xScale)
+        : poolData.ticks.length - 1;
+
+      // Ensure we stay at least one tick spacing away from high price
+      const maxAllowedIndex = highTickIndex - 1;
+      const constrainedTickIndex = Math.min(tickIndex, maxAllowedIndex);
+
+      const tick = poolData.ticks[constrainedTickIndex];
+      if (tick) {
+        const snappedX = CHART_LEFT_MARGIN + constrainedTickIndex * xScale;
         setLowPriceX(snappedX);
       }
     },
@@ -103,10 +112,19 @@ export function usePriceRange(
           poolData.ticks.length - 1
         )
       );
-      const tick = poolData.ticks[tickIndex];
 
-      if (tick && (!lowPriceX || adjustedX > lowPriceX)) {
-        const snappedX = CHART_LEFT_MARGIN + tickIndex * xScale;
+      // Find the low price tick index
+      const lowTickIndex = lowPriceX
+        ? Math.round((lowPriceX - CHART_LEFT_MARGIN) / xScale)
+        : 0;
+
+      // Ensure we stay at least one tick spacing away from low price
+      const minAllowedIndex = lowTickIndex + 1;
+      const constrainedTickIndex = Math.max(tickIndex, minAllowedIndex);
+
+      const tick = poolData.ticks[constrainedTickIndex];
+      if (tick) {
+        const snappedX = CHART_LEFT_MARGIN + constrainedTickIndex * xScale;
         setHighPriceX(snappedX);
       }
     },

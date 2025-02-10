@@ -1,7 +1,12 @@
 import { Loader2 } from 'lucide-react';
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
 
 import MarketsTable from '~/components/marketsTable';
+
+export const metadata: Metadata = {
+  title: 'Gas and Blobspace Markets',
+};
 
 const Market = () => {
   return (
