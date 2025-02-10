@@ -425,8 +425,8 @@ const Earn: FC<Props> = ({ slug }) => {
               <TabsContent value="yang">
                 <div className="pt-3">
                   <p className="text-sm text-muted-foreground">
-                    The Yang vault provides liquidity to the one starting in X
-                    days.
+                    The Yang vault provides liquidity to the one starting in{' '}
+                    {nextEpochStartInDays} days.
                   </p>
                 </div>
               </TabsContent>
