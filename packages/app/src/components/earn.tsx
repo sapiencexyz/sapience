@@ -7,7 +7,6 @@ import { useTheme } from 'next-themes';
 import { type FC, useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { formatUnits } from 'viem';
-import { useAccount } from 'wagmi';
 
 import { Button } from '~/components/ui/button';
 import {
