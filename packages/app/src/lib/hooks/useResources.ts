@@ -130,7 +130,7 @@ export const useLatestResourcePrice = (slug: string) => {
         value: latestCandle.close,
       };
     },
-    refetchInterval: 12000, // Refetch every 12 seconds (approx ETH block time)
+    refetchInterval: 6000,
   });
 };
 

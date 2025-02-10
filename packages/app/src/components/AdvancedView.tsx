@@ -14,6 +14,8 @@ import Stats from '~/components/stats';
 import VolumeChart from '~/components/VolumeChart';
 import WindowSelector from '~/components/WindowButtons';
 import { AddEditPositionProvider } from '~/lib/context/AddEditPositionContext';
+import { useFoil } from '~/lib/context/FoilProvider';
+import type { Market } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { TradePoolProvider } from '~/lib/context/TradePoolContext';
 import { useResources } from '~/lib/hooks/useResources';
@@ -70,6 +72,7 @@ const AdvancedView = ({
 
   const { startTime } = useContext(PeriodContext);
   const { data: resources } = useResources();
+  const { markets } = useFoil();
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = now < startTime;
 
@@ -96,6 +99,18 @@ const AdvancedView = ({
   const [chainId, marketAddress] = params.id.split('%3A');
   const { epoch } = params;
   const contractId = `${chainId}:${marketAddress}`;
+
+  const market = markets.find(
+    (m: Market) => m.address.toLowerCase() === marketAddress.toLowerCase()
+  );
+
+  useEffect(() => {
+    if (market?.resource?.name) {
+      document.title = isTrade
+        ? `Trade ${market.resource.name} | Foil`
+        : `Pool Liquidity for ${market.resource.name} | Foil`;
+    }
+  }, [market?.resource?.name, isTrade]);
 
   const toggleSeries = (
     series: 'candles' | 'index' | 'resource' | 'trailing'

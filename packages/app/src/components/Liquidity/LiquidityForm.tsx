@@ -1131,8 +1131,42 @@ const LiquidityForm: React.FC = () => {
     if (!isEdit) {
       const displayPrice = Number(price);
       const marketPrice = convertDisplayToMarketPrice(displayPrice);
+
+      // Get min and max market prices
+      const minMarketPrice = tickToPrice(baseAssetMinPriceTick);
+      const maxMarketPrice = tickToPrice(baseAssetMaxPriceTick);
+
+      // Get current other price value for comparison
+      const otherPriceStr = isLow
+        ? form.getValues('highPrice')
+        : form.getValues('lowPrice');
+      const otherDisplayPrice = Number(otherPriceStr);
+      const otherMarketPrice = convertDisplayToMarketPrice(otherDisplayPrice);
+
+      // Calculate price one tick spacing away from other price
+      const otherTick = priceToTick(otherMarketPrice, tickSpacing);
+      const oneTickAwayPrice = isLow
+        ? tickToPrice(otherTick - tickSpacing) // One tick below high price
+        : tickToPrice(otherTick + tickSpacing); // One tick above low price
+
+      // Enforce min/max constraints in market units
+      let constrainedMarketPrice = marketPrice;
+      if (isLow) {
+        // Low price must be between min price and one tick below high price
+        constrainedMarketPrice = Math.min(
+          Math.max(marketPrice, minMarketPrice),
+          oneTickAwayPrice
+        );
+      } else {
+        // High price must be between one tick above low price and max price
+        constrainedMarketPrice = Math.max(
+          Math.min(marketPrice, maxMarketPrice),
+          oneTickAwayPrice
+        );
+      }
+
       const { tick, price: snappedMarketPrice } = snapPriceToTick(
-        marketPrice,
+        constrainedMarketPrice,
         tickSpacing
       );
       const snappedDisplayPrice =
