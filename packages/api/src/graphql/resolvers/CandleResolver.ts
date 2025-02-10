@@ -101,11 +101,11 @@ const getTrailingAveragePricesByInterval = (
   // Initialize lastClose with lastKnownPrice if available, otherwise use first price
   let lastClose = lastKnownPrice || prices[0].value;
 
+  // Ensure it's ordered (it should come ordered from the query, then the sort is just a sanity check)
   const orderedPrices = prices.sort((a, b) => a.timestamp - b.timestamp);
+  let searchStartIdx = 0; // Add this to track where to start searching from
   let lastStartIdx = 0;
   let lastEndIdx = 0;
-  let startIdx = 0;
-  let endIdx = 0;
 
   let totalGasUsed: bigint = 0n;
   let totalBaseFeesPaid: bigint = 0n;
@@ -115,11 +115,20 @@ const getTrailingAveragePricesByInterval = (
     timestamp <= normalizedEndTimestamp;
     timestamp += intervalSeconds
   ) {
-    // get the indexes for the start and end of the interval
-    startIdx = orderedPrices.findIndex(
-      (p) => p.timestamp >= timestamp - trailingIntervalSeconds
-    );
-    endIdx = orderedPrices.findIndex((p) => p.timestamp > timestamp); // notice is the next item, we need to correct it later
+    // Search for start index from the last known position
+    while (searchStartIdx < orderedPrices.length && 
+           orderedPrices[searchStartIdx].timestamp < timestamp - trailingIntervalSeconds) {
+      searchStartIdx++;
+    }
+    let startIdx = searchStartIdx < orderedPrices.length ? searchStartIdx : -1;
+
+    // Search for end index from the start index
+    let searchEndIdx = Math.max(searchStartIdx, lastEndIdx);
+    while (searchEndIdx < orderedPrices.length && 
+           orderedPrices[searchEndIdx].timestamp <= timestamp) {
+      searchEndIdx++;
+    }
+    let endIdx = searchEndIdx - 1; // No need for correction since we're getting the last valid index directly
 
     // Remove from the sliding window trailing average the prices that are no longer in the interval
     if (startIdx != -1) {
@@ -129,16 +138,6 @@ const getTrailingAveragePricesByInterval = (
       }
     }
     lastStartIdx = startIdx;
-
-    // if found and not previous endIdx, correct the +1 offset of the endIdx (since we found the next item)
-    if (endIdx != -1 && endIdx > lastEndIdx) {
-      endIdx--;
-    }
-
-    // If not found, use the last index of the orderedPrices array
-    if (endIdx == -1) {
-      endIdx = orderedPrices.length - 1;
-    }
 
     // Add to the sliding window trailing average the prices that are now in the interval
     for (let i = lastEndIdx; i <= endIdx; i++) {

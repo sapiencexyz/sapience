@@ -340,7 +340,7 @@ export const useChart = ({
           return [];
         }
         const now = Math.floor(Date.now() / 1000);
-        const from = now - 28 * 24 * 60 * 60; // Two periods ago
+        const from = now - 28 * 24 * 60 * 60 * 2; // Two periods ago
         const interval = getIntervalSeconds(selectedInterval);
 
         // TODO Adjust `interval`, or `from` to limit the amount of data fetched to some reasonable amount (i.e. 2000 candles)
