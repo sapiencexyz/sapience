@@ -120,7 +120,7 @@ const getTrailingAveragePricesByInterval = (
            orderedPrices[searchStartIdx].timestamp < timestamp - trailingIntervalSeconds) {
       searchStartIdx++;
     }
-    let startIdx = searchStartIdx < orderedPrices.length ? searchStartIdx : -1;
+    const startIdx = searchStartIdx < orderedPrices.length ? searchStartIdx : -1;
 
     // Search for end index from the start index
     let searchEndIdx = Math.max(searchStartIdx, lastEndIdx);
@@ -128,7 +128,7 @@ const getTrailingAveragePricesByInterval = (
            orderedPrices[searchEndIdx].timestamp <= timestamp) {
       searchEndIdx++;
     }
-    let endIdx = searchEndIdx - 1; // No need for correction since we're getting the last valid index directly
+    const endIdx = searchEndIdx - 1; // No need for correction since we're getting the last valid index directly
 
     // Remove from the sliding window trailing average the prices that are no longer in the interval
     if (startIdx != -1) {
