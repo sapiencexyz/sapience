@@ -54,8 +54,8 @@ const Earn: FC<Props> = ({ slug }) => {
   const { data: resources } = useResources();
   const resource = resources?.find((r) => r.slug === slug);
 
-  const { chainId } = useAccount();
-  const { foilVaultData } = useFoilDeployment(chainId);
+  // hardcode to base mainnet for now...
+  const { foilVaultData } = useFoilDeployment(8453);
 
   const vaultData = useMemo(() => {
     return foilVaultData[selectedVault];
@@ -252,7 +252,7 @@ const Earn: FC<Props> = ({ slug }) => {
   ]);
 
   const warningMessage = useMemo(() => {
-    if (!pendingRequest || !epoch) return null;
+    if (!pendingRequest?.amount || !epoch) return null;
 
     const isSameEpoch = pendingRequest.requestInitiatedEpoch === epoch.epochId;
     if (activeTab === 'deposit') {
