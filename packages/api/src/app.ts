@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request } from 'express';
 import cors from 'cors';
 import { router } from './routes';
 
@@ -6,10 +6,13 @@ const corsOptions: cors.CorsOptions = {
   origin: (
     origin: string | undefined,
     callback: (error: Error | null, allow?: boolean) => void,
-    request?: any
+    request?: Request
   ) => {
     // Allow all requests unless in production or staging
-    if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'staging') {
+    if (
+      process.env.NODE_ENV !== 'production' &&
+      process.env.NODE_ENV !== 'staging'
+    ) {
       callback(null, true);
       return;
     }
@@ -19,7 +22,11 @@ const corsOptions: cors.CorsOptions = {
     const apiToken = process.env.API_ACCESS_TOKEN;
 
     // If API token is provided and matches, allow the request regardless of origin
-    if (apiToken && authHeader?.startsWith('Bearer ') && authHeader.slice(7) === apiToken) {
+    if (
+      apiToken &&
+      authHeader?.startsWith('Bearer ') &&
+      authHeader.slice(7) === apiToken
+    ) {
       callback(null, true);
       return;
     }
