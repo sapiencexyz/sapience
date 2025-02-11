@@ -714,7 +714,6 @@ const LiquidityForm: React.FC = () => {
 
   useEffect(() => {
     // trader position so switch to trader tab
-    console.log('positionData', positionData);
     if (positionData && positionData.kind === 2) {
       toast({
         title:
@@ -763,6 +762,7 @@ const LiquidityForm: React.FC = () => {
     const lowerTick = uniswapData[5];
     const upperTick = uniswapData[6];
     if (lowerTick) {
+      setLowPriceTick(lowerTick);
       setValue('lowPrice', tickToPrice(lowerTick).toString(), {
         shouldValidate: false,
         shouldDirty: false,
@@ -770,13 +770,14 @@ const LiquidityForm: React.FC = () => {
       });
     }
     if (upperTick) {
+      setHighPriceTick(upperTick);
       setValue('highPrice', tickToPrice(upperTick).toString(), {
         shouldValidate: false,
         shouldDirty: false,
         shouldTouch: false,
       });
     }
-  }, [uniswapPosition, setValue]);
+  }, [uniswapPosition, setValue, setLowPriceTick, setHighPriceTick]);
 
   useEffect(() => {
     if (
@@ -1107,6 +1108,7 @@ const LiquidityForm: React.FC = () => {
       stEthPerToken,
     });
 
+    console.log('SETTING LOW PRICE2', lowDisplayPrice.toString(), lowTick);
     setValue('lowPrice', lowDisplayPrice.toString(), {
       shouldValidate: false,
       shouldDirty: false,
@@ -1173,6 +1175,7 @@ const LiquidityForm: React.FC = () => {
         convertMarketToDisplayPrice(snappedMarketPrice);
 
       if (isLow) {
+        console.log('PRICEBLUR');
         setLowPriceTick(tick);
         setValue('lowPrice', snappedDisplayPrice.toString(), {
           shouldValidate: true,
