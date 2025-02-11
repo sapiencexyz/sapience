@@ -11,6 +11,8 @@
     "dev:docs": "pnpm --filter docs run dev",
     "dev:website": "pnpm --filter website run dev",
     "dev:api": "concurrently \"NODE_ENV=development pnpm --filter api run dev:service\" \"NODE_ENV=development pnpm --filter api run dev:worker\"",
+    "dev:api:service": "NODE_ENV=development pnpm --filter api run dev:service",
+    "dev:api:worker": "NODE_ENV=development pnpm --filter api run dev:worker",
     "start:reindex-market": "pnpm --filter api run start:reindex-market",
     "start:reindex-missing": "pnpm --filter api run start:reindex-missing"
   },
