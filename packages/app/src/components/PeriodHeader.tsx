@@ -5,7 +5,6 @@ import { useContext } from 'react';
 import { FaRegChartBar, FaCubes, FaRegCalendar } from 'react-icons/fa';
 import { IoDocumentTextOutline } from 'react-icons/io5';
 
-import MarketUnitsToggle from '~/components/marketUnitsToggle';
 import {
   Tooltip,
   TooltipContent,
@@ -19,7 +18,6 @@ import { useResources } from '~/lib/hooks/useResources';
 import { tickToPrice, convertWstEthToGwei } from '~/lib/utils/util';
 
 import NumberDisplay from './numberDisplay';
-import { Label } from './ui/label';
 
 const PeriodHeader = () => {
   const { stEthPerToken, markets } = useFoil();
@@ -148,10 +146,6 @@ const PeriodHeader = () => {
           <div className="flex flex-wrap gap-y-2 gap-x-4 lg:gap-x-6 text-sm ml-2">
             {links}
           </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <Label className="whitespace-nowrap ml-2 lg:ml-0">Price Units</Label>
-          <MarketUnitsToggle />
         </div>
       </div>
     </div>

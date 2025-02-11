@@ -7,7 +7,7 @@ import { formatUnits } from 'viem';
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Toggle } from '@/components/ui/toggle';
-import Chart, { BLUE } from '~/components/Chart';
+import Chart from '~/components/Chart';
 import EpochTiming from '~/components/EpochTiming';
 import IntervalSelector from '~/components/IntervalSelector';
 import NumberDisplay from '~/components/numberDisplay';
@@ -18,6 +18,7 @@ import {
   TooltipTrigger,
 } from '~/components/ui/tooltip';
 import { MARKET_CATEGORIES } from '~/lib/constants/markets';
+import { BLUE } from '~/lib/hooks/useChart';
 import { useLatestResourcePrice, useResources } from '~/lib/hooks/useResources';
 import { TimeWindow, TimeInterval } from '~/lib/interfaces/interfaces';
 

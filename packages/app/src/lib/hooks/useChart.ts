@@ -14,10 +14,10 @@ import type { PriceChartData } from '~/lib/interfaces/interfaces';
 import { TimeWindow, TimeInterval } from '~/lib/interfaces/interfaces';
 import { timeToLocal } from '~/lib/utils';
 
-export const GREEN_PRIMARY = '#22C55E';
-export const RED = '#D85B4E';
-export const GREEN = '#38A667';
-export const BLUE = '#2E6FA8';
+export const GREEN_PRIMARY = '#41A53E';
+export const RED = '#C44444';
+export const GREEN = '#41A53E';
+export const BLUE = '#3F59DA';
 export const NEUTRAL = '#58585A';
 
 interface IndexPrice {
