@@ -6,11 +6,8 @@ import {
   CreateDateColumn,
   Unique,
   ManyToOne,
-  AfterInsert,
-  AfterUpdate,
 } from 'typeorm';
 import { Resource } from './Resource';
-import { upsertIndexPriceFromResourcePrice } from 'src/controllers/price';
 
 @Entity()
 @Unique(['resource', 'timestamp'])
@@ -38,18 +35,4 @@ export class ResourcePrice {
 
   @Column({ type: 'numeric', precision: NUMERIC_PRECISION, scale: 0 })
   feePaid: string;
-
-  @AfterInsert()
-  async afterInsert() {
-    console.log(
-      `Resource price inserted for block: ${this.blockNumber} @ ${this.resource.name}`
-    );
-    await upsertIndexPriceFromResourcePrice(this);
-  }
-
-  @AfterUpdate()
-  async afterUpdate() {
-    console.log(`Resource price updated: ${this.id} @ ${this.resource.name}`);
-    await upsertIndexPriceFromResourcePrice(this);
-  }
 }

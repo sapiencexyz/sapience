@@ -9,7 +9,6 @@ import dataSource from './db';
 import { Transaction } from './models/Transaction';
 import { TimeWindow } from './interfaces';
 import { formatUnits } from 'viem';
-import { IndexPrice } from './models/IndexPrice';
 import { ResourcePrice } from './models/ResourcePrice';
 
 class EntityGroup<T> {
@@ -72,31 +71,6 @@ export async function getMarketPricesInTimeRange(
       endTimestamp,
     })
     .orderBy('marketPrice.timestamp', 'ASC')
-    .getMany();
-}
-
-export async function getIndexPricesInTimeRange(
-  startTimestamp: number,
-  endTimestamp: number,
-  chainId: string,
-  address: string,
-  epochId: string
-) {
-  const indexPriceRepository = dataSource.getRepository(IndexPrice);
-  return await indexPriceRepository
-    .createQueryBuilder('indexPrice')
-    .innerJoinAndSelect('indexPrice.epoch', 'epoch')
-    .innerJoinAndSelect('epoch.market', 'market')
-    .where('market.chainId = :chainId', { chainId })
-    .andWhere('market.address = :address', { address })
-    .andWhere('epoch.epochId = :epochId', { epochId })
-    .andWhere('CAST(indexPrice.timestamp AS bigint) >= :startTimestamp', {
-      startTimestamp,
-    })
-    .andWhere('CAST(indexPrice.timestamp AS bigint) <= :endTimestamp', {
-      endTimestamp,
-    })
-    .orderBy('indexPrice.timestamp', 'ASC')
     .getMany();
 }
 
@@ -220,43 +194,6 @@ function groupEntitiesByTimeWindow<T>(
       result[intervalIndex].entities.push(entity);
     }
   });
-  return result;
-}
-
-export function groupIndexPricesByTimeWindow(
-  indexPrices: IndexPrice[],
-  window: TimeWindow
-): EntityGroup<IndexPrice>[] {
-  // For index prices, we want to use the first timestamp in the data as our start time
-  const firstTimestamp = Math.min(
-    ...indexPrices.map((price) => Number(price.timestamp) * 1000)
-  );
-  const now = Date.now();
-  const { intervalMs } = getTimeParamsFromWindow(window);
-
-  // Calculate total intervals based on the entire time range from first timestamp
-  const totalIntervals = Math.ceil((now - firstTimestamp) / intervalMs);
-
-  // Initialize result array using the actual start time from the data
-  const result: EntityGroup<IndexPrice>[] = Array(totalIntervals)
-    .fill(null)
-    .map((_, index) => ({
-      startTimestamp: firstTimestamp + index * intervalMs,
-      endTimestamp: firstTimestamp + (index + 1) * intervalMs,
-      entities: [],
-    }));
-
-  indexPrices.forEach((price) => {
-    const timestamp = Number(price.timestamp) * 1000;
-    if (timestamp <= now) {
-      const intervalIndex = Math.min(
-        Math.floor((timestamp - firstTimestamp) / intervalMs),
-        totalIntervals - 1
-      );
-      result[intervalIndex].entities.push(price);
-    }
-  });
-
   return result;
 }
 

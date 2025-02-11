@@ -8,7 +8,6 @@ import {
   Unique,
 } from 'typeorm';
 import { Market } from './Market';
-import { IndexPrice } from './IndexPrice';
 import { Position } from './Position';
 import { NUMERIC_PRECISION } from '../constants';
 import { MarketParams } from './MarketParams';
@@ -21,9 +20,6 @@ export class Epoch {
 
   @OneToMany(() => Position, (position) => position.epoch)
   positions: Position[];
-
-  @OneToMany(() => IndexPrice, (price) => price.epoch)
-  indexPrices: IndexPrice[];
 
   @PrimaryGeneratedColumn()
   id: number;
