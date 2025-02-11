@@ -453,7 +453,7 @@ const Header = () => {
           </div>
         </div>
       </header>
-      <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-md border-t border-border py-3 text-center z-[3] lg:hidden">
+      <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-md border-t border-border py-3 px-3 text-center z-[3] lg:hidden">
         <div className="flex justify-between items-center max-w-[400px] mx-auto">
           <Link href="/" className="hover:no-underline">
             <Button

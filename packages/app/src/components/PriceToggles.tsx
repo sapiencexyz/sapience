@@ -1,8 +1,7 @@
 import { CandlestickChart, Circle, CircleDashed } from 'lucide-react';
 
 import { ToggleGroup, ToggleGroupItem } from '~/components/ui/toggle-group';
-
-import { GREEN_PRIMARY, BLUE, NEUTRAL } from './Chart';
+import { GREEN_PRIMARY, BLUE, NEUTRAL } from '~/lib/hooks/useChart';
 
 interface PriceTogglesProps {
   seriesVisibility: {

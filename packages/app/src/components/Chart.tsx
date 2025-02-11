@@ -30,12 +30,6 @@ interface Props {
   selectedInterval: TimeInterval;
 }
 
-export const GREEN_PRIMARY = '#22C55E';
-export const RED = '#D85B4E';
-export const GREEN = '#38A667';
-export const BLUE = '#2E6FA8';
-export const NEUTRAL = '#58585A';
-
 const Chart: React.FC<Props> = ({
   resourceSlug,
   market,

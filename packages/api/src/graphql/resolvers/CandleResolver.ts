@@ -14,6 +14,13 @@ interface PricePoint {
   value: string;
 }
 
+interface ResourcePricePoint {
+  timestamp: number;
+  value: string;
+  used: string;
+  feePaid: string;
+}
+
 const groupPricesByInterval = (
   prices: PricePoint[],
   intervalSeconds: number,
@@ -72,6 +79,92 @@ const groupPricesByInterval = (
   return candles;
 };
 
+const getTrailingAveragePricesByInterval = (
+  prices: ResourcePricePoint[],
+  trailingIntervalSeconds: number,
+  intervalSeconds: number,
+  startTimestamp: number,
+  endTimestamp: number,
+  lastKnownPrice?: string
+): CandleType[] => {
+  const candles: CandleType[] = [];
+
+  // If we have no prices and no reference price, return empty array
+  if (prices.length === 0 && !lastKnownPrice) return [];
+
+  // Normalize timestamps to interval boundaries
+  const normalizedStartTimestamp =
+    Math.floor(startTimestamp / intervalSeconds) * intervalSeconds;
+  const normalizedEndTimestamp =
+    Math.floor(endTimestamp / intervalSeconds) * intervalSeconds;
+
+  // Initialize lastClose with lastKnownPrice if available, otherwise use first price
+  let lastClose = lastKnownPrice || prices[0].value;
+
+  // Ensure it's ordered (it should come ordered from the query, then the sort is just a sanity check)
+  const orderedPrices = prices.sort((a, b) => a.timestamp - b.timestamp);
+  let lastStartIdx = 0;
+  let lastEndIdx = 0;
+  let startIdx = 0;
+  let endIdx = 0;
+
+  let totalGasUsed: bigint = 0n;
+  let totalBaseFeesPaid: bigint = 0n;
+
+  for (
+    let timestamp = normalizedStartTimestamp;
+    timestamp <= normalizedEndTimestamp;
+    timestamp += intervalSeconds
+  ) {
+    // get the indexes for the start and end of the interval
+    startIdx = orderedPrices.findIndex(
+      (p) => p.timestamp >= timestamp - trailingIntervalSeconds
+    );
+    endIdx = orderedPrices.findIndex((p) => p.timestamp > timestamp); // notice is the next item, we need to correct it later
+
+    // Remove from the sliding window trailing average the prices that are no longer in the interval
+    if (startIdx != -1) {
+      for (let i = lastStartIdx; i <= startIdx; i++) {
+        totalGasUsed -= BigInt(orderedPrices[i].used);
+        totalBaseFeesPaid -= BigInt(orderedPrices[i].feePaid);
+      }
+    }
+    lastStartIdx = startIdx;
+    // if found and not previous endIdx, correct the +1 offset of the endIdx (since we found the next item)
+    if (endIdx != -1 && endIdx > lastEndIdx) {
+      endIdx--;
+    }
+
+    // If not found, use the last index of the orderedPrices array
+    if (endIdx == -1) {
+      endIdx = orderedPrices.length - 1;
+    }
+    // Add to the sliding window trailing average the prices that are now in the interval
+    for (let i = lastEndIdx; i <= endIdx; i++) {
+      totalGasUsed += BigInt(orderedPrices[i].used);
+      totalBaseFeesPaid += BigInt(orderedPrices[i].feePaid);
+    }
+    lastEndIdx = endIdx;
+
+    // Calculate the average price for the interval
+    if (totalGasUsed > 0n) {
+      const averagePrice: bigint = totalBaseFeesPaid / totalGasUsed;
+      lastClose = averagePrice.toString();
+    }
+
+    // Create candle with last known closing price (calculated in the loop or previous candle)
+    candles.push({
+      timestamp,
+      open: lastClose,
+      high: lastClose,
+      low: lastClose,
+      close: lastClose,
+    });
+  }
+
+  return candles;
+};
+
 @Resolver()
 export class CandleResolver {
   @Query(() => [CandleType])
@@ -115,6 +208,72 @@ export class CandleResolver {
 
       return groupPricesByInterval(
         prices.map((p) => ({ timestamp: Number(p.timestamp), value: p.value })),
+        interval,
+        from,
+        to,
+        lastKnownPrice
+      );
+    } catch (error) {
+      console.error('Error fetching resource candles:', error);
+      throw new Error('Failed to fetch resource candles');
+    }
+  }
+
+  @Query(() => [CandleType])
+  async resourceTrailingAverageCandles(
+    @Arg('slug', () => String) slug: string,
+    @Arg('from', () => Int) from: number,
+    @Arg('to', () => Int) to: number,
+    @Arg('interval', () => Int) interval: number,
+    @Arg('trailingTime', () => Int) trailingTime: number
+  ): Promise<CandleType[]> {
+    try {
+      const trailingFrom = from - trailingTime;
+      const resource = await dataSource.getRepository(Resource).findOne({
+        where: { slug },
+      });
+
+      if (!resource) {
+        throw new Error(`Resource not found with slug: ${slug}`);
+      }
+
+      // First get the most recent price before the trailingFrom timestamp
+      const lastPriceBefore = await dataSource
+        .getRepository(ResourcePrice)
+        .createQueryBuilder('price')
+        .where('price.resourceId = :resourceId', { resourceId: resource.id })
+        .andWhere('price.timestamp < :from', { from: trailingFrom })
+        .orderBy('price.timestamp', 'DESC')
+        .take(1)
+        .getOne();
+
+      // Then get all prices within the range
+      const pricesInRange = await dataSource.getRepository(ResourcePrice).find({
+        where: {
+          resource: { id: resource.id },
+          timestamp: Between(trailingFrom, to),
+        },
+        order: { timestamp: 'ASC' },
+      });
+
+      // Combine the results, putting the last price before first if it exists
+      const prices = pricesInRange;
+
+      const lastKnownPrice =
+        lastPriceBefore?.feePaid && lastPriceBefore?.used
+          ? (
+              BigInt(lastPriceBefore?.feePaid) / BigInt(lastPriceBefore?.used)
+            ).toString()
+          : lastPriceBefore?.value;
+
+      return getTrailingAveragePricesByInterval(
+        prices.map((p) => ({
+          timestamp: Number(p.timestamp),
+          value: p.value,
+          used: p.used,
+          feePaid: p.feePaid,
+        })),
+        trailingTime,
         interval,
         from,
         to,

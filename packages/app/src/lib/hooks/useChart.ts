@@ -14,10 +14,10 @@ import type { PriceChartData } from '~/lib/interfaces/interfaces';
 import { TimeWindow, TimeInterval } from '~/lib/interfaces/interfaces';
 import { timeToLocal } from '~/lib/utils';
 
-export const GREEN_PRIMARY = '#22C55E';
-export const RED = '#D85B4E';
-export const GREEN = '#38A667';
-export const BLUE = '#2E6FA8';
+export const GREEN_PRIMARY = '#41A53E';
+export const RED = '#C44444';
+export const GREEN = '#41A53E';
+export const BLUE = '#3F59DA';
 export const NEUTRAL = '#58585A';
 
 interface IndexPrice {
@@ -126,6 +126,27 @@ const RESOURCE_CANDLES_QUERY = gql`
     $interval: Int!
   ) {
     resourceCandles(slug: $slug, from: $from, to: $to, interval: $interval) {
+      timestamp
+      close
+    }
+  }
+`;
+
+const TRAILING_RESOURCE_CANDLES_QUERY = gql`
+  query TrailingResourceCandles(
+    $slug: String!
+    $from: Int!
+    $to: Int!
+    $interval: Int!
+    $trailingTime: Int!
+  ) {
+    resourceTrailingAverageCandles(
+      slug: $slug
+      from: $from
+      to: $to
+      interval: $interval
+      trailingTime: $trailingTime
+    ) {
       timestamp
       close
     }
@@ -306,6 +327,53 @@ export const useChart = ({
         (seriesVisibility?.trailing ?? true)),
   });
 
+  const { data: trailingResourcePrices, isLoading: isTrailingResourceLoading } =
+    useQuery<ResourcePricePoint[]>({
+      queryKey: [
+        'trailingResourcePrices',
+        resourceSlug,
+        market?.epochId,
+        selectedInterval,
+      ],
+      queryFn: async () => {
+        if (!resourceSlug) {
+          return [];
+        }
+        const now = Math.floor(Date.now() / 1000);
+        const from = now - 28 * 24 * 60 * 60 * 2; // Two periods ago
+        const interval = getIntervalSeconds(selectedInterval);
+
+        // TODO Adjust `interval`, or `from` to limit the amount of data fetched to some reasonable amount (i.e. 2000 candles)
+
+        const response = await fetch(`${API_BASE_URL}/graphql`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: print(TRAILING_RESOURCE_CANDLES_QUERY),
+            variables: {
+              slug: resourceSlug,
+              from,
+              to: now,
+              interval,
+              trailingTime: 28 * 24 * 60 * 60, // 28 days in seconds
+            },
+          }),
+        });
+
+        const { data } = await response.json();
+        return data.resourceTrailingAverageCandles.map((candle: any) => ({
+          timestamp: timeToLocal(candle.timestamp * 1000),
+          price: Number(formatUnits(BigInt(candle.close), 9)),
+        }));
+      },
+      enabled:
+        !!resourceSlug &&
+        ((seriesVisibility?.resource ?? true) ||
+          (seriesVisibility?.trailing ?? true)),
+    });
+
   // Effect for chart creation/cleanup
   useEffect(() => {
     if (!containerRef.current) return;
@@ -470,51 +538,14 @@ export const useChart = ({
   };
 
   const updateTrailingAverageData = () => {
-    if (resourcePrices?.length && trailingPriceSeriesRef.current) {
-      const windowSize = 28 * 24 * 60 * 60 * 1000; // 28 days in milliseconds
-      const sortedPrices = [...resourcePrices].sort(
-        (a, b) => a.timestamp - b.timestamp
-      );
-
-      // Initialize sliding window sums
-      let windowSum = 0;
-      let windowCount = 0;
-      let startIdx = 0;
-
-      const trailingData = sortedPrices
-        .map((current, i) => {
-          const currentTime = current.timestamp;
-          const windowStart = currentTime - windowSize;
-
-          // Remove points that are now outside the window
-          while (
-            startIdx < i &&
-            sortedPrices[startIdx].timestamp <= windowStart
-          ) {
-            windowSum -= sortedPrices[startIdx].price;
-            windowCount--;
-            startIdx++;
-          }
-
-          // Add current point to the window
-          windowSum += current.price;
-          windowCount++;
-
-          // Only return a point if we have enough data
-          if (windowCount > 0) {
-            const avgPrice = windowSum / windowCount;
-            return {
-              time: (currentTime / 1000) as UTCTimestamp,
-              value: useMarketUnits
-                ? Number((stEthPerToken || 1) * (avgPrice / 1e9))
-                : avgPrice,
-            };
-          }
-          return null;
-        })
-        .filter((point): point is NonNullable<typeof point> => point !== null);
-
-      trailingPriceSeriesRef.current.setData(trailingData);
+    if (trailingResourcePrices?.length && trailingPriceSeriesRef.current) {
+      const trailingLineData = trailingResourcePrices.map((trp) => ({
+        time: (trp.timestamp / 1000) as UTCTimestamp,
+        value: useMarketUnits
+          ? Number((stEthPerToken || 1) * (trp.price / 1e9))
+          : trp.price,
+      }));
+      trailingPriceSeriesRef.current.setData(trailingLineData);
     }
   };
 
@@ -573,6 +604,7 @@ export const useChart = ({
     resourcePrices,
     indexPrices,
     marketPrices,
+    trailingResourcePrices,
     isBeforeStart,
     selectedWindow,
   ]);
@@ -609,7 +641,7 @@ export const useChart = ({
       candles: !marketPrices && !!market,
       index: isIndexLoading && !!market,
       resource: isResourceLoading && !!resourceSlug,
-      trailing: isResourceLoading && !!resourceSlug,
+      trailing: isTrailingResourceLoading && !!resourceSlug,
     }),
     [isIndexLoading, isResourceLoading, market, resourceSlug]
   );
