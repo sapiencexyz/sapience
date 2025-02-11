@@ -1,5 +1,5 @@
 {
-  "address": "0xac74DFb79Bd1e09F71524D3BdBE2B26f334e4d01",
+  "address": "0xCf17b4834223D7e54B92f8e43229C1E82faF7226",
   "abi": [
     {
       "type": "constructor",
@@ -48,6 +48,11 @@
           "name": "_totalVaults",
           "type": "uint256",
           "internalType": "uint256"
+        },
+        {
+          "name": "_settlementPriceSubmitter",
+          "type": "address",
+          "internalType": "address"
         }
       ],
       "stateMutability": "nonpayable"
@@ -445,6 +450,11 @@
           "name": "initialSqrtPriceX96",
           "type": "uint160",
           "internalType": "uint160"
+        },
+        {
+          "name": "initialStartTime",
+          "type": "uint256",
+          "internalType": "uint256"
         }
       ],
       "outputs": [],
@@ -916,6 +926,19 @@
       ],
       "outputs": [],
       "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "settlementPriceSubmitter",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
     },
     {
       "type": "function",
@@ -1669,22 +1692,23 @@
   "constructorArgs": [
     "Foil Vault Yang",
     "fYANG",
-    "0x58e6ec81a7815b7aeb648b616e882a4ab66d2700",
+    "0x746057af2d51cb0535874d5ec1758524ca812718",
     "0xb82381a3fbd3fafa77b3a7be693342618240067b",
     "577350269189625700",
     "1732050807568877200",
-    "3600",
+    "31536000",
     "1",
-    "2"
+    "2",
+    "0xdb5Af497A73620d881561eDb508012A5f84e9BA2"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x27862348cda7945c104784fdc48857e71c6c91f8ca186a9045773fcfc63dd61d",
-  "deployTxnBlockNumber": "7447740",
-  "deployTimestamp": "1736353164",
+  "deployTxnHash": "0x6a506c60e59bf0267e862d79da0d366bcfe7ab47009a9114336a2c533e999cad",
+  "deployTxnBlockNumber": "7687056",
+  "deployTimestamp": "1739291448",
   "sourceName": "src/vault/Vault.sol",
   "contractName": "Vault",
   "deployedOn": "deploy.VaultYang",
   "highlight": true,
-  "gasUsed": 4102255,
-  "gasCost": "18065498618"
+  "gasUsed": 4160719,
+  "gasCost": "22426496272"
 }

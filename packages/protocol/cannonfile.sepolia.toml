@@ -2,7 +2,7 @@ name="foil"
 version="<%= package.version %>"
 
 [var.settings]
-owner="0xE006B58cA5aB7ba53863012dc3067A14b965C1da"
+owner="0xdb5Af497A73620d881561eDb508012A5f84e9BA2"
 baseAssetMinPriceTick = "16000" # 5
 baseAssetMaxPriceTick = "39000" # 50
 feeRate = "10000" # 1%
@@ -19,7 +19,7 @@ vault2Name="Foil Vault Yang"
 vault2Symbol = "fYANG"
 lowerBoundMultiplier = "0.5773502691896257" # sqrt(1/3) 
 upperBoundMultiplier = "1.7320508075688772" # sqrt(3)
-duration = "2419200" # 28 day in seconds
+duration = "31536000" # 1 year in seconds
 totalVaults = "2"
 depends = []
 
