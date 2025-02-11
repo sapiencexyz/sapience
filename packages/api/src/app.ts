@@ -8,13 +8,13 @@ const corsOptions: cors.CorsOptions = {
     callback: (error: Error | null, allow?: boolean) => void,
     request?: any
   ) => {
-    // Always allow requests in development
-    if (process.env.NODE_ENV !== 'production') {
+    // Allow all requests unless in production or staging
+    if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'staging') {
       callback(null, true);
       return;
     }
 
-    // Check for API token in production
+    // Check for API token in production/staging
     const authHeader = request?.headers?.authorization;
     const apiToken = process.env.API_ACCESS_TOKEN;
 

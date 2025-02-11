@@ -37,10 +37,10 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { toast } from '~/hooks/use-toast';
-import { API_BASE_URL } from '~/lib/constants/constants';
 import type { PeriodContextType } from '~/lib/context/PeriodProvider';
 // import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
+import { foilApi } from '~/lib/utils/util';
 // import { convertWstEthToGwei } from '~/lib/util/util';
 
 import MarketCell from './MarketCell';
@@ -111,26 +111,15 @@ const usePositions = (
   return useQuery({
     queryKey: ['positions', walletAddress, chainId, marketAddress],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/graphql`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const { data, errors } = await foilApi.post('/graphql', {
+        query: POSITIONS_QUERY,
+        variables: {
+          owner: walletAddress || undefined,
+          chainId: walletAddress ? undefined : Number(chainId),
+          marketAddress: walletAddress ? undefined : marketAddress,
         },
-        body: JSON.stringify({
-          query: POSITIONS_QUERY,
-          variables: {
-            owner: walletAddress || undefined,
-            chainId: walletAddress ? undefined : Number(chainId),
-            marketAddress: walletAddress ? undefined : marketAddress,
-          },
-        }),
       });
 
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-
-      const { data, errors } = await response.json();
       if (errors) {
         throw new Error(errors[0].message);
       }

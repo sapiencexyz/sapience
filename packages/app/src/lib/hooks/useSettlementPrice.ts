@@ -2,9 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import { formatEther } from 'viem';
 
-import { API_BASE_URL } from '~/lib/constants/constants';
 import type { Market, Epoch } from '~/lib/types';
-import { gweiToEther, convertToSqrtPriceX96 } from '~/lib/utils/util';
+import { gweiToEther, convertToSqrtPriceX96, foilApi } from '~/lib/utils/util';
 
 export function useSettlementPrice(market: Market, epoch: Epoch) {
   const [stEthPerToken, setStEthPerToken] = useState(0);
@@ -14,13 +13,9 @@ export function useSettlementPrice(market: Market, epoch: Epoch) {
     const fetchStEthPerToken = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(
-          `${API_BASE_URL}/getStEthPerTokenAtTimestamp?chainId=${market.chainId}&endTime=${epoch.endTimestamp}`
+        const data = await foilApi.get(
+          `/getStEthPerTokenAtTimestamp?chainId=${market.chainId}&endTime=${epoch.endTimestamp}`
         );
-        if (!response.ok) {
-          throw new Error('Failed to fetch stEthPerToken');
-        }
-        const data = await response.json();
         setStEthPerToken(Number(formatEther(BigInt(data.stEthPerToken))));
       } catch (error) {
         console.error('Error fetching stEthPerToken:', error);
@@ -39,13 +34,9 @@ export function useSettlementPrice(market: Market, epoch: Epoch) {
       epoch.epochId,
     ],
     queryFn: async () => {
-      const response = await fetch(
-        `${API_BASE_URL}/prices/index/latest?contractId=${market.chainId}:${market.address}&epochId=${epoch.epochId}`
+      const data = await foilApi.get(
+        `/prices/index/latest?contractId=${market.chainId}:${market.address}&epochId=${epoch.epochId}`
       );
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      const data = await response.json();
       return Number(gweiToEther(BigInt(data.price)));
     },
     enabled: epoch.epochId !== 0 || market !== undefined,

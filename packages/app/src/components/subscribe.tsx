@@ -41,7 +41,7 @@ import {
 import { useToast } from '~/hooks/use-toast';
 import { useFoil } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
-import { mainnetClient } from '~/lib/utils/util';
+import { mainnetClient, foilApi } from '~/lib/utils/util';
 
 import NumberDisplay from './numberDisplay';
 import SimpleBarChart from './SimpleBarChart';
@@ -495,30 +495,15 @@ const Subscribe: FC<SubscribeProps> = ({
         }
       }
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_FOIL_API_URL}/estimate/estimate`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            walletAddress: resolvedAddress,
-            chainId: finalChainId,
-            marketAddress: finalMarketAddress,
-            epochId: finalEpoch,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch estimate');
-      }
-
-      const data = await response.json();
+      const estimateData = await foilApi.post('/estimate/estimate', {
+        walletAddress: resolvedAddress,
+        chainId: finalChainId,
+        marketAddress: finalMarketAddress,
+        epochId: finalEpoch,
+      });
 
       // Add check for no gas usage
-      if (!data.totalGasUsed || data.totalGasUsed === 0) {
+      if (!estimateData.totalGasUsed || estimateData.totalGasUsed === 0) {
         toast({
           title: 'Recent Data Unavailable',
           description: `This address hasn't used gas in the last ${formattedDuration}.`,
@@ -529,11 +514,11 @@ const Subscribe: FC<SubscribeProps> = ({
 
       // Store the results if there is gas usage
       setEstimationResults({
-        totalGasUsed: data.totalGasUsed,
-        ethPaid: data.ethPaid || 0,
-        avgGasPerTx: data.avgGasPerTx || 0,
-        avgGasPrice: data.avgGasPrice || 0,
-        chartData: data.chartData || [],
+        totalGasUsed: estimateData.totalGasUsed,
+        ethPaid: estimateData.ethPaid || 0,
+        avgGasPerTx: estimateData.avgGasPerTx || 0,
+        avgGasPrice: estimateData.avgGasPrice || 0,
+        chartData: estimateData.chartData || [],
       });
     } catch (error) {
       toast({
