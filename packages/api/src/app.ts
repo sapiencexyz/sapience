@@ -5,14 +5,29 @@ import { router } from './routes';
 const corsOptions: cors.CorsOptions = {
   origin: (
     origin: string | undefined,
-    callback: (error: Error | null, allow?: boolean) => void
+    callback: (error: Error | null, allow?: boolean) => void,
+    request?: any
   ) => {
+    // Always allow requests in development
     if (process.env.NODE_ENV !== 'production') {
       callback(null, true);
-    } else if (
+      return;
+    }
+
+    // Check for API token in production
+    const authHeader = request?.headers?.authorization;
+    const apiToken = process.env.API_ACCESS_TOKEN;
+
+    // If API token is provided and matches, allow the request regardless of origin
+    if (apiToken && authHeader?.startsWith('Bearer ') && authHeader.slice(7) === apiToken) {
+      callback(null, true);
+      return;
+    }
+
+    // Otherwise, only allow specific domains
+    if (
       !origin || // Allow same-origin requests
       /^https?:\/\/([a-zA-Z0-9-]+\.)*foil\.xyz$/.test(origin) ||
-      /^https?:\/\/localhost(:\d+)?$/.test(origin) || // local testing
       /^https?:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/.test(origin) //staging sites
     ) {
       callback(null, true);
@@ -21,6 +36,10 @@ const corsOptions: cors.CorsOptions = {
     }
   },
   optionsSuccessStatus: 200,
+  // Allow the Authorization header to be exposed to the client
+  exposedHeaders: ['Authorization'],
+  // Allow the Authorization header to be sent
+  allowedHeaders: ['Authorization', 'Content-Type'],
 };
 
 const app = express();
