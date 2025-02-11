@@ -33,7 +33,7 @@ async function isGeofenced(ip: string | null) {
   if (!ipInfo) return true;
   console.log('IP Info:', JSON.stringify(ipInfo, null, 2));
 
-  return GEOFENCED_COUNTRIES.includes(ipInfo.country) || ipInfo.privacy?.vpn;
+  return GEOFENCED_COUNTRIES.includes(ipInfo.country);
 }
 
 const getClientIp = (req: Request): string | null => {

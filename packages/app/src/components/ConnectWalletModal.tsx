@@ -196,7 +196,7 @@ export default function ConnectWalletModal({
         {permittedByApi === false && (
           <div className="py-4 space-y-6">
             <DialogDescription className="text-center text-lg max-w-[260px] mx-auto">
-              Using the Foil app is prohibited in your region and via VPN.
+              Using the Foil app is prohibited in your region.
             </DialogDescription>
           </div>
         )}
