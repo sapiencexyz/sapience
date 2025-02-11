@@ -176,10 +176,10 @@ const AdvancedView = ({
           <div className="flex flex-col flex-1 lg:overflow-y-auto md:overflow-visible">
             <div className="flex flex-col flex-1 px-4 md:px-3 gap-5 md:flex-row min-h-0">
               <div className="w-full order-2 md:order-2 md:max-w-[340px] pb-4 flex flex-col h-full">
-                <div className="flex-1">
+                <div className="flex-1 overflow-y-auto">
                   <MarketSidebar isTrade={isTrade} />
                 </div>
-                <div className="flex items-center gap-4 mt-4 lg:ml-auto">
+                <div className="flex items-center gap-4 mt-4 lg:ml-auto flex-shrink-0">
                   <Label className="whitespace-nowrap">Price Units</Label>
                   <MarketUnitsToggle />
                 </div>
