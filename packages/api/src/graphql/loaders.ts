@@ -48,7 +48,7 @@ const batchPositions = async (ids: readonly number[]) => {
 const batchEpochs = async (ids: readonly number[]) => {
   const epochs = await dataSource.getRepository(Epoch).find({
     where: { id: In([...ids]) },
-    relations: ['market', 'positions', 'indexPrices'],
+    relations: ['market', 'positions'],
   });
 
   const epochMap = new Map(epochs.map((epoch) => [epoch.id, epoch]));

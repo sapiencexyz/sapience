@@ -1,7 +1,6 @@
 import { Field, ObjectType, ID, Int } from 'type-graphql';
 import { MarketType } from './MarketType';
 import { PositionType } from './PositionType';
-import { IndexPriceType } from './IndexPriceType';
 
 @ObjectType()
 export class EpochType {
@@ -22,9 +21,6 @@ export class EpochType {
 
   @Field(() => [PositionType])
   positions: PositionType[];
-
-  @Field(() => [IndexPriceType])
-  indexPrices: IndexPriceType[];
 
   @Field(() => Boolean, { nullable: true })
   settled: boolean | null;
