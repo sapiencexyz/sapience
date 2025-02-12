@@ -245,7 +245,7 @@ const getIndexPriceAtTime = (
     let lastClose: string = '';
 
     // Add to the sliding window trailing average the prices that are now in the interval
-    for (let i = 0; i <= orderedPrices.length; i++) {
+    for (let i = 0; i < orderedPrices.length; i++) {
       if (orderedPrices[i].timestamp <= timestamp) {
         totalGasUsed += BigInt(orderedPrices[i].used);
         totalBaseFeesPaid += BigInt(orderedPrices[i].feePaid);
