@@ -27,7 +27,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { API_BASE_URL } from '~/lib/constants/constants';
+import { foilApi } from '~/lib/utils/util';
 
 import NumberDisplay from './numberDisplay';
 
@@ -67,15 +67,9 @@ const useLeaderboard = (marketId: string, epochId: string) => {
     queryKey: ['epochLeaderboard', marketId, epochId],
     queryFn: async () => {
       // Get leaderboard and positions
-      const leaderboardResponse = await fetch(
-        `${API_BASE_URL}/leaderboard?contractId=${marketId}`
+      const leaderboard = await foilApi.get(
+        `/leaderboard?contractId=${marketId}`
       );
-      if (!leaderboardResponse.ok) {
-        throw new Error('Failed to fetch leaderboard positions');
-      }
-
-      const [leaderboard] = await Promise.all([leaderboardResponse.json()]);
-
       return [...leaderboard];
     },
   });

@@ -5,7 +5,6 @@ import {
   getSortedRowModel,
   type SortingState,
 } from '@tanstack/react-table';
-import axios from 'axios';
 import { Loader2, ChevronDown, ChevronUp, ArrowUpDown } from 'lucide-react';
 import React, { useState, useMemo } from 'react';
 import { useSignMessage } from 'wagmi';
@@ -19,12 +18,10 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { useToast } from '~/hooks/use-toast';
-import {
-  ADMIN_AUTHENTICATE_MSG,
-  API_BASE_URL,
-} from '~/lib/constants/constants';
+import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants/constants';
 import { useFoil } from '~/lib/context/FoilProvider';
 import type { Market } from '~/lib/context/FoilProvider';
+import { foilApi } from '~/lib/utils/util';
 
 import getColumns from './columns';
 import type { MissingBlocks } from './types';
@@ -66,14 +63,14 @@ const AdminTable: React.FC = () => {
 
   const fetchMissingBlocks = async (market: Market, epochId: number) => {
     try {
-      const response = await axios.get(
-        `${API_BASE_URL}/missing-blocks?chainId=${market.chainId}&address=${market.address}&epochId=${epochId}`
+      const data = await foilApi.get(
+        `/missing-blocks?chainId=${market.chainId}&address=${market.address}&epochId=${epochId}`
       );
 
       setMissingBlocks((prev) => ({
         ...prev,
         [`${market.address}-${epochId}`]: {
-          resourcePrice: response.data.missingBlockNumbers,
+          resourcePrice: data.missingBlockNumbers,
         },
       }));
     } catch (error) {
@@ -108,22 +105,19 @@ const AdminTable: React.FC = () => {
         message: ADMIN_AUTHENTICATE_MSG,
       });
 
-      const response = await axios.post(
-        `${API_BASE_URL}/reindexMissingBlocks`,
-        {
-          chainId,
-          address: marketAddress,
-          epochId,
-          model: reindexType === 'price' ? 'ResourcePrice' : 'Event',
-          signature,
-          timestamp,
-        }
-      );
+      const response = await foilApi.post('/reindexMissingBlocks', {
+        chainId,
+        address: marketAddress,
+        epochId,
+        model: reindexType === 'price' ? 'ResourcePrice' : 'Event',
+        signature,
+        timestamp,
+      });
 
-      if (response.data.success) {
+      if (response.success) {
         toast({
           title: 'Reindexing started',
-          description: response.data.message,
+          description: response.message,
           variant: 'default',
         });
         const market = markets.find((m) => m.address === marketAddress);
@@ -133,7 +127,7 @@ const AdminTable: React.FC = () => {
       } else {
         toast({
           title: 'Reindexing failed',
-          description: response.data.error,
+          description: response.error,
           variant: 'destructive',
         });
       }
@@ -160,13 +154,13 @@ const AdminTable: React.FC = () => {
     const signature = await signMessageAsync({
       message: ADMIN_AUTHENTICATE_MSG,
     });
-    const response = await axios.post(`${API_BASE_URL}/updateMarketPrivacy`, {
+    const response = await foilApi.post('/updateMarketPrivacy', {
       address: market.address,
       chainId: market.chainId,
       signature,
       timestamp,
     });
-    if (response.data.success) {
+    if (response.success) {
       await refetchMarkets();
     }
     setLoadingAction((prev) => ({ ...prev, [market.address]: false }));
