@@ -1108,7 +1108,6 @@ const LiquidityForm: React.FC = () => {
       stEthPerToken,
     });
 
-    console.log('SETTING LOW PRICE2', lowDisplayPrice.toString(), lowTick);
     setValue('lowPrice', lowDisplayPrice.toString(), {
       shouldValidate: false,
       shouldDirty: false,
@@ -1175,7 +1174,6 @@ const LiquidityForm: React.FC = () => {
         convertMarketToDisplayPrice(snappedMarketPrice);
 
       if (isLow) {
-        console.log('PRICEBLUR');
         setLowPriceTick(tick);
         setValue('lowPrice', snappedDisplayPrice.toString(), {
           shouldValidate: true,
