@@ -240,32 +240,34 @@ const getIndexPriceAtTime = (
   orderedPrices: ResourcePricePoint[],
   timestamp: number
 ): CandleType => {
-  let totalGasUsed: bigint = 0n;
-  let totalBaseFeesPaid: bigint = 0n;
-  let lastClose: string = '';
+    let totalGasUsed: bigint = 0n;
+    let totalBaseFeesPaid: bigint = 0n;
+    let lastClose: string = '';
 
-  // Add to the sliding window trailing average the prices that are now in the interval
-  for (let i = 0; i < orderedPrices.length; i++) {
-    if (orderedPrices[i].timestamp <= timestamp) {
-      totalGasUsed += BigInt(orderedPrices[i].used);
-      totalBaseFeesPaid += BigInt(orderedPrices[i].feePaid);
+    // Add to the sliding window trailing average the prices that are now in the interval
+    for (let i = 0; i < orderedPrices.length; i++) {
+      if (orderedPrices[i].timestamp <= timestamp) {
+        totalGasUsed += BigInt(orderedPrices[i].used);
+        totalBaseFeesPaid += BigInt(orderedPrices[i].feePaid);
+      }
     }
-  }
 
-  // Calculate the average price for the interval
-  if (totalGasUsed > 0n) {
-    const averagePrice: bigint = totalBaseFeesPaid / totalGasUsed;
-    lastClose = averagePrice.toString();
-  }
 
-  return {
-    timestamp,
-    open: lastClose,
-    high: lastClose,
-    low: lastClose,
-    close: lastClose,
-  };
-};
+    // Calculate the average price for the interval
+    if (totalGasUsed > 0n) {
+      const averagePrice: bigint = totalBaseFeesPaid / totalGasUsed;
+      lastClose = averagePrice.toString();
+    }
+
+    return {
+      timestamp,
+      open: lastClose,
+      high: lastClose,
+      low: lastClose,
+      close: lastClose,
+    };
+
+}
 
 @Resolver()
 export class CandleResolver {
@@ -634,4 +636,5 @@ export class CandleResolver {
       throw new Error('Failed to fetch market candles');
     }
   }
-}
+
+} 
