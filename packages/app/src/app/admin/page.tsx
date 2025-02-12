@@ -2,7 +2,6 @@
 
 'use client';
 
-import axios from 'axios';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -14,8 +13,8 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import AdminTable from '~/components/admin/AdminTable';
-import { API_BASE_URL } from '~/lib/constants/constants';
 import type { RenderJob } from '~/lib/interfaces/interfaces';
+import { foilApi } from '~/lib/utils/util';
 
 const Admin = () => {
   const [job, setJob] = useState<RenderJob | undefined>();
@@ -33,12 +32,12 @@ const Admin = () => {
     if (!serviceId || !jobId) return;
 
     setLoadingAction((prev) => ({ ...prev, getStatus: true }));
-    const response = await axios.get(
-      `${API_BASE_URL}/reindexStatus?jobId=${jobId}&serviceId=${serviceId}`
+    const response = await foilApi.get(
+      `/reindexStatus?jobId=${jobId}&serviceId=${serviceId}`
     );
 
-    if (response.data.success && response.data.job) {
-      setJob(response.data.job);
+    if (response.success && response.job) {
+      setJob(response.job);
     }
     setLoadingAction((prev) => ({ ...prev, getStatus: false }));
   };

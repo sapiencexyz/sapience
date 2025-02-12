@@ -22,13 +22,11 @@ import {
 } from 'recharts';
 
 import NumberDisplay from '~/components/numberDisplay';
-import { API_BASE_URL } from '~/lib/constants/constants';
 import type { VolumeChartData, TimeWindow } from '~/lib/interfaces/interfaces';
 import { formatXAxisTick, getXTicksToShow } from '~/lib/utils/chartUtil';
-import { getDisplayTextForVolumeWindow } from '~/lib/utils/util';
+import { getDisplayTextForVolumeWindow, foilApi } from '~/lib/utils/util';
 
 const barColor = '#58585A';
-const NETWORK_ERROR_STRING = 'Network response was not ok';
 
 dayjs.extend(utc);
 
@@ -117,13 +115,9 @@ const VolumeChart = ({
   } = useQuery({
     queryKey: ['volume', contractId, epochId, activeWindow],
     queryFn: async () => {
-      const response = await fetch(
-        `${API_BASE_URL}/volume?contractId=${contractId}&epochId=${epochId}&timeWindow=${activeWindow}`
+      return foilApi.get(
+        `/volume?contractId=${contractId}&epochId=${epochId}&timeWindow=${activeWindow}`
       );
-      if (!response.ok) {
-        throw new Error(NETWORK_ERROR_STRING);
-      }
-      return response.json();
     },
     enabled: !!contractId && !!epochId && !!activeWindow,
     retry: 3,

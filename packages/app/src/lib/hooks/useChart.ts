@@ -8,8 +8,7 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import { formatUnits } from 'viem';
 
 import { useFoil } from '../context/FoilProvider';
-import { convertWstEthToGwei } from '../utils/util';
-import { API_BASE_URL } from '~/lib/constants/constants';
+import { convertWstEthToGwei, foilApi } from '../utils/util';
 import type { PriceChartData } from '~/lib/interfaces/interfaces';
 import { TimeWindow, TimeInterval } from '~/lib/interfaces/interfaces';
 import { timeToLocal } from '~/lib/utils';
@@ -177,7 +176,6 @@ export const useChart = ({
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = startTime > now;
 
-  // Modify the query functions to use selectedInterval directly
   const { data: marketPrices } = useQuery<PriceChartData[]>({
     queryKey: [
       'market-prices',
@@ -193,25 +191,18 @@ export const useChart = ({
       const from = now - timeRange;
       const interval = getIntervalSeconds(selectedInterval);
 
-      const response = await fetch(`${API_BASE_URL}/graphql`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const { data } = await foilApi.post('/graphql', {
+        query: print(MARKET_CANDLES_QUERY),
+        variables: {
+          address: market?.address,
+          chainId: market?.chainId,
+          epochId: market?.epochId?.toString(),
+          from,
+          to: now,
+          interval,
         },
-        body: JSON.stringify({
-          query: print(MARKET_CANDLES_QUERY),
-          variables: {
-            address: market?.address,
-            chainId: market?.chainId,
-            epochId: market?.epochId?.toString(),
-            from,
-            to: now,
-            interval,
-          },
-        }),
       });
 
-      const { data } = await response.json();
       return data.marketCandles.map((candle: any) => ({
         startTimestamp: timeToLocal(candle.timestamp * 1000),
         endTimestamp: timeToLocal((candle.timestamp + interval) * 1000),
@@ -255,25 +246,18 @@ export const useChart = ({
       const from = now - timeRange;
       const interval = getIntervalSeconds(selectedInterval);
 
-      const response = await fetch(`${API_BASE_URL}/graphql`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const { data } = await foilApi.post('/graphql', {
+        query: print(INDEX_CANDLES_QUERY),
+        variables: {
+          address: market?.address,
+          chainId: market?.chainId,
+          epochId: market?.epochId?.toString(),
+          from,
+          to: now,
+          interval,
         },
-        body: JSON.stringify({
-          query: print(INDEX_CANDLES_QUERY),
-          variables: {
-            address: market?.address,
-            chainId: market?.chainId,
-            epochId: market?.epochId?.toString(),
-            from,
-            to: now,
-            interval,
-          },
-        }),
       });
 
-      const { data } = await response.json();
       return data.indexCandles.map((candle: any) => ({
         price: Number(formatUnits(BigInt(candle.close), 9)),
         timestamp: timeToLocal(candle.timestamp * 1000),
@@ -299,23 +283,16 @@ export const useChart = ({
       const from = now - 28 * 24 * 60 * 60 * 2; // Two periods ago
       const interval = getIntervalSeconds(selectedInterval);
 
-      const response = await fetch(`${API_BASE_URL}/graphql`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const { data } = await foilApi.post('/graphql', {
+        query: print(RESOURCE_CANDLES_QUERY),
+        variables: {
+          slug: resourceSlug,
+          from,
+          to: now,
+          interval,
         },
-        body: JSON.stringify({
-          query: print(RESOURCE_CANDLES_QUERY),
-          variables: {
-            slug: resourceSlug,
-            from,
-            to: now,
-            interval,
-          },
-        }),
       });
 
-      const { data } = await response.json();
       return data.resourceCandles.map((candle: any) => ({
         timestamp: timeToLocal(candle.timestamp * 1000),
         price: Number(formatUnits(BigInt(candle.close), 9)),
@@ -343,26 +320,17 @@ export const useChart = ({
         const from = now - 28 * 24 * 60 * 60 * 2; // Two periods ago
         const interval = getIntervalSeconds(selectedInterval);
 
-        // TODO Adjust `interval`, or `from` to limit the amount of data fetched to some reasonable amount (i.e. 2000 candles)
-
-        const response = await fetch(`${API_BASE_URL}/graphql`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
+        const { data } = await foilApi.post('/graphql', {
+          query: print(TRAILING_RESOURCE_CANDLES_QUERY),
+          variables: {
+            slug: resourceSlug,
+            from,
+            to: now,
+            interval,
+            trailingTime: 28 * 24 * 60 * 60, // 28 days in seconds
           },
-          body: JSON.stringify({
-            query: print(TRAILING_RESOURCE_CANDLES_QUERY),
-            variables: {
-              slug: resourceSlug,
-              from,
-              to: now,
-              interval,
-              trailingTime: 28 * 24 * 60 * 60, // 28 days in seconds
-            },
-          }),
         });
 
-        const { data } = await response.json();
         return data.resourceTrailingAverageCandles.map((candle: any) => ({
           timestamp: timeToLocal(candle.timestamp * 1000),
           price: Number(formatUnits(BigInt(candle.close), 9)),

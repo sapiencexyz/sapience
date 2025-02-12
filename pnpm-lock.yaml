@@ -183,9 +183,6 @@ importers:
       '@uniswap/v3-sdk':
         specifier: ^3.13.1
         version: 3.14.0(hardhat@2.22.10(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@22.9.1)(typescript@5.6.2))(typescript@5.6.2)(utf-8-validate@5.0.10))
-      axios:
-        specifier: ^1.7.7
-        version: 1.7.7(debug@4.4.0)
       class-variance-authority:
         specifier: ^0.7.0
         version: 0.7.0
@@ -21544,7 +21541,7 @@ snapshots:
       cbor: 5.2.0
       debug: 4.4.0(supports-color@8.1.1)
       lodash: 4.17.21
-      semver: 7.6.3
+      semver: 7.7.1
       utf8: 3.0.0
       web3-utils: 1.10.0
     transitivePeerDependencies:
@@ -31934,7 +31931,7 @@ snapshots:
       jsdoc: 4.0.3
       minimist: 1.2.8
       protobufjs: 7.2.4
-      semver: 7.6.3
+      semver: 7.7.1
       tmp: 0.2.3
       uglify-js: 3.19.3
 
@@ -33324,7 +33321,7 @@ snapshots:
       pify: 4.0.1
       recursive-readdir: 2.2.3
       sc-istanbul: 0.4.6
-      semver: 7.6.3
+      semver: 7.7.1
       shelljs: 0.8.5
       web3-utils: 1.10.4
     transitivePeerDependencies:

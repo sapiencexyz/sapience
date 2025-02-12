@@ -8,11 +8,12 @@ import type { Chain } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 
 import useFoilDeployment from '../../components/useFoilDeployment';
-import { API_BASE_URL, BLANK_MARKET } from '../constants/constants';
+import { BLANK_MARKET } from '../constants/constants';
 import erc20ABI from '../erc20abi.json';
 import { useUniswapPool } from '../hooks/useUniswapPool';
 import type { EpochData, MarketParams } from '../interfaces/interfaces';
 import { useToast } from '~/hooks/use-toast';
+import { foilApi } from '~/lib/utils/util';
 
 // Types and Interfaces
 export interface PeriodContextType {
@@ -87,18 +88,9 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
     queryKey: ['latestPrice', `${state.chainId}:${state.address}`, state.epoch],
     queryFn: async () => {
       try {
-        const response = await fetch(
-          `${API_BASE_URL}/prices/index/latest?contractId=${state.chainId}:${state.address}&epochId=${state.epoch}`
+        const data = await foilApi.get(
+          `/prices/index/latest?contractId=${state.chainId}:${state.address}&epochId=${state.epoch}`
         );
-        if (!response.ok) {
-          // Return null instead of throwing for 404s
-          if (response.status === 404) {
-            console.warn('Price data not available yet');
-            return null;
-          }
-          throw new Error('Network response was not ok');
-        }
-        const data = await response.json();
         return data.price / 1e9;
       } catch (error) {
         console.error('Error fetching latest price:', error);

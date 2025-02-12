@@ -15,8 +15,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { API_BASE_URL } from '~/lib/constants/constants';
 import { cn } from '~/lib/utils';
+import { foilApi } from '~/lib/utils/util';
 
 interface ConnectWalletModalProps {
   open: boolean;
@@ -62,8 +62,8 @@ export default function ConnectWalletModal({
         return;
       }
 
-      fetch(`${API_BASE_URL}/permit`)
-        .then((res) => res.json())
+      foilApi
+        .get('/permit')
         .then((data) => setPermittedByApi(data.permitted))
         .catch((err) => console.error('Error fetching permit status:', err));
     }

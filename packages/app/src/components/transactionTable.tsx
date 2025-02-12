@@ -29,10 +29,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { API_BASE_URL } from '~/lib/constants/constants';
 import type { PeriodContextType } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
-import { convertWstEthToGwei } from '~/lib/utils/util';
+import { convertWstEthToGwei, foilApi } from '~/lib/utils/util';
 
 import MarketCell from './MarketCell';
 import NumberDisplay from './numberDisplay';
@@ -114,28 +113,17 @@ function useTransactions(
   return useQuery({
     queryKey: ['transactions', walletAddress, chainId, marketAddress],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/graphql`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const { data, errors } = await foilApi.post('/graphql', {
+        query: TRANSACTIONS_QUERY,
+        variables: {
+          // If we have a walletAddress, query all positions for that owner
+          // If no walletAddress, query the specific market/chain for all owners
+          owner: walletAddress || undefined,
+          chainId: walletAddress ? undefined : Number(chainId),
+          marketAddress: walletAddress ? undefined : marketAddress,
         },
-        body: JSON.stringify({
-          query: TRANSACTIONS_QUERY,
-          variables: {
-            // If we have a walletAddress, query all positions for that owner
-            // If no walletAddress, query the specific market/chain for all owners
-            owner: walletAddress || undefined,
-            chainId: walletAddress ? undefined : Number(chainId),
-            marketAddress: walletAddress ? undefined : marketAddress,
-          },
-        }),
       });
 
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-
-      const { data, errors } = await response.json();
       if (errors) {
         throw new Error(errors[0].message);
       }

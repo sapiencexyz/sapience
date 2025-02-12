@@ -10,8 +10,6 @@ export const MIN_BIG_INT_SIZE = BigInt(10);
 
 export const TICK_SPACING_DEFAULT = 200; // i.e. 1% - Hardcoded for now, should be retrieved with pool.tickSpacing()
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_FOIL_API_URL;
-
 export const ADMIN_AUTHENTICATE_MSG =
   'Please sign this message to authenticate yourself as an admin.';
 
