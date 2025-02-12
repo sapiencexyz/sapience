@@ -101,6 +101,7 @@ const WalletAddressPopover = ({
               <div className="relative">
                 <Input
                   id="wallet"
+                  data-1p-ignore
                   value={inputAddress}
                   onChange={handleWalletInputChange}
                   placeholder="0x... or .eth address"

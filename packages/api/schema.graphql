@@ -15,19 +15,11 @@ type EpochType {
   endTimestamp: Int
   epochId: Int!
   id: ID!
-  indexPrices: [IndexPriceType!]!
   market: MarketType!
   positions: [PositionType!]!
   settled: Boolean
   settlementPriceD18: String
   startTimestamp: Int
-}
-
-type IndexPriceType {
-  epoch: EpochType
-  id: ID!
-  timestamp: Int!
-  value: String!
 }
 
 type MarketType {
@@ -72,6 +64,7 @@ type Query {
   positions(chainId: Int, marketAddress: String, owner: String): [PositionType!]!
   resource(slug: String!): ResourceType
   resourceCandles(from: Int!, interval: Int!, slug: String!, to: Int!): [CandleType!]!
+  resourceTrailingAverageCandles(from: Int!, interval: Int!, slug: String!, to: Int!, trailingTime: Int!): [CandleType!]!
   resources: [ResourceType!]!
   transactions(positionId: Int): [TransactionType!]!
 }

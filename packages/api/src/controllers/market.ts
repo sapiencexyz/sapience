@@ -10,7 +10,7 @@ import { MarketParams } from '../models/MarketParams';
 import { Event } from '../models/Event';
 import { Market } from '../models/Market';
 import { Transaction } from '../models/Transaction';
-import { Abi, decodeEventLog, Log } from 'viem';
+import { Abi, decodeEventLog, Log, formatUnits } from 'viem';
 import {
   EpochCreatedEventLog,
   EventType,
@@ -40,9 +40,7 @@ import {
 } from './marketHelpers';
 import { Client, TextChannel, EmbedBuilder } from 'discord.js';
 import * as Chains from 'viem/chains';
-import { convertGasToGgas } from '../utils';
 import { MARKETS } from '../fixtures';
-
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const DISCORD_PRIVATE_CHANNEL_ID = process.env.DISCORD_PRIVATE_CHANNEL_ID;
 const DISCORD_PUBLIC_CHANNEL_ID = process.env.DISCORD_PUBLIC_CHANNEL_ID;
@@ -52,6 +50,19 @@ if (DISCORD_TOKEN) {
   discordClient.login(DISCORD_TOKEN).catch((error) => {
     console.error('Failed to login to Discord:', error);
   });
+}
+
+interface LogData {
+  eventName: string;
+  args: Record<string, unknown>;
+  transactionHash: string;
+  blockHash: string;
+  blockNumber: string;
+  data: string;
+  logIndex: number;
+  removed: boolean;
+  topics: string[];
+  transactionIndex: number;
 }
 
 // Called when the process starts, upserts markets in the database to match those in the constants.ts file
@@ -67,11 +78,11 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
 
   const client = getProviderForChain(marketInfo.marketChainId);
 
-  const marketReadResult = await client.readContract({
+  const marketReadResult = (await client.readContract({
     address: marketInfo.deployment.address as `0x${string}`,
     abi: marketInfo.deployment.abi,
     functionName: 'getMarket',
-  });
+  })) as [string, string, boolean, boolean, MarketParams];
 
   let updatedMarket = market;
   if (!updatedMarket) {
@@ -97,8 +108,8 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
   const marketParamsRaw = marketReadResult[4];
   const marketEpochParams: MarketParams = {
     ...marketParamsRaw,
-    assertionLiveness: marketParamsRaw.assertionLiveness.toString(),
-    bondAmount: marketParamsRaw.bondAmount.toString(),
+    assertionLiveness: marketParamsRaw?.assertionLiveness?.toString() ?? '0',
+    bondAmount: marketParamsRaw?.bondAmount?.toString() ?? '0',
   };
   updatedMarket.marketParams = marketEpochParams;
   await marketRepository.save(updatedMarket);
@@ -236,10 +247,10 @@ export const reindexMarketEvents = async (
 const alertEvent = async (
   chainId: number,
   address: string,
-  epochId,
+  epochId: number,
   blockNumber: bigint,
   timestamp: bigint,
-  logData
+  logData: LogData
 ) => {
   try {
     if (!DISCORD_TOKEN) {
@@ -265,12 +276,19 @@ const alertEvent = async (
         case EventType.TraderPositionCreated:
         case EventType.TraderPositionModified: {
           const tradeDirection =
-            BigInt(logData.args.finalPrice) > BigInt(logData.args.initialPrice)
+            BigInt(String(logData.args.finalPrice)) >
+            BigInt(String(logData.args.initialPrice))
               ? 'Long'
               : 'Short';
-          const gasAmount = convertGasToGgas(
-            logData.args.vGasAmount || logData.args.borrowedVGas
-          );
+          const gasAmount = formatUnits(
+            BigInt(
+              String(
+                logData.args.positionVgasAmount ||
+                  logData.args.positionBorrowedVgas
+              )
+            ),
+            18
+          ); // returns string
           const rawPriceGwei = Number(logData.args.tradeRatio) / 1e18;
           const priceGwei = rawPriceGwei.toLocaleString('en-US', {
             minimumFractionDigits: 0,
@@ -290,19 +308,29 @@ const alertEvent = async (
             logData.eventName === EventType.LiquidityPositionClosed
               ? 'Removed'
               : 'Added';
-          const liquidityGas = convertGasToGgas(
-            logData.args.addedAmount0 ||
-              logData.args.increasedAmount0 ||
-              logData.args.amount0
-          );
-
+          const liquidityGas = formatUnits(
+            BigInt(
+              String(
+                logData.args.addedAmount0 ||
+                  logData.args.increasedAmount0 ||
+                  logData.args.amount0
+              )
+            ),
+            18
+          ); // returns string
           let priceRangeText = '';
           if (
             logData.args.lowerTick !== undefined &&
             logData.args.upperTick !== undefined
           ) {
-            const rawLowerPrice = 1.0001 ** logData.args.lowerTick;
-            const rawUpperPrice = 1.0001 ** logData.args.upperTick;
+            const rawLowerPrice = Math.pow(
+              1.0001,
+              Number(logData.args.lowerTick)
+            );
+            const rawUpperPrice = Math.pow(
+              1.0001,
+              Number(logData.args.upperTick)
+            );
 
             const lowerPrice = rawLowerPrice.toLocaleString('en-US', {
               minimumFractionDigits: 0,
@@ -346,10 +374,13 @@ const alertEvent = async (
           },
           {
             name: 'Position',
-            value: logData.args.positionId.toString(),
+            value: String(logData.args.positionId),
             inline: true,
           },
-          { name: 'Account', value: logData.args.sender },
+          {
+            name: 'Account',
+            value: String(logData.args.sender),
+          },
           {
             name: 'Transaction',
             value: getBlockExplorerUrl(chainId, logData.transactionHash),
@@ -407,7 +438,7 @@ const upsertEvent = async (
   blockNumber: bigint,
   timeStamp: bigint,
   logIndex: number,
-  logData
+  logData: LogData
 ) => {
   console.log('handling event upsert:', {
     chainId,
@@ -441,13 +472,8 @@ const upsertEvent = async (
   newEvent.logData = logData;
   newEvent.transactionHash = logData.transactionHash;
 
-  // insert the event
-  await eventRepository.upsert(newEvent, [
-    'transactionHash',
-    'market',
-    'blockNumber',
-    'logIndex',
-  ]);
+  // save the event
+  await eventRepository.save(newEvent);
 };
 
 // Triggered by the callback in the Event model, this upserts related entities (Transaction, Position, MarketPrice).
@@ -469,8 +495,12 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
     // Market events
     case EventType.MarketInitialized: {
       console.log('initializing market. event: ', event);
-      const marketCreatedArgs = event.logData
-        .args as MarketCreatedUpdatedEventLog;
+      const marketCreatedArgs = {
+        uniswapPositionManager: event.logData.args.uniswapPositionManager,
+        uniswapSwapRouter: event.logData.args.uniswapSwapRouter,
+        optimisticOracleV3: event.logData.args.optimisticOracleV3,
+        marketParams: event.logData.args.marketParams,
+      } as MarketCreatedUpdatedEventLog;
       await createOrUpdateMarketFromEvent(
         marketCreatedArgs,
         chainId,
@@ -482,8 +512,12 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
     }
     case EventType.MarketUpdated: {
       console.log('updating market. event: ', event);
-      const marketUpdatedArgs = event.logData
-        .args as MarketCreatedUpdatedEventLog;
+      const marketUpdatedArgs = {
+        uniswapPositionManager: event.logData.args.uniswapPositionManager,
+        uniswapSwapRouter: event.logData.args.uniswapSwapRouter,
+        optimisticOracleV3: event.logData.args.optimisticOracleV3,
+        marketParams: event.logData.args.marketParams,
+      } as MarketCreatedUpdatedEventLog;
       await createOrUpdateMarketFromEvent(
         marketUpdatedArgs,
         chainId,
@@ -497,7 +531,12 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
     // Epoch events
     case EventType.EpochCreated: {
       console.log('creating epoch. event: ', event);
-      const epochCreatedArgs = event.logData.args as EpochCreatedEventLog;
+      const epochCreatedArgs = {
+        epochId: event.logData.args.epochId,
+        startTime: event.logData.args.startTime,
+        endTime: event.logData.args.endTime,
+        startingSqrtPriceX96: event.logData.args.startingSqrtPriceX96,
+      } as EpochCreatedEventLog;
       await createEpochFromEvent(epochCreatedArgs, market);
 
       const marketInfo = MARKETS.find(
@@ -520,14 +559,15 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       const epoch = await epochRepository.findOne({
         where: {
           market: { address, chainId },
-          epochId: event.logData.args.epochId,
+          epochId: Number(event.logData.args.epochId),
         },
         relations: ['market'],
       });
       if (epoch) {
         epoch.settled = true;
         const settlementSqrtPriceX96: bigint = BigInt(
-          event.logData.args.settlementSqrtPriceX96.toString()
+          (event.logData.args.settlementSqrtPriceX96 as string)?.toString() ??
+            '0'
         );
         const settlementPriceD18 = sqrtPriceX96ToSettlementPriceD18(
           settlementSqrtPriceX96

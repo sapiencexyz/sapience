@@ -38,17 +38,21 @@ const isActive = (path: string, pathname: string) => {
   if (path === '/') {
     return pathname === path || pathname.startsWith('/resources');
   }
+  if (path === 'trade' || path === 'pool') {
+    return pathname.endsWith(path);
+  }
   return pathname.startsWith(path);
 };
 
-const getMarketHref = (path: string, market: any, withEpochs: boolean) => {
+const getMarketHref = (path: string, market: any) => {
   if (path === 'earn') {
-    return `/${path}/${market.chainId}:${market.address}`;
+    return `/earn/${market.chainId}:${market.address}`;
   }
-  if (withEpochs) {
-    return `/markets/?contractId=${market.chainId}:${market.address}`;
+  if (path === 'subscribe') {
+    return `/subscribe/${market.chainId}:${market.address}`;
   }
-  return `/${path}/${market.chainId}:${market.address}/periods/${market.currentEpoch?.epochId}`;
+  // For trade and pool paths
+  return `/markets/${market.chainId}:${market.address}/periods/${market.currentEpoch?.epochId}/${path}`;
 };
 
 const handleLinkClick = (setStateFunction: (value: boolean) => void) => () => {
@@ -76,7 +80,7 @@ function MobileMarketLinks({
         {publicMarkets.map((market) => (
           <Link
             key={market.id}
-            href={getMarketHref(path, market, false)}
+            href={getMarketHref(path, market)}
             onClick={() => onClose?.()}
             className="text-sm w-full block rounded-md px-3 py-1.5 hover:bg-gray-50"
           >
@@ -150,7 +154,7 @@ function MobileMarketLinks({
                         <Link
                           key={`${epoch.marketChainId}:${epoch.marketAddress}:${epoch.epochId}`}
                           className="text-sm w-full block rounded-md px-3 py-1.5 hover:bg-gray-50"
-                          href={`/${path}/${epoch.marketChainId}:${epoch.marketAddress}/periods/${epoch.epochId}`}
+                          href={`/markets/${epoch.marketChainId}:${epoch.marketAddress}/periods/${epoch.epochId}/${path}`}
                           onClick={() => onClose?.()}
                         >
                           {formatDuration(
@@ -161,7 +165,7 @@ function MobileMarketLinks({
                       ))
                     )}
                     <Link
-                      href={`/markets/?resource=${resource.slug}`}
+                      href="/markets"
                       onClick={() => onClose?.()}
                       className="text-xs text-muted-foreground hover:text-foreground flex items-center justify-end mt-2 px-3 py-1"
                     >
@@ -183,6 +187,7 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
   const [hoveredResource, setHoveredResource] = useState<number | null>(null);
   const { data: resources, isLoading } = useResources();
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     if (resources && resources.length > 0 && !hoveredResource) {
@@ -201,9 +206,12 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" className="text-base">
+        <Button
+          variant="ghost"
+          className={`text-base ${isActive(path, pathname) ? 'bg-secondary' : ''}`}
+        >
           <span>{label}</span>
-          <ChevronDown className="text-muted-foreground" />
+          <ChevronDown className="text-muted-foreground -mr-1" />
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -289,7 +297,7 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
                           <Link
                             key={`${epoch.marketChainId}:${epoch.marketAddress}:${epoch.epochId}`}
                             className="text-sm w-full block rounded-md px-3 py-1.5 hover:bg-secondary"
-                            href={`/${path}/${epoch.marketChainId}:${epoch.marketAddress}/periods/${epoch.epochId}`}
+                            href={`/markets/${epoch.marketChainId}:${epoch.marketAddress}/periods/${epoch.epochId}/${path}`}
                             onClick={handleLinkClick(setOpen)}
                           >
                             {formatDuration(
@@ -300,7 +308,7 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
                         ))
                       )}
                       <Link
-                        href={`/markets/?resource=${hoveredResourceData.slug}`}
+                        href="/markets"
                         onClick={handleLinkClick(setOpen)}
                         className="text-xs text-muted-foreground hover:text-foreground flex items-center justify-end mt-2 px-3 py-1"
                       >
@@ -445,7 +453,7 @@ const Header = () => {
           </div>
         </div>
       </header>
-      <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-md border-t border-border py-3 text-center z-[3] lg:hidden">
+      <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-md border-t border-border py-3 px-3 text-center z-[3] lg:hidden">
         <div className="flex justify-between items-center max-w-[400px] mx-auto">
           <Link href="/" className="hover:no-underline">
             <Button
@@ -462,7 +470,7 @@ const Header = () => {
               <Button
                 variant="ghost"
                 size="lg"
-                className={isActive('/trade', pathname) ? 'bg-secondary' : ''}
+                className={isActive('trade', pathname) ? 'bg-secondary' : ''}
               >
                 Trade
               </Button>
@@ -481,7 +489,7 @@ const Header = () => {
               <Button
                 variant="ghost"
                 size="lg"
-                className={isActive('/pool', pathname) ? 'bg-secondary' : ''}
+                className={isActive('pool', pathname) ? 'bg-secondary' : ''}
               >
                 Pool
               </Button>

@@ -14,6 +14,8 @@ import Stats from '~/components/stats';
 import VolumeChart from '~/components/VolumeChart';
 import WindowSelector from '~/components/WindowButtons';
 import { AddEditPositionProvider } from '~/lib/context/AddEditPositionContext';
+import { useFoil } from '~/lib/context/FoilProvider';
+import type { Market } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { TradePoolProvider } from '~/lib/context/TradePoolContext';
 import { useResources } from '~/lib/hooks/useResources';
@@ -25,7 +27,9 @@ import {
 
 import DataDrawer from './DataDrawer';
 import DepthChart from './DepthChart';
+import MarketUnitsToggle from './marketUnitsToggle';
 import { Button } from './ui/button';
+import { Label } from './ui/label';
 
 const AdvancedView = ({
   params,
@@ -70,6 +74,7 @@ const AdvancedView = ({
 
   const { startTime } = useContext(PeriodContext);
   const { data: resources } = useResources();
+  const { markets } = useFoil();
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = now < startTime;
 
@@ -96,6 +101,18 @@ const AdvancedView = ({
   const [chainId, marketAddress] = params.id.split('%3A');
   const { epoch } = params;
   const contractId = `${chainId}:${marketAddress}`;
+
+  const market = markets.find(
+    (m: Market) => m.address.toLowerCase() === marketAddress.toLowerCase()
+  );
+
+  useEffect(() => {
+    if (market?.resource?.name) {
+      document.title = isTrade
+        ? `Trade ${market.resource.name} | Foil`
+        : `Pool Liquidity for ${market.resource.name} | Foil`;
+    }
+  }, [market?.resource?.name, isTrade]);
 
   const toggleSeries = (
     series: 'candles' | 'index' | 'resource' | 'trailing'
@@ -158,8 +175,14 @@ const AdvancedView = ({
           <PeriodHeader />
           <div className="flex flex-col flex-1 lg:overflow-y-auto md:overflow-visible">
             <div className="flex flex-col flex-1 px-4 md:px-3 gap-5 md:flex-row min-h-0">
-              <div className="w-full order-2 md:order-2 md:max-w-[360px] pb-4">
-                <MarketSidebar isTrade={isTrade} />
+              <div className="w-full order-2 md:order-2 md:max-w-[340px] pb-4 flex flex-col h-full">
+                <div className="flex-1 overflow-y-auto">
+                  <MarketSidebar isTrade={isTrade} />
+                </div>
+                <div className="flex items-center gap-4 mt-4 lg:ml-auto flex-shrink-0">
+                  <Label className="whitespace-nowrap">Price Units</Label>
+                  <MarketUnitsToggle />
+                </div>
               </div>
               <div className="flex flex-col w-full order-1 md:order-1">
                 <Stats />

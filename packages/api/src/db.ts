@@ -7,7 +7,6 @@ import { Market } from './models/Market';
 import { Epoch } from './models/Epoch';
 import { MarketPrice } from './models/MarketPrice';
 import { RenderJob } from './models/RenderJob';
-import { IndexPrice } from './models/IndexPrice';
 import { CollateralTransfer } from './models/CollateralTransfer';
 import { Resource } from './models/Resource';
 
@@ -20,7 +19,7 @@ const devDataSource: DataSource = new DataSource({
   synchronize: true,
   logging: ['warn', 'error', 'log', 'info'],
   ssl: {
-    rejectUnauthorized: false
+    rejectUnauthorized: false,
   },
   entities: [
     ResourcePrice,
@@ -31,7 +30,6 @@ const devDataSource: DataSource = new DataSource({
     Epoch,
     MarketPrice,
     RenderJob,
-    IndexPrice,
     CollateralTransfer,
     Resource,
   ],
@@ -51,7 +49,6 @@ const postgresDataSource: DataSource = new DataSource({
     Epoch,
     MarketPrice,
     RenderJob,
-    IndexPrice,
     CollateralTransfer,
     Resource,
   ],
@@ -82,7 +79,6 @@ export const resourceRepository = dataSource.getRepository(Resource);
 export const resourcePriceRepository = dataSource.getRepository(ResourcePrice);
 export const marketPriceRepository = dataSource.getRepository(MarketPrice);
 export const renderJobRepository = dataSource.getRepository(RenderJob);
-export const indexPriceRepository = dataSource.getRepository(IndexPrice);
 export const collateralTransferRepository =
   dataSource.getRepository(CollateralTransfer);
 

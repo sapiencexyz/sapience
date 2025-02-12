@@ -4,7 +4,6 @@ import { Position } from '../../models/Position';
 import { Transaction } from '../../models/Transaction';
 import { Epoch } from '../../models/Epoch';
 import { ResourcePrice } from '../../models/ResourcePrice';
-import { IndexPrice } from '../../models/IndexPrice';
 import { HydratedTransaction } from '../../helpers/hydrateTransactions';
 import {
   MarketType,
@@ -13,7 +12,6 @@ import {
   TransactionType,
   EpochType,
   ResourcePriceType,
-  IndexPriceType,
 } from '../types';
 
 export const mapMarketToType = (market: Market): MarketType => ({
@@ -44,7 +42,6 @@ export const mapEpochToType = (epoch: Epoch): EpochType => ({
   endTimestamp: epoch.endTimestamp,
   market: mapMarketToType(epoch.market),
   positions: epoch.positions?.map(mapPositionToType) || [],
-  indexPrices: epoch.indexPrices?.map(mapIndexPriceToType) || [],
   settled: epoch.settled,
   settlementPriceD18: epoch.settlementPriceD18,
 });
@@ -91,17 +88,12 @@ export const mapTransactionToType = (
   tradeRatioD18: transaction.tradeRatioD18 || null,
 });
 
-export const mapResourcePriceToType = (price: ResourcePrice): ResourcePriceType => ({
+export const mapResourcePriceToType = (
+  price: ResourcePrice
+): ResourcePriceType => ({
   id: price.id,
   timestamp: price.timestamp,
   value: price.value,
   resource: price.resource ? mapResourceToType(price.resource) : null,
   blockNumber: price.blockNumber,
 });
-
-export const mapIndexPriceToType = (price: IndexPrice): IndexPriceType => ({
-  id: price.id,
-  timestamp: price.timestamp,
-  value: price.value,
-  epoch: price.epoch ? mapEpochToType(price.epoch) : null,
-}); 
