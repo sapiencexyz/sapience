@@ -1,5 +1,5 @@
 {
-  "address": "0x963C0730cB46C45423A1093A4fd008819a3F1056",
+  "address": "0x797141C6e1563E1B36439F1Cc23727Cf8D5Ee7A5",
   "abi": [
     {
       "type": "function",
@@ -395,6 +395,22 @@
     },
     {
       "type": "error",
+      "name": "EpochNotStarted",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "epochStartTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "EpochSettled",
       "inputs": []
     },
@@ -639,12 +655,12 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x610f9dcac3799042165fadf3829032c8eca2cbddc0694b7b391e8743e6d34043",
-  "deployTxnBlockNumber": "7687047",
-  "deployTimestamp": "1739291340",
+  "deployTxnHash": "0x4b176661f68a1bec1b38104d7650ccdfd18c4e259e6925b13f938351f108fbb9",
+  "deployTxnBlockNumber": "7447733",
+  "deployTimestamp": "1736353080",
   "sourceName": "src/market/modules/TradeModule.sol",
   "contractName": "TradeModule",
   "deployedOn": "deploy.TradeModule",
-  "gasUsed": 2676579,
-  "gasCost": "20959613166"
+  "gasUsed": 2686954,
+  "gasCost": "17646261766"
 }
