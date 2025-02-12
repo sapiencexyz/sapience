@@ -21,6 +21,7 @@ import { MARKET_CATEGORIES } from '~/lib/constants/markets';
 import { BLUE } from '~/lib/hooks/useChart';
 import { useLatestResourcePrice, useResources } from '~/lib/hooks/useResources';
 import { TimeWindow, TimeInterval } from '~/lib/interfaces/interfaces';
+import { cn } from '~/lib/utils';
 
 interface ResourcePrice {
   timestamp: string;
@@ -40,9 +41,11 @@ interface Epoch {
 
 interface EpochsTableProps {
   data: Epoch[];
+  lastHoveredId: number | null;
+  onHover: (id: number | null) => void;
 }
 
-const EpochsTable = ({ data }: EpochsTableProps) => {
+const EpochsTable = ({ data, lastHoveredId, onHover }: EpochsTableProps) => {
   return (
     <div className="border-t border-border">
       {data.length ? (
@@ -52,8 +55,16 @@ const EpochsTable = ({ data }: EpochsTableProps) => {
               key={epoch.id}
               href={`/markets/${epoch.market.chainId}:${epoch.market.address}/periods/${epoch.epochId}/trade`}
               className="block hover:no-underline border-b border-border"
+              onMouseEnter={() => onHover(epoch.id)}
             >
-              <div className="flex items-center justify-between cursor-pointer px-4 py-1.5 hover:bg-secondary">
+              <div
+                className={cn(
+                  'flex items-center justify-between cursor-pointer px-4 py-1.5',
+                  lastHoveredId === epoch.id
+                    ? 'bg-secondary'
+                    : 'hover:bg-secondary'
+                )}
+              >
                 <div className="flex items-baseline">
                   <EpochTiming
                     startTimestamp={epoch.startTimestamp}
@@ -131,9 +142,12 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
   const [selectedInterval, setSelectedInterval] = React.useState(
     TimeInterval.I30M
   );
+  const [lastHoveredEpochId, setLastHoveredEpochId] = React.useState<
+    number | null
+  >(null);
 
   const [seriesVisibility, setSeriesVisibility] = React.useState({
-    candles: false,
+    candles: true,
     index: true,
     resource: true,
     trailing: false,
@@ -169,6 +183,15 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
         }))
       )
       .sort((a, b) => a.startTimestamp - b.startTimestamp) || [];
+
+  const hoveredEpoch = epochs.find((epoch) => epoch.id === lastHoveredEpochId);
+  const selectedMarket = hoveredEpoch
+    ? {
+        epochId: hoveredEpoch.epochId,
+        chainId: hoveredEpoch.market.chainId,
+        address: hoveredEpoch.market.address,
+      }
+    : undefined;
 
   return (
     <div className="flex flex-col md:flex-row h-full p-3 lg:p-6 gap-3 lg:gap-6">
@@ -232,6 +255,7 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
                   </div>
                   <Chart
                     resourceSlug={id}
+                    market={selectedMarket}
                     seriesVisibility={seriesVisibility}
                     selectedWindow={DEFAULT_SELECTED_WINDOW}
                     selectedInterval={selectedInterval}
@@ -247,7 +271,11 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
         <div className="w-full md:w-[320px] md:h-full">
           <div className="border border-border rounded-sm shadow md:h-full">
             <h2 className="text-2xl font-bold py-3 px-4">Periods</h2>
-            <EpochsTable data={epochs} />
+            <EpochsTable
+              data={epochs}
+              lastHoveredId={lastHoveredEpochId}
+              onHover={setLastHoveredEpochId}
+            />
           </div>
         </div>
       )}
