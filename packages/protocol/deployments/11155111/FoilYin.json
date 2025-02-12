@@ -1,5 +1,5 @@
 {
-  "address": "0xe59c049a3424bafb05701fefeb16eaab823e507e",
+  "address": "0x90a929fb9d39862e3e578f878c986136b4c2192b",
   "abi": [
     {
       "name": "facets",
@@ -2287,6 +2287,22 @@
     },
     {
       "type": "error",
+      "name": "EpochNotStarted",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "epochStartTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "EpochSettled",
       "inputs": []
     },
@@ -3471,12 +3487,12 @@
     }
   ],
   "deployedOn": "router.FoilYin",
-  "deployTxnHash": "0x8fa005e020f983627bce265a9c275c5ae1396235f55b82dc8a9d34394344effd",
-  "deployTxnBlockNumber": "7687054",
-  "deployTimestamp": "1739291424",
+  "deployTxnHash": "0x7e4842a2ae1bf105ad9d18aa77fddc4700f14b47893b9fed9a4a4de61e364fe6",
+  "deployTxnBlockNumber": "7447739",
+  "deployTimestamp": "1736353152",
   "contractName": "FoilYin",
   "sourceName": "FoilYin.sol",
   "highlight": true,
-  "gasUsed": 2998389,
-  "gasCost": "23351477051"
+  "gasUsed": 2998473,
+  "gasCost": "17790605818"
 }
