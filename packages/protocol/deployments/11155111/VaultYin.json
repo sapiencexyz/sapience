@@ -1,5 +1,5 @@
 {
-  "address": "0xBA0865F315Da4EE0D39A2d4BB5d125276015914b",
+  "address": "0xD4e93D5032Af2433E4Ca0Becb5E9c825DC2d9427",
   "abi": [
     {
       "type": "constructor",
@@ -48,11 +48,6 @@
           "name": "_totalVaults",
           "type": "uint256",
           "internalType": "uint256"
-        },
-        {
-          "name": "_settlementPriceSubmitter",
-          "type": "address",
-          "internalType": "address"
         }
       ],
       "stateMutability": "nonpayable"
@@ -450,11 +445,6 @@
           "name": "initialSqrtPriceX96",
           "type": "uint160",
           "internalType": "uint160"
-        },
-        {
-          "name": "initialStartTime",
-          "type": "uint256",
-          "internalType": "uint256"
         }
       ],
       "outputs": [],
@@ -926,19 +916,6 @@
       ],
       "outputs": [],
       "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
-      "name": "settlementPriceSubmitter",
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "",
-          "type": "address",
-          "internalType": "address"
-        }
-      ],
-      "stateMutability": "view"
     },
     {
       "type": "function",
@@ -1692,23 +1669,22 @@
   "constructorArgs": [
     "Foil Vault Yin",
     "fYIN",
-    "0xe59c049a3424bafb05701fefeb16eaab823e507e",
+    "0x90a929fb9d39862e3e578f878c986136b4c2192b",
     "0xb82381a3fbd3fafa77b3a7be693342618240067b",
     "577350269189625700",
     "1732050807568877200",
-    "31536000",
+    "3600",
     "0",
-    "2",
-    "0xdb5Af497A73620d881561eDb508012A5f84e9BA2"
+    "2"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x5d5b2d724d727c592ab8de93ce94391dd760bc8317cba47c8c526662215dc7a5",
-  "deployTxnBlockNumber": "7687057",
-  "deployTimestamp": "1739291460",
+  "deployTxnHash": "0x60087198486cd9137643130f8f8976d3a09e13f7331e49c259e2bcdb33aca8f3",
+  "deployTxnBlockNumber": "7447741",
+  "deployTimestamp": "1736353176",
   "sourceName": "src/vault/Vault.sol",
   "contractName": "Vault",
   "deployedOn": "deploy.VaultYin",
   "highlight": true,
-  "gasUsed": 4160683,
-  "gasCost": "23307627723"
+  "gasUsed": 4102231,
+  "gasCost": "18159143747"
 }
