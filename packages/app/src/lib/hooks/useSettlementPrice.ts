@@ -21,7 +21,7 @@ const INDEX_PRICE_QUERY = gql`
       timestamp: $timestamp
     ) {
       timestamp
-      value
+      close
     }
   }
 `;
@@ -77,7 +77,7 @@ export function useSettlementPrice(market: Market, epoch: Epoch) {
         throw new Error('No index price data found');
       }
 
-      return Number(gweiToEther(BigInt(price.value)));
+      return Number(gweiToEther(BigInt(price.close)));
     },
     enabled: epoch.epochId !== 0 && !!market && !!epoch.endTimestamp,
   });

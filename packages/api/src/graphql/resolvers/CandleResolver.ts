@@ -7,8 +7,6 @@ import { MarketPrice } from '../../models/MarketPrice';
 import { Market } from '../../models/Market';
 import { Epoch } from '../../models/Epoch';
 import { CandleType } from '../types';
-import { IndexPriceType } from '../types';
-import { mapIndexPriceToType } from './mappers';
 
 interface PricePoint {
   timestamp: number;
@@ -238,6 +236,39 @@ const getIndexPricesByInterval = (
   return candles;
 };
 
+const getIndexPriceAtTime = (
+  orderedPrices: ResourcePricePoint[],
+  timestamp: number
+): CandleType => {
+    let totalGasUsed: bigint = 0n;
+    let totalBaseFeesPaid: bigint = 0n;
+    let lastClose: string = '';
+
+    // Add to the sliding window trailing average the prices that are now in the interval
+    for (let i = 0; i < orderedPrices.length; i++) {
+      if (orderedPrices[i].timestamp <= timestamp) {
+        totalGasUsed += BigInt(orderedPrices[i].used);
+        totalBaseFeesPaid += BigInt(orderedPrices[i].feePaid);
+      }
+    }
+
+
+    // Calculate the average price for the interval
+    if (totalGasUsed > 0n) {
+      const averagePrice: bigint = totalBaseFeesPaid / totalGasUsed;
+      lastClose = averagePrice.toString();
+    }
+
+    return {
+      timestamp,
+      open: lastClose,
+      high: lastClose,
+      low: lastClose,
+      close: lastClose,
+    };
+
+}
+
 @Resolver()
 export class CandleResolver {
   @Query(() => [CandleType])
@@ -452,6 +483,74 @@ export class CandleResolver {
     }
   }
 
+  // For retrieving the exact settlement price
+  @Query(() => CandleType, { nullable: true })
+  async indexPriceAtTime(
+    @Arg('chainId', () => Int) chainId: number,
+    @Arg('address', () => String) address: string,
+    @Arg('epochId', () => String) epochId: string,
+    @Arg('timestamp', () => Int) timestamp: number
+  ): Promise<CandleType | null> {
+    try {
+      const market = await dataSource.getRepository(Market).findOne({
+        where: { chainId, address },
+      });
+
+      if (!market) {
+        throw new Error(
+          `Market not found with chainId: ${chainId} and address: ${address}`
+        );
+      }
+
+      const epoch = await dataSource.getRepository(Epoch).findOne({
+        where: {
+          market: { id: market.id },
+          epochId: Number(epochId),
+        },
+      });
+
+      if (!epoch) {
+        throw new Error(`Epoch not found with id: ${epochId}`);
+      }
+
+      const resource = await dataSource.getRepository(Resource).findOne({
+        where: {
+          markets: { id: market.id },
+        },
+      });
+
+      if (!resource) {
+        throw new Error(`Resource not found for market: ${market.id}`);
+      }
+
+      const epochStartTimestamp = Number(epoch.startTimestamp);
+      if (timestamp < epochStartTimestamp) {
+        throw new Error(`Timestamp is before epoch start time`);
+      }
+
+      const pricesInRange = await dataSource.getRepository(ResourcePrice).find({
+        where: {
+          resource: { id: resource.id },
+          timestamp: Between(epochStartTimestamp, timestamp),
+        },
+        order: { timestamp: 'ASC' },
+      });
+
+      return getIndexPriceAtTime(
+        pricesInRange.map((p) => ({
+          timestamp: Number(p.timestamp),
+          value: p.value,
+          used: p.used,
+          feePaid: p.feePaid,
+        })),
+        timestamp
+      );
+    } catch (error) {
+      console.error('Error fetching index price at time:', error);
+      throw new Error('Failed to fetch index price at time');
+    }
+  }
+
   @Query(() => [CandleType])
   async marketCandles(
     @Arg('chainId', () => Int) chainId: number,
@@ -538,48 +637,4 @@ export class CandleResolver {
     }
   }
 
-  // For retrieving the exact settlement price
-  @Query(() => IndexPriceType, { nullable: true })
-  async indexPriceAtTime(
-    @Arg('chainId', () => Int) chainId: number,
-    @Arg('address', () => String) address: string,
-    @Arg('epochId', () => String) epochId: string,
-    @Arg('timestamp', () => Int) timestamp: number
-  ): Promise<IndexPriceType | null> {
-    try {
-      const market = await dataSource.getRepository(Market).findOne({
-        where: { chainId, address },
-      });
-
-      if (!market) {
-        throw new Error(`Market not found with chainId: ${chainId} and address: ${address}`);
-      }
-
-      const epoch = await dataSource.getRepository(Epoch).findOne({
-        where: { 
-          market: { id: market.id },
-          epochId: Number(epochId)
-        },
-      });
-
-      if (!epoch) {
-        throw new Error(`Epoch not found with id: ${epochId}`);
-      }
-
-      // Get the latest price at or before the requested timestamp
-      const price = await dataSource.getRepository(IndexPrice)
-        .createQueryBuilder('price')
-        .where('price.epochId = :epochId', { epochId: epoch.id })
-        .andWhere('price.timestamp <= :timestamp', { timestamp })
-        .andWhere('price.timestamp >= :startTime', { startTime: epoch.startTimestamp })
-        .orderBy('price.timestamp', 'DESC')
-        .take(1)
-        .getOne();
-
-      return price ? mapIndexPriceToType(price) : null;
-    } catch (error) {
-      console.error('Error fetching index price at time:', error);
-      throw new Error('Failed to fetch index price at time');
-    }
-  }
 } 
