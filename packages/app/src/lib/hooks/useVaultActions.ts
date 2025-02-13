@@ -12,11 +12,11 @@ import erc20ABI from '~/lib/erc20abi.json';
 
 type Props = {
   amount: bigint;
-  collateralAsset: `0x${string}`;
-  vaultData: {
+  collateralAsset?: `0x${string}`;
+  vaultData?: {
     abi: any;
     address: `0x${string}`;
-  };
+  } | null;
   type: 'deposit' | 'withdraw';
 };
 
@@ -33,11 +33,14 @@ export const useVaultActions = ({
   // Check allowance
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
     abi: erc20ABI,
-    address: type === 'deposit' ? collateralAsset : vaultData.address,
+    address: type === 'deposit' ? collateralAsset : vaultData?.address,
     functionName: 'allowance',
-    args: [address, vaultData.address],
+    args: [address || zeroAddress, vaultData?.address || zeroAddress],
     account: (address || zeroAddress) as `0x${string}`,
     chainId,
+    query: {
+      enabled: !!address && !!vaultData && !!collateralAsset,
+    },
   });
 
   // Write contract hooks
@@ -102,7 +105,7 @@ export const useVaultActions = ({
   }, [isConfirmed, toast, setPendingTxn]);
 
   const createRequest = async () => {
-    if (!address) return;
+    if (!address || !vaultData) return;
     setPendingTxn(true);
     if (amount > 0) {
       depositWrite({
@@ -125,10 +128,8 @@ export const useVaultActions = ({
   };
 
   const approve = async () => {
-    if (!address) return;
+    if (!address || !vaultData || !collateralAsset) return;
     setPendingTxn(true);
-
-    console.log('APPROVEAMT', amount);
 
     if (type === 'deposit') {
       approveWrite({
@@ -148,7 +149,7 @@ export const useVaultActions = ({
   };
 
   const deposit = async () => {
-    if (!address) return;
+    if (!address || !vaultData) return;
     setPendingTxn(true);
     depositWrite({
       abi: vaultData.abi,
@@ -159,7 +160,7 @@ export const useVaultActions = ({
   };
 
   const redeem = async () => {
-    if (!address) return;
+    if (!address || !vaultData) return;
     setPendingTxn(true);
     depositWrite({
       abi: vaultData.abi,

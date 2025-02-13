@@ -18,6 +18,7 @@ export interface Market {
   chainId: number;
   name: string;
   vaultAddress: string;
+  isYin: boolean;
   epochs: Epoch[];
 }
 
@@ -101,7 +102,7 @@ export const useResources = () => {
       const { data } = await foilApi.post('/graphql', {
         query: print(RESOURCES_QUERY),
       });
-      
+
       return data.resources.map((resource: Omit<Resource, 'iconPath'>) => ({
         ...resource,
         iconPath: mapResourceToIconPath(resource.name),
