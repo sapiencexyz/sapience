@@ -11,9 +11,8 @@ export class ResourceResolver {
     try {
       const resources = await dataSource.getRepository(Resource).find({
         relations: ['markets'],
-      });
-      const mappedResources = resources.map(mapResourceToType);
-      return mappedResources;
+      }); 
+      return resources.map(mapResourceToType);
     } catch (error) {
       console.error('Error fetching resources:', error);
       throw new Error('Failed to fetch resources');
