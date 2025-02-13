@@ -6,7 +6,6 @@ import {
   marketRepository,
   transactionRepository,
 } from '../db';
-import dataSource from '../db';
 import { MarketParams } from '../models/MarketParams';
 import { Event } from '../models/Event';
 import { Market } from '../models/Market';
@@ -254,90 +253,6 @@ const alertEvent = async (
   logData: LogData
 ) => {
   try {
-    let title = '';
-
-    // Format based on event type
-    switch (logData.eventName) {
-      case EventType.TraderPositionCreated:
-      case EventType.TraderPositionModified: {
-        const tradeDirection =
-          BigInt(String(logData.args.finalPrice)) >
-          BigInt(String(logData.args.initialPrice))
-            ? 'Long'
-            : 'Short';
-        const gasAmount = formatUnits(
-          BigInt(
-            String(
-              logData.args.positionVgasAmount ||
-                logData.args.positionBorrowedVgas
-            )
-          ),
-          18
-        ); // returns string
-        const rawPriceGwei = Number(logData.args.tradeRatio) / 1e18;
-        const priceGwei = rawPriceGwei.toLocaleString('en-US', {
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 2,
-        });
-
-        title = `${tradeDirection === 'Long' ? '<:pepegas:1313887905508364288>' : '<:peepoangry:1313887206687117313>'} **Trade Executed:** ${tradeDirection} ${gasAmount} Ggas @ ${priceGwei} wstGwei`;
-        console.log(title)
-        break;
-      }
-
-      case EventType.LiquidityPositionCreated:
-      case EventType.LiquidityPositionIncreased:
-      case EventType.LiquidityPositionDecreased:
-      case EventType.LiquidityPositionClosed: {
-        const action =
-          logData.eventName === EventType.LiquidityPositionDecreased ||
-          logData.eventName === EventType.LiquidityPositionClosed
-            ? 'Removed'
-            : 'Added';
-        const liquidityGas = formatUnits(
-          BigInt(
-            String(
-              logData.args.addedAmount0 ||
-                logData.args.increasedAmount0 ||
-                logData.args.amount0
-            )
-          ),
-          18
-        ); // returns string
-        let priceRangeText = '';
-        if (
-          logData.args.lowerTick !== undefined &&
-          logData.args.upperTick !== undefined
-        ) {
-          const rawLowerPrice = Math.pow(
-            1.0001,
-            Number(logData.args.lowerTick)
-          );
-          const rawUpperPrice = Math.pow(
-            1.0001,
-            Number(logData.args.upperTick)
-          );
-
-          const lowerPrice = rawLowerPrice.toLocaleString('en-US', {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 2,
-          });
-          const upperPrice = rawUpperPrice.toLocaleString('en-US', {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 2,
-          });
-
-          priceRangeText = ` from ${lowerPrice} - ${upperPrice} wstGwei`;
-        }
-
-        title = `<:pepeliquid:1313887190056439859> **Liquidity Modified:** ${action} ${liquidityGas} Ggas${priceRangeText}`;
-        console.log(title);
-        break;
-      }
-      default:
-        return; // Skip other events
-    }
-
     if (!DISCORD_TOKEN) {
       console.warn('Discord credentials not configured, skipping alert');
       return;
@@ -354,87 +269,87 @@ const alertEvent = async (
         DISCORD_PUBLIC_CHANNEL_ID
       )) as TextChannel;
 
-      // let title = '';
+      let title = '';
 
-      // // Format based on event type
-      // switch (logData.eventName) {
-      //   case EventType.TraderPositionCreated:
-      //   case EventType.TraderPositionModified: {
-      //     const tradeDirection =
-      //       BigInt(String(logData.args.finalPrice)) >
-      //       BigInt(String(logData.args.initialPrice))
-      //         ? 'Long'
-      //         : 'Short';
-      //     const gasAmount = formatUnits(
-      //       BigInt(
-      //         String(
-      //           logData.args.positionVgasAmount ||
-      //             logData.args.positionBorrowedVgas
-      //         )
-      //       ),
-      //       18
-      //     ); // returns string
-      //     const rawPriceGwei = Number(logData.args.tradeRatio) / 1e18;
-      //     const priceGwei = rawPriceGwei.toLocaleString('en-US', {
-      //       minimumFractionDigits: 0,
-      //       maximumFractionDigits: 2,
-      //     });
+      // Format based on event type
+      switch (logData.eventName) {
+        case EventType.TraderPositionCreated:
+        case EventType.TraderPositionModified: {
+          const tradeDirection =
+            BigInt(String(logData.args.finalPrice)) >
+            BigInt(String(logData.args.initialPrice))
+              ? 'Long'
+              : 'Short';
+          const gasAmount = formatUnits(
+            BigInt(
+              String(
+                logData.args.positionVgasAmount ||
+                  logData.args.positionBorrowedVgas
+              )
+            ),
+            18
+          ); // returns string
+          const rawPriceGwei = Number(logData.args.tradeRatio) / 1e18;
+          const priceGwei = rawPriceGwei.toLocaleString('en-US', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2,
+          });
 
-      //     title = `${tradeDirection === 'Long' ? '<:pepegas:1313887905508364288>' : '<:peepoangry:1313887206687117313>'} **Trade Executed:** ${tradeDirection} ${gasAmount} Ggas @ ${priceGwei} wstGwei`;
-      //     break;
-      //   }
+          title = `${tradeDirection === 'Long' ? '<:pepegas:1313887905508364288>' : '<:peepoangry:1313887206687117313>'} **Trade Executed:** ${tradeDirection} ${gasAmount} Ggas @ ${priceGwei} wstGwei`;
+          break;
+        }
 
-      //   case EventType.LiquidityPositionCreated:
-      //   case EventType.LiquidityPositionIncreased:
-      //   case EventType.LiquidityPositionDecreased:
-      //   case EventType.LiquidityPositionClosed: {
-      //     const action =
-      //       logData.eventName === EventType.LiquidityPositionDecreased ||
-      //       logData.eventName === EventType.LiquidityPositionClosed
-      //         ? 'Removed'
-      //         : 'Added';
-      //     const liquidityGas = formatUnits(
-      //       BigInt(
-      //         String(
-      //           logData.args.addedAmount0 ||
-      //             logData.args.increasedAmount0 ||
-      //             logData.args.amount0
-      //         )
-      //       ),
-      //       18
-      //     ); // returns string
-      //     let priceRangeText = '';
-      //     if (
-      //       logData.args.lowerTick !== undefined &&
-      //       logData.args.upperTick !== undefined
-      //     ) {
-      //       const rawLowerPrice = Math.pow(
-      //         1.0001,
-      //         Number(logData.args.lowerTick)
-      //       );
-      //       const rawUpperPrice = Math.pow(
-      //         1.0001,
-      //         Number(logData.args.upperTick)
-      //       );
+        case EventType.LiquidityPositionCreated:
+        case EventType.LiquidityPositionIncreased:
+        case EventType.LiquidityPositionDecreased:
+        case EventType.LiquidityPositionClosed: {
+          const action =
+            logData.eventName === EventType.LiquidityPositionDecreased ||
+            logData.eventName === EventType.LiquidityPositionClosed
+              ? 'Removed'
+              : 'Added';
+          const liquidityGas = formatUnits(
+            BigInt(
+              String(
+                logData.args.addedAmount0 ||
+                  logData.args.increasedAmount0 ||
+                  logData.args.amount0
+              )
+            ),
+            18
+          ); // returns string
+          let priceRangeText = '';
+          if (
+            logData.args.lowerTick !== undefined &&
+            logData.args.upperTick !== undefined
+          ) {
+            const rawLowerPrice = Math.pow(
+              1.0001,
+              Number(logData.args.lowerTick)
+            );
+            const rawUpperPrice = Math.pow(
+              1.0001,
+              Number(logData.args.upperTick)
+            );
 
-      //       const lowerPrice = rawLowerPrice.toLocaleString('en-US', {
-      //         minimumFractionDigits: 0,
-      //         maximumFractionDigits: 2,
-      //       });
-      //       const upperPrice = rawUpperPrice.toLocaleString('en-US', {
-      //         minimumFractionDigits: 0,
-      //         maximumFractionDigits: 2,
-      //       });
+            const lowerPrice = rawLowerPrice.toLocaleString('en-US', {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 2,
+            });
+            const upperPrice = rawUpperPrice.toLocaleString('en-US', {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 2,
+            });
 
-      //       priceRangeText = ` from ${lowerPrice} - ${upperPrice} wstGwei`;
-      //     }
+            priceRangeText = ` from ${lowerPrice} - ${upperPrice} wstGwei`;
+          }
 
-      //     title = `<:pepeliquid:1313887190056439859> **Liquidity Modified:** ${action} ${liquidityGas} Ggas${priceRangeText}`;
-      //     break;
-      //   }
-      //   default:
-      //     return; // Skip other events
-      // }
+          title = `<:pepeliquid:1313887190056439859> **Liquidity Modified:** ${action} ${liquidityGas} Ggas${priceRangeText}`;
+          break;
+        }
+        default:
+          return; // Skip other events
+      }
 
       // Get block explorer URL based on chain ID
       const getBlockExplorerUrl = (chainId: number, txHash: string) => {
@@ -538,7 +453,7 @@ const upsertEvent = async (
   // Find market with relations
   const market = await marketRepository.findOne({
     where: { chainId, address },
-    relations: ['marketParams']
+    relations: ['marketParams'],
   });
 
   if (!market) {
@@ -554,9 +469,9 @@ const upsertEvent = async (
         transactionHash: logData.transactionHash,
         market: { id: market.id },
         blockNumber: Number(blockNumber),
-        logIndex: logIndex
+        logIndex: logIndex,
       },
-      relations: ['market', 'market.marketParams']
+      relations: ['market', 'market.marketParams'],
     });
 
     if (existingEvent) {
@@ -575,11 +490,11 @@ const upsertEvent = async (
     newEvent.transactionHash = logData.transactionHash;
 
     const savedEvent = await eventRepository.save(newEvent);
-    
+
     // Reload the event with all necessary relations
     const loadedEvent = await eventRepository.findOne({
       where: { id: savedEvent.id },
-      relations: ['market', 'market.marketParams']
+      relations: ['market', 'market.marketParams'],
     });
 
     if (!loadedEvent) {
@@ -588,7 +503,6 @@ const upsertEvent = async (
 
     await upsertEntitiesFromEvent(loadedEvent);
     return loadedEvent;
-
   } catch (error) {
     console.error('Error upserting event:', error);
     throw error;

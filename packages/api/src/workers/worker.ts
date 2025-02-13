@@ -110,7 +110,7 @@ async function main() {
       where: { name: marketInfo.resource.name },
     });
     if (!resource) {
-      // console.log(`Resource not found: ${marketInfo.resource.name}`);
+      console.log(`Resource not found: ${marketInfo.resource.name}`);
       continue;
     }
 
@@ -142,7 +142,7 @@ async function main() {
       where: { name: resourceInfo.name },
     });
     if (!resource) {
-      // console.log(`Resource not found: ${resourceInfo.name}`);
+      console.log(`Resource not found: ${resourceInfo.name}`);
       continue;
     }
 
@@ -183,9 +183,9 @@ if (process.argv[2] === 'reindexMarket') {
     const epochId = process.argv[5];
 
     if (isNaN(chainId) || !address || !epochId) {
-      // console.error(
-      //   'Invalid arguments. Usage: tsx src/worker.ts reindexMissing <chainId> <address> <epochId>'
-      // );
+      console.error(
+        'Invalid arguments. Usage: tsx src/worker.ts reindexMissing <chainId> <address> <epochId>'
+      );
       process.exit(1);
     }
     await reindexMissingBlocks(chainId, address, epochId);
