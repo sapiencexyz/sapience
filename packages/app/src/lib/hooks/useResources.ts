@@ -17,6 +17,7 @@ export interface Market {
   address: string;
   chainId: number;
   name: string;
+  vaultAddress: string;
   epochs: Epoch[];
 }
 
@@ -58,6 +59,30 @@ const LATEST_INDEX_PRICE_QUERY = gql`
   }
 `;
 
+const RESOURCES_QUERY = gql`
+  query GetResources {
+    resources {
+      id
+      name
+      slug
+      markets {
+        id
+        address
+        isYin
+        vaultAddress
+        chainId
+        epochs {
+          id
+          epochId
+          startTimestamp
+          endTimestamp
+          settled
+        }
+      }
+    }
+  }
+`;
+
 const mapResourceToIconPath = (name: string): string => {
   switch (name) {
     case 'Ethereum Gas':
@@ -73,8 +98,11 @@ export const useResources = () => {
   return useQuery<Resource[]>({
     queryKey: ['resources'],
     queryFn: async () => {
-      const data = await foilApi.get('/resources');
-      return data.map((resource: Omit<Resource, 'iconPath'>) => ({
+      const { data } = await foilApi.post('/graphql', {
+        query: print(RESOURCES_QUERY),
+      });
+      
+      return data.resources.map((resource: Omit<Resource, 'iconPath'>) => ({
         ...resource,
         iconPath: mapResourceToIconPath(resource.name),
       }));

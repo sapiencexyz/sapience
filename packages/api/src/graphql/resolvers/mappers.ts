@@ -17,6 +17,7 @@ import {
 export const mapMarketToType = (market: Market): MarketType => ({
   id: market.id,
   address: market.address,
+  vaultAddress: market.vaultAddress,
   chainId: market.chainId,
   public: market.public,
   epochs: market.epochs?.map(mapEpochToType) || [],

@@ -448,7 +448,7 @@ const Header = () => {
           <div className="flex items-center gap-2">
             <ConnectButton />
             <div className="hidden lg:block">
-              <ModeToggle />
+              {!pathname.startsWith('/earn') && <ModeToggle />}
             </div>
           </div>
         </div>
@@ -513,7 +513,7 @@ const Header = () => {
               <div className="flex flex-col space-y-4 p-4 position-relative">
                 <NavLinks isMobile onClose={() => setIsOpen(false)} />
                 <div className="absolute top-2 right-5">
-                  <ModeToggle />
+                  {!pathname.startsWith('/earn') && <ModeToggle />}
                 </div>
               </div>
             </DrawerContent>

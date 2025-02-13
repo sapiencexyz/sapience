@@ -18,9 +18,7 @@ const devDataSource: DataSource = new DataSource({
   url: process.env.DATABASE_URL,
   synchronize: true,
   logging: ['warn', 'error', 'log', 'info'],
-  ssl: {
-    rejectUnauthorized: false,
-  },
+  ssl: false,
   entities: [
     ResourcePrice,
     Position,

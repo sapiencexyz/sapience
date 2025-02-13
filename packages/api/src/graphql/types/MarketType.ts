@@ -10,11 +10,17 @@ export class MarketType {
   @Field(() => String)
   address: string;
 
+  @Field(() => String)
+  vaultAddress: string;
+
   @Field(() => Int)
   chainId: number;
 
   @Field(() => Boolean)
   public: boolean;
+
+  @Field(() => Boolean)
+  isYin: boolean;
 
   @Field(() => [EpochType])
   epochs: EpochType[];

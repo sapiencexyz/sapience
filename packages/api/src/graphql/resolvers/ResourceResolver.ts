@@ -9,8 +9,11 @@ export class ResourceResolver {
   @Query(() => [ResourceType])
   async resources(): Promise<ResourceType[]> {
     try {
-      const resources = await dataSource.getRepository(Resource).find();
-      return resources.map(mapResourceToType);
+      const resources = await dataSource.getRepository(Resource).find({
+        relations: ['markets'],
+      });
+      const mappedResources = resources.map(mapResourceToType);
+      return mappedResources;
     } catch (error) {
       console.error('Error fetching resources:', error);
       throw new Error('Failed to fetch resources');
@@ -24,7 +27,7 @@ export class ResourceResolver {
     try {
       const resource = await dataSource.getRepository(Resource).findOne({
         where: { slug },
-        relations: ['markets', 'resourcePrices'],
+        relations: ['markets', 'markets.epochs', 'resourcePrices'],
       });
 
       if (!resource) return null;
