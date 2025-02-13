@@ -30,7 +30,7 @@ import {
 import { useFoil } from '~/lib/context/FoilProvider';
 import { PeriodContext, PeriodProvider } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
-import { convertWstEthToGwei } from '~/lib/utils/util';
+import { convertWstEthToGwei, foilApi } from '~/lib/utils/util';
 
 const SUBSCRIPTIONS_QUERY = gql`
   query GetSubscriptions($owner: String!) {
@@ -139,23 +139,13 @@ const useSubscriptions = (address?: string) => {
     }
 
     // First fetch positions
-    const positionsResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_FOIL_API_URL}/graphql`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: print(SUBSCRIPTIONS_QUERY),
-          variables: {
-            owner: address,
-          },
-        }),
-      }
-    );
+    const { data: positionsData, errors } = await foilApi.post('/graphql', {
+      query: print(SUBSCRIPTIONS_QUERY),
+      variables: {
+        owner: address,
+      },
+    });
 
-    const { data: positionsData, errors } = await positionsResponse.json();
     if (errors) {
       throw new Error(errors[0].message);
     }
@@ -172,10 +162,9 @@ const useSubscriptions = (address?: string) => {
     return Promise.all(
       activePositions.map(async (position: any) => {
         const contractId = `${position.epoch.market.chainId}:${position.epoch.market.address}`;
-        const transactionsResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_FOIL_API_URL}/transactions?contractId=${contractId}&positionId=${position.positionId}`
+        const transactions = await foilApi.get(
+          `/transactions?contractId=${contractId}&positionId=${position.positionId}`
         );
-        const transactions = await transactionsResponse.json();
 
         return {
           ...position,

@@ -6,11 +6,10 @@ import { Loader2, ExternalLink } from 'lucide-react';
 import EpochTiming from '~/components/EpochTiming';
 import NumberDisplay from '~/components/numberDisplay';
 import { badgeVariants } from '~/components/ui/badge';
-import { API_BASE_URL } from '~/lib/constants/constants';
 import { PeriodProvider } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
 import { cn } from '~/lib/utils';
-import { tickToPrice } from '~/lib/utils/util';
+import { tickToPrice, foilApi } from '~/lib/utils/util';
 
 const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
 
@@ -29,13 +28,7 @@ const usePosition = (contractId: string, positionId: string) => {
   return useQuery({
     queryKey: ['position', contractId, positionId],
     queryFn: async () => {
-      const response = await fetch(
-        `${API_BASE_URL}/positions/${positionId}?contractId=${contractId}`
-      );
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      return response.json();
+      return foilApi.get(`/positions/${positionId}?contractId=${contractId}`);
     },
     refetchInterval: POLLING_INTERVAL,
   });

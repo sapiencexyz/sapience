@@ -7,8 +7,7 @@ import type React from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
 
 import { useToast } from '../../hooks/use-toast';
-import { API_BASE_URL } from '../constants/constants';
-import { gweiToEther, mainnetClient } from '../utils/util';
+import { gweiToEther, mainnetClient, foilApi } from '../utils/util';
 
 export interface Market {
   id: number;
@@ -108,17 +107,10 @@ export const FoilProvider: React.FC<{ children: React.ReactNode }> = ({
   } = useQuery<Market[], Error>({
     queryKey: ['markets'],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/markets`);
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      const fetchedMarkets: Market[] = await response.json();
-
-      console.log('fetchedMarkets', fetchedMarkets, API_BASE_URL);
-
+      const data = await foilApi.get('/markets');
       const currentTimestamp = Math.floor(Date.now() / 1000);
 
-      return fetchedMarkets.map((market) => {
+      return data.map((market: Market) => {
         const sortedEpochs = [...market.epochs].sort(
           (a, b) => a.startTimestamp - b.startTimestamp
         );
