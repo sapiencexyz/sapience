@@ -53,13 +53,13 @@ export class Event {
     transactionIndex: number;
   };
 
-  @AfterInsert()
-  async afterInsert() {
-    console.log('Event inserted: ' + this.id);
-    try {
-      await upsertEntitiesFromEvent(this);
-    } catch (e) {
-      console.error('Error upserting entities from event:', e);
-    }
-  }
+  // @AfterInsert()
+  // async afterInsert() {
+  //   console.log('Event inserted: ' + this.id);
+  //   try {
+  //     await upsertEntitiesFromEvent(this);
+  //   } catch (e) {
+  //     console.error('Error upserting entities from event:', e);
+  //   }
+  // }
 }

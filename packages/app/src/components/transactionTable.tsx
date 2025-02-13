@@ -134,8 +134,8 @@ function useTransactions(
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
-
       const { data, errors } = await response.json();
+      console.log(data)
       if (errors) {
         throw new Error(errors[0].message);
       }
