@@ -26,7 +26,7 @@ export class ResourceResolver {
     try {
       const resource = await dataSource.getRepository(Resource).findOne({
         where: { slug },
-        relations: ['markets', 'markets.epochs', 'resourcePrices'],
+        relations: ['markets', 'resourcePrices'],
       });
 
       if (!resource) return null;
