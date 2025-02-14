@@ -94,7 +94,9 @@ export const useResources = () => {
       });
 
       // Create a map of resource data from the API by name
-      const resourceMap = new Map(data.data.resources.map((r: Omit<Resource, 'iconPath'>) => [r.name, r]));
+      const resourceMap = new Map(
+        data.data.resources.map((r: Omit<Resource, 'iconPath'>) => [r.name, r])
+      );
 
       // Merge with RESOURCES constant maintaining its order
       return RESOURCES.map((resourceConstant) => {
