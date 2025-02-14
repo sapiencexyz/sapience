@@ -11,7 +11,9 @@ export class ResourceResolver {
   @Query(() => [ResourceType])
   async resources(): Promise<ResourceType[]> {
     try {
-      const resources = await dataSource.getRepository(Resource).find();
+      const resources = await dataSource.getRepository(Resource).find({
+        relations: ['markets'],
+      });
       return resources.map(mapResourceToType);
     } catch (error) {
       console.error('Error fetching resources:', error);

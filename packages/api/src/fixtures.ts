@@ -42,20 +42,30 @@ const addMarketYinYang = async (markets: MarketInfo[], chainId: number) => {
   const yang = await safeRequire(
     `@/protocol/deployments/${chainId}/FoilYang.json`
   );
+  const yinVault = await safeRequire(
+    `@/protocol/deployments/${chainId}/VaultYin.json`
+  );
+  const yangVault = await safeRequire(
+    `@/protocol/deployments/${chainId}/VaultYang.json`
+  );
 
-  if (yin && yang) {
+  if (yin && yang && yinVault && yangVault) {
     markets.push(
       {
         deployment: yin,
+        vaultAddress: yinVault.address,
         marketChainId: chainId,
         public: true,
         resource: RESOURCES[0], // Ethereum Gas
+        isYin: true,
       },
       {
         deployment: yang,
+        vaultAddress: yangVault.address,
         marketChainId: chainId,
         public: true,
         resource: RESOURCES[0], // Ethereum Gas
+        isYin: false,
       }
     );
   }

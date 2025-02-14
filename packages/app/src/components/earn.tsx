@@ -53,24 +53,31 @@ const Earn: FC<Props> = ({ slug }) => {
   const { data: resources } = useResources();
   const resource = resources?.find((r) => r.slug === slug);
 
-  // hardcode to base mainnet for now...
-  const { foilVaultData } = useFoilDeployment(8453);
+  // Get the appropriate market based on the selected vault type
+  const market = useMemo(() => {
+    if (!resource?.markets) return null;
+    return resource.markets.find((m) => m.isYin === (selectedVault === 'yin'));
+  }, [resource, selectedVault]);
+
+  // Load vault data using market info
+  const { foilVaultData } = useFoilDeployment(market?.chainId);
 
   const vaultData = useMemo(() => {
+    if (!market) return null;
     return foilVaultData[selectedVault];
-  }, [selectedVault, foilVaultData]);
+  }, [selectedVault, foilVaultData, market]);
 
   const {
     collateralAsset,
-    decimals: collateralDecimals,
-    vaultDecimals,
+    decimals: collateralDecimals = 18,
+    vaultDecimals = 18,
     epoch,
     duration,
-    vaultSymbol: vaultSharesTicker,
-    collateralSymbol: collateralTicker,
+    vaultSymbol: vaultSharesTicker = '',
+    collateralSymbol: collateralTicker = '',
   } = useVaultData({
     vaultData,
-  });
+  }) || {};
   const {
     collateralBalance,
     pendingRequest,

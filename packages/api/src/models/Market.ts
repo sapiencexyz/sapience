@@ -35,6 +35,12 @@ export class Market {
   @Column({ type: 'varchar' })
   address: string;
 
+  @Column({ type: 'varchar' })
+  vaultAddress: string;
+
+  @Column({ type: 'boolean', default: false })
+  isYin: boolean;
+
   @Column({ type: 'integer' })
   chainId: number;
 

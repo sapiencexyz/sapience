@@ -98,6 +98,8 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
 
   updatedMarket.public = marketInfo.public;
   updatedMarket.address = marketInfo.deployment.address;
+  updatedMarket.vaultAddress = marketInfo.vaultAddress;
+  updatedMarket.isYin = marketInfo.isYin;
   updatedMarket.deployTxnBlockNumber = Number(
     marketInfo.deployment.deployTxnBlockNumber
   );

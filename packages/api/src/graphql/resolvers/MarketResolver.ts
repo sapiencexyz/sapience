@@ -10,7 +10,9 @@ export class MarketResolver {
   @Query(() => [MarketType])
   async markets(): Promise<MarketType[]> {
     try {
-      const markets = await dataSource.getRepository(Market).find();
+      const markets = await dataSource.getRepository(Market).find({
+        relations: ['epochs'],
+      });
       return markets.map(mapMarketToType);
     } catch (error) {
       console.error('Error fetching markets:', error);
@@ -26,6 +28,7 @@ export class MarketResolver {
     try {
       const market = await dataSource.getRepository(Market).findOne({
         where: { chainId, address },
+        relations: ['epochs'],
       });
 
       if (!market) return null;
@@ -40,6 +43,12 @@ export class MarketResolver {
   @FieldResolver(() => [EpochType])
   async epochs(@Root() market: Market): Promise<EpochType[]> {
     try {
+      // If epochs are already loaded, return them
+      if (market.epochs) {
+        return market.epochs.map(mapEpochToType);
+      }
+
+      // Otherwise fetch them
       const epochs = await dataSource.getRepository(Epoch).find({
         where: { market: { id: market.id } },
       });

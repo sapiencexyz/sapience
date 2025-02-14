@@ -14,6 +14,7 @@ export interface Market {
   name: string;
   chainId: number;
   address: string;
+  vaultAddress: string;
   collateralAsset: string;
   owner: string;
   resource: {

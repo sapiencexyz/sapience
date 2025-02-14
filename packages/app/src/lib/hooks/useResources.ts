@@ -18,6 +18,8 @@ export interface Market {
   address: string;
   chainId: number;
   name: string;
+  vaultAddress: string;
+  isYin: boolean;
   epochs: Epoch[];
 }
 
@@ -59,13 +61,42 @@ const LATEST_INDEX_PRICE_QUERY = gql`
   }
 `;
 
+const RESOURCES_QUERY = gql`
+  query GetResources {
+    resources {
+      id
+      name
+      slug
+      markets {
+        id
+        address
+        isYin
+        vaultAddress
+        chainId
+        epochs {
+          id
+          epochId
+          startTimestamp
+          endTimestamp
+          settled
+        }
+      }
+    }
+  }
+`;
+
 export const useResources = () => {
   return useQuery<Resource[]>({
     queryKey: ['resources'],
     queryFn: async () => {
-      const data = await foilApi.get('/resources');
+      const { data } = await foilApi.post('/graphql', {
+        query: print(RESOURCES_QUERY),
+      });
+
       // Create a map of resource data from the API by name
-      const resourceMap = new Map(data.map((r: Resource) => [r.name, r]));
+      const resourceMap = new Map(
+        data.data.resources.map((r: Omit<Resource, 'iconPath'>) => [r.name, r])
+      );
 
       // Merge with RESOURCES constant maintaining its order
       return RESOURCES.map((resourceConstant) => {
