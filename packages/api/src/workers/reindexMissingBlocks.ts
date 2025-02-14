@@ -1,7 +1,10 @@
 import { initializeDataSource, resourcePriceRepository } from '../db';
 import { MARKETS } from '../fixtures';
 import { initializeMarket } from '../controllers/market';
-import { getMarketStartEndBlock, getMarketStartEndBlockByTimestamps } from '../controllers/marketHelpers';
+import {
+  getMarketStartEndBlock,
+  getMarketStartEndBlockByTimestamps,
+} from '../controllers/marketHelpers';
 import { Between } from 'typeorm';
 import * as Sentry from '@sentry/node';
 
@@ -10,16 +13,16 @@ export async function reindexMissingBlocks(
   address: string,
   epochId: string,
   startTimestamp?: number,
-  endTimestamp?: number,
+  endTimestamp?: number
 ) {
   try {
     console.log(
       `Starting reindex of missing resource blocks for market ${chainId}:${address}, epoch ${epochId}`
     );
-    if (startTimestamp !== undefined  && endTimestamp !== undefined) {
+    if (startTimestamp !== undefined && endTimestamp !== undefined) {
       console.log(
         `Timestamps for reindex specified: ${startTimestamp} to ${endTimestamp}`
-      )
+      );
     }
 
     await initializeDataSource();
@@ -51,7 +54,7 @@ export async function reindexMissingBlocks(
         marketInfo.resource.priceIndexer.client
       );
     }
-    const {startBlockNumber, endBlockNumber, error} = result;
+    const { startBlockNumber, endBlockNumber, error } = result;
 
     if (error || !startBlockNumber || !endBlockNumber) {
       return { missingBlockNumbers: null, error };

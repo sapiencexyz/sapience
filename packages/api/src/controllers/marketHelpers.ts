@@ -520,7 +520,6 @@ export const createEpochFromEvent = async (
   return epoch;
 };
 
-
 export const getMarketStartEndBlockByTimestamps = async (
   market: Market,
   epochId: string,
@@ -540,7 +539,10 @@ export const getMarketStartEndBlockByTimestamps = async (
   const startTimestampEpoch = Number(epoch.startTimestamp);
   const endTimestampEpoch = Math.min(Number(epoch.endTimestamp), now);
 
-  if (startTimestamp < startTimestampEpoch || endTimestampEpoch < endTimestamp) {
+  if (
+    startTimestamp < startTimestampEpoch ||
+    endTimestampEpoch < endTimestamp
+  ) {
     return {
       error: `Bad timestamp range specified; epoch bounds are ${startTimestampEpoch} and ${endTimestampEpoch}, timestamps specified are ${startTimestamp} and ${endTimestamp}`,
     };
@@ -568,7 +570,7 @@ export const getMarketStartEndBlockByTimestamps = async (
 };
 
 export const getMarketStartEndBlock = async (
-  market: Market,getMissingBlocks
+  market: Market,
   epochId: string,
   overrideClient?: PublicClient
 ) => {

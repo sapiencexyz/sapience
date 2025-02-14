@@ -116,16 +116,22 @@ const getTrailingAveragePricesByInterval = (
     timestamp += intervalSeconds
   ) {
     // Search for start index from the last known position
-    while (searchStartIdx < orderedPrices.length && 
-           orderedPrices[searchStartIdx].timestamp < timestamp - trailingIntervalSeconds) {
+    while (
+      searchStartIdx < orderedPrices.length &&
+      orderedPrices[searchStartIdx].timestamp <
+        timestamp - trailingIntervalSeconds
+    ) {
       searchStartIdx++;
     }
-    const startIdx = searchStartIdx < orderedPrices.length ? searchStartIdx : -1;
+    const startIdx =
+      searchStartIdx < orderedPrices.length ? searchStartIdx : -1;
 
     // Search for end index from the start index
     let searchEndIdx = Math.max(searchStartIdx, lastEndIdx);
-    while (searchEndIdx < orderedPrices.length && 
-           orderedPrices[searchEndIdx].timestamp <= timestamp) {
+    while (
+      searchEndIdx < orderedPrices.length &&
+      orderedPrices[searchEndIdx].timestamp <= timestamp
+    ) {
       searchEndIdx++;
     }
     const endIdx = searchEndIdx - 1; // No need for correction since we're getting the last valid index directly

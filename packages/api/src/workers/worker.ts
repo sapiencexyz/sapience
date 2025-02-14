@@ -207,7 +207,13 @@ if (process.argv[2] === 'reindexMarket') {
       );
       process.exit(1);
     }
-    await reindexMissingBlocks(chainId, address, epochId, startTimestamp, endTimestamp);
+    await reindexMissingBlocks(
+      chainId,
+      address,
+      epochId,
+      startTimestamp,
+      endTimestamp
+    );
     console.log('DONE');
     process.exit(0);
   };

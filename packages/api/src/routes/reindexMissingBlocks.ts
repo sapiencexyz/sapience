@@ -43,12 +43,19 @@ const executeLocalReindex = async (
   });
 };
 
-
 router.post(
   '/reindexPeriod',
   handleAsyncErrors(async (req, res) => {
-    const { chainId, address, epochId, signature, timestamp, startTime, endTime } = req.body;
-    console.log(startTime, endTime)
+    const {
+      chainId,
+      address,
+      epochId,
+      signature,
+      timestamp,
+      startTime,
+      endTime,
+    } = req.body;
+    console.log(startTime, endTime);
 
     // Authenticate the user
     const isAuthenticated = await isValidWalletSignature(
@@ -147,8 +154,6 @@ router.post(
     res.json({ success: true, job });
   })
 );
-
-
 
 router.post(
   '/',
