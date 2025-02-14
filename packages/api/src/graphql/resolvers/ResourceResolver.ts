@@ -42,10 +42,13 @@ export class ResourceResolver {
   async resourcePrices(): Promise<ResourcePriceType[]> {
     try {
       const prices = await dataSource.getRepository(ResourcePrice).find({
-        relations: ['resource']
+        relations: ['resource'],
       });
-      
-      return prices;
+
+      return prices.map((price) => ({
+        ...price,
+        resource: mapResourceToType(price.resource),
+      }));
     } catch (error) {
       console.error('Error fetching resource prices:', error);
       throw new Error('Failed to fetch resource prices');
