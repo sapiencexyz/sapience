@@ -1,7 +1,8 @@
-import { Field, ObjectType, ID, Int } from 'type-graphql';
+import { Field, ObjectType, ID, Int, Directive } from 'type-graphql';
 import { EpochType } from './EpochType';
 import { TransactionType } from './TransactionType';
 
+@Directive("@cacheControl(maxAge: 300)")
 @ObjectType()
 export class PositionType {
   @Field(() => ID)
