@@ -580,6 +580,18 @@ export const useChart = ({
   useEffect(() => {
     if (!chartRef.current) return;
 
+    // Clear candlestick and index data
+    if (candlestickSeriesRef.current) {
+      candlestickSeriesRef.current.setData([]);
+    }
+    if (indexPriceSeriesRef.current) {
+      indexPriceSeriesRef.current.setData([]);
+    }
+  }, [market?.chainId, market?.address, market?.epochId]);
+
+  useEffect(() => {
+    if (!chartRef.current) return;
+
     chartRef.current.priceScale('right').applyOptions({
       mode: isLogarithmic ? PriceScaleMode.Logarithmic : PriceScaleMode.Normal,
     });
