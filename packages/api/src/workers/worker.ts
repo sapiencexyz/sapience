@@ -193,6 +193,25 @@ if (process.argv[2] === 'reindexMarket') {
     process.exit(0);
   };
   callReindexMissing();
+} else if (process.argv[2] === 'reindexMissingPeriod') {
+  const callReindex = async () => {
+    const chainId = parseInt(process.argv[3], 10);
+    const address = process.argv[4];
+    const epochId = process.argv[5];
+    const startTimestamp = parseInt(process.argv[6], 10);
+    const endTimestamp = parseInt(process.argv[7], 10);
+
+    if (isNaN(chainId) || !address) {
+      console.error(
+        'Invalid arguments. Usage: tsx src/worker.ts reindexMissingPeriod <chainId> <address> <epochId> <startTimestamp> <endTimestamp>'
+      );
+      process.exit(1);
+    }
+    await reindexMissingBlocks(chainId, address, epochId, startTimestamp, endTimestamp);
+    console.log('DONE');
+    process.exit(0);
+  };
+  callReindex();
 } else {
   main();
 }

@@ -16,6 +16,7 @@
     "start:worker": "tsx src/workers/worker.ts",
     "start:reindex-market": "tsx src/workers/worker.ts reindexMarket $*",
     "start:reindex-missing": "tsx src/workers/worker.ts reindexMissing $*",
+    "start:reindex-missing-period": "tsx src/workers/worker.ts reindexMissingPeriod $*",
     "test": "echo \"Error: no test specified\" && exit 1",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org foil --project data ./dist && sentry-cli sourcemaps upload --org foil --project data ./dist",
     "lint": "eslint src",

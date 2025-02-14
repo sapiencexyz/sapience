@@ -43,6 +43,113 @@ const executeLocalReindex = async (
   });
 };
 
+
+router.post(
+  '/reindexPeriod',
+  handleAsyncErrors(async (req, res) => {
+    const { chainId, address, epochId, signature, timestamp, startTime, endTime } = req.body;
+    console.log(startTime, endTime)
+
+    // Authenticate the user
+    const isAuthenticated = await isValidWalletSignature(
+      signature as `0x${string}`,
+      Number(timestamp)
+    );
+    if (!isAuthenticated) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const RENDER_API_KEY = process.env.RENDER_API_KEY;
+    if (!RENDER_API_KEY) {
+      throw new Error('RENDER_API_KEY not set');
+    }
+
+    async function fetchRenderServices() {
+      const url = 'https://api.render.com/v1/services?limit=100';
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          accept: 'application/json',
+          authorization: `Bearer ${RENDER_API_KEY}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    }
+
+    async function createRenderJob(serviceId: string, startCommand: string) {
+      const url = `https://api.render.com/v1/services/${serviceId}/jobs`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${RENDER_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          startCommand: startCommand,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    }
+
+    let id: string = '';
+    const renderServices = await fetchRenderServices();
+    for (const item of renderServices) {
+      if (
+        item?.service?.type === 'background_worker' &&
+        item?.service?.id &&
+        (process.env.NODE_ENV === 'staging'
+          ? item?.service?.branch === 'staging'
+          : item?.service?.branch === 'main')
+      ) {
+        id = item?.service.id;
+        break;
+      }
+    }
+    if (!id) {
+      throw new Error('Background worker not found');
+    }
+
+    const startCommand = `pnpm run start:reindex-missing-period ${chainId} ${address} ${epochId} ${startTime} ${endTime}`;
+
+    if (
+      process.env.NODE_ENV !== 'production' &&
+      process.env.NODE_ENV !== 'staging'
+    ) {
+      try {
+        const result = await executeLocalReindex(startCommand);
+        res.json({ success: true, job: result });
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          res.status(500).json({ error: error.message });
+        } else {
+          res.status(500).json({ error: 'An unknown error occurred' });
+        }
+      }
+      return;
+    }
+
+    const job = await createRenderJob(id, startCommand);
+
+    const jobDb = new RenderJob();
+    jobDb.jobId = job.id;
+    jobDb.serviceId = job.serviceId;
+    await renderJobRepository.save(jobDb);
+
+    res.json({ success: true, job });
+  })
+);
+
+
+
 router.post(
   '/',
   handleAsyncErrors(async (req, res) => {

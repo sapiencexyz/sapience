@@ -520,8 +520,55 @@ export const createEpochFromEvent = async (
   return epoch;
 };
 
-export const getMarketStartEndBlock = async (
+
+export const getMarketStartEndBlockByTimestamps = async (
   market: Market,
+  epochId: string,
+  startTimestamp: number,
+  endTimestamp: number,
+  overrideClient?: PublicClient
+) => {
+  const epoch = await epochRepository.findOne({
+    where: { market: { id: market.id }, epochId: Number(epochId) },
+  });
+
+  if (!epoch) {
+    return { error: 'Epoch not found' };
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const startTimestampEpoch = Number(epoch.startTimestamp);
+  const endTimestampEpoch = Math.min(Number(epoch.endTimestamp), now);
+
+  if (startTimestamp < startTimestampEpoch || endTimestampEpoch < endTimestamp) {
+    return {
+      error: `Bad timestamp range specified; epoch bounds are ${startTimestampEpoch} and ${endTimestampEpoch}, timestamps specified are ${startTimestamp} and ${endTimestamp}`,
+    };
+  }
+
+  // Get the client for the specified chain ID
+  const client = overrideClient || getProviderForChain(market.chainId);
+
+  // Get the blocks corresponding to the start and end timestamps
+  const startBlock = await getBlockByTimestamp(client, startTimestamp);
+  let endBlock = await getBlockByTimestamp(client, endTimestamp);
+  if (!endBlock) {
+    endBlock = await client.getBlock();
+  }
+
+  if (!startBlock?.number || !endBlock?.number) {
+    return {
+      error: 'Unable to retrieve block numbers for start or end timestamps',
+    };
+  }
+
+  const startBlockNumber = Number(startBlock.number);
+  const endBlockNumber = Number(endBlock.number);
+  return { startBlockNumber, endBlockNumber };
+};
+
+export const getMarketStartEndBlock = async (
+  market: Market,getMissingBlocks
   epochId: string,
   overrideClient?: PublicClient
 ) => {

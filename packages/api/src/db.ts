@@ -69,7 +69,7 @@ export const initializeDataSource = async () => {
       })
       .catch((err) => {
         console.error('Error during Data Source initialization', err);
-      });
+      }); 
   }
 };
 
