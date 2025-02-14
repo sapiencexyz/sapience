@@ -42,7 +42,7 @@ export const mapEpochToType = (epoch: Epoch): EpochType => ({
   epochId: epoch.epochId,
   startTimestamp: epoch.startTimestamp,
   endTimestamp: epoch.endTimestamp,
-  market: mapMarketToType(epoch.market),
+  market: epoch.market ? mapMarketToType(epoch.market) : null,
   positions: epoch.positions?.map(mapPositionToType) || [],
   settled: epoch.settled,
   settlementPriceD18: epoch.settlementPriceD18,

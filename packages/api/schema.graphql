@@ -15,7 +15,7 @@ type EpochType {
   endTimestamp: Int
   epochId: Int!
   id: ID!
-  market: MarketType!
+  market: MarketType
   positions: [PositionType!]!
   settled: Boolean
   settlementPriceD18: String

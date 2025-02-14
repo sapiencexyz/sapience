@@ -16,8 +16,8 @@ export class EpochType {
   @Field(() => Int, { nullable: true })
   endTimestamp: number | null;
 
-  @Field(() => MarketType)
-  market: MarketType;
+  @Field(() => MarketType, { nullable: true })
+  market: MarketType | null;
 
   @Field(() => [PositionType])
   positions: PositionType[];
