@@ -450,32 +450,64 @@ const upsertEvent = async (
     logData,
   });
 
-  // Find market and/or epoch associated with the event
+  // Find market with relations
   const market = await marketRepository.findOne({
     where: { chainId, address },
+    relations: ['marketParams'],
   });
 
-  // marketInitialized should handle creating the market, throw if not found
   if (!market) {
     throw new Error(
       `Market not found for chainId ${chainId} and address ${address}. Cannot upsert event into db.`
     );
   }
 
-  console.log('inserting new event..');
-  // Create a new Event entity
-  const newEvent = new Event();
-  newEvent.market = market;
-  newEvent.blockNumber = Number(blockNumber);
-  newEvent.timestamp = timeStamp.toString();
-  newEvent.logIndex = logIndex;
-  newEvent.logData = logData;
-  newEvent.transactionHash = logData.transactionHash;
+  try {
+    // Check if event already exists
+    const existingEvent = await eventRepository.findOne({
+      where: {
+        transactionHash: logData.transactionHash,
+        market: { id: market.id },
+        blockNumber: Number(blockNumber),
+        logIndex: logIndex,
+      },
+      relations: ['market'],
+    });
 
-  // save the event
-  await eventRepository.save(newEvent);
+    if (existingEvent) {
+      console.log('Event already exists, processing existing event');
+      await upsertEntitiesFromEvent(existingEvent);
+      return existingEvent;
+    }
+
+    console.log('inserting new event..');
+    const newEvent = new Event();
+    newEvent.market = market;
+    newEvent.blockNumber = Number(blockNumber);
+    newEvent.timestamp = timeStamp.toString();
+    newEvent.logIndex = logIndex;
+    newEvent.logData = logData;
+    newEvent.transactionHash = logData.transactionHash;
+
+    const savedEvent = await eventRepository.save(newEvent);
+
+    // Reload the event with all necessary relations
+    const loadedEvent = await eventRepository.findOne({
+      where: { id: savedEvent.id },
+      relations: ['market'],
+    });
+
+    if (!loadedEvent) {
+      throw new Error(`Failed to load saved event with ID ${savedEvent.id}`);
+    }
+
+    await upsertEntitiesFromEvent(loadedEvent);
+    return loadedEvent;
+  } catch (error) {
+    console.error('Error upserting event:', error);
+    throw error;
+  }
 };
-
 // Triggered by the callback in the Event model, this upserts related entities (Transaction, Position, MarketPrice).
 export const upsertEntitiesFromEvent = async (event: Event) => {
   const existingTransaction = await transactionRepository.findOne({
