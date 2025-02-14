@@ -1,5 +1,6 @@
 import { mainnet, sepolia, base, cannon } from 'viem/chains';
 import evmIndexer from './resourcePriceFunctions/evmIndexer';
+import ethBlobsIndexer from './resourcePriceFunctions/ethBlobsIndexer';
 import celestiaIndexer from './resourcePriceFunctions/celestiaIndexer';
 import { Deployment, MarketInfo } from './interfaces';
 
@@ -17,6 +18,11 @@ export const RESOURCES = [
     name: 'Ethereum Gas',
     slug: 'ethereum-gas',
     priceIndexer: new evmIndexer(mainnet.id),
+  },
+  {
+    name: 'Ethereum Blobspace',
+    slug: 'ethereum-blobspace',
+    priceIndexer: new ethBlobsIndexer(),
   },
   ...(process.env.CELENIUM_API_KEY
     ? [

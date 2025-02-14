@@ -18,7 +18,7 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { useToast } from '~/hooks/use-toast';
-import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants/constants';
+import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import { useFoil } from '~/lib/context/FoilProvider';
 import type { Market } from '~/lib/context/FoilProvider';
 import { foilApi } from '~/lib/utils/util';

@@ -17,7 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '~/components/ui/tooltip';
-import { MARKET_CATEGORIES } from '~/lib/constants/markets';
+import { RESOURCES } from '~/lib/constants/resources';
 import { BLUE } from '~/lib/hooks/useChart';
 import { useLatestResourcePrice, useResources } from '~/lib/hooks/useResources';
 import { TimeWindow, TimeInterval } from '~/lib/interfaces/interfaces';
@@ -134,7 +134,7 @@ interface ResourceContentProps {
 
 const ResourceContent = ({ id }: ResourceContentProps) => {
   const { data: resources, isLoading: isLoadingResources } = useResources();
-  const category = MARKET_CATEGORIES.find((c) => c.id === id);
+  const category = RESOURCES.find((c) => c.id === id);
   const { data: latestPrice, isLoading: isPriceLoading } =
     useLatestResourcePrice(id);
 
