@@ -5,7 +5,7 @@ import { type AbiFunction } from 'viem';
 import { useReadContracts } from 'wagmi';
 
 import { useFoil } from '../../lib/context/FoilProvider';
-import { TICK_SPACING_DEFAULT } from '~/lib/constants/constants';
+import { TICK_SPACING_DEFAULT } from '~/lib/constants';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import type { GraphTick, PoolData } from '~/lib/utils/liquidityUtil';
 import { getFullPool } from '~/lib/utils/liquidityUtil';

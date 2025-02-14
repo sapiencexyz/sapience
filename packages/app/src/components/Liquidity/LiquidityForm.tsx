@@ -33,7 +33,7 @@ import {
   CREATE_LIQUIDITY_REDUCTION,
   TICK_SPACING_DEFAULT,
   TOKEN_DECIMALS,
-} from '~/lib/constants/constants';
+} from '~/lib/constants';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useTradePool } from '~/lib/context/TradePoolContext';
