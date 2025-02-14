@@ -62,6 +62,8 @@ const mapResourceToIconPath = (name: string): string => {
   switch (name) {
     case 'Ethereum Gas':
       return '/eth.svg';
+    case 'Ethereum Blobspace':
+      return '/eth-blob.svg';
     case 'Celestia Blobspace':
       return '/tia.svg';
     default:

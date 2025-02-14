@@ -308,7 +308,7 @@ export const createOrUpdateEpochFromContract = async (
     args,
   });
   const epochData: EpochData = (epochReadResult as EpochReadResult)[0];
-  console.log('epochReadResult', epochReadResult);
+
   const _epochId = epochId || Number(epochData.epochId);
 
   // check if epoch already exists in db
@@ -338,7 +338,6 @@ export const createOrUpdateEpochFromContract = async (
   updatedEpoch.market = market;
   updatedEpoch.marketParams = marketParams;
   await epochRepository.save(updatedEpoch);
-  console.log('saved epoch:', updatedEpoch);
 };
 
 /**
