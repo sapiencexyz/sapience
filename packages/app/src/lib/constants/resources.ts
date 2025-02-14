@@ -1,4 +1,4 @@
-export const MARKET_CATEGORIES = [
+export const RESOURCES = [
   {
     id: 'ethereum-gas',
     name: 'Ethereum Gas',
