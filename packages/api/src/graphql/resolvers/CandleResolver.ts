@@ -163,16 +163,15 @@ const getTrailingAveragePricesByInterval = (
 };
 
 const getIndexPricesByInterval = (
-  orderedPrices: ResourcePricePoint[],
+  orderedPrices: ResourcePricePoint[], // prices ordered by timestamp starting from the epoch start time
   intervalSeconds: number,
   startTimestamp: number,
-  endTimestamp: number,
-  lastKnownPrice?: string
+  endTimestamp: number
 ): CandleType[] => {
   const candles: CandleType[] = [];
 
   // If we have no prices and no reference price, return empty array
-  if (orderedPrices.length === 0 && !lastKnownPrice) return [];
+  if (orderedPrices.length === 0) return [];
 
   // Normalize timestamps to interval boundaries
   const normalizedStartTimestamp =
@@ -181,17 +180,13 @@ const getIndexPricesByInterval = (
     Math.floor(endTimestamp / intervalSeconds) * intervalSeconds;
 
   // Initialize lastClose with lastKnownPrice if available, otherwise use first price
-  let lastClose = lastKnownPrice || orderedPrices[0].value;
+  let lastClose = orderedPrices[0].value;
 
   let endIdx = 0;
+  let lastEndIdx = 0; // always start from the first item in the orderedPrices array, since it starts from the epoch start time
 
   let totalGasUsed: bigint = 0n;
   let totalBaseFeesPaid: bigint = 0n;
-
-  // get the indexes for the start and end of the interval
-  let lastEndIdx = orderedPrices.findIndex(
-    (p) => p.timestamp >= normalizedStartTimestamp
-  );
 
   for (
     let timestamp = normalizedStartTimestamp;
@@ -200,18 +195,13 @@ const getIndexPricesByInterval = (
   ) {
     endIdx = orderedPrices.findIndex((p) => p.timestamp > timestamp); // notice is the next item, we need to correct it later
 
-    // if found and not previous endIdx, correct the +1 offset of the endIdx (since we found the next item)
-    if (endIdx != -1 && endIdx > lastEndIdx) {
-      endIdx--;
-    }
-
     // If not found, use the last index of the orderedPrices array
     if (endIdx == -1) {
-      endIdx = orderedPrices.length - 1;
+      endIdx = orderedPrices.length;
     }
 
     // Add to the sliding window trailing average the prices that are now in the interval
-    for (let i = lastEndIdx; i <= endIdx; i++) {
+    for (let i = lastEndIdx; i < endIdx; i++) {
       totalGasUsed += BigInt(orderedPrices[i].used);
       totalBaseFeesPaid += BigInt(orderedPrices[i].feePaid);
     }
@@ -223,7 +213,7 @@ const getIndexPricesByInterval = (
       lastClose = averagePrice.toString();
     }
 
-    // Create candle with last known closing price (calculated in the loop or previous candle)
+    // Create candle with last known closing price (calculated or previous candle)
     candles.push({
       timestamp,
       open: lastClose,
@@ -428,37 +418,10 @@ export class CandleResolver {
       // Ensure we don't query prices before epoch start time
       const effectiveFromTime = Math.max(from, Number(epoch.startTimestamp));
 
-      // Only get last price before if it's after epoch start time
-      // First get the most recent price before the trailingFrom timestamp
-      const lastPriceBefore =
-        effectiveFromTime > Number(epoch.startTimestamp)
-          ? await dataSource
-              .getRepository(ResourcePrice)
-              .createQueryBuilder('price')
-              .where('price.resourceId = :resourceId', {
-                resourceId: resource.id,
-              })
-              .andWhere('price.timestamp < :from', { from: effectiveFromTime })
-              .andWhere('price.timestamp >= :startTime', {
-                startTime: epoch.startTimestamp,
-              })
-              .orderBy('price.timestamp', 'DESC')
-              .take(1)
-              .getOne()
-          : null;
-
-      const lastKnownPrice = lastPriceBefore
-        ? lastPriceBefore?.feePaid && lastPriceBefore?.used
-          ? (
-              BigInt(lastPriceBefore?.feePaid) / BigInt(lastPriceBefore?.used)
-            ).toString()
-          : lastPriceBefore?.value
-        : undefined;
-
       const pricesInRange = await dataSource.getRepository(ResourcePrice).find({
         where: {
           resource: { id: resource.id },
-          timestamp: Between(effectiveFromTime, to),
+          timestamp: Between(Number(epoch.startTimestamp), to),
         },
         order: { timestamp: 'ASC' },
       });
@@ -472,8 +435,7 @@ export class CandleResolver {
         })),
         interval,
         effectiveFromTime,
-        to,
-        lastKnownPrice
+        to
       );
     } catch (error) {
       console.error('Error fetching index candles:', error);
