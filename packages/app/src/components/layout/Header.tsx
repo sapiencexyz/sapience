@@ -215,7 +215,7 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[400px] p-3"
+        className="w-[420px] p-3"
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => {
           setOpen(false);
