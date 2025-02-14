@@ -1,5 +1,5 @@
 import { resourcePriceRepository } from '../db';
-import { Connection, Logs } from '@solana/web3.js';
+import { Connection } from '@solana/web3.js';
 import Sentry from '../sentry';
 import { IResourcePriceIndexer } from '../interfaces';
 import { Resource } from 'src/models/Resource';
@@ -33,7 +33,9 @@ class SvmIndexer implements IResourcePriceIndexer {
 
   private async storeBlockPrice(block: SolanaBlock, resource: Resource) {
     if (!block || !block.transactions) {
-      console.warn(`Invalid block data for resource ${resource.slug}. Skipping block.`);
+      console.warn(
+        `Invalid block data for resource ${resource.slug}. Skipping block.`
+      );
       return;
     }
 
@@ -55,13 +57,14 @@ class SvmIndexer implements IResourcePriceIndexer {
       }
 
       // Calculate average priority fee per compute unit
-      const avgPriorityFeePerCU = totalComputeUnits > 0n 
-        ? totalPriorityFees / totalComputeUnits 
-        : 0n;
+      const avgPriorityFeePerCU =
+        totalComputeUnits > 0n ? totalPriorityFees / totalComputeUnits : 0n;
 
       const price = {
         resource: { id: resource.id },
-        timestamp: block.blockTime ? Number(block.blockTime) : Math.floor(Date.now() / 1000),
+        timestamp: block.blockTime
+          ? Number(block.blockTime)
+          : Math.floor(Date.now() / 1000),
         value: avgPriorityFeePerCU.toString(), // Priority fee per compute unit
         used: totalComputeUnits.toString(), // Total compute units
         feePaid: totalPriorityFees.toString(), // Total priority fees
@@ -82,15 +85,18 @@ class SvmIndexer implements IResourcePriceIndexer {
     try {
       // Get blocks from timestamp
       const slots = await this.connection.getBlocks(timestamp);
-      
+
       for (const slot of slots) {
         const block = await this.connection.getBlock(slot, {
           maxSupportedTransactionVersion: 0,
           rewards: false,
         });
-        
+
         if (block) {
-          await this.storeBlockPrice({ ...block, slot } as SolanaBlock, resource);
+          await this.storeBlockPrice(
+            { ...block, slot } as SolanaBlock,
+            resource
+          );
         }
       }
       return true;
@@ -111,9 +117,12 @@ class SvmIndexer implements IResourcePriceIndexer {
           maxSupportedTransactionVersion: 0,
           rewards: false,
         });
-        
+
         if (block) {
-          await this.storeBlockPrice({ ...block, slot } as SolanaBlock, resource);
+          await this.storeBlockPrice(
+            { ...block, slot } as SolanaBlock,
+            resource
+          );
         }
       } catch (error) {
         Sentry.withScope((scope: Scope) => {
@@ -147,14 +156,17 @@ class SvmIndexer implements IResourcePriceIndexer {
             maxSupportedTransactionVersion: 0,
             rewards: false,
           });
-          
+
           if (block) {
-            await this.storeBlockPrice({ ...block, slot: slotInfo.slot } as SolanaBlock, resource);
+            await this.storeBlockPrice(
+              { ...block, slot: slotInfo.slot } as SolanaBlock,
+              resource
+            );
           }
           this.reconnectAttempts = 0;
         } catch (error) {
           console.error('Error processing block:', error);
-          
+
           if (this.reconnectAttempts < this.maxReconnectAttempts) {
             this.reconnectAttempts++;
             console.log(
