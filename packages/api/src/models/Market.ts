@@ -35,7 +35,7 @@ export class Market {
   @Column({ type: 'varchar' })
   address: string;
 
-  @Column({ type: 'varchar' })
+  @Column({ type: 'varchar', nullable: true })
   vaultAddress: string;
 
   @Column({ type: 'boolean', default: false })
