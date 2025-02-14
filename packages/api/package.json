@@ -11,7 +11,7 @@
     "dev": "concurrently \"pnpm run dev:service\" \"pnpm run dev:worker\"",
     "dev:service": "tsx watch src/server.ts",
     "dev:worker": "tsx watch src/workers/worker.ts",
-    "start": "concurrently \"pnpm run start:service\" \"pnpm run start:worker\"",
+    "start": "pnpm migration:run && concurrently \"pnpm run start:service\" \"pnpm run start:worker\"",
     "start:service": "tsx src/server.ts",
     "start:worker": "tsx src/workers/worker.ts",
     "start:reindex-market": "tsx src/workers/worker.ts reindexMarket $*",
@@ -20,7 +20,9 @@
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org foil --project data ./dist && sentry-cli sourcemaps upload --org foil --project data ./dist",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix && pnpm format",
-    "format": "prettier --write src"
+    "format": "prettier --write src",
+    "migration:generate": "tsx ./node_modules/typeorm/cli.js migration:generate ./src/migrations/migration -d ./src/db.ts",
+    "migration:run": "tsx ./node_modules/typeorm/cli.js migration:run -d ./src/db.ts"
   },
   "keywords": [],
   "dependencies": {
@@ -38,7 +40,6 @@
     "pg": "^8.13.1",
     "prettier": "^3.3.3",
     "reflect-metadata": "^0.2.2",
-    "sqlite3": "^5.1.7",
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.19.2",
     "type-graphql": "2.0.0-rc.2",

@@ -9,6 +9,13 @@ import { MarketPrice } from './models/MarketPrice';
 import { RenderJob } from './models/RenderJob';
 import { CollateralTransfer } from './models/CollateralTransfer';
 import { Resource } from './models/Resource';
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import path, { dirname } from 'path';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const isLive =
   process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging';
@@ -16,11 +23,10 @@ const isLive =
 const devDataSource: DataSource = new DataSource({
   type: 'postgres',
   url: process.env.DATABASE_URL,
-  synchronize: true,
+  synchronize: false,
   logging: ['warn', 'error', 'log', 'info'],
-  ssl: {
-    rejectUnauthorized: false,
-  },
+  migrations: ['src/migrations/*.ts'],
+  ssl: false,
   entities: [
     ResourcePrice,
     Position,
@@ -38,8 +44,9 @@ const devDataSource: DataSource = new DataSource({
 const postgresDataSource: DataSource = new DataSource({
   type: 'postgres',
   url: process.env.DATABASE_URL,
-  synchronize: true,
+  synchronize: false,
   logging: ['warn', 'error', 'log', 'info'],
+  migrations: ['src/migrations/*.ts'],
   entities: [
     ResourcePrice,
     Position,
