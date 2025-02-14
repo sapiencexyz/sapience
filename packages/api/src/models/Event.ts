@@ -2,13 +2,11 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
-  AfterInsert,
   CreateDateColumn,
   OneToOne,
   Unique,
   ManyToOne,
 } from 'typeorm';
-import { upsertEntitiesFromEvent } from '../controllers/market';
 import { Transaction } from './Transaction';
 import { Market } from './Market';
 
@@ -52,14 +50,4 @@ export class Event {
     topics: string[];
     transactionIndex: number;
   };
-
-  @AfterInsert()
-  async afterInsert() {
-    console.log('Event inserted: ' + this.id);
-    try {
-      await upsertEntitiesFromEvent(this);
-    } catch (e) {
-      console.error('Error upserting entities from event:', e);
-    }
-  }
 }
