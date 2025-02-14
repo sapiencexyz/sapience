@@ -471,7 +471,7 @@ const upsertEvent = async (
         blockNumber: Number(blockNumber),
         logIndex: logIndex,
       },
-      relations: ['market', 'market.marketParams'],
+      relations: ['market'],
     });
 
     if (existingEvent) {
@@ -494,7 +494,7 @@ const upsertEvent = async (
     // Reload the event with all necessary relations
     const loadedEvent = await eventRepository.findOne({
       where: { id: savedEvent.id },
-      relations: ['market', 'market.marketParams'],
+      relations: ['market'],
     });
 
     if (!loadedEvent) {
