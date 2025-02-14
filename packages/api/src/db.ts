@@ -26,7 +26,7 @@ const devDataSource: DataSource = new DataSource({
   synchronize: false,
   logging: ['warn', 'error', 'log', 'info'],
   migrations: ['src/migrations/*.ts'],
-  ssl: false,
+  ssl: !process.env.DATABASE_URL?.includes('localhost'),
   entities: [
     ResourcePrice,
     Position,
