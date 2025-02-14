@@ -8,7 +8,7 @@ import type { Chain } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 
 import useFoilDeployment from '../../components/useFoilDeployment';
-import { BLANK_MARKET } from '../constants/constants';
+import { BLANK_MARKET } from '../constants';
 import erc20ABI from '../erc20abi.json';
 import { useUniswapPool } from '../hooks/useUniswapPool';
 import type { EpochData, MarketParams } from '../interfaces/interfaces';

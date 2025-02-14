@@ -5,7 +5,7 @@ import type { FeeAmount } from '@uniswap/v3-sdk';
 import { useCallback, useEffect, useState } from 'react';
 import { useReadContracts, useReadContract } from 'wagmi';
 
-import { TOKEN_DECIMALS } from '../constants/constants';
+import { TOKEN_DECIMALS } from '../constants';
 import erc20ABI from '../erc20abi.json';
 
 const REFETCH_INTERVAL = 60000; // 1 minute
