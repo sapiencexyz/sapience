@@ -23,6 +23,9 @@ importers:
       '@sentry/node':
         specifier: ^8.40.0
         version: 8.40.0
+      axios:
+        specifier: ^1.7.7
+        version: 1.7.7(debug@4.4.0)
       class-validator:
         specifier: ^0.14.1
         version: 0.14.1
@@ -21972,7 +21975,7 @@ snapshots:
 
   '@types/pbkdf2@3.1.2':
     dependencies:
-      '@types/node': 20.16.5
+      '@types/node': 20.17.17
 
   '@types/pg-pool@2.0.6':
     dependencies:
@@ -22558,7 +22561,7 @@ snapshots:
       '@usecannon/web-solc': 0.5.1
       acorn: 8.14.0
       axios: 1.7.7(debug@4.4.0)
-      axios-retry: 4.5.0(axios@1.7.7(debug@4.4.0))
+      axios-retry: 4.5.0(axios@1.7.7)
       buffer: 6.0.3
       chalk: 4.1.2
       debug: 4.4.0(supports-color@8.1.1)
@@ -23611,7 +23614,7 @@ snapshots:
 
   axe-core@4.10.0: {}
 
-  axios-retry@4.5.0(axios@1.7.7(debug@4.4.0)):
+  axios-retry@4.5.0(axios@1.7.7):
     dependencies:
       axios: 1.7.7(debug@4.4.0)
       is-retry-allowed: 2.2.0

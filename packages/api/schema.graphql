@@ -66,6 +66,7 @@ type Query {
   positions(chainId: Int, marketAddress: String, owner: String): [PositionType!]!
   resource(slug: String!): ResourceType
   resourceCandles(from: Int!, interval: Int!, slug: String!, to: Int!): [CandleType!]!
+  resourcePrices: [ResourcePriceType!]!
   resourceTrailingAverageCandles(from: Int!, interval: Int!, slug: String!, to: Int!, trailingTime: Int!): [CandleType!]!
   resources: [ResourceType!]!
   transactions(positionId: Int): [TransactionType!]!

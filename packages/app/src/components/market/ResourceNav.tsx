@@ -44,8 +44,8 @@ const ResourceNav = () => {
                 <Image
                   src={resource.iconPath}
                   alt={resource.name}
-                  width={16}
-                  height={16}
+                  width={22}
+                  height={22}
                 />
                 {resource.name}
               </Button>

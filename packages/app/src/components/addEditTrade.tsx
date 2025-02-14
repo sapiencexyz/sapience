@@ -32,7 +32,7 @@ import {
   HIGH_PRICE_IMPACT,
   MIN_BIG_INT_SIZE,
   TOKEN_DECIMALS,
-} from '~/lib/constants/constants';
+} from '~/lib/constants';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { useFoil } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
