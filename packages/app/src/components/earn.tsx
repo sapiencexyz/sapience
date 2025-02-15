@@ -387,305 +387,327 @@ const Earn: FC<Props> = ({ slug }) => {
   }, [epoch]);
 
   return (
-    <div className="container mx-auto px-4 py-16">
+    <div className="container mx-auto px-4 py-12">
       <div className="max-w-7xl mx-auto">
-        <div className=" mx-auto h-16 w-16 mb-4">
+        <div className=" mx-auto h-20 w-20 mb-4">
           <Image
             src={resource?.iconPath || ''}
             alt={resource?.name || 'Resource'}
-            width={56}
-            height={56}
+            width={200}
+            height={200}
           />
         </div>
         <h2 className="text-4xl font-bold text-center mb-3">
           {resource?.name} Vault
         </h2>
 
-        <div className="w-full max-w-sm mx-auto ">
-          <p className="mb-9 text-center">
+        <div className="w-full mx-auto">
+          <p className="mb-9 text-center max-w-sm mx-auto">
             The vault smart contracts provide liquidity to markets and roll
             across periods automatically.
           </p>
 
-          <div className="border border-border rounded-lg shadow-sm p-6 mb-9">
-            <Label>Select Vault</Label>
-            <Tabs
-              defaultValue="yin"
-              className="mt-1.5"
-              onValueChange={(value) =>
-                setSelectedVault(value as 'yin' | 'yang')
-              }
-            >
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="yin">Yin Vault</TabsTrigger>
-                <TabsTrigger value="yang">Yang Vault</TabsTrigger>
-              </TabsList>
-              <TabsContent value="yin">
-                <div className="pt-3">
-                  <p className="text-sm text-muted-foreground">
-                    The Yin vault provides liquidity to the current period and
-                    the one starting in {nextEpochStartInDays} days.
-                  </p>
-                </div>
-              </TabsContent>
-              <TabsContent value="yang">
-                <div className="pt-3">
-                  <p className="text-sm text-muted-foreground">
-                    The Yang vault provides liquidity to the one starting in{' '}
-                    {nextEpochStartInDays} days.
-                  </p>
-                </div>
-              </TabsContent>
-            </Tabs>
-
-            <a
-              href="https://docs.foil.xyz"
-              target="_blank"
-              className="underline text-sm text-muted-foreground mt-3 inline-block"
-              rel="noreferrer"
-            >
-              <BookTextIcon className="inline -mt-0.5 mr-1 h-3.5 w-3.5" />
-              Read the docs
-            </a>
-          </div>
-
-          <div className="border border-border rounded-lg shadow-sm p-6 mb-9">
-            <div className="flex items-start gap-1.5">
-              <span className="w-4 mt-0.5">
-                <InfoIcon className="h-4 w-4" />
-              </span>
-              <p className="text-sm">
-                <strong className="font-medium">
-                  Foil is currenty in Beta.
-                </strong>{' '}
-                A new version is under development. The smart contracts cannot
-                be changed, so you will need to opt-in and migrate to future
-                vault versions to continue providing liquidity.
-              </p>
-            </div>
-          </div>
-          <div className="border border-border rounded-lg shadow-sm p-6">
-            <h3 className="text-2xl font-bold mb-3">
-              {selectedVault === 'yin' ? 'Yin' : 'Yang'} Vault
-            </h3>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)}>
+          <div className="lg:grid lg:grid-cols-2 lg:gap-8 max-w-[790px] mx-auto">
+            <div className="mx-auto w-full lg:flex lg:flex-col">
+              <div className="border border-border rounded-lg shadow-sm p-6 mb-auto">
+                <Label>Select Vault</Label>
                 <Tabs
-                  defaultValue="deposit"
-                  className="space-y-4"
+                  defaultValue="yin"
+                  className="mt-1.5"
                   onValueChange={(value) =>
-                    setActiveTab(value as 'deposit' | 'withdraw')
+                    setSelectedVault(value as 'yin' | 'yang')
                   }
                 >
                   <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="deposit">
-                      Deposit {collateralTicker}
-                    </TabsTrigger>
-                    <TabsTrigger value="withdraw">
-                      Withdraw {collateralTicker}
-                    </TabsTrigger>
+                    <TabsTrigger value="yin">Yin Vault</TabsTrigger>
+                    <TabsTrigger value="yang">Yang Vault</TabsTrigger>
                   </TabsList>
-
-                  <TabsContent value="deposit">
-                    <FormField
-                      control={form.control}
-                      name="collateralAmount"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-1">
-                            Collateral Pending Conversion
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger>
-                                  <HelpCircle className="h-4 w-4" />
-                                </TooltipTrigger>
-                                <TooltipContent className="max-w-xs">
-                                  <p>
-                                    At the start of the next epoch, this
-                                    collateral will be converted to vault shares
-                                    ({vaultSharesTicker}) for redemption.
-                                  </p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </FormLabel>
-                          <FormControl>
-                            <div className="flex ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 rounded-md">
-                              <Input
-                                placeholder="Enter amount"
-                                type="number"
-                                step="any"
-                                className="rounded-r-none border-r-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                                {...field}
-                              />
-                              <div className="inline-flex items-center justify-center rounded-r-md border border-l-0 border-input bg-secondary px-3 text-sm text-secondary-foreground h-10">
-                                {collateralTicker}
-                              </div>
-                            </div>
-                          </FormControl>
-                          <p className="text-sm text-muted-foreground">
-                            Wallet Balance:{' '}
-                            <NumberDisplay
-                              value={formatUnits(
-                                collateralBalance,
-                                collateralDecimals
-                              )}
-                            />{' '}
-                            {collateralTicker}
-                          </p>
-                          {depositCollateralDifferenceText}
-                          <FormMessage />
-                          {error && (
-                            <p className="text-sm font-medium text-destructive mt-2">
-                              {error}
-                            </p>
-                          )}
-                        </FormItem>
-                      )}
-                    />
-
-                    {warningMessage}
-
-                    <Button
-                      type="submit"
-                      className="w-full mt-4"
-                      disabled={
-                        collateralAmountDiff.equals(0) ||
-                        pendingTxn ||
-                        warningMessage !== null
-                      }
-                    >
-                      {pendingTxn && !error ? (
-                        <Loader2 className="h-6 w-6 animate-spin" />
-                      ) : null}
-                      {depositButtonText}
-                    </Button>
-
-                    <Separator className="mt-6 mb-4" />
-
-                    <p className="text-center text-sm font-medium">
-                      The current epoch ends in approximately{' '}
-                      {currentEpochEndInDays} days.
+                  <TabsContent value="yin">
+                    <p className="pt-2">
+                      The Yin vault provides liquidity to the current period and
+                      the period starting in {nextEpochStartInDays} days.
                     </p>
-
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      Claimable Amount:{' '}
-                      <NumberDisplay
-                        value={formatUnits(
-                          claimableDeposit,
-                          collateralDecimals
-                        )}
-                      />{' '}
-                      {collateralTicker}
-                    </p>
-
-                    <Button
-                      className="w-full mt-3"
-                      disabled={claimableDeposit === BigInt(0) || pendingTxn}
-                      onClick={() => deposit()}
-                    >
-                      Redeem {vaultSharesTicker}
-                    </Button>
                   </TabsContent>
-
-                  <TabsContent value="withdraw">
-                    <FormField
-                      control={form.control}
-                      name="vaultShares"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-1">
-                            Vault Shares Pending Conversion
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger>
-                                  <HelpCircle className="h-4 w-4" />
-                                </TooltipTrigger>
-                                <TooltipContent className="max-w-xs">
-                                  <p>
-                                    At the start of the next epoch, these vault
-                                    shares will be converted to collateral (
-                                    {collateralTicker}) for redemption.
-                                  </p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </FormLabel>
-                          <FormControl>
-                            <div className="flex">
-                              <Input
-                                placeholder="Enter amount"
-                                type="number"
-                                step="any"
-                                className="rounded-r-none border-r-0"
-                                {...field}
-                              />
-                              <div className="inline-flex items-center justify-center rounded-r-md border border-l-0 border-input bg-secondary px-3 text-sm text-secondary-foreground h-10">
-                                {vaultSharesTicker}
-                              </div>
-                            </div>
-                          </FormControl>
-                          <p className="text-sm text-muted-foreground">
-                            Wallet Balance:{' '}
-                            <NumberDisplay
-                              value={formatUnits(userVaultShares, 18)}
-                            />{' '}
-                            {vaultSharesTicker}
-                          </p>
-                          {redeemCollateralDifferenceText}
-                          <FormMessage />
-                          {error && (
-                            <p className="text-sm font-medium text-destructive mt-2">
-                              {error}
-                            </p>
-                          )}
-                        </FormItem>
-                      )}
-                    />
-
-                    {warningMessage}
-
-                    <Button
-                      type="submit"
-                      className="w-full mt-4"
-                      disabled={
-                        vaultSharesDiff.equals(0) ||
-                        pendingTxn ||
-                        warningMessage !== null
-                      }
-                    >
-                      {pendingTxn && !error ? (
-                        <Loader2 className="h-6 w-6 animate-spin" />
-                      ) : null}
-                      {redeemButtonText}
-                    </Button>
-
-                    <Separator className="mt-6 mb-4" />
-
-                    <p className="text-center text-sm font-medium">
-                      The current epoch ends in approximately{' '}
-                      {currentEpochEndInDays} days.
+                  <TabsContent value="yang">
+                    <p className="pt-2">
+                      The Yang vault provides liquidity to the period starting
+                      in {nextEpochStartInDays} days.
                     </p>
-
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      Claimable Amount:{' '}
-                      <NumberDisplay
-                        value={formatUnits(claimableRedeem, vaultDecimals)}
-                      />{' '}
-                      {vaultSharesTicker}
-                    </p>
-
-                    <Button
-                      className="w-full mt-3"
-                      disabled={claimableRedeem === BigInt(0) || pendingTxn}
-                      onClick={() => redeem()}
-                    >
-                      Redeem {collateralTicker}
-                    </Button>
                   </TabsContent>
                 </Tabs>
-              </form>
-            </Form>
+              </div>
+
+              <a
+                href="https://docs.foil.xyz/token-vault"
+                target="_blank"
+                rel="noreferrer"
+                className="block mt-6 lg:mt-0"
+              >
+                <Button
+                  variant="outline"
+                  className="w-full h-auto p-5 shadow-md"
+                >
+                  <div className="flex items-center gap-3 w-full">
+                    <div className="w-11 h-11 opacity-80">
+                      <BookTextIcon
+                        strokeWidth={1}
+                        className="scale-[2.75] origin-top-left"
+                      />
+                    </div>
+                    <div className="flex flex-col items-start">
+                      <span className="text-base font-medium">
+                        Read the docs
+                      </span>
+                      <span className="text-sm text-muted-foreground font-normal">
+                        “Where does the yield come from?”
+                      </span>
+                    </div>
+                  </div>
+                </Button>
+              </a>
+
+              <div className="border border-border rounded-lg shadow-sm p-6 lg:mt-auto mt-6">
+                <div className="flex items-start gap-1.5">
+                  <span className="w-4 mt-0.5">
+                    <InfoIcon className="h-4 w-4" />
+                  </span>
+                  <p className="text-sm">
+                    <strong className="font-medium">
+                      Foil is currenty in Beta.
+                    </strong>{' '}
+                    A new version is under development. The smart contracts
+                    cannot be changed, so you will need to migrate into future
+                    vault versions to continue providing liquidity.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="border border-border rounded-lg shadow-sm p-6 mt-6 lg:mt-0 mx-auto w-full">
+              <h3 className="text-2xl font-bold mb-4">
+                {selectedVault === 'yin' ? 'Yin' : 'Yang'} Vault
+              </h3>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)}>
+                  <Tabs
+                    defaultValue="deposit"
+                    className="space-y-6"
+                    onValueChange={(value) =>
+                      setActiveTab(value as 'deposit' | 'withdraw')
+                    }
+                  >
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="deposit">
+                        Deposit {collateralTicker}
+                      </TabsTrigger>
+                      <TabsTrigger value="withdraw">
+                        Withdraw {collateralTicker}
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="deposit">
+                      <FormField
+                        control={form.control}
+                        name="collateralAmount"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-1">
+                              Collateral Pending Conversion
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <HelpCircle className="h-4 w-4" />
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-xs">
+                                    <p>
+                                      At the start of the next epoch, this
+                                      collateral will be converted to vault
+                                      shares ({vaultSharesTicker}) for
+                                      redemption.
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </FormLabel>
+                            <FormControl>
+                              <div className="flex ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 rounded-md">
+                                <Input
+                                  placeholder="Enter amount"
+                                  type="number"
+                                  step="any"
+                                  className="rounded-r-none border-r-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                                  {...field}
+                                />
+                                <div className="inline-flex items-center justify-center rounded-r-md border border-l-0 border-input bg-secondary px-3 text-sm text-secondary-foreground h-10">
+                                  {collateralTicker}
+                                </div>
+                              </div>
+                            </FormControl>
+                            <p className="text-sm text-muted-foreground">
+                              Wallet Balance:{' '}
+                              <NumberDisplay
+                                value={formatUnits(
+                                  collateralBalance,
+                                  collateralDecimals
+                                )}
+                              />{' '}
+                              {collateralTicker}
+                            </p>
+                            {depositCollateralDifferenceText}
+                            <FormMessage />
+                            {error && (
+                              <p className="text-sm font-medium text-destructive mt-2">
+                                {error}
+                              </p>
+                            )}
+                          </FormItem>
+                        )}
+                      />
+
+                      {warningMessage}
+
+                      <Button
+                        type="submit"
+                        className="w-full mt-4"
+                        disabled={
+                          collateralAmountDiff.equals(0) ||
+                          pendingTxn ||
+                          warningMessage !== null
+                        }
+                      >
+                        {pendingTxn && !error ? (
+                          <Loader2 className="h-6 w-6 animate-spin" />
+                        ) : null}
+                        {depositButtonText}
+                      </Button>
+
+                      <Separator className="mt-8 mb-6" />
+
+                      <p className="text-center text-sm font-medium">
+                        The current epoch ends in approximately{' '}
+                        {currentEpochEndInDays} days.
+                      </p>
+
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        Claimable Amount:{' '}
+                        <NumberDisplay
+                          value={formatUnits(
+                            claimableDeposit,
+                            collateralDecimals
+                          )}
+                        />{' '}
+                        {collateralTicker}
+                      </p>
+
+                      <Button
+                        className="w-full mt-3"
+                        disabled={claimableDeposit === BigInt(0) || pendingTxn}
+                        onClick={() => deposit()}
+                      >
+                        Redeem {vaultSharesTicker}
+                      </Button>
+                    </TabsContent>
+
+                    <TabsContent value="withdraw">
+                      <FormField
+                        control={form.control}
+                        name="vaultShares"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-1">
+                              Vault Shares Pending Conversion
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <HelpCircle className="h-4 w-4" />
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-xs">
+                                    <p>
+                                      At the start of the next epoch, these
+                                      vault shares will be converted to
+                                      collateral ({collateralTicker}) for
+                                      redemption.
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </FormLabel>
+                            <FormControl>
+                              <div className="flex">
+                                <Input
+                                  placeholder="Enter amount"
+                                  type="number"
+                                  step="any"
+                                  className="rounded-r-none border-r-0"
+                                  {...field}
+                                />
+                                <div className="inline-flex items-center justify-center rounded-r-md border border-l-0 border-input bg-secondary px-3 text-sm text-secondary-foreground h-10">
+                                  {vaultSharesTicker}
+                                </div>
+                              </div>
+                            </FormControl>
+                            <p className="text-sm text-muted-foreground">
+                              Wallet Balance:{' '}
+                              <NumberDisplay
+                                value={formatUnits(userVaultShares, 18)}
+                              />{' '}
+                              {vaultSharesTicker}
+                            </p>
+                            {redeemCollateralDifferenceText}
+                            <FormMessage />
+                            {error && (
+                              <p className="text-sm font-medium text-destructive mt-2">
+                                {error}
+                              </p>
+                            )}
+                          </FormItem>
+                        )}
+                      />
+
+                      {warningMessage}
+
+                      <Button
+                        type="submit"
+                        className="w-full mt-4"
+                        disabled={
+                          vaultSharesDiff.equals(0) ||
+                          pendingTxn ||
+                          warningMessage !== null
+                        }
+                      >
+                        {pendingTxn && !error ? (
+                          <Loader2 className="h-6 w-6 animate-spin" />
+                        ) : null}
+                        {redeemButtonText}
+                      </Button>
+
+                      <Separator className="mt-6 mb-4" />
+
+                      <p className="text-center text-sm font-medium">
+                        The current epoch ends in approximately{' '}
+                        {currentEpochEndInDays} days.
+                      </p>
+
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        Claimable Amount:{' '}
+                        <NumberDisplay
+                          value={formatUnits(claimableRedeem, vaultDecimals)}
+                        />{' '}
+                        {vaultSharesTicker}
+                      </p>
+
+                      <Button
+                        className="w-full mt-3"
+                        disabled={claimableRedeem === BigInt(0) || pendingTxn}
+                        onClick={() => redeem()}
+                      >
+                        Redeem {collateralTicker}
+                      </Button>
+                    </TabsContent>
+                  </Tabs>
+                </form>
+              </Form>
+            </div>
           </div>
         </div>
       </div>
