@@ -99,15 +99,13 @@ const renderPriceDisplay = (
 
   let unit;
   let precision;
-  let shouldFormatUnits = true;
 
   if (resourceName === 'Celestia Blobspace') {
     unit = 'μTIA';
     precision = 6;
   } else if (resourceName === 'Solana Fees') {
-    unit = 'lamport';
+    unit = 'lamports';
     precision = 4;
-    shouldFormatUnits = false; // Don't format units for SVM since price is already in lamports
   } else {
     unit = 'gwei';
     precision = 4;
@@ -128,9 +126,7 @@ const renderPriceDisplay = (
     return numValue.toFixed(precision);
   };
 
-  const displayValue = shouldFormatUnits
-    ? formatUnits(BigInt(price.value), 9)
-    : price.value;
+  const displayValue = formatUnits(BigInt(price.value), 9);
 
   document.title = `${formatTitleNumber(displayValue)} ${unit} | ${resourceName} | Foil`;
 

@@ -66,11 +66,14 @@ class SvmIndexer implements IResourcePriceIndexer {
         return;
       }
 
-      // Calculate average fee per compute unit (in lamports)
-      const avgFeePerCU = Number(totalFees) / Number(totalComputeUnits);
+      // Calculate average fee per compute unit (in lamports) with 9 decimal places
+      const avgFeePerCU = (
+        (totalFees * 10n ** 9n) /
+        totalComputeUnits
+      ).toString();
 
       console.log(
-        `Block ${block.slot} (${block.blockTime}): ${totalComputeUnits} CU, ${totalFees} lamports`
+        `Block ${block.slot} (${block.blockTime}): ${totalComputeUnits} CU, ${totalFees} lamports, fee/CU: ${avgFeePerCU}`
       );
 
       const price = {
@@ -78,7 +81,7 @@ class SvmIndexer implements IResourcePriceIndexer {
         timestamp: block.blockTime
           ? Number(block.blockTime)
           : Math.floor(Date.now() / 1000),
-        value: avgFeePerCU.toString(),
+        value: avgFeePerCU,
         used: totalComputeUnits.toString(),
         feePaid: totalFees.toString(),
         blockNumber: block.slot,
