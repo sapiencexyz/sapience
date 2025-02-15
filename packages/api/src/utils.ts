@@ -349,3 +349,12 @@ export const convertGgasToGas = (value: string) => {
 };
 
 export const CELENIUM_API_KEY = process.env.CELENIUM_API_KEY;
+
+export const safeRequire = async (path: string): Promise<Deployment | null> => {
+  try {
+    const module = await import(path);
+    return module.default;
+  } catch {
+    return null;
+  }
+};
