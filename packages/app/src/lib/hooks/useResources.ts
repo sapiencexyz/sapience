@@ -96,6 +96,7 @@ export const useResources = () => {
         'ethereum-gas',
         'base-gas',
         'arbitrum-gas',
+        'solana-fees',
         'ethereum-blobspace',
         'celestia-blobspace',
       ];
