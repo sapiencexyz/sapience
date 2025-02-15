@@ -1,4 +1,4 @@
-import { mainnet, sepolia, base, cannon } from 'viem/chains';
+import { mainnet, sepolia, base, cannon, arbitrum } from 'viem/chains';
 import evmIndexer from './resourcePriceFunctions/evmIndexer';
 import ethBlobsIndexer from './resourcePriceFunctions/ethBlobsIndexer';
 import celestiaIndexer from './resourcePriceFunctions/celestiaIndexer';
@@ -20,6 +20,16 @@ export const RESOURCES = [
   //   slug: 'ethereum-gas',
   //   priceIndexer: new evmIndexer(mainnet.id),
   // },
+  //{
+  //  name: 'Base Gas',
+  //  slug: 'base-gas',
+  //  priceIndexer: new evmIndexer(base.id),
+  //},
+  //{
+  //  name: 'Arbitrum Gas',
+  //  slug: 'arbitrum-gas',
+  //  priceIndexer: new evmIndexer(arbitrum.id),
+  //},
   ...(process.env.SOLANA_RPC_URL
     ? [
         {

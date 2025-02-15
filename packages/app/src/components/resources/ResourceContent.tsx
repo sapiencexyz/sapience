@@ -17,7 +17,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '~/components/ui/tooltip';
-import { RESOURCES } from '~/lib/constants/resources';
 import { BLUE } from '~/lib/hooks/useChart';
 import { useLatestResourcePrice, useResources } from '~/lib/hooks/useResources';
 import { TimeWindow, TimeInterval } from '~/lib/interfaces/interfaces';
@@ -134,7 +133,6 @@ interface ResourceContentProps {
 
 const ResourceContent = ({ id }: ResourceContentProps) => {
   const { data: resources, isLoading: isLoadingResources } = useResources();
-  const category = RESOURCES.find((c) => c.id === id);
   const { data: latestPrice, isLoading: isPriceLoading } =
     useLatestResourcePrice(id);
 
@@ -153,14 +151,6 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
     trailing: false,
   });
 
-  if (!category) {
-    return (
-      <div className="flex justify-center items-center py-8">
-        <p>Resource not found</p>
-      </div>
-    );
-  }
-
   if (isLoadingResources) {
     return (
       <div className="flex items-center justify-center h-[80vh]">
@@ -171,8 +161,17 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
 
   // Get the current resource and its markets
   const resource = resources?.find((r) => r.slug === id);
+
+  if (!resource) {
+    return (
+      <div className="flex items-center justify-center h-[80vh]">
+        <Loader2 className="h-8 w-8 opacity-50 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   const epochs =
-    resource?.markets
+    resource.markets
       .flatMap((market) =>
         (market.epochs || []).map((epoch) => ({
           ...epoch,
@@ -208,7 +207,7 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
                     {renderPriceDisplay(
                       isPriceLoading,
                       latestPrice,
-                      category.name
+                      resource.name
                     )}
                   </div>
                 </div>

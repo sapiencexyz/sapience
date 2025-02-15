@@ -391,7 +391,7 @@ const Earn: FC<Props> = ({ slug }) => {
       <div className="max-w-7xl mx-auto">
         <div className=" mx-auto h-16 w-16 mb-4">
           <Image
-            src={resource?.iconPath || '/eth.svg'}
+            src={resource?.iconPath || ''}
             alt={resource?.name || 'Resource'}
             width={56}
             height={56}
