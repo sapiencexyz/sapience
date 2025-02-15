@@ -131,14 +131,14 @@ const PeriodHeader = () => {
     <div className="w-full px-3 py-6">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex flex-col gap-3">
-          <h1 className="text-3xl font-semibold flex items-center gap-2">
+          <h1 className="text-3xl font-semibold flex items-center gap-2.5">
             {resource?.iconPath && (
               <Image
                 src={resource.iconPath}
                 alt={resource?.name || ''}
                 width={32}
                 height={32}
-                className="w-6 h-6 lg:w-8 lg:h-8"
+                className="w-8 h-8"
               />
             )}
             {resource?.name} Market

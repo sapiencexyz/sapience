@@ -73,7 +73,7 @@ const SlippageTolerance: React.FC = () => {
             max={100}
             step={0.1}
             type="number"
-            className="pr-6"
+            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
           <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">
             %
