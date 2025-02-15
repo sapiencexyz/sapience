@@ -438,7 +438,7 @@ const Earn: FC<Props> = ({ slug }) => {
               </div>
 
               <a
-                href="https://docs.foil.xyz"
+                href="https://docs.foil.xyz/token-vault"
                 target="_blank"
                 rel="noreferrer"
                 className="block mt-6 lg:mt-0"
