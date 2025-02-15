@@ -2,7 +2,6 @@ import { gql } from '@apollo/client';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 
-import { RESOURCES } from '~/lib/constants/resources';
 import { foilApi } from '~/lib/utils/util';
 
 export interface Epoch {
@@ -93,21 +92,23 @@ export const useResources = () => {
         query: print(RESOURCES_QUERY),
       });
 
-      // Create a map of resource data from the API by name
-      const resourceMap = new Map(
-        data.resources.map((r: Omit<Resource, 'iconPath'>) => [r.name, r])
-      );
+      const preferredOrder = [
+        'ethereum-gas',
+        'base-gas',
+        'arbitrum-gas',
+        'ethereum-blobspace',
+        'celestia-blobspace',
+      ];
+      const resources = data.resources.sort((a: any, b: any) => {
+        const indexA = preferredOrder.indexOf(a.slug);
+        const indexB = preferredOrder.indexOf(b.slug);
+        return indexA - indexB;
+      });
 
-      // Merge with RESOURCES constant maintaining its order
-      return RESOURCES.map((resourceConstant) => {
-        const apiResource = resourceMap.get(resourceConstant.name);
-        if (!apiResource) return null;
-
-        return {
-          ...apiResource,
-          iconPath: resourceConstant.iconPath,
-        };
-      }).filter((r): r is Resource => r !== null);
+      return resources.map((resource: any) => ({
+        ...resource,
+        iconPath: `/resources/${resource.slug}.svg`,
+      }));
     },
   });
 };
