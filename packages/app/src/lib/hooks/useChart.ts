@@ -298,10 +298,7 @@ export const useChart = ({
         price: Number(formatUnits(BigInt(candle.close), 9)),
       }));
     },
-    enabled:
-      !!resourceSlug &&
-      ((seriesVisibility?.resource ?? true) ||
-        (seriesVisibility?.trailing ?? true)),
+    enabled: !!resourceSlug && (seriesVisibility?.resource ?? true),
   });
 
   const { data: trailingResourcePrices, isLoading: isTrailingResourceLoading } =
@@ -336,10 +333,7 @@ export const useChart = ({
           price: Number(formatUnits(BigInt(candle.close), 9)),
         }));
       },
-      enabled:
-        !!resourceSlug &&
-        ((seriesVisibility?.resource ?? true) ||
-          (seriesVisibility?.trailing ?? true)),
+      enabled: !!resourceSlug && (seriesVisibility?.trailing ?? false),
     });
 
   // Effect for chart creation/cleanup
