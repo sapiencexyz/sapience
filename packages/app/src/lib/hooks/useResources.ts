@@ -96,9 +96,9 @@ export const useResources = () => {
         'ethereum-gas',
         'base-gas',
         'arbitrum-gas',
-        'solana-fees',
         'ethereum-blobspace',
         'celestia-blobspace',
+        'solana-fees',
       ];
       const resources = data.resources.sort((a: any, b: any) => {
         const indexA = preferredOrder.indexOf(a.slug);
