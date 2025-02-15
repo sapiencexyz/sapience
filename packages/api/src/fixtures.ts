@@ -2,6 +2,7 @@ import { mainnet, sepolia, base, cannon } from 'viem/chains';
 import evmIndexer from './resourcePriceFunctions/evmIndexer';
 import ethBlobsIndexer from './resourcePriceFunctions/ethBlobsIndexer';
 import celestiaIndexer from './resourcePriceFunctions/celestiaIndexer';
+import svmIndexer from './resourcePriceFunctions/svmIndexer';
 import { Deployment, MarketInfo } from './interfaces';
 
 const safeRequire = async (path: string): Promise<Deployment | null> => {
@@ -19,6 +20,15 @@ export const RESOURCES = [
     slug: 'ethereum-gas',
     priceIndexer: new evmIndexer(mainnet.id),
   },
+  ...(process.env.SOLANA_RPC_URL
+    ? [
+        {
+          name: 'Solana Gas',
+          slug: 'solana-gas',
+          priceIndexer: new svmIndexer(process.env.SOLANA_RPC_URL),
+        },
+      ]
+    : []),
   {
     name: 'Ethereum Blobspace',
     slug: 'ethereum-blobspace',
