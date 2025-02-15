@@ -15,11 +15,11 @@ const safeRequire = async (path: string): Promise<Deployment | null> => {
 };
 
 export const RESOURCES = [
-  {
-    name: 'Ethereum Gas',
-    slug: 'ethereum-gas',
-    priceIndexer: new evmIndexer(mainnet.id),
-  },
+  // {
+  //   name: 'Ethereum Gas',
+  //   slug: 'ethereum-gas',
+  //   priceIndexer: new evmIndexer(mainnet.id),
+  // },
   ...(process.env.SOLANA_RPC_URL
     ? [
         {
@@ -29,20 +29,20 @@ export const RESOURCES = [
         },
       ]
     : []),
-  {
-    name: 'Ethereum Blobspace',
-    slug: 'ethereum-blobspace',
-    priceIndexer: new ethBlobsIndexer(),
-  },
-  ...(process.env.CELENIUM_API_KEY
-    ? [
-        {
-          name: 'Celestia Blobspace',
-          slug: 'celestia-blobspace',
-          priceIndexer: new celestiaIndexer('https://api-mainnet.celenium.io'),
-        },
-      ]
-    : []),
+  // {
+  //   name: 'Ethereum Blobspace',
+  //   slug: 'ethereum-blobspace',
+  //   priceIndexer: new ethBlobsIndexer(),
+  // },
+  // ...(process.env.CELENIUM_API_KEY
+  //   ? [
+  //       {
+  //         name: 'Celestia Blobspace',
+  //         slug: 'celestia-blobspace',
+  //         priceIndexer: new celestiaIndexer('https://api-mainnet.celenium.io'),
+  //       },
+  //     ]
+  //   : []),
 ];
 
 const addMarketYinYang = async (markets: MarketInfo[], chainId: number) => {
@@ -84,21 +84,21 @@ const addMarketYinYang = async (markets: MarketInfo[], chainId: number) => {
 const initializeMarkets = async () => {
   const FULL_MARKET_LIST: MarketInfo[] = [];
 
-  // Mainnet Deployments
-  await addMarketYinYang(FULL_MARKET_LIST, base.id);
-
-  // Development Deployments
-  if (process.env.NODE_ENV === 'development') {
-    await addMarketYinYang(FULL_MARKET_LIST, cannon.id);
-  }
-
-  // Testnet Deployments
-  if (
-    process.env.NODE_ENV === 'staging' ||
-    process.env.NODE_ENV === 'development'
-  ) {
-    await addMarketYinYang(FULL_MARKET_LIST, sepolia.id);
-  }
+  //// Mainnet Deployments
+  //await addMarketYinYang(FULL_MARKET_LIST, base.id);
+//
+  //// Development Deployments
+  //if (process.env.NODE_ENV === 'development') {
+  //  await addMarketYinYang(FULL_MARKET_LIST, cannon.id);
+  //}
+//
+  //// Testnet Deployments
+  //if (
+  //  process.env.NODE_ENV === 'staging' ||
+  //  process.env.NODE_ENV === 'development'
+  //) {
+  //  await addMarketYinYang(FULL_MARKET_LIST, sepolia.id);
+  //}
 
   return FULL_MARKET_LIST;
 };
