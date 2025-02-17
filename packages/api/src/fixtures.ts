@@ -2,6 +2,7 @@ import { mainnet, sepolia, base, cannon, arbitrum } from 'viem/chains';
 import evmIndexer from './resourcePriceFunctions/evmIndexer';
 import ethBlobsIndexer from './resourcePriceFunctions/ethBlobsIndexer';
 import celestiaIndexer from './resourcePriceFunctions/celestiaIndexer';
+import btcIndexer from './resourcePriceFunctions/btcIndexer';
 import { Deployment, MarketInfo } from './interfaces';
 
 const safeRequire = async (path: string): Promise<Deployment | null> => {
@@ -28,6 +29,11 @@ export const RESOURCES = [
     name: 'Arbitrum Gas',
     slug: 'arbitrum-gas',
     priceIndexer: new evmIndexer(arbitrum.id),
+  },
+  {
+    name: 'Bitcoin Fees',
+    slug: 'bitcoin-fees',
+    priceIndexer: new btcIndexer(),
   },
   {
     name: 'Ethereum Blobspace',

@@ -98,6 +98,7 @@ export const useResources = () => {
         'arbitrum-gas',
         'ethereum-blobspace',
         'celestia-blobspace',
+        'bitcoin-fees',
       ];
       const resources = data.resources.sort((a: any, b: any) => {
         const indexA = preferredOrder.indexOf(a.slug);
