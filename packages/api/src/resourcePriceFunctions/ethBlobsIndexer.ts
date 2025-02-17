@@ -12,7 +12,6 @@ interface BlobData {
 }
 
 class ethBlobsIndexer implements IResourcePriceIndexer {
-  public client = undefined; // Required by interface but not used for Blobscan
   private isWatching: boolean = false;
   private blobscanApiUrl: string = 'https://api.blobscan.com';
   private retryDelay: number = 1000; // 1 second

@@ -161,7 +161,7 @@ export interface PositionUpdatedEventLog {
   borrowedVGas: string;
 }
 export interface IResourcePriceIndexer {
-  client: PublicClient | undefined;
+  client?: PublicClient;
   indexBlockPriceFromTimestamp(
     resource: Resource,
     timestamp: number
