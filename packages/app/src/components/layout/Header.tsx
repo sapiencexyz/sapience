@@ -132,7 +132,7 @@ function MobileMarketLinks({
 
                 if (!resource.markets?.length || allEpochs.length === 0) {
                   return (
-                    <div className="text-sm text-muted-foreground flex items-center justify-center min-h-[60px]">
+                    <div className="text-sm text-muted-foreground flex items-center justify-center min-h-[160px]">
                       No active periods
                     </div>
                   );
@@ -146,7 +146,7 @@ function MobileMarketLinks({
                 return (
                   <>
                     {activeEpochs.length === 0 ? (
-                      <div className="text-sm text-muted-foreground flex items-center justify-center min-h-[60px]">
+                      <div className="text-sm text-muted-foreground flex items-center justify-center min-h-[160px]">
                         No active periods
                       </div>
                     ) : (
@@ -215,7 +215,7 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[400px] p-3"
+        className="w-[420px] p-3"
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => {
           setOpen(false);
@@ -275,7 +275,7 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
                     allEpochs.length === 0
                   ) {
                     return (
-                      <div className="text-sm text-muted-foreground flex items-center justify-center min-h-[60px]">
+                      <div className="text-sm text-muted-foreground flex items-center justify-center min-h-[160px]">
                         No active periods
                       </div>
                     );
@@ -289,7 +289,7 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
                   return (
                     <>
                       {activeEpochs.length === 0 ? (
-                        <div className="text-sm text-muted-foreground flex items-center justify-center min-h-[60px]">
+                        <div className="text-sm text-muted-foreground flex items-center justify-center min-h-[160px]">
                           No active periods
                         </div>
                       ) : (

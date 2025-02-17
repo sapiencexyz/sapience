@@ -7,7 +7,7 @@ import {
   webSocket,
   type Transport,
 } from 'viem';
-import { mainnet, sepolia, cannon, base } from 'viem/chains';
+import { mainnet, sepolia, cannon, base, arbitrum } from 'viem/chains';
 import { TOKEN_PRECISION } from './constants';
 import { epochRepository } from './db';
 import { Deployment } from './interfaces';
@@ -60,41 +60,31 @@ const createInfuraWebSocketTransport = (network: string): Transport => {
   );
 };
 
-// Added these multicalls for mainnet and sepolia if we want to use multicalls if we dont it doesnt make a difference.
-export const mainnetPublicClient = createPublicClient({
-  chain: mainnet,
-  transport: process.env.INFURA_API_KEY
-    ? createInfuraWebSocketTransport('mainnet')
-    : http(),
-  batch: {
-    multicall: true,
-  },
-});
+const createChainClient = (
+  chain: viem.Chain,
+  network: string,
+  useLocalhost = false
+) =>
+  createPublicClient({
+    chain,
+    transport: useLocalhost
+      ? http('http://localhost:8545')
+      : process.env.INFURA_API_KEY
+        ? createInfuraWebSocketTransport(network)
+        : http(),
+    batch: {
+      multicall: true,
+    },
+  });
 
-export const basePublicClient = createPublicClient({
-  chain: base,
-  transport: process.env.INFURA_API_KEY
-    ? createInfuraWebSocketTransport('base-mainnet')
-    : http(),
-  batch: {
-    multicall: true,
-  },
-});
-
-export const sepoliaPublicClient = createPublicClient({
-  chain: sepolia,
-  transport: process.env.INFURA_API_KEY
-    ? createInfuraWebSocketTransport('sepolia')
-    : http(),
-  batch: {
-    multicall: true,
-  },
-});
-
-export const cannonPublicClient = createPublicClient({
-  chain: cannon,
-  transport: http('http://localhost:8545'),
-});
+export const mainnetPublicClient = createChainClient(mainnet, 'mainnet');
+export const basePublicClient = createChainClient(base, 'base-mainnet');
+export const sepoliaPublicClient = createChainClient(sepolia, 'sepolia');
+export const cannonPublicClient = createChainClient(cannon, 'cannon', true);
+export const arbitrumPublicClient = createChainClient(
+  arbitrum,
+  'arbitrum-mainnet'
+);
 
 export function getProviderForChain(chainId: number): PublicClient {
   if (clientMap.has(chainId)) {
@@ -115,6 +105,9 @@ export function getProviderForChain(chainId: number): PublicClient {
       break;
     case 8453:
       newClient = basePublicClient as PublicClient;
+      break;
+    case 42161:
+      newClient = arbitrumPublicClient as PublicClient;
       break;
     default:
       throw new Error(`Unsupported chain ID: ${chainId}`);
