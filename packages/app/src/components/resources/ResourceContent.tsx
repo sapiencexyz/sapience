@@ -97,7 +97,22 @@ const renderPriceDisplay = (
     return <span className="text-2xl font-bold">No price data</span>;
   }
 
-  const unit = resourceName === 'Celestia Blobspace' ? 'μTIA' : 'gwei';
+  let unit;
+  let precision;
+
+  if (resourceName === 'Celestia Blobspace') {
+    unit = 'μTIA';
+    precision = 6;
+  } else if (resourceName === 'Solana Fees') {
+    unit = 'lamports';
+    precision = 6;
+  } else if (resourceName === 'Bitcoin Fees') {
+    unit = 'sats';
+    precision = 4;
+  } else {
+    unit = 'gwei';
+    precision = 4;
+  }
 
   const formatTitleNumber = (val: string) => {
     const numValue = parseFloat(val);
@@ -114,15 +129,13 @@ const renderPriceDisplay = (
     return numValue.toFixed(precision);
   };
 
-  document.title = `${formatTitleNumber(formatUnits(BigInt(price.value), 9))} ${unit} | ${resourceName} | Foil`;
+  const displayValue = formatUnits(BigInt(price.value), 9);
+
+  document.title = `${formatTitleNumber(displayValue)} ${unit} | ${resourceName} | Foil`;
 
   return (
     <span className="text-2xl font-bold">
-      <NumberDisplay
-        value={formatUnits(BigInt(price.value), 9)}
-        precision={resourceName === 'Celestia Blobspace' ? 6 : 4}
-      />{' '}
-      {unit}
+      <NumberDisplay value={displayValue} precision={precision} /> {unit}
     </span>
   );
 };
