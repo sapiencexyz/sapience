@@ -218,16 +218,7 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
               await this.fetchBlobDataFromBlobscan(currentBlockNumber);
             if (blobData) {
               console.log(
-                `[EthBlobIndexer] Successfully processed block ${currentBlockNumber}:`,
-                {
-                  blockNumber: currentBlockNumber,
-                  timestamp: new Date(blobData.timestamp * 1000).toISOString(),
-                  blobGasPrice: `${this.formatGwei(blobData.blobGasPrice)} Gwei (${blobData.blobGasPrice} wei)`,
-                  blobGasUsed: blobData.blobGasUsed,
-                  feePaid: (
-                    BigInt(blobData.blobGasPrice) * BigInt(blobData.blobGasUsed)
-                  ).toString(),
-                }
+                `[EthBlobIndexer] Successfully processed block ${currentBlockNumber}`
               );
             }
             lastProcessedBlock = currentBlockNumber;

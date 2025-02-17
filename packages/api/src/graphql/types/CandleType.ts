@@ -1,6 +1,6 @@
 import { Field, ObjectType, Int, Directive } from 'type-graphql';
 
-@Directive("@cacheControl(maxAge: 300)")
+@Directive('@cacheControl(maxAge: 300)')
 @ObjectType()
 export class CandleType {
   @Field(() => Int)

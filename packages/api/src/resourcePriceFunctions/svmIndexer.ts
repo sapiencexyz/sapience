@@ -34,7 +34,7 @@ class SvmIndexer implements IResourcePriceIndexer {
   private async storeBlockPrice(block: SolanaBlock, resource: Resource) {
     if (!block || !block.transactions) {
       console.warn(
-        `Invalid block data for resource ${resource.slug}. Skipping block.`
+        `[svmIndexer] Invalid block data for resource ${resource.slug}. Skipping block.`
       );
       return;
     }
@@ -61,7 +61,7 @@ class SvmIndexer implements IResourcePriceIndexer {
       // Skip if no transactions or compute units
       if (totalComputeUnits === 0n || block.transactions.length === 0) {
         console.log(
-          `Block ${block.slot}: No compute units or transactions found`
+          `[svmIndexer] Block ${block.slot}: No compute units or transactions found`
         );
         return;
       }
@@ -73,7 +73,7 @@ class SvmIndexer implements IResourcePriceIndexer {
       ).toString();
 
       console.log(
-        `Block ${block.slot} (${block.blockTime}): ${totalComputeUnits} CU, ${totalFees} lamports, fee/CU: ${avgFeePerCU}`
+        `[svmIndexer] Block ${block.slot} (${block.blockTime}): ${totalComputeUnits} CU, ${totalFees} lamports, fee/CU: ${avgFeePerCU}`
       );
 
       const price = {
@@ -148,14 +148,16 @@ class SvmIndexer implements IResourcePriceIndexer {
           })
           .catch((error) => {
             if (error.code === -32004) {
-              console.log(`Slot ${slot} has no block available, skipping`);
+              console.log(
+                `[svmIndexer] Slot ${slot} has no block available, skipping`
+              );
               return null;
             }
             throw error;
           });
 
         if (block) {
-          console.log(`Processing block for slot ${slot}`);
+          console.log(`[svmIndexer] Processing block for slot ${slot}`);
           await this.storeBlockPrice(
             { ...block, slot } as SolanaBlock,
             resource
@@ -167,7 +169,7 @@ class SvmIndexer implements IResourcePriceIndexer {
           scope.setExtra('resource', resource.slug);
           Sentry.captureException(error);
         });
-        console.error(`Error processing slot ${slot}:`, error);
+        console.error(`[svmIndexer] Error processing slot ${slot}:`, error);
       }
     }
     return true;
@@ -175,13 +177,13 @@ class SvmIndexer implements IResourcePriceIndexer {
 
   async watchBlocksForResource(resource: Resource) {
     if (this.isWatching) {
-      console.log('Already watching blocks for this resource');
+      console.log('[svmIndexer] Already watching blocks for this resource');
       return;
     }
 
     const startWatching = async () => {
       console.log(
-        `Watching priority fees per compute unit for resource ${resource.slug}`
+        `[svmIndexer] Watching priority fees per compute unit for resource ${resource.slug}`
       );
 
       this.isWatching = true;
@@ -189,7 +191,7 @@ class SvmIndexer implements IResourcePriceIndexer {
       // Initialize with current slot
       const currentSlot = await this.connection.getSlot('finalized');
       let lastProcessedSlot = currentSlot;
-      console.log(`Starting to watch from slot ${currentSlot}`);
+      console.log(`[svmIndexer] Starting to watch from slot ${currentSlot}`);
 
       // Subscribe to new slots but only process when we can get a block
       const subscription = this.connection.onSlotChange(async (slotInfo) => {
@@ -252,16 +254,18 @@ class SvmIndexer implements IResourcePriceIndexer {
           lastProcessedSlot = targetSlot;
           this.reconnectAttempts = 0;
         } catch (error: unknown) {
-          console.error('Error processing block:', error);
+          console.error('[svmIndexer] Error processing block:', error);
 
           if (this.reconnectAttempts < this.maxReconnectAttempts) {
             this.reconnectAttempts++;
             console.log(
-              `Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`
+              `[svmIndexer] Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`
             );
             setTimeout(startWatching, this.reconnectDelay);
           } else {
-            console.error('Max reconnection attempts reached. Stopping watch.');
+            console.error(
+              '[svmIndexer] Max reconnection attempts reached. Stopping watch.'
+            );
             Sentry.captureMessage(
               'Max reconnection attempts reached for block watcher'
             );
