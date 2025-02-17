@@ -39,7 +39,7 @@ const groupPricesByInterval = (
     Math.floor(endTimestamp / intervalSeconds) * intervalSeconds;
 
   // Initialize lastClose with lastKnownPrice if available, otherwise use first price
-  let lastClose = lastKnownPrice ;//|| prices[0].value;
+  let lastClose = lastKnownPrice;
 
   for (
     let timestamp = normalizedStartTimestamp;
