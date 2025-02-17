@@ -1,7 +1,8 @@
-import { Field, ObjectType, ID, Int } from 'type-graphql';
+import { Field, ObjectType, ID, Int, Directive } from 'type-graphql';
 import { MarketType } from './MarketType';
 import { PositionType } from './PositionType';
 
+@Directive("@cacheControl(maxAge: 300)")
 @ObjectType()
 export class EpochType {
   @Field(() => ID)
@@ -22,9 +23,11 @@ export class EpochType {
   @Field(() => [PositionType])
   positions: PositionType[];
 
+  @Directive("@cacheControl(maxAge: 60)")
   @Field(() => Boolean, { nullable: true })
   settled: boolean | null;
 
+  @Directive("@cacheControl(maxAge: 60)")
   @Field(() => String, { nullable: true })
   settlementPriceD18: string | null;
 }
