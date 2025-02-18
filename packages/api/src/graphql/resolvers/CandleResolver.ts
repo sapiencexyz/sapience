@@ -67,7 +67,7 @@ const groupPricesByInterval = (
       // Create empty candle with last known closing price
       candles.push({
         timestamp,
-        open: lastClose || '0' ,
+        open: lastClose || '0',
         high: lastClose || '0',
         low: lastClose || '0',
         close: lastClose || '0',

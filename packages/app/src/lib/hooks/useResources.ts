@@ -91,7 +91,6 @@ export const useResources = () => {
       const { data } = await foilApi.post('/graphql', {
         query: print(RESOURCES_QUERY),
       });
-
       const preferredOrder = [
         'ethereum-gas',
         'base-gas',

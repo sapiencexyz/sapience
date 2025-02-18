@@ -193,6 +193,31 @@ if (process.argv[2] === 'reindexMarket') {
     process.exit(0);
   };
   callReindexMissing();
+} else if (process.argv[2] === 'reindexResource') {
+  const callReindexMissing = async () => {
+    const slug = process.argv[3];
+    const startTimestamp = parseInt(process.argv[4], 10);
+
+    if (isNaN(startTimestamp) || !slug) {
+      console.error(
+        'Invalid arguments. Usage: tsx src/worker.ts reindexResource <resourceSlug> <startTimestamp>'
+      );
+      process.exit(1);
+    }
+    await initializeDataSource();
+    const resource: Resource | null = await resourceRepository.findOne({
+      where: {
+        slug: slug,
+      },
+    });
+
+    if (!resource) {
+      throw new Error('Resource for the chosen slug was not found');
+    }
+
+    process.exit(0);
+  };
+  callReindexMissing();
 } else {
   main();
 }
