@@ -2,7 +2,7 @@ import { Field, ObjectType, ID, Directive } from 'type-graphql';
 import { MarketType } from './MarketType';
 import { ResourcePriceType } from './ResourcePriceType';
 
-@Directive("@cacheControl(maxAge: 300)")
+@Directive('@cacheControl(maxAge: 300)')
 @ObjectType()
 export class ResourceType {
   @Field(() => ID)
@@ -18,6 +18,6 @@ export class ResourceType {
   markets: MarketType[];
 
   @Field(() => [ResourcePriceType])
-  @Directive("@cacheControl(maxAge: 60)")
+  @Directive('@cacheControl(maxAge: 60)')
   resourcePrices: ResourcePriceType[];
 }

@@ -1,7 +1,7 @@
 import { Field, ObjectType, ID, Int, Directive } from 'type-graphql';
 import { ResourceType } from './ResourceType';
 
-@Directive("@cacheControl(maxAge: 300)")
+@Directive('@cacheControl(maxAge: 300)')
 @ObjectType()
 export class ResourcePriceType {
   @Field(() => ID)
