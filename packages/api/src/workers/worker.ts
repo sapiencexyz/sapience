@@ -11,7 +11,7 @@ import * as Sentry from '@sentry/node';
 import { Resource } from '../models/Resource';
 import { reindexMarket } from './reindexMarket';
 import { reindexMissingBlocks } from './reindexMissingBlocks';
-
+import { reindexResource } from './reindexResource';
 const MAX_RETRIES = Infinity;
 const RETRY_DELAY = 5000; // 5 seconds
 
@@ -194,7 +194,7 @@ if (process.argv[2] === 'reindexMarket') {
   };
   callReindexMissing();
 } else if (process.argv[2] === 'reindexResource') {
-  const callReindexMissing = async () => {
+  const callReindexResource = async () => {
     const slug = process.argv[3];
     const startTimestamp = parseInt(process.argv[4], 10);
 
@@ -214,10 +214,12 @@ if (process.argv[2] === 'reindexMarket') {
     if (!resource) {
       throw new Error('Resource for the chosen slug was not found');
     }
+    await reindexResource(resource, startTimestamp);
 
     process.exit(0);
   };
-  callReindexMissing();
+  callReindexResource();
+  console.log('DONE');
 } else {
   main();
 }
