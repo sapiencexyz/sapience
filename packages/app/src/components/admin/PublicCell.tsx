@@ -3,12 +3,7 @@ import type React from 'react';
 
 import type { PublicCellProps } from './types';
 
-const PublicCell: React.FC<PublicCellProps> = ({
-  isPublic,
-  market,
-  loading,
-  onUpdate,
-}) => (
+const PublicCell: React.FC<PublicCellProps> = ({ isPublic, loading }) => (
   <div className="flex items-center gap-2">
     {isPublic ? (
       <Check className="h-4 w-4 text-green-500" />
