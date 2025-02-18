@@ -3,8 +3,9 @@ import evmIndexer from './resourcePriceFunctions/evmIndexer';
 import ethBlobsIndexer from './resourcePriceFunctions/ethBlobsIndexer';
 import celestiaIndexer from './resourcePriceFunctions/celestiaIndexer';
 import svmIndexer from './resourcePriceFunctions/svmIndexer';
-import { MarketInfo } from './interfaces';
 import { safeRequire } from './utils';
+import btcIndexer from './resourcePriceFunctions/btcIndexer';
+import { MarketInfo } from './interfaces';
 
 const EVM_RESOURCES = [
   {
@@ -21,6 +22,11 @@ const EVM_RESOURCES = [
     name: 'Arbitrum Gas',
     slug: 'arbitrum-gas',
     priceIndexer: new evmIndexer(arbitrum.id),
+  },
+  {
+    name: 'Bitcoin Fees',
+    slug: 'bitcoin-fees',
+    priceIndexer: new btcIndexer(),
   },
   {
     name: 'Ethereum Blobspace',

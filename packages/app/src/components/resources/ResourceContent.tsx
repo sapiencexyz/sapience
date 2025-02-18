@@ -105,6 +105,9 @@ const renderPriceDisplay = (
     precision = 6;
   } else if (resourceName === 'Solana Fees') {
     unit = 'lamports';
+    precision = 6;
+  } else if (resourceName === 'Bitcoin Fees') {
+    unit = 'sats';
     precision = 4;
   } else {
     unit = 'gwei';

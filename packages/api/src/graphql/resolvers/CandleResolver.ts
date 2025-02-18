@@ -39,7 +39,7 @@ const groupPricesByInterval = (
     Math.floor(endTimestamp / intervalSeconds) * intervalSeconds;
 
   // Initialize lastClose with lastKnownPrice if available, otherwise use first price
-  let lastClose = lastKnownPrice || prices[0].value;
+  let lastClose = lastKnownPrice;
 
   for (
     let timestamp = normalizedStartTimestamp;
@@ -67,10 +67,10 @@ const groupPricesByInterval = (
       // Create empty candle with last known closing price
       candles.push({
         timestamp,
-        open: lastClose,
-        high: lastClose,
-        low: lastClose,
-        close: lastClose,
+        open: lastClose || '0' ,
+        high: lastClose || '0',
+        low: lastClose || '0',
+        close: lastClose || '0',
       });
     }
   }
