@@ -2,7 +2,11 @@
 
 'use client';
 
+import { gql } from '@apollo/client';
+import { useQuery } from '@tanstack/react-query';
+import { print } from 'graphql';
 import { useState } from 'react';
+import { useSignMessage } from 'wagmi';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -12,9 +16,28 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import AdminTable from '~/components/admin/AdminTable';
+import { useToast } from '~/hooks/use-toast';
+import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import type { RenderJob } from '~/lib/interfaces/interfaces';
 import { foilApi } from '~/lib/utils/util';
+
+const GET_RESOURCES = gql`
+  query GetResources {
+    resources {
+      id
+      slug
+      name
+    }
+  }
+`;
 
 const Admin = () => {
   const [job, setJob] = useState<RenderJob | undefined>();
@@ -24,7 +47,25 @@ const Admin = () => {
   const [statusOpen, setStatusOpen] = useState(false);
   const [manualServiceId, setManualServiceId] = useState('');
   const [manualJobId, setManualJobId] = useState('');
+  const [indexResourceOpen, setIndexResourceOpen] = useState(false);
+  const [selectedResource, setSelectedResource] = useState('');
+  const [startTimestamp, setStartTimestamp] = useState('');
+  const { signMessageAsync } = useSignMessage();
+  const { toast } = useToast();
 
+  const { data: resourcesData, isLoading: resourcesLoading } = useQuery({
+    queryKey: ['resources'],
+    queryFn: async () => {
+      const { data } = await foilApi.post('/graphql', {
+        query: print(GET_RESOURCES),
+      });
+      console.log(data, data.data);
+      // return data.resources;
+      return data.resources;
+    },
+  });
+
+  console.log('RESOURCES', resourcesData);
   const handleGetStatus = async () => {
     const serviceId = manualServiceId || job?.serviceId;
     const jobId = manualJobId || job?.id;
@@ -42,12 +83,60 @@ const Admin = () => {
     setLoadingAction((prev) => ({ ...prev, getStatus: false }));
   };
 
+  const handleIndexResource = async () => {
+    try {
+      setLoadingAction((prev) => ({ ...prev, indexResource: true }));
+      const timestamp = Date.now();
+
+      const signature = await signMessageAsync({
+        message: ADMIN_AUTHENTICATE_MSG,
+      });
+
+      const response = await foilApi.post(
+        '/reindexMissingBlocks/index-resource',
+        {
+          slug: selectedResource,
+          startTimestamp,
+          signature,
+          signatureTimestamp: timestamp,
+        }
+      );
+
+      if (response.success) {
+        toast({
+          title: 'Indexing started',
+          description: 'Resource indexing has been initiated',
+          variant: 'default',
+        });
+        setIndexResourceOpen(false);
+      } else {
+        toast({
+          title: 'Indexing failed',
+          description: response.error,
+          variant: 'destructive',
+        });
+      }
+    } catch (e: Error | unknown) {
+      console.error('Error in handleIndexResource:', e);
+      toast({
+        title: 'Indexing failed',
+        description: (e as Error)?.message || 'An error occurred',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingAction((prev) => ({ ...prev, indexResource: false }));
+    }
+  };
+
   return (
     <div className="w-full">
       <AdminTable />
 
       <div className="flex gap-4 my-4 ml-4">
         <Button onClick={() => setStatusOpen(true)}>Check Job Status</Button>
+        <Button onClick={() => setIndexResourceOpen(true)}>
+          Index Resource
+        </Button>
       </div>
 
       <Dialog open={statusOpen} onOpenChange={setStatusOpen}>
@@ -88,6 +177,70 @@ const Admin = () => {
               className="w-full"
             >
               {loadingAction.getStatus ? (
+                <div className="animate-spin">⌛</div>
+              ) : (
+                'Submit'
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={indexResourceOpen} onOpenChange={setIndexResourceOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Index Resource</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="block">
+                <span className="text-sm font-medium">Resource</span>
+                <Select
+                  value={selectedResource}
+                  onValueChange={setSelectedResource}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        resourcesLoading ? 'Loading...' : 'Select a resource'
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {resourcesData?.map(
+                      (resource: { slug: string; name: string }) => (
+                        <SelectItem key={resource.slug} value={resource.slug}>
+                          {resource.name}
+                        </SelectItem>
+                      )
+                    )}
+                  </SelectContent>
+                </Select>
+              </label>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block">
+                <span className="text-sm font-medium">Start Timestamp</span>
+                <Input
+                  type="number"
+                  value={startTimestamp}
+                  onChange={(e) => setStartTimestamp(e.target.value)}
+                  placeholder="Enter Unix timestamp"
+                />
+              </label>
+            </div>
+
+            <Button
+              onClick={handleIndexResource}
+              disabled={
+                !selectedResource ||
+                !startTimestamp ||
+                loadingAction.indexResource
+              }
+              className="w-full"
+            >
+              {loadingAction.indexResource ? (
                 <div className="animate-spin">⌛</div>
               ) : (
                 'Submit'

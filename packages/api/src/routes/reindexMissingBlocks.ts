@@ -49,6 +49,7 @@ router.post(
   handleAsyncErrors(async (req, res) => {
     const { signature, signatureTimestamp, startTimestamp, slug } = req.body;
 
+    console.log(process.env.NODE_ENV);
     // Authenticate the user
     if (
       process.env.NODE_ENV === 'production' ||

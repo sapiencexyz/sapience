@@ -11,7 +11,6 @@ import * as Sentry from '@sentry/node';
 import { Resource } from '../models/Resource';
 import { reindexMarket } from './reindexMarket';
 import { reindexMissingBlocks } from './reindexMissingBlocks';
-import { reindexResource } from './reindexResource';
 
 const MAX_RETRIES = Infinity;
 const RETRY_DELAY = 5000; // 5 seconds
@@ -195,18 +194,30 @@ if (process.argv[2] === 'reindexMarket') {
   };
   callReindexMissing();
 } else if (process.argv[2] === 'reindexResource') {
-  const slug = process.argv[3];
-  const startTimestamp = parseInt(process.argv[4], 10);
+  const callReindexMissing = async () => {
+    const slug = process.argv[3];
+    const startTimestamp = parseInt(process.argv[4], 10);
 
-  if (isNaN(startTimestamp) || !slug) {
-    console.error(
-      'Invalid arguments. Usage: tsx src/worker.ts reindexResource <resourceSlug> <startTimestamp>'
-    );
-    process.exit(1);
-  }
-  await reindexResource(slug, startTimestamp);
-  console.log('DONE');
-  process.exit(0);
+    if (isNaN(startTimestamp) || !slug) {
+      console.error(
+        'Invalid arguments. Usage: tsx src/worker.ts reindexResource <resourceSlug> <startTimestamp>'
+      );
+      process.exit(1);
+    }
+    await initializeDataSource();
+    const resource: Resource | null = await resourceRepository.findOne({
+      where: {
+        slug: slug,
+      },
+    });
+
+    if (!resource) {
+      throw new Error('Resource for the chosen slug was not found');
+    }
+
+    process.exit(0);
+  };
+  callReindexMissing();
 } else {
   main();
 }
