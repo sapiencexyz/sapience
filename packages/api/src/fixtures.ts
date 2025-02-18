@@ -79,7 +79,7 @@ const addMarketYinYang = async (markets: MarketInfo[], chainId: number) => {
         deployment: yang,
         vaultAddress: yangVault.address,
         marketChainId: chainId,
-        public: true,
+        public: false,
         resource: RESOURCES[0], // Ethereum Gas
         isYin: false,
       }
