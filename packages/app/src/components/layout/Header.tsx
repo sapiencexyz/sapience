@@ -116,6 +116,7 @@ function MobileMarketLinks({
                 // Combine all epochs from all markets and sort them
                 const allEpochs =
                   resource.markets
+                    ?.filter((market) => market.public)
                     ?.reduce<ExtendedEpoch[]>((acc, market) => {
                       const marketEpochs =
                         market.epochs?.map((epoch: Epoch) => ({
@@ -256,6 +257,7 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
                   // Combine all epochs from all markets and sort them
                   const allEpochs =
                     hoveredResourceData?.markets
+                      ?.filter((market) => market.public)
                       ?.reduce<ExtendedEpoch[]>((acc, market) => {
                         const marketEpochs =
                           market.epochs?.map((epoch: Epoch) => ({
