@@ -51,7 +51,13 @@ const executeLocalReindex = async (
 router.post(
   '/index-resource',
   handleAsyncErrors(async (req, res) => {
-    const { signature, signatureTimestamp, startTimestamp, slug } = req.body;
+    const {
+      signature,
+      signatureTimestamp,
+      startTimestamp,
+      endTimestamp,
+      slug,
+    } = req.body;
     const isProduction =
       process.env.NODE_ENV === 'production' ||
       process.env.NODE_ENV === 'staging';
@@ -82,7 +88,7 @@ router.post(
       }
 
       // Create and save render job
-      const startCommand = `pnpm run start:reindex-resource ${slug} ${startTimestamp}`;
+      const startCommand = `pnpm run start:reindex-resource ${slug} ${startTimestamp} ${endTimestamp}`;
       const job = await createRenderJob(worker.service.id, startCommand);
 
       const jobDb = new RenderJob();
@@ -96,7 +102,7 @@ router.post(
 
     // For local development
     try {
-      const startCommand = `pnpm run start:reindex-resource ${slug} ${startTimestamp}`;
+      const startCommand = `pnpm run start:reindex-resource ${slug} ${startTimestamp} ${endTimestamp}`;
       const result = await executeLocalReindex(startCommand);
       res.json({ success: true, job: result });
     } catch (error: unknown) {

@@ -46,16 +46,30 @@ class EvmIndexer implements IResourcePriceIndexer {
 
   async indexBlockPriceFromTimestamp(
     resource: Resource,
-    timestamp: number
+    timestamp: number,
+    endTimestamp?: number
   ): Promise<boolean> {
     const initalBlock = await getBlockByTimestamp(this.client, timestamp);
     if (!initalBlock.number) {
       throw new Error('No block found at timestamp');
     }
-    const currentBlock = await this.client.getBlock();
+
+    let endBlock;
+    if (endTimestamp) {
+      endBlock = await getBlockByTimestamp(this.client, endTimestamp);
+      if (!endBlock.number) {
+        throw new Error('No block found at end timestamp');
+      }
+    } else {
+      endBlock = await this.client.getBlock();
+    }
+
+    if (!endBlock.number) {
+      throw new Error('No end block number found');
+    }
 
     for (
-      let blockNumber = currentBlock.number;
+      let blockNumber = endBlock.number;
       blockNumber >= initalBlock.number;
       blockNumber--
     ) {

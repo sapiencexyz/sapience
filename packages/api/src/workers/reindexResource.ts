@@ -3,12 +3,17 @@ import { Resource } from 'src/models/Resource';
 
 export const reindexResource = async (
   resource: Resource,
-  startTimestamp: number
+  startTimestamp: number,
+  endTimestamp?: number
 ) => {
   const indexer = RESOURCES.find((element) => {
     return element.slug === resource.slug;
   })?.priceIndexer;
 
-  await indexer?.indexBlockPriceFromTimestamp(resource, startTimestamp);
+  await indexer?.indexBlockPriceFromTimestamp(
+    resource,
+    startTimestamp,
+    endTimestamp
+  );
   return;
 };

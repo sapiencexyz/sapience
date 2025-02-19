@@ -196,10 +196,12 @@ if (process.argv[2] === 'reindexMarket') {
   const callReindexResource = async () => {
     const slug = process.argv[3];
     const startTimestamp = parseInt(process.argv[4], 10);
-
+    const endTimestamp = process.argv[5]
+      ? parseInt(process.argv[5], 10)
+      : undefined;
     if (isNaN(startTimestamp) || !slug) {
       console.error(
-        'Invalid arguments. Usage: tsx src/worker.ts reindexResource <resourceSlug> <startTimestamp>'
+        'Invalid arguments. Usage: tsx src/worker.ts reindexResource <resourceSlug> <startTimestamp> <endTimestamp>'
       );
       process.exit(1);
     }
@@ -213,7 +215,7 @@ if (process.argv[2] === 'reindexMarket') {
     if (!resource) {
       throw new Error('Resource for the chosen slug was not found');
     }
-    await reindexResource(resource, startTimestamp);
+    await reindexResource(resource, startTimestamp, endTimestamp);
 
     process.exit(0);
   };
