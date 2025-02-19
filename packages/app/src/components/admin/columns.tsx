@@ -35,9 +35,7 @@ const getColumns = (
     cell: ({ row }) => (
       <PublicCell
         isPublic={row.original.isPublic}
-        market={row.original.market}
         loading={loadingAction[row.original.marketAddress]}
-        onUpdate={updateMarketPrivacy}
       />
     ),
   },

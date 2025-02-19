@@ -16,6 +16,7 @@
     "start:worker": "pnpm migration:run && tsx src/workers/worker.ts",
     "start:reindex-market": "tsx src/workers/worker.ts reindexMarket $*",
     "start:reindex-missing": "tsx src/workers/worker.ts reindexMissing $*",
+    "start:reindex-resource": "tsx src/workers/worker.ts reindexResource $*",
     "test": "echo \"Error: no test specified\" && exit 1",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org foil --project data ./dist && sentry-cli sourcemaps upload --org foil --project data ./dist",
     "lint": "eslint src",

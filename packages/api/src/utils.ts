@@ -348,6 +348,50 @@ export const convertGgasToGas = (value: string) => {
   return (BigInt(value) * BigInt(1e9)).toString();
 };
 
+export async function fetchRenderServices() {
+  const RENDER_API_KEY = process.env.RENDER_API_KEY;
+  if (!RENDER_API_KEY) {
+    throw new Error('RENDER_API_KEY not set');
+  }
+  const url = 'https://api.render.com/v1/services?limit=100';
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      accept: 'application/json',
+      authorization: `Bearer ${RENDER_API_KEY}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  return await response.json();
+}
+
+export async function createRenderJob(serviceId: string, startCommand: string) {
+  const RENDER_API_KEY = process.env.RENDER_API_KEY;
+  if (!RENDER_API_KEY) {
+    throw new Error('RENDER_API_KEY not set');
+  }
+
+  const url = `https://api.render.com/v1/services/${serviceId}/jobs`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${RENDER_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      startCommand: startCommand,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  return await response.json();
+}
+
 export const CELENIUM_API_KEY = process.env.CELENIUM_API_KEY;
 
 export const safeRequire = async (path: string): Promise<Deployment | null> => {

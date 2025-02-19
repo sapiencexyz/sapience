@@ -3,6 +3,7 @@ import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import { isValidWalletSignature } from '../middleware';
 import { RenderJob } from '../models/RenderJob';
 import { renderJobRepository } from '../db';
+import { createRenderJob, fetchRenderServices } from 'src/utils';
 
 const router = Router();
 
@@ -22,11 +23,15 @@ const executeLocalReindex = async (
         let output = '';
 
         process.stdout.on('data', (data: Buffer) => {
-          output += data;
+          const str = data.toString();
+          output += str;
+          console.log(str); // Stream to console in real-time
         });
 
         process.stderr.on('data', (data: Buffer) => {
-          console.error(`Error: ${data}`);
+          const str = data.toString();
+          console.error(str); // Stream to console in real-time
+          output += `Error: ${str}\n`; // Also capture errors in the output
         });
 
         process.on('close', (code: number) => {
@@ -44,6 +49,67 @@ const executeLocalReindex = async (
 };
 
 router.post(
+  '/index-resource',
+  handleAsyncErrors(async (req, res) => {
+    const { signature, signatureTimestamp, startTimestamp, slug } = req.body;
+    const isProduction =
+      process.env.NODE_ENV === 'production' ||
+      process.env.NODE_ENV === 'staging';
+
+    // For production/staging environments
+    if (isProduction) {
+      // Verify signature
+      const isAuthenticated = await isValidWalletSignature(
+        signature as `0x${string}`,
+        Number(signatureTimestamp)
+      );
+      if (!isAuthenticated) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      // Get background worker service ID
+      const renderServices = await fetchRenderServices();
+      const worker = renderServices.find(
+        (item: { service?: { type: string; id?: string; branch?: string } }) =>
+          item?.service?.type === 'background_worker' &&
+          item?.service?.branch ===
+            (process.env.NODE_ENV === 'staging' ? 'staging' : 'main')
+      );
+
+      if (!worker?.service?.id) {
+        throw new Error('Background worker not found');
+      }
+
+      // Create and save render job
+      const startCommand = `pnpm run start:reindex-resource ${slug} ${startTimestamp}`;
+      const job = await createRenderJob(worker.service.id, startCommand);
+
+      const jobDb = new RenderJob();
+      jobDb.jobId = job.id;
+      jobDb.serviceId = job.serviceId;
+      await renderJobRepository.save(jobDb);
+
+      res.json({ success: true, job });
+      return;
+    }
+
+    // For local development
+    try {
+      const startCommand = `pnpm run start:reindex-resource ${slug} ${startTimestamp}`;
+      const result = await executeLocalReindex(startCommand);
+      res.json({ success: true, job: result });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: 'An unknown error occurred' });
+      }
+    }
+  })
+);
+
+router.post(
   '/',
   handleAsyncErrors(async (req, res) => {
     const { chainId, address, epochId, signature, timestamp, model } = req.body;
@@ -56,46 +122,6 @@ router.post(
     if (!isAuthenticated) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
-    }
-
-    const RENDER_API_KEY = process.env.RENDER_API_KEY;
-    if (!RENDER_API_KEY) {
-      throw new Error('RENDER_API_KEY not set');
-    }
-
-    async function fetchRenderServices() {
-      const url = 'https://api.render.com/v1/services?limit=100';
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          accept: 'application/json',
-          authorization: `Bearer ${RENDER_API_KEY}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return await response.json();
-    }
-
-    async function createRenderJob(serviceId: string, startCommand: string) {
-      const url = `https://api.render.com/v1/services/${serviceId}/jobs`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${RENDER_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          startCommand: startCommand,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return await response.json();
     }
 
     let id: string = '';

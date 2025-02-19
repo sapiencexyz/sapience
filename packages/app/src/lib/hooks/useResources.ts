@@ -19,6 +19,7 @@ export interface Market {
   name: string;
   vaultAddress: string;
   isYin: boolean;
+  public: boolean;
   epochs: Epoch[];
 }
 
@@ -72,6 +73,7 @@ const RESOURCES_QUERY = gql`
         isYin
         vaultAddress
         chainId
+        public
         epochs {
           id
           epochId
@@ -91,7 +93,6 @@ export const useResources = () => {
       const { data } = await foilApi.post('/graphql', {
         query: print(RESOURCES_QUERY),
       });
-
       const preferredOrder = [
         'ethereum-gas',
         'base-gas',

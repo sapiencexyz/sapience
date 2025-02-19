@@ -55,14 +55,29 @@ class EvmIndexer implements IResourcePriceIndexer {
     const currentBlock = await this.client.getBlock();
 
     for (
-      let blockNumber = initalBlock.number;
-      blockNumber <= currentBlock.number;
-      blockNumber++
+      let blockNumber = currentBlock.number;
+      blockNumber >= initalBlock.number;
+      blockNumber--
     ) {
       try {
+        // Check if we already have a price for this block
+        const existingPrice = await resourcePriceRepository.findOne({
+          where: {
+            resource: { id: resource.id },
+            blockNumber: Number(blockNumber),
+          },
+        });
+
+        if (existingPrice) {
+          console.log(
+            `[EvmIndexer.${resource.slug}] Already have price for block ${blockNumber}, skipping...`
+          );
+          continue;
+        }
+
         console.log(
-          `[EvmIndexer.${resource.slug}] Indexing gas from block `,
-          blockNumber
+          `[EvmIndexer.${resource.slug}] Indexing gas from block`,
+          blockNumber.toString()
         );
 
         const block = await this.client.getBlock({

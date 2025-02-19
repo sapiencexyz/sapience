@@ -14,7 +14,8 @@
     "dev:api:service": "NODE_ENV=development pnpm --filter api run dev:service",
     "dev:api:worker": "NODE_ENV=development pnpm --filter api run dev:worker",
     "start:reindex-market": "pnpm --filter api run start:reindex-market",
-    "start:reindex-missing": "pnpm --filter api run start:reindex-missing"
+    "start:reindex-missing": "pnpm --filter api run start:reindex-missing",
+    "start:reindex-resource": "pnpm --filter api run start:reindex-resource"
   },
   "keywords": [],
   "devDependencies": {

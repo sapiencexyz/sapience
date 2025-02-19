@@ -97,7 +97,7 @@ const addMarketYinYang = async (markets: MarketInfo[], chainId: number) => {
         deployment: yang,
         vaultAddress: yangVault.address,
         marketChainId: chainId,
-        public: true,
+        public: false,
         resource: ethGasResource,
         isYin: false,
       }

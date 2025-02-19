@@ -23,11 +23,9 @@ import {
   TableHeader,
   TableRow,
 } from '~/components/ui/table';
-import { useFoil } from '~/lib/context/FoilProvider';
 import { useResources } from '~/lib/hooks/useResources';
 
 const MarketsTable = () => {
-  const { markets } = useFoil();
   const { data: resources } = useResources();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -35,31 +33,32 @@ const MarketsTable = () => {
 
   const data = React.useMemo(
     () =>
-      markets
-        .filter((market: any) => market.public)
-        .filter((market: any) => {
-          if (!selectedResource) return true;
-          const resource = resources?.find((r) => r.slug === selectedResource);
-          return resource && market.resource.name === resource.name;
-        })
-        .flatMap((market: any) =>
-          market.epochs.map((epoch: any) => {
-            const startDate = new Date(epoch.startTimestamp * 1000);
-            const endDate = new Date(epoch.endTimestamp * 1000);
-            return {
-              marketName: market.resource.name,
-              epochId: epoch.epochId,
-              period: `${format(startDate, 'PPpp')} - ${format(
-                endDate,
-                'PPpp'
-              )}`,
-              startTimestamp: epoch.startTimestamp,
-              chainId: market.chainId,
-              marketAddress: market.address,
-            };
+      resources?.flatMap((resource) =>
+        resource.markets
+          .filter((market) => market.public)
+          .filter(() => {
+            if (!selectedResource) return true;
+            return resource.slug === selectedResource;
           })
-        ),
-    [markets, selectedResource, resources]
+          .flatMap((market) =>
+            market.epochs.map((epoch) => {
+              const startDate = new Date(epoch.startTimestamp * 1000);
+              const endDate = new Date(epoch.endTimestamp * 1000);
+              return {
+                marketName: resource.name,
+                epochId: epoch.epochId,
+                period: `${format(startDate, 'PPpp')} - ${format(
+                  endDate,
+                  'PPpp'
+                )}`,
+                startTimestamp: epoch.startTimestamp,
+                chainId: market.chainId,
+                marketAddress: market.address,
+              };
+            })
+          )
+      ) ?? [],
+    [resources, selectedResource]
   );
 
   const columns = React.useMemo<ColumnDef<any>[]>(
@@ -111,8 +110,8 @@ const MarketsTable = () => {
 
   return (
     <>
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="scroll-m-20 text-3xl font-bold tracking-tight">
+      <div className="mb-6">
+        <h1 className="scroll-m-20 text-3xl font-bold tracking-tight mb-3">
           Markets
         </h1>
         <div className="flex gap-2">
