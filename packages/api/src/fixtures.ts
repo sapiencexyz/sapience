@@ -31,14 +31,14 @@ export const RESOURCES = [
     priceIndexer: new evmIndexer(arbitrum.id),
   },
   {
-    name: 'Bitcoin Fees',
-    slug: 'bitcoin-fees',
-    priceIndexer: new btcIndexer(),
-  },
-  {
     name: 'Ethereum Blobspace',
     slug: 'ethereum-blobspace',
     priceIndexer: new ethBlobsIndexer(),
+  },
+  {
+    name: 'Bitcoin Fees',
+    slug: 'bitcoin-fees',
+    priceIndexer: new btcIndexer(),
   },
   ...(process.env.CELENIUM_API_KEY
     ? [

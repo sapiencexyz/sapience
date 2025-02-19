@@ -29,13 +29,14 @@ class BtcIndexer implements IResourcePriceIndexer {
       const blockEndpoint =
         blockNumber === 'tip'
           ? `${this.apiUrl}/blocks`
-          : `${this.apiUrl}/block/${blockNumber}`;
+          : `${this.apiUrl}/blocks/${blockNumber}`;
 
       console.log(`[BtcIndexer] Fetching from endpoint: ${blockEndpoint}`);
       const response = await axios.get(blockEndpoint);
 
       // The blocks endpoint returns an array of blocks, take the first one
-      const block = blockNumber === 'tip' ? response.data[0] : response.data;
+      const block = response.data[0];
+
       console.log('[BtcIndexer] Parsed block', block.height);
 
       if (!block || typeof block.height !== 'number' || !block.extras) {
@@ -148,6 +149,7 @@ class BtcIndexer implements IResourcePriceIndexer {
         return false;
       }
 
+      console.log(data);
       // Validate block data fields
       if (!data.time || !data.weight || typeof data.total_fee !== 'number') {
         console.warn(
@@ -159,7 +161,7 @@ class BtcIndexer implements IResourcePriceIndexer {
       // Calculate fee per weight unit (satoshis/vbyte)
       // We multiply by 10^9 to maintain consistency with other indexers' decimal places
       const feePerWeight =
-        data.total_fee > 0 && data.weight > 0
+        data.weight > 0
           ? (BigInt(data.total_fee) * BigInt(10 ** 9)) / BigInt(data.weight)
           : BigInt(0);
 
@@ -203,15 +205,59 @@ class BtcIndexer implements IResourcePriceIndexer {
         return false;
       }
 
-      // Bitcoin blocks are mined approximately every 10 minutes
-      const startBlock = Math.floor(timestamp / 600);
+      let low = 0;
+      let high = currentBlockHeight;
+      let startBlock: number | null = null;
+
+      // Binary search for the block with the closest timestamp
+      while (low <= high) {
+        const mid = Math.floor((low + high) / 2);
+        const block = await this.fetchBlockData(mid);
+
+        if (!block) {
+          console.error(`[BtcIndexer] Failed to fetch block ${mid}`);
+          continue;
+        }
+
+        if (block.time < timestamp) {
+          low = mid + 1;
+        } else {
+          startBlock = mid;
+          high = mid - 1;
+        }
+      }
+
+      if (startBlock === null) {
+        console.error('[BtcIndexer] Failed to find target block');
+        return false;
+      }
+
+      console.log(
+        '[BtcIndexer] Found start block using binary search: ',
+        startBlock
+      );
 
       for (
-        let blockNumber = startBlock;
-        blockNumber <= currentBlockHeight;
-        blockNumber++
+        let blockNumber = currentBlockHeight;
+        blockNumber >= startBlock;
+        blockNumber--
       ) {
         try {
+          // Check if we already have a price for this block
+          const existingPrice = await resourcePriceRepository.findOne({
+            where: {
+              resource: { id: resource.id },
+              blockNumber: Number(blockNumber),
+            },
+          });
+
+          if (existingPrice) {
+            console.log(
+              `[BtcIndexer] Already have price for block ${blockNumber}, skipping...`
+            );
+            continue;
+          }
+
           console.log('[BtcIndexer] Indexing data from block', blockNumber);
           await this.storeBlockPrice(blockNumber, resource);
         } catch (error) {
