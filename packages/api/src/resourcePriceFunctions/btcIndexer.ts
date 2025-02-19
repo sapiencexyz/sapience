@@ -149,7 +149,6 @@ class BtcIndexer implements IResourcePriceIndexer {
         return false;
       }
 
-      console.log(data);
       // Validate block data fields
       if (!data.time || !data.weight || typeof data.total_fee !== 'number') {
         console.warn(
