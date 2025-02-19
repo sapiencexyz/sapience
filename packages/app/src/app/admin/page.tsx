@@ -5,6 +5,7 @@
 import { gql } from '@apollo/client';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
+import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { useSignMessage } from 'wagmi';
 
@@ -88,17 +89,22 @@ const Admin = () => {
       setLoadingAction((prev) => ({ ...prev, indexResource: true }));
       const timestamp = Date.now();
 
-      const signature = await signMessageAsync({
-        message: ADMIN_AUTHENTICATE_MSG,
-      });
+      let signature = '';
+      if (process.env.NODE_ENV === 'production') {
+        signature = await signMessageAsync({
+          message: ADMIN_AUTHENTICATE_MSG,
+        });
+      }
 
       const response = await foilApi.post(
         '/reindexMissingBlocks/index-resource',
         {
           slug: selectedResource,
           startTimestamp,
-          signature,
-          signatureTimestamp: timestamp,
+          ...(signature && {
+            signature,
+            signatureTimestamp: timestamp,
+          }),
         }
       );
 
@@ -187,7 +193,7 @@ const Admin = () => {
       </Dialog>
 
       <Dialog open={indexResourceOpen} onOpenChange={setIndexResourceOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Index Resource</DialogTitle>
           </DialogHeader>
@@ -241,7 +247,9 @@ const Admin = () => {
               className="w-full"
             >
               {loadingAction.indexResource ? (
-                <div className="animate-spin">⌛</div>
+                <div className="animate-spin">
+                  <Loader2 className="w-4 h-4" />
+                </div>
               ) : (
                 'Submit'
               )}
