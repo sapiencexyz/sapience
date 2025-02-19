@@ -234,12 +234,9 @@ export async function getBlockByTimestamp(
   // Get the latest block number
   const latestBlockNumber = await client.getBlockNumber();
 
-  // Get the latest block using the block number
-  const latestBlock = await client.getBlock({ blockNumber: latestBlockNumber });
-
   // Initialize the binary search range
   let low = 0n;
-  let high = latestBlock.number;
+  let high = latestBlockNumber;
   let closestBlock: Block | null = null;
 
   // Binary search for the block with the closest timestamp

@@ -48,7 +48,6 @@ async function withRetry<T>(
       }
     }
   }
-
   const finalError = new Error(
     `All ${maxRetries} attempts failed for ${name}. Last error: ${lastError?.message}`
   );
