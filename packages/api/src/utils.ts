@@ -240,7 +240,6 @@ export async function getBlockByTimestamp(
   let closestBlock: Block | null = null;
 
   // Binary search for the block with the closest timestamp
-  // Main rule => don't make stupid decisions!
   while (low <= high) {
     const mid = (low + high) / 2n;
     const block = await client.getBlock({ blockNumber: mid });
