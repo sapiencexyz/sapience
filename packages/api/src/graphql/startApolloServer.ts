@@ -1,5 +1,6 @@
 import { ApolloServer } from '@apollo/server';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
+import responseCachePlugin from '@apollo/server-plugin-response-cache';
 import { buildSchema } from 'type-graphql';
 import {
   EpochResolver,
@@ -38,6 +39,7 @@ export const initializeApolloServer = async () => {
         embed: true,
         includeCookies: true,
       }),
+      responseCachePlugin(),
     ],
   });
 
