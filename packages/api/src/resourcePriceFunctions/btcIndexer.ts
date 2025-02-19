@@ -20,6 +20,10 @@ class BtcIndexer implements IResourcePriceIndexer {
   private pollInterval: NodeJS.Timeout | null = null;
   private readonly POLL_DELAY = 10 * 60 * 1000; // 10 minutes in milliseconds
 
+  private async sleep(ms: number) {
+    return await new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
   private async fetchBlockData(
     blockNumber: number | 'tip',
     retryCount = 0
@@ -63,7 +67,7 @@ class BtcIndexer implements IResourcePriceIndexer {
           console.warn(
             `[BtcIndexer] Rate limited when fetching block ${blockNumber}, retrying in ${this.retryDelay}ms...`
           );
-          await new Promise((resolve) => setTimeout(resolve, this.retryDelay));
+          await this.sleep(this.retryDelay);
           return this.fetchBlockData(blockNumber, retryCount + 1);
         }
 
@@ -259,6 +263,7 @@ class BtcIndexer implements IResourcePriceIndexer {
 
           console.log('[BtcIndexer] Indexing data from block', blockNumber);
           await this.storeBlockPrice(blockNumber, resource);
+          await this.sleep(this.retryDelay);
         } catch (error) {
           console.error(
             `[BtcIndexer] Error processing block ${blockNumber}:`,
