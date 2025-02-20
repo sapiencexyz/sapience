@@ -221,7 +221,7 @@ export const useChart = ({
       case TimeWindow.D:
         return 86400;
       case TimeWindow.W:
-        return 604800; 
+        return 604800;
       case TimeWindow.M:
         return 2419200;
       default:
