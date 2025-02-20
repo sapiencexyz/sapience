@@ -1,5 +1,5 @@
 import { resourcePriceRepository } from '../db';
-import { Connection } from '@solana/web3.js';
+import { Connection, VersionedBlockResponse } from '@solana/web3.js';
 import Sentry from '../sentry';
 import { IResourcePriceIndexer } from '../interfaces';
 import { Resource } from 'src/models/Resource';
@@ -68,7 +68,7 @@ class SvmIndexer implements IResourcePriceIndexer {
 
       // Calculate average fee per compute unit (in lamports) with 9 decimal places
       const avgFeePerCU = (
-        (totalFees * 10n ** 9n) /
+        (totalFees * (10n ** 9n)) /
         totalComputeUnits
       ).toString();
 
@@ -95,8 +95,7 @@ class SvmIndexer implements IResourcePriceIndexer {
 
       // Maintain a reasonable size for the processed slots set
       if (this.processedSlots.size > 1000) {
-        const oldestSlots = Array.from(this.processedSlots).slice(0, 500);
-        oldestSlots.forEach((slot) => this.processedSlots.delete(slot));
+        this.processedSlots = new Set(Array.from(this.processedSlots).slice(500, 1000));
       }
     } catch (error) {
       this.processingSlots.delete(block.slot);
@@ -105,35 +104,101 @@ class SvmIndexer implements IResourcePriceIndexer {
     }
   }
 
+  private async getBlockByTimestamp(timestamp: number): Promise<number | null> {
+    const currentSlot = await this.connection.getSlot('finalized');
+    let low = 0;
+    let high = currentSlot;
+    let targetSlot: number | null = null;
+
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      const block: VersionedBlockResponse | null = await this.connection.getBlock(mid, {
+        maxSupportedTransactionVersion: 0,
+        rewards: false,
+      });
+
+      if (block) {
+        if (block.blockTime && block.blockTime < timestamp) {
+          low = mid + 1;
+        } else {
+          targetSlot = mid;
+          high = mid - 1;
+        }
+      }
+    }
+
+    return targetSlot;  
+  }
+
   async indexBlockPriceFromTimestamp(
     resource: Resource,
-    timestamp: number
+    startTimestamp: number,
+    endTimestamp?: number
   ): Promise<boolean> {
     try {
-      // Get blocks from timestamp
-      const slots = await this.connection.getBlocks(timestamp);
+      // Get current block height
+      const currentSlot: number | null = endTimestamp ? await this.getBlockByTimestamp(endTimestamp) : await this.connection.getSlot('finalized');
+      console.log(`[svmIndexer] Current slot: ${currentSlot}`);
+      const targetSlot: number | null = await this.getBlockByTimestamp(startTimestamp);
+      console.log(`[svmIndexer] Target slot: ${targetSlot}`);
 
-      for (const slot of slots) {
-        const block = await this.connection.getBlock(slot, {
-          maxSupportedTransactionVersion: 0,
-          rewards: false,
-        });
+      if (currentSlot === null || targetSlot === null) {
+        console.error('[svmIndexer] Failed to find target slot');
+        return false;
+      }
 
-        if (block) {
-          await this.storeBlockPrice(
-            { ...block, slot } as SolanaBlock,
-            resource
-          );
+      // Meta(Vlad): this thing might be too slow - we're going to the database for each block
+      // SOL produces them at a rate of 5 blocks per second, so this might take a while to backfill...
+      // remove database call and just spam the RPC? 
+      
+      // Index from target slot to current slot
+      for (let slot = currentSlot; slot >= targetSlot; slot--) {
+        try {
+          const maybePrice = await resourcePriceRepository.findOne({
+            where: {
+              resource: { id: resource.id },
+              blockNumber: slot,
+            },
+          }); 
+
+          if (maybePrice) {
+            console.log(`[svmIndexer] Price already exists for slot ${slot}, skipping`);
+            continue;
+          };
+          
+          console.log(`[svmIndexer] Fetching price for block in slot ${slot}...`);
+          const block = await this.connection.getBlock(slot, {
+            maxSupportedTransactionVersion: 0,
+            rewards: false,
+          });
+
+          if (block) {
+            console.log(`[svmIndexer] Storing price for block in slot ${slot}...`);
+            await this.storeBlockPrice(
+              { ...block, slot } as SolanaBlock,
+              resource
+            );
+          }
+        } catch (error) {
+          if (error && typeof error === 'object' && 'code' in error && error.code === -32004) {
+            // Skip slots with no blocks
+            console.log(`[svmIndexer] Slot ${slot} has no block available, skipping`);
+            continue;
+          }
+          // TODO: handle this error properly (seems like some blocks are dropped by design)
+          // [0] [svmIndexer] Error processing slot 321840516: SolanaJSONRPCError: failed to get confirmed block: Slot 321840516 was skipped, or missing due to ledger jump to recent snapshot
+          console.error(`[svmIndexer] Error processing slot ${slot}:`, error);
         }
       }
       return true;
     } catch (error) {
       Sentry.withScope((scope: Scope) => {
-        scope.setExtra('timestamp', timestamp);
+        scope.setExtra('startTimestamp', startTimestamp);
+        scope.setExtra('endTimestamp', endTimestamp);
         scope.setExtra('resource', resource.slug);
         Sentry.captureException(error);
       });
-      throw error;
+      return false;
     }
   }
 
@@ -238,6 +303,7 @@ class SvmIndexer implements IResourcePriceIndexer {
               // Remove from processing on error
               this.processingSlots.delete(slot);
 
+              // TODO(?): handle 429 => -32429 error code
               if (
                 error &&
                 typeof error === 'object' &&

@@ -12,10 +12,9 @@ import { Resource } from '../models/Resource';
 import { reindexMarket } from './reindexMarket';
 import { reindexMissingBlocks } from './reindexMissingBlocks';
 import { reindexResource } from './reindexResource';
+import { sleep } from 'src/utils';
 const MAX_RETRIES = Infinity;
 const RETRY_DELAY = 5000; // 5 seconds
-
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function withRetry<T>(
   operation: () => Promise<T>,
@@ -44,7 +43,7 @@ async function withRetry<T>(
 
       if (attempt < maxRetries) {
         console.log(`Retrying ${name} in ${RETRY_DELAY / 1000} seconds...`);
-        await delay(RETRY_DELAY);
+        await sleep(RETRY_DELAY);
       }
     }
   }
@@ -69,7 +68,7 @@ function createResilientProcess<T>(
           `Process ${name} failed after all retries. Restarting...`,
           error
         );
-        await delay(RETRY_DELAY);
+        await sleep(RETRY_DELAY);
       }
     }
   };

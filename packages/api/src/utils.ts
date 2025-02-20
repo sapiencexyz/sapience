@@ -402,3 +402,8 @@ export const safeRequire = async (path: string): Promise<Deployment | null> => {
     return null;
   }
 };
+
+
+export const sleep = async (ms: number) => {
+  return await new Promise((resolve) => setTimeout(resolve, ms));
+}
