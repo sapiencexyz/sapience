@@ -27,20 +27,22 @@ export interface Market {
     epochId: number;
     startTimestamp: number;
     endTimestamp: number;
+    public: boolean;
   }>;
   currentEpoch: {
     id: number;
     epochId: number;
     startTimestamp: number;
     endTimestamp: number;
+    public: boolean;
   } | null;
   nextEpoch: {
     id: number;
     epochId: number;
     startTimestamp: number;
     endTimestamp: number;
+    public: boolean;
   } | null;
-  public: boolean;
 }
 
 interface FoilContextType {
