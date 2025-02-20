@@ -68,7 +68,7 @@ class SvmIndexer implements IResourcePriceIndexer {
 
       // Calculate average fee per compute unit (in lamports) with 9 decimal places
       const avgFeePerCU = (
-        (totalFees * (10n ** 9n)) /
+        (totalFees * 10n ** 9n) /
         totalComputeUnits
       ).toString();
 
@@ -95,7 +95,9 @@ class SvmIndexer implements IResourcePriceIndexer {
 
       // Maintain a reasonable size for the processed slots set
       if (this.processedSlots.size > 1000) {
-        this.processedSlots = new Set(Array.from(this.processedSlots).slice(500, 1000));
+        this.processedSlots = new Set(
+          Array.from(this.processedSlots).slice(500, 1000)
+        );
       }
     } catch (error) {
       this.processingSlots.delete(block.slot);
@@ -112,10 +114,11 @@ class SvmIndexer implements IResourcePriceIndexer {
 
     while (low <= high) {
       const mid = Math.floor((low + high) / 2);
-      const block: VersionedBlockResponse | null = await this.connection.getBlock(mid, {
-        maxSupportedTransactionVersion: 0,
-        rewards: false,
-      });
+      const block: VersionedBlockResponse | null =
+        await this.connection.getBlock(mid, {
+          maxSupportedTransactionVersion: 0,
+          rewards: false,
+        });
 
       if (block) {
         if (block.blockTime && block.blockTime < timestamp) {
@@ -127,7 +130,7 @@ class SvmIndexer implements IResourcePriceIndexer {
       }
     }
 
-    return targetSlot;  
+    return targetSlot;
   }
 
   async indexBlockPriceFromTimestamp(
@@ -137,9 +140,12 @@ class SvmIndexer implements IResourcePriceIndexer {
   ): Promise<boolean> {
     try {
       // Get current block height
-      const currentSlot: number | null = endTimestamp ? await this.getBlockByTimestamp(endTimestamp) : await this.connection.getSlot('finalized');
+      const currentSlot: number | null = endTimestamp
+        ? await this.getBlockByTimestamp(endTimestamp)
+        : await this.connection.getSlot('finalized');
       console.log(`[svmIndexer] Current slot: ${currentSlot}`);
-      const targetSlot: number | null = await this.getBlockByTimestamp(startTimestamp);
+      const targetSlot: number | null =
+        await this.getBlockByTimestamp(startTimestamp);
       console.log(`[svmIndexer] Target slot: ${targetSlot}`);
 
       if (currentSlot === null || targetSlot === null) {
@@ -149,8 +155,8 @@ class SvmIndexer implements IResourcePriceIndexer {
 
       // Meta(Vlad): this thing might be too slow - we're going to the database for each block
       // SOL produces them at a rate of 5 blocks per second, so this might take a while to backfill...
-      // remove database call and just spam the RPC? 
-      
+      // remove database call and just spam the RPC?
+
       // Index from target slot to current slot
       for (let slot = currentSlot; slot >= targetSlot; slot--) {
         try {
@@ -159,30 +165,43 @@ class SvmIndexer implements IResourcePriceIndexer {
               resource: { id: resource.id },
               blockNumber: slot,
             },
-          }); 
+          });
 
           if (maybePrice) {
-            console.log(`[svmIndexer] Price already exists for slot ${slot}, skipping`);
+            console.log(
+              `[svmIndexer] Price already exists for slot ${slot}, skipping`
+            );
             continue;
-          };
-          
-          console.log(`[svmIndexer] Fetching price for block in slot ${slot}...`);
+          }
+
+          console.log(
+            `[svmIndexer] Fetching price for block in slot ${slot}...`
+          );
           const block = await this.connection.getBlock(slot, {
             maxSupportedTransactionVersion: 0,
             rewards: false,
           });
 
           if (block) {
-            console.log(`[svmIndexer] Storing price for block in slot ${slot}...`);
+            console.log(
+              `[svmIndexer] Storing price for block in slot ${slot}...`
+            );
             await this.storeBlockPrice(
               { ...block, slot } as SolanaBlock,
               resource
             );
           }
         } catch (error) {
-          if (error && typeof error === 'object' && 'code' in error && error.code === -32004) {
+          if (
+            error &&
+            typeof error === 'object' &&
+            'code' in error &&
+            error.code === -32004
+          ) {
             // Skip slots with no blocks
-            console.log(`[svmIndexer] Slot ${slot} has no block available, skipping`);
+            console.log(
+              `[svmIndexer] Slot ${slot} has no block available, skipping`
+            );
             continue;
           }
           // TODO: handle this error properly (seems like some blocks are dropped by design)
