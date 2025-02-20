@@ -18,9 +18,6 @@ export class MarketType {
   chainId: number;
 
   @Field(() => Boolean)
-  public: boolean;
-
-  @Field(() => Boolean)
   isYin: boolean;
 
   @Field(() => [EpochType])
