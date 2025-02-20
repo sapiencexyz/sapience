@@ -35,27 +35,28 @@ const MarketsTable = () => {
     () =>
       resources?.flatMap((resource) =>
         resource.markets
-          .filter((market) => market.public)
           .filter(() => {
             if (!selectedResource) return true;
             return resource.slug === selectedResource;
           })
           .flatMap((market) =>
-            market.epochs.map((epoch) => {
-              const startDate = new Date(epoch.startTimestamp * 1000);
-              const endDate = new Date(epoch.endTimestamp * 1000);
-              return {
-                marketName: resource.name,
-                epochId: epoch.epochId,
-                period: `${format(startDate, 'PPpp')} - ${format(
-                  endDate,
-                  'PPpp'
-                )}`,
-                startTimestamp: epoch.startTimestamp,
-                chainId: market.chainId,
-                marketAddress: market.address,
-              };
-            })
+            market.epochs
+              .filter((epoch) => epoch.public)
+              .map((epoch) => {
+                const startDate = new Date(epoch.startTimestamp * 1000);
+                const endDate = new Date(epoch.endTimestamp * 1000);
+                return {
+                  marketName: resource.name,
+                  epochId: epoch.epochId,
+                  period: `${format(startDate, 'PPpp')} - ${format(
+                    endDate,
+                    'PPpp'
+                  )}`,
+                  startTimestamp: epoch.startTimestamp,
+                  chainId: market.chainId,
+                  marketAddress: market.address,
+                };
+              })
           )
       ) ?? [],
     [resources, selectedResource]

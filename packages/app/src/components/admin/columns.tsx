@@ -20,7 +20,7 @@ import type { MissingBlocks } from './types';
 
 const getColumns = (
   loadingAction: { [key: string]: boolean },
-  updateMarketPrivacy: (market: Market) => void,
+  updateMarketPrivacy: (market: Market, epochId: number) => void,
   handleReindex: (
     reindexType: 'price' | 'events',
     marketAddress: string,
@@ -34,8 +34,13 @@ const getColumns = (
     header: 'Public',
     cell: ({ row }) => (
       <PublicCell
-        isPublic={row.original.isPublic}
-        loading={loadingAction[row.original.marketAddress]}
+        isPublic={row.original.public}
+        loading={
+          loadingAction[`${row.original.marketAddress}-${row.original.epochId}`]
+        }
+        market={row.original.market}
+        epochId={row.original.epochId}
+        onUpdate={updateMarketPrivacy}
       />
     ),
   },

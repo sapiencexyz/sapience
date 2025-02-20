@@ -124,7 +124,6 @@ export enum TimeWindow {
 }
 
 export interface MarketInfo {
-  public: boolean;
   deployment: Deployment;
   vaultAddress: string;
   isYin: boolean;
