@@ -72,12 +72,11 @@ function MobileMarketLinks({
 }) {
   const { markets } = useFoil();
   const { data: resources, isLoading } = useResources();
-  const publicMarkets = markets.filter((m) => m.public);
 
   if (path === 'subscribe' || path === 'earn') {
     return (
       <div className="flex flex-col space-y-2">
-        {publicMarkets.map((market) => (
+        {markets.map((market) => (
           <Link
             key={market.id}
             href={getMarketHref(path, market)}
@@ -99,7 +98,7 @@ function MobileMarketLinks({
     <Accordion type="multiple">
       {resources?.map((resource) => (
         <AccordionItem key={resource.id} value={resource.id.toString()}>
-          <AccordionTrigger>
+          <AccordionTrigger className=" hover:no-underline">
             <div className="flex items-center gap-2">
               <Image
                 src={resource.iconPath}
@@ -116,7 +115,6 @@ function MobileMarketLinks({
                 // Combine all epochs from all markets and sort them
                 const allEpochs =
                   resource.markets
-                    ?.filter((market) => market.public)
                     ?.reduce<ExtendedEpoch[]>((acc, market) => {
                       const marketEpochs =
                         market.epochs?.map((epoch: Epoch) => ({
@@ -126,6 +124,7 @@ function MobileMarketLinks({
                         })) || [];
                       return [...acc, ...marketEpochs];
                     }, [])
+                    ?.filter((epoch) => epoch.public)
                     ?.sort(
                       (a: ExtendedEpoch, b: ExtendedEpoch) =>
                         a.endTimestamp - b.endTimestamp
@@ -257,7 +256,6 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
                   // Combine all epochs from all markets and sort them
                   const allEpochs =
                     hoveredResourceData?.markets
-                      ?.filter((market) => market.public)
                       ?.reduce<ExtendedEpoch[]>((acc, market) => {
                         const marketEpochs =
                           market.epochs?.map((epoch: Epoch) => ({
@@ -267,6 +265,7 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
                           })) || [];
                         return [...acc, ...marketEpochs];
                       }, [])
+                      ?.filter((epoch) => epoch.public)
                       ?.sort(
                         (a: ExtendedEpoch, b: ExtendedEpoch) =>
                           a.endTimestamp - b.endTimestamp

@@ -58,7 +58,4 @@ export class Market {
 
   @Column(() => MarketParams)
   marketParams: MarketParams;
-
-  @Column({ type: 'boolean', default: false })
-  public: boolean;
 }

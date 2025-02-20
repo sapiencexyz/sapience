@@ -19,7 +19,6 @@ export const mapMarketToType = (market: Market): MarketType => ({
   address: market.address,
   vaultAddress: market.vaultAddress,
   chainId: market.chainId,
-  public: market.public,
   isYin: market.isYin,
   epochs: market.epochs?.map(mapEpochToType) || [],
   resource: market.resource ? mapResourceToType(market.resource) : null,
@@ -46,6 +45,7 @@ export const mapEpochToType = (epoch: Epoch): EpochType => ({
   positions: epoch.positions?.map(mapPositionToType) || [],
   settled: epoch.settled,
   settlementPriceD18: epoch.settlementPriceD18,
+  public: epoch.public,
 });
 
 export const mapPositionToType = (position: Position): PositionType => ({

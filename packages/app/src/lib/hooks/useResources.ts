@@ -10,6 +10,7 @@ export interface Epoch {
   startTimestamp: number;
   endTimestamp: number;
   settled: boolean;
+  public: boolean;
 }
 
 export interface Market {
@@ -19,7 +20,6 @@ export interface Market {
   name: string;
   vaultAddress: string;
   isYin: boolean;
-  public: boolean;
   epochs: Epoch[];
 }
 
@@ -73,13 +73,13 @@ const RESOURCES_QUERY = gql`
         isYin
         vaultAddress
         chainId
-        public
         epochs {
           id
           epochId
           startTimestamp
           endTimestamp
           settled
+          public
         }
       }
     }

@@ -51,18 +51,22 @@ export const RESOURCES = [
     : []),
 ];
 
-const addMarketYinYang = async (markets: MarketInfo[], chainId: number) => {
+const addMarketYinYang = async (
+  markets: MarketInfo[],
+  chainId: number,
+  suffix?: string
+) => {
   const yin = await safeRequire(
-    `@/protocol/deployments/${chainId}/FoilYin.json`
+    `@/protocol/deployments/${chainId}${suffix}/FoilYin.json`
   );
   const yang = await safeRequire(
-    `@/protocol/deployments/${chainId}/FoilYang.json`
+    `@/protocol/deployments/${chainId}${suffix}/FoilYang.json`
   );
   const yinVault = await safeRequire(
-    `@/protocol/deployments/${chainId}/VaultYin.json`
+    `@/protocol/deployments/${chainId}${suffix}/VaultYin.json`
   );
   const yangVault = await safeRequire(
-    `@/protocol/deployments/${chainId}/VaultYang.json`
+    `@/protocol/deployments/${chainId}${suffix}/VaultYang.json`
   );
 
   if (yin && yang && yinVault && yangVault) {
@@ -71,7 +75,6 @@ const addMarketYinYang = async (markets: MarketInfo[], chainId: number) => {
         deployment: yin,
         vaultAddress: yinVault.address,
         marketChainId: chainId,
-        public: true,
         resource: RESOURCES[0], // Ethereum Gas
         isYin: true,
       },
@@ -79,7 +82,6 @@ const addMarketYinYang = async (markets: MarketInfo[], chainId: number) => {
         deployment: yang,
         vaultAddress: yangVault.address,
         marketChainId: chainId,
-        public: false,
         resource: RESOURCES[0], // Ethereum Gas
         isYin: false,
       }
@@ -91,6 +93,7 @@ const initializeMarkets = async () => {
   const FULL_MARKET_LIST: MarketInfo[] = [];
 
   // Mainnet Deployments
+  await addMarketYinYang(FULL_MARKET_LIST, base.id, '-beta'); // Remove after settling feb
   await addMarketYinYang(FULL_MARKET_LIST, base.id);
 
   // Development Deployments
