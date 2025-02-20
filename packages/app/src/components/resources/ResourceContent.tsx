@@ -149,7 +149,7 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
   const { data: latestPrice, isLoading: isPriceLoading } =
     useLatestResourcePrice(id);
 
-  const DEFAULT_SELECTED_WINDOW = TimeWindow.FD;
+  const DEFAULT_SELECTED_WINDOW = TimeWindow.W;
   const [selectedInterval, setSelectedInterval] = React.useState(
     TimeInterval.I30M
   );
