@@ -117,7 +117,7 @@ export interface Deployment {
 }
 export enum TimeWindow {
   D = '1D',
-  FD = '5D',
+  W = '1W',
   M = '1M',
 }
 

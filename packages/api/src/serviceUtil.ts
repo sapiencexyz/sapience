@@ -106,9 +106,6 @@ export function getStartTimestampFromTimeWindow(window: TimeWindow) {
   const hourInSeconds = 3600;
   const dayInSeconds = 24 * hourInSeconds;
   const weekInSeconds = 7 * dayInSeconds;
-  if (window === TimeWindow.H) {
-    return now - hourInSeconds;
-  }
   if (window === TimeWindow.D) {
     return now - dayInSeconds;
   }
@@ -118,7 +115,6 @@ export function getStartTimestampFromTimeWindow(window: TimeWindow) {
   if (window === TimeWindow.M) {
     return now - 30 * dayInSeconds;
   }
-  //else, window === TimeWindow.Y
   return now - 365 * dayInSeconds;
 }
 
@@ -136,9 +132,9 @@ export function getTimeParamsFromWindow(window: TimeWindow) {
       intervalMs = ONE_HOUR_MS;
       startTime = now - ONE_DAY_MS;
       break;
-    case TimeWindow.FD:
+    case TimeWindow.W:
       intervalMs = 3 * ONE_HOUR_MS;
-      startTime = now - 5 * ONE_DAY_MS;
+      startTime = now - 7 * ONE_DAY_MS;
       break;
     default:
       throw new Error('Invalid volume window');

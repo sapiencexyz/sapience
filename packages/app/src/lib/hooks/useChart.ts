@@ -220,8 +220,8 @@ export const useChart = ({
     switch (window) {
       case TimeWindow.D:
         return 86400;
-      case TimeWindow.FD:
-        return 432000; // 5 days in seconds
+      case TimeWindow.W:
+        return 604800; 
       case TimeWindow.M:
         return 2419200;
       default:
