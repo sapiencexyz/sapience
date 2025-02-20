@@ -51,6 +51,7 @@ const Admin = () => {
   const [indexResourceOpen, setIndexResourceOpen] = useState(false);
   const [selectedResource, setSelectedResource] = useState('');
   const [startTimestamp, setStartTimestamp] = useState('');
+  const [endTimestamp, setEndTimestamp] = useState('');
   const { signMessageAsync } = useSignMessage();
   const { toast } = useToast();
 
@@ -60,13 +61,10 @@ const Admin = () => {
       const { data } = await foilApi.post('/graphql', {
         query: print(GET_RESOURCES),
       });
-      console.log(data, data.data);
-      // return data.resources;
       return data.resources;
     },
   });
 
-  console.log('RESOURCES', resourcesData);
   const handleGetStatus = async () => {
     const serviceId = manualServiceId || job?.serviceId;
     const jobId = manualJobId || job?.id;
@@ -101,6 +99,7 @@ const Admin = () => {
         {
           slug: selectedResource,
           startTimestamp,
+          ...(endTimestamp && { endTimestamp }),
           ...(signature && {
             signature,
             signatureTimestamp: timestamp,
@@ -232,6 +231,20 @@ const Admin = () => {
                   type="number"
                   value={startTimestamp}
                   onChange={(e) => setStartTimestamp(e.target.value)}
+                  placeholder="Enter Unix timestamp"
+                />
+              </label>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block">
+                <span className="text-sm font-medium">
+                  End Timestamp (Optional)
+                </span>
+                <Input
+                  type="number"
+                  value={endTimestamp}
+                  onChange={(e) => setEndTimestamp(e.target.value)}
                   placeholder="Enter Unix timestamp"
                 />
               </label>

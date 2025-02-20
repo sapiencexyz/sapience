@@ -7,7 +7,7 @@ services:
     type: web
     env: node
     plan: standard
-    buildCommand: pnpm --filter @foil/api install
+    buildCommand: chmod +x render-build.sh && ./render-build.sh && pnpm --filter @foil/api install
     startCommand: pnpm --filter @foil/api start:service
     autoDeploy: true
     envVars:
@@ -22,7 +22,7 @@ services:
     type: worker
     env: node
     plan: standard
-    buildCommand: pnpm --filter @foil/api install
+    buildCommand: chmod +x render-build.sh && ./render-build.sh && pnpm --filter @foil/api install
     startCommand: pnpm --filter @foil/api start:worker
     autoDeploy: true
     envVars:

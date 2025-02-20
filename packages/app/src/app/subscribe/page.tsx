@@ -407,9 +407,6 @@ const SubscribeContent = () => {
     if (!resources) return [];
     const ethGasResource = resources.find((r) => r.name === 'Ethereum Gas');
     if (!ethGasResource) return [];
-    console.log('Resources:', resources);
-    console.log('Eth Gas Resource:', ethGasResource);
-    console.log('Markets:', markets);
 
     // Filter markets based on the resource's markets array
     const filteredMarkets = markets.filter((market) =>

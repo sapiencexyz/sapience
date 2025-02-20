@@ -17,6 +17,9 @@ importers:
       '@apollo/server':
         specifier: ^4.11.3
         version: 4.11.3(encoding@0.1.13)(graphql@16.10.0)
+      '@apollo/server-plugin-response-cache':
+        specifier: ^4.1.4
+        version: 4.1.4(@apollo/server@4.11.3(encoding@0.1.13)(graphql@16.10.0))(graphql@16.10.0)
       '@sentry/cli':
         specifier: ^2.39.0
         version: 2.39.0(encoding@0.1.13)
@@ -583,6 +586,13 @@ packages:
     resolution: {integrity: sha512-pGwCl/po6+rxRmDMFgozKQo2pbsSwE91TpsDBAOgf74CRDPXHHtM88wbwjab0wMMZh95QfR45GGyDIdhY24bkQ==}
     peerDependencies:
       graphql: 14.x || 15.x || 16.x
+
+  '@apollo/server-plugin-response-cache@4.1.4':
+    resolution: {integrity: sha512-MicQsfTbwIzUc7GCFwY9uOz46ad2q22f4RWy42YEoy4YKGdrnl3X0rfs5GpBliw54nM3fxYIdmvGKeO2W7wMSg==}
+    engines: {node: '>=14.16.0'}
+    peerDependencies:
+      '@apollo/server': ^4.0.1
+      graphql: ^16.6.0
 
   '@apollo/server@4.11.3':
     resolution: {integrity: sha512-mW8idE2q0/BN14mimfJU5DAnoPHZRrAWgwsVLBEdACds+mxapIYxIbI6AH4AsOpxfrpvHts3PCYDbopy1XPW1g==}
@@ -15819,6 +15829,13 @@ snapshots:
       '@apollo/utils.fetcher': 2.0.1
       '@apollo/utils.keyvaluecache': 2.1.1
       '@apollo/utils.logger': 2.0.1
+      graphql: 16.10.0
+
+  '@apollo/server-plugin-response-cache@4.1.4(@apollo/server@4.11.3(encoding@0.1.13)(graphql@16.10.0))(graphql@16.10.0)':
+    dependencies:
+      '@apollo/server': 4.11.3(encoding@0.1.13)(graphql@16.10.0)
+      '@apollo/utils.createhash': 2.0.2
+      '@apollo/utils.keyvaluecache': 2.1.1
       graphql: 16.10.0
 
   '@apollo/server@4.11.3(encoding@0.1.13)(graphql@16.10.0)':

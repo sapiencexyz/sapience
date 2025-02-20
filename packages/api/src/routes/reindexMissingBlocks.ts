@@ -51,7 +51,13 @@ const executeLocalReindex = async (
 router.post(
   '/index-resource',
   handleAsyncErrors(async (req, res) => {
-    const { signature, signatureTimestamp, startTimestamp, slug } = req.body;
+    const {
+      signature,
+      signatureTimestamp,
+      startTimestamp,
+      endTimestamp,
+      slug,
+    } = req.body;
     const isProduction =
       process.env.NODE_ENV === 'production' ||
       process.env.NODE_ENV === 'staging';
@@ -82,7 +88,7 @@ router.post(
       }
 
       // Create and save render job
-      const startCommand = `pnpm run start:reindex-resource ${slug} ${startTimestamp}`;
+      const startCommand = `pnpm run start:reindex-resource ${slug} ${startTimestamp} ${endTimestamp}`;
       const job = await createRenderJob(worker.service.id, startCommand);
 
       const jobDb = new RenderJob();
@@ -96,7 +102,7 @@ router.post(
 
     // For local development
     try {
-      const startCommand = `pnpm run start:reindex-resource ${slug} ${startTimestamp}`;
+      const startCommand = `pnpm run start:reindex-resource ${slug} ${startTimestamp} ${endTimestamp}`;
       const result = await executeLocalReindex(startCommand);
       res.json({ success: true, job: result });
     } catch (error: unknown) {
@@ -114,64 +120,66 @@ router.post(
   handleAsyncErrors(async (req, res) => {
     const { chainId, address, epochId, signature, timestamp, model } = req.body;
 
-    // Authenticate the user
-    const isAuthenticated = await isValidWalletSignature(
-      signature as `0x${string}`,
-      Number(timestamp)
-    );
-    if (!isAuthenticated) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
-
-    let id: string = '';
-    const renderServices = await fetchRenderServices();
-    for (const item of renderServices) {
-      if (
-        item?.service?.type === 'background_worker' &&
-        item?.service?.id &&
-        (process.env.NODE_ENV === 'staging'
-          ? item?.service?.branch === 'staging'
-          : item?.service?.branch === 'main')
-      ) {
-        id = item?.service.id;
-        break;
-      }
-    }
-    if (!id) {
-      throw new Error('Background worker not found');
-    }
-
     const startCommand =
       model === 'ResourcePrice'
         ? `pnpm run start:reindex-missing ${chainId} ${address} ${epochId}`
         : `pnpm run start:reindex-market ${chainId} ${address} ${epochId}`;
 
-    if (
-      process.env.NODE_ENV !== 'production' &&
-      process.env.NODE_ENV !== 'staging'
-    ) {
-      try {
-        const result = await executeLocalReindex(startCommand);
-        res.json({ success: true, job: result });
-      } catch (error: unknown) {
-        if (error instanceof Error) {
-          res.status(500).json({ error: error.message });
-        } else {
-          res.status(500).json({ error: 'An unknown error occurred' });
+    const isProduction =
+      process.env.NODE_ENV === 'production' ||
+      process.env.NODE_ENV === 'staging';
+
+    if (isProduction) {
+      // Authenticate the user
+      const isAuthenticated = await isValidWalletSignature(
+        signature as `0x${string}`,
+        Number(timestamp)
+      );
+      if (!isAuthenticated) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      let id: string = '';
+      const renderServices = await fetchRenderServices();
+      for (const item of renderServices) {
+        if (
+          item?.service?.type === 'background_worker' &&
+          item?.service?.id &&
+          (process.env.NODE_ENV === 'staging'
+            ? item?.service?.branch === 'staging'
+            : item?.service?.branch === 'main')
+        ) {
+          id = item?.service.id;
+          break;
         }
       }
-      return;
+      if (!id) {
+        throw new Error('Background worker not found');
+      }
+
+      const job = await createRenderJob(id, startCommand);
+
+      const jobDb = new RenderJob();
+      jobDb.jobId = job.id;
+      jobDb.serviceId = job.serviceId;
+      await renderJobRepository.save(jobDb);
+
+      res.json({ success: true, job });
     }
 
-    const job = await createRenderJob(id, startCommand);
-
-    const jobDb = new RenderJob();
-    jobDb.jobId = job.id;
-    jobDb.serviceId = job.serviceId;
-    await renderJobRepository.save(jobDb);
-
-    res.json({ success: true, job });
+    // local development
+    try {
+      const result = await executeLocalReindex(startCommand);
+      res.json({ success: true, job: result });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: 'An unknown error occurred' });
+      }
+    }
+    return;
   })
 );
 
