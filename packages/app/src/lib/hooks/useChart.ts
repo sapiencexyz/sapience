@@ -1,5 +1,5 @@
 import { gql } from '@apollo/client';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 import type { UTCTimestamp, IChartApi } from 'lightweight-charts';
 import { createChart, CrosshairMode, PriceScaleMode } from 'lightweight-charts';
@@ -9,7 +9,7 @@ import { formatUnits } from 'viem';
 
 import { useFoil } from '../context/FoilProvider';
 import { convertWstEthToGwei, foilApi } from '../utils/util';
-import type { PriceChartData } from '~/lib/interfaces/interfaces';
+// import type { PriceChartData } from '~/lib/interfaces/interfaces';
 import { TimeWindow, TimeInterval } from '~/lib/interfaces/interfaces';
 import { timeToLocal } from '~/lib/utils';
 
@@ -19,15 +19,15 @@ export const GREEN = '#41A53E';
 export const BLUE = '#3F59DA';
 export const NEUTRAL = '#58585A';
 
-interface IndexPrice {
-  timestamp: number;
-  price: number;
-}
+// interface IndexPrice {
+//   timestamp: number;
+//   price: number;
+// }
 
-interface ResourcePricePoint {
-  timestamp: number;
-  price: number;
-}
+// interface ResourcePricePoint {
+//   timestamp: number;
+//   price: number;
+// }
 
 interface UseChartProps {
   resourceSlug?: string;
@@ -49,6 +49,15 @@ interface UseChartProps {
   selectedInterval: TimeInterval;
 }
 
+type TimeSlices = {
+  slices: {
+    index: number;
+    startTime: number;
+    endTime: number;
+    interval: number;
+  }[];
+};
+
 // Helper function to convert TimeInterval to seconds
 const getIntervalSeconds = (interval: TimeInterval): number => {
   switch (interval) {
@@ -65,6 +74,45 @@ const getIntervalSeconds = (interval: TimeInterval): number => {
     default:
       return 300;
   }
+};
+
+const getAllignedTimeSlices = (from: number, to: number, interval: number) => {
+  const slices = [];
+  const INTERVALS_MULTIPLIER = 10
+  // Ensure inputs are valid
+  if (from >= to) {
+    throw new Error('initialTime must be less than endTime');
+  }
+  if (interval <= 0) {
+    throw new Error('sliceSize must be positive');
+  }
+
+  // Find the first aligned slice start time after initialTime
+  const firstAlignedTime = Math.ceil(from / interval) * interval;
+
+  // Add first partial slice if needed
+  if (firstAlignedTime > from) {
+    slices.push({
+      index: 0,
+      startTime: from,
+      endTime: Math.min(firstAlignedTime - 1, to),
+      interval,
+    });
+  }
+
+  // Add aligned slices
+  let currentTime = firstAlignedTime;
+  while (currentTime < to) {
+    slices.push({
+      index: slices.length,
+      startTime: currentTime,
+      endTime: Math.min(currentTime + (interval * INTERVALS_MULTIPLIER) - 1, to),
+      interval,
+    });
+    currentTime += interval;
+  }
+
+  return slices;
 };
 
 // GraphQL Queries
@@ -171,49 +219,29 @@ export const useChart = ({
   const hasSetTimeScale = useRef(false);
   const { theme } = useTheme();
   const [isLogarithmic, setIsLogarithmic] = useState(false);
+  const [indexTimeSlices, setIndexTimeSlices] = useState<TimeSlices>({
+    slices: [],
+  });
+  const [marketTimeSlices, setMarketTimeSlices] = useState<TimeSlices>({
+    slices: [],
+  });
+  const [resourceTimeSlices, setResourceTimeSlices] = useState<TimeSlices>({
+    slices: [],
+  });
+  const [trailingTimeSlices, setTrailingTimeSlices] = useState<TimeSlices>({
+    slices: [],
+  });
+  const [visibleRange, setVisibleRange] = useState<{ from: number, to: number, interval: number }>({
+    from: 0,
+    to: 0,
+    interval: 0,
+  });
+  const [isSlicesFilled, setIsSlicesFilled] = useState<boolean>(false);
+
   const { stEthPerToken } = useFoil();
 
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = startTime > now;
-
-  const { data: marketPrices } = useQuery<PriceChartData[]>({
-    queryKey: [
-      'market-prices',
-      `${market?.chainId}:${market?.address}`,
-      market?.epochId,
-      selectedInterval,
-    ],
-    queryFn: async () => {
-      const now = Math.floor(Date.now() / 1000);
-      const timeRange = selectedWindow
-        ? getTimeRangeFromWindow(selectedWindow)
-        : 86400;
-      const from = now - timeRange;
-      const interval = getIntervalSeconds(selectedInterval);
-
-      const { data } = await foilApi.post('/graphql', {
-        query: print(MARKET_CANDLES_QUERY),
-        variables: {
-          address: market?.address,
-          chainId: market?.chainId,
-          epochId: market?.epochId?.toString(),
-          from,
-          to: now,
-          interval,
-        },
-      });
-
-      return data.marketCandles.map((candle: any) => ({
-        startTimestamp: timeToLocal(candle.timestamp * 1000),
-        endTimestamp: timeToLocal((candle.timestamp + interval) * 1000),
-        open: candle.open,
-        high: candle.high,
-        low: candle.low,
-        close: candle.close,
-      }));
-    },
-    enabled: !!market && (seriesVisibility?.candles ?? true),
-  });
 
   // Helper function for getting time range from window
   const getTimeRangeFromWindow = (window: TimeWindow): number => {
@@ -229,112 +257,201 @@ export const useChart = ({
     }
   };
 
-  const { data: indexPrices, isLoading: isIndexLoading } = useQuery<
-    IndexPrice[]
-  >({
+  const fetchMarketPage = async ({ pageParam }: { pageParam: number }) => {
+    if (!resourceSlug) {
+      return {data: [], nextCursor: undefined};
+    }
+  const currentSlice = resourceTimeSlices.slices[pageParam];
+  const interval = currentSlice.interval  ;
+    const { data } = await foilApi.post('/graphql', {
+      query: print(MARKET_CANDLES_QUERY),
+      variables: {
+        address: market?.address,
+        chainId: market?.chainId,
+        epochId: market?.epochId?.toString(),
+        from: currentSlice.startTime,
+        to: currentSlice.endTime,
+        interval: currentSlice.interval,
+      },
+    });
+
+    return {
+      data: data.marketCandles.map((candle: any) => ({
+        startTimestamp: timeToLocal(candle.timestamp * 1000),
+        endTimestamp: timeToLocal((candle.timestamp + interval) * 1000),
+        open: candle.open,
+        high: candle.high,
+        low: candle.low,
+        close: candle.close,
+      })),
+      nextCursor:
+        pageParam + 1 < resourceTimeSlices.slices.length
+          ? pageParam + 1
+          : undefined,
+    };
+  };
+
+  const {
+    data: marketPricePages,
+    fetchNextPage: fetchNextMarketPage,
+    hasNextPage: hasNextMarketPage,
+    isFetching: isFetchingMarket,
+    isFetchingNextPage: isFetchingMarketPage,
+    isLoading: isMarketLoading,
+  } = useInfiniteQuery({
+    queryKey: [
+      'market-prices',
+      `${market?.chainId}:${market?.address}`,
+      market?.epochId,
+      selectedInterval,
+  ],
+    queryFn: fetchMarketPage,
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, pages) => lastPage.nextCursor,
+    enabled: !!market && (seriesVisibility?.candles ?? true) && isSlicesFilled,
+  });
+
+  const fetchIndexPage = async ({ pageParam }: { pageParam: number }) => {
+    const currentSlice = indexTimeSlices.slices[pageParam];
+    const { data } = await foilApi.post('/graphql', {
+      query: print(INDEX_CANDLES_QUERY),
+      variables: {
+        address: market?.address,
+        chainId: market?.chainId,
+        epochId: market?.epochId?.toString(),
+        from: currentSlice.startTime,
+        to: currentSlice.endTime,
+        interval: currentSlice.interval,
+      },
+    });
+
+    return {
+      data: data.indexCandles.map((candle: any) => ({
+        price: Number(formatUnits(BigInt(candle.close), 9)),
+        timestamp: timeToLocal(candle.timestamp * 1000),
+      })),
+      nextCursor:
+        pageParam + 1 < indexTimeSlices.slices.length
+          ? pageParam + 1
+          : undefined,
+    };
+  };
+
+  const {
+    data: indexPricePages,
+    fetchNextPage: fetchNextIndexPage,
+    hasNextPage: hasNextIndexPage,
+    isFetching: isFetchingIndex,
+    isFetchingNextPage: isFetchingIndexPage,
+    isLoading: isIndexLoading,
+  } = useInfiniteQuery({
     queryKey: [
       'index-prices',
       `${market?.chainId}:${market?.address}`,
       market?.epochId,
       selectedInterval,
     ],
-    queryFn: async () => {
-      const now = Math.floor(Date.now() / 1000);
-      const timeRange = selectedWindow
-        ? getTimeRangeFromWindow(selectedWindow)
-        : 86400;
-      const from = now - timeRange;
-      const interval = getIntervalSeconds(selectedInterval);
-
-      const { data } = await foilApi.post('/graphql', {
-        query: print(INDEX_CANDLES_QUERY),
-        variables: {
-          address: market?.address,
-          chainId: market?.chainId,
-          epochId: market?.epochId?.toString(),
-          from,
-          to: now,
-          interval,
-        },
-      });
-
-      return data.indexCandles.map((candle: any) => ({
-        price: Number(formatUnits(BigInt(candle.close), 9)),
-        timestamp: timeToLocal(candle.timestamp * 1000),
-      }));
-    },
-    enabled: !!market && (seriesVisibility?.index ?? true),
+    queryFn: fetchIndexPage,
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, pages) => lastPage.nextCursor,
+    enabled: !!market && (seriesVisibility?.index ?? true) && isSlicesFilled,
   });
 
-  const { data: resourcePrices, isLoading: isResourceLoading } = useQuery<
-    ResourcePricePoint[]
-  >({
+  const fetchResourcePage = async ({ pageParam }: { pageParam: number }) => {
+    if (!resourceSlug) {
+      return {data: [], nextCursor: undefined};
+    }
+  const currentSlice = resourceTimeSlices.slices[pageParam];
+    const { data } = await foilApi.post('/graphql', {
+      query: print(RESOURCE_CANDLES_QUERY),
+      variables: {
+        slug: resourceSlug,
+        from: currentSlice.startTime,
+        to: currentSlice.endTime,
+        interval: currentSlice.interval,
+      },
+    });
+
+    return {
+      data: data.resourceCandles.map((candle: any) => ({
+        timestamp: timeToLocal(candle.timestamp * 1000),
+        price: Number(formatUnits(BigInt(candle.close), 9)),
+      })),
+      nextCursor:
+        pageParam + 1 < resourceTimeSlices.slices.length
+          ? pageParam + 1
+          : undefined,
+    };
+  };
+
+  const {
+    data: resourcePricePages,
+    fetchNextPage: fetchNextResourcePage,
+    hasNextPage: hasNextResourcePage,
+    isFetching: isFetchingResource,
+    isFetchingNextPage: isFetchingResourcePage,
+    isLoading: isResourceLoading,
+  } = useInfiniteQuery({
     queryKey: [
       'resourcePrices',
       resourceSlug,
       market?.epochId,
       selectedInterval,
     ],
-    queryFn: async () => {
-      if (!resourceSlug) {
-        return [];
-      }
-      const now = Math.floor(Date.now() / 1000);
-      const from = now - 28 * 24 * 60 * 60 * 2; // Two periods ago
-      const interval = getIntervalSeconds(selectedInterval);
-
-      const { data } = await foilApi.post('/graphql', {
-        query: print(RESOURCE_CANDLES_QUERY),
-        variables: {
-          slug: resourceSlug,
-          from,
-          to: now,
-          interval,
-        },
-      });
-
-      return data.resourceCandles.map((candle: any) => ({
-        timestamp: timeToLocal(candle.timestamp * 1000),
-        price: Number(formatUnits(BigInt(candle.close), 9)),
-      }));
-    },
-    enabled: !!resourceSlug && (seriesVisibility?.resource ?? true),
+    queryFn: fetchResourcePage,
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, pages) => lastPage.nextCursor,
+    enabled: !!resourceSlug && (seriesVisibility?.resource ?? true) && isSlicesFilled,
   });
 
-  const { data: trailingResourcePrices, isLoading: isTrailingResourceLoading } =
-    useQuery<ResourcePricePoint[]>({
-      queryKey: [
-        'trailingResourcePrices',
-        resourceSlug,
-        market?.epochId,
-        selectedInterval,
-      ],
-      queryFn: async () => {
-        if (!resourceSlug) {
-          return [];
-        }
-        const now = Math.floor(Date.now() / 1000);
-        const from = now - 28 * 24 * 60 * 60 * 2; // Two periods ago
-        const interval = getIntervalSeconds(selectedInterval);
-
-        const { data } = await foilApi.post('/graphql', {
-          query: print(TRAILING_RESOURCE_CANDLES_QUERY),
-          variables: {
-            slug: resourceSlug,
-            from,
-            to: now,
-            interval,
-            trailingTime: 28 * 24 * 60 * 60, // 28 days in seconds
-          },
-        });
-
-        return data.resourceTrailingAverageCandles.map((candle: any) => ({
-          timestamp: timeToLocal(candle.timestamp * 1000),
-          price: Number(formatUnits(BigInt(candle.close), 9)),
-        }));
+  const fetchTrailingResourcePage = async ({ pageParam }: { pageParam: number }) => {
+    if (!resourceSlug) {
+      return {data: [], nextCursor: undefined};
+    }
+  const currentSlice = resourceTimeSlices.slices[pageParam];
+    const { data } = await foilApi.post('/graphql', {
+      query: print(TRAILING_RESOURCE_CANDLES_QUERY),
+      variables: {
+        slug: resourceSlug,
+        from: currentSlice.startTime,
+        to: currentSlice.endTime,
+        interval: currentSlice.interval,
+        trailingTime: 28 * 24 * 60 * 60,
       },
-      enabled: !!resourceSlug && (seriesVisibility?.trailing ?? false),
     });
+
+    return {
+      data: data.resourceTrailingAverageCandles.map((candle: any) => ({
+        timestamp: timeToLocal(candle.timestamp * 1000),
+        price: Number(formatUnits(BigInt(candle.close), 9)),
+      })),
+      nextCursor:
+        pageParam + 1 < resourceTimeSlices.slices.length
+          ? pageParam + 1
+          : undefined,
+    };
+  };
+
+  const {
+    data: trailingResourcePricePages,
+    fetchNextPage: fetchNextTrailingResourcePage,
+    hasNextPage: hasNextTrailingResourcePage,
+    isFetching: isFetchingTrailingResource,
+    isFetchingNextPage: isFetchingTrailingResourcePage,
+    isLoading: isTrailingResourceLoading,
+  } = useInfiniteQuery({
+    queryKey: [
+      'trailingResourcePrices',
+      resourceSlug,
+      market?.epochId,
+      selectedInterval,
+  ],
+    queryFn: fetchTrailingResourcePage,
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, pages) => lastPage.nextCursor,
+    enabled: !!resourceSlug && (seriesVisibility?.trailing ?? true) && isSlicesFilled,
+  });
+
 
   // Effect for chart creation/cleanup
   useEffect(() => {
@@ -443,9 +560,57 @@ export const useChart = ({
     };
   }, [theme, containerRef]);
 
+
+  // Effect for updating time slices
+  useEffect(() => {
+    setIsSlicesFilled(false);
+    const timeRange = selectedWindow
+      ? getTimeRangeFromWindow(selectedWindow)
+      : 86400;
+    const now = Math.floor(Date.now() / 1000);
+    const twoPeriods = 28 * 24 * 60 * 60 * 2;
+    const interval = getIntervalSeconds(selectedInterval);
+
+    setMarketTimeSlices({
+      slices: getAllignedTimeSlices(now - timeRange, now, interval),
+    });
+
+    setIndexTimeSlices({
+      slices: getAllignedTimeSlices(now - timeRange, now, interval),
+    });
+
+    setResourceTimeSlices({
+      slices: getAllignedTimeSlices(now - twoPeriods, now, interval),
+    });
+
+    setTrailingTimeSlices({
+      slices: getAllignedTimeSlices(now - twoPeriods, now, interval),
+    });
+
+    setVisibleRange({
+      from: now - timeRange,
+      to: now,
+      interval,
+    });
+    setIsSlicesFilled(true);
+  }, [selectedInterval, selectedWindow]);
+
+  // Effect for fetching indexPrice pages
+  useEffect(() => {
+    if (!isFetchingIndex && !isFetchingIndexPage && hasNextIndexPage) {
+      fetchNextIndexPage();
+    }
+  }, [isFetchingIndex, isFetchingIndexPage, hasNextIndexPage]);
+
   const updateCandlestickData = () => {
+    const marketPrices = marketPricePages?.pages.flatMap((page) => page.data) || [];
     if (marketPrices?.length && candlestickSeriesRef.current) {
-      const candleSeriesData = marketPrices
+      const sortedMarketPrices = marketPrices.sort((a, b) => a.startTimestamp - b.startTimestamp).filter((item, pos, ary) => {
+        return !pos || item.startTimestamp != ary[pos - 1].startTimestamp;
+      });
+
+
+      const candleSeriesData = sortedMarketPrices
         .map((mp) => {
           if (!mp.open || !mp.high || !mp.low || !mp.close) {
             console.log('Missing OHLC data for candle:', mp);
@@ -471,42 +636,62 @@ export const useChart = ({
         })
         .filter((item): item is NonNullable<typeof item> => item !== null);
 
+      console.log('LLL candleSeriesData', candleSeriesData);
       candlestickSeriesRef.current.setData(candleSeriesData);
     }
   };
 
   const updateIndexPriceData = () => {
+    const indexPrices = indexPricePages?.pages.flatMap((page) => page.data) || [];
     if (indexPrices?.length && indexPriceSeriesRef.current && !isBeforeStart) {
-      const indexLineData = indexPrices.map((ip) => ({
+      const sortedIndexPrices = indexPrices.sort((a, b) => a.timestamp - b.timestamp).filter((item, pos, ary) => {
+        return !pos || item.timestamp != ary[pos - 1].timestamp;
+      });
+      const indexLineData = sortedIndexPrices.map((ip) => ({
         time: (ip.timestamp / 1000) as UTCTimestamp,
         value: useMarketUnits
           ? Number((stEthPerToken || 1) * (ip.price / 1e9))
           : ip.price,
-      }));
+      }))
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+      console.log('LLL indexLineData', indexLineData);
+
       indexPriceSeriesRef.current.setData(indexLineData);
     }
   };
 
   const updateResourcePriceData = () => {
+    const resourcePrices = resourcePricePages?.pages.flatMap((page) => page.data) || [];
     if (resourcePrices?.length && resourcePriceSeriesRef.current) {
-      const resourceLineData = resourcePrices.map((rp) => ({
+      const sortedResourcePrices = resourcePrices.sort((a, b) => a.timestamp - b.timestamp).filter((item, pos, ary) => {
+        return !pos || item.timestamp != ary[pos - 1].timestamp;
+      });
+      const resourceLineData = sortedResourcePrices.map((rp) => ({
         time: (rp.timestamp / 1000) as UTCTimestamp,
         value: useMarketUnits
           ? Number((stEthPerToken || 1) * (rp.price / 1e9))
           : rp.price,
-      }));
+      }))
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+      console.log('LLL resourceLineData', resourceLineData);  
       resourcePriceSeriesRef.current.setData(resourceLineData);
     }
   };
 
   const updateTrailingAverageData = () => {
+    const trailingResourcePrices = trailingResourcePricePages?.pages.flatMap((page) => page.data) || [];
     if (trailingResourcePrices?.length && trailingPriceSeriesRef.current) {
-      const trailingLineData = trailingResourcePrices.map((trp) => ({
+      const sortedTrailingResourcePrices = trailingResourcePrices.sort((a, b) => a.timestamp - b.timestamp).filter((item, pos, ary) => {
+        return !pos || item.timestamp != ary[pos - 1].timestamp;
+      });
+      const trailingLineData = sortedTrailingResourcePrices.map((trp) => ({
         time: (trp.timestamp / 1000) as UTCTimestamp,
         value: useMarketUnits
           ? Number((stEthPerToken || 1) * (trp.price / 1e9))
           : trp.price,
-      }));
+      }))
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+      console.log('LLL trailingLineData', trailingLineData);
       trailingPriceSeriesRef.current.setData(trailingLineData);
     }
   };
@@ -546,16 +731,17 @@ export const useChart = ({
     updateSeriesVisibility();
 
     // Set initial time range if not already set
-    if (!hasSetTimeScale.current && marketPrices?.length) {
-      const timeRange = selectedWindow
-        ? getTimeRangeFromWindow(selectedWindow)
-        : 86400;
-      const now = Math.floor(Date.now() / 1000);
-      const from = now - timeRange;
+    if (!hasSetTimeScale.current && candlestickSeriesRef?.current?.data()?.length && visibleRange.from && visibleRange.to) {
+      const from = visibleRange.from;
+      const to = visibleRange.to;
 
+      console.log('LLL candlestickSeriesRef', candlestickSeriesRef.current.data());
+      console.log('LLL indexPriceSeriesRef', indexPriceSeriesRef.current.data());
+      console.log('LLL resourcePriceSeriesRef', resourcePriceSeriesRef.current.data());
+      console.log('LLL trailingPriceSeriesRef', trailingPriceSeriesRef.current.data());
       chartRef.current.timeScale().setVisibleRange({
         from: from as UTCTimestamp,
-        to: now as UTCTimestamp,
+        to: to as UTCTimestamp,
       });
       hasSetTimeScale.current = true;
     }
@@ -563,10 +749,10 @@ export const useChart = ({
     stEthPerToken,
     useMarketUnits,
     seriesVisibility,
-    resourcePrices,
-    indexPrices,
-    marketPrices,
-    trailingResourcePrices,
+    resourcePricePages,
+    indexPricePages,
+    marketPricePages,
+    trailingResourcePricePages,
     isBeforeStart,
     selectedWindow,
   ]);
@@ -612,7 +798,7 @@ export const useChart = ({
 
   const loadingStates = useMemo(
     () => ({
-      candles: !marketPrices && !!market,
+      candles: !marketPricePages && !!market,
       index: isIndexLoading && !!market,
       resource: isResourceLoading && !!resourceSlug,
       trailing: isTrailingResourceLoading && !!resourceSlug,
@@ -623,7 +809,6 @@ export const useChart = ({
   return {
     isLogarithmic,
     setIsLogarithmic,
-    resourcePrices,
     loadingStates,
   };
 };
