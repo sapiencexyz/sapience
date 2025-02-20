@@ -116,11 +116,9 @@ export interface Deployment {
   deployTxnBlockNumber: string;
 }
 export enum TimeWindow {
-  H = '1H',
   D = '1D',
-  W = '1W',
+  FD = '5D',
   M = '1M',
-  Y = '1Y',
 }
 
 export interface MarketInfo {
