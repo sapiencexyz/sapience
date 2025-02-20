@@ -241,7 +241,7 @@ const PositionPage = ({
       address={marketAddress}
       epoch={Number(positionData?.epoch?.id)}
     >
-      <div className="flex-1 flex items-center justify-center min-h-[calc(100vh-64px)] p-4">
+      <div className="flex-1 flex items-center justify-center min-h-[calc(100vh-69px)] p-4">
         <div className="w-full max-w-[480px]">
           <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
             {renderPositionData()}

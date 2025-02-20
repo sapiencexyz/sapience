@@ -207,73 +207,73 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
     : undefined;
 
   return (
-    <div className="flex flex-col md:flex-row h-full p-3 lg:p-6 gap-3 lg:gap-6">
-      <div className={`flex-1 min-w-0 ${!epochs.length ? 'w-full' : ''}`}>
-        <div className="flex flex-col h-full">
-          <div className="flex-1 grid relative">
-            <Card className="absolute top-4 left-4 md:top-8 md:left-8 z-20">
-              <CardContent className="py-3 px-4">
-                <div className="flex flex-col">
-                  <span className="text-sm text-muted-foreground">
-                    Latest Price
-                  </span>
-                  <div className="flex items-baseline gap-2">
-                    {renderPriceDisplay(
-                      isPriceLoading,
-                      latestPrice,
-                      resource.name
-                    )}
-                  </div>
+    <div className="flex flex-col md:flex-row h-[calc(100vh-69px-53px-69px)] md:h-[calc(100vh-69px-53px)] p-3 lg:p-6 gap-3 lg:gap-6">
+      <div
+        className={`flex-1 min-w-0 ${!epochs.length ? 'w-full' : ''} flex flex-col`}
+      >
+        <div className="flex-1 relative h-full">
+          <Card className="absolute top-4 left-4 md:top-8 md:left-8 z-20">
+            <CardContent className="py-3 px-4">
+              <div className="flex flex-col">
+                <span className="text-sm text-muted-foreground">
+                  Latest Price
+                </span>
+                <div className="flex items-baseline gap-2">
+                  {renderPriceDisplay(
+                    isPriceLoading,
+                    latestPrice,
+                    resource.name
+                  )}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </CardContent>
+          </Card>
 
-            <div className="flex flex-col flex-1">
-              <div className="flex flex-1">
-                <div className="min-h-[50vh] border border-border flex w-full h-full rounded-sm shadow overflow-hidden pr-2 pb-2 bg-background">
-                  <div className="absolute bottom-10 left-14 z-10 flex gap-3">
-                    <IntervalSelector
-                      size="sm"
-                      selectedInterval={selectedInterval}
-                      setSelectedInterval={setSelectedInterval}
-                    />
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div style={{ color: BLUE }}>
-                            <Toggle
-                              pressed={seriesVisibility.trailing}
-                              onPressedChange={(pressed) =>
-                                setSeriesVisibility((prev) => ({
-                                  ...prev,
-                                  trailing: pressed,
-                                }))
-                              }
-                              variant="outline"
-                              className="bg-background"
-                              size="sm"
-                            >
-                              <Circle className="h-3 w-3" strokeWidth={3} />
-                              <span className="sr-only">
-                                Toggle 28 day trailing average
-                              </span>
-                            </Toggle>
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent side="right">
-                          <p>Toggle 28 day trailing average</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                  <Chart
-                    resourceSlug={id}
-                    market={selectedMarket}
-                    seriesVisibility={seriesVisibility}
-                    selectedWindow={DEFAULT_SELECTED_WINDOW}
+          <div className="h-full">
+            <div className="h-full">
+              <div className="border border-border flex w-full h-full rounded-sm shadow overflow-hidden pr-2 pb-2 bg-background">
+                <div className="absolute bottom-10 left-14 z-10 flex gap-3">
+                  <IntervalSelector
+                    size="sm"
                     selectedInterval={selectedInterval}
+                    setSelectedInterval={setSelectedInterval}
                   />
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div style={{ color: BLUE }}>
+                          <Toggle
+                            pressed={seriesVisibility.trailing}
+                            onPressedChange={(pressed) =>
+                              setSeriesVisibility((prev) => ({
+                                ...prev,
+                                trailing: pressed,
+                              }))
+                            }
+                            variant="outline"
+                            className="bg-background"
+                            size="sm"
+                          >
+                            <Circle className="h-3 w-3" strokeWidth={3} />
+                            <span className="sr-only">
+                              Toggle 28 day trailing average
+                            </span>
+                          </Toggle>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        <p>Toggle 28 day trailing average</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
+                <Chart
+                  resourceSlug={id}
+                  market={selectedMarket}
+                  seriesVisibility={seriesVisibility}
+                  selectedWindow={DEFAULT_SELECTED_WINDOW}
+                  selectedInterval={selectedInterval}
+                />
               </div>
             </div>
           </div>
@@ -281,9 +281,9 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
       </div>
 
       {epochs.length > 0 && (
-        <div className="w-full md:w-[320px] md:h-full">
-          <div className="border border-border rounded-sm shadow md:h-full">
-            <h2 className="text-2xl font-bold py-3 px-4">Periods</h2>
+        <div className="w-full md:w-[320px] h-auto md:h-full">
+          <div className="border border-border rounded-sm shadow h-full">
+            <h2 className="text-xl font-bold py-2 px-4">Periods</h2>
             <EpochsTable
               data={epochs}
               lastHoveredId={lastHoveredEpochId}
