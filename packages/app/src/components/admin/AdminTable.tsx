@@ -56,7 +56,6 @@ const AdminTable: React.FC = () => {
         marketAddress: market.address,
         vaultAddress: market.owner,
         chainId: market.chainId,
-        isPublic: market.public,
       }))
     );
   }, [markets]);
@@ -147,8 +146,11 @@ const AdminTable: React.FC = () => {
     }
   };
 
-  const updateMarketPrivacy = async (market: Market) => {
-    setLoadingAction((prev) => ({ ...prev, [market.address]: true }));
+  const updateMarketPrivacy = async (market: Market, epochId: number) => {
+    setLoadingAction((prev) => ({
+      ...prev,
+      [`${market.address}-${epochId}`]: true,
+    }));
     const timestamp = Date.now();
 
     const signature = await signMessageAsync({
@@ -157,13 +159,17 @@ const AdminTable: React.FC = () => {
     const response = await foilApi.post('/updateMarketPrivacy', {
       address: market.address,
       chainId: market.chainId,
+      epochId,
       signature,
       timestamp,
     });
     if (response.success) {
       await refetchMarkets();
     }
-    setLoadingAction((prev) => ({ ...prev, [market.address]: false }));
+    setLoadingAction((prev) => ({
+      ...prev,
+      [`${market.address}-${epochId}`]: false,
+    }));
   };
 
   const columns = useMemo(
