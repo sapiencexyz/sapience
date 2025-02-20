@@ -57,16 +57,16 @@ const addMarketYinYang = async (
   suffix?: string
 ) => {
   const yin = await safeRequire(
-    `@/protocol/deployments/${chainId}${suffix}/FoilYin.json`
+    `@/protocol/deployments/${chainId}${suffix || ''}/FoilYin.json`
   );
   const yang = await safeRequire(
-    `@/protocol/deployments/${chainId}${suffix}/FoilYang.json`
+    `@/protocol/deployments/${chainId}${suffix || ''}/FoilYang.json`
   );
   const yinVault = await safeRequire(
-    `@/protocol/deployments/${chainId}${suffix}/VaultYin.json`
+    `@/protocol/deployments/${chainId}${suffix || ''}/VaultYin.json`
   );
   const yangVault = await safeRequire(
-    `@/protocol/deployments/${chainId}${suffix}/VaultYang.json`
+    `@/protocol/deployments/${chainId}${suffix || ''}/VaultYang.json`
   );
 
   if (yin && yang && yinVault && yangVault) {
