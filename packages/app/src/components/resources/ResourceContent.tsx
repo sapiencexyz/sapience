@@ -194,6 +194,7 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
           },
         }))
       )
+      .filter((epoch) => epoch.public)
       .sort((a, b) => a.startTimestamp - b.startTimestamp) || [];
 
   const hoveredEpoch = epochs.find((epoch) => epoch.id === lastHoveredEpochId);
