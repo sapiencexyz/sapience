@@ -1,10 +1,5 @@
 import { MarketPrice } from './models/MarketPrice';
-import {
-  ONE_DAY_MS,
-  ONE_HOUR_MS,
-  ONE_MINUTE_MS,
-  TOKEN_PRECISION,
-} from './constants';
+import { ONE_DAY_MS, ONE_HOUR_MS, TOKEN_PRECISION } from './constants';
 import dataSource from './db';
 import { Transaction } from './models/Transaction';
 import { TimeWindow } from './interfaces';
