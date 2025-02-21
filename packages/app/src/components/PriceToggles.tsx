@@ -1,7 +1,6 @@
-import { CandlestickChart, Circle, CircleDashed } from 'lucide-react';
+import Image from 'next/image';
 
 import { ToggleGroup, ToggleGroupItem } from '~/components/ui/toggle-group';
-import { GREEN_PRIMARY, BLUE, NEUTRAL } from '~/lib/hooks/useChart';
 
 interface PriceTogglesProps {
   seriesVisibility: {
@@ -39,7 +38,12 @@ const PriceToggles = ({
         onClick={() => toggleSeries('candles')}
         disabled={seriesDisabled.candles}
       >
-        <CandlestickChart className="w-3 h-3" color={NEUTRAL} />
+        <Image
+          src="/priceicons/market.svg"
+          alt="Market Price"
+          width={16}
+          height={16}
+        />
         Market Price
       </ToggleGroupItem>
       <ToggleGroupItem
@@ -48,7 +52,12 @@ const PriceToggles = ({
         onClick={() => toggleSeries('index')}
         disabled={seriesDisabled.index}
       >
-        <CircleDashed className="w-3 h-3" color={BLUE} strokeWidth={3} />
+        <Image
+          src="/priceicons/index.svg"
+          alt="Index Price"
+          width={16}
+          height={16}
+        />
         Index Price
       </ToggleGroupItem>
       <ToggleGroupItem
@@ -57,7 +66,12 @@ const PriceToggles = ({
         onClick={() => toggleSeries('resource')}
         disabled={seriesDisabled.resource}
       >
-        <Circle className="w-3 h-3" color={GREEN_PRIMARY} strokeWidth={3} />
+        <Image
+          src="/priceicons/resource.svg"
+          alt="Resource Price"
+          width={16}
+          height={16}
+        />
         Resource Price
       </ToggleGroupItem>
 
@@ -67,7 +81,12 @@ const PriceToggles = ({
         onClick={() => toggleSeries('trailing')}
         disabled={seriesDisabled.trailing}
       >
-        <Circle className="w-3 h-3" color={BLUE} strokeWidth={3} />
+        <Image
+          src="/priceicons/average.svg"
+          alt="Trailing Average Price"
+          width={16}
+          height={16}
+        />
         Trailing Avg. Price
       </ToggleGroupItem>
     </ToggleGroup>
