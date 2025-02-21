@@ -1,11 +1,11 @@
 'use client';
 
+import { useQuery } from '@tanstack/react-query';
 import { ChevronRight, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import React from 'react';
 import { formatUnits } from 'viem';
-import { useQuery } from '@tanstack/react-query';
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Toggle } from '@/components/ui/toggle';
@@ -161,21 +161,24 @@ const renderPriceDisplay = (
   };
 
   const displayValue = formatUnits(BigInt(price.value), 9);
-  
+
   document.title = `${formatTitleNumber(displayValue)} ${unit} | ${resourceName} | Foil`;
 
   const cryptoPrice = cryptoKey ? cryptoPrices?.[cryptoKey] : null;
-  
+
   let usdValue = 0;
   if (cryptoPrice && showTransfer && cryptoKey) {
     const baseUnitConversion: Record<'btc' | 'sol' | 'eth', number> = {
-      'btc': 100000000, // sats per BTC
-      'sol': 1000000000, // lamports per SOL
-      'eth': 1000000000, // gwei per ETH
+      btc: 100000000, // sats per BTC
+      sol: 1000000000, // lamports per SOL
+      eth: 1000000000, // gwei per ETH
     };
 
     // Calculate: (price per unit * number of units) * (crypto price / base units)
-    usdValue = (parseFloat(displayValue) * transferMultiplier) * (cryptoPrice / baseUnitConversion[cryptoKey]);
+    usdValue =
+      parseFloat(displayValue) *
+      transferMultiplier *
+      (cryptoPrice / baseUnitConversion[cryptoKey]);
   }
 
   return (
@@ -185,7 +188,11 @@ const renderPriceDisplay = (
       </span>
       {showTransfer && cryptoPrice && (
         <span className="text-xs text-muted-foreground mt-0.5">
-          <span className="font-medium">Token Transfer:</span> ${usdValue.toLocaleString(undefined, { minimumFractionDigits: decimalPlaces, maximumFractionDigits: decimalPlaces })}
+          <span className="font-medium">Token Transfer:</span> $
+          {usdValue.toLocaleString(undefined, {
+            minimumFractionDigits: decimalPlaces,
+            maximumFractionDigits: decimalPlaces,
+          })}
         </span>
       )}
     </div>
@@ -203,8 +210,7 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
   const { data: cryptoPrices } = useQuery({
     queryKey: ['cryptoPrices'],
     queryFn: async () => {
-      const response = await foilApi.get('/crypto-prices');
-      return response;
+      return foilApi.get('/crypto-prices');
     },
     refetchInterval: 60000, // Refetch every minute
   });
