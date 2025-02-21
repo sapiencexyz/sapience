@@ -46,6 +46,7 @@ const ResourceNav = () => {
                   alt={resource.name}
                   width={22}
                   height={22}
+                  className="grayscale"
                 />
                 {resource.name}
               </Button>

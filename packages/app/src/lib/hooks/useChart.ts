@@ -385,6 +385,14 @@ export const useChart = ({
         visible: true,
         autoScale: true,
       },
+      localization: {
+        priceFormatter: (price: number) => {
+          if (price < 0) {
+            return '';
+          }
+          return price.toFixed(4);
+        },
+      },
     });
 
     chartRef.current = chart;

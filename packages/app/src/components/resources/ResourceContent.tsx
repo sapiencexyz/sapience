@@ -1,6 +1,7 @@
 'use client';
 
-import { ChevronRight, Loader2, Circle } from 'lucide-react';
+import { ChevronRight, Loader2 } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import React from 'react';
 import { formatUnits } from 'viem';
@@ -251,10 +252,15 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
                               }))
                             }
                             variant="outline"
-                            className="bg-background"
+                            className="bg-background p-0"
                             size="sm"
                           >
-                            <Circle className="h-3 w-3" strokeWidth={3} />
+                            <Image
+                              src="/priceicons/average.svg"
+                              alt="Average"
+                              width={20}
+                              height={20}
+                            />
                             <span className="sr-only">
                               Toggle 28 day trailing average
                             </span>
