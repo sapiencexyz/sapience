@@ -171,7 +171,7 @@ if (process.argv[2] === 'reindexMarket') {
       process.exit(1);
     }
     await reindexMarket(chainId, address, epochId);
-    console.log('DONE');
+    console.log('Done reindexing');
     process.exit(0);
   };
   callReindex();
@@ -188,7 +188,7 @@ if (process.argv[2] === 'reindexMarket') {
       process.exit(1);
     }
     await reindexMissingBlocks(chainId, address, epochId);
-    console.log('DONE');
+    console.log('Done reindexing');
     process.exit(0);
   };
   callReindexMissing();
@@ -196,9 +196,12 @@ if (process.argv[2] === 'reindexMarket') {
   const callReindexResource = async () => {
     const slug = process.argv[3];
     const startTimestamp = parseInt(process.argv[4], 10);
-    const endTimestamp = process.argv[5]
-      ? parseInt(process.argv[5], 10)
-      : undefined;
+
+    const endTimestamp =
+      process.argv[5] !== 'undefined'
+        ? parseInt(process.argv[5], 10)
+        : undefined;
+
     if (isNaN(startTimestamp) || !slug) {
       console.error(
         'Invalid arguments. Usage: tsx src/worker.ts reindexResource <resourceSlug> <startTimestamp> <endTimestamp>'
@@ -220,7 +223,7 @@ if (process.argv[2] === 'reindexMarket') {
     process.exit(0);
   };
   callReindexResource();
-  console.log('DONE');
+  console.log('Done reindexing');
 } else {
   main();
 }

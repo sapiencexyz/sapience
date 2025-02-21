@@ -233,6 +233,17 @@ const Admin = () => {
                   onChange={(e) => setStartTimestamp(e.target.value)}
                   placeholder="Enter Unix timestamp"
                 />
+                <p className="text-sm text-muted-foreground mt-1">
+                  <a
+                    href="https://www.unixtimestamp.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline"
+                  >
+                    Unix seconds
+                  </a>
+                  , 10 digits
+                </p>
               </label>
             </div>
 
@@ -247,6 +258,17 @@ const Admin = () => {
                   onChange={(e) => setEndTimestamp(e.target.value)}
                   placeholder="Enter Unix timestamp"
                 />
+                <p className="text-sm text-muted-foreground mt-1">
+                  <a
+                    href="https://www.unixtimestamp.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline"
+                  >
+                    Unix seconds
+                  </a>
+                  , 10 digits
+                </p>
               </label>
             </div>
 
