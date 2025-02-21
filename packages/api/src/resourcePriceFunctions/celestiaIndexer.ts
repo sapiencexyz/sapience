@@ -25,7 +25,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
   private celeniumEndpoint: string;
   private pollInterval: number;
   private SLEEP_INTERVAL_MS: number = 1000;
-  private MAX_RETRIES: number = 10;
+  private MAX_RETRIES: number = Infinity;
 
   private pollTimeout?: NodeJS.Timeout;
 
@@ -38,77 +38,99 @@ class CelestiaIndexer implements IResourcePriceIndexer {
   }
 
   private async pollCelestia(resource: Resource) {
-    const currentBlockToPoll = await this.getStartingBlockForPolling(resource);
+    try {
+      const currentBlockToPoll =
+        await this.getStartingBlockForPolling(resource);
 
-    const params = new URLSearchParams({
-      limit: '100',
-      offset: '0',
-      msg_type: 'MsgPayForBlobs',
-      excluded_msg_type: 'MsgUnknown',
-    });
+      const params = new URLSearchParams({
+        limit: '100',
+        offset: '0',
+        msg_type: 'MsgPayForBlobs',
+        excluded_msg_type: 'MsgUnknown',
+      });
 
-    let response = await fetch(
-      `${this.celeniumEndpoint}/${celeniumApiVersionUrl}/block/${currentBlockToPoll}/messages/?${params.toString()}`,
-      { headers }
-    );
-    // let retries = 0;
+      let retries = 0;
+      let response;
 
-    while (!response.ok) {
-      console.error(`[CelestiaIndexer] HTTP error! status: ${response.status}`);
-      // retries++;
-      // if (retries > this.MAX_RETRIES) {
-      //   console.error(`Failed to fetch block ${currentBlockToPoll} after ${this.MAX_RETRIES} retries. Exiting polling!`);
-      //   return;
-      // }
+      while (retries < this.MAX_RETRIES) {
+        try {
+          response = await fetch(
+            `${this.celeniumEndpoint}/${celeniumApiVersionUrl}/block/${currentBlockToPoll}/messages/?${params.toString()}`,
+            { headers }
+          );
+
+          if (response.ok) {
+            break;
+          }
+
+          console.error(
+            `[CelestiaIndexer] HTTP error! status: ${response.status}`
+          );
+          retries++;
+          const backoffDelay = this.SLEEP_INTERVAL_MS * Math.pow(2, retries); // Exponential backoff
+          console.log(
+            `[CelestiaIndexer] Retry ${retries}/${this.MAX_RETRIES}. Sleeping for ${backoffDelay}ms`
+          );
+          await sleep(backoffDelay);
+        } catch (error) {
+          console.error(`[CelestiaIndexer] Network error during fetch:`, error);
+          retries++;
+          const backoffDelay = this.SLEEP_INTERVAL_MS * Math.pow(2, retries);
+          console.log(
+            `[CelestiaIndexer] Retry ${retries}/${this.MAX_RETRIES}. Sleeping for ${backoffDelay}ms`
+          );
+          await sleep(backoffDelay);
+        }
+      }
+
+      if (!response || !response.ok) {
+        throw new Error(
+          `Failed to fetch block ${currentBlockToPoll} after ${this.MAX_RETRIES} retries`
+        );
+      }
+
+      const data = await response.json();
+
+      const blobAccumulatedDataDummy = {
+        height: currentBlockToPoll,
+        timeMs: new Date().getTime(),
+        stats: {
+          blobs_size: 0,
+          fee: 0,
+        },
+      };
+      const finalStats = data.reduce(
+        (
+          acc: Block,
+          tx: {
+            height: number;
+            time: number;
+            tx: { gas_used: number; fee: number; status: string };
+          }
+        ) => {
+          if (tx.tx.status === 'success') {
+            blobAccumulatedDataDummy.height = tx.height;
+            blobAccumulatedDataDummy.timeMs = new Date(tx.time).getTime();
+            blobAccumulatedDataDummy.stats.blobs_size += Number(tx.tx.gas_used);
+            blobAccumulatedDataDummy.stats.fee += Number(tx.tx.fee);
+          }
+          return acc;
+        },
+        blobAccumulatedDataDummy
+      );
+
       console.log(
-        '[CelestiaIndexer] Sleeping for',
-        this.SLEEP_INTERVAL_MS,
-        'ms'
+        '[CelestiaIndexer] Indexing resource price from block',
+        finalStats.height
       );
-      sleep(this.SLEEP_INTERVAL_MS);
-      response = await fetch(
-        `${this.celeniumEndpoint}/${celeniumApiVersionUrl}/block/${currentBlockToPoll}/messages/?${params.toString()}`,
-        { headers }
-      );
+      await this.storeBlockPrice(finalStats, resource);
+
+      this.latestKnownBlockNumber += 1;
+    } catch (error) {
+      console.error('[CelestiaIndexer] Error in pollCelestia:', error);
+      // Don't rethrow the error to prevent the polling from stopping
+      // The next poll interval will try again
     }
-
-    const data = await response.json();
-
-    const blobAccumulatedDataDummy = {
-      height: currentBlockToPoll,
-      timeMs: new Date().getTime(),
-      stats: {
-        blobs_size: 0,
-        fee: 0,
-      },
-    };
-    const finalStats = data.reduce(
-      (
-        acc: Block,
-        tx: {
-          height: number;
-          time: number;
-          tx: { gas_used: number; fee: number; status: string };
-        }
-      ) => {
-        if (tx.tx.status === 'success') {
-          blobAccumulatedDataDummy.height = tx.height;
-          blobAccumulatedDataDummy.timeMs = new Date(tx.time).getTime();
-          blobAccumulatedDataDummy.stats.blobs_size += Number(tx.tx.gas_used);
-          blobAccumulatedDataDummy.stats.fee += Number(tx.tx.fee);
-        }
-        return acc;
-      },
-      blobAccumulatedDataDummy
-    );
-
-    console.log(
-      '[CelestiaIndexer] Indexing resource price from block',
-      finalStats.height
-    );
-    await this.storeBlockPrice(finalStats, resource);
-
-    this.latestKnownBlockNumber += 1;
   }
 
   private async getStartingBlockForPolling(resource: Resource) {

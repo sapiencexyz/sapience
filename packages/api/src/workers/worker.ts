@@ -171,7 +171,7 @@ if (process.argv[2] === 'reindexMarket') {
       process.exit(1);
     }
     await reindexMarket(chainId, address, epochId);
-    console.log('DONE');
+    console.log('Done reindexing');
     process.exit(0);
   };
   callReindex();
@@ -188,7 +188,7 @@ if (process.argv[2] === 'reindexMarket') {
       process.exit(1);
     }
     await reindexMissingBlocks(chainId, address, epochId);
-    console.log('DONE');
+    console.log('Done reindexing');
     process.exit(0);
   };
   callReindexMissing();
@@ -223,7 +223,7 @@ if (process.argv[2] === 'reindexMarket') {
     process.exit(0);
   };
   callReindexResource();
-  console.log('DONE');
+  console.log('Done reindexing');
 } else {
   main();
 }

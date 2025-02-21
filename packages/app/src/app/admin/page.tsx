@@ -226,22 +226,31 @@ const Admin = () => {
 
             <div className="space-y-2">
               <label className="block">
-                <span className="text-sm font-medium">
-                  Start Timestamp (Unix seconds, 10 digits)
-                </span>
+                <span className="text-sm font-medium">Start Timestamp</span>
                 <Input
                   type="number"
                   value={startTimestamp}
                   onChange={(e) => setStartTimestamp(e.target.value)}
                   placeholder="Enter Unix timestamp"
                 />
+                <p className="text-sm text-muted-foreground mt-1">
+                  <a
+                    href="https://www.unixtimestamp.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline"
+                  >
+                    Unix seconds
+                  </a>
+                  , 10 digits
+                </p>
               </label>
             </div>
 
             <div className="space-y-2">
               <label className="block">
                 <span className="text-sm font-medium">
-                  End Timestamp (Optional; Unix seconds, 10 digits)
+                  End Timestamp (Optional)
                 </span>
                 <Input
                   type="number"
@@ -249,6 +258,17 @@ const Admin = () => {
                   onChange={(e) => setEndTimestamp(e.target.value)}
                   placeholder="Enter Unix timestamp"
                 />
+                <p className="text-sm text-muted-foreground mt-1">
+                  <a
+                    href="https://www.unixtimestamp.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline"
+                  >
+                    Unix seconds
+                  </a>
+                  , 10 digits
+                </p>
               </label>
             </div>
 

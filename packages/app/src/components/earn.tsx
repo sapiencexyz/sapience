@@ -395,6 +395,7 @@ const Earn: FC<Props> = ({ slug }) => {
             alt={resource?.name || 'Resource'}
             width={200}
             height={200}
+            className="grayscale"
           />
         </div>
         <h2 className="text-4xl font-bold text-center mb-3">
