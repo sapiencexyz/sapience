@@ -113,7 +113,7 @@ const renderPriceDisplay = (
     precision = 6;
   } else if (resourceName === 'Solana Fees') {
     unit = 'lamports';
-    precision = 6;
+    precision = 4;
     cryptoKey = 'sol';
     showTransfer = true;
     // 250,000 compute units * lamports per CU

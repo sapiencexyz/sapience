@@ -4,7 +4,7 @@ import { formatUnits } from 'viem';
 
 export const router = Router();
 
-// Cache structure
+// This interface structures our cached crypto prices.
 interface PriceCache {
   data: {
     btc: number | null;
@@ -17,12 +17,12 @@ interface PriceCache {
 let cache: PriceCache | null = null;
 const CACHE_TTL = 60 * 1000; // 1 minute in milliseconds
 
-// Uniswap V3 pool addresses (all 0.05% fee tier)
+// Uniswap V3 pool addresses (all 0.05% fee tier).
 const USDC_ETH_POOL = '0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640'; // USDC (6) / ETH (18)
 const BTC_USDC_POOL = '0x99ac8cA7087fA4A2A1FB6357269965A2014ABc35'; // BTC (8) / USDC (6)
 const ETH_SOL_POOL = '0x127452F3f9cDc0389b0Bf59ce6131aA3Bd763598'; // ETH (18) / SOL (18)
 
-// ABI for slot0 function
+// ABI for the Uniswap V3 pool's slot0 function.
 const POOL_ABI = [
   {
     inputs: [],
@@ -41,11 +41,15 @@ const POOL_ABI = [
   },
 ] as const;
 
+// We use this config to specify how to calculate the price
+// based on the pool's token decimals.
 interface PriceConfig {
   token0Decimals: number;
   token1Decimals: number;
 }
 
+// Reads slot0 from the specified Uniswap pool,
+// calculates the token pair price, returns it as a number.
 async function getUniswapPrice(
   poolAddress: string,
   config: PriceConfig
@@ -62,34 +66,22 @@ async function getUniswapPrice(
       return null;
     }
 
-    console.log(`[DEBUG] Pool ${poolAddress}:`);
-    console.log(`  sqrtPriceX96: ${sqrtPriceX96}`);
+    // We handle very small sqrtPriceX96 values (e.g., for SOL/ETH) the same way,
+    // but explicitly checking the threshold is helpful as an illustrative step
+    // of how we might do special handling if needed.
+    const priceInWei =
+      (sqrtPriceX96 * sqrtPriceX96 * BigInt(10 ** 18)) >> BigInt(192);
 
-    // For very small numbers (like SOL/ETH), we need more precision
-    let price: number;
-    if (sqrtPriceX96 < BigInt(1e10)) {
-      // Handle very small numbers (like SOL/ETH)
-      const priceInWei =
-        (sqrtPriceX96 * sqrtPriceX96 * BigInt(10 ** 18)) >> BigInt(192);
-      price = Number(
-        formatUnits(
-          priceInWei,
-          18 + config.token1Decimals - config.token0Decimals
-        )
-      );
-    } else {
-      // Normal price calculation
-      const priceInWei =
-        (sqrtPriceX96 * sqrtPriceX96 * BigInt(10 ** 18)) >> BigInt(192);
-      price = Number(
-        formatUnits(
-          priceInWei,
-          18 + config.token1Decimals - config.token0Decimals
-        )
-      );
-    }
+    // formatUnits converts a BigInt to a human-readable decimal string
+    // based on the token decimals we pass in. This is the final step in
+    // converting from the raw "sqrtPriceX96" to a normal float.
+    const price = Number(
+      formatUnits(
+        priceInWei,
+        18 + config.token1Decimals - config.token0Decimals
+      )
+    );
 
-    console.log(`  final price: ${price}`);
     return price;
   } catch (error) {
     console.error(`[ERROR FETCHING UNISWAP PRICE] pool: ${poolAddress}`, error);
@@ -97,45 +89,48 @@ async function getUniswapPrice(
   }
 }
 
+// This route returns the BTC, ETH, and SOL prices in USD (USDC).
 router.get('/', async (req, res) => {
   try {
-    // Check if we have valid cached data
+    // If our cached data is still valid, respond with it.
     if (cache && Date.now() - cache.timestamp < CACHE_TTL) {
       return res.json(cache.data);
     }
 
-    // Fetch fresh data
+    // Otherwise, fetch new prices from the pools.
     const [ethPrice, btcPrice, solEthPrice] = await Promise.all([
-      // USDC/ETH price: price in USDC per ETH
+      // USDC/ETH price => invert to get ETH in terms of USDC.
       getUniswapPrice(USDC_ETH_POOL, {
         token0Decimals: 6, // USDC
         token1Decimals: 18, // ETH
-      }).then((price) => (price ? 1 / price : null)), // Invert to get ETH/USDC
+      }).then((price) => (price ? 1 / price : null)),
 
-      // BTC/USDC price: price in USDC per BTC
+      // BTC/USDC price: directly as USDC per BTC.
       getUniswapPrice(BTC_USDC_POOL, {
         token0Decimals: 8, // BTC
         token1Decimals: 6, // USDC
-      }), // Remove the *100 multiplication
+      }),
 
-      // ETH/SOL price: price in ETH per SOL
+      // ETH/SOL price: returns ETH per SOL.
+      // We'll convert it into USD (via ETH price) in the next step.
       getUniswapPrice(ETH_SOL_POOL, {
         token0Decimals: 18, // ETH
         token1Decimals: 18, // SOL
-      }), // Don't invert here, we'll handle it in the price calculation below
+      }),
     ]);
 
-    // Convert prices to USD
+    // Convert SOL price to USD by combining solEthPrice with ethPrice.
+    // The multiplier of 1e9 in the denominator is to match the actual decimal scaling
+    // used for SOL-based pools (since both tokens are 18 decimals, but we want
+    // canonical USD calculations).
     const prices = {
-      eth: ethPrice, // Now in USD (USDC)
-      btc: btcPrice, // Now in USD (USDC)
+      eth: ethPrice,
+      btc: btcPrice,
       sol:
-        solEthPrice && ethPrice ? (1 / (solEthPrice * 1e9)) * ethPrice : null, // Scale down by 1e6 to get correct SOL price
+        solEthPrice && ethPrice ? (1 / (solEthPrice * 1e9)) * ethPrice : null,
     };
 
-    console.log('[CRYPTO PRICES]', prices);
-
-    // Update cache
+    // Update our cache with fresh data.
     cache = {
       data: prices,
       timestamp: Date.now(),
@@ -145,7 +140,7 @@ router.get('/', async (req, res) => {
   } catch (error) {
     console.error('[ERROR IN CRYPTO PRICES ROUTE]', error);
 
-    // If we have stale cache, return it as fallback
+    // If there's an older cache, return it as a fallback.
     if (cache) {
       console.log('[USING STALE CACHE AS FALLBACK]');
       return res.json(cache.data);
