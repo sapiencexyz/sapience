@@ -389,4 +389,8 @@ export async function createRenderJob(serviceId: string, startCommand: string) {
   return await response.json();
 }
 
+export const sleep = async (ms: number) => {
+  return await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export const CELENIUM_API_KEY = process.env.CELENIUM_API_KEY;

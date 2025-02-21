@@ -226,7 +226,9 @@ const Admin = () => {
 
             <div className="space-y-2">
               <label className="block">
-                <span className="text-sm font-medium">Start Timestamp</span>
+                <span className="text-sm font-medium">
+                  Start Timestamp (Unix seconds, 10 digits)
+                </span>
                 <Input
                   type="number"
                   value={startTimestamp}
@@ -239,7 +241,7 @@ const Admin = () => {
             <div className="space-y-2">
               <label className="block">
                 <span className="text-sm font-medium">
-                  End Timestamp (Optional)
+                  End Timestamp (Optional; Unix seconds, 10 digits)
                 </span>
                 <Input
                   type="number"
