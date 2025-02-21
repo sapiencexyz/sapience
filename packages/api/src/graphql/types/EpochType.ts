@@ -30,4 +30,7 @@ export class EpochType {
   @Directive('@cacheControl(maxAge: 60)')
   @Field(() => String, { nullable: true })
   settlementPriceD18: string | null;
+
+  @Field(() => Boolean)
+  public: boolean;
 }

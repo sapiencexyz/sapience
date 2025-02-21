@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 
-import ResourceLayout from '~/components/market/ResourceLayout';
 import ResourceNav from '~/components/market/ResourceNav';
 import ResourceContent from '~/components/resources/ResourceContent';
 
@@ -10,10 +9,10 @@ export const metadata: Metadata = {
 
 const MarketPage = ({ params }: { params: { id: string } }) => {
   return (
-    <ResourceLayout
-      nav={<ResourceNav />}
-      content={<ResourceContent id={params.id} />}
-    />
+    <div className="flex flex-col w-full">
+      <ResourceNav />
+      <ResourceContent id={params.id} />
+    </div>
   );
 };
 

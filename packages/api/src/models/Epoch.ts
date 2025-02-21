@@ -82,4 +82,7 @@ export class Epoch {
     nullable: true,
   })
   maxPriceD18: string | null;
+
+  @Column({ type: 'boolean', default: true })
+  public: boolean;
 }

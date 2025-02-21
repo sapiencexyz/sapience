@@ -39,7 +39,7 @@ const AdvancedView = ({
   isTrade: boolean;
 }) => {
   const [selectedWindow, setSelectedWindow] = useState<TimeWindow | null>(
-    TimeWindow.FD
+    TimeWindow.W
   );
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
     TimeInterval.I5M
@@ -50,7 +50,7 @@ const AdvancedView = ({
 
   useEffect(() => {
     if (chartType === ChartType.VOLUME) {
-      setSelectedWindow(TimeWindow.FD);
+      setSelectedWindow(TimeWindow.W);
     }
   }, [chartType]);
 
@@ -61,7 +61,7 @@ const AdvancedView = ({
       case TimeWindow.D:
         setSelectedInterval(TimeInterval.I5M);
         break;
-      case TimeWindow.FD:
+      case TimeWindow.W:
         setSelectedInterval(TimeInterval.I5M);
         break;
       case TimeWindow.M:
@@ -158,7 +158,7 @@ const AdvancedView = ({
         <VolumeChart
           contractId={contractId}
           epochId={epoch}
-          activeWindow={selectedWindow || TimeWindow.FD}
+          activeWindow={selectedWindow || TimeWindow.W}
         />
       );
     }
@@ -171,7 +171,7 @@ const AdvancedView = ({
   return (
     <AddEditPositionProvider>
       <TradePoolProvider>
-        <div className="flex flex-col w-full h-[calc(100vh-64px)] overflow-y-auto lg:overflow-hidden">
+        <div className="flex flex-col w-full h-[calc(100vh-69px)] overflow-y-auto lg:overflow-hidden">
           <PeriodHeader />
           <div className="flex flex-col flex-1 lg:overflow-y-auto md:overflow-visible">
             <div className="flex flex-col flex-1 px-4 md:px-3 gap-5 md:flex-row min-h-0">

@@ -96,7 +96,6 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
     updatedMarket = existingMarket || new Market();
   }
 
-  updatedMarket.public = marketInfo.public;
   updatedMarket.address = marketInfo.deployment.address;
   updatedMarket.vaultAddress = marketInfo.vaultAddress;
   updatedMarket.isYin = marketInfo.isYin;
