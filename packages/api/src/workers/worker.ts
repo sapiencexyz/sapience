@@ -196,10 +196,11 @@ if (process.argv[2] === 'reindexMarket') {
   const callReindexResource = async () => {
     const slug = process.argv[3];
     const startTimestamp = parseInt(process.argv[4], 10);
-    
-    const endTimestamp = process.argv[5] !== "undefined"
-      ? parseInt(process.argv[5], 10)
-      : undefined;
+
+    const endTimestamp =
+      process.argv[5] !== 'undefined'
+        ? parseInt(process.argv[5], 10)
+        : undefined;
 
     if (isNaN(startTimestamp) || !slug) {
       console.error(

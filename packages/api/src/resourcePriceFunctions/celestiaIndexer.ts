@@ -60,7 +60,11 @@ class CelestiaIndexer implements IResourcePriceIndexer {
       //   console.error(`Failed to fetch block ${currentBlockToPoll} after ${this.MAX_RETRIES} retries. Exiting polling!`);
       //   return;
       // }
-      console.log("[CelestiaIndexer] Sleeping for", this.SLEEP_INTERVAL_MS, "ms");
+      console.log(
+        '[CelestiaIndexer] Sleeping for',
+        this.SLEEP_INTERVAL_MS,
+        'ms'
+      );
       sleep(this.SLEEP_INTERVAL_MS);
       response = await fetch(
         `${this.celeniumEndpoint}/${celeniumApiVersionUrl}/block/${currentBlockToPoll}/messages/?${params.toString()}`,
@@ -69,7 +73,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
     }
 
     const data = await response.json();
-    
+
     const blobAccumulatedDataDummy = {
       height: currentBlockToPoll,
       timeMs: new Date().getTime(),
@@ -81,10 +85,10 @@ class CelestiaIndexer implements IResourcePriceIndexer {
     const finalStats = data.reduce(
       (
         acc: Block,
-        tx: { 
-          height: number; 
-          time: number; 
-          tx: { gas_used: number; fee: number, status: string } 
+        tx: {
+          height: number;
+          time: number;
+          tx: { gas_used: number; fee: number; status: string };
         }
       ) => {
         if (tx.tx.status === 'success') {
@@ -98,7 +102,10 @@ class CelestiaIndexer implements IResourcePriceIndexer {
       blobAccumulatedDataDummy
     );
 
-    console.log("[CelestiaIndexer] Indexing resource price from block", finalStats.height);
+    console.log(
+      '[CelestiaIndexer] Indexing resource price from block',
+      finalStats.height
+    );
     await this.storeBlockPrice(finalStats, resource);
 
     this.latestKnownBlockNumber += 1;
@@ -117,7 +124,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
       },
       where: {
         resource: { id: resource.id },
-      }
+      },
     });
 
     if (latestResourcePrice?.blockNumber) {
@@ -149,7 +156,10 @@ class CelestiaIndexer implements IResourcePriceIndexer {
   }
 
   public pollStatus() {
-    console.log('[CelestiaIndexer] Celestia indexer status: ', this.pollTimeout);
+    console.log(
+      '[CelestiaIndexer] Celestia indexer status: ',
+      this.pollTimeout
+    );
   }
 
   /**
@@ -188,7 +198,9 @@ class CelestiaIndexer implements IResourcePriceIndexer {
       { headers }
     );
     while (!response.ok) {
-      console.error(`[CelestiaIndexer] Failed to fetch block ${blockNumber}, HTTP error code: ${response.status}`);
+      console.error(
+        `[CelestiaIndexer] Failed to fetch block ${blockNumber}, HTTP error code: ${response.status}`
+      );
       sleep(this.SLEEP_INTERVAL_MS);
       response = await fetch(
         `${this.celeniumEndpoint}/${celeniumApiVersionUrl}/block/${blockNumber}?stats=true`,
@@ -239,7 +251,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
       throw new Error('[CelestiaIndexer] Failed to fetch latest block number');
     }
     const blockNumber = await response.json();
-  
+
     return blockNumber - 1;
   }
 
@@ -255,16 +267,28 @@ class CelestiaIndexer implements IResourcePriceIndexer {
     startTimestamp: number,
     endTimestamp?: number
   ): Promise<boolean> {
-    const initialBlockNumber = await this.getBlockByTimestamp(startTimestamp * 1000);
-    const endBlockNumber = endTimestamp !== undefined ? await this.getBlockByTimestamp(endTimestamp * 1000) : await this.getLatestBlockNumber();
+    const initialBlockNumber = await this.getBlockByTimestamp(
+      startTimestamp * 1000
+    );
+    const endBlockNumber =
+      endTimestamp !== undefined
+        ? await this.getBlockByTimestamp(endTimestamp * 1000)
+        : await this.getLatestBlockNumber();
 
     if (!initialBlockNumber || !endBlockNumber) {
-      throw new Error('[CelestiaIndexer] No block found at one of the timestamps');
+      throw new Error(
+        '[CelestiaIndexer] No block found at one of the timestamps'
+      );
     }
-    
 
-    console.log("[CelestiaIndexer] Initial backfilling block number", initialBlockNumber);
-    console.log("[CelestiaIndexer] End backfilling block number", endBlockNumber);
+    console.log(
+      '[CelestiaIndexer] Initial backfilling block number',
+      initialBlockNumber
+    );
+    console.log(
+      '[CelestiaIndexer] End backfilling block number',
+      endBlockNumber
+    );
 
     for (
       let blockNumber = endBlockNumber;
@@ -280,12 +304,17 @@ class CelestiaIndexer implements IResourcePriceIndexer {
         });
 
         if (resourcePrice) {
-          console.log("[CelestiaIndexer] Resource price already exists for block", blockNumber);
+          console.log(
+            '[CelestiaIndexer] Resource price already exists for block',
+            blockNumber
+          );
           continue;
         }
 
-
-        console.log('[CelestiaIndexer] Indexing resource price (TIA) from block ', blockNumber);
+        console.log(
+          '[CelestiaIndexer] Indexing resource price (TIA) from block ',
+          blockNumber
+        );
 
         const block = await this.getBlockFromCelenium(blockNumber);
         block.timeMs = new Date(block.time).getTime();
@@ -294,7 +323,10 @@ class CelestiaIndexer implements IResourcePriceIndexer {
         // TODO: Check if we can pull several blocks at once to speed up the process (and reduce the number of requests)
         await this.storeBlockPrice(block, resource);
       } catch (error) {
-        console.error(`[CelestiaIndexer] Error processing block ${blockNumber}:`, error);
+        console.error(
+          `[CelestiaIndexer] Error processing block ${blockNumber}:`,
+          error
+        );
       }
     }
     return true;
@@ -325,7 +357,10 @@ class CelestiaIndexer implements IResourcePriceIndexer {
         });
 
         if (resourcePrice) {
-          console.log("[CelestiaIndexer] Resource price already exists for block", blockNumber);
+          console.log(
+            '[CelestiaIndexer] Resource price already exists for block',
+            blockNumber
+          );
           continue;
         }
 
@@ -335,7 +370,10 @@ class CelestiaIndexer implements IResourcePriceIndexer {
         // TODO: Same concerns apply as in indexBlockPriceFromTimestamp
         await this.storeBlockPrice(block, resource);
       } catch (error) {
-        console.error(`[CelestiaIndexer] Error processing block ${blockNumber}:`, error);
+        console.error(
+          `[CelestiaIndexer] Error processing block ${blockNumber}:`,
+          error
+        );
       }
     }
     return true;
@@ -343,7 +381,9 @@ class CelestiaIndexer implements IResourcePriceIndexer {
 
   public async watchBlocksForResource(resource: Resource): Promise<void> {
     if (this.isWatching) {
-      console.log('[CelestiaIndexer] Already watching blocks for this resource');
+      console.log(
+        '[CelestiaIndexer] Already watching blocks for this resource'
+      );
       return;
     }
 
