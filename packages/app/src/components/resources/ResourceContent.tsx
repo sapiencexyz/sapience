@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import React from 'react';
 import { formatUnits } from 'viem';
+import { useQuery } from '@tanstack/react-query';
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Toggle } from '@/components/ui/toggle';
@@ -22,6 +23,7 @@ import { BLUE } from '~/lib/hooks/useChart';
 import { useLatestResourcePrice, useResources } from '~/lib/hooks/useResources';
 import { TimeWindow, TimeInterval } from '~/lib/interfaces/interfaces';
 import { cn } from '~/lib/utils';
+import { foilApi } from '~/lib/utils/util';
 
 interface ResourcePrice {
   timestamp: string;
@@ -88,7 +90,8 @@ const EpochsTable = ({ data, lastHoveredId, onHover }: EpochsTableProps) => {
 const renderPriceDisplay = (
   isLoading: boolean,
   price: ResourcePrice | undefined,
-  resourceName: string
+  resourceName: string,
+  cryptoPrices: any
 ) => {
   if (isLoading) {
     return <span className="text-2xl font-bold">Loading...</span>;
@@ -100,6 +103,10 @@ const renderPriceDisplay = (
 
   let unit;
   let precision;
+  let cryptoKey: 'btc' | 'sol' | 'eth' | undefined;
+  let showTransfer = false;
+  let transferMultiplier = 0;
+  let decimalPlaces = 2;
 
   if (resourceName === 'Celestia Blobspace') {
     unit = 'μTIA';
@@ -107,11 +114,34 @@ const renderPriceDisplay = (
   } else if (resourceName === 'Solana Fees') {
     unit = 'lamports';
     precision = 6;
+    cryptoKey = 'sol';
+    showTransfer = true;
+    // 250,000 compute units * lamports per CU
+    transferMultiplier = 250000;
   } else if (resourceName === 'Bitcoin Fees') {
     unit = 'sats';
     precision = 4;
-  } else {
+    cryptoKey = 'btc';
+    showTransfer = true;
+    // 250 vbytes * sats per vbyte
+    transferMultiplier = 250;
+  } else if (['Arbitrum Gas', 'Base Gas'].includes(resourceName)) {
     unit = 'gwei';
+    precision = 4;
+    cryptoKey = 'eth';
+    showTransfer = true;
+    // 65,000 gas * gwei per gas
+    transferMultiplier = 65000;
+    decimalPlaces = 4;
+  } else if (resourceName === 'Ethereum Gas') {
+    unit = 'gwei';
+    precision = 4;
+    cryptoKey = 'eth';
+    showTransfer = true;
+    // 65,000 gas * gwei per gas
+    transferMultiplier = 65000;
+  } else {
+    unit = '';
     precision = 4;
   }
 
@@ -131,13 +161,34 @@ const renderPriceDisplay = (
   };
 
   const displayValue = formatUnits(BigInt(price.value), 9);
-
+  
   document.title = `${formatTitleNumber(displayValue)} ${unit} | ${resourceName} | Foil`;
 
+  const cryptoPrice = cryptoKey ? cryptoPrices?.[cryptoKey] : null;
+  
+  let usdValue = 0;
+  if (cryptoPrice && showTransfer && cryptoKey) {
+    const baseUnitConversion: Record<'btc' | 'sol' | 'eth', number> = {
+      'btc': 100000000, // sats per BTC
+      'sol': 1000000000, // lamports per SOL
+      'eth': 1000000000, // gwei per ETH
+    };
+
+    // Calculate: (price per unit * number of units) * (crypto price / base units)
+    usdValue = (parseFloat(displayValue) * transferMultiplier) * (cryptoPrice / baseUnitConversion[cryptoKey]);
+  }
+
   return (
-    <span className="text-2xl font-bold">
-      <NumberDisplay value={displayValue} precision={precision} /> {unit}
-    </span>
+    <div className="flex flex-col gap-1">
+      <span className="text-2xl font-bold">
+        <NumberDisplay value={displayValue} precision={precision} /> {unit}
+      </span>
+      {showTransfer && cryptoPrice && (
+        <span className="text-xs text-muted-foreground mt-0.5">
+          <span className="font-medium">Token Transfer:</span> ${usdValue.toLocaleString(undefined, { minimumFractionDigits: decimalPlaces, maximumFractionDigits: decimalPlaces })}
+        </span>
+      )}
+    </div>
   );
 };
 
@@ -149,6 +200,14 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
   const { data: resources, isLoading: isLoadingResources } = useResources();
   const { data: latestPrice, isLoading: isPriceLoading } =
     useLatestResourcePrice(id);
+  const { data: cryptoPrices } = useQuery({
+    queryKey: ['cryptoPrices'],
+    queryFn: async () => {
+      const response = await foilApi.get('/crypto-prices');
+      return response;
+    },
+    refetchInterval: 60000, // Refetch every minute
+  });
 
   const DEFAULT_SELECTED_WINDOW = TimeWindow.W;
   const [selectedInterval, setSelectedInterval] = React.useState(
@@ -223,7 +282,8 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
                   {renderPriceDisplay(
                     isPriceLoading,
                     latestPrice,
-                    resource.name
+                    resource.name,
+                    cryptoPrices
                   )}
                 </div>
               </div>
