@@ -232,7 +232,7 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
 
   if (isLoadingResources) {
     return (
-      <div className="flex items-center justify-center h-[80vh]">
+      <div className="flex items-center justify-center h-[80dvh]">
         <Loader2 className="h-8 w-8 opacity-50 animate-spin text-muted-foreground" />
       </div>
     );
@@ -243,7 +243,7 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
 
   if (!resource) {
     return (
-      <div className="flex items-center justify-center h-[80vh]">
+      <div className="flex items-center justify-center h-[80dvh]">
         <Loader2 className="h-8 w-8 opacity-50 animate-spin text-muted-foreground" />
       </div>
     );
@@ -273,7 +273,7 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
     : undefined;
 
   return (
-    <div className="flex flex-col md:flex-row h-[calc(100vh-69px-53px-69px)] md:h-[calc(100vh-69px-53px)] p-3 lg:p-6 gap-3 lg:gap-6">
+    <div className="flex flex-col md:flex-row h-[calc(100dvh-69px-53px-69px)] md:h-[calc(100dvh-69px-53px)] p-3 lg:p-6 gap-3 lg:gap-6">
       <div
         className={`flex-1 min-w-0 ${!epochs.length ? 'w-full' : ''} flex flex-col`}
       >
