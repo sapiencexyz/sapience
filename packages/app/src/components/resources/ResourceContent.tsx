@@ -141,7 +141,7 @@ const renderPriceDisplay = (
     // 65,000 gas * gwei per gas
     transferMultiplier = 65000;
   } else {
-    unit = '';
+    unit = 'gwei';
     precision = 4;
   }
 
