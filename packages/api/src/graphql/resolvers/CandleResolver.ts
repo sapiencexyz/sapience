@@ -7,6 +7,7 @@ import { MarketPrice } from '../../models/MarketPrice';
 import { Market } from '../../models/Market';
 import { Epoch } from '../../models/Epoch';
 import { CandleType } from '../types';
+import { ResourcePerformanceManager } from 'src/performance';
 
 interface PricePoint {
   timestamp: number;
@@ -266,49 +267,59 @@ export class CandleResolver {
     @Arg('to', () => Int) to: number,
     @Arg('interval', () => Int) interval: number
   ): Promise<CandleType[]> {
-    try {
-      const resource = await dataSource.getRepository(Resource).findOne({
-        where: { slug },
-      });
+    const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
+    const resourcePerformance = resourcePerformanceManager.getResourcePerformance(slug);
 
-      if (!resource) {
-        throw new Error(`Resource not found with slug: ${slug}`);
-      }
-
-      // First get the most recent price before the from timestamp
-      const lastPriceBefore = await dataSource
-        .getRepository(ResourcePrice)
-        .createQueryBuilder('price')
-        .where('price.resourceId = :resourceId', { resourceId: resource.id })
-        .andWhere('price.timestamp < :from', { from })
-        .orderBy('price.timestamp', 'DESC')
-        .take(1)
-        .getOne();
-
-      // Then get all prices within the range
-      const pricesInRange = await dataSource.getRepository(ResourcePrice).find({
-        where: {
-          resource: { id: resource.id },
-          timestamp: Between(from, to),
-        },
-        order: { timestamp: 'ASC' },
-      });
-
-      // Combine the results, putting the last price before first if it exists
-      const prices = pricesInRange;
-      const lastKnownPrice = lastPriceBefore?.value;
-
-      return groupPricesByInterval(
-        prices.map((p) => ({ timestamp: Number(p.timestamp), value: p.value })),
-        interval,
-        from,
-        to,
-        lastKnownPrice
-      );
-    } catch (error) {
-      console.error('Error fetching resource candles:', error);
-      throw new Error('Failed to fetch resource candles');
+    if (!resourcePerformance) {
+      throw new Error(`Resource performance not initialized for ${slug}`);
     }
+
+    const prices = resourcePerformance.getResourcePrices(from, to, interval);
+
+    return prices;
+    // try {
+    //   const resource = await dataSource.getRepository(Resource).findOne({
+    //     where: { slug },
+    //   });
+
+    //   if (!resource) {
+    //     throw new Error(`Resource not found with slug: ${slug}`);
+    //   }
+
+    //   // First get the most recent price before the from timestamp
+    //   const lastPriceBefore = await dataSource
+    //     .getRepository(ResourcePrice)
+    //     .createQueryBuilder('price')
+    //     .where('price.resourceId = :resourceId', { resourceId: resource.id })
+    //     .andWhere('price.timestamp < :from', { from })
+    //     .orderBy('price.timestamp', 'DESC')
+    //     .take(1)
+    //     .getOne();
+
+    //   // Then get all prices within the range
+    //   const pricesInRange = await dataSource.getRepository(ResourcePrice).find({
+    //     where: {
+    //       resource: { id: resource.id },
+    //       timestamp: Between(from, to),
+    //     },
+    //     order: { timestamp: 'ASC' },
+    //   });
+
+    //   // Combine the results, putting the last price before first if it exists
+    //   const prices = pricesInRange;
+    //   const lastKnownPrice = lastPriceBefore?.value;
+
+    //   return groupPricesByInterval(
+    //     prices.map((p) => ({ timestamp: Number(p.timestamp), value: p.value })),
+    //     interval,
+    //     from,
+    //     to,
+    //     lastKnownPrice
+    //   );
+    // } catch (error) {
+    //   console.error('Error fetching resource candles:', error);
+    //   throw new Error('Failed to fetch resource candles');
+    // }
   }
 
   @Query(() => [CandleType])
