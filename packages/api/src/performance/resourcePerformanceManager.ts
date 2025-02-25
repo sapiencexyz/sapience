@@ -28,6 +28,7 @@ export class ResourcePerformanceManager {
     if (ResourcePerformanceManager._initializing) {
       return;
     }
+    console.time('ResourcePerformanceManager.initialize');
     ResourcePerformanceManager._initializing = true;
     this.resources = resources;
     for (const resource of this.resources) {
@@ -38,6 +39,7 @@ export class ResourcePerformanceManager {
     }
     ResourcePerformanceManager._initialized = true;
     ResourcePerformanceManager._initializing = false;
+    console.timeEnd('ResourcePerformanceManager.initialize');
   }
 
   public getResourcePerformance(resourceSlug: string) {

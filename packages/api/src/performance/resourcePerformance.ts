@@ -9,10 +9,7 @@ import { ResourcePrice } from 'src/models/ResourcePrice';
 import { Market } from 'src/models/Market';
 import { Epoch } from 'src/models/Epoch';
 import { In } from 'typeorm';
-import {
-  CandleData,
-  StorageData,
-} from './types';
+import { CandleData, StorageData } from './types';
 
 import {
   INTERVAL_5_MINUTES,
@@ -22,6 +19,8 @@ import {
   INTERVAL_1_DAY,
   INTERVAL_28_DAYS,
 } from './constants';
+
+import { saveStorageToFile } from './helper';
 
 export class ResourcePerformance {
   static readonly MIN_INTERVAL = INTERVAL_5_MINUTES;
@@ -156,13 +155,14 @@ export class ResourcePerformance {
     console.time(`backfillResourcePrices.${this.resource.name}.find.epochs`);
     this.epochs = await epochRepository.find({
       where: {
-        market: In(this.markets.map((m) => m.id)),
+        market: { resource: { id: this.resource.id } },
       },
       order: {
         startTimestamp: 'ASC',
       },
     });
     console.timeEnd(`backfillResourcePrices.${this.resource.name}.find.epochs`);
+
     // clean up runtime
     this.runtime.indexProcessData = {};
     this.runtime.dbResourcePricesLength = dbResourcePrices.length;
@@ -170,45 +170,26 @@ export class ResourcePerformance {
     this.runtime.currentIdx = 0;
     // TODO: do the initialization of the storage and runtime here
 
-
     while (this.runtime.currentIdx < dbResourcePrices.length) {
       const item = dbResourcePrices[this.runtime.currentIdx];
       for (const interval of this.intervals) {
         this.processResourcePriceData(item, this.runtime.currentIdx, interval);
         this.processTrailingAvgPricesData(item, this.runtime.currentIdx, interval);
-        // this.backFillMarketPrices(currentDbResourcePrice, interval);
         this.processIndexPricesData(item, this.runtime.currentIdx, interval);
       }
       this.runtime.currentIdx++;
     }
-    this.lastTimestampProcessed = dbResourcePrices[this.runtime.currentIdx - 1].timestamp;
+    this.lastTimestampProcessed =
+      dbResourcePrices[this.runtime.currentIdx - 1].timestamp;
     console.timeEnd(`backfillResourcePrices.${this.resource.name}`);
-    // Save storage to JSON file
-    // console.time(`backfillResourcePrices.${this.resource.name}.saveStorage`);
-    // const fs = await import('fs');
-    // const path = await import('path');
 
-    // const storageDir = path.join(process.cwd(), 'storage');
-    // if (!fs.existsSync(storageDir)) {
-    //   fs.mkdirSync(storageDir);
-    // }
+    await saveStorageToFile(
+      this.storage,
+      this.resource.slug,
+      this.resource.name
+    );
 
-    // const filename = path.join(
-    //   storageDir,
-    //   `${this.resource.slug}-storage.json`
-    // );
-    // await fs.promises.writeFile(
-    //   filename,
-    //   JSON.stringify(
-    //     this.storage,
-    //     (key, value) =>
-    //       typeof value === 'bigint' ? value.toString() : value, // return everything else unchanged
-    //     2
-    //   )
-    // );
-
-    // console.timeEnd(`backfillResourcePrices.${this.resource.name}.saveStorage`);
-    // console.log(`Saved storage to ${filename}`);
+    this.runtime.processingResourceItems = false;
   }
 
   // async backfillMarketPrices() {
@@ -305,6 +286,7 @@ export class ResourcePerformance {
       if (!epochStartTime || item.timestamp < epochStartTime) {
         continue;
       }
+
       if (!this.runtime.indexProcessData[interval]) {
         this.runtime.indexProcessData[interval] = {};
       }
@@ -355,7 +337,6 @@ export class ResourcePerformance {
         // prepare next interval. Notice, don't reset the used and feePaid here because is an index price
         ipd.nextTimestamp = this.nextInterval(item.timestamp, interval);
       }
-
       ipd.used += BigInt(item.used);
       ipd.feePaid += BigInt(item.feePaid);
     }
@@ -395,11 +376,11 @@ export class ResourcePerformance {
     ) {
       // is in next interval, push to store and reset the runtime values for the next interval
       // push to the store
-      const resourceStore = this.storage[interval].resourceStore;
+      const trailingAvgStore = this.storage[interval].trailingAvgStore;
 
       const price = tpd.used > 0n ? tpd.feePaid / tpd.used : 0n;
 
-      resourceStore.data.push({
+      trailingAvgStore.data.push({
         timestamp: item.timestamp,
         open: price.toString(),
         high: price.toString(),
@@ -408,25 +389,25 @@ export class ResourcePerformance {
       });
       const itemStartTime = tpd.nextTimestamp;
       tpd.nextTimestamp = this.nextInterval(item.timestamp, interval);
-      resourceStore.metadata.push({
+      trailingAvgStore.metadata.push({
         startTimestamp: itemStartTime,
         endTimestamp: tpd.nextTimestamp,
         used: tpd.used,
         feePaid: tpd.feePaid,
       });
-      resourceStore.pointers[item.timestamp] = resourceStore.data.length - 1;
+      trailingAvgStore.pointers[item.timestamp] =
+        trailingAvgStore.data.length - 1;
 
       // prepare next interval. Notice, don't reset the used and feePaid here because is an index price
       tpd.used = price;
       tpd.feePaid = price;
     }
 
-
     // Remove the old items from the trailing avg if they are before the trailing avg timestamp
     let startIdx = tpd.startTimestampIndex;
     let oldItem = this.runtime.dbResourcePrices[startIdx];
     let trailingAvgTimestamp = tpd.nextTimestamp - this.trailingAvgTime;
-    while(oldItem.timestamp < trailingAvgTimestamp) {
+    while (oldItem.timestamp < trailingAvgTimestamp) {
       startIdx++;
       oldItem = this.runtime.dbResourcePrices[startIdx];
       tpd.used -= BigInt(item.used);
@@ -440,7 +421,6 @@ export class ResourcePerformance {
       tpd.feePaid += BigInt(item.feePaid);
       tpd.endTimestampIndex = currentIdx;
     }
-
   }
 
   getResourcePrices(from: number, to: number, interval: number) {

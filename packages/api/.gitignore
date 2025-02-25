@@ -2,3 +2,6 @@ dist
 data
 # Sentry Config File
 .sentryclirc
+
+# Application specific files
+/storage
