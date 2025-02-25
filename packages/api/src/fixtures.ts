@@ -33,7 +33,7 @@ export const RESOURCES = [
   {
     name: 'Ethereum Blobspace',
     slug: 'ethereum-blobspace',
-    priceIndexer: new ethBlobsIndexer(),
+    priceIndexer: new ethBlobsIndexer(mainnet.id),
   },
   {
     name: 'Bitcoin Fees',
