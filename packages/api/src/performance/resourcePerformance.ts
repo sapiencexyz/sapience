@@ -36,6 +36,7 @@ export class ResourcePerformance {
   private storage: StorageData = {};
 
   private runtime: {
+    dbResourcePrices: ResourcePrice[];
     dbResourcePricesLength: number;
     currentIdx: number;
     processingResourceItems: boolean;
@@ -69,6 +70,7 @@ export class ResourcePerformance {
       };
     };
   } = {
+    dbResourcePrices: [],
     dbResourcePricesLength: 0,
     currentIdx: 0,
     processingResourceItems: false,
@@ -164,6 +166,7 @@ export class ResourcePerformance {
     // clean up runtime
     this.runtime.indexProcessData = {};
     this.runtime.dbResourcePricesLength = dbResourcePrices.length;
+    this.runtime.dbResourcePrices = dbResourcePrices;
     this.runtime.currentIdx = 0;
     // TODO: do the initialization of the storage and runtime here
 
@@ -172,7 +175,7 @@ export class ResourcePerformance {
       const item = dbResourcePrices[this.runtime.currentIdx];
       for (const interval of this.intervals) {
         this.processResourcePriceData(item, this.runtime.currentIdx, interval);
-        // this.processTrailingAvgPricesData(item, this.runtime.currentIdx, interval);
+        this.processTrailingAvgPricesData(item, this.runtime.currentIdx, interval);
         // this.backFillMarketPrices(currentDbResourcePrice, interval);
         this.processIndexPricesData(item, this.runtime.currentIdx, interval);
       }
@@ -376,12 +379,10 @@ export class ResourcePerformance {
     }
 
     const tpd = this.runtime.trailingAvgProcessData[interval];
-    const price =
-      BigInt(item.used) > 0n ? BigInt(item.feePaid) / BigInt(item.used) : 0n;
     if (!tpd.nextTimestamp) {
       tpd.nextTimestamp = this.nextInterval(item.timestamp, interval);
-      tpd.used = price;
-      tpd.feePaid = price;
+      tpd.used = BigInt(item.used);
+      tpd.feePaid = BigInt(item.feePaid);
       tpd.startTimestamp = item.timestamp;
       tpd.endTimestamp = item.timestamp;
       tpd.startTimestampIndex = currentIdx;
@@ -396,61 +397,48 @@ export class ResourcePerformance {
       // push to the store
       const resourceStore = this.storage[interval].resourceStore;
 
+      const price = tpd.used > 0n ? tpd.feePaid / tpd.used : 0n;
+
       resourceStore.data.push({
         timestamp: item.timestamp,
-        open: tpd.used.toString(),
-        high: tpd.feePaid.toString(),
-        low: tpd.used.toString(),
-        close: tpd.feePaid.toString(),
+        open: price.toString(),
+        high: price.toString(),
+        low: price.toString(),
+        close: price.toString(),
       });
       const itemStartTime = tpd.nextTimestamp;
       tpd.nextTimestamp = this.nextInterval(item.timestamp, interval);
       resourceStore.metadata.push({
         startTimestamp: itemStartTime,
         endTimestamp: tpd.nextTimestamp,
-        used: 0n,
-        feePaid: 0n,
+        used: tpd.used,
+        feePaid: tpd.feePaid,
       });
       resourceStore.pointers[item.timestamp] = resourceStore.data.length - 1;
 
       // prepare next interval. Notice, don't reset the used and feePaid here because is an index price
       tpd.used = price;
       tpd.feePaid = price;
-    // } else {
-    // // get the indexes for the start and end of the interval
-    // startIdx = orderedPrices.findIndex(
-    //   (p) => p.timestamp >= timestamp - trailingIntervalSeconds
-    // );
-    // endIdx = orderedPrices.findIndex((p) => p.timestamp > timestamp); // notice is the next item, we need to correct it later
-    // // Remove from the sliding window trailing average the prices that are no longer in the interval
-    // if (startIdx != -1) {
-    //   for (let i = lastStartIdx; i <= startIdx; i++) {
-    //     totalGasUsed -= BigInt(orderedPrices[i].used);
-    //     totalBaseFeesPaid -= BigInt(orderedPrices[i].feePaid);
-    //   }
-    // }
-    // lastStartIdx = startIdx;
-    // // if found and not previous endIdx, correct the +1 offset of the endIdx (since we found the next item)
-    // if (endIdx != -1 && endIdx > lastEndIdx) {
-    //   endIdx--;
-    // }
+    }
 
-    // // If not found, use the last index of the orderedPrices array
-    // if (endIdx == -1) {
-    //   endIdx = orderedPrices.length - 1;
-    // }
-    // // Add to the sliding window trailing average the prices that are now in the interval
-    // for (let i = lastEndIdx; i <= endIdx; i++) {
-    //   totalGasUsed += BigInt(orderedPrices[i].used);
-    //   totalBaseFeesPaid += BigInt(orderedPrices[i].feePaid);
-    // }
-    // lastEndIdx = endIdx;
 
-    // // Calculate the average price for the interval
-    // if (totalGasUsed > 0n) {
-    //   const averagePrice: bigint = totalBaseFeesPaid / totalGasUsed;
-    //   lastClose = averagePrice.toString();
-    // }
+    // Remove the old items from the trailing avg if they are before the trailing avg timestamp
+    let startIdx = tpd.startTimestampIndex;
+    let oldItem = this.runtime.dbResourcePrices[startIdx];
+    let trailingAvgTimestamp = tpd.nextTimestamp - this.trailingAvgTime;
+    while(oldItem.timestamp < trailingAvgTimestamp) {
+      startIdx++;
+      oldItem = this.runtime.dbResourcePrices[startIdx];
+      tpd.used -= BigInt(item.used);
+      tpd.feePaid -= BigInt(item.feePaid);
+      tpd.startTimestampIndex = startIdx;
+    }
+
+    // We are adding the new item to the trailing avg if it's in the next interval
+    if (item.timestamp <= tpd.nextTimestamp) {
+      tpd.used += BigInt(item.used);
+      tpd.feePaid += BigInt(item.feePaid);
+      tpd.endTimestampIndex = currentIdx;
     }
 
   }
