@@ -218,11 +218,22 @@ if (process.argv[2] === 'reindexMarket') {
     if (!resource) {
       throw new Error('Resource for the chosen slug was not found');
     }
-    await reindexResource(resource, startTimestamp, endTimestamp);
+    const result = await reindexResource(
+      resource,
+      startTimestamp,
+      endTimestamp
+    );
+
+    if (!result) {
+      console.error('Failed to reindex resource');
+      process.exit(1);
+    }
 
     process.exit(0);
   };
-  callReindexResource();
+
+  await callReindexResource();
+
   console.log('Done reindexing');
 } else {
   main();

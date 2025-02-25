@@ -3,6 +3,8 @@ import Sentry from '../sentry';
 import { IResourcePriceIndexer } from '../interfaces';
 import { Resource } from 'src/models/Resource';
 import axios from 'axios';
+import { getBlockByTimestamp, getProviderForChain } from 'src/utils';
+import { PublicClient } from 'viem';
 
 interface BlobData {
   blobGasPrice: string;
@@ -12,25 +14,27 @@ interface BlobData {
 }
 
 class ethBlobsIndexer implements IResourcePriceIndexer {
+  public client: PublicClient;
   private isWatching: boolean = false;
   private blobscanApiUrl: string = 'https://api.blobscan.com';
   private retryDelay: number = 1000; // 1 second
   private maxRetries: number = 3;
+
+  constructor(chainId: number) {
+    this.client = getProviderForChain(chainId);
+  }
 
   private async fetchBlobDataFromBlobscan(
     blockNumber: number,
     retryCount = 0
   ): Promise<BlobData | null> {
     try {
-      const response = await axios.get(`${this.blobscanApiUrl}/blocks`, {
-        params: {
-          startBlock: blockNumber,
-          endBlock: blockNumber,
-        },
-      });
+      const response = await axios.get(
+        `${this.blobscanApiUrl}/blocks/${blockNumber}`
+      );
 
-      if (response.data?.blocks?.[0]) {
-        const block = response.data.blocks[0];
+      if (response.data) {
+        const block = response.data;
         const timestamp = Math.floor(
           new Date(block.timestamp).getTime() / 1000
         );
@@ -52,6 +56,10 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
           );
           await new Promise((resolve) => setTimeout(resolve, this.retryDelay));
           return this.fetchBlobDataFromBlobscan(blockNumber, retryCount + 1);
+        } else if (error.response?.status === 404) {
+          console.warn(
+            `Seems like no blob data exists for block ${blockNumber}, skipping...`
+          );
         }
 
         // Log specific error details
@@ -61,11 +69,12 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
           scope.setExtra('errorMessage', error.message);
           Sentry.captureException(error);
         });
+      } else {
+        console.warn(
+          `Failed to fetch blob data for block ${blockNumber}:`,
+          error
+        );
       }
-      console.warn(
-        `Failed to fetch blob data for block ${blockNumber}:`,
-        error
-      );
       return null;
     }
   }
@@ -86,7 +95,6 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
         return;
       }
 
-      const used = blobData.blobGasUsed;
       const feePaid =
         BigInt(blobData.blobGasPrice) * BigInt(blobData.blobGasUsed);
 
@@ -94,12 +102,15 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
         resource: { id: resource.id },
         timestamp: blobData.timestamp,
         value: blobData.blobGasPrice,
-        used: used,
+        used: blobData.blobGasUsed,
         feePaid: feePaid.toString(),
         blockNumber: blockNumber,
       };
 
       await resourcePriceRepository.upsert(price, ['resource', 'timestamp']);
+      console.log(
+        `[EthBlobIndexer] Stored block price for block ${blockNumber}`
+      );
     } catch (error) {
       console.error('Error storing block price:', error);
       Sentry.withScope((scope) => {
@@ -112,31 +123,56 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
 
   async indexBlockPriceFromTimestamp(
     resource: Resource,
-    timestamp: number
+    startTimestamp: number,
+    endTimestamp?: number
   ): Promise<boolean> {
     try {
-      // Get recent blobs to find a reasonable block range
-      const response = await axios.get(`${this.blobscanApiUrl}/blobs`, {
-        params: {
-          ps: 1,
-          sort: 'desc',
-        },
-      });
+      const startBlock = Number(
+        (await getBlockByTimestamp(this.client, startTimestamp)).number
+      );
 
-      if (!response.data?.blobs?.[0]?.blockNumber) {
-        console.error('Failed to get recent blob data');
+      let endBlock: number;
+
+      if (endTimestamp) {
+        endBlock = Number(
+          (await getBlockByTimestamp(this.client, endTimestamp)).number
+        );
+      } else {
+        const latestBlockNumber = await this.getLatestBlockNumber();
+        if (!latestBlockNumber) {
+          console.error('Failed to get latest block number');
+          return false;
+        }
+        endBlock = Number(latestBlockNumber);
+      }
+
+      if (!startBlock || !endBlock) {
+        console.error('Failed to get start or end block');
         return false;
       }
 
-      const currentBlockNumber = response.data.blobs[0].blockNumber;
-      const startBlock = Math.floor(timestamp / 12); // Approximate block number based on 12s block time
+      console.log('[EthBlobIndexer] Start block:', startBlock);
+      console.log('[EthBlobIndexer] End block:', endBlock);
 
+      // Process blocks from latest to start
       for (
-        let blockNumber = startBlock;
-        blockNumber <= currentBlockNumber;
-        blockNumber++
+        let blockNumber = endBlock;
+        blockNumber >= startBlock;
+        blockNumber--
       ) {
         try {
+          const maybeResourcePrice = await resourcePriceRepository.findOne({
+            where: {
+              resource: { id: resource.id },
+              blockNumber,
+            },
+          });
+
+          if (maybeResourcePrice) {
+            console.log('Skipping block', blockNumber, 'as it already exists');
+            continue;
+          }
+
           console.log('Indexing blob data from block', blockNumber);
           await this.storeBlockPrice(blockNumber, resource);
         } catch (error) {
@@ -144,7 +180,7 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
           Sentry.withScope((scope) => {
             scope.setExtra('blockNumber', blockNumber);
             scope.setExtra('resource', resource.slug);
-            scope.setExtra('timestamp', timestamp);
+            scope.setExtra('timestamp', startTimestamp);
             Sentry.captureException(error);
           });
         }
@@ -154,6 +190,22 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
       console.error('Failed to index blocks from timestamp:', error);
       return false;
     }
+  }
+
+  private async getLatestBlockNumber(): Promise<number | null> {
+    const response = await axios.get(`${this.blobscanApiUrl}/blocks`, {
+      params: {
+        ps: 1,
+        sort: 'desc',
+      },
+    });
+
+    if (!response.data?.blocks?.[0]) {
+      console.log('[EthBlobIndexer] No new blocks found in this poll');
+      return null;
+    }
+    const latestBlock = response.data.blocks[0];
+    return latestBlock.number;
   }
 
   async indexBlocks(resource: Resource, blocks: number[]): Promise<boolean> {
@@ -194,20 +246,12 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
         console.log('[EthBlobIndexer] Polling for new blocks...');
 
         // Get most recent block
-        const response = await axios.get(`${this.blobscanApiUrl}/blocks`, {
-          params: {
-            ps: 1,
-            sort: 'desc',
-          },
-        });
+        const currentBlockNumber = await this.getLatestBlockNumber();
 
-        if (!response.data?.blocks?.[0]) {
-          console.log('[EthBlobIndexer] No new blocks found in this poll');
+        if (!currentBlockNumber) {
+          console.error('Failed to get latest block number');
           return;
         }
-
-        const latestBlock = response.data.blocks[0];
-        const currentBlockNumber = latestBlock.number;
 
         if (currentBlockNumber > lastProcessedBlock) {
           console.log(`[EthBlobIndexer] Found new block ${currentBlockNumber}`);
