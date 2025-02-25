@@ -10,6 +10,7 @@ import { Epoch } from 'src/models/Epoch';
 import { CandleData, StorageData } from './types';
 
 import {
+  INTERVAL_1_MINUTE,
   INTERVAL_5_MINUTES,
   INTERVAL_15_MINUTES,
   INTERVAL_30_MINUTES,
@@ -79,6 +80,7 @@ export class ResourcePerformance {
   constructor(
     resource: Resource,
     intervals: number[] = [
+      INTERVAL_1_MINUTE,
       INTERVAL_5_MINUTES,
       INTERVAL_15_MINUTES,
       INTERVAL_30_MINUTES,

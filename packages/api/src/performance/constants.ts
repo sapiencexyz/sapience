@@ -1,3 +1,4 @@
+export const INTERVAL_1_MINUTE = 60;
 export const INTERVAL_5_MINUTES = 5 * 60;
 export const INTERVAL_15_MINUTES = 15 * 60;
 export const INTERVAL_30_MINUTES = 30 * 60;
