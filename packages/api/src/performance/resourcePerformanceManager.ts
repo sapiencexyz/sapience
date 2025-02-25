@@ -49,6 +49,18 @@ export class ResourcePerformanceManager {
     return this.resourcePerformances[resourceSlug];
   }
 
+  public getResourcePerformanceFromChainAndAddress(chainId: number, address: string) {
+    for (const resource of this.resources) {
+      const slug = resource.slug;
+      const rp = this.resourcePerformances[slug];
+      if (rp.getMarketFromChainAndAddress(chainId, address)) {
+        return rp;
+      }
+    }
+
+    throw new Error(`Resource performance not initialized for ${chainId}-${address}`);
+  }
+
   public getResourcePerformances() {
     if (!ResourcePerformanceManager._initialized) {
       throw new Error('Resource performance not initialized');

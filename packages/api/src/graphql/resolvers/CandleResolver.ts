@@ -330,59 +330,71 @@ export class CandleResolver {
     @Arg('interval', () => Int) interval: number,
     @Arg('trailingTime', () => Int) trailingTime: number
   ): Promise<CandleType[]> {
-    try {
-      const trailingFrom = from - trailingTime;
-      const resource = await dataSource.getRepository(Resource).findOne({
-        where: { slug },
-      });
+    const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
+    const resourcePerformance = resourcePerformanceManager.getResourcePerformance(slug);
 
-      if (!resource) {
-        throw new Error(`Resource not found with slug: ${slug}`);
-      }
-
-      // First get the most recent price before the trailingFrom timestamp
-      const lastPriceBefore = await dataSource
-        .getRepository(ResourcePrice)
-        .createQueryBuilder('price')
-        .where('price.resourceId = :resourceId', { resourceId: resource.id })
-        .andWhere('price.timestamp < :from', { from: trailingFrom })
-        .orderBy('price.timestamp', 'DESC')
-        .take(1)
-        .getOne();
-
-      // Then get all prices within the range
-      const pricesInRange = await dataSource.getRepository(ResourcePrice).find({
-        where: {
-          resource: { id: resource.id },
-          timestamp: Between(trailingFrom, to),
-        },
-        order: { timestamp: 'ASC' },
-      });
-
-      const lastKnownPrice =
-        lastPriceBefore?.feePaid && lastPriceBefore?.used
-          ? (
-              BigInt(lastPriceBefore?.feePaid) / BigInt(lastPriceBefore?.used)
-            ).toString()
-          : lastPriceBefore?.value;
-
-      return getTrailingAveragePricesByInterval(
-        pricesInRange.map((p) => ({
-          timestamp: Number(p.timestamp),
-          value: p.value,
-          used: p.used,
-          feePaid: p.feePaid,
-        })),
-        trailingTime,
-        interval,
-        from,
-        to,
-        lastKnownPrice
-      );
-    } catch (error) {
-      console.error('Error fetching resource candles:', error);
-      throw new Error('Failed to fetch resource candles');
+    if (!resourcePerformance) {
+      throw new Error(`Resource performance not initialized for ${slug}`);
     }
+
+    const prices = resourcePerformance.getTrailingAvgPrices(from, to, interval);
+
+    return prices;
+
+
+    // try {
+    //   const trailingFrom = from - trailingTime;
+    //   const resource = await dataSource.getRepository(Resource).findOne({
+    //     where: { slug },
+    //   });
+
+    //   if (!resource) {
+    //     throw new Error(`Resource not found with slug: ${slug}`);
+    //   }
+
+    //   // First get the most recent price before the trailingFrom timestamp
+    //   const lastPriceBefore = await dataSource
+    //     .getRepository(ResourcePrice)
+    //     .createQueryBuilder('price')
+    //     .where('price.resourceId = :resourceId', { resourceId: resource.id })
+    //     .andWhere('price.timestamp < :from', { from: trailingFrom })
+    //     .orderBy('price.timestamp', 'DESC')
+    //     .take(1)
+    //     .getOne();
+
+    //   // Then get all prices within the range
+    //   const pricesInRange = await dataSource.getRepository(ResourcePrice).find({
+    //     where: {
+    //       resource: { id: resource.id },
+    //       timestamp: Between(trailingFrom, to),
+    //     },
+    //     order: { timestamp: 'ASC' },
+    //   });
+
+    //   const lastKnownPrice =
+    //     lastPriceBefore?.feePaid && lastPriceBefore?.used
+    //       ? (
+    //           BigInt(lastPriceBefore?.feePaid) / BigInt(lastPriceBefore?.used)
+    //         ).toString()
+    //       : lastPriceBefore?.value;
+
+    //   return getTrailingAveragePricesByInterval(
+    //     pricesInRange.map((p) => ({
+    //       timestamp: Number(p.timestamp),
+    //       value: p.value,
+    //       used: p.used,
+    //       feePaid: p.feePaid,
+    //     })),
+    //     trailingTime,
+    //     interval,
+    //     from,
+    //     to,
+    //     lastKnownPrice
+    //   );
+    // } catch (error) {
+    //   console.error('Error fetching resource candles:', error);
+    //   throw new Error('Failed to fetch resource candles');
+    // }
   }
 
   @Query(() => [CandleType])
@@ -394,64 +406,74 @@ export class CandleResolver {
     @Arg('to', () => Int) to: number,
     @Arg('interval', () => Int) interval: number
   ): Promise<CandleType[]> {
-    try {
-      const market = await dataSource.getRepository(Market).findOne({
-        where: { chainId, address },
-      });
+    const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
+    const resourcePerformance = resourcePerformanceManager.getResourcePerformanceFromChainAndAddress(chainId, address);
 
-      if (!market) {
-        throw new Error(
-          `Market not found with chainId: ${chainId} and address: ${address}`
-        );
-      }
-
-      const epoch = await dataSource.getRepository(Epoch).findOne({
-        where: {
-          market: { id: market.id },
-          epochId: Number(epochId),
-        },
-      });
-
-      if (!epoch) {
-        throw new Error(`Epoch not found with id: ${epochId}`);
-      }
-
-      const resource = await dataSource.getRepository(Resource).findOne({
-        where: {
-          markets: { id: market.id },
-        },
-      });
-
-      if (!resource) {
-        throw new Error(`Resource not found for market: ${market.id}`);
-      }
-
-      // Ensure we don't query prices before epoch start time
-      const effectiveFromTime = Math.max(from, Number(epoch.startTimestamp));
-
-      const pricesInRange = await dataSource.getRepository(ResourcePrice).find({
-        where: {
-          resource: { id: resource.id },
-          timestamp: Between(Number(epoch.startTimestamp), to),
-        },
-        order: { timestamp: 'ASC' },
-      });
-
-      return getIndexPricesByInterval(
-        pricesInRange.map((p) => ({
-          timestamp: Number(p.timestamp),
-          value: p.value,
-          used: p.used,
-          feePaid: p.feePaid,
-        })),
-        interval,
-        effectiveFromTime,
-        to
-      );
-    } catch (error) {
-      console.error('Error fetching index candles:', error);
-      throw new Error('Failed to fetch index candles');
+    if (!resourcePerformance) {
+      throw new Error(`Resource performance not initialized for ${chainId}-${address}`);
     }
+
+    const prices = resourcePerformance.getIndexPrices(from, to, interval, epochId);
+
+    return prices;
+    // try {
+    //   const market = await dataSource.getRepository(Market).findOne({
+    //     where: { chainId, address },
+    //   });
+
+    //   if (!market) {
+    //     throw new Error(
+    //       `Market not found with chainId: ${chainId} and address: ${address}`
+    //     );
+    //   }
+
+    //   const epoch = await dataSource.getRepository(Epoch).findOne({
+    //     where: {
+    //       market: { id: market.id },
+    //       epochId: Number(epochId),
+    //     },
+    //   });
+
+    //   if (!epoch) {
+    //     throw new Error(`Epoch not found with id: ${epochId}`);
+    //   }
+
+    //   const resource = await dataSource.getRepository(Resource).findOne({
+    //     where: {
+    //       markets: { id: market.id },
+    //     },
+    //   });
+
+    //   if (!resource) {
+    //     throw new Error(`Resource not found for market: ${market.id}`);
+    //   }
+
+    //   // Ensure we don't query prices before epoch start time
+    //   const effectiveFromTime = Math.max(from, Number(epoch.startTimestamp));
+
+    //   const pricesInRange = await dataSource.getRepository(ResourcePrice).find({
+    //     where: {
+    //       resource: { id: resource.id },
+    //       timestamp: Between(Number(epoch.startTimestamp), to),
+    //     },
+    //     order: { timestamp: 'ASC' },
+    //   });
+
+    //   return getIndexPricesByInterval(
+    //     pricesInRange.map((p) => ({
+    //       timestamp: Number(p.timestamp),
+    //       value: p.value,
+    //       used: p.used,
+    //       feePaid: p.feePaid,
+    //     })),
+    //     interval,
+    //     effectiveFromTime,
+    //     to
+    //   );
+    // } catch (error) {
+    //   console.error('Error fetching index candles:', error);
+    //   throw new Error('Failed to fetch index candles');
+    // }
   }
 
   // For retrieving the exact settlement price

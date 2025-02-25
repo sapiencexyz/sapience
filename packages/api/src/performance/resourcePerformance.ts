@@ -453,6 +453,10 @@ export class ResourcePerformance {
     );
   }
 
+  getMarketFromChainAndAddress(chainId: number, address: string) {
+    return this.markets.find(m => m.chainId === chainId && m.address.toLowerCase() === address.toLowerCase());
+  }
+
   private checkInterval(interval: number) {
     if (!this.intervals.includes(interval)) {
       throw new Error(
