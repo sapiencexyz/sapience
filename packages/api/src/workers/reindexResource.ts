@@ -10,10 +10,10 @@ export const reindexResource = async (
     return element.slug === resource.slug;
   })?.priceIndexer;
 
-  await indexer?.indexBlockPriceFromTimestamp(
+  const result = await indexer?.indexBlockPriceFromTimestamp(
     resource,
     startTimestamp,
     endTimestamp
   );
-  return;
+  return result;
 };

@@ -1,6 +1,8 @@
 'use client';
 
-import { ChevronRight, Loader2, Circle } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { ChevronRight, Loader2 } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import React from 'react';
 import { formatUnits } from 'viem';
@@ -21,6 +23,7 @@ import { BLUE } from '~/lib/hooks/useChart';
 import { useLatestResourcePrice, useResources } from '~/lib/hooks/useResources';
 import { TimeWindow, TimeInterval } from '~/lib/interfaces/interfaces';
 import { cn } from '~/lib/utils';
+import { foilApi } from '~/lib/utils/util';
 
 interface ResourcePrice {
   timestamp: string;
@@ -87,7 +90,8 @@ const EpochsTable = ({ data, lastHoveredId, onHover }: EpochsTableProps) => {
 const renderPriceDisplay = (
   isLoading: boolean,
   price: ResourcePrice | undefined,
-  resourceName: string
+  resourceName: string,
+  cryptoPrices: any
 ) => {
   if (isLoading) {
     return <span className="text-2xl font-bold">Loading...</span>;
@@ -99,16 +103,43 @@ const renderPriceDisplay = (
 
   let unit;
   let precision;
+  let cryptoKey: 'btc' | 'sol' | 'eth' | undefined;
+  let showTransfer = false;
+  let transferMultiplier = 0;
+  let decimalPlaces = 2;
 
   if (resourceName === 'Celestia Blobspace') {
     unit = 'μTIA';
     precision = 6;
   } else if (resourceName === 'Solana Fees') {
     unit = 'lamports';
-    precision = 6;
+    precision = 4;
+    cryptoKey = 'sol';
+    showTransfer = true;
+    // 250,000 compute units * lamports per CU
+    transferMultiplier = 250000;
   } else if (resourceName === 'Bitcoin Fees') {
     unit = 'sats';
     precision = 4;
+    cryptoKey = 'btc';
+    showTransfer = true;
+    // 250 vbytes * sats per vbyte
+    transferMultiplier = 250;
+  } else if (['Arbitrum Gas', 'Base Gas'].includes(resourceName)) {
+    unit = 'gwei';
+    precision = 4;
+    cryptoKey = 'eth';
+    showTransfer = true;
+    // 65,000 gas * gwei per gas
+    transferMultiplier = 65000;
+    decimalPlaces = 4;
+  } else if (resourceName === 'Ethereum Gas') {
+    unit = 'gwei';
+    precision = 4;
+    cryptoKey = 'eth';
+    showTransfer = true;
+    // 65,000 gas * gwei per gas
+    transferMultiplier = 65000;
   } else {
     unit = 'gwei';
     precision = 4;
@@ -133,10 +164,38 @@ const renderPriceDisplay = (
 
   document.title = `${formatTitleNumber(displayValue)} ${unit} | ${resourceName} | Foil`;
 
+  const cryptoPrice = cryptoKey ? cryptoPrices?.[cryptoKey] : null;
+
+  let usdValue = 0;
+  if (cryptoPrice && showTransfer && cryptoKey) {
+    const baseUnitConversion: Record<'btc' | 'sol' | 'eth', number> = {
+      btc: 100000000, // sats per BTC
+      sol: 1000000000, // lamports per SOL
+      eth: 1000000000, // gwei per ETH
+    };
+
+    // Calculate: (price per unit * number of units) * (crypto price / base units)
+    usdValue =
+      parseFloat(displayValue) *
+      transferMultiplier *
+      (cryptoPrice / baseUnitConversion[cryptoKey]);
+  }
+
   return (
-    <span className="text-2xl font-bold">
-      <NumberDisplay value={displayValue} precision={precision} /> {unit}
-    </span>
+    <div className="flex flex-col gap-1">
+      <span className="text-2xl font-bold">
+        <NumberDisplay value={displayValue} precision={precision} /> {unit}
+      </span>
+      {showTransfer && cryptoPrice && (
+        <span className="text-xs text-muted-foreground mt-0.5">
+          <span className="font-medium">Token Transfer:</span> $
+          {usdValue.toLocaleString(undefined, {
+            minimumFractionDigits: decimalPlaces,
+            maximumFractionDigits: decimalPlaces,
+          })}
+        </span>
+      )}
+    </div>
   );
 };
 
@@ -148,6 +207,13 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
   const { data: resources, isLoading: isLoadingResources } = useResources();
   const { data: latestPrice, isLoading: isPriceLoading } =
     useLatestResourcePrice(id);
+  const { data: cryptoPrices } = useQuery({
+    queryKey: ['cryptoPrices'],
+    queryFn: async () => {
+      return foilApi.get('/crypto-prices');
+    },
+    refetchInterval: 60000, // Refetch every minute
+  });
 
   const DEFAULT_SELECTED_WINDOW = TimeWindow.W;
   const [selectedInterval, setSelectedInterval] = React.useState(
@@ -166,7 +232,7 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
 
   if (isLoadingResources) {
     return (
-      <div className="flex items-center justify-center h-[80vh]">
+      <div className="flex items-center justify-center h-[80dvh]">
         <Loader2 className="h-8 w-8 opacity-50 animate-spin text-muted-foreground" />
       </div>
     );
@@ -177,7 +243,7 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
 
   if (!resource) {
     return (
-      <div className="flex items-center justify-center h-[80vh]">
+      <div className="flex items-center justify-center h-[80dvh]">
         <Loader2 className="h-8 w-8 opacity-50 animate-spin text-muted-foreground" />
       </div>
     );
@@ -207,7 +273,7 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
     : undefined;
 
   return (
-    <div className="flex flex-col md:flex-row h-[calc(100vh-69px-53px-69px)] md:h-[calc(100vh-69px-53px)] p-3 lg:p-6 gap-3 lg:gap-6">
+    <div className="flex flex-col md:flex-row h-[calc(100dvh-69px-53px-69px)] md:h-[calc(100dvh-69px-53px)] p-3 lg:p-6 gap-3 lg:gap-6">
       <div
         className={`flex-1 min-w-0 ${!epochs.length ? 'w-full' : ''} flex flex-col`}
       >
@@ -222,7 +288,8 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
                   {renderPriceDisplay(
                     isPriceLoading,
                     latestPrice,
-                    resource.name
+                    resource.name,
+                    cryptoPrices
                   )}
                 </div>
               </div>
@@ -251,10 +318,15 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
                               }))
                             }
                             variant="outline"
-                            className="bg-background"
+                            className="bg-background p-0"
                             size="sm"
                           >
-                            <Circle className="h-3 w-3" strokeWidth={3} />
+                            <Image
+                              src="/priceicons/average.svg"
+                              alt="Average"
+                              width={20}
+                              height={20}
+                            />
                             <span className="sr-only">
                               Toggle 28 day trailing average
                             </span>

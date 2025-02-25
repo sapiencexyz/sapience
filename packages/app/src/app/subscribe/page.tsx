@@ -249,8 +249,8 @@ const SubscriptionsList = () => {
 
   if (subscriptions.length === 0) {
     return (
-      <div className="text-muted-foreground text-center my-6">
-        No active subscriptions found
+      <div className="italic text-muted-foreground text-center lg:my-48 my-12">
+        No active subscriptions are owned by the connected wallet
       </div>
     );
   }
@@ -461,7 +461,7 @@ const SubscribeContent = () => {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center w-full m-10">
+      <div className="flex justify-center items-center w-full lg:my-48 my-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
