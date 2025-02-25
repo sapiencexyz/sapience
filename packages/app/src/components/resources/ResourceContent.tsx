@@ -199,6 +199,28 @@ const renderPriceDisplay = (
   );
 };
 
+// Helper function to get the unit based on resource name
+const getResourceUnit = (resourceName: string): string => {
+  if (resourceName === 'Celestia Blobspace') {
+    return 'μTIA';
+  }
+  if (resourceName === 'Solana Fees') {
+    return 'lamports';
+  }
+  if (resourceName === 'Bitcoin Fees') {
+    return 'sats';
+  }
+  return 'gwei';
+};
+
+// Helper function to get the precision based on resource name
+const getResourcePrecision = (resourceName: string): number => {
+  if (resourceName === 'Celestia Blobspace') {
+    return 6;
+  }
+  return 4;
+};
+
 interface ResourceContentProps {
   id: string;
 }
@@ -222,6 +244,10 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
   const [lastHoveredEpochId, setLastHoveredEpochId] = React.useState<
     number | null
   >(null);
+  const [chartHoverData, setChartHoverData] = React.useState<{
+    price: number | null;
+    timestamp: number | null;
+  } | null>(null);
 
   const [seriesVisibility, setSeriesVisibility] = React.useState({
     candles: true,
@@ -282,14 +308,98 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
             <CardContent className="py-3 px-4">
               <div className="flex flex-col">
                 <span className="text-sm text-muted-foreground">
-                  Latest Price
+                  {chartHoverData && chartHoverData.timestamp
+                    ? formatTimestamp(chartHoverData.timestamp)
+                    : 'Latest Price'}
                 </span>
                 <div className="flex items-baseline gap-2">
-                  {renderPriceDisplay(
-                    isPriceLoading,
-                    latestPrice,
-                    resource.name,
-                    cryptoPrices
+                  {chartHoverData ? (
+                    <div className="flex flex-col gap-1">
+                      <span className="text-2xl font-bold">
+                        <NumberDisplay
+                          value={chartHoverData.price?.toString() || '0'}
+                          precision={getResourcePrecision(resource.name)}
+                        />{' '}
+                        {getResourceUnit(resource.name)}
+                      </span>
+                      {/* Add token transfer calculation for hover price */}
+                      {(() => {
+                        const resourceName = resource.name;
+                        let cryptoKey: 'btc' | 'sol' | 'eth' | undefined;
+                        let showTransfer = false;
+                        let transferMultiplier = 0;
+                        let decimalPlaces = 2;
+
+                        if (resourceName === 'Solana Fees') {
+                          cryptoKey = 'sol';
+                          showTransfer = true;
+                          transferMultiplier = 250000; // 250,000 compute units * lamports per CU
+                        } else if (resourceName === 'Bitcoin Fees') {
+                          cryptoKey = 'btc';
+                          showTransfer = true;
+                          transferMultiplier = 250; // 250 vbytes * sats per vbyte
+                        } else if (
+                          ['Arbitrum Gas', 'Base Gas'].includes(resourceName)
+                        ) {
+                          cryptoKey = 'eth';
+                          showTransfer = true;
+                          transferMultiplier = 65000; // 65,000 gas * gwei per gas
+                          decimalPlaces = 4;
+                        } else if (resourceName === 'Ethereum Gas') {
+                          cryptoKey = 'eth';
+                          showTransfer = true;
+                          transferMultiplier = 65000; // 65,000 gas * gwei per gas
+                        }
+
+                        const cryptoPrice = cryptoKey
+                          ? cryptoPrices?.[cryptoKey]
+                          : null;
+
+                        if (
+                          showTransfer &&
+                          cryptoPrice &&
+                          cryptoKey &&
+                          chartHoverData.price
+                        ) {
+                          const baseUnitConversion: Record<
+                            'btc' | 'sol' | 'eth',
+                            number
+                          > = {
+                            btc: 100000000, // sats per BTC
+                            sol: 1000000000, // lamports per SOL
+                            eth: 1000000000, // gwei per ETH
+                          };
+
+                          // Calculate: (price per unit * number of units) * (crypto price / base units)
+                          const usdValue =
+                            chartHoverData.price *
+                            transferMultiplier *
+                            (cryptoPrice / baseUnitConversion[cryptoKey]);
+
+                          return (
+                            <span className="text-xs text-muted-foreground mt-0.5">
+                              <span className="font-medium">
+                                Token Transfer:
+                              </span>{' '}
+                              $
+                              {usdValue.toLocaleString(undefined, {
+                                minimumFractionDigits: decimalPlaces,
+                                maximumFractionDigits: decimalPlaces,
+                              })}
+                            </span>
+                          );
+                        }
+
+                        return null;
+                      })()}
+                    </div>
+                  ) : (
+                    renderPriceDisplay(
+                      isPriceLoading,
+                      latestPrice,
+                      resource.name,
+                      cryptoPrices
+                    )
                   )}
                 </div>
               </div>
@@ -345,6 +455,18 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
                   seriesVisibility={seriesVisibility}
                   selectedWindow={DEFAULT_SELECTED_WINDOW}
                   selectedInterval={selectedInterval}
+                  onHoverChange={(data) => {
+                    // Only update if we have valid data
+                    if (
+                      data &&
+                      data.price !== null &&
+                      data.timestamp !== null
+                    ) {
+                      setChartHoverData(data);
+                    } else {
+                      setChartHoverData(null);
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -366,6 +488,27 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
       )}
     </div>
   );
+};
+
+// Helper function to format timestamp in a user-friendly way
+const formatTimestamp = (timestamp: number): string => {
+  const date = new Date(timestamp);
+
+  // Format date: Jan 1, 2023
+  const dateStr = date.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
+  // Format time: 12:34 PM
+  const timeStr = date.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+
+  return `${dateStr} at ${timeStr}`;
 };
 
 export default ResourceContent;

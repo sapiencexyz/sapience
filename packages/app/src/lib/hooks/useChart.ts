@@ -172,6 +172,10 @@ export const useChart = ({
   const { theme } = useTheme();
   const [isLogarithmic, setIsLogarithmic] = useState(false);
   const { stEthPerToken } = useFoil();
+  const [hoverData, setHoverData] = useState<{
+    price: number | null;
+    timestamp: number | null;
+  } | null>(null);
 
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = startTime > now;
@@ -426,6 +430,108 @@ export const useChart = ({
       lineWidth: 2,
     });
 
+    // Add crosshair move handler to track hover data
+    chart.subscribeCrosshairMove((param) => {
+      // If point is undefined or out of bounds, don't update hover data
+      // The Chart component will handle resetting hover data on mouse leave
+      if (
+        param.point === undefined ||
+        !param.time ||
+        param.point.x < 0 ||
+        param.point.y < 0
+      ) {
+        return;
+      }
+
+      // Get price from the appropriate series
+      let price = null;
+
+      // Try to get price from resource series first (if visible)
+      if (seriesVisibility?.resource && resourcePriceSeriesRef.current) {
+        const resourceData = param.seriesData.get(
+          resourcePriceSeriesRef.current
+        );
+        if (resourceData !== undefined) {
+          // For line series, the price is in the 'value' property
+          price = resourceData as any;
+          if (typeof price === 'object' && price !== null && 'value' in price) {
+            price = price.value;
+          }
+        }
+      }
+
+      // If no resource price, try index price (if visible)
+      if (
+        (price === null || price === undefined) &&
+        seriesVisibility?.index &&
+        indexPriceSeriesRef.current
+      ) {
+        const indexData = param.seriesData.get(indexPriceSeriesRef.current);
+        if (indexData !== undefined) {
+          // For line series, the price is in the 'value' property
+          price = indexData as any;
+          if (typeof price === 'object' && price !== null && 'value' in price) {
+            price = price.value;
+          }
+        }
+      }
+
+      // If no index price, try candle price (if visible)
+      if (
+        (price === null || price === undefined) &&
+        seriesVisibility?.candles &&
+        candlestickSeriesRef.current
+      ) {
+        const candleData = param.seriesData.get(candlestickSeriesRef.current);
+        if (candleData !== undefined) {
+          // For candlestick series, use the 'close' price
+          price = candleData as any;
+          if (typeof price === 'object' && price !== null && 'close' in price) {
+            price = price.close;
+          }
+        }
+      }
+
+      // Convert timestamp from UTCTimestamp to milliseconds
+      const timestamp = (param.time as number) * 1000;
+
+      if (price !== null && price !== undefined) {
+        setHoverData({ price: Number(price), timestamp });
+      } else if (
+        resourcePrices &&
+        resourcePrices.length > 0 &&
+        seriesVisibility?.resource
+      ) {
+        // Fallback: Try to find the closest price point in the resource data
+        const timeMs = timestamp;
+        let closestPoint = resourcePrices[0];
+        let minDiff = Math.abs(closestPoint.timestamp - timeMs);
+
+        for (let i = 1; i < resourcePrices.length; i++) {
+          const diff = Math.abs(resourcePrices[i].timestamp - timeMs);
+          if (diff < minDiff) {
+            minDiff = diff;
+            closestPoint = resourcePrices[i];
+          }
+        }
+
+        // Only use the fallback if we're within a reasonable time range (1 hour)
+        if (minDiff < 60 * 60 * 1000) {
+          setHoverData({
+            price: closestPoint.price,
+            timestamp: closestPoint.timestamp,
+          });
+        }
+      }
+    });
+
+    // Add mouse leave handler to reset hover data
+    if (containerRef.current) {
+      containerRef.current.addEventListener('mouseleave', () => {
+        setHoverData(null);
+      });
+    }
+
     const handleResize = () => {
       if (!chartRef.current || !containerRef.current) return;
       const { clientWidth, clientHeight } = containerRef.current;
@@ -634,5 +740,7 @@ export const useChart = ({
     setIsLogarithmic,
     resourcePrices,
     loadingStates,
+    hoverData,
+    setHoverData,
   };
 };
