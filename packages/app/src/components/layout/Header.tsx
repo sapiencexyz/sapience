@@ -105,6 +105,7 @@ function MobileMarketLinks({
                 alt={resource.name}
                 width={16}
                 height={16}
+                className="grayscale"
               />
               {resource.name}
             </div>
@@ -239,6 +240,7 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
                     alt={resource.name}
                     width={16}
                     height={16}
+                    className="grayscale"
                   />
                   {resource.name}
                 </div>

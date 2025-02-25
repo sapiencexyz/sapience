@@ -124,7 +124,10 @@ export const indexMarketEvents = async (market: Market, abi: Abi) => {
   const chainId = await client.getChainId();
 
   const processLogs = async (logs: Log[]) => {
-    console.log('[MarketIndexer]', `Processing logs for market ${market.chainId}:${market.address}`);
+    console.log(
+      '[MarketIndexer]',
+      `Processing logs for market ${market.chainId}:${market.address}`
+    );
     for (const log of logs) {
       const serializedLog = JSON.stringify(log, bigintReplacer);
 
