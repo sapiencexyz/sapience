@@ -133,7 +133,7 @@ function MobileMarketLinks({
 
                 if (!resource.markets?.length || allEpochs.length === 0) {
                   return (
-                    <div className="text-sm text-muted-foreground flex items-center justify-center min-h-[160px]">
+                    <div className="text-sm text-muted-foreground flex-1 flex items-center justify-center my-8">
                       No active periods
                     </div>
                   );
@@ -144,27 +144,29 @@ function MobileMarketLinks({
                   (epoch) => epoch.endTimestamp > currentTime
                 );
 
+                if (activeEpochs.length === 0) {
+                  return (
+                    <div className="text-sm text-muted-foreground flex-1 flex items-center justify-center my-8">
+                      No active periods
+                    </div>
+                  );
+                }
+
                 return (
                   <>
-                    {activeEpochs.length === 0 ? (
-                      <div className="text-sm text-muted-foreground flex items-center justify-center min-h-[160px]">
-                        No active periods
-                      </div>
-                    ) : (
-                      activeEpochs.map((epoch) => (
-                        <Link
-                          key={`${epoch.marketChainId}:${epoch.marketAddress}:${epoch.epochId}`}
-                          className="text-sm w-full block rounded-md px-3 py-1.5 hover:bg-gray-50"
-                          href={`/markets/${epoch.marketChainId}:${epoch.marketAddress}/periods/${epoch.epochId}/${path}`}
-                          onClick={() => onClose?.()}
-                        >
-                          {formatDuration(
-                            epoch.startTimestamp,
-                            epoch.endTimestamp
-                          )}
-                        </Link>
-                      ))
-                    )}
+                    {activeEpochs.map((epoch) => (
+                      <Link
+                        key={`${epoch.marketChainId}:${epoch.marketAddress}:${epoch.epochId}`}
+                        className="text-sm w-full block rounded-md px-3 py-1.5 hover:bg-gray-50"
+                        href={`/markets/${epoch.marketChainId}:${epoch.marketAddress}/periods/${epoch.epochId}/${path}`}
+                        onClick={() => onClose?.()}
+                      >
+                        {formatDuration(
+                          epoch.startTimestamp,
+                          epoch.endTimestamp
+                        )}
+                      </Link>
+                    ))}
                     <Link
                       href="/markets"
                       onClick={() => onClose?.()}
@@ -249,7 +251,7 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
           </div>
           <div className="flex-1 border-l border-border pl-3 ml-3">
             {hoveredResource && (
-              <div className="flex flex-col space-y-1">
+              <div className="flex flex-col h-full">
                 {(() => {
                   const hoveredResourceData = resources?.find(
                     (r: Resource) => r.id === hoveredResource
@@ -278,7 +280,7 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
                     allEpochs.length === 0
                   ) {
                     return (
-                      <div className="text-sm text-muted-foreground flex items-center justify-center min-h-[160px]">
+                      <div className="text-sm text-muted-foreground flex items-center justify-center h-full">
                         No active periods
                       </div>
                     );
@@ -289,27 +291,29 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
                     (epoch) => epoch.endTimestamp > currentTime
                   );
 
+                  if (activeEpochs.length === 0) {
+                    return (
+                      <div className="text-sm text-muted-foreground flex items-center justify-center h-full">
+                        No active periods
+                      </div>
+                    );
+                  }
+
                   return (
                     <>
-                      {activeEpochs.length === 0 ? (
-                        <div className="text-sm text-muted-foreground flex items-center justify-center min-h-[160px]">
-                          No active periods
-                        </div>
-                      ) : (
-                        activeEpochs.map((epoch) => (
-                          <Link
-                            key={`${epoch.marketChainId}:${epoch.marketAddress}:${epoch.epochId}`}
-                            className="text-sm w-full block rounded-md px-3 py-1.5 hover:bg-secondary"
-                            href={`/markets/${epoch.marketChainId}:${epoch.marketAddress}/periods/${epoch.epochId}/${path}`}
-                            onClick={handleLinkClick(setOpen)}
-                          >
-                            {formatDuration(
-                              epoch.startTimestamp,
-                              epoch.endTimestamp
-                            )}
-                          </Link>
-                        ))
-                      )}
+                      {activeEpochs.map((epoch) => (
+                        <Link
+                          key={`${epoch.marketChainId}:${epoch.marketAddress}:${epoch.epochId}`}
+                          className="text-sm w-full block rounded-md px-3 py-1.5 hover:bg-secondary"
+                          href={`/markets/${epoch.marketChainId}:${epoch.marketAddress}/periods/${epoch.epochId}/${path}`}
+                          onClick={handleLinkClick(setOpen)}
+                        >
+                          {formatDuration(
+                            epoch.startTimestamp,
+                            epoch.endTimestamp
+                          )}
+                        </Link>
+                      ))}
                       <Link
                         href="/markets"
                         onClick={handleLinkClick(setOpen)}
