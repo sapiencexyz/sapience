@@ -25,6 +25,27 @@ import { TimeWindow, TimeInterval } from '~/lib/interfaces/interfaces';
 import { cn } from '~/lib/utils';
 import { foilApi } from '~/lib/utils/util';
 
+// Constants for crypto unit conversions
+const SATS_PER_BTC = 100000000;
+const LAMPORTS_PER_SOL = 1000000000;
+const GWEI_PER_ETH = 1000000000;
+
+// Resource name constants
+const RESOURCE_CELESTIA = 'Celestia Blobspace';
+const RESOURCE_SOLANA = 'Solana Fees';
+const RESOURCE_BITCOIN = 'Bitcoin Fees';
+const RESOURCE_ETHEREUM = 'Ethereum Gas';
+const RESOURCE_ARBITRUM = 'Arbitrum Gas';
+const RESOURCE_BASE = 'Base Gas';
+
+// Crypto key constants
+const CRYPTO_BTC = 'btc';
+const CRYPTO_SOL = 'sol';
+const CRYPTO_ETH = 'eth';
+
+// Gas constants
+const GAS_UNITS_L2_ETH = 65000; // 65,000 gas units for Arbitrum, Base, and Ethereum
+
 interface ResourcePrice {
   timestamp: string;
   value: string;
@@ -108,38 +129,38 @@ const renderPriceDisplay = (
   let transferMultiplier = 0;
   let decimalPlaces = 2;
 
-  if (resourceName === 'Celestia Blobspace') {
+  if (resourceName === RESOURCE_CELESTIA) {
     unit = 'μTIA';
     precision = 6;
-  } else if (resourceName === 'Solana Fees') {
+  } else if (resourceName === RESOURCE_SOLANA) {
     unit = 'lamports';
     precision = 4;
-    cryptoKey = 'sol';
+    cryptoKey = CRYPTO_SOL;
     showTransfer = true;
     // 250,000 compute units * lamports per CU
     transferMultiplier = 250000;
-  } else if (resourceName === 'Bitcoin Fees') {
+  } else if (resourceName === RESOURCE_BITCOIN) {
     unit = 'sats';
     precision = 4;
-    cryptoKey = 'btc';
+    cryptoKey = CRYPTO_BTC;
     showTransfer = true;
     // 250 vbytes * sats per vbyte
     transferMultiplier = 250;
-  } else if (['Arbitrum Gas', 'Base Gas'].includes(resourceName)) {
+  } else if ([RESOURCE_ARBITRUM, RESOURCE_BASE].includes(resourceName)) {
     unit = 'gwei';
     precision = 4;
-    cryptoKey = 'eth';
+    cryptoKey = CRYPTO_ETH;
     showTransfer = true;
     // 65,000 gas * gwei per gas
-    transferMultiplier = 65000;
+    transferMultiplier = GAS_UNITS_L2_ETH;
     decimalPlaces = 4;
-  } else if (resourceName === 'Ethereum Gas') {
+  } else if (resourceName === RESOURCE_ETHEREUM) {
     unit = 'gwei';
     precision = 4;
-    cryptoKey = 'eth';
+    cryptoKey = CRYPTO_ETH;
     showTransfer = true;
     // 65,000 gas * gwei per gas
-    transferMultiplier = 65000;
+    transferMultiplier = GAS_UNITS_L2_ETH;
   } else {
     unit = 'gwei';
     precision = 4;
@@ -168,10 +189,13 @@ const renderPriceDisplay = (
 
   let usdValue = 0;
   if (cryptoPrice && showTransfer && cryptoKey) {
-    const baseUnitConversion: Record<'btc' | 'sol' | 'eth', number> = {
-      btc: 100000000, // sats per BTC
-      sol: 1000000000, // lamports per SOL
-      eth: 1000000000, // gwei per ETH
+    const baseUnitConversion: Record<
+      typeof CRYPTO_BTC | typeof CRYPTO_SOL | typeof CRYPTO_ETH,
+      number
+    > = {
+      [CRYPTO_BTC]: SATS_PER_BTC, // sats per BTC
+      [CRYPTO_SOL]: LAMPORTS_PER_SOL, // lamports per SOL
+      [CRYPTO_ETH]: GWEI_PER_ETH, // gwei per ETH
     };
 
     // Calculate: (price per unit * number of units) * (crypto price / base units)
@@ -201,13 +225,13 @@ const renderPriceDisplay = (
 
 // Helper function to get the unit based on resource name
 const getResourceUnit = (resourceName: string): string => {
-  if (resourceName === 'Celestia Blobspace') {
+  if (resourceName === RESOURCE_CELESTIA) {
     return 'μTIA';
   }
-  if (resourceName === 'Solana Fees') {
+  if (resourceName === RESOURCE_SOLANA) {
     return 'lamports';
   }
-  if (resourceName === 'Bitcoin Fees') {
+  if (resourceName === RESOURCE_BITCOIN) {
     return 'sats';
   }
   return 'gwei';
@@ -215,7 +239,7 @@ const getResourceUnit = (resourceName: string): string => {
 
 // Helper function to get the precision based on resource name
 const getResourcePrecision = (resourceName: string): number => {
-  if (resourceName === 'Celestia Blobspace') {
+  if (resourceName === RESOURCE_CELESTIA) {
     return 6;
   }
   return 4;
@@ -330,25 +354,27 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
                         let transferMultiplier = 0;
                         let decimalPlaces = 2;
 
-                        if (resourceName === 'Solana Fees') {
-                          cryptoKey = 'sol';
+                        if (resourceName === RESOURCE_SOLANA) {
+                          cryptoKey = CRYPTO_SOL;
                           showTransfer = true;
                           transferMultiplier = 250000; // 250,000 compute units * lamports per CU
-                        } else if (resourceName === 'Bitcoin Fees') {
-                          cryptoKey = 'btc';
+                        } else if (resourceName === RESOURCE_BITCOIN) {
+                          cryptoKey = CRYPTO_BTC;
                           showTransfer = true;
                           transferMultiplier = 250; // 250 vbytes * sats per vbyte
                         } else if (
-                          ['Arbitrum Gas', 'Base Gas'].includes(resourceName)
+                          [RESOURCE_ARBITRUM, RESOURCE_BASE].includes(
+                            resourceName
+                          )
                         ) {
-                          cryptoKey = 'eth';
+                          cryptoKey = CRYPTO_ETH;
                           showTransfer = true;
-                          transferMultiplier = 65000; // 65,000 gas * gwei per gas
+                          transferMultiplier = GAS_UNITS_L2_ETH; // 65,000 gas * gwei per gas
                           decimalPlaces = 4;
-                        } else if (resourceName === 'Ethereum Gas') {
-                          cryptoKey = 'eth';
+                        } else if (resourceName === RESOURCE_ETHEREUM) {
+                          cryptoKey = CRYPTO_ETH;
                           showTransfer = true;
-                          transferMultiplier = 65000; // 65,000 gas * gwei per gas
+                          transferMultiplier = GAS_UNITS_L2_ETH; // 65,000 gas * gwei per gas
                         }
 
                         const cryptoPrice = cryptoKey
@@ -362,12 +388,14 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
                           chartHoverData.price
                         ) {
                           const baseUnitConversion: Record<
-                            'btc' | 'sol' | 'eth',
+                            | typeof CRYPTO_BTC
+                            | typeof CRYPTO_SOL
+                            | typeof CRYPTO_ETH,
                             number
                           > = {
-                            btc: 100000000, // sats per BTC
-                            sol: 1000000000, // lamports per SOL
-                            eth: 1000000000, // gwei per ETH
+                            [CRYPTO_BTC]: SATS_PER_BTC, // sats per BTC
+                            [CRYPTO_SOL]: LAMPORTS_PER_SOL, // lamports per SOL
+                            [CRYPTO_ETH]: GWEI_PER_ETH, // gwei per ETH
                           };
 
                           // Calculate: (price per unit * number of units) * (crypto price / base units)

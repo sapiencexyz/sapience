@@ -45,22 +45,17 @@ const Chart: React.FC<Props> = ({
   const { useMarketUnits, startTime } = useContext(PeriodContext);
   const [isHovering, setIsHovering] = useState(false);
 
-  const {
-    isLogarithmic,
-    setIsLogarithmic,
-    loadingStates,
-    hoverData,
-    resourcePrices,
-  } = useChart({
-    resourceSlug,
-    market,
-    seriesVisibility,
-    useMarketUnits,
-    startTime,
-    containerRef: chartContainerRef,
-    selectedWindow,
-    selectedInterval,
-  });
+  const { isLogarithmic, setIsLogarithmic, loadingStates, hoverData } =
+    useChart({
+      resourceSlug,
+      market,
+      seriesVisibility,
+      useMarketUnits,
+      startTime,
+      containerRef: chartContainerRef,
+      selectedWindow,
+      selectedInterval,
+    });
 
   // Handle mouse enter/leave events
   useEffect(() => {
