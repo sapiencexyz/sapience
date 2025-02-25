@@ -79,153 +79,153 @@ const groupPricesByInterval = (
   return candles;
 };
 
-const getTrailingAveragePricesByInterval = (
-  orderedPrices: ResourcePricePoint[],
-  trailingIntervalSeconds: number,
-  intervalSeconds: number,
-  startTimestamp: number,
-  endTimestamp: number,
-  lastKnownPrice?: string
-): CandleType[] => {
-  const candles: CandleType[] = [];
+// const getTrailingAveragePricesByInterval = (
+//   orderedPrices: ResourcePricePoint[],
+//   trailingIntervalSeconds: number,
+//   intervalSeconds: number,
+//   startTimestamp: number,
+//   endTimestamp: number,
+//   lastKnownPrice?: string
+// ): CandleType[] => {
+//   const candles: CandleType[] = [];
 
-  // If we have no prices and no reference price, return empty array
-  if (orderedPrices.length === 0 && !lastKnownPrice) return [];
+//   // If we have no prices and no reference price, return empty array
+//   if (orderedPrices.length === 0 && !lastKnownPrice) return [];
 
-  // Normalize timestamps to interval boundaries
-  const normalizedStartTimestamp =
-    Math.floor(startTimestamp / intervalSeconds) * intervalSeconds;
-  const normalizedEndTimestamp =
-    Math.floor(endTimestamp / intervalSeconds) * intervalSeconds;
+//   // Normalize timestamps to interval boundaries
+//   const normalizedStartTimestamp =
+//     Math.floor(startTimestamp / intervalSeconds) * intervalSeconds;
+//   const normalizedEndTimestamp =
+//     Math.floor(endTimestamp / intervalSeconds) * intervalSeconds;
 
-  // Initialize lastClose with lastKnownPrice if available, otherwise use first price
-  let lastClose = lastKnownPrice || orderedPrices[0].value;
+//   // Initialize lastClose with lastKnownPrice if available, otherwise use first price
+//   let lastClose = lastKnownPrice || orderedPrices[0].value;
 
-  let lastStartIdx = 0;
-  let lastEndIdx = 0;
-  let startIdx = 0;
-  let endIdx = 0;
+//   let lastStartIdx = 0;
+//   let lastEndIdx = 0;
+//   let startIdx = 0;
+//   let endIdx = 0;
 
-  let totalGasUsed: bigint = 0n;
-  let totalBaseFeesPaid: bigint = 0n;
+//   let totalGasUsed: bigint = 0n;
+//   let totalBaseFeesPaid: bigint = 0n;
 
-  for (
-    let timestamp = normalizedStartTimestamp;
-    timestamp <= normalizedEndTimestamp;
-    timestamp += intervalSeconds
-  ) {
-    // get the indexes for the start and end of the interval
-    startIdx = orderedPrices.findIndex(
-      (p) => p.timestamp >= timestamp - trailingIntervalSeconds
-    );
-    endIdx = orderedPrices.findIndex((p) => p.timestamp > timestamp); // notice is the next item, we need to correct it later
+//   for (
+//     let timestamp = normalizedStartTimestamp;
+//     timestamp <= normalizedEndTimestamp;
+//     timestamp += intervalSeconds
+//   ) {
+//     // get the indexes for the start and end of the interval
+//     startIdx = orderedPrices.findIndex(
+//       (p) => p.timestamp >= timestamp - trailingIntervalSeconds
+//     );
+//     endIdx = orderedPrices.findIndex((p) => p.timestamp > timestamp); // notice is the next item, we need to correct it later
 
-    // Remove from the sliding window trailing average the prices that are no longer in the interval
-    if (startIdx != -1) {
-      for (let i = lastStartIdx; i <= startIdx; i++) {
-        totalGasUsed -= BigInt(orderedPrices[i].used);
-        totalBaseFeesPaid -= BigInt(orderedPrices[i].feePaid);
-      }
-    }
-    lastStartIdx = startIdx;
-    // if found and not previous endIdx, correct the +1 offset of the endIdx (since we found the next item)
-    if (endIdx != -1 && endIdx > lastEndIdx) {
-      endIdx--;
-    }
+//     // Remove from the sliding window trailing average the prices that are no longer in the interval
+//     if (startIdx != -1) {
+//       for (let i = lastStartIdx; i <= startIdx; i++) {
+//         totalGasUsed -= BigInt(orderedPrices[i].used);
+//         totalBaseFeesPaid -= BigInt(orderedPrices[i].feePaid);
+//       }
+//     }
+//     lastStartIdx = startIdx;
+//     // if found and not previous endIdx, correct the +1 offset of the endIdx (since we found the next item)
+//     if (endIdx != -1 && endIdx > lastEndIdx) {
+//       endIdx--;
+//     }
 
-    // If not found, use the last index of the orderedPrices array
-    if (endIdx == -1) {
-      endIdx = orderedPrices.length - 1;
-    }
-    // Add to the sliding window trailing average the prices that are now in the interval
-    for (let i = lastEndIdx; i <= endIdx; i++) {
-      totalGasUsed += BigInt(orderedPrices[i].used);
-      totalBaseFeesPaid += BigInt(orderedPrices[i].feePaid);
-    }
-    lastEndIdx = endIdx;
+//     // If not found, use the last index of the orderedPrices array
+//     if (endIdx == -1) {
+//       endIdx = orderedPrices.length - 1;
+//     }
+//     // Add to the sliding window trailing average the prices that are now in the interval
+//     for (let i = lastEndIdx; i <= endIdx; i++) {
+//       totalGasUsed += BigInt(orderedPrices[i].used);
+//       totalBaseFeesPaid += BigInt(orderedPrices[i].feePaid);
+//     }
+//     lastEndIdx = endIdx;
 
-    // Calculate the average price for the interval
-    if (totalGasUsed > 0n) {
-      const averagePrice: bigint = totalBaseFeesPaid / totalGasUsed;
-      lastClose = averagePrice.toString();
-    }
+//     // Calculate the average price for the interval
+//     if (totalGasUsed > 0n) {
+//       const averagePrice: bigint = totalBaseFeesPaid / totalGasUsed;
+//       lastClose = averagePrice.toString();
+//     }
 
-    // Create candle with last known closing price (calculated in the loop or previous candle)
-    candles.push({
-      timestamp,
-      open: lastClose,
-      high: lastClose,
-      low: lastClose,
-      close: lastClose,
-    });
-  }
+//     // Create candle with last known closing price (calculated in the loop or previous candle)
+//     candles.push({
+//       timestamp,
+//       open: lastClose,
+//       high: lastClose,
+//       low: lastClose,
+//       close: lastClose,
+//     });
+//   }
 
-  return candles;
-};
+//   return candles;
+// };
 
-const getIndexPricesByInterval = (
-  orderedPrices: ResourcePricePoint[], // prices ordered by timestamp starting from the epoch start time
-  intervalSeconds: number,
-  startTimestamp: number,
-  endTimestamp: number
-): CandleType[] => {
-  const candles: CandleType[] = [];
+// const getIndexPricesByInterval = (
+//   orderedPrices: ResourcePricePoint[], // prices ordered by timestamp starting from the epoch start time
+//   intervalSeconds: number,
+//   startTimestamp: number,
+//   endTimestamp: number
+// ): CandleType[] => {
+//   const candles: CandleType[] = [];
 
-  // If we have no prices and no reference price, return empty array
-  if (orderedPrices.length === 0) return [];
+//   // If we have no prices and no reference price, return empty array
+//   if (orderedPrices.length === 0) return [];
 
-  // Normalize timestamps to interval boundaries
-  const normalizedStartTimestamp =
-    Math.floor(startTimestamp / intervalSeconds) * intervalSeconds;
-  const normalizedEndTimestamp =
-    Math.floor(endTimestamp / intervalSeconds) * intervalSeconds;
+//   // Normalize timestamps to interval boundaries
+//   const normalizedStartTimestamp =
+//     Math.floor(startTimestamp / intervalSeconds) * intervalSeconds;
+//   const normalizedEndTimestamp =
+//     Math.floor(endTimestamp / intervalSeconds) * intervalSeconds;
 
-  // Initialize lastClose with lastKnownPrice if available, otherwise use first price
-  let lastClose = orderedPrices[0].value;
+//   // Initialize lastClose with lastKnownPrice if available, otherwise use first price
+//   let lastClose = orderedPrices[0].value;
 
-  let endIdx = 0;
-  let lastEndIdx = 0; // always start from the first item in the orderedPrices array, since it starts from the epoch start time
+//   let endIdx = 0;
+//   let lastEndIdx = 0; // always start from the first item in the orderedPrices array, since it starts from the epoch start time
 
-  let totalGasUsed: bigint = 0n;
-  let totalBaseFeesPaid: bigint = 0n;
+//   let totalGasUsed: bigint = 0n;
+//   let totalBaseFeesPaid: bigint = 0n;
 
-  for (
-    let timestamp = normalizedStartTimestamp;
-    timestamp <= normalizedEndTimestamp;
-    timestamp += intervalSeconds
-  ) {
-    endIdx = orderedPrices.findIndex((p) => p.timestamp > timestamp); // notice is the next item, we need to correct it later
+//   for (
+//     let timestamp = normalizedStartTimestamp;
+//     timestamp <= normalizedEndTimestamp;
+//     timestamp += intervalSeconds
+//   ) {
+//     endIdx = orderedPrices.findIndex((p) => p.timestamp > timestamp); // notice is the next item, we need to correct it later
 
-    // If not found, use the last index of the orderedPrices array
-    if (endIdx == -1) {
-      endIdx = orderedPrices.length;
-    }
+//     // If not found, use the last index of the orderedPrices array
+//     if (endIdx == -1) {
+//       endIdx = orderedPrices.length;
+//     }
 
-    // Add to the sliding window trailing average the prices that are now in the interval
-    for (let i = lastEndIdx; i < endIdx; i++) {
-      totalGasUsed += BigInt(orderedPrices[i].used);
-      totalBaseFeesPaid += BigInt(orderedPrices[i].feePaid);
-    }
-    lastEndIdx = endIdx;
+//     // Add to the sliding window trailing average the prices that are now in the interval
+//     for (let i = lastEndIdx; i < endIdx; i++) {
+//       totalGasUsed += BigInt(orderedPrices[i].used);
+//       totalBaseFeesPaid += BigInt(orderedPrices[i].feePaid);
+//     }
+//     lastEndIdx = endIdx;
 
-    // Calculate the average price for the interval
-    if (totalGasUsed > 0n) {
-      const averagePrice: bigint = totalBaseFeesPaid / totalGasUsed;
-      lastClose = averagePrice.toString();
-    }
+//     // Calculate the average price for the interval
+//     if (totalGasUsed > 0n) {
+//       const averagePrice: bigint = totalBaseFeesPaid / totalGasUsed;
+//       lastClose = averagePrice.toString();
+//     }
 
-    // Create candle with last known closing price (calculated or previous candle)
-    candles.push({
-      timestamp,
-      open: lastClose,
-      high: lastClose,
-      low: lastClose,
-      close: lastClose,
-    });
-  }
+//     // Create candle with last known closing price (calculated or previous candle)
+//     candles.push({
+//       timestamp,
+//       open: lastClose,
+//       high: lastClose,
+//       low: lastClose,
+//       close: lastClose,
+//     });
+//   }
 
-  return candles;
-};
+//   return candles;
+// };
 
 const getIndexPriceAtTime = (
   orderedPrices: ResourcePricePoint[],
@@ -328,7 +328,6 @@ export class CandleResolver {
     @Arg('from', () => Int) from: number,
     @Arg('to', () => Int) to: number,
     @Arg('interval', () => Int) interval: number,
-    @Arg('trailingTime', () => Int) trailingTime: number
   ): Promise<CandleType[]> {
     const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
     const resourcePerformance = resourcePerformanceManager.getResourcePerformance(slug);

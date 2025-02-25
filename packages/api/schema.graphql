@@ -67,7 +67,7 @@ type Query {
   resource(slug: String!): ResourceType
   resourceCandles(from: Int!, interval: Int!, slug: String!, to: Int!): [CandleType!]!
   resourcePrices: [ResourcePriceType!]!
-  resourceTrailingAverageCandles(from: Int!, interval: Int!, slug: String!, to: Int!, trailingTime: Int!): [CandleType!]!
+  resourceTrailingAverageCandles(from: Int!, interval: Int!, slug: String!, to: Int!): [CandleType!]!
   resources: [ResourceType!]!
   transactions(positionId: Int): [TransactionType!]!
 }

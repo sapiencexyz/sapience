@@ -1,14 +1,12 @@
 import { Resource } from 'src/models/Resource';
 import {
   epochRepository,
-  marketPriceRepository,
   marketRepository,
   resourcePriceRepository,
 } from 'src/db';
 import { ResourcePrice } from 'src/models/ResourcePrice';
 import { Market } from 'src/models/Market';
 import { Epoch } from 'src/models/Epoch';
-import { In } from 'typeorm';
 import { CandleData, StorageData } from './types';
 
 import {
@@ -406,7 +404,7 @@ export class ResourcePerformance {
     // Remove the old items from the trailing avg if they are before the trailing avg timestamp
     let startIdx = tpd.startTimestampIndex;
     let oldItem = this.runtime.dbResourcePrices[startIdx];
-    let trailingAvgTimestamp = tpd.nextTimestamp - this.trailingAvgTime;
+    const trailingAvgTimestamp = tpd.nextTimestamp - this.trailingAvgTime;
     while (oldItem.timestamp < trailingAvgTimestamp) {
       startIdx++;
       oldItem = this.runtime.dbResourcePrices[startIdx];
