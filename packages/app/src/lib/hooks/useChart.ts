@@ -150,6 +150,40 @@ const TRAILING_RESOURCE_CANDLES_QUERY = gql`
   }
 `;
 
+// Helper functions for price extraction
+const extractPriceFromData = (
+  data: any,
+  propertyName: string
+): number | null => {
+  if (data === undefined) return null;
+
+  const price = data as any;
+  if (typeof price === 'object' && price !== null && propertyName in price) {
+    return price[propertyName];
+  }
+  return null;
+};
+
+const getClosestPricePoint = (
+  timestamp: number,
+  pricePoints: ResourcePricePoint[]
+): { point: ResourcePricePoint; diff: number } | null => {
+  if (!pricePoints || pricePoints.length === 0) return null;
+
+  let closestPoint = pricePoints[0];
+  let minDiff = Math.abs(closestPoint.timestamp - timestamp);
+
+  for (let i = 1; i < pricePoints.length; i++) {
+    const diff = Math.abs(pricePoints[i].timestamp - timestamp);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closestPoint = pricePoints[i];
+    }
+  }
+
+  return { point: closestPoint, diff: minDiff };
+};
+
 export const useChart = ({
   resourceSlug,
   market,
@@ -170,6 +204,10 @@ export const useChart = ({
   const { theme } = useTheme();
   const [isLogarithmic, setIsLogarithmic] = useState(false);
   const { stEthPerToken } = useFoil();
+  const [hoverData, setHoverData] = useState<{
+    price: number | null;
+    timestamp: number | null;
+  } | null>(null);
 
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = startTime > now;
@@ -423,6 +461,78 @@ export const useChart = ({
       lineWidth: 2,
     });
 
+    // Add crosshair move handler to track hover data
+    chart.subscribeCrosshairMove((param) => {
+      // Skip if point is undefined or out of bounds
+      if (
+        param.point === undefined ||
+        !param.time ||
+        param.point.x < 0 ||
+        param.point.y < 0
+      ) {
+        return;
+      }
+
+      // Convert timestamp from UTCTimestamp to milliseconds
+      const timestamp = (param.time as number) * 1000;
+
+      // Try to get price from each series in order of priority
+      const price = getPriceFromSeries(param);
+
+      if (price !== null && price !== undefined) {
+        setHoverData({ price: Number(price), timestamp });
+        return;
+      }
+
+      // Fallback: Try to find the closest price point in the resource data
+      if (resourcePrices?.length && seriesVisibility?.resource) {
+        const result = getClosestPricePoint(timestamp, resourcePrices);
+
+        // Only use the fallback if we're within a reasonable time range (1 hour)
+        if (result && result.diff < 60 * 60 * 1000) {
+          setHoverData({
+            price: result.point.price,
+            timestamp: result.point.timestamp,
+          });
+        }
+      }
+    });
+
+    // Helper function to get price from series data
+    function getPriceFromSeries(param: any): number | null {
+      // Try resource series first (if visible)
+      if (seriesVisibility?.resource && resourcePriceSeriesRef.current) {
+        const resourceData = param.seriesData.get(
+          resourcePriceSeriesRef.current
+        );
+        const price = extractPriceFromData(resourceData, 'value');
+        if (price !== null) return price;
+      }
+
+      // Try index series next (if visible)
+      if (seriesVisibility?.index && indexPriceSeriesRef.current) {
+        const indexData = param.seriesData.get(indexPriceSeriesRef.current);
+        const price = extractPriceFromData(indexData, 'value');
+        if (price !== null) return price;
+      }
+
+      // Try candle series last (if visible)
+      if (seriesVisibility?.candles && candlestickSeriesRef.current) {
+        const candleData = param.seriesData.get(candlestickSeriesRef.current);
+        const price = extractPriceFromData(candleData, 'close');
+        if (price !== null) return price;
+      }
+
+      return null;
+    }
+
+    // Add mouse leave handler to reset hover data
+    if (containerRef.current) {
+      containerRef.current.addEventListener('mouseleave', () => {
+        setHoverData(null);
+      });
+    }
+
     const handleResize = () => {
       if (!chartRef.current || !containerRef.current) return;
       const { clientWidth, clientHeight } = containerRef.current;
@@ -565,6 +675,7 @@ export const useChart = ({
       hasSetTimeScale.current = true;
     }
   }, [
+    theme,
     stEthPerToken,
     useMarketUnits,
     seriesVisibility,
@@ -630,5 +741,7 @@ export const useChart = ({
     setIsLogarithmic,
     resourcePrices,
     loadingStates,
+    hoverData,
+    setHoverData,
   };
 };
