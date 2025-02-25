@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 import { Button } from '~/components/ui/button';
 import { useResources } from '~/lib/hooks/useResources';
@@ -12,13 +13,19 @@ const ResourceNav = () => {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Redirect to first resource if no resource is selected
-  if (pathname === '/' && resources?.length) {
-    router.push(`/resources/${resources[0].slug}`);
+  // Handle redirect in useEffect to avoid conditional hook calls
+  useEffect(() => {
+    if (pathname === '/' && resources?.length) {
+      router.push(`/resources/${resources[0].slug}`);
+    }
+  }, [pathname, resources, router]);
+
+  if (isLoadingResources) {
     return null;
   }
 
-  if (isLoadingResources) {
+  // Early return after hooks are called
+  if (pathname === '/' && resources?.length) {
     return null;
   }
 
@@ -36,6 +43,8 @@ const ResourceNav = () => {
               key={resource.id}
               href={`/resources/${resource.slug}`}
               className="flex-shrink-0"
+              // Use shallow routing to prevent full page refresh
+              shallow
             >
               <Button
                 variant={isSelected ? 'default' : 'outline'}

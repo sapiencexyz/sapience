@@ -1,19 +1,14 @@
 import type { Metadata } from 'next';
 
-import ResourceNav from '~/components/market/ResourceNav';
 import ResourceContent from '~/components/resources/ResourceContent';
 
 export const metadata: Metadata = {
   title: 'Gas and Blobspace Prices',
 };
 
+// This is a server component that receives the ID parameter
 const MarketPage = ({ params }: { params: { id: string } }) => {
-  return (
-    <div className="flex flex-col w-full">
-      <ResourceNav />
-      <ResourceContent id={params.id} />
-    </div>
-  );
+  return <ResourceContent id={params.id} />;
 };
 
 export default MarketPage;
