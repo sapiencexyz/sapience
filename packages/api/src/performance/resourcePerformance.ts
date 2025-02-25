@@ -374,10 +374,7 @@ export class ResourcePerformance {
       item.timestamp > tpd.nextTimestamp ||
       currentIdx === this.runtime.dbResourcePricesLength - 1
     ) {
-      // is in next interval, push to store and reset the runtime values for the next interval
-      // push to the store
       const trailingAvgStore = this.storage[interval].trailingAvgStore;
-
       const price = tpd.used > 0n ? tpd.feePaid / tpd.used : 0n;
 
       trailingAvgStore.data.push({
@@ -397,22 +394,18 @@ export class ResourcePerformance {
       });
       trailingAvgStore.pointers[item.timestamp] =
         trailingAvgStore.data.length - 1;
-
-      // prepare next interval. Notice, don't reset the used and feePaid here because is an index price
-      tpd.used = price;
-      tpd.feePaid = price;
     }
 
     // Remove the old items from the trailing avg if they are before the trailing avg timestamp
     let startIdx = tpd.startTimestampIndex;
     let oldItem = this.runtime.dbResourcePrices[startIdx];
-    const trailingAvgTimestamp = tpd.nextTimestamp - this.trailingAvgTime;
+    const trailingAvgTimestamp = item.timestamp - this.trailingAvgTime;
     while (oldItem.timestamp < trailingAvgTimestamp) {
+      tpd.used -= BigInt(oldItem.used);
+      tpd.feePaid -= BigInt(oldItem.feePaid);
       startIdx++;
-      oldItem = this.runtime.dbResourcePrices[startIdx];
-      tpd.used -= BigInt(item.used);
-      tpd.feePaid -= BigInt(item.feePaid);
       tpd.startTimestampIndex = startIdx;
+      oldItem = this.runtime.dbResourcePrices[startIdx];
     }
 
     // We are adding the new item to the trailing avg if it's in the next interval
@@ -439,7 +432,8 @@ export class ResourcePerformance {
       this.storage[interval].indexStore[epoch].data,
       from,
       to,
-      interval
+      interval,
+      false
     );
   }
 
@@ -469,7 +463,8 @@ export class ResourcePerformance {
     prices: CandleData[],
     from: number,
     to: number,
-    interval: number
+    interval: number,
+    fillMissing: boolean = true,
   ) {
     if (prices.length === 0) {
       return [];
@@ -484,15 +479,15 @@ export class ResourcePerformance {
     };
 
     // If there are no prices or window starts before first price, add zero entries
-    if (windowOfTime.from < prices[0].timestamp) {
+    if (fillMissing && windowOfTime.from < prices[0].timestamp) {
       const zeroEntries = [];
       for (let t = windowOfTime.from; t < prices[0].timestamp; t += interval) {
         zeroEntries.push({
           timestamp: t,
-          open: '0',
-          high: '0',
-          low: '0',
-          close: '0',
+          open:  '0' ,
+          high:  '0' ,
+          low: '0' ,
+          close:  '0' ,
         });
       }
       prices = [...zeroEntries, ...prices];
