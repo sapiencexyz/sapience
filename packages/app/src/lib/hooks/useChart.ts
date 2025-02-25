@@ -568,6 +568,7 @@ export const useChart = ({
       hasSetTimeScale.current = true;
     }
   }, [
+    theme,
     stEthPerToken,
     useMarketUnits,
     seriesVisibility,
