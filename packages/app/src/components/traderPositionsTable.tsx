@@ -240,8 +240,18 @@ const TraderPositionsTable: React.FC<Props> = ({
       console.log("All transactions:", position.transactions);
       console.log("Transaction types:", position.transactions.map((t: any) => t.type));
       
-      const openTrades = position.transactions.filter((t: any) => t.baseToken != 0 || t.quoteToken != 0);
-      console.log("openTrades", openTrades);
+      // Filter for opening transactions only - those that increase position size
+      const openTrades = position.transactions.filter((t: any) => {
+        if (isLong) {
+          // For long positions, include only transactions that add base tokens
+          return Number(t.baseToken) > 0;
+        } else {
+          // For short positions, include only transactions that add quote tokens
+          return Number(t.quoteToken) > 0;
+        }
+      });
+      
+      console.log("openTrades for position ID " + position.positionId + ":", openTrades);
       
       if (isLong) {
         console.log("im here again")
@@ -252,7 +262,7 @@ const TraderPositionsTable: React.FC<Props> = ({
           console.log("basetokentotal",baseTokenTotal);
           return acc + (Number(transaction.tradeRatioD18) * baseAmount);
         }, 0);
-        entryPrice = baseTokenTotal > 0 ? entryPrice / baseTokenTotal  : 0;
+        entryPrice = baseTokenTotal > 0 ? entryPrice / baseTokenTotal : 0;
       } else {
         let quoteTokenTotal = 0;
         entryPrice = openTrades.reduce((acc: number, transaction: any) => {
@@ -261,7 +271,7 @@ const TraderPositionsTable: React.FC<Props> = ({
           console.log("quotetokentotal",quoteTokenTotal);
           return acc + (Number(transaction.tradeRatioD18) * quoteAmount);
         }, 0);
-        entryPrice = quoteTokenTotal > 0 ? entryPrice / quoteTokenTotal  : 0;
+        entryPrice = quoteTokenTotal > 0 ? entryPrice / quoteTokenTotal : 0;
       }
     }
     
