@@ -203,22 +203,35 @@ export const insertCollateralTransfer = async (transaction: Transaction) => {
     return;
   }
 
-  console.log('Upserting delta colalteral for transaction: ', transaction);
-  // upsert market price
-  const newCollateralTransfer = new CollateralTransfer();
+  // Check if a collateral transfer already exists for this transaction hash
+  const existingTransfer = await collateralTransferRepository.findOne({
+    where: { transactionHash: transaction.event.transactionHash },
+  });
 
-  newCollateralTransfer.owner = transaction.event.logData.args.sender as string;
-  newCollateralTransfer.transaction = transaction;
-  newCollateralTransfer.transactionHash = transaction.event.transactionHash;
+  // If it exists, use it; otherwise create a new one
+  const transfer = existingTransfer || new CollateralTransfer();
 
-  newCollateralTransfer.collateral = eventArgs.deltaCollateral as string;
-  newCollateralTransfer.timestamp = Number(transaction.event.timestamp);
+  // Update the transfer properties
+  transfer.transactionHash = transaction.event.transactionHash;
+  transfer.timestamp = Number(transaction.event.timestamp);
+  transfer.owner = transaction.event.logData.args.sender as string;
+  transfer.collateral = eventArgs.deltaCollateral as string;
 
-  // Ensure the transaction has a collateralTransfer reference
-  transaction.collateralTransfer = newCollateralTransfer;
+  // Use upsert to handle the duplicate key case
+  await collateralTransferRepository.upsert(
+    {
+      transactionHash: transfer.transactionHash,
+      timestamp: transfer.timestamp,
+      owner: transfer.owner,
+      collateral: transfer.collateral,
+    },
+    ['transactionHash']
+  );
 
-  console.log('upserting collateral transfer: ', newCollateralTransfer);
-  await collateralTransferRepository.save(newCollateralTransfer);
+  // Only set the transfer relationship if it doesn't already exist
+  if (!transaction.collateralTransfer) {
+    transaction.collateralTransfer = transfer;
+  }
 };
 
 /**
