@@ -4,6 +4,7 @@ import * as path from 'path';
 
 export async function saveStorageToFile(
   storage: StorageData,
+  latestTimestamp: number,
   resourceSlug: string,
   resourceName: string
 ): Promise<undefined> {
@@ -24,8 +25,11 @@ export async function saveStorageToFile(
   await fs.promises.writeFile(
     filename,
     JSON.stringify(
-      storage,
-      (key, value) => typeof value === 'bigint' ? value.toString() : value,
+      {
+        latestTimestamp,
+        store: storage,
+      },
+      (key, value) => (typeof value === 'bigint' ? value.toString() : value),
       2
     )
   );
@@ -37,7 +41,13 @@ export async function saveStorageToFile(
 export async function loadStorageFromFile(
   resourceSlug: string,
   resourceName: string
-): Promise<StorageData | undefined> {
+): Promise<
+  {
+      latestTimestamp: number;
+      store: StorageData;
+    }
+  | undefined
+> {
   if (process.env.SAVE_STORAGE !== 'true') {
     return undefined;
   }
@@ -50,6 +60,7 @@ export async function loadStorageFromFile(
 
   const filename = path.join(storageDir, `${resourceSlug}-storage.json`);
   if (!fs.existsSync(filename)) {
+    console.log(`Storage file ${filename} does not exist`);
     return undefined;
   }
 
@@ -64,9 +75,15 @@ export async function loadStorageFromFile(
       }
     }
     return value;
-  }) as StorageData;
+  }) as {
+    latestTimestamp: number;
+    store: StorageData;
+  };
 
   console.timeEnd(`backfillResourcePrices.${resourceName}.loadStorage`);
   console.log(`Loaded storage from ${filename}`);
-  return storage;
-} 
+  return {
+    latestTimestamp: storage.latestTimestamp,
+    store: storage.store,
+  };
+}

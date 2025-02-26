@@ -4,14 +4,14 @@ export type CandleData = {
   high: string;
   low: string;
   close: string;
-}
+};
 
 export type CandleMetadata = {
   used: bigint;
   feePaid: bigint;
   startTimestamp: number;
   endTimestamp: number;
-}
+};
 
 export type IndexStore = {
   data: CandleData[];
@@ -19,7 +19,7 @@ export type IndexStore = {
   pointers: {
     [closestTimestamp: number]: number;
   };
-}
+};
 
 export type StorageData = {
   [interval: string]: {
@@ -33,4 +33,3 @@ export type StorageData = {
     };
   };
 };
-

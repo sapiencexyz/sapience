@@ -120,19 +120,26 @@ export class ResourcePerformance {
       this.resource.slug,
       this.resource.name
     );
-    if (storage) {
-      this.storage = storage;
+
+    if (!storage) {
+      console.log('Storage not found, hard initializing');
+      await this.hardInitialize();
+      return;
     }
 
-    const lastTimestamp = this.storage[INTERVAL_1_MINUTE].trailingAvgStore.data[this.storage[INTERVAL_1_MINUTE].trailingAvgStore.data.length - 1].timestamp;
+    this.storage = storage.store;
+
+    this.lastTimestampProcessed = storage.latestTimestamp;
 
     // TODO: backfill the missing data from the db starting on the latest timestamp
-    await this.processResourceData(lastTimestamp);
+    await this.processResourceData(this.lastTimestampProcessed);
   }
 
   private async processResourceData(initialTimestamp?: number) {
     console.time(`processResourceData.${this.resource.name}`);
-    console.time(`processResourceData.${this.resource.name}.find.resourcePrices`);
+    console.time(
+      `processResourceData.${this.resource.name}.find.resourcePrices`
+    );
     if (this.runtime.processingResourceItems) {
       throw new Error('Resource prices are already being processed');
     }
@@ -143,12 +150,11 @@ export class ResourcePerformance {
       whereClause = {
         resource: { id: this.resource.id },
         timestamp: MoreThan(initialTimestamp),
-      };  
+      };
     } else {
       whereClause = {
         resource: { id: this.resource.id },
       };
-
     }
     const dbResourcePrices = await resourcePriceRepository.find({
       where: whereClause,
@@ -156,7 +162,9 @@ export class ResourcePerformance {
         timestamp: 'ASC',
       },
     });
-    console.timeEnd(`processResourceData.${this.resource.name}.find.resourcePrices`);
+    console.timeEnd(
+      `processResourceData.${this.resource.name}.find.resourcePrices`
+    );
     console.log(
       `processResourceData.${this.resource.name}.find.resourcePrices.length`,
       dbResourcePrices.length
@@ -206,11 +214,14 @@ export class ResourcePerformance {
       }
       this.runtime.currentIdx++;
     }
+
+    // Get the last timestamp processed
     this.lastTimestampProcessed =
       this.runtime.dbResourcePrices[this.runtime.currentIdx - 1].timestamp;
 
     await saveStorageToFile(
       this.storage,
+      this.lastTimestampProcessed,
       this.resource.slug,
       this.resource.name
     );

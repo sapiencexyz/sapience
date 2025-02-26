@@ -268,7 +268,8 @@ export class CandleResolver {
     @Arg('interval', () => Int) interval: number
   ): Promise<CandleType[]> {
     const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
-    const resourcePerformance = resourcePerformanceManager.getResourcePerformance(slug);
+    const resourcePerformance =
+      resourcePerformanceManager.getResourcePerformance(slug);
 
     if (!resourcePerformance) {
       throw new Error(`Resource performance not initialized for ${slug}`);
@@ -327,10 +328,11 @@ export class CandleResolver {
     @Arg('slug', () => String) slug: string,
     @Arg('from', () => Int) from: number,
     @Arg('to', () => Int) to: number,
-    @Arg('interval', () => Int) interval: number,
+    @Arg('interval', () => Int) interval: number
   ): Promise<CandleType[]> {
     const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
-    const resourcePerformance = resourcePerformanceManager.getResourcePerformance(slug);
+    const resourcePerformance =
+      resourcePerformanceManager.getResourcePerformance(slug);
 
     if (!resourcePerformance) {
       throw new Error(`Resource performance not initialized for ${slug}`);
@@ -339,7 +341,6 @@ export class CandleResolver {
     const prices = resourcePerformance.getTrailingAvgPrices(from, to, interval);
 
     return prices;
-
 
     // try {
     //   const trailingFrom = from - trailingTime;
@@ -406,13 +407,24 @@ export class CandleResolver {
     @Arg('interval', () => Int) interval: number
   ): Promise<CandleType[]> {
     const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
-    const resourcePerformance = resourcePerformanceManager.getResourcePerformanceFromChainAndAddress(chainId, address);
+    const resourcePerformance =
+      resourcePerformanceManager.getResourcePerformanceFromChainAndAddress(
+        chainId,
+        address
+      );
 
     if (!resourcePerformance) {
-      throw new Error(`Resource performance not initialized for ${chainId}-${address}`);
+      throw new Error(
+        `Resource performance not initialized for ${chainId}-${address}`
+      );
     }
 
-    const prices = resourcePerformance.getIndexPrices(from, to, interval, epochId);
+    const prices = resourcePerformance.getIndexPrices(
+      from,
+      to,
+      interval,
+      epochId
+    );
 
     return prices;
     // try {

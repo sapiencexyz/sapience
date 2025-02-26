@@ -1,5 +1,5 @@
-import { ResourcePerformance } from "./resourcePerformance";
-import { Resource } from "src/models/Resource";
+import { ResourcePerformance } from './resourcePerformance';
+import { Resource } from 'src/models/Resource';
 
 export class ResourcePerformanceManager {
   private static _instance: ResourcePerformanceManager;
@@ -11,8 +11,7 @@ export class ResourcePerformanceManager {
     [resourceSlug: string]: ResourcePerformance;
   } = {};
 
-  private constructor() {
-  }
+  private constructor() {}
 
   public static getInstance() {
     if (!ResourcePerformanceManager._instance) {
@@ -32,7 +31,9 @@ export class ResourcePerformanceManager {
     ResourcePerformanceManager._initializing = true;
     this.resources = resources;
     for (const resource of this.resources) {
-      this.resourcePerformances[resource.slug] = new ResourcePerformance(resource);
+      this.resourcePerformances[resource.slug] = new ResourcePerformance(
+        resource
+      );
       console.log(`Soft initializing resource ${resource.name}`);
       await this.resourcePerformances[resource.slug].softInitialize();
       console.log(`Resource ${resource.slug} done`);
@@ -43,13 +44,21 @@ export class ResourcePerformanceManager {
   }
 
   public getResourcePerformance(resourceSlug: string) {
-    if (!this.resourcePerformances[resourceSlug] && !ResourcePerformanceManager._initialized) {
-      throw new Error(`Resource performance not initialized for ${resourceSlug}`);
+    if (
+      !this.resourcePerformances[resourceSlug] &&
+      !ResourcePerformanceManager._initialized
+    ) {
+      throw new Error(
+        `Resource performance not initialized for ${resourceSlug}`
+      );
     }
     return this.resourcePerformances[resourceSlug];
   }
 
-  public getResourcePerformanceFromChainAndAddress(chainId: number, address: string) {
+  public getResourcePerformanceFromChainAndAddress(
+    chainId: number,
+    address: string
+  ) {
     for (const resource of this.resources) {
       const slug = resource.slug;
       const rp = this.resourcePerformances[slug];
@@ -58,7 +67,9 @@ export class ResourcePerformanceManager {
       }
     }
 
-    throw new Error(`Resource performance not initialized for ${chainId}-${address}`);
+    throw new Error(
+      `Resource performance not initialized for ${chainId}-${address}`
+    );
   }
 
   public getResourcePerformances() {
