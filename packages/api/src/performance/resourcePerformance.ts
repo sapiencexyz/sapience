@@ -8,6 +8,7 @@ import { ResourcePrice } from 'src/models/ResourcePrice';
 import { Market } from 'src/models/Market';
 import { Epoch } from 'src/models/Epoch';
 import { CandleData, StorageData } from './types';
+import { MoreThan } from 'typeorm';
 
 import {
   INTERVAL_1_MINUTE,
@@ -111,28 +112,53 @@ export class ResourcePerformance {
   }
 
   async hardInitialize() {
-    console.time(`hardInitialize.${this.resource.name}`);
-    console.time(
-      `hardInitialize.${this.resource.name}.find.resourcePrices`
+    await this.processResourceData();
+  }
+
+  async softInitialize() {
+    const storage = await loadStorageFromFile(
+      this.resource.slug,
+      this.resource.name
     );
+    if (storage) {
+      this.storage = storage;
+    }
+
+    const lastTimestamp = this.storage[INTERVAL_1_MINUTE].trailingAvgStore.data[this.storage[INTERVAL_1_MINUTE].trailingAvgStore.data.length - 1].timestamp;
+
+    // TODO: backfill the missing data from the db starting on the latest timestamp
+    await this.processResourceData(lastTimestamp);
+  }
+
+  private async processResourceData(initialTimestamp?: number) {
+    console.time(`processResourceData.${this.resource.name}`);
+    console.time(`processResourceData.${this.resource.name}.find.resourcePrices`);
     if (this.runtime.processingResourceItems) {
       throw new Error('Resource prices are already being processed');
     }
 
     this.runtime.processingResourceItems = true;
-    const dbResourcePrices = await resourcePriceRepository.find({
-      where: {
+    let whereClause;
+    if (initialTimestamp) {
+      whereClause = {
         resource: { id: this.resource.id },
-      },
+        timestamp: MoreThan(initialTimestamp),
+      };  
+    } else {
+      whereClause = {
+        resource: { id: this.resource.id },
+      };
+
+    }
+    const dbResourcePrices = await resourcePriceRepository.find({
+      where: whereClause,
       order: {
         timestamp: 'ASC',
       },
     });
-    console.timeEnd(
-      `hardInitialize.${this.resource.name}.find.resourcePrices`
-    );
+    console.timeEnd(`processResourceData.${this.resource.name}.find.resourcePrices`);
     console.log(
-      `hardInitialize.${this.resource.name}.find.resourcePrices.length`,
+      `processResourceData.${this.resource.name}.find.resourcePrices.length`,
       dbResourcePrices.length
     );
     if (dbResourcePrices.length === 0) {
@@ -141,18 +167,16 @@ export class ResourcePerformance {
     }
 
     // find markets
-    console.time(`hardInitialize.${this.resource.name}.find.markets`);
+    console.time(`processResourceData.${this.resource.name}.find.markets`);
     this.markets = await marketRepository.find({
       where: {
         resource: { id: this.resource.id },
       },
     });
-    console.timeEnd(
-      `hardInitialize.${this.resource.name}.find.markets`
-    );
+    console.timeEnd(`processResourceData.${this.resource.name}.find.markets`);
 
     // find epochs
-    console.time(`hardInitialize.${this.resource.name}.find.epochs`);
+    console.time(`processResourceData.${this.resource.name}.find.epochs`);
     this.epochs = await epochRepository.find({
       where: {
         market: { resource: { id: this.resource.id } },
@@ -161,44 +185,37 @@ export class ResourcePerformance {
         startTimestamp: 'ASC',
       },
     });
-    console.timeEnd(`hardInitialize.${this.resource.name}.find.epochs`);
+    console.timeEnd(`processResourceData.${this.resource.name}.find.epochs`);
 
     // clean up runtime
     this.runtime.indexProcessData = {};
     this.runtime.dbResourcePricesLength = dbResourcePrices.length;
     this.runtime.dbResourcePrices = dbResourcePrices;
     this.runtime.currentIdx = 0;
-    // TODO: do the initialization of the storage and runtime here
 
-    while (this.runtime.currentIdx < dbResourcePrices.length) {
-      const item = dbResourcePrices[this.runtime.currentIdx];
+    while (this.runtime.currentIdx < this.runtime.dbResourcePricesLength) {
+      const item = this.runtime.dbResourcePrices[this.runtime.currentIdx];
       for (const interval of this.intervals) {
         this.processResourcePriceData(item, this.runtime.currentIdx, interval);
-        this.processTrailingAvgPricesData(item, this.runtime.currentIdx, interval);
+        this.processTrailingAvgPricesData(
+          item,
+          this.runtime.currentIdx,
+          interval
+        );
         this.processIndexPricesData(item, this.runtime.currentIdx, interval);
       }
       this.runtime.currentIdx++;
     }
     this.lastTimestampProcessed =
-      dbResourcePrices[this.runtime.currentIdx - 1].timestamp;
-    console.timeEnd(`hardInitialize.${this.resource.name}`);
+      this.runtime.dbResourcePrices[this.runtime.currentIdx - 1].timestamp;
 
     await saveStorageToFile(
       this.storage,
       this.resource.slug,
       this.resource.name
     );
-
+    console.timeEnd(`processResourceData.${this.resource.name}`);
     this.runtime.processingResourceItems = false;
-  }
-
-  async softInitialize() {
-    const storage = await loadStorageFromFile(this.resource.slug, this.resource.name);
-    if (storage) {
-      this.storage = storage;
-    }
-
-    // TODO: backfill the missing data from the db starting on the latest timestamp
   }
 
   // async backfillMarketPrices() {
@@ -457,7 +474,11 @@ export class ResourcePerformance {
   }
 
   getMarketFromChainAndAddress(chainId: number, address: string) {
-    return this.markets.find(m => m.chainId === chainId && m.address.toLowerCase() === address.toLowerCase());
+    return this.markets.find(
+      (m) =>
+        m.chainId === chainId &&
+        m.address.toLowerCase() === address.toLowerCase()
+    );
   }
 
   private checkInterval(interval: number) {
@@ -473,7 +494,7 @@ export class ResourcePerformance {
     from: number,
     to: number,
     interval: number,
-    fillMissing: boolean = true,
+    fillMissing: boolean = true
   ) {
     if (prices.length === 0) {
       return [];
@@ -493,10 +514,10 @@ export class ResourcePerformance {
       for (let t = windowOfTime.from; t < prices[0].timestamp; t += interval) {
         zeroEntries.push({
           timestamp: t,
-          open:  '0' ,
-          high:  '0' ,
-          low: '0' ,
-          close:  '0' ,
+          open: '0',
+          high: '0',
+          low: '0',
+          close: '0',
         });
       }
       prices = [...zeroEntries, ...prices];
