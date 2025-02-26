@@ -5,7 +5,7 @@ const checkIsClosestTick = (
   activeTickValue: number,
   tickSpacing: number
 ) => {
-  return tick <= activeTickValue && tick + tickSpacing >= activeTickValue;
+  return activeTickValue >= tick && activeTickValue < tick + tickSpacing;
 };
 
 interface PayloadType {
