@@ -78,8 +78,9 @@ router.post(
       // Get background worker service ID
       const renderServices = await fetchRenderServices();
       const worker = renderServices.find(
-        (item: { service?: { type: string; id?: string; branch?: string } }) =>
+        (item: { service?: { type: string; id?: string; branch?: string; name?: string } }) =>
           item?.service?.type === 'background_worker' &&
+          item?.service?.name === 'background-worker' &&
           item?.service?.branch ===
             (process.env.NODE_ENV === 'staging' ? 'staging' : 'main')
       );
@@ -147,6 +148,7 @@ const handleReindexRequest = async (
     for (const item of renderServices) {
       if (
         item?.service?.type === 'background_worker' &&
+        item?.service?.name === 'background-worker' &&
         item?.service?.id &&
         (process.env.NODE_ENV === 'staging'
           ? item?.service?.branch === 'staging'
