@@ -166,6 +166,7 @@ router.post(
       await renderJobRepository.save(jobDb);
 
       res.json({ success: true, job });
+      return;
     }
 
     // local development
@@ -179,7 +180,6 @@ router.post(
         res.status(500).json({ error: 'An unknown error occurred' });
       }
     }
-    return;
   })
 );
 
