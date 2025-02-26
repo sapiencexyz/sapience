@@ -19,7 +19,7 @@ import {
   INTERVAL_28_DAYS,
 } from './constants';
 
-import { saveStorageToFile } from './helper';
+import { loadStorageFromFile, saveStorageToFile } from './helper';
 
 export class ResourcePerformance {
   static readonly MIN_INTERVAL = INTERVAL_5_MINUTES;
@@ -110,10 +110,10 @@ export class ResourcePerformance {
     }
   }
 
-  async backfillResourcePrices() {
-    console.time(`backfillResourcePrices.${this.resource.name}`);
+  async hardInitialize() {
+    console.time(`hardInitialize.${this.resource.name}`);
     console.time(
-      `backfillResourcePrices.${this.resource.name}.find.resourcePrices`
+      `hardInitialize.${this.resource.name}.find.resourcePrices`
     );
     if (this.runtime.processingResourceItems) {
       throw new Error('Resource prices are already being processed');
@@ -129,10 +129,10 @@ export class ResourcePerformance {
       },
     });
     console.timeEnd(
-      `backfillResourcePrices.${this.resource.name}.find.resourcePrices`
+      `hardInitialize.${this.resource.name}.find.resourcePrices`
     );
     console.log(
-      `backfillResourcePrices.${this.resource.name}.find.resourcePrices.length`,
+      `hardInitialize.${this.resource.name}.find.resourcePrices.length`,
       dbResourcePrices.length
     );
     if (dbResourcePrices.length === 0) {
@@ -141,18 +141,18 @@ export class ResourcePerformance {
     }
 
     // find markets
-    console.time(`backfillResourcePrices.${this.resource.name}.find.markets`);
+    console.time(`hardInitialize.${this.resource.name}.find.markets`);
     this.markets = await marketRepository.find({
       where: {
         resource: { id: this.resource.id },
       },
     });
     console.timeEnd(
-      `backfillResourcePrices.${this.resource.name}.find.markets`
+      `hardInitialize.${this.resource.name}.find.markets`
     );
 
     // find epochs
-    console.time(`backfillResourcePrices.${this.resource.name}.find.epochs`);
+    console.time(`hardInitialize.${this.resource.name}.find.epochs`);
     this.epochs = await epochRepository.find({
       where: {
         market: { resource: { id: this.resource.id } },
@@ -161,7 +161,7 @@ export class ResourcePerformance {
         startTimestamp: 'ASC',
       },
     });
-    console.timeEnd(`backfillResourcePrices.${this.resource.name}.find.epochs`);
+    console.timeEnd(`hardInitialize.${this.resource.name}.find.epochs`);
 
     // clean up runtime
     this.runtime.indexProcessData = {};
@@ -181,7 +181,7 @@ export class ResourcePerformance {
     }
     this.lastTimestampProcessed =
       dbResourcePrices[this.runtime.currentIdx - 1].timestamp;
-    console.timeEnd(`backfillResourcePrices.${this.resource.name}`);
+    console.timeEnd(`hardInitialize.${this.resource.name}`);
 
     await saveStorageToFile(
       this.storage,
@@ -190,6 +190,15 @@ export class ResourcePerformance {
     );
 
     this.runtime.processingResourceItems = false;
+  }
+
+  async softInitialize() {
+    const storage = await loadStorageFromFile(this.resource.slug, this.resource.name);
+    if (storage) {
+      this.storage = storage;
+    }
+
+    // TODO: backfill the missing data from the db starting on the latest timestamp
   }
 
   // async backfillMarketPrices() {

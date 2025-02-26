@@ -33,8 +33,8 @@ export class ResourcePerformanceManager {
     this.resources = resources;
     for (const resource of this.resources) {
       this.resourcePerformances[resource.slug] = new ResourcePerformance(resource);
-      console.log(`Backfilling resource ${resource.name}`);
-      await this.resourcePerformances[resource.slug].backfillResourcePrices();
+      console.log(`Soft initializing resource ${resource.name}`);
+      await this.resourcePerformances[resource.slug].softInitialize();
       console.log(`Resource ${resource.slug} done`);
     }
     ResourcePerformanceManager._initialized = true;
