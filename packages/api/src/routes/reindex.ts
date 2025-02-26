@@ -78,7 +78,14 @@ router.post(
       // Get background worker service ID
       const renderServices = await fetchRenderServices();
       const worker = renderServices.find(
-        (item: { service?: { type: string; id?: string; branch?: string; name?: string } }) =>
+        (item: {
+          service?: {
+            type: string;
+            id?: string;
+            branch?: string;
+            name?: string;
+          };
+        }) =>
           item?.service?.type === 'background_worker' &&
           item?.service?.name?.startsWith('background-worker') &&
           item?.service?.branch ===

@@ -61,19 +61,23 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
             `Seems like no blob data exists for block ${blockNumber}, skipping...`
           );
         }
-
-        // Log specific error details
-        Sentry.withScope((scope) => {
-          scope.setExtra('blockNumber', blockNumber);
-          scope.setExtra('status', error.response?.status);
-          scope.setExtra('errorMessage', error.message);
-          Sentry.captureException(error);
-        });
       } else {
         console.warn(
           `Failed to fetch blob data for block ${blockNumber}:`,
           error
         );
+
+        // Log specific error details
+        Sentry.withScope((scope) => {
+          scope.setExtra('blockNumber', blockNumber);
+          if (error instanceof Error) {
+            scope.setExtra('errorMessage', error.message);
+            if (axios.isAxiosError(error)) {
+              scope.setExtra('status', error.response?.status);
+            }
+          }
+          Sentry.captureException(error);
+        });
       }
       return null;
     }
@@ -116,6 +120,12 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
       Sentry.withScope((scope) => {
         scope.setExtra('blockNumber', blockNumber);
         scope.setExtra('resource', resource.slug);
+        if (error instanceof Error) {
+          scope.setExtra('errorMessage', error.message);
+          if (axios.isAxiosError(error)) {
+            scope.setExtra('status', error.response?.status);
+          }
+        }
         Sentry.captureException(error);
       });
     }
@@ -181,6 +191,12 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
             scope.setExtra('blockNumber', blockNumber);
             scope.setExtra('resource', resource.slug);
             scope.setExtra('timestamp', startTimestamp);
+            if (error instanceof Error) {
+              scope.setExtra('errorMessage', error.message);
+              if (axios.isAxiosError(error)) {
+                scope.setExtra('status', error.response?.status);
+              }
+            }
             Sentry.captureException(error);
           });
         }
@@ -218,6 +234,12 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
         Sentry.withScope((scope) => {
           scope.setExtra('blockNumber', blockNumber);
           scope.setExtra('resource', resource.slug);
+          if (error instanceof Error) {
+            scope.setExtra('errorMessage', error.message);
+            if (axios.isAxiosError(error)) {
+              scope.setExtra('status', error.response?.status);
+            }
+          }
           Sentry.captureException(error);
         });
       }
