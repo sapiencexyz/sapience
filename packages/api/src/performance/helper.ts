@@ -42,7 +42,7 @@ export async function loadStorageFromFile(
   resourceSlug: string,
   resourceName: string
 ): Promise<
-  {
+  | {
       latestTimestamp: number;
       store: StorageData;
     }
