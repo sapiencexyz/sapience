@@ -757,6 +757,7 @@ export class ResourcePerformance {
 
   getResourcePrices(from: number, to: number, interval: number) {
     this.checkInterval(interval);
+
     return this.getPricesFromArray(
       this.storage[interval].resourceStore.data,
       from,
@@ -802,7 +803,22 @@ export class ResourcePerformance {
     }
   }
 
-  private getPricesFromArray(
+  private async updateStoreIfNeeded(prices: CandleData[], to: number) {
+    // Get the last processed interval's end timestamp
+    if (!prices?.length) {
+      return;
+    }
+
+    const lastProcessedData = prices[prices.length - 1];
+
+    // If the requested 'to' timestamp is beyond our last processed interval
+    if (to > lastProcessedData.timestamp) {
+      // Process new data starting from the last timestamp we processed
+      await this.processResourceData(this.lastTimestampProcessed);
+    }
+  }
+
+  private async getPricesFromArray(
     prices: CandleData[],
     from: number,
     to: number,
@@ -820,6 +836,9 @@ export class ResourcePerformance {
       from: this.snapToInterval(from, interval),
       to: this.snapToInterval(to, interval),
     };
+
+    // Check if we need to process new data for this requested time range
+    await this.updateStoreIfNeeded(prices, windowOfTime.to);
 
     // If there are no prices or window starts before first price, add zero entries
     if (fillMissing && windowOfTime.from < prices[0].timestamp) {
@@ -853,7 +872,13 @@ export class ResourcePerformance {
 
     // Get slice of prices in time window
     const pricesInRange = prices.slice(startIndex, endIndex);
-    return pricesInRange;
+    return pricesInRange.map((price) => ({
+      timestamp: price.timestamp,
+      open: price.open.toString(),
+      high: price.high.toString(),
+      low: price.low.toString(),
+      close: price.close.toString(),
+    })  );
   }
 
   snapToInterval(timestamp: number, interval: number | undefined = undefined) {
