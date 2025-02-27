@@ -21,7 +21,7 @@ See the [website](https://foil.xyz), [app](https://app.foil.xyz), and [docs](htt
 ## Deploy
 
 - Go to `/packages/protocol` in your terminal.
-- Bump the version in `/packages/protocol/package.json`
+- Bump the version in `/packages/protocol/package.json` if appropriate.
 - Verify there are no issues with `pnpm simulate-deploy:sepolia --rpc-url <rpc-url> --private-key <private-key>`
 
 🔐 _You can deploy with a hardware wallet by running [Frame](https://frame.sh) and omitting the `--private-key` option._
