@@ -878,7 +878,7 @@ export class ResourcePerformance {
       high: price.high.toString(),
       low: price.low.toString(),
       close: price.close.toString(),
-    })  );
+    }));
   }
 
   snapToInterval(timestamp: number, interval: number | undefined = undefined) {

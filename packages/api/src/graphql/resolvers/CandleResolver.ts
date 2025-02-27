@@ -275,7 +275,11 @@ export class CandleResolver {
       throw new Error(`Resource performance not initialized for ${slug}`);
     }
 
-    const prices = await resourcePerformance.getResourcePrices(from, to, interval);
+    const prices = await resourcePerformance.getResourcePrices(
+      from,
+      to,
+      interval
+    );
 
     return prices;
     // try {
@@ -338,7 +342,11 @@ export class CandleResolver {
       throw new Error(`Resource performance not initialized for ${slug}`);
     }
 
-    const prices = await resourcePerformance.getTrailingAvgPrices(from, to, interval);
+    const prices = await resourcePerformance.getTrailingAvgPrices(
+      from,
+      to,
+      interval
+    );
 
     return prices;
 
