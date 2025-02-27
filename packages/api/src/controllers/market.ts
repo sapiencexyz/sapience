@@ -196,57 +196,128 @@ export const reindexMarketEvents = async (
 
   const startBlock = startBlockNumber;
   const endBlock = await client.getBlockNumber();
+  const CHUNK_SIZE = 10000; // Process 10,000 blocks at a time
 
-  for (let blockNumber = startBlock; blockNumber <= endBlock; blockNumber++) {
-    console.log('Indexing market events from block ', blockNumber);
-    try {
-      const logs = await client.getLogs({
-        address: market.address as `0x${string}`,
-        fromBlock: BigInt(blockNumber),
-        toBlock: BigInt(blockNumber),
-      });
+  console.log(`Indexing market events from block ${startBlock} to ${endBlock}`);
 
-      for (const log of logs) {
+  // Function to process logs regardless of how they were fetched
+  const processLogs = async (logs: Log[]) => {
+    for (const log of logs) {
+      try {
         const decodedLog = decodeEventLog({
           abi,
           data: log.data,
           topics: log.topics,
         });
         const serializedLog = JSON.stringify(decodedLog, bigintReplacer);
-        const blockNumber = log.blockNumber;
-        const block = await client.getBlock({
-          blockNumber: log.blockNumber,
-        });
+        const logBlockNumber = log.blockNumber || 0n;
+        const block = await client.getBlock({ blockNumber: logBlockNumber });
         const logIndex = log.logIndex || 0;
         const logData = {
           ...JSON.parse(serializedLog),
           transactionHash: log.transactionHash || '',
           blockHash: log.blockHash || '',
-          blockNumber: log.blockNumber?.toString() || '',
-          logIndex: log.logIndex || 0,
+          blockNumber: logBlockNumber.toString(),
+          logIndex,
           transactionIndex: log.transactionIndex || 0,
           removed: log.removed || false,
           topics: log.topics || [],
           data: log.data || '',
         };
 
-        // Extract epochId from logData (adjust this based on your event structure)
-        const epochId = logData.args?.epochId || 0;
+        // Extract epochId from logData
+        const eventEpochId = logData.args?.epochId || 0;
 
         await upsertEvent(
           chainId,
           market.address,
-          epochId,
-          blockNumber,
+          eventEpochId,
+          logBlockNumber,
           block.timestamp,
           logIndex,
           logData
         );
+      } catch (error) {
+        console.error(
+          `Error processing log at block ${log.blockNumber || 'unknown'}:`,
+          error
+        );
       }
+    }
+  };
+
+  // Process blocks in chunks to avoid RPC limitations
+  let currentBlock = startBlock;
+  let totalLogsProcessed = 0;
+
+  while (currentBlock <= endBlock) {
+    const chunkEndBlock = Math.min(
+      currentBlock + CHUNK_SIZE - 1,
+      Number(endBlock)
+    );
+
+    try {
+      console.log(
+        `Fetching logs for blocks ${currentBlock} to ${chunkEndBlock}...`
+      );
+      const logs = await client.getLogs({
+        address: market.address as `0x${string}`,
+        fromBlock: BigInt(currentBlock),
+        toBlock: BigInt(chunkEndBlock),
+      });
+
+      if (logs.length > 0) {
+        console.log(
+          `Found ${logs.length} logs in blocks ${currentBlock}-${chunkEndBlock}`
+        );
+        await processLogs(logs);
+        totalLogsProcessed += logs.length;
+      }
+
+      // Move to the next chunk
+      currentBlock = chunkEndBlock + 1;
     } catch (error) {
-      console.error(`Error processing block ${blockNumber}:`, error);
+      console.error(
+        `Error fetching logs for block range ${currentBlock}-${chunkEndBlock}:`,
+        error
+      );
+
+      // If a chunk fails, fall back to processing that chunk block by block
+      console.log(
+        `Falling back to block-by-block indexing for range ${currentBlock}-${chunkEndBlock}`
+      );
+      for (
+        let blockNumber = currentBlock;
+        blockNumber <= chunkEndBlock;
+        blockNumber++
+      ) {
+        try {
+          const logs = await client.getLogs({
+            address: market.address as `0x${string}`,
+            fromBlock: BigInt(blockNumber),
+            toBlock: BigInt(blockNumber),
+          });
+
+          if (logs.length > 0) {
+            console.log(
+              `Processing ${logs.length} logs from block ${blockNumber}`
+            );
+            await processLogs(logs);
+            totalLogsProcessed += logs.length;
+          }
+        } catch (error) {
+          console.error(`Error processing block ${blockNumber}:`, error);
+        }
+      }
+
+      // Move to the next chunk
+      currentBlock = chunkEndBlock + 1;
     }
   }
+
+  console.log(
+    `Completed indexing for market ${market.address} in epoch ${epochId}. Processed ${totalLogsProcessed} logs.`
+  );
 };
 
 const alertEvent = async (

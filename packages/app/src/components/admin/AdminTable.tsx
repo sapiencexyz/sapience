@@ -104,14 +104,16 @@ const AdminTable: React.FC = () => {
         message: ADMIN_AUTHENTICATE_MSG,
       });
 
-      const response = await foilApi.post('/reindexMissingBlocks', {
-        chainId,
-        address: marketAddress,
-        epochId,
-        model: reindexType === 'price' ? 'ResourcePrice' : 'Event',
-        signature,
-        timestamp,
-      });
+      const response = await foilApi.post(
+        `/reindex/${reindexType === 'price' ? 'missing-prices' : 'market-events'}`,
+        {
+          chainId,
+          address: marketAddress,
+          epochId,
+          signature,
+          timestamp,
+        }
+      );
 
       if (response.success) {
         toast({

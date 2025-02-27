@@ -27,8 +27,9 @@ const MarketCell = ({
         <Image
           src={resource.iconPath}
           alt={marketName}
-          width={20}
-          height={20}
+          width={32}
+          height={32}
+          className="grayscale"
         />
       )}
       <div className="flex flex-col gap-0.5">

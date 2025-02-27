@@ -30,7 +30,7 @@ export function useSettlementPrice(market: Market, epoch: Epoch) {
     queryKey: ['stEthPerToken', market.chainId, epoch.endTimestamp],
     queryFn: async () => {
       const data = await foilApi.get(
-        `/getStEthPerTokenAtTimestamp?chainId=${market.chainId}&endTime=${epoch.endTimestamp}`
+        `/getStEthPerTokenAtTimestamps?chainId=${market.chainId}&endTime=${epoch.endTimestamp}`
       );
       return Number(formatEther(BigInt(data.stEthPerToken)));
     },

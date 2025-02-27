@@ -94,18 +94,15 @@ const Admin = () => {
         });
       }
 
-      const response = await foilApi.post(
-        '/reindexMissingBlocks/index-resource',
-        {
-          slug: selectedResource,
-          startTimestamp,
-          ...(endTimestamp && { endTimestamp }),
-          ...(signature && {
-            signature,
-            signatureTimestamp: timestamp,
-          }),
-        }
-      );
+      const response = await foilApi.post('/reindex/resource', {
+        slug: selectedResource,
+        startTimestamp,
+        ...(endTimestamp && { endTimestamp }),
+        ...(signature && {
+          signature,
+          signatureTimestamp: timestamp,
+        }),
+      });
 
       if (response.success) {
         toast({
