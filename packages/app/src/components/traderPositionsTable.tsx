@@ -40,7 +40,8 @@ import { toast } from '~/hooks/use-toast';
 import type { PeriodContextType } from '~/lib/context/PeriodProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
-import { foilApi , convertWstEthToGwei } from '~/lib/utils/util';
+import { foilApi } from '~/lib/utils/util';
+import { convertWstEthToGwei } from '~/lib/utils/util';
 
 import MarketCell from './MarketCell';
 import NumberDisplay from './numberDisplay';
@@ -227,43 +228,30 @@ const TraderPositionsTable: React.FC<Props> = ({
   } = usePositions(walletAddress, periodContext);
   const { data: resources } = useResources();
 
+  
   const { stEthPerToken } = useFoil();
   const { useMarketUnits } = useContext(PeriodContext);
 
   const calculateEntryPrice = (position: any) => {
     let entryPrice = 0;
     if (!position.isLP) {
-      const isLong =
-        Number(position.baseToken) - Number(position.borrowedBaseToken) > 0;
-
-      console.log('All transactions:', position.transactions);
-      console.log(
-        'Transaction types:',
-        position.transactions.map((t: any) => t.type)
-      );
-
-      // Filter for opening transactions only - those that increase position size
+      const isLong = Number(position.baseToken) - Number(position.borrowedBaseToken) > 0;
+      
+      // filters for only positions with same type of trades
       const openTrades = position.transactions.filter((t: any) => {
         if (isLong) {
-          // For long positions, include only transactions that add base tokens
           return Number(t.baseToken) > 0;
-        } 
-          // For short positions, include only transactions that add quote tokens
+        } else {
           return Number(t.quoteToken) > 0;
-        
+        }
       });
-
-      console.log(`openTrades for position ID ${  position.positionId  }:`, openTrades);
-      );
-
+    
       if (isLong) {
-        console.log('im here again');
         let baseTokenTotal = 0;
         entryPrice = openTrades.reduce((acc: number, transaction: any) => {
           const baseAmount = Number(transaction.baseToken);
           baseTokenTotal += baseAmount;
-          console.log('basetokentotal', baseTokenTotal);
-          return acc + Number(transaction.tradeRatioD18) * baseAmount;
+          return acc + (Number(transaction.tradeRatioD18) * baseAmount);
         }, 0);
         entryPrice = baseTokenTotal > 0 ? entryPrice / baseTokenTotal : 0;
       } else {
@@ -271,13 +259,12 @@ const TraderPositionsTable: React.FC<Props> = ({
         entryPrice = openTrades.reduce((acc: number, transaction: any) => {
           const quoteAmount = Number(transaction.quoteToken);
           quoteTokenTotal += quoteAmount;
-          console.log('quotetokentotal', quoteTokenTotal);
-          return acc + Number(transaction.tradeRatioD18) * quoteAmount;
+          return acc + (Number(transaction.tradeRatioD18) * quoteAmount);
         }, 0);
         entryPrice = quoteTokenTotal > 0 ? entryPrice / quoteTokenTotal : 0;
       }
     }
-
+    
     const unitsAdjustedEntryPrice = useMarketUnits
       ? entryPrice
       : convertWstEthToGwei(entryPrice, stEthPerToken);
@@ -443,13 +430,13 @@ const TraderPositionsTable: React.FC<Props> = ({
         header: 'Size',
         accessorFn: (row) => row.baseToken - row.borrowedBaseToken,
       },
-
+      
       {
         id: 'entryPrice',
         header: 'Effective Entry Price',
         accessorFn: (row) => calculateEntryPrice(row),
       },
-
+      
       {
         id: 'pnl',
         header: PnLHeaderCell,
@@ -462,7 +449,7 @@ const TraderPositionsTable: React.FC<Props> = ({
         enableSorting: false,
       },
     ],
-    [periodContext, calculateEntryPrice]
+    [periodContext , calculateEntryPrice ]
   );
 
   const table = useReactTable({
