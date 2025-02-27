@@ -531,8 +531,6 @@ export class ResourcePerformance {
 
         // Prepare for next interval
         ipd.nextTimestamp = this.nextInterval(item.timestamp, interval);
-        ipd.used = 0n;
-        ipd.feePaid = 0n;
 
         // Create a placeholder for the next interval
         const itemStartTime = this.snapToInterval(item.timestamp, interval);
