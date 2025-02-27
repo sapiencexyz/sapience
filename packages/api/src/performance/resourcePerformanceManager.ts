@@ -29,18 +29,37 @@ export class ResourcePerformanceManager {
     }
     console.time('ResourcePerformanceManager.initialize');
     ResourcePerformanceManager._initializing = true;
+    await this.initializeResources(resources, false);
+    ResourcePerformanceManager._initialized = true;
+    ResourcePerformanceManager._initializing = false;
+    console.timeEnd('ResourcePerformanceManager.initialize');
+  }
+
+  private async initializeResources(resources: Resource[], hardInitialize: boolean) {
     this.resources = resources;
     for (const resource of this.resources) {
       this.resourcePerformances[resource.slug] = new ResourcePerformance(
         resource
       );
-      console.log(`Soft initializing resource ${resource.name}`);
-      await this.resourcePerformances[resource.slug].softInitialize();
+      if (hardInitialize) {
+        console.log(`Hard initializing resource ${resource.name}`);
+        await this.resourcePerformances[resource.slug].hardInitialize();
+      } else {
+        console.log(`Soft initializing resource ${resource.name}`);
+        await this.resourcePerformances[resource.slug].softInitialize();
+      }
       console.log(`Resource ${resource.slug} done`);
     }
-    ResourcePerformanceManager._initialized = true;
-    ResourcePerformanceManager._initializing = false;
-    console.timeEnd('ResourcePerformanceManager.initialize');
+  }
+
+  public async hardRefresh(resources: Resource[]) {
+    console.log('Hard Refresh');
+    await this.initializeResources(resources, true);
+  }
+
+  public async softRefresh(resources: Resource[]) {
+    console.log('Soft Refresh');
+    await this.initializeResources(resources, false);
   }
 
   public getResourcePerformance(resourceSlug: string) {
