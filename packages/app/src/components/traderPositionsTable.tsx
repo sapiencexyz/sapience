@@ -532,7 +532,7 @@ const TraderPositionsTable: React.FC<Props> = ({
               row.original.baseToken - row.original.borrowedBaseToken === 0;
 
             if (isClosed) {
-              const valueColumns = ['collateral', 'size', 'pnl'];
+              const valueColumns = ['collateral', 'size', 'pnl', 'entryPrice'];
               const statusCell = row.original.isSettled ? (
                 <span className="font-medium">Position Settled</span>
               ) : (
@@ -548,7 +548,7 @@ const TraderPositionsTable: React.FC<Props> = ({
                   {/* Position ID cell */}
                   <TableCell>{renderPositionCell(row.original)}</TableCell>
                   {/* Status cell with colspan */}
-                  <TableCell colSpan={valueColumns.length + 1}>
+                  <TableCell colSpan={valueColumns.length}>
                     <div className="text-center">{statusCell}</div>
                   </TableCell>
                   {/* More Info cell */}
