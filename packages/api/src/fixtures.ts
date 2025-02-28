@@ -54,7 +54,8 @@ export const RESOURCES = [
 const addMarketYinYang = async (
   markets: MarketInfo[],
   chainId: number,
-  suffix?: string
+  suffix?: string,
+  resource = RESOURCES[0] // Default to Ethereum Gas
 ) => {
   const yin = await safeRequire(
     `@/protocol/deployments/${chainId}${suffix || ''}/FoilYin.json`
@@ -75,14 +76,14 @@ const addMarketYinYang = async (
         deployment: yin,
         vaultAddress: yinVault.address,
         marketChainId: chainId,
-        resource: RESOURCES[0], // Ethereum Gas
+        resource,
         isYin: true,
       },
       {
         deployment: yang,
         vaultAddress: yangVault.address,
         marketChainId: chainId,
-        resource: RESOURCES[0], // Ethereum Gas
+        resource,
         isYin: false,
       }
     );
@@ -95,6 +96,7 @@ const initializeMarkets = async () => {
   // Mainnet Deployments
   await addMarketYinYang(FULL_MARKET_LIST, base.id, '-beta'); // Remove after settling feb
   await addMarketYinYang(FULL_MARKET_LIST, base.id);
+  await addMarketYinYang(FULL_MARKET_LIST, base.id, '-blobs', RESOURCES[3]); // Use Ethereum Blobspace for -blobs
 
   // Development Deployments
   if (process.env.NODE_ENV === 'development') {

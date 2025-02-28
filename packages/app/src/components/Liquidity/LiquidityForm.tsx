@@ -721,7 +721,7 @@ const LiquidityForm: React.FC = () => {
         duration: 5000,
       });
       router.push(
-        `/trade/${chainId}%3A${marketAddress}/periods/${epoch}?nftId=${nftId}`
+        `/markets/${chainId}%3A${marketAddress}/periods/${epoch}/pool?positionId=${nftId}`
       );
     }
   }, [positionData, toast]);
