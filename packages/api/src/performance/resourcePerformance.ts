@@ -36,6 +36,7 @@ export class ResourcePerformance {
   private intervals: number[];
   private trailingAvgTime: number;
   private lastTimestampProcessed: number = 0;
+  private trailingAvgRequiredHistory: number = 0;
 
   private storage: StorageData = {};
 
@@ -71,6 +72,7 @@ export class ResourcePerformance {
         endTimestampIndex: number;
         startTimestamp: number;
         endTimestamp: number;
+        lastStartTrailingAvgTimestamp: number;
       };
     };
   } = {
@@ -99,7 +101,9 @@ export class ResourcePerformance {
     this.intervals = intervals;
     this.trailingAvgTime = trailingAvgTime;
     this.storage = {};
+    let maxInterval = 0;
     for (const interval of intervals) {
+      maxInterval = Math.max(maxInterval, interval);
       this.storage[interval] = {
         resourceStore: { data: [], metadata: [], pointers: {} },
         trailingAvgStore: { data: [], metadata: [], pointers: {} },
@@ -114,6 +118,7 @@ export class ResourcePerformance {
         nextTimestamp: 0,
       };
     }
+    this.trailingAvgRequiredHistory = maxInterval + this.trailingAvgTime;
   }
 
   async hardInitialize() {
@@ -141,7 +146,7 @@ export class ResourcePerformance {
   }
 
   private async processResourceData(initialTimestamp?: number) {
-    console.time(`processResourceData.${this.resource.name}`);
+    console.time(` processResourceData.${this.resource.name}`);
 
     if (this.runtime.processingResourceItems) {
       throw new Error('Resource prices are already being processed');
@@ -152,9 +157,11 @@ export class ResourcePerformance {
     // Build the query based on whether we have an initialTimestamp
     let whereClause;
     if (initialTimestamp) {
+      const initialTimestampWithHistory = Math.max(initialTimestamp - this.trailingAvgRequiredHistory, 0);
+      // const initialTimestampWithHistory = 0;
       whereClause = {
         resource: { id: this.resource.id },
-        timestamp: MoreThan(initialTimestamp),
+        timestamp: MoreThan(initialTimestampWithHistory),
       };
     } else {
       whereClause = {
@@ -163,42 +170,43 @@ export class ResourcePerformance {
     }
 
     console.time(
-      `processResourceData.${this.resource.name}.find.resourcePrices`
+      ` processResourceData.${this.resource.name}.find.resourcePrices`
     );
-    const dbResourcePrices = await resourcePriceRepository.find({
+    this.runtime.dbResourcePrices = await resourcePriceRepository.find({
       where: whereClause,
       order: {
         timestamp: 'ASC',
       },
     });
+    this.runtime.dbResourcePricesLength = this.runtime.dbResourcePrices.length;
     console.timeEnd(
-      `processResourceData.${this.resource.name}.find.resourcePrices`
+      ` processResourceData.${this.resource.name}.find.resourcePrices`
     );
 
     console.log(
-      `processResourceData.${this.resource.name}.find.resourcePrices.length`,
-      dbResourcePrices.length
+      ` processResourceData.${this.resource.name}.find.resourcePrices.length`,
+      this.runtime.dbResourcePricesLength
     );
 
-    if (dbResourcePrices.length === 0) {
+    if (this.runtime.dbResourcePricesLength === 0) {
       this.runtime.processingResourceItems = false;
       return;
     }
 
     // Find markets if not already loaded
     if (!this.markets || this.markets.length === 0) {
-      console.time(`processResourceData.${this.resource.name}.find.markets`);
+      console.time(` processResourceData.${this.resource.name}.find.markets`);
       this.markets = await marketRepository.find({
         where: {
           resource: { id: this.resource.id },
         },
       });
-      console.timeEnd(`processResourceData.${this.resource.name}.find.markets`);
+      console.timeEnd(` processResourceData.${this.resource.name}.find.markets`);
     }
 
     // Find epochs if not already loaded
     if (!this.epochs || this.epochs.length === 0) {
-      console.time(`processResourceData.${this.resource.name}.find.epochs`);
+      console.time(` processResourceData.${this.resource.name}.find.epochs`);
       this.epochs = await epochRepository.find({
         where: {
           market: { resource: { id: this.resource.id } },
@@ -207,12 +215,10 @@ export class ResourcePerformance {
           startTimestamp: 'ASC',
         },
       });
-      console.timeEnd(`processResourceData.${this.resource.name}.find.epochs`);
+      console.timeEnd(` processResourceData.${this.resource.name}.find.epochs`);
     }
 
     // Set up runtime data
-    this.runtime.dbResourcePricesLength = dbResourcePrices.length;
-    this.runtime.dbResourcePrices = dbResourcePrices;
     this.runtime.currentIdx = 0;
 
     // Reset processing data structures
@@ -240,12 +246,22 @@ export class ResourcePerformance {
         endTimestampIndex: 0,
         startTimestamp: 0,
         endTimestamp: 0,
+        lastStartTrailingAvgTimestamp: 0,
       };
 
       this.runtime.indexProcessData[interval] = {};
     }
 
     // Process all resource prices
+    // Find the start index to start processing from
+    if (initialTimestamp) {
+      let startIdx = 0;
+      while(startIdx < this.runtime.dbResourcePricesLength && this.runtime.dbResourcePrices[startIdx].timestamp < initialTimestamp) {
+        startIdx++;
+      }
+      this.runtime.currentIdx = startIdx;
+    }
+    
     while (this.runtime.currentIdx < this.runtime.dbResourcePricesLength) {
       const item = this.runtime.dbResourcePrices[this.runtime.currentIdx];
       for (const interval of this.intervals) {
@@ -276,7 +292,7 @@ export class ResourcePerformance {
       this.resource.name
     );
 
-    console.timeEnd(`processResourceData.${this.resource.name}`);
+    console.timeEnd(` processResourceData.${this.resource.name}`);
     this.runtime.processingResourceItems = false;
   }
 
@@ -598,6 +614,7 @@ export class ResourcePerformance {
         endTimestampIndex: 0,
         startTimestamp: 0,
         endTimestamp: 0,
+        lastStartTrailingAvgTimestamp: 0,
       };
     }
 
@@ -610,7 +627,8 @@ export class ResourcePerformance {
       tpd.feePaid = BigInt(item.feePaid);
       tpd.startTimestamp = item.timestamp;
       tpd.endTimestamp = item.timestamp;
-      tpd.startTimestampIndex = currentIdx;
+      tpd.lastStartTrailingAvgTimestamp = this.lastTimestampProcessed - this.trailingAvgTime;
+      tpd.startTimestampIndex = 0;
       tpd.endTimestampIndex = currentIdx;
 
       // Create a placeholder in the store
@@ -718,6 +736,15 @@ export class ResourcePerformance {
     let startIdx = tpd.startTimestampIndex;
     let oldItem = this.runtime.dbResourcePrices[startIdx];
     const trailingAvgTimestamp = item.timestamp - this.trailingAvgTime;
+    if (oldItem.timestamp < tpd.lastStartTrailingAvgTimestamp) {
+      // skip until we find the first item after the trailing avg timestamp
+      while (oldItem.timestamp < tpd.lastStartTrailingAvgTimestamp) {
+        startIdx++;
+        oldItem = this.runtime.dbResourcePrices[startIdx];
+      }
+    }
+  
+    // Remove the old items from the trailing avg
     while (oldItem.timestamp < trailingAvgTimestamp) {
       tpd.used -= BigInt(oldItem.used);
       tpd.feePaid -= BigInt(oldItem.feePaid);
