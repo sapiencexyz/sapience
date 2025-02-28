@@ -123,7 +123,6 @@ const usePositions = (
         throw new Error(errors[0].message);
       }
 
-      // Filter for non-LP positions only
       return data.positions.filter((position: any) => !position.isLP);
     },
     enabled:
