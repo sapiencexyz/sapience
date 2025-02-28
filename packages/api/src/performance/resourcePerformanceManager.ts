@@ -35,7 +35,10 @@ export class ResourcePerformanceManager {
     console.timeEnd('ResourcePerformanceManager.initialize');
   }
 
-  private async initializeResources(resources: Resource[], hardInitialize: boolean) {
+  private async initializeResources(
+    resources: Resource[],
+    hardInitialize: boolean
+  ) {
     this.resources = resources;
     for (const resource of this.resources) {
       this.resourcePerformances[resource.slug] = new ResourcePerformance(

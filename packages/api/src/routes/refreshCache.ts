@@ -33,16 +33,17 @@ router.get(
 
     // For local development
     try {
-        console.log('Starting Cache Refresh');
-        const resources = await resourceRepository.find();
-        const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
-        if (hardInitialize && hardInitialize.toLowerCase() === 'true') {
-          await resourcePerformanceManager.hardRefresh(resources);
-        } else {
-          await resourcePerformanceManager.softRefresh(resources);
-        }
-        console.log('Cache Refresh Completed');
-        res.json({ success: true });
+      console.log('Starting Cache Refresh');
+      const resources = await resourceRepository.find();
+      const resourcePerformanceManager =
+        ResourcePerformanceManager.getInstance();
+      if (hardInitialize && hardInitialize.toLowerCase() === 'true') {
+        await resourcePerformanceManager.hardRefresh(resources);
+      } else {
+        await resourcePerformanceManager.softRefresh(resources);
+      }
+      console.log('Cache Refresh Completed');
+      res.json({ success: true });
     } catch (error: unknown) {
       if (error instanceof Error) {
         res.status(500).json({ error: error.message });

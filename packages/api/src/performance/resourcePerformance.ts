@@ -20,7 +20,12 @@ import {
   INTERVAL_28_DAYS,
 } from './constants';
 
-import { loadStorageFromFile, saveStorageToFile } from './helper';
+import {
+  loadStorageFromFile,
+  maxBigInt,
+  minBigInt,
+  saveStorageToFile,
+} from './helper';
 
 export class ResourcePerformance {
   static readonly MIN_INTERVAL = INTERVAL_5_MINUTES;
@@ -358,14 +363,19 @@ export class ResourcePerformance {
       item.timestamp > rpd.nextTimestamp ||
       currentIdx === this.runtime.dbResourcePricesLength - 1
     ) {
+      const isInCurrentInterval = item.timestamp <= rpd.nextTimestamp;
       // Finalize the current interval
       if (currentPlaceholderIndex >= 0) {
         // Update the placeholder with final values
         resourceStore.data[currentPlaceholderIndex] = {
           timestamp: resourceStore.data[currentPlaceholderIndex].timestamp,
           open: rpd.open.toString(),
-          high: rpd.high.toString(),
-          low: rpd.low.toString(),
+          high: isInCurrentInterval
+            ? maxBigInt(rpd.high, price).toString()
+            : rpd.high.toString(),
+          low: isInCurrentInterval
+            ? minBigInt(rpd.low, price).toString()
+            : rpd.low.toString(),
           close: price.toString(),
         };
       }
@@ -406,13 +416,8 @@ export class ResourcePerformance {
       }
     } else {
       // Update the current interval
-      if (price > rpd.high) {
-        rpd.high = price;
-      }
-
-      if (price < rpd.low) {
-        rpd.low = price;
-      }
+      rpd.high = maxBigInt(rpd.high, price);
+      rpd.low = minBigInt(rpd.low, price);
 
       rpd.close = price;
 
@@ -436,7 +441,12 @@ export class ResourcePerformance {
   ) {
     for (const epoch of this.epochs) {
       const epochStartTime = epoch.startTimestamp;
-      if (!epochStartTime || item.timestamp < epochStartTime) {
+      const epochEndTime = epoch.endTimestamp;
+      if (
+        !epochStartTime ||
+        item.timestamp < epochStartTime ||
+        (epochEndTime && item.timestamp > epochEndTime)
+      ) {
         continue;
       }
 
@@ -506,8 +516,15 @@ export class ResourcePerformance {
       // check if it's the last price item or last in the interval
       if (
         item.timestamp > ipd.nextTimestamp ||
-        currentIdx === this.runtime.dbResourcePricesLength - 1
+        currentIdx === this.runtime.dbResourcePricesLength - 1 ||
+        (epochEndTime && item.timestamp > epochEndTime)
       ) {
+        // Still in current interval means end of items or end of epoch. We need to use the current values and close the interval
+        if (item.timestamp <= ipd.nextTimestamp) {
+          ipd.used += BigInt(item.used);
+          ipd.feePaid += BigInt(item.feePaid);
+        }
+
         // Finalize the current interval
         const avgPrice = ipd.used > 0n ? ipd.feePaid / ipd.used : 0n;
 
@@ -564,26 +581,6 @@ export class ResourcePerformance {
       // Always update the accumulated values
       ipd.used += BigInt(item.used);
       ipd.feePaid += BigInt(item.feePaid);
-
-      // Update the placeholder
-      const avgPrice = ipd.used > 0n ? ipd.feePaid / ipd.used : 0n;
-
-      if (currentPlaceholderIndex >= 0) {
-        indexStore.data[currentPlaceholderIndex] = {
-          timestamp: indexStore.data[currentPlaceholderIndex].timestamp,
-          open: avgPrice.toString(),
-          high: avgPrice.toString(),
-          low: avgPrice.toString(),
-          close: avgPrice.toString(),
-        };
-
-        indexStore.metadata[currentPlaceholderIndex] = {
-          used: ipd.used,
-          feePaid: ipd.feePaid,
-          startTimestamp: epochStartTime,
-          endTimestamp: item.timestamp,
-        };
-      }
     }
   }
 
@@ -656,6 +653,12 @@ export class ResourcePerformance {
       item.timestamp > tpd.nextTimestamp ||
       currentIdx === this.runtime.dbResourcePricesLength - 1
     ) {
+      if (item.timestamp <= tpd.nextTimestamp) {
+        // Still in current interval means end of items or end of epoch. We need to use the current values and close the interval
+        tpd.used += BigInt(item.used);
+        tpd.feePaid += BigInt(item.feePaid);
+      }
+
       // Finalize the current interval
       const price = tpd.used > 0n ? tpd.feePaid / tpd.used : 0n;
 
