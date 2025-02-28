@@ -548,7 +548,7 @@ const TraderPositionsTable: React.FC<Props> = ({
                   {/* Position ID cell */}
                   <TableCell>{renderPositionCell(row.original)}</TableCell>
                   {/* Status cell with colspan */}
-                  <TableCell colSpan={valueColumns.length}>
+                  <TableCell colSpan={valueColumns.length + 1}>
                     <div className="text-center">{statusCell}</div>
                   </TableCell>
                   {/* More Info cell */}
