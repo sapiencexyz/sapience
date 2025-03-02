@@ -133,10 +133,6 @@ export class ResourcePerformance {
 
   async softInitialize() {
     const storage = await this.restorePersistedStorage();
-    // const storage = await loadStorageFromFile(
-    //   this.resource.slug,
-    //   this.resource.name
-    // );
 
     if (!storage) {
       console.log('Storage not found, hard initializing');
@@ -148,7 +144,6 @@ export class ResourcePerformance {
 
     this.lastTimestampProcessed = storage.latestTimestamp;
 
-    // TODO: backfill the missing data from the db starting on the latest timestamp
     await this.processResourceData(this.lastTimestampProcessed);
   }
 
@@ -350,21 +345,9 @@ export class ResourcePerformance {
   }
 
   // async backfillMarketPrices() {
-  //   const dbMarketPrices = await marketPriceRepository.find({
-  //     where: {
-  //       resource: this.resource,
-  //     },
-  //     order: {
-  //       timestamp: 'ASC',
-  //     },
-  //   });
-
-  //   // TODO Do something with the market prices
   // }
 
   // getMarketPrices(from: number, to: number, interval: number) {
-  //   this.checkInterval(interval);
-  //   return this.getPricesFromArray(this.marketPrices[interval], from, to, interval);
   // }
 
   private processResourcePriceData(
@@ -801,40 +784,6 @@ export class ResourcePerformance {
         oldItem = tpd.trailingAvgData[startIdx];
       }
     }
-
-    // // We are adding the new item to the trailing avg if it's in the next interval
-    // if (item.timestamp <= tpd.nextTimestamp) {
-    //   tpd.used += BigInt(item.used);
-    //   tpd.feePaid += BigInt(item.feePaid);
-    //   tpd.endTimestampIndex = currentIdx;
-
-    //   // Update the placeholder
-    //   const price = tpd.used > 0n ? tpd.feePaid / tpd.used : 0n;
-
-    //   if (currentPlaceholderIndex >= 0) {
-    //     trailingAvgStore.data[currentPlaceholderIndex] = {
-    //       timestamp: trailingAvgStore.data[currentPlaceholderIndex].timestamp,
-    //       open: price.toString(),
-    //       high: price.toString(),
-    //       low: price.toString(),
-    //       close: price.toString(),
-    //     };
-
-    //     trailingAvgStore.metadata[currentPlaceholderIndex] = {
-    //       startTimestamp:
-    //         trailingAvgStore.metadata[currentPlaceholderIndex].startTimestamp,
-    //       endTimestamp: tpd.nextTimestamp,
-    //       used: tpd.used,
-    //       feePaid: tpd.feePaid,
-    //       trailingAvgData: isPartialIntervalItem ?
-    //       this.runtime.dbResourcePrices.slice(tpd.startTimestampIndex, currentIdx).map(p => ({
-    //         timestamp: p.timestamp,
-    //         used: p.used,
-    //         feePaid: p.feePaid,
-    //       })) : [],
-    //     };
-    //   }
-    // }
   }
 
   private getEpochId(chainId: number, address: string, epoch: string) {
