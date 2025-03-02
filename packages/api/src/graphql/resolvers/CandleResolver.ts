@@ -431,6 +431,8 @@ export class CandleResolver {
       from,
       to,
       interval,
+      chainId,
+      address,
       epochId
     );
 

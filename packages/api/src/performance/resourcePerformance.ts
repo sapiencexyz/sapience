@@ -102,8 +102,18 @@ export class ResourcePerformance {
     this.storage = {};
     for (const interval of intervals) {
       this.storage[interval] = {
-        resourceStore: { data: [], metadata: [], pointers: {}, trailingAvgData: [] },
-        trailingAvgStore: { data: [], metadata: [], pointers: {}, trailingAvgData: [] },
+        resourceStore: {
+          data: [],
+          metadata: [],
+          pointers: {},
+          trailingAvgData: [],
+        },
+        trailingAvgStore: {
+          data: [],
+          metadata: [],
+          pointers: {},
+          trailingAvgData: [],
+        },
         indexStore: {},
         // marketStore: {},
       };
@@ -143,7 +153,9 @@ export class ResourcePerformance {
   }
 
   private async processResourceData(initialTimestamp?: number) {
-    console.time(` processResourceData.${this.resource.name}`);
+    console.time(
+      ` processResourceData.${this.resource.name} (${initialTimestamp})`
+    );
 
     if (this.runtime.processingResourceItems) {
       throw new Error('Resource prices are already being processed');
@@ -188,32 +200,34 @@ export class ResourcePerformance {
     }
 
     // Find markets if not already loaded
-    if (!this.markets || this.markets.length === 0) {
-      console.time(` processResourceData.${this.resource.name}.find.markets`);
-      this.markets = await marketRepository.find({
-        where: {
-          resource: { id: this.resource.id },
-        },
-      });
-      console.timeEnd(
-        ` processResourceData.${this.resource.name}.find.markets`
-      );
-    }
+    // Notice: doing it everytime since we don't know if a new market was added
+    // if (!this.markets || this.markets.length === 0) {
+    console.time(` processResourceData.${this.resource.name}.find.markets`);
+    this.markets = await marketRepository.find({
+      where: {
+        resource: { id: this.resource.id },
+      },
+    });
+    console.timeEnd(` processResourceData.${this.resource.name}.find.markets`);
+    // }
 
     // Find epochs if not already loaded
-    if (!this.epochs || this.epochs.length === 0) {
-      console.time(` processResourceData.${this.resource.name}.find.epochs`);
-      this.epochs = await epochRepository.find({
-        where: {
-          market: { resource: { id: this.resource.id } },
-        },
-        order: {
-          startTimestamp: 'ASC',
-        },
-      });
-      console.timeEnd(` processResourceData.${this.resource.name}.find.epochs`);
-    }
+    // Notice: doing it everytime since we don't know if a new epoch was added
+    // if (!this.epochs || this.epochs.length === 0) {
+    console.time(` processResourceData.${this.resource.name}.find.epochs`);
+    this.epochs = await epochRepository.find({
+      where: {
+        market: { resource: { id: this.resource.id } },
+      },
+      order: {
+        startTimestamp: 'ASC',
+      },
+      relations: ['market'],
+    });
+    console.timeEnd(` processResourceData.${this.resource.name}.find.epochs`);
+    // }
 
+    console.time(` processResourceData.${this.resource.name}.process`);
     // Set up runtime data
     this.runtime.dbResourcePricesLength = dbResourcePrices.length;
     this.runtime.dbResourcePrices = dbResourcePrices;
@@ -272,11 +286,18 @@ export class ResourcePerformance {
           this.runtime.dbResourcePricesLength - 1
         ].timestamp;
     }
+    console.timeEnd(` processResourceData.${this.resource.name}.process`);
 
     // Save the updated storage to file
+    console.time(` processResourceData.${this.resource.name}.persistStorage`);
     await this.persistStorage();
+    console.timeEnd(
+      ` processResourceData.${this.resource.name}.persistStorage`
+    );
 
-    console.timeEnd(` processResourceData.${this.resource.name}`);
+    console.timeEnd(
+      ` processResourceData.${this.resource.name} (${initialTimestamp})`
+    );
     this.runtime.processingResourceItems = false;
   }
 
@@ -298,13 +319,13 @@ export class ResourcePerformance {
     }
   }
 
-  private async restorePersistedStorage():Promise<
-  | {
-      latestTimestamp: number;
-      store: StorageData;
-    }
-  | undefined
-> {
+  private async restorePersistedStorage(): Promise<
+    | {
+        latestTimestamp: number;
+        store: StorageData;
+      }
+    | undefined
+  > {
     const resourceSlug = this.resource.slug;
     const resourceName = this.resource.name;
     const storage: StorageData = {};
@@ -549,14 +570,17 @@ export class ResourcePerformance {
       const indexStore = this.storage[interval].indexStore[epoch.id];
       const currentPlaceholderIndex = indexStore.data.length - 1;
 
+      const isLastItem = currentIdx === this.runtime.dbResourcePricesLength - 1;
+      const isNewInterval = item.timestamp > ipd.nextTimestamp;
+
       // check if it's the last price item or last in the interval
       if (
-        item.timestamp > ipd.nextTimestamp ||
-        currentIdx === this.runtime.dbResourcePricesLength - 1 ||
+        isLastItem ||
+        isNewInterval ||
         (epochEndTime && item.timestamp > epochEndTime)
       ) {
         // Still in current interval means end of items or end of epoch. We need to use the current values and close the interval
-        if (item.timestamp <= ipd.nextTimestamp) {
+        if (!isNewInterval) {
           ipd.used += BigInt(item.used);
           ipd.feePaid += BigInt(item.feePaid);
         }
@@ -678,7 +702,7 @@ export class ResourcePerformance {
     // Categorize the current item
     const isLastItem = currentIdx === this.runtime.dbResourcePricesLength - 1;
     const isNewInterval = item.timestamp > tpd.nextTimestamp;
-    
+
     // Include the new item in the trailing avg data
     tpd.used += BigInt(item.used);
     tpd.feePaid += BigInt(item.feePaid);
@@ -719,8 +743,11 @@ export class ResourcePerformance {
           feePaid: fixedFeePaid,
         };
         // Notice: Add the trailing avg data to the metadata, only if it's the last partial interval item
-        if(!isNewInterval) {
-          trailingAvgStore.trailingAvgData = tpd.trailingAvgData.slice(tpd.startTimestampIndex, currentIdx);
+        if (!isNewInterval) {
+          trailingAvgStore.trailingAvgData = tpd.trailingAvgData.slice(
+            tpd.startTimestampIndex,
+            currentIdx
+          );
         }
       }
 
@@ -810,6 +837,20 @@ export class ResourcePerformance {
     // }
   }
 
+  private getEpochId(chainId: number, address: string, epoch: string) {
+    const theEpoch = this.epochs.find(
+      (e) =>
+        e.market.chainId === chainId &&
+        e.market.address === address &&
+        e.epochId === Number(epoch)
+    );
+    if (!theEpoch) {
+      throw new Error(`Epoch not found for ${chainId}-${address}-${epoch}`);
+    }
+
+    return theEpoch.id;
+  }
+
   getResourcePrices(from: number, to: number, interval: number) {
     this.checkInterval(interval);
 
@@ -821,10 +862,18 @@ export class ResourcePerformance {
     );
   }
 
-  getIndexPrices(from: number, to: number, interval: number, epoch: string) {
+  getIndexPrices(
+    from: number,
+    to: number,
+    interval: number,
+    chainId: number,
+    address: string,
+    epoch: string
+  ) {
     this.checkInterval(interval);
+    const epochId = this.getEpochId(chainId, address, epoch);
     return this.getPricesFromArray(
-      this.storage[interval].indexStore[epoch].data,
+      this.storage[interval].indexStore[epochId].data,
       from,
       to,
       interval,

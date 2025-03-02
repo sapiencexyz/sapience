@@ -13,37 +13,22 @@ export async function saveStorageToFile(
     return;
   }
 
-  console.time(`  processResourceData.${resourceName}.${sectionName}.saveStorage`);
+  console.time(
+    `  processResourceData.${resourceName}.${sectionName}.saveStorage`
+  );
   const storageDir = process.env.STORAGE_PATH;
   if (!storageDir) {
     throw new Error('STORAGE_PATH is not set');
   }
-  
+
   if (!fs.existsSync(storageDir)) {
-    fs.mkdirSync(storageDir, { recursive: true } );
+    fs.mkdirSync(storageDir, { recursive: true });
   }
 
-  const filename = path.join(storageDir, `${resourceSlug}-${sectionName}-storage.json`);
-  // if (resourceSlug === 'arbitrum-gas') {
-  // console.log(' LLL 1 ', latestTimestamp);
-  // console.log(' LLL 2 ', storage);
-  // // console.log(' LLL 3 ', JSON.stringify(storage['60'], (key, value) => (typeof value === 'bigint' ? value.toString() : value), 2));
-  // // console.log(' LLL 4 ', JSON.stringify(storage['300'], (key, value) => (typeof value === 'bigint' ? value.toString() : value), 2));
-  // // console.log(' LLL 5 ', JSON.stringify(storage['900'], (key, value) => (typeof value === 'bigint' ? value.toString() : value), 2));
-  // // console.log(' LLL 6 ', JSON.stringify(storage['1800'], (key, value) => (typeof value === 'bigint' ? value.toString() : value), 2));
-  // // console.log(' LLL 7 ', JSON.stringify(storage['14400'], (key, value) => (typeof value === 'bigint' ? value.toString() : value), 2));
-  // console.log(' LLL 8 ', JSON.stringify(storage['86400'].trailingAvgStore.metadata.length, (key, value) => (typeof value === 'bigint' ? value.toString() : value), 2));
-  // console.log(' LLL 9 ', JSON.stringify(storage['86400'].trailingAvgStore.metadata[storage['86400'].trailingAvgStore.metadata.length - 1].trailingAvgData.length, (key, value) => (typeof value === 'bigint' ? value.toString() : value), 2));
-  // console.log(' LLL 10 ', JSON.stringify(
-  //   // {
-  //     // latestTimestamp,
-  //     storage,
-  //   // },
-  //   (key, value) => (typeof value === 'bigint' ? value.toString() : value),
-  //   2
-  // ));
-  // console.log(' LLL 11 ');
-  // }
+  const filename = path.join(
+    storageDir,
+    `${resourceSlug}-${sectionName}-storage.json`
+  );
   await fs.promises.writeFile(
     filename,
     JSON.stringify(
@@ -56,7 +41,9 @@ export async function saveStorageToFile(
     )
   );
 
-  console.timeEnd(`  processResourceData.${resourceName}.${sectionName}.saveStorage`);
+  console.timeEnd(
+    `  processResourceData.${resourceName}.${sectionName}.saveStorage`
+  );
   console.log(`  -> Saved storage to ${filename}`);
 }
 
@@ -64,7 +51,6 @@ export async function loadStorageFromFile(
   resourceSlug: string,
   resourceName: string,
   sectionName: string
-
 ): Promise<
   | {
       latestTimestamp: number;
@@ -76,13 +62,18 @@ export async function loadStorageFromFile(
     return undefined;
   }
 
-  console.time(`  processResourceData.${resourceName}.${sectionName}.loadStorage`);
+  console.time(
+    `  processResourceData.${resourceName}.${sectionName}.loadStorage`
+  );
   const storageDir = process.env.STORAGE_PATH;
   if (!storageDir) {
     throw new Error('STORAGE_PATH is not set');
   }
 
-  const filename = path.join(storageDir, `${resourceSlug}-${sectionName}-storage.json`);
+  const filename = path.join(
+    storageDir,
+    `${resourceSlug}-${sectionName}-storage.json`
+  );
   if (!fs.existsSync(filename)) {
     console.log(`!! Storage file ${filename} does not exist`);
     return undefined;
@@ -104,7 +95,9 @@ export async function loadStorageFromFile(
     store: IntervalStore;
   };
 
-  console.timeEnd(`  processResourceData.${resourceName}.${sectionName}.loadStorage`);
+  console.timeEnd(
+    `  processResourceData.${resourceName}.${sectionName}.loadStorage`
+  );
   console.log(`  -> Loaded storage from ${filename}`);
   return {
     latestTimestamp: storage.latestTimestamp,
