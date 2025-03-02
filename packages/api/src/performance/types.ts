@@ -6,6 +6,12 @@ export type CandleData = {
   close: string;
 };
 
+export type TrailingAvgData = {
+  timestamp: number;
+  used: string;
+  feePaid: string;
+};
+
 export type CandleMetadata = {
   used: bigint;
   feePaid: bigint;
@@ -19,17 +25,20 @@ export type IndexStore = {
   pointers: {
     [closestTimestamp: number]: number;
   };
+  trailingAvgData: TrailingAvgData[];
+};
+
+export type IntervalStore = {
+  resourceStore: IndexStore;
+  trailingAvgStore: IndexStore;
+  indexStore: {
+    [epoch: string]: IndexStore;
+  };
+  // marketStore: {
+  //   [market: string]: IndexStore;
+  // };
 };
 
 export type StorageData = {
-  [interval: string]: {
-    resourceStore: IndexStore;
-    trailingAvgStore: IndexStore;
-    indexStore: {
-      [epoch: string]: IndexStore;
-    };
-    marketStore: {
-      [market: string]: IndexStore;
-    };
-  };
+  [interval: string]: IntervalStore;
 };

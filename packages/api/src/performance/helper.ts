@@ -1,27 +1,49 @@
-import { StorageData } from './types';
+import { IntervalStore } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
 
 export async function saveStorageToFile(
-  storage: StorageData,
+  storage: IntervalStore,
   latestTimestamp: number,
   resourceSlug: string,
-  resourceName: string
+  resourceName: string,
+  sectionName: string
 ): Promise<undefined> {
   if (process.env.SAVE_STORAGE !== 'true') {
     return;
   }
 
-  console.time(`backfillResourcePrices.${resourceName}.saveStorage`);
+  console.time(`  processResourceData.${resourceName}.${sectionName}.saveStorage`);
   const storageDir = process.env.STORAGE_PATH;
   if (!storageDir) {
     throw new Error('STORAGE_PATH is not set');
   }
+  
   if (!fs.existsSync(storageDir)) {
-    fs.mkdirSync(storageDir);
+    fs.mkdirSync(storageDir, { recursive: true } );
   }
 
-  const filename = path.join(storageDir, `${resourceSlug}-storage.json`);
+  const filename = path.join(storageDir, `${resourceSlug}-${sectionName}-storage.json`);
+  // if (resourceSlug === 'arbitrum-gas') {
+  // console.log(' LLL 1 ', latestTimestamp);
+  // console.log(' LLL 2 ', storage);
+  // // console.log(' LLL 3 ', JSON.stringify(storage['60'], (key, value) => (typeof value === 'bigint' ? value.toString() : value), 2));
+  // // console.log(' LLL 4 ', JSON.stringify(storage['300'], (key, value) => (typeof value === 'bigint' ? value.toString() : value), 2));
+  // // console.log(' LLL 5 ', JSON.stringify(storage['900'], (key, value) => (typeof value === 'bigint' ? value.toString() : value), 2));
+  // // console.log(' LLL 6 ', JSON.stringify(storage['1800'], (key, value) => (typeof value === 'bigint' ? value.toString() : value), 2));
+  // // console.log(' LLL 7 ', JSON.stringify(storage['14400'], (key, value) => (typeof value === 'bigint' ? value.toString() : value), 2));
+  // console.log(' LLL 8 ', JSON.stringify(storage['86400'].trailingAvgStore.metadata.length, (key, value) => (typeof value === 'bigint' ? value.toString() : value), 2));
+  // console.log(' LLL 9 ', JSON.stringify(storage['86400'].trailingAvgStore.metadata[storage['86400'].trailingAvgStore.metadata.length - 1].trailingAvgData.length, (key, value) => (typeof value === 'bigint' ? value.toString() : value), 2));
+  // console.log(' LLL 10 ', JSON.stringify(
+  //   // {
+  //     // latestTimestamp,
+  //     storage,
+  //   // },
+  //   (key, value) => (typeof value === 'bigint' ? value.toString() : value),
+  //   2
+  // ));
+  // console.log(' LLL 11 ');
+  // }
   await fs.promises.writeFile(
     filename,
     JSON.stringify(
@@ -34,17 +56,19 @@ export async function saveStorageToFile(
     )
   );
 
-  console.timeEnd(`backfillResourcePrices.${resourceName}.saveStorage`);
-  console.log(`Saved storage to ${filename}`);
+  console.timeEnd(`  processResourceData.${resourceName}.${sectionName}.saveStorage`);
+  console.log(`  -> Saved storage to ${filename}`);
 }
 
 export async function loadStorageFromFile(
   resourceSlug: string,
-  resourceName: string
+  resourceName: string,
+  sectionName: string
+
 ): Promise<
   | {
       latestTimestamp: number;
-      store: StorageData;
+      store: IntervalStore;
     }
   | undefined
 > {
@@ -52,15 +76,15 @@ export async function loadStorageFromFile(
     return undefined;
   }
 
-  console.time(`backfillResourcePrices.${resourceName}.loadStorage`);
+  console.time(`  processResourceData.${resourceName}.${sectionName}.loadStorage`);
   const storageDir = process.env.STORAGE_PATH;
   if (!storageDir) {
     throw new Error('STORAGE_PATH is not set');
   }
 
-  const filename = path.join(storageDir, `${resourceSlug}-storage.json`);
+  const filename = path.join(storageDir, `${resourceSlug}-${sectionName}-storage.json`);
   if (!fs.existsSync(filename)) {
-    console.log(`Storage file ${filename} does not exist`);
+    console.log(`!! Storage file ${filename} does not exist`);
     return undefined;
   }
 
@@ -77,11 +101,11 @@ export async function loadStorageFromFile(
     return value;
   }) as {
     latestTimestamp: number;
-    store: StorageData;
+    store: IntervalStore;
   };
 
-  console.timeEnd(`backfillResourcePrices.${resourceName}.loadStorage`);
-  console.log(`Loaded storage from ${filename}`);
+  console.timeEnd(`  processResourceData.${resourceName}.${sectionName}.loadStorage`);
+  console.log(`  -> Loaded storage from ${filename}`);
   return {
     latestTimestamp: storage.latestTimestamp,
     store: storage.store,
