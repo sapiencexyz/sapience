@@ -7,7 +7,7 @@ import {
 import { ResourcePrice } from 'src/models/ResourcePrice';
 import { Market } from 'src/models/Market';
 import { Epoch } from 'src/models/Epoch';
-import { CandleData, StorageData } from './types';
+import { CandleData, StorageData, TrailingAvgData } from './types';
 import { MoreThan } from 'typeorm';
 
 import {
@@ -71,6 +71,7 @@ export class ResourcePerformance {
         endTimestampIndex: number;
         startTimestamp: number;
         endTimestamp: number;
+        trailingAvgData: TrailingAvgData[];
       };
     };
   } = {
@@ -101,10 +102,20 @@ export class ResourcePerformance {
     this.storage = {};
     for (const interval of intervals) {
       this.storage[interval] = {
-        resourceStore: { data: [], metadata: [], pointers: {} },
-        trailingAvgStore: { data: [], metadata: [], pointers: {} },
+        resourceStore: {
+          data: [],
+          metadata: [],
+          pointers: {},
+          trailingAvgData: [],
+        },
+        trailingAvgStore: {
+          data: [],
+          metadata: [],
+          pointers: {},
+          trailingAvgData: [],
+        },
         indexStore: {},
-        marketStore: {},
+        // marketStore: {},
       };
       this.runtime.resourceProcessData[interval] = {
         open: 0n,
@@ -121,10 +132,7 @@ export class ResourcePerformance {
   }
 
   async softInitialize() {
-    const storage = await loadStorageFromFile(
-      this.resource.slug,
-      this.resource.name
-    );
+    const storage = await this.restorePersistedStorage();
 
     if (!storage) {
       console.log('Storage not found, hard initializing');
@@ -136,12 +144,13 @@ export class ResourcePerformance {
 
     this.lastTimestampProcessed = storage.latestTimestamp;
 
-    // TODO: backfill the missing data from the db starting on the latest timestamp
     await this.processResourceData(this.lastTimestampProcessed);
   }
 
   private async processResourceData(initialTimestamp?: number) {
-    console.time(`processResourceData.${this.resource.name}`);
+    console.time(
+      ` processResourceData.${this.resource.name} (${initialTimestamp})`
+    );
 
     if (this.runtime.processingResourceItems) {
       throw new Error('Resource prices are already being processed');
@@ -163,7 +172,7 @@ export class ResourcePerformance {
     }
 
     console.time(
-      `processResourceData.${this.resource.name}.find.resourcePrices`
+      ` processResourceData.${this.resource.name}.find.resourcePrices`
     );
     const dbResourcePrices = await resourcePriceRepository.find({
       where: whereClause,
@@ -172,11 +181,11 @@ export class ResourcePerformance {
       },
     });
     console.timeEnd(
-      `processResourceData.${this.resource.name}.find.resourcePrices`
+      ` processResourceData.${this.resource.name}.find.resourcePrices`
     );
 
     console.log(
-      `processResourceData.${this.resource.name}.find.resourcePrices.length`,
+      ` processResourceData.${this.resource.name}.find.resourcePrices.length`,
       dbResourcePrices.length
     );
 
@@ -186,30 +195,34 @@ export class ResourcePerformance {
     }
 
     // Find markets if not already loaded
-    if (!this.markets || this.markets.length === 0) {
-      console.time(`processResourceData.${this.resource.name}.find.markets`);
-      this.markets = await marketRepository.find({
-        where: {
-          resource: { id: this.resource.id },
-        },
-      });
-      console.timeEnd(`processResourceData.${this.resource.name}.find.markets`);
-    }
+    // Notice: doing it everytime since we don't know if a new market was added
+    // if (!this.markets || this.markets.length === 0) {
+    console.time(` processResourceData.${this.resource.name}.find.markets`);
+    this.markets = await marketRepository.find({
+      where: {
+        resource: { id: this.resource.id },
+      },
+    });
+    console.timeEnd(` processResourceData.${this.resource.name}.find.markets`);
+    // }
 
     // Find epochs if not already loaded
-    if (!this.epochs || this.epochs.length === 0) {
-      console.time(`processResourceData.${this.resource.name}.find.epochs`);
-      this.epochs = await epochRepository.find({
-        where: {
-          market: { resource: { id: this.resource.id } },
-        },
-        order: {
-          startTimestamp: 'ASC',
-        },
-      });
-      console.timeEnd(`processResourceData.${this.resource.name}.find.epochs`);
-    }
+    // Notice: doing it everytime since we don't know if a new epoch was added
+    // if (!this.epochs || this.epochs.length === 0) {
+    console.time(` processResourceData.${this.resource.name}.find.epochs`);
+    this.epochs = await epochRepository.find({
+      where: {
+        market: { resource: { id: this.resource.id } },
+      },
+      order: {
+        startTimestamp: 'ASC',
+      },
+      relations: ['market'],
+    });
+    console.timeEnd(` processResourceData.${this.resource.name}.find.epochs`);
+    // }
 
+    console.time(` processResourceData.${this.resource.name}.process`);
     // Set up runtime data
     this.runtime.dbResourcePricesLength = dbResourcePrices.length;
     this.runtime.dbResourcePrices = dbResourcePrices;
@@ -240,6 +253,7 @@ export class ResourcePerformance {
         endTimestampIndex: 0,
         startTimestamp: 0,
         endTimestamp: 0,
+        trailingAvgData: [],
       };
 
       this.runtime.indexProcessData[interval] = {};
@@ -267,35 +281,73 @@ export class ResourcePerformance {
           this.runtime.dbResourcePricesLength - 1
         ].timestamp;
     }
+    console.timeEnd(` processResourceData.${this.resource.name}.process`);
 
     // Save the updated storage to file
-    await saveStorageToFile(
-      this.storage,
-      this.lastTimestampProcessed,
-      this.resource.slug,
-      this.resource.name
+    console.time(` processResourceData.${this.resource.name}.persistStorage`);
+    await this.persistStorage();
+    console.timeEnd(
+      ` processResourceData.${this.resource.name}.persistStorage`
     );
 
-    console.timeEnd(`processResourceData.${this.resource.name}`);
+    console.timeEnd(
+      ` processResourceData.${this.resource.name} (${initialTimestamp})`
+    );
     this.runtime.processingResourceItems = false;
   }
 
-  // async backfillMarketPrices() {
-  //   const dbMarketPrices = await marketPriceRepository.find({
-  //     where: {
-  //       resource: this.resource,
-  //     },
-  //     order: {
-  //       timestamp: 'ASC',
-  //     },
-  //   });
+  private async persistStorage() {
+    const storage = this.storage;
+    const lastTimestampProcessed = this.lastTimestampProcessed;
+    const resourceSlug = this.resource.slug;
+    const resourceName = this.resource.name;
 
-  //   // TODO Do something with the market prices
+    for (const interval of this.intervals) {
+      // Interval resource store
+      await saveStorageToFile(
+        storage[interval],
+        lastTimestampProcessed,
+        resourceSlug,
+        resourceName,
+        interval.toString()
+      );
+    }
+  }
+
+  private async restorePersistedStorage(): Promise<
+    | {
+        latestTimestamp: number;
+        store: StorageData;
+      }
+    | undefined
+  > {
+    const resourceSlug = this.resource.slug;
+    const resourceName = this.resource.name;
+    const storage: StorageData = {};
+    let latestTimestamp = 0;
+    for (const interval of this.intervals) {
+      const storageInterval = await loadStorageFromFile(
+        resourceSlug,
+        resourceName,
+        interval.toString()
+      );
+      if (!storageInterval) {
+        return undefined;
+      }
+      storage[interval] = storageInterval.store;
+      latestTimestamp = storageInterval.latestTimestamp;
+    }
+
+    return {
+      latestTimestamp,
+      store: storage,
+    };
+  }
+
+  // async backfillMarketPrices() {
   // }
 
   // getMarketPrices(from: number, to: number, interval: number) {
-  //   this.checkInterval(interval);
-  //   return this.getPricesFromArray(this.marketPrices[interval], from, to, interval);
   // }
 
   private processResourcePriceData(
@@ -303,16 +355,6 @@ export class ResourcePerformance {
     currentIdx: number,
     interval: number
   ) {
-    if (!this.runtime.resourceProcessData[interval]) {
-      this.runtime.resourceProcessData[interval] = {
-        open: 0n,
-        high: 0n,
-        low: 0n,
-        close: 0n,
-        nextTimestamp: 0,
-      };
-    }
-
     const rpd = this.runtime.resourceProcessData[interval];
     const price =
       BigInt(item.used) > 0n ? BigInt(item.feePaid) / BigInt(item.used) : 0n;
@@ -450,9 +492,6 @@ export class ResourcePerformance {
         continue;
       }
 
-      if (!this.runtime.indexProcessData[interval]) {
-        this.runtime.indexProcessData[interval] = {};
-      }
       if (!this.runtime.indexProcessData[interval][epoch.id]) {
         this.runtime.indexProcessData[interval][epoch.id] = {
           used: 0n,
@@ -475,6 +514,7 @@ export class ResourcePerformance {
             data: [],
             metadata: [],
             pointers: {},
+            trailingAvgData: [],
           };
         }
 
@@ -513,14 +553,17 @@ export class ResourcePerformance {
       const indexStore = this.storage[interval].indexStore[epoch.id];
       const currentPlaceholderIndex = indexStore.data.length - 1;
 
+      const isLastItem = currentIdx === this.runtime.dbResourcePricesLength - 1;
+      const isNewInterval = item.timestamp > ipd.nextTimestamp;
+
       // check if it's the last price item or last in the interval
       if (
-        item.timestamp > ipd.nextTimestamp ||
-        currentIdx === this.runtime.dbResourcePricesLength - 1 ||
+        isLastItem ||
+        isNewInterval ||
         (epochEndTime && item.timestamp > epochEndTime)
       ) {
         // Still in current interval means end of items or end of epoch. We need to use the current values and close the interval
-        if (item.timestamp <= ipd.nextTimestamp) {
+        if (!isNewInterval) {
           ipd.used += BigInt(item.used);
           ipd.feePaid += BigInt(item.feePaid);
         }
@@ -589,18 +632,6 @@ export class ResourcePerformance {
     currentIdx: number,
     interval: number
   ) {
-    if (!this.runtime.trailingAvgProcessData[interval]) {
-      this.runtime.trailingAvgProcessData[interval] = {
-        used: 0n,
-        feePaid: 0n,
-        nextTimestamp: 0,
-        startTimestampIndex: 0,
-        endTimestampIndex: 0,
-        startTimestamp: 0,
-        endTimestamp: 0,
-      };
-    }
-
     const tpd = this.runtime.trailingAvgProcessData[interval];
 
     // If this is the first item or we're starting a new interval
@@ -610,7 +641,7 @@ export class ResourcePerformance {
       tpd.feePaid = BigInt(item.feePaid);
       tpd.startTimestamp = item.timestamp;
       tpd.endTimestamp = item.timestamp;
-      tpd.startTimestampIndex = currentIdx;
+      tpd.startTimestampIndex = 0;
       tpd.endTimestampIndex = currentIdx;
 
       // Create a placeholder in the store
@@ -640,6 +671,8 @@ export class ResourcePerformance {
           feePaid: tpd.feePaid,
         });
 
+        trailingAvgStore.trailingAvgData = [];
+
         trailingAvgStore.pointers[item.timestamp] =
           trailingAvgStore.data.length - 1;
       }
@@ -649,18 +682,31 @@ export class ResourcePerformance {
     const trailingAvgStore = this.storage[interval].trailingAvgStore;
     const currentPlaceholderIndex = trailingAvgStore.data.length - 1;
 
-    if (
-      item.timestamp > tpd.nextTimestamp ||
-      currentIdx === this.runtime.dbResourcePricesLength - 1
-    ) {
-      if (item.timestamp <= tpd.nextTimestamp) {
-        // Still in current interval means end of items or end of epoch. We need to use the current values and close the interval
-        tpd.used += BigInt(item.used);
-        tpd.feePaid += BigInt(item.feePaid);
+    // Categorize the current item
+    const isLastItem = currentIdx === this.runtime.dbResourcePricesLength - 1;
+    const isNewInterval = item.timestamp > tpd.nextTimestamp;
+
+    // Include the new item in the trailing avg data
+    tpd.used += BigInt(item.used);
+    tpd.feePaid += BigInt(item.feePaid);
+    tpd.trailingAvgData.push({
+      timestamp: item.timestamp,
+      used: item.used,
+      feePaid: item.feePaid,
+    });
+
+    if (isNewInterval || isLastItem) {
+      let fixedFeePaid = tpd.feePaid;
+      let fixedUsed = tpd.used;
+
+      if (!isNewInterval) {
+        // We need to remove the current item from the data since it's not in the current interval
+        fixedFeePaid -= BigInt(item.feePaid);
+        fixedUsed -= BigInt(item.used);
       }
 
       // Finalize the current interval
-      const price = tpd.used > 0n ? tpd.feePaid / tpd.used : 0n;
+      const price = fixedUsed > 0n ? fixedFeePaid / fixedUsed : 0n;
 
       if (currentPlaceholderIndex >= 0) {
         // Update the placeholder with final values
@@ -676,84 +722,82 @@ export class ResourcePerformance {
           startTimestamp:
             trailingAvgStore.metadata[currentPlaceholderIndex].startTimestamp,
           endTimestamp: tpd.nextTimestamp,
-          used: tpd.used,
-          feePaid: tpd.feePaid,
+          used: fixedUsed,
+          feePaid: fixedFeePaid,
         };
+        // Notice: Add the trailing avg data to the metadata, only if it's the last partial interval item
+        if (!isNewInterval) {
+          trailingAvgStore.trailingAvgData = tpd.trailingAvgData.slice(
+            tpd.startTimestampIndex,
+            currentIdx
+          );
+        }
       }
 
-      // Prepare for next interval
-      tpd.nextTimestamp = this.nextInterval(item.timestamp, interval);
+      // If not the last item, prepare for next interval
+      if (!isLastItem) {
+        tpd.nextTimestamp = this.nextInterval(item.timestamp, interval);
 
-      // Create a placeholder for the next interval
-      const itemStartTime = this.snapToInterval(item.timestamp, interval);
+        // Create a placeholder for the next interval
+        const itemStartTime = this.snapToInterval(item.timestamp, interval);
 
-      // Check if we already have an item for this interval
-      const existingIndex = trailingAvgStore.data.findIndex(
-        (d) => d.timestamp >= itemStartTime && d.timestamp < tpd.nextTimestamp
-      );
+        // Check if we already have an item for this interval
+        const existingIndex = trailingAvgStore.data.findIndex(
+          (d) => d.timestamp >= itemStartTime && d.timestamp < tpd.nextTimestamp
+        );
 
-      if (existingIndex === -1) {
-        // Create a new placeholder
-        trailingAvgStore.data.push({
-          timestamp: item.timestamp,
-          open: price.toString(),
-          high: price.toString(),
-          low: price.toString(),
-          close: price.toString(),
-        });
+        if (existingIndex === -1) {
+          // Create a new placeholder
+          trailingAvgStore.data.push({
+            timestamp: item.timestamp,
+            open: price.toString(),
+            high: price.toString(),
+            low: price.toString(),
+            close: price.toString(),
+          });
 
-        trailingAvgStore.metadata.push({
-          startTimestamp: itemStartTime,
-          endTimestamp: tpd.nextTimestamp,
-          used: tpd.used,
-          feePaid: tpd.feePaid,
-        });
+          trailingAvgStore.metadata.push({
+            startTimestamp: itemStartTime,
+            endTimestamp: tpd.nextTimestamp,
+            used: tpd.used,
+            feePaid: tpd.feePaid,
+          });
 
-        trailingAvgStore.pointers[item.timestamp] =
-          trailingAvgStore.data.length - 1;
+          trailingAvgStore.pointers[item.timestamp] =
+            trailingAvgStore.data.length - 1;
+        }
       }
     }
 
-    // Remove the old items from the trailing avg if they are before the trailing avg timestamp
-    let startIdx = tpd.startTimestampIndex;
-    let oldItem = this.runtime.dbResourcePrices[startIdx];
-    const trailingAvgTimestamp = item.timestamp - this.trailingAvgTime;
-    while (oldItem.timestamp < trailingAvgTimestamp) {
-      tpd.used -= BigInt(oldItem.used);
-      tpd.feePaid -= BigInt(oldItem.feePaid);
-      startIdx++;
-      tpd.startTimestampIndex = startIdx;
-      if (startIdx >= this.runtime.dbResourcePricesLength) break;
-      oldItem = this.runtime.dbResourcePrices[startIdx];
-    }
+    if (!isLastItem) {
+      // Remove the old items from the trailing avg if they are before the trailing avg timestamp
+      let startIdx = tpd.startTimestampIndex;
+      let oldItem = tpd.trailingAvgData[startIdx];
+      const trailingAvgTimestamp = item.timestamp - this.trailingAvgTime;
 
-    // We are adding the new item to the trailing avg if it's in the next interval
-    if (item.timestamp <= tpd.nextTimestamp) {
-      tpd.used += BigInt(item.used);
-      tpd.feePaid += BigInt(item.feePaid);
-      tpd.endTimestampIndex = currentIdx;
-
-      // Update the placeholder
-      const price = tpd.used > 0n ? tpd.feePaid / tpd.used : 0n;
-
-      if (currentPlaceholderIndex >= 0) {
-        trailingAvgStore.data[currentPlaceholderIndex] = {
-          timestamp: trailingAvgStore.data[currentPlaceholderIndex].timestamp,
-          open: price.toString(),
-          high: price.toString(),
-          low: price.toString(),
-          close: price.toString(),
-        };
-
-        trailingAvgStore.metadata[currentPlaceholderIndex] = {
-          startTimestamp:
-            trailingAvgStore.metadata[currentPlaceholderIndex].startTimestamp,
-          endTimestamp: tpd.nextTimestamp,
-          used: tpd.used,
-          feePaid: tpd.feePaid,
-        };
+      while (oldItem.timestamp < trailingAvgTimestamp) {
+        tpd.used -= BigInt(oldItem.used);
+        tpd.feePaid -= BigInt(oldItem.feePaid);
+        startIdx++;
+        tpd.startTimestampIndex = startIdx;
+        if (startIdx >= this.runtime.dbResourcePricesLength) break;
+        oldItem = tpd.trailingAvgData[startIdx];
       }
     }
+  }
+
+  private getEpochId(chainId: number, address: string, epoch: string) {
+    const theEpoch = this.epochs.find(
+      (e) =>
+        e.market.chainId === chainId &&
+        e.market.address === address &&
+        e.epochId === Number(epoch)
+    );
+    if (!theEpoch) {
+      throw new Error(`Epoch not found for ${chainId}-${address}-${epoch}`);
+    }
+
+    return theEpoch.id;
   }
 
   getResourcePrices(from: number, to: number, interval: number) {
@@ -767,10 +811,18 @@ export class ResourcePerformance {
     );
   }
 
-  getIndexPrices(from: number, to: number, interval: number, epoch: string) {
+  getIndexPrices(
+    from: number,
+    to: number,
+    interval: number,
+    chainId: number,
+    address: string,
+    epoch: string
+  ) {
     this.checkInterval(interval);
+    const epochId = this.getEpochId(chainId, address, epoch);
     return this.getPricesFromArray(
-      this.storage[interval].indexStore[epoch].data,
+      this.storage[interval].indexStore[epochId].data,
       from,
       to,
       interval,
