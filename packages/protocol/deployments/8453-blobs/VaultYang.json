@@ -1,5 +1,5 @@
 {
-  "address": "0xEe1D1b9781E0a3DA29e7F2150fFB6f65748A0042",
+  "address": "0xe1d3Fa8456Bca5307B4b94e113c38Cc50c8f5453",
   "abi": [
     {
       "type": "constructor",
@@ -1690,9 +1690,9 @@
     }
   ],
   "constructorArgs": [
-    "Foil stETH Vault Yang",
-    "fstethYANG",
-    "0xcb1d0591038441140705ff5e1d7abbc7d31c6376",
+    "Foil stETH Blobs Vault Yang",
+    "fstethBlobsYANG",
+    "0x301f7f583a6850d8d6e0ea0a86205f905b91e255",
     "0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452",
     "577350269189625700",
     "1732050807568877200",
@@ -1702,13 +1702,13 @@
     "0x66aB20e98fcACfadB298C0741dFddA92568B5826"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x5568b3b6d67912f7fc3f4bb0d0f07d4ab909f786b13ae5c6251a310b20962fe6",
-  "deployTxnBlockNumber": "26942913",
-  "deployTimestamp": "1740675173",
+  "deployTxnHash": "0x2fcf4ef2c880b1f9530a52adb79515a0b4da18d54ecf7427940b2366322557a6",
+  "deployTxnBlockNumber": "26943947",
+  "deployTimestamp": "1740677241",
   "sourceName": "src/vault/Vault.sol",
   "contractName": "Vault",
   "deployedOn": "deploy.VaultYang",
   "highlight": true,
-  "gasUsed": 4091481,
-  "gasCost": "2535246"
+  "gasUsed": 4091613,
+  "gasCost": "2552763"
 }
