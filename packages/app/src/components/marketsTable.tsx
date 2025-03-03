@@ -25,6 +25,22 @@ import {
 } from '~/components/ui/table';
 import { useResources } from '~/lib/hooks/useResources';
 
+const ResourceCell = ({ row }: { row: any }) => (
+  <div className="flex items-center gap-2">
+    <Image
+      src={row.original.iconPath}
+      alt={row.original.marketName}
+      width={28}
+      height={28}
+    />
+    <span className="text-xl ml-2">{row.original.marketName}</span>
+  </div>
+);
+
+const renderResourceCell = ({ row }: { row: any }) => (
+  <ResourceCell row={row} />
+);
+
 const renderSortIcon = (isSorted: string | false) => {
   if (isSorted === 'desc') {
     return <ChevronDown className="h-3 w-3" aria-label="sorted descending" />;
@@ -78,17 +94,7 @@ const MarketsTable = () => {
       {
         header: 'Resource',
         accessorKey: 'marketName',
-        cell: ({ row }) => (
-          <div className="flex items-center gap-2">
-            <Image
-              src={row.original.iconPath}
-              alt={row.original.marketName}
-              width={28}
-              height={28}
-            />
-            <span className="text-xl ml-2">{row.original.marketName}</span>
-          </div>
-        ),
+        cell: renderResourceCell,
       },
       {
         header: 'Period',

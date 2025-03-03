@@ -66,10 +66,13 @@ interface EpochsTableProps {
 }
 
 const EpochsTable = ({ data }: EpochsTableProps) => {
+  const currentTime = Math.floor(Date.now() / 1000);
+  const activeEpochs = data.filter((epoch) => epoch.endTimestamp > currentTime);
+
   return (
     <div className="border-t border-border">
-      {data.length ? (
-        data.map((epoch) => {
+      {activeEpochs.length ? (
+        activeEpochs.map((epoch) => {
           return (
             <Link
               key={epoch.id}
