@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import * as React from 'react';
 
+import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import {
   Table,
@@ -83,6 +84,32 @@ const PeriodCell = ({ row }: PeriodCellProps) => {
   );
 };
 
+interface StatusCellProps {
+  row: {
+    original: {
+      startTimestamp: number;
+      endTimestamp: number;
+      settled: boolean;
+    };
+  };
+}
+
+const StatusCell = ({ row }: StatusCellProps) => {
+  const now = Math.floor(Date.now() / 1000);
+  const { startTimestamp, endTimestamp, settled } = row.original;
+
+  if (now < startTimestamp) {
+    return <Badge variant="secondary">Upcoming</Badge>;
+  }
+  if (now >= startTimestamp && now <= endTimestamp) {
+    return <Badge variant="default">Active</Badge>;
+  }
+  if (now > endTimestamp && !settled) {
+    return <Badge variant="destructive">Settling</Badge>;
+  }
+  return <Badge variant="outline">Settled</Badge>;
+};
+
 const SortIcon = ({ isSorted }: { isSorted: string | false }) => {
   if (isSorted === 'desc') {
     return <ChevronDown className="h-3 w-3" aria-label="sorted descending" />;
@@ -125,6 +152,7 @@ const MarketsTable = () => {
                   endTimestamp: epoch.endTimestamp,
                   chainId: market.chainId,
                   marketAddress: market.address,
+                  settled: epoch.settled,
                 };
               })
           )
@@ -138,6 +166,11 @@ const MarketsTable = () => {
         header: 'Resource',
         accessorKey: 'marketName',
         cell: ResourceCellWrapper,
+      },
+      {
+        header: 'Status',
+        accessorKey: 'startTimestamp',
+        cell: StatusCell,
       },
       {
         header: 'Period',
