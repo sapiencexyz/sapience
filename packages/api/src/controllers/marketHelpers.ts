@@ -176,12 +176,14 @@ const updateTransactionStateFromEvent = (
 ) => {
   const eventArgs = event.logData.args;
   // Latest position state
-  transaction.baseToken = eventArgs.positionVgasAmount as string;
-  transaction.quoteToken = eventArgs.positionVethAmount as string;
-  transaction.borrowedBaseToken = eventArgs.positionBorrowedVgas as string;
-  transaction.borrowedQuoteToken = eventArgs.positionBorrowedVeth as string;
-
-  transaction.collateral = eventArgs.positionCollateralAmount as string;
+  transaction.baseToken = (eventArgs.positionVgasAmount as string) || '0';
+  transaction.quoteToken = (eventArgs.positionVethAmount as string) || '0';
+  transaction.borrowedBaseToken =
+    (eventArgs.positionBorrowedVgas as string) || '0';
+  transaction.borrowedQuoteToken =
+    (eventArgs.positionBorrowedVeth as string) || '0';
+  transaction.collateral =
+    (eventArgs.positionCollateralAmount as string) || '0';
 
   if (eventArgs.tradeRatio) {
     transaction.tradeRatioD18 = eventArgs.tradeRatio as string;
