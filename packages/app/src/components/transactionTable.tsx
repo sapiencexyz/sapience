@@ -35,6 +35,7 @@ import { convertWstEthToGwei, foilApi } from '~/lib/utils/util';
 
 import MarketCell from './MarketCell';
 import NumberDisplay from './numberDisplay';
+import PositionDisplay from './PositionDisplay';
 
 const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
 
@@ -250,7 +251,10 @@ const TransactionTable: React.FC<Props> = ({
 
   const renderPositionCell = (row: any) => (
     <div className="flex items-center gap-1">
-      #{row.original.position.positionId}
+      <PositionDisplay
+        positionId={row.original.position.positionId}
+        marketType={row.original.position.epoch.market.isYin ? 'yin' : 'yang'}
+      />
       <Link
         href={`/positions/${row.original.position.epoch.market.chainId}:${row.original.position.epoch.market.address}/${row.original.position.positionId}`}
         target="_blank"

@@ -43,6 +43,7 @@ import { tickToPrice, foilApi } from '~/lib/utils/util';
 
 import MarketCell from './MarketCell';
 import NumberDisplay from './numberDisplay';
+import PositionDisplay from './PositionDisplay';
 
 const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
 
@@ -281,7 +282,10 @@ const LiquidityPositionsTable: React.FC<Props> = ({
       case 'position':
         return (
           <div className="flex items-center gap-1">
-            #{row.original.positionId.toString()}
+            <PositionDisplay
+              positionId={row.original.positionId.toString()}
+              marketType={row.original.epoch?.market?.isYin ? 'yin' : 'yang'}
+            />
           </div>
         );
       case 'collateral':

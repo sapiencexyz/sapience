@@ -25,6 +25,16 @@ import {
 } from '~/components/ui/table';
 import { useResources } from '~/lib/hooks/useResources';
 
+const renderSortIcon = (isSorted: string | false) => {
+  if (isSorted === 'desc') {
+    return <ChevronDown className="h-3 w-3" aria-label="sorted descending" />;
+  }
+  if (isSorted === 'asc') {
+    return <ChevronUp className="h-3 w-3" aria-label="sorted ascending" />;
+  }
+  return <ArrowUpDown className="h-3 w-3" aria-label="sortable" />;
+};
+
 const MarketsTable = () => {
   const { data: resources } = useResources();
   const searchParams = useSearchParams();
@@ -47,8 +57,9 @@ const MarketsTable = () => {
                 const endDate = new Date(epoch.endTimestamp * 1000);
                 return {
                   marketName: resource.name,
+                  iconPath: resource.iconPath,
                   epochId: epoch.epochId,
-                  period: `${format(startDate, 'PPpp')} - ${format(
+                  period: `${format(startDate, 'PPpp')} → ${format(
                     endDate,
                     'PPpp'
                   )}`,
@@ -67,6 +78,17 @@ const MarketsTable = () => {
       {
         header: 'Resource',
         accessorKey: 'marketName',
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <Image
+              src={row.original.iconPath}
+              alt={row.original.marketName}
+              width={28}
+              height={28}
+            />
+            <span className="text-xl ml-2">{row.original.marketName}</span>
+          </div>
+        ),
       },
       {
         header: 'Period',
@@ -89,16 +111,6 @@ const MarketsTable = () => {
     },
   });
 
-  const renderSortIcon = (isSorted: string | false) => {
-    if (isSorted === 'desc') {
-      return <ChevronDown className="h-3 w-3" aria-label="sorted descending" />;
-    }
-    if (isSorted === 'asc') {
-      return <ChevronUp className="h-3 w-3" aria-label="sorted ascending" />;
-    }
-    return <ArrowUpDown className="h-3 w-3" aria-label="sortable" />;
-  };
-
   const handleResourceClick = (slug: string | null) => {
     const params = new URLSearchParams(searchParams);
     if (slug) {
@@ -111,9 +123,9 @@ const MarketsTable = () => {
 
   return (
     <>
-      <div className="mb-6">
-        <h1 className="scroll-m-20 text-3xl font-bold tracking-tight mb-3">
-          Markets
+      <div className="mb-8">
+        <h1 className="scroll-m-20 text-3xl font-bold tracking-tight mb-4">
+          Foil Markets
         </h1>
         <div className="flex gap-2">
           <Button
@@ -135,8 +147,8 @@ const MarketsTable = () => {
               <Image
                 src={resource.iconPath}
                 alt={resource.name}
-                width={16}
-                height={16}
+                width={22}
+                height={22}
                 className=" "
               />
               {resource.name}
@@ -182,7 +194,7 @@ const MarketsTable = () => {
                 <TableCell className="text-right">
                   <Link
                     href={`/markets/${row.original.chainId}:${row.original.marketAddress}/periods/${row.original.epochId}/trade`}
-                    className="mr-2"
+                    className="mr-4"
                   >
                     <Button size="sm">Trade</Button>
                   </Link>

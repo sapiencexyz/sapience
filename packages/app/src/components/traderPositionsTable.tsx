@@ -44,6 +44,7 @@ import { foilApi, convertWstEthToGwei } from '~/lib/utils/util';
 
 import MarketCell from './MarketCell';
 import NumberDisplay from './numberDisplay';
+import PositionDisplay from './PositionDisplay';
 
 const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
 
@@ -279,7 +280,12 @@ const TraderPositionsTable: React.FC<Props> = ({
   );
 
   const renderPositionCell = (row: any) => (
-    <div className="flex items-center gap-1">#{row.positionId.toString()}</div>
+    <div className="flex items-center gap-1">
+      <PositionDisplay
+        positionId={row.positionId.toString()}
+        marketType={row.epoch?.market?.isYin ? 'yin' : 'yang'}
+      />
+    </div>
   );
 
   const renderCollateralCell = (value: any, row: any) => {
