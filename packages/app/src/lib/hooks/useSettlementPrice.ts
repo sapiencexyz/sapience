@@ -6,18 +6,20 @@ import { formatEther } from 'viem';
 import type { Market, Epoch } from '~/lib/types';
 import { gweiToEther, convertToSqrtPriceX96, foilApi } from '~/lib/utils/util';
 
-const INDEX_PRICE_QUERY = gql`
-  query GetIndexPrice(
+const INDEX_CANDLES_QUERY = gql`
+  query GetIndexCandles(
     $address: String!
     $chainId: Int!
     $epochId: String!
     $timestamp: Int!
   ) {
-    indexPriceAtTime(
+    indexCandles(
       address: $address
       chainId: $chainId
       epochId: $epochId
-      timestamp: $timestamp
+      from: $timestamp
+      to: $timestamp
+      interval: 1
     ) {
       timestamp
       close
@@ -45,8 +47,8 @@ export function useSettlementPrice(market: Market, epoch: Epoch) {
       epoch.endTimestamp,
     ],
     queryFn: async () => {
-      const data = await foilApi.post('/graphql', {
-        query: print(INDEX_PRICE_QUERY),
+      const response = await foilApi.post('/graphql', {
+        query: print(INDEX_CANDLES_QUERY),
         variables: {
           address: market.address,
           chainId: market.chainId,
@@ -55,12 +57,12 @@ export function useSettlementPrice(market: Market, epoch: Epoch) {
         },
       });
 
-      const price = data.indexPriceAtTime;
-      if (!price) {
+      const candles = response.data?.indexCandles;
+      if (!candles || candles.length === 0) {
         throw new Error('No index price data found');
       }
 
-      return Number(gweiToEther(BigInt(price.close)));
+      return Number(gweiToEther(BigInt(candles[0].close)));
     },
     enabled: epoch.epochId !== 0 && !!market && !!epoch.endTimestamp,
   });
