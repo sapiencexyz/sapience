@@ -106,10 +106,10 @@ const usePositions = (
   walletAddress: string | null,
   periodContext: PeriodContextType
 ) => {
-  const { chainId, address: marketAddress } = periodContext;
+  const { chainId, address: marketAddress, epoch } = periodContext;
 
   return useQuery({
-    queryKey: ['positions', walletAddress, chainId, marketAddress],
+    queryKey: ['positions', walletAddress, chainId, marketAddress, epoch],
     queryFn: async () => {
       const { data, errors } = await foilApi.post('/graphql', {
         query: POSITIONS_QUERY,
@@ -124,7 +124,12 @@ const usePositions = (
         throw new Error(errors[0].message);
       }
 
-      return data.positions.filter((position: any) => !position.isLP);
+      // Filter for non-LP positions and within the current epoch
+      return data.positions.filter((position: any) => {
+        const isTrader = !position.isLP;
+        const positionEpochId = Number(position.epoch?.epochId);
+        return isTrader && positionEpochId === epoch;
+      });
     },
     enabled:
       Boolean(walletAddress) || (Boolean(chainId) && Boolean(marketAddress)),

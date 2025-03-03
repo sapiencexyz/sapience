@@ -109,16 +109,14 @@ function useTransactions(
   walletAddress: string | null,
   periodContext: PeriodContextType
 ) {
-  const { chainId, address: marketAddress } = periodContext;
+  const { chainId, address: marketAddress, epoch } = periodContext;
 
   return useQuery({
-    queryKey: ['transactions', walletAddress, chainId, marketAddress],
+    queryKey: ['transactions', walletAddress, chainId, marketAddress, epoch],
     queryFn: async () => {
       const { data, errors } = await foilApi.post('/graphql', {
         query: TRANSACTIONS_QUERY,
         variables: {
-          // If we have a walletAddress, query all positions for that owner
-          // If no walletAddress, query the specific market/chain for all owners
           owner: walletAddress || undefined,
           chainId: walletAddress ? undefined : Number(chainId),
           marketAddress: walletAddress ? undefined : marketAddress,
@@ -129,15 +127,16 @@ function useTransactions(
         throw new Error(errors[0].message);
       }
 
-      // Flatten all transactions from all positions
-      return data.positions.flatMap((position: any) =>
-        position.transactions.map((tx: any) => ({
-          ...tx,
-          position,
-        }))
-      );
+      // Flatten all transactions from all positions and filter by epoch
+      return data.positions
+        .filter((position: any) => Number(position.epoch?.epochId) === epoch)
+        .flatMap((position: any) =>
+          position.transactions.map((tx: any) => ({
+            ...tx,
+            position,
+          }))
+        );
     },
-    // Only enable if we have a walletAddress or if we have chainId & marketAddress
     enabled:
       Boolean(walletAddress) || (Boolean(chainId) && Boolean(marketAddress)),
     refetchInterval: POLLING_INTERVAL,
