@@ -11,6 +11,7 @@ import { router as volumeRoutes } from './volume';
 import { router as transactionRoutes } from './transactions';
 import { router as permitRoutes } from './permit';
 import { router as cryptoPricesRoutes } from './crypto-prices';
+import { router as refreshCacheRoutes } from './refreshCache';
 import { Router } from 'express';
 
 const router = Router();
@@ -28,5 +29,6 @@ router.use('/updateMarketPrivacy', updateMarketPrivacyRoutes);
 router.use('/volume', volumeRoutes);
 router.use('/permit', permitRoutes);
 router.use('/crypto-prices', cryptoPricesRoutes);
+router.use('/cache', refreshCacheRoutes);
 
 export { router };
