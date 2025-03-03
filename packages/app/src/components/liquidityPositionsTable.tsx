@@ -8,7 +8,6 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import {
-  Check,
   Info,
   ChevronDown,
   ChevronUp,
@@ -218,10 +217,6 @@ const LiquidityPositionsTable: React.FC<Props> = ({
   const { endTime } = periodContext;
   const [sorting, setSorting] = useState<SortingState>([
     {
-      id: 'settled',
-      desc: false,
-    },
-    {
       id: 'position',
       desc: true,
     },
@@ -257,9 +252,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({
         'pnl',
       ].includes(columnId)
     ) {
-      return row.original.isSettled ? (
-        <span className="font-medium">Position Settled</span>
-      ) : (
+      return (
         <span className="font-medium text-muted-foreground">
           Position Closed
         </span>
@@ -345,8 +338,6 @@ const LiquidityPositionsTable: React.FC<Props> = ({
           </Link>
         );
       }
-      case 'settled':
-        return value ? <Check className="h-4 w-4 text-green-500 mr-2" /> : null;
       default:
         return value;
     }
@@ -395,15 +386,6 @@ const LiquidityPositionsTable: React.FC<Props> = ({
         header: PnLHeaderCell,
         accessorFn: (row) => row.positionId,
       },
-      ...(expired
-        ? [
-            {
-              id: 'settled',
-              header: 'Settled',
-              accessorKey: 'isSettled',
-            },
-          ]
-        : []),
       {
         id: 'more',
         header: '',
@@ -506,9 +488,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({
                 'highPrice',
                 'pnl',
               ];
-              const statusCell = row.original.isSettled ? (
-                <span className="font-medium">Position Settled</span>
-              ) : (
+              const statusCell = (
                 <span className="font-medium text-muted-foreground">
                   Position Closed
                 </span>
