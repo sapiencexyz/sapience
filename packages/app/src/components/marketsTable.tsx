@@ -33,7 +33,7 @@ const ResourceCell = ({ row }: { row: any }) => (
       width={28}
       height={28}
     />
-    <span className="text-xl ml-2">{row.original.marketName}</span>
+    <span className="text-xl ml-1.5">{row.original.marketName}</span>
   </div>
 );
 
@@ -155,7 +155,6 @@ const MarketsTable = () => {
                 alt={resource.name}
                 width={22}
                 height={22}
-                className=" "
               />
               {resource.name}
             </Button>
