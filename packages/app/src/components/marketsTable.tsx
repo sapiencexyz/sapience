@@ -25,23 +25,65 @@ import {
 } from '~/components/ui/table';
 import { useResources } from '~/lib/hooks/useResources';
 
-const ResourceCell = ({ row }: { row: any }) => (
+interface ResourceCellProps {
+  iconPath: string;
+  marketName: string;
+}
+
+const ResourceCell = ({ iconPath, marketName }: ResourceCellProps) => (
   <div className="flex items-center gap-2">
-    <Image
-      src={row.original.iconPath}
-      alt={row.original.marketName}
-      width={28}
-      height={28}
-    />
-    <span className="text-xl ml-1.5">{row.original.marketName}</span>
+    <Image src={iconPath} alt={marketName} width={32} height={32} />
+    <span className="text-xl ml-1">{marketName}</span>
   </div>
 );
 
-const renderResourceCell = ({ row }: { row: any }) => (
-  <ResourceCell row={row} />
+interface ResourceCellWrapperProps {
+  row: {
+    original: {
+      iconPath: string;
+      marketName: string;
+    };
+  };
+}
+
+const ResourceCellWrapper = ({ row }: ResourceCellWrapperProps) => (
+  <ResourceCell
+    iconPath={row.original.iconPath}
+    marketName={row.original.marketName}
+  />
 );
 
-const renderSortIcon = (isSorted: string | false) => {
+interface PeriodCellProps {
+  row: {
+    original: {
+      startTimestamp: number;
+      endTimestamp: number;
+    };
+  };
+}
+
+const PeriodCell = ({ row }: PeriodCellProps) => {
+  const startDate = new Date(row.original.startTimestamp * 1000);
+  const endDate = new Date(row.original.endTimestamp * 1000);
+  const { timeZone } = Intl.DateTimeFormat().resolvedOptions();
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: true,
+    timeZone,
+    timeZoneName: 'short',
+  });
+  return (
+    <span className="text-xl">
+      {formatter.format(startDate)} → {formatter.format(endDate)}
+    </span>
+  );
+};
+
+const SortIcon = ({ isSorted }: { isSorted: string | false }) => {
   if (isSorted === 'desc') {
     return <ChevronDown className="h-3 w-3" aria-label="sorted descending" />;
   }
@@ -80,6 +122,7 @@ const MarketsTable = () => {
                     'PPpp'
                   )}`,
                   startTimestamp: epoch.startTimestamp,
+                  endTimestamp: epoch.endTimestamp,
                   chainId: market.chainId,
                   marketAddress: market.address,
                 };
@@ -94,18 +137,22 @@ const MarketsTable = () => {
       {
         header: 'Resource',
         accessorKey: 'marketName',
-        cell: renderResourceCell,
+        cell: ResourceCellWrapper,
       },
       {
         header: 'Period',
-        accessorKey: 'period',
+        accessorKey: 'endTimestamp',
+        enableSorting: true,
         sortingFn: 'basic',
+        cell: PeriodCell,
       },
     ],
     []
   );
 
-  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: 'endTimestamp', desc: true },
+  ]);
   const table = useReactTable({
     columns,
     data,
@@ -129,11 +176,11 @@ const MarketsTable = () => {
 
   return (
     <>
-      <div className="mb-8">
-        <h1 className="scroll-m-20 text-3xl font-bold tracking-tight mb-4">
+      <div className="mb-10 mt-5">
+        <h1 className="scroll-m-20 text-4xl lg:text-5xl font-bold tracking-tight mb-5">
           Foil Markets
         </h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant={!selectedResource ? 'default' : 'outline'}
             className="shadow-sm gap-2"
@@ -171,7 +218,7 @@ const MarketsTable = () => {
                   <TableHead
                     key={header.id}
                     onClick={header.column.getToggleSortingHandler()}
-                    className="cursor-pointer"
+                    className="cursor-pointer whitespace-nowrap"
                   >
                     <span className="flex items-center">
                       {flexRender(
@@ -179,7 +226,7 @@ const MarketsTable = () => {
                         header.getContext()
                       )}
                       <span className="ml-2 inline-block">
-                        {renderSortIcon(header.column.getIsSorted())}
+                        <SortIcon isSorted={header.column.getIsSorted()} />
                       </span>
                     </span>
                   </TableHead>
@@ -192,21 +239,21 @@ const MarketsTable = () => {
             {table.getRowModel().rows.map((row) => (
               <TableRow key={row.id}>
                 {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
+                  <TableCell key={cell.id} className="whitespace-nowrap">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}
-                <TableCell className="text-right">
+                <TableCell className="text-right whitespace-nowrap">
                   <Link
                     href={`/markets/${row.original.chainId}:${row.original.marketAddress}/periods/${row.original.epochId}/trade`}
-                    className="mr-4"
+                    className="mr-3 md:mr-6"
                   >
-                    <Button size="sm">Trade</Button>
+                    <Button>Trade</Button>
                   </Link>
                   <Link
                     href={`/markets/${row.original.chainId}:${row.original.marketAddress}/periods/${row.original.epochId}/pool`}
                   >
-                    <Button size="sm">Pool</Button>
+                    <Button>Pool</Button>
                   </Link>
                 </TableCell>
               </TableRow>
