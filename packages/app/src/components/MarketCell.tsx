@@ -29,7 +29,7 @@ const MarketCell = ({
           alt={marketName}
           width={32}
           height={32}
-          className="grayscale"
+          className=" "
         />
       )}
       <div className="flex flex-col gap-0.5">

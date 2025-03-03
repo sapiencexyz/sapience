@@ -6,7 +6,7 @@ services:
   - name: web-service
     type: web
     env: node
-    plan: standard
+    plan: pro
     buildCommand: chmod +x render-build.sh && ./render-build.sh && pnpm --filter @foil/api install
     startCommand: pnpm --filter @foil/api start:service
     autoDeploy: true

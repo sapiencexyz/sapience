@@ -481,7 +481,7 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
       {epochs.length > 0 && (
         <div className="w-full md:w-[320px] h-auto md:h-full">
           <div className="border border-border rounded-sm shadow h-full">
-            <h2 className="text-xl font-bold py-2 px-4">Periods</h2>
+            <h2 className="text-xl font-bold py-2 px-4">Markets</h2>
             <EpochsTable data={epochs} />
           </div>
         </div>

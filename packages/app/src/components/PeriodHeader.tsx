@@ -138,7 +138,7 @@ const PeriodHeader = () => {
                 alt={resource?.name || ''}
                 width={32}
                 height={32}
-                className="w-8 h-8 grayscale"
+                className="w-8 h-8  "
               />
             )}
             {resource?.name} Market

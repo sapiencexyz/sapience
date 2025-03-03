@@ -137,7 +137,7 @@ const MarketsTable = () => {
                 alt={resource.name}
                 width={16}
                 height={16}
-                className="grayscale"
+                className=" "
               />
               {resource.name}
             </Button>
