@@ -21,6 +21,7 @@ import {
   getProviderForChain,
   bigintReplacer,
   sqrtPriceX96ToSettlementPriceD18,
+  getBlockByTimestamp,
 } from '../utils';
 import {
   createEpochFromEvent,
@@ -34,7 +35,6 @@ import {
   updateTransactionFromTradeModifiedEvent,
   insertMarketPrice,
   updateTransactionFromPositionSettledEvent,
-  getMarketStartEndBlock,
   insertCollateralTransfer,
   createOrUpdateEpochFromContract,
 } from './marketHelpers';
@@ -183,22 +183,49 @@ export const reindexMarketEvents = async (
   const client = getProviderForChain(market.chainId);
   const chainId = await client.getChainId();
 
-  // Get block range for the epoch
-  const { startBlockNumber, error } = await getMarketStartEndBlock(
-    market,
-    epochId.toString(),
-    client
-  );
+  // Get the epoch to calculate the time-based block
+  const epoch = await epochRepository.findOne({
+    where: {
+      market: { id: market.id },
+      epochId: Number(epochId),
+    },
+  });
 
-  if (error || !startBlockNumber) {
-    throw new Error(`Failed to get start block for epoch ${epochId}: ${error}`);
+  if (!epoch) {
+    throw new Error(`Epoch ${epochId} not found for market ${market.address}`);
   }
 
-  const startBlock = startBlockNumber;
-  const endBlock = await client.getBlockNumber();
+  if (!epoch.startTimestamp || !epoch.endTimestamp) {
+    throw new Error(`Epoch ${epochId} is missing start or end timestamp`);
+  }
+
+  // Calculate the block number that corresponds to startTime - (endTime - startTime)
+  const timeRange = BigInt(epoch.endTimestamp) - BigInt(epoch.startTimestamp);
+  const timeBasedStartTime = Number(BigInt(epoch.startTimestamp) - timeRange);
+
+  // Get the block number for this timestamp
+  const timeBasedBlock = await getBlockByTimestamp(client, timeBasedStartTime);
+
+  // Use the greater of the deployment block or the time-based block
+  const startBlock = Math.max(
+    Number(market.deployTxnBlockNumber || 0),
+    Number(timeBasedBlock.number)
+  );
+
+  // Get the end block using the smaller of epoch end time and current time
+  const currentTime = Math.floor(Date.now() / 1000);
+  const endTime = Math.min(Number(epoch.endTimestamp), currentTime);
+  const endBlock = await getBlockByTimestamp(client, endTime);
+
+  if (!endBlock?.number) {
+    throw new Error(`Failed to get end block for timestamp ${endTime}`);
+  }
+
   const CHUNK_SIZE = 10000; // Process 10,000 blocks at a time
 
-  console.log(`Indexing market events from block ${startBlock} to ${endBlock}`);
+  console.log(
+    `Indexing market events from block ${startBlock} to ${endBlock.number}`
+  );
 
   // Function to process logs regardless of how they were fetched
   const processLogs = async (logs: Log[]) => {
@@ -250,10 +277,10 @@ export const reindexMarketEvents = async (
   let currentBlock = startBlock;
   let totalLogsProcessed = 0;
 
-  while (currentBlock <= endBlock) {
+  while (currentBlock <= endBlock.number) {
     const chunkEndBlock = Math.min(
       currentBlock + CHUNK_SIZE - 1,
-      Number(endBlock)
+      Number(endBlock.number)
     );
 
     try {
