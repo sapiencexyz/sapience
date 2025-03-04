@@ -56,10 +56,12 @@ const groupPricesByInterval = (
     if (pricesInInterval.length > 0) {
       // Create candle with actual price data
       const values = pricesInInterval.map((p) => BigInt(p.value));
+      const currentOpen = lastClose || values[0].toString(); // Use previous close as open, or first value if no previous close
       lastClose = values[values.length - 1].toString();
+
       candles.push({
         timestamp,
-        open: values[0].toString(),
+        open: currentOpen,
         high: values.reduce((a, b) => (a > b ? a : b)).toString(),
         low: values.reduce((a, b) => (a < b ? a : b)).toString(),
         close: lastClose,
