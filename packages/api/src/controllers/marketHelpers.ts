@@ -465,6 +465,31 @@ export const updateTransactionFromAddLiquidityEvent = (
 
   newTransaction.lpBaseDeltaToken = event.logData.args.addedAmount0 as string;
   newTransaction.lpQuoteDeltaToken = event.logData.args.addedAmount1 as string;
+  
+  // Ensure all required fields have default values if not set
+  if (!newTransaction.baseToken || newTransaction.baseToken === '') {
+    newTransaction.baseToken = '0';
+  }
+  
+  if (!newTransaction.quoteToken || newTransaction.quoteToken === '') {
+    newTransaction.quoteToken = '0';
+  }
+  
+  if (!newTransaction.borrowedBaseToken || newTransaction.borrowedBaseToken === '') {
+    newTransaction.borrowedBaseToken = '0';
+  }
+  
+  if (!newTransaction.borrowedQuoteToken || newTransaction.borrowedQuoteToken === '') {
+    newTransaction.borrowedQuoteToken = '0';
+  }
+  
+  if (!newTransaction.collateral || newTransaction.collateral === '') {
+    newTransaction.collateral = '0';
+  }
+  
+  if (!newTransaction.tradeRatioD18 || newTransaction.tradeRatioD18 === '') {
+    newTransaction.tradeRatioD18 = '0';
+  }
 };
 
 /**
@@ -485,6 +510,31 @@ export const updateTransactionFromLiquidityClosedEvent = async (
     .collectedAmount0 as string;
   newTransaction.lpQuoteDeltaToken = event.logData.args
     .collectedAmount1 as string;
+    
+  // Ensure all required fields have default values if not set
+  if (!newTransaction.baseToken || newTransaction.baseToken === '') {
+    newTransaction.baseToken = '0';
+  }
+  
+  if (!newTransaction.quoteToken || newTransaction.quoteToken === '') {
+    newTransaction.quoteToken = '0';
+  }
+  
+  if (!newTransaction.borrowedBaseToken || newTransaction.borrowedBaseToken === '') {
+    newTransaction.borrowedBaseToken = '0';
+  }
+  
+  if (!newTransaction.borrowedQuoteToken || newTransaction.borrowedQuoteToken === '') {
+    newTransaction.borrowedQuoteToken = '0';
+  }
+  
+  if (!newTransaction.collateral || newTransaction.collateral === '') {
+    newTransaction.collateral = '0';
+  }
+  
+  if (!newTransaction.tradeRatioD18 || newTransaction.tradeRatioD18 === '') {
+    newTransaction.tradeRatioD18 = '0';
+  }
 };
 
 /**
@@ -516,6 +566,31 @@ export const updateTransactionFromLiquidityModifiedEvent = async (
         BigInt(-1)
       ).toString()
     : (event.logData.args.increasedAmount1 as string);
+    
+  // Ensure all required fields have default values if not set
+  if (!newTransaction.baseToken || newTransaction.baseToken === '') {
+    newTransaction.baseToken = '0';
+  }
+  
+  if (!newTransaction.quoteToken || newTransaction.quoteToken === '') {
+    newTransaction.quoteToken = '0';
+  }
+  
+  if (!newTransaction.borrowedBaseToken || newTransaction.borrowedBaseToken === '') {
+    newTransaction.borrowedBaseToken = '0';
+  }
+  
+  if (!newTransaction.borrowedQuoteToken || newTransaction.borrowedQuoteToken === '') {
+    newTransaction.borrowedQuoteToken = '0';
+  }
+  
+  if (!newTransaction.collateral || newTransaction.collateral === '') {
+    newTransaction.collateral = '0';
+  }
+  
+  if (!newTransaction.tradeRatioD18 || newTransaction.tradeRatioD18 === '') {
+    newTransaction.tradeRatioD18 = '0';
+  }
 };
 
 /**
@@ -589,6 +664,27 @@ export const updateTransactionFromPositionSettledEvent = async (
 
   updateTransactionStateFromEvent(newTransaction, event);
   newTransaction.tradeRatioD18 = epoch?.settlementPriceD18 || '0';
+  
+  // Ensure all required fields have default values if not set
+  if (!newTransaction.baseToken || newTransaction.baseToken === '') {
+    newTransaction.baseToken = '0';
+  }
+  
+  if (!newTransaction.quoteToken || newTransaction.quoteToken === '') {
+    newTransaction.quoteToken = '0';
+  }
+  
+  if (!newTransaction.borrowedBaseToken || newTransaction.borrowedBaseToken === '') {
+    newTransaction.borrowedBaseToken = '0';
+  }
+  
+  if (!newTransaction.borrowedQuoteToken || newTransaction.borrowedQuoteToken === '') {
+    newTransaction.borrowedQuoteToken = '0';
+  }
+  
+  if (!newTransaction.collateral || newTransaction.collateral === '') {
+    newTransaction.collateral = '0';
+  }
 };
 
 /**
