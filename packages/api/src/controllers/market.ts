@@ -9,7 +9,7 @@ import {
 import { MarketParams } from '../models/MarketParams';
 import { Event } from '../models/Event';
 import { Market } from '../models/Market';
-import { Transaction } from '../models/Transaction';
+import { Transaction, TransactionType } from '../models/Transaction';
 import { Abi, decodeEventLog, Log, formatUnits } from 'viem';
 import {
   EpochCreatedEventLog,
@@ -790,6 +790,12 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
     await insertCollateralTransfer(newTransaction);
     // Fill transaction with market price
     await insertMarketPrice(newTransaction);
+    
+    // Ensure collateral is set to a default value if not present
+    if (!newTransaction.collateral || newTransaction.collateral === '') {
+      newTransaction.collateral = '0';
+    }
+    
     console.log('Saving new transaction: ', newTransaction);
     await transactionRepository.save(newTransaction);
     await createOrModifyPositionFromTransaction(newTransaction);
