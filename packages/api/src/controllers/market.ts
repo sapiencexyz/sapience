@@ -579,6 +579,10 @@ const upsertEvent = async (
 
     if (existingEvent) {
       console.log('Event already exists, processing existing event');
+      // Update the existing event with any new data to avoid UpdateValuesMissingError
+      existingEvent.timestamp = timeStamp.toString();
+      existingEvent.logData = logData;
+      await eventRepository.save(existingEvent);
       await upsertEntitiesFromEvent(existingEvent);
       return existingEvent;
     }
