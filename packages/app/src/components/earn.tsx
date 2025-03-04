@@ -35,6 +35,7 @@ import { useVaultData } from '~/lib/hooks/useVaultData';
 import NumberDisplay from './numberDisplay';
 import { Label } from './ui/label';
 import useFoilDeployment from './useFoilDeployment';
+import type { VaultType } from './useFoilDeployment';
 
 interface FormValues {
   collateralAmount: string;
@@ -44,6 +45,17 @@ interface FormValues {
 interface Props {
   slug: string;
 }
+
+const slugToVault: Record<string, { yin: VaultType; yang: VaultType }> = {
+  'ethereum-gas': {
+    yin: 'yin',
+    yang: 'yang',
+  },
+  'ethereum-blobspace': {
+    yin: 'yinBlob',
+    yang: 'yangBlob',
+  },
+};
 
 const Earn: FC<Props> = ({ slug }) => {
   const { toast } = useToast();
@@ -64,8 +76,9 @@ const Earn: FC<Props> = ({ slug }) => {
 
   const vaultData = useMemo(() => {
     if (!market) return null;
-    return foilVaultData[selectedVault];
-  }, [selectedVault, foilVaultData, market]);
+    const key = slugToVault[slug][selectedVault];
+    return foilVaultData[key];
+  }, [selectedVault, foilVaultData, market, slug]);
 
   const {
     collateralAsset,
