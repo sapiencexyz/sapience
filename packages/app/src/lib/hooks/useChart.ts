@@ -4,7 +4,7 @@ import { print } from 'graphql';
 import type { UTCTimestamp, IChartApi } from 'lightweight-charts';
 import { createChart, CrosshairMode, PriceScaleMode } from 'lightweight-charts';
 import { useTheme } from 'next-themes';
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { formatUnits } from 'viem';
 
 import { useFoil } from '../context/FoilProvider';
@@ -12,6 +12,8 @@ import { convertWstEthToGwei, foilApi } from '../utils/util';
 import type { PriceChartData } from '~/lib/interfaces/interfaces';
 import { TimeWindow, TimeInterval } from '~/lib/interfaces/interfaces';
 import { timeToLocal } from '~/lib/utils';
+
+import { useLatestIndexPrice } from './useResources';
 
 export const GREEN_PRIMARY = '#41A53E';
 export const RED = '#C44444';
@@ -371,6 +373,21 @@ export const useChart = ({
       enabled: !!resourceSlug && (seriesVisibility?.trailing ?? false),
     });
 
+  // Fetch the latest index price using the same hook as the stats component
+  const { data: latestIndexPrice } = useLatestIndexPrice(
+    market && market.address && market.chainId && market.epochId
+      ? {
+          address: market.address,
+          chainId: market.chainId,
+          epochId: market.epochId,
+        }
+      : {
+          address: '',
+          chainId: 0,
+          epochId: 0,
+        }
+  );
+
   // Effect for chart creation/cleanup
   useEffect(() => {
     if (!containerRef.current) return;
@@ -558,18 +575,17 @@ export const useChart = ({
     };
   }, [theme, containerRef]);
 
-  const updateCandlestickData = () => {
-    if (marketPrices?.length && candlestickSeriesRef.current) {
+  const updateCandlestickData = useCallback(() => {
+    if (
+      marketPrices?.length &&
+      candlestickSeriesRef.current &&
+      !isBeforeStart
+    ) {
       const candleSeriesData = marketPrices
         .map((mp) => {
-          if (!mp.open || !mp.high || !mp.low || !mp.close) {
-            console.log('Missing OHLC data for candle:', mp);
-            return null;
-          }
-
-          const timestamp = (mp.startTimestamp / 1000) as UTCTimestamp;
+          if (!mp) return null;
           return {
-            time: timestamp,
+            time: (mp.startTimestamp / 1000) as UTCTimestamp,
             open: useMarketUnits
               ? Number(formatUnits(BigInt(mp.open), 18))
               : Number(convertWstEthToGwei(mp.open / 1e18, stEthPerToken)),
@@ -588,21 +604,62 @@ export const useChart = ({
 
       candlestickSeriesRef.current.setData(candleSeriesData);
     }
-  };
+  }, [marketPrices, isBeforeStart, useMarketUnits, stEthPerToken]);
 
-  const updateIndexPriceData = () => {
-    if (indexPrices?.length && indexPriceSeriesRef.current && !isBeforeStart) {
-      const indexLineData = indexPrices.map((ip) => ({
-        time: (ip.timestamp / 1000) as UTCTimestamp,
-        value: useMarketUnits
-          ? Number((stEthPerToken || 1) * (ip.price / 1e9))
-          : ip.price,
-      }));
+  const updateIndexPriceData = useCallback(() => {
+    if (indexPriceSeriesRef.current && !isBeforeStart) {
+      // Start with the existing index prices data
+      let indexLineData = indexPrices?.length
+        ? indexPrices.map((ip) => ({
+            time: (ip.timestamp / 1000) as UTCTimestamp,
+            value: useMarketUnits
+              ? Number((stEthPerToken || 1) * (ip.price / 1e9))
+              : ip.price,
+          }))
+        : [];
+
+      // If we have the latest index price from the stats component, ensure it's included
+      if (latestIndexPrice && latestIndexPrice.value) {
+        // The timestamp from latestIndexPrice is already in seconds
+        const latestTimestamp = parseInt(
+          latestIndexPrice.timestamp,
+          10
+        ) as UTCTimestamp;
+
+        // Calculate the value using the same formula as in the stats component
+        const latestValue = useMarketUnits
+          ? Number(formatUnits(BigInt(latestIndexPrice.value || 0), 18)) *
+            (stEthPerToken || 1)
+          : Number(formatUnits(BigInt(latestIndexPrice.value || 0), 9));
+
+        // Remove any existing data points that are within 60 seconds of the latest timestamp
+        indexLineData = indexLineData.filter(
+          (item) =>
+            Math.abs((item.time as number) - (latestTimestamp as number)) >= 60
+        );
+
+        // Add the latest point to the data
+        indexLineData.push({
+          time: latestTimestamp,
+          value: latestValue,
+        });
+
+        // Sort the data by timestamp to ensure proper rendering
+        indexLineData.sort((a, b) => (a.time as number) - (b.time as number));
+      }
+
+      // Set the data to the series
       indexPriceSeriesRef.current.setData(indexLineData);
     }
-  };
+  }, [
+    indexPrices,
+    isBeforeStart,
+    useMarketUnits,
+    stEthPerToken,
+    latestIndexPrice,
+  ]);
 
-  const updateResourcePriceData = () => {
+  const updateResourcePriceData = useCallback(() => {
     if (resourcePrices?.length && resourcePriceSeriesRef.current) {
       const resourceLineData = resourcePrices.map((rp) => ({
         time: (rp.timestamp / 1000) as UTCTimestamp,
@@ -612,9 +669,9 @@ export const useChart = ({
       }));
       resourcePriceSeriesRef.current.setData(resourceLineData);
     }
-  };
+  }, [resourcePrices, useMarketUnits, stEthPerToken]);
 
-  const updateTrailingAverageData = () => {
+  const updateTrailingAverageData = useCallback(() => {
     if (trailingResourcePrices?.length && trailingPriceSeriesRef.current) {
       const trailingLineData = trailingResourcePrices.map((trp) => ({
         time: (trp.timestamp / 1000) as UTCTimestamp,
@@ -624,31 +681,29 @@ export const useChart = ({
       }));
       trailingPriceSeriesRef.current.setData(trailingLineData);
     }
-  };
+  }, [trailingResourcePrices, useMarketUnits, stEthPerToken]);
 
-  const updateSeriesVisibility = () => {
-    if (candlestickSeriesRef.current) {
+  const updateSeriesVisibility = useCallback(() => {
+    if (
+      candlestickSeriesRef.current &&
+      indexPriceSeriesRef.current &&
+      resourcePriceSeriesRef.current &&
+      trailingPriceSeriesRef.current
+    ) {
       candlestickSeriesRef.current.applyOptions({
         visible: seriesVisibility?.candles ?? true,
       });
-    }
-    if (indexPriceSeriesRef.current) {
       indexPriceSeriesRef.current.applyOptions({
         visible: seriesVisibility?.index ?? true,
       });
-    }
-    if (resourcePriceSeriesRef.current) {
       resourcePriceSeriesRef.current.applyOptions({
         visible: seriesVisibility?.resource ?? true,
-        lineWidth: seriesVisibility?.resource ? 2 : 0,
       });
-    }
-    if (trailingPriceSeriesRef.current) {
       trailingPriceSeriesRef.current.applyOptions({
         visible: seriesVisibility?.trailing ?? true,
       });
     }
-  };
+  }, [seriesVisibility]);
 
   // Effect for updating data
   useEffect(() => {
@@ -675,17 +730,21 @@ export const useChart = ({
       hasSetTimeScale.current = true;
     }
   }, [
-    theme,
-    stEthPerToken,
-    useMarketUnits,
-    seriesVisibility,
-    resourcePrices,
-    indexPrices,
+    updateCandlestickData,
+    updateIndexPriceData,
+    updateResourcePriceData,
+    updateTrailingAverageData,
+    updateSeriesVisibility,
     marketPrices,
-    trailingResourcePrices,
-    isBeforeStart,
     selectedWindow,
   ]);
+
+  // Dedicated effect to update the chart when the latest index price changes
+  useEffect(() => {
+    if (chartRef.current && latestIndexPrice?.value) {
+      updateIndexPriceData();
+    }
+  }, [latestIndexPrice, updateIndexPriceData]);
 
   useEffect(() => {
     if (!chartRef.current) return;
@@ -725,6 +784,23 @@ export const useChart = ({
       }
     });
   }, [isLogarithmic]);
+
+  // Effect to update the chart when the market units change
+  useEffect(() => {
+    if (chartRef.current) {
+      updateCandlestickData();
+      updateIndexPriceData();
+      updateResourcePriceData();
+      updateTrailingAverageData();
+    }
+  }, [
+    useMarketUnits,
+    stEthPerToken,
+    updateCandlestickData,
+    updateIndexPriceData,
+    updateResourcePriceData,
+    updateTrailingAverageData,
+  ]);
 
   const loadingStates = useMemo(
     () => ({
