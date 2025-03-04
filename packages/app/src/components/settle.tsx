@@ -1,4 +1,4 @@
-import { Loader } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useState, useEffect, useContext } from 'react';
 import { formatUnits } from 'viem';
 import {
@@ -98,16 +98,18 @@ export default function Settle() {
 
   if (!isConnected) {
     return (
-      <h2 className="text-xl font-semibold text-center p-8">
-        Connect your wallet to settle positions
-      </h2>
+      <div className="flex flex-col h-full">
+        <h2 className="text-lg text-muted-foreground text-center p-8 m-auto">
+          Connect your wallet to view positions in this market.
+        </h2>
+      </div>
     );
   }
 
   if (isLoadingBalance || isLoadingContracts) {
     return (
-      <div className="text-center">
-        <Loader className="h-6 w-6 animate-spin" />
+      <div className="flex  flex-col h-full justify-center items-center w-full m-auto">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground opacity-50" />
       </div>
     );
   }
@@ -117,15 +119,17 @@ export default function Settle() {
     positions?.liquidityPositions?.length === 0
   ) {
     return (
-      <h2 className="text-xl font-semibold text-center p-8">
-        The connected wallet has no positions in this epoch
-      </h2>
+      <div className="flex flex-col h-full">
+        <h2 className="text-lg text-muted-foreground text-center p-8 m-auto">
+          The connected wallet has no positions in this market.
+        </h2>
+      </div>
     );
   }
 
   return (
-    <div>
-      <h2 className="text-xl font-semibold mb-4">Settle Position</h2>
+    <div className="py-5 px-6">
+      <h2 className="text-lg text-muted-foreground mb-4">Settle Position</h2>
       <div className="mb-4">
         <PositionSelector />
       </div>
@@ -158,7 +162,7 @@ export default function Settle() {
             }
             variant="default"
           >
-            {isSettling && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+            {isSettling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Settle Position
           </Button>
         </>

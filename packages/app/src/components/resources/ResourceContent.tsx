@@ -61,12 +61,12 @@ interface Epoch {
   };
 }
 
-interface EpochsTableProps {
+interface PeriodsTableProps {
   data: Epoch[];
   id: string;
 }
 
-const EpochsTable = ({ data, id }: EpochsTableProps) => {
+const PeriodsTable = ({ data, id }: PeriodsTableProps) => {
   const currentTime = Math.floor(Date.now() / 1000);
   const activeEpochs = data.filter((epoch) => epoch.endTimestamp > currentTime);
 
@@ -98,7 +98,7 @@ const EpochsTable = ({ data, id }: EpochsTableProps) => {
           <div className="mt-auto pt-3">
             <Link
               href={`/markets?resource=${id}`}
-              className="text-xs text-muted-foreground hover:text-foreground flex items-center justify-end px-5 pb-3"
+              className="text-xs text-muted-foreground hover:text-foreground flex items-center justify-end px-5 pb-3 lg:pb-5"
             >
               All periods
               <ChevronDown className="h-3 w-3 ml-1 rotate-[-90deg]" />
@@ -507,7 +507,7 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
                 periods:
               </p>
             </div>
-            <EpochsTable data={epochs} id={id} />
+            <PeriodsTable data={epochs} id={id} />
           </div>
         </div>
       )}
