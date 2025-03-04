@@ -199,32 +199,60 @@ export const reindexMarketEvents = async (
     throw new Error(`Epoch ${epochId} is missing start or end timestamp`);
   }
 
-  // Calculate the block number that corresponds to startTime - (endTime - startTime)
-  const timeRange = BigInt(epoch.endTimestamp) - BigInt(epoch.startTimestamp);
-  const timeBasedStartTime = Number(BigInt(epoch.startTimestamp) - timeRange);
-
-  // Get the block number for this timestamp
-  const timeBasedBlock = await getBlockByTimestamp(client, timeBasedStartTime);
-
-  // Use the greater of the deployment block or the time-based block
-  const startBlock = Math.max(
-    Number(market.deployTxnBlockNumber || 0),
-    Number(timeBasedBlock.number)
+  // Calculate the start time as one epoch period before the epoch's start time
+  // An epoch period is defined as (endTimestamp - startTimestamp)
+  const epochDuration =
+    BigInt(epoch.endTimestamp) - BigInt(epoch.startTimestamp);
+  const lookbackStartTime = Number(
+    BigInt(epoch.startTimestamp) - epochDuration
   );
 
-  // Get the end block using the smaller of epoch end time and current time
+  // Get the block number for this lookback start time
+  const lookbackStartBlock = await getBlockByTimestamp(
+    client,
+    lookbackStartTime
+  );
+
+  // Use the later of the deployment block or the lookback start block
+  const startBlock = Math.max(
+    Number(market.deployTxnBlockNumber || 0),
+    Number(lookbackStartBlock.number)
+  );
+
+  // Get the end block using the sooner of epoch end time and current time
   const currentTime = Math.floor(Date.now() / 1000);
   const endTime = Math.min(Number(epoch.endTimestamp), currentTime);
-  const endBlock = await getBlockByTimestamp(client, endTime);
 
-  if (!endBlock?.number) {
-    throw new Error(`Failed to get end block for timestamp ${endTime}`);
+  let endBlock;
+  try {
+    endBlock = await getBlockByTimestamp(client, endTime);
+  } catch (err) {
+    const error = err as Error;
+    console.error(
+      `Failed to get end block for timestamp ${endTime}: ${error.message}`
+    );
+    console.log(`Using current block as fallback`);
+    try {
+      const latestBlockNumber = await client.getBlockNumber();
+      endBlock = await client.getBlock({ blockNumber: latestBlockNumber });
+      console.log(
+        `Successfully retrieved current block ${latestBlockNumber} as fallback`
+      );
+    } catch (fbErr) {
+      const fallbackError = fbErr as Error;
+      console.error(
+        `Failed to get latest block as fallback: ${fallbackError.message}`
+      );
+      throw new Error(
+        `Could not determine end block for reindexing: ${error.message}`
+      );
+    }
   }
 
   const CHUNK_SIZE = 10000; // Process 10,000 blocks at a time
 
   console.log(
-    `Indexing market events from block ${startBlock} to ${endBlock.number}`
+    `Reindexing market events for epoch ${epochId} from block ${startBlock} to ${endBlock.number}`
   );
 
   // Function to process logs regardless of how they were fetched
@@ -277,15 +305,15 @@ export const reindexMarketEvents = async (
   let currentBlock = startBlock;
   let totalLogsProcessed = 0;
 
-  while (currentBlock <= endBlock.number) {
+  while (currentBlock <= Number(endBlock.number ?? BigInt(currentBlock))) {
     const chunkEndBlock = Math.min(
       currentBlock + CHUNK_SIZE - 1,
-      Number(endBlock.number)
+      Number(endBlock.number ?? BigInt(currentBlock))
     );
 
     try {
       console.log(
-        `Fetching logs for blocks ${currentBlock} to ${chunkEndBlock}...`
+        `Fetching logs for blocks ${currentBlock} to ${chunkEndBlock}`
       );
       const logs = await client.getLogs({
         address: market.address as `0x${string}`,
@@ -579,6 +607,10 @@ const upsertEvent = async (
 
     if (existingEvent) {
       console.log('Event already exists, processing existing event');
+      // Update the existing event with any new data to avoid UpdateValuesMissingError
+      existingEvent.timestamp = timeStamp.toString();
+      existingEvent.logData = logData;
+      await eventRepository.save(existingEvent);
       await upsertEntitiesFromEvent(existingEvent);
       return existingEvent;
     }
@@ -772,6 +804,12 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
     await insertCollateralTransfer(newTransaction);
     // Fill transaction with market price
     await insertMarketPrice(newTransaction);
+
+    // Ensure collateral is set to a default value if not present
+    if (!newTransaction.collateral || newTransaction.collateral === '') {
+      newTransaction.collateral = '0';
+    }
+
     console.log('Saving new transaction: ', newTransaction);
     await transactionRepository.save(newTransaction);
     await createOrModifyPositionFromTransaction(newTransaction);
