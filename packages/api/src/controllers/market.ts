@@ -215,10 +215,16 @@ export const reindexMarketEvents = async (
   // Get the end block using the smaller of epoch end time and current time
   const currentTime = Math.floor(Date.now() / 1000);
   const endTime = Math.min(Number(epoch.endTimestamp), currentTime);
-  const endBlock = await getBlockByTimestamp(client, endTime);
-
-  if (!endBlock?.number) {
-    throw new Error(`Failed to get end block for timestamp ${endTime}`);
+  
+  let endBlock;
+  try {
+    endBlock = await getBlockByTimestamp(client, endTime);
+  } catch (error) {
+    console.log(`Failed to get end block for timestamp ${endTime}, using current block instead`);
+    // If we can't get a block for the timestamp (likely because it's in the future),
+    // use the current block number instead
+    const latestBlockNumber = await client.getBlockNumber();
+    endBlock = await client.getBlock({ blockNumber: latestBlockNumber });
   }
 
   const CHUNK_SIZE = 10000; // Process 10,000 blocks at a time
@@ -276,16 +282,16 @@ export const reindexMarketEvents = async (
   // Process blocks in chunks to avoid RPC limitations
   let currentBlock = startBlock;
   let totalLogsProcessed = 0;
-
-  while (currentBlock <= endBlock.number) {
+  
+  while (currentBlock <= Number(endBlock.number ?? BigInt(currentBlock))) {
     const chunkEndBlock = Math.min(
       currentBlock + CHUNK_SIZE - 1,
-      Number(endBlock.number)
+      Number(endBlock.number ?? BigInt(currentBlock))
     );
 
     try {
       console.log(
-        `Fetching logs for blocks ${currentBlock} to ${chunkEndBlock}...`
+        `Fetching logs for blocks ${currentBlock} to ${chunkEndBlock}`
       );
       const logs = await client.getLogs({
         address: market.address as `0x${string}`,
