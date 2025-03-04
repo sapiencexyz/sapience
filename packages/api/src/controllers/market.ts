@@ -9,7 +9,7 @@ import {
 import { MarketParams } from '../models/MarketParams';
 import { Event } from '../models/Event';
 import { Market } from '../models/Market';
-import { Transaction, TransactionType } from '../models/Transaction';
+import { Transaction } from '../models/Transaction';
 import { Abi, decodeEventLog, Log, formatUnits } from 'viem';
 import {
   EpochCreatedEventLog,
@@ -201,11 +201,17 @@ export const reindexMarketEvents = async (
 
   // Calculate the start time as one epoch period before the epoch's start time
   // An epoch period is defined as (endTimestamp - startTimestamp)
-  const epochDuration = BigInt(epoch.endTimestamp) - BigInt(epoch.startTimestamp);
-  const lookbackStartTime = Number(BigInt(epoch.startTimestamp) - epochDuration);
+  const epochDuration =
+    BigInt(epoch.endTimestamp) - BigInt(epoch.startTimestamp);
+  const lookbackStartTime = Number(
+    BigInt(epoch.startTimestamp) - epochDuration
+  );
 
   // Get the block number for this lookback start time
-  const lookbackStartBlock = await getBlockByTimestamp(client, lookbackStartTime);
+  const lookbackStartBlock = await getBlockByTimestamp(
+    client,
+    lookbackStartTime
+  );
 
   // Use the later of the deployment block or the lookback start block
   const startBlock = Math.max(
@@ -216,22 +222,30 @@ export const reindexMarketEvents = async (
   // Get the end block using the sooner of epoch end time and current time
   const currentTime = Math.floor(Date.now() / 1000);
   const endTime = Math.min(Number(epoch.endTimestamp), currentTime);
-  
+
   let endBlock;
   try {
     endBlock = await getBlockByTimestamp(client, endTime);
   } catch (err) {
     const error = err as Error;
-    console.error(`Failed to get end block for timestamp ${endTime}: ${error.message}`);
+    console.error(
+      `Failed to get end block for timestamp ${endTime}: ${error.message}`
+    );
     console.log(`Using current block as fallback`);
     try {
       const latestBlockNumber = await client.getBlockNumber();
       endBlock = await client.getBlock({ blockNumber: latestBlockNumber });
-      console.log(`Successfully retrieved current block ${latestBlockNumber} as fallback`);
+      console.log(
+        `Successfully retrieved current block ${latestBlockNumber} as fallback`
+      );
     } catch (fbErr) {
       const fallbackError = fbErr as Error;
-      console.error(`Failed to get latest block as fallback: ${fallbackError.message}`);
-      throw new Error(`Could not determine end block for reindexing: ${error.message}`);
+      console.error(
+        `Failed to get latest block as fallback: ${fallbackError.message}`
+      );
+      throw new Error(
+        `Could not determine end block for reindexing: ${error.message}`
+      );
     }
   }
 
@@ -290,7 +304,7 @@ export const reindexMarketEvents = async (
   // Process blocks in chunks to avoid RPC limitations
   let currentBlock = startBlock;
   let totalLogsProcessed = 0;
-  
+
   while (currentBlock <= Number(endBlock.number ?? BigInt(currentBlock))) {
     const chunkEndBlock = Math.min(
       currentBlock + CHUNK_SIZE - 1,
@@ -790,12 +804,12 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
     await insertCollateralTransfer(newTransaction);
     // Fill transaction with market price
     await insertMarketPrice(newTransaction);
-    
+
     // Ensure collateral is set to a default value if not present
     if (!newTransaction.collateral || newTransaction.collateral === '') {
       newTransaction.collateral = '0';
     }
-    
+
     console.log('Saving new transaction: ', newTransaction);
     await transactionRepository.save(newTransaction);
     await createOrModifyPositionFromTransaction(newTransaction);

@@ -480,28 +480,34 @@ export const updateTransactionFromTradeModifiedEvent = async (
   } as TradePositionEventLog);
 
   updateTransactionStateFromEvent(newTransaction, event);
-  
+
   // Ensure all required fields have default values if not set
   if (!newTransaction.baseToken || newTransaction.baseToken === '') {
     newTransaction.baseToken = '0';
   }
-  
+
   if (!newTransaction.quoteToken || newTransaction.quoteToken === '') {
     newTransaction.quoteToken = '0';
   }
-  
-  if (!newTransaction.borrowedBaseToken || newTransaction.borrowedBaseToken === '') {
+
+  if (
+    !newTransaction.borrowedBaseToken ||
+    newTransaction.borrowedBaseToken === ''
+  ) {
     newTransaction.borrowedBaseToken = '0';
   }
-  
-  if (!newTransaction.borrowedQuoteToken || newTransaction.borrowedQuoteToken === '') {
+
+  if (
+    !newTransaction.borrowedQuoteToken ||
+    newTransaction.borrowedQuoteToken === ''
+  ) {
     newTransaction.borrowedQuoteToken = '0';
   }
-  
+
   if (!newTransaction.collateral || newTransaction.collateral === '') {
     newTransaction.collateral = '0';
   }
-  
+
   if (!newTransaction.tradeRatioD18 && args.tradeRatio) {
     newTransaction.tradeRatioD18 = args.tradeRatio;
   } else if (!newTransaction.tradeRatioD18) {
