@@ -800,18 +800,38 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
   }
 
   if (!skipTransaction) {
-    // Fill transaction with collateral transfer
-    await insertCollateralTransfer(newTransaction);
-    // Fill transaction with market price
-    await insertMarketPrice(newTransaction);
+    try {
+      // Fill transaction with collateral transfer and market price
+      await insertCollateralTransfer(newTransaction);
+      await insertMarketPrice(newTransaction);
 
-    // Ensure collateral is set to a default value if not present
-    if (!newTransaction.collateral || newTransaction.collateral === '') {
-      newTransaction.collateral = '0';
+      // Ensure collateral is set to a default value if not present
+      if (!newTransaction.collateral || newTransaction.collateral === '') {
+        newTransaction.collateral = '0';
+      }
+
+      // Save the transaction
+      console.log('Saving new transaction: ', newTransaction);
+      const savedTransaction = await transactionRepository.save(newTransaction);
+
+      // Then create or modify the position with the saved transaction
+      try {
+        await createOrModifyPositionFromTransaction(savedTransaction);
+      } catch (positionError) {
+        console.error('Error creating or modifying position:', positionError);
+        // Continue processing even if position creation fails
+        // This allows us to at least save the transaction data
+      }
+    } catch (error) {
+      console.error('Error processing event:', error);
+      if (error && typeof error === 'object' && 'code' in error) {
+        if (error.code === '23505') {
+          console.warn(
+            'Duplicate key error - this event may have already been processed'
+          );
+        }
+      }
+      throw error;
     }
-
-    console.log('Saving new transaction: ', newTransaction);
-    await transactionRepository.save(newTransaction);
-    await createOrModifyPositionFromTransaction(newTransaction);
   }
 };

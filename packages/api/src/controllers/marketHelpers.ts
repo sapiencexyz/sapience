@@ -89,104 +89,136 @@ export const handlePositionSettledEvent = async (event: Event) => {
 export const createOrModifyPositionFromTransaction = async (
   transaction: Transaction
 ) => {
-  const eventArgs = transaction.event.logData.args;
-  const epochId = eventArgs.epochId;
+  try {
+    const eventArgs = transaction.event.logData.args;
+    const epochId = eventArgs.epochId;
 
-  const epoch = await epochRepository.findOne({
-    where: {
-      epochId: Number(epochId),
-      market: { address: transaction.event.market.address },
-    },
-  });
-  if (!epoch) {
-    console.error(
-      'Epoch not found: ',
-      epochId,
-      'market:',
-      transaction.event.market.address
-    );
-    return;
-  }
+    if (!epochId) {
+      console.error('No epochId found in event args:', eventArgs);
+      return;
+    }
 
-  const existingPosition = await positionRepository.findOne({
-    where: {
-      epoch: {
+    const epoch = await epochRepository.findOne({
+      where: {
         epochId: Number(epochId),
         market: { address: transaction.event.market.address },
       },
-      positionId: Number(transaction.event.logData.args.positionId),
-    },
-    relations: [
-      'transactions',
-      'epoch',
-      'epoch.market',
-      'transactions.event',
-      'transactions.marketPrice',
-      'transactions.collateralTransfer',
-    ],
-  });
+    });
+    if (!epoch) {
+      console.error(
+        'Epoch not found: ',
+        epochId,
+        'market:',
+        transaction.event.market.address
+      );
+      return;
+    }
 
-  // Create a new position or use the existing one
-  const position = existingPosition || new Position();
+    const positionId = Number(transaction.event.logData.args.positionId);
+    if (isNaN(positionId)) {
+      console.error(
+        'Invalid positionId:',
+        transaction.event.logData.args.positionId
+      );
+      return;
+    }
 
-  if (existingPosition) {
-    console.log('existing position: ', existingPosition);
+    const existingPosition = await positionRepository.findOne({
+      where: {
+        epoch: {
+          epochId: Number(epochId),
+          market: { address: transaction.event.market.address },
+        },
+        positionId: positionId,
+      },
+      relations: [
+        'transactions',
+        'epoch',
+        'epoch.market',
+        'transactions.event',
+        'transactions.marketPrice',
+        'transactions.collateralTransfer',
+      ],
+    });
+
+    // Create a new position or use the existing one
+    const position = existingPosition || new Position();
+
+    if (existingPosition) {
+      console.log('Found existing position:', existingPosition.id);
+    } else {
+      console.log('Creating new position for positionId:', positionId);
+    }
+
+    // Set all required fields explicitly
+    position.positionId = positionId;
+    position.epoch = epoch;
+    position.owner = (eventArgs.sender as string) || position.owner || '';
+    position.isLP = isLpPosition(transaction);
+
+    // Initialize transactions array if it doesn't exist
+    if (!position.transactions) {
+      position.transactions = [];
+    }
+
+    // Add the current transaction to the position's transactions
+    // Check if the transaction is already in the array to avoid duplicates
+    const transactionExists = position.transactions.some(
+      (t) => t.id === transaction.id
+    );
+    if (!transactionExists) {
+      position.transactions.push(transaction);
+
+      // Update the transaction with a reference to this position
+      // But don't save it here - it will be saved by the caller
+      transaction.position = position;
+    }
+
+    // Latest position state - ensure all fields have values
+    position.baseToken = (eventArgs.positionVgasAmount as string) || '0';
+    position.quoteToken = (eventArgs.positionVethAmount as string) || '0';
+    position.borrowedBaseToken =
+      (eventArgs.positionBorrowedVgas as string) || '0';
+    position.borrowedQuoteToken =
+      (eventArgs.positionBorrowedVeth as string) || '0';
+    position.collateral = (eventArgs.positionCollateralAmount as string) || '0';
+
+    // LP Position state - ensure all fields have values
+    position.lpBaseToken =
+      (eventArgs.loanAmount0 as string) ||
+      (eventArgs.addedAmount0 as string) ||
+      '0';
+    position.lpQuoteToken =
+      (eventArgs.loanAmount1 as string) ||
+      (eventArgs.addedAmount1 as string) ||
+      '0';
+
+    // LP Position configuration
+    if (eventArgs.upperTick && eventArgs.lowerTick) {
+      position.highPriceTick = eventArgs.upperTick.toString();
+      position.lowPriceTick = eventArgs.lowerTick.toString();
+    } else {
+      // Ensure these fields have default values if not set
+      if (!position.highPriceTick) position.highPriceTick = '0';
+      if (!position.lowPriceTick) position.lowPriceTick = '0';
+    }
+
+    // Ensure isSettled has a default value
+    if (position.isSettled === undefined || position.isSettled === null) {
+      position.isSettled = false;
+    }
+
+    console.log('Saving position: ', position.id || 'new');
+
+    // Use save method which handles both insert and update
+    const savedPosition = await positionRepository.save(position);
+    console.log('Position saved successfully:', savedPosition.id);
+
+    return savedPosition;
+  } catch (error) {
+    console.error('Error in createOrModifyPositionFromTransaction:', error);
+    throw error;
   }
-
-  // Set all required fields explicitly
-  position.positionId = Number(eventArgs.positionId);
-  position.epoch = epoch;
-  position.owner = (eventArgs.sender as string) || position.owner || '';
-  position.isLP = isLpPosition(transaction);
-  
-  // Initialize transactions array if it doesn't exist
-  if (!position.transactions) {
-    position.transactions = [];
-  }
-  
-  // Add the current transaction to the position's transactions
-  // Check if the transaction is already in the array to avoid duplicates
-  const transactionExists = position.transactions.some(t => t.id === transaction.id);
-  if (!transactionExists) {
-    position.transactions.push(transaction);
-  }
-
-  // Latest position state - ensure all fields have values
-  position.baseToken = (eventArgs.positionVgasAmount as string) || '0';
-  position.quoteToken = (eventArgs.positionVethAmount as string) || '0';
-  position.borrowedBaseToken = (eventArgs.positionBorrowedVgas as string) || '0';
-  position.borrowedQuoteToken = (eventArgs.positionBorrowedVeth as string) || '0';
-  position.collateral = (eventArgs.positionCollateralAmount as string) || '0';
-
-  // LP Position state - ensure all fields have values
-  position.lpBaseToken =
-    (eventArgs.loanAmount0 as string) ||
-    (eventArgs.addedAmount0 as string) ||
-    '0';
-  position.lpQuoteToken =
-    (eventArgs.loanAmount1 as string) ||
-    (eventArgs.addedAmount1 as string) ||
-    '0';
-
-  // LP Position configuration
-  if (eventArgs.upperTick && eventArgs.lowerTick) {
-    position.highPriceTick = eventArgs.upperTick.toString();
-    position.lowPriceTick = eventArgs.lowerTick.toString();
-  } else {
-    // Ensure these fields have default values if not set
-    if (!position.highPriceTick) position.highPriceTick = '0';
-    if (!position.lowPriceTick) position.lowPriceTick = '0';
-  }
-
-  // Ensure isSettled has a default value
-  if (position.isSettled === undefined || position.isSettled === null) {
-    position.isSettled = false;
-  }
-
-  console.log('Saving position: ', position);
-  
-  // Use save method which handles both insert and update
-  await positionRepository.save(position);
 };
 
 const updateTransactionStateFromEvent = (
@@ -229,8 +261,14 @@ export const insertCollateralTransfer = async (transaction: Transaction) => {
     where: { transactionHash: transaction.event.transactionHash },
   });
 
-  // If it exists, use it; otherwise create a new one
-  const transfer = existingTransfer || new CollateralTransfer();
+  if (existingTransfer) {
+    // If it exists, just use it
+    transaction.collateralTransfer = existingTransfer;
+    return;
+  }
+
+  // Create a new one if it doesn't exist
+  const transfer = new CollateralTransfer();
 
   // Update the transfer properties
   transfer.transactionHash = transaction.event.transactionHash;
@@ -238,21 +276,8 @@ export const insertCollateralTransfer = async (transaction: Transaction) => {
   transfer.owner = transaction.event.logData.args.sender as string;
   transfer.collateral = eventArgs.deltaCollateral as string;
 
-  // Use upsert to handle the duplicate key case
-  await collateralTransferRepository.upsert(
-    {
-      transactionHash: transfer.transactionHash,
-      timestamp: transfer.timestamp,
-      owner: transfer.owner,
-      collateral: transfer.collateral,
-    },
-    ['transactionHash']
-  );
-
-  // Only set the transfer relationship if it doesn't already exist
-  if (!transaction.collateralTransfer) {
-    transaction.collateralTransfer = transfer;
-  }
+  // Assign to transaction
+  transaction.collateralTransfer = transfer;
 };
 
 /**
@@ -265,18 +290,28 @@ export const insertMarketPrice = async (transaction: Transaction) => {
     transaction.type === TransactionType.SHORT
   ) {
     console.log('Upserting market price for transaction: ', transaction);
-    // upsert market price
-    const newMp = new MarketPrice(); // might already get saved when upserting txn
+
+    // Check if a market price already exists for this transaction
+    const existingMarketPrice = await marketPriceRepository.findOne({
+      where: { transaction: { id: transaction.id } },
+    });
+
+    if (existingMarketPrice) {
+      // If it exists, just use it
+      transaction.marketPrice = existingMarketPrice;
+      return;
+    }
+
+    // Create a new market price if it doesn't exist
+    const newMp = new MarketPrice();
     const finalPrice = transaction.event.logData.args.finalPrice;
     newMp.value = finalPrice as string;
     newMp.timestamp = transaction.event.timestamp;
-    newMp.transaction = transaction;
 
-    // Ensure the transaction has a marketPrice reference
+    // Assign to transaction
     transaction.marketPrice = newMp;
 
     console.log('upserting market price: ', newMp);
-    await marketPriceRepository.save(newMp);
   }
 };
 
