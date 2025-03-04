@@ -126,27 +126,39 @@ export const createOrModifyPositionFromTransaction = async (
     ],
   });
 
+  // Create a new position or use the existing one
   const position = existingPosition || new Position();
 
   if (existingPosition) {
     console.log('existing position: ', existingPosition);
   }
 
+  // Set all required fields explicitly
   position.positionId = Number(eventArgs.positionId);
   position.epoch = epoch;
-  position.owner = (eventArgs.sender as string) || position.owner;
+  position.owner = (eventArgs.sender as string) || position.owner || '';
   position.isLP = isLpPosition(transaction);
-  position.transactions = position.transactions || [];
-  position.transactions.push(transaction);
+  
+  // Initialize transactions array if it doesn't exist
+  if (!position.transactions) {
+    position.transactions = [];
+  }
+  
+  // Add the current transaction to the position's transactions
+  // Check if the transaction is already in the array to avoid duplicates
+  const transactionExists = position.transactions.some(t => t.id === transaction.id);
+  if (!transactionExists) {
+    position.transactions.push(transaction);
+  }
 
-  // Latest position state
-  position.baseToken = eventArgs.positionVgasAmount as string;
-  position.quoteToken = eventArgs.positionVethAmount as string;
-  position.borrowedBaseToken = eventArgs.positionBorrowedVgas as string;
-  position.borrowedQuoteToken = eventArgs.positionBorrowedVeth as string;
-  position.collateral = eventArgs.positionCollateralAmount as string;
+  // Latest position state - ensure all fields have values
+  position.baseToken = (eventArgs.positionVgasAmount as string) || '0';
+  position.quoteToken = (eventArgs.positionVethAmount as string) || '0';
+  position.borrowedBaseToken = (eventArgs.positionBorrowedVgas as string) || '0';
+  position.borrowedQuoteToken = (eventArgs.positionBorrowedVeth as string) || '0';
+  position.collateral = (eventArgs.positionCollateralAmount as string) || '0';
 
-  // LP Position state
+  // LP Position state - ensure all fields have values
   position.lpBaseToken =
     (eventArgs.loanAmount0 as string) ||
     (eventArgs.addedAmount0 as string) ||
@@ -160,13 +172,20 @@ export const createOrModifyPositionFromTransaction = async (
   if (eventArgs.upperTick && eventArgs.lowerTick) {
     position.highPriceTick = eventArgs.upperTick.toString();
     position.lowPriceTick = eventArgs.lowerTick.toString();
+  } else {
+    // Ensure these fields have default values if not set
+    if (!position.highPriceTick) position.highPriceTick = '0';
+    if (!position.lowPriceTick) position.lowPriceTick = '0';
   }
 
-  // Non-setted position data
-  // position.owner = ;
-  // position.settled = ;
+  // Ensure isSettled has a default value
+  if (position.isSettled === undefined || position.isSettled === null) {
+    position.isSettled = false;
+  }
 
   console.log('Saving position: ', position);
+  
+  // Use save method which handles both insert and update
   await positionRepository.save(position);
 };
 
