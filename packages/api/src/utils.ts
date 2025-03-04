@@ -233,6 +233,15 @@ export async function getBlockByTimestamp(
 ): Promise<Block> {
   // Get the latest block number
   const latestBlockNumber = await client.getBlockNumber();
+  
+  // Get the latest block to check its timestamp
+  const latestBlock = await client.getBlock({ blockNumber: latestBlockNumber });
+  
+  // If the requested timestamp is in the future, return the latest block
+  if (timestamp > Number(latestBlock.timestamp)) {
+    console.log(`Requested timestamp ${timestamp} is in the future. Using latest block ${latestBlockNumber} with timestamp ${latestBlock.timestamp} instead.`);
+    return latestBlock;
+  }
 
   // Initialize the binary search range
   let low = 0n;
