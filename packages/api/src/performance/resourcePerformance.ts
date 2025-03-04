@@ -657,8 +657,11 @@ export class ResourcePerformance {
 
       if (trailingAvgStore.data.length > 0) {
         lastTimestampIndex = trailingAvgStore.data.length - 1;
-        const lastItemTimestamp = trailingAvgStore.data[lastTimestampIndex].timestamp;
-        timestampInLastItem = lastItemTimestamp >= itemStartTime && lastItemTimestamp < tpd.nextTimestamp;
+        const lastItemTimestamp =
+          trailingAvgStore.data[lastTimestampIndex].timestamp;
+        timestampInLastItem =
+          lastItemTimestamp >= itemStartTime &&
+          lastItemTimestamp < tpd.nextTimestamp;
       }
 
       if (!timestampInLastItem) {
