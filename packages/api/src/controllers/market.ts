@@ -199,38 +199,46 @@ export const reindexMarketEvents = async (
     throw new Error(`Epoch ${epochId} is missing start or end timestamp`);
   }
 
-  // Calculate the block number that corresponds to startTime - (endTime - startTime)
-  const timeRange = BigInt(epoch.endTimestamp) - BigInt(epoch.startTimestamp);
-  const timeBasedStartTime = Number(BigInt(epoch.startTimestamp) - timeRange);
+  // Calculate the start time as one epoch period before the epoch's start time
+  // An epoch period is defined as (endTimestamp - startTimestamp)
+  const epochDuration = BigInt(epoch.endTimestamp) - BigInt(epoch.startTimestamp);
+  const lookbackStartTime = Number(BigInt(epoch.startTimestamp) - epochDuration);
 
-  // Get the block number for this timestamp
-  const timeBasedBlock = await getBlockByTimestamp(client, timeBasedStartTime);
+  // Get the block number for this lookback start time
+  const lookbackStartBlock = await getBlockByTimestamp(client, lookbackStartTime);
 
-  // Use the greater of the deployment block or the time-based block
+  // Use the later of the deployment block or the lookback start block
   const startBlock = Math.max(
     Number(market.deployTxnBlockNumber || 0),
-    Number(timeBasedBlock.number)
+    Number(lookbackStartBlock.number)
   );
 
-  // Get the end block using the smaller of epoch end time and current time
+  // Get the end block using the sooner of epoch end time and current time
   const currentTime = Math.floor(Date.now() / 1000);
   const endTime = Math.min(Number(epoch.endTimestamp), currentTime);
   
   let endBlock;
   try {
     endBlock = await getBlockByTimestamp(client, endTime);
-  } catch (error) {
-    console.log(`Failed to get end block for timestamp ${endTime}, using current block instead`);
-    // If we can't get a block for the timestamp (likely because it's in the future),
-    // use the current block number instead
-    const latestBlockNumber = await client.getBlockNumber();
-    endBlock = await client.getBlock({ blockNumber: latestBlockNumber });
+  } catch (err) {
+    const error = err as Error;
+    console.error(`Failed to get end block for timestamp ${endTime}: ${error.message}`);
+    console.log(`Using current block as fallback`);
+    try {
+      const latestBlockNumber = await client.getBlockNumber();
+      endBlock = await client.getBlock({ blockNumber: latestBlockNumber });
+      console.log(`Successfully retrieved current block ${latestBlockNumber} as fallback`);
+    } catch (fbErr) {
+      const fallbackError = fbErr as Error;
+      console.error(`Failed to get latest block as fallback: ${fallbackError.message}`);
+      throw new Error(`Could not determine end block for reindexing: ${error.message}`);
+    }
   }
 
   const CHUNK_SIZE = 10000; // Process 10,000 blocks at a time
 
   console.log(
-    `Indexing market events from block ${startBlock} to ${endBlock.number}`
+    `Reindexing market events for epoch ${epochId} from block ${startBlock} to ${endBlock.number}`
   );
 
   // Function to process logs regardless of how they were fetched
