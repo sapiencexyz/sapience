@@ -254,7 +254,7 @@ export class ResourcePerformance {
         startTimestamp: 0,
         endTimestamp: 0,
         trailingAvgData: [
-          ...this.storage[interval].trailingAvgStore.trailingAvgData, // LLL TODO Initialize with stored data
+          ...this.storage[interval].trailingAvgStore.trailingAvgData, // Initialize with stored data
         ],
       };
 
@@ -639,8 +639,8 @@ export class ResourcePerformance {
     // If this is the first item or we're starting a new interval
     if (!tpd.nextTimestamp) {
       tpd.nextTimestamp = this.nextInterval(item.timestamp, interval);
-      tpd.used = BigInt(item.used);
-      tpd.feePaid = BigInt(item.feePaid);
+      tpd.used = 0n;
+      tpd.feePaid = 0n;
       tpd.startTimestamp = item.timestamp;
       tpd.endTimestamp = item.timestamp;
       tpd.startTimestampIndex = 0;
@@ -652,14 +652,19 @@ export class ResourcePerformance {
       const price = tpd.used > 0n ? tpd.feePaid / tpd.used : 0n;
 
       // Check if we already have an item for this interval
-      const existingIndex = trailingAvgStore.data.findIndex(
-        (d) => d.timestamp >= itemStartTime && d.timestamp < tpd.nextTimestamp
-      );
+      let lastTimestampIndex;
+      let timestampInLastItem = false;
 
-      if (existingIndex === -1) {
+      if (trailingAvgStore.data.length > 0) {
+        lastTimestampIndex = trailingAvgStore.data.length - 1;
+        const lastItemTimestamp = trailingAvgStore.data[lastTimestampIndex].timestamp;
+        timestampInLastItem = lastItemTimestamp >= itemStartTime && lastItemTimestamp < tpd.nextTimestamp;
+      }
+
+      if (!timestampInLastItem) {
         // Create a new placeholder for the next item. It will be updated once is finished processing the current item
         trailingAvgStore.data.push({
-          timestamp: item.timestamp,
+          timestamp: itemStartTime,
           open: price.toString(),
           high: price.toString(),
           low: price.toString(),
@@ -677,6 +682,11 @@ export class ResourcePerformance {
 
         trailingAvgStore.pointers[item.timestamp] =
           trailingAvgStore.data.length - 1;
+      } else if (lastTimestampIndex !== undefined) {
+        // Retrieve history from the store
+        const metadata = trailingAvgStore.metadata[lastTimestampIndex];
+        tpd.used = metadata.used;
+        tpd.feePaid = metadata.feePaid;
       }
     }
 
