@@ -214,8 +214,8 @@ const TransactionTable: React.FC<Props> = ({
             ? parseFloat(row.tradeRatioD18) / 10 ** 18
             : 0;
           return useMarketUnits
-            ? tradeRatio
-            : convertWstEthToGwei(tradeRatio, stEthPerToken);
+            ? tradeRatio * 10 ** 18
+            : convertWstEthToGwei(tradeRatio * 10 ** 18, stEthPerToken);
         },
       },
       {
