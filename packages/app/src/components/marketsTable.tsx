@@ -8,7 +8,7 @@ import {
   getSortedRowModel,
 } from '@tanstack/react-table';
 import { format } from 'date-fns';
-import { ChevronDown, ChevronUp, ArrowUpDown } from 'lucide-react';
+import { ChevronDown, ChevronUp, ArrowUpDown, FrownIcon } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -24,7 +24,14 @@ import {
   TableHeader,
   TableRow,
 } from '~/components/ui/table';
+import { RESOURCE_ORDER } from '~/lib/constants/resources';
 import { useResources } from '~/lib/hooks/useResources';
+
+const getDurationInWeeks = (startTimestamp: number, endTimestamp: number) => {
+  const durationInSeconds = endTimestamp - startTimestamp;
+  const weeks = Math.floor(durationInSeconds / (7 * 24 * 60 * 60));
+  return `${weeks} week${weeks !== 1 ? 's' : ''}`;
+};
 
 interface ResourceCellProps {
   iconPath: string;
@@ -66,21 +73,22 @@ interface PeriodCellProps {
 const PeriodCell = ({ row }: PeriodCellProps) => {
   const startDate = new Date(row.original.startTimestamp * 1000);
   const endDate = new Date(row.original.endTimestamp * 1000);
-  const { timeZone } = Intl.DateTimeFormat().resolvedOptions();
   const formatter = new Intl.DateTimeFormat('en-US', {
-    month: 'short',
+    month: 'numeric',
     day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric',
-    hour12: true,
-    timeZone,
-    timeZoneName: 'short',
   });
   return (
-    <span className="text-xl">
-      {formatter.format(startDate)} → {formatter.format(endDate)}
-    </span>
+    <div>
+      <span className="text-xl">
+        {formatter.format(startDate)} → {formatter.format(endDate)}
+      </span>
+      <span className="text-muted-foreground ml-2">
+        {getDurationInWeeks(
+          row.original.startTimestamp,
+          row.original.endTimestamp
+        )}
+      </span>
+    </div>
   );
 };
 
@@ -208,93 +216,123 @@ const MarketsTable = () => {
   };
 
   return (
-    <>
-      <div className="mb-10 mt-5">
-        <h1 className="scroll-m-20 text-4xl lg:text-5xl font-bold tracking-tight mb-5">
+    <div className="max-w-4xl mx-auto px-4">
+      <div className="my-6">
+        <h1 className="scroll-m-20 text-4xl lg:text-5xl font-bold tracking-tight mb-6">
           Foil Markets
         </h1>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant={!selectedResource ? 'default' : 'outline'}
-            className="shadow-sm gap-2"
-            onClick={() => handleResourceClick(null)}
-          >
-            All
-          </Button>
-          {resources?.map((resource) => (
+        <p className="text-sm text-muted-foreground mb-1.5 block">
+          Filter by Resource
+        </p>
+        <div className="rounded-md border bg-muted/50 inset-shadow-sm">
+          <div className="flex overflow-x-auto gap-2 no-scrollbar p-4">
             <Button
-              key={resource.id}
-              variant={
-                selectedResource === resource.slug ? 'default' : 'outline'
-              }
-              className="shadow-sm gap-2"
-              onClick={() => handleResourceClick(resource.slug)}
+              variant={!selectedResource ? 'default' : 'outline'}
+              className="shadow-sm gap-2 flex-shrink-0"
+              onClick={() => handleResourceClick(null)}
             >
               <Image
-                src={resource.iconPath}
-                alt={resource.name}
-                width={22}
-                height={22}
+                src="/logomark.svg"
+                alt="Foil"
+                width={14}
+                height={14}
+                className={`${!selectedResource ? 'invert' : ''} dark:invert`}
               />
-              {resource.name}
+              View All
             </Button>
-          ))}
+            {resources
+              ?.sort((a, b) => {
+                return (
+                  RESOURCE_ORDER.indexOf(a.slug) -
+                  RESOURCE_ORDER.indexOf(b.slug)
+                );
+              })
+              .map((resource) => (
+                <Button
+                  key={resource.id}
+                  variant={
+                    selectedResource === resource.slug ? 'default' : 'outline'
+                  }
+                  className="shadow-sm gap-2 flex-shrink-0"
+                  onClick={() => handleResourceClick(resource.slug)}
+                >
+                  <Image
+                    src={resource.iconPath}
+                    alt={resource.name}
+                    width={22}
+                    height={22}
+                    className=" "
+                  />
+                  {resource.name}
+                </Button>
+              ))}
+          </div>
         </div>
       </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    onClick={header.column.getToggleSortingHandler()}
-                    className="cursor-pointer whitespace-nowrap"
-                  >
-                    <span className="flex items-center">
-                      {flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
-                      <span className="ml-2 inline-block">
-                        <SortIcon isSorted={header.column.getIsSorted()} />
+      {data.length === 0 ? (
+        <div className="w-full py-24 text-center text-muted-foreground">
+          <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
+          No markets for the selected resource
+        </div>
+      ) : (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead
+                      key={header.id}
+                      onClick={header.column.getToggleSortingHandler()}
+                      className="cursor-pointer whitespace-nowrap"
+                    >
+                      <span className="flex items-center">
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                        <span className="ml-2 inline-block">
+                          <SortIcon isSorted={header.column.getIsSorted()} />
+                        </span>
                       </span>
-                    </span>
-                  </TableHead>
-                ))}
-                <TableHead />
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id}>
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id} className="whitespace-nowrap">
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableHead>
+                  ))}
+                  <TableHead />
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id}>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id} className="whitespace-nowrap">
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
+                  <TableCell className="text-right whitespace-nowrap">
+                    <Link
+                      href={`/markets/${row.original.chainId}:${row.original.marketAddress}/periods/${row.original.epochId}/trade`}
+                      className="mr-3 md:mr-6"
+                    >
+                      <Button>Trade</Button>
+                    </Link>
+                    <Link
+                      href={`/markets/${row.original.chainId}:${row.original.marketAddress}/periods/${row.original.epochId}/pool`}
+                    >
+                      <Button>Pool</Button>
+                    </Link>
                   </TableCell>
-                ))}
-                <TableCell className="text-right whitespace-nowrap">
-                  <Link
-                    href={`/markets/${row.original.chainId}:${row.original.marketAddress}/periods/${row.original.epochId}/trade`}
-                    className="mr-3 md:mr-6"
-                  >
-                    <Button>Trade</Button>
-                  </Link>
-                  <Link
-                    href={`/markets/${row.original.chainId}:${row.original.marketAddress}/periods/${row.original.epochId}/pool`}
-                  >
-                    <Button>Pool</Button>
-                  </Link>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    </>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
   );
 };
 

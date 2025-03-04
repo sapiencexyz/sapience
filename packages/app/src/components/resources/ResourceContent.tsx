@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { ChevronRight, Loader2 } from 'lucide-react';
+import { ChevronRight, Loader2, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import React from 'react';
@@ -63,34 +63,48 @@ interface Epoch {
 
 interface EpochsTableProps {
   data: Epoch[];
+  id: string;
 }
 
-const EpochsTable = ({ data }: EpochsTableProps) => {
+const EpochsTable = ({ data, id }: EpochsTableProps) => {
   const currentTime = Math.floor(Date.now() / 1000);
   const activeEpochs = data.filter((epoch) => epoch.endTimestamp > currentTime);
 
   return (
-    <div className="border-t border-border">
+    <div className="border-t border-border flex flex-col min-h-0 h-full">
       {activeEpochs.length ? (
-        activeEpochs.map((epoch) => {
-          return (
+        <>
+          <div className="flex-1">
+            {activeEpochs.map((epoch) => {
+              return (
+                <Link
+                  key={epoch.id}
+                  href={`/markets/${epoch.market.chainId}:${epoch.market.address}/periods/${epoch.epochId}/trade`}
+                  className="block hover:no-underline border-b border-border"
+                >
+                  <div className="flex items-center justify-between cursor-pointer px-4 py-1.5 hover:bg-secondary">
+                    <div className="flex items-baseline">
+                      <EpochTiming
+                        startTimestamp={epoch.startTimestamp}
+                        endTimestamp={epoch.endTimestamp}
+                      />
+                    </div>
+                    <ChevronRight className="h-6 w-6" />
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+          <div className="mt-auto pt-3">
             <Link
-              key={epoch.id}
-              href={`/markets/${epoch.market.chainId}:${epoch.market.address}/periods/${epoch.epochId}/trade`}
-              className="block hover:no-underline border-b border-border"
+              href={`/markets?resource=${id}`}
+              className="text-xs text-muted-foreground hover:text-foreground flex items-center justify-end px-5 pb-3"
             >
-              <div className="flex items-center justify-between cursor-pointer px-4 py-1.5 hover:bg-secondary">
-                <div className="flex items-baseline">
-                  <EpochTiming
-                    startTimestamp={epoch.startTimestamp}
-                    endTimestamp={epoch.endTimestamp}
-                  />
-                </div>
-                <ChevronRight className="h-6 w-6" />
-              </div>
+              All periods
+              <ChevronDown className="h-3 w-3 ml-1 rotate-[-90deg]" />
             </Link>
-          );
-        })
+          </div>
+        </>
       ) : (
         <div className="h-24 flex items-center justify-center text-sm text-muted-foreground">
           No active periods
@@ -483,9 +497,17 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
 
       {epochs.length > 0 && (
         <div className="w-full md:w-[320px] h-auto md:h-full">
-          <div className="border border-border rounded-sm shadow h-full">
-            <h2 className="text-xl font-bold py-2 px-4">Markets</h2>
-            <EpochsTable data={epochs} />
+          <div className="border border-border rounded-sm shadow h-full flex flex-col">
+            <div className="p-4">
+              <h2 className="text-xl font-bold mb-1">
+                {resource.name} Markets
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Trade the average cost of {resource.name} over the following
+                periods:
+              </p>
+            </div>
+            <EpochsTable data={epochs} id={id} />
           </div>
         </div>
       )}

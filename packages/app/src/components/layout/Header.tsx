@@ -133,8 +133,8 @@ function MobileMarketLinks({
 
                 if (!resource.markets?.length || allEpochs.length === 0) {
                   return (
-                    <div className="text-sm text-muted-foreground flex-1 flex items-center justify-center my-8">
-                      No active periods
+                    <div className="text-center text-sm text-muted-foreground flex-1 flex items-center justify-center m-8">
+                      No upcoming or active periods
                     </div>
                   );
                 }
@@ -146,8 +146,8 @@ function MobileMarketLinks({
 
                 if (activeEpochs.length === 0) {
                   return (
-                    <div className="text-sm text-muted-foreground flex-1 flex items-center justify-center my-8">
-                      No active periods
+                    <div className="text-center text-sm text-muted-foreground flex-1 flex items-center justify-center m-8">
+                      No upcoming or active periods
                     </div>
                   );
                 }
@@ -168,7 +168,7 @@ function MobileMarketLinks({
                       </Link>
                     ))}
                     <Link
-                      href="/markets"
+                      href={`/markets?resource=${resource.slug}`}
                       onClick={() => onClose?.()}
                       className="text-xs text-muted-foreground hover:text-foreground flex items-center justify-end mt-2 px-3 py-1"
                     >
@@ -280,8 +280,8 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
                     allEpochs.length === 0
                   ) {
                     return (
-                      <div className="text-sm text-muted-foreground flex items-center justify-center h-full">
-                        No active periods
+                      <div className="text-center text-sm text-muted-foreground flex items-center justify-center h-full px-8">
+                        No upcoming or active periods
                       </div>
                     );
                   }
@@ -293,8 +293,8 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
 
                   if (activeEpochs.length === 0) {
                     return (
-                      <div className="text-sm text-muted-foreground flex items-center justify-center h-full">
-                        No active periods
+                      <div className="text-center text-sm text-muted-foreground flex items-center justify-center h-full px-8">
+                        No upcoming or active periods
                       </div>
                     );
                   }
@@ -315,7 +315,7 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
                         </Link>
                       ))}
                       <Link
-                        href="/markets"
+                        href={`/markets?resource=${hoveredResourceData?.slug}`}
                         onClick={handleLinkClick(setOpen)}
                         className="text-xs text-muted-foreground hover:text-foreground flex items-center justify-end mt-2 px-3 py-1"
                       >
