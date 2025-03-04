@@ -30,6 +30,8 @@ import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import type { RenderJob } from '~/lib/interfaces/interfaces';
 import { foilApi } from '~/lib/utils/util';
 
+const DEFAULT_ERROR_MESSAGE = 'An error occurred. Please try again.';
+
 const GET_RESOURCES = gql`
   query GetResources {
     resources {
@@ -49,6 +51,7 @@ const Admin = () => {
   const [manualServiceId, setManualServiceId] = useState('');
   const [manualJobId, setManualJobId] = useState('');
   const [indexResourceOpen, setIndexResourceOpen] = useState(false);
+  const [refreshCacheOpen, setRefreshCacheOpen] = useState(false);
   const [selectedResource, setSelectedResource] = useState('');
   const [startTimestamp, setStartTimestamp] = useState('');
   const [endTimestamp, setEndTimestamp] = useState('');
@@ -122,11 +125,51 @@ const Admin = () => {
       console.error('Error in handleIndexResource:', e);
       toast({
         title: 'Indexing failed',
-        description: (e as Error)?.message || 'An error occurred',
+        description: (e as Error)?.message || DEFAULT_ERROR_MESSAGE,
         variant: 'destructive',
       });
     } finally {
       setLoadingAction((prev) => ({ ...prev, indexResource: false }));
+    }
+  };
+
+  const handleRefreshCache = async () => {
+    try {
+      setLoadingAction((prev) => ({ ...prev, refreshCache: true }));
+      const timestamp = Date.now();
+
+      // Always request signature, matching the pattern in other admin functions
+      const signature = await signMessageAsync({
+        message: ADMIN_AUTHENTICATE_MSG,
+      });
+
+      const response = await foilApi.get(
+        `/cache/refresh?hardInitialize=true&signature=${signature}&signatureTimestamp=${timestamp}`
+      );
+
+      if (response.success) {
+        toast({
+          title: 'Cache refreshed',
+          description: 'Cache has been successfully refreshed',
+          variant: 'default',
+        });
+        setRefreshCacheOpen(false);
+      } else {
+        toast({
+          title: 'Cache refresh failed',
+          description: response.error || DEFAULT_ERROR_MESSAGE,
+          variant: 'destructive',
+        });
+      }
+    } catch (e: Error | unknown) {
+      console.error('Error in handleRefreshCache:', e);
+      toast({
+        title: 'Cache refresh failed',
+        description: (e as Error)?.message || DEFAULT_ERROR_MESSAGE,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingAction((prev) => ({ ...prev, refreshCache: false }));
     }
   };
 
@@ -139,6 +182,7 @@ const Admin = () => {
         <Button onClick={() => setIndexResourceOpen(true)}>
           Index Resource
         </Button>
+        <Button onClick={() => setRefreshCacheOpen(true)}>Refresh Cache</Button>
       </div>
 
       <Dialog open={statusOpen} onOpenChange={setStatusOpen}>
@@ -284,6 +328,34 @@ const Admin = () => {
                 </div>
               ) : (
                 'Submit'
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={refreshCacheOpen} onOpenChange={setRefreshCacheOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Refresh Cache</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm">
+              This will trigger a hard initialization of the cache. This
+              operation requires authentication.
+            </p>
+
+            <Button
+              onClick={handleRefreshCache}
+              disabled={loadingAction.refreshCache}
+              className="w-full"
+            >
+              {loadingAction.refreshCache ? (
+                <div className="animate-spin">
+                  <Loader2 className="w-4 h-4" />
+                </div>
+              ) : (
+                'Refresh Cache'
               )}
             </Button>
           </div>
