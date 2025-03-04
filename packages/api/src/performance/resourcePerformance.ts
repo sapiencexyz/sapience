@@ -253,7 +253,9 @@ export class ResourcePerformance {
         endTimestampIndex: 0,
         startTimestamp: 0,
         endTimestamp: 0,
-        trailingAvgData: [],
+        trailingAvgData: [
+          ...this.storage[interval].trailingAvgStore.trailingAvgData, // LLL TODO Initialize with stored data
+        ],
       };
 
       this.runtime.indexProcessData[interval] = {};
@@ -514,7 +516,7 @@ export class ResourcePerformance {
             data: [],
             metadata: [],
             pointers: {},
-            trailingAvgData: [],
+            trailingAvgData: [], // Unused in index store
           };
         }
 
@@ -644,7 +646,7 @@ export class ResourcePerformance {
       tpd.startTimestampIndex = 0;
       tpd.endTimestampIndex = currentIdx;
 
-      // Create a placeholder in the store
+      // Create a placeholder in the store if not found
       const trailingAvgStore = this.storage[interval].trailingAvgStore;
       const itemStartTime = this.snapToInterval(item.timestamp, interval);
       const price = tpd.used > 0n ? tpd.feePaid / tpd.used : 0n;
@@ -655,7 +657,7 @@ export class ResourcePerformance {
       );
 
       if (existingIndex === -1) {
-        // Create a new placeholder
+        // Create a new placeholder for the next item. It will be updated once is finished processing the current item
         trailingAvgStore.data.push({
           timestamp: item.timestamp,
           open: price.toString(),
